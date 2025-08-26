@@ -12,6 +12,10 @@ type Opp = {
   city: string
 }
 
+function isPgError(e: unknown): e is { code?: string; message?: string } {
+  return typeof e === 'object' && e !== null && 'message' in e
+}
+
 export default function OpportunitiesPage() {
   const [list, setList] = useState<Opp[]>([])
   const [loading, setLoading] = useState(true)
@@ -50,7 +54,6 @@ export default function OpportunitiesPage() {
         return
       }
 
-      // log visibili anche in console
       console.log('Applying with', { opportunityId, athlete_id: udata.user.id })
 
       const { error } = await supabase
@@ -59,11 +62,12 @@ export default function OpportunitiesPage() {
 
       if (error) {
         console.error('Insert error', error)
-        // duplicato
-        if ((error as any).code === '23505' || (error.message ?? '').includes('duplicate')) {
+        if (isPgError(error) && (error.code === '23505' || (error.message ?? '').toLowerCase().includes('duplicate'))) {
           setMsg('Ti sei già candidato a questo annuncio.')
-        } else {
+        } else if (isPgError(error)) {
           setMsg(`Errore candidatura: ${error.message}`)
+        } else {
+          setMsg('Errore candidatura sconosciuto.')
         }
         return
       }
