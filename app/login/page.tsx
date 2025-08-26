@@ -1,12 +1,15 @@
 'use client'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
 
+// forza sempre il redirect all'URL production
+const REDIRECT = 'https://clubandplayer-app.vercel.app/auth/callback'
+
 export default function LoginPage() {
   const signInWithGoogle = async () => {
     const supabase = supabaseBrowser()
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback` }
+      options: { redirectTo: REDIRECT }
     })
   }
 
