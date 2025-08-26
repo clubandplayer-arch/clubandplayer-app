@@ -10,19 +10,15 @@ export default function AuthCallback() {
     const run = async () => {
       const supabase = supabaseBrowser()
 
-      // prendi il "code" dall'URL
-      const url = new URL(window.location.href)
-      const code = url.searchParams.get('code')
-
-      if (!code) {
-        // niente code nell'URL -> torna al login
-        alert('Login non valido: parametro "code" mancante. Riprova.')
+      // se manca il "code" nell'URL, torna al login
+      const hasCode = new URL(window.location.href).searchParams.has('code')
+      if (!hasCode) {
         router.replace('/login')
         return
       }
 
-      // scambia il code per una sessione; il code_verifier è in localStorage
-      const { error } = await supabase.auth.exchangeCodeForSession({ code })
+      // questa è la firma corretta: serve una STRINGA con l'URL completo
+      const { error } = await supabase.auth.exchangeCodeForSession(window.location.href)
 
       if (error) {
         console.error('OAuth error:', error)
