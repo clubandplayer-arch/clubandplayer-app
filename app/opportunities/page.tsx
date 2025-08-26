@@ -81,7 +81,9 @@ export default function OpportunitiesPage() {
   return (
     <main style={{maxWidth:720,margin:'0 auto',padding:24}}>
       <h1>Opportunità</h1>
-
+<p style={{marginTop:8}}>
+  Sei un club? <a href="/post">Crea un annuncio →</a>
+</p>
       <div style={{background:'#f8fafc',border:'1px solid #e5e7eb',borderRadius:8,padding:12,margin:'12px 0'}}>
         <div style={{fontSize:12,opacity:.8}}>
           User ID: <code>{userId ?? 'n/d'}</code>
