@@ -10,8 +10,19 @@ export default function AuthCallback() {
     const run = async () => {
       const supabase = supabaseBrowser()
 
-      // Scambia il "code" presente nell'URL per una sessione valida
-      const { error } = await supabase.auth.exchangeCodeForSession(window.location.href)
+      // prendi il "code" dall'URL
+      const url = new URL(window.location.href)
+      const code = url.searchParams.get('code')
+
+      if (!code) {
+        // niente code nell'URL -> torna al login
+        alert('Login non valido: parametro "code" mancante. Riprova.')
+        router.replace('/login')
+        return
+      }
+
+      // scambia il code per una sessione; il code_verifier è in localStorage
+      const { error } = await supabase.auth.exchangeCodeForSession({ code })
 
       if (error) {
         console.error('OAuth error:', error)
@@ -20,7 +31,6 @@ export default function AuthCallback() {
         return
       }
 
-      // Ora la sessione è presente (niente più "Auth session missing")
       router.replace('/onboarding')
     }
     run()
