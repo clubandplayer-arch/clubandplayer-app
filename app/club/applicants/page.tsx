@@ -18,12 +18,16 @@ type Row = {
   athlete_city: string | null
 }
 
+type StatusFilter = 'tutte' | 'inviata' | 'valutazione' | 'scartata'
+const isStatus = (v: string): v is StatusFilter =>
+  v === 'tutte' || v === 'inviata' || v === 'valutazione' || v === 'scartata'
+
 export default function ClubApplicants() {
   const supabase = supabaseBrowser()
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
   const [msg, setMsg] = useState<string>('')
-  const [filter, setFilter] = useState<'tutte' | 'inviata' | 'valutazione' | 'scartata'>('tutte')
+  const [filter, setFilter] = useState<StatusFilter>('tutte')
   const [updatingId, setUpdatingId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -31,11 +35,9 @@ export default function ClubApplicants() {
       setMsg('')
       setLoading(true)
 
-      // 1) utente loggato (club)
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { setMsg('Devi essere loggato.'); setLoading(false); return }
 
-      // 2) i MIEI annunci (owner_id = me)
       const { data: myOpps, error: e1 } = await supabase
         .from('opportunities')
         .select('id, title, city')
@@ -46,7 +48,6 @@ export default function ClubApplicants() {
       const oppIds = opps.map(o => o.id)
       if (oppIds.length === 0) { setRows([]); setLoading(false); return }
 
-      // 3) candidature agli MIEI annunci
       const { data: apps, error: e2 } = await supabase
         .from('applications')
         .select('id, opportunity_id, athlete_id, status, created_at')
@@ -57,7 +58,6 @@ export default function ClubApplicants() {
       const applications = (apps ?? []) as Application[]
       if (applications.length === 0) { setRows([]); setLoading(false); return }
 
-      // 4) profili degli atleti candidati
       const athleteIds = Array.from(new Set(applications.map(a => a.athlete_id)))
       const { data: profs, error: e3 } = await supabase
         .from('profiles')
@@ -102,7 +102,6 @@ export default function ClubApplicants() {
       .eq('id', applicationId)
     setUpdatingId(null)
     if (error) { setMsg(`Errore aggiornamento: ${error.message}`); return }
-    // aggiorna UI in memoria senza ricaricare
     setRows(prev => prev.map(r => r.application_id === applicationId ? { ...r, status } : r))
   }
 
@@ -112,7 +111,13 @@ export default function ClubApplicants() {
 
       <div style={{display:'flex',gap:8,alignItems:'center',marginTop:8}}>
         <span>Filtro stato:</span>
-        <select value={filter} onChange={e => setFilter(e.target.value as any)}>
+        <select
+          value={filter}
+          onChange={e => {
+            const v = e.target.value
+            if (isStatus(v)) setFilter(v)
+          }}
+        >
           <option value="tutte">tutte</option>
           <option value="inviata">inviata</option>
           <option value="valutazione">valutazione</option>
