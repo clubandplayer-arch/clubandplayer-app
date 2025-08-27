@@ -160,6 +160,10 @@ export default function OpportunitiesPage() {
         <a href="/post" style={{marginRight:12}}>+ Crea annuncio</a>
         <a href="/club/applicants">Candidature ricevute →</a>
       </p>
+      
+      <p style={{marginTop:4}}>
+        Sei un club? <a href="/search/athletes">Cerca atleti →</a>
+      </p>
 
       {/* Filtri avanzati */}
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:8,margin:'8px 0 12px 0'}}>
