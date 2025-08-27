@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
 
@@ -38,7 +39,7 @@ export default function PublicClubPage() {
       setList((data ?? []) as Opp[])
       setLoading(false)
     }
-    load()
+    void load()
   }, [params.id, router, supabase])
 
   const clubName = useMemo<string>(() => {
@@ -49,14 +50,26 @@ export default function PublicClubPage() {
 
   return (
     <main style={{maxWidth:820, margin:'0 auto', padding:24}}>
-      <header style={{display:'flex', gap:16, alignItems:'center', marginBottom:16}}>
-        <div style={{width:72, height:72, borderRadius:'50%', background:'#e5e7eb'}} />
-        <div>
-          <h1 style={{margin:0}}>{clubName}</h1>
-          <p style={{margin:'4px 0', opacity:.8}}>
-            Annunci pubblicati: {list.length}
-          </p>
-          <p style={{margin:0, fontSize:12, opacity:.7}}>ID club: <code>{params.id}</code></p>
+      <header style={{display:'flex', gap:16, alignItems:'center', marginBottom:16, justifyContent:'space-between', flexWrap:'wrap'}}>
+        <div style={{display:'flex', gap:16, alignItems:'center'}}>
+          <div style={{width:72, height:72, borderRadius:'50%', background:'#e5e7eb'}} />
+          <div>
+            <h1 style={{margin:0}}>{clubName}</h1>
+            <p style={{margin:'4px 0', opacity:.8}}>
+              Annunci pubblicati: {list.length}
+            </p>
+            <p style={{margin:0, fontSize:12, opacity:.7}}>ID club: <code>{params.id}</code></p>
+          </div>
+        </div>
+
+        {/* Azioni header */}
+        <div style={{display:'flex', gap:8, alignItems:'center'}}>
+          <Link
+            href={`/messages/${params.id}`}
+            style={{padding:'8px 12px', border:'1px solid #e5e7eb', borderRadius:8}}
+          >
+            Messaggia →
+          </Link>
         </div>
       </header>
 
@@ -86,7 +99,7 @@ export default function PublicClubPage() {
       )}
 
       <div style={{marginTop:16}}>
-        <a href="/opportunities">← Torna alle opportunità</a>
+        <Link href="/opportunities">← Torna alle opportunità</Link>
       </div>
     </main>
   )
