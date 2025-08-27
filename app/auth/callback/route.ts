@@ -2,23 +2,29 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 
-export const runtime = 'nodejs' // usa cookie mutabili
+export const runtime = 'nodejs' // cookie mutabili su Vercel
 
 export async function GET(request: Request) {
   const url = new URL(request.url)
   const code = url.searchParams.get('code')
 
-  // se manca il code torna al login
-  if (!code) return NextResponse.redirect(new URL('/login', request.url))
+  if (!code) {
+    return NextResponse.redirect(new URL('/login', request.url))
+  }
 
-  // Prepariamo una response che useremo anche per impostare i cookie
-  const res = NextResponse.redirect(new URL('/', request.url)) // placeholder; lo aggiorniamo sotto
+  // Prepara una response che useremo anche per impostare i cookie
+  const res = NextResponse.redirect(new URL('/', request.url)) // aggiorniamo la Location più sotto
 
-  // Helper per leggere un cookie dalla request
-  const getCookieFromHeader = (name: string): string | undefined => {
-    const cookie = request.headers.get('cookie') ?? ''
-    const match = cookie.split('; ').find(c => c.startsWith(`${name}=`))
-    return match ? decodeURIComponent(match.split('=')[1]) : undefined
+  // Parser semplice dei cookie in ingresso
+  const parseIncomingCookies = (): { name: string; value: string }[] => {
+    const header = request.headers.get('cookie') ?? ''
+    if (!header) return []
+    return header.split('; ').map(pair => {
+      const eq = pair.indexOf('=')
+      const name = eq >= 0 ? pair.slice(0, eq) : pair
+      const value = eq >= 0 ? decodeURIComponent(pair.slice(eq + 1)) : ''
+      return { name, value }
+    })
   }
 
   const supabase = createServerClient(
@@ -26,14 +32,21 @@ export async function GET(request: Request) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get: (name) => getCookieFromHeader(name),
-        set: (name, value, options) => res.cookies.set(name, value, options),
-        remove: (name, options) => res.cookies.set(name, '', { ...options, maxAge: 0 }),
+        // ✅ Versione compatibile: getAll/set/remove
+        getAll() {
+          return parseIncomingCookies()
+        },
+        set(name, value, options) {
+          res.cookies.set(name, value, options)
+        },
+        remove(name, options) {
+          res.cookies.set(name, '', { ...options, maxAge: 0 })
+        },
       },
     }
   )
 
-  // 1) Scambia il code per la sessione (imposterà i cookie su `res`)
+  // 1) Scambia il code per la sessione (imposta i cookie su `res`)
   const { error: exchErr } = await supabase.auth.exchangeCodeForSession(code)
   if (exchErr) {
     res.headers.set('Location', new URL('/login', request.url).toString())
