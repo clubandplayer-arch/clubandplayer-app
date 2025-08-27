@@ -24,7 +24,6 @@ export default function OpportunitiesPage() {
   const [applyingId, setApplyingId] = useState<string | null>(null)
   const supabase = supabaseBrowser()
 
-  // carico utente + annunci
   useEffect(() => {
     const load = async () => {
       setMsg('')
@@ -50,18 +49,15 @@ export default function OpportunitiesPage() {
     try {
       const { data: udata, error: uerr } = await supabase.auth.getUser()
       if (uerr || !udata.user) {
-        setMsg(`Non sei loggato: ${uerr?.message ?? 'user null'}`)
+        setMsg(`Devi essere loggato per candidarti: ${uerr?.message ?? ''}`)
         return
       }
-
-      console.log('Applying with', { opportunityId, athlete_id: udata.user.id })
 
       const { error } = await supabase
         .from('applications')
         .insert({ opportunity_id: opportunityId, athlete_id: udata.user.id })
 
       if (error) {
-        console.error('Insert error', error)
         if (isPgError(error) && (error.code === '23505' || (error.message ?? '').toLowerCase().includes('duplicate'))) {
           setMsg('Ti sei già candidato a questo annuncio.')
         } else if (isPgError(error)) {
@@ -81,9 +77,14 @@ export default function OpportunitiesPage() {
   return (
     <main style={{maxWidth:720,margin:'0 auto',padding:24}}>
       <h1>Opportunità</h1>
-<p style={{marginTop:8}}>
-  Sei un club? <a href="/post">Crea un annuncio →</a>
-</p>
+
+      {/* 🔗 Link rapidi per i club */}
+      <p style={{margin:'8px 0 16px 0'}}>
+        <span style={{opacity:.8, marginRight:8}}>Sei un club?</span>
+        <a href="/post" style={{marginRight:12}}>+ Crea annuncio</a>
+        <a href="/club/applicants">Candidature ricevute →</a>
+      </p>
+
       <div style={{background:'#f8fafc',border:'1px solid #e5e7eb',borderRadius:8,padding:12,margin:'12px 0'}}>
         <div style={{fontSize:12,opacity:.8}}>
           User ID: <code>{userId ?? 'n/d'}</code>
