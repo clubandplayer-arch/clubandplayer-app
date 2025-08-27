@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
 
 type Opportunity = { id: string; title: string; city: string }
@@ -85,7 +86,7 @@ export default function ClubApplicants() {
       setRows(merged)
       setLoading(false)
     }
-    load()
+    void load()
   }, [supabase])
 
   const filtered = useMemo(() => {
@@ -124,6 +125,7 @@ export default function ClubApplicants() {
           <option value="scartata">scartata</option>
         </select>
         <a href="/post" style={{marginLeft:'auto'}}>+ Crea nuovo annuncio</a>
+        <Link href="/messages" style={{marginLeft:8}}>Messaggi →</Link>
       </div>
 
       {msg && <p style={{color:'#b91c1c',marginTop:8}}>{msg}</p>}
@@ -136,18 +138,17 @@ export default function ClubApplicants() {
             <div style={{display:'flex',justifyContent:'space-between',gap:12,flexWrap:'wrap'}}>
               <div>
                 <div style={{fontWeight:600}}>
-                {r.opportunity_title} — {r.opportunity_city}
-                {/* Il club sei tu (owner), quindi il link potrebbe non servire qui.
-                Lo lasciamo informativo: */}
+                  {r.opportunity_title} — {r.opportunity_city}
                 </div>
                 <div style={{fontSize:14,opacity:.8}}>
-  Atleta: <a href={`/u/${r.athlete_id}`}>{r.athlete_role ?? 'profilo'}</a> · {r.athlete_sport ?? '—'} · {r.athlete_city ?? '—'}
-</div>
-
+                  Atleta: <a href={`/u/${r.athlete_id}`}>{r.athlete_role ?? 'profilo'}</a> · {r.athlete_sport ?? '—'} · {r.athlete_city ?? '—'} ·{' '}
+                  <Link href={`/messages/${r.athlete_id}`}>Messaggia →</Link>
+                </div>
                 <div style={{fontSize:12,opacity:.7,marginTop:4}}>
                   Ricevuta: {new Date(r.created_at).toLocaleString()}
                 </div>
               </div>
+
               <div style={{display:'flex',gap:8,alignItems:'center'}}>
                 <span style={{fontSize:13}}>Stato: <b>{r.status}</b></span>
                 <button
