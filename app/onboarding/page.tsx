@@ -1,74 +1,138 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
 
-export default function Onboarding() {
+type AccountType = 'athlete' | 'club'
+
+export default function OnboardingPage() {
   const supabase = supabaseBrowser()
+  const router = useRouter()
+  const [userId, setUserId] = useState<string | null>(null)
+  const [accountType, setAccountType] = useState<AccountType | ''>('')
   const [sport, setSport] = useState('')
   const [role, setRole] = useState('')
   const [city, setCity] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [userId, setUserId] = useState<string | null>(null)
-  const [message, setMessage] = useState<string>('')
+  const [fullName, setFullName] = useState('')
+  const [clubName, setClubName] = useState('')
+  const [msg, setMsg] = useState('')
 
   useEffect(() => {
-    const load = async () => {
-      const { data, error } = await supabase.auth.getUser()
-      if (error) setMessage(`Errore getUser: ${error.message}`)
-      setUserId(data?.user?.id ?? null)
+    const init = async () => {
+      const { data } = await supabase.auth.getUser()
+      if (!data.user) { setMsg('Devi accedere.'); return }
+      setUserId(data.user.id)
+
+      // prova a caricare il profilo
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('account_type, full_name, sport, role, city')
+        .eq('id', data.user.id)
+        .limit(1)
+      if (prof && prof[0]) {
+        const p = prof[0] as any
+        if (p.account_type) setAccountType(p.account_type)
+        if (p.full_name) setFullName(p.full_name)
+        if (p.sport) setSport(p.sport)
+        if (p.role) setRole(p.role)
+        if (p.city) setCity(p.city)
+      }
     }
-    load()
+    void init()
   }, [supabase])
 
-  const save = async () => {
-    setMessage('')
-    setSaving(true)
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setMsg('')
+    if (!userId) { setMsg('Sessione mancante.'); return }
+    if (!accountType) { setMsg('Seleziona il tipo di account.'); return }
 
-    const { data: udata, error: uerr } = await supabase.auth.getUser()
-    if (uerr || !udata.user) {
-      setSaving(false)
-      setMessage(`Non sei loggato: ${uerr?.message ?? 'user null'}`)
-      return
+    // Validazioni differenziate
+    if (accountType === 'athlete') {
+      if (!fullName.trim()) return setMsg('Inserisci il tuo nome.')
+      if (!sport) return setMsg('Seleziona lo sport.')
+      if (!role) return setMsg('Seleziona il ruolo.')
+      if (!city.trim()) return setMsg('Inserisci la città.')
+    } else {
+      if (!clubName.trim()) return setMsg('Inserisci il nome della squadra.')
+      if (!city.trim()) return setMsg('Inserisci la città.')
     }
 
-    const payload = { id: udata.user.id, sport, role, city }
-
-    const { error: upsertErr } = await supabase
-      .from('profiles')
-      .upsert(payload, { onConflict: 'id' })
-
-    setSaving(false)
-
-    if (upsertErr) {
-      setMessage(`Errore salvataggio: ${upsertErr.message}`)
-      return
+    const payload: Record<string, any> = {
+      id: userId,
+      account_type: accountType,
+      city: city || null,
+    }
+    if (accountType === 'athlete') {
+      payload.full_name = fullName
+      payload.sport = sport
+      payload.role = role
+    } else {
+      payload.full_name = clubName // usiamo full_name come display_name del club per l’MVP
+      // puoi aggiungere tabella clubs in seguito
     }
 
-    setMessage('Profilo salvato! Ti porto alle opportunità…')
-    window.location.href = '/opportunities'
+    const { error } = await supabase.from('profiles').upsert(payload)
+    if (error) { setMsg(`Errore salvataggio: ${error.message}`); return }
+
+    // redirect differenziato
+    if (accountType === 'club') router.push('/club/posts')
+    else router.push('/opportunities')
   }
 
   return (
-    <main style={{maxWidth:520,margin:'0 auto',padding:24}}>
+    <main style={{maxWidth:640, margin:'0 auto', padding:24}}>
       <h1>Onboarding</h1>
-      <p>Inserisci i dati base per personalizzare le opportunità.</p>
+      {msg && <p style={{color:'#b91c1c'}}>{msg}</p>}
 
-      <div style={{background:'#f8fafc',border:'1px solid #e5e7eb',borderRadius:8,padding:12,margin:'12px 0'}}>
-        <div style={{fontSize:12,opacity:.8}}>
-          User ID: <code>{userId ?? 'n/d'}</code>
+      <form onSubmit={save} style={{display:'grid', gap:12}}>
+        <div>
+          <label>Sei un…</label><br/>
+          <label style={{marginRight:12}}>
+            <input type="radio" name="type" value="athlete"
+              checked={accountType==='athlete'}
+              onChange={()=>setAccountType('athlete')}/> Giocatore
+          </label>
+          <label>
+            <input type="radio" name="type" value="club"
+              checked={accountType==='club'}
+              onChange={()=>setAccountType('club')}/> Squadra / Club
+          </label>
         </div>
-        {message && <div style={{marginTop:8,fontSize:13,color:'#b91c1c'}}>{message}</div>}
-      </div>
 
-      <div style={{display:'grid',gap:12,marginTop:12}}>
-        <input placeholder="Sport (es. calcio)" value={sport} onChange={e=>setSport(e.target.value)} />
-        <input placeholder="Ruolo (es. attaccante)" value={role} onChange={e=>setRole(e.target.value)} />
-        <input placeholder="Città (es. Carlentini)" value={city} onChange={e=>setCity(e.target.value)} />
-        <button onClick={save} disabled={saving}
-          style={{padding:'10px 14px',borderRadius:8,border:'1px solid #e5e7eb',cursor:'pointer'}}>
-          {saving ? 'Salvataggio…' : 'Conferma'}
-        </button>
-      </div>
+        {accountType === 'athlete' && (
+          <>
+            <input placeholder="Nome e cognome" value={fullName} onChange={e=>setFullName(e.target.value)} />
+            <select value={sport} onChange={e=>{ setSport(e.target.value); setRole('') }}>
+              <option value="">Sport</option>
+              <option value="calcio">Calcio</option>
+              <option value="futsal">Futsal</option>
+              <option value="basket">Basket</option>
+              <option value="volley">Volley</option>
+            </select>
+            <select value={role} onChange={e=>setRole(e.target.value)} disabled={!sport}>
+              <option value="">Ruolo</option>
+              {sport==='calcio' && ['portiere','difensore','centrocampista','attaccante'].map(r=><option key={r} value={r}>{r}</option>)}
+              {sport==='futsal' && ['portiere','difensore','pivot','laterale'].map(r=><option key={r} value={r}>{r}</option>)}
+              {sport==='basket' && ['playmaker','guardia','ala','centro'].map(r=><option key={r} value={r}>{r}</option>)}
+              {sport==='volley' && ['palleggiatore','schiacciatore','centrale','libero'].map(r=><option key={r} value={r}>{r}</option>)}
+            </select>
+            <input placeholder="Città" value={city} onChange={e=>setCity(e.target.value)} />
+          </>
+        )}
+
+        {accountType === 'club' && (
+          <>
+            <input placeholder="Nome squadra / club" value={clubName} onChange={e=>setClubName(e.target.value)} />
+            <input placeholder="Città" value={city} onChange={e=>setCity(e.target.value)} />
+            <p style={{fontSize:12,opacity:.7,margin:0}}>
+              Suggerimento: compila la sezione “I miei annunci” per pubblicare opportunità.
+            </p>
+          </>
+        )}
+
+        <button type="submit">Conferma</button>
+      </form>
     </main>
   )
 }
