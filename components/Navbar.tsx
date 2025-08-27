@@ -74,4 +74,5 @@ export default function Navbar() {
       </Link>
     </nav>
   )
+  <Link href="/alerts">Avvisi</Link>
 }

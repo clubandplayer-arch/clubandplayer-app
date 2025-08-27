@@ -1,60 +1,154 @@
 'use client'
 import { useState } from 'react'
-import { supabaseBrowser } from '@/lib/supabaseBrowser'
 import { useRouter } from 'next/navigation'
+import { supabaseBrowser } from '@/lib/supabaseBrowser'
 
-export default function PostOpportunity() {
+const sportRoles: Record<string, string[]> = {
+  calcio: ['portiere', 'difensore', 'centrocampista', 'attaccante'],
+  futsal: ['portiere', 'difensore', 'pivot', 'laterale'],
+  basket: ['playmaker', 'guardia', 'ala', 'centro'],
+  volley: ['palleggiatore', 'schiacciatore', 'centrale', 'libero']
+}
+
+export default function PostPage() {
   const supabase = supabaseBrowser()
   const router = useRouter()
-  const [clubName, setClubName] = useState('')
+
   const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
-  const [sport, setSport] = useState('calcio')
-  const [role, setRole] = useState('attaccante')
+  const [sport, setSport] = useState('')
+  const [role, setRole] = useState('')
+  const [region, setRegion] = useState('')
+  const [province, setProvince] = useState('')
   const [city, setCity] = useState('')
+  const [description, setDescription] = useState('')
   const [msg, setMsg] = useState('')
-  const [saving, setSaving] = useState(false)
+  const [loading, setLoading] = useState(false)
 
-  const submit = async () => {
+  const validate = (): string | null => {
+    if (!title.trim()) return 'Inserisci un titolo.'
+    if (!sport) return 'Seleziona uno sport.'
+    if (!role) return 'Seleziona un ruolo.'
+    if (!sportRoles[sport]?.includes(role))
+      return `Ruolo non valido per ${sport}.`
+    if (!region.trim()) return 'Inserisci la regione.'
+    if (!province.trim()) return 'Inserisci la provincia.'
+    if (!city.trim()) return 'Inserisci la città.'
+    return null
+  }
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
     setMsg('')
-    setSaving(true)
 
-    const { data: { user }, error: uerr } = await supabase.auth.getUser()
-    if (uerr || !user) { setSaving(false); setMsg('Devi essere loggato.'); return }
+    const errorMsg = validate()
+    if (errorMsg) {
+      setMsg(errorMsg)
+      return
+    }
 
-    const { error } = await supabase
+    setLoading(true)
+
+    const u = await supabase.auth.getUser()
+    if (u.error || !u.data.user) {
+      setMsg('Devi accedere per creare un annuncio.')
+      setLoading(false)
+      return
+    }
+
+    const { data, error } = await supabase
       .from('opportunities')
       .insert({
-        owner_id: user.id,
-        club_name: clubName,
+        owner_id: u.data.user.id,
         title,
-        description,
         sport,
         role,
-        city
+        region,
+        province,
+        city,
+        description,
+        club_name: u.data.user.user_metadata?.club_name ?? 'Club'
       })
+      .select('id')
 
-    setSaving(false)
-    if (error) { setMsg(`Errore: ${error.message}`); return }
-    router.replace('/opportunities')
+    if (error) {
+      setMsg(`Errore salvataggio: ${error.message}`)
+      setLoading(false)
+      return
+    }
+
+    const oppId = data?.[0]?.id as string | undefined
+    if (oppId) {
+      try {
+        await fetch('/api/notify-opportunity', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ opportunityId: oppId })
+        })
+      } catch {
+        // ignora errori notifica per l’MVP
+      }
+    }
+
+    setLoading(false)
+    setMsg('Annuncio creato con successo!')
+    router.push('/opportunities')
   }
 
   return (
-    <main style={{maxWidth:720,margin:'0 auto',padding:24}}>
-      <h1>Crea annuncio</h1>
-      {msg && <p style={{color:'#b91c1c'}}>{msg}</p>}
-      <div style={{display:'grid',gap:12,marginTop:12}}>
-        <input placeholder="Nome società" value={clubName} onChange={e=>setClubName(e.target.value)} />
-        <input placeholder="Titolo (es. Cerchiamo attaccante)" value={title} onChange={e=>setTitle(e.target.value)} />
-        <textarea placeholder="Descrizione" value={description} onChange={e=>setDescription(e.target.value)} />
-        <input placeholder="Sport (es. calcio)" value={sport} onChange={e=>setSport(e.target.value)} />
-        <input placeholder="Ruolo (es. attaccante)" value={role} onChange={e=>setRole(e.target.value)} />
-        <input placeholder="Città" value={city} onChange={e=>setCity(e.target.value)} />
-        <button onClick={submit} disabled={saving}
-          style={{padding:'10px 14px',border:'1px solid #e5e7eb',borderRadius:8,cursor:'pointer'}}>
-          {saving ? 'Salvataggio…' : 'Pubblica annuncio'}
+    <main style={{ maxWidth: 600, margin: '0 auto', padding: 24 }}>
+      <h1>Nuovo annuncio</h1>
+      {msg && <p style={{ color: msg.includes('successo') ? 'green' : '#b91c1c' }}>{msg}</p>}
+      <form onSubmit={submit} style={{ display: 'grid', gap: 12 }}>
+        <input
+          placeholder="Titolo"
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+          required
+        />
+        <select value={sport} onChange={e => { setSport(e.target.value); setRole('') }} required>
+          <option value="">Sport</option>
+          {Object.keys(sportRoles).map(s => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
+        <select
+          value={role}
+          onChange={e => setRole(e.target.value)}
+          required
+          disabled={!sport}
+        >
+          <option value="">Ruolo</option>
+          {sport && sportRoles[sport].map(r => (
+            <option key={r} value={r}>{r}</option>
+          ))}
+        </select>
+        <input
+          placeholder="Regione"
+          value={region}
+          onChange={e => setRegion(e.target.value)}
+          required
+        />
+        <input
+          placeholder="Provincia"
+          value={province}
+          onChange={e => setProvince(e.target.value)}
+          required
+        />
+        <input
+          placeholder="Città"
+          value={city}
+          onChange={e => setCity(e.target.value)}
+          required
+        />
+        <textarea
+          placeholder="Descrizione"
+          value={description}
+          onChange={e => setDescription(e.target.value)}
+        />
+        <button type="submit" disabled={loading}>
+          {loading ? 'Salvataggio…' : 'Crea annuncio'}
         </button>
-      </div>
+      </form>
     </main>
   )
 }
