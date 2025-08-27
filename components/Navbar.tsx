@@ -70,6 +70,7 @@ export default function Navbar() {
       <Link href="/" style={{fontWeight:700}}>Club&Player</Link>
       <Link href="/opportunities">Opportunità</Link>
       <Link href="/alerts">Avvisi</Link>
+      <Link href="/club/posts">I miei annunci</Link>
       <div style={{marginLeft:'auto'}}>
         <Link href="/messages">
           Messaggi{unreadTotal > 0 ? ` (${unreadTotal})` : ''}
