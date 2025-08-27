@@ -31,7 +31,6 @@ export default function ChatPage() {
   }
 
   const markRead = useCallback(async (me: string, peer: string) => {
-    // segna come letto adesso
     await supabase
       .from('message_reads')
       .upsert({ user_id: me, peer_id: String(peer), last_read_at: new Date().toISOString() })
@@ -44,7 +43,6 @@ export default function ChatPage() {
     const me = u.data.user.id
     setUserId(me)
 
-    // nome peer (se disponibile)
     const { data: prof } = await supabase
       .from('profiles')
       .select('full_name')
@@ -64,15 +62,12 @@ export default function ChatPage() {
     setLoading(false)
     scrollBottom()
 
-    // segna come letto
     await markRead(me, String(peerId))
-    // avvisa la lista di ricaricare i badge
     window.dispatchEvent(new Event('app:unread-updated'))
   }, [supabase, peerId, markRead])
 
   useEffect(() => { void load() }, [load])
 
-  // Realtime: ascolta nuovi messaggi
   useEffect(() => {
     const channel = supabase
       .channel(`chat-${peerId}`)
@@ -87,7 +82,6 @@ export default function ChatPage() {
           if (inThisThread) {
             setRows(prev => [...prev, r])
             scrollBottom()
-            // se il nuovo è rivolto a me, aggiorno last_read subito
             if (r.receiver_id === userId) {
               await markRead(userId, String(peerId))
               window.dispatchEvent(new Event('app:unread-updated'))
@@ -128,6 +122,15 @@ export default function ChatPage() {
       setRows(prev => prev.filter(r => r.id !== temp.id))
       return
     }
+
+    // Notifica email (opzionale, non blocca l'UI)
+    try {
+      await fetch('/api/notify-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ senderId: udata.user.id, receiverId: String(peerId), text: txt })
+      })
+    } catch { /* ignore */ }
   }
 
   return (

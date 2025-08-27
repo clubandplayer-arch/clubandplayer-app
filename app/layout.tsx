@@ -1,14 +1,15 @@
 export const dynamic = 'force-dynamic'
 import './globals.css'
 import { ReactNode } from 'react'
+import Navbar from '@/components/Navbar'
 import RealtimeMessagesClient from '@/components/RealtimeMessagesClient'
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="it">
       <body>
+        <Navbar />
         {children}
-        {/* Client globale per toast + badge non letti */}
         <RealtimeMessagesClient />
       </body>
     </html>
