@@ -135,7 +135,11 @@ export default function ClubApplicants() {
           <div key={r.application_id} style={{border:'1px solid #e5e7eb',borderRadius:12,padding:16}}>
             <div style={{display:'flex',justifyContent:'space-between',gap:12,flexWrap:'wrap'}}>
               <div>
-                <div style={{fontWeight:600}}>{r.opportunity_title} — {r.opportunity_city}</div>
+                <div style={{fontWeight:600}}>
+                {r.opportunity_title} — {r.opportunity_city}
+                {/* Il club sei tu (owner), quindi il link potrebbe non servire qui.
+                Lo lasciamo informativo: */}
+                </div>
                 <div style={{fontSize:14,opacity:.8}}>
   Atleta: <a href={`/u/${r.athlete_id}`}>{r.athlete_role ?? 'profilo'}</a> · {r.athlete_sport ?? '—'} · {r.athlete_city ?? '—'}
 </div>
