@@ -91,6 +91,11 @@ export default function OpportunitiesPage() {
         </div>
         {msg && <div style={{marginTop:8,fontSize:13,color:'#b91c1c'}}>{msg}</div>}
       </div>
+      {userId && (
+  <div style={{marginTop:8}}>
+    <a href={`/u/${userId}`} style={{fontSize:14}}>Vedi il mio profilo pubblico →</a>
+  </div>
+)}
 
       {loading && <p>Caricamento…</p>}
       {!loading && list.length === 0 && <p>Nessun annuncio disponibile.</p>}
