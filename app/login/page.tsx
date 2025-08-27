@@ -3,23 +3,25 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
 
+type ProfileRow = { account_type: 'athlete' | 'club' | null }
+
 export default function LoginPage() {
   const supabase = supabaseBrowser()
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState('')
 
-  // Se già loggato, mandalo via da /login
+  // Se già loggato, esci da /login
   useEffect(() => {
     const check = async () => {
       const { data } = await supabase.auth.getUser()
-      if (!data.user) return
-      // controlla onboarding
+      const user = data.user
+      if (!user) return
       const { data: prof } = await supabase
         .from('profiles')
         .select('account_type')
-        .eq('id', data.user.id)
-        .single()
+        .eq('id', user.id)
+        .single<ProfileRow>()
       if (!prof?.account_type) router.replace('/onboarding')
       else router.replace('/opportunities')
     }
@@ -27,20 +29,23 @@ export default function LoginPage() {
   }, [supabase, router])
 
   const signInWithGoogle = async () => {
+    setLoading(true)
+    setMsg('')
     try {
-      setLoading(true)
-      setMsg('')
       await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`, // <-- fondamentale
-          // facoltativo: 'preferRedirect' evita popup bloccati
-          queryParams: { prompt: 'select_account' }
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: { prompt: 'select_account' } // opzionale
         }
       })
-      // Non serve fare altro: verrai rediretto a Google e poi a /auth/callback
-    } catch (e: any) {
-      setMsg(e?.message ?? 'Errore login')
+    } catch (err: unknown) {
+      // safe-narrowing dell'errore
+      if (err && typeof err === 'object' && 'message' in err) {
+        setMsg(String((err as { message?: string }).message))
+      } else {
+        setMsg('Errore login')
+      }
       setLoading(false)
     }
   }
