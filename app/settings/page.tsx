@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
 import { sports, rolesBySport, SportKey } from '@/data/roles'
 import { regions, provincesByRegion, Region } from '@/data/geo'
@@ -28,6 +29,8 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState<string>('')
 
+  const [userId, setUserId] = useState<string | null>(null)
+
   // campi form
   const [fullName, setFullName] = useState<string>('')
   const [sport, setSport] = useState<SportKey | ''>('')
@@ -46,6 +49,8 @@ export default function SettingsPage() {
       if (error) { setMsg(`Errore login: ${error.message}`); setLoading(false); return }
       if (!user)  { setMsg('Devi accedere per modificare il profilo.'); setLoading(false); return }
 
+      setUserId(user.id)
+
       // carica il profilo (se non esiste, rimane vuoto e faremo upsert)
       const { data: rows, error: perr } = await supabase
         .from('profiles')
@@ -57,9 +62,8 @@ export default function SettingsPage() {
       if (rows && rows.length > 0) {
         const p = rows[0] as Profile
         setFullName(p.full_name ?? '')
-        // nel DB potresti aver salvato lo sport in lowercase → risalgo alla chiave corretta
         const sportKey = (p.sport ?? '').toUpperCase() as SportKey | ''
-        setSport(sportKey && sports.includes(sportKey as SportKey) ? sportKey as SportKey : '')
+        setSport(sportKey && sports.includes(sportKey as SportKey) ? (sportKey as SportKey) : '')
         setRole(p.role ?? '')
         setGender((p.gender ?? '') as Gender)
         setBirthYear(p.birth_year ?? '')
@@ -69,7 +73,7 @@ export default function SettingsPage() {
       }
       setLoading(false)
     }
-    load()
+    void load()
   }, [supabase])
 
   // ruoli dipendono dallo sport scelto
@@ -189,12 +193,12 @@ export default function SettingsPage() {
             >
               {saving ? 'Salvataggio…' : 'Salva'}
             </button>
-            <a href="/u/me" onClick={(e)=>{ e.preventDefault(); /* semplice shortcut: recupero user e vado a /u/<id> */
-              supabase.auth.getUser().then(({data})=>{
-                const id = data.user?.id
-                if (id) window.location.href = `/u/${id}`
-              })
-            }}>Vedi il mio profilo →</a>
+
+            {userId && (
+              <Link href={`/u/${userId}`} style={{alignSelf:'center'}}>
+                Vedi il mio profilo →
+              </Link>
+            )}
           </div>
         </>
       )}

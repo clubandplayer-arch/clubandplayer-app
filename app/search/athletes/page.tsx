@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
 import { sports, rolesBySport, SportKey } from '@/data/roles'
 import { regions, provincesByRegion, Region } from '@/data/geo'
@@ -36,7 +36,7 @@ export default function SearchAthletes() {
   const [qProvince, setQProvince] = useState<string>('')
   const [qCity, setQCity] = useState<string>('')
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true)
     setMsg('')
 
@@ -67,9 +67,9 @@ export default function SearchAthletes() {
     if (error) setMsg(`Errore ricerca: ${error.message}`)
     setList((data ?? []) as Profile[])
     setLoading(false)
-  }
+  }, [supabase, qSport, qGender, qRole, qRegion, qProvince, qCity, qAgeBand])
 
-  useEffect(() => { void load() }, []) // primo load
+  useEffect(() => { void load() }, [load])
 
   const rolesForSport = qSport ? rolesBySport[qSport] : []
 

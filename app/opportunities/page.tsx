@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
 import { sports, rolesBySport, SportKey } from '@/data/roles'
 import { regions, provincesByRegion, Region } from '@/data/geo'
@@ -73,7 +73,7 @@ export default function OpportunitiesPage() {
     }
   }, [])
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true)
     setMsg('')
 
@@ -97,9 +97,10 @@ export default function OpportunitiesPage() {
     if (error) setMsg(`Errore caricamento annunci: ${error.message}`)
     setList((data ?? []) as Opp[])
     setLoading(false)
-  }
+  }, [supabase, qSport, qGender, qRole, qRegion, qProvince, qCity])
 
-  useEffect(() => { void load() }, []) // primo load
+  // primo load
+  useEffect(() => { void load() }, [load])
 
   const applyFilters = async () => {
     try {
@@ -220,9 +221,6 @@ export default function OpportunitiesPage() {
           User ID: <code>{userId ?? 'n/d'}</code>
         </div>
         {msg && <div style={{marginTop:8,fontSize:13,color:'#b91c1c'}}>{msg}</div>}
-      </div>
-      <div style={{marginTop:8}}>
-        <a href="/settings">Impostazioni profilo →</a>
       </div>
 
       {loading && <p>Caricamento…</p>}
