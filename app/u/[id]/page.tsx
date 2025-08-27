@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
 
@@ -54,9 +55,7 @@ export default function PublicAthleteProfile() {
       const p = profs[0] as Profile
       setProfile(p)
 
-      // 2) ultime candidature (facoltativo, massimo 5). NB: l’atleta può leggere le proprie candidature;
-      // i club owner hanno policy per leggere/applicants; per una pagina puramente pubblica, potresti anche omettere questa sezione.
-      // Se la SELECT risultasse vuota per RLS, non è un errore: mostriamo solo il profilo.
+      // 2) ultime candidature (facoltativo, massimo 5)
       const { data: appsData } = await supabase
         .from('applications')
         .select('id, created_at, status, opportunity_id')
@@ -80,7 +79,7 @@ export default function PublicAthleteProfile() {
 
       setLoading(false)
     }
-    load()
+    void load()
   }, [params.id, router, supabase])
 
   return (
@@ -89,14 +88,26 @@ export default function PublicAthleteProfile() {
       {!loading && !!msg && <p style={{color:'#b91c1c'}}>{msg}</p>}
       {!loading && !msg && profile && (
         <>
-          <header style={{display:'flex', gap:16, alignItems:'center', marginBottom:16}}>
-            <div style={{width:64, height:64, borderRadius:'50%', background:'#e5e7eb'}} />
-            <div>
-              <h1 style={{margin:0}}>{profile.full_name ?? 'Atleta'}</h1>
-              <p style={{margin:'4px 0', opacity:.8}}>
-                {profile.role ?? 'Ruolo n/d'} · {profile.sport ?? 'Sport n/d'} · {profile.city ?? 'Città n/d'}
-              </p>
-              <p style={{margin:0, fontSize:13, opacity:.7}}>ID: <code>{profile.id}</code></p>
+          <header style={{display:'flex', gap:16, alignItems:'center', marginBottom:16, justifyContent:'space-between', flexWrap:'wrap'}}>
+            <div style={{display:'flex', gap:16, alignItems:'center'}}>
+              <div style={{width:64, height:64, borderRadius:'50%', background:'#e5e7eb'}} />
+              <div>
+                <h1 style={{margin:0}}>{profile.full_name ?? 'Atleta'}</h1>
+                <p style={{margin:'4px 0', opacity:.8}}>
+                  {profile.role ?? 'Ruolo n/d'} · {profile.sport ?? 'Sport n/d'} · {profile.city ?? 'Città n/d'}
+                </p>
+                <p style={{margin:0, fontSize:13, opacity:.7}}>ID: <code>{profile.id}</code></p>
+              </div>
+            </div>
+
+            {/* Azioni: Messaggia → */}
+            <div style={{display:'flex', gap:8, alignItems:'center'}}>
+              <Link
+                href={`/messages/${params.id}`}
+                style={{padding:'8px 12px', border:'1px solid #e5e7eb', borderRadius:8}}
+              >
+                Messaggia →
+              </Link>
             </div>
           </header>
 
@@ -129,7 +140,7 @@ export default function PublicAthleteProfile() {
           </section>
 
           <div style={{marginTop:16}}>
-            <a href="/opportunities">← Torna alle opportunità</a>
+            <Link href="/opportunities">← Torna alle opportunità</Link>
           </div>
         </>
       )}
