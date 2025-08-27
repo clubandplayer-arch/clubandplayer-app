@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
     const supabase = createClient(url, serviceKey, { auth: { persistSession: false } })
 
-    // email del destinatario
+    // email destinatario
     const { data: receiverUser, error: rErr } = await supabase.auth.admin.getUserById(receiverId)
     if (rErr || !receiverUser?.user?.email) {
       return NextResponse.json({ ok: false, error: 'receiver_not_found' }, { status: 404 })
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     const preview = text.length > 120 ? text.slice(0, 120) + '…' : text
     const chatUrl = `${process.env.NEXT_PUBLIC_BASE_URL ?? ''}/messages/${senderId}`
 
-    // invio via API HTTP di Resend (niente SDK)
+    // invio via API HTTP di Resend
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -64,7 +64,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ ok: true })
-  } catch (e) {
+  } catch {
     return NextResponse.json({ ok: false, error: 'server_error' }, { status: 500 })
   }
 }

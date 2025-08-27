@@ -3,9 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 
 export const runtime = 'edge'
 
-type Body = {
-  opportunityId: string
-}
+type Body = { opportunityId: string }
 
 export async function POST(req: Request) {
   try {
@@ -29,28 +27,25 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'opportunity_not_found' }, { status: 404 })
     }
     const opp = opps[0] as {
-      id: string; sport: string; role: string; region: string|null; province: string|null; city: string; title: string; club_name: string
+      id: string; sport: string; role: string; region: string | null; province: string | null; city: string; title: string; club_name: string
     }
 
     // trova gli alert che combaciano
-    // Match per sport obbligatorio; poi city → province → region (priorità a city se presente)
-    let alertsQuery = supabase.from('alerts').select('user_id, sport, role, region, province, city')
+    const alertsQuery = supabase
+      .from('alerts')
+      .select('user_id, sport, role, region, province, city')
       .eq('sport', opp.sport)
 
-    // se l’alert ha role valorizzato, deve combaciare
-    // (se è null nell’alert, significa "qualsiasi ruolo")
-    // NB: query più semplice: filtriamo lato app
     const { data: alerts, error: aErr } = await alertsQuery
     if (aErr) {
       return NextResponse.json({ ok: false, error: 'alerts_query_error' }, { status: 500 })
     }
 
-    const matches = (alerts ?? []).filter(a => {
+    const matches = (alerts ?? []).filter((a: any) => {
       const roleOk = !a.role || a.role === opp.role
       const cityOk = a.city ? a.city === opp.city : true
       const provOk = a.province ? a.province === opp.province : true
       const regOk = a.region ? a.region === opp.region : true
-      // se l’alert specifica city, usiamo quella; altrimenti province; altrimenti region; se nessuno, passa
       if (a.city) return roleOk && cityOk
       if (a.province) return roleOk && provOk
       if (a.region) return roleOk && regOk
@@ -60,8 +55,8 @@ export async function POST(req: Request) {
     if (matches.length === 0) return NextResponse.json({ ok: true, notified: 0 })
 
     // recupera email dei destinatari
-    const userIds = Array.from(new Set(matches.map(m => m.user_id)))
-    const emails: { id: string, email: string }[] = []
+    const userIds = Array.from(new Set(matches.map((m: any) => m.user_id)))
+    const emails: { id: string; email: string }[] = []
     for (const uid of userIds) {
       const { data: ures } = await supabase.auth.admin.getUserById(uid)
       if (ures?.user?.email) emails.push({ id: uid, email: ures.user.email })
@@ -69,10 +64,9 @@ export async function POST(req: Request) {
 
     if (emails.length === 0) return NextResponse.json({ ok: true, notified: 0 })
 
-    // invia email via Resend API
     const subject = `Nuova opportunità: ${opp.title}`
     const urlApp = process.env.NEXT_PUBLIC_BASE_URL ?? ''
-    const oppUrl = `${urlApp}/opportunities` // in futuro link diretto alla pagina annuncio
+    const oppUrl = `${urlApp}/opportunities`
     const html = `
       <div style="font-family:system-ui,Segoe UI,Roboto,Arial;">
         <p><b>${opp.club_name}</b> ha pubblicato un nuovo annuncio.</p>
@@ -82,7 +76,6 @@ export async function POST(req: Request) {
       </div>
     `
 
-    // invii in serie (per MVP; in futuro usa batch)
     for (const rec of emails) {
       await fetch('https://api.resend.com/emails', {
         method: 'POST',
@@ -100,7 +93,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ ok: true, notified: emails.length })
-  } catch (e) {
+  } catch {
     return NextResponse.json({ ok: false, error: 'server_error' }, { status: 500 })
   }
 }
