@@ -5,17 +5,35 @@ import { supabaseBrowser } from '@/lib/supabaseBrowser'
 
 type AccountType = 'athlete' | 'club'
 
+type ProfileRow = {
+  account_type: AccountType | null
+  full_name: string | null
+  sport: string | null
+  role: string | null
+  city: string | null
+}
+
+type ProfileUpsert = {
+  id: string
+  account_type: AccountType
+  full_name?: string | null
+  sport?: string | null
+  role?: string | null
+  city?: string | null
+}
+
 export default function OnboardingPage() {
   const supabase = supabaseBrowser()
   const router = useRouter()
+
   const [userId, setUserId] = useState<string | null>(null)
   const [accountType, setAccountType] = useState<AccountType | ''>('')
-  const [sport, setSport] = useState('')
-  const [role, setRole] = useState('')
-  const [city, setCity] = useState('')
-  const [fullName, setFullName] = useState('')
-  const [clubName, setClubName] = useState('')
-  const [msg, setMsg] = useState('')
+  const [sport, setSport] = useState<string>('')
+  const [role, setRole] = useState<string>('')
+  const [city, setCity] = useState<string>('')
+  const [fullName, setFullName] = useState<string>('')
+  const [clubName, setClubName] = useState<string>('')
+  const [msg, setMsg] = useState<string>('')
 
   useEffect(() => {
     const init = async () => {
@@ -23,14 +41,14 @@ export default function OnboardingPage() {
       if (!data.user) { setMsg('Devi accedere.'); return }
       setUserId(data.user.id)
 
-      // prova a caricare il profilo
       const { data: prof } = await supabase
         .from('profiles')
         .select('account_type, full_name, sport, role, city')
         .eq('id', data.user.id)
         .limit(1)
+
       if (prof && prof[0]) {
-        const p = prof[0] as any
+        const p = prof[0] as ProfileRow
         if (p.account_type) setAccountType(p.account_type)
         if (p.full_name) setFullName(p.full_name)
         if (p.sport) setSport(p.sport)
@@ -41,7 +59,7 @@ export default function OnboardingPage() {
     void init()
   }, [supabase])
 
-  const save = async (e: React.FormEvent) => {
+  const save = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setMsg('')
     if (!userId) { setMsg('Sessione mancante.'); return }
@@ -58,18 +76,21 @@ export default function OnboardingPage() {
       if (!city.trim()) return setMsg('Inserisci la città.')
     }
 
-    const payload: Record<string, any> = {
+    const payload: ProfileUpsert = {
       id: userId,
       account_type: accountType,
-      city: city || null,
+      city: city || null
     }
+
     if (accountType === 'athlete') {
       payload.full_name = fullName
       payload.sport = sport
       payload.role = role
     } else {
-      payload.full_name = clubName // usiamo full_name come display_name del club per l’MVP
-      // puoi aggiungere tabella clubs in seguito
+      // per l’MVP usiamo full_name come display del club
+      payload.full_name = clubName
+      payload.sport = null
+      payload.role = null
     }
 
     const { error } = await supabase.from('profiles').upsert(payload)
@@ -89,14 +110,22 @@ export default function OnboardingPage() {
         <div>
           <label>Sei un…</label><br/>
           <label style={{marginRight:12}}>
-            <input type="radio" name="type" value="athlete"
+            <input
+              type="radio"
+              name="type"
+              value="athlete"
               checked={accountType==='athlete'}
-              onChange={()=>setAccountType('athlete')}/> Giocatore
+              onChange={()=>setAccountType('athlete')}
+            /> Giocatore
           </label>
           <label>
-            <input type="radio" name="type" value="club"
+            <input
+              type="radio"
+              name="type"
+              value="club"
               checked={accountType==='club'}
-              onChange={()=>setAccountType('club')}/> Squadra / Club
+              onChange={()=>setAccountType('club')}
+            /> Squadra / Club
           </label>
         </div>
 
@@ -126,7 +155,7 @@ export default function OnboardingPage() {
             <input placeholder="Nome squadra / club" value={clubName} onChange={e=>setClubName(e.target.value)} />
             <input placeholder="Città" value={city} onChange={e=>setCity(e.target.value)} />
             <p style={{fontSize:12,opacity:.7,margin:0}}>
-              Suggerimento: compila la sezione “I miei annunci” per pubblicare opportunità.
+              Suggerimento: usa “I miei annunci” per pubblicare opportunità.
             </p>
           </>
         )}
