@@ -7,43 +7,32 @@ export const runtime = 'nodejs' // cookie mutabili su Vercel
 export async function GET(request: Request) {
   const url = new URL(request.url)
   const code = url.searchParams.get('code')
-
   if (!code) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // Prepara una response che useremo anche per impostare i cookie
-  const res = NextResponse.redirect(new URL('/', request.url)) // aggiorniamo la Location più sotto
+  // Response che useremo anche per impostare i cookie
+  const res = NextResponse.redirect(new URL('/', request.url)) // aggiorneremo la Location più sotto
 
-  // Parser semplice dei cookie in ingresso
-  const parseIncomingCookies = (): { name: string; value: string }[] => {
+  // Lettura cookie dalla request (compatibile edge/node)
+  const getCookieFromHeader = (name: string): string | undefined => {
     const header = request.headers.get('cookie') ?? ''
-    if (!header) return []
-    return header.split('; ').map(pair => {
-      const eq = pair.indexOf('=')
-      const name = eq >= 0 ? pair.slice(0, eq) : pair
-      const value = eq >= 0 ? decodeURIComponent(pair.slice(eq + 1)) : ''
-      return { name, value }
-    })
+    if (!header) return undefined
+    const match = header.split('; ').find(c => c.startsWith(`${name}=`))
+    return match ? decodeURIComponent(match.split('=')[1]) : undefined
+  }
+
+  // ⚠️ Blocchetto cookies compatibile con entrambe le firme (cast a any)
+  const cookiesAdapter: any = {
+    get: (name: string) => getCookieFromHeader(name),
+    set: (name: string, value: string, options?: any) => res.cookies.set(name, value, options),
+    remove: (name: string, options?: any) => res.cookies.set(name, '', { ...(options ?? {}), maxAge: 0 }),
   }
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        // ✅ Versione compatibile: getAll/set/remove
-        getAll() {
-          return parseIncomingCookies()
-        },
-        set(name, value, options) {
-          res.cookies.set(name, value, options)
-        },
-        remove(name, options) {
-          res.cookies.set(name, '', { ...options, maxAge: 0 })
-        },
-      },
-    }
+    { cookies: cookiesAdapter }
   )
 
   // 1) Scambia il code per la sessione (imposta i cookie su `res`)
