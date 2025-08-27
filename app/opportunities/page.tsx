@@ -1,5 +1,5 @@
 'use client'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
 
@@ -19,9 +19,9 @@ type Opp = {
 
 type Filters = {
   sport: string
-  gender: '' | 'M' | 'F'
+  gender: '' | 'M' | 'F'      // placeholder per il futuro (non filtriamo a DB nell’MVP)
   role: string
-  ageBand: '' | '17-20' | '20-25' | '25-30' | '30+'
+  ageBand: '' | '17-20' | '20-25' | '25-30' | '30+' // placeholder (non filtriamo a DB nell’MVP)
   region: string
   province: string
   city: string
@@ -46,7 +46,8 @@ export default function OpportunitiesPage() {
 
   const load = useCallback(async () => {
     setLoading(true); setMsg('')
-    const q = supabase.from('opportunities')
+    const q = supabase
+      .from('opportunities')
       .select('id, owner_id, club_name, title, description, sport, role, region, province, city, created_at')
       .order('created_at', { ascending: false })
       .limit(100)
@@ -83,6 +84,7 @@ export default function OpportunitiesPage() {
         province: f.province || null,
         city: f.city || null
       })
+
     if (error) { setMsg(`Errore salvataggio avviso: ${error.message}`); return }
     setMsg('Avviso salvato! Riceverai una email quando usciranno annunci che combaciano.')
   }
@@ -179,18 +181,18 @@ export default function OpportunitiesPage() {
         </div>
 
         <div style={{display:'flex', gap:8}}>
-          <button onClick={()=>{ void load() }} style={{padding:'8px 12px'}}>Filtra</button>
+          <button onClick={() => { void load() }} style={{padding:'8px 12px'}}>Filtra</button>
           <button onClick={reset} style={{padding:'8px 12px'}}>Reset</button>
         </div>
 
         <div style={{justifySelf:'end'}}>
-          <button onClick={()=>{ void saveAlert() }} style={{padding:'8px 12px', border:'1px solid #e5e7eb', borderRadius:8}}>
+          <button onClick={() => { void saveAlert() }} style={{padding:'8px 12px', border:'1px solid #e5e7eb', borderRadius:8}}>
             Salva ricerca
           </button>
         </div>
       </div>
 
-      {msg && <p style={{color:'#b91c1c', marginTop:8}}>{msg}</p>}
+      {msg && <p style={{color: msg.startsWith('Errore') ? '#b91c1c' : '#065f46', marginTop:8}}>{msg}</p>}
       {loading && <p>Caricamento…</p>}
       {!loading && rows.length === 0 && <p>Nessun annuncio disponibile.</p>}
 
@@ -208,11 +210,7 @@ export default function OpportunitiesPage() {
                   Pubblicato: {new Date(o.created_at).toLocaleString()}
                 </div>
               </div>
-              <div style={{alignSelf:'center'}}>
-                <form action="/apply" method="post">
-                  {/* Placeholder: il tuo bottone 1-click */}
-                </form>
-              </div>
+              {/* qui puoi reintrodurre il bottone candidatura 1-click se già implementato */}
             </div>
           </li>
         ))}
@@ -221,6 +219,7 @@ export default function OpportunitiesPage() {
       <p style={{marginTop:12}}>
         Sei un club? <Link href="/post">+ Crea annuncio</Link>
         {' '}· <Link href="/alerts">I miei avvisi</Link>
+        {' '}· <span>Sei un club? </span><Link href="/search/athletes">Cerca atleti →</Link>
       </p>
     </main>
   )
