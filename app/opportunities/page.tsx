@@ -20,17 +20,17 @@ type Opp = {
   max_birth_year?: number | null
 }
 
-function isPgError(e: unknown): e is { code?: string; message?: string } {
-  return typeof e === 'object' && e !== null && 'message' in e
-}
-
 const LS_KEY = 'opps_filters_v2'
 
+type AgeBand = '' | '17-20' | '20-25' | '25-30' | '30+'
+const isAgeBand = (v: string): v is AgeBand =>
+  v === '' || v === '17-20' || v === '20-25' || v === '25-30' || v === '30+'
+
 type SavedFilters = {
-  sport: SportKey | ''       // nuovo
-  gender: 'M' | 'F' | ''     // nuovo
+  sport: SportKey | ''
+  gender: 'M' | 'F' | ''
   role: string
-  ageBand: '17-20' | '20-25' | '25-30' | '30+' | ''
+  ageBand: AgeBand
   region: Region | ''
   province: string
   city: string
@@ -45,16 +45,16 @@ export default function OpportunitiesPage() {
   const [userId, setUserId] = useState<string | null>(null)
   const [applyingId, setApplyingId] = useState<string | null>(null)
 
-  // Filtri UI (nuovi)
+  // Filtri UI
   const [qSport, setQSport] = useState<SportKey | ''>('')
   const [qGender, setQGender] = useState<'M' | 'F' | ''>('')
   const [qRole, setQRole] = useState<string>('')
-  const [qAgeBand, setQAgeBand] = useState<'' | '17-20' | '20-25' | '25-30' | '30+' >('')
+  const [qAgeBand, setQAgeBand] = useState<AgeBand>('')
   const [qRegion, setQRegion] = useState<Region | ''>('')
   const [qProvince, setQProvince] = useState<string>('')
   const [qCity, setQCity] = useState<string>('')
 
-  // Carica filtri salvati
+  // Carica filtri da LS
   useEffect(() => {
     try {
       const raw = localStorage.getItem(LS_KEY)
@@ -63,15 +63,16 @@ export default function OpportunitiesPage() {
         setQSport((f.sport as SportKey) ?? '')
         setQGender((f.gender as 'M' | 'F') ?? '')
         setQRole(f.role ?? '')
-        setQAgeBand((f.ageBand as any) ?? '')
+        setQAgeBand(isAgeBand(f.ageBand) ? f.ageBand : '')
         setQRegion((f.region as Region) ?? '')
         setQProvince(f.province ?? '')
         setQCity(f.city ?? '')
       }
-    } catch {}
+    } catch {
+      /* ignore */
+    }
   }, [])
 
-  // Query loader
   const load = async () => {
     setLoading(true)
     setMsg('')
@@ -85,24 +86,20 @@ export default function OpportunitiesPage() {
       .select('id, owner_id, club_name, title, description, sport, role, city, region, province, target_gender, min_birth_year, max_birth_year, created_at')
       .order('created_at', { ascending: false })
 
-    if (qSport) query = query.eq('sport', qSport.toLowerCase()) // opz: salva sport in lower nel DB
-    if (qGender) query = query.eq('target_gender', qGender)     // se usi target_gender negli annunci
+    if (qSport) query = query.eq('sport', qSport.toLowerCase())
+    if (qGender) query = query.eq('target_gender', qGender)
     if (qRole) query = query.ilike('role', `%${qRole}%`)
     if (qRegion) query = query.eq('region', qRegion)
     if (qProvince) query = query.eq('province', qProvince)
     if (qCity) query = query.ilike('city', `%${qCity}%`)
 
-    // L’età band sugli annunci è opzionale (se metti min/max birth year)
-    // Per ora NON filtriamo su min/max: è più logico sui PROFILI quando cerchi atleti.
     const { data, error } = await query
-
     if (error) setMsg(`Errore caricamento annunci: ${error.message}`)
     setList((data ?? []) as Opp[])
     setLoading(false)
   }
 
-  // Primo load
-  useEffect(() => { void load() }, []) // eslint-disable-line
+  useEffect(() => { void load() }, []) // primo load
 
   const applyFilters = async () => {
     try {
@@ -111,15 +108,15 @@ export default function OpportunitiesPage() {
         region: qRegion, province: qProvince, city: qCity
       }
       localStorage.setItem(LS_KEY, JSON.stringify(toSave))
-    } catch {}
-    await load()
+    } catch { /* ignore */ }
+    await void load()
   }
 
   const resetFilters = async () => {
-    setQSport(''); setQGender(''); setQRole(''); setQAgeBand('');
-    setQRegion(''); setQProvince(''); setQCity('');
-    try { localStorage.removeItem(LS_KEY) } catch {}
-    await load()
+    setQSport(''); setQGender(''); setQRole(''); setQAgeBand('')
+    setQRegion(''); setQProvince(''); setQCity('')
+    try { localStorage.removeItem(LS_KEY) } catch { /* ignore */ }
+    await void load()
   }
 
   const apply = async (opportunityId: string) => {
@@ -134,14 +131,17 @@ export default function OpportunitiesPage() {
       const { error } = await supabase
         .from('applications')
         .insert({ opportunity_id: opportunityId, athlete_id: udata.user.id })
+
       if (error) {
-        if ((error as any)?.code === '23505' || (error.message ?? '').toLowerCase().includes('duplicate')) {
+        const message = (error as { message?: string }).message ?? ''
+        if (message.toLowerCase().includes('duplicate') || message.includes('23505')) {
           setMsg('Ti sei già candidato a questo annuncio.')
         } else {
-          setMsg(`Errore candidatura: ${error.message}`)
+          setMsg(`Errore candidatura: ${message}`)
         }
         return
       }
+
       setMsg('Candidatura inviata! Vai su “Le mie candidature”.')
     } finally {
       setApplyingId(null)
@@ -154,18 +154,17 @@ export default function OpportunitiesPage() {
     <main style={{maxWidth:920,margin:'0 auto',padding:24}}>
       <h1>Opportunità</h1>
 
-      {/* Link rapidi per club */}
       <p style={{margin:'8px 0 12px 0'}}>
         <span style={{opacity:.8, marginRight:8}}>Sei un club?</span>
         <a href="/post" style={{marginRight:12}}>+ Crea annuncio</a>
         <a href="/club/applicants">Candidature ricevute →</a>
       </p>
-      
+
       <p style={{marginTop:4}}>
         Sei un club? <a href="/search/athletes">Cerca atleti →</a>
       </p>
 
-      {/* Filtri avanzati */}
+      {/* Filtri */}
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:8,margin:'8px 0 12px 0'}}>
         <select value={qSport} onChange={e=>setQSport(e.target.value as SportKey | '')}>
           <option value="">Sport</option>
@@ -183,7 +182,10 @@ export default function OpportunitiesPage() {
           {rolesForSport.map(r => <option key={r} value={r}>{r}</option>)}
         </select>
 
-        <select value={qAgeBand} onChange={e=>setQAgeBand(e.target.value as any)}>
+        <select value={qAgeBand} onChange={e => {
+          const v = e.target.value
+          if (isAgeBand(v)) setQAgeBand(v)
+        }}>
           <option value="">Fascia età</option>
           <option value="17-20">17/20</option>
           <option value="20-25">20/25</option>
@@ -196,11 +198,7 @@ export default function OpportunitiesPage() {
           {regions.map(r => <option key={r} value={r}>{r}</option>)}
         </select>
 
-        <select
-          value={qProvince}
-          onChange={e=>setQProvince(e.target.value)}
-          disabled={!qRegion}
-        >
+        <select value={qProvince} onChange={e=>setQProvince(e.target.value)} disabled={!qRegion}>
           <option value="">{qRegion ? 'Provincia' : 'Seleziona regione prima'}</option>
           {qRegion && provincesByRegion[qRegion].map(p => <option key={p} value={p}>{p}</option>)}
         </select>
@@ -213,11 +211,10 @@ export default function OpportunitiesPage() {
       </div>
 
       <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:12}}>
-        <button onClick={() => void applyFilters()} style={{padding:'6px 12px',border:'1px solid #e5e7eb',borderRadius:8,cursor:'pointer'}}>Filtra</button>
-        <button onClick={() => void resetFilters()} style={{padding:'6px 12px',border:'1px solid #e5e7eb',borderRadius:8,cursor:'pointer'}}>Reset</button>
+        <button onClick={() => { void applyFilters() }} style={{padding:'6px 12px',border:'1px solid #e5e7eb',borderRadius:8,cursor:'pointer'}}>Filtra</button>
+        <button onClick={() => { void resetFilters() }} style={{padding:'6px 12px',border:'1px solid #e5e7eb',borderRadius:8,cursor:'pointer'}}>Reset</button>
       </div>
 
-      {/* Info utente + messaggi */}
       <div style={{background:'#f8fafc',border:'1px solid #e5e7eb',borderRadius:8,padding:12,margin:'12px 0'}}>
         <div style={{fontSize:12,opacity:.8}}>
           User ID: <code>{userId ?? 'n/d'}</code>
@@ -240,7 +237,7 @@ export default function OpportunitiesPage() {
             <p style={{fontSize:13}}>Sport: {o.sport} | Ruolo: {o.role}</p>
             <div style={{display:'flex', gap:8, marginTop:8}}>
               <button
-                onClick={() => void apply(o.id)}
+                onClick={() => { void apply(o.id) }}
                 disabled={applyingId === o.id}
                 style={{padding:'6px 12px',border:'1px solid #e5e7eb',borderRadius:8,cursor:'pointer'}}
                 aria-label={`Candidati all'annuncio ${o.title}`}

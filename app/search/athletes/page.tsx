@@ -17,6 +17,9 @@ type Profile = {
 }
 
 const thisYear = new Date().getFullYear()
+type AgeBand = '' | '17-20' | '20-25' | '25-30' | '30+'
+const isAgeBand = (v: string): v is AgeBand =>
+  v === '' || v === '17-20' || v === '20-25' || v === '25-30' || v === '30+'
 
 export default function SearchAthletes() {
   const supabase = supabaseBrowser()
@@ -28,7 +31,7 @@ export default function SearchAthletes() {
   const [qSport, setQSport] = useState<SportKey | ''>('')
   const [qGender, setQGender] = useState<'M' | 'F' | ''>('')
   const [qRole, setQRole] = useState<string>('')
-  const [qAgeBand, setQAgeBand] = useState<'' | '17-20' | '20-25' | '25-30' | '30+' >('')
+  const [qAgeBand, setQAgeBand] = useState<AgeBand>('')
   const [qRegion, setQRegion] = useState<Region | ''>('')
   const [qProvince, setQProvince] = useState<string>('')
   const [qCity, setQCity] = useState<string>('')
@@ -49,9 +52,8 @@ export default function SearchAthletes() {
     if (qProvince) query = query.eq('province', qProvince)
     if (qCity) query = query.ilike('city', `%${qCity}%`)
 
-    // Fascia d'età -> converto in range di birth_year
     if (qAgeBand) {
-      let minAge = 0, maxAge = 100
+      let minAge = 0; let maxAge = 100
       if (qAgeBand === '17-20') { minAge = 17; maxAge = 20 }
       if (qAgeBand === '20-25') { minAge = 20; maxAge = 25 }
       if (qAgeBand === '25-30') { minAge = 25; maxAge = 30 }
@@ -67,7 +69,7 @@ export default function SearchAthletes() {
     setLoading(false)
   }
 
-  useEffect(() => { void load() }, []) // eslint-disable-line
+  useEffect(() => { void load() }, []) // primo load
 
   const rolesForSport = qSport ? rolesBySport[qSport] : []
 
@@ -92,7 +94,10 @@ export default function SearchAthletes() {
           {rolesForSport.map(r => <option key={r} value={r}>{r}</option>)}
         </select>
 
-        <select value={qAgeBand} onChange={e=>setQAgeBand(e.target.value as any)}>
+        <select value={qAgeBand} onChange={e => {
+          const v = e.target.value
+          if (isAgeBand(v)) setQAgeBand(v)
+        }}>
           <option value="">Fascia età</option>
           <option value="17-20">17/20</option>
           <option value="20-25">20/25</option>
@@ -114,7 +119,7 @@ export default function SearchAthletes() {
       </div>
 
       <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:12}}>
-        <button onClick={() => void load()} style={{padding:'6px 12px',border:'1px solid #e5e7eb',borderRadius:8,cursor:'pointer'}}>Cerca</button>
+        <button onClick={() => { void load() }} style={{padding:'6px 12px',border:'1px solid #e5e7eb',borderRadius:8,cursor:'pointer'}}>Cerca</button>
         <a href="/post" style={{marginLeft:'auto'}}>+ Crea annuncio</a>
       </div>
 
