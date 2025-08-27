@@ -4,6 +4,7 @@ import { supabaseBrowser } from '@/lib/supabaseBrowser'
 
 type Opp = {
   id: string
+  owner_id?: string | null
   club_name: string
   title: string
   description: string | null
@@ -33,7 +34,7 @@ export default function OpportunitiesPage() {
 
       const { data, error } = await supabase
         .from('opportunities')
-        .select('*')
+        .select('id, owner_id, club_name, title, description, sport, role, city, created_at')
         .order('created_at', { ascending: false })
 
       if (error) setMsg(`Errore caricamento annunci: ${error.message}`)
@@ -105,7 +106,8 @@ export default function OpportunitiesPage() {
           <li key={o.id} style={{border:'1px solid #e5e7eb',borderRadius:12,padding:16}}>
             <h2 style={{margin:0}}>{o.title}</h2>
             <p style={{margin:'4px 0',fontSize:14,opacity:.8}}>
-              {o.club_name} – {o.city}
+             {o.club_name} – {o.city}
+            {o.owner_id ? <> · <a href={`/c/${o.owner_id}`}>Vedi club →</a></> : null}
             </p>
             {o.description && <p>{o.description}</p>}
             <p style={{fontSize:13}}>Sport: {o.sport} | Ruolo: {o.role}</p>
