@@ -21,6 +21,7 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState<string>('')
   const [text, setText] = useState('')
+  const [peerName, setPeerName] = useState<string | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
 
   const scrollBottom = () => {
@@ -34,6 +35,14 @@ export default function ChatPage() {
     const u = await supabase.auth.getUser()
     if (u.error || !u.data.user) { setErr('Devi accedere.'); setLoading(false); return }
     setUserId(u.data.user.id)
+
+    // nome peer (se disponibile)
+    const { data: prof } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', String(peerId))
+      .limit(1)
+    setPeerName(prof && prof[0] ? (prof[0] as {full_name: string|null}).full_name : null)
 
     const { data, error } = await supabase
       .from('messages')
@@ -50,6 +59,29 @@ export default function ChatPage() {
 
   useEffect(() => { void load() }, [load])
 
+  // Realtime: ascolta nuovi messaggi
+  useEffect(() => {
+    const channel = supabase
+      .channel(`chat-${peerId}`)
+      .on('postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages' },
+        (payload) => {
+          const r = payload.new as Row
+          if (!userId) return
+          const inThisThread =
+            (r.sender_id === userId && r.receiver_id === peerId) ||
+            (r.sender_id === peerId && r.receiver_id === userId)
+          if (inThisThread) {
+            setRows(prev => [...prev, r])
+            scrollBottom()
+          }
+        }
+      )
+      .subscribe()
+
+    return () => { void supabase.removeChannel(channel) }
+  }, [supabase, peerId, userId])
+
   const send = async () => {
     setErr('')
     const txt = text.trim()
@@ -57,16 +89,29 @@ export default function ChatPage() {
     const { data: udata, error: uerr } = await supabase.auth.getUser()
     if (uerr || !udata.user) { setErr('Devi accedere.'); return }
 
-    const { error } = await supabase
-      .from('messages')
-      .insert({
-        sender_id: udata.user.id,
-        receiver_id: String(peerId),
-        text: txt
-      })
-    if (error) { setErr(`Errore invio: ${error.message}`); return }
+    // ottimismo UI
+    const temp: Row = {
+      id: `temp-${Date.now()}`,
+      sender_id: udata.user.id,
+      receiver_id: String(peerId),
+      text: txt,
+      created_at: new Date().toISOString(),
+    }
+    setRows(prev => [...prev, temp])
     setText('')
-    await load()
+    scrollBottom()
+
+    const { error } = await supabase.from('messages').insert({
+      sender_id: udata.user.id,
+      receiver_id: String(peerId),
+      text: txt
+    })
+    if (error) {
+      setErr(`Errore invio: ${error.message}`)
+      // rollback soft (facoltativo)
+      setRows(prev => prev.filter(r => r.id !== temp.id))
+      return
+    }
   }
 
   return (
@@ -77,7 +122,7 @@ export default function ChatPage() {
       </div>
 
       <div style={{opacity:.8, fontSize:14}}>
-        Con: <code>{String(peerId)}</code>
+        Con: <b>{peerName ?? <code>{String(peerId)}</code>}</b>
       </div>
 
       {err && <p style={{color:'#b91c1c'}}>{err}</p>}
@@ -86,6 +131,7 @@ export default function ChatPage() {
       <div ref={listRef} style={{border:'1px solid #e5e7eb', borderRadius:12, padding:12, height:420, overflowY:'auto', background:'#f9fafb'}}>
         {rows.map(r => {
           const mine = r.sender_id === userId
+          const isTemp = r.id.startsWith('temp-')
           return (
             <div key={r.id} style={{display:'flex', justifyContent: mine ? 'flex-end' : 'flex-start', margin:'6px 0'}}>
               <div style={{
@@ -93,7 +139,8 @@ export default function ChatPage() {
                 border:'1px solid #e5e7eb',
                 borderRadius:12,
                 padding:'8px 12px',
-                maxWidth:'75%'
+                maxWidth:'75%',
+                opacity: isTemp ? 0.6 : 1
               }}>
                 <div style={{fontSize:14}}>{r.text}</div>
                 <div style={{fontSize:11, opacity:.7, marginTop:4}}>
