@@ -5,6 +5,26 @@ export const runtime = 'edge'
 
 type Body = { opportunityId: string }
 
+type OpportunityRow = {
+  id: string
+  sport: string
+  role: string
+  region: string | null
+  province: string | null
+  city: string
+  title: string
+  club_name: string
+}
+
+type AlertRow = {
+  user_id: string
+  sport: string
+  role: string | null
+  region: string | null
+  province: string | null
+  city: string | null
+}
+
 export async function POST(req: Request) {
   try {
     const { opportunityId } = (await req.json()) as Body
@@ -16,7 +36,7 @@ export async function POST(req: Request) {
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
     const supabase = createClient(url, serviceKey, { auth: { persistSession: false } })
 
-    // carica l’annuncio
+    // 1) Carica annuncio
     const { data: opps, error: oErr } = await supabase
       .from('opportunities')
       .select('id, sport, role, region, province, city, title, club_name')
@@ -26,22 +46,22 @@ export async function POST(req: Request) {
     if (oErr || !opps || opps.length === 0) {
       return NextResponse.json({ ok: false, error: 'opportunity_not_found' }, { status: 404 })
     }
-    const opp = opps[0] as {
-      id: string; sport: string; role: string; region: string | null; province: string | null; city: string; title: string; club_name: string
-    }
+    const opp = opps[0] as OpportunityRow
 
-    // trova gli alert che combaciano
-    const alertsQuery = supabase
+    // 2) Trova alert candidati (match minimo per sport; refino lato app)
+    const { data: alerts, error: aErr } = await supabase
       .from('alerts')
       .select('user_id, sport, role, region, province, city')
       .eq('sport', opp.sport)
 
-    const { data: alerts, error: aErr } = await alertsQuery
     if (aErr) {
       return NextResponse.json({ ok: false, error: 'alerts_query_error' }, { status: 500 })
     }
 
-    const matches = (alerts ?? []).filter((a: any) => {
+    const list = (alerts ?? []) as AlertRow[]
+
+    // 3) Filtro applicativo: ruolo (se specificato) + località (priorità city > province > region)
+    const matches: AlertRow[] = list.filter((a) => {
       const roleOk = !a.role || a.role === opp.role
       const cityOk = a.city ? a.city === opp.city : true
       const provOk = a.province ? a.province === opp.province : true
@@ -52,21 +72,26 @@ export async function POST(req: Request) {
       return roleOk
     })
 
-    if (matches.length === 0) return NextResponse.json({ ok: true, notified: 0 })
+    if (matches.length === 0) {
+      return NextResponse.json({ ok: true, notified: 0 })
+    }
 
-    // recupera email dei destinatari
-    const userIds = Array.from(new Set(matches.map((m: any) => m.user_id)))
+    // 4) Recupera email destinatari
+    const userIds = Array.from(new Set(matches.map((m) => m.user_id)))
     const emails: { id: string; email: string }[] = []
     for (const uid of userIds) {
       const { data: ures } = await supabase.auth.admin.getUserById(uid)
-      if (ures?.user?.email) emails.push({ id: uid, email: ures.user.email })
+      const email = ures?.user?.email
+      if (email) emails.push({ id: uid, email })
+    }
+    if (emails.length === 0) {
+      return NextResponse.json({ ok: true, notified: 0 })
     }
 
-    if (emails.length === 0) return NextResponse.json({ ok: true, notified: 0 })
-
+    // 5) Invio email via Resend (HTTP)
     const subject = `Nuova opportunità: ${opp.title}`
     const urlApp = process.env.NEXT_PUBLIC_BASE_URL ?? ''
-    const oppUrl = `${urlApp}/opportunities`
+    const oppUrl = `${urlApp}/opportunities` // (in futuro: link diretto all’annuncio)
     const html = `
       <div style="font-family:system-ui,Segoe UI,Roboto,Arial;">
         <p><b>${opp.club_name}</b> ha pubblicato un nuovo annuncio.</p>
