@@ -33,6 +33,7 @@ export default function Navbar() {
       <Link href="/search/athletes">Cerca atleti</Link>
       <Link href="/messages">Messaggi</Link>
       <Link href="/alerts">Avvisi</Link>
+      <Link href="/favorites">Preferiti</Link>
 
       {/* Mostra Onboarding solo se loggato e account_type mancante */}
       {userId && !accountType && (
