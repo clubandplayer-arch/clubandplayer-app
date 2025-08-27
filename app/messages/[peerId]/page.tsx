@@ -30,11 +30,19 @@ export default function ChatPage() {
     })
   }
 
+  const markRead = useCallback(async (me: string, peer: string) => {
+    // segna come letto adesso
+    await supabase
+      .from('message_reads')
+      .upsert({ user_id: me, peer_id: String(peer), last_read_at: new Date().toISOString() })
+  }, [supabase])
+
   const load = useCallback(async () => {
     setLoading(true); setErr('')
     const u = await supabase.auth.getUser()
     if (u.error || !u.data.user) { setErr('Devi accedere.'); setLoading(false); return }
-    setUserId(u.data.user.id)
+    const me = u.data.user.id
+    setUserId(me)
 
     // nome peer (se disponibile)
     const { data: prof } = await supabase
@@ -47,7 +55,7 @@ export default function ChatPage() {
     const { data, error } = await supabase
       .from('messages')
       .select('id, sender_id, receiver_id, text, created_at')
-      .or(`and(sender_id.eq.${u.data.user.id},receiver_id.eq.${peerId}),and(sender_id.eq.${peerId},receiver_id.eq.${u.data.user.id})`)
+      .or(`and(sender_id.eq.${me},receiver_id.eq.${peerId}),and(sender_id.eq.${peerId},receiver_id.eq.${me})`)
       .order('created_at', { ascending: true })
       .limit(500)
 
@@ -55,7 +63,12 @@ export default function ChatPage() {
     setRows((data ?? []) as Row[])
     setLoading(false)
     scrollBottom()
-  }, [supabase, peerId])
+
+    // segna come letto
+    await markRead(me, String(peerId))
+    // avvisa la lista di ricaricare i badge
+    window.dispatchEvent(new Event('app:unread-updated'))
+  }, [supabase, peerId, markRead])
 
   useEffect(() => { void load() }, [load])
 
@@ -65,7 +78,7 @@ export default function ChatPage() {
       .channel(`chat-${peerId}`)
       .on('postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages' },
-        (payload) => {
+        async (payload) => {
           const r = payload.new as Row
           if (!userId) return
           const inThisThread =
@@ -74,13 +87,18 @@ export default function ChatPage() {
           if (inThisThread) {
             setRows(prev => [...prev, r])
             scrollBottom()
+            // se il nuovo è rivolto a me, aggiorno last_read subito
+            if (r.receiver_id === userId) {
+              await markRead(userId, String(peerId))
+              window.dispatchEvent(new Event('app:unread-updated'))
+            }
           }
         }
       )
       .subscribe()
 
     return () => { void supabase.removeChannel(channel) }
-  }, [supabase, peerId, userId])
+  }, [supabase, peerId, userId, markRead])
 
   const send = async () => {
     setErr('')
@@ -89,7 +107,6 @@ export default function ChatPage() {
     const { data: udata, error: uerr } = await supabase.auth.getUser()
     if (uerr || !udata.user) { setErr('Devi accedere.'); return }
 
-    // ottimismo UI
     const temp: Row = {
       id: `temp-${Date.now()}`,
       sender_id: udata.user.id,
@@ -108,7 +125,6 @@ export default function ChatPage() {
     })
     if (error) {
       setErr(`Errore invio: ${error.message}`)
-      // rollback soft (facoltativo)
       setRows(prev => prev.filter(r => r.id !== temp.id))
       return
     }
