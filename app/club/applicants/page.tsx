@@ -137,8 +137,9 @@ export default function ClubApplicants() {
               <div>
                 <div style={{fontWeight:600}}>{r.opportunity_title} — {r.opportunity_city}</div>
                 <div style={{fontSize:14,opacity:.8}}>
-                  Atleta: {r.athlete_role ?? '—'} · {r.athlete_sport ?? '—'} · {r.athlete_city ?? '—'}
-                </div>
+  Atleta: <a href={`/u/${r.athlete_id}`}>{r.athlete_role ?? 'profilo'}</a> · {r.athlete_sport ?? '—'} · {r.athlete_city ?? '—'}
+</div>
+
                 <div style={{fontSize:12,opacity:.7,marginTop:4}}>
                   Ricevuta: {new Date(r.created_at).toLocaleString()}
                 </div>
