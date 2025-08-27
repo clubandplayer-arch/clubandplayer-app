@@ -1,43 +1,53 @@
 // app/auth/callback/route.ts
 import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 import { createServerClient } from '@supabase/ssr'
 
-export const runtime = 'edge' // opzionale: più rapido su Vercel
+export const runtime = 'nodejs' // usa i cookie mutabili in modo sicuro
 
 export async function GET(request: Request) {
   const url = new URL(request.url)
   const code = url.searchParams.get('code')
 
-  if (!code) {
-    // nessun code: torna al login
-    return NextResponse.redirect(new URL('/login', request.url))
-  }
+  // se manca il code -> torna al login
+  if (!code) return NextResponse.redirect(new URL('/login', request.url))
 
-  // crea un client server-side leggendo i cookie della request
-  const req = request as unknown as { headers: Headers }
-  const res = new Response(null, { headers: new Headers() })
-
+  // client server-side con gestione cookie
+  const cookieStore = cookies()
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
         get(name) {
-          return req.headers.get('cookie') ?? undefined
+          return cookieStore.get(name)?.value
         },
-        set() {/* gestito da NextResponse */},
-        remove() {/* gestito da NextResponse */}
+        set(name, value, options) {
+          cookieStore.set(name, value, options)
+        },
+        remove(name, options) {
+          cookieStore.set(name, '', { ...options, maxAge: 0 })
+        },
       },
     }
   )
 
-  // scambia il "code" per la sessione
-  const { error } = await supabase.auth.exchangeCodeForSession(code)
-  if (error) {
-    // in caso di errore torna al login
-    return NextResponse.redirect(new URL('/login', request.url))
-  }
+  // 1) scambia il code per la sessione
+  const { error: exchErr } = await supabase.auth.exchangeCodeForSession(code)
+  if (exchErr) return NextResponse.redirect(new URL('/login', request.url))
 
-  // login ok → vai alla home (o /onboarding se preferisci)
-  return NextResponse.redirect(new URL('/', request.url))
+  // 2) recupera utente e profilo
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.redirect(new URL('/login', request.url))
+
+  const { data: prof } = await supabase
+    .from('profiles')
+    .select('account_type')
+    .eq('id', user.id)
+    .single()
+
+  // 3) redirect intelligente
+  const hasType = !!prof?.account_type
+  const dest = hasType ? '/opportunities' : '/onboarding'
+  return NextResponse.redirect(new URL(dest, request.url))
 }
