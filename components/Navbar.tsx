@@ -14,7 +14,7 @@ export default function Navbar() {
     setMe(myId ?? null)
     if (!myId) { setUnreadTotal(0); return }
 
-    // prendi last_read per peer
+    // last_read per peer
     const { data: reads } = await supabase
       .from('message_reads')
       .select('peer_id, last_read_at')
@@ -25,7 +25,7 @@ export default function Navbar() {
       lastByPeer.set(r.peer_id, new Date(r.last_read_at).getTime())
     }
 
-    // conta tutti i messaggi ricevuti dopo last_read
+    // messaggi ricevuti dopo last_read
     const { data: msgs } = await supabase
       .from('messages')
       .select('receiver_id, sender_id, created_at')
@@ -44,14 +44,14 @@ export default function Navbar() {
 
   useEffect(() => { void computeUnread() }, [computeUnread])
 
-  // aggiorna i badge: quando arriva un nuovo messaggio o quando il thread segna "letto"
+  // aggiorna quando arrivano eventi globali
   useEffect(() => {
     const onUpd = () => { void computeUnread() }
     window.addEventListener('app:unread-updated', onUpd)
     return () => window.removeEventListener('app:unread-updated', onUpd)
   }, [computeUnread])
 
-  // anche realtime diretto sugli insert
+  // realtime diretto su INSERT
   useEffect(() => {
     const ch = supabase
       .channel('nav-unread')
@@ -69,10 +69,12 @@ export default function Navbar() {
     <nav style={{display:'flex', gap:16, alignItems:'center', padding:'10px 16px', borderBottom:'1px solid #e5e7eb'}}>
       <Link href="/" style={{fontWeight:700}}>Club&Player</Link>
       <Link href="/opportunities">Opportunità</Link>
-      <Link href="/messages" style={{marginLeft:'auto'}}>
-        Messaggi{unreadTotal > 0 ? ` (${unreadTotal})` : ''}
-      </Link>
+      <Link href="/alerts">Avvisi</Link>
+      <div style={{marginLeft:'auto'}}>
+        <Link href="/messages">
+          Messaggi{unreadTotal > 0 ? ` (${unreadTotal})` : ''}
+        </Link>
+      </div>
     </nav>
   )
-  <Link href="/alerts">Avvisi</Link>
 }
