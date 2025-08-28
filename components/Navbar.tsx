@@ -15,6 +15,7 @@ export default function Navbar() {
 
   const [accountType, setAccountType] = useState<'athlete' | 'club' | null>(null)
   const [authed, setAuthed] = useState<boolean>(false)
+  const [loadingLogout, setLoadingLogout] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -41,7 +42,17 @@ export default function Navbar() {
     padding: '8px 10px',
     borderRadius: 8,
     background: pathname === href ? '#f3f4f6' : 'transparent',
-  })
+  } as React.CSSProperties)
+
+  const handleLogout = async () => {
+    setLoadingLogout(true)
+    try {
+      await supabase.auth.signOut()
+    } finally {
+      // torna alla home per evitare stati incoerenti
+      window.location.href = '/'
+    }
+  }
 
   return (
     <nav
@@ -75,13 +86,19 @@ export default function Navbar() {
           <>
             <Link href="/messages" style={linkStyle('/messages')}>Messaggi</Link>
             <Link href="/settings" style={linkStyle('/settings')}>Impostazioni</Link>
-            <form
-              action={async () => {
-                'use server'
+            <button
+              onClick={handleLogout}
+              disabled={loadingLogout}
+              style={{
+                padding: '8px 10px',
+                borderRadius: 8,
+                border: '1px solid #e5e7eb',
+                background: '#fff',
+                cursor: 'pointer'
               }}
             >
-              {/* Il logout lo gestiamo client-side per semplicità */}
-            </form>
+              {loadingLogout ? 'Logout…' : 'Logout'}
+            </button>
           </>
         ) : (
           <Link href="/login" style={linkStyle('/login')}>Login</Link>
