@@ -17,7 +17,7 @@ export default function ClubCreateOpportunityPage() {
   const supabase = supabaseBrowser()
 
   const [loading, setLoading] = useState(true)
-  const [me, setMe] = useState<{ id: string } | null>(null)
+  const [userId, setUserId] = useState<string | null>(null)
   const [club, setClub] = useState<Club | null>(null)
 
   // campi form
@@ -28,13 +28,17 @@ export default function ClubCreateOpportunityPage() {
 
   useEffect(() => {
     const init = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
       if (!user) {
         alert('Devi essere loggato come club')
         router.push('/login')
         return
       }
-      setMe({ id: user.id })
+
+      setUserId(user.id)
 
       const { data: myClub, error } = await supabase
         .from('clubs')
@@ -48,21 +52,25 @@ export default function ClubCreateOpportunityPage() {
         router.push('/')
         return
       }
+
       if (!myClub) {
         alert('Non hai ancora creato il profilo club.')
         router.push('/club/profile')
         return
       }
+
       setClub(myClub)
       setLoading(false)
     }
-    init()
+
+    void init()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!me || !club) {
+
+    if (!userId || !club) {
       alert('Profilo non pronto')
       return
     }
@@ -70,15 +78,16 @@ export default function ClubCreateOpportunityPage() {
       alert('Titolo obbligatorio')
       return
     }
+
     setLoading(true)
 
-    const payload: Record<string, any> = {
+    const payload = {
       title: title.trim(),
       location: location.trim() || null,
       contract_type: contractType || null,
       description: description.trim() || null,
-      club_id: club.id,          // SYNC con il club
-      created_by: me.id          // se presente nello schema
+      club_id: club.id,   // SYNC con il club
+      created_by: userId, // se presente nello schema
     }
 
     const { error } = await supabase.from('opportunities').insert(payload)
@@ -89,6 +98,7 @@ export default function ClubCreateOpportunityPage() {
       alert('Errore nel salvataggio annuncio')
       return
     }
+
     router.push('/opportunities')
   }
 
@@ -129,7 +139,7 @@ export default function ClubCreateOpportunityPage() {
           <select
             className="w-full border rounded px-3 py-2"
             value={contractType}
-            onChange={(e) => setContractType(e.target.value as any)}
+            onChange={(e) => setContractType(e.target.value as 'full-time' | 'part-time' | 'trial' | '')}
           >
             <option value="">—</option>
             <option value="full-time">Full-time</option>
