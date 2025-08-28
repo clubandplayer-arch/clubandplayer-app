@@ -9,7 +9,13 @@
   "rules": {
     "@typescript-eslint/no-explicit-any": "off",
     "react-hooks/exhaustive-deps": "warn",
-    "react/jsx-no-comment-textnodes": "off"
+    "react/jsx-no-comment-textnodes": "off",
+    "react/react-in-jsx-scope": "off"
+  },
+  "settings": {
+    "react": {
+      "version": "detect"
+    }
   },
   "parserOptions": {
     "ecmaVersion": "latest",
