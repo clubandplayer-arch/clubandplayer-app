@@ -1,69 +1,122 @@
-'use client';
+"use client";
+
+/**
+ * Barra filtri riutilizzabile (Opportunità / Club) con sincronizzazione URL.
+ * REPLACE FULL FILE.
+ */
+
+import { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import type { Filters } from "@/lib/schemas/filters.schema";
+import { FilterSchema } from "@/lib/schemas/filters.schema";
+
+type Scope = "opportunities" | "clubs";
+
+interface Props {
+  scope: Scope;
 }
-});
-router.replace(`${pathname}?${sp.toString()}`);
+
+function toQueryString(obj: Partial<Filters>) {
+  const sp = new URLSearchParams();
+  Object.entries(obj).forEach(([k, v]) => {
+    if (v == null || v === "" || (Array.isArray(v) && v.length === 0)) return;
+    if (Array.isArray(v)) sp.set(k, v.join(","));
+    else sp.set(k, String(v));
+  });
+  return sp.toString();
 }
 
+export default function FilterBar({ scope }: Props) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
-function resetAll() {
-setQ(undefined);
-setRegion(undefined);
-setRole(undefined);
-setSort('recent');
-router.replace(pathname);
-}
+  // Stato iniziale derivato dall'URL
+  const initial = useMemo(() => {
+    const raw = Object.fromEntries(searchParams.entries());
+    const parsed = FilterSchema.safeParse(raw);
+    return parsed.success
+      ? parsed.data
+      : FilterSchema.parse({
+          view: scope === "opportunities" ? "opps" : "clubs",
+        });
+  }, [scope, searchParams]);
 
+  // Stato controllato (subset essenziale per partire)
+  const [q, setQ] = useState<string>(initial.q ?? "");
+  const [region, setRegion] = useState<string>(initial.region ?? "");
+  const [role, setRole] = useState<string>(initial.role?.[0] ?? "");
+  const [sort, setSort] = useState<Filters["sort"]>(initial.sort ?? "recent");
 
-// Chips filtri attivi (solo subset per demo)
-const chips: { key: string; label: string; remove: () => void }[] = [];
-if (q) chips.push({ key: 'q', label: `Cerca: ${q}`, remove: () => setQ(undefined) });
-if (region) chips.push({ key: 'region', label: `Regione: ${region}`, remove: () => setRegion(undefined) });
-if (role) chips.push({ key: 'role', label: `Ruolo: ${role}`, remove: () => setRole(undefined) });
+  // Aggiorna input se cambia l'URL esternamente (es. back/forward)
+  useEffect(() => {
+    setQ(initial.q ?? "");
+    setRegion(initial.region ?? "");
+    setRole(initial.role?.[0] ?? "");
+    setSort(initial.sort ?? "recent");
+  }, [initial.q, initial.region, initial.role, initial.sort]);
 
+  function apply() {
+    const next: Partial<Filters> = {
+      view: scope === "opportunities" ? "opps" : "clubs",
+      q: q || undefined,
+      region: region || undefined,
+      role: role ? [role] : undefined,
+      sort: sort || "recent",
+      page: 1,
+    };
+    const valid = FilterSchema.parse(next); // validazione/normalizzazione
+    const qs = toQueryString(valid);
+    router.replace(`${pathname}${qs ? `?${qs}` : ""}`);
+  }
 
-return (
-<div className="w-full border-b bg-white">
-<div className="max-w-7xl mx-auto p-4 flex flex-col gap-3">
-<div className="flex flex-col md:flex-row gap-3">
-<TextInput label="Ricerca" value={q} onChange={setQ} placeholder={scope === 'opportunities' ? 'Ruolo, club, città…' : 'Nome club, città…'} />
-<TextInput label="Regione" value={region} onChange={setRegion} placeholder="Sicilia" />
-{scope === 'opportunities' && (
-<Select
-label="Ruolo"
-value={role}
-onChange={(v) => setRole(Array.isArray(v) ? v[0] : v)}
-options={[
-{ label: 'Portiere', value: 'GK' },
-{ label: 'Difensore', value: 'DF' },
-{ label: 'Centrocampista', value: 'MF' },
-{ label: 'Attaccante', value: 'FW' },
-{ label: 'Allenatore', value: 'Coach' },
-]}
-/>
-)}
-<Select
-label="Ordina"
-value={sort}
-onChange={(v) => setSort((Array.isArray(v) ? v[0] : v) as Filters['sort'])}
-options={[
-{ label: 'Più recenti', value: 'recent' },
-{ label: 'In scadenza', value: 'closingSoon' },
-{ label: 'Rilevanza', value: 'relevance' },
-{ label: 'Ultima sincronizzazione', value: 'lastSync' },
-]}
-/>
-<div className="flex items-end">
-<button onClick={resetAll} className="h-10 px-3 border rounded">Reset</button>
-</div>
-</div>
-{chips.length > 0 && (
-<div className="flex flex-wrap gap-2">
-{chips.map((c) => (
-<Chip key={c.key} label={c.label} onRemove={c.remove} />
-))}
-</div>
-)}
-</div>
-</div>
-);
-}
+  function reset() {
+    setQ("");
+    setRegion("");
+    setRole("");
+    setSort("recent");
+    router.replace(pathname);
+  }
+
+  return (
+    <div className="sticky top-0 z-10 bg-white/80 backdrop-blur border-b border-gray-200">
+      <div className="max-w-7xl mx-auto px-4 py-3 grid gap-3 md:grid-cols-12 items-end">
+        <label className="md:col-span-4 text-sm text-gray-700">
+          <span className="block text-xs text-gray-500 mb-1">Ricerca</span>
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && apply()}
+            placeholder={
+              scope === "opportunities"
+                ? "Ruolo, club, città, tag…"
+                : "Nome club, città…"
+            }
+            className="w-full border rounded-xl px-3 py-2"
+          />
+        </label>
+
+        <label className="md:col-span-3 text-sm text-gray-700">
+          <span className="block text-xs text-gray-500 mb-1">Regione</span>
+          <input
+            value={region}
+            onChange={(e) => setRegion(e.target.value)}
+            placeholder="Sicilia, Lazio…"
+            className="w-full border rounded-xl px-3 py-2"
+          />
+        </label>
+
+        {scope === "opportunities" && (
+          <label className="md:col-span-3 text-sm text-gray-700">
+            <span className="block text-xs text-gray-500 mb-1">Ruolo</span>
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              className="w-full border rounded-xl px-3 py-2"
+            >
+              <option value="">Tutti</option>
+              <option value="GK">Portiere</option>
+              <option value="DF">Difensore</option>
+              <option value="MF">Centrocampista</option>
+              <option value="FW">Attaccante</option>
+              <option value=
