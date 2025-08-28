@@ -16,8 +16,6 @@ type Opportunity = {
   owner_id: string
 }
 
-type Favorite = { id: string; opportunity_id: string }
-
 type Filters = {
   sport: string
   gender: string
@@ -54,8 +52,15 @@ export default function OpportunitiesPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
       setUserId(user.id)
-      const { data } = await supabase.from('favorites').select('opportunity_id')
-      const ids = new Set((data ?? []).map((f: Favorite) => f.opportunity_id))
+
+      // data: Array<{ opportunity_id: string }>
+      const { data } = await supabase
+        .from('favorites')
+        .select('opportunity_id')
+
+      const ids = new Set(
+        (data ?? []).map((f: { opportunity_id: string }) => f.opportunity_id)
+      )
       setSaved(ids)
     }
     loadFavs()
@@ -91,7 +96,7 @@ export default function OpportunitiesPage() {
     if (filters.region) query = query.eq('region', filters.region)
     if (filters.province) query = query.eq('province', filters.province)
     if (filters.city) query = query.ilike('city', `%${filters.city}%`)
-    // gender e ageRange sono campi logici: se li gestisci davvero a DB, aggiungi le eq qui.
+    // gender e ageRange: aggiungi filtri reali se i campi esistono nel DB.
 
     const { data, error } = await query
     if (error) {
@@ -127,7 +132,6 @@ export default function OpportunitiesPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { alert('Devi essere loggato'); return }
 
-    // scelta rapida del motivo
     const preset = window.prompt(
       'Motivo segnalazione (es. spam, contenuto scorretto, duplicato). Scrivi il motivo:',
       'spam'
@@ -136,7 +140,6 @@ export default function OpportunitiesPage() {
 
     const comment = window.prompt('Dettagli aggiuntivi (opzionale):', '') ?? ''
 
-    // insert diretta (RLS: authenticated può inserire)
     const { error } = await supabase.from('reports').insert({
       target_type: 'opportunity',
       target_id: opp.id,
