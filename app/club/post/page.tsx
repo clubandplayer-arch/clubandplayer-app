@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabaseBrowser'
+import { supabaseBrowser } from '@/lib/supabaseBrowser'
 
 type Club = {
   id: string
@@ -14,6 +14,8 @@ type Club = {
 
 export default function ClubCreateOpportunityPage() {
   const router = useRouter()
+  const supabase = supabaseBrowser()
+
   const [loading, setLoading] = useState(true)
   const [me, setMe] = useState<{ id: string } | null>(null)
   const [club, setClub] = useState<Club | null>(null)
@@ -34,7 +36,6 @@ export default function ClubCreateOpportunityPage() {
       }
       setMe({ id: user.id })
 
-      // carica il club dell’owner (utente loggato)
       const { data: myClub, error } = await supabase
         .from('clubs')
         .select('id,name,logo_url,bio,owner_id')
@@ -56,6 +57,7 @@ export default function ClubCreateOpportunityPage() {
       setLoading(false)
     }
     init()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -75,8 +77,8 @@ export default function ClubCreateOpportunityPage() {
       location: location.trim() || null,
       contract_type: contractType || null,
       description: description.trim() || null,
-      club_id: club.id,          // <- SYNC AUTOMATICA CON IL CLUB
-      created_by: me.id          // se la colonna esiste nel tuo schema
+      club_id: club.id,          // SYNC con il club
+      created_by: me.id          // se presente nello schema
     }
 
     const { error } = await supabase.from('opportunities').insert(payload)
