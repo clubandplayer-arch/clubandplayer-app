@@ -1,89 +1,161 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
-import Link from 'next/link'
-import { supabaseBrowser } from '@/lib/supabaseBrowser'
 
-type Opp = {
+import React, { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabaseBrowser'
+
+type Club = {
   id: string
-  title: string
-  city: string
-  role: string
-  status: 'aperto' | 'chiuso'
-  created_at: string
-  updated_at: string
+  name: string | null
+  logo_url: string | null
+  bio: string | null
+  owner_id: string
 }
 
-export default function ClubPostsPage() {
-  const supabase = supabaseBrowser()
-  const [rows, setRows] = useState<Opp[]>([])
+export default function ClubCreateOpportunityPage() {
+  const router = useRouter()
   const [loading, setLoading] = useState(true)
-  const [msg, setMsg] = useState<string>('')
+  const [me, setMe] = useState<{ id: string } | null>(null)
+  const [club, setClub] = useState<Club | null>(null)
 
-  const load = useCallback(async () => {
-    setLoading(true); setMsg('')
-    const u = await supabase.auth.getUser()
-    if (u.error || !u.data.user) { setMsg('Devi accedere.'); setLoading(false); return }
-    const { data, error } = await supabase
-      .from('opportunities')
-      .select('id, title, city, role, status, created_at, updated_at')
-      .eq('owner_id', u.data.user.id)
-      .order('created_at', { ascending: false })
-    if (error) { setMsg(`Errore: ${error.message}`); setLoading(false); return }
-    setRows((data ?? []) as Opp[])
+  // campi form
+  const [title, setTitle] = useState('')
+  const [location, setLocation] = useState('')
+  const [contractType, setContractType] = useState<'full-time' | 'part-time' | 'trial' | ''>('')
+  const [description, setDescription] = useState('')
+
+  useEffect(() => {
+    const init = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        alert('Devi essere loggato come club')
+        router.push('/login')
+        return
+      }
+      setMe({ id: user.id })
+
+      // carica il club dell’owner (utente loggato)
+      const { data: myClub, error } = await supabase
+        .from('clubs')
+        .select('id,name,logo_url,bio,owner_id')
+        .eq('owner_id', user.id)
+        .maybeSingle()
+
+      if (error) {
+        console.error(error)
+        alert('Errore nel caricare il tuo club')
+        router.push('/')
+        return
+      }
+      if (!myClub) {
+        alert('Non hai ancora creato il profilo club.')
+        router.push('/club/profile')
+        return
+      }
+      setClub(myClub)
+      setLoading(false)
+    }
+    init()
+  }, [router])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!me || !club) {
+      alert('Profilo non pronto')
+      return
+    }
+    if (!title.trim()) {
+      alert('Titolo obbligatorio')
+      return
+    }
+    setLoading(true)
+
+    const payload: Record<string, any> = {
+      title: title.trim(),
+      location: location.trim() || null,
+      contract_type: contractType || null,
+      description: description.trim() || null,
+      club_id: club.id,          // <- SYNC AUTOMATICA CON IL CLUB
+      created_by: me.id          // se la colonna esiste nel tuo schema
+    }
+
+    const { error } = await supabase.from('opportunities').insert(payload)
     setLoading(false)
-  }, [supabase])
 
-  useEffect(() => { void load() }, [load])
-
-  const toggleStatus = async (id: string, current: 'aperto'|'chiuso') => {
-    setMsg('')
-    const next = current === 'aperto' ? 'chiuso' : 'aperto'
-    const { error } = await supabase.from('opportunities').update({ status: next }).eq('id', id)
-    if (error) { setMsg(`Errore aggiornamento: ${error.message}`); return }
-    setRows(prev => prev.map(o => o.id === id ? { ...o, status: next } : o))
+    if (error) {
+      console.error(error)
+      alert('Errore nel salvataggio annuncio')
+      return
+    }
+    router.push('/opportunities')
   }
 
-  const remove = async (id: string) => {
-    setMsg('')
-    if (!confirm('Sei sicuro di voler eliminare questo annuncio?')) return
-    const { error } = await supabase.from('opportunities').delete().eq('id', id)
-    if (error) { setMsg(`Errore eliminazione: ${error.message}`); return }
-    setRows(prev => prev.filter(o => o.id !== id))
-  }
+  if (loading) return <div className="p-6">Caricamento…</div>
 
   return (
-    <main style={{maxWidth:900, margin:'0 auto', padding:24}}>
-      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-        <h1>I miei annunci</h1>
-        <Link href="/post">+ Crea annuncio</Link>
-      </div>
-      {msg && <p style={{color:'#b91c1c'}}>{msg}</p>}
-      {loading && <p>Caricamento…</p>}
-      {!loading && rows.length === 0 && <p>Nessun annuncio creato.</p>}
+    <div className="max-w-2xl mx-auto p-6 space-y-4">
+      <h1 className="text-2xl font-semibold">Pubblica opportunità</h1>
 
-      <ul style={{display:'grid', gap:12, marginTop:12}}>
-        {rows.map(o => (
-          <li key={o.id} style={{border:'1px solid #e5e7eb', borderRadius:12, padding:12}}>
-            <div style={{display:'flex', justifyContent:'space-between', gap:12, flexWrap:'wrap'}}>
-              <div>
-                <div style={{fontWeight:600}}>
-                  {o.title} — {o.city} — {o.role} · <span style={{textTransform:'uppercase', fontSize:12, color: o.status==='aperto' ? '#059669' : '#b91c1c'}}>{o.status}</span>
-                </div>
-                <div style={{fontSize:12, opacity:.7}}>
-                  Creato: {new Date(o.created_at).toLocaleString()} · Ultimo aggiornamento: {new Date(o.updated_at).toLocaleString()}
-                </div>
-              </div>
-              <div style={{display:'flex', gap:8}}>
-                <Link href={`/club/posts/edit/${o.id}`} style={{padding:'6px 10px', border:'1px solid #e5e7eb', borderRadius:8}}>Modifica</Link>
-                <button onClick={()=>toggleStatus(o.id, o.status)} style={{padding:'6px 10px', border:'1px solid #e5e7eb', borderRadius:8, cursor:'pointer'}}>
-                  {o.status === 'aperto' ? 'Chiudi' : 'Riapri'}
-                </button>
-                <button onClick={()=>remove(o.id)} style={{padding:'6px 10px', border:'1px solid #e5e7eb', borderRadius:8, cursor:'pointer'}}>Elimina</button>
-              </div>
-            </div>
-          </li>
-        ))}
-      </ul>
-    </main>
+      <div className="text-sm text-gray-600">
+        Pubblicherai come: <span className="font-medium">{club?.name ?? 'Il tuo club'}</span>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm mb-1">Titolo *</label>
+          <input
+            className="w-full border rounded px-3 py-2"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Es. Attaccante 2007"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm mb-1">Località</label>
+          <input
+            className="w-full border rounded px-3 py-2"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            placeholder="Es. Milano"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm mb-1">Tipo contratto</label>
+          <select
+            className="w-full border rounded px-3 py-2"
+            value={contractType}
+            onChange={(e) => setContractType(e.target.value as any)}
+          >
+            <option value="">—</option>
+            <option value="full-time">Full-time</option>
+            <option value="part-time">Part-time</option>
+            <option value="trial">Prova</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm mb-1">Descrizione</label>
+          <textarea
+            className="w-full border rounded px-3 py-2 min-h-[120px]"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Dettagli sull’opportunità…"
+          />
+        </div>
+
+        <div className="pt-2">
+          <button
+            type="submit"
+            disabled={loading}
+            className="px-4 py-2 rounded bg-black text-white disabled:opacity-50"
+          >
+            Pubblica
+          </button>
+        </div>
+      </form>
+    </div>
   )
 }

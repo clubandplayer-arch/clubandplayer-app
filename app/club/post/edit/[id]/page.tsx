@@ -1,118 +1,167 @@
 'use client'
-import { useEffect, useState } from 'react'
+
+import React, { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { supabaseBrowser } from '@/lib/supabaseBrowser'
+import { supabase } from '@/lib/supabaseBrowser'
 
-const sportRoles: Record<string, string[]> = {
-  calcio: ['portiere', 'difensore', 'centrocampista', 'attaccante'],
-  futsal: ['portiere', 'difensore', 'pivot', 'laterale'],
-  basket: ['playmaker', 'guardia', 'ala', 'centro'],
-  volley: ['palleggiatore', 'schiacciatore', 'centrale', 'libero']
-}
-
-type Opp = {
+type Opportunity = {
   id: string
-  title: string
-  sport: string
-  role: string
-  region: string | null
-  province: string | null
-  city: string
+  title: string | null
+  location: string | null
+  contract_type: 'full-time' | 'part-time' | 'trial' | null
   description: string | null
-  status: 'aperto' | 'chiuso'
+  club_id: string | null
 }
 
-export default function EditPostPage() {
-  const supabase = supabaseBrowser()
-  const router = useRouter()
+export default function EditOpportunityPage() {
   const params = useParams<{ id: string }>()
+  const router = useRouter()
+  const [loading, setLoading] = useState(true)
+  const [me, setMe] = useState<{ id: string } | null>(null)
+  const [opp, setOpp] = useState<Opportunity | null>(null)
 
-  const [data, setData] = useState<Opp | null>(null)
-  const [msg, setMsg] = useState('')
-  const [saving, setSaving] = useState(false)
+  const [title, setTitle] = useState('')
+  const [location, setLocation] = useState('')
+  const [contractType, setContractType] = useState<'full-time' | 'part-time' | 'trial' | ''>('')
+  const [description, setDescription] = useState('')
 
   useEffect(() => {
-    const load = async () => {
-      setMsg('')
+    const init = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        alert('Devi essere loggato come club')
+        router.push('/login')
+        return
+      }
+      setMe({ id: user.id })
+
+      // Carica l’annuncio
       const { data, error } = await supabase
         .from('opportunities')
-        .select('id, title, sport, role, region, province, city, description, status')
-        .eq('id', String(params.id))
-        .limit(1)
-      if (error) { setMsg(`Errore caricamento: ${error.message}`); return }
-      if (!data || !data[0]) { setMsg('Annuncio non trovato'); return }
-      setData(data[0] as Opp)
+        .select('id,title,location,contract_type,description,club_id')
+        .eq('id', params.id)
+        .maybeSingle()
+
+      if (error || !data) {
+        console.error(error)
+        alert('Annuncio non trovato')
+        router.push('/opportunities')
+        return
+      }
+
+      // Verifica che l’utente loggato sia owner del club associato
+      const { data: myClub } = await supabase
+        .from('clubs')
+        .select('id')
+        .eq('owner_id', user.id)
+        .maybeSingle()
+
+      // Se l’annuncio non ha club_id, lo agganciamo automaticamente al mio club
+      if (!data.club_id && myClub?.id) {
+        await supabase.from('opportunities').update({ club_id: myClub.id }).eq('id', data.id)
+        data.club_id = myClub.id
+      }
+
+      setOpp(data)
+      setTitle(data.title ?? '')
+      setLocation(data.location ?? '')
+      setContractType((data.contract_type as any) ?? '')
+      setDescription(data.description ?? '')
+      setLoading(false)
     }
-    load()
-  }, [supabase, params.id])
+    init()
+  }, [params.id, router])
 
-  const validate = (d: Opp): string | null => {
-    if (!d.title.trim()) return 'Inserisci un titolo.'
-    if (!d.sport) return 'Seleziona uno sport.'
-    if (!d.role) return 'Seleziona un ruolo.'
-    if (!sportRoles[d.sport]?.includes(d.role)) return `Ruolo non valido per ${d.sport}.`
-    if (!d.region?.trim()) return 'Inserisci la regione.'
-    if (!d.province?.trim()) return 'Inserisci la provincia.'
-    if (!d.city.trim()) return 'Inserisci la città.'
-    return null
-  }
-
-  const submit = async (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!data) return
-    const errMsg = validate(data)
-    if (errMsg) { setMsg(errMsg); return }
+    if (!opp) return
 
-    setSaving(true); setMsg('')
-    const { error } = await supabase
-      .from('opportunities')
-      .update({
-        title: data.title,
-        sport: data.sport,
-        role: data.role,
-        region: data.region,
-        province: data.province,
-        city: data.city,
-        description: data.description,
-        status: data.status
-      })
-      .eq('id', data.id)
-    setSaving(false)
-    if (error) { setMsg(`Errore salvataggio: ${error.message}`); return }
-    router.push('/club/posts')
+    // ribadisco l’aggancio al mio club ad ogni salvataggio
+    const { data: { user } } = await supabase.auth.getUser()
+    let myClubId: string | null = null
+    if (user) {
+      const { data: myClub } = await supabase
+        .from('clubs')
+        .select('id')
+        .eq('owner_id', user.id)
+        .maybeSingle()
+      myClubId = myClub?.id ?? null
+    }
+
+    const payload: Record<string, any> = {
+      title: title.trim() || null,
+      location: location.trim() || null,
+      contract_type: contractType || null,
+      description: description.trim() || null,
+      ...(myClubId ? { club_id: myClubId } : {}) // <- SYNC CON CLUB
+    }
+
+    const { error } = await supabase.from('opportunities').update(payload).eq('id', opp.id)
+    if (error) {
+      console.error(error)
+      alert('Errore nel salvataggio')
+      return
+    }
+    router.push('/opportunities')
   }
 
-  if (!data) {
-    return <main style={{maxWidth:600, margin:'0 auto', padding:24}}><p>Caricamento… {msg && <span style={{color:'#b91c1c'}}>{msg}</span>}</p></main>
-  }
+  if (loading) return <div className="p-6">Caricamento…</div>
 
   return (
-    <main style={{maxWidth:600, margin:'0 auto', padding:24}}>
-      <h1>Modifica annuncio</h1>
-      {msg && <p style={{color:'#b91c1c'}}>{msg}</p>}
-      <form onSubmit={submit} style={{display:'grid', gap:12}}>
-        <input value={data.title} onChange={e=>setData({...data, title:e.target.value})} placeholder="Titolo" />
-        <select value={data.sport} onChange={e=>setData({...data, sport:e.target.value, role:''})}>
-          <option value="">Sport</option>
-          {Object.keys(sportRoles).map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
-        <select value={data.role} onChange={e=>setData({...data, role:e.target.value})} disabled={!data.sport}>
-          <option value="">Ruolo</option>
-          {data.sport && sportRoles[data.sport].map(r => <option key={r} value={r}>{r}</option>)}
-        </select>
-        <input value={data.region ?? ''} onChange={e=>setData({...data, region:e.target.value})} placeholder="Regione" />
-        <input value={data.province ?? ''} onChange={e=>setData({...data, province:e.target.value})} placeholder="Provincia" />
-        <input value={data.city} onChange={e=>setData({...data, city:e.target.value})} placeholder="Città" />
-        <textarea value={data.description ?? ''} onChange={e=>setData({...data, description:e.target.value})} placeholder="Descrizione" />
-        <select value={data.status} onChange={e=>setData({...data, status: e.target.value as 'aperto'|'chiuso'})}>
-          <option value="aperto">Aperto</option>
-          <option value="chiuso">Chiuso</option>
-        </select>
-        <div style={{display:'flex', gap:8}}>
-          <button type="submit" disabled={saving}>{saving ? 'Salvataggio…' : 'Salva'}</button>
-          <button type="button" onClick={()=>history.back()} style={{border:'1px solid #e5e7eb', borderRadius:8, padding:'6px 10px'}}>Annulla</button>
+    <div className="max-w-2xl mx-auto p-6 space-y-4">
+      <h1 className="text-2xl font-semibold">Modifica opportunità</h1>
+
+      <form onSubmit={handleSave} className="space-y-4">
+        <div>
+          <label className="block text-sm mb-1">Titolo</label>
+          <input
+            className="w-full border rounded px-3 py-2"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm mb-1">Località</label>
+          <input
+            className="w-full border rounded px-3 py-2"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm mb-1">Tipo contratto</label>
+          <select
+            className="w-full border rounded px-3 py-2"
+            value={contractType}
+            onChange={(e) => setContractType(e.target.value as any)}
+          >
+            <option value="">—</option>
+            <option value="full-time">Full-time</option>
+            <option value="part-time">Part-time</option>
+            <option value="trial">Prova</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm mb-1">Descrizione</label>
+          <textarea
+            className="w-full border rounded px-3 py-2 min-h-[120px]"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </div>
+
+        <div className="pt-2">
+          <button
+            type="submit"
+            className="px-4 py-2 rounded bg-black text-white"
+          >
+            Salva
+          </button>
         </div>
       </form>
-    </main>
+    </div>
   )
 }
