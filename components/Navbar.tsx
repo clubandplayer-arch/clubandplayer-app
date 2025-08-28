@@ -2,107 +2,111 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
+import NotificationsBell from './NotificationsBell'
 
-type MiniProfile = {
+type Profile = {
   account_type: 'athlete' | 'club' | null
+  is_admin: boolean | null
 }
 
 export default function Navbar() {
   const pathname = usePathname()
-  const supabase = useMemo(() => supabaseBrowser(), [])
+  const supabase = supabaseBrowser()
 
-  const [accountType, setAccountType] = useState<'athlete' | 'club' | null>(null)
-  const [authed, setAuthed] = useState<boolean>(false)
-  const [loadingLogout, setLoadingLogout] = useState(false)
+  const [session, setSession] = useState<boolean>(false)
+  const [profile, setProfile] = useState<Profile | null>(null)
 
-  useEffect(() => {
-    const load = async () => {
-      const { data: ures } = await supabase.auth.getUser()
-      const user = ures?.user ?? null
-      setAuthed(!!user)
-
-      if (user) {
-        const { data } = await supabase
-          .from('profiles')
-          .select('account_type')
-          .eq('id', user.id)
-          .maybeSingle()
-
-        setAccountType((data as MiniProfile | null)?.account_type ?? null)
-      } else {
-        setAccountType(null)
-      }
+  const loadProfile = useCallback(async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    setSession(!!user)
+    if (!user) {
+      setProfile(null)
+      return
     }
-    load()
+    const { data } = await supabase
+      .from('profiles')
+      .select('account_type, is_admin')
+      .eq('id', user.id)
+      .single()
+    setProfile((data as Profile) ?? { account_type: null, is_admin: false })
   }, [supabase])
 
-  const linkStyle = (href: string) => ({
-    padding: '8px 10px',
-    borderRadius: 8,
-    background: pathname === href ? '#f3f4f6' : 'transparent',
-  } as React.CSSProperties)
+  useEffect(() => {
+    loadProfile()
+  }, [loadProfile])
 
-  const handleLogout = async () => {
-    setLoadingLogout(true)
-    try {
-      await supabase.auth.signOut()
-    } finally {
-      // torna alla home per evitare stati incoerenti
-      window.location.href = '/'
-    }
+  const signOut = async () => {
+    await supabase.auth.signOut()
+    window.location.href = '/login'
   }
 
+  const active = (href: string) =>
+    pathname === href ? 'text-blue-700 font-semibold' : 'text-gray-800'
+
   return (
-    <nav
-      style={{
-        display: 'flex',
-        gap: 10,
-        alignItems: 'center',
-        padding: '10px 16px',
-        borderBottom: '1px solid #e5e7eb',
-      }}
-    >
-      <Link href="/" style={{ fontWeight: 700, marginRight: 10 }}>
-        Club&Player
-      </Link>
-
-      <Link href="/" style={linkStyle('/')}>Home</Link>
-      <Link href="/opportunities" style={linkStyle('/opportunities')}>Opportunità</Link>
-      <Link href="/search/athletes" style={linkStyle('/search/athletes')}>Atleti</Link>
-      <Link href="/search/club" style={linkStyle('/search/club')}>Club</Link>
-      <Link href="/favorites" style={linkStyle('/favorites')}>Preferiti</Link>
-
-      {/* Link rapido alle candidature proprie: solo atleti autenticati */}
-      {authed && accountType === 'athlete' && (
-        <Link href="/applications" style={linkStyle('/applications')}>
-          Candidature
+    <nav className="w-full border-b bg-white">
+      <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-4">
+        <Link href="/" className="text-lg font-bold">
+          Club&Player
         </Link>
-      )}
 
-      <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-        {authed ? (
-          <>
-            <Link href="/messages" style={linkStyle('/messages')}>Messaggi</Link>
-            <Link href="/settings" style={linkStyle('/settings')}>Impostazioni</Link>
-            <button
-              onClick={handleLogout}
-              disabled={loadingLogout}
-              style={{
-                padding: '8px 10px',
-                borderRadius: 8,
-                border: '1px solid #e5e7eb',
-                background: '#fff',
-                cursor: 'pointer'
-              }}
-            >
-              {loadingLogout ? 'Logout…' : 'Logout'}
-            </button>
-          </>
-        ) : (
-          <Link href="/login" style={linkStyle('/login')}>Login</Link>
-        )}
+        <div className="flex items-center gap-4">
+          <Link href="/" className={active('/')}>
+            Home
+          </Link>
+          <Link href="/opportunities" className={active('/opportunities')}>
+            Opportunità
+          </Link>
+          <Link href="/search/athletes" className={active('/search/athletes')}>
+            Atleti
+          </Link>
+          <Link href="/search/club" className={active('/search/club')}>
+            Club
+          </Link>
+          <Link href="/favorites" className={active('/favorites')}>
+            Preferiti
+          </Link>
+          {/* Link Moderazione solo admin */}
+          {profile?.is_admin ? (
+            <Link href="/admin/reports" className={active('/admin/reports')}>
+              Moderazione
+            </Link>
+          ) : null}
+        </div>
+
+        <div className="ml-auto flex items-center gap-4">
+          {/* Campanella notifiche */}
+          {session ? <NotificationsBell /> : null}
+
+          {/* Onboarding link se account_type mancante */}
+          {profile && !profile.account_type ? (
+            <Link href="/onboarding" className="underline">
+              Onboarding
+            </Link>
+          ) : null}
+
+          {session ? (
+            <>
+              <Link href="/settings" className={active('/settings')}>
+                Impostazioni
+              </Link>
+              <button
+                onClick={signOut}
+                className="text-gray-700 hover:text-black underline"
+              >
+                Logout
+              </button>
+            </>
+          ) : (
+            <Link href="/login" className="underline">
+              Login
+            </Link>
+          )}
+        </div>
       </div>
     </nav>
   )
