@@ -20,14 +20,12 @@ type Profile = {
   full_name: string | null
   username: string | null
   is_admin: boolean
-  email?: string | null
 }
 
 type Opportunity = { id: string; title: string }
 
 export default function AdminReportsPage() {
   const supabase = useMemo(() => supabaseBrowser(), [])
-  const [me, setMe] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [errorMsg, setErrorMsg] = useState<string>('')
   const [reports, setReports] = useState<ReportRow[]>([])
@@ -44,7 +42,6 @@ export default function AdminReportsPage() {
       const { data: ures } = await supabase.auth.getUser()
       const user = ures?.user ?? null
       if (!user) {
-        setMe(null)
         setErrorMsg('Devi essere loggato')
         setLoading(false)
         return
@@ -61,9 +58,7 @@ export default function AdminReportsPage() {
         setLoading(false)
         return
       }
-
-      setMe(myp as Profile)
-      if (!(myp as Profile).is_admin) {
+      if (!myp.is_admin) {
         setErrorMsg('Non sei autorizzato ad accedere a questa pagina.')
         setLoading(false)
         return
@@ -224,8 +219,7 @@ export default function AdminReportsPage() {
                       <td style={td}>
                         {p ? (
                           <>
-                            {p.full_name || p.username || p.id.slice(0, 8)}
-                            {' '}
+                            {p.full_name || p.username || p.id.slice(0, 8)}{' '}
                             <Link href={`/u/${p.id}`} className="underline">profilo</Link>
                           </>
                         ) : r.user_id.slice(0, 8)}
@@ -250,17 +244,11 @@ export default function AdminReportsPage() {
                       </td>
                       <td style={td}>
                         {r.status === 'open' ? (
-                          <button
-                            onClick={() => setStatus(r.id, 'closed')}
-                            style={btn}
-                          >
+                          <button onClick={() => setStatus(r.id, 'closed')} style={btn}>
                             Chiudi
                           </button>
                         ) : (
-                          <button
-                            onClick={() => setStatus(r.id, 'open')}
-                            style={btnGhost}
-                          >
+                          <button onClick={() => setStatus(r.id, 'open')} style={btnGhost}>
                             Riapri
                           </button>
                         )}
