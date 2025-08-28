@@ -10,7 +10,7 @@
  *   items, loading, error, hasMore,
  *   sentinelRef, reset, reload, setItems
  * } = useInfiniteScroll<T>({
- *   loader: async (page) => fetchFn(page), // deve restituire { items, page, hasMore }
+ *   loader: async (page, signal) => fetchFn(page, signal), // ritorna { items, page, hasMore }
  *   initialPage: 1
  * });
  */
@@ -35,9 +35,13 @@ export interface UseInfiniteScrollReturn<T> {
   error: string | null;
   hasMore: boolean;
   page: number;
-  sentinelRef: React.RefObject<HTMLDivElement>;
+  /** Ref alla sentinella che attiva il caricamento della pagina successiva */
+  sentinelRef: React.RefObject<HTMLDivElement | null>;
+  /** Svuota lista e stato, torna a initialPage */
   reset: () => void;
+  /** Reset + carica subito la prima pagina */
   reload: () => void;
+  /** Setter esposto per aggiornamenti manuali */
   setItems: React.Dispatch<React.SetStateAction<T[]>>;
 }
 
@@ -52,7 +56,7 @@ export default function useInfiniteScroll<T>(
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const sentinelRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const ioRef = useRef<IntersectionObserver | null>(null);
 
@@ -99,7 +103,6 @@ export default function useInfiniteScroll<T>(
   const reload = useCallback(() => {
     reset();
     // carica la prima pagina subito dopo il reset
-    // microtask per assicurare stato aggiornato
     Promise.resolve().then(() => loadPage(initialPage, true));
   }, [initialPage, loadPage, reset]);
 
@@ -108,6 +111,7 @@ export default function useInfiniteScroll<T>(
     const el = sentinelRef.current;
     if (!el) return;
 
+    // disconnetti eventuale observer precedente
     if (ioRef.current) {
       ioRef.current.disconnect();
       ioRef.current = null;
@@ -116,7 +120,6 @@ export default function useInfiniteScroll<T>(
     const io = new IntersectionObserver((entries) => {
       const entry = entries[0];
       if (entry.isIntersecting && !loading && hasMore && enabled) {
-        // richiedi la pagina successiva
         loadPage(page + 1, false);
       }
     });
@@ -129,10 +132,11 @@ export default function useInfiniteScroll<T>(
     };
   }, [enabled, hasMore, loadPage, loading, page]);
 
-  // cleanup abort
+  // cleanup abort all'unmount
   useEffect(() => {
     return () => {
       abortRef.current?.abort();
+      ioRef.current?.disconnect();
     };
   }, []);
 
