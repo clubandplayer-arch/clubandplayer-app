@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
 
 type Notification = {
@@ -12,30 +12,34 @@ type Notification = {
 }
 
 export default function NotificationsPage() {
-  const supabase = useMemo(() => supabaseBrowser(), [])
+  const supabase = supabaseBrowser()
   const [items, setItems] = useState<Notification[]>([])
-  const [onlyUnread, setOnlyUnread] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const load = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      setItems([])
-      return
+  const load = useCallback(async () => {
+    try {
+      setError(null)
+      const { data: { user }, error: uErr } = await supabase.auth.getUser()
+      if (uErr) throw uErr
+      if (!user) {
+        setItems([])
+        setLoading(false)
+        return
+      }
+      const { data, error: selErr } = await supabase
+        .from('notifications')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100)
+      if (selErr) throw selErr
+      setItems((data ?? []) as Notification[])
+    } catch (e: any) {
+      setError(e?.message || 'Errore nel caricamento')
+    } finally {
+      setLoading(false)
     }
-
-    let query = supabase
-      .from('notifications')
-      .select('id, type, message, read, created_at')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-
-    if (onlyUnread) {
-      query = query.eq('read', false)
-    }
-
-    const { data } = await query
-    setItems(data ?? [])
-  }
+  }, [supabase])
 
   useEffect(() => {
     load()
@@ -44,61 +48,66 @@ export default function NotificationsPage() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'notifications' },
-        () => load()
+        () => {
+          load()
+        }
       )
       .subscribe()
-    return () => { supabase.removeChannel(channel) }
-  }, [supabase, onlyUnread])
 
-  const markAllAsRead = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    await supabase.from('notifications').update({ read: true }).eq('user_id', user.id).eq('read', false)
-    load()
+    return () => {
+      channel.unsubscribe()
+    }
+  }, [load, supabase])
+
+  const markAllRead = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('user_id', user.id)
+        .eq('read', false)
+      load()
+    } catch {
+      // noop
+    }
   }
 
   return (
-    <div className="mx-auto max-w-3xl p-4">
-      <h1 className="mb-4 text-2xl font-bold">Notifiche</h1>
-
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={onlyUnread}
-            onChange={(e) => setOnlyUnread(e.target.checked)}
-          />
-          Mostra solo non lette
-        </label>
-
+    <div className="max-w-3xl mx-auto p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Notifiche</h1>
         <button
-          onClick={markAllAsRead}
-          className="rounded-md bg-gray-900 px-3 py-2 text-sm text-white hover:bg-gray-800"
+          onClick={markAllRead}
+          className="rounded-md border px-3 py-2 hover:bg-gray-50"
         >
           Segna tutte come lette
         </button>
       </div>
 
-      {items.length === 0 ? (
-        <div className="rounded-md border p-4 text-gray-600">
-          Nessuna notifica.
+      {error && (
+        <div className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+          {error}
         </div>
+      )}
+
+      {loading ? (
+        <p>Caricamento…</p>
+      ) : items.length === 0 ? (
+        <p>Nessuna notifica.</p>
       ) : (
-        <ul className="space-y-2">
-          {items.map((n) => (
-            <li key={n.id} className="rounded-md border p-3">
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="text-sm font-semibold">{n.type}</div>
-                  <div className="text-sm text-gray-800">{n.message}</div>
-                  <div className="mt-1 text-xs text-gray-400">
-                    {new Date(n.created_at).toLocaleString()}
-                  </div>
-                </div>
-                {!n.read && (
-                  <span className="mt-1 inline-flex h-2 w-2 rounded-full bg-blue-600" />
-                )}
+        <ul className="space-y-3">
+          {items.map(n => (
+            <li
+              key={n.id}
+              className={`rounded border p-3 ${n.read ? 'bg-white' : 'bg-yellow-50'}`}
+            >
+              <div className="text-sm text-gray-500">
+                {new Date(n.created_at).toLocaleString()}
               </div>
+              <div className="font-medium">{n.type}</div>
+              <div>{n.message}</div>
             </li>
           ))}
         </ul>

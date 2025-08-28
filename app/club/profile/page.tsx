@@ -1,17 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
-
-type Club = {
-  id: string
-  owner_id: string
-  name: string | null
-  bio: string | null
-  logo_url: string | null
-}
 
 export default function ClubProfilePage() {
   const supabase = supabaseBrowser()
@@ -40,13 +31,11 @@ export default function ClubProfilePage() {
         return
       }
       if (!user) {
-        // non loggato → portiamo al login
         router.push('/login')
         return
       }
       setUserId(user.id)
 
-      // carica/crea il record club dell’utente
       const { data: existing, error: selErr } = await supabase
         .from('clubs')
         .select('*')
@@ -60,7 +49,6 @@ export default function ClubProfilePage() {
       }
 
       if (!existing) {
-        // se non esiste, crealo al volo
         const { data: inserted, error: insErr } = await supabase
           .from('clubs')
           .insert({ owner_id: user.id, name: '', bio: '', logo_url: null })
@@ -95,7 +83,6 @@ export default function ClubProfilePage() {
     setOkMsg(null)
     setError(null)
     if (file) {
-      // anteprima immediata in memoria
       const blobUrl = URL.createObjectURL(file)
       setLogoUrl(blobUrl)
     }
@@ -107,12 +94,10 @@ export default function ClubProfilePage() {
     setError(null)
     setOkMsg(null)
     try {
-      // path vincolato dalle policy: `${auth.uid()}/...`
       const ext = logoFile.name.split('.').pop() || 'png'
       const fileName = `logo-${Date.now()}.${ext}`
       const path = `${userId}/${fileName}`
 
-      // carica su storage
       const { error: upErr } = await supabase
         .storage
         .from('club-logos')
@@ -120,22 +105,17 @@ export default function ClubProfilePage() {
           cacheControl: '3600',
           upsert: true
         })
-
       if (upErr) throw upErr
 
-      // public URL
       const { data: pub } = supabase.storage.from('club-logos').getPublicUrl(path)
       const publicUrl = pub?.publicUrl
-
       if (!publicUrl) throw new Error('Impossibile ottenere la URL pubblica del logo')
 
-      // salva su tabella clubs
       if (!clubId) throw new Error('Club non inizializzato')
       const { error: updErr } = await supabase
         .from('clubs')
         .update({ logo_url: publicUrl })
         .eq('id', clubId)
-
       if (updErr) throw updErr
 
       setLogoUrl(publicUrl)
@@ -157,7 +137,6 @@ export default function ClubProfilePage() {
         .from('clubs')
         .update({ name, bio })
         .eq('id', clubId)
-
       if (updErr) throw updErr
       setOkMsg('Profilo salvato.')
     } catch (e: any) {
@@ -196,13 +175,9 @@ export default function ClubProfilePage() {
         <h2 className="text-lg font-medium">Logo</h2>
         <div className="flex items-center gap-4">
           <div className="relative h-24 w-24 overflow-hidden rounded-md border bg-white">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             {logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={logoUrl}
-                alt="Logo club"
-                className="h-full w-full object-cover"
-              />
+              <img src={logoUrl} alt="Logo club" className="h-full w-full object-cover" />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-gray-400">
                 Nessun logo
@@ -226,14 +201,10 @@ export default function ClubProfilePage() {
                 {uploading ? 'Carico…' : 'Carica logo'}
               </button>
               {logoFile && (
-                <span className="text-sm text-gray-600">
-                  File selezionato: {logoFile.name}
-                </span>
+                <span className="text-sm text-gray-600">File: {logoFile.name}</span>
               )}
             </div>
-            <p className="text-xs text-gray-500">
-              Suggerito: PNG/JPG quadrato ≤ 2MB.
-            </p>
+            <p className="text-xs text-gray-500">Suggerito: PNG/JPG quadrato ≤ 2MB.</p>
           </div>
         </div>
       </section>
