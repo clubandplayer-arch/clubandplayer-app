@@ -1,156 +1,228 @@
 'use client'
-import { useCallback, useEffect, useState } from 'react'
+
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
 
-type AthleteProfile = {
+type Athlete = {
   id: string
   full_name: string | null
   sport: string | null
   role: string | null
   city: string | null
-  account_type: string | null
+  account_type?: 'athlete' | 'club' | null
 }
 
-type Sport = 'calcio' | 'futsal' | 'basket' | 'volley'
-const isSport = (v: string): v is Sport =>
-  v === 'calcio' || v === 'futsal' || v === 'basket' || v === 'volley'
-
-const ROLES: Record<Sport, string[]> = {
-  calcio: ['portiere', 'difensore', 'centrocampista', 'attaccante'],
-  futsal: ['portiere', 'difensore', 'pivot', 'laterale'],
-  basket: ['playmaker', 'guardia', 'ala', 'centro'],
-  volley: ['palleggiatore', 'schiacciatore', 'centrale', 'libero']
+type Filters = {
+  sport: string
+  role: string
+  city: string
 }
 
 export default function SearchAthletesPage() {
-  const supabase = supabaseBrowser()
+  const supabase = useMemo(() => supabaseBrowser(), [])
+  const router = useRouter()
 
-  // filtri base
-  const [sport, setSport] = useState<Sport | ''>('')
-  const [role, setRole] = useState<string>('') // dipende dallo sport
-  const [city, setCity] = useState<string>('')
+  const [filters, setFilters] = useState<Filters>({
+    sport: '',
+    role: '',
+    city: '',
+  })
 
-  const [loading, setLoading] = useState<boolean>(false)
+  const [rows, setRows] = useState<Athlete[]>([])
+  const [loading, setLoading] = useState(true)
   const [msg, setMsg] = useState<string>('')
-  const [items, setItems] = useState<AthleteProfile[]>([])
-
-  const roleOptions = sport ? ROLES[sport] : []
 
   const load = useCallback(async () => {
     setLoading(true)
     setMsg('')
 
+    // redirect for onboarding incompleto (account_type nullo)
+    try {
+      const { data: ures } = await supabase.auth.getUser()
+      const uid = ures?.user?.id ?? null
+
+      if (uid) {
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('account_type')
+          .eq('id', uid)
+          .limit(1)
+          .maybeSingle()
+
+        if (prof && (prof as { account_type: string | null }).account_type == null) {
+          router.replace('/onboarding')
+          return
+        }
+      }
+    } catch {
+      // ignore onboarding check errors for this page
+    }
+
+    // query base: solo profili atleta
     let q = supabase
       .from('profiles')
       .select('id, full_name, sport, role, city, account_type')
       .eq('account_type', 'athlete')
-      .order('created_at', { ascending: false })
+      .order('full_name', { ascending: true })
 
-    if (sport) q = q.eq('sport', sport)
-    if (role) q = q.eq('role', role)
-    if (city) q = q.ilike('city', `%${city}%`)
+    // filtri
+    if (filters.sport.trim()) q = q.ilike('sport', `%${filters.sport.trim()}%`)
+    if (filters.role.trim()) q = q.ilike('role', `%${filters.role.trim()}%`)
+    if (filters.city.trim()) q = q.ilike('city', `%${filters.city.trim()}%`)
 
-    const { data, error } = await q
+    const { data, error } = await q.limit(100)
     if (error) {
-      setMsg(`Errore ricerca atleti: ${error.message}`)
-      setItems([])
+      setMsg(`Errore caricamento: ${error.message}`)
+      setRows([])
       setLoading(false)
       return
     }
 
-    setItems((data ?? []) as AthleteProfile[])
+    setRows((data ?? []) as Athlete[])
     setLoading(false)
-  }, [supabase, sport, role, city])
+  }, [filters.city, filters.role, filters.sport, router, supabase])
 
   useEffect(() => {
-    void load()
+    load()
   }, [load])
 
-  const reset = () => {
-    setSport('')
-    setRole('')
-    setCity('')
-    void load()
-  }
+  const resetFilters = () =>
+    setFilters({ sport: '', role: '', city: '' })
 
   return (
-    <main style={{maxWidth:1024, margin:'0 auto', padding:24}}>
-      <header style={{display:'flex', gap:12, alignItems:'center', flexWrap:'wrap'}}>
-        <h1 style={{margin:0}}>Cerca atleti</h1>
-        <div style={{marginLeft:'auto'}}>
-          <Link href="/opportunities">← Torna alle opportunità</Link>
+    <main style={{ maxWidth: 980, margin: '0 auto', padding: 24 }}>
+      <h1>Cerca atleti</h1>
+
+      {/* Filtri */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+          gap: 12,
+          alignItems: 'end',
+          marginTop: 12,
+        }}
+      >
+        <div>
+          <label style={{ display: 'block', fontSize: 12, opacity: 0.8 }}>Sport</label>
+          <input
+            type="text"
+            value={filters.sport}
+            onChange={(e) => setFilters((f) => ({ ...f, sport: e.target.value }))}
+            placeholder="Es. Calcio, Basket…"
+            style={{ width: '100%', padding: '8px 10px', border: '1px solid #e5e7eb', borderRadius: 8 }}
+          />
         </div>
-      </header>
-
-      <section style={{border:'1px solid #e5e7eb', borderRadius:12, padding:12, marginTop:12}}>
-        <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px,1fr))', gap:12}}>
-          <div>
-            <label style={{display:'block', fontSize:12, opacity:.7}}>Sport</label>
-            <select
-              value={sport}
-              onChange={e => { const v = e.target.value; setSport(isSport(v) ? v : ''); setRole('') }}
-              style={{width:'100%'}}
-            >
-              <option value="">—</option>
-              <option value="calcio">Calcio</option>
-              <option value="futsal">Futsal</option>
-              <option value="basket">Basket</option>
-              <option value="volley">Volley</option>
-            </select>
-          </div>
-
-          <div>
-            <label style={{display:'block', fontSize:12, opacity:.7}}>Ruolo</label>
-            <select
-              value={role}
-              onChange={e => setRole(e.target.value)}
-              disabled={!sport}
-              style={{width:'100%'}}
-            >
-              <option value="">{sport ? '— seleziona —' : 'Seleziona sport prima'}</option>
-              {roleOptions.map(r => <option key={r} value={r}>{r}</option>)}
-            </select>
-          </div>
-
-          <div>
-            <label style={{display:'block', fontSize:12, opacity:.7}}>Città</label>
-            <input
-              value={city}
-              onChange={e => setCity(e.target.value)}
-              placeholder="es. Carlentini"
-              style={{width:'100%'}}
-            />
-          </div>
+        <div>
+          <label style={{ display: 'block', fontSize: 12, opacity: 0.8 }}>Ruolo</label>
+          <input
+            type="text"
+            value={filters.role}
+            onChange={(e) => setFilters((f) => ({ ...f, role: e.target.value }))}
+            placeholder="Es. Attaccante, Playmaker…"
+            style={{ width: '100%', padding: '8px 10px', border: '1px solid #e5e7eb', borderRadius: 8 }}
+          />
+        </div>
+        <div>
+          <label style={{ display: 'block', fontSize: 12, opacity: 0.8 }}>Città</label>
+          <input
+            type="text"
+            value={filters.city}
+            onChange={(e) => setFilters((f) => ({ ...f, city: e.target.value }))}
+            placeholder="Es. Milano"
+            style={{ width: '100%', padding: '8px 10px', border: '1px solid #e5e7eb', borderRadius: 8 }}
+          />
         </div>
 
-        <div style={{display:'flex', gap:8, marginTop:12}}>
-          <button onClick={() => void load()} style={{padding:'8px 12px', border:'1px solid #e5e7eb', borderRadius:8, cursor:'pointer'}}>Filtra</button>
-          <button onClick={reset} style={{padding:'8px 12px', border:'1px solid #e5e7eb', borderRadius:8, cursor:'pointer'}}>Reset</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={load}
+            style={{ padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: 8, cursor: 'pointer' }}
+          >
+            Filtra
+          </button>
+          <button
+            onClick={resetFilters}
+            style={{ padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: 8, cursor: 'pointer' }}
+          >
+            Reset
+          </button>
         </div>
-      </section>
+      </div>
 
-      {msg && <p style={{color:'#b91c1c', marginTop:12}}>{msg}</p>}
-      {loading && <p style={{marginTop:12}}>Caricamento…</p>}
+      {/* Stato caricamento e messaggi */}
+      {msg && <p style={{ color: '#b91c1c', marginTop: 12 }}>{msg}</p>}
+      {loading && <p style={{ marginTop: 12 }}>Caricamento…</p>}
 
-      <section style={{display:'grid', gap:12, marginTop:12}}>
-        {items.length === 0 && !loading && !msg && <p>Nessun atleta trovato.</p>}
-        {items.map(p => (
-          <div key={p.id} style={{border:'1px solid #e5e7eb', borderRadius:12, padding:16}}>
-            <div style={{display:'flex', justifyContent:'space-between', gap:12, flexWrap:'wrap'}}>
-              <div>
-                <div style={{fontWeight:600}}>{p.full_name ?? 'Atleta'}</div>
-                <div style={{fontSize:14, opacity:.8}}>
-                  {p.role ?? '—'} · {p.sport ?? '—'} · {p.city ?? '—'}
-                </div>
-              </div>
-              <div>
-                <Link href={`/u/${p.id}`}>Vedi profilo →</Link>
-              </div>
-            </div>
-          </div>
-        ))}
-      </section>
+      {/* Lista risultati */}
+      {!loading && !msg && (
+        <>
+          {rows.length === 0 ? (
+            <p style={{ marginTop: 12 }}>Nessun atleta trovato.</p>
+          ) : (
+            <ul style={{ display: 'grid', gap: 12, marginTop: 16 }}>
+              {rows.map((a) => (
+                <li
+                  key={a.id}
+                  style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 16 }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      gap: 12,
+                      flexWrap: 'wrap',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <div>
+                      {/* NOME → link al profilo pubblico atleta */}
+                      <div style={{ fontWeight: 700, marginBottom: 4 }}>
+                        <Link href={`/athletes/${a.id}`}>
+                          {a.full_name ?? 'Atleta'}
+                        </Link>
+                      </div>
+                      <div style={{ fontSize: 14, opacity: 0.85 }}>
+                        {a.role ?? 'Ruolo n/d'} · {a.sport ?? 'Sport n/d'} · {a.city ?? 'Città n/d'}
+                      </div>
+                      <div style={{ fontSize: 12, opacity: 0.65, marginTop: 4 }}>
+                        ID: <code>{a.id}</code>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      {/* Bottone Messaggia */}
+                      <Link
+                        href={`/messages/${a.id}`}
+                        style={{
+                          padding: '8px 12px',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: 8,
+                        }}
+                      >
+                        Messaggia
+                      </Link>
+                      {/* Link al profilo */}
+                      <Link
+                        href={`/athletes/${a.id}`}
+                        style={{
+                          padding: '8px 12px',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: 8,
+                        }}
+                      >
+                        Vedi profilo
+                      </Link>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
     </main>
   )
 }
