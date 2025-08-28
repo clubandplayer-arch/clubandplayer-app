@@ -35,6 +35,12 @@ export default function Navbar() {
       <Link href="/alerts">Avvisi</Link>
       <Link href="/favorites">Preferiti</Link>
 
+      // ... hai già supabaseBrowser, stato utente, ecc.
+      {accountType === 'club' && (
+        <a href="/club/profile">Profilo club</a>
+      )}
+
+
       {/* Mostra Onboarding solo se loggato e account_type mancante */}
       {userId && !accountType && (
         <Link href="/onboarding" style={{color:'red', fontWeight:'bold'}}>
