@@ -19,7 +19,6 @@ export default function ClubEditOpportunityPage() {
   const supabase = supabaseBrowser()
 
   const [loading, setLoading] = useState(true)
-  const [me, setMe] = useState<{ id: string } | null>(null)
   const [opp, setOpp] = useState<Opportunity | null>(null)
 
   // form fields
@@ -36,7 +35,6 @@ export default function ClubEditOpportunityPage() {
         router.push('/login')
         return
       }
-      setMe({ id: user.id })
 
       // carica annuncio
       const { data, error } = await supabase
