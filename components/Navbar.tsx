@@ -2,86 +2,89 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
 
-type Profile = {
+type MiniProfile = {
   account_type: 'athlete' | 'club' | null
 }
 
 export default function Navbar() {
   const pathname = usePathname()
-  const [userId, setUserId] = useState<string | null>(null)
-  const [accountType, setAccountType] = useState<Profile['account_type']>(null)
-  const supabase = supabaseBrowser()
+  const supabase = useMemo(() => supabaseBrowser(), [])
+
+  const [accountType, setAccountType] = useState<'athlete' | 'club' | null>(null)
+  const [authed, setAuthed] = useState<boolean>(false)
 
   useEffect(() => {
     const load = async () => {
-      // utente
-      const { data: { user } } = await supabase.auth.getUser()
-      setUserId(user?.id ?? null)
+      const { data: ures } = await supabase.auth.getUser()
+      const user = ures?.user ?? null
+      setAuthed(!!user)
 
-      // account_type (se loggato)
-      if (user?.id) {
+      if (user) {
         const { data } = await supabase
           .from('profiles')
           .select('account_type')
           .eq('id', user.id)
           .maybeSingle()
-        setAccountType((data?.account_type as Profile['account_type']) ?? null)
+
+        setAccountType((data as MiniProfile | null)?.account_type ?? null)
       } else {
         setAccountType(null)
       }
     }
-    void load()
+    load()
   }, [supabase])
 
-  const linkClass = (href: string) =>
-    `hover:text-yellow-400 ${pathname === href ? 'text-yellow-400' : ''}`
+  const linkStyle = (href: string) => ({
+    padding: '8px 10px',
+    borderRadius: 8,
+    background: pathname === href ? '#f3f4f6' : 'transparent',
+  })
 
   return (
-    <nav className="bg-gray-900 text-white px-4 py-3 flex justify-between items-center">
-      <div className="flex gap-4">
-        <Link href="/" className={linkClass('/')}>Home</Link>
+    <nav
+      style={{
+        display: 'flex',
+        gap: 10,
+        alignItems: 'center',
+        padding: '10px 16px',
+        borderBottom: '1px solid #e5e7eb',
+      }}
+    >
+      <Link href="/" style={{ fontWeight: 700, marginRight: 10 }}>
+        Club&Player
+      </Link>
 
-        {/* Opportunità (feed annunci) */}
-        <Link href="/opportunities" className={linkClass('/opportunities')}>Opportunità</Link>
+      <Link href="/" style={linkStyle('/')}>Home</Link>
+      <Link href="/opportunities" style={linkStyle('/opportunities')}>Opportunità</Link>
+      <Link href="/search/athletes" style={linkStyle('/search/athletes')}>Atleti</Link>
+      <Link href="/search/club" style={linkStyle('/search/club')}>Club</Link>
+      <Link href="/favorites" style={linkStyle('/favorites')}>Preferiti</Link>
 
-        {/* Ricerca atleti (per club) */}
-        <Link href="/search/athletes" className={linkClass('/search/athletes')}>Atleti</Link>
+      {/* Link rapido alle candidature proprie: solo atleti autenticati */}
+      {authed && accountType === 'athlete' && (
+        <Link href="/applications" style={linkStyle('/applications')}>
+          Candidature
+        </Link>
+      )}
 
-        {/* Ricerca club (per atleti) */}
-        <Link href="/search/club" className={linkClass('/search/club')}>Club</Link>
-
-        {/* Preferiti (per atleti) */}
-        <Link href="/favorites" className={linkClass('/favorites')}>Preferiti</Link>
-
-        {/* Profilo club (solo se account club) */}
-        {userId && accountType === 'club' && (
-          <Link href="/club/profile" className={linkClass('/club/profile')}>Profilo club</Link>
-        )}
-      </div>
-
-      <div className="flex gap-4 items-center">
-        {userId ? (
+      <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+        {authed ? (
           <>
-            {/* Onboarding (solo se manca account_type) */}
-            {!accountType && (
-              <Link href="/onboarding" className={linkClass('/onboarding')}>Onboarding</Link>
-            )}
-
-            <button
-              onClick={async () => {
-                await supabase.auth.signOut()
-                window.location.href = '/'
+            <Link href="/messages" style={linkStyle('/messages')}>Messaggi</Link>
+            <Link href="/settings" style={linkStyle('/settings')}>Impostazioni</Link>
+            <form
+              action={async () => {
+                'use server'
               }}
-              className="hover:text-yellow-400"
             >
-              Logout
-            </button>
+              {/* Il logout lo gestiamo client-side per semplicità */}
+            </form>
           </>
         ) : (
-          <Link href="/login" className={linkClass('/login')}>Login</Link>
+          <Link href="/login" style={linkStyle('/login')}>Login</Link>
         )}
       </div>
     </nav>

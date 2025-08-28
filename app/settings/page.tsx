@@ -1,207 +1,258 @@
 'use client'
-import { useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
-import { supabaseBrowser } from '@/lib/supabaseBrowser'
-import { sports, rolesBySport, SportKey } from '@/data/roles'
-import { regions, provincesByRegion, Region } from '@/data/geo'
 
-type Gender = '' | 'M' | 'F'
+import { useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { supabaseBrowser } from '@/lib/supabaseBrowser'
 
 type Profile = {
   id: string
   full_name: string | null
-  sport: string | null
-  role: string | null
-  gender: 'M' | 'F' | null
-  birth_year: number | null
-  region: string | null
-  province: string | null
-  city: string | null
+  bio: string | null
+  avatar_url: string | null
+  account_type: 'athlete' | 'club' | null
 }
 
-const thisYear = new Date().getFullYear()
-const years: number[] = Array.from({ length: thisYear - 1960 + 1 }, (_, i) => thisYear - i)
-
 export default function SettingsPage() {
-  const supabase = supabaseBrowser()
+  const supabase = useMemo(() => supabaseBrowser(), [])
+  const router = useRouter()
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState<string>('')
 
   const [userId, setUserId] = useState<string | null>(null)
-
-  // campi form
   const [fullName, setFullName] = useState<string>('')
-  const [sport, setSport] = useState<SportKey | ''>('')
-  const [role, setRole] = useState<string>('')           // dipende da sport
-  const [gender, setGender] = useState<Gender>('')
-  const [birthYear, setBirthYear] = useState<number | ''>('')
-  const [region, setRegion] = useState<Region | ''>('')
-  const [province, setProvince] = useState<string>('')
-  const [city, setCity] = useState<string>('')
+  const [bio, setBio] = useState<string>('')
+  const [avatarUrl, setAvatarUrl] = useState<string>('')
 
   useEffect(() => {
     const load = async () => {
       setLoading(true)
       setMsg('')
-      const { data: { user }, error } = await supabase.auth.getUser()
-      if (error) { setMsg(`Errore login: ${error.message}`); setLoading(false); return }
-      if (!user)  { setMsg('Devi accedere per modificare il profilo.'); setLoading(false); return }
 
-      setUserId(user.id)
-
-      // carica il profilo (se non esiste, rimane vuoto e faremo upsert)
-      const { data: rows, error: perr } = await supabase
-        .from('profiles')
-        .select('id, full_name, sport, role, gender, birth_year, region, province, city')
-        .eq('id', user.id)
-        .limit(1)
-
-      if (perr) { setMsg(`Errore caricamento profilo: ${perr.message}`) }
-      if (rows && rows.length > 0) {
-        const p = rows[0] as Profile
-        setFullName(p.full_name ?? '')
-        const sportKey = (p.sport ?? '').toUpperCase() as SportKey | ''
-        setSport(sportKey && sports.includes(sportKey as SportKey) ? (sportKey as SportKey) : '')
-        setRole(p.role ?? '')
-        setGender((p.gender ?? '') as Gender)
-        setBirthYear(p.birth_year ?? '')
-        setRegion(((p.region ?? '') as Region) || '')
-        setProvince(p.province ?? '')
-        setCity(p.city ?? '')
+      const { data: ures } = await supabase.auth.getUser()
+      const uid = ures?.user?.id ?? null
+      if (!uid) {
+        router.replace('/login')
+        return
       }
+      setUserId(uid)
+
+      // profilo
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name, bio, avatar_url, account_type')
+        .eq('id', uid)
+        .maybeSingle()
+
+      if (error) {
+        setMsg(`Errore caricamento profilo: ${error.message}`)
+        setLoading(false)
+        return
+      }
+
+      const p = (data ?? {}) as Partial<Profile>
+      setFullName(p.full_name ?? '')
+      setBio(p.bio ?? '')
+      setAvatarUrl(p.avatar_url ?? '')
       setLoading(false)
     }
-    void load()
-  }, [supabase])
+    load()
+  }, [router, supabase])
 
-  // ruoli dipendono dallo sport scelto
-  const roleOptions = useMemo(() => sport ? rolesBySport[sport] : [], [sport])
-
-  // azzera il ruolo se cambio sport
-  useEffect(() => { setRole('') }, [sport])
-
-  const onSave = async () => {
-    setMsg('')
+  const onUploadAvatar = async (file: File) => {
+    if (!userId) return
     setSaving(true)
-    try {
-      const { data: { user }, error: uerr } = await supabase.auth.getUser()
-      if (uerr || !user) { setMsg(`Devi accedere: ${uerr?.message ?? ''}`); return }
+    setMsg('')
 
-      const payload = {
-        id: user.id,
-        full_name: fullName || null,
-        sport: sport ? sport.toLowerCase() : null,
-        role: role || null,
-        gender: gender || null,
-        birth_year: typeof birthYear === 'number' ? birthYear : null,
-        region: region || null,
-        province: province || null,
-        city: city || null,
+    try {
+      // path unico per evitare cache (timestamp)
+      const path = `public/${userId}-${Date.now()}-${file.name}`
+
+      // upload (bucket pubblico per MVP)
+      const { error: upErr } = await supabase.storage
+        .from('avatars')
+        .upload(path, file, { upsert: true })
+
+      if (upErr) {
+        setMsg(`Errore upload avatar: ${upErr.message}`)
+        setSaving(false)
+        return
       }
 
-      const { error } = await supabase
-        .from('profiles')
-        .upsert(payload)   // onConflict default sulla PK id
-        .select()
+      // url pubblico
+      const { data: pub } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(path)
 
-      if (error) { setMsg(`Errore salvataggio: ${error.message}`); return }
-      setMsg('Profilo aggiornato correttamente ✅')
+      const publicUrl = pub?.publicUrl ?? ''
+      if (!publicUrl) {
+        setMsg('Errore nel generare il link pubblico dell’avatar.')
+        setSaving(false)
+        return
+      }
+
+      // salva nel profilo
+      const { error: updErr } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('id', userId)
+
+      if (updErr) {
+        setMsg(`Errore aggiornamento profilo: ${updErr.message}`)
+        setSaving(false)
+        return
+      }
+
+      setAvatarUrl(publicUrl)
+      setMsg('Avatar aggiornato.')
+    } catch (e) {
+      setMsg('Errore imprevisto durante l’upload.')
     } finally {
       setSaving(false)
     }
   }
 
+  const onSave = async () => {
+    if (!userId) return
+    setSaving(true)
+    setMsg('')
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        full_name: fullName.trim() || null,
+        bio: bio.trim() || null,
+      })
+      .eq('id', userId)
+
+    setSaving(false)
+    if (error) {
+      setMsg(`Errore salvataggio: ${error.message}`)
+      return
+    }
+    setMsg('Profilo aggiornato correttamente.')
+  }
+
+  if (loading) {
+    return (
+      <main style={{ maxWidth: 820, margin: '0 auto', padding: 24 }}>
+        <h1>Impostazioni</h1>
+        <p>Caricamento…</p>
+      </main>
+    )
+  }
+
   return (
-    <main style={{maxWidth:840, margin:'0 auto', padding:24}}>
-      <h1>Impostazioni profilo</h1>
+    <main style={{ maxWidth: 820, margin: '0 auto', padding: 24 }}>
+      <h1>Impostazioni</h1>
 
-      {loading ? <p>Caricamento…</p> : (
-        <>
-          {msg && <p style={{color: msg.includes('✅') ? '#166534' : '#b91c1c'}}>{msg}</p>}
+      {msg && (
+        <p style={{ marginTop: 8, color: msg.toLowerCase().includes('errore') ? '#b91c1c' : '#065f46' }}>
+          {msg}
+        </p>
+      )}
 
-          <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))', gap:12}}>
-            <div>
-              <label>Nome e cognome</label>
-              <input value={fullName} onChange={e=>setFullName(e.target.value)} />
-            </div>
-
-            <div>
-              <label>Sport</label>
-              <select value={sport} onChange={e=>setSport(e.target.value as SportKey | '')}>
-                <option value="">Seleziona sport</option>
-                {sports.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-
-            <div>
-              <label>Ruolo</label>
-              <select value={role} onChange={e=>setRole(e.target.value)} disabled={!sport}>
-                <option value="">{sport ? 'Seleziona ruolo' : 'Seleziona sport prima'}</option>
-                {roleOptions.map(r => <option key={r} value={r}>{r}</option>)}
-              </select>
-            </div>
-
-            <div>
-              <label>Genere</label>
-              <select value={gender} onChange={e=>setGender(e.target.value as Gender)}>
-                <option value="">—</option>
-                <option value="M">Maschile</option>
-                <option value="F">Femminile</option>
-              </select>
-            </div>
-
-            <div>
-              <label>Anno di nascita</label>
-              <select
-                value={birthYear === '' ? '' : String(birthYear)}
-                onChange={e=>setBirthYear(e.target.value ? Number(e.target.value) : '')}
-              >
-                <option value="">—</option>
-                {years.map(y => <option key={y} value={y}>{y}</option>)}
-              </select>
-            </div>
-
-            <div>
-              <label>Regione</label>
-              <select value={region} onChange={e=>setRegion(e.target.value as Region | '')}>
-                <option value="">—</option>
-                {regions.map(r => <option key={r} value={r}>{r}</option>)}
-              </select>
-            </div>
-
-            <div>
-              <label>Provincia</label>
-              <select value={province} onChange={e=>setProvince(e.target.value)} disabled={!region}>
-                <option value="">{region ? 'Seleziona' : 'Prima regione'}</option>
-                {region && provincesByRegion[region].map(p => <option key={p} value={p}>{p}</option>)}
-              </select>
-            </div>
-
-            <div>
-              <label>Città</label>
-              <input value={city} onChange={e=>setCity(e.target.value)} />
-            </div>
+      <section
+        style={{
+          border: '1px solid #e5e7eb',
+          borderRadius: 12,
+          padding: 16,
+          marginTop: 16,
+          display: 'grid',
+          gap: 16,
+        }}
+      >
+        <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+          <div
+            style={{
+              width: 96,
+              height: 96,
+              borderRadius: '50%',
+              background: '#f3f4f6',
+              overflow: 'hidden',
+              border: '1px solid #e5e7eb',
+              flex: '0 0 auto',
+            }}
+          >
+            {avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={avatarUrl}
+                alt="Avatar"
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            ) : null}
           </div>
-
-          <div style={{marginTop:16, display:'flex', gap:8}}>
-            <button
-              onClick={() => { void onSave() }}
-              disabled={saving}
-              style={{padding:'8px 14px', border:'1px solid #e5e7eb', borderRadius:8, cursor:'pointer'}}
+          <div>
+            <label
+              htmlFor="avatarInput"
+              style={{
+                display: 'inline-block',
+                padding: '8px 12px',
+                border: '1px solid #e5e7eb',
+                borderRadius: 8,
+                cursor: 'pointer',
+              }}
             >
-              {saving ? 'Salvataggio…' : 'Salva'}
-            </button>
-
-            {userId && (
-              <Link href={`/u/${userId}`} style={{alignSelf:'center'}}>
-                Vedi il mio profilo →
-              </Link>
+              {saving ? 'Carico…' : (avatarUrl ? 'Cambia avatar' : 'Carica avatar')}
+            </label>
+            <input
+              id="avatarInput"
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const f = e.target.files?.[0]
+                if (f) onUploadAvatar(f)
+              }}
+              disabled={saving}
+            />
+            {avatarUrl && (
+              <div style={{ fontSize: 12, opacity: 0.7, marginTop: 6 }}>
+                Dimensioni consigliate: quadrato ≥ 256px.
+              </div>
             )}
           </div>
-        </>
-      )}
+        </div>
+
+        <div>
+          <label style={{ display: 'block', fontSize: 12, opacity: 0.8 }}>Nome completo</label>
+          <input
+            type="text"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            placeholder="Es. Mario Rossi"
+            style={{ width: '100%', padding: '8px 10px', border: '1px solid #e5e7eb', borderRadius: 8 }}
+          />
+        </div>
+
+        <div>
+          <label style={{ display: 'block', fontSize: 12, opacity: 0.8 }}>Bio</label>
+          <textarea
+            value={bio}
+            onChange={(e) => setBio(e.target.value)}
+            placeholder="Racconta qualcosa su di te (max 500 caratteri)…"
+            rows={5}
+            maxLength={500}
+            style={{ width: '100%', padding: '8px 10px', border: '1px solid #e5e7eb', borderRadius: 8 }}
+          />
+          <div style={{ fontSize: 12, opacity: 0.65, marginTop: 4 }}>
+            {bio.length}/500
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={onSave}
+            disabled={saving}
+            style={{ padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: 8, cursor: 'pointer' }}
+          >
+            {saving ? 'Salvo…' : 'Salva modifiche'}
+          </button>
+          <a href="/u/me" style={{ marginLeft: 'auto' }}>Vedi il mio profilo pubblico →</a>
+        </div>
+      </section>
     </main>
   )
 }
