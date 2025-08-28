@@ -1,52 +1,94 @@
-'use client'
-import Link from 'next/link'
-import { useEffect, useState } from 'react'
-import { supabaseBrowser } from '@/lib/supabaseBrowser'
+"use client"
 
-type AccountType = 'athlete' | 'club' | null
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { useEffect, useState } from "react"
+import { supabase } from "@/lib/supabaseBrowser"
 
 export default function Navbar() {
-  const supabase = supabaseBrowser()
-  const [userId, setUserId] = useState<string | null>(null)
-  const [accountType, setAccountType] = useState<AccountType>(null)
+  const pathname = usePathname()
+  const [user, setUser] = useState<any>(null)
 
   useEffect(() => {
-    const init = async () => {
-      const { data } = await supabase.auth.getUser()
-      if (data.user) {
-        setUserId(data.user.id)
-        const { data: prof } = await supabase
-          .from('profiles')
-          .select('account_type')
-          .eq('id', data.user.id)
-          .limit(1)
-        if (prof && prof[0]) setAccountType(prof[0].account_type as AccountType)
-      }
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      setUser(user)
     }
-    void init()
-  }, [supabase])
+    getUser()
+  }, [])
 
   return (
-    <nav style={{display:'flex', gap:16, padding:12, background:'#f1f5f9'}}>
-      <Link href="/">Home</Link>
-      <Link href="/opportunities">Opportunità</Link>
-      <Link href="/search/athletes">Cerca atleti</Link>
-      <Link href="/messages">Messaggi</Link>
-      <Link href="/alerts">Avvisi</Link>
-      <Link href="/favorites">Preferiti</Link>
-
-      // ... hai già supabaseBrowser, stato utente, ecc.
-      {accountType === 'club' && (
-        <a href="/club/profile">Profilo club</a>
-      )}
-
-
-      {/* Mostra Onboarding solo se loggato e account_type mancante */}
-      {userId && !accountType && (
-        <Link href="/onboarding" style={{color:'red', fontWeight:'bold'}}>
-          Onboarding
+    <nav className="bg-gray-900 text-white px-4 py-3 flex justify-between items-center">
+      <div className="flex space-x-4">
+        <Link
+          href="/"
+          className={`hover:text-yellow-400 ${pathname === "/" ? "text-yellow-400" : ""}`}
+        >
+          Home
         </Link>
-      )}
+
+        {/* Opportunità */}
+        <Link
+          href="/opportunities"
+          className={`hover:text-yellow-400 ${pathname === "/opportunities" ? "text-yellow-400" : ""}`}
+        >
+          Opportunità
+        </Link>
+
+        {/* Ricerca Atleti */}
+        <Link
+          href="/search/athletes"
+          className={`hover:text-yellow-400 ${pathname === "/search/athletes" ? "text-yellow-400" : ""}`}
+        >
+          Atleti
+        </Link>
+
+        {/* Ricerca Club */}
+        <Link
+          href="/search/club"
+          className={`hover:text-yellow-400 ${pathname === "/search/club" ? "text-yellow-400" : ""}`}
+        >
+          Club
+        </Link>
+
+        {/* Preferiti */}
+        <Link
+          href="/favorites"
+          className={`hover:text-yellow-400 ${pathname === "/favorites" ? "text-yellow-400" : ""}`}
+        >
+          Preferiti
+        </Link>
+      </div>
+
+      <div className="flex space-x-4">
+        {user ? (
+          <>
+            {/* Profilo */}
+            <Link
+              href="/profile"
+              className={`hover:text-yellow-400 ${pathname === "/profile" ? "text-yellow-400" : ""}`}
+            >
+              Profilo
+            </Link>
+            <button
+              onClick={async () => {
+                await supabase.auth.signOut()
+                window.location.href = "/"
+              }}
+              className="hover:text-yellow-400"
+            >
+              Logout
+            </button>
+          </>
+        ) : (
+          <Link
+            href="/login"
+            className={`hover:text-yellow-400 ${pathname === "/login" ? "text-yellow-400" : ""}`}
+          >
+            Login
+          </Link>
+        )}
+      </div>
     </nav>
   )
 }
