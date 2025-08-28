@@ -1,6 +1,3 @@
-mkdir -p components
-
-cat > components/ReportButton.tsx <<'TSX'
 'use client'
 
 import { useMemo, useState } from 'react'
@@ -21,7 +18,8 @@ const REASONS = [
 export default function ReportButton({ targetType, targetId }: Props) {
   const supabase = useMemo(() => supabaseBrowser(), [])
   const [open, setOpen] = useState(false)
-  const [reason, setReason] = useState<typeof REASONS[number]['value']>('spam')
+  const [reason, setReason] =
+    useState<(typeof REASONS)[number]['value']>('spam')
   const [description, setDescription] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [msg, setMsg] = useState<string>('')
@@ -38,6 +36,7 @@ export default function ReportButton({ targetType, targetId }: Props) {
       return
     }
 
+    // Evita segnalazioni duplicate aperte sullo stesso target
     const { data: exists, error: e1 } = await supabase
       .from('reports')
       .select('id')
@@ -92,7 +91,7 @@ export default function ReportButton({ targetType, targetId }: Props) {
           border: '1px solid #e5e7eb',
           borderRadius: 8,
           cursor: 'pointer',
-          background: '#fff'
+          background: '#fff',
         }}
       >
         Segnala
@@ -123,7 +122,7 @@ export default function ReportButton({ targetType, targetId }: Props) {
             }}
           >
             <h3 style={{ marginTop: 0, marginBottom: 8 }}>Segnala contenuto</h3>
-            <p style={{ marginTop: 0, opacity: .8, fontSize: 14 }}>
+            <p style={{ marginTop: 0, opacity: 0.8, fontSize: 14 }}>
               Indica il motivo della segnalazione e, se vuoi, aggiungi un commento.
             </p>
 
@@ -136,8 +135,10 @@ export default function ReportButton({ targetType, targetId }: Props) {
                   disabled={submitting}
                   style={{ padding: 8, borderRadius: 8, border: '1px solid #e5e7eb' }}
                 >
-                  {REASONS.map(r => (
-                    <option key={r.value} value={r.value}>{r.label}</option>
+                  {REASONS.map((r) => (
+                    <option key={r.value} value={r.value}>
+                      {r.label}
+                    </option>
                   ))}
                 </select>
               </label>
@@ -149,17 +150,34 @@ export default function ReportButton({ targetType, targetId }: Props) {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   disabled={submitting}
-                  style={{ padding: 8, borderRadius: 8, border: '1px solid #e5e7eb', resize: 'vertical' }}
+                  style={{
+                    padding: 8,
+                    borderRadius: 8,
+                    border: '1px solid #e5e7eb',
+                    resize: 'vertical',
+                  }}
                 />
               </label>
 
               {msg && (
-                <p style={{ margin: 0, color: msg.startsWith('Errore') ? '#b91c1c' : '#065f46' }}>
+                <p
+                  style={{
+                    margin: 0,
+                    color: msg.startsWith('Errore') ? '#b91c1c' : '#065f46',
+                  }}
+                >
                   {msg}
                 </p>
               )}
 
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 8,
+                  justifyContent: 'flex-end',
+                  marginTop: 8,
+                }}
+              >
                 <button
                   type="button"
                   onClick={() => !submitting && setOpen(false)}
@@ -196,4 +214,3 @@ export default function ReportButton({ targetType, targetId }: Props) {
     </div>
   )
 }
-TSX
