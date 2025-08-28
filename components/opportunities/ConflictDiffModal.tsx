@@ -1,12 +1,12 @@
 "use client";
 
 /**
- * Modal per la risoluzione dei conflitti di sincronizzazione.
- * Rispetta la regola react-hooks: gli hook sono chiamati prima di ogni return.
- * REPLACE FULL FILE.
+ * Modal per risolvere conflitti di sincronizzazione.
+ * FILE COMPLETO — REPLACE FULL.
+ * (Hook sempre dichiarati prima di qualsiasi return condizionale)
  */
 
-import { useState } from "react";
+import React, { useState } from "react";
 import type { Opportunity } from "@/lib/types";
 
 interface Props {
@@ -24,9 +24,10 @@ export default function ConflictDiffModal({
   local,
   onResolve,
 }: Props) {
-  // Hook SEMPRE in testa (prima di qualsiasi return condizionale)
+  // Hook SEMPRE in testa
   const [tab, setTab] = useState<"remote" | "local" | "merge">("remote");
 
+  // Early return (ora è lecito perché l'hook è già stato chiamato)
   if (!open) return null;
 
   const current =
@@ -45,9 +46,4 @@ export default function ConflictDiffModal({
         <div className="flex gap-2 mb-3">
           <button
             className={`px-3 py-1 border rounded ${
-              tab === "remote" ? "bg-neutral-100" : ""
-            }`}
-            onClick={() => setTab("remote")}
-          >
-            Remote
-          </button>
+              tab === "remote" ? "bg-neutr

@@ -1,246 +1,54 @@
-'use client'
+"use client";
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { supabaseBrowser } from '@/lib/supabaseBrowser'
+/**
+ * Pagina profilo club
+ * FILE COMPLETO — REPLACE FULL
+ */
 
-export default function ClubProfilePage() {
-  const supabase = supabaseBrowser()
-  const router = useRouter()
+import React from "react";
+import Image from "next/image";
 
-  const [userId, setUserId] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
+interface ClubProfileProps {
+  params?: { id?: string };
+}
 
-  const [clubId, setClubId] = useState<string | null>(null)
-  const [name, setName] = useState('')
-  const [bio, setBio] = useState('')
-  const [logoUrl, setLogoUrl] = useState<string | null>(null)
-  const [logoFile, setLogoFile] = useState<File | null>(null)
-  const [uploading, setUploading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [okMsg, setOkMsg] = useState<string | null>(null)
-
-  useEffect(() => {
-    const init = async () => {
-      setError(null)
-      const { data: { user }, error: uErr } = await supabase.auth.getUser()
-      if (uErr) {
-        setError(uErr.message)
-        setLoading(false)
-        return
-      }
-      if (!user) {
-        router.push('/login')
-        return
-      }
-      setUserId(user.id)
-
-      const { data: existing, error: selErr } = await supabase
-        .from('clubs')
-        .select('*')
-        .eq('owner_id', user.id)
-        .maybeSingle()
-
-      if (selErr) {
-        setError(selErr.message)
-        setLoading(false)
-        return
-      }
-
-      if (!existing) {
-        const { data: inserted, error: insErr } = await supabase
-          .from('clubs')
-          .insert({ owner_id: user.id, name: '', bio: '', logo_url: null })
-          .select('*')
-          .single()
-
-        if (insErr) {
-          setError(insErr.message)
-          setLoading(false)
-          return
-        }
-
-        setClubId(inserted.id)
-        setName(inserted.name ?? '')
-        setBio(inserted.bio ?? '')
-        setLogoUrl(inserted.logo_url)
-      } else {
-        setClubId(existing.id)
-        setName(existing.name ?? '')
-        setBio(existing.bio ?? '')
-        setLogoUrl(existing.logo_url)
-      }
-
-      setLoading(false)
-    }
-
-    init()
-  }, [supabase, router])
-
-  const onPickLogo = (file: File | null) => {
-    setLogoFile(file)
-    setOkMsg(null)
-    setError(null)
-    if (file) {
-      const blobUrl = URL.createObjectURL(file)
-      setLogoUrl(blobUrl)
-    }
-  }
-
-  const uploadLogo = async () => {
-    if (!userId || !logoFile) return
-    setUploading(true)
-    setError(null)
-    setOkMsg(null)
-    try {
-      const ext = logoFile.name.split('.').pop() || 'png'
-      const fileName = `logo-${Date.now()}.${ext}`
-      const path = `${userId}/${fileName}`
-
-      const { error: upErr } = await supabase
-        .storage
-        .from('club-logos')
-        .upload(path, logoFile, {
-          cacheControl: '3600',
-          upsert: true
-        })
-      if (upErr) throw upErr
-
-      const { data: pub } = supabase.storage.from('club-logos').getPublicUrl(path)
-      const publicUrl = pub?.publicUrl
-      if (!publicUrl) throw new Error('Impossibile ottenere la URL pubblica del logo')
-
-      if (!clubId) throw new Error('Club non inizializzato')
-      const { error: updErr } = await supabase
-        .from('clubs')
-        .update({ logo_url: publicUrl })
-        .eq('id', clubId)
-      if (updErr) throw updErr
-
-      setLogoUrl(publicUrl)
-      setOkMsg('Logo aggiornato con successo.')
-    } catch (e: any) {
-      setError(e?.message || 'Errore in upload logo')
-    } finally {
-      setUploading(false)
-    }
-  }
-
-  const saveProfile = async () => {
-    if (!clubId) return
-    setSaving(true)
-    setError(null)
-    setOkMsg(null)
-    try {
-      const { error: updErr } = await supabase
-        .from('clubs')
-        .update({ name, bio })
-        .eq('id', clubId)
-      if (updErr) throw updErr
-      setOkMsg('Profilo salvato.')
-    } catch (e: any) {
-      setError(e?.message || 'Errore nel salvataggio')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="max-w-3xl mx-auto p-6">
-        <h1 className="text-2xl font-semibold">Profilo Club</h1>
-        <p className="mt-4">Caricamento…</p>
-      </div>
-    )
-  }
+export default function ClubProfilePage({ params }: ClubProfileProps) {
+  // Qui useresti fetch/loader reale per i dati club
+  const club = {
+    id: params?.id || "123",
+    name: "ASD Club Atlético Carlentini",
+    city: "Carlentini",
+    province: "SR",
+    level: "Terza Categoria",
+    logoUrl: "/placeholder.png", // sostituire con campo reale
+    description:
+      "Club calcistico dilettantistico fondato nel 2023. Attivo sul territorio di Carlentini con settore giovanile e prima squadra.",
+  };
 
   return (
-    <div className="max-w-3xl mx-auto p-6 space-y-8">
-      <h1 className="text-2xl font-semibold">Profilo Club</h1>
-
-      {error && (
-        <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">
-          {error}
-        </div>
-      )}
-      {okMsg && (
-        <div className="rounded-md border border-green-300 bg-green-50 p-3 text-sm text-green-700">
-          {okMsg}
-        </div>
-      )}
-
-      {/* LOGO */}
-      <section className="space-y-4">
-        <h2 className="text-lg font-medium">Logo</h2>
-        <div className="flex items-center gap-4">
-          <div className="relative h-24 w-24 overflow-hidden rounded-md border bg-white">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            {logoUrl ? (
-              <img src={logoUrl} alt="Logo club" className="h-full w-full object-cover" />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-gray-400">
-                Nessun logo
-              </div>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => onPickLogo(e.target.files?.[0] ?? null)}
-            />
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={uploadLogo}
-                disabled={!logoFile || uploading}
-                className="rounded-md bg-black px-4 py-2 text-white disabled:opacity-50"
-              >
-                {uploading ? 'Carico…' : 'Carica logo'}
-              </button>
-              {logoFile && (
-                <span className="text-sm text-gray-600">File: {logoFile.name}</span>
-              )}
-            </div>
-            <p className="text-xs text-gray-500">Suggerito: PNG/JPG quadrato ≤ 2MB.</p>
-          </div>
-        </div>
-      </section>
-
-      {/* DATI CLUB */}
-      <section className="space-y-4">
-        <h2 className="text-lg font-medium">Dati</h2>
-        <div className="space-y-2">
-          <label className="block text-sm font-medium">Nome Club</label>
-          <input
-            className="w-full rounded-md border px-3 py-2"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Es. ASD Example"
+    <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="flex items-center gap-6 mb-6">
+        <div className="relative w-28 h-28">
+          <Image
+            src={club.logoUrl}
+            alt={`Logo di ${club.name}`}
+            width={112}
+            height={112}
+            className="rounded-full object-cover border"
           />
         </div>
-        <div className="space-y-2">
-          <label className="block text-sm font-medium">Bio</label>
-          <textarea
-            className="w-full rounded-md border px-3 py-2"
-            rows={5}
-            value={bio}
-            onChange={(e) => setBio(e.target.value)}
-            placeholder="Racconta qualcosa sul club…"
-          />
+        <div>
+          <h1 className="text-2xl font-bold">{club.name}</h1>
+          <p className="text-gray-600">
+            {club.city} ({club.province}) – {club.level}
+          </p>
         </div>
+      </div>
 
-        <button
-          type="button"
-          onClick={saveProfile}
-          disabled={saving}
-          className="rounded-md bg-black px-4 py-2 text-white disabled:opacity-50"
-        >
-          {saving ? 'Salvo…' : 'Salva profilo'}
-        </button>
-      </section>
+      <div className="prose max-w-none">
+        <h2>Descrizione</h2>
+        <p>{club.description}</p>
+      </div>
     </div>
-  )
+  );
 }

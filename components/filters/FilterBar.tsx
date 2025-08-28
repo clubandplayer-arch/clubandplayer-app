@@ -1,21 +1,23 @@
 "use client";
 
 /**
- * Barra filtri riutilizzabile (Opportunità / Club) con sincronizzazione URL.
- * REPLACE FULL FILE.
+ * FilterBar riutilizzabile (Opportunità / Club) con sincronizzazione querystring.
+ * FILE COMPLETO — REPLACE FULL.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { Filters } from "@/lib/schemas/filters.schema";
 import { FilterSchema } from "@/lib/schemas/filters.schema";
 
+/** Scope della pagina che usa la barra filtri */
 type Scope = "opportunities" | "clubs";
 
 interface Props {
   scope: Scope;
 }
 
+/** Serializza un oggetto filtri in query string */
 function toQueryString(obj: Partial<Filters>) {
   const sp = new URLSearchParams();
   Object.entries(obj).forEach(([k, v]) => {
@@ -31,92 +33,11 @@ export default function FilterBar({ scope }: Props) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // Stato iniziale derivato dall'URL
+  // Stato iniziale derivato dalla URL
   const initial = useMemo(() => {
     const raw = Object.fromEntries(searchParams.entries());
     const parsed = FilterSchema.safeParse(raw);
     return parsed.success
       ? parsed.data
       : FilterSchema.parse({
-          view: scope === "opportunities" ? "opps" : "clubs",
-        });
-  }, [scope, searchParams]);
-
-  // Stato controllato (subset essenziale per partire)
-  const [q, setQ] = useState<string>(initial.q ?? "");
-  const [region, setRegion] = useState<string>(initial.region ?? "");
-  const [role, setRole] = useState<string>(initial.role?.[0] ?? "");
-  const [sort, setSort] = useState<Filters["sort"]>(initial.sort ?? "recent");
-
-  // Aggiorna input se cambia l'URL esternamente (es. back/forward)
-  useEffect(() => {
-    setQ(initial.q ?? "");
-    setRegion(initial.region ?? "");
-    setRole(initial.role?.[0] ?? "");
-    setSort(initial.sort ?? "recent");
-  }, [initial.q, initial.region, initial.role, initial.sort]);
-
-  function apply() {
-    const next: Partial<Filters> = {
-      view: scope === "opportunities" ? "opps" : "clubs",
-      q: q || undefined,
-      region: region || undefined,
-      role: role ? [role] : undefined,
-      sort: sort || "recent",
-      page: 1,
-    };
-    const valid = FilterSchema.parse(next); // validazione/normalizzazione
-    const qs = toQueryString(valid);
-    router.replace(`${pathname}${qs ? `?${qs}` : ""}`);
-  }
-
-  function reset() {
-    setQ("");
-    setRegion("");
-    setRole("");
-    setSort("recent");
-    router.replace(pathname);
-  }
-
-  return (
-    <div className="sticky top-0 z-10 bg-white/80 backdrop-blur border-b border-gray-200">
-      <div className="max-w-7xl mx-auto px-4 py-3 grid gap-3 md:grid-cols-12 items-end">
-        <label className="md:col-span-4 text-sm text-gray-700">
-          <span className="block text-xs text-gray-500 mb-1">Ricerca</span>
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && apply()}
-            placeholder={
-              scope === "opportunities"
-                ? "Ruolo, club, città, tag…"
-                : "Nome club, città…"
-            }
-            className="w-full border rounded-xl px-3 py-2"
-          />
-        </label>
-
-        <label className="md:col-span-3 text-sm text-gray-700">
-          <span className="block text-xs text-gray-500 mb-1">Regione</span>
-          <input
-            value={region}
-            onChange={(e) => setRegion(e.target.value)}
-            placeholder="Sicilia, Lazio…"
-            className="w-full border rounded-xl px-3 py-2"
-          />
-        </label>
-
-        {scope === "opportunities" && (
-          <label className="md:col-span-3 text-sm text-gray-700">
-            <span className="block text-xs text-gray-500 mb-1">Ruolo</span>
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              className="w-full border rounded-xl px-3 py-2"
-            >
-              <option value="">Tutti</option>
-              <option value="GK">Portiere</option>
-              <option value="DF">Difensore</option>
-              <option value="MF">Centrocampista</option>
-              <option value="FW">Attaccante</option>
-              <option value=
+          view: scope === "oppor
