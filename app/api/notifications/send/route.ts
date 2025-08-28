@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server'
-import { Resend } from 'resend'
 import { createClient } from '@supabase/supabase-js'
-import type { Database } from '@/types/supabase' // se non ce l’hai, rimuovi il generics
 
-export const runtime = 'edge'
+export const runtime = 'edge' // va bene edge: usiamo solo fetch
 
 export async function POST(req: Request) {
   try {
@@ -28,12 +26,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
     }
 
-    const supabase = createClient<Database>(
+    const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     )
 
-    // Inserisce la notifica per l'utente (passa RLS perché la chiamata deve essere autenticata come l’utente stesso; in caso contrario usa un Service Role in un route server "node")
+    // Inserisce la notifica (passerà le RLS solo se la richiesta è autenticata come l’utente)
     const { error } = await supabase
       .from('notifications')
       .insert({ user_id: userId, type, message, read: false })
@@ -42,23 +40,30 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    // Email opzionale via Resend
+    // Email opzionale via Resend REST API (niente SDK)
     if (sendEmail && email && process.env.RESEND_API_KEY) {
-      const resend = new Resend(process.env.RESEND_API_KEY)
       try {
-        await resend.emails.send({
-          from: 'no-reply@clubandplayer.app',
-          to: email,
-          subject: emailSubject,
-          text: message,
+        await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: 'no-reply@clubandplayer.app',
+            to: [email],
+            subject: emailSubject,
+            text: message,
+          }),
         })
+        // Ignoriamo errori dell’email nell’MVP: non blocchiamo la risposta
       } catch {
-        // ignora per MVP
+        // no-op
       }
     }
 
     return NextResponse.json({ ok: true })
-  } catch (e) {
+  } catch {
     return NextResponse.json({ error: 'Bad request' }, { status: 400 })
   }
 }
