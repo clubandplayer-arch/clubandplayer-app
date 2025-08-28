@@ -10,94 +10,101 @@ type Opportunity = {
   location: string | null
   contract_type: 'full-time' | 'part-time' | 'trial' | null
   description: string | null
-  club_id: string | null
+  club_id: string
 }
 
-export default function EditOpportunityPage() {
-  const params = useParams<{ id: string }>()
+export default function ClubEditOpportunityPage() {
+  const { id } = useParams<{ id: string }>()
   const router = useRouter()
   const supabase = supabaseBrowser()
 
   const [loading, setLoading] = useState(true)
+  const [me, setMe] = useState<{ id: string } | null>(null)
   const [opp, setOpp] = useState<Opportunity | null>(null)
 
+  // form fields
   const [title, setTitle] = useState('')
   const [location, setLocation] = useState('')
   const [contractType, setContractType] = useState<'full-time' | 'part-time' | 'trial' | ''>('')
   const [description, setDescription] = useState('')
 
   useEffect(() => {
-    const init = async () => {
+    const load = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
-        alert('Devi essere loggato come club')
+        alert('Devi essere loggato')
         router.push('/login')
         return
       }
+      setMe({ id: user.id })
 
+      // carica annuncio
       const { data, error } = await supabase
         .from('opportunities')
-        .select('id,title,location,contract_type,description,club_id')
-        .eq('id', params.id)
+        .select('*')
+        .eq('id', id)
         .maybeSingle()
 
-      if (error || !data) {
+      if (error) {
         console.error(error)
+        alert('Errore nel caricamento')
+        router.push('/opportunities')
+        return
+      }
+      if (!data) {
         alert('Annuncio non trovato')
         router.push('/opportunities')
         return
       }
 
-      // Associa al mio club se manca
-      const { data: myClub } = await supabase
-        .from('clubs')
-        .select('id')
-        .eq('owner_id', user.id)
-        .maybeSingle()
-
-      if (!data.club_id && myClub?.id) {
-        await supabase.from('opportunities').update({ club_id: myClub.id }).eq('id', data.id)
-        data.club_id = myClub.id
-      }
-
-      setOpp(data)
+      setOpp(data as Opportunity)
       setTitle(data.title ?? '')
       setLocation(data.location ?? '')
       setContractType((data.contract_type as any) ?? '')
       setDescription(data.description ?? '')
       setLoading(false)
     }
-    init()
+    load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.id, router])
+  }, [id, router])
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!opp) return
+    setLoading(true)
 
-    const { data: { user } } = await supabase.auth.getUser()
-    let myClubId: string | null = null
-    if (user) {
-      const { data: myClub } = await supabase
-        .from('clubs')
-        .select('id')
-        .eq('owner_id', user.id)
-        .maybeSingle()
-      myClubId = myClub?.id ?? null
-    }
-
-    const payload: Record<string, any> = {
+    const updates = {
       title: title.trim() || null,
       location: location.trim() || null,
-      contract_type: contractType || null,
+      contract_type: (contractType || null) as Opportunity['contract_type'],
       description: description.trim() || null,
-      ...(myClubId ? { club_id: myClubId } : {})
+      updated_at: new Date().toISOString(),
     }
 
-    const { error } = await supabase.from('opportunities').update(payload).eq('id', opp.id)
+    const { error } = await supabase
+      .from('opportunities')
+      .update(updates)
+      .eq('id', opp.id)
+
+    setLoading(false)
+
     if (error) {
       console.error(error)
       alert('Errore nel salvataggio')
+      return
+    }
+    router.push('/opportunities')
+  }
+
+  const handleDelete = async () => {
+    if (!opp) return
+    if (!confirm('Eliminare definitivamente questo annuncio?')) return
+    setLoading(true)
+    const { error } = await supabase.from('opportunities').delete().eq('id', opp.id)
+    setLoading(false)
+    if (error) {
+      console.error(error)
+      alert('Errore nella cancellazione')
       return
     }
     router.push('/opportunities')
@@ -111,11 +118,12 @@ export default function EditOpportunityPage() {
 
       <form onSubmit={handleSave} className="space-y-4">
         <div>
-          <label className="block text-sm mb-1">Titolo</label>
+          <label className="block text-sm mb-1">Titolo *</label>
           <input
             className="w-full border rounded px-3 py-2"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
+            required
           />
         </div>
 
@@ -151,16 +159,24 @@ export default function EditOpportunityPage() {
           />
         </div>
 
-        <div className="pt-2">
+        <div className="flex items-center gap-3 pt-2">
           <button
             type="submit"
-            className="px-4 py-2 rounded bg-black text-white"
+            disabled={loading}
+            className="px-4 py-2 rounded bg-black text-white disabled:opacity-50"
           >
             Salva
+          </button>
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={loading}
+            className="px-4 py-2 rounded border border-red-500 text-red-600 disabled:opacity-50"
+          >
+            Elimina
           </button>
         </div>
       </form>
     </div>
   )
 }
-
