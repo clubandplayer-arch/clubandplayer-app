@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabaseBrowser'
+import { supabaseBrowser } from '@/lib/supabaseBrowser'
 
 type Opportunity = {
   id: string
@@ -16,8 +16,9 @@ type Opportunity = {
 export default function EditOpportunityPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
+  const supabase = supabaseBrowser()
+
   const [loading, setLoading] = useState(true)
-  const [me, setMe] = useState<{ id: string } | null>(null)
   const [opp, setOpp] = useState<Opportunity | null>(null)
 
   const [title, setTitle] = useState('')
@@ -33,9 +34,7 @@ export default function EditOpportunityPage() {
         router.push('/login')
         return
       }
-      setMe({ id: user.id })
 
-      // Carica l’annuncio
       const { data, error } = await supabase
         .from('opportunities')
         .select('id,title,location,contract_type,description,club_id')
@@ -49,14 +48,13 @@ export default function EditOpportunityPage() {
         return
       }
 
-      // Verifica che l’utente loggato sia owner del club associato
+      // Associa al mio club se manca
       const { data: myClub } = await supabase
         .from('clubs')
         .select('id')
         .eq('owner_id', user.id)
         .maybeSingle()
 
-      // Se l’annuncio non ha club_id, lo agganciamo automaticamente al mio club
       if (!data.club_id && myClub?.id) {
         await supabase.from('opportunities').update({ club_id: myClub.id }).eq('id', data.id)
         data.club_id = myClub.id
@@ -70,13 +68,13 @@ export default function EditOpportunityPage() {
       setLoading(false)
     }
     init()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id, router])
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!opp) return
 
-    // ribadisco l’aggancio al mio club ad ogni salvataggio
     const { data: { user } } = await supabase.auth.getUser()
     let myClubId: string | null = null
     if (user) {
@@ -93,7 +91,7 @@ export default function EditOpportunityPage() {
       location: location.trim() || null,
       contract_type: contractType || null,
       description: description.trim() || null,
-      ...(myClubId ? { club_id: myClubId } : {}) // <- SYNC CON CLUB
+      ...(myClubId ? { club_id: myClubId } : {})
     }
 
     const { error } = await supabase.from('opportunities').update(payload).eq('id', opp.id)
@@ -165,3 +163,4 @@ export default function EditOpportunityPage() {
     </div>
   )
 }
+
