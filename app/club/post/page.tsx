@@ -1,173 +1,208 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
 
 type Club = {
   id: string
   name: string | null
-  logo_url: string | null
-  bio: string | null
   owner_id: string
 }
 
-export default function ClubCreateOpportunityPage() {
+type Opportunity = {
+  id: string
+  title: string | null
+  location: string | null
+  contract_type: string | null
+  published?: boolean | null
+  created_at?: string | null
+  club_id: string
+}
+
+const PAGE_SIZE = 10
+
+export default function ClubMyPostsPage() {
   const router = useRouter()
-  const supabase = supabaseBrowser()
-
+  const supabase = useMemo(() => supabaseBrowser(), [])
   const [loading, setLoading] = useState(true)
-  const [userId, setUserId] = useState<string | null>(null)
   const [club, setClub] = useState<Club | null>(null)
-
-  // campi form
-  const [title, setTitle] = useState('')
-  const [location, setLocation] = useState('')
-  const [contractType, setContractType] = useState<'full-time' | 'part-time' | 'trial' | ''>('')
-  const [description, setDescription] = useState('')
+  const [rows, setRows] = useState<Opportunity[]>([])
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
 
   useEffect(() => {
-    const init = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
+    const load = async () => {
+      setLoading(true)
 
+      const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
-        alert('Devi essere loggato come club')
         router.push('/login')
         return
       }
 
-      setUserId(user.id)
-
-      const { data: myClub, error } = await supabase
+      // 1) Trova il club dell’utente (owner_id = user.id)
+      const { data: clubRow, error: clubErr } = await supabase
         .from('clubs')
-        .select('id,name,logo_url,bio,owner_id')
+        .select('*')
         .eq('owner_id', user.id)
         .maybeSingle()
 
+      if (clubErr) {
+        console.error(clubErr)
+        alert('Errore nel caricamento del profilo club')
+        setLoading(false)
+        return
+      }
+
+      if (!clubRow) {
+        // Non ha ancora creato il profilo club
+        setClub(null)
+        setRows([])
+        setTotal(0)
+        setLoading(false)
+        return
+      }
+      setClub(clubRow as Club)
+
+      // 2) Carica le opportunità del club, con count per paginazione
+      const from = (page - 1) * PAGE_SIZE
+      const to = from + PAGE_SIZE - 1
+
+      const { data, error, count } = await supabase
+        .from('opportunities')
+        .select('*', { count: 'exact' })
+        .eq('club_id', clubRow.id)
+        .order('created_at', { ascending: false })
+        .range(from, to)
+
       if (error) {
         console.error(error)
-        alert('Errore nel caricare il tuo club')
-        router.push('/')
+        alert('Errore nel caricamento degli annunci')
+        setLoading(false)
         return
       }
 
-      if (!myClub) {
-        alert('Non hai ancora creato il profilo club.')
-        router.push('/club/profile')
-        return
-      }
-
-      setClub(myClub)
+      setRows((data ?? []) as Opportunity[])
+      setTotal(count ?? 0)
       setLoading(false)
     }
 
-    void init()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router])
+    load()
+  }, [page, supabase, router])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
-    if (!userId || !club) {
-      alert('Profilo non pronto')
-      return
-    }
-    if (!title.trim()) {
-      alert('Titolo obbligatorio')
-      return
-    }
-
+  const handleDelete = async (id: string) => {
+    if (!confirm('Eliminare definitivamente questo annuncio?')) return
     setLoading(true)
-
-    const payload = {
-      title: title.trim(),
-      location: location.trim() || null,
-      contract_type: contractType || null,
-      description: description.trim() || null,
-      club_id: club.id,   // SYNC con il club
-      created_by: userId, // se presente nello schema
-    }
-
-    const { error } = await supabase.from('opportunities').insert(payload)
+    const { error } = await supabase.from('opportunities').delete().eq('id', id)
     setLoading(false)
-
     if (error) {
       console.error(error)
-      alert('Errore nel salvataggio annuncio')
+      alert('Errore nella cancellazione')
       return
     }
-
-    router.push('/opportunities')
+    // ricarica la pagina corrente
+    setPage((p) => p) // trigger del useEffect
   }
 
-  if (loading) return <div className="p-6">Caricamento…</div>
+  if (loading) {
+    return <div className="p-6">Caricamento…</div>
+  }
+
+  if (!club) {
+    return (
+      <div className="max-w-3xl mx-auto p-6 space-y-4">
+        <h1 className="text-2xl font-semibold">Le mie opportunità</h1>
+        <p className="text-sm text-gray-600">
+          Non hai ancora creato il profilo club. Vai a{' '}
+          <a className="underline" href="/club/profile">Profilo Club</a> per completare la configurazione.
+        </p>
+      </div>
+    )
+  }
 
   return (
-    <div className="max-w-2xl mx-auto p-6 space-y-4">
-      <h1 className="text-2xl font-semibold">Pubblica opportunità</h1>
-
-      <div className="text-sm text-gray-600">
-        Pubblicherai come: <span className="font-medium">{club?.name ?? 'Il tuo club'}</span>
+    <div className="max-w-5xl mx-auto p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Le mie opportunità</h1>
+        <button
+          className="px-4 py-2 rounded bg-black text-white"
+          onClick={() => router.push('/post')}
+        >
+          + Nuova opportunità
+        </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm mb-1">Titolo *</label>
-          <input
-            className="w-full border rounded px-3 py-2"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Es. Attaccante 2007"
-            required
-          />
+      {rows.length === 0 ? (
+        <div className="border rounded p-6 text-sm text-gray-600">
+          Nessun annuncio pubblicato. Crea il tuo primo annuncio con “Nuova opportunità”.
         </div>
-
-        <div>
-          <label className="block text-sm mb-1">Località</label>
-          <input
-            className="w-full border rounded px-3 py-2"
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            placeholder="Es. Milano"
-          />
+      ) : (
+        <div className="border rounded overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="text-left px-4 py-3">Titolo</th>
+                <th className="text-left px-4 py-3">Località</th>
+                <th className="text-left px-4 py-3">Tipo</th>
+                <th className="text-left px-4 py-3">Pubblicato</th>
+                <th className="text-right px-4 py-3">Azioni</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id} className="border-t">
+                  <td className="px-4 py-3">{r.title || '—'}</td>
+                  <td className="px-4 py-3">{r.location || '—'}</td>
+                  <td className="px-4 py-3">{r.contract_type || '—'}</td>
+                  <td className="px-4 py-3">{r.published ? 'Sì' : 'No'}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2 justify-end">
+                      <button
+                        className="px-3 py-1 rounded border"
+                        onClick={() => router.push(`/club/post/edit/${r.id}`)}
+                      >
+                        Modifica
+                      </button>
+                      <button
+                        className="px-3 py-1 rounded border border-red-500 text-red-600"
+                        onClick={() => handleDelete(r.id)}
+                      >
+                        Elimina
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
+      )}
 
-        <div>
-          <label className="block text-sm mb-1">Tipo contratto</label>
-          <select
-            className="w-full border rounded px-3 py-2"
-            value={contractType}
-            onChange={(e) => setContractType(e.target.value as 'full-time' | 'part-time' | 'trial' | '')}
-          >
-            <option value="">—</option>
-            <option value="full-time">Full-time</option>
-            <option value="part-time">Part-time</option>
-            <option value="trial">Prova</option>
-          </select>
+      {/* Paginazione */}
+      <div className="flex items-center justify-between">
+        <div className="text-sm text-gray-600">
+          Totale: {total} • Pagina {page}/{totalPages}
         </div>
-
-        <div>
-          <label className="block text-sm mb-1">Descrizione</label>
-          <textarea
-            className="w-full border rounded px-3 py-2 min-h-[120px]"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Dettagli sull’opportunità…"
-          />
-        </div>
-
-        <div className="pt-2">
+        <div className="flex items-center gap-2">
           <button
-            type="submit"
-            disabled={loading}
-            className="px-4 py-2 rounded bg-black text-white disabled:opacity-50"
+            className="px-3 py-1 rounded border disabled:opacity-50"
+            disabled={page <= 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
           >
-            Pubblica
+            ← Indietro
+          </button>
+          <button
+            className="px-3 py-1 rounded border disabled:opacity-50"
+            disabled={page >= totalPages}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          >
+            Avanti →
           </button>
         </div>
-      </form>
+      </div>
     </div>
   )
 }
