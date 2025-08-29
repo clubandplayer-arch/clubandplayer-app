@@ -1,22 +1,158 @@
 // app/(dashboard)/clubs/page.tsx
-'use client';
+"use client";
 
-import FilterBar from '@/components/filters/FilterBar';
-import SavedViewsBar from '@/components/views/SavedViewsBar';
+import React, { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import FilterBar from "@/components/filters/FilterBar";
+import SavedViewsBar from "@/components/views/SavedViewsBar";
+import { useToast } from "@/components/common/ToastProvider";
+
+const PAGE_SIZE = 20;
+
+type Club = {
+  id: string;
+  name: string;
+  country?: string;
+  city?: string;
+  role?: string;
+  // campi extra tollerati
+  [key: string]: unknown;
+};
 
 export default function ClubsPage() {
+  const sp = useSearchParams();
+  const { error: toastError } = useToast();
+
+  const q = sp.get("q") ?? "";
+  const role = sp.get("role") ?? "";
+  const country = sp.get("country") ?? "";
+  const page = useMemo(() => {
+    const raw = sp.get("page");
+    const n = raw ? parseInt(raw, 10) : 1;
+    return Number.isFinite(n) && n > 0 ? n : 1;
+  }, [sp]);
+
+  const [items, setItems] = useState<Club[]>([]);
+  const [total, setTotal] = useState<number | null>(null);
+  const [hasMore, setHasMore] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(false);
+
+  // Build querystring per fetch
+  const query = useMemo(() => {
+    const p = new URLSearchParams();
+    p.set("page", String(page));
+    p.set("limit", String(PAGE_SIZE));
+    if (q) p.set("q", q);
+    if (role) p.set("role", role);
+    if (country) p.set("country", country);
+    return p.toString();
+  }, [page, q, role, country]);
+
+  useEffect(() => {
+    const ac = new AbortController();
+    const run = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/clubs?${query}`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          cache: "no-store",
+          signal: ac.signal,
+        });
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        const data = (await res.json()) as {
+          items?: Club[];
+          total?: number;
+          hasMore?: boolean;
+        };
+        const list = data.items ?? [];
+        setItems(list);
+        setTotal(typeof data.total === "number" ? data.total : null);
+        setHasMore(
+          typeof data.hasMore === "boolean"
+            ? data.hasMore
+            : list.length === PAGE_SIZE
+        );
+      } catch (err) {
+        // Mostra errore ma non bloccare la UI
+        toastError("", {
+          title: "Errore caricamento clubs",
+          description: err instanceof Error ? err.message : "Unknown error",
+          duration: 2500,
+        });
+        setItems([]);
+        setTotal(null);
+        setHasMore(false);
+      } finally {
+        setLoading(false);
+      }
+    };
+    run();
+    return () => ac.abort();
+  }, [query, toastError]);
+
   return (
     <main className="min-h-screen">
-      {/* Barra con le viste salvate, richiede la prop scope */}
+      {/* Viste salvate + Filtri (sincronizzati con URL) */}
       <SavedViewsBar scope="clubs" />
-
-      {/* FilterBar richiede la prop scope */}
       <FilterBar scope="clubs" />
 
       <div className="max-w-7xl mx-auto px-4 py-6">
-        {/* Qui il contenuto della pagina Clubs */}
         <h1 className="text-2xl font-semibold mb-4">Clubs</h1>
-        {/* TODO: lista/ griglia club */}
+
+        {/* Stato: loading */}
+        {loading && (
+          <div className="space-y-2">
+            <div className="h-10 w-full rounded-md border animate-pulse" />
+            <div className="h-10 w-full rounded-md border animate-pulse" />
+            <div className="h-10 w-full rounded-md border animate-pulse" />
+          </div>
+        )}
+
+        {/* Stato: lista */}
+        {!loading && items.length > 0 && (
+          <div className="overflow-x-auto border rounded-lg">
+            <table className="min-w-full text-sm">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="text-left px-3 py-2 font-medium">Nome</th>
+                  <th className="text-left px-3 py-2 font-medium">Città</th>
+                  <th className="text-left px-3 py-2 font-medium">Paese</th>
+                  <th className="text-left px-3 py-2 font-medium">Ruolo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((c) => (
+                  <tr key={c.id} className="border-t">
+                    <td className="px-3 py-2">{c.name ?? "—"}</td>
+                    <td className="px-3 py-2">{c.city ?? "—"}</td>
+                    <td className="px-3 py-2">{c.country ?? "—"}</td>
+                    <td className="px-3 py-2">{c.role ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Stato: vuoto */}
+        {!loading && items.length === 0 && (
+          <p className="text-sm text-slate-500">Nessun club trovato.</p>
+        )}
+
+        {/* Footer info */}
+        <div className="mt-4 text-xs text-slate-500">
+          {total !== null ? (
+            <span>
+              Totale: <b>{total}</b> • Pagina: <b>{page}</b>{" "}
+              {hasMore ? "(altri disponibili)" : "(fine lista)"}
+            </span>
+          ) : (
+            <span>Pagina: <b>{page}</b></span>
+          )}
+        </div>
       </div>
     </main>
   );
