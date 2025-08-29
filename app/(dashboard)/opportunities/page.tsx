@@ -1,13 +1,12 @@
 // app/(dashboard)/opportunities/page.tsx
 import { headers } from "next/headers";
-import OpportunitiesClient, {
-  Opportunity,
-} from "./Client";
+import OpportunitiesClient, { Opportunity } from "./Client";
 
 const PAGE_SIZE = 20;
 
 async function getInitialData() {
-  const h = headers();
+  // headers() in questo setup restituisce Promise<ReadonlyHeaders>
+  const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host");
   const proto = h.get("x-forwarded-proto") ?? "https";
   const base = host ? `${proto}://${host}` : "";
