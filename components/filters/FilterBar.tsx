@@ -12,10 +12,11 @@ type Props = {
 /**
  * FilterBar avanzata
  * - campi: q, role, country, status, city, from, to
- * - sync bidirezionale con l'URL (?q=...&role=...&country=...&status=...&city=...&from=YYYY-MM-DD&to=YYYY-MM-DD)
- * - mantiene eventuali altri parametri presenti nella query
- * - pulsante Reset
- * - hotkey: ⌘/Ctrl + K per focus su "Cerca"
+ * - sync bidirezionale con l'URL
+ * - Reset (azzera anche ?page=)
+ * - hotkeys:
+ *    • ⌘/Ctrl + K → focus su "Cerca"
+ *    • / (slash) → focus su "Cerca" se non stai già scrivendo in un campo
  */
 export default function FilterBar({ scope }: Props) {
   const router = useRouter();
@@ -92,22 +93,38 @@ export default function FilterBar({ scope }: Props) {
         city: null,
         from: null,
         to: null,
-        page: null, // opzionale: resetta anche pagina
+        page: null,
       }),
       { scroll: false }
     );
   }, [buildUrl, router]);
 
-  // Hotkey ⌘/Ctrl + K → focus su "Cerca"
+  // Hotkeys: ⌘/Ctrl+K e '/' (slash)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const active = document.activeElement as HTMLElement | null;
+      const isTypingTarget =
+        active &&
+        (active.tagName === "INPUT" ||
+          active.tagName === "TEXTAREA" ||
+          active.isContentEditable);
+
+      // ⌘/Ctrl + K
       const isMac = navigator.platform.toUpperCase().includes("MAC");
-      const meta = isMac ? e.metaKey : e.ctrlKey;
-      if (meta && (e.key === "k" || e.key === "K")) {
+      const metaPressed = isMac ? e.metaKey : e.ctrlKey;
+      if (metaPressed && (e.key === "k" || e.key === "K")) {
+        e.preventDefault();
+        searchRef.current?.focus();
+        return;
+      }
+
+      // '/' → solo se non stai già digitando in un campo
+      if (!isTypingTarget && e.key === "/") {
         e.preventDefault();
         searchRef.current?.focus();
       }
     };
+
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
@@ -155,7 +172,7 @@ export default function FilterBar({ scope }: Props) {
         <div className="flex flex-col gap-3">
           <div className="text-sm text-slate-600">
             Filtri — <span className="font-semibold">{scope}</span>
-            <span className="ml-3 text-xs text-slate-400">(⌘/Ctrl + K per cercare)</span>
+            <span className="ml-3 text-xs text-slate-400">(⌘/Ctrl+K o / per cercare)</span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-center">
@@ -165,6 +182,7 @@ export default function FilterBar({ scope }: Props) {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Cerca (es. Roma, club, ruolo, …)"
+              title="Scorciatoie: ⌘/Ctrl+K o /"
               className="md:col-span-2 rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-300"
             />
 
