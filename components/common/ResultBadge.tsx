@@ -20,7 +20,7 @@ type Props = {
  * - Se `total` è noto → mostra il numero esatto.
  * - Se non è noto:
  *   - se hasMore=true → "≥ page*pageSize"
- *   - altrimenti → "~ items correnti" (stima minima)
+ *   - altrimenti → "~ page*pageSize" (stima minima)
  */
 export default function ResultBadge({
   total,
@@ -31,7 +31,6 @@ export default function ResultBadge({
 }: Props) {
   const text = useMemo(() => {
     if (typeof total === "number") return `${label}: ${total}`;
-    const min = (page - 1) * pageSize + 1; // primo item della pagina
     const maxSoFar = page * pageSize;
     return hasMore ? `${label}: ≥ ${maxSoFar}` : `${label}: ~ ${maxSoFar}`;
   }, [total, page, pageSize, hasMore, label]);

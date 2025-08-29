@@ -4,11 +4,53 @@ import React, { useMemo, useCallback } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 type Props = {
-  /** Chiavi filtro da mostrare come badge */
+  /** Elenco di chiavi filtro da mostrare come badge se presenti nell'URL */
   keys?: string[];
-  /** Se true, resetta anche ?page= quando cambi i filtri */
+  /** Se true, resetta anche ?page= quando rimuovi un filtro o fai "Pulisci tutto" */
   resetPageOnChange?: boolean;
 };
+
+// ---- Label e mappe di visualizzazione (stabili, fuori dal componente) ----
+const LABELS: Record<string, string> = {
+  q: "Cerca",
+  role: "Ruolo",
+  country: "Paese",
+  status: "Stato",
+  city: "Città",
+  from: "Dal",
+  to: "Al",
+};
+
+const COUNTRY_MAP: Record<string, string> = {
+  IT: "Italia",
+  ES: "Spagna",
+  FR: "Francia",
+  DE: "Germania",
+  UK: "Regno Unito",
+  US: "USA",
+};
+
+const ROLE_MAP: Record<string, string> = {
+  player: "Giocatore",
+  coach: "Allenatore",
+  staff: "Staff",
+  scout: "Scout",
+  director: "Direttore",
+};
+
+const STATUS_MAP: Record<string, string> = {
+  open: "Aperto",
+  closed: "Chiuso",
+  draft: "Bozza",
+  archived: "Archiviato",
+};
+
+function displayValue(key: string, value: string) {
+  if (key === "country") return COUNTRY_MAP[value] ?? value;
+  if (key === "role") return ROLE_MAP[value] ?? value;
+  if (key === "status") return STATUS_MAP[value] ?? value;
+  return value;
+}
 
 export default function ActiveFiltersBar({
   keys = ["q", "role", "country", "status", "city", "from", "to"],
@@ -18,56 +60,12 @@ export default function ActiveFiltersBar({
   const pathname = usePathname();
   const sp = useSearchParams();
 
-  const labels: Record<string, string> = {
-    q: "Cerca",
-    role: "Ruolo",
-    country: "Paese",
-    status: "Stato",
-    city: "Città",
-    from: "Dal",
-    to: "Al",
-  };
-
-  const displayValue = (k: string, v: string) => {
-    if (k === "country") {
-      const map: Record<string, string> = {
-        IT: "Italia",
-        ES: "Spagna",
-        FR: "Francia",
-        DE: "Germania",
-        UK: "Regno Unito",
-        US: "USA",
-      };
-      return map[v] ?? v;
-    }
-    if (k === "role") {
-      const map: Record<string, string> = {
-        player: "Giocatore",
-        coach: "Allenatore",
-        staff: "Staff",
-        scout: "Scout",
-        director: "Direttore",
-      };
-      return map[v] ?? v;
-    }
-    if (k === "status") {
-      const map: Record<string, string> = {
-        open: "Aperto",
-        closed: "Chiuso",
-        draft: "Bozza",
-        archived: "Archiviato",
-      };
-      return map[v] ?? v;
-    }
-    return v;
-  };
-
   const active = useMemo(() => {
     const out: Array<{ key: string; label: string; value: string }> = [];
     for (const k of keys) {
       const raw = sp.get(k);
       if (raw && raw.trim() !== "") {
-        out.push({ key: k, label: labels[k] ?? k, value: displayValue(k, raw) });
+        out.push({ key: k, label: LABELS[k] ?? k, value: displayValue(k, raw) });
       }
     }
     return out;
@@ -84,15 +82,15 @@ export default function ActiveFiltersBar({
     [pathname, router, sp, resetPageOnChange]
   );
 
-  const clearOne = useCallback((k: string) => {
-    replaceParams((p) => p.delete(k));
-  }, [replaceParams]);
+  const clearOne = useCallback(
+    (k: string) => replaceParams((p) => p.delete(k)),
+    [replaceParams]
+  );
 
-  const clearAll = useCallback(() => {
-    replaceParams((p) => {
-      for (const k of keys) p.delete(k);
-    });
-  }, [keys, replaceParams]);
+  const clearAll = useCallback(
+    () => replaceParams((p) => { for (const k of keys) p.delete(k); }),
+    [keys, replaceParams]
+  );
 
   if (active.length === 0) return null;
 
