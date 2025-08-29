@@ -18,7 +18,23 @@ type SavedView = {
   createdAt: number;
 };
 
+const MAX_SAVED = 20;
 const storageKey = (scope: Scope) => `saved_views:${scope}`;
+
+/** Upsert: se esiste già una vista con gli stessi params, la aggiorna e la porta in cima */
+function upsertView(list: SavedView[], next: SavedView): SavedView[] {
+  const idx = list.findIndex((v) => v.params === next.params);
+  if (idx >= 0) {
+    const updated: SavedView = {
+      ...list[idx],
+      name: next.name,
+      createdAt: Date.now(),
+    };
+    const without = list.filter((_, i) => i !== idx);
+    return [updated, ...without].slice(0, MAX_SAVED);
+  }
+  return [next, ...list].slice(0, MAX_SAVED);
+}
 
 export default function SavedViewsBar({ scope }: Props) {
   const router = useRouter();
@@ -45,7 +61,7 @@ export default function SavedViewsBar({ scope }: Props) {
       try {
         localStorage.setItem(storageKey(scope), JSON.stringify(next));
       } catch {
-        // ignore
+        // ignore storage errors
       }
     },
     [scope]
@@ -67,7 +83,7 @@ export default function SavedViewsBar({ scope }: Props) {
       params: currentParams,
       createdAt: Date.now(),
     };
-    const next = [view, ...list].slice(0, 20); // tieni al massimo 20 viste
+    const next = upsertView(list, view);
     persist(next);
     setName("");
     success("", {
