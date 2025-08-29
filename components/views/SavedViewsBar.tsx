@@ -1,11 +1,6 @@
 "use client";
 
-/**
- * Barra minimale per gestire "Saved Views".
- */
-
-import { useEffect, useMemo, useState } from "react";
-// IMPORT RELATIVO al provider
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useToast } from "../common/ToastProvider";
 
 type View = {
@@ -16,13 +11,13 @@ type View = {
 
 export default function SavedViewsBar() {
   const toastApi = useToast() as any;
-  const notify = (opts: any) => {
+
+  const notify = useCallback((opts: any) => {
     if (toastApi?.toast) return toastApi.toast(opts);
     if (toastApi?.show) return toastApi.show(opts);
     if (toastApi?.add) return toastApi.add(opts);
     if (typeof toastApi === "function") return toastApi(opts);
-    return void 0;
-  };
+  }, [toastApi]);
 
   const [views, setViews] = useState<View[]>([]);
   const [loading, setLoading] = useState(false);
@@ -42,7 +37,7 @@ export default function SavedViewsBar() {
     return () => {
       isMounted = false;
     };
-  }, []); // notify non è critico qui
+  }, [notify]);
 
   const hasViews = useMemo(() => views.length > 0, [views]);
 

@@ -1,27 +1,19 @@
 "use client";
 
-/**
- * Client SSE che si collega a /api/events/stream
- * e mostra toast sugli eventi principali (con adapter per provider).
- */
-
-import { useEffect } from "react";
-// IMPORT RELATIVO perché siamo nella stessa cartella di ToastProvider
+import { useEffect, useCallback } from "react";
 import { useToast } from "./ToastProvider";
 
-type Props = {
-  silent?: boolean;
-};
+type Props = { silent?: boolean };
 
 export default function LiveEventsClient({ silent }: Props) {
   const toastApi = useToast() as any;
-  const notify = (opts: any) => {
+
+  const notify = useCallback((opts: any) => {
     if (toastApi?.toast) return toastApi.toast(opts);
     if (toastApi?.show) return toastApi.show(opts);
     if (toastApi?.add) return toastApi.add(opts);
     if (typeof toastApi === "function") return toastApi(opts);
-    return void 0;
-  };
+  }, [toastApi]);
 
   useEffect(() => {
     const es = new EventSource("/api/events/stream");
@@ -61,13 +53,10 @@ export default function LiveEventsClient({ silent }: Props) {
           variant: "destructive",
         });
       }
-      // EventSource fa retry da solo
     };
 
-    return () => {
-      es.close();
-    };
-  }, [silent]); // notify è stabile abbastanza per il nostro caso
+    return () => es.close();
+  }, [silent, notify]);
 
   return null;
 }
