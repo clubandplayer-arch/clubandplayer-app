@@ -10,15 +10,22 @@ import { useToast } from "@/components/common/ToastProvider";
 import PrevNextPager from "@/components/common/PrevNextPager";
 import ResultBadge from "@/components/common/ResultBadge";
 
+// ✅ helpers unificati (16C)
+import {
+  buildQuery,
+  parseFilters,
+  parsePage,
+} from "@/lib/search/params";
+
 const PAGE_SIZE = 20;
 
 type Club = {
   id: string;
   name: string;
-  country?: string;
+  country?: "IT" | "ES" | "FR" | "DE" | "UK" | "US" | string;
   city?: string;
-  role?: string;
-  status?: string;
+  role?: string; // compat con colonna esistente (non filtrata dall'API)
+  status?: "active" | "inactive" | "archived" | string;
   [key: string]: unknown;
 };
 
@@ -26,38 +33,20 @@ export default function ClubsPage() {
   const sp = useSearchParams();
   const { error: toastError } = useToast();
 
-  const q = sp.get("q") ?? "";
-  const role = sp.get("role") ?? "";
-  const country = sp.get("country") ?? "";
-  const status = sp.get("status") ?? "";
-  const city = sp.get("city") ?? "";
-  const from = sp.get("from") ?? "";
-  const to = sp.get("to") ?? "";
-
-  const page = useMemo(() => {
-    const raw = sp.get("page");
-    const n = raw ? parseInt(raw, 10) : 1;
-    return Number.isFinite(n) && n > 0 ? n : 1;
-  }, [sp]);
+  // ✅ page + filtri centralizzati
+  const page = useMemo(() => parsePage(sp), [sp]);
+  const filters = useMemo(() => parseFilters(sp), [sp]);
 
   const [items, setItems] = useState<Club[]>([]);
   const [total, setTotal] = useState<number | null>(null);
   const [hasMore, setHasMore] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
 
-  const query = useMemo(() => {
-    const p = new URLSearchParams();
-    p.set("page", String(page));
-    p.set("limit", String(PAGE_SIZE));
-    if (q) p.set("q", q);
-    if (role) p.set("role", role);
-    if (country) p.set("country", country);
-    if (status) p.set("status", status);
-    if (city) p.set("city", city);
-    if (from) p.set("from", from);
-    if (to) p.set("to", to);
-    return p.toString();
-  }, [page, q, role, country, status, city, from, to]);
+  // ✅ query string coerente in tutta l'app
+  const query = useMemo(
+    () => buildQuery(filters, page, PAGE_SIZE),
+    [filters, page]
+  );
 
   useEffect(() => {
     const ac = new AbortController();
@@ -80,9 +69,7 @@ export default function ClubsPage() {
         setItems(list);
         setTotal(typeof data.total === "number" ? data.total : null);
         setHasMore(
-          typeof data.hasMore === "boolean"
-            ? data.hasMore
-            : list.length === PAGE_SIZE
+          typeof data.hasMore === "boolean" ? data.hasMore : list.length === PAGE_SIZE
         );
       } catch (err) {
         toastError("", {
@@ -137,7 +124,7 @@ export default function ClubsPage() {
                     <td className="px-3 py-2">{c.city ?? "—"}</td>
                     <td className="px-3 py-2">{c.country ?? "—"}</td>
                     <td className="px-3 py-2">{c.role ?? "—"}</td>
-                    <td className="px-3 py-2">{(c as any).status ?? "—"}</td>
+                    <td className="px-3 py-2">{c.status ?? "—"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -150,7 +137,13 @@ export default function ClubsPage() {
         )}
 
         <div className="mt-4 flex items-center justify-between gap-3">
-          <ResultBadge total={total} page={page} pageSize={PAGE_SIZE} hasMore={hasMore} label="Clubs" />
+          <ResultBadge
+            total={total}
+            page={page}
+            pageSize={PAGE_SIZE}
+            hasMore={hasMore}
+            label="Clubs"
+          />
           <PrevNextPager currentPage={page} hasMore={hasMore} label="Clubs" />
         </div>
       </div>
