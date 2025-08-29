@@ -3,9 +3,16 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const id = params.id;
-  // TODO: eliminare iscrizione da DB
-  return NextResponse.json({ ok: true, subscribed: false, id });
+  const { id } = await context.params;
+
+  // qui rimuoveresti la sottoscrizione alla view `id`
+  // ... codice reale ...
+
+  return NextResponse.json({
+    ok: true,
+    subscribed: false,
+    id,
+  });
 }
