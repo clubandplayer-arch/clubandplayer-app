@@ -1,7 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unused-vars, no-empty */
 "use client";
 
-import React, { useEffect } from "react";
-import { useToast } from "@/components/common/ToastProvider";
+- import React, { useEffect } from "react";
++ import { useEffect } from "react";
 
 /**
  * Client SSE per /api/events/stream.

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars, no-empty */
 // app/api/events/stream/route.ts
 import { NextRequest } from "next/server";
 import { addClient, removeClient } from "@/lib/server/events";

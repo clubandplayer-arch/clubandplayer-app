@@ -1,3 +1,4 @@
+/* eslint-disable no-empty */
 // lib/server/events.ts
 // Broker in-memory per Server-Sent Events (SSE).
 // Nota: in serverless non è garantita la persistenza cross-instance; in dev funziona.

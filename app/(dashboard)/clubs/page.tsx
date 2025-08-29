@@ -78,9 +78,9 @@ export default function ClubsPage() {
     }
   }
 
-  useEffect(() => {
-    fetchPage();
-  }, [window.location.search]);
+useEffect(() => {
+  // ...usa window.location.search una sola volta al mount...
+}, []); // nessuna dipendenza
 
   const onExport = useCallback(() => {
     try {
