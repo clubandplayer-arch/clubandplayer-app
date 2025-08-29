@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/components/common/ToastProvider";
+import CopyButton from "@/components/common/CopyButton";
 
 type Scope = "clubs" | "opportunities";
 
@@ -21,15 +22,11 @@ type SavedView = {
 const MAX_SAVED = 20;
 const storageKey = (scope: Scope) => `saved_views:${scope}`;
 
-/** Upsert: se esiste già una vista con gli stessi params, la aggiorna e la porta in cima */
+/** Upsert: se esiste già una vista con gli stessi params, aggiorna nome e la porta in cima */
 function upsertView(list: SavedView[], next: SavedView): SavedView[] {
   const idx = list.findIndex((v) => v.params === next.params);
   if (idx >= 0) {
-    const updated: SavedView = {
-      ...list[idx],
-      name: next.name,
-      createdAt: Date.now(),
-    };
+    const updated: SavedView = { ...list[idx], name: next.name, createdAt: Date.now() };
     const without = list.filter((_, i) => i !== idx);
     return [updated, ...without].slice(0, MAX_SAVED);
   }
@@ -74,6 +71,16 @@ export default function SavedViewsBar({ scope }: Props) {
     const qs = params.toString();
     return qs ? `?${qs}` : "";
   }, [sp, scope]);
+
+  // Link assoluto per share (gestisce base URL lato client)
+  const currentShareUrl = useMemo(() => {
+    if (!pathname) return "";
+    const base =
+      typeof window !== "undefined"
+        ? `${window.location.protocol}//${window.location.host}`
+        : "";
+    return `${base}${pathname}${currentParams}`;
+  }, [pathname, currentParams]);
 
   const onSaveCurrent = useCallback(() => {
     const displayName = name.trim() || new Date().toLocaleString();
@@ -123,7 +130,7 @@ export default function SavedViewsBar({ scope }: Props) {
           Saved views — <span className="font-semibold">{scope}</span>
         </span>
 
-        {/* Input + Salva */}
+        {/* Input + Salva + Copia link vista corrente */}
         <div className="flex items-center gap-2 flex-1">
           <input
             value={name}
@@ -138,35 +145,61 @@ export default function SavedViewsBar({ scope }: Props) {
           >
             Salva vista
           </button>
+
+          {/* Copia link dei FILTRI CORRENTI */}
+          <CopyButton
+            text={currentShareUrl}
+            label="Copia link"
+            title="Copia link ai filtri correnti"
+            onCopied={() =>
+              info("", { title: "Link copiato", description: "Filtri correnti" })
+            }
+          />
         </div>
 
         {/* Elenco viste salvate */}
         {list.length > 0 ? (
           <div className="w-full md:w-auto flex flex-wrap gap-2">
-            {list.map((v) => (
-              <div
-                key={v.id}
-                className="flex items-center gap-1 rounded-full border px-2 py-1 text-sm"
-                title={v.params}
-              >
-                <button
-                  type="button"
-                  onClick={() => onApply(v)}
-                  className="px-2 py-0.5 hover:underline"
+            {list.map((v) => {
+              const shareUrl =
+                typeof window !== "undefined"
+                  ? `${window.location.protocol}//${window.location.host}${pathname}${v.params}`
+                  : v.params; // SSR-safe (non usato)
+              return (
+                <div
+                  key={v.id}
+                  className="flex items-center gap-1 rounded-full border px-2 py-1 text-sm"
+                  title={v.params}
                 >
-                  {v.name}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onDelete(v.id)}
-                  className="rounded-md px-2 py-0.5 text-slate-500 hover:bg-slate-100"
-                  aria-label={`Elimina ${v.name}`}
-                  title="Elimina"
-                >
-                  ×
-                </button>
-              </div>
-            ))}
+                  <button
+                    type="button"
+                    onClick={() => onApply(v)}
+                    className="px-2 py-0.5 hover:underline"
+                  >
+                    {v.name}
+                  </button>
+                  {/* Copia link della vista SALVATA */}
+                  <CopyButton
+                    text={shareUrl}
+                    label="Copia"
+                    title={`Copia link “${v.name}”`}
+                    className="px-2 py-0.5"
+                    onCopied={() =>
+                      info("", { title: "Link copiato", description: v.name })
+                    }
+                  />
+                  <button
+                    type="button"
+                    onClick={() => onDelete(v.id)}
+                    className="rounded-md px-2 py-0.5 text-slate-500 hover:bg-slate-100"
+                    aria-label={`Elimina ${v.name}`}
+                    title="Elimina"
+                  >
+                    ×
+                  </button>
+                </div>
+              );
+            })}
           </div>
         ) : (
           <div className="text-sm text-slate-400">Nessuna vista salvata</div>
