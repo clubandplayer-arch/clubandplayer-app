@@ -2,11 +2,11 @@
 
 /**
  * Barra minimale per gestire "Saved Views".
- * Mostra un pulsante "Salva vista" e una lista mock delle viste salvate.
  */
 
 import { useEffect, useMemo, useState } from "react";
-import { useToast } from "@/components/common/ToastProvider";
+// IMPORT RELATIVO al provider
+import { useToast } from "../common/ToastProvider";
 
 type View = {
   id: string;
@@ -15,11 +15,18 @@ type View = {
 };
 
 export default function SavedViewsBar() {
-  const { toast } = useToast();
+  const toastApi = useToast() as any;
+  const notify = (opts: any) => {
+    if (toastApi?.toast) return toastApi.toast(opts);
+    if (toastApi?.show) return toastApi.show(opts);
+    if (toastApi?.add) return toastApi.add(opts);
+    if (typeof toastApi === "function") return toastApi(opts);
+    return void 0;
+  };
+
   const [views, setViews] = useState<View[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // carica le viste mock dal nostro endpoint
   useEffect(() => {
     let isMounted = true;
     setLoading(true);
@@ -29,16 +36,13 @@ export default function SavedViewsBar() {
         if (isMounted) setViews(data);
       })
       .catch(() => {
-        toast({
-          title: "Errore caricamento viste",
-          variant: "destructive",
-        });
+        notify({ title: "Errore caricamento viste", variant: "destructive" });
       })
       .finally(() => setLoading(false));
     return () => {
       isMounted = false;
     };
-  }, [toast]);
+  }, []); // notify non è critico qui
 
   const hasViews = useMemo(() => views.length > 0, [views]);
 
@@ -52,15 +56,12 @@ export default function SavedViewsBar() {
       }),
     });
     if (!res.ok) {
-      toast({
-        title: "Errore salvataggio",
-        variant: "destructive",
-      });
+      notify({ title: "Errore salvataggio", variant: "destructive" });
       return;
     }
     const saved = (await res.json()) as View;
     setViews((prev) => [saved, ...prev]);
-    toast({ title: "Vista salvata", description: saved.name });
+    notify({ title: "Vista salvata", description: saved.name });
   };
 
   return (

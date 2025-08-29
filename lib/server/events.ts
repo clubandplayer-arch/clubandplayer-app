@@ -1,7 +1,5 @@
 /**
- * Helper minimale per broadcast di eventi in-process.
- * Qui implementiamo un semplice pub/sub basato su Set di writer.
- * In futuro si può sostituire con Redis, Pusher, ecc.
+ * Event bus minimale con export 'broadcast' compatibile col webhook.
  */
 
 type Writer = (event: string, data: unknown) => void;
@@ -26,3 +24,8 @@ class EventBus {
 }
 
 export const eventsBus = new EventBus();
+
+/** helper compatibile con `import { broadcast } from "@/lib/server/events"` */
+export function broadcast(event: string, data: unknown): void {
+  eventsBus.publish(event, data);
+}

@@ -1,13 +1,12 @@
 "use client";
 
 /**
- * Page Clubs — versione minimale.
- * Mantiene l'uso di FilterBar e SavedViewsBar.
- * Sistemato l'useEffect per evitare il warning su window.location.search.
+ * Page Clubs — versione minimale (fix import Toast, scope richiesto su FilterBar).
  */
 
 import React, { useEffect, useState, useCallback } from "react";
-import { useToast } from "@/components/common/ToastProvider";
+// IMPORT RELATIVO per evitare problemi di risoluzione su Linux/CI
+import { useToast } from "../../../components/common/ToastProvider";
 import FilterBar from "@/components/filters/FilterBar";
 import SavedViewsBar from "@/components/views/SavedViewsBar";
 
@@ -17,7 +16,16 @@ type Club = {
 };
 
 export default function ClubsPage() {
-  const { toast } = useToast();
+  // Adapter sul provider del toast (firma variabile tra i progetti)
+  const toastApi = useToast() as any;
+  const notify = (opts: any) => {
+    if (toastApi?.toast) return toastApi.toast(opts);
+    if (toastApi?.show) return toastApi.show(opts);
+    if (toastApi?.add) return toastApi.add(opts);
+    if (typeof toastApi === "function") return toastApi(opts);
+    return void 0;
+  };
+
   const [clubs, setClubs] = useState<Club[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -31,13 +39,12 @@ export default function ClubsPage() {
       ];
       setClubs(data);
     } catch {
-      toast({ title: "Errore caricamento clubs", variant: "destructive" });
+      notify({ title: "Errore caricamento clubs", variant: "destructive" });
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [notify]);
 
-  // No deps su window.location.search per evitare warning
   useEffect(() => {
     loadClubs();
   }, [loadClubs]);
@@ -45,7 +52,8 @@ export default function ClubsPage() {
   return (
     <div className="p-4">
       <SavedViewsBar />
-      <FilterBar />
+      {/* scope è obbligatorio nel tipo di FilterBar */}
+      <FilterBar scope="clubs" />
 
       {loading && <div className="mt-4 text-sm text-gray-500">Caricamento…</div>}
 
