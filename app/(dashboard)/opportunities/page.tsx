@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import FilterBar from "../../../components/filters/FilterBar";
-import { useToast } from "../../../components/common/ToastProvider";
+import FilterBar from "@/components/filters/FilterBar";
+import { useToast } from "@/components/common/ToastProvider";
 
 type ID = string;
 type SyncStatus =
@@ -134,7 +134,11 @@ export default function OpportunitiesPage() {
       document.body.appendChild(a);
       a.click();
       a.remove();
-      show({ title: "Export pronto", description: "CSV in download.", tone: "success" });
+      show({
+        title: "Export pronto",
+        description: "CSV in download.",
+        tone: "success",
+      });
     } catch (e: any) {
       show({
         title: "Export fallito",

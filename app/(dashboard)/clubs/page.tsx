@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import { useToast } from "../../../components/common/ToastProvider";
-import FilterBar from "../../../components/filters/FilterBar";
+import { useToast } from "@/components/common/ToastProvider";
+import FilterBar from "@/components/filters/FilterBar";
 
 type SyncStatus =
   | "synced"
@@ -97,7 +97,11 @@ export default function ClubsPage() {
       document.body.appendChild(a);
       a.click();
       a.remove();
-      show({ title: "Export pronto", description: "CSV in download.", tone: "success" });
+      show({
+        title: "Export pronto",
+        description: "CSV in download.",
+        tone: "success",
+      });
     } catch (e: any) {
       show({
         title: "Export fallito",
