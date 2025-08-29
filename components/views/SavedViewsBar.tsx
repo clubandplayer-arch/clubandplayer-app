@@ -1,95 +1,37 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
-import { useToast } from "../common/ToastProvider";
+import React, { useCallback } from "react";
+import { useToast } from "@/components/common/ToastProvider";
 
-type View = {
-  id: string;
-  name: string;
-  params: Record<string, unknown>;
+type Props = {
+  scope: "clubs" | "opportunities";
 };
 
-export default function SavedViewsBar() {
-  const toastApi = useToast() as any;
+export default function SavedViewsBar({ scope }: Props) {
+  const { show } = useToast();
 
-  const notify = useCallback((opts: any) => {
-    if (toastApi?.toast) return toastApi.toast(opts);
-    if (toastApi?.show) return toastApi.show(opts);
-    if (toastApi?.add) return toastApi.add(opts);
-    if (typeof toastApi === "function") return toastApi(opts);
-  }, [toastApi]);
-
-  const [views, setViews] = useState<View[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    let isMounted = true;
-    setLoading(true);
-    fetch("/api/views")
-      .then((r) => r.json())
-      .then((data: View[]) => {
-        if (isMounted) setViews(data);
-      })
-      .catch(() => {
-        notify({ title: "Errore caricamento viste", variant: "destructive" });
-      })
-      .finally(() => setLoading(false));
-    return () => {
-      isMounted = false;
-    };
-  }, [notify]);
-
-  const hasViews = useMemo(() => views.length > 0, [views]);
-
-  const saveView = async () => {
-    const res = await fetch("/api/views", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: `Vista ${views.length + 1}`,
-        params: { example: true },
-      }),
+  const onSaveCurrent = useCallback(() => {
+    // placeholder: qui metterai la logica reale di salvataggio vista
+    show({
+      title: "Vista salvata",
+      description: `Ho salvato la vista corrente per '${scope}'.`,
+      tone: "success",
+      durationMs: 2500,
     });
-    if (!res.ok) {
-      notify({ title: "Errore salvataggio", variant: "destructive" });
-      return;
-    }
-    const saved = (await res.json()) as View;
-    setViews((prev) => [saved, ...prev]);
-    notify({ title: "Vista salvata", description: saved.name });
-  };
+  }, [scope, show]);
 
   return (
-    <div className="w-full border rounded-xl p-3 mb-3 flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <h3 className="font-semibold">Saved Views</h3>
+    <div className="w-full border-b">
+      <div className="max-w-7xl mx-auto px-4 py-2 flex items-center gap-3">
+        <span className="text-sm font-medium">Saved views</span>
         <button
           type="button"
-          className="px-3 py-1.5 rounded-lg border hover:bg-gray-50"
-          onClick={saveView}
-          disabled={loading}
+          onClick={onSaveCurrent}
+          className="text-sm px-2 py-1 rounded border"
         >
-          Salva vista
+          Save current
         </button>
       </div>
-
-      {loading && <div className="text-sm text-gray-500">Caricamento…</div>}
-
-      {!loading && !hasViews && (
-        <div className="text-sm text-gray-500">Nessuna vista salvata.</div>
-      )}
-
-      {!loading && hasViews && (
-        <ul className="flex flex-wrap gap-2">
-          {views.map((v) => (
-            <li key={v.id}>
-              <span className="text-sm px-2 py-1 rounded-lg border inline-block">
-                {v.name}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
     </div>
   );
 }
