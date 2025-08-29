@@ -1,6 +1,7 @@
 // app/(dashboard)/opportunities/page.tsx
 import FilterBar from "@/components/filters/FilterBar";
 import SavedViewsBar from "@/components/views/SavedViewsBar";
+import PrevNextPager from "@/components/common/PrevNextPager";
 import { headers } from "next/headers";
 import OpportunitiesClient, { Opportunity } from "./Client";
 
@@ -23,7 +24,7 @@ function parsePage(sp: PageProps["searchParams"]) {
 }
 
 async function getInitialData(sp: PageProps["searchParams"]) {
-  // headers() in questo setup restituisce Promise<ReadonlyHeaders>
+  // headers() restituisce Promise<ReadonlyHeaders> in questo setup
   const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host");
   const proto = h.get("x-forwarded-proto") ?? "https";
@@ -46,16 +47,12 @@ async function getInitialData(sp: PageProps["searchParams"]) {
   const res = await fetch(url, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
-    cache: "no-store", // dati freschi
+    cache: "no-store",
   });
 
   if (!res.ok) {
-    // fallback: nessun dato iniziale, il client farà fetch
-    return {
-      items: [] as Opportunity[],
-      hasMore: true,
-      page,
-    };
+    // fallback: render minimo, il client potrà rifare fetch se previsto
+    return { items: [] as Opportunity[], hasMore: true, page };
   }
 
   const data = (await res.json()) as {
@@ -78,17 +75,23 @@ export default async function Page({ searchParams }: PageProps) {
 
   return (
     <div className="flex flex-col">
-      {/* Filtri (client) con sync URL */}
       <FilterBar scope="opportunities" />
-      {/* Viste salvate (client) snapshot dei filtri correnti */}
       <SavedViewsBar scope="opportunities" />
 
-      {/* Lista/opportunità */}
       <OpportunitiesClient
         initialItems={items}
         initialHasMore={hasMore}
         initialPage={page}
       />
+
+      {/* Pager Prev/Next che sincronizza ?page= nell'URL */}
+      <div className="max-w-7xl mx-auto w-full px-4">
+        <PrevNextPager
+          currentPage={page}
+          hasMore={hasMore}
+          label="Opportunità"
+        />
+      </div>
     </div>
   );
 }

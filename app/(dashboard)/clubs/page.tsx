@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import FilterBar from "@/components/filters/FilterBar";
 import SavedViewsBar from "@/components/views/SavedViewsBar";
 import { useToast } from "@/components/common/ToastProvider";
+import PrevNextPager from "@/components/common/PrevNextPager";
 
 const PAGE_SIZE = 20;
 
@@ -15,7 +16,6 @@ type Club = {
   country?: string;
   city?: string;
   role?: string;
-  // campi extra tollerati
   [key: string]: unknown;
 };
 
@@ -37,7 +37,6 @@ export default function ClubsPage() {
   const [hasMore, setHasMore] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
 
-  // Build querystring per fetch
   const query = useMemo(() => {
     const p = new URLSearchParams();
     p.set("page", String(page));
@@ -59,9 +58,7 @@ export default function ClubsPage() {
           cache: "no-store",
           signal: ac.signal,
         });
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}`);
-        }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = (await res.json()) as {
           items?: Club[];
           total?: number;
@@ -76,7 +73,6 @@ export default function ClubsPage() {
             : list.length === PAGE_SIZE
         );
       } catch (err) {
-        // Mostra errore ma non bloccare la UI
         toastError("", {
           title: "Errore caricamento clubs",
           description: err instanceof Error ? err.message : "Unknown error",
@@ -95,14 +91,12 @@ export default function ClubsPage() {
 
   return (
     <main className="min-h-screen">
-      {/* Viste salvate + Filtri (sincronizzati con URL) */}
       <SavedViewsBar scope="clubs" />
       <FilterBar scope="clubs" />
 
       <div className="max-w-7xl mx-auto px-4 py-6">
         <h1 className="text-2xl font-semibold mb-4">Clubs</h1>
 
-        {/* Stato: loading */}
         {loading && (
           <div className="space-y-2">
             <div className="h-10 w-full rounded-md border animate-pulse" />
@@ -111,7 +105,6 @@ export default function ClubsPage() {
           </div>
         )}
 
-        {/* Stato: lista */}
         {!loading && items.length > 0 && (
           <div className="overflow-x-auto border rounded-lg">
             <table className="min-w-full text-sm">
@@ -137,21 +130,19 @@ export default function ClubsPage() {
           </div>
         )}
 
-        {/* Stato: vuoto */}
         {!loading && items.length === 0 && (
           <p className="text-sm text-slate-500">Nessun club trovato.</p>
         )}
 
-        {/* Footer info */}
+        {/* Pager Prev/Next che aggiorna ?page= nell'URL */}
+        <PrevNextPager currentPage={page} hasMore={hasMore} label="Clubs" />
+
         <div className="mt-4 text-xs text-slate-500">
           {total !== null ? (
             <span>
-              Totale: <b>{total}</b> • Pagina: <b>{page}</b>{" "}
-              {hasMore ? "(altri disponibili)" : "(fine lista)"}
+              Totale: <b>{total}</b>
             </span>
-          ) : (
-            <span>Pagina: <b>{page}</b></span>
-          )}
+          ) : null}
         </div>
       </div>
     </main>
