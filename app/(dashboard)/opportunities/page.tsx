@@ -34,6 +34,10 @@ async function getInitialData(sp: PageProps["searchParams"]) {
   const q = pickString(sp, "q");
   const role = pickString(sp, "role");
   const country = pickString(sp, "country");
+  const status = pickString(sp, "status");
+  const city = pickString(sp, "city");
+  const from = pickString(sp, "from");
+  const to = pickString(sp, "to");
 
   const params = new URLSearchParams();
   params.set("page", String(page));
@@ -41,6 +45,10 @@ async function getInitialData(sp: PageProps["searchParams"]) {
   if (q) params.set("q", q);
   if (role) params.set("role", role);
   if (country) params.set("country", country);
+  if (status) params.set("status", status);
+  if (city) params.set("city", city);
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
 
   const url = `${base}/api/opportunities?${params.toString()}`;
 
@@ -51,7 +59,7 @@ async function getInitialData(sp: PageProps["searchParams"]) {
   });
 
   if (!res.ok) {
-    // fallback: render minimo, il client potrà rifare fetch se previsto
+    // fallback: render minimo
     return { items: [] as Opportunity[], hasMore: true, page };
   }
 
@@ -84,13 +92,8 @@ export default async function Page({ searchParams }: PageProps) {
         initialPage={page}
       />
 
-      {/* Pager Prev/Next che sincronizza ?page= nell'URL */}
       <div className="max-w-7xl mx-auto w-full px-4">
-        <PrevNextPager
-          currentPage={page}
-          hasMore={hasMore}
-          label="Opportunità"
-        />
+        <PrevNextPager currentPage={page} hasMore={hasMore} label="Opportunità" />
       </div>
     </div>
   );

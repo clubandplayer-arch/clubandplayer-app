@@ -16,6 +16,7 @@ type Club = {
   country?: string;
   city?: string;
   role?: string;
+  status?: string;
   [key: string]: unknown;
 };
 
@@ -26,6 +27,11 @@ export default function ClubsPage() {
   const q = sp.get("q") ?? "";
   const role = sp.get("role") ?? "";
   const country = sp.get("country") ?? "";
+  const status = sp.get("status") ?? "";
+  const city = sp.get("city") ?? "";
+  const from = sp.get("from") ?? "";
+  const to = sp.get("to") ?? "";
+
   const page = useMemo(() => {
     const raw = sp.get("page");
     const n = raw ? parseInt(raw, 10) : 1;
@@ -44,8 +50,12 @@ export default function ClubsPage() {
     if (q) p.set("q", q);
     if (role) p.set("role", role);
     if (country) p.set("country", country);
+    if (status) p.set("status", status);
+    if (city) p.set("city", city);
+    if (from) p.set("from", from);
+    if (to) p.set("to", to);
     return p.toString();
-  }, [page, q, role, country]);
+  }, [page, q, role, country, status, city, from, to]);
 
   useEffect(() => {
     const ac = new AbortController();
@@ -114,6 +124,7 @@ export default function ClubsPage() {
                   <th className="text-left px-3 py-2 font-medium">Città</th>
                   <th className="text-left px-3 py-2 font-medium">Paese</th>
                   <th className="text-left px-3 py-2 font-medium">Ruolo</th>
+                  <th className="text-left px-3 py-2 font-medium">Stato</th>
                 </tr>
               </thead>
               <tbody>
@@ -123,6 +134,7 @@ export default function ClubsPage() {
                     <td className="px-3 py-2">{c.city ?? "—"}</td>
                     <td className="px-3 py-2">{c.country ?? "—"}</td>
                     <td className="px-3 py-2">{c.role ?? "—"}</td>
+                    <td className="px-3 py-2">{(c as any).status ?? "—"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -134,15 +146,10 @@ export default function ClubsPage() {
           <p className="text-sm text-slate-500">Nessun club trovato.</p>
         )}
 
-        {/* Pager Prev/Next che aggiorna ?page= nell'URL */}
         <PrevNextPager currentPage={page} hasMore={hasMore} label="Clubs" />
 
         <div className="mt-4 text-xs text-slate-500">
-          {total !== null ? (
-            <span>
-              Totale: <b>{total}</b>
-            </span>
-          ) : null}
+          {total !== null ? <span>Totale: <b>{total}</b></span> : null}
         </div>
       </div>
     </main>

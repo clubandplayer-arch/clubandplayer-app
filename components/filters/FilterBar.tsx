@@ -10,9 +10,9 @@ type Props = {
 };
 
 /**
- * FilterBar
- * - campi: q (ricerca), role, country
- * - sync bidirezionale con l'URL (?q=roma&role=coach&country=IT)
+ * FilterBar avanzata
+ * - campi: q, role, country, status, city, from, to
+ * - sync bidirezionale con l'URL (?q=...&role=...&country=...&status=...&city=...&from=YYYY-MM-DD&to=YYYY-MM-DD)
  * - mantiene eventuali altri parametri presenti nella query
  * - pulsante Reset
  */
@@ -25,6 +25,10 @@ export default function FilterBar({ scope }: Props) {
   const [q, setQ] = useState<string>(() => searchParams.get("q") ?? "");
   const [role, setRole] = useState<string>(() => searchParams.get("role") ?? "");
   const [country, setCountry] = useState<string>(() => searchParams.get("country") ?? "");
+  const [status, setStatus] = useState<string>(() => searchParams.get("status") ?? "");
+  const [city, setCity] = useState<string>(() => searchParams.get("city") ?? "");
+  const [from, setFrom] = useState<string>(() => searchParams.get("from") ?? "");
+  const [to, setTo] = useState<string>(() => searchParams.get("to") ?? "");
 
   // Helper: costruisce nuova URL preservando gli altri parametri
   const buildUrl = useCallback(
@@ -48,16 +52,23 @@ export default function FilterBar({ scope }: Props) {
   // Debounced update URL quando cambiano i filtri
   useEffect(() => {
     const t = setTimeout(() => {
-      router.replace(buildUrl({ q, role, country }), { scroll: false });
+      router.replace(
+        buildUrl({ q, role, country, status, city, from, to }),
+        { scroll: false }
+      );
     }, 300);
     return () => clearTimeout(t);
-  }, [q, role, country, buildUrl, router]);
+  }, [q, role, country, status, city, from, to, buildUrl, router]);
 
   // Se cambia l'URL dall'esterno, riallinea lo stato locale
   useEffect(() => {
     setQ(searchParams.get("q") ?? "");
     setRole(searchParams.get("role") ?? "");
     setCountry(searchParams.get("country") ?? "");
+    setStatus(searchParams.get("status") ?? "");
+    setCity(searchParams.get("city") ?? "");
+    setFrom(searchParams.get("from") ?? "");
+    setTo(searchParams.get("to") ?? "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams.toString()]);
 
@@ -65,7 +76,23 @@ export default function FilterBar({ scope }: Props) {
     setQ("");
     setRole("");
     setCountry("");
-    router.replace(buildUrl({ q: null, role: null, country: null }), { scroll: false });
+    setStatus("");
+    setCity("");
+    setFrom("");
+    setTo("");
+    router.replace(
+      buildUrl({
+        q: null,
+        role: null,
+        country: null,
+        status: null,
+        city: null,
+        from: null,
+        to: null,
+        page: null, // opzionale: resetta anche pagina
+      }),
+      { scroll: false }
+    );
   }, [buildUrl, router]);
 
   // Opzioni UI
@@ -94,20 +121,31 @@ export default function FilterBar({ scope }: Props) {
     []
   );
 
+  const statuses = useMemo(
+    () => [
+      { code: "", name: "Tutti gli stati" },
+      { code: "open", name: "Aperto" },
+      { code: "closed", name: "Chiuso" },
+      { code: "draft", name: "Bozza" },
+      { code: "archived", name: "Archiviato" },
+    ],
+    []
+  );
+
   return (
     <section className="w-full border-b bg-white/50 backdrop-blur supports-[backdrop-filter]:bg-white/60">
       <div className="max-w-7xl mx-auto px-4 py-3">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center">
-          <div className="text-sm text-slate-600 md:mr-2 shrink-0">
+        <div className="flex flex-col gap-3">
+          <div className="text-sm text-slate-600">
             Filtri — <span className="font-semibold">{scope}</span>
           </div>
 
-          <div className="flex flex-1 gap-3 items-center">
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-center">
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Cerca (es. Roma, club, ruolo, …)"
-              className="flex-1 rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-300"
+              className="md:col-span-2 rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-300"
             />
 
             <select
@@ -134,13 +172,56 @@ export default function FilterBar({ scope }: Props) {
               ))}
             </select>
 
-            <button
-              type="button"
-              onClick={onReset}
-              className="rounded-lg border px-3 py-2 text-sm hover:bg-slate-50"
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              className="rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-300"
             >
-              Reset
-            </button>
+              {statuses.map((s) => (
+                <option key={s.code} value={s.code}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+
+            <input
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              placeholder="Città"
+              className="rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-300"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-center">
+            <label className="flex items-center gap-2 text-xs text-slate-600">
+              <span>Dal</span>
+              <input
+                type="date"
+                value={from}
+                onChange={(e) => setFrom(e.target.value)}
+                className="rounded-lg border px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-slate-300"
+              />
+            </label>
+
+            <label className="flex items-center gap-2 text-xs text-slate-600">
+              <span>Al</span>
+              <input
+                type="date"
+                value={to}
+                onChange={(e) => setTo(e.target.value)}
+                className="rounded-lg border px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-slate-300"
+              />
+            </label>
+
+            <div className="md:col-span-4 flex justify-end">
+              <button
+                type="button"
+                onClick={onReset}
+                className="rounded-lg border px-3 py-2 text-sm hover:bg-slate-50"
+              >
+                Reset
+              </button>
+            </div>
           </div>
         </div>
       </div>
