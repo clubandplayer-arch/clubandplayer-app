@@ -1,29 +1,61 @@
 // app/(dashboard)/opportunities/page.tsx
+import FilterBar from "@/components/filters/FilterBar";
+import SavedViewsBar from "@/components/views/SavedViewsBar";
 import { headers } from "next/headers";
 import OpportunitiesClient, { Opportunity } from "./Client";
 
 const PAGE_SIZE = 20;
 
-async function getInitialData() {
+type PageProps = {
+  searchParams?: Record<string, string | string[] | undefined>;
+};
+
+function pickString(sp: PageProps["searchParams"], key: string) {
+  const v = sp?.[key];
+  if (Array.isArray(v)) return v[0] ?? "";
+  return (v ?? "") as string;
+}
+
+function parsePage(sp: PageProps["searchParams"]) {
+  const raw = pickString(sp, "page");
+  const n = parseInt(raw || "1", 10);
+  return Number.isFinite(n) && n > 0 ? n : 1;
+}
+
+async function getInitialData(sp: PageProps["searchParams"]) {
   // headers() in questo setup restituisce Promise<ReadonlyHeaders>
   const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host");
   const proto = h.get("x-forwarded-proto") ?? "https";
   const base = host ? `${proto}://${host}` : "";
 
-  // page=1 lato server
-  const url = `${base}/api/opportunities?page=1&limit=${PAGE_SIZE}`;
+  const page = parsePage(sp);
+  const q = pickString(sp, "q");
+  const role = pickString(sp, "role");
+  const country = pickString(sp, "country");
+
+  const params = new URLSearchParams();
+  params.set("page", String(page));
+  params.set("limit", String(PAGE_SIZE));
+  if (q) params.set("q", q);
+  if (role) params.set("role", role);
+  if (country) params.set("country", country);
+
+  const url = `${base}/api/opportunities?${params.toString()}`;
 
   const res = await fetch(url, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
-    // niente cache per dati freschi
-    cache: "no-store",
+    cache: "no-store", // dati freschi
   });
 
   if (!res.ok) {
     // fallback: nessun dato iniziale, il client farà fetch
-    return { items: [] as Opportunity[], hasMore: true };
+    return {
+      items: [] as Opportunity[],
+      hasMore: true,
+      page,
+    };
   }
 
   const data = (await res.json()) as {
@@ -32,20 +64,31 @@ async function getInitialData() {
     hasMore?: boolean;
   };
 
-  return {
-    items: data.items ?? [],
-    hasMore: data.hasMore ?? ((data.items?.length ?? 0) === PAGE_SIZE),
-  };
+  const items = data.items ?? [];
+  const hasMore =
+    typeof data.hasMore === "boolean"
+      ? data.hasMore
+      : (data.total ?? 0) > page * PAGE_SIZE || items.length === PAGE_SIZE;
+
+  return { items, hasMore, page };
 }
 
-export default async function Page() {
-  const { items, hasMore } = await getInitialData();
+export default async function Page({ searchParams }: PageProps) {
+  const { items, hasMore, page } = await getInitialData(searchParams);
 
   return (
-    <OpportunitiesClient
-      initialItems={items}
-      initialHasMore={hasMore}
-      initialPage={1}
-    />
+    <div className="flex flex-col">
+      {/* Filtri (client) con sync URL */}
+      <FilterBar scope="opportunities" />
+      {/* Viste salvate (client) snapshot dei filtri correnti */}
+      <SavedViewsBar scope="opportunities" />
+
+      {/* Lista/opportunità */}
+      <OpportunitiesClient
+        initialItems={items}
+        initialHasMore={hasMore}
+        initialPage={page}
+      />
+    </div>
   );
 }
