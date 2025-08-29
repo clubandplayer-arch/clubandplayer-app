@@ -1,63 +1,23 @@
+// app/(dashboard)/opportunities/page.tsx
 "use client";
 
-import React, { useEffect, useRef, useState, useCallback } from "react";
-import FilterBar from "@/components/filters/FilterBar";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
+import { toCSV, downloadCSV } from "@/lib/export/csv";
 import { useToast } from "@/components/common/ToastProvider";
 import SavedViewsBar from "@/components/views/SavedViewsBar";
+import FilterBar from "@/components/filters/FilterBar";
 
-type ID = string;
-type SyncStatus =
-  | "synced"
-  | "outdated"
-  | "conflict"
-  | "local_edits"
-  | "error"
-  | "never_synced";
-
-interface Opportunity {
-  id: ID;
+type Opportunity = {
+  id: string;
   title: string;
-  description?: string;
-  level?: string;
-  role?: string;
-  location?: { city?: string; province?: string; region?: string };
-  stipendRange?: { min?: number; max?: number; currency?: "EUR" | string };
-  expiresAt?: string;
-  syncStatus?: SyncStatus;
-  lastSyncAt?: string;
-  updatedAt: string;
-}
+  club?: string;
+  location?: string;
+  postedAt?: string; // ISO
+  [key: string]: any;
+};
 
-interface ApiListResponse<T> {
-  items: T[];
-  page: number;
-  pageSize: number;
-  total: number;
-  hasMore: boolean;
-}
-
-function OpportunityCard({ op }: { op: Opportunity }) {
-  return (
-    <div className="border rounded-2xl p-4 shadow-sm grid gap-2 bg-white">
-      <div className="flex items-start justify-between">
-        <div>
-          <h3 className="font-semibold text-lg">{op.title}</h3>
-          <div className="text-sm text-gray-600">
-            {op.level ? `${op.level} · ` : ""}
-            {op.role ? `${op.role} · ` : ""}
-            {op.location?.city ||
-              op.location?.province ||
-              op.location?.region ||
-              ""}
-          </div>
-        </div>
-      </div>
-      <div className="text-sm text-gray-700 line-clamp-2">
-        {op.description ?? ""}
-      </div>
-    </div>
-  );
-}
+const PAGE_SIZE = 20;
 
 export default function OpportunitiesPage() {
   const { show } = useToast();
@@ -65,133 +25,132 @@ export default function OpportunitiesPage() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
 
+  // Eventuale stato filtri (se servono parametri di query aggiungerli qui)
+  const filters = useMemo(() => ({} as Record<string, string | number | boolean>), []);
+
+  const fetchPage = useCallback(
+    async (nextPage: number) => {
+      if (loading || !hasMore) return;
+      setLoading(true);
+      try {
+        const qs = new URLSearchParams({
+          page: String(nextPage),
+          limit: String(PAGE_SIZE),
+          // ...qui puoi aggiungere filtri: es. scope, query ecc.
+        });
+
+        const res = await fetch(`/api/opportunities?${qs.toString()}`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          cache: "no-store",
+        });
+
+        if (!res.ok) {
+          throw new Error(`Fetch failed: ${res.status}`);
+        }
+
+        const data = (await res.json()) as {
+          items: Opportunity[];
+          total?: number;
+          hasMore?: boolean;
+        };
+
+        setItems((prev) => [...prev, ...(data.items || [])]);
+        setHasMore(data.hasMore ?? (data.items?.length ?? 0) === PAGE_SIZE);
+        setPage(nextPage);
+      } catch (err) {
+        console.error(err);
+        show("Errore nel caricamento delle opportunità");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [loading, hasMore, show]
+  );
+
+  // Prima pagina
   useEffect(() => {
     setItems([]);
     setPage(1);
     setHasMore(true);
-  }, []);
+    fetchPage(1);
+  }, [fetchPage, filters]);
 
-  async function fetchOpportunities(p: number) {
-    setLoading(true);
-    setError(null);
-    const params = new URLSearchParams(window.location.search);
-    params.set("page", String(p));
-    params.set("pageSize", String(25));
-
-    abortRef.current?.abort();
-    const ac = new AbortController();
-    abortRef.current = ac;
-
-    try {
-      const res = await fetch(`/api/opportunities?${params.toString()}`, {
-        signal: ac.signal,
-      });
-      if (!res.ok) throw new Error(`API /opportunities ${res.status}`);
-      const data = (await res.json()) as ApiListResponse<Opportunity>;
-      setItems((prev) => (p === 1 ? data.items : [...prev, ...data.items]));
-      setHasMore(data.hasMore);
-    } catch (e: any) {
-      if (e?.name !== "AbortError") setError(e?.message ?? "Errore");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    fetchOpportunities(page);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, window.location.search]);
-
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el) return;
-    const io = new IntersectionObserver((entries) => {
-      const entry = entries[0];
-      if (entry.isIntersecting && hasMore && !loading) setPage((p) => p + 1);
-    });
-    io.observe(el);
-    return () => io.disconnect();
-  }, [hasMore, loading]);
+  // Infinite scroll sentinel
+  const sentinelRef = useInfiniteScroll<HTMLDivElement>({
+    onIntersect: () => {
+      if (!loading && hasMore) fetchPage(page + 1);
+    },
+    disabled: !hasMore || loading,
+    rootMargin: "600px",
+  });
 
   const onExport = useCallback(() => {
     try {
-      show({
-        title: "Export avviato",
-        description: "Preparo il CSV…",
-        tone: "default",
-        durationMs: 1600,
-      });
-      const sp = new URLSearchParams(window.location.search);
-      sp.set("scope", "opportunities");
-      const url = `/api/export?${sp.toString()}`;
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      show({
-        title: "Export pronto",
-        description: "CSV in download.",
-        tone: "success",
-      });
-    } catch (e: any) {
-      show({
-        title: "Export fallito",
-        description: e?.message ?? "Errore imprevisto",
-        tone: "error",
-      });
+      if (!items.length) {
+        show("Non ci sono dati da esportare");
+        return;
+      }
+      const csv = toCSV(items);
+      downloadCSV(`opportunities_${new Date().toISOString().slice(0, 10)}.csv`, csv);
+      show("Export completato");
+    } catch (e) {
+      console.error(e);
+      show("Errore durante l'export");
     }
-  }, [show]);
+  }, [items, show]);
 
   return (
     <main className="min-h-screen">
       <FilterBar scope="opportunities" />
       <SavedViewsBar scope="opportunities" />
+
       <div className="max-w-7xl mx-auto px-4 py-6">
         <header className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-semibold">Opportunità</h1>
           <div className="flex items-center gap-2">
-            <button onClick={onExport} className="px-3 py-2 rounded-xl border">
-              Export CSV
+            <button
+              onClick={onExport}
+              className="rounded-lg border px-3 py-2 text-sm hover:bg-gray-50"
+            >
+              Esporta CSV
             </button>
           </div>
         </header>
 
-        {error && (
-          <div className="mb-4 p-3 rounded-xl bg-red-50 text-red-800 border border-red-200">
-            Errore: {error}
+        {/* Lista */}
+        <ul className="divide-y rounded-xl border bg-white">
+          {items.map((op) => (
+            <li key={op.id} className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-medium">{op.title}</div>
+                  <div className="text-sm text-gray-500">
+                    {op.club ? `${op.club} • ` : ""}
+                    {op.location ?? ""}
+                    {op.postedAt ? ` • ${new Date(op.postedAt).toLocaleDateString()}` : ""}
+                  </div>
+                </div>
+                {/* azioni riga se servono */}
+              </div>
+            </li>
+          ))}
+          {!items.length && !loading && (
+            <li className="p-8 text-center text-gray-500">Nessuna opportunità</li>
+          )}
+        </ul>
+
+        {/* Loader + Sentinel */}
+        <div className="flex justify-center py-6">
+          {loading ? <span className="text-sm text-gray-500">Carico…</span> : null}
+        </div>
+        <div ref={sentinelRef} aria-hidden />
+        {!hasMore && items.length > 0 && (
+          <div className="py-4 text-center text-sm text-gray-500">
+            Hai visto tutte le opportunità
           </div>
         )}
-
-        {!error && items.length === 0 && !loading ? (
-          <div className="mt-16 text-center text-gray-600">
-            <p className="text-lg font-medium">Nessun risultato</p>
-            <p className="text-sm">Prova a rimuovere o modificare i filtri.</p>
-          </div>
-        ) : null}
-
-        <section className="grid gap-4 md:grid-cols-2">
-          {items.map((op) => (
-            <OpportunityCard key={op.id} op={op} />
-          ))}
-        </section>
-
-        <div
-          ref={sentinelRef}
-          className="h-12 flex items-center justify-center"
-        >
-          {loading && (
-            <div className="text-gray-500 text-sm">Caricamento…</div>
-          )}
-          {!hasMore && items.length > 0 && (
-            <div className="text-gray-500 text-sm">Fine risultati</div>
-          )}
-        </div>
       </div>
     </main>
   );
