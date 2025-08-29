@@ -3,6 +3,7 @@ import FilterBar from "@/components/filters/FilterBar";
 import ActiveFiltersBar from "@/components/filters/ActiveFiltersBar";
 import SavedViewsBar from "@/components/views/SavedViewsBar";
 import PrevNextPager from "@/components/common/PrevNextPager";
+import ResultBadge from "@/components/common/ResultBadge";
 import { headers } from "next/headers";
 import OpportunitiesClient, { Opportunity } from "./Client";
 
@@ -61,7 +62,7 @@ async function getInitialData(sp: PageProps["searchParams"]) {
 
   if (!res.ok) {
     // fallback: render minimo
-    return { items: [] as Opportunity[], hasMore: true, page };
+    return { items: [] as Opportunity[], hasMore: true, page, total: null as number | null };
   }
 
   const data = (await res.json()) as {
@@ -71,16 +72,17 @@ async function getInitialData(sp: PageProps["searchParams"]) {
   };
 
   const items = data.items ?? [];
+  const total = typeof data.total === "number" ? data.total : null;
   const hasMore =
     typeof data.hasMore === "boolean"
       ? data.hasMore
-      : (data.total ?? 0) > page * PAGE_SIZE || items.length === PAGE_SIZE;
+      : (total ?? 0) > page * PAGE_SIZE || items.length === PAGE_SIZE;
 
-  return { items, hasMore, page };
+  return { items, hasMore, page, total };
 }
 
 export default async function Page({ searchParams }: PageProps) {
-  const { items, hasMore, page } = await getInitialData(searchParams);
+  const { items, hasMore, page, total } = await getInitialData(searchParams);
 
   return (
     <div className="flex flex-col">
@@ -94,7 +96,8 @@ export default async function Page({ searchParams }: PageProps) {
         initialPage={page}
       />
 
-      <div className="max-w-7xl mx-auto w-full px-4">
+      <div className="max-w-7xl mx-auto w-full px-4 flex items-center justify-between gap-3">
+        <ResultBadge total={total} page={page} pageSize={PAGE_SIZE} hasMore={hasMore} label="Opportunità" />
         <PrevNextPager currentPage={page} hasMore={hasMore} label="Opportunità" />
       </div>
     </div>

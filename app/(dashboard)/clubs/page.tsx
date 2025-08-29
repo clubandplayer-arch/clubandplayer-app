@@ -4,9 +4,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import FilterBar from "@/components/filters/FilterBar";
+import ActiveFiltersBar from "@/components/filters/ActiveFiltersBar";
 import SavedViewsBar from "@/components/views/SavedViewsBar";
 import { useToast } from "@/components/common/ToastProvider";
 import PrevNextPager from "@/components/common/PrevNextPager";
+import ResultBadge from "@/components/common/ResultBadge";
 
 const PAGE_SIZE = 20;
 
@@ -103,6 +105,7 @@ export default function ClubsPage() {
     <main className="min-h-screen">
       <SavedViewsBar scope="clubs" />
       <FilterBar scope="clubs" />
+      <ActiveFiltersBar />
 
       <div className="max-w-7xl mx-auto px-4 py-6">
         <h1 className="text-2xl font-semibold mb-4">Clubs</h1>
@@ -146,10 +149,9 @@ export default function ClubsPage() {
           <p className="text-sm text-slate-500">Nessun club trovato.</p>
         )}
 
-        <PrevNextPager currentPage={page} hasMore={hasMore} label="Clubs" />
-
-        <div className="mt-4 text-xs text-slate-500">
-          {total !== null ? <span>Totale: <b>{total}</b></span> : null}
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <ResultBadge total={total} page={page} pageSize={PAGE_SIZE} hasMore={hasMore} label="Clubs" />
+          <PrevNextPager currentPage={page} hasMore={hasMore} label="Clubs" />
         </div>
       </div>
     </main>

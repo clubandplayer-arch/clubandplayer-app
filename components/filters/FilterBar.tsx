@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useCallback, useState } from "react";
+import { useEffect, useMemo, useCallback, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 export type Scope = "clubs" | "opportunities";
@@ -15,11 +15,14 @@ type Props = {
  * - sync bidirezionale con l'URL (?q=...&role=...&country=...&status=...&city=...&from=YYYY-MM-DD&to=YYYY-MM-DD)
  * - mantiene eventuali altri parametri presenti nella query
  * - pulsante Reset
+ * - hotkey: ⌘/Ctrl + K per focus su "Cerca"
  */
 export default function FilterBar({ scope }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
+  const searchRef = useRef<HTMLInputElement | null>(null);
 
   // Stato inizializzato dalla query corrente
   const [q, setQ] = useState<string>(() => searchParams.get("q") ?? "");
@@ -95,6 +98,20 @@ export default function FilterBar({ scope }: Props) {
     );
   }, [buildUrl, router]);
 
+  // Hotkey ⌘/Ctrl + K → focus su "Cerca"
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const isMac = navigator.platform.toUpperCase().includes("MAC");
+      const meta = isMac ? e.metaKey : e.ctrlKey;
+      if (meta && (e.key === "k" || e.key === "K")) {
+        e.preventDefault();
+        searchRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   // Opzioni UI
   const countries = useMemo(
     () => [
@@ -138,10 +155,13 @@ export default function FilterBar({ scope }: Props) {
         <div className="flex flex-col gap-3">
           <div className="text-sm text-slate-600">
             Filtri — <span className="font-semibold">{scope}</span>
+            <span className="ml-3 text-xs text-slate-400">(⌘/Ctrl + K per cercare)</span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-center">
             <input
+              ref={searchRef}
+              id="filterbar-search"
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Cerca (es. Roma, club, ruolo, …)"
