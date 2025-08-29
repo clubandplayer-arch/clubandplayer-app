@@ -1,5 +1,6 @@
 // app/(dashboard)/opportunities/page.tsx
 import FilterBar from "@/components/filters/FilterBar";
+import ActiveFiltersBar from "@/components/filters/ActiveFiltersBar";
 import SavedViewsBar from "@/components/views/SavedViewsBar";
 import PrevNextPager from "@/components/common/PrevNextPager";
 import { headers } from "next/headers";
@@ -24,7 +25,7 @@ function parsePage(sp: PageProps["searchParams"]) {
 }
 
 async function getInitialData(sp: PageProps["searchParams"]) {
-  // headers() restituisce Promise<ReadonlyHeaders> in questo setup
+  // headers() restituisce Promise<ReadonlyHeaders> nel tuo setup
   const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host");
   const proto = h.get("x-forwarded-proto") ?? "https";
@@ -84,6 +85,7 @@ export default async function Page({ searchParams }: PageProps) {
   return (
     <div className="flex flex-col">
       <FilterBar scope="opportunities" />
+      <ActiveFiltersBar />
       <SavedViewsBar scope="opportunities" />
 
       <OpportunitiesClient
