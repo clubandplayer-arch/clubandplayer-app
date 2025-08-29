@@ -1,49 +1,28 @@
-/* eslint-disable no-empty */
-// lib/server/events.ts
-// Broker in-memory per Server-Sent Events (SSE).
-// Nota: in serverless non è garantita la persistenza cross-instance; in dev funziona.
-// Per produzione reale usare un message bus esterno.
+/**
+ * Helper minimale per broadcast di eventi in-process.
+ * Qui implementiamo un semplice pub/sub basato su Set di writer.
+ * In futuro si può sostituire con Redis, Pusher, ecc.
+ */
 
-const g = globalThis as any;
+type Writer = (event: string, data: unknown) => void;
 
-type Client = {
-  id: string;
-  send: (payload: string) => void;
-  close: () => void;
-};
+class EventBus {
+  private subscribers = new Set<Writer>();
 
-if (!g.__SSE_CLIENTS__) {
-  g.__SSE_CLIENTS__ = new Map<string, Client>();
-}
-
-function uid() {
-  return Math.random().toString(36).slice(2);
-}
-
-export function addClient(send: Client["send"], close: Client["close"]) {
-  const id = uid();
-  const client: Client = { id, send, close };
-  g.__SSE_CLIENTS__.set(id, client);
-  return id;
-}
-
-export function removeClient(id: string) {
-  const client: Client | undefined = g.__SSE_CLIENTS__.get(id);
-  if (client) {
-    try {
-      client.close();
-    } catch {}
-    g.__SSE_CLIENTS__.delete(id);
+  subscribe(writer: Writer): () => void {
+    this.subscribers.add(writer);
+    return () => this.subscribers.delete(writer);
   }
-}
 
-export function broadcast(event: string, data: unknown) {
-  const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
-  for (const [, c] of g.__SSE_CLIENTS__) {
-    try {
-      c.send(payload);
-    } catch {
-      g.__SSE_CLIENTS__.delete(c.id);
+  publish(event: string, data: unknown): void {
+    for (const w of this.subscribers) {
+      try {
+        w(event, data);
+      } catch {
+        // non bloccare gli altri subscriber
+      }
     }
   }
 }
+
+export const eventsBus = new EventBus();

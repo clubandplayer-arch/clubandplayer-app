@@ -1,24 +1,33 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-// app/api/views/route.ts
-import { NextRequest, NextResponse } from "next/server";
+/* eslint-disable no-console */
+/**
+ * Stub minimale per le "saved views".
+ * GET: ritorna un array (anche vuoto) di viste.
+ * POST: accetta un body JSON e ritorna quello che ha salvato (mock).
+ */
 
-export async function GET(_req: NextRequest) {
-  const views = [
-    {
-      id: "v-opps-sicilia-coach",
-      name: "Opportunità • Sicilia • Allenatori",
-      scope: "opportunities",
-      queryString: "view=opps&region=Sicilia&role=Coach&sort=recent",
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: "v-clubs-lazio-dilettanti",
-      name: "Club • Lazio • Dilettanti",
-      scope: "clubs",
-      queryString: "view=clubs&region=Lazio&level=Dilettanti",
-      createdAt: new Date().toISOString(),
-    },
-  ];
+import { NextResponse } from "next/server";
 
-  return NextResponse.json({ items: views });
+type SavedView = {
+  id: string;
+  name: string;
+  params: Record<string, unknown>;
+  createdAt: string;
+};
+
+const mockStore: SavedView[] = [];
+
+export async function GET(): Promise<NextResponse<SavedView[]>> {
+  return NextResponse.json(mockStore, { status: 200 });
+}
+
+export async function POST(request: Request): Promise<NextResponse<SavedView>> {
+  const body = (await request.json()) as Partial<SavedView>;
+  const item: SavedView = {
+    id: body.id ?? crypto.randomUUID(),
+    name: body.name ?? "Untitled",
+    params: body.params ?? {},
+    createdAt: new Date().toISOString(),
+  };
+  mockStore.push(item);
+  return NextResponse.json(item, { status: 201 });
 }

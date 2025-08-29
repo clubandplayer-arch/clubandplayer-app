@@ -1,48 +1,53 @@
-/* eslint-disable @typescript-eslint/no-unused-vars, no-empty */
-// app/api/events/stream/route.ts
-import { NextRequest } from "next/server";
-import { addClient, removeClient } from "@/lib/server/events";
+/* eslint-disable no-console */
+/**
+ * SSE endpoint minimale per notifiche lato client.
+ * Invia un ping ogni 25s e chiude correttamente sullo stop della richiesta.
+ */
 
-export const runtime = "nodejs";
+export const dynamic = "force-dynamic"; // Evita cache su Vercel/Next
+export const revalidate = 0;
 
-export async function GET(_req: NextRequest) {
-  const encoder = new TextEncoder();
+export async function GET(request: Request): Promise<Response> {
+  const { signal } = request;
 
-  const stream = new ReadableStream<Uint8Array>({
+  const stream = new ReadableStream({
     start(controller) {
-      const send = (payload: string) => controller.enqueue(encoder.encode(payload));
-      const close = () => controller.close();
+      const encoder = new TextEncoder();
 
-      const id = addClient(send, close);
-
-      // handshake + primo evento
-      send('event: hello\ndata: {"ok":true}\n\n');
-
-      // heartbeat
-      const hb = setInterval(() => {
-        send(`event: ping\ndata: ${JSON.stringify({ t: Date.now() })}\n\n`);
-      }, 15000);
-
-      const teardown = () => {
-        clearInterval(hb);
-        removeClient(id);
-        try {
-          controller.close();
-        } catch {}
+      // helper per inviare un evento SSE
+      const send = (event: string, data: unknown) => {
+        const payload =
+          `event: ${event}\n` +
+          `data: ${JSON.stringify(data)}\n\n`;
+        controller.enqueue(encoder.encode(payload));
       };
 
-      // best-effort cleanup
-      // @ts-expect-error not in types
-      controller.error = teardown;
+      // messaggio di benvenuto
+      send("ready", { ok: true });
+
+      // ping periodico per tenere aperta la connessione
+      const pingId = setInterval(() => {
+        send("ping", { t: Date.now() });
+      }, 25_000);
+
+      // chiudi se l'utente abbandona
+      signal.addEventListener("abort", () => {
+        clearInterval(pingId);
+        try {
+          controller.close();
+        } catch {
+          /* ignore */
+        }
+      });
     },
   });
 
   return new Response(stream, {
-    status: 200,
     headers: {
       "Content-Type": "text/event-stream; charset=utf-8",
       "Cache-Control": "no-cache, no-transform",
       Connection: "keep-alive",
+      // Disaccoppia da edge cache/governance intermedi
       "X-Accel-Buffering": "no",
     },
   });

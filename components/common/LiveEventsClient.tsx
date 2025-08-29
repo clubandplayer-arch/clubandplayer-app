@@ -1,51 +1,67 @@
-/* eslint-disable @typescript-eslint/no-unused-vars, no-empty */
 "use client";
 
-- import React, { useEffect } from "react";
-+ import { useEffect } from "react";
-
 /**
- * Client SSE per /api/events/stream.
- * Mostra toast su "sync.completed".
+ * Client SSE che si collega a /api/events/stream
+ * e mostra toast sugli eventi principali.
  */
-export default function LiveEventsClient() {
-  const { show } = useToast();
+
+import { useEffect } from "react";
+import { useToast } from "@/components/common/ToastProvider";
+
+type Props = {
+  /** opzionale: disabilita i toast */
+  silent?: boolean;
+};
+
+export default function LiveEventsClient({ silent }: Props) {
+  const { toast } = useToast();
 
   useEffect(() => {
     const es = new EventSource("/api/events/stream");
 
-    es.addEventListener("hello", () => {
-      // opzionale: show({ title: "Live connesso", description: "SSE attivo", tone: "success" });
+    es.addEventListener("ready", (evt) => {
+      if (!silent) {
+        toast({
+          title: "Live updates attive",
+          description: "Connessione agli eventi stabilita.",
+        });
+      }
     });
 
     es.addEventListener("ping", () => {
-      // heartbeat
+      // niente toast per i ping — sono solo keep-alive
     });
 
-    es.addEventListener("sync.completed", (e) => {
+    es.addEventListener("message", (evt) => {
       try {
-        const data = JSON.parse((e as MessageEvent).data || "{}");
-        const count = Array.isArray(data?.ids) ? data.ids.length : 0;
-        show({
-          title: "Sincronizzazione completata",
-          description: `${data?.entity ?? "n/a"} aggiornati: ${count}`,
-          tone: "success",
-        });
+        const data = JSON.parse((evt as MessageEvent).data);
+        if (!silent) {
+          toast({
+            title: "Nuovo evento",
+            description: JSON.stringify(data),
+          });
+        }
       } catch {
-        // ignore
+        /* ignore parse error */
       }
     });
 
     es.onerror = () => {
-      // opzionale: show({ title: "Live disconnesso", description: "Riconnessione…", tone: "error" });
+      if (!silent) {
+        toast({
+          title: "Connessione live interrotta",
+          description: "Riprovo automaticamente…",
+          variant: "destructive",
+        });
+      }
+      // EventSource tenta il retry automaticamente
     };
 
     return () => {
-      try {
-        es.close();
-      } catch {}
+      es.close();
     };
-  }, [show]);
+  }, [silent, toast]);
 
+  // Non rende nulla a schermo, è solo side-effect
   return null;
 }
