@@ -10,7 +10,8 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!loading && !user) {
-      router.push("/login");
+      // Usa replace per evitare che l'utente torni indietro alla pagina protetta col back
+      router.replace("/login");
     }
   }, [user, loading, router]);
 
