@@ -23,22 +23,17 @@ export default function UpdatePasswordPage() {
     let mounted = true;
 
     const init = async () => {
-      // opzionale: puoi verificare che esista una sessione temporanea
-      // In pratica, appena arrivi da link email, Supabase imposta una session valida
       const { data } = await supabase.auth.getSession();
       if (mounted) setReady(true);
-      if (!data.session) {
-        // se per qualche motivo non c'è sessione, chiedi di ripetere il flusso
-        // ma cerchiamo comunque di mostrare il form
-        setReady(true);
-      }
+      // Se per qualche motivo non c'è sessione, mostriamo comunque il form
+      if (!data.session && mounted) setReady(true);
     };
 
     init();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event) => {
+    } = supabase.auth.onAuthStateChange(() => {
       // qualsiasi cambiamento di stato: siamo pronti
       if (mounted) setReady(true);
     });
