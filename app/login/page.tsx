@@ -1,74 +1,61 @@
-'use client'
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { supabaseBrowser } from '@/lib/supabaseBrowser'
+"use client";
 
-type ProfileRow = { account_type: 'athlete' | 'club' | null }
+import { useState } from "react";
+import { supabase } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
-  const supabase = supabaseBrowser()
-  const router = useRouter()
-  const [loading, setLoading] = useState(false)
-  const [msg, setMsg] = useState('')
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Se già loggato, esci da /login
-  useEffect(() => {
-    const check = async () => {
-      const { data } = await supabase.auth.getUser()
-      const user = data.user
-      if (!user) return
-      const { data: prof } = await supabase
-        .from('profiles')
-        .select('account_type')
-        .eq('id', user.id)
-        .single<ProfileRow>()
-      if (!prof?.account_type) router.replace('/onboarding')
-      else router.replace('/opportunities')
-    }
-    void check()
-  }, [supabase, router])
-
-  const signInWithGoogle = async () => {
-    setLoading(true)
-    setMsg('')
-    try {
-      await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-          queryParams: { prompt: 'select_account' } // opzionale
-        }
-      })
-    } catch (err: unknown) {
-      // safe-narrowing dell'errore
-      if (err && typeof err === 'object' && 'message' in err) {
-        setMsg(String((err as { message?: string }).message))
-      } else {
-        setMsg('Errore login')
-      }
-      setLoading(false)
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setLoading(false);
+    if (error) {
+      setError(error.message);
+    } else {
+      router.push("/"); // redirect home
     }
   }
 
   return (
-    <main style={{display:'grid',placeItems:'center',minHeight:'70vh',padding:24}}>
-      <div style={{padding:24,border:'1px solid #e5e7eb',borderRadius:12,maxWidth:360,width:'100%'}}>
-        <h1 style={{marginBottom:12}}>Accedi</h1>
-
-        {msg && <p style={{color:'#b91c1c'}}>{msg}</p>}
-
+    <main className="min-h-screen flex items-center justify-center p-6">
+      <form
+        onSubmit={handleLogin}
+        className="max-w-sm w-full bg-white shadow rounded-lg p-6 space-y-4"
+      >
+        <h1 className="text-xl font-semibold">Login</h1>
+        {error && <p className="text-red-500 text-sm">{error}</p>}
+        <input
+          type="email"
+          placeholder="Email"
+          className="w-full border rounded px-3 py-2"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+        <input
+          type="password"
+          placeholder="Password"
+          className="w-full border rounded px-3 py-2"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+        />
         <button
-          onClick={signInWithGoogle}
+          type="submit"
           disabled={loading}
-          style={{width:'100%',padding:'10px 14px',borderRadius:8,border:'1px solid #e5e7eb',cursor:'pointer'}}
+          className="w-full bg-blue-600 text-white rounded px-3 py-2"
         >
-          {loading ? 'Attendi…' : 'Continua con Google'}
+          {loading ? "..." : "Entra"}
         </button>
-
-        <p style={{marginTop:12,fontSize:12,opacity:.7}}>
-          Procedendo accetti i Termini &amp; Privacy.
-        </p>
-      </div>
+      </form>
     </main>
-  )
+  );
 }

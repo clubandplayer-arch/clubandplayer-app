@@ -1,44 +1,18 @@
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
 export async function middleware(req: NextRequest) {
-  const res = NextResponse.next()
+  const url = req.nextUrl.clone();
+  const hasSession = req.cookies.get("sb-access-token"); // cookie di Supabase
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get: (name) => req.cookies.get(name)?.value,
-        set: () => {},    // Next gestisce i cookie nel response
-        remove: () => {}, // (non serve qui)
-      },
-    }
-  )
-
-  const { data: { user } } = await supabase.auth.getUser()
-
-  // Non loggato → manda al login
-  if (!user) {
-    return NextResponse.redirect(new URL('/login', req.url))
+  // Se non loggato e tenta di accedere a dashboard → redirect al login
+  if (!hasSession && url.pathname.startsWith("/app")) {
+    url.pathname = "/login";
+    return NextResponse.redirect(url);
   }
-
-  // Loggato → controlla se ha account_type
-  const { data: prof } = await supabase
-    .from('profiles')
-    .select('account_type')
-    .eq('id', user.id)
-    .single()
-
-  if (!prof?.account_type) {
-    return NextResponse.redirect(new URL('/onboarding', req.url))
-  }
-
-  return res
+  return NextResponse.next();
 }
 
-// Applica il middleware solo a queste route
 export const config = {
-  matcher: ['/opportunities/:path*', '/search/:path*'],
-}
+  matcher: ["/app/:path*"],
+};
