@@ -55,6 +55,16 @@ export default function LoginPage() {
         >
           {loading ? "..." : "Entra"}
         </button>
+
+        {/* Link reset password */}
+        <div className="text-sm text-center">
+          <a
+            href="/reset-password"
+            className="text-blue-600 hover:underline"
+          >
+            Password dimenticata?
+          </a>
+        </div>
       </form>
     </main>
   );
