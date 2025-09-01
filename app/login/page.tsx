@@ -14,6 +14,9 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [currentEmail, setCurrentEmail] = useState<string | null>(null)
 
+  // DEBUG: cambia questo numero quando vuoi forzare il riconoscimento della build
+  const BUILD_TAG = 'login-v3'
+
   useEffect(() => {
     let ignore = false
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -29,7 +32,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     setLoading(false)
     if (error) { setErr(error.message); return }
-    router.replace('/') // oppure '/dashboard'
+    router.replace('/')
   }
 
   async function signInGoogle() {
@@ -37,8 +40,8 @@ export default function LoginPage() {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}`, // torna alla home (o cambia percorso)
-        queryParams: { prompt: 'consent' },      // facoltativo: forza scelta account
+        redirectTo: `${window.location.origin}`, // es. home o /dashboard
+        queryParams: { prompt: 'consent' },      // opzionale: forza scelta account
       },
     })
   }
@@ -50,14 +53,30 @@ export default function LoginPage() {
 
   return (
     <main className="min-h-[60vh] flex items-center justify-center p-6">
-      <div className="w-full max-w-sm rounded-2xl border p-6 shadow-sm">
-        <h1 className="mb-4 text-xl font-semibold">Login</h1>
+      <div className="w-full max-w-sm rounded-2xl border p-6 shadow-sm space-y-4">
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-semibold">Login</h1>
+          <span className="text-[10px] rounded bg-gray-100 px-2 py-0.5 text-gray-600" data-build={BUILD_TAG}>
+            {BUILD_TAG}
+          </span>
+        </div>
 
-        {err && (
-          <p className="mb-3 rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700">
-            {err}
-          </p>
-        )}
+        {/* 🔵 Bottone Google SEMPRE visibile */}
+        <button
+          type="button"
+          onClick={signInGoogle}
+          className="w-full rounded-md border px-4 py-2"
+          data-testid="google-btn"
+        >
+          Continua con Google
+        </button>
+
+        {/* Divider */}
+        <div className="my-2 flex items-center gap-2">
+          <div className="h-px flex-1 bg-gray-200" />
+          <span className="text-xs text-gray-500">oppure</span>
+          <div className="h-px flex-1 bg-gray-200" />
+        </div>
 
         {/* Form email/password (opzionale) */}
         <form onSubmit={signInEmail} className="space-y-3">
@@ -85,26 +104,10 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Divisore */}
-        <div className="my-4 flex items-center gap-2">
-          <div className="h-px flex-1 bg-gray-200" />
-          <span className="text-xs text-gray-500">oppure</span>
-          <div className="h-px flex-1 bg-gray-200" />
-        </div>
-
-        {/* Bottone Google */}
-        <button
-          type="button"
-          onClick={signInGoogle}
-          className="w-full rounded-md border px-4 py-2"
-        >
-          Continua con Google
-        </button>
-
-        {/* Stato sessione corrente (utile per test) */}
+        {/* Stato sessione (utile per test) */}
         {currentEmail && (
-          <div className="mt-4 text-center text-xs text-gray-600">
-            Sei già loggato come <strong>{currentEmail}</strong>.{' '}
+          <div className="mt-2 text-center text-xs text-gray-600">
+            Sei loggato come <strong>{currentEmail}</strong>.{' '}
             <button onClick={signOut} className="underline">Esci</button>
           </div>
         )}
