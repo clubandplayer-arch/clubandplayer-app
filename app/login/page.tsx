@@ -1,71 +1,45 @@
-"use client";
+'use client'
 
-import { useState } from "react";
-import { supabase } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { supabaseBrowser } from '@/lib/supabaseBrowser'
 
 export default function LoginPage() {
-  const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const router = useRouter()
+  const supabase = supabaseBrowser()
 
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
-    if (error) {
-      setError(error.message);
-    } else {
-      router.push("/"); // redirect home
+  // se l'utente è già loggato, vai via
+  useEffect(() => {
+    let ignore = false
+    const check = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!ignore && user) router.replace('/') // o '/dashboard'
     }
+    check()
+    return () => { ignore = true }
+  }, [router, supabase])
+
+  const loginWithGoogle = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}`, // dove tornare dopo il login
+        queryParams: { prompt: 'consent' },      // opzionale
+      },
+    })
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-6">
-      <form
-        onSubmit={handleLogin}
-        className="max-w-sm w-full bg-white shadow rounded-lg p-6 space-y-4"
-      >
-        <h1 className="text-xl font-semibold">Login</h1>
-        {error && <p className="text-red-500 text-sm">{error}</p>}
-        <input
-          type="email"
-          placeholder="Email"
-          className="w-full border rounded px-3 py-2"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          className="w-full border rounded px-3 py-2"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
+    <main className="min-h-[60vh] flex items-center justify-center p-6">
+      <div className="w-full max-w-sm space-y-4">
+        <h1 className="text-2xl font-semibold text-center">Accedi</h1>
         <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-blue-600 text-white rounded px-3 py-2"
+          onClick={loginWithGoogle}
+          className="w-full rounded-md bg-black px-4 py-2 text-white"
         >
-          {loading ? "..." : "Entra"}
+          Continua con Google
         </button>
-
-        {/* Link reset password */}
-        <div className="text-sm text-center">
-          <a
-            href="/reset-password"
-            className="text-blue-600 hover:underline"
-          >
-            Password dimenticata?
-          </a>
-        </div>
-      </form>
+      </div>
     </main>
-  );
+  )
 }
