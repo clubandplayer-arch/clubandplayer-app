@@ -4,6 +4,10 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
 
+// forza Next a non servirla come statica e a non cachearla
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export default function LoginPage() {
   const router = useRouter()
   const supabase = supabaseBrowser()
@@ -14,8 +18,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [currentEmail, setCurrentEmail] = useState<string | null>(null)
 
-  // DEBUG tag per riconoscere la build a schermo
-  const BUILD_TAG = 'login-v3.1'
+  // DEBUG stamp visibile per riconoscere la build
+  const BUILD_TAG = 'login-v3.2'
 
   useEffect(() => {
     let ignore = false
@@ -32,7 +36,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     setLoading(false)
     if (error) { setErrorMsg(error.message); return }
-    router.replace('/') // oppure '/dashboard'
+    router.replace('/')
   }
 
   async function signInGoogle() {
@@ -40,8 +44,8 @@ export default function LoginPage() {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}`, // torna alla home (o altro percorso)
-        queryParams: { prompt: 'consent' },      // facoltativo: forza scelta account
+        redirectTo: `${window.location.origin}`,
+        queryParams: { prompt: 'consent' },
       },
     })
   }
@@ -56,12 +60,15 @@ export default function LoginPage() {
       <div className="w-full max-w-sm rounded-2xl border p-6 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold">Login</h1>
-          <span className="text-[10px] rounded bg-gray-100 px-2 py-0.5 text-gray-600" data-build={BUILD_TAG}>
+          <span
+            className="text-[10px] rounded bg-gray-100 px-2 py-0.5 text-gray-600"
+            data-build={BUILD_TAG}
+          >
             {BUILD_TAG}
           </span>
         </div>
 
-        {/* Bottone Google sempre visibile */}
+        {/* 🔵 Bottone Google SEMPRE visibile */}
         <button
           type="button"
           onClick={signInGoogle}
@@ -77,14 +84,14 @@ export default function LoginPage() {
           <div className="h-px flex-1 bg-gray-200" />
         </div>
 
-        {/* Error message (usato → niente no-unused-vars) */}
+        {/* eventuali errori */}
         {errorMsg && (
           <p className="rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700">
             {errorMsg}
           </p>
         )}
 
-        {/* Form email/password (opzionale) */}
+        {/* Form email/password (puoi anche toglierlo temporaneamente) */}
         <form onSubmit={signInEmail} className="space-y-3">
           <input
             type="email"
