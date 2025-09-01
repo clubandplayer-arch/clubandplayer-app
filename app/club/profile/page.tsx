@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
 
 export default function ClubProfilePage() {
@@ -76,12 +77,23 @@ export default function ClubProfilePage() {
     }
 
     init()
+    // cleanup eventuale blob url su unmount
+    return () => {
+      if (logoUrl?.startsWith('blob:')) {
+        URL.revokeObjectURL(logoUrl)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase, router])
 
   const onPickLogo = (file: File | null) => {
     setLogoFile(file)
     setOkMsg(null)
     setError(null)
+    // libera l'eventuale blob precedente
+    if (logoUrl?.startsWith('blob:')) {
+      URL.revokeObjectURL(logoUrl)
+    }
     if (file) {
       const blobUrl = URL.createObjectURL(file)
       setLogoUrl(blobUrl)
@@ -120,6 +132,7 @@ export default function ClubProfilePage() {
 
       setLogoUrl(publicUrl)
       setOkMsg('Logo aggiornato con successo.')
+      setLogoFile(null)
     } catch (e: any) {
       setError(e?.message || 'Errore in upload logo')
     } finally {
@@ -175,9 +188,16 @@ export default function ClubProfilePage() {
         <h2 className="text-lg font-medium">Logo</h2>
         <div className="flex items-center gap-4">
           <div className="relative h-24 w-24 overflow-hidden rounded-md border bg-white">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             {logoUrl ? (
-              <img src={logoUrl} alt="Logo club" className="h-full w-full object-cover" />
+              <Image
+                src={logoUrl}
+                alt="Logo club"
+                fill
+                className="object-cover"
+                sizes="96px"
+                unoptimized
+                priority={false}
+              />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-gray-400">
                 Nessun logo
