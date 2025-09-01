@@ -1,28 +1,50 @@
+// app/api/opportunities/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser } from "@/lib/api/auth";
+import { cookies } from "next/headers";
+import { listParamsSchema } from "@/lib/api/schemas";
+import { rateLimit } from "@/lib/api/rateLimit";
+import { badRequest, unauthorized } from "@/lib/api/errors";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
 
-export const GET = async (req: NextRequest) => {
-  const result = await requireUser();
-  if ("response" in result) return result.response;
-  const { supabase } = result;
+export async function GET(req: NextRequest) {
+  try {
+    await rateLimit(req);
 
-  const { searchParams } = new URL(req.url);
-  const limit = Math.min(Number(searchParams.get("limit") ?? "20"), 100);
-  const page = Math.max(Number(searchParams.get("page") ?? "1"), 1);
-  const from = (page - 1) * limit;
-  const to = from + limit - 1;
+    const raw = Object.fromEntries(new URL(req.url).searchParams);
+    const parsed = listParamsSchema.safeParse(raw);
+    if (!parsed.success) {
+      return badRequest("Parametri query non validi");
+    }
+    const { page, pageSize, orderBy, orderDir } = parsed.data;
 
-  const { data, error, count } = await supabase
-    .from("opportunities")
-    .select("*", { count: "exact" })
-    .order("created_at", { ascending: false })
-    .range(from, to);
+    const cookieStore = await cookies();
+    const supabase = getSupabaseServerClient(cookieStore);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return unauthorized("Non autenticato");
 
-  if (error) {
-    return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    // Molte tabelle "opportunities" non hanno created_at; fallback su "id"
+    const sortCol = orderBy ?? "id";
+
+    const { data, error } = await supabase
+      .from("opportunities")
+      .select("*", { count: "exact" })
+      .order(sortCol, { ascending: orderDir === "asc" })
+      .range(from, to);
+
+    if (error) throw error;
+
+    return NextResponse.json({ ok: true, data });
+  } catch (e: any) {
+    if (e?.status === 429) {
+      return new NextResponse(
+        JSON.stringify({ ok: false, error: "Too Many Requests" }),
+        { status: 429, headers: { "content-type": "application/json", ...(e.headers ?? {}) } }
+      );
+    }
+    return NextResponse.json({ ok: false, error: e?.message ?? "Errore server" }, { status: 500 });
   }
-  return NextResponse.json({ ok: true, data, page, limit, count });
-};
+}
