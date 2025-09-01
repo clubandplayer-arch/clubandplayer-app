@@ -89,7 +89,11 @@ export default function ClubProfilePage() {
     }
     return () => {
       if (toRevoke) {
-        try { URL.revokeObjectURL(toRevoke) } catch {}
+        try {
+          URL.revokeObjectURL(toRevoke)
+        } catch (_e) {
+          /* ignore revoke errors */
+        }
       }
     }
   }, [logoUrl])
