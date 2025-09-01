@@ -1,6 +1,4 @@
-// app/api/opportunities/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { badRequest, unauthorized } from "@/lib/api/errors";
 import { cookies } from "next/headers";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -13,7 +11,12 @@ export const GET = async (req: NextRequest) => {
     const supabase = getSupabaseServerClient(cookieStore);
 
     const { data: { user }, error: authErr } = await supabase.auth.getUser();
-    if (authErr || !user) return unauthorized("Not authenticated");
+    if (authErr || !user) {
+      return NextResponse.json(
+        { ok: false, error: "Not authenticated" },
+        { status: 401 }
+      );
+    }
 
     const { searchParams } = new URL(req.url);
     const limit = Math.min(Number(searchParams.get("limit") ?? "20"), 100);
@@ -21,17 +24,24 @@ export const GET = async (req: NextRequest) => {
     const from = (page - 1) * limit;
     const to = from + limit - 1;
 
-    const query = supabase
+    const { data, error, count } = await supabase
       .from("opportunities")
       .select("*", { count: "exact" })
       .order("created_at", { ascending: false })
       .range(from, to);
 
-    const { data, error, count } = await query;
-    if (error) return badRequest(error.message);
+    if (error) {
+      return NextResponse.json(
+        { ok: false, error: error.message },
+        { status: 400 }
+      );
+    }
 
     return NextResponse.json({ ok: true, data, page, limit, count });
   } catch (e: any) {
-    return badRequest(e?.message ?? "Unexpected error");
+    return NextResponse.json(
+      { ok: false, error: e?.message ?? "Unexpected error" },
+      { status: 500 }
+    );
   }
 };
