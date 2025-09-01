@@ -10,12 +10,12 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [err, setErr] = useState<string | null>(null)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [currentEmail, setCurrentEmail] = useState<string | null>(null)
 
-  // DEBUG: cambia questo numero quando vuoi forzare il riconoscimento della build
-  const BUILD_TAG = 'login-v3'
+  // DEBUG tag per riconoscere la build a schermo
+  const BUILD_TAG = 'login-v3.1'
 
   useEffect(() => {
     let ignore = false
@@ -27,21 +27,21 @@ export default function LoginPage() {
 
   async function signInEmail(e: React.FormEvent) {
     e.preventDefault()
-    setErr(null)
+    setErrorMsg(null)
     setLoading(true)
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     setLoading(false)
-    if (error) { setErr(error.message); return }
-    router.replace('/')
+    if (error) { setErrorMsg(error.message); return }
+    router.replace('/') // oppure '/dashboard'
   }
 
   async function signInGoogle() {
-    setErr(null)
+    setErrorMsg(null)
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}`, // es. home o /dashboard
-        queryParams: { prompt: 'consent' },      // opzionale: forza scelta account
+        redirectTo: `${window.location.origin}`, // torna alla home (o altro percorso)
+        queryParams: { prompt: 'consent' },      // facoltativo: forza scelta account
       },
     })
   }
@@ -61,7 +61,7 @@ export default function LoginPage() {
           </span>
         </div>
 
-        {/* 🔵 Bottone Google SEMPRE visibile */}
+        {/* Bottone Google sempre visibile */}
         <button
           type="button"
           onClick={signInGoogle}
@@ -71,12 +71,18 @@ export default function LoginPage() {
           Continua con Google
         </button>
 
-        {/* Divider */}
         <div className="my-2 flex items-center gap-2">
           <div className="h-px flex-1 bg-gray-200" />
           <span className="text-xs text-gray-500">oppure</span>
           <div className="h-px flex-1 bg-gray-200" />
         </div>
+
+        {/* Error message (usato → niente no-unused-vars) */}
+        {errorMsg && (
+          <p className="rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700">
+            {errorMsg}
+          </p>
+        )}
 
         {/* Form email/password (opzionale) */}
         <form onSubmit={signInEmail} className="space-y-3">
@@ -104,7 +110,6 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Stato sessione (utile per test) */}
         {currentEmail && (
           <div className="mt-2 text-center text-xs text-gray-600">
             Sei loggato come <strong>{currentEmail}</strong>.{' '}
