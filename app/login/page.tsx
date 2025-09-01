@@ -7,78 +7,106 @@ import { supabaseBrowser } from '@/lib/supabaseBrowser'
 export default function LoginPage() {
   const router = useRouter()
   const supabase = supabaseBrowser()
-  const [loading, setLoading] = useState(true)
-  const [email, setEmail] = useState<string | null>(null)
+
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [err, setErr] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [currentEmail, setCurrentEmail] = useState<string | null>(null)
 
   useEffect(() => {
     let ignore = false
-    const check = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!ignore) {
-        setEmail(user?.email ?? null)
-        setLoading(false)
-      }
-    }
-    check()
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!ignore) setCurrentEmail(user?.email ?? null)
+    })
     return () => { ignore = true }
   }, [supabase])
 
-  const loginWithGoogle = async () => {
+  async function signInEmail(e: React.FormEvent) {
+    e.preventDefault()
+    setErr(null)
+    setLoading(true)
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    setLoading(false)
+    if (error) { setErr(error.message); return }
+    router.replace('/') // oppure '/dashboard'
+  }
+
+  async function signInGoogle() {
+    setErr(null)
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}`, // es. torna alla home o dashboard
-        queryParams: { prompt: 'consent' },      // opzionale, forza scelta account
+        redirectTo: `${window.location.origin}`, // torna alla home (o cambia percorso)
+        queryParams: { prompt: 'consent' },      // facoltativo: forza scelta account
       },
     })
   }
 
-  const logout = async () => {
+  async function signOut() {
     await supabase.auth.signOut()
-    setEmail(null)
-  }
-
-  if (loading) {
-    return (
-      <main className="min-h-[60vh] flex items-center justify-center p-6">
-        <p>Caricamento…</p>
-      </main>
-    )
+    setCurrentEmail(null)
   }
 
   return (
     <main className="min-h-[60vh] flex items-center justify-center p-6">
-      <div className="w-full max-w-sm space-y-4">
-        <h1 className="text-2xl font-semibold text-center">Accedi</h1>
+      <div className="w-full max-w-sm rounded-2xl border p-6 shadow-sm">
+        <h1 className="mb-4 text-xl font-semibold">Login</h1>
 
-        {email ? (
-          <div className="space-y-3 text-center">
-            <p className="text-sm text-gray-600">Sei già loggato come <strong>{email}</strong>.</p>
-            <div className="flex gap-2 justify-center">
-              <button
-                onClick={() => router.push('/')}
-                className="rounded-md bg-black px-4 py-2 text-white"
-              >
-                Vai alla home
-              </button>
-              <button
-                onClick={logout}
-                className="rounded-md border px-4 py-2"
-              >
-                Esci
-              </button>
-            </div>
-            <p className="text-xs text-gray-500">
-              Vuoi cambiare account? Premi “Esci” e poi accedi con Google.
-            </p>
-          </div>
-        ) : (
+        {err && (
+          <p className="mb-3 rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700">
+            {err}
+          </p>
+        )}
+
+        {/* Form email/password (opzionale) */}
+        <form onSubmit={signInEmail} className="space-y-3">
+          <input
+            type="email"
+            placeholder="Email"
+            className="w-full rounded-md border px-3 py-2"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            className="w-full rounded-md border px-3 py-2"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
           <button
-            onClick={loginWithGoogle}
-            className="w-full rounded-md bg-black px-4 py-2 text-white"
+            disabled={loading}
+            className="w-full rounded-md bg-blue-600 py-2 text-white disabled:opacity-50"
           >
-            Continua con Google
+            {loading ? 'Accesso…' : 'Entra'}
           </button>
+        </form>
+
+        {/* Divisore */}
+        <div className="my-4 flex items-center gap-2">
+          <div className="h-px flex-1 bg-gray-200" />
+          <span className="text-xs text-gray-500">oppure</span>
+          <div className="h-px flex-1 bg-gray-200" />
+        </div>
+
+        {/* Bottone Google */}
+        <button
+          type="button"
+          onClick={signInGoogle}
+          className="w-full rounded-md border px-4 py-2"
+        >
+          Continua con Google
+        </button>
+
+        {/* Stato sessione corrente (utile per test) */}
+        {currentEmail && (
+          <div className="mt-4 text-center text-xs text-gray-600">
+            Sei già loggato come <strong>{currentEmail}</strong>.{' '}
+            <button onClick={signOut} className="underline">Esci</button>
+          </div>
         )}
       </div>
     </main>
