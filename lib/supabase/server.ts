@@ -2,16 +2,25 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies as nextCookies } from "next/headers";
 
-// Tipo minimale per ciò che ci serve
-type CookieStore = {
-  get(name: string): { value?: string } | undefined;
-  set?: (name: string, value: string, options?: any) => void;
-  delete?: (name: string, options?: any) => void;
-};
+/**
+ * Crea un client Supabase lato server.
+ * Accetta opzionalmente un cookieStore (es. il risultato di `await cookies()` nelle route),
+ * ma funziona anche senza, usando il fallback `next/headers`.
+ */
+export function createSupabaseServerClient(providedStore?: unknown) {
+  // Adattatore minimale: ci basta .get(name) -> { value?: string } | undefined
+  const reqStore = providedStore as
+    | { get: (name: string) => { value?: string } | undefined }
+    | undefined;
 
-export function createSupabaseServerClient(cookieStore?: CookieStore) {
-  // Preferisci quello passato dalle route (già await-ato), così evitiamo Promise
-  const store: CookieStore = cookieStore ?? (nextCookies() as unknown as CookieStore);
+  const fallbackStore = nextCookies();
+
+  const getCookieValue = (name: string) => {
+    // prova prima col providedStore (già await-ato nelle route), altrimenti fallback
+    const fromProvided = reqStore?.get?.(name)?.value;
+    if (fromProvided !== undefined) return fromProvided;
+    return fallbackStore.get(name)?.value;
+  };
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -19,15 +28,11 @@ export function createSupabaseServerClient(cookieStore?: CookieStore) {
     {
       cookies: {
         get(name: string) {
-          return store.get(name)?.value;
+          return getCookieValue(name);
         },
-        set(name: string, value: string, options?: any) {
-          store.set?.(name, value, options);
-        },
-        remove(name: string, options?: any) {
-          // API next/headers usa delete()
-          store.delete?.(name, options);
-        },
+        // no-op lato SSR: non scriviamo cookie dalla route handler
+        set() {},
+        remove() {},
       },
     }
   );
