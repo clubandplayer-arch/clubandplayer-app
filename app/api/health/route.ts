@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
-export const dynamic = "force-static";
 
-export const GET = async () => {
-  return NextResponse.json({ ok: true, ts: Date.now() });
-};
+export async function GET() {
+  return NextResponse.json({
+    ok: true,
+    name: "clubandplayer-app",
+    env: process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? "unknown",
+    ts: new Date().toISOString(),
+  });
+}
