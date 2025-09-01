@@ -21,7 +21,7 @@ export default function LoginPage() {
 
   const BUILD_TAG = 'login-v3.5'
 
-  // carico supabase SOLO sul client e SOLO dopo il mount
+  // Lazy-load supabase-js SOLO lato client e dopo il mount
   useEffect(() => {
     let active = true
     if (!HAS_ENV) return
