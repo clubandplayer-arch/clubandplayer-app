@@ -1,41 +1,22 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/api/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export const GET = async () => {
-  try {
-    const cookieStore = await cookies();
-    const supabase = getSupabaseServerClient(cookieStore);
+  const result = await requireUser();
+  if ("response" in result) return result.response;
+  const { user, supabase } = result;
 
-    const { data: { user }, error: authErr } = await supabase.auth.getUser();
-    if (authErr || !user) {
-      return NextResponse.json(
-        { ok: false, error: "Not authenticated" },
-        { status: 401 }
-      );
-    }
+  const { data, error } = await supabase
+    .from("clubs")
+    .select("*")
+    .eq("owner_id", user.id)
+    .limit(50);
 
-    const { data, error } = await supabase
-      .from("clubs")
-      .select("*")
-      .eq("owner_id", user.id)
-      .limit(50);
-
-    if (error) {
-      return NextResponse.json(
-        { ok: false, error: error.message },
-        { status: 400 }
-      );
-    }
-
-    return NextResponse.json({ ok: true, data });
-  } catch (e: any) {
-    return NextResponse.json(
-      { ok: false, error: e?.message ?? "Unexpected error" },
-      { status: 500 }
-    );
+  if (error) {
+    return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
   }
+  return NextResponse.json({ ok: true, data });
 };
