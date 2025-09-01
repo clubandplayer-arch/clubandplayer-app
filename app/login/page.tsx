@@ -2,15 +2,16 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabaseBrowser } from '@/lib/supabaseBrowser'
+import { createClient } from '@supabase/supabase-js'
 
-// forza Next a non servirla come statica e a non cachearla
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
+const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
+const SUPA_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
 export default function LoginPage() {
   const router = useRouter()
-  const supabase = supabaseBrowser()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -18,8 +19,32 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [currentEmail, setCurrentEmail] = useState<string | null>(null)
 
-  // DEBUG stamp visibile per riconoscere la build
-  const BUILD_TAG = 'login-v3.2'
+  const BUILD_TAG = 'login-v3.3'
+
+  // Se mancano le env, mostra un messaggio invece di crashare
+  if (!SUPA_URL || !SUPA_ANON) {
+    return (
+      <main className="min-h-[60vh] flex items-center justify-center p-6">
+        <div className="w-full max-w-sm rounded-2xl border p-6 shadow-sm space-y-3">
+          <div className="flex items-center justify-between">
+            <h1 className="text-xl font-semibold">Login</h1>
+            <span className="text-[10px] rounded bg-yellow-100 px-2 py-0.5 text-yellow-800" data-build={BUILD_TAG}>
+              {BUILD_TAG}
+            </span>
+          </div>
+          <p className="text-sm">
+            Configurazione mancante per questa build (Preview). Imposta su Vercel le variabili:
+          </p>
+          <pre className="rounded bg-gray-100 p-2 text-xs">
+{`NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY`}
+          </pre>
+        </div>
+      </main>
+    )
+  }
+
+  const supabase = createClient(SUPA_URL, SUPA_ANON)
 
   useEffect(() => {
     let ignore = false
@@ -60,15 +85,11 @@ export default function LoginPage() {
       <div className="w-full max-w-sm rounded-2xl border p-6 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold">Login</h1>
-          <span
-            className="text-[10px] rounded bg-gray-100 px-2 py-0.5 text-gray-600"
-            data-build={BUILD_TAG}
-          >
+          <span className="text-[10px] rounded bg-gray-100 px-2 py-0.5 text-gray-600" data-build={BUILD_TAG}>
             {BUILD_TAG}
           </span>
         </div>
 
-        {/* 🔵 Bottone Google SEMPRE visibile */}
         <button
           type="button"
           onClick={signInGoogle}
@@ -84,14 +105,12 @@ export default function LoginPage() {
           <div className="h-px flex-1 bg-gray-200" />
         </div>
 
-        {/* eventuali errori */}
         {errorMsg && (
           <p className="rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700">
             {errorMsg}
           </p>
         )}
 
-        {/* Form email/password (puoi anche toglierlo temporaneamente) */}
         <form onSubmit={signInEmail} className="space-y-3">
           <input
             type="email"
