@@ -4,22 +4,26 @@ import { cookies as nextCookies } from "next/headers";
 
 /**
  * Crea un client Supabase lato server.
- * Accetta opzionalmente un cookieStore (es. il risultato di `await cookies()` nelle route),
- * ma funziona anche senza, usando il fallback `next/headers`.
+ * Accetta opzionalmente un cookieStore (es. risultato di `await cookies()` nelle route).
+ * Rimane sincrona per compatibilità con le route esistenti.
  */
 export function createSupabaseServerClient(providedStore?: unknown) {
-  // Adattatore minimale: ci basta .get(name) -> { value?: string } | undefined
-  const reqStore = providedStore as
-    | { get: (name: string) => { value?: string } | undefined }
-    | undefined;
-
-  const fallbackStore = nextCookies();
+  // Cast permissivo: gestiamo sia ReadonlyRequestCookies sia Promise<ReadonlyRequestCookies>
+  const provided: any = providedStore as any;
+  const fallback: any = nextCookies() as any;
 
   const getCookieValue = (name: string) => {
-    // prova prima col providedStore (già await-ato nelle route), altrimenti fallback
-    const fromProvided = reqStore?.get?.(name)?.value;
+    // 1) prova dal provided store (già await-ato nelle route)
+    const fromProvided = provided?.get?.(name)?.value;
     if (fromProvided !== undefined) return fromProvided;
-    return fallbackStore.get(name)?.value;
+
+    // 2) fallback: se è una Promise, evitiamo di usarla (non possiamo await-are in funzione sync)
+    if (typeof fallback?.then === "function") {
+      return undefined;
+    }
+
+    // 3) fallback sincrono
+    return fallback?.get?.(name)?.value;
   };
 
   return createServerClient(
@@ -30,7 +34,7 @@ export function createSupabaseServerClient(providedStore?: unknown) {
         get(name: string) {
           return getCookieValue(name);
         },
-        // no-op lato SSR: non scriviamo cookie dalla route handler
+        // no-op lato SSR: non scriviamo cookie dalla route
         set() {},
         remove() {},
       },
