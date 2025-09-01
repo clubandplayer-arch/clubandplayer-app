@@ -91,7 +91,7 @@ export default function ClubProfilePage() {
       if (toRevoke) {
         try {
           URL.revokeObjectURL(toRevoke)
-        } catch (_e) {
+        } catch {
           /* ignore revoke errors */
         }
       }
