@@ -22,9 +22,11 @@ export default function ClubProfilePage() {
   const [error, setError] = useState<string | null>(null)
   const [okMsg, setOkMsg] = useState<string | null>(null)
 
+  // Caricamento dati iniziale
   useEffect(() => {
     const init = async () => {
       setError(null)
+
       const { data: { user }, error: uErr } = await supabase.auth.getUser()
       if (uErr) {
         setError(uErr.message)
@@ -76,24 +78,26 @@ export default function ClubProfilePage() {
       setLoading(false)
     }
 
-    init()
-    // cleanup eventuale blob url su unmount
+    void init()
+  }, [supabase, router])
+
+  // Cleanup: revoca il precedente blob URL quando cambia logoUrl o su unmount
+  useEffect(() => {
+    let toRevoke: string | null = null
+    if (logoUrl?.startsWith('blob:')) {
+      toRevoke = logoUrl
+    }
     return () => {
-      if (logoUrl?.startsWith('blob:')) {
-        URL.revokeObjectURL(logoUrl)
+      if (toRevoke) {
+        try { URL.revokeObjectURL(toRevoke) } catch {}
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [supabase, router])
+  }, [logoUrl])
 
   const onPickLogo = (file: File | null) => {
     setLogoFile(file)
     setOkMsg(null)
     setError(null)
-    // libera l'eventuale blob precedente
-    if (logoUrl?.startsWith('blob:')) {
-      URL.revokeObjectURL(logoUrl)
-    }
     if (file) {
       const blobUrl = URL.createObjectURL(file)
       setLogoUrl(blobUrl)
@@ -106,7 +110,7 @@ export default function ClubProfilePage() {
     setError(null)
     setOkMsg(null)
     try {
-      const ext = logoFile.name.split('.').pop() || 'png'
+      const ext = (logoFile.name.split('.').pop() || 'png').toLowerCase()
       const fileName = `logo-${Date.now()}.${ext}`
       const path = `${userId}/${fileName}`
 
@@ -124,6 +128,7 @@ export default function ClubProfilePage() {
       if (!publicUrl) throw new Error('Impossibile ottenere la URL pubblica del logo')
 
       if (!clubId) throw new Error('Club non inizializzato')
+
       const { error: updErr } = await supabase
         .from('clubs')
         .update({ logo_url: publicUrl })
@@ -195,6 +200,7 @@ export default function ClubProfilePage() {
                 fill
                 className="object-cover"
                 sizes="96px"
+                // Evita la config domini remoti per ora (Supabase Storage URL)
                 unoptimized
                 priority={false}
               />
@@ -210,6 +216,7 @@ export default function ClubProfilePage() {
               type="file"
               accept="image/*"
               onChange={(e) => onPickLogo(e.target.files?.[0] ?? null)}
+              disabled={uploading}
             />
             <div className="flex gap-2">
               <button
