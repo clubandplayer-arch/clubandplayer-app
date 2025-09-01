@@ -2,13 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@supabase/supabase-js'
 
-// forza Next a non cacheare la pagina
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
-// Env pubbliche
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
 const SUPA_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''
 const HAS_ENV = Boolean(SUPA_URL && SUPA_ANON)
@@ -22,28 +19,30 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [currentEmail, setCurrentEmail] = useState<string | null>(null)
 
-  // Client Supabase opzionale (solo se le env esistono)
-  const supabase = HAS_ENV ? createClient(SUPA_URL, SUPA_ANON) : null
+  const BUILD_TAG = 'login-v3.5'
 
-  // Tag di debug per riconoscere la build a schermo
-  const BUILD_TAG = 'login-v3.4'
-
+  // carico supabase SOLO sul client e SOLO dopo il mount
   useEffect(() => {
-    let ignore = false
-    if (!supabase) return // niente env → niente chiamate
+    let active = true
+    if (!HAS_ENV) return
 
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!ignore) setCurrentEmail(user?.email ?? null)
-    })
+    ;(async () => {
+      const { createClient } = await import('@supabase/supabase-js')
+      const supabase = createClient(SUPA_URL, SUPA_ANON)
+      const { data: { user } } = await supabase.auth.getUser()
+      if (active) setCurrentEmail(user?.email ?? null)
+    })()
 
-    return () => { ignore = true }
-  }, [supabase])
+    return () => { active = false }
+  }, [])
 
   async function signInEmail(e: React.FormEvent) {
     e.preventDefault()
     setErrorMsg(null)
-    if (!supabase) { setErrorMsg('Configurazione mancante: NEXT_PUBLIC_SUPABASE_*'); return }
+    if (!HAS_ENV) { setErrorMsg('Config mancante: NEXT_PUBLIC_SUPABASE_*'); return }
     setLoading(true)
+    const { createClient } = await import('@supabase/supabase-js')
+    const supabase = createClient(SUPA_URL, SUPA_ANON)
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     setLoading(false)
     if (error) { setErrorMsg(error.message); return }
@@ -52,7 +51,9 @@ export default function LoginPage() {
 
   async function signInGoogle() {
     setErrorMsg(null)
-    if (!supabase) { setErrorMsg('Configurazione mancante: NEXT_PUBLIC_SUPABASE_*'); return }
+    if (!HAS_ENV) { setErrorMsg('Config mancante: NEXT_PUBLIC_SUPABASE_*'); return }
+    const { createClient } = await import('@supabase/supabase-js')
+    const supabase = createClient(SUPA_URL, SUPA_ANON)
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -63,7 +64,9 @@ export default function LoginPage() {
   }
 
   async function signOut() {
-    if (!supabase) return
+    if (!HAS_ENV) return
+    const { createClient } = await import('@supabase/supabase-js')
+    const supabase = createClient(SUPA_URL, SUPA_ANON)
     await supabase.auth.signOut()
     setCurrentEmail(null)
   }
@@ -78,18 +81,16 @@ export default function LoginPage() {
           </span>
         </div>
 
-        {/* Avviso chiaro se mancano le env (niente 500) */}
         {!HAS_ENV && (
           <div className="rounded-md border border-yellow-300 bg-yellow-50 p-2 text-sm text-yellow-800">
-            Variabili mancanti per questa build. Imposta su Vercel (Preview/Production):
+            Variabili mancanti per questa build:
             <pre className="mt-1 whitespace-pre-wrap text-xs">
-{`NEXT_PUBLIC_SUPABASE_URL = https://izzfjrcabtixxsrnkzro.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY = <Anon Key>`}
+{`NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY`}
             </pre>
           </div>
         )}
 
-        {/* Bottone Google sempre visibile (disabilitato se env mancanti) */}
         <button
           type="button"
           onClick={signInGoogle}
@@ -112,7 +113,6 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY = <Anon Key>`}
           </p>
         )}
 
-        {/* Form email/password (opzionale) */}
         <form onSubmit={signInEmail} className="space-y-3">
           <input
             type="email"
