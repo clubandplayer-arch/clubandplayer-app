@@ -1,21 +1,22 @@
-// app/api/clubs/route.ts
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { badRequest, unauthorized } from "@/lib/api/errors";
 import { cookies } from "next/headers";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
-export const runtime = "nodejs";         // Supabase SSR richiede Node
-export const dynamic = "force-dynamic";  // niente cache su auth
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-export const GET = async (req: NextRequest) => {
+export const GET = async () => {
   try {
     const cookieStore = await cookies();
     const supabase = getSupabaseServerClient(cookieStore);
 
-    const { data: { user }, error: authErr } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authErr,
+    } = await supabase.auth.getUser();
     if (authErr || !user) return unauthorized("Not authenticated");
 
-    // ...qui la tua logica (es. lista clubs per user)
     const { data, error } = await supabase
       .from("clubs")
       .select("*")

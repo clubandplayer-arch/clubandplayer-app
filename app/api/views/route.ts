@@ -1,5 +1,4 @@
-// app/api/views/route.ts
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { badRequest, unauthorized } from "@/lib/api/errors";
 import { cookies } from "next/headers";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
@@ -7,12 +6,15 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export const GET = async (_req: NextRequest) => {
+export const GET = async () => {
   try {
     const cookieStore = await cookies();
     const supabase = getSupabaseServerClient(cookieStore);
 
-    const { data: { user }, error: authErr } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authErr,
+    } = await supabase.auth.getUser();
     if (authErr || !user) return unauthorized("Not authenticated");
 
     const { data, error } = await supabase
