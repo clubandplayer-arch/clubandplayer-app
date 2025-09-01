@@ -1,33 +1,30 @@
+// app/api/clubs/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { ClubsRepo } from "@/lib/data/clubs";
-import { parseFilters, parseLimit, parsePage } from "@/lib/search/params";
-import { withApiHandler } from "@/lib/api/handler";
 import { badRequest, unauthorized } from "@/lib/api/errors";
 import { cookies } from "next/headers";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
-export const GET = withApiHandler(async (req: NextRequest) => {
-  const cookieStore = await cookies();
-  const supabase = getSupabaseServerClient(cookieStore);
+export const runtime = "nodejs";         // Supabase SSR richiede Node
+export const dynamic = "force-dynamic";  // niente cache su auth
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw unauthorized("Login richiesto");
+export const GET = async (req: NextRequest) => {
+  try {
+    const cookieStore = await cookies();
+    const supabase = getSupabaseServerClient(cookieStore);
 
-  const url = new URL(req.url);
-  const sp = url.searchParams;
+    const { data: { user }, error: authErr } = await supabase.auth.getUser();
+    if (authErr || !user) return unauthorized("Not authenticated");
 
-  const page = parsePage(sp);
-  const limit = Math.min(100, parseLimit(sp));
-  if (limit <= 0) throw badRequest("limit must be > 0");
+    // ...qui la tua logica (es. lista clubs per user)
+    const { data, error } = await supabase
+      .from("clubs")
+      .select("*")
+      .eq("owner_id", user.id)
+      .limit(50);
 
-  const f = parseFilters(sp);
-
-  const useDB = process.env.DATA_SOURCE === "db";
-  const data = useDB
-    ? await ClubsRepo.searchDB(f, { page, limit })
-    : await ClubsRepo.search(f, { page, limit });
-
-  return NextResponse.json(data);
-});
+    if (error) return badRequest(error.message);
+    return NextResponse.json({ ok: true, data });
+  } catch (e: any) {
+    return badRequest(e?.message ?? "Unexpected error");
+  }
+};

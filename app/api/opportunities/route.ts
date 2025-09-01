@@ -1,33 +1,37 @@
+// app/api/opportunities/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { OpportunitiesRepo } from "@/lib/data/opportunities";
-import { parseFilters, parseLimit, parsePage } from "@/lib/search/params";
-import { withApiHandler } from "@/lib/api/handler";
 import { badRequest, unauthorized } from "@/lib/api/errors";
 import { cookies } from "next/headers";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
-export const GET = withApiHandler(async (req: NextRequest) => {
-  const cookieStore = await cookies();
-  const supabase = getSupabaseServerClient(cookieStore);
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw unauthorized("Login richiesto");
+export const GET = async (req: NextRequest) => {
+  try {
+    const cookieStore = await cookies();
+    const supabase = getSupabaseServerClient(cookieStore);
 
-  const url = new URL(req.url);
-  const sp = url.searchParams;
+    const { data: { user }, error: authErr } = await supabase.auth.getUser();
+    if (authErr || !user) return unauthorized("Not authenticated");
 
-  const page = parsePage(sp);
-  const limit = Math.min(100, parseLimit(sp));
-  if (limit <= 0) throw badRequest("limit must be > 0");
+    const { searchParams } = new URL(req.url);
+    const limit = Math.min(Number(searchParams.get("limit") ?? "20"), 100);
+    const page = Math.max(Number(searchParams.get("page") ?? "1"), 1);
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
 
-  const f = parseFilters(sp);
+    const query = supabase
+      .from("opportunities")
+      .select("*", { count: "exact" })
+      .order("created_at", { ascending: false })
+      .range(from, to);
 
-  const useDB = process.env.DATA_SOURCE === "db";
-  const data = useDB
-    ? await OpportunitiesRepo.searchDB(f, { page, limit })
-    : await OpportunitiesRepo.search(f, { page, limit });
+    const { data, error, count } = await query;
+    if (error) return badRequest(error.message);
 
-  return NextResponse.json(data);
-});
+    return NextResponse.json({ ok: true, data, page, limit, count });
+  } catch (e: any) {
+    return badRequest(e?.message ?? "Unexpected error");
+  }
+};
