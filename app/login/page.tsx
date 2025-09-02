@@ -19,7 +19,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [currentEmail, setCurrentEmail] = useState<string | null>(null)
 
-  const BUILD_TAG = 'login-v3.5'
+  const BUILD_TAG = 'login-v3.6-force-redirect'
 
   // Lazy-load supabase-js SOLO lato client e dopo il mount
   useEffect(() => {
@@ -29,38 +29,76 @@ export default function LoginPage() {
     ;(async () => {
       const { createClient } = await import('@supabase/supabase-js')
       const supabase = createClient(SUPA_URL, SUPA_ANON)
-      const { data: { user } } = await supabase.auth.getUser()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
       if (active) setCurrentEmail(user?.email ?? null)
     })()
 
-    return () => { active = false }
+    return () => {
+      active = false
+    }
   }, [])
 
   async function signInEmail(e: React.FormEvent) {
     e.preventDefault()
     setErrorMsg(null)
-    if (!HAS_ENV) { setErrorMsg('Config mancante: NEXT_PUBLIC_SUPABASE_*'); return }
+    if (!HAS_ENV) {
+      setErrorMsg('Config mancante: NEXT_PUBLIC_SUPABASE_*')
+      return
+    }
     setLoading(true)
-    const { createClient } = await import('@supabase/supabase-js')
-    const supabase = createClient(SUPA_URL, SUPA_ANON)
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    setLoading(false)
-    if (error) { setErrorMsg(error.message); return }
-    router.replace('/')
+    try {
+      const { createClient } = await import('@supabase/supabase-js')
+      const supabase = createClient(SUPA_URL, SUPA_ANON)
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) throw error
+      router.replace('/')
+    } catch (err: any) {
+      setErrorMsg(err?.message ?? 'Errore login')
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function signInGoogle() {
     setErrorMsg(null)
-    if (!HAS_ENV) { setErrorMsg('Config mancante: NEXT_PUBLIC_SUPABASE_*'); return }
-    const { createClient } = await import('@supabase/supabase-js')
-    const supabase = createClient(SUPA_URL, SUPA_ANON)
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}`,
-        queryParams: { prompt: 'consent' },
-      },
-    })
+    if (!HAS_ENV) {
+      setErrorMsg('Config mancante: NEXT_PUBLIC_SUPABASE_*')
+      return
+    }
+    setLoading(true)
+    try {
+      const origin = window.location.origin
+      const { createClient } = await import('@supabase/supabase-js')
+      const supabase = createClient(SUPA_URL, SUPA_ANON)
+
+      // Chiediamo a Supabase l'URL esatto per OAuth
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: origin, // torni alla stessa origin (preview/prod)
+          queryParams: { prompt: 'consent' }, // opzionale
+        },
+      })
+
+      if (error) throw error
+
+      // Forziamo NOI il redirect per evitare aperture "strane" su Google generic
+      if (data?.url) {
+        window.location.assign(data.url)
+      } else {
+        // Fallback estremo: costruiamo manualmente l'endpoint authorize
+        const authorize = `${SUPA_URL}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(
+          origin
+        )}`
+        window.location.assign(authorize)
+      }
+    } catch (err: any) {
+      console.error('OAuth error:', err)
+      setErrorMsg(err?.message ?? 'Errore OAuth')
+      setLoading(false)
+    }
   }
 
   async function signOut() {
@@ -76,7 +114,11 @@ export default function LoginPage() {
       <div className="w-full max-w-sm rounded-2xl border p-6 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold">Login</h1>
-          <span className="text-[10px] rounded bg-gray-100 px-2 py-0.5 text-gray-600" data-build={BUILD_TAG}>
+          <span
+            className="text-[10px] rounded bg-gray-100 px-2 py-0.5 text-gray-600"
+            data-build={BUILD_TAG}
+            title={BUILD_TAG}
+          >
             {BUILD_TAG}
           </span>
         </div>
@@ -94,9 +136,11 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY`}
         <button
           type="button"
           onClick={signInGoogle}
-          disabled={!HAS_ENV}
+          disabled={!HAS_ENV || loading}
           className="w-full rounded-md border px-4 py-2 disabled:opacity-50"
           data-testid="google-btn"
+          id="google-btn"
+          aria-label="Continua con Google"
         >
           Continua con Google
         </button>
@@ -121,6 +165,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY`}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            autoComplete="email"
           />
           <input
             type="password"
@@ -129,6 +174,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY`}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            autoComplete="current-password"
           />
           <button
             disabled={loading || !HAS_ENV}
@@ -141,7 +187,9 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY`}
         {currentEmail && (
           <div className="mt-2 text-center text-xs text-gray-600">
             Sei loggato come <strong>{currentEmail}</strong>.{' '}
-            <button onClick={signOut} className="underline">Esci</button>
+            <button onClick={signOut} className="underline">
+              Esci
+            </button>
           </div>
         )}
       </div>
