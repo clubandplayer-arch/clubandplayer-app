@@ -4,9 +4,6 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-
 export default function SignupPage() {
   const router = useRouter();
   const supabase = supabaseBrowser();
@@ -24,14 +21,8 @@ export default function SignupPage() {
     setErr(null);
     setOk(null);
 
-    if (pwd1.length < 8) {
-      setErr('La password deve contenere almeno 8 caratteri.');
-      return;
-    }
-    if (pwd1 !== pwd2) {
-      setErr('Le password non coincidono.');
-      return;
-    }
+    if (pwd1.length < 8) return setErr('La password deve contenere almeno 8 caratteri.');
+    if (pwd1 !== pwd2) return setErr('Le password non coincidono.');
 
     setBusy(true);
     try {
@@ -61,14 +52,10 @@ export default function SignupPage() {
         <h1 className="text-xl font-semibold">Crea un account</h1>
 
         {err && (
-          <p className="rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700">
-            {err}
-          </p>
+          <p className="rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700">{err}</p>
         )}
         {ok && (
-          <p className="rounded-md border border-green-300 bg-green-50 p-2 text-sm text-green-700">
-            {ok}
-          </p>
+          <p className="rounded-md border border-green-300 bg-green-50 p-2 text-sm text-green-700">{ok}</p>
         )}
 
         <form onSubmit={onSubmit} className="space-y-3">
@@ -131,8 +118,7 @@ export default function SignupPage() {
         </form>
 
         <p className="text-xs text-gray-500">
-          Hai già un account?{' '}
-          <a href="/login" className="underline">Accedi</a>
+          Hai già un account? <a href="/login" className="underline">Accedi</a>
         </p>
       </div>
     </main>

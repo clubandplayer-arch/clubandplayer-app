@@ -3,9 +3,6 @@
 import { useState } from 'react';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-
 export default function ResetPasswordPage() {
   const supabase = supabaseBrowser();
   const [email, setEmail] = useState('');
@@ -35,16 +32,8 @@ export default function ResetPasswordPage() {
       <div className="w-full max-w-sm rounded-2xl border p-6 shadow-sm space-y-4">
         <h1 className="text-xl font-semibold">Reimposta password</h1>
 
-        {err && (
-          <p className="rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700">
-            {err}
-          </p>
-        )}
-        {ok && (
-          <p className="rounded-md border border-green-300 bg-green-50 p-2 text-sm text-green-700">
-            {ok}
-          </p>
-        )}
+        {err && <p className="rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700">{err}</p>}
+        {ok && <p className="rounded-md border border-green-300 bg-green-50 p-2 text-sm text-green-700">{ok}</p>}
 
         <form onSubmit={onSubmit} className="space-y-3">
           <label className="block text-sm">
@@ -69,8 +58,7 @@ export default function ResetPasswordPage() {
         </form>
 
         <p className="text-xs text-gray-500">
-          Riceverai un link che ti porterà alla pagina{' '}
-          <code>/update-password</code> per impostare la nuova password.
+          Riceverai un link che ti porterà alla pagina <code>/update-password</code> per impostare la nuova password.
         </p>
       </div>
     </main>

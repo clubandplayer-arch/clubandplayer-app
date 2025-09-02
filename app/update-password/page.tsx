@@ -4,9 +4,6 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-
 export default function UpdatePasswordPage() {
   const router = useRouter();
   const supabase = supabaseBrowser();
@@ -22,14 +19,8 @@ export default function UpdatePasswordPage() {
     setErr(null);
     setOk(null);
 
-    if (pwd1.length < 8) {
-      setErr('La password deve contenere almeno 8 caratteri.');
-      return;
-    }
-    if (pwd1 !== pwd2) {
-      setErr('Le password non coincidono.');
-      return;
-    }
+    if (pwd1.length < 8) return setErr('La password deve contenere almeno 8 caratteri.');
+    if (pwd1 !== pwd2) return setErr('Le password non coincidono.');
 
     setBusy(true);
     try {
@@ -51,16 +42,8 @@ export default function UpdatePasswordPage() {
       <div className="w-full max-w-sm rounded-2xl border p-6 shadow-sm space-y-4">
         <h1 className="text-xl font-semibold">Imposta nuova password</h1>
 
-        {err && (
-          <p className="rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700">
-            {err}
-          </p>
-        )}
-        {ok && (
-          <p className="rounded-md border border-green-300 bg-green-50 p-2 text-sm text-green-700">
-            {ok}
-          </p>
-        )}
+        {err && <p className="rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700">{err}</p>}
+        {ok && <p className="rounded-md border border-green-300 bg-green-50 p-2 text-sm text-green-700">{ok}</p>}
 
         <form onSubmit={onSubmit} className="space-y-3">
           <label className="block text-sm">

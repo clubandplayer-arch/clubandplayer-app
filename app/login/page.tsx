@@ -3,9 +3,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
-
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
 const SUPA_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''
 const HAS_ENV = Boolean(SUPA_URL && SUPA_ANON)
@@ -25,7 +22,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [currentEmail, setCurrentEmail] = useState<string | null>(null)
 
-  const BUILD_TAG = 'login-v3.7-prod-only-gate'
+  const BUILD_TAG = 'login-v3.8-no-revalidate'
 
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const oauthAllowedHere = useMemo(() => ALLOWED_OAUTH_ORIGINS.has(origin), [origin])
@@ -88,11 +85,11 @@ export default function LoginPage() {
       const { createClient } = await import('@supabase/supabase-js')
       const supabase = createClient(SUPA_URL, SUPA_ANON)
 
-      // Chiedi a Supabase l’URL OAuth e forza il redirect (compatibile ovunque)
+      // Chiedi a Supabase l’URL OAuth e forza il redirect (compat ovunque)
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: origin, // torni alla stessa origin (prod o localhost)
+          redirectTo: origin, // torna alla stessa origin (prod o localhost)
           queryParams: { prompt: 'consent' }, // opzionale
         },
       })
