@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
 
 export default function ClubProfilePage() {
@@ -21,9 +22,11 @@ export default function ClubProfilePage() {
   const [error, setError] = useState<string | null>(null)
   const [okMsg, setOkMsg] = useState<string | null>(null)
 
+  // Caricamento dati iniziale
   useEffect(() => {
     const init = async () => {
       setError(null)
+
       const { data: { user }, error: uErr } = await supabase.auth.getUser()
       if (uErr) {
         setError(uErr.message)
@@ -75,8 +78,25 @@ export default function ClubProfilePage() {
       setLoading(false)
     }
 
-    init()
+    void init()
   }, [supabase, router])
+
+  // Cleanup: revoca il precedente blob URL quando cambia logoUrl o su unmount
+  useEffect(() => {
+    let toRevoke: string | null = null
+    if (logoUrl?.startsWith('blob:')) {
+      toRevoke = logoUrl
+    }
+    return () => {
+      if (toRevoke) {
+        try {
+          URL.revokeObjectURL(toRevoke)
+        } catch {
+          /* ignore revoke errors */
+        }
+      }
+    }
+  }, [logoUrl])
 
   const onPickLogo = (file: File | null) => {
     setLogoFile(file)
@@ -94,7 +114,7 @@ export default function ClubProfilePage() {
     setError(null)
     setOkMsg(null)
     try {
-      const ext = logoFile.name.split('.').pop() || 'png'
+      const ext = (logoFile.name.split('.').pop() || 'png').toLowerCase()
       const fileName = `logo-${Date.now()}.${ext}`
       const path = `${userId}/${fileName}`
 
@@ -112,6 +132,7 @@ export default function ClubProfilePage() {
       if (!publicUrl) throw new Error('Impossibile ottenere la URL pubblica del logo')
 
       if (!clubId) throw new Error('Club non inizializzato')
+
       const { error: updErr } = await supabase
         .from('clubs')
         .update({ logo_url: publicUrl })
@@ -120,6 +141,7 @@ export default function ClubProfilePage() {
 
       setLogoUrl(publicUrl)
       setOkMsg('Logo aggiornato con successo.')
+      setLogoFile(null)
     } catch (e: any) {
       setError(e?.message || 'Errore in upload logo')
     } finally {
@@ -175,9 +197,17 @@ export default function ClubProfilePage() {
         <h2 className="text-lg font-medium">Logo</h2>
         <div className="flex items-center gap-4">
           <div className="relative h-24 w-24 overflow-hidden rounded-md border bg-white">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             {logoUrl ? (
-              <img src={logoUrl} alt="Logo club" className="h-full w-full object-cover" />
+              <Image
+                src={logoUrl}
+                alt="Logo club"
+                fill
+                className="object-cover"
+                sizes="96px"
+                // Evita la config domini remoti per ora (Supabase Storage URL)
+                unoptimized
+                priority={false}
+              />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-gray-400">
                 Nessun logo
@@ -190,6 +220,7 @@ export default function ClubProfilePage() {
               type="file"
               accept="image/*"
               onChange={(e) => onPickLogo(e.target.files?.[0] ?? null)}
+              disabled={uploading}
             />
             <div className="flex gap-2">
               <button

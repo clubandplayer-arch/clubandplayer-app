@@ -1,22 +1,43 @@
-"use client";
+'use client'
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useSupabaseAuth } from "@/lib/auth/session";
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { supabaseBrowser } from '@/lib/supabaseBrowser'
+
+const BYPASS =
+  process.env.NEXT_PUBLIC_AUTH_BYPASS === 'true' &&
+  process.env.NODE_ENV !== 'production';
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useSupabaseAuth();
   const router = useRouter();
+  const supabase = supabaseBrowser();
+  const [ok, setOk] = useState(false);
 
   useEffect(() => {
-    if (!loading && !user) {
-      // Usa replace per evitare che l'utente torni indietro alla pagina protetta col back
-      router.replace("/login");
-    }
-  }, [user, loading, router]);
+    let active = true;
+    (async () => {
+      if (BYPASS) {
+        if (active) setOk(true);
+        return;
+      }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!active) return;
+      if (!user) { router.replace('/login'); return; }
+      setOk(true);
+    })();
+    return () => { active = false; };
+  }, [router, supabase]);
 
-  if (loading) return <p className="p-4">Caricamento...</p>;
-  if (!user) return null;
+  if (!ok) return null;
 
-  return <>{children}</>;
+  return (
+    <>
+      {BYPASS && (
+        <div className="fixed bottom-2 right-2 rounded bg-yellow-100 px-2 py-1 text-xs text-yellow-800 shadow">
+          AUTH BYPASS (preview/dev)
+        </div>
+      )}
+      {children}
+    </>
+  );
 }

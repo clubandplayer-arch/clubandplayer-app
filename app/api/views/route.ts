@@ -1,62 +1,102 @@
 import { NextRequest, NextResponse } from "next/server";
-import { withApiHandler } from "@/lib/api/handler";
-import { badRequest } from "@/lib/api/errors";
-import { createClient } from "@supabase/supabase-js";
+import { cookies } from "next/headers";
+import { listParamsSchema } from "../../../lib/api/schemas";
+import { rateLimit } from "../../../lib/api/rateLimit";
+import { getSupabaseServerClient } from "../../../lib/supabase/server";
+import { getSupabaseAdminClient } from "../../../lib/supabase/admin";
 
-// Supabase client con Service Role Key (solo lato server)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+export const runtime = "nodejs";
 
-export const GET = withApiHandler(async (req: NextRequest) => {
-  const url = new URL(req.url);
-  const scope = url.searchParams.get("scope");
-  if (!scope) throw badRequest("Missing scope");
+function allowPreviewBypass(req: NextRequest) {
+  const isPreview =
+    process.env.VERCEL_ENV === "preview" || process.env.NODE_ENV === "development";
+  const bypass = process.env.API_BYPASS_SERVICE_ROLE === "true";
+  if (!isPreview || !bypass) return false;
+  const headerKey = req.headers.get("x-dev-key");
+  const expected = process.env.PREVIEW_DEV_KEY;
+  return !!expected && headerKey === expected;
+}
 
-  // L’RLS farà in modo che vengano restituite solo le viste dell’utente corrente
-  const { data, error } = await supabase
-    .from("saved_views")
-    .select("*")
-    .eq("scope", scope)
-    .order("created_at", { ascending: false });
+export async function GET(req: NextRequest) {
+  try {
+    await rateLimit(req);
 
-  if (error) throw badRequest(error.message);
+    const raw = Object.fromEntries(new URL(req.url).searchParams);
+    const parsed = listParamsSchema.safeParse(raw);
+    if (!parsed.success) {
+      return NextResponse.json({ ok: false, error: "Parametri query non validi" }, { status: 400 });
+    }
+    const { page, pageSize, orderBy, orderDir } = parsed.data;
 
-  return NextResponse.json({ items: data ?? [] });
-});
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    const sortCol = orderBy ?? "id";
 
-export const POST = withApiHandler(async (req: NextRequest) => {
-  const body = await req.json();
-  if (!body.scope || !body.name || !body.filters || !body.user_id) {
-    throw badRequest("Missing fields");
-  }
+    if (allowPreviewBypass(req)) {
+      const admin = getSupabaseAdminClient();
+      const { data, error, count } = await admin
+        .from("views")
+        .select("*", { count: "exact" })
+        .order(sortCol, { ascending: orderDir === "asc" })
+        .range(from, to);
+      if (error) throw error;
 
-  const { data, error } = await supabase
-    .from("saved_views")
-    .insert([
+      return NextResponse.json(
+        {
+          ok: true,
+          bypass: true,
+          data,
+          meta: {
+            page,
+            pageSize,
+            total: count ?? null,
+            pageCount: count != null ? Math.ceil(count / pageSize) : null,
+            orderBy: sortCol,
+            orderDir,
+          },
+        },
+        { status: 200 }
+      );
+    }
+
+    const cookieStore = await cookies();
+    const supabase = getSupabaseServerClient(cookieStore);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ ok: false, error: "Non autenticato" }, { status: 401 });
+    }
+
+    const { data, error, count } = await supabase
+      .from("views")
+      .select("*", { count: "exact" })
+      .order(sortCol, { ascending: orderDir === "asc" })
+      .range(from, to);
+    if (error) throw error;
+
+    return NextResponse.json(
       {
-        scope: body.scope,
-        name: body.name,
-        filters: body.filters,
-        user_id: body.user_id,
+        ok: true,
+        data,
+        meta: {
+          page,
+          pageSize,
+          total: count ?? null,
+          pageCount: count != null ? Math.ceil(count / pageSize) : null,
+          orderBy: sortCol,
+          orderDir,
+        },
       },
-    ])
-    .select()
-    .single();
-
-  if (error) throw badRequest(error.message);
-
-  return NextResponse.json(data, { status: 201 });
-});
-
-export const DELETE = withApiHandler(async (req: NextRequest) => {
-  const url = new URL(req.url);
-  const id = url.searchParams.get("id");
-  if (!id) throw badRequest("Missing id");
-
-  const { error } = await supabase.from("saved_views").delete().eq("id", id);
-  if (error) throw badRequest(error.message);
-
-  return NextResponse.json({ ok: true });
-});
+      { status: 200 }
+    );
+  } catch (e: any) {
+    if (e?.status === 429) {
+      return new NextResponse(JSON.stringify({ ok: false, error: "Too Many Requests" }), {
+        status: 429,
+        headers: { "content-type": "application/json", ...(e.headers ?? {}) },
+      });
+    }
+    return NextResponse.json({ ok: false, error: e?.message ?? "Errore server" }, { status: 500 });
+  }
+}

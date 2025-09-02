@@ -44,3 +44,4 @@ next-env.d.ts
 # Editor swap files
 *.swp
 *.swo
+.env.local
