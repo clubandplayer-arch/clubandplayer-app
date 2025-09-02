@@ -1,18 +1,7 @@
-"use client";
+'use client';
 
-import React from "react";
-import { ToastProvider } from "@/components/common/ToastProvider";
-import LiveEventsClient from "@/components/common/LiveEventsClient";
+import AuthGuard from '@/components/auth/AuthGuard';
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <ToastProvider>
-      <LiveEventsClient />
-      {children}
-    </ToastProvider>
-  );
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  return <AuthGuard>{children}</AuthGuard>;
 }
