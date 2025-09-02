@@ -27,12 +27,14 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   if (limit > 200) limit = 200;
   if (offset < 0) offset = 0;
 
-  const { data, error } = await supabase
+  const sel = supabase
     .from('opportunities')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .range(offset, offset + limit - 1);
+    .select('*', { count: 'exact' })
+    .order('created_at', { ascending: false });
+
+  // Nota: PostgREST calcola il count sul risultato dello stesso SELECT
+  const { data, error, count } = await sel.range(offset, offset + limit - 1);
 
   if (error) return jsonError(error.message, 400);
-  return NextResponse.json({ data, pagination: { limit, offset } });
+  return NextResponse.json({ data, pagination: { limit, offset, count: count ?? null } });
 });
