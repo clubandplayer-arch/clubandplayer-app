@@ -1,23 +1,37 @@
 // lib/api/auth.ts
-import { cookies } from "next/headers";
-import { NextResponse } from "next/server";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
+import type { SupabaseClient, User } from '@supabase/supabase-js';
+import { supabaseServer } from '@/lib/supabase/server';
 
-type Ok = { user: any; supabase: any };
-type Fail = { response: NextResponse };
+/** Contesto passato agli handler protetti */
+export type AuthedCtx = {
+  supabase: SupabaseClient<any, any, any>;
+  user: User;
+};
 
-export async function requireUser(): Promise<Ok | Fail> {
-  const cookieStore = await cookies();
-  const supabase = getSupabaseServerClient(cookieStore);
+/** Risposta JSON d'errore uniforme */
+export function jsonError(message: string, status = 400) {
+  return NextResponse.json({ error: message }, { status });
+}
 
-  const { data: { user }, error } = await supabase.auth.getUser();
-  if (error || !user) {
-    return {
-      response: NextResponse.json(
-        { ok: false, error: "Not authenticated" },
-        { status: 401 }
-      ),
-    };
+/** 401 se non c'è utente; altrimenti ritorna supabase+user */
+export async function requireUser(): Promise<{ ctx?: AuthedCtx; res?: NextResponse }> {
+  const supabase = supabaseServer();
+  const { data, error } = await supabase.auth.getUser();
+  if (error || !data?.user) {
+    return { res: jsonError('Unauthorized', 401) };
   }
-  return { user, supabase };
+  return { ctx: { supabase, user: data.user } };
+}
+
+/** Wrapper per proteggere i route handlers */
+export function withAuth(
+  handler: (req: NextRequest, ctx: AuthedCtx) => Promise<NextResponse> | NextResponse
+) {
+  return async (req: NextRequest) => {
+    const { ctx, res } = await requireUser();
+    if (!ctx) return res!;
+    return handler(req, ctx);
+  };
 }
