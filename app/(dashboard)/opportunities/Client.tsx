@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 type Opportunity = {
   id: string | number;
@@ -28,10 +29,19 @@ export default function OpportunitiesClient() {
   const [page, setPage] = useState<number>(1);
   const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc');
 
+  // ruolo utente per abilitare azioni
+  const [role, setRole] = useState<string | null>(null);
+
   const fetchData = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     setErr(null);
     try {
+      // Ruolo user
+      const supabase = supabaseBrowser();
+      const { data } = await supabase.auth.getUser();
+      setRole((data.user?.user_metadata as any)?.role ?? null);
+
+      // Dati
       const url = new URL('/api/opportunities', window.location.origin);
       url.searchParams.set('limit', String(200));
       url.searchParams.set('offset', '0');
@@ -91,6 +101,25 @@ export default function OpportunitiesClient() {
     setPage(1);
   }, [query, pageSize, sortDir]);
 
+  const onDelete = async (id: string | number) => {
+    if (role !== 'club') return;
+    if (!confirm('Eliminare questa opportunità?')) return;
+    try {
+      const res = await fetch(`/api/opportunities/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(text || `HTTP ${res.status}`);
+      }
+      // Refresh lista
+      fetchData();
+    } catch (e: any) {
+      alert(e?.message ?? 'Errore durante l’eliminazione.');
+    }
+  };
+
   return (
     <section className="space-y-4">
       {/* Filtri / controlli */}
@@ -128,6 +157,17 @@ export default function OpportunitiesClient() {
           </select>
         </div>
 
+        <div className="flex-1" />
+
+        {role === 'club' && (
+          <a
+            className="rounded-md bg-black px-3 py-2 text-sm text-white hover:opacity-90"
+            href="/opportunities/new"
+          >
+            + Nuova opportunità
+          </a>
+        )}
+
         <button
           type="button"
           onClick={() => fetchData()}
@@ -153,7 +193,7 @@ export default function OpportunitiesClient() {
 
       {!loading && !err && filtered.length === 0 && (
         <div className="rounded-md border p-4 text-sm text-gray-600">
-          Nessuna opportunità trovata. Prova a rimuovere i filtri o crea la prima opportunità.
+          Nessuna opportunità trovata. {role === 'club' ? 'Crea la prima opportunità.' : 'Prova a rimuovere i filtri.'}
         </div>
       )}
 
@@ -167,13 +207,22 @@ export default function OpportunitiesClient() {
                   <div>
                     <div className="font-medium">{o.title ?? `#${o.id}`}</div>
                     {o.description && (
-                      <div className="text-sm text-gray-600 line-clamp-2">
-                        {o.description}
-                      </div>
+                      <div className="text-sm text-gray-600 line-clamp-2">{o.description}</div>
                     )}
                   </div>
-                  <div className="text-xs text-gray-500 text-right">
-                    {o.created_at ? new Date(o.created_at).toLocaleString() : '—'}
+                  <div className="flex items-center gap-2">
+                    <div className="text-xs text-gray-500 text-right">
+                      {o.created_at ? new Date(o.created_at).toLocaleString() : '—'}
+                    </div>
+                    {role === 'club' && (
+                      <button
+                        className="rounded-md border px-2 py-1 text-xs hover:bg-red-50"
+                        onClick={() => onDelete(o.id)}
+                        title="Elimina"
+                      >
+                        Elimina
+                      </button>
+                    )}
                   </div>
                 </div>
               </li>
