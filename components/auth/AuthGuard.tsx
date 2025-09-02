@@ -6,11 +6,12 @@ import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 // Pagine pubbliche (nessun controllo auth)
 const PUBLIC_PATHS = new Set<string>([
+  '/',               // se vuoi landing libera
   '/login',
+  '/signup',         // 👈 aggiunta qui
   '/reset-password',
   '/update-password',
   '/debug/env',
-  '/', // lascia libera la home se vuoi
 ]);
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
@@ -28,7 +29,6 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       }
       const supabase = supabaseBrowser();
       const { data } = await supabase.auth.getSession();
-
       if (!data.session) {
         router.replace('/login');
       } else {
