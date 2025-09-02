@@ -1,47 +1,26 @@
 // lib/supabase/server.ts
-import { createServerClient } from "@supabase/ssr";
-import { cookies as nextCookies } from "next/headers";
+import { cookies } from 'next/headers';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
-/**
- * Crea un client Supabase lato server.
- * Accetta opzionalmente un cookieStore (es. risultato di `await cookies()` nelle route).
- * Rimane sincrona per compatibilità con le route esistenti.
- */
-export function createSupabaseServerClient(providedStore?: unknown) {
-  // Cast permissivo: gestiamo sia ReadonlyRequestCookies sia Promise<ReadonlyRequestCookies>
-  const provided: any = providedStore as any;
-  const fallback: any = nextCookies() as any;
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-  const getCookieValue = (name: string) => {
-    // 1) prova dal provided store (già await-ato nelle route)
-    const fromProvided = provided?.get?.(name)?.value;
-    if (fromProvided !== undefined) return fromProvided;
-
-    // 2) fallback: se è una Promise, evitiamo di usarla (non possiamo await-are in funzione sync)
-    if (typeof fallback?.then === "function") {
-      return undefined;
-    }
-
-    // 3) fallback sincrono
-    return fallback?.get?.(name)?.value;
-  };
-
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return getCookieValue(name);
-        },
-        // no-op lato SSR: non scriviamo cookie dalla route
-        set() {},
-        remove() {},
+/** Client Supabase lato server che legge/scrive i cookie di Next. */
+export function supabaseServer() {
+  const cookieStore = cookies();
+  return createServerClient(url, anon, {
+    cookies: {
+      get(name: string) {
+        return cookieStore.get(name)?.value;
       },
-    }
-  );
+      set(name: string, value: string, options: CookieOptions) {
+        // @ts-ignore Next accetta opzioni compatibili
+        cookieStore.set(name, value, options as any);
+      },
+      remove(name: string, options: CookieOptions) {
+        // @ts-ignore
+        cookieStore.set(name, '', { ...options, maxAge: 0 } as any);
+      },
+    },
+  });
 }
-
-// Back-compat per le route esistenti
-export const getSupabaseServerClient = createSupabaseServerClient;
-export default createSupabaseServerClient;
