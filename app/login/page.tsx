@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 export const dynamic = 'force-dynamic'
@@ -9,6 +9,12 @@ export const revalidate = 0
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
 const SUPA_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''
 const HAS_ENV = Boolean(SUPA_URL && SUPA_ANON)
+
+// Consenti OAuth SOLO su produzione e localhost
+const ALLOWED_OAUTH_ORIGINS = new Set<string>([
+  'https://clubandplayer-app.vercel.app',
+  'http://localhost:3000',
+])
 
 export default function LoginPage() {
   const router = useRouter()
@@ -19,7 +25,10 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [currentEmail, setCurrentEmail] = useState<string | null>(null)
 
-  const BUILD_TAG = 'login-v3.6-force-redirect'
+  const BUILD_TAG = 'login-v3.7-prod-only-gate'
+
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  const oauthAllowedHere = useMemo(() => ALLOWED_OAUTH_ORIGINS.has(origin), [origin])
 
   // Lazy-load supabase-js SOLO lato client e dopo il mount
   useEffect(() => {
@@ -63,32 +72,35 @@ export default function LoginPage() {
 
   async function signInGoogle() {
     setErrorMsg(null)
+
     if (!HAS_ENV) {
       setErrorMsg('Config mancante: NEXT_PUBLIC_SUPABASE_*')
       return
     }
+    if (!oauthAllowedHere) {
+      setErrorMsg('Per usare Google, apri la versione Production del sito.')
+      return
+    }
+
     setLoading(true)
     try {
       const origin = window.location.origin
       const { createClient } = await import('@supabase/supabase-js')
       const supabase = createClient(SUPA_URL, SUPA_ANON)
 
-      // Chiediamo a Supabase l'URL esatto per OAuth
+      // Chiedi a Supabase l’URL OAuth e forza il redirect (compatibile ovunque)
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: origin, // torni alla stessa origin (preview/prod)
+          redirectTo: origin, // torni alla stessa origin (prod o localhost)
           queryParams: { prompt: 'consent' }, // opzionale
         },
       })
-
       if (error) throw error
 
-      // Forziamo NOI il redirect per evitare aperture "strane" su Google generic
       if (data?.url) {
         window.location.assign(data.url)
       } else {
-        // Fallback estremo: costruiamo manualmente l'endpoint authorize
         const authorize = `${SUPA_URL}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(
           origin
         )}`
@@ -133,10 +145,20 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY`}
           </div>
         )}
 
+        {!oauthAllowedHere && (
+          <div className="rounded-md border border-blue-300 bg-blue-50 p-2 text-xs text-blue-800">
+            Per il login con Google usa{' '}
+            <a className="underline" href="https://clubandplayer-app.vercel.app/login">
+              la versione Production
+            </a>
+            . In ambienti di preview continua con email/password.
+          </div>
+        )}
+
         <button
           type="button"
           onClick={signInGoogle}
-          disabled={!HAS_ENV || loading}
+          disabled={!HAS_ENV || !oauthAllowedHere || loading}
           className="w-full rounded-md border px-4 py-2 disabled:opacity-50"
           data-testid="google-btn"
           id="google-btn"
