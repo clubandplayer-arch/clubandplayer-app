@@ -1,102 +1,38 @@
-import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { listParamsSchema } from "../../../lib/api/schemas";
-import { rateLimit } from "../../../lib/api/rateLimit";
-import { getSupabaseServerClient } from "../../../lib/supabase/server";
-import { getSupabaseAdminClient } from "../../../lib/supabase/admin";
+// app/api/opportunities/route.ts
+import { NextResponse, type NextRequest } from 'next/server';
+import { withAuth, jsonError } from '@/lib/api/auth';
+import { listParamsSchema } from '@/lib/api/schemas';
+import { rateLimit } from '@/lib/api/rateLimit';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
-function allowPreviewBypass(req: NextRequest) {
-  const isPreview =
-    process.env.VERCEL_ENV === "preview" || process.env.NODE_ENV === "development";
-  const bypass = process.env.API_BYPASS_SERVICE_ROLE === "true";
-  if (!isPreview || !bypass) return false;
-  const headerKey = req.headers.get("x-dev-key");
-  const expected = process.env.PREVIEW_DEV_KEY;
-  return !!expected && headerKey === expected;
-}
-
-export async function GET(req: NextRequest) {
+/** GET /api/opportunities?limit=...&offset=... */
+export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   try {
-    await rateLimit(req);
-
-    const raw = Object.fromEntries(new URL(req.url).searchParams);
-    const parsed = listParamsSchema.safeParse(raw);
-    if (!parsed.success) {
-      return NextResponse.json({ ok: false, error: "Parametri query non validi" }, { status: 400 });
-    }
-    const { page, pageSize, orderBy, orderDir } = parsed.data;
-
-    const from = (page - 1) * pageSize;
-    const to = from + pageSize - 1;
-    const sortCol = orderBy ?? "id";
-
-    if (allowPreviewBypass(req)) {
-      const admin = getSupabaseAdminClient();
-      const { data, error, count } = await admin
-        .from("opportunities")
-        .select("*", { count: "exact" })
-        .order(sortCol, { ascending: orderDir === "asc" })
-        .range(from, to);
-      if (error) throw error;
-
-      return NextResponse.json(
-        {
-          ok: true,
-          bypass: true,
-          data,
-          meta: {
-            page,
-            pageSize,
-            total: count ?? null,
-            pageCount: count != null ? Math.ceil(count / pageSize) : null,
-            orderBy: sortCol,
-            orderDir,
-          },
-        },
-        { status: 200 }
-      );
-    }
-
-    const cookieStore = await cookies();
-    const supabase = getSupabaseServerClient(cookieStore);
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ ok: false, error: "Non autenticato" }, { status: 401 });
-    }
-
-    const { data, error, count } = await supabase
-      .from("opportunities")
-      .select("*", { count: "exact" })
-      .order(sortCol, { ascending: orderDir === "asc" })
-      .range(from, to);
-    if (error) throw error;
-
-    return NextResponse.json(
-      {
-        ok: true,
-        data,
-        meta: {
-          page,
-          pageSize,
-          total: count ?? null,
-          pageCount: count != null ? Math.ceil(count / pageSize) : null,
-          orderBy: sortCol,
-          orderDir,
-        },
-      },
-      { status: 200 }
-    );
-  } catch (e: any) {
-    if (e?.status === 429) {
-      return new NextResponse(JSON.stringify({ ok: false, error: "Too Many Requests" }), {
-        status: 429,
-        headers: { "content-type": "application/json", ...(e.headers ?? {}) },
-      });
-    }
-    return NextResponse.json({ ok: false, error: e?.message ?? "Errore server" }, { status: 500 });
+    await rateLimit(req, { key: `opps:GET:${user.id}`, limit: 60, window: '1m' } as any);
+  } catch {
+    return jsonError('Too Many Requests', 429);
   }
-}
+
+  const url = new URL(req.url);
+  const raw = Object.fromEntries(url.searchParams.entries());
+  const parsed = listParamsSchema.safeParse(raw);
+
+  const limitRaw = parsed.success ? (parsed.data as any).limit : undefined;
+  const offsetRaw = parsed.success ? (parsed.data as any).offset : undefined;
+
+  let limit = Number.isFinite(Number(limitRaw)) ? Number(limitRaw) : 50;
+  let offset = Number.isFinite(Number(offsetRaw)) ? Number(offsetRaw) : 0;
+  if (limit < 1) limit = 1;
+  if (limit > 200) limit = 200;
+  if (offset < 0) offset = 0;
+
+  const { data, error } = await supabase
+    .from('opportunities')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error) return jsonError(error.message, 400);
+  return NextResponse.json({ data, pagination: { limit, offset } });
+});
