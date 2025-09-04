@@ -3,23 +3,20 @@ import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 
-export const runtime = 'nodejs' as const
+// ⚠️ niente "as const" qui
+export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url)
-
-  // dove vuoi andare dopo l’accesso (di default home)
   const nextPath = url.searchParams.get('next') || '/'
 
-  // il codice OAuth restituito da Google → Supabase
+  // codice OAuth restituito da Supabase dopo Google
   const code = url.searchParams.get('code')
   if (!code) {
-    // non c'è il codice: torna alla login della STESSA origin con un flag d’errore
     return NextResponse.redirect(new URL('/login?err=nocode', req.url))
   }
 
-  // Next 15+: cookies() è async
   const cookieStore = await cookies()
 
   const supabase = createServerClient(
@@ -40,12 +37,12 @@ export async function GET(req: NextRequest) {
     }
   )
 
-  // Scambia il code per la sessione e scrive i cookie
+  // In questa versione serve passare esplicitamente il code
   const { error } = await supabase.auth.exchangeCodeForSession(code)
   if (error) {
     return NextResponse.redirect(new URL('/login?err=oauth', req.url))
   }
 
-  // 🔑 RESTA sulla STESSA ORIGIN della richiesta (preview→preview, prod→prod)
+  // Rimani sulla stessa origin (preview resta preview)
   return NextResponse.redirect(new URL(nextPath, req.url))
 }
