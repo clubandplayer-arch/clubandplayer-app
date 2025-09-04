@@ -3,7 +3,7 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { createServerClient } from "@supabase/ssr";
 
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPA_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
