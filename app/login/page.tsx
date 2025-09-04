@@ -1,121 +1,141 @@
-'use client'
+'use client';
 
-import { useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
-const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
-const SUPA_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''
-const HAS_ENV = Boolean(SUPA_URL && SUPA_ANON)
+const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+const SUPA_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
+const HAS_ENV = Boolean(SUPA_URL && SUPA_ANON);
 
-// Consenti OAuth SOLO su produzione e localhost
-const ALLOWED_OAUTH_ORIGINS = new Set<string>([
-  'https://clubandplayer-app.vercel.app',
-  'http://localhost:3000',
-])
+// Consente OAuth su: localhost, produzione e QUALSIASI preview *.vercel.app
+function isAllowedOAuthOrigin(origin: string) {
+  if (!origin) return false;
+  try {
+    const url = new URL(origin);
+    const { hostname, port } = url;
+
+    // localhost (3000/3001)
+    if (hostname === 'localhost' && (port === '3000' || port === '3001' || port === '')) {
+      return true;
+    }
+
+    // produzione
+    if (hostname === 'clubandplayer-app.vercel.app') return true;
+
+    // preview di Vercel (*.vercel.app)
+    if (hostname.endsWith('.vercel.app')) return true;
+
+    return false;
+  } catch {
+    return false;
+  }
+}
 
 export default function LoginPage() {
-  const router = useRouter()
+  const router = useRouter();
 
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [errorMsg, setErrorMsg] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [currentEmail, setCurrentEmail] = useState<string | null>(null)
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [currentEmail, setCurrentEmail] = useState<string | null>(null);
 
-  const BUILD_TAG = 'login-v3.8-no-revalidate'
+  const BUILD_TAG = 'login-v3.9-preview-oauth';
 
-  const origin = typeof window !== 'undefined' ? window.location.origin : ''
-  const oauthAllowedHere = useMemo(() => ALLOWED_OAUTH_ORIGINS.has(origin), [origin])
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const oauthAllowedHere = useMemo(() => isAllowedOAuthOrigin(origin), [origin]);
 
   // Lazy-load supabase-js SOLO lato client e dopo il mount
   useEffect(() => {
-    let active = true
-    if (!HAS_ENV) return
+    let active = true;
+    if (!HAS_ENV) return;
 
-    ;(async () => {
-      const { createClient } = await import('@supabase/supabase-js')
-      const supabase = createClient(SUPA_URL, SUPA_ANON)
+    (async () => {
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(SUPA_URL, SUPA_ANON);
       const {
         data: { user },
-      } = await supabase.auth.getUser()
-      if (active) setCurrentEmail(user?.email ?? null)
-    })()
+      } = await supabase.auth.getUser();
+      if (active) setCurrentEmail(user?.email ?? null);
+    })();
 
     return () => {
-      active = false
-    }
-  }, [])
+      active = false;
+    };
+  }, []);
 
-  async function signInEmail(e: React.FormEvent) {
-    e.preventDefault()
-    setErrorMsg(null)
+  async function signInEmail(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setErrorMsg(null);
     if (!HAS_ENV) {
-      setErrorMsg('Config mancante: NEXT_PUBLIC_SUPABASE_*')
-      return
+      setErrorMsg('Config mancante: NEXT_PUBLIC_SUPABASE_*');
+      return;
     }
-    setLoading(true)
+    setLoading(true);
     try {
-      const { createClient } = await import('@supabase/supabase-js')
-      const supabase = createClient(SUPA_URL, SUPA_ANON)
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) throw error
-      router.replace('/')
-    } catch (err: any) {
-      setErrorMsg(err?.message ?? 'Errore login')
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(SUPA_URL, SUPA_ANON);
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      router.replace('/');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Errore login';
+      setErrorMsg(msg);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
   async function signInGoogle() {
-    setErrorMsg(null)
+    setErrorMsg(null);
 
     if (!HAS_ENV) {
-      setErrorMsg('Config mancante: NEXT_PUBLIC_SUPABASE_*')
-      return
+      setErrorMsg('Config mancante: NEXT_PUBLIC_SUPABASE_*');
+      return;
     }
     if (!oauthAllowedHere) {
-      setErrorMsg('Per usare Google, apri la versione Production del sito.')
-      return
+      setErrorMsg('Per usare Google, apri una Preview Vercel o la Production.');
+      return;
     }
 
-    setLoading(true)
+    setLoading(true);
     try {
-      const origin = window.location.origin
-      const { createClient } = await import('@supabase/supabase-js')
-      const supabase = createClient(SUPA_URL, SUPA_ANON)
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(SUPA_URL, SUPA_ANON);
 
-      // Chiedi a Supabase l’URL OAuth e forza il redirect (compat ovunque)
+      // redirectTo sull’origine corrente → funziona in preview/prod/locale
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: origin, // torna alla stessa origin (prod o localhost)
+          redirectTo: origin,
           queryParams: { prompt: 'consent' }, // opzionale
         },
-      })
-      if (error) throw error
+      });
+      if (error) throw error;
 
       if (data?.url) {
-        window.location.assign(data.url)
+        window.location.assign(data.url);
       } else {
+        // Fallback manuale (non dovrebbe servire)
         const authorize = `${SUPA_URL}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(
           origin
-        )}`
-        window.location.assign(authorize)
+        )}`;
+        window.location.assign(authorize);
       }
-    } catch (err: any) {
-      console.error('OAuth error:', err)
-      setErrorMsg(err?.message ?? 'Errore OAuth')
-      setLoading(false)
+    } catch (err) {
+      console.error('OAuth error:', err);
+      const msg = err instanceof Error ? err.message : 'Errore OAuth';
+      setErrorMsg(msg);
+      setLoading(false);
     }
   }
 
   async function signOut() {
-    if (!HAS_ENV) return
-    const { createClient } = await import('@supabase/supabase-js')
-    const supabase = createClient(SUPA_URL, SUPA_ANON)
-    await supabase.auth.signOut()
-    setCurrentEmail(null)
+    if (!HAS_ENV) return;
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabase = createClient(SUPA_URL, SUPA_ANON);
+    await supabase.auth.signOut();
+    setCurrentEmail(null);
   }
 
   return (
@@ -136,7 +156,7 @@ export default function LoginPage() {
           <div className="rounded-md border border-yellow-300 bg-yellow-50 p-2 text-sm text-yellow-800">
             Variabili mancanti per questa build:
             <pre className="mt-1 whitespace-pre-wrap text-xs">
-{`NEXT_PUBLIC_SUPABASE_URL
+              {`NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY`}
             </pre>
           </div>
@@ -144,11 +164,11 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY`}
 
         {!oauthAllowedHere && (
           <div className="rounded-md border border-blue-300 bg-blue-50 p-2 text-xs text-blue-800">
-            Per il login con Google usa{' '}
+            Per il login con Google usa una <strong>Vercel Preview</strong> o la{' '}
             <a className="underline" href="https://clubandplayer-app.vercel.app/login">
-              la versione Production
+              Production
             </a>
-            . In ambienti di preview continua con email/password.
+            . In ambienti non autorizzati continua con email/password.
           </div>
         )}
 
@@ -213,5 +233,5 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY`}
         )}
       </div>
     </main>
-  )
+  );
 }
