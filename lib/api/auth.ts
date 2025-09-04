@@ -1,7 +1,11 @@
 // lib/api/auth.ts
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { createServerClient, type CookieOptions, type SupabaseClient } from "@supabase/ssr";
+import {
+  createServerClient,
+  type CookieOptions,
+  type SupabaseClient,
+} from "@supabase/ssr";
 import type { User } from "@supabase/supabase-js";
 
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -56,10 +60,12 @@ export async function requireUser(): Promise<RequireUserResult> {
 }
 
 /**
- * Wrapper semplice per proteggere handler (REST in app router).
- * Mantiene compatibilità con la tua firma attuale delle route.
+ * Wrapper per route protette (App Router, Next 15).
+ * - Accetta qualsiasi shape di `context` (anche `{ params: Promise<{}> }`)
+ * - Normalizza `params` (attende la Promise se presente)
  *
  * Uso:
+ *   export const GET = withAuth(async ({ request, params, user, supabase }) => { ... })
  *   export const POST = withAuth(async ({ request, params, user, supabase }) => { ... })
  */
 type WithAuthArgs = {
@@ -69,10 +75,11 @@ type WithAuthArgs = {
   supabase: SupabaseClient;
 };
 
-export function withAuth<
-  H extends (args: WithAuthArgs) => Promise<Response> | Response
->(handler: H) {
-  return async (request: Request, context?: { params?: WithAuthArgs["params"] }) => {
+export function withAuth(
+  handler: (args: WithAuthArgs) => Promise<Response> | Response
+) {
+  // NB: firmiamo con `any` per essere compatibili con i tipi runtime di Next 15
+  return async (request: any, context: any) => {
     const supabase = await getServerSupabase();
     const { data } = await supabase.auth.getUser();
 
@@ -80,9 +87,23 @@ export function withAuth<
       return jsonError("Unauthorized", 401);
     }
 
+    // Normalizza params: se Next li fornisce come Promise<{}>, attendiamoli.
+    let normalizedParams: Record<string, string | string[]> | undefined = undefined;
+    try {
+      const maybeParams = context?.params;
+      if (maybeParams && typeof maybeParams.then === "function") {
+        const awaited = await maybeParams;
+        normalizedParams = (awaited ?? undefined) as any;
+      } else {
+        normalizedParams = (maybeParams ?? undefined) as any;
+      }
+    } catch {
+      normalizedParams = undefined;
+    }
+
     return handler({
-      request,
-      params: context?.params,
+      request: request as Request,
+      params: normalizedParams,
       user: data.user,
       supabase,
     });
