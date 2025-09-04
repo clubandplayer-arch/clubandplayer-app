@@ -1,10 +1,10 @@
+export const runtime = 'nodejs';
+
 // app/api/opportunities/[id]/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
 import { requireUser, jsonError } from '@/lib/api/auth';
 import { opportunityUpdateSchema } from '@/lib/api/schemas';
 import { rateLimit } from '@/lib/api/rateLimit';
-
-export const runtime = 'nodejs';
 
 // Helper per leggere :id
 function getIdFromUrl(urlStr: string): string {

@@ -1,10 +1,10 @@
+export const runtime = 'nodejs';
+
 // app/api/opportunities/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { listParamsSchema, opportunityCreateSchema } from '@/lib/api/schemas';
 import { rateLimit } from '@/lib/api/rateLimit';
-
-export const runtime = 'nodejs';
 
 /** GET /api/opportunities?limit=...&offset=... */
 export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {

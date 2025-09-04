@@ -1,10 +1,10 @@
+export const runtime = 'nodejs';
+
 // app/api/clubs/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { listParamsSchema } from '@/lib/api/schemas';
 import { rateLimit } from '@/lib/api/rateLimit';
-
-export const runtime = 'nodejs'; // niente edge (serve accesso cookie/supabase)
 
 /** GET /api/clubs?limit=...&offset=... */
 export const GET = withAuth(async (req: NextRequest, { supabase }) => {
