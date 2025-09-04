@@ -1,12 +1,8 @@
 // lib/api/auth.ts
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import {
-  createServerClient,
-  type CookieOptions,
-  type SupabaseClient,
-} from "@supabase/ssr";
-import type { User } from "@supabase/supabase-js";
+import { createServerClient } from "@supabase/ssr";
+import type { SupabaseClient, User } from "@supabase/supabase-js";
 
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPA_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -24,6 +20,7 @@ export async function getServerSupabase() {
       get(name: string) {
         return store.get(name)?.value;
       },
+      // la scrittura/refresh cookie avviene nel middleware e nel callback OAuth
       set() {},
       remove() {},
     },
@@ -59,27 +56,38 @@ export async function requireUser(): Promise<RequireUserResult> {
   return { user, supabase, error: null, ctx: undefined, res: undefined };
 }
 
-/**
- * Wrapper per route protette (App Router, Next 15).
- * - Accetta qualsiasi shape di `context` (anche `{ params: Promise<{}> }`)
- * - Normalizza `params` (attende la Promise se presente)
- *
- * Uso:
- *   export const GET = withAuth(async ({ request, params, user, supabase }) => { ... })
- *   export const POST = withAuth(async ({ request, params, user, supabase }) => { ... })
- */
-type WithAuthArgs = {
+/** Firma a 1 argomento (object) */
+export type WithAuthArgs = {
   request: Request;
   params?: Record<string, string | string[]>;
   user: User;
   supabase: SupabaseClient;
 };
 
+/** Firma a 2 argomenti (req, { supabase, user, params }) */
+type WithAuthExtras = {
+  supabase: SupabaseClient;
+  user: User;
+  params?: Record<string, string | string[]>;
+};
+
+/**
+ * Wrapper per route protette (App Router, Next 15).
+ * Supporta entrambe le firme:
+ *   1) withAuth(async ({ request, params, user, supabase }) => Response)
+ *   2) withAuth(async (request, { params, user, supabase }) => Response)
+ *
+ * Inoltre normalizza `params` quando Next li passa come Promise<{}>.
+ */
+// Overload delle firme supportate
 export function withAuth(
   handler: (args: WithAuthArgs) => Promise<Response> | Response
-) {
-  // NB: firmiamo con `any` per essere compatibili con i tipi runtime di Next 15
-  return async (request: any, context: any) => {
+): (request: any, context?: any) => Promise<Response>;
+export function withAuth(
+  handler: (request: any, extras: WithAuthExtras) => Promise<Response> | Response
+): (request: any, context?: any) => Promise<Response>;
+export function withAuth(handler: any) {
+  return async (request: any, context?: any) => {
     const supabase = await getServerSupabase();
     const { data } = await supabase.auth.getUser();
 
@@ -87,7 +95,7 @@ export function withAuth(
       return jsonError("Unauthorized", 401);
     }
 
-    // Normalizza params: se Next li fornisce come Promise<{}>, attendiamoli.
+    // Normalizza params (Next 15 può passarli come Promise<{}>)
     let normalizedParams: Record<string, string | string[]> | undefined = undefined;
     try {
       const maybeParams = context?.params;
@@ -101,11 +109,21 @@ export function withAuth(
       normalizedParams = undefined;
     }
 
+    // Se l'handler accetta 2 argomenti, usiamo (req, { ...extras })
+    if (handler.length >= 2) {
+      return handler(request as Request, {
+        supabase,
+        user: data.user,
+        params: normalizedParams,
+      } as WithAuthExtras);
+    }
+
+    // Altrimenti passiamo un unico oggetto
     return handler({
       request: request as Request,
       params: normalizedParams,
       user: data.user,
       supabase,
-    });
+    } as WithAuthArgs);
   };
 }
