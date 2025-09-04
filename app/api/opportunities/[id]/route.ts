@@ -1,31 +1,29 @@
 // app/api/opportunities/[id]/route.ts
-import { NextResponse, type NextRequest } from 'next/server';
-import { requireUser, jsonError } from '@/lib/api/auth';
+import { NextResponse } from 'next/server';
+import { withAuth, jsonError } from '@/lib/api/auth';
 import { opportunityUpdateSchema } from '@/lib/api/schemas';
 import { rateLimit } from '@/lib/api/rateLimit';
 
 export const runtime = 'nodejs';
 
-// Helper per leggere :id
-function getIdFromUrl(urlStr: string): string {
-  const url = new URL(urlStr);
+// id da params o, come fallback, dall'URL
+function getId(req: Request, params?: Record<string, string | string[]>) {
+  const p = params && typeof params.id === 'string' ? params.id : undefined;
+  if (p) return p;
+  const url = new URL(req.url);
   const parts = url.pathname.split('/').filter(Boolean);
   return parts[parts.length - 1]!;
 }
 
 /** PUT /api/opportunities/:id */
-export async function PUT(req: NextRequest) {
-  const { ctx, res } = await requireUser();
-  if (!ctx) return res!;
-  const { supabase, user } = ctx;
-
+export const PUT = withAuth(async ({ req, supabase, user, params }) => {
   try {
     await rateLimit(req, { key: `opps:PUT:${user.id}`, limit: 60, window: '1m' } as any);
   } catch {
     return jsonError('Too Many Requests', 429);
   }
 
-  const id = getIdFromUrl(req.url);
+  const id = getId(req, params);
 
   let body: unknown;
   try {
@@ -43,7 +41,6 @@ export async function PUT(req: NextRequest) {
     return jsonError('Nothing to update', 400);
   }
 
-  // RLS deve garantire che l'utente possa aggiornare solo le proprie righe.
   const { data, error } = await supabase
     .from('opportunities')
     .update(patch as any)
@@ -53,23 +50,18 @@ export async function PUT(req: NextRequest) {
 
   if (error) return jsonError(error.message, 400);
   return NextResponse.json({ data });
-}
+});
 
 /** DELETE /api/opportunities/:id */
-export async function DELETE(req: NextRequest) {
-  const { ctx, res } = await requireUser();
-  if (!ctx) return res!;
-  const { supabase, user } = ctx;
-
+export const DELETE = withAuth(async ({ req, supabase, user, params }) => {
   try {
     await rateLimit(req, { key: `opps:DEL:${user.id}`, limit: 60, window: '1m' } as any);
   } catch {
     return jsonError('Too Many Requests', 429);
   }
 
-  const id = getIdFromUrl(req.url);
+  const id = getId(req, params);
 
-  // RLS deve impedire di eliminare righe non proprie
   const { data, error } = await supabase
     .from('opportunities')
     .delete()
@@ -79,4 +71,4 @@ export async function DELETE(req: NextRequest) {
 
   if (error) return jsonError(error.message, 400);
   return NextResponse.json({ data });
-}
+});

@@ -1,5 +1,5 @@
 // app/api/opportunities/route.ts
-import { NextResponse, type NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { listParamsSchema, opportunityCreateSchema } from '@/lib/api/schemas';
 import { rateLimit } from '@/lib/api/rateLimit';
@@ -7,7 +7,7 @@ import { rateLimit } from '@/lib/api/rateLimit';
 export const runtime = 'nodejs';
 
 /** GET /api/opportunities?limit=...&offset=... */
-export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
+export const GET = withAuth(async ({ req, supabase, user }) => {
   try {
     await rateLimit(req, { key: `opps:GET:${user.id}`, limit: 60, window: '1m' } as any);
   } catch {
@@ -39,14 +39,14 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
 });
 
 /** POST /api/opportunities  { title, description? }  (solo club) */
-export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
+export const POST = withAuth(async ({ req, supabase, user }) => {
   try {
     await rateLimit(req, { key: `opps:POST:${user.id}`, limit: 30, window: '1m' } as any);
   } catch {
     return jsonError('Too Many Requests', 429);
   }
 
-  // (facoltativo) blocca i non-club lato API — se non vuoi controllare qui, rimuovi questo blocco e demanda alla RLS
+  // (facoltativo) blocca i non-club lato API — altrimenti demanda alla RLS
   const role = (user.user_metadata as any)?.role;
   if (role !== 'club') return jsonError('Forbidden (role required: club)', 403);
 
@@ -67,7 +67,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   const row: any = {
     title,
     description: description ?? '',
-    owner_id: user.id, // 👈 se necessario rinomina QUI
+    owner_id: user.id, // 👈 rinomina se necessario
   };
 
   const { data, error } = await supabase
