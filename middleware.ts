@@ -1,37 +1,34 @@
 // middleware.ts
-import { NextRequest, NextResponse } from "next/server";
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { NextResponse, type NextRequest } from "next/server";
+import { createServerClient } from "@supabase/ssr";
 
-const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const SUPA_URL  = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPA_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export async function middleware(req: NextRequest) {
-  // Cloniamo l'header per poterlo passare a NextResponse
-  const res = NextResponse.next({
-    request: { headers: req.headers },
-  });
+  const res = NextResponse.next({ request: { headers: req.headers } });
 
   const supabase = createServerClient(SUPA_URL, SUPA_ANON, {
     cookies: {
-      get(name: string) {
-        return req.cookies.get(name)?.value;
-      },
-      set(name: string, value: string, options: CookieOptions) {
+      get: (name) => req.cookies.get(name)?.value,
+      set: (name, value, options) => {
         res.cookies.set({ name, value, ...options });
       },
-      remove(name: string, options: CookieOptions) {
+      remove: (name, options) => {
         res.cookies.set({ name, value: "", ...options, maxAge: 0 });
       },
     },
   });
 
-  // Questo fa refresh automatico dei cookie se necessario
-  await supabase.auth.getUser();
+  // forza il refresh della sessione se presente
+  await supabase.auth.getSession();
 
   return res;
 }
 
-// Escludiamo file statici e asset
+// limita dove far girare il middleware (incluso /api)
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|sentry|.*\\.(?:js|css|png|jpg|svg|ico)).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|sentry-example-page).*)",
+  ],
 };
