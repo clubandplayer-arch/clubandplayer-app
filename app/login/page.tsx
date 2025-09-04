@@ -40,7 +40,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [currentEmail, setCurrentEmail] = useState<string | null>(null);
 
-  const BUILD_TAG = 'login-v3.9-preview-oauth';
+  const BUILD_TAG = 'login-v4.0-callback-cookies';
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const oauthAllowedHere = useMemo(() => isAllowedOAuthOrigin(origin), [origin]);
@@ -103,11 +103,13 @@ export default function LoginPage() {
       const { createClient } = await import('@supabase/supabase-js');
       const supabase = createClient(SUPA_URL, SUPA_ANON);
 
-      // redirectTo sull’origine corrente → funziona in preview/prod/locale
+      // Redirect verso il callback che imposta i cookie SSR
+      const redirectTo = `${origin}/auth/callback?redirect=/profile`;
+
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: origin,
+          redirectTo,
           queryParams: { prompt: 'consent' }, // opzionale
         },
       });
@@ -118,7 +120,7 @@ export default function LoginPage() {
       } else {
         // Fallback manuale (non dovrebbe servire)
         const authorize = `${SUPA_URL}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(
-          origin
+          redirectTo
         )}`;
         window.location.assign(authorize);
       }
