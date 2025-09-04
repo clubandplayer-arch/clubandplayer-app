@@ -12,18 +12,17 @@ export async function GET(req: Request) {
   const redirect = url.searchParams.get("redirect");
   const origin = url.origin;
 
-  // destinazione finale dopo il login
+  // Dove atterrare dopo il login
   const target =
     redirect && redirect.startsWith("/")
       ? `${origin}${redirect}`
       : `${origin}/profile`;
 
-  // response DI REDIRECT su cui scriveremo i cookie
+  // Response di redirect su cui scriveremo i Set-Cookie
   const res = NextResponse.redirect(target);
 
   if (code) {
-    // cookies() è async in Next 15
-    const reqCookies = await cookies();
+    const reqCookies = await cookies(); // Next 15: è async
 
     const supabase = createServerClient(SUPA_URL, SUPA_ANON, {
       cookies: {
@@ -31,7 +30,6 @@ export async function GET(req: Request) {
           return reqCookies.get(name)?.value;
         },
         set(name: string, value: string, options: CookieOptions) {
-          // scriviamo i Set-Cookie sulla response di redirect
           res.cookies.set({ name, value, ...options });
         },
         remove(name: string, options: CookieOptions) {
@@ -40,7 +38,7 @@ export async function GET(req: Request) {
       },
     });
 
-    // Scambia il "code" per la sessione e popola i cookie HttpOnly
+    // Scambia il code con la sessione e popola i cookie HttpOnly
     await supabase.auth.exchangeCodeForSession(code);
   }
 

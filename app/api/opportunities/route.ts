@@ -1,3 +1,4 @@
+export const runtime = 'nodejs';
 // app/api/opportunities/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
