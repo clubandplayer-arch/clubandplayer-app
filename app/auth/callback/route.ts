@@ -1,37 +1,51 @@
 // app/auth/callback/route.ts
-export const runtime = 'nodejs';
+import { NextRequest, NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 
-import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { createServerClient } from "@supabase/ssr";
+export const runtime = 'nodejs' as const
+export const dynamic = 'force-dynamic'
 
-const SUPA_URL  = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SUPA_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+export async function GET(req: NextRequest) {
+  const url = new URL(req.url)
 
-export async function GET(req: Request) {
-  const { searchParams, origin } = new URL(req.url);
-  const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/profile";
+  // dove vuoi andare dopo l’accesso (di default home)
+  const nextPath = url.searchParams.get('next') || '/'
 
-  // cookie store SCRIVIBILE (Next 15: async)
-  const store = await cookies();
-
-  const supabase = createServerClient(SUPA_URL, SUPA_ANON, {
-    cookies: {
-      get: (name) => store.get(name)?.value,
-      set: (name, value, options) => {
-        store.set({ name, value, ...options });
-      },
-      remove: (name, options) => {
-        store.set({ name, value: "", ...options, maxAge: 0 });
-      },
-    },
-  });
-
-  if (code) {
-    // scambia il codice con la sessione e SCRIVE i cookie
-    await supabase.auth.exchangeCodeForSession(code);
+  // il codice OAuth restituito da Google → Supabase
+  const code = url.searchParams.get('code')
+  if (!code) {
+    // non c'è il codice: torna alla login della STESSA origin con un flag d’errore
+    return NextResponse.redirect(new URL('/login?err=nocode', req.url))
   }
 
-  return NextResponse.redirect(new URL(next, origin));
+  // Next 15+: cookies() è async
+  const cookieStore = await cookies()
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          cookieStore.set({ name, value, ...options })
+        },
+        remove(name: string, options: CookieOptions) {
+          cookieStore.set({ name, value: '', ...options, maxAge: 0 })
+        },
+      },
+    }
+  )
+
+  // Scambia il code per la sessione e scrive i cookie
+  const { error } = await supabase.auth.exchangeCodeForSession(code)
+  if (error) {
+    return NextResponse.redirect(new URL('/login?err=oauth', req.url))
+  }
+
+  // 🔑 RESTA sulla STESSA ORIGIN della richiesta (preview→preview, prod→prod)
+  return NextResponse.redirect(new URL(nextPath, req.url))
 }
