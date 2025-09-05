@@ -7,8 +7,8 @@ const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
 const SUPA_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''
 const HAS_ENV = Boolean(SUPA_URL && SUPA_ANON)
 
-// Consenti OAuth SOLO su produzione e localhost
-const ALLOWED_OAUTH_ORIGINS = new Set<string>([
+// Origini autorizzate (prod + localhost) — le preview .vercel.app vengono permesse sotto
+const FIXED_ALLOWED = new Set<string>([
   'https://clubandplayer-app.vercel.app',
   'http://localhost:3000',
 ])
@@ -22,12 +22,28 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [currentEmail, setCurrentEmail] = useState<string | null>(null)
 
-  const BUILD_TAG = 'login-v3.8-no-revalidate'
+  const BUILD_TAG = 'login-v3.9-allow-vercel-previews'
 
+  // Origin corrente
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
-  const oauthAllowedHere = useMemo(() => ALLOWED_OAUTH_ORIGINS.has(origin), [origin])
+  const hostname = typeof window !== 'undefined' ? window.location.hostname : ''
 
-  // Lazy-load supabase-js SOLO lato client e dopo il mount
+  // Permette OAuth su:
+  // - prod
+  // - localhost
+  // - QUALSIASI *.vercel.app (tutte le preview)
+  const oauthAllowedHere = useMemo(() => {
+    try {
+      if (!origin) return false
+      if (FIXED_ALLOWED.has(origin)) return true
+      if (hostname.endsWith('.vercel.app')) return true
+      return false
+    } catch {
+      return false
+    }
+  }, [origin, hostname])
+
+  // Lazy-load supabase-js SOLO lato client
   useEffect(() => {
     let active = true
     if (!HAS_ENV) return
@@ -74,23 +90,26 @@ export default function LoginPage() {
       setErrorMsg('Config mancante: NEXT_PUBLIC_SUPABASE_*')
       return
     }
+
+    // Mostra un avviso se l’origine non è tra le consentite,
+    // ma NON bloccare il click: al massimo Supabase rifiuterà il redirect se non whitelisted
     if (!oauthAllowedHere) {
-      setErrorMsg('Per usare Google, apri la versione Production del sito.')
-      return
+      console.warn(
+        '[OAuth] Origin non riconosciuta. Assicurati che questo dominio sia nei Redirect URLs di Supabase:',
+        origin
+      )
     }
 
     setLoading(true)
     try {
-      const origin = window.location.origin
       const { createClient } = await import('@supabase/supabase-js')
       const supabase = createClient(SUPA_URL, SUPA_ANON)
 
-      // Chiedi a Supabase l’URL OAuth e forza il redirect (compat ovunque)
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: origin, // torna alla stessa origin (prod o localhost)
-          queryParams: { prompt: 'consent' }, // opzionale
+          redirectTo: origin, // torna alla stessa origin (prod/localhost/preview)
+          queryParams: { prompt: 'consent' },
         },
       })
       if (error) throw error
@@ -98,6 +117,7 @@ export default function LoginPage() {
       if (data?.url) {
         window.location.assign(data.url)
       } else {
+        // Fallback “manuale”
         const authorize = `${SUPA_URL}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(
           origin
         )}`
@@ -144,18 +164,16 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY`}
 
         {!oauthAllowedHere && (
           <div className="rounded-md border border-blue-300 bg-blue-50 p-2 text-xs text-blue-800">
-            Per il login con Google usa{' '}
-            <a className="underline" href="https://clubandplayer-app.vercel.app/login">
-              la versione Production
-            </a>
-            . In ambienti di preview continua con email/password.
+            Per il login con Google assicurati che <code>{origin}</code> sia nei{' '}
+            <strong>Redirect URLs</strong> di Supabase (Auth → Settings → URL Configuration).
           </div>
         )}
 
         <button
           type="button"
           onClick={signInGoogle}
-          disabled={!HAS_ENV || !oauthAllowedHere || loading}
+          // ⬇️ non blocchiamo più l’OAuth sulle preview; blocchiamo solo se manca la config o sta caricando
+          disabled={!HAS_ENV || loading}
           className="w-full rounded-md border px-4 py-2 disabled:opacity-50"
           data-testid="google-btn"
           id="google-btn"
