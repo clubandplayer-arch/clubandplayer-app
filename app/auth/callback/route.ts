@@ -1,6 +1,6 @@
 // app/auth/callback/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { createServerClient } from '@supabase/ssr'
 
 export const runtime = 'nodejs'
 
@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   const redirectURL = new URL(to, url.origin)
   const res = NextResponse.redirect(redirectURL)
 
-  // ⬅️ In Next 15 req.cookies è ASINCRONO
+  // In Next 15, req.cookies è asincrono
   const cookieStore = await req.cookies
 
   const supabase = createServerClient(
@@ -20,14 +20,13 @@ export async function GET(req: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value
+        getAll() {
+          return cookieStore.getAll().map(c => ({ name: c.name, value: c.value }))
         },
-        set(name: string, value: string, options: CookieOptions) {
-          res.cookies.set({ name, value, ...options })
-        },
-        remove(name: string, options: CookieOptions) {
-          res.cookies.set({ name, value: '', ...options, maxAge: 0 })
+        setAll(cookies) {
+          cookies.forEach(({ name, value, options }) => {
+            res.cookies.set({ name, value, ...options })
+          })
         },
       },
     }
@@ -35,9 +34,11 @@ export async function GET(req: NextRequest) {
 
   const code = url.searchParams.get('code') ?? undefined
   if (code) {
-    await supabase.auth
-      .exchangeCodeForSession(code)
-      .catch((err) => res.headers.set('x-auth-error', String(err?.message ?? err)))
+    try {
+      await supabase.auth.exchangeCodeForSession(code)
+    } catch (err: any) {
+      res.headers.set('x-auth-error', String(err?.message ?? err))
+    }
   }
 
   return res
