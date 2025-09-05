@@ -1,33 +1,44 @@
 // app/api/auth/whoami/route.ts
-import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
+import { cookies } from 'next/headers'
+import { createServerClient } from '@supabase/ssr'
 
 export const runtime = 'nodejs'
 
-export async function GET(req: NextRequest) {
-  const res = NextResponse.next()
-
-  const supabase = createServerClient(
+async function getServerClient() {
+  const store = await cookies()
+  const client = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
         get(name: string) {
-          return req.cookies.get(name)?.value
+          return store.get(name)?.value
         },
-        set(name: string, value: string, options: CookieOptions) {
-          res.cookies.set({ name, value, ...options })
+        set(name: string, value: string, options: any) {
+          store.set({ name, value, ...options })
         },
-        remove(name: string, options: CookieOptions) {
-          res.cookies.set({ name, value: '', ...options, maxAge: 0 })
+        remove(name: string, options: any) {
+          store.set({ name, value: '', ...options, maxAge: 0 })
         },
       },
+      cookieOptions: { sameSite: 'lax' },
     }
   )
+  return client
+}
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
+export async function GET(_req: NextRequest) {
+  const supabase = await getServerClient()
+  const { data, error } = await supabase.auth.getUser()
+
+  if (error || !data?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
-  return NextResponse.json({ user_id: user.id, email: user.email })
+
+  const { user } = data
+  return NextResponse.json({
+    id: user.id,
+    email: user.email,
+  })
 }
