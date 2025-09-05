@@ -105,10 +105,13 @@ export default function LoginPage() {
       const { createClient } = await import('@supabase/supabase-js')
       const supabase = createClient(SUPA_URL, SUPA_ANON)
 
+      // 👇 MODIFICA: callback dedicata
+      const callbackUrl = `${window.location.origin}/auth/callback`
+
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: origin, // torna alla stessa origin (prod/localhost/preview)
+          redirectTo: callbackUrl, // ⬅️ prima era "origin"
           queryParams: { prompt: 'consent' },
         },
       })
@@ -119,7 +122,7 @@ export default function LoginPage() {
       } else {
         // Fallback “manuale”
         const authorize = `${SUPA_URL}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(
-          origin
+          callbackUrl
         )}`
         window.location.assign(authorize)
       }
@@ -172,7 +175,6 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY`}
         <button
           type="button"
           onClick={signInGoogle}
-          // ⬇️ non blocchiamo più l’OAuth sulle preview; blocchiamo solo se manca la config o sta caricando
           disabled={!HAS_ENV || loading}
           className="w-full rounded-md border px-4 py-2 disabled:opacity-50"
           data-testid="google-btn"
