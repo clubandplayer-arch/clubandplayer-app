@@ -1,29 +1,27 @@
 // app/api/opportunities/[id]/route.ts
-import { NextResponse } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { opportunityUpdateSchema } from '@/lib/api/schemas';
 import { rateLimit } from '@/lib/api/rateLimit';
 
 export const runtime = 'nodejs';
 
-// id da params o, come fallback, dall'URL
-function getId(req: Request, params?: Record<string, string | string[]>) {
-  const p = params && typeof params.id === 'string' ? params.id : undefined;
-  if (p) return p;
-  const url = new URL(req.url);
+// Helper per leggere :id
+function getIdFromUrl(urlStr: string): string {
+  const url = new URL(urlStr);
   const parts = url.pathname.split('/').filter(Boolean);
   return parts[parts.length - 1]!;
 }
 
 /** PUT /api/opportunities/:id */
-export const PUT = withAuth(async ({ req, supabase, user, params }) => {
+export const PUT = withAuth(async (req: NextRequest, { supabase, user }) => {
   try {
     await rateLimit(req, { key: `opps:PUT:${user.id}`, limit: 60, window: '1m' } as any);
   } catch {
     return jsonError('Too Many Requests', 429);
   }
 
-  const id = getId(req, params);
+  const id = getIdFromUrl(req.url);
 
   let body: unknown;
   try {
@@ -41,6 +39,7 @@ export const PUT = withAuth(async ({ req, supabase, user, params }) => {
     return jsonError('Nothing to update', 400);
   }
 
+  // RLS deve garantire che l'utente possa aggiornare solo le proprie righe.
   const { data, error } = await supabase
     .from('opportunities')
     .update(patch as any)
@@ -53,15 +52,16 @@ export const PUT = withAuth(async ({ req, supabase, user, params }) => {
 });
 
 /** DELETE /api/opportunities/:id */
-export const DELETE = withAuth(async ({ req, supabase, user, params }) => {
+export const DELETE = withAuth(async (req: NextRequest, { supabase, user }) => {
   try {
     await rateLimit(req, { key: `opps:DEL:${user.id}`, limit: 60, window: '1m' } as any);
   } catch {
     return jsonError('Too Many Requests', 429);
   }
 
-  const id = getId(req, params);
+  const id = getIdFromUrl(req.url);
 
+  // RLS deve impedire di eliminare righe non proprie
   const { data, error } = await supabase
     .from('opportunities')
     .delete()
