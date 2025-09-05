@@ -7,7 +7,7 @@ const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
 const SUPA_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''
 const HAS_ENV = Boolean(SUPA_URL && SUPA_ANON)
 
-// Origini fisse consentite (prod + localhost). Le preview .vercel.app sono permesse sotto.
+// Origini fisse consentite (prod + localhost). Le preview *.vercel.app sono permesse sotto.
 const FIXED_ALLOWED = new Set<string>([
   'https://clubandplayer-app.vercel.app',
   'http://localhost:3000',
@@ -84,7 +84,7 @@ export default function LoginPage() {
       const { createClient } = await import('@supabase/supabase-js')
       const supabase = createClient(SUPA_URL, SUPA_ANON)
 
-      // 🔴 Redirect esplicito alla nostra callback sulla STESSA ORIGIN
+      // ✅ Redirect esplicito alla nostra callback sulla STESSA ORIGIN (preview/prod/localhost)
       const redirectTo = `${window.location.origin}/auth/callback`
 
       const { data, error } = await supabase.auth.signInWithOAuth({
@@ -99,9 +99,9 @@ export default function LoginPage() {
       if (data?.url) {
         window.location.assign(data.url)
       } else {
-        const authorize = `${SUPA_URL}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(
-          redirectTo
-        )}`
+        const authorize =
+          `${SUPA_URL}/auth/v1/authorize?provider=google&redirect_to=` +
+          encodeURIComponent(redirectTo)
         window.location.assign(authorize)
       }
     } catch (err: any) {
@@ -167,11 +167,28 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY`}
         )}
 
         <form onSubmit={signInEmail} className="space-y-3">
-          <input type="email" placeholder="Email" className="w-full rounded-md border px-3 py-2"
-                 value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
-          <input type="password" placeholder="Password" className="w-full rounded-md border px-3 py-2"
-                 value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
-          <button disabled={loading || !HAS_ENV} className="w-full rounded-md bg-blue-600 py-2 text-white disabled:opacity-50">
+          <input
+            type="email"
+            placeholder="Email"
+            className="w-full rounded-md border px-3 py-2"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            autoComplete="email"
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            className="w-full rounded-md border px-3 py-2"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            autoComplete="current-password"
+          />
+          <button
+            disabled={loading || !HAS_ENV}
+            className="w-full rounded-md bg-blue-600 py-2 text-white disabled:opacity-50"
+          >
             {loading ? 'Accesso…' : 'Entra'}
           </button>
         </form>
