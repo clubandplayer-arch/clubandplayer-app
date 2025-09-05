@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-export const runtime = 'edge' // veloce e senza SDK extra
+export const runtime = 'nodejs'
 
 type Body = { senderId: string; receiverId: string; text: string }
 
