@@ -7,7 +7,7 @@ const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
 const SUPA_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''
 const HAS_ENV = Boolean(SUPA_URL && SUPA_ANON)
 
-// Origini autorizzate (prod + localhost) — le preview .vercel.app vengono permesse sotto
+// Origini fisse consentite (prod + localhost). Le preview .vercel.app sono permesse sotto.
 const FIXED_ALLOWED = new Set<string>([
   'https://clubandplayer-app.vercel.app',
   'http://localhost:3000',
@@ -22,16 +22,12 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [currentEmail, setCurrentEmail] = useState<string | null>(null)
 
-  const BUILD_TAG = 'login-v3.9-allow-vercel-previews'
+  const BUILD_TAG = 'login-v4.0-callback-explicit'
 
-  // Origin corrente
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const hostname = typeof window !== 'undefined' ? window.location.hostname : ''
 
-  // Permette OAuth su:
-  // - prod
-  // - localhost
-  // - QUALSIASI *.vercel.app (tutte le preview)
+  // Consenti OAuth su prod/localhost/qualsiasi *.vercel.app
   const oauthAllowedHere = useMemo(() => {
     try {
       if (!origin) return false
@@ -43,32 +39,23 @@ export default function LoginPage() {
     }
   }, [origin, hostname])
 
-  // Lazy-load supabase-js SOLO lato client
+  // Pre-carica utente (client)
   useEffect(() => {
     let active = true
     if (!HAS_ENV) return
-
     ;(async () => {
       const { createClient } = await import('@supabase/supabase-js')
       const supabase = createClient(SUPA_URL, SUPA_ANON)
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
+      const { data: { user } } = await supabase.auth.getUser()
       if (active) setCurrentEmail(user?.email ?? null)
     })()
-
-    return () => {
-      active = false
-    }
+    return () => { active = false }
   }, [])
 
   async function signInEmail(e: React.FormEvent) {
     e.preventDefault()
     setErrorMsg(null)
-    if (!HAS_ENV) {
-      setErrorMsg('Config mancante: NEXT_PUBLIC_SUPABASE_*')
-      return
-    }
+    if (!HAS_ENV) return setErrorMsg('Config mancante: NEXT_PUBLIC_SUPABASE_*')
     setLoading(true)
     try {
       const { createClient } = await import('@supabase/supabase-js')
@@ -85,19 +72,11 @@ export default function LoginPage() {
 
   async function signInGoogle() {
     setErrorMsg(null)
+    if (!HAS_ENV) return setErrorMsg('Config mancante: NEXT_PUBLIC_SUPABASE_*')
 
-    if (!HAS_ENV) {
-      setErrorMsg('Config mancante: NEXT_PUBLIC_SUPABASE_*')
-      return
-    }
-
-    // Mostra un avviso se l’origine non è tra le consentite,
-    // ma NON bloccare il click: al massimo Supabase rifiuterà il redirect se non whitelisted
+    // Non blocco più sulle preview; al limite Supabase rifiuta se non whitelisted.
     if (!oauthAllowedHere) {
-      console.warn(
-        '[OAuth] Origin non riconosciuta. Assicurati che questo dominio sia nei Redirect URLs di Supabase:',
-        origin
-      )
+      console.warn('[OAuth] Origin non riconosciuta. Aggiungi ai Redirect URLs di Supabase:', origin)
     }
 
     setLoading(true)
@@ -105,13 +84,13 @@ export default function LoginPage() {
       const { createClient } = await import('@supabase/supabase-js')
       const supabase = createClient(SUPA_URL, SUPA_ANON)
 
-      // 👇 MODIFICA: callback dedicata
-      const callbackUrl = `${window.location.origin}/auth/callback`
+      // 🔴 Redirect esplicito alla nostra callback sulla STESSA ORIGIN
+      const redirectTo = `${window.location.origin}/auth/callback`
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: callbackUrl, // ⬅️ prima era "origin"
+          redirectTo,
           queryParams: { prompt: 'consent' },
         },
       })
@@ -120,9 +99,8 @@ export default function LoginPage() {
       if (data?.url) {
         window.location.assign(data.url)
       } else {
-        // Fallback “manuale”
         const authorize = `${SUPA_URL}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(
-          callbackUrl
+          redirectTo
         )}`
         window.location.assign(authorize)
       }
@@ -146,18 +124,14 @@ export default function LoginPage() {
       <div className="w-full max-w-sm rounded-2xl border p-6 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold">Login</h1>
-          <span
-            className="text-[10px] rounded bg-gray-100 px-2 py-0.5 text-gray-600"
-            data-build={BUILD_TAG}
-            title={BUILD_TAG}
-          >
+          <span className="text-[10px] rounded bg-gray-100 px-2 py-0.5 text-gray-600" title={BUILD_TAG}>
             {BUILD_TAG}
           </span>
         </div>
 
         {!HAS_ENV && (
           <div className="rounded-md border border-yellow-300 bg-yellow-50 p-2 text-sm text-yellow-800">
-            Variabili mancanti per questa build:
+            Variabili mancanti:
             <pre className="mt-1 whitespace-pre-wrap text-xs">
 {`NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY`}
@@ -167,8 +141,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY`}
 
         {!oauthAllowedHere && (
           <div className="rounded-md border border-blue-300 bg-blue-50 p-2 text-xs text-blue-800">
-            Per il login con Google assicurati che <code>{origin}</code> sia nei{' '}
-            <strong>Redirect URLs</strong> di Supabase (Auth → Settings → URL Configuration).
+            Aggiungi <code>{origin}/auth/callback</code> ai <b>Redirect URLs</b> in Supabase.
           </div>
         )}
 
@@ -177,9 +150,6 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY`}
           onClick={signInGoogle}
           disabled={!HAS_ENV || loading}
           className="w-full rounded-md border px-4 py-2 disabled:opacity-50"
-          data-testid="google-btn"
-          id="google-btn"
-          aria-label="Continua con Google"
         >
           Continua con Google
         </button>
@@ -197,28 +167,11 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY`}
         )}
 
         <form onSubmit={signInEmail} className="space-y-3">
-          <input
-            type="email"
-            placeholder="Email"
-            className="w-full rounded-md border px-3 py-2"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            autoComplete="email"
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            className="w-full rounded-md border px-3 py-2"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            autoComplete="current-password"
-          />
-          <button
-            disabled={loading || !HAS_ENV}
-            className="w-full rounded-md bg-blue-600 py-2 text-white disabled:opacity-50"
-          >
+          <input type="email" placeholder="Email" className="w-full rounded-md border px-3 py-2"
+                 value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
+          <input type="password" placeholder="Password" className="w-full rounded-md border px-3 py-2"
+                 value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
+          <button disabled={loading || !HAS_ENV} className="w-full rounded-md bg-blue-600 py-2 text-white disabled:opacity-50">
             {loading ? 'Accesso…' : 'Entra'}
           </button>
         </form>
@@ -226,9 +179,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY`}
         {currentEmail && (
           <div className="mt-2 text-center text-xs text-gray-600">
             Sei loggato come <strong>{currentEmail}</strong>.{' '}
-            <button onClick={signOut} className="underline">
-              Esci
-            </button>
+            <button onClick={signOut} className="underline">Esci</button>
           </div>
         )}
       </div>
