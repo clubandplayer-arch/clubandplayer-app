@@ -8,31 +8,12 @@ import Modal from '@/components/ui/Modal';
 import OpportunityForm from '@/components/opportunities/OpportunityForm';
 import type { OpportunitiesApiResponse, Opportunity } from '@/types/opportunity';
 
-import { COUNTRIES, loadItalyGeo } from '@/lib/opps/geo';
+import { COUNTRIES, ITALY_REGIONS, PROVINCES_BY_REGION, CITIES_BY_PROVINCE } from '@/lib/opps/geo';
 import { AGE_BRACKETS, SPORTS } from '@/lib/opps/constants';
 
 export default function OpportunitiesClient() {
   const sp = useSearchParams();
   const router = useRouter();
-
-  // GEO (caricato da /public/geo/italy.min.json)
-  const [regions, setRegions] = useState<string[]>([]);
-  const [provincesByRegion, setPBR] = useState<Record<string, string[]>>({});
-  const [citiesByProvince, setCBP] = useState<Record<string, string[]>>({});
-  useEffect(() => {
-    let alive = true;
-    loadItalyGeo()
-      .then((g) => {
-        if (!alive) return;
-        setRegions(g.regions);
-        setPBR(g.provincesByRegion);
-        setCBP(g.citiesByProvince);
-      })
-      .catch(() => {});
-    return () => {
-      alive = false;
-    };
-  }, []);
 
   const [data, setData] = useState<OpportunitiesApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -43,21 +24,12 @@ export default function OpportunitiesClient() {
   const [openCreate, setOpenCreate] = useState(false);
   const [editItem, setEditItem] = useState<Opportunity | null>(null);
 
-  // costruisci querystring dai params (inclusi filtri)
   const queryString = useMemo(() => {
     const p = new URLSearchParams();
     for (const k of [
-      'q',
-      'page',
-      'pageSize',
-      'sort',
-      'country',
-      'region',
-      'province',
-      'city',
-      'sport',
-      'role',
-      'age',
+      'q','page','pageSize','sort',
+      'country','region','province','city',
+      'sport','role','age',
     ]) {
       const v = sp.get(k);
       if (v) p.set(k, v);
@@ -65,16 +37,14 @@ export default function OpportunitiesClient() {
     return p.toString();
   }, [sp]);
 
-  // util per aggiornare i parametri in URL
   function setParam(name: string, value: string) {
     const p = new URLSearchParams(sp.toString());
     if (value) p.set(name, value);
     else p.delete(name);
-    if (name !== 'page') p.set('page', '1'); // reset pagina
+    if (name !== 'page') p.set('page', '1');
     router.replace(`/opportunities?${p.toString()}`);
   }
 
-  // whoami
   useEffect(() => {
     fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' })
       .then((r) => r.json())
@@ -82,7 +52,6 @@ export default function OpportunitiesClient() {
       .catch(() => setMe(null));
   }, []);
 
-  // fetch lista
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -92,12 +61,8 @@ export default function OpportunitiesClient() {
       .then(async (r) => {
         const t = await r.text();
         if (!r.ok) {
-          try {
-            const j = JSON.parse(t);
-            throw new Error(j.error || `HTTP ${r.status}`);
-          } catch {
-            throw new Error(t || `HTTP ${r.status}`);
-          }
+          try { const j = JSON.parse(t); throw new Error(j.error || `HTTP ${r.status}`); }
+          catch { throw new Error(t || `HTTP ${r.status}`); }
         }
         return JSON.parse(t) as OpportunitiesApiResponse;
       })
@@ -105,9 +70,7 @@ export default function OpportunitiesClient() {
       .catch((e) => !cancelled && setErr(e.message || 'Errore'))
       .finally(() => !cancelled && setLoading(false));
 
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [queryString, reloadKey]);
 
   async function handleDelete(o: Opportunity) {
@@ -116,12 +79,8 @@ export default function OpportunitiesClient() {
       const res = await fetch(`/api/opportunities/${o.id}`, { method: 'DELETE', credentials: 'include' });
       const t = await res.text();
       if (!res.ok) {
-        try {
-          const j = JSON.parse(t);
-          throw new Error(j.error || `HTTP ${res.status}`);
-        } catch {
-          throw new Error(t || `HTTP ${res.status}`);
-        }
+        try { const j = JSON.parse(t); throw new Error(j.error || `HTTP ${res.status}`); }
+        catch { throw new Error(t || `HTTP ${res.status}`); }
       }
       setReloadKey((k) => k + 1);
     } catch (e: any) {
@@ -156,40 +115,29 @@ export default function OpportunitiesClient() {
           ))}
         </select>
 
-        {/* Regione/Provincia/Città per Italia */}
+        {/* Regione/Provincia/Città per Italia (statico) */}
         {sp.get('country') === 'Italia' && (
           <>
             <select
               value={sp.get('region') ?? ''}
-              onChange={(e) => {
-                setParam('region', e.target.value);
-                setParam('province', '');
-                setParam('city', '');
-              }}
+              onChange={(e) => { setParam('region', e.target.value); setParam('province', ''); setParam('city', ''); }}
               className="rounded-xl border px-3 py-2"
             >
               <option value="">Regione</option>
-              {regions.map((r: string) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
+              {ITALY_REGIONS.map((r: string) => (
+                <option key={r} value={r}>{r}</option>
               ))}
             </select>
 
-            {provincesByRegion[sp.get('region') ?? ''] ? (
+            {PROVINCES_BY_REGION[sp.get('region') ?? ''] ? (
               <select
                 value={sp.get('province') ?? ''}
-                onChange={(e) => {
-                  setParam('province', e.target.value);
-                  setParam('city', '');
-                }}
+                onChange={(e) => { setParam('province', e.target.value); setParam('city', ''); }}
                 className="rounded-xl border px-3 py-2"
               >
                 <option value="">Provincia</option>
-                {provincesByRegion[sp.get('region') ?? '']?.map((p: string) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
+                {PROVINCES_BY_REGION[sp.get('region') ?? '']?.map((p: string) => (
+                  <option key={p} value={p}>{p}</option>
                 ))}
               </select>
             ) : (
@@ -201,17 +149,15 @@ export default function OpportunitiesClient() {
               />
             )}
 
-            {citiesByProvince[sp.get('province') ?? ''] ? (
+            {CITIES_BY_PROVINCE[sp.get('province') ?? ''] ? (
               <select
                 value={sp.get('city') ?? ''}
                 onChange={(e) => setParam('city', e.target.value)}
                 className="rounded-xl border px-3 py-2"
               >
                 <option value="">Città</option>
-                {citiesByProvince[sp.get('province') ?? '']?.map((c: string) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
+                {CITIES_BY_PROVINCE[sp.get('province') ?? '']?.map((c: string) => (
+                  <option key={c} value={c}>{c}</option>
                 ))}
               </select>
             ) : (
@@ -262,10 +208,7 @@ export default function OpportunitiesClient() {
       {err && (
         <div className="border rounded-xl p-4 bg-red-50 text-red-700">
           Errore nel caricamento: {err}{' '}
-          <button
-            onClick={() => setReloadKey((k) => k + 1)}
-            className="ml-3 px-3 py-1 border rounded-lg bg-white hover:bg-gray-50"
-          >
+          <button onClick={() => setReloadKey((k) => k + 1)} className="ml-3 px-3 py-1 border rounded-lg bg-white hover:bg-gray-50">
             Riprova
           </button>
         </div>
@@ -280,27 +223,19 @@ export default function OpportunitiesClient() {
         />
       )}
 
-      {/* Modal Crea */}
       <Modal open={openCreate} title="Nuova opportunità" onClose={() => setOpenCreate(false)}>
         <OpportunityForm
           onCancel={() => setOpenCreate(false)}
-          onSaved={() => {
-            setOpenCreate(false);
-            setReloadKey((k) => k + 1);
-          }}
+          onSaved={() => { setOpenCreate(false); setReloadKey((k) => k + 1); }}
         />
       </Modal>
 
-      {/* Modal Edit */}
       <Modal open={!!editItem} title={`Modifica: ${editItem?.title ?? ''}`} onClose={() => setEditItem(null)}>
         {editItem && (
           <OpportunityForm
             initial={editItem}
             onCancel={() => setEditItem(null)}
-            onSaved={() => {
-              setEditItem(null);
-              setReloadKey((k) => k + 1);
-            }}
+            onSaved={() => { setEditItem(null); setReloadKey((k) => k + 1); }}
           />
         )}
       </Modal>
