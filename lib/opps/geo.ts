@@ -27,14 +27,24 @@ export const COUNTRIES = [
 // Cache in-memory per evitare richieste ripetute
 let cached: ItalyGeo | null = null;
 
+// Normalizza qualunque valore in una stringa leggibile
+function toStr(x: any): string {
+  if (x == null) return '';
+  if (typeof x === 'string') return x;
+  if (typeof x === 'number' || typeof x === 'boolean') return String(x);
+  if (typeof x === 'object') {
+    for (const k of ['nome', 'name', 'denominazione', 'label', 'description']) {
+      if (typeof x[k] === 'string') return x[k];
+    }
+  }
+  // fallback finale
+  return String(x);
+}
+
 /**
  * Carica l’elenco completo Regioni → Province → Città dall’asset statico
  * /geo/italy.min.json. In caso di errore o file mancante, restituisce un
  * fallback minimale (Sicilia → Siracusa con tutti i comuni).
- *
- * Usabile direttamente nei Client Components:
- *   const geo = await loadItalyGeo()
- *   geo.regions, geo.provincesByRegion[regione], geo.citiesByProvince[provincia]
  */
 export async function loadItalyGeo(): Promise<ItalyGeo> {
   if (cached) return cached;
@@ -42,49 +52,39 @@ export async function loadItalyGeo(): Promise<ItalyGeo> {
   try {
     const res = await fetch('/geo/italy.min.json', { cache: 'force-cache' });
     if (!res.ok) throw new Error(String(res.status));
-    cached = (await res.json()) as ItalyGeo;
+    const raw: any = await res.json();
 
-    // Semplice validazione strutturale
-    if (
-      !cached ||
-      !Array.isArray(cached.regions) ||
-      typeof cached.provincesByRegion !== 'object' ||
-      typeof cached.citiesByProvince !== 'object'
-    ) {
-      throw new Error('Invalid italy.min.json structure');
+    // --- NORMALIZZAZIONE FORZATA A STRINGHE ---
+    const regions: string[] = Array.isArray(raw?.regions) ? raw.regions.map(toStr) : [];
+
+    const provincesByRegion: Record<string, string[]> = {};
+    if (raw?.provincesByRegion && typeof raw.provincesByRegion === 'object') {
+      for (const [k, v] of Object.entries(raw.provincesByRegion)) {
+        const key = toStr(k);
+        provincesByRegion[key] = Array.isArray(v) ? (v as any[]).map(toStr) : [];
+      }
     }
 
+    const citiesByProvince: Record<string, string[]> = {};
+    if (raw?.citiesByProvince && typeof raw.citiesByProvince === 'object') {
+      for (const [k, v] of Object.entries(raw.citiesByProvince)) {
+        const key = toStr(k);
+        citiesByProvince[key] = Array.isArray(v) ? (v as any[]).map(toStr) : [];
+      }
+    }
+
+    cached = { regions, provincesByRegion, citiesByProvince };
     return cached;
   } catch {
     // Fallback minimo, così l’app non si blocca se il file non è presente
     const fallback: ItalyGeo = {
       regions: ['Sicilia'],
-      provincesByRegion: {
-        Sicilia: ['Siracusa'],
-      },
+      provincesByRegion: { Sicilia: ['Siracusa'] },
       citiesByProvince: {
         Siracusa: [
-          'Augusta',
-          'Avola',
-          'Buccheri',
-          'Buscemi',
-          'Canicattini Bagni',
-          'Carlentini',
-          'Cassaro',
-          'Ferla',
-          'Floridia',
-          'Francofonte',
-          'Lentini',
-          'Melilli',
-          'Noto',
-          'Pachino',
-          'Palazzolo Acreide',
-          'Portopalo di Capo Passero',
-          'Priolo Gargallo',
-          'Rosolini',
-          'Siracusa',
-          'Solarino',
-          'Sortino',
+          'Augusta','Avola','Buccheri','Buscemi','Canicattini Bagni','Carlentini','Cassaro','Ferla',
+          'Floridia','Francofonte','Lentini','Melilli','Noto','Pachino','Palazzolo Acreide',
+          'Portopalo di Capo Passero','Priolo Gargallo','Rosolini','Siracusa','Solarino','Sortino',
         ],
       },
     };
