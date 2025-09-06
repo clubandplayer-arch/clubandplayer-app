@@ -46,7 +46,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     return jsonError('Too Many Requests', 429);
   }
 
-  // (opzionale) blocca i non-club lato API
+  // (facoltativo) blocca i non-club lato API — se non vuoi controllare qui, rimuovi questo blocco e demanda alla RLS
   const role = (user.user_metadata as any)?.role;
   if (role !== 'club') return jsonError('Forbidden (role required: club)', 403);
 
@@ -56,7 +56,6 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   } catch {
     return jsonError('Invalid JSON body', 400);
   }
-
   const parsed = opportunityCreateSchema.safeParse(body);
   if (!parsed.success) {
     return jsonError(parsed.error.issues.map(i => i.message).join('; '), 400);
@@ -68,7 +67,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   const row: any = {
     title,
     description: description ?? '',
-    owner_id: user.id, // 👈 rinomina qui se necessario
+    owner_id: user.id, // 👈 se necessario rinomina QUI
   };
 
   const { data, error } = await supabase

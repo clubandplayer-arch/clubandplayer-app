@@ -1,6 +1,6 @@
 // app/api/opportunities/[id]/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
-import { withAuth, jsonError } from '@/lib/api/auth';
+import { requireUser, jsonError } from '@/lib/api/auth';
 import { opportunityUpdateSchema } from '@/lib/api/schemas';
 import { rateLimit } from '@/lib/api/rateLimit';
 
@@ -14,7 +14,11 @@ function getIdFromUrl(urlStr: string): string {
 }
 
 /** PUT /api/opportunities/:id */
-export const PUT = withAuth(async (req: NextRequest, { supabase, user }) => {
+export async function PUT(req: NextRequest) {
+  const { ctx, res } = await requireUser();
+  if (!ctx) return res!;
+  const { supabase, user } = ctx;
+
   try {
     await rateLimit(req, { key: `opps:PUT:${user.id}`, limit: 60, window: '1m' } as any);
   } catch {
@@ -49,10 +53,14 @@ export const PUT = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   if (error) return jsonError(error.message, 400);
   return NextResponse.json({ data });
-});
+}
 
 /** DELETE /api/opportunities/:id */
-export const DELETE = withAuth(async (req: NextRequest, { supabase, user }) => {
+export async function DELETE(req: NextRequest) {
+  const { ctx, res } = await requireUser();
+  if (!ctx) return res!;
+  const { supabase, user } = ctx;
+
   try {
     await rateLimit(req, { key: `opps:DEL:${user.id}`, limit: 60, window: '1m' } as any);
   } catch {
@@ -71,4 +79,4 @@ export const DELETE = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   if (error) return jsonError(error.message, 400);
   return NextResponse.json({ data });
-});
+}
