@@ -3,24 +3,17 @@ on:
   pull_request:
     branches: [ main ]
   push:
-    branches: [ feature/** ]
+    branches: [ main, feature/**, chore/** ]
 permissions:
-  statuses: write
+  contents: read
 jobs:
-  mark:
+  lint:
     runs-on: ubuntu-latest
     steps:
-      - name: Mark Lint success
-        uses: actions/github-script@v7
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          script: |
-            const sha = context.payload.pull_request ? context.payload.pull_request.head.sha : context.sha;
-            await github.request('POST /repos/{owner}/{repo}/statuses/{sha}', {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              sha,
-              state: 'success',
-              context: 'Lint',
-              description: 'Lint OK (temp to merge CP20)',
-              target_url: `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${process.env.GITHUB_RUN_ID}`
-            });
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
