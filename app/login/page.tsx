@@ -7,8 +7,7 @@ const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
 const SUPA_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''
 const HAS_ENV = Boolean(SUPA_URL && SUPA_ANON)
 
-// Consenti OAuth SOLO su produzione e localhost
-const ALLOWED_OAUTH_ORIGINS = new Set<string>([
+const FIXED_ALLOWED = new Set<string>([
   'https://clubandplayer-app.vercel.app',
   'http://localhost:3000',
 ])
@@ -22,28 +21,33 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [currentEmail, setCurrentEmail] = useState<string | null>(null)
 
-  const BUILD_TAG = 'login-v3.8-no-revalidate'
+  const BUILD_TAG = 'login-v4.1-email-only+cookie-sync'
 
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
-  const oauthAllowedHere = useMemo(() => ALLOWED_OAUTH_ORIGINS.has(origin), [origin])
+  const hostname = typeof window !== 'undefined' ? window.location.hostname : ''
 
-  // Lazy-load supabase-js SOLO lato client e dopo il mount
+  const oauthAllowedHere = useMemo(() => {
+    try {
+      if (!origin) return false
+      if (FIXED_ALLOWED.has(origin)) return true
+      if (hostname.endsWith('.vercel.app')) return true
+      return false
+    } catch {
+      return false
+    }
+  }, [origin, hostname])
+
+  // Pre-carica utente (client-only)
   useEffect(() => {
     let active = true
     if (!HAS_ENV) return
-
     ;(async () => {
       const { createClient } = await import('@supabase/supabase-js')
       const supabase = createClient(SUPA_URL, SUPA_ANON)
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
+      const { data: { user } } = await supabase.auth.getUser()
       if (active) setCurrentEmail(user?.email ?? null)
     })()
-
-    return () => {
-      active = false
-    }
+    return () => { active = false }
   }, [])
 
   async function signInEmail(e: React.FormEvent) {
@@ -57,55 +61,31 @@ export default function LoginPage() {
     try {
       const { createClient } = await import('@supabase/supabase-js')
       const supabase = createClient(SUPA_URL, SUPA_ANON)
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
+
+      const { data: { session }, error } = await supabase.auth.signInWithPassword({
+        email, password,
+      })
       if (error) throw error
+      if (!session) throw new Error('Sessione mancante dopo login')
+
+      // 🔁 Sync cookie SSR per le API Route Handlers
+      const r = await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          access_token: session.access_token,
+          refresh_token: session.refresh_token,
+        }),
+      })
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({}))
+        throw new Error(j?.error || 'Sync cookie fallito')
+      }
+
       router.replace('/')
     } catch (err: any) {
       setErrorMsg(err?.message ?? 'Errore login')
     } finally {
-      setLoading(false)
-    }
-  }
-
-  async function signInGoogle() {
-    setErrorMsg(null)
-
-    if (!HAS_ENV) {
-      setErrorMsg('Config mancante: NEXT_PUBLIC_SUPABASE_*')
-      return
-    }
-    if (!oauthAllowedHere) {
-      setErrorMsg('Per usare Google, apri la versione Production del sito.')
-      return
-    }
-
-    setLoading(true)
-    try {
-      const origin = window.location.origin
-      const { createClient } = await import('@supabase/supabase-js')
-      const supabase = createClient(SUPA_URL, SUPA_ANON)
-
-      // Chiedi a Supabase l’URL OAuth e forza il redirect (compat ovunque)
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: origin, // torna alla stessa origin (prod o localhost)
-          queryParams: { prompt: 'consent' }, // opzionale
-        },
-      })
-      if (error) throw error
-
-      if (data?.url) {
-        window.location.assign(data.url)
-      } else {
-        const authorize = `${SUPA_URL}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(
-          origin
-        )}`
-        window.location.assign(authorize)
-      }
-    } catch (err: any) {
-      console.error('OAuth error:', err)
-      setErrorMsg(err?.message ?? 'Errore OAuth')
       setLoading(false)
     }
   }
@@ -123,18 +103,14 @@ export default function LoginPage() {
       <div className="w-full max-w-sm rounded-2xl border p-6 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold">Login</h1>
-          <span
-            className="text-[10px] rounded bg-gray-100 px-2 py-0.5 text-gray-600"
-            data-build={BUILD_TAG}
-            title={BUILD_TAG}
-          >
+          <span className="text-[10px] rounded bg-gray-100 px-2 py-0.5 text-gray-600" title={BUILD_TAG}>
             {BUILD_TAG}
           </span>
         </div>
 
         {!HAS_ENV && (
           <div className="rounded-md border border-yellow-300 bg-yellow-50 p-2 text-sm text-yellow-800">
-            Variabili mancanti per questa build:
+            Variabili mancanti:
             <pre className="mt-1 whitespace-pre-wrap text-xs">
 {`NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY`}
@@ -142,32 +118,9 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY`}
           </div>
         )}
 
-        {!oauthAllowedHere && (
-          <div className="rounded-md border border-blue-300 bg-blue-50 p-2 text-xs text-blue-800">
-            Per il login con Google usa{' '}
-            <a className="underline" href="https://clubandplayer-app.vercel.app/login">
-              la versione Production
-            </a>
-            . In ambienti di preview continua con email/password.
-          </div>
-        )}
-
-        <button
-          type="button"
-          onClick={signInGoogle}
-          disabled={!HAS_ENV || !oauthAllowedHere || loading}
-          className="w-full rounded-md border px-4 py-2 disabled:opacity-50"
-          data-testid="google-btn"
-          id="google-btn"
-          aria-label="Continua con Google"
-        >
-          Continua con Google
-        </button>
-
-        <div className="my-2 flex items-center gap-2">
-          <div className="h-px flex-1 bg-gray-200" />
-          <span className="text-xs text-gray-500">oppure</span>
-          <div className="h-px flex-1 bg-gray-200" />
+        {/* Google temporaneamente rimosso */}
+        <div className="rounded-md border border-blue-200 bg-blue-50 p-2 text-xs text-blue-800">
+          Login con Google momentaneamente disabilitato per sbloccare la preview. Usa email + password.
         </div>
 
         {errorMsg && (
@@ -206,9 +159,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY`}
         {currentEmail && (
           <div className="mt-2 text-center text-xs text-gray-600">
             Sei loggato come <strong>{currentEmail}</strong>.{' '}
-            <button onClick={signOut} className="underline">
-              Esci
-            </button>
+            <button onClick={signOut} className="underline">Esci</button>
           </div>
         )}
       </div>

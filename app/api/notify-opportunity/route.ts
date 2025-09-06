@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-export const runtime = 'edge'
+export const runtime = 'nodejs'
 
 type Body = { opportunityId: string }
 
