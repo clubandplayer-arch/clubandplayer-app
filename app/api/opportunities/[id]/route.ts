@@ -1,82 +1,74 @@
 // app/api/opportunities/[id]/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
-import { requireUser, jsonError } from '@/lib/api/auth';
-import { opportunityUpdateSchema } from '@/lib/api/schemas';
+import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
 
 export const runtime = 'nodejs';
 
-// Helper per leggere :id
-function getIdFromUrl(urlStr: string): string {
-  const url = new URL(urlStr);
-  const parts = url.pathname.split('/').filter(Boolean);
-  return parts[parts.length - 1]!;
+function extractId(req: NextRequest): string | null {
+  const segs = new URL(req.url).pathname.split('/').filter(Boolean);
+  return segs[segs.length - 1] ?? null;
 }
 
-/** PUT /api/opportunities/:id */
-export async function PUT(req: NextRequest) {
-  const { ctx, res } = await requireUser();
-  if (!ctx) return res!;
-  const { supabase, user } = ctx;
+export const GET = withAuth(async (req: NextRequest, { supabase }) => {
+  const id = extractId(req);
+  if (!id) return jsonError('Missing id', 400);
 
+  const { data, error } = await supabase
+    .from('opportunities')
+    .select('id,title,description,created_by,created_at')
+    .eq('id', id)
+    .single();
+
+  if (error) return jsonError(error.message, 404);
+  return NextResponse.json({ data });
+});
+
+export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   try {
-    await rateLimit(req, { key: `opps:PUT:${user.id}`, limit: 60, window: '1m' } as any);
+    await rateLimit(req, { key: 'opps:PATCH', limit: 40, window: '1m' } as any);
   } catch {
     return jsonError('Too Many Requests', 429);
   }
 
-  const id = getIdFromUrl(req.url);
+  const id = extractId(req);
+  if (!id) return jsonError('Missing id', 400);
 
-  let body: unknown;
-  try {
-    body = await req.json();
-  } catch {
-    return jsonError('Invalid JSON body', 400);
-  }
-  const parsed = opportunityUpdateSchema.safeParse(body);
-  if (!parsed.success) {
-    return jsonError(parsed.error.issues.map(i => i.message).join('; '), 400);
-  }
+  const body = await req.json().catch(() => ({}));
+  const patch: Record<string, any> = {};
+  if ('title' in body) patch.title = String(body.title || '').trim();
+  if ('description' in body) patch.description = String(body.description || '').trim() || null;
 
-  const patch = parsed.data;
-  if (!patch || Object.keys(patch).length === 0) {
-    return jsonError('Nothing to update', 400);
-  }
+  if (patch.title === '') return jsonError('Title is required', 400);
 
-  // RLS deve garantire che l'utente possa aggiornare solo le proprie righe.
   const { data, error } = await supabase
     .from('opportunities')
-    .update(patch as any)
+    .update(patch)
     .eq('id', id)
-    .select('*')
+    .eq('created_by', user.id) // owner only
+    .select('id,title,description,created_by,created_at')
     .single();
 
   if (error) return jsonError(error.message, 400);
   return NextResponse.json({ data });
-}
+});
 
-/** DELETE /api/opportunities/:id */
-export async function DELETE(req: NextRequest) {
-  const { ctx, res } = await requireUser();
-  if (!ctx) return res!;
-  const { supabase, user } = ctx;
-
+export const DELETE = withAuth(async (req: NextRequest, { supabase, user }) => {
   try {
-    await rateLimit(req, { key: `opps:DEL:${user.id}`, limit: 60, window: '1m' } as any);
+    await rateLimit(req, { key: 'opps:DELETE', limit: 40, window: '1m' } as any);
   } catch {
     return jsonError('Too Many Requests', 429);
   }
 
-  const id = getIdFromUrl(req.url);
+  const id = extractId(req);
+  if (!id) return jsonError('Missing id', 400);
 
-  // RLS deve impedire di eliminare righe non proprie
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from('opportunities')
     .delete()
     .eq('id', id)
-    .select('*')
-    .single();
+    .eq('created_by', user.id);
 
   if (error) return jsonError(error.message, 400);
-  return NextResponse.json({ data });
-}
+  return NextResponse.json({ ok: true });
+});

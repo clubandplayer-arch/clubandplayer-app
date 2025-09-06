@@ -1,79 +1,76 @@
 // app/api/opportunities/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
-import { listParamsSchema, opportunityCreateSchema } from '@/lib/api/schemas';
 import { rateLimit } from '@/lib/api/rateLimit';
 
 export const runtime = 'nodejs';
 
-/** GET /api/opportunities?limit=...&offset=... */
-export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
+function clamp(n: number, min: number, max: number) {
+  return Math.min(Math.max(n, min), max);
+}
+
+// GET /api/opportunities?q=&page=&pageSize=&sort=recent|oldest
+export const GET = withAuth(async (req: NextRequest, { supabase }) => {
   try {
-    await rateLimit(req, { key: `opps:GET:${user.id}`, limit: 60, window: '1m' } as any);
+    await rateLimit(req, { key: 'opps:GET', limit: 60, window: '1m' } as any);
   } catch {
     return jsonError('Too Many Requests', 429);
   }
 
   const url = new URL(req.url);
-  const raw = Object.fromEntries(url.searchParams.entries());
-  const parsed = listParamsSchema.safeParse(raw);
+  const q = (url.searchParams.get('q') || '').trim();
+  const page = Math.max(1, Number(url.searchParams.get('page') || '1'));
+  const pageSize = clamp(Number(url.searchParams.get('pageSize') || '20'), 1, 100);
+  const sort = (url.searchParams.get('sort') || 'recent') as 'recent' | 'oldest';
 
-  const limitRaw = parsed.success ? (parsed.data as any).limit : undefined;
-  const offsetRaw = parsed.success ? (parsed.data as any).offset : undefined;
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
 
-  let limit = Number.isFinite(Number(limitRaw)) ? Number(limitRaw) : 50;
-  let offset = Number.isFinite(Number(offsetRaw)) ? Number(offsetRaw) : 0;
-  if (limit < 1) limit = 1;
-  if (limit > 200) limit = 200;
-  if (offset < 0) offset = 0;
-
-  const sel = supabase
+  let query = supabase
     .from('opportunities')
-    .select('*', { count: 'exact' })
-    .order('created_at', { ascending: false });
+    .select('id,title,description,created_by,created_at', { count: 'exact' })
+    .order('created_at', { ascending: sort === 'oldest' })
+    .range(from, to);
 
-  const { data, error, count } = await sel.range(offset, offset + limit - 1);
+  if (q) {
+    query = query.or(`title.ilike.%${q}%,description.ilike.%${q}%`);
+  }
 
+  const { data, count, error } = await query;
   if (error) return jsonError(error.message, 400);
-  return NextResponse.json({ data, pagination: { limit, offset, count: count ?? null } });
+
+  const total = count ?? 0;
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
+
+  return NextResponse.json({
+    data: data ?? [],
+    q,
+    page,
+    pageSize,
+    total,
+    pageCount,
+    sort,
+  });
 });
 
-/** POST /api/opportunities  { title, description? }  (solo club) */
+// POST /api/opportunities  { title, description? }
 export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   try {
-    await rateLimit(req, { key: `opps:POST:${user.id}`, limit: 30, window: '1m' } as any);
+    await rateLimit(req, { key: 'opps:POST', limit: 20, window: '1m' } as any);
   } catch {
     return jsonError('Too Many Requests', 429);
   }
 
-  // (facoltativo) blocca i non-club lato API — se non vuoi controllare qui, rimuovi questo blocco e demanda alla RLS
-  const role = (user.user_metadata as any)?.role;
-  if (role !== 'club') return jsonError('Forbidden (role required: club)', 403);
+  const body = await req.json().catch(() => ({}));
+  const title = (body.title ?? '').trim();
+  const description = (body.description ?? '').trim();
 
-  let body: unknown;
-  try {
-    body = await req.json();
-  } catch {
-    return jsonError('Invalid JSON body', 400);
-  }
-  const parsed = opportunityCreateSchema.safeParse(body);
-  if (!parsed.success) {
-    return jsonError(parsed.error.issues.map(i => i.message).join('; '), 400);
-  }
-
-  const { title, description } = parsed.data;
-
-  // ⚠️ Cambia 'owner_id' se la tua tabella usa 'club_id' o 'created_by'
-  const row: any = {
-    title,
-    description: description ?? '',
-    owner_id: user.id, // 👈 se necessario rinomina QUI
-  };
+  if (!title) return jsonError('Title is required', 400);
 
   const { data, error } = await supabase
     .from('opportunities')
-    .insert(row)
-    .select('*')
+    .insert({ title, description: description || null, created_by: user.id })
+    .select('id,title,description,created_by,created_at')
     .single();
 
   if (error) return jsonError(error.message, 400);
