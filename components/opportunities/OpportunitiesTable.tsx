@@ -33,6 +33,7 @@ export default function OpportunitiesTable({
             <th className="px-4 py-2">Sport</th>
             <th className="px-4 py-2">Ruolo</th>
             <th className="px-4 py-2">Età</th>
+            <th className="px-4 py-2">Club</th>
             <th className="px-4 py-2">Creato</th>
             <th className="px-4 py-2 w-32">Azioni</th>
           </tr>
@@ -40,7 +41,7 @@ export default function OpportunitiesTable({
         <tbody>
           {items.map((o) => {
             const canEdit = !!currentUserId && o.created_by === currentUserId;
-            const place = [o.city, o.region, o.country].filter(Boolean).join(', ');
+            const place = [o.city, o.province, o.region, o.country].filter(Boolean).join(', ');
             return (
               <tr key={o.id} className="border-t">
                 <td className="px-4 py-2 font-medium">{o.title}</td>
@@ -48,6 +49,7 @@ export default function OpportunitiesTable({
                 <td className="px-4 py-2">{o.sport ?? '—'}</td>
                 <td className="px-4 py-2">{o.role ?? '—'}</td>
                 <td className="px-4 py-2">{formatBracket(o.age_min, o.age_max)}</td>
+                <td className="px-4 py-2">{o.club_name ?? '—'}</td>
                 <td className="px-4 py-2">{new Date(o.created_at).toLocaleString()}</td>
                 <td className="px-4 py-2">
                   {canEdit ? (

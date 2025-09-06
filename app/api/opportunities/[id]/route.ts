@@ -1,14 +1,9 @@
-// app/api/opportunities/[id]/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
 
 export const runtime = 'nodejs';
-
-function extractId(req: NextRequest): string | null {
-  const segs = new URL(req.url).pathname.split('/').filter(Boolean);
-  return segs[segs.length - 1] ?? null;
-}
+const extractId = (req: NextRequest) => new URL(req.url).pathname.split('/').filter(Boolean).at(-1) ?? null;
 
 function bracketToRange(code?: string): { age_min: number | null; age_max: number | null } {
   switch ((code || '').trim()) {
@@ -20,70 +15,48 @@ function bracketToRange(code?: string): { age_min: number | null; age_max: numbe
   }
 }
 
-export const GET = withAuth(async (req: NextRequest, { supabase }) => {
-  const id = extractId(req);
-  if (!id) return jsonError('Missing id', 400);
-
-  const { data, error } = await supabase
-    .from('opportunities')
-    .select('id,title,description,created_by,created_at,country,region,city,sport,role,age_min,age_max')
-    .eq('id', id)
-    .single();
-
-  if (error) return jsonError(error.message, 404);
-  return NextResponse.json({ data });
-});
-
 export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
-  try {
-    await rateLimit(req, { key: 'opps:PATCH', limit: 40, window: '1m' } as any);
-  } catch {
-    return jsonError('Too Many Requests', 429);
-  }
-
-  const id = extractId(req);
-  if (!id) return jsonError('Missing id', 400);
-
+  try { await rateLimit(req, { key: 'opps:PATCH', limit: 40, window: '1m' } as any); } catch { return jsonError('Too Many Requests', 429); }
+  const id = extractId(req); if (!id) return jsonError('Missing id', 400);
   const body = await req.json().catch(() => ({}));
+
   const patch: Record<string, any> = {};
-  for (const k of ['title','description','country','region','city','sport','role'] as const) {
+  for (const k of ['title','description','country','region','province','city','sport','role','club_name'] as const) {
     if (k in body) {
       const v = (body[k] ?? '').toString().trim();
       patch[k] = v || null;
     }
   }
   if ('age_bracket' in body) Object.assign(patch, bracketToRange(body.age_bracket));
-
   if ('title' in patch && !patch.title) return jsonError('Title is required', 400);
+  if (patch.sport === 'Calcio' && 'role' in patch && !patch.role) return jsonError('Role is required for Calcio', 400);
 
   const { data, error } = await supabase
     .from('opportunities')
     .update(patch)
     .eq('id', id)
     .eq('created_by', user.id)
-    .select('id,title,description,created_by,created_at,country,region,city,sport,role,age_min,age_max')
+    .select('id,title,description,created_by,created_at,country,region,province,city,sport,role,age_min,age_max,club_name')
     .single();
 
   if (error) return jsonError(error.message, 400);
   return NextResponse.json({ data });
 });
 
-export const DELETE = withAuth(async (req: NextRequest, { supabase, user }) => {
-  try {
-    await rateLimit(req, { key: 'opps:DELETE', limit: 40, window: '1m' } as any);
-  } catch {
-    return jsonError('Too Many Requests', 429);
-  }
-
-  const id = extractId(req);
-  if (!id) return jsonError('Missing id', 400);
-
-  const { error } = await supabase
+export const GET = withAuth(async (req: NextRequest, { supabase }) => {
+  const id = extractId(req); if (!id) return jsonError('Missing id', 400);
+  const { data, error } = await supabase
     .from('opportunities')
-    .delete()
-    .eq('id', id)
-    .eq('created_by', user.id);
+    .select('id,title,description,created_by,created_at,country,region,province,city,sport,role,age_min,age_max,club_name')
+    .eq('id', id).single();
+  if (error) return jsonError(error.message, 404);
+  return NextResponse.json({ data });
+});
 
+export const DELETE = withAuth(async (req: NextRequest, { supabase, user }) => {
+  try { await rateLimit(req, { key: 'opps:DELETE', limit: 40, window: '1m' } as any); } catch { return jsonError('Too Many Requests', 429); }
+  const id = extractId(req); if (!id) return jsonError('Missing id', 400);
+  const { error } = await supabase.from('opportunities').delete().eq('id', id).eq('created_by', user.id);
   if (error) return jsonError(error.message, 400);
   return NextResponse.json({ ok: true });
 });
