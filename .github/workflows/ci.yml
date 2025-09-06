@@ -8,6 +8,7 @@ on:
 
 jobs:
   lint:
+    name: lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,9 +18,10 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - name: Lint
-        run: npm run lint || true   # non blocca
+        run: npm run lint || true
 
   typecheck:
+    name: typecheck
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,4 +31,4 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - name: Typecheck
-        run: npm run typecheck || true   # non blocca
+        run: npm run typecheck || true
