@@ -1,9 +1,9 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Opportunity } from '@/types/opportunity';
 import { AGE_BRACKETS, AgeBracket, SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
-import { COUNTRIES, ITALY_REGIONS, PROVINCES_BY_REGION, CITIES_BY_PROVINCE } from '@/lib/opps/geo';
+import { COUNTRIES, loadItalyGeo } from '@/lib/opps/geo';
 
 export default function OpportunityForm({
   initial,
@@ -17,15 +17,44 @@ export default function OpportunityForm({
   const [title, setTitle] = useState(initial?.title ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
 
-  // Geo
-  const [countryCode, setCountryCode] = useState<string>(COUNTRIES.find(c => c.label === initial?.country)?.code ?? 'IT');
-  const [countryFree, setCountryFree] = useState<string>(initial?.country && !COUNTRIES.find(c => c.label === initial.country) ? initial.country : '');
+  // GEO (caricato da /public/geo/italy.min.json)
+  const [regions, setRegions] = useState<string[]>([]);
+  const [provincesByRegion, setPBR] = useState<Record<string, string[]>>({});
+  const [citiesByProvince, setCBP] = useState<Record<string, string[]>>({});
+  useEffect(() => {
+    let alive = true;
+    loadItalyGeo()
+      .then((g) => {
+        if (!alive) return;
+        setRegions(g.regions);
+        setPBR(g.provincesByRegion);
+        setCBP(g.citiesByProvince);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // Selezioni località
+  const [countryCode, setCountryCode] = useState<string>(
+    COUNTRIES.find((c) => c.label === initial?.country)?.code ?? 'IT'
+  );
+  const [countryFree, setCountryFree] = useState<string>(
+    initial?.country && !COUNTRIES.find((c) => c.label === initial.country) ? initial.country : ''
+  );
   const [region, setRegion] = useState<string>(initial?.region ?? '');
   const [province, setProvince] = useState<string>(initial?.province ?? '');
   const [city, setCity] = useState<string>(initial?.city ?? '');
 
-  const provinces = useMemo(() => (countryCode === 'IT' ? (PROVINCES_BY_REGION[region] ?? []) : []), [countryCode, region]);
-  const cities    = useMemo(() => (countryCode === 'IT' ? (CITIES_BY_PROVINCE[province] ?? []) : []), [countryCode, province]);
+  const provinces = useMemo(
+    () => (countryCode === 'IT' ? provincesByRegion[region] ?? [] : []),
+    [countryCode, region, provincesByRegion]
+  );
+  const cities = useMemo(
+    () => (countryCode === 'IT' ? citiesByProvince[province] ?? [] : []),
+    [countryCode, province, citiesByProvince]
+  );
 
   // Sport/ruolo
   const [sport, setSport] = useState<string>(initial?.sport || 'Calcio');
@@ -39,7 +68,7 @@ export default function OpportunityForm({
       if (age_min === 17 && age_max === 20) return '17-20';
       if (age_min === 21 && age_max === 25) return '21-25';
       if (age_min === 26 && age_max === 30) return '26-30';
-      if (age_min === 31 && (age_max == null)) return '31+';
+      if (age_min === 31 && age_max == null) return '31+';
     }
     return '';
   });
@@ -53,7 +82,7 @@ export default function OpportunityForm({
 
   function effectiveCountry(): string | null {
     if (countryCode === 'OTHER') return countryFree.trim() || null;
-    const found = COUNTRIES.find(c => c.code === countryCode);
+    const found = COUNTRIES.find((c) => c.code === countryCode);
     return found?.label ?? countryCode ?? null;
   }
 
@@ -62,8 +91,14 @@ export default function OpportunityForm({
     setErr(null);
 
     const t = title.trim();
-    if (!t) { setErr('Title is required'); return; }
-    if (sport === 'Calcio' && !role) { setErr('Seleziona un ruolo per Calcio'); return; }
+    if (!t) {
+      setErr('Title is required');
+      return;
+    }
+    if (sport === 'Calcio' && !role) {
+      setErr('Seleziona un ruolo per Calcio');
+      return;
+    }
 
     setSaving(true);
     try {
@@ -71,8 +106,8 @@ export default function OpportunityForm({
         title: t,
         description: (description || '').trim() || null,
         country: effectiveCountry(),
-        region: countryCode === 'IT' ? (region || null) : (region || null),
-        province: countryCode === 'IT' ? (province || null) : null,
+        region: region || null,
+        province: countryCode === 'IT' ? province || null : null,
         city: city.trim() || null,
         sport,
         role: role || null,
@@ -102,10 +137,21 @@ export default function OpportunityForm({
   function onChangeCountry(code: string) {
     setCountryCode(code);
     setCountryFree('');
-    if (code !== 'IT') { setRegion(''); setProvince(''); setCity(''); }
+    if (code !== 'IT') {
+      setRegion('');
+      setProvince('');
+      setCity('');
+    }
   }
-  function onChangeRegion(r: string) { setRegion(r); setProvince(''); setCity(''); }
-  function onChangeProvince(p: string) { setProvince(p); setCity(''); }
+  function onChangeRegion(r: string) {
+    setRegion(r);
+    setProvince('');
+    setCity('');
+  }
+  function onChangeProvince(p: string) {
+    setProvince(p);
+    setCity('');
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -125,7 +171,11 @@ export default function OpportunityForm({
           <div>
             <label className="block text-sm font-medium mb-1">Paese</label>
             <select className="w-full rounded-xl border px-3 py-2" value={countryCode} onChange={(e) => onChangeCountry(e.target.value)}>
-              {COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
+              {COUNTRIES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.label}
+                </option>
+              ))}
             </select>
             {countryCode === 'OTHER' && (
               <input className="mt-2 w-full rounded-xl border px-3 py-2" placeholder="Paese" value={countryFree} onChange={(e) => setCountryFree(e.target.value)} />
@@ -137,7 +187,11 @@ export default function OpportunityForm({
             {countryCode === 'IT' ? (
               <select className="w-full rounded-xl border px-3 py-2" value={region} onChange={(e) => onChangeRegion(e.target.value)}>
                 <option value="">—</option>
-                {ITALY_REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
+                {regions.map((r: string) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
               </select>
             ) : (
               <input className="w-full rounded-xl border px-3 py-2" value={region ?? ''} onChange={(e) => setRegion(e.target.value)} />
@@ -146,10 +200,14 @@ export default function OpportunityForm({
 
           <div>
             <label className="block text-sm font-medium mb-1">Provincia</label>
-            {countryCode === 'IT' && provinces.length ? (
+            {countryCode === 'IT' && (provinces.length > 0) ? (
               <select className="w-full rounded-xl border px-3 py-2" value={province} onChange={(e) => onChangeProvince(e.target.value)}>
                 <option value="">—</option>
-                {provinces.map((p) => <option key={p} value={p}>{p}</option>)}
+                {provinces.map((p: string) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
               </select>
             ) : (
               <input className="w-full rounded-xl border px-3 py-2" value={province ?? ''} onChange={(e) => setProvince(e.target.value)} />
@@ -158,10 +216,14 @@ export default function OpportunityForm({
 
           <div>
             <label className="block text-sm font-medium mb-1">Città</label>
-            {countryCode === 'IT' && cities.length ? (
+            {countryCode === 'IT' && (cities.length > 0) ? (
               <select className="w-full rounded-xl border px-3 py-2" value={city} onChange={(e) => setCity(e.target.value)}>
                 <option value="">—</option>
-                {cities.map((c) => <option key={c} value={c}>{c}</option>)}
+                {cities.map((c: string) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
               </select>
             ) : (
               <input className="w-full rounded-xl border px-3 py-2" value={city ?? ''} onChange={(e) => setCity(e.target.value)} />
@@ -176,21 +238,33 @@ export default function OpportunityForm({
           <div>
             <label className="block text-sm font-medium mb-1">Sport</label>
             <select className="w-full rounded-xl border px-3 py-2" value={sport} onChange={(e) => { setSport(e.target.value); setRole(''); }}>
-              {SPORTS.map((s) => <option key={s} value={s}>{s}</option>)}
+              {SPORTS.map((s: string) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Ruolo {sport==='Calcio' && <span className="text-red-600">*</span>}</label>
-            <select className="w-full rounded-xl border px-3 py-2" value={role ?? ''} onChange={(e) => setRole(e.target.value)} required={sport==='Calcio'}>
+            <label className="block text-sm font-medium mb-1">Ruolo {sport === 'Calcio' && <span className="text-red-600">*</span>}</label>
+            <select className="w-full rounded-xl border px-3 py-2" value={role ?? ''} onChange={(e) => setRole(e.target.value)} required={sport === 'Calcio'}>
               <option value="">—</option>
-              {(SPORTS_ROLES[sport] ?? []).map((r) => <option key={r} value={r}>{r}</option>)}
+              {roleOptions.map((r: string) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
             </select>
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Età</label>
-            <select className="w-full rounded-xl border px-3 py-2" value={ageBracket} onChange={(e) => setAgeBracket(e.target.value as any)}>
+            <select className="w-full rounded-xl border px-3 py-2" value={ageBracket} onChange={(e) => setAgeBracket(e.target.value as AgeBracket)}>
               <option value="">—</option>
-              {AGE_BRACKETS.map((b) => <option key={b} value={b}>{b}</option>)}
+              {AGE_BRACKETS.map((b: string) => (
+                <option key={b} value={b}>
+                  {b}
+                </option>
+              ))}
             </select>
           </div>
           <div>
@@ -203,8 +277,12 @@ export default function OpportunityForm({
       {err && <div className="border rounded-lg p-2 bg-red-50 text-red-700">{err}</div>}
 
       <div className="flex items-center justify-end gap-2 pt-2">
-        <button type="button" disabled={saving} onClick={onCancel} className="px-3 py-2 rounded-lg border hover:bg-gray-50">Annulla</button>
-        <button type="submit" disabled={saving} className="px-3 py-2 rounded-lg bg-gray-900 text-white">{saving ? 'Salvataggio…' : isEdit ? 'Salva' : 'Crea'}</button>
+        <button type="button" disabled={saving} onClick={onCancel} className="px-3 py-2 rounded-lg border hover:bg-gray-50">
+          Annulla
+        </button>
+        <button type="submit" disabled={saving} className="px-3 py-2 rounded-lg bg-gray-900 text-white">
+          {saving ? 'Salvataggio…' : isEdit ? 'Salva' : 'Crea'}
+        </button>
       </div>
     </form>
   );
