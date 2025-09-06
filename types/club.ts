@@ -2,10 +2,12 @@
 export type Club = {
   id: string;
   name: string;
+  display_name?: string | null;
   city: string | null;
   country: string | null;
   level: 'pro' | 'semi-pro' | 'amateur' | null;
   logo_url: string | null;
+  owner_id?: string | null;
   created_at: string;
 };
 
