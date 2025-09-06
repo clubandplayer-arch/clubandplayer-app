@@ -7,7 +7,6 @@ const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
 const SUPA_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''
 const HAS_ENV = Boolean(SUPA_URL && SUPA_ANON)
 
-// Origini fisse consentite (prod + localhost). Le preview *.vercel.app sono permesse sotto.
 const FIXED_ALLOWED = new Set<string>([
   'https://clubandplayer-app.vercel.app',
   'http://localhost:3000',
@@ -22,12 +21,11 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [currentEmail, setCurrentEmail] = useState<string | null>(null)
 
-  const BUILD_TAG = 'login-v4.0-callback-explicit'
+  const BUILD_TAG = 'login-v4.1-email-only+cookie-sync'
 
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const hostname = typeof window !== 'undefined' ? window.location.hostname : ''
 
-  // Consenti OAuth su prod/localhost/qualsiasi *.vercel.app
   const oauthAllowedHere = useMemo(() => {
     try {
       if (!origin) return false
@@ -39,7 +37,7 @@ export default function LoginPage() {
     }
   }, [origin, hostname])
 
-  // Pre-carica utente (client)
+  // Pre-carica utente (client-only)
   useEffect(() => {
     let active = true
     if (!HAS_ENV) return
@@ -55,58 +53,39 @@ export default function LoginPage() {
   async function signInEmail(e: React.FormEvent) {
     e.preventDefault()
     setErrorMsg(null)
-    if (!HAS_ENV) return setErrorMsg('Config mancante: NEXT_PUBLIC_SUPABASE_*')
+    if (!HAS_ENV) {
+      setErrorMsg('Config mancante: NEXT_PUBLIC_SUPABASE_*')
+      return
+    }
     setLoading(true)
     try {
       const { createClient } = await import('@supabase/supabase-js')
       const supabase = createClient(SUPA_URL, SUPA_ANON)
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
+
+      const { data: { session }, error } = await supabase.auth.signInWithPassword({
+        email, password,
+      })
       if (error) throw error
+      if (!session) throw new Error('Sessione mancante dopo login')
+
+      // 🔁 Sync cookie SSR per le API Route Handlers
+      const r = await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          access_token: session.access_token,
+          refresh_token: session.refresh_token,
+        }),
+      })
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({}))
+        throw new Error(j?.error || 'Sync cookie fallito')
+      }
+
       router.replace('/')
     } catch (err: any) {
       setErrorMsg(err?.message ?? 'Errore login')
     } finally {
-      setLoading(false)
-    }
-  }
-
-  async function signInGoogle() {
-    setErrorMsg(null)
-    if (!HAS_ENV) return setErrorMsg('Config mancante: NEXT_PUBLIC_SUPABASE_*')
-
-    // Non blocco più sulle preview; al limite Supabase rifiuta se non whitelisted.
-    if (!oauthAllowedHere) {
-      console.warn('[OAuth] Origin non riconosciuta. Aggiungi ai Redirect URLs di Supabase:', origin)
-    }
-
-    setLoading(true)
-    try {
-      const { createClient } = await import('@supabase/supabase-js')
-      const supabase = createClient(SUPA_URL, SUPA_ANON)
-
-      // ✅ Redirect esplicito alla nostra callback sulla STESSA ORIGIN (preview/prod/localhost)
-      const redirectTo = `${window.location.origin}/auth/callback`
-
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo,
-          queryParams: { prompt: 'consent' },
-        },
-      })
-      if (error) throw error
-
-      if (data?.url) {
-        window.location.assign(data.url)
-      } else {
-        const authorize =
-          `${SUPA_URL}/auth/v1/authorize?provider=google&redirect_to=` +
-          encodeURIComponent(redirectTo)
-        window.location.assign(authorize)
-      }
-    } catch (err: any) {
-      console.error('OAuth error:', err)
-      setErrorMsg(err?.message ?? 'Errore OAuth')
       setLoading(false)
     }
   }
@@ -139,25 +118,9 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY`}
           </div>
         )}
 
-        {!oauthAllowedHere && (
-          <div className="rounded-md border border-blue-300 bg-blue-50 p-2 text-xs text-blue-800">
-            Aggiungi <code>{origin}/auth/callback</code> ai <b>Redirect URLs</b> in Supabase.
-          </div>
-        )}
-
-        <button
-          type="button"
-          onClick={signInGoogle}
-          disabled={!HAS_ENV || loading}
-          className="w-full rounded-md border px-4 py-2 disabled:opacity-50"
-        >
-          Continua con Google
-        </button>
-
-        <div className="my-2 flex items-center gap-2">
-          <div className="h-px flex-1 bg-gray-200" />
-          <span className="text-xs text-gray-500">oppure</span>
-          <div className="h-px flex-1 bg-gray-200" />
+        {/* Google temporaneamente rimosso */}
+        <div className="rounded-md border border-blue-200 bg-blue-50 p-2 text-xs text-blue-800">
+          Login con Google momentaneamente disabilitato per sbloccare la preview. Usa email + password.
         </div>
 
         {errorMsg && (
