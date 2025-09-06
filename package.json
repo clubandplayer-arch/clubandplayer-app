@@ -7,7 +7,7 @@
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",
-    "build:geo": "node scripts/fetch-italy-geo.mjs"
+    "build:geo": "node scripts/build-italy-geo-ISTAT.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.7.0",
