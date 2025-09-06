@@ -10,13 +10,23 @@ function extractId(req: NextRequest): string | null {
   return segs[segs.length - 1] ?? null;
 }
 
+function bracketToRange(code?: string): { age_min: number | null; age_max: number | null } {
+  switch ((code || '').trim()) {
+    case '17-20': return { age_min: 17, age_max: 20 };
+    case '21-25': return { age_min: 21, age_max: 25 };
+    case '26-30': return { age_min: 26, age_max: 30 };
+    case '31+':   return { age_min: 31, age_max: null };
+    default:      return { age_min: null, age_max: null };
+  }
+}
+
 export const GET = withAuth(async (req: NextRequest, { supabase }) => {
   const id = extractId(req);
   if (!id) return jsonError('Missing id', 400);
 
   const { data, error } = await supabase
     .from('opportunities')
-    .select('id,title,description,created_by,created_at')
+    .select('id,title,description,created_by,created_at,country,region,city,sport,role,age_min,age_max')
     .eq('id', id)
     .single();
 
@@ -36,17 +46,22 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   const body = await req.json().catch(() => ({}));
   const patch: Record<string, any> = {};
-  if ('title' in body) patch.title = String(body.title || '').trim();
-  if ('description' in body) patch.description = String(body.description || '').trim() || null;
+  for (const k of ['title','description','country','region','city','sport','role'] as const) {
+    if (k in body) {
+      const v = (body[k] ?? '').toString().trim();
+      patch[k] = v || null;
+    }
+  }
+  if ('age_bracket' in body) Object.assign(patch, bracketToRange(body.age_bracket));
 
-  if (patch.title === '') return jsonError('Title is required', 400);
+  if ('title' in patch && !patch.title) return jsonError('Title is required', 400);
 
   const { data, error } = await supabase
     .from('opportunities')
     .update(patch)
     .eq('id', id)
-    .eq('created_by', user.id) // owner only
-    .select('id,title,description,created_by,created_at')
+    .eq('created_by', user.id)
+    .select('id,title,description,created_by,created_at,country,region,city,sport,role,age_min,age_max')
     .single();
 
   if (error) return jsonError(error.message, 400);
