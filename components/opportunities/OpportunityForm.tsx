@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { Opportunity } from '@/types/opportunity';
 import { AGE_BRACKETS, AgeBracket, SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
-import { COUNTRIES, loadItalyGeo } from '@/lib/opps/geo';
+import { COUNTRIES, ITALY_REGIONS, PROVINCES_BY_REGION, CITIES_BY_PROVINCE } from '@/lib/opps/geo';
 
 export default function OpportunityForm({
   initial,
@@ -17,26 +17,7 @@ export default function OpportunityForm({
   const [title, setTitle] = useState(initial?.title ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
 
-  // GEO (caricato da /public/geo/italy.min.json)
-  const [regions, setRegions] = useState<string[]>([]);
-  const [provincesByRegion, setPBR] = useState<Record<string, string[]>>({});
-  const [citiesByProvince, setCBP] = useState<Record<string, string[]>>({});
-  useEffect(() => {
-    let alive = true;
-    loadItalyGeo()
-      .then((g) => {
-        if (!alive) return;
-        setRegions(g.regions);
-        setPBR(g.provincesByRegion);
-        setCBP(g.citiesByProvince);
-      })
-      .catch(() => {});
-    return () => {
-      alive = false;
-    };
-  }, []);
-
-  // Selezioni località
+  // Località (statiche: Italia → Sicilia → Siracusa)
   const [countryCode, setCountryCode] = useState<string>(
     COUNTRIES.find((c) => c.label === initial?.country)?.code ?? 'IT'
   );
@@ -47,13 +28,13 @@ export default function OpportunityForm({
   const [province, setProvince] = useState<string>(initial?.province ?? '');
   const [city, setCity] = useState<string>(initial?.city ?? '');
 
-  const provinces = useMemo(
-    () => (countryCode === 'IT' ? provincesByRegion[region] ?? [] : []),
-    [countryCode, region, provincesByRegion]
+  const provinces: string[] = useMemo(
+    () => (countryCode === 'IT' ? PROVINCES_BY_REGION[region] ?? [] : []),
+    [countryCode, region]
   );
-  const cities = useMemo(
-    () => (countryCode === 'IT' ? citiesByProvince[province] ?? [] : []),
-    [countryCode, province, citiesByProvince]
+  const cities: string[] = useMemo(
+    () => (countryCode === 'IT' ? CITIES_BY_PROVINCE[province] ?? [] : []),
+    [countryCode, province]
   );
 
   // Sport/ruolo
@@ -187,7 +168,7 @@ export default function OpportunityForm({
             {countryCode === 'IT' ? (
               <select className="w-full rounded-xl border px-3 py-2" value={region} onChange={(e) => onChangeRegion(e.target.value)}>
                 <option value="">—</option>
-                {regions.map((r: string) => (
+                {ITALY_REGIONS.map((r: string) => (
                   <option key={r} value={r}>
                     {r}
                   </option>
