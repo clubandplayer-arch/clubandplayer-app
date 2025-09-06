@@ -8,12 +8,31 @@ import Modal from '@/components/ui/Modal';
 import OpportunityForm from '@/components/opportunities/OpportunityForm';
 import type { OpportunitiesApiResponse, Opportunity } from '@/types/opportunity';
 
-import { COUNTRIES, ITALY_REGIONS, PROVINCES_BY_REGION, CITIES_BY_PROVINCE } from '@/lib/opps/geo';
+import { COUNTRIES, loadItalyGeo } from '@/lib/opps/geo';
 import { AGE_BRACKETS, SPORTS } from '@/lib/opps/constants';
 
 export default function OpportunitiesClient() {
   const sp = useSearchParams();
   const router = useRouter();
+
+  // GEO (caricato da /public/geo/italy.min.json)
+  const [regions, setRegions] = useState<string[]>([]);
+  const [provincesByRegion, setPBR] = useState<Record<string, string[]>>({});
+  const [citiesByProvince, setCBP] = useState<Record<string, string[]>>({});
+  useEffect(() => {
+    let alive = true;
+    loadItalyGeo()
+      .then((g) => {
+        if (!alive) return;
+        setRegions(g.regions);
+        setPBR(g.provincesByRegion);
+        setCBP(g.citiesByProvince);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const [data, setData] = useState<OpportunitiesApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -51,8 +70,7 @@ export default function OpportunitiesClient() {
     const p = new URLSearchParams(sp.toString());
     if (value) p.set(name, value);
     else p.delete(name);
-    // quando cambio un filtro diverso da page, resetto la pagina a 1
-    if (name !== 'page') p.set('page', '1');
+    if (name !== 'page') p.set('page', '1'); // reset pagina
     router.replace(`/opportunities?${p.toString()}`);
   }
 
@@ -151,14 +169,14 @@ export default function OpportunitiesClient() {
               className="rounded-xl border px-3 py-2"
             >
               <option value="">Regione</option>
-              {ITALY_REGIONS.map((r) => (
+              {regions.map((r: string) => (
                 <option key={r} value={r}>
                   {r}
                 </option>
               ))}
             </select>
 
-            {PROVINCES_BY_REGION[sp.get('region') ?? ''] ? (
+            {provincesByRegion[sp.get('region') ?? ''] ? (
               <select
                 value={sp.get('province') ?? ''}
                 onChange={(e) => {
@@ -168,7 +186,7 @@ export default function OpportunitiesClient() {
                 className="rounded-xl border px-3 py-2"
               >
                 <option value="">Provincia</option>
-                {PROVINCES_BY_REGION[sp.get('region') ?? '']?.map((p) => (
+                {provincesByRegion[sp.get('region') ?? '']?.map((p: string) => (
                   <option key={p} value={p}>
                     {p}
                   </option>
@@ -183,14 +201,14 @@ export default function OpportunitiesClient() {
               />
             )}
 
-            {CITIES_BY_PROVINCE[sp.get('province') ?? ''] ? (
+            {citiesByProvince[sp.get('province') ?? ''] ? (
               <select
                 value={sp.get('city') ?? ''}
                 onChange={(e) => setParam('city', e.target.value)}
                 className="rounded-xl border px-3 py-2"
               >
                 <option value="">Città</option>
-                {CITIES_BY_PROVINCE[sp.get('province') ?? '']?.map((c) => (
+                {citiesByProvince[sp.get('province') ?? '']?.map((c: string) => (
                   <option key={c} value={c}>
                     {c}
                   </option>
@@ -209,7 +227,7 @@ export default function OpportunitiesClient() {
 
         <select value={sp.get('sport') ?? ''} onChange={(e) => setParam('sport', e.target.value)} className="rounded-xl border px-3 py-2">
           <option value="">Sport</option>
-          {SPORTS.map((s) => (
+          {SPORTS.map((s: string) => (
             <option key={s} value={s}>
               {s}
             </option>
@@ -218,7 +236,7 @@ export default function OpportunitiesClient() {
 
         <select value={sp.get('age') ?? ''} onChange={(e) => setParam('age', e.target.value)} className="rounded-xl border px-3 py-2">
           <option value="">Età</option>
-          {AGE_BRACKETS.map((b) => (
+          {AGE_BRACKETS.map((b: string) => (
             <option key={b} value={b}>
               {b}
             </option>
