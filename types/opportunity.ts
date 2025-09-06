@@ -1,4 +1,3 @@
-// types/opportunity.ts
 export type Opportunity = {
   id: string;
   title: string;
@@ -8,11 +7,13 @@ export type Opportunity = {
 
   country: string | null;
   region: string | null;
+  province: string | null;
   city: string | null;
   sport: string | null;
   role: string | null;
   age_min: number | null;
   age_max: number | null;
+  club_name: string | null;
 };
 
 export type OpportunitiesApiResponse = {
