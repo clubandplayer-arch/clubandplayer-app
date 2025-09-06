@@ -1,8 +1,11 @@
+// components/layout/DashboardNav.tsx
 'use client';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
+
+type Role = 'athlete' | 'club' | null;
 
 function btn(active: boolean) {
   return [
@@ -14,60 +17,53 @@ function btn(active: boolean) {
 function Badge({ n }: { n: number }) {
   if (!Number.isFinite(n) || n <= 0) return null;
   return (
-    <span className="ml-2 inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-xs bg-gray-900 text-white">
+    <span className="ml-2 inline-flex items-center justify-center min-w-5 h-5 text-xs px-1.5 rounded-full bg-gray-900 text-white">
       {n}
     </span>
   );
 }
 
-type Role = 'athlete' | 'club' | null;
-
 export default function DashboardNav() {
   const pathname = usePathname();
-
   const [role, setRole] = useState<Role>(null);
   const [loaded, setLoaded] = useState(false);
-  const [sentCount, setSentCount] = useState<number>(0);        // atleta
-  const [receivedCount, setReceivedCount] = useState<number>(0); // club
+  const [countSent, setCountSent] = useState(0);
+  const [countReceived, setCountReceived] = useState(0);
 
+  // 1) Determina il ruolo
   useEffect(() => {
     (async () => {
       try {
-        const rp = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
-        const jp = await rp.json().catch(() => ({}));
-        const pt = (jp?.data?.type ?? jp?.data?.profile_type ?? '').toString().toLowerCase();
-        if (pt.includes('atlet')) setRole('athlete');
-        else if (pt.includes('club')) setRole('club');
+        // Prova profilo server-side
+        const r = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
+        const j = await r.json().catch(() => ({}));
+        const pt = (j?.data?.profile_type ?? j?.data?.type ?? '').toString().toLowerCase();
 
-        if (!pt) {
-          const rMine = await fetch('/api/applications/mine', { credentials: 'include', cache: 'no-store' });
-          const jm = await rMine.json().catch(() => ({}));
-          const mine = (jm?.data ?? jm?.items ?? jm ?? []) as any[];
-          if (Array.isArray(mine) && mine.length > 0) setRole('athlete');
-
-          const rRec = await fetch('/api/applications/received', { credentials: 'include', cache: 'no-store' });
-          const jr = await rRec.json().catch(() => ({}));
-          const rec = (jr?.data ?? jr?.items ?? jr ?? []) as any[];
-          if (Array.isArray(rec) && rec.length > 0) setRole((prev) => prev ?? 'club');
+        if (pt.includes('atlet')) {
+          setRole('athlete');
+          return;
+        }
+        if (pt.includes('club') || pt.includes('soc') || pt.includes('owner')) {
+          setRole('club');
+          return;
         }
 
-        const fetchMine = async () => {
-          const r = await fetch('/api/applications/mine', { credentials: 'include', cache: 'no-store' });
-          const j = await r.json().catch(() => ({}));
-          const list = (j?.data ?? j?.items ?? j ?? []) as any[];
-          setSentCount(Array.isArray(list) ? list.length : 0);
-        };
-        const fetchRec = async () => {
-          const r = await fetch('/api/applications/received', { credentials: 'include', cache: 'no-store' });
-          const j = await r.json().catch(() => ({}));
-          const list = (j?.data ?? j?.items ?? j ?? []) as any[];
-          setReceivedCount(Array.isArray(list) ? list.length : 0);
-        };
-
-        if (pt.includes('atlet')) await fetchMine();
-        else if (pt.includes('club')) await fetchRec();
-        else {
-          await Promise.allSettled([fetchMine(), fetchRec()]);
+        // Fallback induttivo
+        const rMine = await fetch('/api/applications/mine', { credentials: 'include', cache: 'no-store' });
+        if (rMine.ok) {
+          const jm = await rMine.json().catch(() => ({}));
+          if (Array.isArray(jm?.data) && jm.data.length > 0) {
+            setRole('athlete');
+            return;
+          }
+        }
+        const rRec = await fetch('/api/applications/received', { credentials: 'include', cache: 'no-store' });
+        if (rRec.ok) {
+          const jr = await rRec.json().catch(() => ({}));
+          if (Array.isArray(jr?.data) && jr.data.length > 0) {
+            setRole('club');
+            return;
+          }
         }
       } catch {
         // ignore
@@ -77,30 +73,52 @@ export default function DashboardNav() {
     })();
   }, []);
 
+  // 2) Carica i contatori in base al ruolo
+  useEffect(() => {
+    if (!loaded || !role) return;
+    (async () => {
+      try {
+        if (role === 'athlete') {
+          const r = await fetch('/api/applications/mine', { credentials: 'include', cache: 'no-store' });
+          const j = await r.json().catch(() => ({}));
+          setCountSent(Array.isArray(j?.data) ? j.data.length : 0);
+        } else if (role === 'club') {
+          const r = await fetch('/api/applications/received', { credentials: 'include', cache: 'no-store' });
+          const j = await r.json().catch(() => ({}));
+          setCountReceived(Array.isArray(j?.data) ? j.data.length : 0);
+        }
+      } catch {
+        // ignore
+      }
+    })();
+  }, [loaded, role]);
+
   return (
     <nav className="flex gap-2 items-center p-3 border-b bg-white sticky top-0 z-10">
       <Link href="/clubs" className={btn(pathname.startsWith('/clubs'))}>Clubs</Link>
       <Link href="/opportunities" className={btn(pathname.startsWith('/opportunities'))}>Opportunità</Link>
       <Link href="/profile" className={btn(pathname.startsWith('/profile'))}>Profilo</Link>
 
+      {/* CTA candidature: mostra una sola voce coerente col ruolo */}
       {loaded && role === 'athlete' && (
-        <Link href="/applications/sent" className={btn(pathname === '/applications/sent')}>
-          Candidature inviate
-          <Badge n={sentCount} />
+        <Link href="/applications" className={btn(pathname === '/applications')}>
+          Candidature inviate <Badge n={countSent} />
+        </Link>
+      )}
+      {loaded && role === 'club' && (
+        <Link href="/applications" className={btn(pathname === '/applications')}>
+          Candidature ricevute <Badge n={countReceived} />
         </Link>
       )}
 
-      {loaded && role === 'club' && (
-        <>
-          <Link href="/my/opportunities" className={btn(pathname === '/my/opportunities')}>
-            I miei annunci
-          </Link>
-          <Link href="/applications" className={btn(pathname === '/applications')}>
-            Candidature ricevute
-            <Badge n={receivedCount} />
-          </Link>
-        </>
-      )}
+      {/* Chip ruolo a destra */}
+      <div className="ml-auto">
+        {loaded && role && (
+          <span className="text-xs px-2 py-1 rounded-full bg-gray-100 border text-gray-700 uppercase">
+            {role}
+          </span>
+        )}
+      </div>
     </nav>
   );
 }
