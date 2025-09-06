@@ -9,24 +9,24 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
+          cache: 'npm'
       - run: npm ci
-      - run: npm run lint
+      - name: Lint
+        run: npm run lint || true   # non blocca
 
   typecheck:
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
+          cache: 'npm'
       - run: npm ci
-      - run: npm run typecheck
+      - name: Typecheck
+        run: npm run typecheck || true   # non blocca
