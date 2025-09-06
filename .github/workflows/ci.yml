@@ -1,33 +1,33 @@
-name: CI — Lint & Typecheck
+name: CI
 
 on:
-  push:
-    branches: [ "main" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ main ]
+
+permissions:
+  contents: read
 
 jobs:
-  lint-typecheck:
-    name: Lint & Typecheck
+  lint:
+    name: lint
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: "npm"
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
 
-      - name: Install deps
-        run: npm ci
-
-      # TypeScript typecheck (no build, no emit)
-      - name: Type check
-        run: npx tsc --noEmit
-
-      # ESLint (flat config support). Falla fallire su warnings.
-      - name: Lint
-        run: npx eslint . --ext .ts,.tsx --max-warnings=0
+  typecheck:
+    name: typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
