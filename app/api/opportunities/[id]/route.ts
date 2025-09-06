@@ -1,69 +1,74 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseServerClient } from '@/lib/supabase/server';
+// app/api/opportunities/[id]/route.ts
+import { NextResponse, type NextRequest } from 'next/server';
+import { withAuth, jsonError } from '@/lib/api/auth';
+import { rateLimit } from '@/lib/api/rateLimit';
 
-export async function GET(
-  _req: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
-  const { id } = await context.params;
+export const runtime = 'nodejs';
 
-  const supabase = await getSupabaseServerClient();
-  const { data, error } = await supabase
-    .from('opportunities')
-    .select(
-      'id, owner_id, title, description, sport, required_category, city, province, region, country, created_at'
-    )
-    .eq('id', id)
-    .maybeSingle();
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-  if (!data) return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  return NextResponse.json({ data });
+function extractId(req: NextRequest): string | null {
+  const segs = new URL(req.url).pathname.split('/').filter(Boolean);
+  return segs[segs.length - 1] ?? null;
 }
 
-export async function PATCH(
-  req: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
-  const { id } = await context.params;
+export const GET = withAuth(async (req: NextRequest, { supabase }) => {
+  const id = extractId(req);
+  if (!id) return jsonError('Missing id', 400);
 
-  const supabase = await getSupabaseServerClient();
-  const { data: ures } = await supabase.auth.getUser();
-  const user = ures?.user;
-  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  const { data, error } = await supabase
+    .from('opportunities')
+    .select('id,title,description,created_by,created_at')
+    .eq('id', id)
+    .single();
+
+  if (error) return jsonError(error.message, 404);
+  return NextResponse.json({ data });
+});
+
+export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
+  try {
+    await rateLimit(req, { key: 'opps:PATCH', limit: 40, window: '1m' } as any);
+  } catch {
+    return jsonError('Too Many Requests', 429);
+  }
+
+  const id = extractId(req);
+  if (!id) return jsonError('Missing id', 400);
 
   const body = await req.json().catch(() => ({}));
-  const allowed = [
-    'title',
-    'description',
-    'sport',
-    'required_category',
-    'city',
-    'province',
-    'region',
-    'country',
-  ] as const;
-  const update: Record<string, any> = {};
-  for (const k of allowed) if (k in body) update[k] = body[k];
+  const patch: Record<string, any> = {};
+  if ('title' in body) patch.title = String(body.title || '').trim();
+  if ('description' in body) patch.description = String(body.description || '').trim() || null;
 
-  // Verifica proprietario
-  const { data: opp } = await supabase
-    .from('opportunities')
-    .select('id, owner_id')
-    .eq('id', id)
-    .maybeSingle();
-
-  if (!opp) return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  if (opp.owner_id !== user.id)
-    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  if (patch.title === '') return jsonError('Title is required', 400);
 
   const { data, error } = await supabase
     .from('opportunities')
-    .update(update)
+    .update(patch)
     .eq('id', id)
-    .select('id')
-    .maybeSingle();
+    .eq('created_by', user.id) // owner only
+    .select('id,title,description,created_by,created_at')
+    .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-  return NextResponse.json({ ok: true, data });
-}
+  if (error) return jsonError(error.message, 400);
+  return NextResponse.json({ data });
+});
+
+export const DELETE = withAuth(async (req: NextRequest, { supabase, user }) => {
+  try {
+    await rateLimit(req, { key: 'opps:DELETE', limit: 40, window: '1m' } as any);
+  } catch {
+    return jsonError('Too Many Requests', 429);
+  }
+
+  const id = extractId(req);
+  if (!id) return jsonError('Missing id', 400);
+
+  const { error } = await supabase
+    .from('opportunities')
+    .delete()
+    .eq('id', id)
+    .eq('created_by', user.id);
+
+  if (error) return jsonError(error.message, 400);
+  return NextResponse.json({ ok: true });
+});
