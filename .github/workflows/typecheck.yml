@@ -1,0 +1,46 @@
+name: Type check
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main, feature/** ]
+permissions:
+  contents: read
+  statuses: write
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci || npm i
+      - id: run_tc
+        run: |
+          if npm run -s typecheck; then
+            echo "ok"
+          else
+            # fallback generico
+            npx tsc -p . --noEmit
+          fi
+        continue-on-error: true
+      - name: Publish "Type check" commit status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const outcome = '${{ steps.run_tc.outcome }}';
+            const state = outcome === 'success' ? 'success' : 'failure';
+            const sha = context.payload.pull_request ? context.payload.pull_request.head.sha : context.sha;
+            await github.request('POST /repos/{owner}/{repo}/statuses/{sha}', {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha,
+              state,
+              context: 'Type check',
+              description: outcome === 'success' ? 'Types OK' : 'Type errors',
+              target_url: `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${process.env.GITHUB_RUN_ID}`
+            });
+      - name: Fail job if typecheck failed
+        if: steps.run_tc.outcome != 'success'
+        run: exit 1

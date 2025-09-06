@@ -1,0 +1,40 @@
+name: Lint
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main, feature/** ]
+permissions:
+  contents: read
+  statuses: write
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci || npm i
+      - id: run_lint
+        run: npm run lint
+        continue-on-error: true
+      - name: Publish "Lint" commit status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const outcome = '${{ steps.run_lint.outcome }}';
+            const state = outcome === 'success' ? 'success' : 'failure';
+            const sha = context.payload.pull_request ? context.payload.pull_request.head.sha : context.sha;
+            await github.request('POST /repos/{owner}/{repo}/statuses/{sha}', {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha,
+              state,
+              context: 'Lint',
+              description: outcome === 'success' ? 'ESLint passed' : 'ESLint failed',
+              target_url: `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${process.env.GITHUB_RUN_ID}`
+            });
+      - name: Fail job if lint failed
+        if: steps.run_lint.outcome != 'success'
+        run: exit 1
