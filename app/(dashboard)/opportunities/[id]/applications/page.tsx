@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 
 type Application = {
   id: string;
-  applicant_id: string;
+  athlete_id: string; // <-- qui
   note: string | null;
   status: 'submitted' | 'seen' | 'accepted' | 'rejected';
   created_at: string;
@@ -60,7 +60,7 @@ export default function OpportunityApplicationsPage({ params }: { params: { id: 
           <table className="w-full text-sm">
             <thead className="bg-gray-50">
               <tr className="text-left border-b">
-                <th className="py-2 px-3">Applicant</th>
+                <th className="py-2 px-3">Atleta (id)</th>
                 <th className="py-2 px-3">Nota</th>
                 <th className="py-2 px-3">Status</th>
                 <th className="py-2 px-3">Data</th>
@@ -70,7 +70,7 @@ export default function OpportunityApplicationsPage({ params }: { params: { id: 
             <tbody>
               {apps.map(a => (
                 <tr key={a.id} className="border-b">
-                  <td className="py-2 px-3">{a.applicant_id}</td>
+                  <td className="py-2 px-3">{a.athlete_id}</td>
                   <td className="py-2 px-3">{a.note || '—'}</td>
                   <td className="py-2 px-3">{a.status}</td>
                   <td className="py-2 px-3">{new Date(a.created_at).toLocaleString()}</td>
