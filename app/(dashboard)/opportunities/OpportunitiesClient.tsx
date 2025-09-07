@@ -48,7 +48,7 @@ export default function OpportunitiesClient() {
   useEffect(() => {
     fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' })
       .then((r) => r.json())
-      .then((j) => setMe(j ?? null))
+      .then((j) => setMe(j?.user ?? null)) // <-- prende user.id
       .catch(() => setMe(null));
   }, []);
 
