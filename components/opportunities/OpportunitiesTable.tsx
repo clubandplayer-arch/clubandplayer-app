@@ -1,3 +1,6 @@
+'use client';
+
+import ApplyCell from '@/components/opportunities/ApplyCell';
 import type { Opportunity } from '@/types/opportunity';
 
 function formatBracket(min: number | null, max: number | null) {
@@ -52,14 +55,28 @@ export default function OpportunitiesTable({
                 <td className="px-4 py-2">{o.club_name ?? '—'}</td>
                 <td className="px-4 py-2">{new Date(o.created_at).toLocaleString()}</td>
                 <td className="px-4 py-2">
-                  {canEdit ? (
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => onEdit?.(o)} className="px-2 py-1 rounded border hover:bg-gray-50">Modifica</button>
-                      <button onClick={() => onDelete?.(o)} className="px-2 py-1 rounded border hover:bg-red-50">Elimina</button>
-                    </div>
-                  ) : (
-                    <span className="text-gray-400">—</span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {/* Azione principale */}
+                    <ApplyCell opportunityId={o.id} ownerId={o.created_by ?? null} />
+
+                    {/* Azioni extra per l'owner */}
+                    {canEdit && (
+                      <>
+                        <button
+                          onClick={() => onEdit?.(o)}
+                          className="px-2 py-1 text-xs rounded border hover:bg-gray-50"
+                        >
+                          Modifica
+                        </button>
+                        <button
+                          onClick={() => onDelete?.(o)}
+                          className="px-2 py-1 text-xs rounded border hover:bg-red-50"
+                        >
+                          Elimina
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </td>
               </tr>
             );
