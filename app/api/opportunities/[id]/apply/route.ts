@@ -4,15 +4,18 @@ import { rateLimit } from '@/lib/api/rateLimit';
 
 export const runtime = 'nodejs';
 
-function wantsApplicantId(msg: string | undefined) {
-  if (!msg) return false;
-  const m = msg.toLowerCase();
-  return m.includes('applicant_id') || m.includes('column "applicant_id"') || m.includes('null value in column "applicant_id"');
+function msg(m: unknown) {
+  return typeof m === 'string' ? m.toLowerCase() : String(m || '').toLowerCase();
 }
-function wantsAthleteId(msg: string | undefined) {
-  if (!msg) return false;
-  const m = msg.toLowerCase();
-  return m.includes('athlete_id') || m.includes('column "athlete_id"') || m.includes('null value in column "athlete_id"');
+function has(txt: string, snippet: string) {
+  return txt.includes(snippet.toLowerCase());
+}
+
+async function tryInsert(
+  supabase: any,
+  payload: Record<string, any>
+): Promise<{ data: any; error: any }> {
+  return await supabase.from('applications').insert(payload).select('*').single();
 }
 
 /** POST /api/opportunities/:id/apply  { note? } */
@@ -26,30 +29,30 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   const body = await req.json().catch(() => ({} as any));
   const note = typeof body.note === 'string' ? body.note.trim() : null;
 
-  // 1) primo tentativo con athlete_id
-  let { data, error } = await supabase
-    .from('applications')
-    .insert({ opportunity_id: id, athlete_id: user.id, note, status: 'submitted' } as any)
-    .select('*')
-    .single();
+  const base = { opportunity_id: id, note, status: 'submitted' as const };
 
-  // 23505 = unique_violation (già candidato)
-  if (error && (error as any).code === '23505') return jsonError('Already applied', 409);
+  // 1) tenta con entrambi i campi (per coprire schema con entrambi NOT NULL)
+  let payload: Record<string, any> = { ...base, athlete_id: user.id, applicant_id: user.id };
+  let { data, error } = await tryInsert(supabase, payload);
 
-  // Se fallisce perché il DB vuole applicant_id, riproviamo
-  if (error && wantsApplicantId((error as any).message)) {
-    const retry = await supabase
-      .from('applications')
-      .insert({ opportunity_id: id, applicant_id: user.id, note, status: 'submitted' } as any)
-      .select('*')
-      .single();
+  if (error) {
+    // Unique violation (già candidato)
+    if ((error as any).code === '23505') return jsonError('Already applied', 409);
 
-    if (retry.error) {
-      if ((retry.error as any).code === '23505') return jsonError('Already applied', 409);
-      return jsonError(retry.error.message, 400);
+    const m = msg((error as any).message);
+
+    // Se una colonna non esiste, riprova con l'altra
+    if (has(m, 'column "athlete_id"') && has(m, 'does not exist')) {
+      ({ data, error } = await tryInsert(supabase, { ...base, applicant_id: user.id }));
+    } else if (has(m, 'column "applicant_id"') && has(m, 'does not exist')) {
+      ({ data, error } = await tryInsert(supabase, { ...base, athlete_id: user.id }));
     }
-    data = retry.data;
-    error = null;
+    // Se una colonna è NOT NULL e manca, ritenta includendola
+    else if (has(m, 'null value in column "athlete_id"')) {
+      ({ data, error } = await tryInsert(supabase, { ...base, athlete_id: user.id }));
+    } else if (has(m, 'null value in column "applicant_id"')) {
+      ({ data, error } = await tryInsert(supabase, { ...base, applicant_id: user.id }));
+    }
   }
 
   if (error) return jsonError((error as any).message || 'Insert failed', 400);
