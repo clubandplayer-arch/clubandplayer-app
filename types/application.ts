@@ -3,7 +3,7 @@ export type ApplicationStatus = 'submitted' | 'seen' | 'accepted' | 'rejected';
 export type Application = {
   id: string;
   opportunity_id: string;
-  athlete_id: string;            // <-- rinominato
+  applicant_id: string;
   note?: string | null;
   status: ApplicationStatus;
   created_at: string;
