@@ -2,6 +2,18 @@
 
 import { useEffect, useState } from 'react';
 
+type OpportunityLite = {
+  id: string;
+  title: string;
+  city: string | null;
+  province: string | null;
+  region: string | null;
+  country: string | null;
+  sport?: string | null;
+  role?: string | null;
+  created_at?: string;
+};
+
 type MyApplication = {
   id: string;
   opportunity_id: string;
@@ -10,7 +22,17 @@ type MyApplication = {
   status: 'submitted' | 'seen' | 'accepted' | 'rejected';
   created_at: string;
   updated_at: string;
+  opportunity?: OpportunityLite | null;
 };
+
+function StatusBadge({ s }: { s: MyApplication['status'] }) {
+  const style =
+    s === 'accepted' ? 'bg-green-100 text-green-700' :
+    s === 'rejected' ? 'bg-red-100 text-red-700' :
+    s === 'seen'     ? 'bg-blue-100 text-blue-700' :
+                       'bg-gray-100 text-gray-700';
+  return <span className={`inline-block rounded px-2 py-0.5 text-xs ${style}`}>{s}</span>;
+}
 
 export default function MyApplicationsPage() {
   const [apps, setApps] = useState<MyApplication[]>([]);
@@ -57,32 +79,36 @@ export default function MyApplicationsPage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50">
               <tr className="text-left border-b">
-                <th className="py-2 px-3">Candidatura</th>
+                <th className="py-2 px-3">Annuncio</th>
+                <th className="py-2 px-3">Luogo</th>
                 <th className="py-2 px-3">Stato</th>
                 <th className="py-2 px-3">Nota</th>
-                <th className="py-2 px-3">Creata</th>
+                <th className="py-2 px-3">Candidata il</th>
                 <th className="py-2 px-3">Azione</th>
               </tr>
             </thead>
             <tbody>
-              {apps.map(a => (
-                <tr key={a.id} className="border-b">
-                  <td className="py-2 px-3">
-                    <div className="font-medium">{a.opportunity_id}</div>
-                    <div className="text-xs text-gray-500">id opportunità</div>
-                  </td>
-                  <td className="py-2 px-3">
-                    <span className="inline-block rounded px-2 py-0.5 bg-gray-100">{a.status}</span>
-                  </td>
-                  <td className="py-2 px-3">{a.note || '—'}</td>
-                  <td className="py-2 px-3">{new Date(a.created_at).toLocaleString()}</td>
-                  <td className="py-2 px-3">
-                    <button onClick={() => withdraw(a.id)} className="px-2 py-1 rounded border hover:bg-gray-50">
-                      Ritira
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {apps.map(a => {
+                const o = a.opportunity;
+                const place = [o?.city, o?.province, o?.region, o?.country].filter(Boolean).join(', ');
+                return (
+                  <tr key={a.id} className="border-b">
+                    <td className="py-2 px-3">
+                      <div className="font-medium">{o?.title || a.opportunity_id}</div>
+                      {o?.sport && <div className="text-xs text-gray-500">{o.sport}{o.role ? ` • ${o.role}` : ''}</div>}
+                    </td>
+                    <td className="py-2 px-3">{place || '—'}</td>
+                    <td className="py-2 px-3"><StatusBadge s={a.status} /></td>
+                    <td className="py-2 px-3">{a.note || '—'}</td>
+                    <td className="py-2 px-3">{new Date(a.created_at).toLocaleString()}</td>
+                    <td className="py-2 px-3">
+                      <button onClick={() => withdraw(a.id)} className="px-2 py-1 rounded border hover:bg-gray-50">
+                        Ritira
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

@@ -21,12 +21,31 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   if (oppErr) return jsonError(oppErr.message, 400);
   if (!opp || opp.created_by !== user.id) return jsonError('Forbidden', 403);
 
-  const { data, error } = await supabase
+  // candidati
+  const { data: rows, error } = await supabase
     .from('applications')
     .select('id, athlete_id, note, status, created_at, updated_at')
     .eq('opportunity_id', id)
     .order('created_at', { ascending: false });
-
   if (error) return jsonError(error.message, 400);
-  return NextResponse.json({ data: data ?? [] });
+
+  const apps = rows ?? [];
+  const athleteIds = Array.from(new Set(apps.map(a => a.athlete_id).filter(Boolean)));
+
+  // profili atleti
+  let profilesMap = new Map<string, { id: string; display_name: string | null; profile_type: string | null }>();
+  if (athleteIds.length) {
+    const { data: profs } = await supabase
+      .from('profiles')
+      .select('id, display_name, profile_type')
+      .in('id', athleteIds);
+    profs?.forEach(p => profilesMap.set(p.id, p as any));
+  }
+
+  const enhanced = apps.map(a => ({
+    ...a,
+    athlete: profilesMap.get(a.athlete_id) ?? null,
+  }));
+
+  return NextResponse.json({ data: enhanced });
 });
