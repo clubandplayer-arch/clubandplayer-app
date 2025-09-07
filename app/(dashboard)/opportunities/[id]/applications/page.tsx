@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 
 type Application = {
   id: string;
-  opportunity_id?: string;
   applicant_id: string;
   note: string | null;
   status: 'submitted' | 'seen' | 'accepted' | 'rejected';
