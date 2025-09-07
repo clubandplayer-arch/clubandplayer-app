@@ -13,28 +13,38 @@ function btn(active: boolean) {
 
 export default function DashboardNav() {
   const pathname = usePathname();
-  const [profileType, setProfileType] = useState<string | null>(null);
+  const [role, setRole] = useState<'athlete' | 'club' | null>(null);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     (async () => {
       try {
+        // 1) prova profilo
         const r = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
         const j = await r.json().catch(() => ({}));
-        setProfileType((j?.data?.profile_type ?? null));
-      } catch {
-        setProfileType(null);
+        const pt = (j?.data?.profile_type ?? '').toString().toLowerCase();
+        if (pt.includes('atlet')) { setRole('athlete'); setLoaded(true); return; }
+        if (pt.includes('club') || pt.includes('soc') || pt.includes('owner')) { setRole('club'); setLoaded(true); return; }
+
+        // 2) fallback induttivo
+        const rMine = await fetch('/api/applications/mine', { credentials: 'include', cache: 'no-store' });
+        if (rMine.ok) {
+          const jm = await rMine.json();
+          if (Array.isArray(jm?.data) && jm.data.length > 0) { setRole('athlete'); setLoaded(true); return; }
+        }
+
+        const rRec = await fetch('/api/applications/received', { credentials: 'include', cache: 'no-store' });
+        if (rRec.ok) {
+          const jr = await rRec.json();
+          if (Array.isArray(jr?.data) && jr.data.length > 0) { setRole('club'); setLoaded(true); return; }
+        }
+      } catch (_) {
+        // ignore
       } finally {
         setLoaded(true);
       }
     })();
   }, []);
-
-  const norm = (profileType || '').toLowerCase();
-  const isAthlete =
-    norm.includes('atlet');            // “Atleta”, “Athlete”
-  const isClub =
-    norm.includes('club') || norm.includes('soc') || norm.includes('owner'); // “Club”, “Società”, “Owner”
 
   return (
     <nav className="flex gap-2 items-center p-3 border-b bg-white sticky top-0 z-10">
@@ -42,13 +52,13 @@ export default function DashboardNav() {
       <Link href="/opportunities" className={btn(pathname.startsWith('/opportunities'))}>Opportunità</Link>
       <Link href="/profile" className={btn(pathname.startsWith('/profile'))}>Profilo</Link>
 
-      {/* mostra esattamente uno dei due; se il tipo non è ancora noto, non mostra niente */}
-      {loaded && isAthlete && (
+      {/* Mostra esattamente uno dei due */}
+      {loaded && role === 'athlete' && (
         <Link href="/applications" className={btn(pathname === '/applications')}>
           Candidature inviate
         </Link>
       )}
-      {loaded && isClub && (
+      {loaded && role === 'club' && (
         <Link href="/applications/received" className={btn(pathname === '/applications/received')}>
           Candidature ricevute
         </Link>
