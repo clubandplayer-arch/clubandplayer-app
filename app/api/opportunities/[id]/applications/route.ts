@@ -12,7 +12,7 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   const id = req.nextUrl.pathname.split('/').slice(-2, -1)[0];
   if (!id) return jsonError('Missing opportunity id', 400);
 
-  // verifica owner
+  // check owner
   const { data: opp, error: oppErr } = await supabase
     .from('opportunities')
     .select('created_by')
@@ -21,23 +21,12 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   if (oppErr) return jsonError(oppErr.message, 400);
   if (!opp || opp.created_by !== user.id) return jsonError('Forbidden', 403);
 
-  // seleziono entrambi i campi per essere compatibile con schemi diversi
   const { data, error } = await supabase
     .from('applications')
-    .select('id, athlete_id, applicant_id, note, status, created_at, updated_at')
+    .select('id, athlete_id, note, status, created_at, updated_at')
     .eq('opportunity_id', id)
     .order('created_at', { ascending: false });
 
   if (error) return jsonError(error.message, 400);
-
-  const normalized = (data ?? []).map((r: any) => ({
-    id: r.id,
-    athlete_id: r.athlete_id ?? r.applicant_id ?? null,
-    note: r.note ?? null,
-    status: r.status,
-    created_at: r.created_at,
-    updated_at: r.updated_at,
-  }));
-
-  return NextResponse.json({ data: normalized });
+  return NextResponse.json({ data: data ?? [] });
 });
