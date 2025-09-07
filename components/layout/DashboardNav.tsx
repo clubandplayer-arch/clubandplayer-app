@@ -1,4 +1,3 @@
-// components/layout/DashboardNav.tsx
 'use client';
 
 import Link from 'next/link';
@@ -7,18 +6,33 @@ import { useEffect, useState } from 'react';
 
 type Role = 'athlete' | 'club' | null;
 
-function btn(active: boolean) {
-  return [
-    'px-3 py-2 rounded-lg border transition-colors',
-    active ? 'bg-gray-900 text-white border-gray-900' : 'bg-white hover:bg-gray-50',
-  ].join(' ');
+function cx(...parts: Array<string | false | null | undefined>) {
+  return parts.filter(Boolean).join(' ');
 }
-
-function Badge({ n }: { n: number }) {
-  if (!Number.isFinite(n) || n <= 0) return null;
+function isActive(pathname: string, href: string) {
+  if (href === '/') return pathname === '/';
+  if (href === '/applications') return pathname === '/applications';
+  if (href === '/applications/sent') return pathname === '/applications/sent';
+  return pathname.startsWith(href);
+}
+function Btn({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
   return (
-    <span className="ml-2 inline-flex items-center justify-center min-w-5 h-5 text-xs px-1.5 rounded-full bg-gray-900 text-white">
-      {n}
+    <Link
+      href={href}
+      className={cx(
+        'px-3 py-2 rounded-lg border transition-colors',
+        active ? 'bg-gray-900 text-white border-gray-900' : 'bg-white hover:bg-gray-50'
+      )}
+    >
+      {children}
+    </Link>
+  );
+}
+function Badge({ count }: { count: number }) {
+  if (!Number.isFinite(count) || count <= 0) return null;
+  return (
+    <span className="ml-2 inline-flex items-center justify-center text-xs px-1.5 h-5 min-w-5 rounded-full bg-gray-900 text-white">
+      {count}
     </span>
   );
 }
@@ -27,98 +41,92 @@ export default function DashboardNav() {
   const pathname = usePathname();
   const [role, setRole] = useState<Role>(null);
   const [loaded, setLoaded] = useState(false);
-  const [countSent, setCountSent] = useState(0);
-  const [countReceived, setCountReceived] = useState(0);
 
-  // 1) Determina il ruolo
+  // counter candidature
+  const [countMine, setCountMine] = useState(0);   // per atleta
+  const [countRecv, setCountRecv] = useState(0);   // per club
+
   useEffect(() => {
     (async () => {
       try {
-        // Prova profilo server-side
-        const r = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
-        const j = await r.json().catch(() => ({}));
-        const pt = (j?.data?.profile_type ?? j?.data?.type ?? '').toString().toLowerCase();
+        // 1) Prova profilo server-side
+        const rProf = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
+        const jp = await rProf.json().catch(() => ({}));
+        const t =
+          (jp?.data?.type ??
+            jp?.data?.profile_type ??
+            jp?.data?.account_type ??
+            '')
+            .toString()
+            .toLowerCase();
 
-        if (pt.includes('atlet')) {
-          setRole('athlete');
-          return;
-        }
-        if (pt.includes('club') || pt.includes('soc') || pt.includes('owner')) {
-          setRole('club');
-          return;
-        }
+        if (t.includes('athlet')) setRole('athlete');
+        else if (t.includes('club') || t.includes('soc') || t.includes('owner')) setRole('club');
 
-        // Fallback induttivo
-        const rMine = await fetch('/api/applications/mine', { credentials: 'include', cache: 'no-store' });
-        if (rMine.ok) {
-          const jm = await rMine.json().catch(() => ({}));
-          if (Array.isArray(jm?.data) && jm.data.length > 0) {
-            setRole('athlete');
-            return;
+        // 2) Conta candidature inviate (atleta)
+        try {
+          const rMine = await fetch('/api/applications/mine', { credentials: 'include', cache: 'no-store' });
+          if (rMine.ok) {
+            const jm = await rMine.json().catch(() => ({}));
+            const n = Array.isArray(jm?.data) ? jm.data.length : 0;
+            setCountMine(n);
+            if (n > 0 && !role) setRole('athlete');
           }
-        }
-        const rRec = await fetch('/api/applications/received', { credentials: 'include', cache: 'no-store' });
-        if (rRec.ok) {
-          const jr = await rRec.json().catch(() => ({}));
-          if (Array.isArray(jr?.data) && jr.data.length > 0) {
-            setRole('club');
-            return;
+        } catch {}
+
+        // 3) Conta candidature ricevute (club)
+        try {
+          const rRec = await fetch('/api/applications/received', { credentials: 'include', cache: 'no-store' });
+          if (rRec.ok) {
+            const jr = await rRec.json().catch(() => ({}));
+            const n = Array.isArray(jr?.data) ? jr.data.length : 0;
+            setCountRecv(n);
+            if (n > 0 && !role) setRole('club');
           }
-        }
+        } catch {}
       } catch {
         // ignore
       } finally {
         setLoaded(true);
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // 2) Carica i contatori in base al ruolo
-  useEffect(() => {
-    if (!loaded || !role) return;
-    (async () => {
-      try {
-        if (role === 'athlete') {
-          const r = await fetch('/api/applications/mine', { credentials: 'include', cache: 'no-store' });
-          const j = await r.json().catch(() => ({}));
-          setCountSent(Array.isArray(j?.data) ? j.data.length : 0);
-        } else if (role === 'club') {
-          const r = await fetch('/api/applications/received', { credentials: 'include', cache: 'no-store' });
-          const j = await r.json().catch(() => ({}));
-          setCountReceived(Array.isArray(j?.data) ? j.data.length : 0);
-        }
-      } catch {
-        // ignore
-      }
-    })();
-  }, [loaded, role]);
 
   return (
     <nav className="flex gap-2 items-center p-3 border-b bg-white sticky top-0 z-10">
-      <Link href="/clubs" className={btn(pathname.startsWith('/clubs'))}>Clubs</Link>
-      <Link href="/opportunities" className={btn(pathname.startsWith('/opportunities'))}>Opportunità</Link>
-      <Link href="/profile" className={btn(pathname.startsWith('/profile'))}>Profilo</Link>
+      <Btn href="/clubs" active={isActive(pathname, '/clubs')}>Clubs</Btn>
+      <Btn href="/opportunities" active={isActive(pathname, '/opportunities')}>Opportunità</Btn>
 
-      {/* CTA candidature: mostra una sola voce coerente col ruolo */}
+      {/* Link al profilo sempre visibile */}
+      <Btn href="/profile" active={isActive(pathname, '/profile')}>Profilo</Btn>
+
+      {/* Se club: mostra “Le mie opportunità” */}
+      {loaded && role === 'club' && (
+        <Btn href="/my/opportunities" active={isActive(pathname, '/my/opportunities')}>
+          Le mie opportunità
+        </Btn>
+      )}
+
+      {/* Mostra esattamente uno dei due blocchi candidature */}
       {loaded && role === 'athlete' && (
-        <Link href="/applications" className={btn(pathname === '/applications')}>
-          Candidature inviate <Badge n={countSent} />
-        </Link>
+        <Btn href="/applications/sent" active={isActive(pathname, '/applications/sent')}>
+          Candidature inviate <Badge count={countMine} />
+        </Btn>
       )}
       {loaded && role === 'club' && (
-        <Link href="/applications" className={btn(pathname === '/applications')}>
-          Candidature ricevute <Badge n={countReceived} />
-        </Link>
+        <Btn href="/applications" active={isActive(pathname, '/applications')}>
+          Candidature ricevute <Badge count={countRecv} />
+        </Btn>
       )}
 
-      {/* Chip ruolo a destra */}
-      <div className="ml-auto">
-        {loaded && role && (
-          <span className="text-xs px-2 py-1 rounded-full bg-gray-100 border text-gray-700 uppercase">
-            {role}
-          </span>
-        )}
-      </div>
+      {/* Spacer */}
+      <div className="flex-1" />
+
+      {/* Role chip (indicativo) */}
+      <span className="text-xs px-2 py-1 rounded-full border bg-gray-50 text-gray-700">
+        {loaded ? (role === 'athlete' ? 'Athlete' : role === 'club' ? 'Club' : 'Guest') : '…'}
+      </span>
     </nav>
   );
 }
