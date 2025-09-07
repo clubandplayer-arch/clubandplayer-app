@@ -1,15 +1,27 @@
 @import "tailwindcss";
 
 :root {
+  /* base */
   --background: #ffffff;
   --foreground: #171717;
+
+  /* brand */
+  --brand: #0A66C2;   /* LinkedIn blue */
+  --accent: #C0372B;  /* Pompeian red (Roma) */
 }
 
 @theme inline {
+  /* mappa le variabili nei token tailwind v4 */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+
+  /* font esistenti */
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* >>> colori brand disponibili come classi tailwind (text-brand, bg-brand, ecc.) */
+  --color-brand: var(--brand);
+  --color-accent: var(--accent);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -24,3 +36,9 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* utility opzionali (se vuoi forzare rapidamente stile bottoni/link) */
+.btn-brand { background: var(--brand); color: #fff; }
+.btn-accent { background: var(--accent); color: #fff; }
+.link-brand { color: var(--brand); }
+.link-accent { color: var(--accent); }
