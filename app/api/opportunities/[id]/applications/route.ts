@@ -21,12 +21,23 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   if (oppErr) return jsonError(oppErr.message, 400);
   if (!opp || opp.created_by !== user.id) return jsonError('Forbidden', 403);
 
+  // seleziono entrambi i campi per essere compatibile con schemi diversi
   const { data, error } = await supabase
     .from('applications')
-    .select('id, athlete_id, note, status, created_at, updated_at') // <-- athlete_id
+    .select('id, athlete_id, applicant_id, note, status, created_at, updated_at')
     .eq('opportunity_id', id)
     .order('created_at', { ascending: false });
 
   if (error) return jsonError(error.message, 400);
-  return NextResponse.json({ data: data ?? [] });
+
+  const normalized = (data ?? []).map((r: any) => ({
+    id: r.id,
+    athlete_id: r.athlete_id ?? r.applicant_id ?? null,
+    note: r.note ?? null,
+    status: r.status,
+    created_at: r.created_at,
+    updated_at: r.updated_at,
+  }));
+
+  return NextResponse.json({ data: normalized });
 });
