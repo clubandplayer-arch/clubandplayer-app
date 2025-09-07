@@ -6,6 +6,7 @@ const items = [
   { href: '/clubs', label: 'Clubs' },
   { href: '/opportunities', label: 'Opportunità' },
   { href: '/onboarding', label: 'Profilo' },
+  { href: '/applications', label: 'Candidature' },
 ];
 
 export default function DashboardNav() {

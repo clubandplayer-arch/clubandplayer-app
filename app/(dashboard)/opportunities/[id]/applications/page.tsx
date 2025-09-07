@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 
 type Application = {
   id: string;
-  athlete_id: string; // <-- qui
+  athlete_id: string;
   note: string | null;
   status: 'submitted' | 'seen' | 'accepted' | 'rejected';
   created_at: string;
@@ -20,8 +20,7 @@ export default function OpportunityApplicationsPage({ params }: { params: { id: 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      setLoading(true);
-      setErr(null);
+      setLoading(true); setErr(null);
       try {
         const r = await fetch(`/api/opportunities/${id}/applications`, { credentials: 'include', cache: 'no-store' });
         const j = await r.json();
