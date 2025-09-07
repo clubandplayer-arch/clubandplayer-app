@@ -9,7 +9,17 @@ type Application = {
   status: 'submitted' | 'seen' | 'accepted' | 'rejected';
   created_at: string;
   updated_at: string;
+  athlete?: { id: string; display_name?: string | null; profile_type?: string | null } | null;
 };
+
+function StatusBadge({ s }: { s: Application['status'] }) {
+  const style =
+    s === 'accepted' ? 'bg-green-100 text-green-700' :
+    s === 'rejected' ? 'bg-red-100 text-red-700' :
+    s === 'seen'     ? 'bg-blue-100 text-blue-700' :
+                       'bg-gray-100 text-gray-700';
+  return <span className={`inline-block rounded px-2 py-0.5 text-xs ${style}`}>{s}</span>;
+}
 
 export default function OpportunityApplicationsPage({ params }: { params: { id: string } }) {
   const { id } = params;
@@ -59,9 +69,9 @@ export default function OpportunityApplicationsPage({ params }: { params: { id: 
           <table className="w-full text-sm">
             <thead className="bg-gray-50">
               <tr className="text-left border-b">
-                <th className="py-2 px-3">Atleta (id)</th>
+                <th className="py-2 px-3">Atleta</th>
                 <th className="py-2 px-3">Nota</th>
-                <th className="py-2 px-3">Status</th>
+                <th className="py-2 px-3">Stato</th>
                 <th className="py-2 px-3">Data</th>
                 <th className="py-2 px-3">Azione</th>
               </tr>
@@ -69,9 +79,12 @@ export default function OpportunityApplicationsPage({ params }: { params: { id: 
             <tbody>
               {apps.map(a => (
                 <tr key={a.id} className="border-b">
-                  <td className="py-2 px-3">{a.athlete_id}</td>
+                  <td className="py-2 px-3">
+                    <div className="font-medium">{a.athlete?.display_name || a.athlete_id}</div>
+                    <div className="text-xs text-gray-500">{a.athlete?.profile_type || 'Atleta'}</div>
+                  </td>
                   <td className="py-2 px-3">{a.note || '—'}</td>
-                  <td className="py-2 px-3">{a.status}</td>
+                  <td className="py-2 px-3"><StatusBadge s={a.status} /></td>
                   <td className="py-2 px-3">{new Date(a.created_at).toLocaleString()}</td>
                   <td className="py-2 px-3">
                     <select
