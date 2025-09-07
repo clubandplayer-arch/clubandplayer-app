@@ -12,7 +12,7 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
   const { data, error } = await supabase
     .from('applications')
     .select('id, opportunity_id, note, status, created_at, updated_at')
-    .eq('applicant_id', user.id)
+    .eq('athlete_id', user.id) // <-- athlete_id
     .order('created_at', { ascending: false });
 
   if (error) return jsonError(error.message, 400);

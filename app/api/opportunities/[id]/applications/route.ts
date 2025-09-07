@@ -4,7 +4,7 @@ import { rateLimit } from '@/lib/api/rateLimit';
 
 export const runtime = 'nodejs';
 
-/** GET /api/opportunities/:id/applications  */
+/** GET /api/opportunities/:id/applications  (owner only) */
 export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   try { await rateLimit(req, { key: 'applications:LIST', limit: 120, window: '1m' } as any); }
   catch { return jsonError('Too Many Requests', 429); }
@@ -23,7 +23,7 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   const { data, error } = await supabase
     .from('applications')
-    .select('id, applicant_id, note, status, created_at, updated_at')
+    .select('id, athlete_id, note, status, created_at, updated_at') // <-- athlete_id
     .eq('opportunity_id', id)
     .order('created_at', { ascending: false });
 
