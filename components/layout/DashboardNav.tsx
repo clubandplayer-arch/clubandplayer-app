@@ -1,68 +1,100 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 
-function btn(active: boolean) {
-  return [
-    'px-3 py-2 rounded-lg border transition-colors',
-    active ? 'bg-gray-900 text-white border-gray-900' : 'bg-white hover:bg-gray-50',
-  ].join(' ');
-}
+type Me = { id: string; email?: string } | null;
+type Role = 'athlete' | 'club' | null;
 
 export default function DashboardNav() {
   const pathname = usePathname();
-  const [role, setRole] = useState<'athlete' | 'club' | null>(null);
-  const [loaded, setLoaded] = useState(false);
+  const [me, setMe] = useState<Me>(null);
+  const [role, setRole] = useState<Role>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    (async () => {
+    let cancelled = false;
+
+    async function load() {
       try {
-        // 1) prova profilo
-        const r = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
-        const j = await r.json().catch(() => ({}));
-        const pt = (j?.data?.profile_type ?? '').toString().toLowerCase();
-        if (pt.includes('atlet')) { setRole('athlete'); setLoaded(true); return; }
-        if (pt.includes('club') || pt.includes('soc') || pt.includes('owner')) { setRole('club'); setLoaded(true); return; }
+        const [uRes, pRes] = await Promise.all([
+          fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' }),
+          fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' }),
+        ]);
 
-        // 2) fallback induttivo
-        const rMine = await fetch('/api/applications/mine', { credentials: 'include', cache: 'no-store' });
-        if (rMine.ok) {
-          const jm = await rMine.json();
-          if (Array.isArray(jm?.data) && jm.data.length > 0) { setRole('athlete'); setLoaded(true); return; }
-        }
+        const u = uRes.ok ? await uRes.json() : null;
+        const p = pRes.ok ? await pRes.json() : null;
 
-        const rRec = await fetch('/api/applications/received', { credentials: 'include', cache: 'no-store' });
-        if (rRec.ok) {
-          const jr = await rRec.json();
-          if (Array.isArray(jr?.data) && jr.data.length > 0) { setRole('club'); setLoaded(true); return; }
+        if (!cancelled) {
+          setMe(u ?? null);
+          setRole(p?.data?.type ?? null);
         }
-      } catch (_) {
-        // ignore
+      } catch {
+        if (!cancelled) {
+          setMe(null);
+          setRole(null);
+        }
       } finally {
-        setLoaded(true);
+        if (!cancelled) setLoading(false);
       }
-    })();
+    }
+
+    load();
+    return () => { cancelled = true; };
   }, []);
 
-  return (
-    <nav className="flex gap-2 items-center p-3 border-b bg-white sticky top-0 z-10">
-      <Link href="/clubs" className={btn(pathname.startsWith('/clubs'))}>Clubs</Link>
-      <Link href="/opportunities" className={btn(pathname.startsWith('/opportunities'))}>Opportunità</Link>
-      <Link href="/profile" className={btn(pathname.startsWith('/profile'))}>Profilo</Link>
+  const isActive = (href: string) => (pathname === href ? 'bg-gray-900 text-white' : 'bg-white hover:bg-gray-50');
 
-      {/* Mostra esattamente uno dei due */}
-      {loaded && role === 'athlete' && (
-        <Link href="/applications" className={btn(pathname === '/applications')}>
-          Candidature inviate
+  const doSignOut = async () => {
+    try {
+      await fetch('/api/auth/signout', { method: 'POST', credentials: 'include' });
+    } catch {}
+    window.location.href = '/';
+  };
+
+  return (
+    <nav className="w-full sticky top-0 z-10 border-b bg-white">
+      <div className="max-w-6xl mx-auto px-3 py-2 flex items-center gap-2">
+        <Link href="/opportunities" className={`px-3 py-2 rounded-lg border ${isActive('/opportunities')}`}>
+          Opportunità
         </Link>
-      )}
-      {loaded && role === 'club' && (
-        <Link href="/applications/received" className={btn(pathname === '/applications/received')}>
-          Candidature ricevute
+        <Link href="/clubs" className={`px-3 py-2 rounded-lg border ${isActive('/clubs')}`}>
+          Clubs
         </Link>
-      )}
+        <Link href="/profile" className={`px-3 py-2 rounded-lg border ${isActive('/profile')}`}>
+          Profilo
+        </Link>
+
+        {/* voci condizionali */}
+        {!loading && role === 'athlete' && (
+          <Link href="/applications/sent" className={`ml-1 px-3 py-2 rounded-lg border ${isActive('/applications/sent')}`}>
+            Candidature inviate
+          </Link>
+        )}
+        {!loading && role === 'club' && (
+          <Link href="/applications" className={`ml-1 px-3 py-2 rounded-lg border ${isActive('/applications')}`}>
+            Candidature ricevute
+          </Link>
+        )}
+
+        <div className="ml-auto flex items-center gap-2">
+          {me?.email && (
+            <span className="hidden md:inline text-sm text-gray-600 mr-1">
+              {me.email}
+            </span>
+          )}
+          {me ? (
+            <button onClick={doSignOut} className="btn btn-outline">
+              Esci
+            </button>
+          ) : (
+            <Link href="/auth/login" className="btn btn-brand">
+              Accedi
+            </Link>
+          )}
+        </div>
+      </div>
     </nav>
   );
 }
