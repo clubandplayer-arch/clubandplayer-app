@@ -1,141 +1,104 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 export default function LoginPage() {
-  const router = useRouter();
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [tab, setTab] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  // Se già loggato, esci subito dalla pagina di login
-  useEffect(() => {
-    let cancelled = false;
-    fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' })
-      .then(r => r.json())
-      .then(me => {
-        if (!cancelled && me?.id) {
-          router.replace('/opportunities');
-        }
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [router]);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleAuth(url: string) {
     setErr(null);
-    setSubmitting(true);
-
+    setLoading(true);
     try {
-      const res = await fetch(`/api/auth/${mode === 'signin' ? 'signin' : 'signup'}`, {
+      const res = await fetch(url, {
         method: 'POST',
         credentials: 'include',
         cache: 'no-store',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-
-      const raw = await res.text();
-      let json: any;
-      try { json = JSON.parse(raw); } catch { json = { raw }; }
-
+      const txt = await res.text();
       if (!res.ok) {
-        setErr(json?.error || `HTTP ${res.status}`);
-        setSubmitting(false);
+        try { const j = JSON.parse(txt); setErr(j.error || `HTTP ${res.status}`); }
+        catch { setErr(txt || `HTTP ${res.status}`); }
         return;
       }
-
-      // Verifica che la sessione sia effettivamente attiva e poi redirect
-      const me = await fetch('/api/auth/whoami', {
-        credentials: 'include',
-        cache: 'no-store',
-      }).then(r => r.json()).catch(() => null);
-
-      if (me?.id) {
-        router.replace('/opportunities');
-      } else {
-        setErr('Login riuscito, ma sessione non trovata. Riprova.');
-        setSubmitting(false);
-      }
+      // HARD REDIRECT: evitiamo ogni race sui cookie
+      window.location.href = '/opportunities';
     } catch (e: any) {
-      setErr(e?.message || 'Errore imprevisto');
-      setSubmitting(false);
+      setErr(e?.message || 'Errore');
+    } finally {
+      setLoading(false);
     }
+  }
+
+  function signIn()  { return handleAuth('/api/auth/signin'); }
+  function signUp()  { return handleAuth('/api/auth/signup'); }
+
+  function signInWithGoogle() {
+    // questa route avvia l’OAuth e poi rientra su /auth/callback
+    window.location.href = '/api/auth/oauth/google';
   }
 
   return (
     <main className="min-h-[80vh] grid place-items-center bg-gradient-to-b from-white to-[#f6f8fb]">
-      <div className="w-full max-w-md bg-white border rounded-2xl p-6 shadow-sm">
-        <h1 className="text-2xl font-semibold mb-1">Accedi / Iscriviti</h1>
-        <p className="text-sm text-gray-600 mb-6">Inserisci le credenziali per accedere</p>
+      <div className="w-full max-w-md rounded-2xl border p-6 shadow-sm bg-white">
+        <h1 className="text-2xl font-semibold mb-4">Accedi / Iscriviti</h1>
 
         <div className="flex gap-2 mb-4">
           <button
-            type="button"
-            onClick={() => setMode('signin')}
-            className={`px-3 py-2 rounded-lg border ${mode === 'signin' ? 'bg-gray-900 text-white' : 'bg-white hover:bg-gray-50'}`}
+            className={`px-3 py-2 rounded-lg border ${tab==='login'?'bg-gray-900 text-white':'bg-white'}`}
+            onClick={() => setTab('login')}
           >
             Accedi
           </button>
           <button
-            type="button"
-            onClick={() => setMode('signup')}
-            className={`px-3 py-2 rounded-lg border ${mode === 'signup' ? 'bg-gray-900 text-white' : 'bg-white hover:bg-gray-50'}`}
+            className={`px-3 py-2 rounded-lg border ${tab==='signup'?'bg-gray-900 text-white':'bg-white'}`}
+            onClick={() => setTab('signup')}
           >
             Registrati
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <label className="block">
-            <span className="text-sm">Email</span>
-            <input
-              type="email"
-              required
-              className="mt-1 w-full rounded-xl border px-3 py-2"
-              placeholder="nome@esempio.com"
-              value={email}
-              onChange={(e) => setEmail(e.currentTarget.value)}
-            />
-          </label>
+        {err && <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-700 text-sm">{err}</div>}
 
-          <label className="block">
-            <span className="text-sm">Password</span>
-            <input
-              type="password"
-              required
-              className="mt-1 w-full rounded-xl border px-3 py-2"
-              placeholder="•••••••"
-              value={password}
-              onChange={(e) => setPassword(e.currentTarget.value)}
-            />
-          </label>
+        <label className="block text-sm mb-1">Email</label>
+        <input
+          className="w-full mb-3 rounded-lg border px-3 py-2"
+          placeholder="nome@esempio.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
 
-          {err && (
-            <div className="text-sm text-red-600 border border-red-200 bg-red-50 rounded-xl p-2">
-              {err}
-            </div>
-          )}
+        <label className="block text-sm mb-1">Password</label>
+        <input
+          className="w-full mb-4 rounded-lg border px-3 py-2"
+          type="password"
+          placeholder="••••••••"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
 
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full rounded-2xl px-4 py-2 bg-brand text-white font-medium disabled:opacity-60"
-          >
-            {submitting
-              ? (mode === 'signin' ? 'Accesso in corso…' : 'Registrazione in corso…')
-              : (mode === 'signin' ? 'Accedi' : 'Registrati')}
-          </button>
-        </form>
+        <button
+          className="w-full mb-3 rounded-xl bg-[#0A66C2] text-white py-2 font-medium disabled:opacity-60"
+          onClick={tab === 'login' ? signIn : signUp}
+          disabled={loading}
+        >
+          {tab === 'login' ? 'Accedi' : 'Crea account'}
+        </button>
 
-        {/* eventuale pulsante Google, quando pronto */}
-        {/* <div className="mt-4 text-center">
-          <a href="/auth/oauth/google" className="text-sm underline">Accedi con Google</a>
-        </div> */}
+        <div className="text-center text-sm text-gray-500 my-2">oppure</div>
+
+        <button
+          className="w-full rounded-xl border py-2 font-medium hover:bg-gray-50"
+          onClick={signInWithGoogle}
+          disabled={loading}
+        >
+          Accedi con Google
+        </button>
       </div>
     </main>
   );
