@@ -9,7 +9,7 @@ export async function POST(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
 
   // Auth
   const { data: auth, error: authErr } = await supabase.auth.getUser();
@@ -18,7 +18,6 @@ export async function POST(
   }
   const userId = auth.user.id;
 
-  // <-- differenza chiave in Next 15: params è una Promise
   const { id: opportunityId } = await context.params;
 
   // Profilo atleta
@@ -50,8 +49,7 @@ export async function POST(
 
   const required = (opp.required_category as PlayingCategory) ?? null;
 
-  // Regola candidatura:
-  // ok se required è null (tutti), mixed, o uguale alla categoria atleta
+  // Regola candidatura
   const ok =
     required === null ||
     required === "mixed" ||
@@ -80,7 +78,7 @@ export async function POST(
     return NextResponse.json({ ok: true, alreadyApplied: true, id: existing.id });
   }
 
-  // Body opzionale (note)
+  // Body opzionale
   const body = await safeJson(req);
   const note = (body?.note as string | undefined) ?? null;
 
@@ -102,7 +100,6 @@ export async function POST(
   return NextResponse.json({ ok: true, id: created.id });
 }
 
-// Helpers
 async function safeJson(req: NextRequest) {
   try {
     return await req.json();
