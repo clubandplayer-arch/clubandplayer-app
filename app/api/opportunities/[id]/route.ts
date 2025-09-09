@@ -1,82 +1,116 @@
-// app/api/opportunities/[id]/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
-import { requireUser, jsonError } from '@/lib/api/auth';
-import { opportunityUpdateSchema } from '@/lib/api/schemas';
+import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
 
 export const runtime = 'nodejs';
 
-// Helper per leggere :id
-function getIdFromUrl(urlStr: string): string {
-  const url = new URL(urlStr);
-  const parts = url.pathname.split('/').filter(Boolean);
-  return parts[parts.length - 1]!;
+const extractId = (req: NextRequest) =>
+  new URL(req.url).pathname.split('/').filter(Boolean).at(-1) ?? null;
+
+function bracketToRange(code?: string): { age_min: number | null; age_max: number | null } {
+  switch ((code || '').trim()) {
+    case '17-20':
+      return { age_min: 17, age_max: 20 };
+    case '21-25':
+      return { age_min: 21, age_max: 25 };
+    case '26-30':
+      return { age_min: 26, age_max: 30 };
+    case '31+':
+      return { age_min: 31, age_max: null };
+    default:
+      return { age_min: null, age_max: null };
+  }
 }
 
-/** PUT /api/opportunities/:id */
-export async function PUT(req: NextRequest) {
-  const { ctx, res } = await requireUser();
-  if (!ctx) return res!;
-  const { supabase, user } = ctx;
+function norm(v: unknown): string | null {
+  if (v == null) return null;
+  if (typeof v === 'string') {
+    const s = v.trim();
+    if (!s || s === '[object Object]') return null;
+    return s;
+  }
+  if (typeof v === 'object') {
+    const any = v as Record<string, unknown>;
+    const s =
+      (typeof any.label === 'string' && any.label) ||
+      (typeof any.nome === 'string' && any.nome) ||
+      (typeof any.name === 'string' && any.name) ||
+      (typeof any.description === 'string' && any.description) ||
+      '';
+    const out = String(s).trim();
+    return out ? out : null;
+  }
+  return String(v).trim() || null;
+}
 
+export const GET = withAuth(async (req: NextRequest, { supabase }) => {
+  const id = extractId(req);
+  if (!id) return jsonError('Missing id', 400);
+  const { data, error } = await supabase
+    .from('opportunities')
+    .select(
+      'id,title,description,created_by,created_at,country,region,province,city,sport,role,age_min,age_max,club_name'
+    )
+    .eq('id', id)
+    .single();
+  if (error) return jsonError(error.message, 404);
+  return NextResponse.json({ data });
+});
+
+export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   try {
-    await rateLimit(req, { key: `opps:PUT:${user.id}`, limit: 60, window: '1m' } as any);
+    await rateLimit(req, { key: 'opps:PATCH', limit: 40, window: '1m' } as any);
   } catch {
     return jsonError('Too Many Requests', 429);
   }
+  const id = extractId(req);
+  if (!id) return jsonError('Missing id', 400);
 
-  const id = getIdFromUrl(req.url);
+  const body = await req.json().catch(() => ({}));
 
-  let body: unknown;
-  try {
-    body = await req.json();
-  } catch {
-    return jsonError('Invalid JSON body', 400);
+  const patch: Record<string, any> = {};
+  for (const k of [
+    'title',
+    'description',
+    'country',
+    'region',
+    'province',
+    'city',
+    'sport',
+    'role',
+    'club_name',
+  ] as const) {
+    if (k in body) patch[k] = norm((body as any)[k]);
   }
-  const parsed = opportunityUpdateSchema.safeParse(body);
-  if (!parsed.success) {
-    return jsonError(parsed.error.issues.map(i => i.message).join('; '), 400);
-  }
+  if ('age_bracket' in body) Object.assign(patch, bracketToRange((body as any).age_bracket));
 
-  const patch = parsed.data;
-  if (!patch || Object.keys(patch).length === 0) {
-    return jsonError('Nothing to update', 400);
-  }
+  if ('title' in patch && !patch.title) return jsonError('Title is required', 400);
+  if (patch.sport === 'Calcio' && 'role' in patch && !patch.role)
+    return jsonError('Role is required for Calcio', 400);
 
-  // RLS deve garantire che l'utente possa aggiornare solo le proprie righe.
   const { data, error } = await supabase
     .from('opportunities')
-    .update(patch as any)
+    .update(patch)
     .eq('id', id)
-    .select('*')
+    .eq('created_by', user.id)
+    .select(
+      'id,title,description,created_by,created_at,country,region,province,city,sport,role,age_min,age_max,club_name'
+    )
     .single();
 
   if (error) return jsonError(error.message, 400);
   return NextResponse.json({ data });
-}
+});
 
-/** DELETE /api/opportunities/:id */
-export async function DELETE(req: NextRequest) {
-  const { ctx, res } = await requireUser();
-  if (!ctx) return res!;
-  const { supabase, user } = ctx;
-
+export const DELETE = withAuth(async (req: NextRequest, { supabase, user }) => {
   try {
-    await rateLimit(req, { key: `opps:DEL:${user.id}`, limit: 60, window: '1m' } as any);
+    await rateLimit(req, { key: 'opps:DELETE', limit: 40, window: '1m' } as any);
   } catch {
     return jsonError('Too Many Requests', 429);
   }
-
-  const id = getIdFromUrl(req.url);
-
-  // RLS deve impedire di eliminare righe non proprie
-  const { data, error } = await supabase
-    .from('opportunities')
-    .delete()
-    .eq('id', id)
-    .select('*')
-    .single();
-
+  const id = extractId(req);
+  if (!id) return jsonError('Missing id', 400);
+  const { error } = await supabase.from('opportunities').delete().eq('id', id).eq('created_by', user.id);
   if (error) return jsonError(error.message, 400);
-  return NextResponse.json({ data });
-}
+  return NextResponse.json({ ok: true });
+});
