@@ -7,7 +7,7 @@ type PlayingCategory = "male" | "female" | "mixed" | null;
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   const supabase = getSupabaseServerClient();
 
@@ -17,7 +17,9 @@ export async function POST(
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   const userId = auth.user.id;
-  const opportunityId = params.id;
+
+  // <-- differenza chiave in Next 15: params è una Promise
+  const { id: opportunityId } = await context.params;
 
   // Profilo atleta
   const { data: profile, error: profErr } = await supabase
@@ -49,7 +51,7 @@ export async function POST(
   const required = (opp.required_category as PlayingCategory) ?? null;
 
   // Regola candidatura:
-  // ok se required is null (tutti) o mixed, o uguale alla categoria atleta
+  // ok se required è null (tutti), mixed, o uguale alla categoria atleta
   const ok =
     required === null ||
     required === "mixed" ||
@@ -66,7 +68,7 @@ export async function POST(
     );
   }
 
-  // Evita duplicati: esiste già una candidatura?
+  // Evita duplicati
   const { data: existing } = await supabase
     .from("applications")
     .select("id")
@@ -78,11 +80,11 @@ export async function POST(
     return NextResponse.json({ ok: true, alreadyApplied: true, id: existing.id });
   }
 
-  // Crea candidatura
-  // (nota: status default 'pending' lato DB, altrimenti passa { status: 'pending' })
+  // Body opzionale (note)
   const body = await safeJson(req);
   const note = (body?.note as string | undefined) ?? null;
 
+  // Crea candidatura
   const { data: created, error: insErr } = await supabase
     .from("applications")
     .insert({
