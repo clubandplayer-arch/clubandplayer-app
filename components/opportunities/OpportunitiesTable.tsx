@@ -1,7 +1,5 @@
-'use client';
-
-import ApplyCell from '@/components/opportunities/ApplyCell';
 import type { Opportunity } from '@/types/opportunity';
+import ApplyCell from '@/components/opportunities/ApplyCell';
 
 function formatBracket(min: number | null, max: number | null) {
   if (min == null && max == null) return '—';
@@ -38,7 +36,7 @@ export default function OpportunitiesTable({
             <th className="px-4 py-2">Età</th>
             <th className="px-4 py-2">Club</th>
             <th className="px-4 py-2">Creato</th>
-            <th className="px-4 py-2 w-32">Azioni</th>
+            <th className="px-4 py-2 w-[260px]">Azioni</th>
           </tr>
         </thead>
         <tbody>
@@ -55,28 +53,14 @@ export default function OpportunitiesTable({
                 <td className="px-4 py-2">{o.club_name ?? '—'}</td>
                 <td className="px-4 py-2">{new Date(o.created_at).toLocaleString()}</td>
                 <td className="px-4 py-2">
-                  <div className="flex items-center gap-2">
-                    {/* Azione principale */}
-                    <ApplyCell opportunityId={o.id} ownerId={o.created_by ?? null} />
-
-                    {/* Azioni extra per l'owner */}
-                    {canEdit && (
-                      <>
-                        <button
-                          onClick={() => onEdit?.(o)}
-                          className="px-2 py-1 text-xs rounded border hover:bg-gray-50"
-                        >
-                          Modifica
-                        </button>
-                        <button
-                          onClick={() => onDelete?.(o)}
-                          className="px-2 py-1 text-xs rounded border hover:bg-red-50"
-                        >
-                          Elimina
-                        </button>
-                      </>
-                    )}
-                  </div>
+                  {canEdit ? (
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => onEdit?.(o)} className="px-2 py-1 rounded border hover:bg-gray-50">Modifica</button>
+                      <button onClick={() => onDelete?.(o)} className="px-2 py-1 rounded border hover:bg-red-50">Elimina</button>
+                    </div>
+                  ) : (
+                    <ApplyCell opportunityId={o.id} />
+                  )}
                 </td>
               </tr>
             );

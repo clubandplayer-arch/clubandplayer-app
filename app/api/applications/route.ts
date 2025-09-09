@@ -1,60 +1,101 @@
-import { NextResponse, type NextRequest } from 'next/server';
-import { withAuth, jsonError } from '@/lib/api/auth';
-import { rateLimit } from '@/lib/api/rateLimit';
+import { NextRequest, NextResponse } from "next/server";
+export const runtime = "nodejs";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
 
-export const runtime = 'nodejs';
+function uniq<T>(arr: T[] | null | undefined) { return Array.from(new Set(arr ?? [])); }
 
-/**
- * Crea una candidatura per l’utente corrente (athlete_id = auth.uid()).
- * body: { opportunity_id: string, note?: string }
- */
-export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
-  try {
-    await rateLimit(req, { key: 'apps:POST', limit: 20, window: '1m' } as any);
-  } catch {
-    return jsonError('Too Many Requests', 429);
+export async function GET(req: NextRequest) {
+  const supabase = getSupabaseServerClient();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth?.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const userId = auth.user.id;
+
+  const { data: profile } = await supabase.from("profiles").select("id,type").eq("id", userId).single();
+  if (!profile) return NextResponse.json({ error: "profile_not_found" }, { status: 404 });
+
+  const scope = (new URL(req.url).searchParams.get("scope") || "").toLowerCase();
+
+  // CLUB: ricevute
+  if (scope === "received") {
+    if (profile.type !== "club") return NextResponse.json({ error: "forbidden_not_club" }, { status: 403 });
+
+    const { data: myClub } = await supabase.from("clubs").select("id").eq("owner_user_id", userId).limit(1).maybeSingle();
+    if (!myClub?.id) return NextResponse.json({ applications: [] });
+
+    const { data: oppIdsRows } = await supabase.from("opportunities").select("id").eq("club_id", myClub.id);
+    const oppIds = uniq(oppIdsRows?.map(r => r.id));
+    if (oppIds.length === 0) return NextResponse.json({ applications: [] });
+
+    const { data: apps } = await supabase
+      .from("applications")
+      .select("id, status, note, created_at, athlete_id, opportunity_id")
+      .in("opportunity_id", oppIds)
+      .order("created_at", { ascending: false });
+
+    if (!apps?.length) return NextResponse.json({ applications: [] });
+
+    const athleteIds = uniq(apps.map(a => a.athlete_id));
+    const joinedOppIds = uniq(apps.map(a => a.opportunity_id));
+
+    const [{ data: athletes }, { data: opps }] = await Promise.all([
+      supabase.from("profiles").select("id, display_name, city, age").in("id", athleteIds),
+      supabase.from("opportunities").select("id, title, sport, location_city").in("id", joinedOppIds),
+    ]);
+
+    const athletesById = Object.fromEntries((athletes ?? []).map(a => [a.id, a]));
+    const oppsById = Object.fromEntries((opps ?? []).map(o => [o.id, o]));
+
+    const payload = apps.map(a => ({
+      id: a.id,
+      status: a.status,
+      created_at: a.created_at,
+      note: a.note ?? null,
+      athlete: athletesById[a.athlete_id] ?? null,
+      opportunity: oppsById[a.opportunity_id] ?? null,
+    }));
+
+    return NextResponse.json({ applications: payload });
   }
 
-  const body = await req.json().catch(() => ({}));
-  const opportunity_id = (body.opportunity_id ?? '').trim();
-  const note =
-    typeof body.note === 'string'
-      ? body.note.slice(0, 500)
-      : null;
+  // ATLETA: inviate (default)
+  if (profile.type !== "athlete") return NextResponse.json({ error: "forbidden_not_athlete" }, { status: 403 });
 
-  if (!opportunity_id) return jsonError('opportunity_id required', 400);
+  const { data: apps } = await supabase
+    .from("applications")
+    .select("id, status, note, created_at, opportunity_id")
+    .eq("athlete_id", userId)
+    .order("created_at", { ascending: false });
 
-  // Verifica esistenza opportunità e che non sia tua
-  const { data: opp, error: oppErr } = await supabase
-    .from('opportunities')
-    .select('id, created_by')
-    .eq('id', opportunity_id)
-    .single();
+  if (!apps?.length) return NextResponse.json({ applications: [] });
 
-  if (oppErr || !opp) return jsonError('Opportunity not found', 404);
-  if (opp.created_by === user.id) {
-    return jsonError('Cannot apply to your own opportunity', 400);
-  }
+  const oppIds = uniq(apps.map(a => a.opportunity_id));
+  const { data: opps } = await supabase
+    .from("opportunities")
+    .select("id, title, sport, location_city, club_id")
+    .in("id", oppIds);
 
-  // Inserimento candidatura
-  const { data, error } = await supabase
-    .from('applications')
-    .insert({
-      opportunity_id,
-      athlete_id: user.id,      // RLS: = auth.uid()
-      note,
-      status: 'submitted',
-    })
-    .select('id')
-    .single();
+  const clubIds = uniq((opps ?? []).map(o => o.club_id).filter(Boolean));
+  const { data: clubs } = await supabase.from("clubs").select("id, name").in("id", clubIds);
 
-  if (error) {
-    // Unique constraint (una sola candidatura per opportunità)
-    if ((error as any).code === '23505') {
-      return jsonError('Application already exists', 409);
-    }
-    return jsonError(error.message, 400);
-  }
+  const clubsById = Object.fromEntries((clubs ?? []).map(c => [c.id, c]));
+  const oppsById = Object.fromEntries((opps ?? []).map(o => [o.id, o]));
 
-  return NextResponse.json({ ok: true, data });
-});
+  const payload = apps.map(a => {
+    const o = oppsById[a.opportunity_id];
+    return {
+      id: a.id,
+      status: a.status,
+      created_at: a.created_at,
+      note: a.note ?? null,
+      opportunity: o ? {
+        id: o.id,
+        title: o.title,
+        sport: o.sport,
+        location_city: o.location_city,
+        club_name: o.club_id ? clubsById[o.club_id]?.name ?? null : null,
+      } : null,
+    };
+  });
+
+  return NextResponse.json({ applications: payload });
+}

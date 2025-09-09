@@ -1,28 +1,23 @@
-// app/(dashboard)/applications/page.tsx
+// app/(dashboard)/applications/sent/page.tsx
 import { redirect } from "next/navigation";
 import Link from "next/link";
 
 type ApplicationStatus = "pending" | "shortlisted" | "rejected" | "accepted" | string;
 
-type Athlete = {
+type OpportunityLight = {
   id: string;
-  display_name: string;
-  city?: string | null;
-  age?: number | null;
+  title: string;
+  club_name?: string | null;
+  sport?: string | null;
+  location_city?: string | null;
 };
 
-type ReceivedApplication = {
+type SentApplication = {
   id: string;
   status: ApplicationStatus;
   created_at: string;
   note?: string | null;
-  athlete: Athlete;
-  opportunity: {
-    id: string;
-    title: string;
-    sport?: string | null;
-    location_city?: string | null;
-  };
+  opportunity: OpportunityLight;
 };
 
 async function getWhoAmI() {
@@ -43,12 +38,12 @@ async function getProfile() {
   return res.json() as Promise<{ id: string; type: "athlete" | "club"; display_name?: string }>;
 }
 
-async function getApplicationsReceived(): Promise<ReceivedApplication[]> {
+async function getApplicationsSent(): Promise<SentApplication[]> {
   try {
-    const res = await fetch(`/api/applications?scope=received`, { cache: "no-store" });
+    const res = await fetch(`/api/applications?scope=sent`, { cache: "no-store" });
     if (!res.ok) return [];
     const data = await res.json();
-    return (data?.applications ?? []) as ReceivedApplication[];
+    return (data?.applications ?? []) as SentApplication[];
   } catch {
     return [];
   }
@@ -76,45 +71,43 @@ function StatusBadge({ status }: { status: ApplicationStatus }) {
 
 export const dynamic = "force-dynamic";
 
-export default async function ApplicationsReceivedPage() {
+export default async function ApplicationsSentPage() {
   const who = await getWhoAmI();
   if (!who) redirect("/login");
 
   const profile = await getProfile();
   if (!profile) redirect("/profile/onboarding");
-  if (profile.type !== "club") {
-    // Gli atleti vedono la pagina dedicata
-    redirect("/applications/sent");
+  if (profile.type !== "athlete") {
+    // I club vedono la pagina ricevute
+    redirect("/applications");
   }
 
-  const applications = await getApplicationsReceived();
+  const applications = await getApplicationsSent();
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Candidature ricevute</h1>
-          <p className="text-sm text-muted-foreground">Tutte le candidature arrivate alle tue opportunità.</p>
+          <h1 className="text-2xl font-semibold tracking-tight">Candidature inviate</h1>
+          <p className="text-sm text-muted-foreground">Lo stato delle tue candidature.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Link href="/applications/sent" className="text-sm text-blue-600 hover:underline">
-            Vai a “Inviate” (atleta)
+          <Link href="/applications" className="text-sm text-blue-600 hover:underline">
+            Vai a “Ricevute” (club)
           </Link>
         </div>
       </div>
 
       {applications.length === 0 ? (
         <div className="rounded-2xl border border-dashed p-8 text-center">
-          <p className="text-base font-medium">Nessuna candidatura ricevuta</p>
-          <p className="text-sm text-muted-foreground">
-            Pubblica una nuova opportunità per iniziare a ricevere candidature.
-          </p>
+          <p className="text-base font-medium">Non hai ancora inviato candidature</p>
+          <p className="text-sm text-muted-foreground">Trova un’opportunità interessante e invia la tua candidatura.</p>
           <div className="mt-4">
             <Link
-              href="/opportunities/new"
+              href="/opportunities"
               className="inline-flex items-center rounded-xl border px-3 py-2 text-sm hover:bg-accent"
             >
-              + Crea opportunità
+              Vai alle opportunità
             </Link>
           </div>
         </div>
@@ -123,8 +116,8 @@ export default async function ApplicationsReceivedPage() {
           <table className="min-w-full text-sm">
             <thead className="bg-muted/40">
               <tr className="text-left">
-                <th className="px-4 py-3 font-medium">Candidato</th>
                 <th className="px-4 py-3 font-medium">Opportunità</th>
+                <th className="px-4 py-3 font-medium">Club</th>
                 <th className="px-4 py-3 font-medium">Stato</th>
                 <th className="px-4 py-3 font-medium">Data</th>
                 <th className="px-4 py-3 font-medium">Azioni</th>
@@ -135,22 +128,16 @@ export default async function ApplicationsReceivedPage() {
                 <tr key={a.id} className="border-t">
                   <td className="px-4 py-3">
                     <div className="flex flex-col">
-                      <span className="font-medium">{a.athlete?.display_name ?? "Atleta"}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {a.athlete?.city ?? "—"} {a.athlete?.age ? `• ${a.athlete.age} anni` : ""}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-col">
                       <Link href={`/opportunities/${a.opportunity.id}`} className="font-medium hover:underline">
                         {a.opportunity.title}
                       </Link>
                       <span className="text-xs text-muted-foreground">
-                        {a.opportunity.sport ?? "Sport"} {a.opportunity.location_city ? `• ${a.opportunity.location_city}` : ""}
+                        {a.opportunity.sport ?? "Sport"}{" "}
+                        {a.opportunity.location_city ? `• ${a.opportunity.location_city}` : ""}
                       </span>
                     </div>
                   </td>
+                  <td className="px-4 py-3">{a.opportunity.club_name ?? "—"}</td>
                   <td className="px-4 py-3">
                     <StatusBadge status={a.status} />
                   </td>
@@ -162,21 +149,14 @@ export default async function ApplicationsReceivedPage() {
                         disabled
                         title="Solo UI in questa PR"
                       >
-                        Vedi profilo
+                        Vedi annuncio
                       </button>
                       <button
                         className="rounded-lg border px-2.5 py-1.5 text-xs text-muted-foreground"
                         disabled
                         title="Solo UI in questa PR"
                       >
-                        Shortlist
-                      </button>
-                      <button
-                        className="rounded-lg border px-2.5 py-1.5 text-xs text-muted-foreground"
-                        disabled
-                        title="Solo UI in questa PR"
-                      >
-                        Rifiuta
+                        Ritira candidatura
                       </button>
                     </div>
                   </td>
