@@ -1,16 +1,27 @@
 // app/applications/sent/page.tsx
+export const dynamic = 'force-dynamic';
+
 import ApplicationsTable from '@/components/applications/ApplicationsTable';
+import { cookies } from 'next/headers';
 
 async function fetchSent() {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL ?? ''}/api/applications/mine`, {
+    const cookieHeader = (await cookies()).toString();
+    const base = process.env.NEXT_PUBLIC_BASE_URL ?? '';
+    const res = await fetch(`${base}/api/applications/mine`, {
       cache: 'no-store',
-      headers: { 'content-type': 'application/json' },
+      headers: { cookie: cookieHeader },
     });
-    if (!res.ok) throw new Error(await res.text());
-    const data = await res.json();
-    // Adatta la shape se serve
-    const rows = Array.isArray(data) ? data : data.items ?? [];
+    if (!res.ok) {
+      // in caso di 401 o altro, restituiamo array vuoto
+      return [];
+    }
+    const data = await res.json().catch(() => ({} as any));
+    const rows =
+      (Array.isArray(data) && data) ||
+      (Array.isArray(data.items) && data.items) ||
+      (Array.isArray(data.data) && data.data) ||
+      [];
     return rows;
   } catch {
     return [];

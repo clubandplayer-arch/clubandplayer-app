@@ -1,15 +1,26 @@
 // app/applications/page.tsx
+export const dynamic = 'force-dynamic';
+
 import ApplicationsTable from '@/components/applications/ApplicationsTable';
+import { cookies } from 'next/headers';
 
 async function fetchReceived() {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL ?? ''}/api/applications/received`, {
+    const cookieHeader = (await cookies()).toString();
+    const base = process.env.NEXT_PUBLIC_BASE_URL ?? '';
+    const res = await fetch(`${base}/api/applications/received`, {
       cache: 'no-store',
-      headers: { 'content-type': 'application/json' },
+      headers: { cookie: cookieHeader },
     });
-    if (!res.ok) throw new Error(await res.text());
-    const data = await res.json();
-    const rows = Array.isArray(data) ? data : data.items ?? [];
+    if (!res.ok) {
+      return [];
+    }
+    const data = await res.json().catch(() => ({} as any));
+    const rows =
+      (Array.isArray(data) && data) ||
+      (Array.isArray(data.items) && data.items) ||
+      (Array.isArray(data.data) && data.data) ||
+      [];
     return rows;
   } catch {
     return [];
@@ -26,3 +37,4 @@ export default async function ReceivedApplicationsPage() {
     </div>
   );
 }
+
