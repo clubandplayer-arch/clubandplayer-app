@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+export const runtime = "nodejs";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 function uniq<T>(arr: T[] | null | undefined) { return Array.from(new Set(arr ?? [])); }
 
 export async function GET(req: NextRequest) {
-  const supabase = createClient();
+  const supabase = getSupabaseServerClient();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth?.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const userId = auth.user.id;
