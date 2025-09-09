@@ -1,9 +1,7 @@
 // components/applications/ApplicationsTable.tsx
 'use client';
 
-import Link from 'next/link';
-import { useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useMemo } from 'react';
 
 type Row = {
   id: string;
@@ -11,7 +9,6 @@ type Row = {
   note?: string | null;
   opportunity_id?: string | null;
   status?: string | null;
-  athlete_id?: string | null;
   [k: string]: any;
 };
 
@@ -24,34 +21,16 @@ export default function ApplicationsTable({
   kind: 'sent' | 'received';
   loading?: boolean;
 }) {
-  const router = useRouter();
-  const [savingId, setSavingId] = useState<string | null>(null);
-
   const headers = useMemo(
     () => [
       { key: 'created_at', label: 'Data' },
       { key: 'opportunity_id', label: 'Annuncio' },
-      ...(kind === 'received' ? [{ key: 'athlete_id', label: 'Atleta' }] : []),
       { key: 'status', label: 'Stato' },
       { key: 'note', label: kind === 'sent' ? 'Nota (mia)' : 'Nota' },
       { key: 'actions', label: 'Azioni' },
     ],
     [kind]
   );
-
-  async function updateStatus(id: string, next: 'accepted' | 'rejected') {
-    try {
-      setSavingId(id);
-      await fetch(`/api/applications/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: next }),
-      });
-    } finally {
-      setSavingId(null);
-      router.refresh();
-    }
-  }
 
   if (loading) {
     return (
@@ -76,7 +55,7 @@ export default function ApplicationsTable({
       <table className="w-full text-sm">
         <thead className="bg-gray-50 text-gray-600">
           <tr>
-            {headers.map((h) => (
+            {headers.map(h => (
               <th key={h.key} className="text-left px-3 py-2 whitespace-nowrap">
                 {h.label}
               </th>
@@ -84,90 +63,41 @@ export default function ApplicationsTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((r) => (
+          {rows.map(r => (
             <tr key={r.id} className="border-t">
-              {/* Data */}
               <td className="px-3 py-2 whitespace-nowrap">
                 {r.created_at ? new Date(r.created_at).toLocaleString() : '—'}
               </td>
-
-              {/* Annuncio */}
               <td className="px-3 py-2 whitespace-nowrap">
                 {r.opportunity_id ? (
-                  <Link
+                  <a
                     className="text-blue-700 hover:underline"
                     href={`/opportunities/${r.opportunity_id}`}
                   >
                     {r.opportunity_id}
-                  </Link>
+                  </a>
                 ) : (
                   '—'
                 )}
               </td>
-
-              {/* Atleta solo per ricevute */}
-              {kind === 'received' && (
-                <td className="px-3 py-2 whitespace-nowrap">
-                  {r.athlete_id ? (
-                    <Link
-                      className="text-blue-700 hover:underline"
-                      href={`/athletes/${r.athlete_id}`}
-                    >
-                      {r.athlete_id}
-                    </Link>
-                  ) : (
-                    '—'
-                  )}
-                </td>
-              )}
-
-              {/* Stato */}
-              <td className="px-3 py-2">
-                <span
-                  className={[
-                    'inline-block rounded-full px-2 py-0.5 text-xs capitalize',
-                    r.status === 'accepted'
-                      ? 'bg-green-100 text-green-800'
-                      : r.status === 'rejected'
-                      ? 'bg-red-100 text-red-800'
-                      : 'bg-yellow-100 text-yellow-800',
-                  ].join(' ')}
-                >
-                  {r.status ?? 'submitted'}
-                </span>
-              </td>
-
-              {/* Nota */}
+              <td className="px-3 py-2">{r.status ?? '—'}</td>
               <td className="px-3 py-2 max-w-[28rem] truncate" title={r.note ?? ''}>
                 {r.note ?? '—'}
               </td>
-
-              {/* Azioni */}
               <td className="px-3 py-2">
                 {kind === 'received' ? (
                   <div className="flex gap-2">
-                    <button
-                      disabled={savingId === r.id || r.status === 'accepted'}
-                      onClick={() => updateStatus(r.id, 'accepted')}
-                      className="px-2 py-1 border rounded-md hover:bg-gray-50 disabled:opacity-50"
-                    >
-                      Accetta
+                    <button className="px-2 py-1 border rounded-md hover:bg-gray-50">
+                      Apri profilo
                     </button>
-                    <button
-                      disabled={savingId === r.id || r.status === 'rejected'}
-                      onClick={() => updateStatus(r.id, 'rejected')}
-                      className="px-2 py-1 border rounded-md hover:bg-gray-50 disabled:opacity-50"
-                    >
-                      Rifiuta
+                    <button className="px-2 py-1 border rounded-md hover:bg-gray-50">
+                      Contatta
                     </button>
                   </div>
                 ) : (
-                  <Link
-                    href={r.opportunity_id ? `/opportunities/${r.opportunity_id}` : '#'}
-                    className="px-2 py-1 border rounded-md hover:bg-gray-50 inline-block"
-                  >
+                  <button className="px-2 py-1 border rounded-md hover:bg-gray-50">
                     Apri annuncio
-                  </Link>
+                  </button>
                 )}
               </td>
             </tr>
