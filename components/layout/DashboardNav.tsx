@@ -11,34 +11,58 @@ function btn(active: boolean) {
   ].join(' ');
 }
 
+type Role = 'athlete' | 'club' | null;
+
 export default function DashboardNav() {
   const pathname = usePathname();
-  const [role, setRole] = useState<'athlete' | 'club' | null>(null);
+  const [role, setRole] = useState<Role>(null);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     (async () => {
       try {
-        // 1) prova profilo
+        // 1) Prova dal profilo (gestiamo più shape)
         const r = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
         const j = await r.json().catch(() => ({}));
-        const pt = (j?.data?.profile_type ?? '').toString().toLowerCase();
-        if (pt.includes('atlet')) { setRole('athlete'); setLoaded(true); return; }
-        if (pt.includes('club') || pt.includes('soc') || pt.includes('owner')) { setRole('club'); setLoaded(true); return; }
+        const profileType = (
+          j?.data?.profile_type ??
+          j?.data?.type ??
+          j?.type ??
+          j?.profile?.type ??
+          ''
+        )
+          .toString()
+          .toLowerCase();
 
-        // 2) fallback induttivo
+        if (profileType.includes('atlet')) { setRole('athlete'); setLoaded(true); return; }
+        if (profileType.includes('club') || profileType.includes('soc') || profileType.includes('owner')) {
+          setRole('club'); setLoaded(true); return;
+        }
+
+        // 2) Fallback induttivo: guarda le candidature inviate
         const rMine = await fetch('/api/applications/mine', { credentials: 'include', cache: 'no-store' });
         if (rMine.ok) {
-          const jm = await rMine.json();
-          if (Array.isArray(jm?.data) && jm.data.length > 0) { setRole('athlete'); setLoaded(true); return; }
+          const jm = await rMine.json().catch(() => ({}));
+          const mine =
+            (Array.isArray(jm) && jm) ||
+            (Array.isArray(jm?.items) && jm.items) ||
+            (Array.isArray(jm?.data) && jm.data) ||
+            [];
+          if (mine.length > 0) { setRole('athlete'); setLoaded(true); return; }
         }
 
+        // 3) Fallback induttivo: guarda le candidature ricevute
         const rRec = await fetch('/api/applications/received', { credentials: 'include', cache: 'no-store' });
         if (rRec.ok) {
-          const jr = await rRec.json();
-          if (Array.isArray(jr?.data) && jr.data.length > 0) { setRole('club'); setLoaded(true); return; }
+          const jr = await rRec.json().catch(() => ({}));
+          const rec =
+            (Array.isArray(jr) && jr) ||
+            (Array.isArray(jr?.items) && jr.items) ||
+            (Array.isArray(jr?.data) && jr.data) ||
+            [];
+          if (rec.length > 0) { setRole('club'); setLoaded(true); return; }
         }
-      } catch (_) {
+      } catch {
         // ignore
       } finally {
         setLoaded(true);
@@ -54,12 +78,12 @@ export default function DashboardNav() {
 
       {/* Mostra esattamente uno dei due */}
       {loaded && role === 'athlete' && (
-        <Link href="/applications" className={btn(pathname === '/applications')}>
+        <Link href="/applications/sent" className={btn(pathname.startsWith('/applications/sent'))}>
           Candidature inviate
         </Link>
       )}
       {loaded && role === 'club' && (
-        <Link href="/applications/received" className={btn(pathname === '/applications/received')}>
+        <Link href="/applications" className={btn(pathname === '/applications')}>
           Candidature ricevute
         </Link>
       )}
