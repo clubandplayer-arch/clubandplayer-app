@@ -3,25 +3,37 @@ export const dynamic = 'force-dynamic';
 
 import ApplicationsTable from '@/components/applications/ApplicationsTable';
 import { cookies } from 'next/headers';
-import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 type Role = 'athlete' | 'club' | null;
 
-async function getRoleFromSupabase(): Promise<Role> {
-  try {
-    const supabase = await getSupabaseServerClient();
-    const { data: u } = await supabase.auth.getUser();
-    if (!u?.user) return null;
+async function cookieHeader(): Promise<string> {
+  const ck = await cookies();
+  return ck.getAll().map(c => `${c.name}=${c.value}`).join('; ');
+}
 
-    const { data: prof } = await supabase
-      .from('profiles')
-      .select('profile_type, type')
-      .eq('id', u.user.id)
-      .maybeSingle();
+async function getRole(): Promise<Role> {
+  try {
+    const base = process.env.NEXT_PUBLIC_BASE_URL ?? '';
+    const resWho = await fetch(`${base}/api/auth/whoami`, {
+      cache: 'no-store',
+      headers: { cookie: await cookieHeader() },
+    });
+    if (!resWho.ok) return null;
+    const who = await resWho.json().catch(() => ({} as any));
+    if (!who?.id) return null;
+
+    const resProf = await fetch(`${base}/api/profiles/me`, {
+      cache: 'no-store',
+      headers: { cookie: await cookieHeader() },
+    });
+    if (!resProf.ok) return null;
+    const pj = await resProf.json().catch(() => ({} as any));
 
     const t = (
-      (prof as any)?.profile_type ??
-      (prof as any)?.type ??
+      pj?.data?.profile_type ??
+      pj?.data?.type ??
+      pj?.type ??
+      pj?.profile?.type ??
       ''
     ).toString().toLowerCase();
 
@@ -35,27 +47,24 @@ async function getRoleFromSupabase(): Promise<Role> {
 
 async function fetchReceivedRows() {
   try {
-    const cookieHeader = (await cookies()).toString();
     const base = process.env.NEXT_PUBLIC_BASE_URL ?? '';
     const res = await fetch(`${base}/api/applications/received`, {
       cache: 'no-store',
-      headers: { cookie: cookieHeader },
+      headers: { cookie: await cookieHeader() },
     });
     if (!res.ok) return [];
     const data = await res.json().catch(() => ({} as any));
-    const rows =
-      (Array.isArray(data) && data) ||
-      (Array.isArray(data.items) && data.items) ||
-      (Array.isArray(data.data) && data.data) ||
-      [];
-    return rows;
+    return (Array.isArray(data) && data) ||
+           (Array.isArray(data.items) && data.items) ||
+           (Array.isArray(data.data) && data.data) ||
+           [];
   } catch {
     return [];
   }
 }
 
 export default async function ReceivedApplicationsPage() {
-  const [role, rows] = await Promise.all([getRoleFromSupabase(), fetchReceivedRows()]);
+  const [role, rows] = await Promise.all([getRole(), fetchReceivedRows()]);
 
   return (
     <div className="max-w-6xl mx-auto p-4">
