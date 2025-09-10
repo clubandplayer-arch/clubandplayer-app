@@ -3,38 +3,27 @@ export const dynamic = 'force-dynamic';
 
 import ApplicationsTable from '@/components/applications/ApplicationsTable';
 import { cookies } from 'next/headers';
+import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 type Role = 'athlete' | 'club' | null;
 
-async function cookieHeader(): Promise<string> {
-  const ck = await cookies();
-  // Costruisce un header "cookie" valido con TUTTI i cookie
-  return ck.getAll().map(c => `${c.name}=${c.value}`).join('; ');
-}
-
 async function getRole(): Promise<Role> {
   try {
-    const base = process.env.NEXT_PUBLIC_BASE_URL ?? '';
-    const resWho = await fetch(`${base}/api/auth/whoami`, {
-      cache: 'no-store',
-      headers: { cookie: await cookieHeader() },
-    });
-    if (!resWho.ok) return null;
-    const who = await resWho.json().catch(() => ({} as any));
-    if (!who?.id) return null;
+    const supabase = await getSupabaseServerClient();
+    const { data: u } = await supabase.auth.getUser();
+    if (!u?.user) return null;
+    const uid = u.user.id;
 
-    const resProf = await fetch(`${base}/api/profiles/me`, {
-      cache: 'no-store',
-      headers: { cookie: await cookieHeader() },
-    });
-    if (!resProf.ok) return null;
-    const pj = await resProf.json().catch(() => ({} as any));
+    // Alcuni profili hanno user_id distinto da id → copriamo entrambi
+    const { data: prof } = await supabase
+      .from('profiles')
+      .select('type, profile_type, id, user_id')
+      .or(`id.eq.${uid},user_id.eq.${uid}`)
+      .maybeSingle();
 
     const t = (
-      pj?.data?.profile_type ??
-      pj?.data?.type ??
-      pj?.type ??
-      pj?.profile?.type ??
+      (prof as any)?.type ??
+      (prof as any)?.profile_type ??
       ''
     ).toString().toLowerCase();
 
@@ -46,6 +35,11 @@ async function getRole(): Promise<Role> {
   }
 }
 
+async function cookieHeader(): Promise<string> {
+  const ck = await cookies();
+  return ck.getAll().map(c => `${c.name}=${c.value}`).join('; ');
+}
+
 async function fetchSentRows() {
   try {
     const base = process.env.NEXT_PUBLIC_BASE_URL ?? '';
@@ -55,11 +49,10 @@ async function fetchSentRows() {
     });
     if (!res.ok) return [];
     const data = await res.json().catch(() => ({} as any));
-    // accetta array nudo, {items:[]}, {data:[]}
-    return (Array.isArray(data) && data) ||
-           (Array.isArray(data.items) && data.items) ||
-           (Array.isArray(data.data) && data.data) ||
-           [];
+    return (Array.isArray(data) && data)
+      || (Array.isArray(data.items) && data.items)
+      || (Array.isArray(data.data) && data.data)
+      || [];
   } catch {
     return [];
   }
@@ -76,7 +69,7 @@ export default async function SentApplicationsPage() {
       </p>
       {role === 'club' ? (
         <div className="mb-3 text-sm text-yellow-800 bg-yellow-50 border border-yellow-200 px-3 py-2 rounded">
-          Stai visualizzando come <b>Club</b>. Le candidature inviate sono visibili quando sei un <b>Atleta</b>.
+          Stai visualizzando come <b>Club</b>. Le candidature inviate sono per gli <b>Atleti</b>.
         </div>
       ) : null}
       <ApplicationsTable rows={rows} kind="sent" />
