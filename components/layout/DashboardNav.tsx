@@ -27,20 +27,18 @@ export default function DashboardNav() {
 
   const [role, setRole] = useState<Role>(null);
   const [loaded, setLoaded] = useState(false);
-  const [sentCount, setSentCount] = useState<number>(0);      // atleta
+  const [sentCount, setSentCount] = useState<number>(0);        // atleta
   const [receivedCount, setReceivedCount] = useState<number>(0); // club
 
   useEffect(() => {
     (async () => {
       try {
-        // 1) Provo a leggere il profilo
         const rp = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
         const jp = await rp.json().catch(() => ({}));
         const pt = (jp?.data?.type ?? jp?.data?.profile_type ?? '').toString().toLowerCase();
         if (pt.includes('atlet')) setRole('athlete');
         else if (pt.includes('club')) setRole('club');
 
-        // 2) Se non dedotto, provo per induzione dai dati:
         if (!pt) {
           const rMine = await fetch('/api/applications/mine', { credentials: 'include', cache: 'no-store' });
           const jm = await rMine.json().catch(() => ({}));
@@ -53,7 +51,6 @@ export default function DashboardNav() {
           if (Array.isArray(rec) && rec.length > 0) setRole((prev) => prev ?? 'club');
         }
 
-        // 3) Carico i contatori (in base al ruolo — se non noto, provo entrambi)
         const fetchMine = async () => {
           const r = await fetch('/api/applications/mine', { credentials: 'include', cache: 'no-store' });
           const j = await r.json().catch(() => ({}));
@@ -86,18 +83,23 @@ export default function DashboardNav() {
       <Link href="/opportunities" className={btn(pathname.startsWith('/opportunities'))}>Opportunità</Link>
       <Link href="/profile" className={btn(pathname.startsWith('/profile'))}>Profilo</Link>
 
-      {/* Mostra un solo tab a seconda del ruolo */}
       {loaded && role === 'athlete' && (
         <Link href="/applications/sent" className={btn(pathname === '/applications/sent')}>
           Candidature inviate
           <Badge n={sentCount} />
         </Link>
       )}
+
       {loaded && role === 'club' && (
-        <Link href="/applications" className={btn(pathname === '/applications')}>
-          Candidature ricevute
-          <Badge n={receivedCount} />
-        </Link>
+        <>
+          <Link href="/my/opportunities" className={btn(pathname === '/my/opportunities')}>
+            I miei annunci
+          </Link>
+          <Link href="/applications" className={btn(pathname === '/applications')}>
+            Candidature ricevute
+            <Badge n={receivedCount} />
+          </Link>
+        </>
       )}
     </nav>
   );
