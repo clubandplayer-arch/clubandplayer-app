@@ -2,12 +2,12 @@
 export const dynamic = 'force-dynamic';
 
 import ApplicationsTable from '@/components/applications/ApplicationsTable';
-import { cookies } from 'next/headers';
+import { cookies, headers as nextHeaders } from 'next/headers';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 type Role = 'athlete' | 'club' | null;
 
-async function getRole(): Promise<Role> {
+async function detectRoleReceived(): Promise<Role> {
   try {
     const supabase = await getSupabaseServerClient();
     const { data: u } = await supabase.auth.getUser();
@@ -28,10 +28,33 @@ async function getRole(): Promise<Role> {
 
     if (t.includes('club')) return 'club';
     if (t.includes('atlet')) return 'athlete';
+
+    // Fallback: se ha opportunità pubblicate → è club
+    const { count: opps } = await supabase
+      .from('opportunities')
+      .select('id', { head: true, count: 'exact' })
+      .eq('owner_id', uid);
+
+    if ((opps ?? 0) > 0) return 'club';
+
+    // Fallback secondario: se ha candidature inviate → atleta
+    const { count: sent } = await supabase
+      .from('applications')
+      .select('id', { head: true, count: 'exact' })
+      .eq('athlete_id', uid);
+
+    if ((sent ?? 0) > 0) return 'athlete';
+
     return null;
   } catch {
     return null;
   }
+}
+
+function getOriginFromHeaders(h: Headers) {
+  const proto = h.get('x-forwarded-proto') ?? 'https';
+  const host = h.get('host') ?? '';
+  return `${proto}://${host}`;
 }
 
 async function cookieHeader(): Promise<string> {
@@ -41,7 +64,10 @@ async function cookieHeader(): Promise<string> {
 
 async function fetchReceivedRows() {
   try {
-    const base = process.env.NEXT_PUBLIC_BASE_URL ?? '';
+    const h = await nextHeaders();
+    const origin = getOriginFromHeaders(h);
+    const base = process.env.NEXT_PUBLIC_BASE_URL || origin;
+
     const res = await fetch(`${base}/api/applications/received`, {
       cache: 'no-store',
       headers: { cookie: await cookieHeader() },
@@ -58,7 +84,7 @@ async function fetchReceivedRows() {
 }
 
 export default async function ReceivedApplicationsPage() {
-  const [role, rows] = await Promise.all([getRole(), fetchReceivedRows()]);
+  const [role, rows] = await Promise.all([detectRoleReceived(), fetchReceivedRows()]);
 
   return (
     <div className="max-w-6xl mx-auto p-4">
