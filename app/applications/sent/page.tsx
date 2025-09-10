@@ -4,6 +4,28 @@ export const dynamic = 'force-dynamic';
 import ApplicationsTable from '@/components/applications/ApplicationsTable';
 import { cookies } from 'next/headers';
 
+async function getRole(): Promise<'athlete' | 'club' | null> {
+  try {
+    const cookieHeader = (await cookies()).toString();
+    const base = process.env.NEXT_PUBLIC_BASE_URL ?? '';
+    const r = await fetch(`${base}/api/profiles/me`, {
+      cache: 'no-store',
+      headers: { cookie: cookieHeader },
+    });
+    if (!r.ok) return null;
+    const j = await r.json().catch(() => ({} as any));
+    const t =
+      (j?.data?.profile_type ?? j?.data?.type ?? j?.type ?? j?.profile?.type ?? '')
+        .toString()
+        .toLowerCase();
+    if (t.includes('atlet')) return 'athlete';
+    if (t.includes('club')) return 'club';
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 async function fetchSent() {
   try {
     const cookieHeader = (await cookies()).toString();
@@ -12,10 +34,7 @@ async function fetchSent() {
       cache: 'no-store',
       headers: { cookie: cookieHeader },
     });
-    if (!res.ok) {
-      // in caso di 401 o altro, restituiamo array vuoto
-      return [];
-    }
+    if (!res.ok) return [];
     const data = await res.json().catch(() => ({} as any));
     const rows =
       (Array.isArray(data) && data) ||
@@ -29,12 +48,25 @@ async function fetchSent() {
 }
 
 export default async function SentApplicationsPage() {
-  const rows = await fetchSent();
+  const [role, rows] = await Promise.all([getRole(), fetchSent()]);
+
+  if (role === 'club') {
+    return (
+      <div className="max-w-6xl mx-auto p-4">
+        <div className="mb-3 text-sm text-yellow-800 bg-yellow-50 border border-yellow-200 px-3 py-2 rounded">
+          Stai visualizzando come <b>Club</b>. Le candidature inviate sono visibili quando sei un <b>Atleta</b>.
+        </div>
+        <ApplicationsTable rows={[]} kind="sent" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto p-4">
-      <h1 className="text-2xl font-semibold mb-4">Candidature inviate</h1>
+      <h1 className="text-2xl font-semibold mb-2">Candidature inviate</h1>
+      <p className="text-sm text-gray-600 mb-4">Sei loggato come <b>{role ?? 'ospite'}</b>.</p>
       <ApplicationsTable rows={rows} kind="sent" />
     </div>
   );
 }
+
