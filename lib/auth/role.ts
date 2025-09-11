@@ -1,13 +1,16 @@
 // lib/auth/role.ts
 import { getSupabaseServerClient } from '@/lib/supabase/server';
-import type { User, SupabaseClient } from '@supabase/supabase-js';
+import type { User } from '@supabase/supabase-js';
 
 export type UserRole = 'athlete' | 'club' | null;
+
+// Deriva il tipo del client dal factory, così evitiamo mismatch tra generics
+type SupaClient = Awaited<ReturnType<typeof getSupabaseServerClient>>;
 
 type GetUserAndRole = Promise<{
   user: User | null;
   role: UserRole;
-  supabase: SupabaseClient<any, any, any>;
+  supabase: SupaClient;
 }>;
 
 export async function getUserAndRole(): GetUserAndRole {
