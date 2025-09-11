@@ -1,12 +1,15 @@
 // lib/api/auth.ts
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import type { SupabaseClient, User } from '@supabase/supabase-js';
+import type { User } from '@supabase/supabase-js';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
+
+// Tipi: usa il tipo reale del client server-side
+type ServerSupabase = Awaited<ReturnType<typeof getSupabaseServerClient>>;
 
 /** Contesto passato agli handler protetti */
 export type AuthedCtx = {
-  supabase: SupabaseClient<any, any, any>;
+  supabase: ServerSupabase;
   user: User;
 };
 
