@@ -3,72 +3,57 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export async function POST(
-  req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await context.params; // ✅ Next 15: params è Promise
+  const { id } = await params;
 
   const supabase = await getSupabaseServerClient();
 
-  // 1) Utente loggato?
-  const { data: ures } = await supabase.auth.getUser();
-  const user = ures?.user;
-  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-
-  // 2) Solo atleti possono candidarsi
-  const { data: prof, error: perr } = await supabase
-    .from('profiles')
-    .select('id, type')
-    .or(`id.eq.${user.id},user_id.eq.${user.id}`)
-    .maybeSingle();
-
-  if (perr) return NextResponse.json({ error: perr.message }, { status: 400 });
-  const ptype = (prof?.type ?? '').toLowerCase();
-  if (ptype !== 'athlete') {
-    return NextResponse.json({ error: 'only_athlete_can_apply' }, { status: 403 });
+  // Auth richiesta
+  const { data: auth, error: authError } = await supabase.auth.getUser();
+  if (authError || !auth?.user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+  const userId = auth.user.id;
 
-  // 3) Opportunità esiste?
-  const { data: opp, error: oerr } = await supabase
-    .from('opportunities')
-    .select('id, owner_id, required_category')
-    .eq('id', id)
-    .maybeSingle();
+  // Body opzionale: { note?: string }
+  const body = await request.json().catch(() => ({}));
+  const note = typeof body?.note === 'string' ? body.note : '';
 
-  if (oerr) return NextResponse.json({ error: oerr.message }, { status: 400 });
-  if (!opp) return NextResponse.json({ error: 'opportunity_not_found' }, { status: 404 });
-
-  // 4) Non candidarti al tuo stesso annuncio
-  if (opp.owner_id === user.id) {
-    return NextResponse.json({ error: 'cannot_apply_to_own_opportunity' }, { status: 400 });
-  }
-
-  // 5) Già candidato?
-  const { data: existing, error: exerr } = await supabase
+  // Guard: esiste già una candidatura per (opportunity_id, athlete_id)?
+  const { data: existing, error: existingErr } = await supabase
     .from('applications')
     .select('id')
     .eq('opportunity_id', id)
-    .eq('athlete_id', user.id)
+    .eq('athlete_id', userId)
     .maybeSingle();
 
-  if (exerr) return NextResponse.json({ error: exerr.message }, { status: 400 });
-  if (existing) {
-    return NextResponse.json({ ok: true, id: existing.id, already: true });
+  if (existingErr && !`${existingErr.code || ''}`.includes('PGRST116')) {
+    // PGRST116 = no rows, non è un vero errore
+    return NextResponse.json({ error: 'db_error', detail: existingErr.message }, { status: 500 });
   }
 
-  // 6) Crea candidatura
-  const { data: created, error: cerr } = await supabase
+  if (existing) {
+    // Già candidato: ritorno ok per permettere alla UI di disabilitare il bottone
+    return NextResponse.json({ ok: true, id: existing.id });
+  }
+
+  // Inserisci candidatura
+  const { data: inserted, error: insertErr } = await supabase
     .from('applications')
     .insert({
       opportunity_id: id,
-      athlete_id: user.id,
+      athlete_id: userId,
+      note,
       status: 'submitted',
-      note: '',
     })
     .select('id')
-    .maybeSingle();
+    .single();
 
-  if (cerr) return NextResponse.json({ error: cerr.message }, { status: 400 });
+  if (insertErr) {
+    return NextResponse.json({ error: 'insert_failed', detail: insertErr.message }, { status: 500 });
+  }
 
-  return NextResponse.json({ ok: true, id: created?.id });
+  return NextResponse.json({ ok: true, id: inserted.id });
 }

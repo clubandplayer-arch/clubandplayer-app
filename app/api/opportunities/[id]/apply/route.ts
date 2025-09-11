@@ -1,29 +1,48 @@
-import { NextResponse, type NextRequest } from 'next/server';
-import { withAuth, jsonError } from '@/lib/api/auth';
-import { rateLimit } from '@/lib/api/rateLimit';
+// app/api/opportunities/[id]/apply/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { getSupabaseServerClient } from '@/lib/supabase/server';
 
-export const runtime = 'nodejs';
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
 
-/** POST /api/opportunities/:id/apply  { note? } */
-export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
-  try { await rateLimit(req, { key: 'applications:POST', limit: 20, window: '1m' } as any); }
-  catch { return jsonError('Too Many Requests', 429); }
+  const supabase = await getSupabaseServerClient();
+  const { data: auth, error: authError } = await supabase.auth.getUser();
+  if (authError || !auth?.user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  const userId = auth.user.id;
 
-  const id = req.nextUrl.pathname.split('/').slice(-2, -1)[0];
-  if (!id) return jsonError('Missing opportunity id', 400);
+  const body = await request.json().catch(() => ({}));
+  const note = typeof body?.note === 'string' ? body.note : '';
 
-  const body = await req.json().catch(() => ({} as any));
-  const note = typeof body.note === 'string' ? body.note.trim() : null;
-
-  const { data, error } = await supabase
+  const { data: existing } = await supabase
     .from('applications')
-    .insert({ opportunity_id: id, athlete_id: user.id, note, status: 'submitted' })
-    .select('*')
+    .select('id')
+    .eq('opportunity_id', id)
+    .eq('athlete_id', userId)
+    .maybeSingle();
+
+  if (existing) {
+    return NextResponse.json({ ok: true, id: existing.id });
+  }
+
+  const { data: inserted, error: insertErr } = await supabase
+    .from('applications')
+    .insert({
+      opportunity_id: id,
+      athlete_id: userId,
+      note,
+      status: 'submitted',
+    })
+    .select('id')
     .single();
 
-  if (error) {
-    if ((error as any).code === '23505') return jsonError('Already applied', 409);
-    return jsonError(error.message, 400);
+  if (insertErr) {
+    return NextResponse.json({ error: 'insert_failed', detail: insertErr.message }, { status: 500 });
   }
-  return NextResponse.json({ data }, { status: 201 });
-});
+
+  return NextResponse.json({ ok: true, id: inserted.id });
+}
