@@ -1,12 +1,15 @@
 // lib/api/auth.ts
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import type { SupabaseClient, User } from '@supabase/supabase-js';
+import type { User } from '@supabase/supabase-js';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
+
+// Usa il tipo reale del client server-side
+type ServerSupabase = Awaited<ReturnType<typeof getSupabaseServerClient>>;
 
 /** Contesto passato agli handler protetti */
 export type AuthedCtx = {
-  supabase: SupabaseClient<any, any, any>;
+  supabase: ServerSupabase;
   user: User;
 };
 
@@ -17,7 +20,7 @@ export function jsonError(message: string, status = 400) {
 
 /** 401 se non c'è utente; altrimenti ritorna supabase+user */
 export async function requireUser(): Promise<{ ctx?: AuthedCtx; res?: NextResponse }> {
-  const supabase = await getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient(); // ← await, e tipo corretto
   const { data, error } = await supabase.auth.getUser();
   if (error || !data?.user) {
     return { res: jsonError('Unauthorized', 401) };
