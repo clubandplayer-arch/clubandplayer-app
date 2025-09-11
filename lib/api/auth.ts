@@ -2,7 +2,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import type { SupabaseClient, User } from '@supabase/supabase-js';
-import { supabaseServer } from '@/lib/supabase/server';
+import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 /** Contesto passato agli handler protetti */
 export type AuthedCtx = {
@@ -17,7 +17,7 @@ export function jsonError(message: string, status = 400) {
 
 /** 401 se non c'è utente; altrimenti ritorna supabase+user */
 export async function requireUser(): Promise<{ ctx?: AuthedCtx; res?: NextResponse }> {
-  const supabase = supabaseServer();
+  const supabase = await getSupabaseServerClient();
   const { data, error } = await supabase.auth.getUser();
   if (error || !data?.user) {
     return { res: jsonError('Unauthorized', 401) };

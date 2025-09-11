@@ -1,82 +1,69 @@
-// app/api/opportunities/[id]/route.ts
-import { NextResponse, type NextRequest } from 'next/server';
-import { requireUser, jsonError } from '@/lib/api/auth';
-import { opportunityUpdateSchema } from '@/lib/api/schemas';
-import { rateLimit } from '@/lib/api/rateLimit';
+import { NextRequest, NextResponse } from 'next/server';
+import { getSupabaseServerClient } from '@/lib/supabase/server';
 
-export const runtime = 'nodejs';
+export async function GET(
+  _req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  const { id } = await context.params;
 
-// Helper per leggere :id
-function getIdFromUrl(urlStr: string): string {
-  const url = new URL(urlStr);
-  const parts = url.pathname.split('/').filter(Boolean);
-  return parts[parts.length - 1]!;
-}
-
-/** PUT /api/opportunities/:id */
-export async function PUT(req: NextRequest) {
-  const { ctx, res } = await requireUser();
-  if (!ctx) return res!;
-  const { supabase, user } = ctx;
-
-  try {
-    await rateLimit(req, { key: `opps:PUT:${user.id}`, limit: 60, window: '1m' } as any);
-  } catch {
-    return jsonError('Too Many Requests', 429);
-  }
-
-  const id = getIdFromUrl(req.url);
-
-  let body: unknown;
-  try {
-    body = await req.json();
-  } catch {
-    return jsonError('Invalid JSON body', 400);
-  }
-  const parsed = opportunityUpdateSchema.safeParse(body);
-  if (!parsed.success) {
-    return jsonError(parsed.error.issues.map(i => i.message).join('; '), 400);
-  }
-
-  const patch = parsed.data;
-  if (!patch || Object.keys(patch).length === 0) {
-    return jsonError('Nothing to update', 400);
-  }
-
-  // RLS deve garantire che l'utente possa aggiornare solo le proprie righe.
+  const supabase = await getSupabaseServerClient();
   const { data, error } = await supabase
     .from('opportunities')
-    .update(patch as any)
+    .select(
+      'id, owner_id, title, description, sport, required_category, city, province, region, country, created_at'
+    )
     .eq('id', id)
-    .select('*')
-    .single();
+    .maybeSingle();
 
-  if (error) return jsonError(error.message, 400);
+  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  if (!data) return NextResponse.json({ error: 'not_found' }, { status: 404 });
   return NextResponse.json({ data });
 }
 
-/** DELETE /api/opportunities/:id */
-export async function DELETE(req: NextRequest) {
-  const { ctx, res } = await requireUser();
-  if (!ctx) return res!;
-  const { supabase, user } = ctx;
+export async function PATCH(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  const { id } = await context.params;
 
-  try {
-    await rateLimit(req, { key: `opps:DEL:${user.id}`, limit: 60, window: '1m' } as any);
-  } catch {
-    return jsonError('Too Many Requests', 429);
-  }
+  const supabase = await getSupabaseServerClient();
+  const { data: ures } = await supabase.auth.getUser();
+  const user = ures?.user;
+  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
-  const id = getIdFromUrl(req.url);
+  const body = await req.json().catch(() => ({}));
+  const allowed = [
+    'title',
+    'description',
+    'sport',
+    'required_category',
+    'city',
+    'province',
+    'region',
+    'country',
+  ] as const;
+  const update: Record<string, any> = {};
+  for (const k of allowed) if (k in body) update[k] = body[k];
 
-  // RLS deve impedire di eliminare righe non proprie
+  // Verifica proprietario
+  const { data: opp } = await supabase
+    .from('opportunities')
+    .select('id, owner_id')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (!opp) return NextResponse.json({ error: 'not_found' }, { status: 404 });
+  if (opp.owner_id !== user.id)
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+
   const { data, error } = await supabase
     .from('opportunities')
-    .delete()
+    .update(update)
     .eq('id', id)
-    .select('*')
-    .single();
+    .select('id')
+    .maybeSingle();
 
-  if (error) return jsonError(error.message, 400);
-  return NextResponse.json({ data });
+  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  return NextResponse.json({ ok: true, data });
 }
