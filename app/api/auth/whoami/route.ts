@@ -1,44 +1,33 @@
 // app/api/auth/whoami/route.ts
-import { NextResponse, type NextRequest } from 'next/server'
-import { cookies } from 'next/headers'
-import { createServerClient } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server';
+import { getSupabaseServerClient } from '@/lib/supabase/server';
 
-export const runtime = 'nodejs'
-
-async function getServerClient() {
-  const store = await cookies()
-  const client = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return store.get(name)?.value
-        },
-        set(name: string, value: string, options: any) {
-          store.set({ name, value, ...options })
-        },
-        remove(name: string, options: any) {
-          store.set({ name, value: '', ...options, maxAge: 0 })
-        },
-      },
-      cookieOptions: { sameSite: 'lax' },
-    }
-  )
-  return client
-}
+export const runtime = 'nodejs';
 
 export async function GET(_req: NextRequest) {
-  const supabase = await getServerClient()
-  const { data, error } = await supabase.auth.getUser()
+  const supabase = await getSupabaseServerClient();
 
-  if (error || !data?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { data: auth } = await supabase.auth.getUser();
+  const user = auth?.user ?? null;
+
+  if (!user) {
+    return NextResponse.json({ user: null, role: 'guest' as const }, { status: 200 });
   }
 
-  const { user } = data
+  // Leggi il profilo per dedurre il ruolo
+  const { data: prof } = await supabase
+    .from('profiles')
+    .select('id,type')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  const raw = (prof?.type ?? '').toString().toLowerCase();
+  const role: 'club' | 'athlete' | 'guest' =
+    raw.startsWith('club') ? 'club' : raw === 'athlete' ? 'athlete' : 'guest';
+
   return NextResponse.json({
-    id: user.id,
-    email: user.email,
-  })
+    user: { id: user.id, email: user.email ?? undefined },
+    role,
+    profile: { type: raw || null },
+  });
 }
