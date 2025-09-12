@@ -1,86 +1,129 @@
 'use client';
 
-import ApplyCell from '@/components/opportunities/ApplyCell';
+import Link from 'next/link';
+import { useState } from 'react';
 import type { Opportunity } from '@/types/opportunity';
 
-function formatBracket(min: number | null, max: number | null) {
-  if (min == null && max == null) return '—';
-  if (min != null && max != null) return `${min}-${max}`;
-  if (min != null) return `${min}+`;
-  if (max != null) return `≤${max}`;
-  return '—';
-}
+type Props = {
+  items: Opportunity[];
+  currentUserId?: string | null;
+  currentUserRole?: 'athlete' | 'club' | 'guest';
+  onEdit?: (o: Opportunity) => void;
+  onDelete?: (o: Opportunity) => void;
+};
 
 export default function OpportunitiesTable({
   items,
   currentUserId,
+  currentUserRole = 'guest',
   onEdit,
   onDelete,
-}: {
-  items: Opportunity[];
-  currentUserId?: string | null;
-  onEdit?: (opp: Opportunity) => void;
-  onDelete?: (opp: Opportunity) => void;
-}) {
-  if (!items.length) {
-    return <div className="text-sm text-gray-500 py-8">Nessuna opportunità trovata. Prova a rimuovere i filtri.</div>;
+}: Props) {
+  const [noteById, setNoteById] = useState<Record<string, string>>({});
+
+  async function apply(o: Opportunity) {
+    const note = noteById[o.id] || '';
+    const res = await fetch(`/api/opportunities/${o.id}/apply2`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ note }),
+    });
+    if (!res.ok) {
+      const t = await res.text();
+      try { const j = JSON.parse(t); alert(j.error || t); }
+      catch { alert(t); }
+      return;
+    }
+    setNoteById((s) => ({ ...s, [o.id]: '' }));
   }
 
+  const isAthlete = currentUserRole === 'athlete';
+  const isClub = currentUserRole === 'club';
+
   return (
-    <div className="overflow-x-auto rounded-2xl border">
-      <table className="min-w-full text-sm">
-        <thead className="bg-gray-50">
-          <tr className="text-left">
-            <th className="px-4 py-2">Titolo</th>
-            <th className="px-4 py-2">Luogo</th>
-            <th className="px-4 py-2">Sport</th>
-            <th className="px-4 py-2">Ruolo</th>
-            <th className="px-4 py-2">Età</th>
-            <th className="px-4 py-2">Club</th>
-            <th className="px-4 py-2">Creato</th>
-            <th className="px-4 py-2 w-32">Azioni</th>
+    <div className="w-full overflow-x-auto rounded-2xl border">
+      <table className="w-full text-sm">
+        <thead className="bg-gray-50 text-gray-600">
+          <tr>
+            <th className="px-4 py-3 text-left">Titolo</th>
+            <th className="px-4 py-3 text-left">Luogo</th>
+            <th className="px-4 py-3 text-left">Sport</th>
+            <th className="px-4 py-3 text-left">Ruolo</th>
+            <th className="px-4 py-3 text-left">Età</th>
+            <th className="px-4 py-3 text-left">Creato</th>
+            <th className="px-4 py-3 text-left">Azioni</th>
           </tr>
         </thead>
         <tbody>
-          {items.map((o) => {
-            const canEdit = !!currentUserId && o.created_by === currentUserId;
-            const place = [o.city, o.province, o.region, o.country].filter(Boolean).join(', ');
-            return (
-              <tr key={o.id} className="border-t">
-                <td className="px-4 py-2 font-medium">{o.title}</td>
-                <td className="px-4 py-2 text-gray-600">{place || '—'}</td>
-                <td className="px-4 py-2">{o.sport ?? '—'}</td>
-                <td className="px-4 py-2">{o.role ?? '—'}</td>
-                <td className="px-4 py-2">{formatBracket(o.age_min, o.age_max)}</td>
-                <td className="px-4 py-2">{o.club_name ?? '—'}</td>
-                <td className="px-4 py-2">{new Date(o.created_at).toLocaleString()}</td>
-                <td className="px-4 py-2">
-                  <div className="flex items-center gap-2">
-                    {/* Azione principale */}
-                    <ApplyCell opportunityId={o.id} ownerId={o.created_by ?? null} />
+          {items.map((o) => (
+            <tr key={o.id} className="border-t">
+              <td className="px-4 py-3">
+                <Link href={`/opportunities/${o.id}`} className="underline hover:no-underline">
+                  {o.title}
+                </Link>
+              </td>
+              <td className="px-4 py-3">
+                {[o.city, o.province, o.region, o.country].filter(Boolean).join(', ') || '—'}
+              </td>
+              <td className="px-4 py-3">{o.sport || '—'}</td>
+              <td className="px-4 py-3">{o.role || '—'}</td>
+              <td className="px-4 py-3">{o.age || '—'}</td>
+              <td className="px-4 py-3">
+                {o.created_at
+                  ? new Date(o.created_at).toLocaleString()
+                  : '—'}
+              </td>
+              <td className="px-4 py-3">
+                <div className="flex items-center gap-2">
+                  {/* Campo nota + pulsante Candidati SOLO per atleti */}
+                  {isAthlete && (
+                    <>
+                      <input
+                        className="rounded-lg border px-2 py-1"
+                        placeholder="Nota (opzionale)"
+                        value={noteById[o.id] ?? ''}
+                        onChange={(e) =>
+                          setNoteById((s) => ({ ...s, [o.id]: e.target.value }))
+                        }
+                      />
+                      <button
+                        onClick={() => apply(o)}
+                        className="px-3 py-1 rounded-lg bg-gray-900 text-white"
+                      >
+                        Candidati
+                      </button>
+                    </>
+                  )}
 
-                    {/* Azioni extra per l'owner */}
-                    {canEdit && (
-                      <>
-                        <button
-                          onClick={() => onEdit?.(o)}
-                          className="px-2 py-1 text-xs rounded border hover:bg-gray-50"
-                        >
-                          Modifica
-                        </button>
-                        <button
-                          onClick={() => onDelete?.(o)}
-                          className="px-2 py-1 text-xs rounded border hover:bg-red-50"
-                        >
-                          Elimina
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            );
-          })}
+                  {/* Azioni di gestione visibili al proprietario (club che ha creato l’annuncio) */}
+                  {isClub && o.owner_id === currentUserId && (
+                    <>
+                      <button
+                        onClick={() => onEdit?.(o)}
+                        className="px-3 py-1 rounded-lg border"
+                      >
+                        Modifica
+                      </button>
+                      <button
+                        onClick={() => onDelete?.(o)}
+                        className="px-3 py-1 rounded-lg border"
+                      >
+                        Elimina
+                      </button>
+                    </>
+                  )}
+                </div>
+              </td>
+            </tr>
+          ))}
+          {items.length === 0 && (
+            <tr>
+              <td colSpan={7} className="px-4 py-10 text-center text-gray-500">
+                Nessuna opportunità trovata.
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
     </div>
