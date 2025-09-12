@@ -3,20 +3,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export async function POST(
-  request: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
+  const { id: opportunityId } = await params;
   const supabase = await getSupabaseServerClient();
 
   // Auth
-  const { data: auth, error: authError } = await supabase.auth.getUser();
+  const { data: auth, error: authErr } = await supabase.auth.getUser();
   const user = auth?.user ?? null;
-  if (authError || !user) {
+  if (authErr || !user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Solo atleti possono candidarsi
+  // Ruolo: solo atleti possono candidarsi
   const { data: prof } = await supabase
     .from('profiles')
     .select('type')
@@ -35,7 +35,7 @@ export async function POST(
   const { data: opp, error: oppErr } = await supabase
     .from('opportunities')
     .select('owner_id')
-    .eq('id', id)
+    .eq('id', opportunityId)
     .maybeSingle();
 
   if (oppErr || !opp) {
@@ -48,33 +48,27 @@ export async function POST(
     );
   }
 
-  // Se già candidato → risposta positiva idempotente
-  const { data: existing, error: existingErr } = await supabase
+  // Body opzionale: { note?: string }
+  const body = (await req.json().catch(() => ({}))) as { note?: unknown };
+  const note = typeof body?.note === 'string' ? body.note : '';
+
+  // Idempotenza: se già candidato → ritorna ok con id
+  const { data: already } = await supabase
     .from('applications')
     .select('id,status')
-    .eq('opportunity_id', id)
+    .eq('opportunity_id', opportunityId)
     .eq('athlete_id', user.id)
     .maybeSingle();
 
-  if (existingErr && !`${existingErr.code ?? ''}`.includes('PGRST116')) {
-    return NextResponse.json(
-      { error: 'db_error', detail: existingErr.message },
-      { status: 500 }
-    );
+  if (already?.id) {
+    return NextResponse.json({ ok: true, id: already.id });
   }
-  if (existing?.id) {
-    return NextResponse.json({ ok: true, id: existing.id });
-  }
-
-  // Body opzionale: { note?: string }
-  const body = await request.json().catch(() => ({}));
-  const note = typeof body?.note === 'string' ? body.note : '';
 
   // Inserisci candidatura
-  const { data: inserted, error: insertErr } = await supabase
+  const { data: ins, error: insErr } = await supabase
     .from('applications')
     .insert({
-      opportunity_id: id,
+      opportunity_id: opportunityId,
       athlete_id: user.id,
       note,
       status: 'submitted',
@@ -82,12 +76,9 @@ export async function POST(
     .select('id')
     .single();
 
-  if (insertErr) {
-    return NextResponse.json(
-      { error: 'insert_failed', detail: insertErr.message },
-      { status: 500 }
-    );
+  if (insErr) {
+    return NextResponse.json({ error: insErr.message }, { status: 400 });
   }
 
-  return NextResponse.json({ ok: true, id: inserted.id });
+  return NextResponse.json({ ok: true, id: ins.id });
 }
