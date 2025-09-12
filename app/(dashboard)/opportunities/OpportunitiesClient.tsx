@@ -1,3 +1,4 @@
+// app/(dashboard)/opportunities/OpportunitiesClient.tsx
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
@@ -11,6 +12,8 @@ import type { OpportunitiesApiResponse, Opportunity } from '@/types/opportunity'
 import { COUNTRIES, ITALY_REGIONS, PROVINCES_BY_REGION, CITIES_BY_PROVINCE } from '@/lib/opps/geo';
 import { AGE_BRACKETS, SPORTS } from '@/lib/opps/constants';
 
+type Role = 'athlete' | 'club' | 'guest';
+
 export default function OpportunitiesClient() {
   const sp = useSearchParams();
   const router = useRouter();
@@ -19,7 +22,9 @@ export default function OpportunitiesClient() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+
   const [me, setMe] = useState<{ id: string; email?: string } | null>(null);
+  const [role, setRole] = useState<Role>('guest');
 
   const [openCreate, setOpenCreate] = useState(false);
   const [editItem, setEditItem] = useState<Opportunity | null>(null);
@@ -45,11 +50,19 @@ export default function OpportunitiesClient() {
     router.replace(`/opportunities?${p.toString()}`);
   }
 
+  // whoami: prendo user.id e ruolo (accetto sia j.role che j.profile.type)
   useEffect(() => {
     fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' })
       .then((r) => r.json())
-      .then((j) => setMe(j?.user ?? null)) // <-- prende user.id
-      .catch(() => setMe(null));
+      .then((j) => {
+        setMe(j?.user ?? null);
+        const raw = (j?.role ?? j?.profile?.type ?? '').toString().toLowerCase();
+        setRole(raw === 'club' ? 'club' : raw === 'athlete' ? 'athlete' : 'guest');
+      })
+      .catch(() => {
+        setMe(null);
+        setRole('guest');
+      });
   }, []);
 
   useEffect(() => {
@@ -92,9 +105,16 @@ export default function OpportunitiesClient() {
     <div className="p-4 md:p-6 space-y-4">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">Opportunità</h1>
-        <button onClick={() => setOpenCreate(true)} className="px-3 py-2 rounded-lg bg-gray-900 text-white">
-          + Nuova opportunità
-        </button>
+
+        {/* Solo i CLUB possono creare nuove opportunità */}
+        {role === 'club' && (
+          <button
+            onClick={() => setOpenCreate(true)}
+            className="px-3 py-2 rounded-lg bg-gray-900 text-white"
+          >
+            + Nuova opportunità
+          </button>
+        )}
       </div>
 
       {/* Barra filtri */}
@@ -223,22 +243,29 @@ export default function OpportunitiesClient() {
         />
       )}
 
-      <Modal open={openCreate} title="Nuova opportunità" onClose={() => setOpenCreate(false)}>
-        <OpportunityForm
-          onCancel={() => setOpenCreate(false)}
-          onSaved={() => { setOpenCreate(false); setReloadKey((k) => k + 1); }}
-        />
-      </Modal>
-
-      <Modal open={!!editItem} title={`Modifica: ${editItem?.title ?? ''}`} onClose={() => setEditItem(null)}>
-        {editItem && (
+      {/* Modale di creazione: SOLO per club */}
+      {role === 'club' && (
+        <Modal open={openCreate} title="Nuova opportunità" onClose={() => setOpenCreate(false)}>
           <OpportunityForm
-            initial={editItem}
-            onCancel={() => setEditItem(null)}
-            onSaved={() => { setEditItem(null); setReloadKey((k) => k + 1); }}
+            onCancel={() => setOpenCreate(false)}
+            onSaved={() => { setOpenCreate(false); setReloadKey((k) => k + 1); }}
           />
-        )}
-      </Modal>
+        </Modal>
+      )}
+
+      {/* Modale di modifica: la tabella dovrebbe mostrare azioni solo al proprietario;
+          in ogni caso, montiamo la modale solo per i club */}
+      {role === 'club' && (
+        <Modal open={!!editItem} title={`Modifica: ${editItem?.title ?? ''}`} onClose={() => setEditItem(null)}>
+          {editItem && (
+            <OpportunityForm
+              initial={editItem}
+              onCancel={() => setEditItem(null)}
+              onSaved={() => { setEditItem(null); setReloadKey((k) => k + 1); }}
+            />
+          )}
+        </Modal>
+      )}
     </div>
   );
 }
