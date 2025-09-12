@@ -266,6 +266,7 @@ export default function OpportunitiesClient() {
         <OpportunitiesTable
           items={data.data}
           currentUserId={meId ?? undefined}
+          userRole={role}
           onEdit={(o) => setEditItem(o)}
           onDelete={(o) => handleDelete(o)}
         />

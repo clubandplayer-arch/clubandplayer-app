@@ -1,7 +1,10 @@
 'use client';
 
+import Link from 'next/link';
 import ApplyCell from '@/components/opportunities/ApplyCell';
 import type { Opportunity } from '@/types/opportunity';
+
+type UserRole = 'athlete' | 'club' | 'guest';
 
 function formatBracket(min: number | null, max: number | null) {
   if (min == null && max == null) return '—';
@@ -14,16 +17,22 @@ function formatBracket(min: number | null, max: number | null) {
 export default function OpportunitiesTable({
   items,
   currentUserId,
+  userRole = 'guest',
   onEdit,
   onDelete,
 }: {
   items: Opportunity[];
   currentUserId?: string | null;
+  userRole?: UserRole;
   onEdit?: (opp: Opportunity) => void;
   onDelete?: (opp: Opportunity) => void;
 }) {
   if (!items.length) {
-    return <div className="text-sm text-gray-500 py-8">Nessuna opportunità trovata. Prova a rimuovere i filtri.</div>;
+    return (
+      <div className="text-sm text-gray-500 py-8">
+        Nessuna opportunità trovata. Prova a rimuovere i filtri.
+      </div>
+    );
   }
 
   return (
@@ -38,7 +47,7 @@ export default function OpportunitiesTable({
             <th className="px-4 py-2">Età</th>
             <th className="px-4 py-2">Club</th>
             <th className="px-4 py-2">Creato</th>
-            <th className="px-4 py-2 w-32">Azioni</th>
+            <th className="px-4 py-2 w-44">Azioni</th>
           </tr>
         </thead>
         <tbody>
@@ -47,7 +56,14 @@ export default function OpportunitiesTable({
             const place = [o.city, o.province, o.region, o.country].filter(Boolean).join(', ');
             return (
               <tr key={o.id} className="border-t">
-                <td className="px-4 py-2 font-medium">{o.title}</td>
+                <td className="px-4 py-2 font-medium">
+                  <Link
+                    href={`/opportunities/${o.id}`}
+                    className="underline underline-offset-2 hover:no-underline"
+                  >
+                    {o.title}
+                  </Link>
+                </td>
                 <td className="px-4 py-2 text-gray-600">{place || '—'}</td>
                 <td className="px-4 py-2">{o.sport ?? '—'}</td>
                 <td className="px-4 py-2">{o.role ?? '—'}</td>
@@ -56,8 +72,10 @@ export default function OpportunitiesTable({
                 <td className="px-4 py-2">{new Date(o.created_at).toLocaleString()}</td>
                 <td className="px-4 py-2">
                   <div className="flex items-center gap-2">
-                    {/* Azione principale */}
-                    <ApplyCell opportunityId={o.id} ownerId={o.created_by ?? null} />
+                    {/* Azione principale: solo atleti */}
+                    {userRole === 'athlete' && (
+                      <ApplyCell opportunityId={o.id} ownerId={o.created_by ?? null} />
+                    )}
 
                     {/* Azioni extra per l'owner */}
                     {canEdit && (
