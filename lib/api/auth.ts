@@ -4,12 +4,25 @@ import { NextResponse } from 'next/server';
 import type { User } from '@supabase/supabase-js';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
+// Alias tipato sul client server-side che usi davvero
 type ServerSupabase = Awaited<ReturnType<typeof getSupabaseServerClient>>;
 
 export type AuthContext = {
   supabase: ServerSupabase;
   user: User;
 };
+
+/** Helper usato da molti endpoint */
+export function jsonError(
+  message: string,
+  status = 400,
+  extra?: Record<string, unknown>
+) {
+  return NextResponse.json(
+    { error: message, ...(extra ?? {}) },
+    { status }
+  );
+}
 
 /** Restituisce { ctx } se autenticato, altrimenti { res } con 401 */
 export async function requireAuth(_req: NextRequest): Promise<
@@ -21,7 +34,7 @@ export async function requireAuth(_req: NextRequest): Promise<
   const user = data?.user ?? null;
 
   if (error || !user) {
-    return { res: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
+    return { res: jsonError('Unauthorized', 401) };
   }
   return { ctx: { supabase, user } };
 }
