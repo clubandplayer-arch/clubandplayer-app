@@ -1,4 +1,3 @@
-// app/(dashboard)/opportunities/OpportunitiesClient.tsx
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
@@ -23,8 +22,9 @@ export default function OpportunitiesClient() {
   const [err, setErr] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
-  const [me, setMe] = useState<{ id: string; email?: string } | null>(null);
-  const [role, setRole] = useState<Role>('guest');
+  const [meId, setMeId] = useState<string | null>(null);
+  const [role, setRole] = useState<Role>('guest');          // da /api/auth/whoami
+  const [profileType, setProfileType] = useState<string>(''); // fallback da /api/profiles/me
 
   const [openCreate, setOpenCreate] = useState(false);
   const [editItem, setEditItem] = useState<Opportunity | null>(null);
@@ -50,21 +50,51 @@ export default function OpportunitiesClient() {
     router.replace(`/opportunities?${p.toString()}`);
   }
 
-  // whoami: prendo user.id e ruolo (accetto sia j.role che j.profile.type)
+  // 1) Chi sono? (id + role se disponibile)
   useEffect(() => {
-    fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' })
-      .then((r) => r.json())
-      .then((j) => {
-        setMe(j?.user ?? null);
-        const raw = (j?.role ?? j?.profile?.type ?? '').toString().toLowerCase();
-        setRole(raw === 'club' ? 'club' : raw === 'athlete' ? 'athlete' : 'guest');
-      })
-      .catch(() => {
-        setMe(null);
-        setRole('guest');
-      });
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' });
+        const j = await r.json().catch(() => ({}));
+        if (cancelled) return;
+        setMeId(j?.user?.id ?? null);
+        const raw = (j?.role ?? '').toString().toLowerCase();
+        if (raw === 'club' || raw === 'athlete') setRole(raw as Role);
+        else setRole('guest');
+      } catch {
+        if (!cancelled) setRole('guest');
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
+  // 2) Fallback ruolo: se autenticato ma role non è “club/athlete”, leggi profiles.me
+  useEffect(() => {
+    let cancelled = false;
+    if (!meId) return; // non loggato
+    if (role === 'club' || role === 'athlete') return; // già noto
+
+    (async () => {
+      try {
+        const r = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
+        const j = await r.json().catch(() => ({}));
+        if (cancelled) return;
+        const t = (j?.type ?? j?.profile?.type ?? '').toString().toLowerCase();
+        setProfileType(t);
+        if (t.startsWith('club')) setRole('club');
+        else if (t === 'athlete') setRole('athlete');
+      } catch {
+        /* noop */
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [meId, role]);
+
+  const isClub = role === 'club' || profileType.startsWith('club');
+
+  // 3) Caricamento lista
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -105,9 +135,7 @@ export default function OpportunitiesClient() {
     <div className="p-4 md:p-6 space-y-4">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">Opportunità</h1>
-
-        {/* Solo i CLUB possono creare nuove opportunità */}
-        {role === 'club' && (
+        {isClub && (
           <button
             onClick={() => setOpenCreate(true)}
             className="px-3 py-2 rounded-lg bg-gray-900 text-white"
@@ -237,14 +265,14 @@ export default function OpportunitiesClient() {
       {!loading && !err && data && (
         <OpportunitiesTable
           items={data.data}
-          currentUserId={me?.id}
+          currentUserId={meId ?? undefined}
           onEdit={(o) => setEditItem(o)}
           onDelete={(o) => handleDelete(o)}
         />
       )}
 
-      {/* Modale di creazione: SOLO per club */}
-      {role === 'club' && (
+      {/* Modale creazione: solo club */}
+      {isClub && (
         <Modal open={openCreate} title="Nuova opportunità" onClose={() => setOpenCreate(false)}>
           <OpportunityForm
             onCancel={() => setOpenCreate(false)}
@@ -253,19 +281,15 @@ export default function OpportunitiesClient() {
         </Modal>
       )}
 
-      {/* Modale di modifica: la tabella dovrebbe mostrare azioni solo al proprietario;
-          in ogni caso, montiamo la modale solo per i club */}
-      {role === 'club' && (
-        <Modal open={!!editItem} title={`Modifica: ${editItem?.title ?? ''}`} onClose={() => setEditItem(null)}>
-          {editItem && (
-            <OpportunityForm
-              initial={editItem}
-              onCancel={() => setEditItem(null)}
-              onSaved={() => { setEditItem(null); setReloadKey((k) => k + 1); }}
-            />
-          )}
-        </Modal>
-      )}
+      <Modal open={!!editItem} title={`Modifica: ${editItem?.title ?? ''}`} onClose={() => setEditItem(null)}>
+        {editItem && (
+          <OpportunityForm
+            initial={editItem}
+            onCancel={() => setEditItem(null)}
+            onSaved={() => { setEditItem(null); setReloadKey((k) => k + 1); }}
+          />
+        )}
+      </Modal>
     </div>
   );
 }
