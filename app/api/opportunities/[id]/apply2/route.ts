@@ -3,9 +3,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export async function POST(
-  _req: NextRequest,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id: opportunityId } = await params;
   const supabase = await getSupabaseServerClient();
 
   // Auth
@@ -13,11 +14,6 @@ export async function POST(
   const user = auth?.user ?? null;
   if (authErr || !user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const opportunityId = params?.id;
-  if (!opportunityId) {
-    return NextResponse.json({ error: 'Missing opportunity id' }, { status: 400 });
   }
 
   // Ruolo: solo atleti possono candidarsi
@@ -52,7 +48,11 @@ export async function POST(
     );
   }
 
-  // Se già candidato → 409
+  // Body opzionale: { note?: string }
+  const body = (await req.json().catch(() => ({}))) as { note?: unknown };
+  const note = typeof body?.note === 'string' ? body.note : '';
+
+  // Idempotenza: se già candidato → ritorna ok con id
   const { data: already } = await supabase
     .from('applications')
     .select('id,status')
@@ -61,10 +61,7 @@ export async function POST(
     .maybeSingle();
 
   if (already?.id) {
-    return NextResponse.json(
-      { error: 'Hai già inviato una candidatura a questo annuncio.' },
-      { status: 409 }
-    );
+    return NextResponse.json({ ok: true, id: already.id });
   }
 
   // Inserisci candidatura
@@ -73,8 +70,8 @@ export async function POST(
     .insert({
       opportunity_id: opportunityId,
       athlete_id: user.id,
+      note,
       status: 'submitted',
-      note: '',
     })
     .select('id')
     .single();

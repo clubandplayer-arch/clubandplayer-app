@@ -4,37 +4,48 @@ import { NextResponse } from 'next/server';
 import type { User } from '@supabase/supabase-js';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
-// Usa il tipo reale del client server-side
+// Alias tipato sul client server-side che usi davvero
 type ServerSupabase = Awaited<ReturnType<typeof getSupabaseServerClient>>;
 
-/** Contesto passato agli handler protetti */
-export type AuthedCtx = {
+export type AuthContext = {
   supabase: ServerSupabase;
   user: User;
 };
 
-/** Risposta JSON d'errore uniforme */
-export function jsonError(message: string, status = 400) {
-  return NextResponse.json({ error: message }, { status });
+/** Helper usato da molti endpoint */
+export function jsonError(
+  message: string,
+  status = 400,
+  extra?: Record<string, unknown>
+) {
+  return NextResponse.json(
+    { error: message, ...(extra ?? {}) },
+    { status }
+  );
 }
 
-/** 401 se non c'è utente; altrimenti ritorna supabase+user */
-export async function requireUser(): Promise<{ ctx?: AuthedCtx; res?: NextResponse }> {
-  const supabase = await getSupabaseServerClient(); // ← await, e tipo corretto
+/** Restituisce { ctx } se autenticato, altrimenti { res } con 401 */
+export async function requireAuth(_req: NextRequest): Promise<
+  | { ctx: AuthContext }
+  | { res: NextResponse<{ error: string }> }
+> {
+  const supabase = await getSupabaseServerClient();
   const { data, error } = await supabase.auth.getUser();
-  if (error || !data?.user) {
+  const user = data?.user ?? null;
+
+  if (error || !user) {
     return { res: jsonError('Unauthorized', 401) };
   }
-  return { ctx: { supabase, user: data.user } };
+  return { ctx: { supabase, user } };
 }
 
-/** Wrapper per proteggere i route handlers */
+/** Wrapper comodo per i route handlers protetti */
 export function withAuth(
-  handler: (req: NextRequest, ctx: AuthedCtx) => Promise<NextResponse> | NextResponse
+  handler: (req: NextRequest, ctx: AuthContext) => Promise<Response> | Response
 ) {
   return async (req: NextRequest) => {
-    const { ctx, res } = await requireUser();
-    if (!ctx) return res!;
-    return handler(req, ctx);
+    const r = await requireAuth(req);
+    if ('res' in r) return r.res;
+    return handler(req, r.ctx);
   };
 }
