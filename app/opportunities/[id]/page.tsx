@@ -1,48 +1,82 @@
-// app/opportunities/[id]/page.tsx
-export const dynamic = 'force-dynamic';
+'use client';
 
-import { getSupabaseServerClient } from '@/lib/supabase/server';
-import { notFound } from 'next/navigation';
-import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import OpportunityCard from '@/components/opportunities/OpportunityCard';
+import type { Opportunity } from '@/types/opportunity';
 
-export default async function OpportunityDetail({
-  params,
-}: { params: { id: string } }) {
-  const supabase = await getSupabaseServerClient();
+type Role = 'athlete' | 'club' | 'guest';
 
-  const { data: opp } = await supabase
-    .from('opportunities')
-    .select('id,title,description,city,province,region,country,created_at,owner_id')
-    .eq('id', params.id)
-    .maybeSingle();
+export default function OpportunityDetailPage({ params }: { params: { id: string } }) {
+  const id = params?.id;
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  if (!opp) return notFound();
+  const [opp, setOpp] = useState<Opportunity | null>(null);
+  const [userRole, setUserRole] = useState<Role>('guest');
+  const [meId, setMeId] = useState<string | null>(null);
+  const [hasApplied, setHasApplied] = useState<boolean>(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadAll() {
+      setLoading(true);
+      setError(null);
+      try {
+        const rWho = await fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' });
+        const jWho = await rWho.json().catch(() => ({}));
+        if (cancelled) return;
+        const raw = (jWho?.role ?? '').toString().toLowerCase();
+        setUserRole(raw === 'club' || raw === 'athlete' ? (raw as Role) : 'guest');
+        setMeId(jWho?.user?.id ?? null);
+      } catch {
+        if (!cancelled) { setUserRole('guest'); setMeId(null); }
+      }
+
+      try {
+        const rOpp = await fetch(`/api/opportunities/${id}`, { credentials: 'include', cache: 'no-store' });
+        const txt = await rOpp.text();
+        if (!rOpp.ok) {
+          let msg = `HTTP ${rOpp.status}`;
+          try { const j = JSON.parse(txt); msg = j.error || j.message || msg; } catch {}
+          throw new Error(msg);
+        }
+        const j = txt ? JSON.parse(txt) : {};
+        const data = j.data ?? j;
+        if (!cancelled) setOpp(data as Opportunity);
+      } catch (e: any) {
+        if (!cancelled) setError(e?.message || 'Errore caricamento annuncio');
+      }
+
+      try {
+        const rAp = await fetch(`/api/opportunities/${id}/apply`, { credentials: 'include', cache: 'no-store' });
+        const t = await rAp.text();
+        const j = t ? JSON.parse(t) : {};
+        const applied =
+          Boolean(j?.applied) ||
+          Boolean(j?.alreadyApplied) ||
+          Boolean(j?.data?.applied) ||
+          Boolean(j?.data?.alreadyApplied) ||
+          j?.status === 'applied';
+        if (!cancelled) setHasApplied(applied);
+      } catch {
+        if (!cancelled) setHasApplied(false);
+      }
+
+      if (!cancelled) setLoading(false);
+    }
+
+    if (id) loadAll();
+    return () => { cancelled = true; };
+  }, [id]);
+
+  if (loading) return <div className="p-6 text-sm text-gray-500">Caricamento annuncio…</div>;
+  if (error) return <div className="p-6"><div className="border rounded-xl p-4 bg-red-50 text-red-700">Errore: {error}</div></div>;
+  if (!opp) return <div className="p-6 text-sm text-gray-500">Annuncio non trovato.</div>;
 
   return (
-    <div className="max-w-3xl mx-auto p-4">
-      <h1 className="text-2xl font-semibold mb-2">{opp.title}</h1>
-      <p className="text-sm text-gray-600 mb-4">
-        {[opp.city, opp.province, opp.region, opp.country].filter(Boolean).join(', ')}
-      </p>
-
-      <div className="prose max-w-none whitespace-pre-wrap mb-6">
-        {opp.description ?? '—'}
-      </div>
-
-      <div className="flex gap-2">
-        <Link
-          href={`/opportunities/${opp.id}/applications`}
-          className="px-3 py-2 rounded-md border hover:bg-gray-50"
-        >
-          Vedi candidature
-        </Link>
-        <Link
-          href="/opportunities"
-          className="px-3 py-2 rounded-md border hover:bg-gray-50"
-        >
-          Torna agli annunci
-        </Link>
-      </div>
+    <div className="p-4 md:p-6 space-y-4">
+      <OpportunityCard opp={opp} userRole={userRole} currentUserId={meId} hasApplied={hasApplied} />
     </div>
   );
 }
