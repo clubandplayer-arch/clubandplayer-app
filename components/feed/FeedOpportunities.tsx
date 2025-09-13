@@ -4,10 +4,22 @@ import { useEffect, useMemo, useState } from 'react';
 import OpportunityCard from '@/components/opportunities/OpportunityCard';
 import type { Opportunity } from '@/types/opportunity';
 import type { Interests } from '@/components/profiles/InterestsPanel';
+import { LS_FOLLOW_KEY } from '@/components/clubs/FollowButton';
 
 type Role = 'athlete' | 'club' | 'guest';
 type ApiList<T> = { data?: T[]; [k: string]: any };
-const LS_KEY = 'cp_interests_v1';
+const LS_INTERESTS = 'cp_interests_v1';
+
+function readFollowed(): Record<string, { name?: string; followedAt: number }> {
+  try {
+    const raw = localStorage.getItem(LS_FOLLOW_KEY);
+    if (!raw) return {};
+    const obj = JSON.parse(raw);
+    return obj && typeof obj === 'object' ? obj : {};
+  } catch {
+    return {};
+  }
+}
 
 export default function FeedOpportunities() {
   const [role, setRole] = useState<Role>('guest');
@@ -16,10 +28,11 @@ export default function FeedOpportunities() {
 
   const [items, setItems] = useState<Opportunity[]>([]);
   const [appliedMap, setAppliedMap] = useState<Record<string, boolean>>({});
+  const [followed, setFollowed] = useState<Record<string, { name?: string; followedAt: number }>>({});
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
-  // ruolo
+  // ruolo utente
   useEffect(() => {
     let c = false;
     (async () => {
@@ -40,11 +53,11 @@ export default function FeedOpportunities() {
   // interessi da localStorage
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(LS_KEY);
+      const raw = localStorage.getItem(LS_INTERESTS);
       if (raw) setInterests(JSON.parse(raw));
     } catch { /* noop */ }
     const onStorage = (e: StorageEvent) => {
-      if (e.key === LS_KEY && e.newValue) {
+      if (e.key === LS_INTERESTS && e.newValue) {
         setInterests(JSON.parse(e.newValue));
       }
     };
@@ -52,11 +65,18 @@ export default function FeedOpportunities() {
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
+  // club seguiti
+  useEffect(() => {
+    setFollowed(readFollowed());
+    const onFollow = () => setFollowed(readFollowed());
+    window.addEventListener('cp:followed-clubs-changed', onFollow as any);
+    return () => window.removeEventListener('cp:followed-clubs-changed', onFollow as any);
+  }, []);
+
   const query = useMemo(() => {
     const p = new URLSearchParams();
     p.set('sort', 'recent');
     p.set('pageSize', '20');
-    // usa il primo sport selezionato come filtro principale (scelta semplice per Beta)
     if (interests.sports && interests.sports[0]) p.set('sport', interests.sports[0]);
     if (interests.country) p.set('country', interests.country);
     if (interests.region) p.set('region', interests.region!);
@@ -65,7 +85,7 @@ export default function FeedOpportunities() {
     return p.toString();
   }, [interests]);
 
-  // carica opportunità filtrate
+  // carica opportunità
   useEffect(() => {
     let c = false;
     setLoading(true); setErr(null);
@@ -114,13 +134,27 @@ export default function FeedOpportunities() {
     return () => { c = true; };
   }, [items]);
 
+  // ordina: club seguiti in alto (mantiene l'ordine relativo “recent”)
+  const followedIds = useMemo(() => new Set(Object.keys(followed || {})), [followed]);
+  const sortedItems = useMemo(() => {
+    if (!items.length || followedIds.size === 0) return items;
+    const withIdx = items.map((o, idx) => ({ o, idx }));
+    withIdx.sort((a, b) => {
+      const fa = a.o.created_by && followedIds.has(a.o.created_by) ? 1 : 0;
+      const fb = b.o.created_by && followedIds.has(b.o.created_by) ? 1 : 0;
+      // prima seguiti, poi gli altri; a parità, mantieni ordine originale (recent)
+      return fb - fa || a.idx - b.idx;
+    });
+    return withIdx.map(x => x.o);
+  }, [items, followedIds]);
+
   if (loading) return <div className="bg-white rounded-xl border p-4 text-sm text-gray-500">Caricamento feed…</div>;
   if (err) return <div className="bg-white rounded-xl border p-4 text-sm text-red-700 bg-red-50">Errore: {err}</div>;
-  if (!items.length) return <div className="bg-white rounded-xl border p-4 text-sm text-gray-500">Nessuna opportunità trovata.</div>;
+  if (!sortedItems.length) return <div className="bg-white rounded-xl border p-4 text-sm text-gray-500">Nessuna opportunità trovata.</div>;
 
   return (
     <div className="space-y-4">
-      {items.map((opp) => (
+      {sortedItems.map((opp) => (
         <OpportunityCard
           key={opp.id}
           opp={opp as any}
