@@ -3,21 +3,23 @@
 import { useEffect, useMemo, useState } from 'react';
 import OpportunityCard from '@/components/opportunities/OpportunityCard';
 import type { Opportunity } from '@/types/opportunity';
+import type { Interests } from '@/components/profiles/InterestsPanel';
 
 type Role = 'athlete' | 'club' | 'guest';
-
 type ApiList<T> = { data?: T[]; [k: string]: any };
+const LS_KEY = 'cp_interests_v1';
 
 export default function FeedOpportunities() {
   const [role, setRole] = useState<Role>('guest');
   const [meId, setMeId] = useState<string | null>(null);
+  const [interests, setInterests] = useState<Interests>({ sports: [] });
 
   const [items, setItems] = useState<Opportunity[]>([]);
   const [appliedMap, setAppliedMap] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
-  // carica ruolo
+  // ruolo
   useEffect(() => {
     let c = false;
     (async () => {
@@ -35,13 +37,41 @@ export default function FeedOpportunities() {
     return () => { c = true; };
   }, []);
 
-  // carica opportunità
+  // interessi da localStorage
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (raw) setInterests(JSON.parse(raw));
+    } catch { /* noop */ }
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === LS_KEY && e.newValue) {
+        setInterests(JSON.parse(e.newValue));
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
+  const query = useMemo(() => {
+    const p = new URLSearchParams();
+    p.set('sort', 'recent');
+    p.set('pageSize', '20');
+    // usa il primo sport selezionato come filtro principale (scelta semplice per Beta)
+    if (interests.sports && interests.sports[0]) p.set('sport', interests.sports[0]);
+    if (interests.country) p.set('country', interests.country);
+    if (interests.region) p.set('region', interests.region!);
+    if (interests.province) p.set('province', interests.province!);
+    if (interests.city) p.set('city', interests.city!);
+    return p.toString();
+  }, [interests]);
+
+  // carica opportunità filtrate
   useEffect(() => {
     let c = false;
     setLoading(true); setErr(null);
     (async () => {
       try {
-        const r = await fetch('/api/opportunities?sort=recent&pageSize=20', { credentials: 'include', cache: 'no-store' });
+        const r = await fetch(`/api/opportunities?${query}`, { credentials: 'include', cache: 'no-store' });
         const t = await r.text();
         if (!r.ok) {
           let msg = `HTTP ${r.status}`;
@@ -58,9 +88,9 @@ export default function FeedOpportunities() {
       }
     })();
     return () => { c = true; };
-  }, []);
+  }, [query]);
 
-  // per ogni opportunità, verifica stato candidatura (idempotente)
+  // stato candidatura
   useEffect(() => {
     let c = false;
     async function probe(id: string) {
@@ -79,7 +109,7 @@ export default function FeedOpportunities() {
         if (!c) setAppliedMap(prev => ({ ...prev, [id]: false }));
       }
     }
-    // limita a 20 per sicurezza
+    setAppliedMap({});
     items.slice(0, 20).forEach(o => probe(o.id));
     return () => { c = true; };
   }, [items]);

@@ -2,9 +2,17 @@
 
 import ProfileMiniCard from '@/components/profiles/ProfileMiniCard';
 import FeedOpportunities from '@/components/feed/FeedOpportunities';
+import InterestsPanel, { type Interests } from '@/components/profiles/InterestsPanel';
 
 export default function FeedPage() {
-  const interests = ['Calcio', 'Siracusa', 'Juniores', 'Attaccante'];
+  // stato solo per forzare refresh del feed quando salvo gli interessi
+  let interestsRef: Interests | undefined;
+
+  function handleInterestsChange(next: Interests) {
+    // Non manteniamo stato qui: FeedOpportunities rilegge dal localStorage.
+    // Questo handler serve solo a forzare un eventuale side-effect in futuro.
+    interestsRef = next;
+  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
@@ -19,19 +27,10 @@ export default function FeedPage() {
           foot="Destro"
           valueEUR={12500}
         />
-        <section className="bg-white rounded-xl border p-4">
-          <div className="text-sm font-semibold mb-2">Interessi</div>
-          <div className="flex flex-wrap gap-2">
-            {interests.map((t) => (
-              <span key={t} className="text-xs px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-                {t}
-              </span>
-            ))}
-          </div>
-        </section>
+        <InterestsPanel onChange={handleInterestsChange} />
       </aside>
 
-      {/* Center column: feed vero */}
+      {/* Center column: feed */}
       <section className="md:col-span-6 space-y-4">
         {/* Composer placeholder */}
         <div className="bg-white rounded-xl border p-4">
