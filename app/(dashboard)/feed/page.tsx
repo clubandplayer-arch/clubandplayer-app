@@ -1,7 +1,7 @@
 'use client';
 
 import FeedCard from '@/components/feed/FeedCard';
-import ProfileMiniCard from '@/components/profile/ProfileMiniCard';
+import ProfileMiniCard from '@/components/profiles/ProfileMiniCard';
 
 export default function FeedPage() {
   // Mock semplice per la preview: in seguito leggeremo /api/feed
