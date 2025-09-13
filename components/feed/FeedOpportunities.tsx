@@ -4,21 +4,36 @@ import { useEffect, useMemo, useState } from 'react';
 import OpportunityCard from '@/components/opportunities/OpportunityCard';
 import type { Opportunity } from '@/types/opportunity';
 import type { Interests } from '@/components/profiles/InterestsPanel';
+import { LS_INTERESTS } from '@/components/profiles/InterestsPanel';
 import { LS_FOLLOW_KEY } from '@/components/clubs/FollowButton';
+import { LS_SHOW_ONLY_FOLLOWED } from '@/components/feed/FollowedClubs';
 
 type Role = 'athlete' | 'club' | 'guest';
 type ApiList<T> = { data?: T[]; [k: string]: any };
-const LS_INTERESTS = 'cp_interests_v1';
+
+function safeWindow() {
+  return typeof window !== 'undefined';
+}
+
+function readInterests(): Interests {
+  if (!safeWindow()) return { sports: [] };
+  try {
+    const raw = localStorage.getItem(LS_INTERESTS);
+    return raw ? JSON.parse(raw) : { sports: [] };
+  } catch { return { sports: [] }; }
+}
 
 function readFollowed(): Record<string, { name?: string; followedAt: number }> {
+  if (!safeWindow()) return {};
   try {
     const raw = localStorage.getItem(LS_FOLLOW_KEY);
-    if (!raw) return {};
-    const obj = JSON.parse(raw);
-    return obj && typeof obj === 'object' ? obj : {};
-  } catch {
-    return {};
-  }
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+
+function readOnlyFollowed(): boolean {
+  if (!safeWindow()) return false;
+  return localStorage.getItem(LS_SHOW_ONLY_FOLLOWED) === '1';
 }
 
 export default function FeedOpportunities() {
@@ -29,6 +44,7 @@ export default function FeedOpportunities() {
   const [items, setItems] = useState<Opportunity[]>([]);
   const [appliedMap, setAppliedMap] = useState<Record<string, boolean>>({});
   const [followed, setFollowed] = useState<Record<string, { name?: string; followedAt: number }>>({});
+  const [onlyFollowed, setOnlyFollowed] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
@@ -50,27 +66,31 @@ export default function FeedOpportunities() {
     return () => { c = true; };
   }, []);
 
-  // interessi da localStorage
+  // interessi + seguiti + filtro “solo seguiti”
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(LS_INTERESTS);
-      if (raw) setInterests(JSON.parse(raw));
-    } catch { /* noop */ }
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === LS_INTERESTS && e.newValue) {
-        setInterests(JSON.parse(e.newValue));
-      }
-    };
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
-  }, []);
-
-  // club seguiti
-  useEffect(() => {
+    setInterests(readInterests());
     setFollowed(readFollowed());
-    const onFollow = () => setFollowed(readFollowed());
-    window.addEventListener('cp:followed-clubs-changed', onFollow as any);
-    return () => window.removeEventListener('cp:followed-clubs-changed', onFollow as any);
+    setOnlyFollowed(readOnlyFollowed());
+
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === LS_INTERESTS) setInterests(readInterests());
+      if (e.key === LS_FOLLOW_KEY) setFollowed(readFollowed());
+      if (e.key === LS_SHOW_ONLY_FOLLOWED) setOnlyFollowed(readOnlyFollowed());
+    };
+    const onInterests = () => setInterests(readInterests());
+    const onFollowed = () => setFollowed(readFollowed());
+    const onOnly = () => setOnlyFollowed(readOnlyFollowed());
+
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('cp:interests-changed', onInterests as any);
+    window.addEventListener('cp:followed-clubs-changed', onFollowed as any);
+    window.addEventListener('cp:followed-filter-changed', onOnly as any);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('cp:interests-changed', onInterests as any);
+      window.removeEventListener('cp:followed-clubs-changed', onFollowed as any);
+      window.removeEventListener('cp:followed-filter-changed', onOnly as any);
+    };
   }, []);
 
   const query = useMemo(() => {
@@ -134,19 +154,26 @@ export default function FeedOpportunities() {
     return () => { c = true; };
   }, [items]);
 
-  // ordina: club seguiti in alto (mantiene l'ordine relativo “recent”)
   const followedIds = useMemo(() => new Set(Object.keys(followed || {})), [followed]);
+
+  // filtra se “solo seguiti”
+  const filteredItems = useMemo(() => {
+    if (!onlyFollowed) return items;
+    if (followedIds.size === 0) return [];
+    return items.filter(o => o.created_by && followedIds.has(o.created_by));
+  }, [items, onlyFollowed, followedIds]);
+
+  // ordina: seguiti in alto, poi gli altri (mantiene l'ordine relativo “recent”)
   const sortedItems = useMemo(() => {
-    if (!items.length || followedIds.size === 0) return items;
-    const withIdx = items.map((o, idx) => ({ o, idx }));
+    if (!filteredItems.length || followedIds.size === 0) return filteredItems;
+    const withIdx = filteredItems.map((o, idx) => ({ o, idx }));
     withIdx.sort((a, b) => {
       const fa = a.o.created_by && followedIds.has(a.o.created_by) ? 1 : 0;
       const fb = b.o.created_by && followedIds.has(b.o.created_by) ? 1 : 0;
-      // prima seguiti, poi gli altri; a parità, mantieni ordine originale (recent)
       return fb - fa || a.idx - b.idx;
     });
     return withIdx.map(x => x.o);
-  }, [items, followedIds]);
+  }, [filteredItems, followedIds]);
 
   if (loading) return <div className="bg-white rounded-xl border p-4 text-sm text-gray-500">Caricamento feed…</div>;
   if (err) return <div className="bg-white rounded-xl border p-4 text-sm text-red-700 bg-red-50">Errore: {err}</div>;

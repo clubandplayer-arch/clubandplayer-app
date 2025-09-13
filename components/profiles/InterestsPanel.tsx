@@ -6,222 +6,213 @@ import { COUNTRIES, ITALY_REGIONS, PROVINCES_BY_REGION, CITIES_BY_PROVINCE } fro
 
 export type Interests = {
   sports: string[];
-  country?: string;  // label (es. "Italia")
+  country?: string;
   region?: string;
   province?: string;
   city?: string;
 };
 
-const LS_KEY = 'cp_interests_v1';
+export const LS_INTERESTS = 'cp_interests_v1';
 
-export default function InterestsPanel({
-  value,
-  onChange,
-}: {
-  value?: Interests;
-  onChange?: (v: Interests) => void;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [local, setLocal] = useState<Interests>({ sports: [] });
+type Props = {
+  onChange?: (next: Interests) => void;
+};
 
-  // load from props or localStorage
+function safeWindow() {
+  return typeof window !== 'undefined';
+}
+
+function readInterests(): Interests {
+  if (!safeWindow()) return { sports: [] };
+  try {
+    const raw = localStorage.getItem(LS_INTERESTS);
+    if (!raw) return { sports: [] };
+    const obj = JSON.parse(raw);
+    if (!obj || typeof obj !== 'object') return { sports: [] };
+    return {
+      sports: Array.isArray(obj.sports) ? obj.sports.filter(Boolean) : [],
+      country: obj.country || undefined,
+      region: obj.region || undefined,
+      province: obj.province || undefined,
+      city: obj.city || undefined,
+    };
+  } catch {
+    return { sports: [] };
+  }
+}
+
+function writeInterests(next: Interests) {
+  if (!safeWindow()) return;
+  try {
+    localStorage.setItem(LS_INTERESTS, JSON.stringify(next));
+    window.dispatchEvent(new CustomEvent('cp:interests-changed'));
+  } catch {
+    /* noop */
+  }
+}
+
+export default function InterestsPanel({ onChange }: Props) {
+  const [state, setState] = useState<Interests>({ sports: [] });
+
+  // carica iniziale
   useEffect(() => {
-    if (value) {
-      setLocal(value);
-      return;
-    }
-    try {
-      const raw = localStorage.getItem(LS_KEY);
-      if (raw) setLocal(JSON.parse(raw));
-    } catch {
-      /* noop */
-    }
-  }, [value]);
+    const init = readInterests();
+    setState(init);
+    // opzionale: notifica subito chi ascolta
+    onChange?.(init);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // derived lists
-  const selectedCountryCode = useMemo(() => {
-    if (!local.country) return '';
-    const found = COUNTRIES.find((c) => c.label === local.country);
-    return found?.code ?? (local.country === 'Italia' ? 'IT' : '');
-  }, [local.country]);
+  const countryCode = useMemo<string>(() => {
+    if (!state.country) return 'IT';
+    const found = COUNTRIES.find((c) => c.label === state.country);
+    return found?.code ?? (state.country || 'IT');
+  }, [state.country]);
 
   const provinces = useMemo(
-    () => (selectedCountryCode === 'IT' && local.region ? PROVINCES_BY_REGION[local.region] ?? [] : []),
-    [selectedCountryCode, local.region],
+    () => (countryCode === 'IT' ? PROVINCES_BY_REGION[state.region ?? ''] ?? [] : []),
+    [countryCode, state.region]
   );
   const cities = useMemo(
-    () => (selectedCountryCode === 'IT' && local.province ? CITIES_BY_PROVINCE[local.province] ?? [] : []),
-    [selectedCountryCode, local.province],
+    () => (countryCode === 'IT' ? CITIES_BY_PROVINCE[state.province ?? ''] ?? [] : []),
+    [countryCode, state.province]
   );
 
-  function persist(next: Interests) {
-    try {
-      localStorage.setItem(LS_KEY, JSON.stringify(next));
-    } catch {}
-    onChange?.(next);
-  }
-
-  function toggleSport(s: string) {
-    const set = new Set(local.sports);
-    if (set.has(s)) set.delete(s); else set.add(s);
-    const next = { ...local, sports: Array.from(set) };
-    setLocal(next);
-  }
-
-  function save() {
-    const next = { ...local };
-    // cleanup cascata
-    if (selectedCountryCode !== 'IT') {
+  function set<K extends keyof Interests>(k: K, v: Interests[K]) {
+    const next: Interests = { ...state, [k]: v };
+    // reset a cascata
+    if (k === 'country') {
       next.region = undefined;
       next.province = undefined;
       next.city = undefined;
-    } else {
-      if (!next.region) { next.province = undefined; next.city = undefined; }
-      if (!next.province) { next.city = undefined; }
     }
-    setLocal(next);
-    persist(next);
-    setEditing(false);
+    if (k === 'region') {
+      next.province = undefined;
+      next.city = undefined;
+    }
+    if (k === 'province') {
+      next.city = undefined;
+    }
+    setState(next);
+    writeInterests(next);
+    onChange?.(next);
   }
+
+  const selSport = state.sports[0] ?? '';
 
   return (
     <section className="bg-white rounded-xl border p-4">
-      <div className="flex items-center justify-between">
-        <div className="text-sm font-semibold">Interessi</div>
-        <button
-          className="text-xs rounded-lg border px-2 py-1 hover:bg-gray-50"
-          onClick={() => setEditing((v) => !v)}
-        >
-          {editing ? 'Chiudi' : 'Modifica'}
-        </button>
-      </div>
+      <h3 className="text-sm font-semibold">Interessi feed</h3>
 
-      {!editing ? (
-        <div className="mt-3 space-y-2">
-          <div className="flex flex-wrap gap-2">
-            {(local.sports?.length ? local.sports : ['Tutti gli sport']).map((t) => (
-              <span key={t} className="text-xs px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-                {t}
-              </span>
+      <div className="mt-3 grid grid-cols-1 gap-3">
+        <div>
+          <label className="block text-xs text-gray-600 mb-1">Sport</label>
+          <select
+            className="w-full rounded-lg border px-3 py-2 text-sm"
+            value={selSport}
+            onChange={(e) => set('sports', e.target.value ? [e.target.value] : [])}
+          >
+            <option value="">Tutti</option>
+            {SPORTS.map((s) => (
+              <option key={s} value={s}>{s}</option>
             ))}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {local.country && <span className="text-xs px-2 py-1 rounded-full bg-gray-50 border">{local.country}</span>}
-            {local.region && <span className="text-xs px-2 py-1 rounded-full bg-gray-50 border">{local.region}</span>}
-            {local.province && <span className="text-xs px-2 py-1 rounded-full bg-gray-50 border">{local.province}</span>}
-            {local.city && <span className="text-xs px-2 py-1 rounded-full bg-gray-50 border">{local.city}</span>}
-            {!local.country && <span className="text-xs text-gray-500">Nessuna area selezionata</span>}
-          </div>
+          </select>
         </div>
-      ) : (
-        <div className="mt-3 space-y-3">
-          <div>
-            <div className="text-xs text-gray-600 mb-1">Sport</div>
-            <div className="grid grid-cols-2 gap-2">
-              {SPORTS.map((s) => (
-                <label key={s} className="flex items-center gap-2 text-xs">
-                  <input
-                    type="checkbox"
-                    className="rounded"
-                    checked={local.sports?.includes(s) ?? false}
-                    onChange={() => toggleSport(s)}
-                  />
-                  {s}
-                </label>
+
+        <div>
+          <label className="block text-xs text-gray-600 mb-1">Paese</label>
+          <select
+            className="w-full rounded-lg border px-3 py-2 text-sm"
+            value={state.country ?? 'Italia'}
+            onChange={(e) => set('country', e.target.value)}
+          >
+            {COUNTRIES.map((c) => (
+              <option key={c.code} value={c.label}>{c.label}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-xs text-gray-600 mb-1">Regione</label>
+          {countryCode === 'IT' ? (
+            <select
+              className="w-full rounded-lg border px-3 py-2 text-sm"
+              value={state.region ?? ''}
+              onChange={(e) => set('region', e.target.value || undefined)}
+            >
+              <option value="">—</option>
+              {ITALY_REGIONS.map((r) => (
+                <option key={r} value={r}>{r}</option>
               ))}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-2">
-            <div>
-              <div className="text-xs text-gray-600 mb-1">Paese</div>
-              <select
-                className="w-full rounded-lg border px-2 py-1.5 text-sm"
-                value={local.country || ''}
-                onChange={(e) => setLocal((v) => ({ ...v, country: e.target.value || undefined }))}
-              >
-                <option value="">—</option>
-                {COUNTRIES.map((c) => (
-                  <option key={c.code} value={c.label}>{c.label}</option>
-                ))}
-              </select>
-            </div>
-
-            {selectedCountryCode === 'IT' && (
-              <>
-                <div>
-                  <div className="text-xs text-gray-600 mb-1">Regione</div>
-                  <select
-                    className="w-full rounded-lg border px-2 py-1.5 text-sm"
-                    value={local.region || ''}
-                    onChange={(e) =>
-                      setLocal((v) => ({ ...v, region: e.target.value || undefined, province: undefined, city: undefined }))
-                    }
-                  >
-                    <option value="">—</option>
-                    {ITALY_REGIONS.map((r) => (
-                      <option key={r} value={r}>{r}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <div className="text-xs text-gray-600 mb-1">Provincia</div>
-                  {provinces.length ? (
-                    <select
-                      className="w-full rounded-lg border px-2 py-1.5 text-sm"
-                      value={local.province || ''}
-                      onChange={(e) =>
-                        setLocal((v) => ({ ...v, province: e.target.value || undefined, city: undefined }))
-                      }
-                    >
-                      <option value="">—</option>
-                      {provinces.map((p) => (
-                        <option key={p} value={p}>{p}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      className="w-full rounded-lg border px-2 py-1.5 text-sm"
-                      placeholder="Provincia"
-                      value={local.province || ''}
-                      onChange={(e) => setLocal((v) => ({ ...v, province: e.target.value || undefined }))}
-                    />
-                  )}
-                </div>
-
-                <div>
-                  <div className="text-xs text-gray-600 mb-1">Città</div>
-                  {cities.length ? (
-                    <select
-                      className="w-full rounded-lg border px-2 py-1.5 text-sm"
-                      value={local.city || ''}
-                      onChange={(e) => setLocal((v) => ({ ...v, city: e.target.value || undefined }))}
-                    >
-                      <option value="">—</option>
-                      {cities.map((c) => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      className="w-full rounded-lg border px-2 py-1.5 text-sm"
-                      placeholder="Città"
-                      value={local.city || ''}
-                      onChange={(e) => setLocal((v) => ({ ...v, city: e.target.value || undefined }))}
-                    />
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-
-          <div className="flex justify-end gap-2">
-            <button className="rounded-lg border px-3 py-1.5 text-sm" onClick={() => setEditing(false)}>Annulla</button>
-            <button className="rounded-lg bg-blue-600 text-white px-3 py-1.5 text-sm" onClick={save}>Salva</button>
-          </div>
+            </select>
+          ) : (
+            <input
+              className="w-full rounded-lg border px-3 py-2 text-sm"
+              value={state.region ?? ''}
+              onChange={(e) => set('region', e.target.value || undefined)}
+            />
+          )}
         </div>
-      )}
+
+        <div>
+          <label className="block text-xs text-gray-600 mb-1">Provincia</label>
+          {countryCode === 'IT' && provinces.length > 0 ? (
+            <select
+              className="w-full rounded-lg border px-3 py-2 text-sm"
+              value={state.province ?? ''}
+              onChange={(e) => set('province', e.target.value || undefined)}
+            >
+              <option value="">—</option>
+              {provinces.map((p) => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
+          ) : (
+            <input
+              className="w-full rounded-lg border px-3 py-2 text-sm"
+              value={state.province ?? ''}
+              onChange={(e) => set('province', e.target.value || undefined)}
+            />
+          )}
+        </div>
+
+        <div>
+          <label className="block text-xs text-gray-600 mb-1">Città</label>
+          {countryCode === 'IT' && cities.length > 0 ? (
+            <select
+              className="w-full rounded-lg border px-3 py-2 text-sm"
+              value={state.city ?? ''}
+              onChange={(e) => set('city', e.target.value || undefined)}
+            >
+              <option value="">—</option>
+              {cities.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          ) : (
+            <input
+              className="w-full rounded-lg border px-3 py-2 text-sm"
+              value={state.city ?? ''}
+              onChange={(e) => set('city', e.target.value || undefined)}
+            />
+          )}
+        </div>
+
+        <div className="flex justify-end">
+          <button
+            type="button"
+            className="text-xs px-3 py-1.5 rounded-lg border hover:bg-gray-50"
+            onClick={() => {
+              const next: Interests = { sports: [] };
+              setState(next);
+              writeInterests(next);
+              onChange?.(next);
+            }}
+          >
+            Reset
+          </button>
+        </div>
+      </div>
     </section>
   );
 }
