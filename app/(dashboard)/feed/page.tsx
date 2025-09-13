@@ -1,10 +1,9 @@
 'use client';
 
-import FeedCard from '@/components/feed/FeedCard';
 import ProfileMiniCard from '@/components/profiles/ProfileMiniCard';
+import FeedOpportunities from '@/components/feed/FeedOpportunities';
 
 export default function FeedPage() {
-  // Mock semplice per la preview: in seguito leggeremo /api/feed
   const interests = ['Calcio', 'Siracusa', 'Juniores', 'Attaccante'];
 
   return (
@@ -24,10 +23,7 @@ export default function FeedPage() {
           <div className="text-sm font-semibold mb-2">Interessi</div>
           <div className="flex flex-wrap gap-2">
             {interests.map((t) => (
-              <span
-                key={t}
-                className="text-xs px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200"
-              >
+              <span key={t} className="text-xs px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
                 {t}
               </span>
             ))}
@@ -35,7 +31,7 @@ export default function FeedPage() {
         </section>
       </aside>
 
-      {/* Center column */}
+      {/* Center column: feed vero */}
       <section className="md:col-span-6 space-y-4">
         {/* Composer placeholder */}
         <div className="bg-white rounded-xl border p-4">
@@ -52,29 +48,7 @@ export default function FeedPage() {
           </div>
         </div>
 
-        {/* Opportunity-like card */}
-        <FeedCard
-          headerTitle="ASD Club Atlético Carlentini"
-          headerSubtitle="Carlentini • Sicilia"
-          timeLabel="2h fa"
-          title="Cercasi Attaccante Juniores"
-          text="Allenamenti serali, campionato provinciale, età 17–20, preferibilmente piede destro."
-          tags={['Calcio', 'Attaccante', '17–20', 'Maschile']}
-          actions={[
-            { label: 'Candidati', variant: 'primary' },
-            { label: 'Salva', variant: 'ghost' },
-            { label: 'Condividi', variant: 'ghost' },
-          ]}
-        />
-
-        {/* Activity card */}
-        <FeedCard
-          headerTitle="SSD Siracusa Calcio"
-          headerSubtitle="Aggiornamento"
-          timeLabel="Ieri"
-          text="Benvenuto al nuovo mister del settore giovanile! 💙"
-          actions={[{ label: 'Mi piace', variant: 'ghost' }, { label: 'Commenta', variant: 'ghost' }]}
-        />
+        <FeedOpportunities />
       </section>
 
       {/* Right column */}
