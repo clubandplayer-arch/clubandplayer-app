@@ -12,20 +12,31 @@ function formatBracket(min: number | null | undefined, max: number | null | unde
   return '—';
 }
 
+// Estendiamo il tipo per supportare campi opzionali non presenti in types/opportunity
+type OpportunityExt = Opportunity & {
+  owner_id?: string | null;
+  created_by?: string | null;
+  gender?: 'male' | 'female' | 'mixed' | null;
+};
+
 export default function OpportunityCard({
   opp,
   userRole = 'guest',
   currentUserId,
   hasApplied,
 }: {
-  opp: Opportunity;
+  opp: OpportunityExt;
   userRole?: 'athlete' | 'club' | 'guest';
   currentUserId?: string | null;
   hasApplied?: boolean;
 }) {
   const place = [opp.city, opp.province, opp.region, opp.country].filter(Boolean).join(', ');
-  const isOwner = !!currentUserId && (opp.created_by === currentUserId || opp.owner_id === currentUserId);
-  const gender = opp.gender === 'male' ? 'Maschile' : opp.gender === 'female' ? 'Femminile' : opp.gender === 'mixed' ? 'Misto' : '—';
+  const isOwner =
+    !!currentUserId && (opp.created_by === currentUserId || opp.owner_id === currentUserId);
+  const gender =
+    opp.gender === 'male' ? 'Maschile' :
+    opp.gender === 'female' ? 'Femminile' :
+    opp.gender === 'mixed' ? 'Misto' : '—';
 
   return (
     <article className="bg-white rounded-2xl border p-4 md:p-6">
@@ -33,7 +44,8 @@ export default function OpportunityCard({
         <div className="min-w-0">
           <h1 className="text-xl md:text-2xl font-semibold break-words">{opp.title}</h1>
           <div className="text-sm text-gray-500">
-            {opp.club_name ?? '—'} {place ? `• ${place}` : ''} • {new Date(opp.created_at).toLocaleString()}
+            {opp.club_name ?? '—'} {place ? `• ${place}` : ''} •{' '}
+            {opp.created_at ? new Date(opp.created_at).toLocaleString() : '—'}
           </div>
         </div>
 
@@ -76,7 +88,6 @@ export default function OpportunityCard({
         </section>
       ) : null}
 
-      {/* Footer secondario */}
       <footer className="mt-6 flex flex-wrap items-center gap-2 text-sm">
         <Link href="/opportunities" className="rounded-lg border px-3 py-1.5 hover:bg-gray-50">
           Torna alla lista
