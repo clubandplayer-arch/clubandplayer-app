@@ -4,8 +4,6 @@ import Link from 'next/link';
 import ApplyCell from '@/components/opportunities/ApplyCell';
 import type { Opportunity } from '@/types/opportunity';
 
-type UserRole = 'athlete' | 'club' | 'guest';
-
 function formatBracket(min: number | null, max: number | null) {
   if (min == null && max == null) return '—';
   if (min != null && max != null) return `${min}-${max}`;
@@ -13,6 +11,8 @@ function formatBracket(min: number | null, max: number | null) {
   if (max != null) return `≤${max}`;
   return '—';
 }
+
+type Role = 'athlete' | 'club' | 'guest';
 
 export default function OpportunitiesTable({
   items,
@@ -23,16 +23,12 @@ export default function OpportunitiesTable({
 }: {
   items: Opportunity[];
   currentUserId?: string | null;
-  userRole?: UserRole;
+  userRole?: Role;
   onEdit?: (opp: Opportunity) => void;
   onDelete?: (opp: Opportunity) => void;
 }) {
   if (!items.length) {
-    return (
-      <div className="text-sm text-gray-500 py-8">
-        Nessuna opportunità trovata. Prova a rimuovere i filtri.
-      </div>
-    );
+    return <div className="text-sm text-gray-500 py-8">Nessuna opportunità trovata. Prova a rimuovere i filtri.</div>;
   }
 
   return (
@@ -47,20 +43,19 @@ export default function OpportunitiesTable({
             <th className="px-4 py-2">Età</th>
             <th className="px-4 py-2">Club</th>
             <th className="px-4 py-2">Creato</th>
-            <th className="px-4 py-2 w-44">Azioni</th>
+            <th className="px-4 py-2 w-40">Azioni</th>
           </tr>
         </thead>
         <tbody>
           {items.map((o) => {
-            const canEdit = !!currentUserId && o.created_by === currentUserId;
+            const canEdit = !!currentUserId && (o.created_by === currentUserId);
             const place = [o.city, o.province, o.region, o.country].filter(Boolean).join(', ');
+            const showApply = userRole === 'athlete' && !canEdit;
+
             return (
               <tr key={o.id} className="border-t">
                 <td className="px-4 py-2 font-medium">
-                  <Link
-                    href={`/opportunities/${o.id}`}
-                    className="underline underline-offset-2 hover:no-underline"
-                  >
+                  <Link href={`/opportunities/${o.id}`} className="hover:underline">
                     {o.title}
                   </Link>
                 </td>
@@ -69,13 +64,11 @@ export default function OpportunitiesTable({
                 <td className="px-4 py-2">{o.role ?? '—'}</td>
                 <td className="px-4 py-2">{formatBracket(o.age_min, o.age_max)}</td>
                 <td className="px-4 py-2">{o.club_name ?? '—'}</td>
-                <td className="px-4 py-2">{new Date(o.created_at).toLocaleString()}</td>
+                <td className="px-4 py-2">{o.created_at ? new Date(o.created_at).toLocaleString() : '—'}</td>
                 <td className="px-4 py-2">
                   <div className="flex items-center gap-2">
-                    {/* Azione principale: solo atleti */}
-                    {userRole === 'athlete' && (
-                      <ApplyCell opportunityId={o.id} ownerId={o.created_by ?? null} />
-                    )}
+                    {/* Azione principale: Candidati solo atleti non owner */}
+                    {showApply && <ApplyCell opportunityId={o.id} ownerId={o.created_by ?? null} />}
 
                     {/* Azioni extra per l'owner */}
                     {canEdit && (
