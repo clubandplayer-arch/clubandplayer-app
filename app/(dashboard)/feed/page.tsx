@@ -3,19 +3,19 @@
 import ProfileMiniCard from '@/components/profiles/ProfileMiniCard';
 import FeedOpportunities from '@/components/feed/FeedOpportunities';
 import InterestsPanel, { type Interests } from '@/components/profiles/InterestsPanel';
+import FeedComposer from '@/components/feed/FeedComposer';
 
 export default function FeedPage() {
   // stato solo per forzare refresh del feed quando salvo gli interessi
   let interestsRef: Interests | undefined;
 
   function handleInterestsChange(next: Interests) {
-    // Non manteniamo stato qui: FeedOpportunities rilegge dal localStorage.
-    // Questo handler serve solo a forzare un eventuale side-effect in futuro.
+    // FeedOpportunities rilegge dal localStorage; qui possiamo lasciare solo il "tap" se serve
     interestsRef = next;
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-12 gap-6 p-4 md:p-6">
       {/* Left column */}
       <aside className="md:col-span-3 space-y-4">
         <ProfileMiniCard
@@ -32,21 +32,7 @@ export default function FeedPage() {
 
       {/* Center column: feed */}
       <section className="md:col-span-6 space-y-4">
-        {/* Composer placeholder */}
-        <div className="bg-white rounded-xl border p-4">
-          <div className="flex gap-3">
-            <div className="h-10 w-10 rounded-full bg-gray-200" />
-            <input
-              className="flex-1 rounded-lg border px-3 py-2"
-              placeholder="Condividi un aggiornamento o pubblica un'opportunità"
-            />
-          </div>
-          <div className="mt-3 flex gap-2 text-xs">
-            <button className="rounded-lg border px-2 py-1">Post</button>
-            <button className="rounded-lg border px-2 py-1">Opportunità</button>
-          </div>
-        </div>
-
+        <FeedComposer />
         <FeedOpportunities />
       </section>
 
