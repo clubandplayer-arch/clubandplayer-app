@@ -15,7 +15,6 @@ const GENDERS: Array<{ value: Gender; label: string }> = [
 
 function rangeFromBracket(b: AgeBracket | '' | undefined): { age_min: number | null; age_max: number | null } {
   if (!b) return { age_min: null, age_max: null };
-  // Formati supportati: "17-20", "31+", "≤16" (eventuale), "26-30"
   if (b.endsWith('+')) {
     const n = parseInt(b.replace('+', ''), 10);
     return Number.isFinite(n) ? { age_min: n, age_max: null } : { age_min: null, age_max: null };
@@ -40,12 +39,17 @@ function bracketFromRange(min?: number | null, max?: number | null): AgeBracket 
   return '';
 }
 
+// Estendiamo il tipo SOLO per il prop initial, senza toccare i tipi globali
+type OpportunityInitial = Partial<Opportunity> & {
+  gender?: Gender | null;
+};
+
 export default function OpportunityForm({
   initial,
   onCancel,
   onSaved,
 }: {
-  initial?: Partial<Opportunity>;
+  initial?: OpportunityInitial;
   onCancel: () => void;
   onSaved: (saved: Opportunity) => void;
 }) {
@@ -118,7 +122,6 @@ export default function OpportunityForm({
         sport,
         role: role || null,
         gender: gender as Gender,
-        // manteniamo sia bracket (per compat) sia min/max (per query)
         age_bracket: ageBracket || undefined,
         age_min,
         age_max,
@@ -324,7 +327,9 @@ export default function OpportunityForm({
 
           {/* GENERE obbligatorio */}
           <div>
-            <label className="block text-sm font-medium mb-1">Genere <span className="text-red-600">*</span></label>
+            <label className="block text-sm font-medium mb-1">
+              Genere <span className="text-red-600">*</span>
+            </label>
             <select
               className="w-full rounded-xl border px-3 py-2"
               value={gender}
