@@ -1,3 +1,4 @@
+// components/shell/AppShell.tsx
 'use client';
 
 import Link from 'next/link';
@@ -31,9 +32,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   const NavLink = ({ href, label }: { href: string; label: string }) => {
-    const active =
-      pathname === href ||
-      (href !== '/' && pathname.startsWith(href));
+    const active = pathname === href || (href !== '/' && pathname.startsWith(href));
     return (
       <Link
         href={href}
@@ -45,6 +44,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </Link>
     );
   };
+
+  // destinazione “Candidature” in base al ruolo
+  const applicationsHref = role === 'club' ? '/club/applicants' : '/my/applications';
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -60,7 +62,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <NavLink href="/feed" label="Feed" />
             <NavLink href="/opportunities" label="Opportunità" />
             <NavLink href="/clubs" label="Club" />
-            <NavLink href="/profile" label="Profilo" />
+            <NavLink href={applicationsHref} label="Candidature" />
+            {role !== 'guest' && <NavLink href="/profile" label="Profilo" />}
           </nav>
 
           <div className="ml-auto flex items-center gap-2">
@@ -70,7 +73,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             />
             {role === 'club' && (
               <Link
-                href="/opportunities/new"
+                href="/opportunities?new=1"
                 className="rounded-lg bg-blue-600 text-white px-3 py-1.5"
               >
                 + Nuova opportunità
