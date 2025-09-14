@@ -1,120 +1,78 @@
 'use client';
 
 import Link from 'next/link';
-import FollowButton from '@/components/clubs/FollowButton';
-import type { Opportunity, Gender } from '@/types/opportunity';
+import ApplyCTA from '@/components/opportunities/ApplyCTA';
+import type { Opportunity } from '@/types/opportunity';
 
-function formatBracket(min: number | null | undefined, max: number | null | undefined) {
-  if (min == null && max == null) return '—';
-  if (min != null && max != null) return `${min}-${max}`;
-  if (min != null) return `${min}+`;
-  if (max != null) return `≤${max}`;
-  return '—';
-}
+type Role = 'athlete' | 'club' | 'guest';
 
-function genderLabel(g?: Gender | null) {
-  if (g === 'male') return 'Maschile';
-  if (g === 'female') return 'Femminile';
-  if (g === 'mixed') return 'Misto';
-  return '—';
-}
+type Props = {
+  opp: Opportunity;
+  currentUserId?: string | null;
+  userRole?: Role;
+  alreadyApplied?: boolean;
+  onApplied?: (id: string) => void;
+};
 
 export default function OpportunityCard({
   opp,
   currentUserId,
   userRole = 'guest',
-  // accettiamo entrambi i nomi per compatibilità
   alreadyApplied,
-  hasApplied,
-}: {
-  opp: Opportunity;
-  currentUserId?: string | null;
-  userRole?: 'athlete' | 'club' | 'guest';
-  alreadyApplied?: boolean;
-  hasApplied?: boolean; // alias supportato per compatibilità con il feed esistente
-}) {
-  const place = [opp.city, opp.province, opp.region, opp.country]
-    .filter(Boolean)
-    .join(', ');
-  const createdAt = opp.created_at ? new Date(opp.created_at).toLocaleString() : '';
-  const ownerId = opp.created_by ?? opp.owner_id ?? null;
+  onApplied,
+}: Props) {
+  const place = [opp.city, opp.province, opp.region, opp.country].filter(Boolean).join(', ');
+
+  const genderLabel =
+    (opp as any).gender === 'male'
+      ? 'Maschile'
+      : (opp as any).gender === 'female'
+      ? 'Femminile'
+      : (opp as any).gender === 'mixed'
+      ? 'Misto'
+      : undefined;
+
+  const ageLabel =
+    opp.age_min != null && opp.age_max != null
+      ? `${opp.age_min}-${opp.age_max}`
+      : opp.age_min != null && opp.age_max == null
+      ? `${opp.age_min}+`
+      : opp.age_min == null && opp.age_max != null
+      ? `≤${opp.age_max}`
+      : undefined;
 
   const canApply = userRole === 'athlete';
-  const applied = (alreadyApplied ?? hasApplied) ?? false;
 
   return (
-    <article className="bg-white rounded-2xl border p-4 md:p-5 space-y-3">
-      {/* Header: titolo + badge */}
+    <article className="bg-white rounded-xl border p-4">
       <div className="flex items-start justify-between gap-3">
-        <h2 className="text-lg md:text-xl font-semibold leading-snug">
-          <Link href={`/opportunities/${opp.id}`} className="hover:underline">
-            {opp.title}
+        <div className="min-w-0">
+          <Link href={`/opportunities/${opp.id}`} className="block">
+            <h3 className="text-base md:text-lg font-semibold truncate">{opp.title}</h3>
           </Link>
-        </h2>
-
-        <div className="flex items-center gap-2">
-          {applied && (
-            <span className="inline-flex items-center rounded-full bg-green-50 text-green-700 px-2 py-0.5 text-xs">
-              Già candidato
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Meta principali */}
-      <div className="flex flex-wrap items-center gap-2 text-sm text-gray-700">
-        {opp.sport && (
-          <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5">
-            {opp.sport}
-          </span>
-        )}
-        {opp.role && (
-          <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5">
-            {opp.role}
-          </span>
-        )}
-        {opp.gender && (
-          <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5">
-            {genderLabel(opp.gender)}
-          </span>
-        )}
-        <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5">
-          Età: {formatBracket(opp.age_min, opp.age_max)}
-        </span>
-      </div>
-
-      {/* Club + follow + luogo/data */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <span className="font-medium">{opp.club_name ?? 'Club'}</span>
-          {/* Follow solo se abbiamo un ownerId valido */}
-          {ownerId && <FollowButton clubId={ownerId} clubName={opp.club_name ?? undefined} />}
+          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm text-gray-600">
+            {opp.sport && <span>{opp.sport}</span>}
+            {opp.role && <span>{opp.role}</span>}
+            {genderLabel && <span>{genderLabel}</span>}
+            {ageLabel && <span>Età: {ageLabel}</span>}
+            {place && <span>📍 {place}</span>}
+          </div>
         </div>
 
-        <div className="flex items-center gap-3 text-sm text-gray-600">
-          {place && <span>{place}</span>}
-          {createdAt && <span>• {createdAt}</span>}
-        </div>
-      </div>
-
-      {/* CTA */}
-      <div className="pt-2">
-        {canApply ? (
-          <Link
-            href={`/opportunities/${opp.id}`}
-            className="inline-flex items-center rounded-lg bg-gray-900 text-white px-3 py-2 text-sm"
-          >
-            {applied ? 'Vedi candidatura' : 'Candidati'}
-          </Link>
-        ) : (
-          <Link
-            href={`/opportunities/${opp.id}`}
-            className="inline-flex items-center rounded-lg border px-3 py-2 text-sm"
-          >
-            Dettaglio
-          </Link>
+        {/* CTA solo per atleti */}
+        {canApply && (
+          <ApplyCTA
+            oppId={opp.id}
+            initialApplied={!!alreadyApplied}
+            onApplied={() => onApplied?.(opp.id)}
+            size="sm"
+          />
         )}
       </div>
+
+      {opp.description && (
+        <p className="mt-3 text-sm text-gray-700 line-clamp-3">{opp.description}</p>
+      )}
     </article>
   );
 }
