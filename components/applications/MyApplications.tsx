@@ -7,7 +7,7 @@ import type { Opportunity } from '@/types/opportunity';
 type Application = {
   id: string;
   opportunity_id?: string;
-  status?: string;
+  status?: string;          // 'inviata' | 'in_review' | 'accettata' | 'rifiutata' | 'ritirata' | ...
   created_at?: string;
   opportunity?: Opportunity; // opzionale: denormalizzata dall'API
 };
@@ -17,6 +17,30 @@ type ApiShape =
   | { applications?: Application[] }
   | Application[]
   | unknown;
+
+const WITHDRAW_ALLOWED = new Set(['inviata', 'aperta', 'in_review', 'pending']);
+
+function StatusChip({ status }: { status?: string }) {
+  const s = (status || 'inviata').toLowerCase();
+  const map: Record<string, string> = {
+    inviata: 'bg-blue-100 text-blue-800',
+    in_review: 'bg-amber-100 text-amber-800',
+    accettata: 'bg-green-100 text-green-800',
+    rifiutata: 'bg-red-100 text-red-800',
+    ritirata: 'bg-gray-100 text-gray-700',
+    pending: 'bg-amber-100 text-amber-800',
+  };
+  const cls = map[s] || 'bg-gray-100 text-gray-700';
+  const label: Record<string, string> = {
+    inviata: 'Inviata',
+    in_review: 'In revisione',
+    accettata: 'Accettata',
+    rifiutata: 'Rifiutata',
+    ritirata: 'Ritirata',
+    pending: 'In revisione',
+  };
+  return <span className={`px-2 py-0.5 rounded-lg text-xs font-medium ${cls}`}>{label[s] ?? s}</span>;
+}
 
 export default function MyApplications() {
   const [items, setItems] = useState<Application[]>([]);
@@ -47,6 +71,32 @@ export default function MyApplications() {
   }, []);
 
   const hasItems = useMemo(() => items && items.length > 0, [items]);
+
+  async function handleWithdraw(appl: Application) {
+    if (!appl?.id) return;
+    const ok = confirm('Ritirare definitivamente questa candidatura?');
+    if (!ok) return;
+
+    // update ottimistico
+    const prev = items;
+    const next = prev.map(a => a.id === appl.id ? { ...a, status: 'ritirata' } : a);
+    setItems(next);
+
+    try {
+      const res = await fetch(`/api/applications/${appl.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        // ripristina
+        setItems(prev);
+        const t = await res.text().catch(() => '');
+        throw new Error(t || `HTTP ${res.status}`);
+      }
+    } catch (e: any) {
+      alert(e?.message || 'Errore durante il ritiro della candidatura');
+    }
+  }
 
   if (loading) {
     return (
@@ -79,6 +129,7 @@ export default function MyApplications() {
         const opp = appl.opportunity;
         const oppId = opp?.id || appl.opportunity_id || '';
         const place = [opp?.city, opp?.province, opp?.region, opp?.country].filter(Boolean).join(', ');
+        const canWithdraw = WITHDRAW_ALLOWED.has((appl.status || 'inviata').toLowerCase());
 
         return (
           <div key={appl.id} className="rounded-xl border p-4 bg-white">
@@ -88,16 +139,26 @@ export default function MyApplications() {
                 <div className="text-sm text-gray-700">
                   {opp?.club_name ?? 'Club'} {place ? `• ${place}` : ''}
                 </div>
-                <div className="mt-1 text-xs text-gray-500">
-                  Stato: <span className="font-medium">{appl.status ?? 'inviata'}</span>
-                  {appl.created_at ? <> • inviata il {new Date(appl.created_at).toLocaleDateString('it-IT')}</> : null}
+                <div className="mt-1 flex items-center gap-2 text-xs text-gray-500">
+                  Stato: <StatusChip status={appl.status} />
+                  {appl.created_at ? <>• inviata il {new Date(appl.created_at).toLocaleDateString('it-IT')}</> : null}
                 </div>
               </div>
-              {oppId ? (
-                <Link href={`/opportunities/${oppId}`} className="px-3 py-1.5 rounded-lg border text-sm hover:bg-gray-50">
-                  Apri annuncio
-                </Link>
-              ) : null}
+              <div className="flex items-center gap-2">
+                {oppId ? (
+                  <Link href={`/opportunities/${oppId}`} className="px-3 py-1.5 rounded-lg border text-sm hover:bg-gray-50">
+                    Apri annuncio
+                  </Link>
+                ) : null}
+                {canWithdraw ? (
+                  <button
+                    onClick={() => handleWithdraw(appl)}
+                    className="px-3 py-1.5 rounded-lg border text-sm hover:bg-gray-50"
+                  >
+                    Ritira candidatura
+                  </button>
+                ) : null}
+              </div>
             </div>
           </div>
         );
