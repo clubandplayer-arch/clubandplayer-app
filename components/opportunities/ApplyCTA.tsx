@@ -1,4 +1,3 @@
-cat > components/opportunities/ApplyCTA.tsx <<'TSX'
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -71,4 +70,3 @@ export default function ApplyCTA({ oppId, initialApplied, onApplied, size = 'md'
     </button>
   );
 }
-TSX
