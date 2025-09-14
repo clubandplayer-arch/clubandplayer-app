@@ -1,9 +1,13 @@
-// @ts-nocheck
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 // ...i tuoi import
 
 export async function PATCH(
+  req: NextRequest,
+  { params: _params }: { params: Promise<{ id: string }> }
+) {
+  const params = await _params;
   req: Request,
   { params }: { params: { id: string } }
 ) {
