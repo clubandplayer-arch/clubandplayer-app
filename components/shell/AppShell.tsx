@@ -31,9 +31,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   const NavLink = ({ href, label }: { href: string; label: string }) => {
-    const active =
-      pathname === href ||
-      (href !== '/' && pathname.startsWith(href));
+    const active = pathname === href || (href !== '/' && pathname.startsWith(href));
     return (
       <Link
         href={href}
@@ -68,9 +66,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               placeholder="Cerca"
               className="hidden md:block w-64 rounded-lg border px-3 py-1.5"
             />
-            {role === 'club' && (
+            {role === 'club' && pathname !== '/opportunities' && (
               <Link
-                href="/opportunities/new"
+                href="/opportunities?new=1"
                 className="rounded-lg bg-blue-600 text-white px-3 py-1.5"
               >
                 + Nuova opportunità
