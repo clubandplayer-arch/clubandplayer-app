@@ -1,3 +1,4 @@
+cat > "app/(dashboard)/opportunities/[id]/page.tsx" <<'TSX'
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -118,3 +119,4 @@ export default function OpportunityDetailPage({ params }: { params: { id: string
     </div>
   );
 }
+TSX
