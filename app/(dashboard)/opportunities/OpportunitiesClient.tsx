@@ -27,6 +27,21 @@ export default function OpportunitiesClient() {
   const [profileType, setProfileType] = useState<string>(''); // fallback da /api/profiles/me
 
   const [openCreate, setOpenCreate] = useState(false);
+
+  // --- auto open from ?new=1 e pulizia URL ---
+  const sp = useSearchParams();
+  const router = useRouter();
+  useEffect(() => {
+    // Se arrivo con ?new=1 apro la modale di creazione
+    if (sp.get("new") === "1") setOpenCreate(true);
+  }, [sp]);
+
+  function removeParam(name: string) {
+    const p = new URLSearchParams(sp.toString());
+    p.delete(name);
+    router.replace(p.toString() ? `/opportunities?${p}` : "/opportunities", { scroll: false });
+  }
+  // --- fine blocco ---
   const [editItem, setEditItem] = useState<Opportunity | null>(null);
 
   const queryString = useMemo(() => {
@@ -274,10 +289,10 @@ export default function OpportunitiesClient() {
 
       {/* Modale creazione: solo club */}
       {isClub && (
-        <Modal open={openCreate} title="Nuova opportunità" onClose={() => setOpenCreate(false)}>
+        <Modal open={openCreate} title="Nuova opportunità" onClose={() => { setOpenCreate(false); removeParam('new'); }}>
           <OpportunityForm
-            onCancel={() => setOpenCreate(false)}
-            onSaved={() => { setOpenCreate(false); setReloadKey((k) => k + 1); }}
+            onCancel={() => { setOpenCreate(false); removeParam('new'); }}
+            onSaved={() => { setOpenCreate(false); removeParam('new'); setReloadKey((k) => k + 1); }}
           />
         </Modal>
       )}
