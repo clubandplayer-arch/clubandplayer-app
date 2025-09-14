@@ -1,3 +1,4 @@
+cat > components/opportunities/ApplyCTA.tsx <<'TSX'
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -12,6 +13,7 @@ type Props = {
 export default function ApplyCTA({ oppId, initialApplied, onApplied, size = 'md' }: Props) {
   const [applied, setApplied] = useState<boolean>(!!initialApplied);
   const [loading, setLoading] = useState(false);
+  const small = size === 'sm';
 
   useEffect(() => {
     setApplied(!!initialApplied);
@@ -21,22 +23,21 @@ export default function ApplyCTA({ oppId, initialApplied, onApplied, size = 'md'
     if (applied || loading) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/opportunities/${oppId}/apply`, {
+      const r = await fetch(`/api/opportunities/${oppId}/apply`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
       });
-      // idempotente: ok anche se 409 (già candidato)
-      if (res.ok || res.status === 409) {
+      // idempotente: ok anche se già candidato (409)
+      if (r.ok || r.status === 409) {
         setApplied(true);
         onApplied?.();
       } else {
-        const txt = await res.text();
-        throw new Error(txt || `HTTP ${res.status}`);
+        const t = await r.text();
+        throw new Error(t || `HTTP ${r.status}`);
       }
-    } catch (err) {
-      console.error(err);
-      alert('Errore durante la candidatura');
+    } catch (e: any) {
+      alert(e?.message || 'Errore durante la candidatura');
     } finally {
       setLoading(false);
     }
@@ -45,26 +46,29 @@ export default function ApplyCTA({ oppId, initialApplied, onApplied, size = 'md'
   if (applied) {
     return (
       <span
-        className={`inline-flex items-center rounded-md border px-2 py-1 ${
-          size === 'sm' ? 'text-xs' : 'text-sm'
-        }`}
-        title="Hai già inviato la candidatura"
+        className={[
+          'inline-flex items-center rounded-lg border px-3 py-1 text-sm font-medium',
+          small ? 'text-xs px-2 py-0.5' : '',
+          'bg-gray-100 text-gray-700 border-gray-200',
+        ].join(' ')}
       >
-        ✅ Già candidato
+        Già candidato
       </span>
     );
   }
 
   return (
     <button
-      type="button"
       onClick={handleApply}
       disabled={loading}
-      className={`inline-flex items-center rounded-lg bg-gray-900 text-white ${
-        size === 'sm' ? 'px-2 py-1 text-xs' : 'px-3 py-2 text-sm'
-      } disabled:opacity-60`}
+      className={[
+        'inline-flex items-center rounded-lg px-4 py-2 font-medium',
+        small ? 'text-sm px-3 py-1.5' : '',
+        'bg-gray-900 text-white hover:bg-black/90 disabled:opacity-60',
+      ].join(' ')}
     >
       {loading ? 'Invio…' : 'Candidati'}
     </button>
   );
 }
+TSX
