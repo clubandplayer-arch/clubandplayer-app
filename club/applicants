@@ -1,0 +1,66 @@
+# Assicurati del branch di lavoro
+git switch -c feat/club-applicants-page
+
+# Crea la pagina (sovrascrive se esiste)
+mkdir -p "app/(dashboard)/club/applicants"
+cat > "app/(dashboard)/club/applicants/page.tsx" <<'TSX'
+'use client';
+
+import { useEffect, useState } from 'react';
+import ApplicationsTable from '@/components/applications/ApplicationsTable';
+
+type Row = {
+  id: string;
+  created_at?: string | null;
+  note?: string | null;
+  opportunity_id?: string | null;
+  status?: string | null;
+  athlete_id?: string | null;
+  [k: string]: any;
+};
+
+export default function ClubApplicantsPage() {
+  const [rows, setRows] = useState<Row[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      try {
+        setLoading(true);
+        const r = await fetch('/api/applications/received', {
+          credentials: 'include',
+          cache: 'no-store',
+        });
+        const t = await r.text();
+        if (!r.ok) {
+          try {
+            const j = JSON.parse(t);
+            throw new Error(j.error || `HTTP ${r.status}`);
+          } catch {
+            throw new Error(t || `HTTP ${r.status}`);
+          }
+        }
+        const j = JSON.parse(t);
+        if (!cancelled) setRows(Array.isArray(j?.data) ? j.data : j);
+      } catch (e) {
+        console.error('Errore caricamento candidature ricevute', e);
+        if (!cancelled) setRows([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    load();
+    return () => { cancelled = true; };
+  }, []);
+
+  return (
+    <div className="p-4 md:p-6 space-y-4">
+      <h1 className="text-2xl font-semibold">Candidature ricevute</h1>
+      <ApplicationsTable rows={rows} kind="received" loading={loading} />
+    </div>
+  );
+}
+TSX
