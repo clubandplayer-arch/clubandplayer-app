@@ -17,13 +17,13 @@ export default function OpportunitiesClient() {
   const router = useRouter();
   const sp = useSearchParams();
 
-  const [data, setData] = useState<OpportunitiesApiResponse | null>(null);
+  const [data, setData] = useState<OpportunitiesApiResponse | any | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
   const [meId, setMeId] = useState<string | null>(null);
-  const [role, setRole] = useState<Role>('guest');          // da /api/auth/whoami
+  const [role, setRole] = useState<Role>('guest');            // da /api/auth/whoami
   const [profileType, setProfileType] = useState<string>(''); // fallback da /api/profiles/me
 
   const [openCreate, setOpenCreate] = useState(false);
@@ -32,9 +32,9 @@ export default function OpportunitiesClient() {
   const queryString = useMemo(() => {
     const p = new URLSearchParams();
     for (const k of [
-      'q','page','pageSize','sort',
-      'country','region','province','city',
-      'sport','role','age',
+      'q', 'page', 'pageSize', 'sort',
+      'country', 'region', 'province', 'city',
+      'sport', 'role', 'age',
     ]) {
       const v = sp.get(k);
       if (v) p.set(k, v);
@@ -70,11 +70,11 @@ export default function OpportunitiesClient() {
     return () => { cancelled = true; };
   }, []);
 
-  // 2) Fallback ruolo: se autenticato ma role non è “club/athlete”, leggi profiles.me
+  // 2) Fallback ruolo dal profilo
   useEffect(() => {
     let cancelled = false;
-    if (!meId) return; // non loggato
-    if (role === 'club' || role === 'athlete') return; // già noto
+    if (!meId) return;
+    if (role === 'club' || role === 'athlete') return;
 
     (async () => {
       try {
@@ -107,7 +107,7 @@ export default function OpportunitiesClient() {
     router.replace(qs ? `/opportunities?${qs}` : '/opportunities');
   }, [sp, isClub, router]);
 
-  // 4) Caricamento lista (no-store) — >>> usa /api/opportunities/filter <<<
+  // 4) Caricamento lista (usa /api/opportunities/filter)
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -120,14 +120,23 @@ export default function OpportunitiesClient() {
           try { const j = JSON.parse(t); throw new Error(j.error || `HTTP ${r.status}`); }
           catch { throw new Error(t || `HTTP ${r.status}`); }
         }
-        return JSON.parse(t) as OpportunitiesApiResponse;
+        try { return JSON.parse(t); } catch { return {}; }
       })
-      .then((json) => !cancelled && setData(json))
-      .catch((e) => !cancelled && setErr(e.message || 'Errore'))
-      .finally(() => !cancelled && setLoading(false));
+      .then((json) => { if (!cancelled) setData(json); })
+      .catch((e) => { if (!cancelled) setErr(e.message || 'Errore'); })
+      .finally(() => { if (!cancelled) setLoading(false); });
 
     return () => { cancelled = true; };
   }, [queryString, reloadKey]);
+
+  // Normalizza risultati in un array sempre valido
+  const items: Opportunity[] = useMemo(() => {
+    const j: any = data ?? {};
+    if (Array.isArray(j.data)) return j.data;
+    if (Array.isArray(j.items)) return j.items;
+    if (Array.isArray(j.results)) return j.results;
+    return [];
+  }, [data]);
 
   async function handleDelete(o: Opportunity) {
     if (!confirm(`Eliminare "${o.title}"?`)) return;
@@ -149,10 +158,10 @@ export default function OpportunitiesClient() {
     <div className="p-4 md:p-6 space-y-4">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">Opportunità</h1>
-        {/* CTA creazione solo in topbar: link /opportunities?new=1 */}
+        {/* CTA creazione è nel Topbar (/opportunities?new=1) */}
       </div>
 
-      {/* Barra filtri (senza Genere) */}
+      {/* Barra filtri */}
       <div className="flex flex-wrap items-center gap-3">
         <input
           placeholder="Cerca per titolo/descrizione…"
@@ -170,7 +179,7 @@ export default function OpportunitiesClient() {
           ))}
         </select>
 
-        {/* Regione/Provincia/Città per Italia (statico) */}
+        {/* Regione/Provincia/Città per Italia */}
         {sp.get('country') === 'Italia' && (
           <>
             <select
@@ -269,9 +278,9 @@ export default function OpportunitiesClient() {
         </div>
       )}
 
-      {!loading && !err && data && (
+      {!loading && !err && (
         <OpportunitiesTable
-          items={data.data}
+          items={items}
           currentUserId={meId ?? undefined}
           userRole={role}
           onEdit={(o) => setEditItem(o)}
