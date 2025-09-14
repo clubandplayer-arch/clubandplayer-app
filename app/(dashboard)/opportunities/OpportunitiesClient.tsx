@@ -35,6 +35,7 @@ export default function OpportunitiesClient() {
       'q','page','pageSize','sort',
       'country','region','province','city',
       'sport','role','age',
+      // N.B. filtro "gender" non usato (Opzione A)
     ]) {
       const v = sp.get(k);
       if (v) p.set(k, v);
@@ -234,6 +235,8 @@ export default function OpportunitiesClient() {
             </option>
           ))}
         </select>
+
+        {/* (RIMOSSO) Selettore "Genere": nascosto con Opzione A */}
 
         <select value={sp.get('age') ?? ''} onChange={(e) => setParam('age', e.target.value)} className="rounded-xl border px-3 py-2">
           <option value="">Età</option>
