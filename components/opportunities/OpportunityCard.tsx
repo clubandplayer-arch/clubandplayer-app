@@ -23,17 +23,24 @@ export default function OpportunityCard({
   opp,
   currentUserId,
   userRole = 'guest',
-  alreadyApplied = false,
+  // accettiamo entrambi i nomi per compatibilità
+  alreadyApplied,
+  hasApplied,
 }: {
   opp: Opportunity;
   currentUserId?: string | null;
   userRole?: 'athlete' | 'club' | 'guest';
   alreadyApplied?: boolean;
+  hasApplied?: boolean; // alias supportato per compatibilità con il feed esistente
 }) {
-  const place = [opp.city, opp.province, opp.region, opp.country].filter(Boolean).join(', ');
+  const place = [opp.city, opp.province, opp.region, opp.country]
+    .filter(Boolean)
+    .join(', ');
   const createdAt = opp.created_at ? new Date(opp.created_at).toLocaleString() : '';
   const ownerId = opp.created_by ?? opp.owner_id ?? null;
+
   const canApply = userRole === 'athlete';
+  const applied = (alreadyApplied ?? hasApplied) ?? false;
 
   return (
     <article className="bg-white rounded-2xl border p-4 md:p-5 space-y-3">
@@ -46,7 +53,7 @@ export default function OpportunityCard({
         </h2>
 
         <div className="flex items-center gap-2">
-          {alreadyApplied && (
+          {applied && (
             <span className="inline-flex items-center rounded-full bg-green-50 text-green-700 px-2 py-0.5 text-xs">
               Già candidato
             </span>
@@ -97,7 +104,7 @@ export default function OpportunityCard({
             href={`/opportunities/${opp.id}`}
             className="inline-flex items-center rounded-lg bg-gray-900 text-white px-3 py-2 text-sm"
           >
-            {alreadyApplied ? 'Vedi candidatura' : 'Candidati'}
+            {applied ? 'Vedi candidatura' : 'Candidati'}
           </Link>
         ) : (
           <Link
