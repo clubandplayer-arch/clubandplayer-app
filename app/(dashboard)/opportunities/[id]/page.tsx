@@ -44,8 +44,8 @@ export default function OpportunityDetailPage({ params }: { params: { id: string
         const r = await fetch(`/api/opportunities/${id}`, { credentials: 'include', cache: 'no-store' });
         const t = await r.text();
         if (!r.ok) {
-          try { const j = JSON.parse(t); throw new Error(j.error || \`HTTP \${r.status}\`); }
-          catch { throw new Error(t || \`HTTP \${r.status}\`); }
+          try { const j = JSON.parse(t); throw new Error(j.error || `HTTP ${r.status}`); }
+          catch { throw new Error(t || `HTTP ${r.status}`); }
         }
         const j = JSON.parse(t);
         if (!cancelled) setOpp(j?.data ?? j);
@@ -86,9 +86,9 @@ export default function OpportunityDetailPage({ params }: { params: { id: string
     (opp as any).gender === 'female' ? 'Femminile' :
     (opp as any).gender === 'mixed' ? 'Misto' : undefined;
   const ageLabel =
-    opp.age_min != null && opp.age_max != null ? \`\${opp.age_min}-\${opp.age_max}\` :
-    opp.age_min != null ? \`\${opp.age_min}+\` :
-    opp.age_max != null ? \`≤\${opp.age_max}\` : undefined;
+    opp.age_min != null && opp.age_max != null ? `${opp.age_min}-${opp.age_max}` :
+    opp.age_min != null ? `${opp.age_min}+` :
+    opp.age_max != null ? `≤${opp.age_max}` : undefined;
 
   const isOwner = !!meId && (opp.created_by === meId || (opp as any).owner_id === meId);
   const showCTA = role === 'athlete' && !isOwner;
