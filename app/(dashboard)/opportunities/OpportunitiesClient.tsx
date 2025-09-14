@@ -47,7 +47,8 @@ export default function OpportunitiesClient() {
     if (value) p.set(name, value);
     else p.delete(name);
     if (name !== 'page') p.set('page', '1');
-    router.replace(`/opportunities?${p.toString()}`);
+    const qs = p.toString();
+    router.replace(qs ? `/opportunities?${qs}` : '/opportunities');
   }
 
   // 1) Chi sono? (id + role se disponibile)
@@ -94,7 +95,19 @@ export default function OpportunitiesClient() {
 
   const isClub = role === 'club' || profileType.startsWith('club');
 
-  // 3) Caricamento lista
+  // 3) Auto-open da ?new=1 (solo club) e pulizia URL
+  useEffect(() => {
+    const shouldOpen = sp.get('new') === '1';
+    if (!shouldOpen) return;
+    if (!isClub) return;
+    setOpenCreate(true);
+    const p = new URLSearchParams(sp.toString());
+    p.delete('new');
+    const qs = p.toString();
+    router.replace(qs ? `/opportunities?${qs}` : '/opportunities');
+  }, [sp, isClub, router]);
+
+  // 4) Caricamento lista (no-store)
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -126,6 +139,7 @@ export default function OpportunitiesClient() {
         catch { throw new Error(t || `HTTP ${res.status}`); }
       }
       setReloadKey((k) => k + 1);
+      router.refresh();
     } catch (e: any) {
       alert(e.message || 'Errore durante eliminazione');
     }
@@ -135,14 +149,7 @@ export default function OpportunitiesClient() {
     <div className="p-4 md:p-6 space-y-4">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">Opportunità</h1>
-        {isClub && (
-          <button
-            onClick={() => setOpenCreate(true)}
-            className="px-3 py-2 rounded-lg bg-gray-900 text-white"
-          >
-            + Nuova opportunità
-          </button>
-        )}
+        {/* CTA creazione rimossa qui per evitare duplicato: è nel Topbar con link /opportunities?new=1 */}
       </div>
 
       {/* Barra filtri */}
@@ -272,12 +279,16 @@ export default function OpportunitiesClient() {
         />
       )}
 
-      {/* Modale creazione: solo club */}
+      {/* Modale creazione: solo club (apre anche da ?new=1) */}
       {isClub && (
         <Modal open={openCreate} title="Nuova opportunità" onClose={() => setOpenCreate(false)}>
           <OpportunityForm
             onCancel={() => setOpenCreate(false)}
-            onSaved={() => { setOpenCreate(false); setReloadKey((k) => k + 1); }}
+            onSaved={() => {
+              setOpenCreate(false);
+              setReloadKey((k) => k + 1);
+              router.refresh();
+            }}
           />
         </Modal>
       )}
@@ -287,7 +298,11 @@ export default function OpportunitiesClient() {
           <OpportunityForm
             initial={editItem}
             onCancel={() => setEditItem(null)}
-            onSaved={() => { setEditItem(null); setReloadKey((k) => k + 1); }}
+            onSaved={() => {
+              setEditItem(null);
+              setReloadKey((k) => k + 1);
+              router.refresh();
+            }}
           />
         )}
       </Modal>
