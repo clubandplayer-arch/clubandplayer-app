@@ -2,81 +2,96 @@
 
 import { useEffect, useState } from 'react';
 
-type Size = 'sm' | 'md' | 'lg';
+export const LS_FOLLOW_KEY = 'cp_followed_clubs_v1'; // chiave stabile per localStorage
+
+type FollowMap = Record<string, { name?: string; followedAt: number }>;
+
+function readFollowMap(): FollowMap {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = localStorage.getItem(LS_FOLLOW_KEY);
+    return raw ? (JSON.parse(raw) as FollowMap) : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeFollowMap(map: FollowMap) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(LS_FOLLOW_KEY, JSON.stringify(map));
+  } catch {
+    /* noop */
+  }
+}
 
 export default function FollowButton({
   clubId,
   clubName,
-  size = 'md',
-  className = '',
+  className,
+  size = 'sm',
+  onChange,
+  defaultFollowing,
 }: {
   clubId: string;
   clubName?: string;
-  size?: Size;
   className?: string;
+  size?: 'sm' | 'md';
+  onChange?: (following: boolean) => void;
+  defaultFollowing?: boolean;
 }) {
-  const [loading, setLoading] = useState(true);
-  const [following, setFollowing] = useState<boolean>(false);
-  const [err, setErr] = useState<string | null>(null);
+  const [following, setFollowing] = useState<boolean>(!!defaultFollowing);
+  const [loading, setLoading] = useState(false);
 
+  // Hydrate da localStorage
   useEffect(() => {
-    let cancelled = false;
     if (!clubId) return;
-    (async () => {
-      try {
-        setLoading(true);
-        const r = await fetch(`/api/follows/${clubId}`, { credentials: 'include', cache: 'no-store' });
-        const j = await r.json().catch(() => ({}));
-        if (!cancelled) setFollowing(Boolean(j?.following));
-      } catch (e: any) {
-        if (!cancelled) setErr(e?.message || 'Errore stato follow');
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    const map = readFollowMap();
+    if (map[clubId]) setFollowing(true);
   }, [clubId]);
 
-  async function toggle() {
+  async function handleToggle() {
+    if (!clubId || loading) return;
+    setLoading(true);
     try {
-      setErr(null);
-      setLoading(true);
-      if (following) {
-        const r = await fetch(`/api/follows/${clubId}`, { method: 'DELETE', credentials: 'include' });
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        setFollowing(false);
+      const next = !following;
+
+      const res = await fetch(`/api/follows/${clubId}`, {
+        method: next ? 'POST' : 'DELETE',
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error(await res.text());
+
+      // aggiorna localStorage
+      const map = readFollowMap();
+      if (next) {
+        map[clubId] = { name: clubName, followedAt: Date.now() };
       } else {
-        const r = await fetch(`/api/follows/${clubId}`, { method: 'POST', credentials: 'include' });
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        setFollowing(true);
+        delete map[clubId];
       }
-    } catch (e: any) {
-      setErr(e?.message || 'Errore');
+      writeFollowMap(map);
+
+      setFollowing(next);
+      onChange?.(next);
+    } catch {
+      // opzionale: toast errore
     } finally {
       setLoading(false);
     }
   }
 
-  const base = 'rounded-lg border px-2 py-1 text-xs';
-  const sizes: Record<Size, string> = {
-    sm: 'px-2 py-1 text-xs',
-    md: 'px-3 py-1.5 text-sm',
-    lg: 'px-4 py-2 text-sm',
-  };
-  const label = loading ? '...' : following ? 'Seguito' : 'Segui';
+  const base = size === 'sm' ? 'px-2 py-1 text-xs' : 'px-3 py-2 text-sm';
 
   return (
     <button
-      type="button"
-      aria-label={following ? `Non seguire più ${clubName ?? 'club'}` : `Segui ${clubName ?? 'club'}`}
-      disabled={loading}
-      onClick={toggle}
-      className={`${base} ${sizes[size]} ${following ? 'bg-gray-900 text-white' : ''} ${className}`}
-      title={err ?? ''}
+      onClick={handleToggle}
+      disabled={loading || !clubId}
+      className={`${base} rounded-lg border ${
+        following ? 'bg-gray-900 text-white' : 'bg-white'
+      } ${className ?? ''}`}
+      aria-pressed={following}
     >
-      {label}
+      {loading ? '...' : following ? 'Seguito' : 'Segui'}
     </button>
   );
 }
