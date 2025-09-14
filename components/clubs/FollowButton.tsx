@@ -2,97 +2,81 @@
 
 import { useEffect, useState } from 'react';
 
-export const LS_FOLLOW_KEY = 'cp_followed_clubs_v1';
-
-type FollowMap = Record<string, { name?: string; followedAt: number }>;
-
-function safeWindow() {
-  return typeof window !== 'undefined';
-}
-
-function readFollowed(): FollowMap {
-  if (!safeWindow()) return {};
-  try {
-    const raw = localStorage.getItem(LS_FOLLOW_KEY);
-    if (!raw) return {};
-    const obj = JSON.parse(raw);
-    return obj && typeof obj === 'object' ? obj : {};
-  } catch {
-    return {};
-  }
-}
-
-function writeFollowed(data: FollowMap) {
-  if (!safeWindow()) return;
-  try {
-    localStorage.setItem(LS_FOLLOW_KEY, JSON.stringify(data));
-    // notifica chi ascolta (lo storage event non scatta nella stessa tab)
-    window.dispatchEvent(new CustomEvent('cp:followed-clubs-changed'));
-  } catch {
-    /* noop */
-  }
-}
+type Size = 'sm' | 'md' | 'lg';
 
 export default function FollowButton({
   clubId,
   clubName,
-  size = 'sm',
+  size = 'md',
   className = '',
 }: {
-  clubId?: string | null;
-  clubName?: string | null;
-  size?: 'sm' | 'md';
+  clubId: string;
+  clubName?: string;
+  size?: Size;
   className?: string;
 }) {
-  const [following, setFollowing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [following, setFollowing] = useState<boolean>(false);
+  const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!clubId) return; // niente ID → niente follow
-    const id = String(clubId);
-    const data = readFollowed();
-    setFollowing(Boolean(data[id]));
+    let cancelled = false;
+    if (!clubId) return;
+    (async () => {
+      try {
+        setLoading(true);
+        const r = await fetch(`/api/follows/${clubId}`, { credentials: 'include', cache: 'no-store' });
+        const j = await r.json().catch(() => ({}));
+        if (!cancelled) setFollowing(Boolean(j?.following));
+      } catch (e: any) {
+        if (!cancelled) setErr(e?.message || 'Errore stato follow');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [clubId]);
 
-  if (!clubId) {
-    // niente ID → non mostriamo il bottone
-    return null;
-  }
-
-  function toggle() {
-    const id = String(clubId); // narrow a string
-    const data = readFollowed();
-    if (data[id]) {
-      delete data[id];
-      setFollowing(false);
-    } else {
-      data[id] = { name: clubName || undefined, followedAt: Date.now() };
-      setFollowing(true);
+  async function toggle() {
+    try {
+      setErr(null);
+      setLoading(true);
+      if (following) {
+        const r = await fetch(`/api/follows/${clubId}`, { method: 'DELETE', credentials: 'include' });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        setFollowing(false);
+      } else {
+        const r = await fetch(`/api/follows/${clubId}`, { method: 'POST', credentials: 'include' });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        setFollowing(true);
+      }
+    } catch (e: any) {
+      setErr(e?.message || 'Errore');
+    } finally {
+      setLoading(false);
     }
-    writeFollowed(data);
   }
 
-  const base =
-    'rounded-lg border px-2 py-1 text-xs hover:bg-gray-50 transition ' +
-    (following
-      ? 'bg-gray-900 text-white border-gray-900 hover:bg-gray-800'
-      : 'bg-white text-gray-900');
-
-  const md =
-    'rounded-lg border px-3 py-1.5 text-sm ' +
-    (following
-      ? 'bg-gray-900 text-white border-gray-900 hover:bg-gray-800'
-      : 'bg-white text-gray-900 hover:bg-gray-50');
+  const base = 'rounded-lg border px-2 py-1 text-xs';
+  const sizes: Record<Size, string> = {
+    sm: 'px-2 py-1 text-xs',
+    md: 'px-3 py-1.5 text-sm',
+    lg: 'px-4 py-2 text-sm',
+  };
+  const label = loading ? '...' : following ? 'Seguito' : 'Segui';
 
   return (
     <button
-      onClick={toggle}
-      className={`${size === 'md' ? md : base} ${className}`}
-      aria-pressed={following}
-      aria-label={following ? 'Seguito' : 'Segui'}
-      title={following ? 'Seguito' : 'Segui'}
       type="button"
+      aria-label={following ? `Non seguire più ${clubName ?? 'club'}` : `Segui ${clubName ?? 'club'}`}
+      disabled={loading}
+      onClick={toggle}
+      className={`${base} ${sizes[size]} ${following ? 'bg-gray-900 text-white' : ''} ${className}`}
+      title={err ?? ''}
     >
-      {following ? 'Seguito' : 'Segui'}
+      {label}
     </button>
   );
 }
