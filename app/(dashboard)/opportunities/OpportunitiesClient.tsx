@@ -35,7 +35,6 @@ export default function OpportunitiesClient() {
       'q','page','pageSize','sort',
       'country','region','province','city',
       'sport','role','age',
-      // N.B. filtro "gender" non usato (Opzione A)
     ]) {
       const v = sp.get(k);
       if (v) p.set(k, v);
@@ -108,13 +107,13 @@ export default function OpportunitiesClient() {
     router.replace(qs ? `/opportunities?${qs}` : '/opportunities');
   }, [sp, isClub, router]);
 
-  // 4) Caricamento lista (no-store)
+  // 4) Caricamento lista (no-store) — >>> usa /api/opportunities/filter <<<
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setErr(null);
 
-    fetch(`/api/opportunities?${queryString}`, { credentials: 'include', cache: 'no-store' })
+    fetch(`/api/opportunities/filter?${queryString}`, { credentials: 'include', cache: 'no-store' })
       .then(async (r) => {
         const t = await r.text();
         if (!r.ok) {
@@ -150,10 +149,10 @@ export default function OpportunitiesClient() {
     <div className="p-4 md:p-6 space-y-4">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">Opportunità</h1>
-        {/* CTA creazione rimossa qui per evitare duplicato: è nel Topbar con link /opportunities?new=1 */}
+        {/* CTA creazione solo in topbar: link /opportunities?new=1 */}
       </div>
 
-      {/* Barra filtri */}
+      {/* Barra filtri (senza Genere) */}
       <div className="flex flex-wrap items-center gap-3">
         <input
           placeholder="Cerca per titolo/descrizione…"
@@ -235,8 +234,6 @@ export default function OpportunitiesClient() {
             </option>
           ))}
         </select>
-
-        {/* (RIMOSSO) Selettore "Genere": nascosto con Opzione A */}
 
         <select value={sp.get('age') ?? ''} onChange={(e) => setParam('age', e.target.value)} className="rounded-xl border px-3 py-2">
           <option value="">Età</option>
