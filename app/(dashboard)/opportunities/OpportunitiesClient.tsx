@@ -14,8 +14,8 @@ import { AGE_BRACKETS, SPORTS } from '@/lib/opps/constants';
 type Role = 'athlete' | 'club' | 'guest';
 
 export default function OpportunitiesClient() {
-  const sp = useSearchParams();
   const router = useRouter();
+  const sp = useSearchParams();
 
   const [data, setData] = useState<OpportunitiesApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
