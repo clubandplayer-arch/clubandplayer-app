@@ -2,25 +2,29 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 type Role = 'athlete' | 'club' | 'guest';
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [role, setRole] = useState<Role>('guest');
 
+  // Determina il ruolo dall’API (semplice e veloce)
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const r = await fetch('/api/auth/whoami', { cache: 'no-store', credentials: 'include' });
+        const r = await fetch('/api/auth/whoami', {
+          cache: 'no-store',
+          credentials: 'include',
+        });
         const j = await r.json().catch(() => ({}));
+        if (cancelled) return;
         const raw = String(j?.role ?? '').toLowerCase();
-        if (!cancelled) {
-          if (raw === 'club' || raw === 'athlete') setRole(raw as Role);
-          else setRole('guest');
-        }
+        if (raw === 'club' || raw === 'athlete') setRole(raw as Role);
+        else setRole('guest');
       } catch {
         if (!cancelled) setRole('guest');
       }
@@ -30,6 +34,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // Link contestuali
+  const applicationsHref = role === 'club' ? '/club/applicants' : '/my/applications';
+  const profileHref = role === 'club' ? '/club/profile' : '/profile';
+
+  // Helper per link attivo
   const NavLink = ({ href, label }: { href: string; label: string }) => {
     const active = pathname === href || (href !== '/' && pathname.startsWith(href));
     return (
@@ -57,16 +66,23 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <nav className="hidden md:flex items-center gap-2 ml-4">
             <NavLink href="/feed" label="Feed" />
             <NavLink href="/opportunities" label="Opportunità" />
-            <NavLink href="/club" label="Club" />
-            {/* profilo: se club => /club/profile, altrimenti /profile */}
-            <NavLink href={role === 'club' ? '/club/profile' : '/profile'} label="Profilo" />
+            <NavLink href="/clubs" label="Club" />
+            <NavLink href={applicationsHref} label="Candidature" />
+            <NavLink href={profileHref} label="Profilo" />
           </nav>
 
           <div className="ml-auto flex items-center gap-2">
             <input
               placeholder="Cerca"
               className="hidden md:block w-64 rounded-lg border px-3 py-1.5"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const q = (e.target as HTMLInputElement).value.trim();
+                  router.push(q ? `/search/club?q=${encodeURIComponent(q)}` : '/search/club');
+                }
+              }}
             />
+            {/* CTA creazione solo per CLUB — apre la modale via ?new=1 */}
             {role === 'club' && (
               <Link
                 href="/opportunities?new=1"
