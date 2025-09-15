@@ -13,6 +13,12 @@ function formatBracket(min: number | null | undefined, max: number | null | unde
   return '—';
 }
 
+function fmtDate(val: unknown): string {
+  if (!val) return '—';
+  const d = new Date(val as any);
+  return isNaN(d.getTime()) ? '—' : d.toLocaleString();
+}
+
 type Role = 'athlete' | 'club' | 'guest';
 
 export default function OpportunitiesTable({
@@ -28,7 +34,10 @@ export default function OpportunitiesTable({
   onEdit?: (opp: Opportunity) => void;
   onDelete?: (opp: Opportunity) => void;
 }) {
-  if (!items.length) {
+  // Rendiamo la tabella resiliente anche se items dovesse arrivare undefined/null
+  const safeItems = Array.isArray(items) ? items : [];
+
+  if (!safeItems.length) {
     return (
       <div className="text-sm text-gray-500 py-8">
         Nessuna opportunità trovata. Prova a rimuovere i filtri.
@@ -52,7 +61,7 @@ export default function OpportunitiesTable({
           </tr>
         </thead>
         <tbody>
-          {items.map((o) => {
+          {safeItems.map((o) => {
             const canEdit = !!currentUserId && o.created_by === currentUserId;
             const place = [o.city, o.province, o.region, o.country].filter(Boolean).join(', ');
             const showApply = userRole === 'athlete' && !canEdit;
@@ -80,15 +89,15 @@ export default function OpportunitiesTable({
                     )}
                   </div>
                 </td>
-                <td className="px-4 py-2">{new Date(o.created_at).toLocaleString()}</td>
+                <td className="px-4 py-2">{fmtDate(o.created_at as any)}</td>
                 <td className="px-4 py-2">
                   <div className="flex items-center gap-2">
-                    {/* Azione principale */}
+                    {/* Azione principale per atleti */}
                     {showApply && (
                       <ApplyCell opportunityId={o.id} ownerId={o.created_by ?? null} />
                     )}
 
-                    {/* Azioni extra per l'owner */}
+                    {/* Azioni extra per il creatore */}
                     {canEdit && (
                       <>
                         <button
