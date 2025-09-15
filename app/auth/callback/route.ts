@@ -9,7 +9,7 @@ function makeServerClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-  // Next 15: cookies() è async → attendi e poi adatta le 3 funzioni get/set/remove
+  // Adattatore cookie per Next 15 + Supabase SSR
   const getClient = async () => {
     const store = await cookies()
     const client = createServerClient(supabaseUrl, supabaseKey, {
@@ -18,14 +18,14 @@ function makeServerClient() {
           return store.get(name)?.value
         },
         set(name: string, value: string, options: any) {
-          // Next 15 accetta object { name, value, ...options }
+          // Next 15: set({ name, value, ...options })
           store.set({ name, value, ...options })
         },
         remove(name: string, options: any) {
+          // compat: rimuovi impostando maxAge=0
           store.set({ name, value: '', ...options, maxAge: 0 })
         },
       },
-      // opzionale ma utile: cookie con SameSite=Lax
       cookieOptions: { sameSite: 'lax' },
     })
     return client
@@ -37,7 +37,8 @@ function makeServerClient() {
 export async function GET(req: NextRequest) {
   const url = new URL(req.url)
   const code = url.searchParams.get('code')
-  const err = url.searchParams.get('error_description') || url.searchParams.get('error')
+  const err =
+    url.searchParams.get('error_description') || url.searchParams.get('error')
 
   const supabase = await makeServerClient()
 
@@ -50,9 +51,9 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // Le versioni di auth-js hanno due firme diverse: usiamo una chiamata “tollerante”.
+    // Supabase v2 accetta sia la stringa che l’oggetto { authCode }
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore – accetta sia exchangeCodeForSession(code) sia ({ authCode: code })
+    // @ts-ignore
     await supabase.auth.exchangeCodeForSession(code)
   } catch {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -60,7 +61,7 @@ export async function GET(req: NextRequest) {
     await supabase.auth.exchangeCodeForSession({ authCode: code })
   }
 
-  // Se siamo qui, i cookie sb-* sono stati scritti sulla preview corrente
-  const redirectTo = `${url.origin}/`
-  return NextResponse.redirect(redirectTo, { status: 302 })
+  // Redirect di post-login: la pagina client /auth/ready decide dove mandare l’utente (club/profile, profile, feed)
+  const redirectUrl = new URL('/auth/ready', url.origin)
+  return NextResponse.redirect(redirectUrl, { status: 302 })
 }

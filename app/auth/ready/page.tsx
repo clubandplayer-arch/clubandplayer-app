@@ -3,16 +3,18 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
-export default function AuthCallback() {
+export default function AuthReady() {
   const router = useRouter();
 
   useEffect(() => {
     let cancelled = false;
+
     (async () => {
       try {
         const r = await fetch('/api/auth/whoami', { cache: 'no-store', credentials: 'include' });
         const j = await r.json().catch(() => ({}));
         if (cancelled) return;
+
         const role = String(j?.role ?? '').toLowerCase();
         if (role === 'club') router.replace('/club/profile');
         else if (role === 'athlete') router.replace('/profile');
@@ -21,8 +23,10 @@ export default function AuthCallback() {
         if (!cancelled) router.replace('/feed');
       }
     })();
+
     return () => { cancelled = true; };
   }, [router]);
 
+  // schermata "vuota" rapida
   return null;
 }
