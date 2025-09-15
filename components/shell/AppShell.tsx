@@ -1,27 +1,26 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
+import { usePathname } from 'next/navigation';
 
 type Role = 'athlete' | 'club' | 'guest';
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
-  const [role, setRole] = useState<Role>('guest');
 
-  // Determina il ruolo dall’API (semplice e veloce)
+  const [role, setRole] = useState<Role>('guest');
+  const [profileType, setProfileType] = useState<string>('');
+
+  // Chi sono: prova /api/auth/whoami
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const r = await fetch('/api/auth/whoami', {
-          cache: 'no-store',
-          credentials: 'include',
-        });
+        const r = await fetch('/api/auth/whoami', { cache: 'no-store', credentials: 'include' });
         const j = await r.json().catch(() => ({}));
         if (cancelled) return;
+
         const raw = String(j?.role ?? '').toLowerCase();
         if (raw === 'club' || raw === 'athlete') setRole(raw as Role);
         else setRole('guest');
@@ -34,24 +33,50 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // Link contestuali
-  const applicationsHref = role === 'club' ? '/club/applicants' : '/my/applications';
-  const profileHref = role === 'club' ? '/club/profile' : '/profile';
+  // Fallback ruolo da /api/profiles/me (se whoami non aiuta)
+  useEffect(() => {
+    let cancelled = false;
+    if (role === 'club' || role === 'athlete') return;
 
-  // Helper per link attivo
-  const NavLink = ({ href, label }: { href: string; label: string }) => {
-    const active = pathname === href || (href !== '/' && pathname.startsWith(href));
-    return (
-      <Link
-        href={href}
-        className={`px-2 py-1.5 rounded-md text-sm ${
-          active ? 'text-blue-700 font-semibold' : 'text-gray-600 hover:text-gray-900'
-        }`}
-      >
-        {label}
-      </Link>
-    );
-  };
+    (async () => {
+      try {
+        const r = await fetch('/api/profiles/me', { cache: 'no-store', credentials: 'include' });
+        const j = await r.json().catch(() => ({}));
+        if (cancelled) return;
+        const t = (j?.type ?? j?.profile?.type ?? '').toString().toLowerCase();
+        setProfileType(t);
+        if (t.startsWith('club')) setRole('club');
+        else if (t === 'athlete') setRole('athlete');
+      } catch {
+        /* no-op */
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [role]);
+
+  const isClub = useMemo(() => role === 'club' || profileType.startsWith('club'), [role, profileType]);
+  const profileHref = isClub ? '/club/profile' : '/profile';
+
+  function isActive(href: string) {
+    if (pathname === href) return true;
+    if (href !== '/' && pathname.startsWith(href + '/')) return true;
+    return false;
+  }
+
+  const NavLink = ({ href, label }: { href: string; label: string }) => (
+    <Link
+      href={href}
+      className={[
+        'px-2 py-1.5 rounded-md text-sm',
+        isActive(href) ? 'text-blue-700 font-semibold' : 'text-gray-600 hover:text-gray-900',
+      ].join(' ')}
+    >
+      {label}
+    </Link>
+  );
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -67,7 +92,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <NavLink href="/feed" label="Feed" />
             <NavLink href="/opportunities" label="Opportunità" />
             <NavLink href="/clubs" label="Club" />
-            <NavLink href={applicationsHref} label="Candidature" />
             <NavLink href={profileHref} label="Profilo" />
           </nav>
 
@@ -75,15 +99,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <input
               placeholder="Cerca"
               className="hidden md:block w-64 rounded-lg border px-3 py-1.5"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  const q = (e.target as HTMLInputElement).value.trim();
-                  router.push(q ? `/search/club?q=${encodeURIComponent(q)}` : '/search/club');
-                }
-              }}
             />
-            {/* CTA creazione solo per CLUB — apre la modale via ?new=1 */}
-            {role === 'club' && (
+            {isClub && (
               <Link
                 href="/opportunities?new=1"
                 className="rounded-lg bg-blue-600 text-white px-3 py-1.5"
