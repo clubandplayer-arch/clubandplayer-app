@@ -17,13 +17,13 @@ export default function OpportunitiesClient() {
   const router = useRouter();
   const sp = useSearchParams();
 
-  const [data, setData] = useState<OpportunitiesApiResponse | any | null>(null);
+  const [data, setData] = useState<OpportunitiesApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
   const [meId, setMeId] = useState<string | null>(null);
-  const [role, setRole] = useState<Role>('guest');            // da /api/auth/whoami
+  const [role, setRole] = useState<Role>('guest');           // da /api/auth/whoami
   const [profileType, setProfileType] = useState<string>(''); // fallback da /api/profiles/me
 
   const [openCreate, setOpenCreate] = useState(false);
@@ -32,9 +32,9 @@ export default function OpportunitiesClient() {
   const queryString = useMemo(() => {
     const p = new URLSearchParams();
     for (const k of [
-      'q', 'page', 'pageSize', 'sort',
-      'country', 'region', 'province', 'city',
-      'sport', 'role', 'age',
+      'q','page','pageSize','sort',
+      'country','region','province','city',
+      'sport','role','age',
     ]) {
       const v = sp.get(k);
       if (v) p.set(k, v);
@@ -70,7 +70,7 @@ export default function OpportunitiesClient() {
     return () => { cancelled = true; };
   }, []);
 
-  // 2) Fallback ruolo dal profilo
+  // 2) Fallback ruolo da profiles.me se whoami non chiarisce
   useEffect(() => {
     let cancelled = false;
     if (!meId) return;
@@ -85,9 +85,7 @@ export default function OpportunitiesClient() {
         setProfileType(t);
         if (t.startsWith('club')) setRole('club');
         else if (t === 'athlete') setRole('athlete');
-      } catch {
-        /* noop */
-      }
+      } catch { /* noop */ }
     })();
 
     return () => { cancelled = true; };
@@ -95,48 +93,47 @@ export default function OpportunitiesClient() {
 
   const isClub = role === 'club' || profileType.startsWith('club');
 
-  // 3) Auto-open da ?new=1 (solo club) e pulizia URL
+  // 3) Apertura robusta della modale da ?new=1 e pulizia URL
   useEffect(() => {
-    const shouldOpen = sp.get('new') === '1';
+    const shouldOpen =
+      sp.get('new') === '1' ||
+      (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('new') === '1');
+
     if (!shouldOpen) return;
-    if (!isClub) return;
-    setOpenCreate(true);
+
+    // Apri subito la modale (la form comparirà quando isClub diventa true)
+    const t = setTimeout(() => setOpenCreate(true), 0);
+
+    // Rimuovi ?new=1 dall’URL
     const p = new URLSearchParams(sp.toString());
     p.delete('new');
     const qs = p.toString();
     router.replace(qs ? `/opportunities?${qs}` : '/opportunities');
-  }, [sp, isClub, router]);
 
-  // 4) Caricamento lista (usa /api/opportunities/filter)
+    return () => clearTimeout(t);
+  }, [sp, router]);
+
+  // 4) Caricamento lista
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setErr(null);
 
-    fetch(`/api/opportunities/filter?${queryString}`, { credentials: 'include', cache: 'no-store' })
+    fetch(`/api/opportunities?${queryString}`, { credentials: 'include', cache: 'no-store' })
       .then(async (r) => {
         const t = await r.text();
         if (!r.ok) {
           try { const j = JSON.parse(t); throw new Error(j.error || `HTTP ${r.status}`); }
           catch { throw new Error(t || `HTTP ${r.status}`); }
         }
-        try { return JSON.parse(t); } catch { return {}; }
+        return JSON.parse(t) as OpportunitiesApiResponse;
       })
-      .then((json) => { if (!cancelled) setData(json); })
-      .catch((e) => { if (!cancelled) setErr(e.message || 'Errore'); })
-      .finally(() => { if (!cancelled) setLoading(false); });
+      .then((json) => !cancelled && setData(json))
+      .catch((e) => !cancelled && setErr(e.message || 'Errore'))
+      .finally(() => !cancelled && setLoading(false));
 
     return () => { cancelled = true; };
   }, [queryString, reloadKey]);
-
-  // Normalizza risultati in un array sempre valido
-  const items: Opportunity[] = useMemo(() => {
-    const j: any = data ?? {};
-    if (Array.isArray(j.data)) return j.data;
-    if (Array.isArray(j.items)) return j.items;
-    if (Array.isArray(j.results)) return j.results;
-    return [];
-  }, [data]);
 
   async function handleDelete(o: Opportunity) {
     if (!confirm(`Eliminare "${o.title}"?`)) return;
@@ -154,11 +151,17 @@ export default function OpportunitiesClient() {
     }
   }
 
+  const items: Opportunity[] = useMemo(() => {
+    // difesa: se data/data non esiste, restituisci array vuoto
+    const arr = (data as any)?.data;
+    return Array.isArray(arr) ? arr : [];
+  }, [data]);
+
   return (
     <div className="p-4 md:p-6 space-y-4">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">Opportunità</h1>
-        {/* CTA creazione è nel Topbar (/opportunities?new=1) */}
+        {/* CTA spostata in topbar (link /opportunities?new=1) */}
       </div>
 
       {/* Barra filtri */}
@@ -288,9 +291,9 @@ export default function OpportunitiesClient() {
         />
       )}
 
-      {/* Modale creazione: solo club (apre anche da ?new=1) */}
-      {isClub && (
-        <Modal open={openCreate} title="Nuova opportunità" onClose={() => setOpenCreate(false)}>
+      {/* Modale creazione: si apre anche da ?new=1; la form appare quando isClub è true */}
+      <Modal open={openCreate} title="Nuova opportunità" onClose={() => setOpenCreate(false)}>
+        {isClub ? (
           <OpportunityForm
             onCancel={() => setOpenCreate(false)}
             onSaved={() => {
@@ -299,8 +302,10 @@ export default function OpportunitiesClient() {
               router.refresh();
             }}
           />
-        </Modal>
-      )}
+        ) : (
+          <div className="text-sm text-gray-600">Devi essere un club per creare un’opportunità.</div>
+        )}
+      </Modal>
 
       <Modal open={!!editItem} title={`Modifica: ${editItem?.title ?? ''}`} onClose={() => setEditItem(null)}>
         {editItem && (
