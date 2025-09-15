@@ -2,13 +2,12 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 
 type Role = 'athlete' | 'club' | 'guest';
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
   const [role, setRole] = useState<Role>('guest');
 
   useEffect(() => {
@@ -17,11 +16,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       try {
         const r = await fetch('/api/auth/whoami', { cache: 'no-store', credentials: 'include' });
         const j = await r.json().catch(() => ({}));
+        if (cancelled) return;
         const raw = String(j?.role ?? '').toLowerCase();
-        if (!cancelled) {
-          if (raw === 'club' || raw === 'athlete') setRole(raw as Role);
-          else setRole('guest');
-        }
+        if (raw === 'club' || raw === 'athlete') setRole(raw as Role);
+        else setRole('guest');
       } catch {
         if (!cancelled) setRole('guest');
       }
@@ -45,7 +43,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* Top navbar */}
       <header className="sticky top-0 z-20 bg-white/90 backdrop-blur border-b">
         <div className="mx-auto max-w-7xl h-14 px-4 flex items-center gap-4">
           <Link href="/feed" className="flex items-center gap-2">
@@ -56,38 +53,26 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <nav className="hidden md:flex items-center gap-2 ml-4">
             <NavLink href="/feed" label="Feed" />
             <NavLink href="/opportunities" label="Opportunità" />
-            <NavLink href="/clubs" label="Club" />
+            <NavLink href="/club" label="Club" />
             <NavLink href={role === 'club' ? '/club/profile' : '/profile'} label="Profilo" />
           </nav>
 
           <div className="ml-auto flex items-center gap-2">
-            <input
-              placeholder="Cerca"
-              className="hidden md:block w-64 rounded-lg border px-3 py-1.5"
-            />
-
+            <input placeholder="Cerca" className="hidden md:block w-64 rounded-lg border px-3 py-1.5" />
             {role === 'club' && (
-              <Link
-                href="/opportunities?new=1"
-                className="rounded-lg bg-blue-600 text-white px-3 py-1.5"
-              >
+              <Link href="/opportunities?new=1" className="rounded-lg bg-blue-600 text-white px-3 py-1.5">
                 + Nuova opportunità
               </Link>
             )}
-
             {role !== 'guest' && (
-              <Link
-                href="/logout"
-                className="rounded-lg border px-3 py-1.5 hover:bg-gray-50"
-              >
-                Esci
+              <Link href="/logout" className="rounded-lg border px-3 py-1.5 hover:bg-gray-50">
+                Logout
               </Link>
             )}
           </div>
         </div>
       </header>
 
-      {/* Page content */}
       <main className="mx-auto max-w-7xl px-4 py-6">{children}</main>
     </div>
   );

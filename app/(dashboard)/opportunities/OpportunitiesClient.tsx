@@ -1,4 +1,4 @@
-'use client';
+'use client'; 
 
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -113,13 +113,13 @@ export default function OpportunitiesClient() {
     return () => clearTimeout(t);
   }, [sp, router]);
 
-  // 4) Caricamento lista
+  // 4) Caricamento lista  ✅ usa /api/opportunities/filter
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setErr(null);
 
-    fetch(`/api/opportunities?${queryString}`, { credentials: 'include', cache: 'no-store' })
+    fetch(`/api/opportunities/filter?${queryString}`, { credentials: 'include', cache: 'no-store' })
       .then(async (r) => {
         const t = await r.text();
         if (!r.ok) {
