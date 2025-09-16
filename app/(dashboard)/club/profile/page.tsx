@@ -1,136 +1,160 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+
+type Profile = {
+  id?: string;
+  type?: string;
+  display_name?: string;
+  bio?: string;
+  logo_url?: string | null;
+};
 
 export default function ClubProfilePage() {
-  const router = useRouter();
-
+  const [initial, setInitial] = useState<Profile | null>(null);
   const [name, setName] = useState('');
   const [bio, setBio] = useState('');
-  const [logoFile, setLogoFile] = useState<File | null>(null);
-
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
+  // Carica il profilo corrente
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      setLoading(true);
+      setError(null);
       try {
-        setLoading(true);
-        setErr(null);
-        const r = await fetch('/api/profiles/me', { cache: 'no-store', credentials: 'include' });
-        const j = await r.json().catch(() => ({}));
+        const r = await fetch('/api/profiles/me', {
+          credentials: 'include',
+          cache: 'no-store',
+        });
+        const t = await r.text();
+        const j = t ? JSON.parse(t) : {};
         if (cancelled) return;
-        const profile = j?.profile ?? j;
-        if (profile?.type?.toLowerCase?.().startsWith('club')) {
-          setName(profile.display_name ?? profile.name ?? '');
-          setBio(profile.bio ?? '');
-        }
-      } catch {
-        /* profilo non ancora creato */
+        const p: Profile = j?.profile ?? j;
+        setInitial(p);
+        setName(p?.display_name ?? '');
+        setBio(p?.bio ?? '');
+      } catch (e: any) {
+        if (!cancelled) setError(e?.message ?? 'Errore nel caricamento profilo');
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault();
-    if (saving) return;
+  async function putJson(url: string, body: any) {
+    const res = await fetch(url, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const t = await res.text();
+      throw new Error(t || `HTTP ${res.status}`);
+    }
+    return res.json().catch(() => ({}));
+  }
+
+  async function handleSave() {
     setSaving(true);
-    setErr(null);
-
+    setError(null);
     try {
-      // salva dati testuali
-      const res = await fetch('/api/profiles', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'club', display_name: name, bio }),
-      });
-      if (!res.ok) {
-        const t = await res.text();
-        throw new Error(t || `HTTP ${res.status}`);
+      const payload = {
+        type: 'club',
+        display_name: name.trim(),
+        bio: bio.trim(),
+      };
+
+      // 1° tentativo: /api/profiles/me
+      try {
+        await putJson('/api/profiles/me', payload);
+      } catch {
+        // fallback: /api/clubs/me (se disponibile in progetto)
+        await putJson('/api/clubs/me', payload);
       }
 
-      // upload logo (opzionale, se l’endpoint esiste)
-      if (logoFile) {
-        const fd = new FormData();
-        fd.append('file', logoFile);
-        await fetch('/api/profiles/logo', { method: 'POST', credentials: 'include', body: fd }).catch(() => {});
-      }
-
-      router.push('/opportunities');
-      router.refresh();
+      setInitial((p) => ({ ...(p ?? {}), ...payload }));
+      alert('Profilo salvato ✔︎');
     } catch (e: any) {
-      setErr(e?.message ?? 'Errore salvataggio profilo');
+      setError(e?.message ?? 'Salvataggio fallito');
+      alert('Errore: ' + (e?.message ?? 'Salvataggio fallito'));
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
+    <div className="max-w-5xl mx-auto p-4 md:p-6 space-y-6">
       <h1 className="text-3xl font-semibold">Profilo Club</h1>
 
-      {err && (
-        <div className="rounded-lg border border-red-300 bg-red-50 text-red-700 px-4 py-3">
-          {err}
-        </div>
-      )}
+      {loading ? (
+        <div className="h-40 rounded-2xl bg-gray-200 animate-pulse" />
+      ) : (
+        <>
+          {error && (
+            <div className="border rounded-xl p-3 bg-red-50 text-red-700">{error}</div>
+          )}
 
-      <form onSubmit={handleSave} className="space-y-6">
-        <section className="space-y-3">
-          <h2 className="text-lg font-medium">Logo</h2>
-          <div className="flex items-center gap-4">
-            <div className="h-24 w-24 rounded-md border flex items-center justify-center text-gray-500">
-              Nessun logo
+          <section className="rounded-2xl border p-4 space-y-4">
+            <h2 className="font-medium">Logo</h2>
+            <div className="flex items-center gap-4">
+              <div className="h-24 w-24 rounded-md border bg-white grid place-content-center overflow-hidden">
+                {initial?.logo_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={initial.logo_url} alt="Logo" className="h-full w-full object-cover" />
+                ) : (
+                  <span className="text-xs text-gray-500">Nessun logo</span>
+                )}
+              </div>
+              <div className="text-sm text-gray-600">
+                Il caricamento del logo sarà abilitato dopo il wiring dello storage.
+                Per ora puoi salvare nome e bio.
+              </div>
             </div>
+          </section>
+
+          <section className="rounded-2xl border p-4 space-y-4">
+            <h2 className="font-medium">Dati</h2>
+
             <div className="space-y-2">
+              <label className="block text-sm text-gray-700">Nome Club</label>
               <input
-                type="file"
-                accept="image/png,image/jpeg"
-                onChange={(e) => setLogoFile(e.currentTarget.files?.[0] ?? null)}
-                disabled={saving}
+                value={name}
+                onChange={(e) => setName(e.currentTarget.value)}
+                placeholder="Es. ASD Example"
+                className="w-full rounded-lg border px-3 py-2"
               />
-              <p className="text-xs text-gray-500">Suggerito: PNG/JPG quadrato ≤ 2MB.</p>
             </div>
-          </div>
-        </section>
 
-        <section className="space-y-3">
-          <h2 className="text-lg font-medium">Dati</h2>
+            <div className="space-y-2">
+              <label className="block text-sm text-gray-700">Bio</label>
+              <textarea
+                value={bio}
+                onChange={(e) => setBio(e.currentTarget.value)}
+                placeholder="Racconta qualcosa sul club…"
+                rows={6}
+                className="w-full rounded-lg border px-3 py-2"
+              />
+            </div>
 
-          <label className="block text-sm font-medium mb-1">Nome Club</label>
-          <input
-            className="w-full rounded-md border px-3 py-2"
-            placeholder="Es. ASD Example"
-            value={name}
-            onChange={(e) => setName(e.currentTarget.value)}
-            disabled={loading || saving}
-          />
-
-          <label className="block text-sm font-medium mt-4 mb-1">Bio</label>
-          <textarea
-            className="w-full min-h-[10rem] rounded-md border px-3 py-2"
-            placeholder="Racconta qualcosa sul club..."
-            value={bio}
-            onChange={(e) => setBio(e.currentTarget.value)}
-            disabled={loading || saving}
-          />
-        </section>
-
-        <button
-          type="submit"
-          disabled={saving || loading}
-          className="px-4 py-2 rounded-md bg-black text-white disabled:opacity-50"
-        >
-          {saving ? 'Salvataggio…' : 'Salva profilo'}
-        </button>
-      </form>
+            <div>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="px-4 py-2 rounded-lg bg-black text-white disabled:opacity-60"
+              >
+                {saving ? 'Salvataggio…' : 'Salva profilo'}
+              </button>
+            </div>
+          </section>
+        </>
+      )}
     </div>
   );
 }
