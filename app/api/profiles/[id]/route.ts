@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 
-// --- Supabase SSR client (compatibile Next 15) ---
+// Supabase SSR (compatibile Next 15: cookies async)
 async function getSb() {
   const sb = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -31,22 +31,25 @@ async function getSb() {
   return sb;
 }
 
-// limite bio lato server
-function limitBio(bio: unknown, maxWords = 100) {
-  const s = String(bio ?? '').trim();
+// Limite bio lato server
+function limitBio(input: unknown, maxWords = 100) {
+  const s = String(input ?? '').trim();
   const words = s.split(/\s+/).filter(Boolean);
   return words.slice(0, maxWords).join(' ');
 }
 
+// ✅ Signature corretta per Next 15: `context.params` è una Promise
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    let supabase = await getSb();
+    const { id: idParam } = await context.params;
 
-    // Supporta PATCH /api/profiles/me: risolve l'UUID dell'utente loggato
-    let { id } = params;
+    const supabase = await getSb();
+
+    // Supporta /api/profiles/me
+    let id = idParam;
     if (id === 'me') {
       const { data: auth, error: eUser } = await supabase.auth.getUser();
       if (eUser) throw eUser;
@@ -58,21 +61,20 @@ export async function PATCH(
 
     const body = await req.json();
     const payload = {
-      type: 'club', // forziamo club per la pagina profilo club
+      type: 'club',
       display_name: String(body.display_name ?? '').trim(),
       bio: limitBio(body.bio, 100),
     };
 
-    // 1) Controlla se esiste già una riga per quell'id
+    // Esiste già?
     const { data: existing, error: e1 } = await supabase
       .from('profiles')
       .select('id')
       .eq('id', id)
-      .maybeSingle(); // evita l’errore "Cannot coerce..."
+      .maybeSingle(); // evita "Cannot coerce the result..."
 
     if (e1) throw e1;
 
-    // 2) Update oppure Insert, SEMPRE filtrando per id
     let data, error;
     if (existing) {
       ({ data, error } = await supabase
