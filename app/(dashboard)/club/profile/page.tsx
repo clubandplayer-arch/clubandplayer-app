@@ -10,6 +10,12 @@ type Profile = {
   logo_url?: string | null;
 };
 
+const BIO_WORD_LIMIT = 100;
+
+function countWords(s: string) {
+  return s.trim().split(/\s+/).filter(Boolean).length;
+}
+
 export default function ClubProfilePage() {
   const [initial, setInitial] = useState<Profile | null>(null);
   const [name, setName] = useState('');
@@ -47,18 +53,27 @@ export default function ClubProfilePage() {
     };
   }, []);
 
-  async function putJson(url: string, body: any) {
+  // helper request che NON lancia eccezioni: mi serve lo status per gestire il fallback dal 405
+  async function req(method: string, url: string, body: any) {
     const res = await fetch(url, {
-      method: 'PUT',
+      method,
       credentials: 'include',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
     });
-    if (!res.ok) {
-      const t = await res.text();
-      throw new Error(t || `HTTP ${res.status}`);
-    }
-    return res.json().catch(() => ({}));
+    const text = await res.text();
+    return {
+      ok: res.ok,
+      status: res.status,
+      json: (() => {
+        try {
+          return text ? JSON.parse(text) : {};
+        } catch {
+          return {};
+        }
+      })(),
+      text,
+    };
   }
 
   async function handleSave() {
@@ -71,12 +86,25 @@ export default function ClubProfilePage() {
         bio: bio.trim(),
       };
 
-      // 1° tentativo: /api/profiles/me
-      try {
-        await putJson('/api/profiles/me', payload);
-      } catch {
-        // fallback: /api/clubs/me (se disponibile in progetto)
-        await putJson('/api/clubs/me', payload);
+      // Tentativo 1: PATCH /api/profiles/me
+      let res = await req('PATCH', '/api/profiles/me', payload);
+
+      // Se 405 → il route non supporta PATCH: prova PUT
+      if (!res.ok && res.status === 405) {
+        res = await req('PUT', '/api/profiles/me', payload);
+      }
+
+      // Se ancora non ok, prova l’alternativa /api/clubs/me (alcuni progetti la usano)
+      if (!res.ok && (res.status === 404 || res.status === 405)) {
+        let alt = await req('PATCH', '/api/clubs/me', payload);
+        if (!alt.ok && alt.status === 405) {
+          alt = await req('PUT', '/api/clubs/me', payload);
+        }
+        res = alt;
+      }
+
+      if (!res.ok) {
+        throw new Error(res.text || `HTTP ${res.status}`);
       }
 
       setInitial((p) => ({ ...(p ?? {}), ...payload }));
@@ -88,6 +116,18 @@ export default function ClubProfilePage() {
       setSaving(false);
     }
   }
+
+  function handleBioChange(v: string) {
+    // hard-cap a 100 parole
+    const words = v.trim().split(/\s+/).filter(Boolean);
+    if (words.length <= BIO_WORD_LIMIT) {
+      setBio(v);
+    } else {
+      setBio(words.slice(0, BIO_WORD_LIMIT).join(' '));
+    }
+  }
+
+  const bioCount = countWords(bio);
 
   return (
     <div className="max-w-5xl mx-auto p-4 md:p-6 space-y-6">
@@ -133,10 +173,15 @@ export default function ClubProfilePage() {
             </div>
 
             <div className="space-y-2">
-              <label className="block text-sm text-gray-700">Bio</label>
+              <div className="flex items-center justify-between">
+                <label className="block text-sm text-gray-700">Bio</label>
+                <span className={`text-xs ${bioCount > BIO_WORD_LIMIT ? 'text-red-600' : 'text-gray-500'}`}>
+                  {bioCount}/{BIO_WORD_LIMIT} parole
+                </span>
+              </div>
               <textarea
                 value={bio}
-                onChange={(e) => setBio(e.currentTarget.value)}
+                onChange={(e) => handleBioChange(e.currentTarget.value)}
                 placeholder="Racconta qualcosa sul club…"
                 rows={6}
                 className="w-full rounded-lg border px-3 py-2"
