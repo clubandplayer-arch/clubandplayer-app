@@ -23,14 +23,25 @@ export default function ClubProfilePage() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [myId, setMyId] = useState<string | null>(null);
 
-  // Carica il profilo corrente
+  // Carica "chi sono" (UUID) + profilo corrente
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+
+    async function load() {
       setLoading(true);
       setError(null);
       try {
+        // 1) whoami → prendo il mio UUID
+        const rWho = await fetch('/api/auth/whoami', {
+          credentials: 'include',
+          cache: 'no-store',
+        });
+        const jWho = await rWho.json().catch(() => ({}));
+        if (!cancelled) setMyId(jWho?.user?.id ?? null);
+
+        // 2) profilo corrente (va bene /me per il read)
         const r = await fetch('/api/profiles/me', {
           credentials: 'include',
           cache: 'no-store',
@@ -47,13 +58,15 @@ export default function ClubProfilePage() {
       } finally {
         if (!cancelled) setLoading(false);
       }
-    })();
+    }
+
+    load();
     return () => {
       cancelled = true;
     };
   }, []);
 
-  // helper request che NON lancia eccezioni: mi serve lo status per gestire il fallback dal 405
+  // helper request che NON lancia eccezioni: mi serve lo status per gestire i fallback
   async function req(method: string, url: string, body: any) {
     const res = await fetch(url, {
       method,
@@ -65,6 +78,7 @@ export default function ClubProfilePage() {
     return {
       ok: res.ok,
       status: res.status,
+      text,
       json: (() => {
         try {
           return text ? JSON.parse(text) : {};
@@ -72,7 +86,6 @@ export default function ClubProfilePage() {
           return {};
         }
       })(),
-      text,
     };
   }
 
@@ -86,25 +99,31 @@ export default function ClubProfilePage() {
         bio: bio.trim(),
       };
 
-      // Tentativo 1: PATCH /api/profiles/me
-      let res = await req('PATCH', '/api/profiles/me', payload);
+      let res;
 
-      // Se 405 → il route non supporta PATCH: prova PUT
-      if (!res.ok && res.status === 405) {
-        res = await req('PUT', '/api/profiles/me', payload);
-      }
-
-      // Se ancora non ok, prova l’alternativa /api/clubs/me (alcuni progetti la usano)
-      if (!res.ok && (res.status === 404 || res.status === 405)) {
-        let alt = await req('PATCH', '/api/clubs/me', payload);
-        if (!alt.ok && alt.status === 405) {
-          alt = await req('PUT', '/api/clubs/me', payload);
+      if (myId) {
+        // ✅ UPDATE con UUID reale
+        res = await req('PATCH', `/api/profiles/${myId}`, payload);
+        if (!res.ok && res.status === 405) {
+          res = await req('PUT', `/api/profiles/${myId}`, payload);
         }
-        res = alt;
+        if (!res.ok && (res.status === 404 || res.status === 405)) {
+          // alcuni setup usano /api/clubs/[id]
+          res = await req('PATCH', `/api/clubs/${myId}`, payload);
+          if (!res.ok && res.status === 405) {
+            res = await req('PUT', `/api/clubs/${myId}`, payload);
+          }
+        }
+      } else {
+        // fallback estremo (se non ho l’UUID), provo /me
+        res = await req('PATCH', `/api/profiles/me`, payload);
+        if (!res.ok && res.status === 405) {
+          res = await req('PUT', `/api/profiles/me`, payload);
+        }
       }
 
-      if (!res.ok) {
-        throw new Error(res.text || `HTTP ${res.status}`);
+      if (!res?.ok) {
+        throw new Error(res?.text || `HTTP ${res?.status}`);
       }
 
       setInitial((p) => ({ ...(p ?? {}), ...payload }));
@@ -118,13 +137,10 @@ export default function ClubProfilePage() {
   }
 
   function handleBioChange(v: string) {
-    // hard-cap a 100 parole
+    // Hard-cap 100 parole
     const words = v.trim().split(/\s+/).filter(Boolean);
-    if (words.length <= BIO_WORD_LIMIT) {
-      setBio(v);
-    } else {
-      setBio(words.slice(0, BIO_WORD_LIMIT).join(' '));
-    }
+    if (words.length <= BIO_WORD_LIMIT) setBio(v);
+    else setBio(words.slice(0, BIO_WORD_LIMIT).join(' '));
   }
 
   const bioCount = countWords(bio);
