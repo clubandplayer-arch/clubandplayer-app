@@ -1,81 +1,124 @@
-import type { NextRequest } from 'next/server';
-import { NextResponse } from 'next/server';
-import { revalidatePath } from 'next/cache';
-// ...i tuoi import reali (DB, ecc.)
+// app/api/opportunities/[id]/route.ts
+import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
+import { cookies } from 'next/headers'
+import { createServerClient } from '@supabase/ssr'
 
-/**
- * Se devi revalidare più percorsi, centralizziamo qui.
- * Non è obbligatorio aspettare, ma lo facciamo per evitare warning.
- */
+// Helper Supabase compatibile con Next 15 (cookies() async)
+async function getSupabase() {
+  const store = await cookies()
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  return createServerClient(url, key, {
+    cookies: {
+      get(name: string) {
+        return store.get(name)?.value
+      },
+      set(name: string, value: string, options: any) {
+        store.set({ name, value, ...options })
+      },
+      remove(name: string, options: any) {
+        store.set({ name, value: '', ...options, maxAge: 0 })
+      },
+    },
+    cookieOptions: { sameSite: 'lax' },
+  })
+}
+
 async function revalidateAll() {
   try {
-    revalidatePath('/opportunities');
-    revalidatePath('/feed');
-    revalidatePath('/my/opportunities');
+    revalidatePath('/opportunities')
+    revalidatePath('/feed')
+    revalidatePath('/my/opportunities')
   } catch {
-    // no-op in build
+    // no-op durante build
   }
 }
 
-/**
- * PATCH /api/opportunities/[id]
- * Firma aggiornata per Next 15:
- * - req: NextRequest
- * - context.params è una Promise => va await-ata
- */
+// PATCH /api/opportunities/[id]
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  ctx: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
-
+  const { id } = await ctx.params
   try {
-    const body = await req.json();
-    // ...update su DB di "id" con "body"
-    // es: await db.opportunity.update({ where: { id }, data: body });
+    const supabase = await getSupabase()
+    const { data: u, error: ue } = await supabase.auth.getUser()
+    if (ue || !u?.user) {
+      return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+    }
+    const userId = u.user.id
 
-    await revalidateAll();
-    return NextResponse.json({ ok: true });
-  } catch (e) {
-    return NextResponse.json({ error: 'update_failed' }, { status: 500 });
+    const body = await req.json()
+
+    // Solo i campi ammessi
+    const allowed = [
+      'title',
+      'description',
+      'sport',
+      'role',
+      'age_min',
+      'age_max',
+      'country',
+      'region',
+      'province',
+      'city',
+      'club_name',
+      'status',
+      'visibility',
+    ] as const
+    const update: Record<string, any> = {}
+    for (const k of allowed) if (k in body) update[k] = body[k]
+
+    const { data, error } = await supabase
+      .from('opportunities')
+      .update(update)
+      .eq('id', id)
+      .eq('created_by', userId) // sicurezza: solo il proprietario può modificare
+      .select('*')
+      .single()
+
+    if (error) {
+      // se non corrisponde il proprietario, Supabase non restituisce riga
+      return NextResponse.json({ error: error.message }, { status: 400 })
+    }
+
+    await revalidateAll()
+    return NextResponse.json({ ok: true, data })
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message ?? 'update_failed' }, { status: 500 })
   }
 }
 
-/**
- * Se in questo file usi anche DELETE o GET, lascia qui degli stub pronti
- * (puoi collegarli alla tua logica reale). Se non ti servono, puoi rimuoverli.
- */
+// DELETE /api/opportunities/[id]
 export async function DELETE(
   _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  ctx: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
-
+  const { id } = await ctx.params
   try {
-    // ...delete su DB di "id"
-    // es: await db.opportunity.delete({ where: { id } });
+    const supabase = await getSupabase()
+    const { data: u, error: ue } = await supabase.auth.getUser()
+    if (ue || !u?.user) {
+      return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+    }
+    const userId = u.user.id
 
-    await revalidateAll();
-    return NextResponse.json({ ok: true });
-  } catch (e) {
-    return NextResponse.json({ error: 'delete_failed' }, { status: 500 });
-  }
-}
+    const { data, error } = await supabase
+      .from('opportunities')
+      .delete()
+      .eq('id', id)
+      .eq('created_by', userId) // sicurezza: solo il proprietario può eliminare
+      .select('id')
+      .single()
 
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 400 })
+    }
 
-  try {
-    // ...fetch su DB di "id"
-    // es: const opp = await db.opportunity.findUnique({ where: { id } });
-    // return NextResponse.json(opp);
-
-    // placeholder safe: evita errori di build finché colleghi il DB
-    return NextResponse.json({ id });
-  } catch (e) {
-    return NextResponse.json({ error: 'get_failed' }, { status: 500 });
+    await revalidateAll()
+    return NextResponse.json({ ok: true })
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message ?? 'delete_failed' }, { status: 500 })
   }
 }
