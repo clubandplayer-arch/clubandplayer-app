@@ -1,4 +1,4 @@
-'use client'; 
+'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -23,18 +23,19 @@ export default function OpportunitiesClient() {
   const [reloadKey, setReloadKey] = useState(0);
 
   const [meId, setMeId] = useState<string | null>(null);
-  const [role, setRole] = useState<Role>('guest');           // da /api/auth/whoami
-  const [profileType, setProfileType] = useState<string>(''); // fallback da /api/profiles/me
+  const [role, setRole] = useState<Role>('guest');
+  const [profileType, setProfileType] = useState<string>('');
 
   const [openCreate, setOpenCreate] = useState(false);
   const [editItem, setEditItem] = useState<Opportunity | null>(null);
 
+  /** costruisce la query dai param presenti (solo quelli supportati) */
   const queryString = useMemo(() => {
     const p = new URLSearchParams();
     for (const k of [
-      'q','page','pageSize','sort',
-      'country','region','province','city',
-      'sport','role','age',
+      'q', 'page', 'pageSize', 'sort',
+      'country', 'region', 'province', 'city',
+      'sport', 'role', 'age',
     ]) {
       const v = sp.get(k);
       if (v) p.set(k, v);
@@ -42,6 +43,7 @@ export default function OpportunitiesClient() {
     return p.toString();
   }, [sp]);
 
+  /** helper generico per aggiornare un parametro */
   function setParam(name: string, value: string) {
     const p = new URLSearchParams(sp.toString());
     if (value) p.set(name, value);
@@ -51,7 +53,18 @@ export default function OpportunitiesClient() {
     router.replace(qs ? `/opportunities?${qs}` : '/opportunities');
   }
 
-  // 1) Chi sono? (id + role se disponibile)
+  /** reset filtri e torna a page=1 (usato dopo create) */
+  function resetFiltersAndReload() {
+    const p = new URLSearchParams();
+    p.set('sort', sp.get('sort') ?? 'recent');
+    p.set('page', '1');
+    p.set('pageSize', sp.get('pageSize') ?? '20');
+    router.replace(`/opportunities?${p.toString()}`);
+    setReloadKey(k => k + 1);
+    router.refresh();
+  }
+
+  // 1) whoami
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -70,7 +83,7 @@ export default function OpportunitiesClient() {
     return () => { cancelled = true; };
   }, []);
 
-  // 2) Fallback ruolo da profiles.me se whoami non chiarisce
+  // 2) fallback ruolo da /api/profiles/me
   useEffect(() => {
     let cancelled = false;
     if (!meId) return;
@@ -93,18 +106,17 @@ export default function OpportunitiesClient() {
 
   const isClub = role === 'club' || profileType.startsWith('club');
 
-  // 3) Apertura robusta della modale da ?new=1 e pulizia URL
+  // 3) apri modale da ?new=1 e pulisci l'URL
   useEffect(() => {
     const shouldOpen =
       sp.get('new') === '1' ||
-      (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('new') === '1');
+      (typeof window !== 'undefined' &&
+        new URLSearchParams(window.location.search).get('new') === '1');
 
     if (!shouldOpen) return;
 
-    // Apri subito la modale (la form comparirà quando isClub diventa true)
     const t = setTimeout(() => setOpenCreate(true), 0);
 
-    // Rimuovi ?new=1 dall’URL
     const p = new URLSearchParams(sp.toString());
     p.delete('new');
     const qs = p.toString();
@@ -113,13 +125,15 @@ export default function OpportunitiesClient() {
     return () => clearTimeout(t);
   }, [sp, router]);
 
-  // 4) Caricamento lista  ✅ usa /api/opportunities/filter
+  // 4) carica lista (⚠ usa /api/opportunities)
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setErr(null);
 
-    fetch(`/api/opportunities/filter?${queryString}`, { credentials: 'include', cache: 'no-store' })
+    const url = queryString ? `/api/opportunities?${queryString}` : '/api/opportunities';
+
+    fetch(url, { credentials: 'include', cache: 'no-store' })
       .then(async (r) => {
         const t = await r.text();
         if (!r.ok) {
@@ -144,27 +158,29 @@ export default function OpportunitiesClient() {
         try { const j = JSON.parse(t); throw new Error(j.error || `HTTP ${res.status}`); }
         catch { throw new Error(t || `HTTP ${res.status}`); }
       }
-      setReloadKey((k) => k + 1);
+      setReloadKey(k => k + 1);
       router.refresh();
     } catch (e: any) {
       alert(e.message || 'Errore durante eliminazione');
     }
   }
 
+  /** items robusto, anche se l’API restituisce direttamente un array */
   const items: Opportunity[] = useMemo(() => {
-    // difesa: se data/data non esiste, restituisci array vuoto
-    const arr = (data as any)?.data;
-    return Array.isArray(arr) ? arr : [];
+    const d: any = data as any;
+    if (Array.isArray(d)) return d as Opportunity[];
+    if (Array.isArray(d?.data)) return d.data as Opportunity[];
+    return [];
   }, [data]);
 
   return (
     <div className="p-4 md:p-6 space-y-4">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">Opportunità</h1>
-        {/* CTA spostata in topbar (link /opportunities?new=1) */}
+        {/* CTA spostata nel topbar (link /opportunities?new=1) */}
       </div>
 
-      {/* Barra filtri */}
+      {/* FILTRI */}
       <div className="flex flex-wrap items-center gap-3">
         <input
           placeholder="Cerca per titolo/descrizione…"
@@ -176,13 +192,10 @@ export default function OpportunitiesClient() {
         <select value={sp.get('country') ?? ''} onChange={(e) => setParam('country', e.target.value)} className="rounded-xl border px-3 py-2">
           <option value="">Paese</option>
           {COUNTRIES.map((c) => (
-            <option key={c.code} value={c.label}>
-              {c.label}
-            </option>
+            <option key={c.code} value={c.label}>{c.label}</option>
           ))}
         </select>
 
-        {/* Regione/Provincia/Città per Italia */}
         {sp.get('country') === 'Italia' && (
           <>
             <select
@@ -191,9 +204,7 @@ export default function OpportunitiesClient() {
               className="rounded-xl border px-3 py-2"
             >
               <option value="">Regione</option>
-              {ITALY_REGIONS.map((r: string) => (
-                <option key={r} value={r}>{r}</option>
-              ))}
+              {ITALY_REGIONS.map((r: string) => <option key={r} value={r}>{r}</option>)}
             </select>
 
             {PROVINCES_BY_REGION[sp.get('region') ?? ''] ? (
@@ -203,9 +214,7 @@ export default function OpportunitiesClient() {
                 className="rounded-xl border px-3 py-2"
               >
                 <option value="">Provincia</option>
-                {PROVINCES_BY_REGION[sp.get('region') ?? '']?.map((p: string) => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
+                {PROVINCES_BY_REGION[sp.get('region') ?? '']?.map((p: string) => <option key={p} value={p}>{p}</option>)}
               </select>
             ) : (
               <input
@@ -223,9 +232,7 @@ export default function OpportunitiesClient() {
                 className="rounded-xl border px-3 py-2"
               >
                 <option value="">Città</option>
-                {CITIES_BY_PROVINCE[sp.get('province') ?? '']?.map((c: string) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
+                {CITIES_BY_PROVINCE[sp.get('province') ?? '']?.map((c: string) => <option key={c} value={c}>{c}</option>)}
               </select>
             ) : (
               <input
@@ -240,20 +247,12 @@ export default function OpportunitiesClient() {
 
         <select value={sp.get('sport') ?? ''} onChange={(e) => setParam('sport', e.target.value)} className="rounded-xl border px-3 py-2">
           <option value="">Sport</option>
-          {SPORTS.map((s: string) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
+          {SPORTS.map((s: string) => <option key={s} value={s}>{s}</option>)}
         </select>
 
         <select value={sp.get('age') ?? ''} onChange={(e) => setParam('age', e.target.value)} className="rounded-xl border px-3 py-2">
           <option value="">Età</option>
-          {AGE_BRACKETS.map((b: string) => (
-            <option key={b} value={b}>
-              {b}
-            </option>
-          ))}
+          {AGE_BRACKETS.map((b: string) => <option key={b} value={b}>{b}</option>)}
         </select>
 
         <label className="text-sm text-gray-600 ml-auto">Ordina</label>
@@ -275,7 +274,7 @@ export default function OpportunitiesClient() {
       {err && (
         <div className="border rounded-xl p-4 bg-red-50 text-red-700">
           Errore nel caricamento: {err}{' '}
-          <button onClick={() => setReloadKey((k) => k + 1)} className="ml-3 px-3 py-1 border rounded-lg bg-white hover:bg-gray-50">
+          <button onClick={() => setReloadKey(k => k + 1)} className="ml-3 px-3 py-1 border rounded-lg bg-white hover:bg-gray-50">
             Riprova
           </button>
         </div>
@@ -291,15 +290,15 @@ export default function OpportunitiesClient() {
         />
       )}
 
-      {/* Modale creazione: si apre anche da ?new=1; la form appare quando isClub è true */}
+      {/* Modale creazione: si apre anche da ?new=1 */}
       <Modal open={openCreate} title="Nuova opportunità" onClose={() => setOpenCreate(false)}>
         {isClub ? (
           <OpportunityForm
             onCancel={() => setOpenCreate(false)}
             onSaved={() => {
               setOpenCreate(false);
-              setReloadKey((k) => k + 1);
-              router.refresh();
+              // dopo il salvataggio mostriamo subito la nuova riga
+              resetFiltersAndReload(); // svuota filtri, torna a page=1 e ricarica
             }}
           />
         ) : (
@@ -314,7 +313,7 @@ export default function OpportunitiesClient() {
             onCancel={() => setEditItem(null)}
             onSaved={() => {
               setEditItem(null);
-              setReloadKey((k) => k + 1);
+              setReloadKey(k => k + 1);
               router.refresh();
             }}
           />
