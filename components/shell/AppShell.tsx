@@ -13,7 +13,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<Role>('guest');
   const [meId, setMeId] = useState<string | null>(null);
 
-  // chi sono
+  // 1) whoami
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -31,6 +31,39 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     })();
     return () => { cancelled = true; };
   }, []);
+
+  // 2) fallback profilo (se sono loggato ma ruolo è ancora 'guest')
+  useEffect(() => {
+    let cancelled = false;
+    if (!meId) return;
+    if (role !== 'guest') return;
+
+    (async () => {
+      try {
+        // prova prima club
+        const rClub = await fetch('/api/clubs?mine=1', { credentials: 'include', cache: 'no-store' }).catch(()=>null);
+        if (!cancelled && rClub?.ok) {
+          const t = await rClub.json().catch(()=>({}));
+          // se torna qualcosa, assumo club
+          if (Array.isArray(t?.data) && t.data.length > 0) {
+            setRole('club'); 
+            return;
+          }
+        }
+      } catch { /* ignore */ }
+
+      try {
+        const r = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
+        const j = await r.json().catch(() => ({}));
+        if (cancelled) return;
+        const t = String(j?.type ?? j?.profile?.type ?? '').toLowerCase();
+        if (t.startsWith('club')) setRole('club');
+        else if (t === 'athlete') setRole('athlete');
+      } catch { /* noop */ }
+    })();
+
+    return () => { cancelled = true; };
+  }, [meId, role]);
 
   const profileHref = useMemo(() => {
     if (role === 'club') return '/club/profile';
@@ -58,14 +91,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     try {
       await fetch('/api/auth/session', { method: 'DELETE', credentials: 'include' }).catch(()=>{});
     } finally {
-      // hard redirect per sicurezza
       window.location.href = '/login';
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* Top navbar */}
       <header className="sticky top-0 z-20 bg-white/90 backdrop-blur border-b">
         <div className="mx-auto max-w-7xl h-14 px-4 flex items-center gap-4">
           <Link href="/feed" className="flex items-center gap-2">
@@ -113,7 +144,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      {/* Page content */}
       <main className="mx-auto max-w-7xl px-4 py-6">{children}</main>
     </div>
   );
