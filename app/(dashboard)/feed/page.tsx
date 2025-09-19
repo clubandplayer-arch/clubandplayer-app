@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import FeedLatest from '@/components/feed/FeedLatest';
 
 type Role = 'club' | 'athlete' | 'guest';
 
@@ -77,23 +78,8 @@ export default function FeedPage() {
             </div>
           </div>
 
-          {/* Annuncio consigliato (placeholder) */}
-          <div className="rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-            <div className="font-medium">Annuncio consigliato</div>
-            <p className="text-sm text-neutral-600 dark:text-neutral-300 mt-1">
-              Società XYZ cerca centrocampista U19…
-            </p>
-            <div className="mt-3 flex gap-2">
-              <Link href="/opportunities" className="rounded-md border px-3 py-1.5 text-sm hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800">
-                Apri
-              </Link>
-              {role === 'athlete' && (
-                <button className="rounded-md border px-3 py-1.5 text-sm hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800" disabled>
-                  Candidati (dalla scheda)
-                </button>
-              )}
-            </div>
-          </div>
+          {/* 🔴 DATI REALI: Ultime opportunità */}
+          <FeedLatest />
 
           {/* Post di un club (placeholder) */}
           <div className="rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
