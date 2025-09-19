@@ -1,150 +1,122 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 
 type Role = 'athlete' | 'club' | 'guest';
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
   const router = useRouter();
+  const pathname = usePathname();
 
   const [role, setRole] = useState<Role>('guest');
-  const [meId, setMeId] = useState<string | null>(null);
+  const [loadingRole, setLoadingRole] = useState(true);
 
-  // 1) whoami
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const r = await fetch('/api/auth/whoami', { cache: 'no-store', credentials: 'include' });
+        const r = await fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' });
         const j = await r.json().catch(() => ({}));
         if (cancelled) return;
-        setMeId(j?.user?.id ?? null);
-        const raw = String(j?.role ?? '').toLowerCase();
-        if (raw === 'club' || raw === 'athlete') setRole(raw as Role);
-        else setRole('guest');
+        const raw = (j?.role ?? '').toString().toLowerCase();
+        setRole(raw === 'club' || raw === 'athlete' ? (raw as Role) : 'guest');
       } catch {
         if (!cancelled) setRole('guest');
+      } finally {
+        if (!cancelled) setLoadingRole(false);
       }
     })();
     return () => { cancelled = true; };
   }, []);
 
-  // 2) fallback profilo (se sono loggato ma ruolo è ancora 'guest')
-  useEffect(() => {
-    let cancelled = false;
-    if (!meId) return;
-    if (role !== 'guest') return;
+  const profileHref = role === 'club' ? '/club/profile' : '/profile';
 
-    (async () => {
-      try {
-        // prova prima club
-        const rClub = await fetch('/api/clubs?mine=1', { credentials: 'include', cache: 'no-store' }).catch(()=>null);
-        if (!cancelled && rClub?.ok) {
-          const t = await rClub.json().catch(()=>({}));
-          // se torna qualcosa, assumo club
-          if (Array.isArray(t?.data) && t.data.length > 0) {
-            setRole('club'); 
-            return;
-          }
-        }
-      } catch { /* ignore */ }
-
-      try {
-        const r = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
-        const j = await r.json().catch(() => ({}));
-        if (cancelled) return;
-        const t = String(j?.type ?? j?.profile?.type ?? '').toLowerCase();
-        if (t.startsWith('club')) setRole('club');
-        else if (t === 'athlete') setRole('athlete');
-      } catch { /* noop */ }
-    })();
-
-    return () => { cancelled = true; };
-  }, [meId, role]);
-
-  const profileHref = useMemo(() => {
-    if (role === 'club') return '/club/profile';
-    if (role === 'athlete') return '/profile';
-    return '/login';
-  }, [role]);
-
-  const NavLink = ({ href, label }: { href: string; label: string }) => {
-    const active =
-      pathname === href ||
-      (href !== '/' && pathname.startsWith(href));
-    return (
-      <Link
-        href={href}
-        className={`px-2 py-1.5 rounded-md text-sm ${
-          active ? 'text-blue-700 font-semibold' : 'text-gray-600 hover:text-gray-900'
-        }`}
-      >
-        {label}
-      </Link>
-    );
-  };
-
-  const doLogout = async () => {
-    try {
-      await fetch('/api/auth/session', { method: 'DELETE', credentials: 'include' }).catch(()=>{});
-    } finally {
-      window.location.href = '/login';
-    }
-  };
+  const isActive = (href: string) =>
+    pathname === href || (href !== '/' && pathname?.startsWith(href));
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <header className="sticky top-0 z-20 bg-white/90 backdrop-blur border-b">
-        <div className="mx-auto max-w-7xl h-14 px-4 flex items-center gap-4">
-          <Link href="/feed" className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-md bg-blue-600" />
-            <span className="font-semibold">Club&Player</span>
+    <div className="min-h-screen flex flex-col">
+      {/* Top bar */}
+      <header className="sticky top-0 z-40 border-b bg-white/80 backdrop-blur">
+        <div className="mx-auto max-w-6xl px-4 h-14 flex items-center gap-4">
+          <Link href="/feed" className="font-semibold">
+            Club&Player
           </Link>
 
-          <nav className="hidden md:flex items-center gap-2 ml-4">
-            <NavLink href="/feed" label="Feed" />
-            <NavLink href="/opportunities" label="Opportunità" />
-            <NavLink href="/clubs" label="Club" />
-            <NavLink href={profileHref} label="Profilo" />
+          {/* Nav principale */}
+          <nav className="flex items-center gap-3 text-sm">
+            <Link
+              href="/feed"
+              className={`px-3 py-1.5 rounded-md hover:bg-gray-100 ${isActive('/feed') ? 'bg-gray-100 font-medium' : ''}`}
+            >
+              Bacheca
+            </Link>
+            <Link
+              href="/opportunities"
+              className={`px-3 py-1.5 rounded-md hover:bg-gray-100 ${isActive('/opportunities') ? 'bg-gray-100 font-medium' : ''}`}
+            >
+              Opportunità
+            </Link>
+            <Link
+              href="/clubs"
+              className={`px-3 py-1.5 rounded-md hover:bg-gray-100 ${isActive('/clubs') ? 'bg-gray-100 font-medium' : ''}`}
+            >
+              Club
+            </Link>
+            {role === 'club' && (
+              <Link
+                href="/club/applicants"
+                className={`px-3 py-1.5 rounded-md hover:bg-gray-100 ${isActive('/club/applicants') ? 'bg-gray-100 font-medium' : ''}`}
+              >
+                Candidature
+              </Link>
+            )}
+            {role === 'athlete' && (
+              <Link
+                href="/applications/received"
+                className={`px-3 py-1.5 rounded-md hover:bg-gray-100 ${isActive('/applications') ? 'bg-gray-100 font-medium' : ''}`}
+              >
+                Le mie candidature
+              </Link>
+            )}
           </nav>
 
           <div className="ml-auto flex items-center gap-2">
-            <input
-              placeholder="Cerca"
-              className="hidden md:block w-64 rounded-lg border px-3 py-1.5"
-            />
+            {/* CTA “Nuova opportunità” solo club */}
             {role === 'club' && (
               <Link
                 href="/opportunities?new=1"
-                className="rounded-lg bg-blue-600 text-white px-3 py-1.5"
+                className="rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50"
               >
                 + Nuova opportunità
               </Link>
             )}
 
-            {(role === 'club' || role === 'athlete') ? (
-              <button
-                onClick={doLogout}
-                className="rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50"
-              >
-                Logout
-              </button>
-            ) : (
+            {/* Profilo (dinamico) */}
+            {!loadingRole && (
               <Link
-                href="/login"
-                className="rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50"
+                href={profileHref}
+                className={`rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50 ${isActive(profileHref) ? 'bg-gray-50' : ''}`}
               >
-                Login
+                Profilo
               </Link>
             )}
+
+            {/* Logout */}
+            <Link
+              href="/logout"
+              className="rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50"
+            >
+              Logout
+            </Link>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-6">{children}</main>
+      {/* Contenuto */}
+      <main className="flex-1">{children}</main>
     </div>
   );
 }
