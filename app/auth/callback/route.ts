@@ -6,9 +6,8 @@ import { createServerClient } from '@supabase/ssr'
 export const runtime = 'nodejs'
 
 /**
- * Next 15: cookies() è async. Inoltre tra le versioni di @supabase/ssr
- * cambia la tipizzazione dei metodi cookie. Usiamo un cast a `any`
- * per evitare errori di typing senza toccare la logica runtime.
+ * Next 15: cookies() è async.
+ * Tipizziamo i metodi cookie con `any` per massima compatibilità @supabase/ssr.
  */
 async function getServerSupabase() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -44,16 +43,16 @@ export async function GET(req: NextRequest) {
 
   const supabase = await getServerSupabase()
 
-  // Diverse versioni di supabase-js supportano firme diverse.
+  // Firma “tollerante” (cambia tra versioni di supabase-js)
   try {
-    // @ts-ignore – firma 1: exchangeCodeForSession(code)
+    // @ts-ignore
     await supabase.auth.exchangeCodeForSession(code)
   } catch {
-    // @ts-ignore – firma 2: exchangeCodeForSession({ authCode: code })
+    // @ts-ignore
     await supabase.auth.exchangeCodeForSession({ authCode: code })
   }
 
-  // Cookie di sessione scritti: reindirizza all'home (o change se vuoi)
-  const redirectTo = `${url.origin}/`
+  // >>> SEMPRE reindirizza alla BACHECA (feed)
+  const redirectTo = `${url.origin}/feed`
   return NextResponse.redirect(redirectTo, { status: 302 })
 }
