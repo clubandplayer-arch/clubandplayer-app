@@ -14,6 +14,8 @@ import { AGE_BRACKETS, SPORTS } from '@/lib/opps/constants';
 type Role = 'athlete' | 'club' | 'guest';
 
 export default function OpportunitiesClient() {
+  const router = useRouter();
+  const sp = useSearchParams();
 
   const [data, setData] = useState<OpportunitiesApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -21,38 +23,25 @@ export default function OpportunitiesClient() {
   const [reloadKey, setReloadKey] = useState(0);
 
   const [meId, setMeId] = useState<string | null>(null);
-  const [role, setRole] = useState<Role>('guest');          // da /api/auth/whoami
+  const [role, setRole] = useState<Role>('guest');            // da /api/auth/whoami
   const [profileType, setProfileType] = useState<string>(''); // fallback da /api/profiles/me
 
   const [openCreate, setOpenCreate] = useState(false);
-
-  // --- auto open from ?new=1 e pulizia URL ---
-  const sp = useSearchParams();
-  const router = useRouter();
-  useEffect(() => {
-    // Se arrivo con ?new=1 apro la modale di creazione
-    if (sp.get("new") === "1") setOpenCreate(true);
-  }, [sp]);
-
-  function removeParam(name: string) {
-    const p = new URLSearchParams(sp.toString());
-    p.delete(name);
-    router.replace(p.toString() ? `/opportunities?${p}` : "/opportunities", { scroll: false });
-  }
-  // --- fine blocco ---
   const [editItem, setEditItem] = useState<Opportunity | null>(null);
 
-  const queryString = useMemo(() => {
+  // Costruisci i filtri base dai parametri URL
+  const urlFilters = useMemo(() => {
     const p = new URLSearchParams();
     for (const k of [
-      'q','page','pageSize','sort',
-      'country','region','province','city',
-      'sport','role','age',
+      'q', 'page', 'pageSize', 'sort',
+      'country', 'region', 'province', 'city',
+      'sport', 'role', 'age',
+      'created_by',            // <-- aggiunto
     ]) {
       const v = sp.get(k);
       if (v) p.set(k, v);
     }
-    return p.toString();
+    return p;
   }, [sp]);
 
   function setParam(name: string, value: string) {
@@ -60,7 +49,8 @@ export default function OpportunitiesClient() {
     if (value) p.set(name, value);
     else p.delete(name);
     if (name !== 'page') p.set('page', '1');
-    router.replace(`/opportunities?${p.toString()}`);
+    const qs = p.toString();
+    router.replace(qs ? `/opportunities?${qs}` : '/opportunities');
   }
 
   // 1) Chi sono? (id + role se disponibile)
@@ -82,11 +72,11 @@ export default function OpportunitiesClient() {
     return () => { cancelled = true; };
   }, []);
 
-  // 2) Fallback ruolo: se autenticato ma role non è “club/athlete”, leggi profiles.me
+  // 2) Fallback ruolo da profiles.me se whoami non chiarisce
   useEffect(() => {
     let cancelled = false;
-    if (!meId) return; // non loggato
-    if (role === 'club' || role === 'athlete') return; // già noto
+    if (!meId) return;
+    if (role === 'club' || role === 'athlete') return;
 
     (async () => {
       try {
@@ -97,9 +87,7 @@ export default function OpportunitiesClient() {
         setProfileType(t);
         if (t.startsWith('club')) setRole('club');
         else if (t === 'athlete') setRole('athlete');
-      } catch {
-        /* noop */
-      }
+      } catch { /* noop */ }
     })();
 
     return () => { cancelled = true; };
@@ -107,13 +95,41 @@ export default function OpportunitiesClient() {
 
   const isClub = role === 'club' || profileType.startsWith('club');
 
-  // 3) Caricamento lista
+  // 3) Apertura robusta della modale da ?new=1 e pulizia URL
+  useEffect(() => {
+    const shouldOpen =
+      sp.get('new') === '1' ||
+      (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('new') === '1');
+
+    if (!shouldOpen) return;
+
+    // Apri subito la modale (la form comparirà quando isClub diventa true)
+    const t = setTimeout(() => setOpenCreate(true), 0);
+
+    // Rimuovi ?new=1 dall’URL
+    const p = new URLSearchParams(sp.toString());
+    p.delete('new');
+    const qs = p.toString();
+    router.replace(qs ? `/opportunities?${qs}` : '/opportunities');
+
+    return () => clearTimeout(t);
+  }, [sp, router]);
+
+  // 4) Caricamento lista
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setErr(null);
 
-    fetch(`/api/opportunities?${queryString}`, { credentials: 'include', cache: 'no-store' })
+    // Clona i filtri e risolvi created_by=me -> created_by=<meId>
+    const p = new URLSearchParams(urlFilters.toString());
+    if (p.get('created_by') === 'me') {
+      if (meId) p.set('created_by', meId);
+      else p.delete('created_by'); // se non sono loggato, non filtrare per "me"
+    }
+    const qs = p.toString();
+
+    fetch(`/api/opportunities?${qs}`, { credentials: 'include', cache: 'no-store' })
       .then(async (r) => {
         const t = await r.text();
         if (!r.ok) {
@@ -127,7 +143,8 @@ export default function OpportunitiesClient() {
       .finally(() => !cancelled && setLoading(false));
 
     return () => { cancelled = true; };
-  }, [queryString, reloadKey]);
+    // dipendenze: quando cambiano i parametri URL, l'utente (meId) o la forzatura reloadKey
+  }, [urlFilters, meId, reloadKey]);
 
   async function handleDelete(o: Opportunity) {
     if (!confirm(`Eliminare "${o.title}"?`)) return;
@@ -139,23 +156,23 @@ export default function OpportunitiesClient() {
         catch { throw new Error(t || `HTTP ${res.status}`); }
       }
       setReloadKey((k) => k + 1);
+      router.refresh();
     } catch (e: any) {
       alert(e.message || 'Errore durante eliminazione');
     }
   }
 
+  const items: Opportunity[] = useMemo(() => {
+    // difesa: se data/data non esiste, restituisci array vuoto
+    const arr = (data as any)?.data;
+    return Array.isArray(arr) ? arr : [];
+  }, [data]);
+
   return (
     <div className="p-4 md:p-6 space-y-4">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">Opportunità</h1>
-        {isClub && (
-          <button
-            onClick={() => setOpenCreate(true)}
-            className="px-3 py-2 rounded-lg bg-gray-900 text-white"
-          >
-            + Nuova opportunità
-          </button>
-        )}
+        {/* CTA spostata in topbar (link /opportunities?new=1) */}
       </div>
 
       {/* Barra filtri */}
@@ -176,7 +193,7 @@ export default function OpportunitiesClient() {
           ))}
         </select>
 
-        {/* Regione/Provincia/Città per Italia (statico) */}
+        {/* Regione/Provincia/Città per Italia */}
         {sp.get('country') === 'Italia' && (
           <>
             <select
@@ -275,9 +292,9 @@ export default function OpportunitiesClient() {
         </div>
       )}
 
-      {!loading && !err && data && (
+      {!loading && !err && (
         <OpportunitiesTable
-          items={data.data}
+          items={items}
           currentUserId={meId ?? undefined}
           userRole={role}
           onEdit={(o) => setEditItem(o)}
@@ -285,22 +302,32 @@ export default function OpportunitiesClient() {
         />
       )}
 
-      {/* Modale creazione: solo club */}
-      {isClub && (
-        <Modal open={openCreate} title="Nuova opportunità" onClose={() => { setOpenCreate(false); removeParam('new'); }}>
+      {/* Modale creazione: si apre anche da ?new=1; la form appare quando isClub è true */}
+      <Modal open={openCreate} title="Nuova opportunità" onClose={() => setOpenCreate(false)}>
+        {isClub ? (
           <OpportunityForm
-            onCancel={() => { setOpenCreate(false); removeParam('new'); }}
-            onSaved={() => { setOpenCreate(false); removeParam('new'); setReloadKey((k) => k + 1); }}
+            onCancel={() => setOpenCreate(false)}
+            onSaved={() => {
+              setOpenCreate(false);
+              setReloadKey((k) => k + 1);
+              router.refresh();
+            }}
           />
-        </Modal>
-      )}
+        ) : (
+          <div className="text-sm text-gray-600">Devi essere un club per creare un’opportunità.</div>
+        )}
+      </Modal>
 
       <Modal open={!!editItem} title={`Modifica: ${editItem?.title ?? ''}`} onClose={() => setEditItem(null)}>
         {editItem && (
           <OpportunityForm
             initial={editItem}
             onCancel={() => setEditItem(null)}
-            onSaved={() => { setEditItem(null); setReloadKey((k) => k + 1); }}
+            onSaved={() => {
+              setEditItem(null);
+              setReloadKey((k) => k + 1);
+              router.refresh();
+            }}
           />
         )}
       </Modal>
