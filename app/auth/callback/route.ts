@@ -32,20 +32,15 @@ export async function GET(req: NextRequest) {
   const code = url.searchParams.get('code');
   const err = url.searchParams.get('error_description') || url.searchParams.get('error');
 
-  if (err) {
-    return NextResponse.json({ error: String(err) }, { status: 400 });
-  }
-  if (!code) {
-    return NextResponse.json({ error: 'Missing auth code' }, { status: 400 });
-  }
+  if (err) return NextResponse.json({ error: String(err) }, { status: 400 });
+  if (!code) return NextResponse.json({ error: 'Missing auth code' }, { status: 400 });
 
   const supabase = await makeServerClient();
 
-  // 1) scambia il codice con la sessione
+  // Scambia il codice con la sessione
   try {
-    // ts-ignore per supportare sia firma nuova sia legacy
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
+    // @ts-ignore - compat firme diverse
     await supabase.auth.exchangeCodeForSession(code);
   } catch {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -53,19 +48,15 @@ export async function GET(req: NextRequest) {
     await supabase.auth.exchangeCodeForSession({ authCode: code });
   }
 
-  // 2) chi sono?
+  // Determina destinazione
   const { data: u } = await supabase.auth.getUser();
   const userId = u?.user?.id;
-  if (!userId) {
-    // fallback ultra-sicuro
-    return NextResponse.redirect(`${url.origin}/login`, { status: 302 });
-  }
+  if (!userId) return NextResponse.redirect(`${url.origin}/login`, { status: 302 });
 
-  // 3) determina destinazione: club > athlete > onboarding
   let redirectTo = `${url.origin}/onboarding`;
 
   try {
-    // club? (owner_id == userId)
+    // Club?
     const { data: club } = await supabase
       .from('clubs')
       .select('id')
@@ -75,20 +66,18 @@ export async function GET(req: NextRequest) {
     if (club?.id) {
       redirectTo = `${url.origin}/club/profile`;
     } else {
-      // profilo atleta?
+      // Atleta?
       const { data: prof } = await supabase
         .from('profiles')
         .select('id,type')
-        .eq('id', userId) // se la tua colonna user_id è diversa, adatta qui
+        .eq('id', userId)
         .maybeSingle();
 
       const t = String(prof?.type ?? '').toLowerCase();
-      if (t === 'athlete') {
-        redirectTo = `${url.origin}/profile`;
-      }
+      if (t === 'athlete') redirectTo = `${url.origin}/profile`;
     }
   } catch {
-    // in caso di problemi DB, tieni l’onboarding come fallback
+    // fallback rimane /onboarding
   }
 
   return NextResponse.redirect(redirectTo, { status: 302 });

@@ -1,37 +1,47 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 
 type Role = 'athlete' | 'club' | 'guest';
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const [role, setRole] = useState<Role>('guest');
+  const router = useRouter();
 
+  const [role, setRole] = useState<Role>('guest');
+  const [meId, setMeId] = useState<string | null>(null);
+
+  // chi sono
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const r = await fetch('/api/auth/whoami', { cache: 'no-store', credentials: 'include' });
         const j = await r.json().catch(() => ({}));
+        if (cancelled) return;
+        setMeId(j?.user?.id ?? null);
         const raw = String(j?.role ?? '').toLowerCase();
-        if (!cancelled) {
-          if (raw === 'club' || raw === 'athlete') setRole(raw as Role);
-          else setRole('guest');
-        }
+        if (raw === 'club' || raw === 'athlete') setRole(raw as Role);
+        else setRole('guest');
       } catch {
         if (!cancelled) setRole('guest');
       }
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
+  const profileHref = useMemo(() => {
+    if (role === 'club') return '/club/profile';
+    if (role === 'athlete') return '/profile';
+    return '/login';
+  }, [role]);
+
   const NavLink = ({ href, label }: { href: string; label: string }) => {
-    const active = pathname === href || (href !== '/' && pathname.startsWith(href));
+    const active =
+      pathname === href ||
+      (href !== '/' && pathname.startsWith(href));
     return (
       <Link
         href={href}
@@ -42,6 +52,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         {label}
       </Link>
     );
+  };
+
+  const doLogout = async () => {
+    try {
+      await fetch('/api/auth/session', { method: 'DELETE', credentials: 'include' }).catch(()=>{});
+    } finally {
+      // hard redirect per sicurezza
+      window.location.href = '/login';
+    }
   };
 
   return (
@@ -58,7 +77,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <NavLink href="/feed" label="Feed" />
             <NavLink href="/opportunities" label="Opportunità" />
             <NavLink href="/clubs" label="Club" />
-            <NavLink href="/profile" label="Profilo" />
+            <NavLink href={profileHref} label="Profilo" />
           </nav>
 
           <div className="ml-auto flex items-center gap-2">
@@ -66,12 +85,28 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               placeholder="Cerca"
               className="hidden md:block w-64 rounded-lg border px-3 py-1.5"
             />
-            {role === 'club' && pathname !== '/opportunities' && (
+            {role === 'club' && (
               <Link
                 href="/opportunities?new=1"
                 className="rounded-lg bg-blue-600 text-white px-3 py-1.5"
               >
                 + Nuova opportunità
+              </Link>
+            )}
+
+            {(role === 'club' || role === 'athlete') ? (
+              <button
+                onClick={doLogout}
+                className="rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50"
+              >
+                Logout
+              </button>
+            ) : (
+              <Link
+                href="/login"
+                className="rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50"
+              >
+                Login
               </Link>
             )}
           </div>
