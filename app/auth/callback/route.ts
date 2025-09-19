@@ -1,84 +1,58 @@
 // app/auth/callback/route.ts
-import { NextResponse, type NextRequest } from 'next/server';
-import { cookies } from 'next/headers';
-import { createServerClient } from '@supabase/ssr';
+import { NextResponse, type NextRequest } from 'next/server'
+import { cookies } from 'next/headers'
+import { createServerClient } from '@supabase/ssr'
 
-export const runtime = 'nodejs';
+export const runtime = 'nodejs'
 
-async function makeServerClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+/**
+ * Next 15: cookies() è async.
+ * Tipizziamo i metodi cookie con `any` per massima compatibilità @supabase/ssr.
+ */
+async function getServerSupabase() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  const store = await cookies()
 
-  const store = await cookies();
-
-  return createServerClient(supabaseUrl, supabaseKey, {
+  const supabase = createServerClient(supabaseUrl, supabaseKey, {
     cookies: {
-      get(name: string) {
-        return store.get(name)?.value;
-      },
-      set(name: string, value: string, options: any) {
-        store.set({ name, value, ...options });
-      },
-      remove(name: string, options: any) {
-        store.set({ name, value: '', ...options, maxAge: 0 });
-      },
-    },
+      get: (name: string) => store.get(name)?.value,
+      set: (name: string, value: string, options: any) =>
+        store.set({ name, value, ...options }),
+      remove: (name: string, options: any) =>
+        store.set({ name, value: '', ...options, maxAge: 0 }),
+    } as any,
     cookieOptions: { sameSite: 'lax' },
-  });
+  })
+
+  return supabase
 }
 
 export async function GET(req: NextRequest) {
-  const url = new URL(req.url);
-  const code = url.searchParams.get('code');
-  const err = url.searchParams.get('error_description') || url.searchParams.get('error');
+  const url = new URL(req.url)
+  const code = url.searchParams.get('code')
+  const err =
+    url.searchParams.get('error_description') || url.searchParams.get('error')
 
-  if (err) return NextResponse.json({ error: String(err) }, { status: 400 });
-  if (!code) return NextResponse.json({ error: 'Missing auth code' }, { status: 400 });
+  if (err) {
+    return NextResponse.json({ error: String(err) }, { status: 400 })
+  }
+  if (!code) {
+    return NextResponse.json({ error: 'Missing auth code' }, { status: 400 })
+  }
 
-  const supabase = await makeServerClient();
+  const supabase = await getServerSupabase()
 
-  // Scambia il codice con la sessione
+  // Firma “tollerante” (cambia tra versioni di supabase-js)
   try {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore - compat firme diverse
-    await supabase.auth.exchangeCodeForSession(code);
-  } catch {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
-    await supabase.auth.exchangeCodeForSession({ authCode: code });
-  }
-
-  // Determina destinazione
-  const { data: u } = await supabase.auth.getUser();
-  const userId = u?.user?.id;
-  if (!userId) return NextResponse.redirect(`${url.origin}/login`, { status: 302 });
-
-  let redirectTo = `${url.origin}/onboarding`;
-
-  try {
-    // Club?
-    const { data: club } = await supabase
-      .from('clubs')
-      .select('id')
-      .eq('owner_id', userId)
-      .maybeSingle();
-
-    if (club?.id) {
-      redirectTo = `${url.origin}/club/profile`;
-    } else {
-      // Atleta?
-      const { data: prof } = await supabase
-        .from('profiles')
-        .select('id,type')
-        .eq('id', userId)
-        .maybeSingle();
-
-      const t = String(prof?.type ?? '').toLowerCase();
-      if (t === 'athlete') redirectTo = `${url.origin}/profile`;
-    }
+    await supabase.auth.exchangeCodeForSession(code)
   } catch {
-    // fallback rimane /onboarding
+    // @ts-ignore
+    await supabase.auth.exchangeCodeForSession({ authCode: code })
   }
 
-  return NextResponse.redirect(redirectTo, { status: 302 });
+  // >>> SEMPRE reindirizza alla BACHECA (feed)
+  const redirectTo = `${url.origin}/feed`
+  return NextResponse.redirect(redirectTo, { status: 302 })
 }
