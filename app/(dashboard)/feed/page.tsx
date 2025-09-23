@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import FeedLatest from '@/components/feed/FeedLatest';
 import WhoToFollow from '@/components/feed/WhoToFollow';
+import Composer from '@/components/feed/Composer';
+import FeedPosts from '@/components/feed/FeedPosts';
 
 type Role = 'club' | 'athlete' | 'guest';
 
@@ -70,42 +72,14 @@ export default function FeedPage() {
 
         {/* CENTRO */}
         <section className="lg:col-span-6 flex flex-col gap-6">
-          {/* Composer semplificato (placeholder) */}
-          <div className="rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-            <div className="mb-3 text-sm text-neutral-500">Condividi un aggiornamento</div>
-            <textarea
-              className="w-full rounded-xl border px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
-              rows={3}
-              placeholder="Scrivi qualcosa…"
-            />
-            <div className="mt-3 flex justify-end">
-              <button
-                className="rounded-md border px-3 py-1.5 text-sm hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
-                disabled
-              >
-                Pubblica (coming soon)
-              </button>
-            </div>
-          </div>
+          {/* Composer attivo */}
+          <Composer />
+
+          {/* Post recenti (API stub) */}
+          <FeedPosts />
 
           {/* 🔴 DATI REALI: Ultime opportunità */}
           <FeedLatest />
-
-          {/* Post di un club (placeholder) */}
-          <div className="rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-            <div className="font-medium">Post di un club</div>
-            <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-300">
-              Foto allenamento prima squadra…
-            </p>
-            <div className="mt-3 flex gap-2">
-              <button className="rounded-md border px-3 py-1.5 text-sm hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800" disabled>
-                Mi piace
-              </button>
-              <button className="rounded-md border px-3 py-1.5 text-sm hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800" disabled>
-                Commenta
-              </button>
-            </div>
-          </div>
         </section>
 
         {/* DESTRA */}
