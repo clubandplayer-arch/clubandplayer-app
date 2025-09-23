@@ -1,183 +1,194 @@
 'use client';
 
-import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
-import type { Opportunity } from '@/types/opportunity';
+import { useEffect, useState } from 'react';
+import OpportunityActions from '@/components/opportunities/OpportunityActions';
 
-type Op = Partial<Opportunity> & {
-  id?: string | number;
-  title?: string;
-  created_at?: string;
-  club?: { name?: string };
-  club_name?: string;
+type RawOpportunity = any;
+
+type NormalizedOpp = {
+  id: string;
+  title: string;
+  clubId?: string;
   clubName?: string;
-  location?: string;
+  city?: string;
+  sport?: string;
+  roleName?: string;
+  createdAt?: string; // ISO
 };
 
+function normalize(raw: RawOpportunity): NormalizedOpp | null {
+  if (!raw) return null;
+
+  // id
+  const id =
+    String(
+      raw.id ??
+        raw.uuid ??
+        raw.slug ??
+        raw.opportunityId ??
+        raw._id ??
+        raw.key ??
+        '',
+    ).trim();
+  if (!id) return null;
+
+  // title / role
+  const title =
+    String(
+      raw.title ??
+        raw.name ??
+        raw.roleTitle ??
+        raw.role ??
+        raw.position ??
+        'Opportunità',
+    ).trim();
+
+  // club
+  const clubObj = raw.club ?? raw.company ?? raw.org ?? {};
+  const clubId =
+    clubObj.id ??
+    clubObj.uuid ??
+    raw.clubId ??
+    raw.companyId ??
+    undefined;
+  const clubName =
+    clubObj.name ??
+    clubObj.title ??
+    raw.clubName ??
+    raw.companyName ??
+    undefined;
+
+  // city
+  const city =
+    raw.city ??
+    raw.location?.city ??
+    raw.place?.city ??
+    raw.geo?.city ??
+    undefined;
+
+  // sport / roleName
+  const sport =
+    raw.sport ??
+    raw.sport_name ??
+    raw.category ??
+    undefined;
+
+  const roleName =
+    raw.roleName ??
+    raw.role ??
+    raw.position ??
+    undefined;
+
+  // createdAt
+  const createdAtRaw =
+    raw.createdAt ??
+    raw.created_at ??
+    raw.publishedAt ??
+    raw.published_at ??
+    raw.inserted_at ??
+    undefined;
+  const createdAt = createdAtRaw ? new Date(createdAtRaw).toISOString() : undefined;
+
+  return { id, title, clubId: clubId ? String(clubId) : undefined, clubName, city, sport, roleName, createdAt };
+}
+
 export default function FeedLatest() {
-  const [items, setItems] = useState<Op[]>([]);
+  const [items, setItems] = useState<NormalizedOpp[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    const ac = new AbortController();
-
     (async () => {
       try {
-        setLoading(true);
-        setError(null);
+        setErr(null);
+        const r = await fetch('/api/opportunities?limit=5', {
+          credentials: 'include',
+          cache: 'no-store',
+        });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const data = await r.json().catch(() => ({}));
 
-        const urls = [
-          '/api/opportunities/filter?limit=10&order=desc',
-          '/api/opportunities?limit=10',
-        ];
+        const rawList: RawOpportunity[] = Array.isArray(data?.items)
+          ? data.items
+          : Array.isArray(data)
+          ? data
+          : Array.isArray(data?.data)
+          ? data.data
+          : [];
 
-        let data: any = null;
-        for (const url of urls) {
-          try {
-            const r = await fetch(url, {
-              signal: ac.signal,
-              credentials: 'include',
-              cache: 'no-store',
-            });
-            if (!r.ok) continue;
-            const j = await r.json().catch(() => null);
-            if (j && Array.isArray(j)) { data = j; break; }
-            if (j && Array.isArray(j?.data)) { data = j.data; break; }
-          } catch {
-            /* tenta il prossimo url */
-          }
-        }
+        const normalized = rawList
+          .map(normalize)
+          .filter(Boolean) as NormalizedOpp[];
 
-        if (!data) throw new Error('Nessun dato disponibile dalle API');
-
-        setItems(data as Op[]);
+        setItems(normalized);
       } catch (e: any) {
-        if (e?.name !== 'AbortError') {
-          setError(e?.message ?? 'Errore di caricamento');
-        }
+        setErr(e?.message || 'Errore inatteso');
+        setItems([]);
       } finally {
         setLoading(false);
       }
     })();
-
-    return () => ac.abort();
   }, []);
 
-  const normalized = useMemo(() => {
-    return items.map((it) => {
-      const id =
-        it.id ??
-        (it as any).opportunity_id ??
-        (it as any).opportunityId ??
-        (it as any).slug;
-      const title = it.title ?? (it as any).name ?? 'Opportunità';
-      const club =
-        it.club?.name ??
-        it.club_name ??
-        (it as any).clubName ??
-        (it as any).club ??
-        '—';
-      const when =
-        it.created_at ??
-        (it as any).createdAt ??
-        (it as any).inserted_at ??
-        (it as any).created_at;
-      const loc =
-        it.location ?? (it as any).city ?? (it as any).region ?? (it as any).place;
-
-      return { id, title, club, when, loc };
-    });
-  }, [items]);
-
-  if (loading) {
-    return (
-      <div className="rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-        <div className="animate-pulse space-y-3">
-          <div className="h-4 w-40 rounded bg-neutral-200 dark:bg-neutral-800" />
-          <div className="h-3 w-full rounded bg-neutral-200 dark:bg-neutral-800" />
-          <div className="h-3 w-3/4 rounded bg-neutral-200 dark:bg-neutral-800" />
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-        <div className="text-sm text-red-600 dark:text-red-400">
-          Errore: {error}
-        </div>
-      </div>
-    );
-  }
-
-  if (!normalized.length) {
-    return (
-      <div className="rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-        <div className="text-sm text-neutral-600 dark:text-neutral-300">
-          Nessuna opportunità recente.
-        </div>
-        <div className="mt-3">
-          <Link
-            href="/opportunities"
-            className="text-sm text-blue-600 hover:underline dark:text-blue-400"
-          >
-            Vai alla lista completa
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="rounded-xl border bg-white p-0 shadow-sm dark:border-neutral-800 dark:bg-neutral-900 overflow-hidden">
-      <div className="border-b p-4 text-sm font-semibold dark:border-neutral-800">
-        Ultime opportunità
-      </div>
-
-      <ul className="divide-y dark:divide-neutral-800">
-        {normalized.map((row, idx) => (
-          <li key={`${row.id ?? idx}`} className="p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="truncate font-medium">{row.title}</div>
-                <div className="truncate text-sm text-neutral-500">
-                  {row.club}{row.loc ? ` • ${row.loc}` : ''}
-                </div>
-                {row.when && (
-                  <div className="truncate text-xs text-neutral-400 mt-1">
-                    {new Date(row.when).toLocaleDateString()}
-                  </div>
-                )}
-              </div>
-              <div className="shrink-0 flex gap-2">
-                <Link
-                  href={row.id ? `/opportunities/${row.id}` : '/opportunities'}
-                  className="rounded-md border px-3 py-1.5 text-xs hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
-                >
-                  Apri
-                </Link>
-                <Link
-                  href={row.id ? `/opportunities/${row.id}` : '/opportunities'}
-                  className="rounded-md border px-3 py-1.5 text-xs hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
-                >
-                  Dettagli
-                </Link>
-              </div>
-            </div>
-          </li>
-        ))}
-      </ul>
-
-      <div className="border-t p-3 text-right text-sm dark:border-neutral-800">
-        <Link
+    <section className="rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">
+          🔴 Ultime opportunità
+        </h3>
+        <a
           href="/opportunities"
-          className="text-blue-600 hover:underline dark:text-blue-400"
+          className="text-xs text-blue-600 hover:underline dark:text-blue-400"
         >
           Vedi tutte
-        </Link>
+        </a>
       </div>
-    </div>
+
+      {loading ? (
+        <ul className="space-y-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <li key={i} className="rounded-lg border p-3 dark:border-neutral-800">
+              <div className="h-4 w-2/3 animate-pulse rounded bg-neutral-200 dark:bg-neutral-800" />
+              <div className="mt-2 h-3 w-1/3 animate-pulse rounded bg-neutral-200 dark:bg-neutral-800" />
+              <div className="mt-3 h-8 w-52 animate-pulse rounded bg-neutral-200 dark:bg-neutral-800" />
+            </li>
+          ))}
+        </ul>
+      ) : err ? (
+        <div className="rounded-lg border border-dashed p-4 text-sm text-red-600 dark:border-neutral-800">
+          Errore nel caricamento: {err}
+        </div>
+      ) : items.length === 0 ? (
+        <div className="rounded-lg border border-dashed p-4 text-sm text-neutral-500 dark:border-neutral-800">
+          Nessuna opportunità al momento.
+        </div>
+      ) : (
+        <ul className="space-y-4">
+          {items.map((it) => (
+            <li key={it.id} className="rounded-lg border p-3 dark:border-neutral-800">
+              <div className="mb-1 text-sm font-medium">
+                {it.title}
+              </div>
+              <div className="text-xs text-neutral-500">
+                {it.clubName ? `${it.clubName}` : 'Club'}
+                {it.city ? ` · ${it.city}` : ''}
+                {it.roleName ? ` · ${it.roleName}` : ''}
+                {it.sport ? ` · ${it.sport}` : ''}
+                {it.createdAt ? ` · ${new Date(it.createdAt).toLocaleDateString()}` : ''}
+              </div>
+
+              {/* CTA: Candidati + Segui club  */}
+              <OpportunityActions
+                opportunityId={it.id}
+                clubId={it.clubId}
+                clubName={it.clubName}
+                compact
+                className="mt-3"
+              />
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
