@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,12 +51,14 @@ const DATA: Record<string, Opportunity[]> = {
 };
 
 export async function GET(
-  _req: Request,
-  { params }: { params: { slug: string } },
+  _req: NextRequest,
+  context: { params: Promise<{ slug: string }> },
 ) {
-  const slug = (params?.slug || '').toLowerCase();
-  // mappa slug→clubId (semplice euristica)
-  const clubId = slug.includes('carlentini') ? 'carlentini' : slug.includes('siracusa') ? 'siracusa' : slug;
+  const { slug } = await context.params; // 👈 Next 15.5: params è Promise
+  const s = (slug || '').toLowerCase();
+
+  // mappa slug→clubId (heuristic)
+  const clubId = s.includes('carlentini') ? 'carlentini' : s.includes('siracusa') ? 'siracusa' : s;
   const items = DATA[clubId] ?? [];
   return NextResponse.json({ items });
 }

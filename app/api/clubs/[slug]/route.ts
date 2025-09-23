@@ -1,10 +1,10 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
 type Club = {
-  id: string;       // usato come clubId nelle azioni
-  slug: string;     // usato nel path pubblico
+  id: string;
+  slug: string;
   name: string;
   city?: string;
   sport?: string;
@@ -41,11 +41,13 @@ const CLUBS: Record<string, Club> = {
 };
 
 export async function GET(
-  _req: Request,
-  { params }: { params: { slug: string } },
+  _req: NextRequest,
+  context: { params: Promise<{ slug: string }> },
 ) {
-  const slug = (params?.slug || '').toLowerCase();
-  const club = CLUBS[slug];
+  const { slug } = await context.params; // 👈 Next 15.5: params è Promise
+  const key = (slug || '').toLowerCase();
+  const club = CLUBS[key];
+
   if (!club) {
     return NextResponse.json({ ok: false, error: 'Club non trovato' }, { status: 404 });
   }
