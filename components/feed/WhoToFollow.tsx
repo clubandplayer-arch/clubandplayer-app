@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 type Role = 'club' | 'athlete' | 'guest';
 
@@ -14,6 +14,9 @@ type Suggestion = {
   followers?: number;
 };
 
+const TARGET_VISIBLE = 4; // mantieni ~4 suggerimenti in vista, come su LinkedIn
+const REMOVE_DELAY_MS = 1200; // finestra per "Annulla"
+
 export default function WhoToFollow() {
   const [role, setRole] = useState<Role>('guest');
   const [items, setItems] = useState<Suggestion[]>([]);
@@ -22,6 +25,11 @@ export default function WhoToFollow() {
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
+
+  // Card rimosse dall'elenco (dopo il delay)
+  const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
+  // Timer per rimozione differita (serve per "Annulla")
+  const removeTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   useEffect(() => {
     (async () => {
@@ -34,7 +42,7 @@ export default function WhoToFollow() {
         setRole(nextRole);
 
         // 2) Prima pagina suggerimenti
-        const { items: firstItems, nextCursor: nc } = await fetchSuggestions(nextRole);
+        const { items: firstItems, nextCursor: nc } = await fetchSuggestions(nextRole, undefined, TARGET_VISIBLE);
         setItems(firstItems);
         setNextCursor(nc ?? null);
 
@@ -51,12 +59,18 @@ export default function WhoToFollow() {
         setLoading(false);
       }
     })();
+
+    // Cleanup timers on unmount
+    return () => {
+      for (const t of removeTimersRef.current.values()) clearTimeout(t);
+      removeTimersRef.current.clear();
+    };
   }, []);
 
-  async function fetchSuggestions(forRole: Role, cursor?: string) {
+  async function fetchSuggestions(forRole: Role, cursor?: string | null, limit?: number) {
     const qs = new URLSearchParams({ for: forRole });
     if (cursor) qs.set('cursor', cursor);
-    // opzionale: qs.set('limit', '4');
+    if (limit && limit > 0) qs.set('limit', String(limit));
     const res = await fetch(`/api/follows/suggestions?${qs.toString()}`, {
       credentials: 'include',
       cache: 'no-store',
@@ -68,11 +82,13 @@ export default function WhoToFollow() {
     return { items, nextCursor };
   }
 
-  async function loadMore() {
+  async function loadMore(desiredCount = TARGET_VISIBLE) {
     if (!nextCursor) return;
     setLoadingMore(true);
     try {
-      const { items: more, nextCursor: nc } = await fetchSuggestions(role, nextCursor);
+      const visibleCount = getVisibleItems().length;
+      const need = Math.max(desiredCount - visibleCount, 1);
+      const { items: more, nextCursor: nc } = await fetchSuggestions(role, nextCursor, need);
       // merge dedup per id
       setItems((prev) => {
         const byId = new Map(prev.map((x) => [x.id, x]));
@@ -83,6 +99,46 @@ export default function WhoToFollow() {
     } finally {
       setLoadingMore(false);
     }
+  }
+
+  function scheduleRemoval(id: string) {
+    if (removeTimersRef.current.has(id)) return; // già in programma
+    const t = setTimeout(() => {
+      setRemovedIds((prev) => {
+        const next = new Set(prev);
+        next.add(id);
+        return next;
+      });
+      removeTimersRef.current.delete(id);
+      // top-up per mantenere il target
+      topUpToTarget();
+    }, REMOVE_DELAY_MS);
+    removeTimersRef.current.set(id, t);
+  }
+
+  function cancelRemoval(id: string) {
+    const t = removeTimersRef.current.get(id);
+    if (t) {
+      clearTimeout(t);
+      removeTimersRef.current.delete(id);
+    }
+    setRemovedIds((prev) => {
+      if (!prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  }
+
+  async function topUpToTarget() {
+    const visible = getVisibleItems().length;
+    if (visible < TARGET_VISIBLE && nextCursor) {
+      await loadMore(TARGET_VISIBLE);
+    }
+  }
+
+  function getVisibleItems() {
+    return items.filter((it) => !removedIds.has(it.id));
   }
 
   async function toggleFollow(id: string) {
@@ -106,6 +162,15 @@ export default function WhoToFollow() {
       if (!res.ok) throw new Error('toggle failed');
       const out = await res.json().catch(() => ({}));
       if (Array.isArray(out?.ids)) setFollowing(new Set(out.ids));
+
+      // Se adesso è "seguito", programma la rimozione per fare refill
+      const nowFollowing = !wasFollowing;
+      if (nowFollowing) {
+        scheduleRemoval(id);
+      } else {
+        // caso "Annulla" o "smisegui": annulla eventuale rimozione programmata e ripristina card
+        cancelRemoval(id);
+      }
     } catch {
       setFollowing(prev); // rollback
     } finally {
@@ -118,7 +183,7 @@ export default function WhoToFollow() {
       <aside className="rounded-2xl border bg-white/60 p-4 shadow-sm dark:bg-zinc-900/60">
         <h3 className="mb-3 text-sm font-semibold text-zinc-700 dark:text-zinc-200">Chi seguire</h3>
         <ul className="space-y-3">
-          {Array.from({ length: 4 }).map((_, i) => (
+          {Array.from({ length: TARGET_VISIBLE }).map((_, i) => (
             <li key={i} className="flex items-center gap-3">
               <div className="h-10 w-10 animate-pulse rounded-full bg-zinc-200 dark:bg-zinc-800" />
               <div className="flex-1">
@@ -133,8 +198,7 @@ export default function WhoToFollow() {
     );
   }
 
-  // Filtriamo i già seguiti per l'empty state "hai già seguito tutti"
-  const visibleItems = items.filter((it) => !following.has(it.id));
+  const visibleItems = getVisibleItems();
 
   return (
     <aside className="rounded-2xl border bg-white/60 p-4 shadow-sm dark:bg-zinc-900/60">
@@ -146,7 +210,10 @@ export default function WhoToFollow() {
         <>
           <ul className="space-y-3">
             {visibleItems.map((it) => {
+              const isFollowing = following.has(it.id);
               const isPending = pendingId === it.id;
+              const hasRemovalTimer = removeTimersRef.current.has(it.id);
+
               return (
                 <li key={it.id} className="flex items-center gap-3">
                   <img
@@ -167,29 +234,55 @@ export default function WhoToFollow() {
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => toggleFollow(it.id)}
-                    disabled={isPending}
-                    aria-busy={isPending}
-                    className={[
-                      'rounded-xl border px-3 py-1.5 text-sm font-semibold transition',
-                      'hover:bg-zinc-50 dark:hover:bg-zinc-800',
-                      isPending ? 'opacity-70' : '',
-                    ].join(' ')}
-                  >
-                    {isPending ? '...' : 'Segui'}
-                  </button>
+                  {/* Azione stile LinkedIn: Segui → Seguito + Annulla per breve finestra */}
+                  {!isFollowing ? (
+                    <button
+                      type="button"
+                      onClick={() => toggleFollow(it.id)}
+                      disabled={isPending}
+                      aria-busy={isPending}
+                      className={[
+                        'rounded-xl border px-3 py-1.5 text-sm font-semibold transition',
+                        'hover:bg-zinc-50 dark:hover:bg-zinc-800',
+                        isPending ? 'opacity-70' : '',
+                      ].join(' ')}
+                    >
+                      {isPending ? '...' : 'Segui'}
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={[
+                          'rounded-xl border px-3 py-1.5 text-sm font-semibold',
+                          'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900',
+                        ].join(' ')}
+                      >
+                        {isPending ? '...' : 'Seguito ✓'}
+                      </span>
+                      {/* Mostra "Annulla" solo durante la finestra di rimozione */}
+                      {hasRemovalTimer && (
+                        <button
+                          type="button"
+                          onClick={() => toggleFollow(it.id)}
+                          className="text-xs underline text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+                          aria-label="Annulla"
+                        >
+                          Annulla
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </li>
               );
             })}
           </ul>
 
+          {/* Se c'è ancora nextCursor, offri "Mostra altri" (anche se il refill automatico copre i casi base) */}
           {nextCursor && (
             <div className="mt-4">
               <button
                 type="button"
-                onClick={loadMore}
+                onClick={() => loadMore()}
                 disabled={loadingMore}
                 aria-busy={loadingMore}
                 className="w-full rounded-xl border px-3 py-2 text-sm font-semibold hover:bg-zinc-50 disabled:opacity-60 dark:border-zinc-700 dark:hover:bg-zinc-800"
@@ -201,12 +294,12 @@ export default function WhoToFollow() {
         </>
       ) : (
         <div className="rounded-lg border border-dashed p-4 text-center text-sm text-zinc-500 dark:border-zinc-800">
-          Hai già seguito tutti i profili suggeriti.
+          Nessun altro suggerimento per ora.
           {nextCursor ? (
             <div className="mt-3">
               <button
                 type="button"
-                onClick={loadMore}
+                onClick={() => loadMore()}
                 disabled={loadingMore}
                 aria-busy={loadingMore}
                 className="rounded-xl border px-3 py-1.5 text-sm font-semibold hover:bg-zinc-50 disabled:opacity-60 dark:border-zinc-700 dark:hover:bg-zinc-800"
@@ -216,10 +309,7 @@ export default function WhoToFollow() {
             </div>
           ) : (
             <div className="mt-2">
-              <a
-                href="/search/club"
-                className="text-blue-600 hover:underline dark:text-blue-400"
-              >
+              <a href="/search/club" className="text-blue-600 hover:underline dark:text-blue-400">
                 Cerca altri profili
               </a>
             </div>
