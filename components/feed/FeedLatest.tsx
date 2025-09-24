@@ -180,6 +180,7 @@ export default function FeedLatest() {
               {/* CTA: Candidati + Segui club  */}
               <OpportunityActions
                 opportunityId={it.id}
+                opportunityTitle={it.title} {/* 👈 passiamo il titolo */}
                 clubId={it.clubId}
                 clubName={it.clubName}
                 compact

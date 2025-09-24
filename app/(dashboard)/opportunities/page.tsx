@@ -17,7 +17,6 @@ type NormalizedOpp = {
   createdAt?: string; // ISO
 };
 
-// Normalizzatore robusto (adatta payload eterogenei)
 function normalize(raw: RawOpportunity): NormalizedOpp | null {
   if (!raw) return null;
 
@@ -62,7 +61,7 @@ export default function OpportunitiesPage() {
   const [items, setItems] = useState<NormalizedOpp[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
-  const [page, setPage] = useState(1); // client-side paging su lista caricata
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     (async () => {
@@ -81,13 +80,11 @@ export default function OpportunitiesPage() {
       if (f.role) qs.set('role', f.role);
       if (f.city) qs.set('city', f.city);
 
-      // 1) prova endpoint filtro (se esiste)
       let res = await fetch(`/api/opportunities/filter?${qs.toString()}`, {
         credentials: 'include',
         cache: 'no-store',
       });
 
-      // 2) fallback endpoint generico (se /filter non esiste o 404)
       if (!res.ok) {
         res = await fetch('/api/opportunities', {
           credentials: 'include',
@@ -104,7 +101,6 @@ export default function OpportunitiesPage() {
         ? data.data
         : [];
 
-      // Se endpoint generico, applichiamo filtro lato client (best effort)
       let normalized = rawList.map(normalize).filter(Boolean) as NormalizedOpp[];
       if (res.url.endsWith('/api/opportunities')) {
         normalized = normalized.filter((it) => {
@@ -116,7 +112,6 @@ export default function OpportunitiesPage() {
         });
       }
 
-      // Ordina dal più recente se disponibile
       normalized.sort((a, b) => {
         const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
         const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
@@ -144,13 +139,11 @@ export default function OpportunitiesPage() {
     <main className="container mx-auto px-4 py-6">
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         <section className="lg:col-span-8 flex flex-col gap-6">
-          {/* Filtri */}
           <OpportunitiesFilterBar
             initial={filters}
             onApply={(f) => load(f)}
           />
 
-          {/* Lista opportunità */}
           <section className="rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">
@@ -195,6 +188,7 @@ export default function OpportunitiesPage() {
 
                       <OpportunityActions
                         opportunityId={it.id}
+                        opportunityTitle={it.title} {/* 👈 passiamo il titolo */}
                         clubId={it.clubId}
                         clubName={it.clubName}
                         compact
@@ -220,7 +214,6 @@ export default function OpportunitiesPage() {
           </section>
         </section>
 
-        {/* Sidebar destra (facoltativa) */}
         <aside className="hidden xl:col-span-4 xl:block">
           <div className="rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
             <h3 className="mb-2 text-sm font-semibold text-neutral-700 dark:text-neutral-200">Suggerimenti</h3>
