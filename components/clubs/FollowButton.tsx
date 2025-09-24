@@ -1,50 +1,77 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
-/** Chiavi di compatibilità con componenti esistenti */
 export const LS_FOLLOW_KEY = 'followed_club_ids_v1';
 
 type Props = {
-  id: string;                 // clubId richiesto
-  labelFollow?: string;       // testo pulsante "Segui"
-  labelFollowing?: string;    // testo stato "Seguito"
+  /** Compat: puoi passare id o clubId */
+  id?: string | number;
+  clubId?: string | number;
+
+  /** Facoltativo: nome visuale, compat sia name che clubName */
+  name?: string;
+  clubName?: string;
+
+  /** Etichette */
+  labelFollow?: string;
+  labelFollowing?: string;
+
+  /** Dimensione opzionale (usata in alcune tabelle) */
+  size?: 'xs' | 'sm' | 'md' | 'lg';
+
   className?: string;
-  children?: React.ReactNode; // se passato, sovrascrive le label
+  children?: React.ReactNode;
 };
 
-/**
- * FollowButton minimale che usa /api/follows/toggle
- * e mantiene una copia degli ID in localStorage[LS_FOLLOW_KEY]
- */
 export default function FollowButton({
   id,
+  clubId,
+  name,
+  clubName,
   labelFollow = 'Segui',
   labelFollowing = 'Seguito ✓',
+  size = 'sm',
   className,
   children,
 }: Props) {
+  const effectiveId = useMemo(() => {
+    const v = (id ?? clubId);
+    return v != null ? String(v) : '';
+  }, [id, clubId]);
+
   const [following, setFollowing] = useState(false);
   const [pending, setPending] = useState(false);
 
+  // classi dimensioni
+  const sizeCls = size === 'xs'
+    ? 'px-2 py-1 text-xs'
+    : size === 'sm'
+    ? 'px-3 py-1.5 text-sm'
+    : size === 'md'
+    ? 'px-3.5 py-2 text-sm'
+    : 'px-4 py-2.5 text-base';
+
+  // carica stato iniziale (ids seguiti) da API + sync con localStorage
   useEffect(() => {
+    if (!effectiveId) return;
     (async () => {
       try {
         const r = await fetch('/api/follows/toggle', { credentials: 'include', cache: 'no-store' });
         const j = await r.json().catch(() => ({}));
-        const ids: string[] = Array.isArray(j?.ids) ? j.ids : [];
-        setFollowing(ids.includes(id));
-        // sync localStorage per compatibilità
+        const ids: string[] = Array.isArray(j?.ids) ? j.ids.map(String) : [];
+        setFollowing(ids.includes(effectiveId));
         try {
           localStorage.setItem(LS_FOLLOW_KEY, JSON.stringify(ids));
         } catch {}
       } catch {
-        // ignore
+        // ignora errori iniziali
       }
     })();
-  }, [id]);
+  }, [effectiveId]);
 
   async function toggle() {
+    if (!effectiveId) return;
     setPending(true);
     const prev = following;
     setFollowing(!prev);
@@ -53,46 +80,41 @@ export default function FollowButton({
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id }),
+        body: JSON.stringify({ id: effectiveId }),
       });
       if (!r.ok) throw new Error('toggle failed');
       const j = await r.json().catch(() => ({}));
-      const ids: string[] = Array.isArray(j?.ids) ? j.ids : [];
-      setFollowing(ids.includes(id));
+      const ids: string[] = Array.isArray(j?.ids) ? j.ids.map(String) : [];
+      setFollowing(ids.includes(effectiveId));
       try {
         localStorage.setItem(LS_FOLLOW_KEY, JSON.stringify(ids));
       } catch {}
     } catch {
-      setFollowing(prev); // rollback
+      // rollback UI
+      setFollowing(prev);
     } finally {
       setPending(false);
     }
   }
 
-  const base =
-    'rounded-xl border px-3 py-1.5 text-sm font-semibold transition hover:bg-neutral-50 disabled:opacity-60 dark:border-neutral-700 dark:hover:bg-neutral-800';
+  const baseBtn =
+    `inline-flex items-center justify-center rounded-xl border font-semibold transition
+     hover:bg-neutral-50 disabled:opacity-60 dark:border-neutral-700 dark:hover:bg-neutral-800 ${sizeCls}`;
 
-  return !following ? (
+  const displayName = clubName ?? name ?? '';
+
+  return (
     <button
       type="button"
       onClick={toggle}
-      disabled={pending}
+      disabled={pending || !effectiveId}
       aria-busy={pending}
-      className={[base, className || ''].join(' ')}
-      title={labelFollow}
+      aria-pressed={following}
+      className={[baseBtn, following ? 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900' : '', className || ''].join(' ').trim()}
+      title={following ? labelFollowing : labelFollow}
     >
-      {children ?? (pending ? '...' : labelFollow)}
+      {children ?? (pending ? '...' : (following ? labelFollowing : labelFollow))}
+      {displayName ? <span className="sr-only"> {displayName}</span> : null}
     </button>
-  ) : (
-    <span
-      className={[
-        'inline-flex items-center rounded-xl border bg-neutral-900 px-3 py-1.5 text-sm font-semibold text-white dark:bg-neutral-100 dark:text-neutral-900',
-        className || '',
-      ].join(' ')}
-      title={labelFollowing}
-      aria-live="polite"
-    >
-      {children ?? (pending ? '...' : labelFollowing)}
-    </span>
   );
 }
