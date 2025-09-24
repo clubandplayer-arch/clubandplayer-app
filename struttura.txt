@@ -10,6 +10,7 @@
 |  |  ├── notifications
 |  |  ├── onboarding
 |  |  ├── opportunities
+|  |  ├── page.tsx
 |  |  └── profile
 |  ├── admin
 |  |  └── reports
@@ -188,6 +189,7 @@
 |  |  └── views.ts
 |  └── utils
 |     └── logger.ts
+├── middleware.ts
 ├── next-env.d.ts
 ├── next.config.mjs
 ├── next.config.ts
@@ -2522,6 +2524,7 @@
 |  ├── next.svg
 |  ├── vercel.svg
 |  └── window.svg
+├── struttura.txt
 ├── supabase
 |  └── migrations
 |     ├── 20250901084935_rls_policies_and_storage.sql
@@ -2534,5 +2537,5 @@
    ├── opportunity.ts
    └── profile.ts
 
-directory: 744 file: 1790 symboliclink: 21
+directory: 744 file: 1793 symboliclink: 21
 

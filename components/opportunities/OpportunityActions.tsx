@@ -5,23 +5,20 @@ import { useEffect, useRef, useState } from 'react';
 type Role = 'club' | 'athlete' | 'guest';
 
 type Props = {
-  /** ID opportunità, usato per stato "candidatura" */
   opportunityId: string;
-  /** ID del club proprietario (se presente abilita "Segui club") */
+  opportunityTitle?: string; // 👈 NUOVO
   clubId?: string;
-  /** Nome del club (solo per aria-label / tooltips, opzionale) */
   clubName?: string;
-  /** Se true usa pulsanti più compatti */
   compact?: boolean;
-  /** Classe aggiuntiva wrapper */
   className?: string;
 };
 
-const UNDO_WINDOW_APPLY_MS = 3000; // finestra undo per candidatura
-const UNDO_WINDOW_FOLLOW_MS = 1200; // come sugli utenti suggeriti
+const UNDO_WINDOW_APPLY_MS = 3000;
+const UNDO_WINDOW_FOLLOW_MS = 1200;
 
 export default function OpportunityActions({
   opportunityId,
+  opportunityTitle,
   clubId,
   clubName,
   compact,
@@ -29,12 +26,10 @@ export default function OpportunityActions({
 }: Props) {
   const [role, setRole] = useState<Role>('guest');
 
-  // Stato candidatura
   const [appliedSet, setAppliedSet] = useState<Set<string>>(new Set());
   const [applyPendingId, setApplyPendingId] = useState<string | null>(null);
   const applyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Stato follow club
   const [followSet, setFollowSet] = useState<Set<string>>(new Set());
   const [followPendingId, setFollowPendingId] = useState<string | null>(null);
   const followTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -42,20 +37,17 @@ export default function OpportunityActions({
   useEffect(() => {
     (async () => {
       try {
-        // Ruolo
         const r = await fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' });
         const j = await r.json().catch(() => ({}));
         const raw = (j?.role ?? '').toString().toLowerCase();
         const nextRole: Role = raw === 'club' || raw === 'athlete' ? raw : 'guest';
         setRole(nextRole);
 
-        // Applied
         const ga = await fetch('/api/opportunities/apply', { credentials: 'include', cache: 'no-store' });
         const aj = await ga.json().catch(() => ({}));
         const aIds: string[] = Array.isArray(aj?.ids) ? aj.ids : [];
         setAppliedSet(new Set(aIds));
 
-        // Follow (club)
         if (clubId) {
           const gf = await fetch('/api/follows/toggle', { credentials: 'include', cache: 'no-store' });
           const fj = await gf.json().catch(() => ({}));
@@ -92,24 +84,31 @@ export default function OpportunityActions({
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: opportunityId, action: applied ? 'unapply' : 'apply' }),
+        body: JSON.stringify({
+          id: opportunityId,
+          action: applied ? 'unapply' : 'apply',
+          meta: {
+            oppTitle: opportunityTitle,
+            clubId,
+            clubName,
+          },
+        }),
       });
       if (!res.ok) throw new Error('apply toggle failed');
       const out = await res.json().catch(() => ({}));
       if (Array.isArray(out?.ids)) setAppliedSet(new Set(out.ids));
 
-      // Programma undo window solo quando passi a "applied"
       if (!applied && withUndoWindow) {
         if (applyTimerRef.current) clearTimeout(applyTimerRef.current);
         applyTimerRef.current = setTimeout(() => {
-          applyTimerRef.current = null; // chiude finestra undo
+          applyTimerRef.current = null;
         }, UNDO_WINDOW_APPLY_MS);
       } else if (applied && applyTimerRef.current) {
         clearTimeout(applyTimerRef.current);
         applyTimerRef.current = null;
       }
     } catch {
-      setAppliedSet(prev); // rollback
+      setAppliedSet(prev);
     } finally {
       setApplyPendingId(null);
     }
@@ -137,7 +136,6 @@ export default function OpportunityActions({
       const out = await res.json().catch(() => ({}));
       if (Array.isArray(out?.ids)) setFollowSet(new Set(out.ids));
 
-      // Finestra Undo breve quando passi a "Seguito"
       if (!following && withUndoWindow) {
         if (followTimerRef.current) clearTimeout(followTimerRef.current);
         followTimerRef.current = setTimeout(() => {
@@ -185,11 +183,10 @@ export default function OpportunityActions({
             >
               {applyPendingId === opportunityId ? '...' : 'Candidatura inviata ✓'}
             </span>
-            {/* Undo visibile solo nella finestra temporale */}
             {applyTimerRef.current && (
               <button
                 type="button"
-                onClick={() => toggleApply(false)} // annulla subito
+                onClick={() => toggleApply(false)}
                 className="text-xs underline text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
                 title="Annulla candidatura"
               >
@@ -210,7 +207,7 @@ export default function OpportunityActions({
 
       {/* Segui club */}
       {clubId ? (
-        !following ? (
+        !(followSet.has(clubId)) ? (
           <button
             type="button"
             onClick={() => toggleFollow(true)}
@@ -236,7 +233,7 @@ export default function OpportunityActions({
             {followTimerRef.current && (
               <button
                 type="button"
-                onClick={() => toggleFollow(false)} // annulla subito
+                onClick={() => toggleFollow(false)}
                 className="text-xs underline text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
                 title="Annulla segui"
               >
