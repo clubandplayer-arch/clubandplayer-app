@@ -77,7 +77,7 @@ export default function ClubOpportunitiesList({ slug }: { slug: string }) {
 
               <OpportunityActions
                 opportunityId={it.id}
-                opportunityTitle={it.title} {/* 👈 passiamo il titolo */}
+                opportunityTitle={it.title}
                 clubId={it.clubId}
                 clubName={it.clubName}
                 compact

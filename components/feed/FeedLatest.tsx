@@ -177,10 +177,9 @@ export default function FeedLatest() {
                 {it.createdAt ? ` · ${new Date(it.createdAt).toLocaleDateString()}` : ''}
               </div>
 
-              {/* CTA: Candidati + Segui club  */}
               <OpportunityActions
                 opportunityId={it.id}
-                opportunityTitle={it.title} {/* 👈 passiamo il titolo */}
+                opportunityTitle={it.title}
                 clubId={it.clubId}
                 clubName={it.clubName}
                 compact
