@@ -137,8 +137,8 @@ export default function ClubsClient() {
           <ClubsTable
             items={data.data}
             currentUserId={me?.id}
-            onEdit={(c) => setEditClub(c)}
-            onDelete={(c) => handleDelete(c)}
+            onEdit={(c: any) => setEditClub(c)}
+            onDelete={(c: any) => handleDelete(c)}
           />
           <Pagination page={data.page} pageCount={data.pageCount} searchParams={spForPagination} />
         </>
