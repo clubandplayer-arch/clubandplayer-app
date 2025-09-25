@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { toastError, toastInfo, toastSuccess } from '@/lib/toast';
 
 type Role = 'club' | 'athlete' | 'guest';
 
@@ -71,10 +72,12 @@ export default function OpportunityActions({
 
   async function toggleApply(withUndoWindow = true) {
     setApplyPendingId(opportunityId);
+
     const prev = new Set(appliedSet);
+    const wasApplied = prev.has(opportunityId); // 👈 stato precedente per decidere toast
     const next = new Set(appliedSet);
 
-    if (applied) next.delete(opportunityId);
+    if (wasApplied) next.delete(opportunityId);
     else next.add(opportunityId);
 
     setAppliedSet(next);
@@ -86,7 +89,7 @@ export default function OpportunityActions({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: opportunityId,
-          action: applied ? 'unapply' : 'apply',
+          action: wasApplied ? 'unapply' : 'apply',
           meta: {
             oppTitle: opportunityTitle,
             clubId,
@@ -98,17 +101,26 @@ export default function OpportunityActions({
       const out = await res.json().catch(() => ({}));
       if (Array.isArray(out?.ids)) setAppliedSet(new Set(out.ids));
 
-      if (!applied && withUndoWindow) {
+      // Toast
+      if (!wasApplied) {
+        toastSuccess('Candidatura inviata');
+      } else {
+        toastInfo('Candidatura ritirata');
+      }
+
+      // Undo window
+      if (!wasApplied && withUndoWindow) {
         if (applyTimerRef.current) clearTimeout(applyTimerRef.current);
         applyTimerRef.current = setTimeout(() => {
           applyTimerRef.current = null;
         }, UNDO_WINDOW_APPLY_MS);
-      } else if (applied && applyTimerRef.current) {
+      } else if (wasApplied && applyTimerRef.current) {
         clearTimeout(applyTimerRef.current);
         applyTimerRef.current = null;
       }
-    } catch {
+    } catch (e: any) {
       setAppliedSet(prev);
+      toastError(e?.message || 'Errore nell’invio/ritiro candidatura');
     } finally {
       setApplyPendingId(null);
     }
@@ -117,10 +129,12 @@ export default function OpportunityActions({
   async function toggleFollow(withUndoWindow = true) {
     if (!clubId) return;
     setFollowPendingId(clubId);
+
     const prev = new Set(followSet);
+    const wasFollowing = prev.has(clubId); // 👈 stato precedente per decidere toast
     const next = new Set(followSet);
 
-    if (following) next.delete(clubId);
+    if (wasFollowing) next.delete(clubId);
     else next.add(clubId);
 
     setFollowSet(next);
@@ -136,17 +150,26 @@ export default function OpportunityActions({
       const out = await res.json().catch(() => ({}));
       if (Array.isArray(out?.ids)) setFollowSet(new Set(out.ids));
 
-      if (!following && withUndoWindow) {
+      // Toast
+      if (!wasFollowing) {
+        toastSuccess('Follow attivato');
+      } else {
+        toastInfo('Follow rimosso');
+      }
+
+      // Undo window
+      if (!wasFollowing && withUndoWindow) {
         if (followTimerRef.current) clearTimeout(followTimerRef.current);
         followTimerRef.current = setTimeout(() => {
           followTimerRef.current = null;
         }, UNDO_WINDOW_FOLLOW_MS);
-      } else if (following && followTimerRef.current) {
+      } else if (wasFollowing && followTimerRef.current) {
         clearTimeout(followTimerRef.current);
         followTimerRef.current = null;
       }
-    } catch {
+    } catch (e: any) {
       setFollowSet(prev);
+      toastError(e?.message || 'Errore nel toggle follow');
     } finally {
       setFollowPendingId(null);
     }

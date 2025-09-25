@@ -22,6 +22,9 @@ type Props = {
 
   className?: string;
   children?: React.ReactNode;
+
+  /** 👉 opzionale: callback quando cambia lo stato di follow */
+  onToggle?: (following: boolean) => void;
 };
 
 export default function FollowButton({
@@ -34,9 +37,10 @@ export default function FollowButton({
   size = 'sm',
   className,
   children,
+  onToggle,
 }: Props) {
   const effectiveId = useMemo(() => {
-    const v = (id ?? clubId);
+    const v = id ?? clubId;
     return v != null ? String(v) : '';
   }, [id, clubId]);
 
@@ -44,15 +48,16 @@ export default function FollowButton({
   const [pending, setPending] = useState(false);
 
   // classi dimensioni
-  const sizeCls = size === 'xs'
-    ? 'px-2 py-1 text-xs'
-    : size === 'sm'
-    ? 'px-3 py-1.5 text-sm'
-    : size === 'md'
-    ? 'px-3.5 py-2 text-sm'
-    : 'px-4 py-2.5 text-base';
+  const sizeCls =
+    size === 'xs'
+      ? 'px-2 py-1 text-xs'
+      : size === 'sm'
+      ? 'px-3 py-1.5 text-sm'
+      : size === 'md'
+      ? 'px-3.5 py-2 text-sm'
+      : 'px-4 py-2.5 text-base';
 
-  // carica stato iniziale (ids seguiti) da API + sync con localStorage
+  // carica stato iniziale
   useEffect(() => {
     if (!effectiveId) return;
     (async () => {
@@ -60,12 +65,13 @@ export default function FollowButton({
         const r = await fetch('/api/follows/toggle', { credentials: 'include', cache: 'no-store' });
         const j = await r.json().catch(() => ({}));
         const ids: string[] = Array.isArray(j?.ids) ? j.ids.map(String) : [];
-        setFollowing(ids.includes(effectiveId));
+        const cur = ids.includes(effectiveId);
+        setFollowing(cur);
         try {
           localStorage.setItem(LS_FOLLOW_KEY, JSON.stringify(ids));
         } catch {}
       } catch {
-        // ignora errori iniziali
+        // ignora
       }
     })();
   }, [effectiveId]);
@@ -85,13 +91,15 @@ export default function FollowButton({
       if (!r.ok) throw new Error('toggle failed');
       const j = await r.json().catch(() => ({}));
       const ids: string[] = Array.isArray(j?.ids) ? j.ids.map(String) : [];
-      setFollowing(ids.includes(effectiveId));
+      const cur = ids.includes(effectiveId);
+      setFollowing(cur);
       try {
         localStorage.setItem(LS_FOLLOW_KEY, JSON.stringify(ids));
       } catch {}
+      onToggle?.(cur); // 👈 notifica il chiamante (es. per toast)
     } catch {
-      // rollback UI
-      setFollowing(prev);
+      setFollowing(prev); // rollback
+      onToggle?.(prev);   // notifica rollback
     } finally {
       setPending(false);
     }
@@ -110,7 +118,11 @@ export default function FollowButton({
       disabled={pending || !effectiveId}
       aria-busy={pending}
       aria-pressed={following}
-      className={[baseBtn, following ? 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900' : '', className || ''].join(' ').trim()}
+      className={[
+        baseBtn,
+        following ? 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900' : '',
+        className || '',
+      ].join(' ').trim()}
       title={following ? labelFollowing : labelFollow}
     >
       {children ?? (pending ? '...' : (following ? labelFollowing : labelFollow))}
