@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
@@ -26,24 +26,25 @@ async function getSupabase() {
 }
 
 export async function GET(
-  _req: Request,
-  { params }: { params: { id: string } }
+  _req: NextRequest,
+  ctx: { params: Promise<{ id: string }> }   // 👈 Next 15: params è una Promise
 ) {
   const supabase = await getSupabase();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ items: [] });
 
-  const id = String(params?.id ?? '').trim();
+  const { id } = await ctx.params;            // 👈 await sui params
   if (!id) return NextResponse.json({ items: [] }, { status: 400 });
 
-  // RLS: il club vedrà risultati solo se owner dell'opportunità id
   const { data, error } = await supabase
     .from('applications')
     .select('id, applicant_id, created_at')
     .eq('opportunity_id', id)
     .order('created_at', { ascending: false });
 
-  if (error) return NextResponse.json({ items: [], error: error.message }, { status: 400 });
+  if (error) {
+    return NextResponse.json({ items: [], error: error.message }, { status: 400 });
+  }
 
   return NextResponse.json({ items: data ?? [] });
 }
