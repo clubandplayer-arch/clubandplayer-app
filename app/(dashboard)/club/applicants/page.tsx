@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import ToastHub from '@/components/ui/ToastHub';
 import { toastError, toastSuccess } from '@/lib/toast';
 
 type Application = {
@@ -132,6 +131,7 @@ export default function ClubApplicantsPage() {
         prev.map((x) => (x.id === editingId ? { ...x, note } : x)),
       );
       setFlash('Nota salvata.');
+      // toast globale
       toastSuccess('Nota candidatura salvata');
 
       // chiude dopo un attimo
@@ -151,9 +151,6 @@ export default function ClubApplicantsPage() {
 
   return (
     <main className="container mx-auto px-4 py-6">
-      {/* Toasts montati in pagina */}
-      <ToastHub />
-
       <h1 className="text-xl font-semibold">Candidature ricevute</h1>
 
       <section className="mt-4 rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
