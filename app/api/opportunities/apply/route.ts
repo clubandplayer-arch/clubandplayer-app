@@ -1,161 +1,135 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
 export const dynamic = 'force-dynamic';
 
-const COOKIE_APPLIED_KEY = 'applied_opps';
-const COOKIE_APPS_KEY = 'applications_store_v1';
-const MAX_AGE_SECONDS = 60 * 60 * 24 * 365; // 1 anno
+// Client Supabase server-side (compat con cookies() async su Next 15)
+async function getSupabase() {
+  const cookieStore = await cookies(); // 👈 ATTENDI cookies()
 
-type ApplicationsCookie = {
-  applications: Array<{
-    id: string; // application id
-    oppId: string;
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          try {
+            // usa la firma a 3 argomenti per massima compatibilità
+            cookieStore.set(name, value, options);
+          } catch {
+            /* no-op */
+          }
+        },
+        remove(name: string, options: CookieOptions) {
+          try {
+            cookieStore.set(name, '', { ...options, maxAge: 0 });
+          } catch {
+            /* no-op */
+          }
+        },
+      },
+    }
+  );
+}
+
+type Body = {
+  id?: string;
+  action?: 'apply' | 'unapply' | string;
+  meta?: {
     oppTitle?: string;
     clubId?: string;
     clubName?: string;
-    athleteId?: string;
-    athleteName?: string;
-    createdAt: string; // ISO
-    note?: string; // C3
-  }>;
+  };
 };
 
-async function readAppliedIds(): Promise<string[]> {
-  try {
-    const store = await cookies();
-    const v = store.get(COOKIE_APPLIED_KEY)?.value ?? '[]';
-    const parsed = JSON.parse(v);
-    return Array.isArray(parsed) ? parsed.filter((x) => typeof x === 'string') : [];
-  } catch {
-    return [];
-  }
-}
-
-async function writeAppliedIds(ids: string[]) {
-  const store = await cookies();
-  store.set(COOKIE_APPLIED_KEY, JSON.stringify(ids), {
-    path: '/',
-    httpOnly: false, // leggibile dal client (stub)
-    sameSite: 'lax',
-    maxAge: MAX_AGE_SECONDS,
-  });
-}
-
-async function readApplications(): Promise<ApplicationsCookie> {
-  try {
-    const store = await cookies();
-    const raw = store.get(COOKIE_APPS_KEY)?.value ?? '';
-    if (!raw) return { applications: [] };
-    const parsed = JSON.parse(raw);
-    const applications = Array.isArray(parsed?.applications) ? parsed.applications : [];
-    return { applications };
-  } catch {
-    return { applications: [] };
-  }
-}
-
-async function writeApplications(data: ApplicationsCookie) {
-  const store = await cookies();
-  store.set(COOKIE_APPS_KEY, JSON.stringify(data), {
-    path: '/',
-    httpOnly: true, // solo server-side
-    sameSite: 'lax',
-    maxAge: MAX_AGE_SECONDS,
-  });
-}
-
 export async function GET() {
-  const ids = await readAppliedIds();
+  const supabase = await getSupabase(); // 👈 attendi il client
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    // guest → nessuna candidatura
+    return NextResponse.json({ ids: [] });
+  }
+
+  const { data, error } = await supabase
+    .from('applications')
+    .select('opportunity_id')
+    .eq('applicant_id', user.id);
+
+  if (error) {
+    return NextResponse.json({ ids: [] });
+  }
+
+  const ids = (data ?? []).map((r: any) => String(r.opportunity_id));
   return NextResponse.json({ ids });
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json().catch(() => ({}));
-    const id = (body?.id ?? '').toString().trim();
-    const action = (body?.action ?? '').toString().trim(); // 'apply' | 'unapply' | ''
-    const meta = (body?.meta ?? {}) as {
-      oppTitle?: string;
-      clubId?: string;
-      clubName?: string;
-    };
+    const supabase = await getSupabase(); // 👈 attendi il client
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ ok: false, error: 'Not authenticated' }, { status: 401 });
+    }
 
+    const body: Body = await req.json().catch(() => ({} as Body));
+    const id = String(body?.id ?? '').trim();
+    const action = String(body?.action ?? '').trim(); // 'apply' | 'unapply' | ''
     if (!id) {
       return NextResponse.json({ ok: false, error: 'Missing id' }, { status: 400 });
     }
 
-    // Stato atleta
-    const current = new Set(await readAppliedIds());
-    let applied: boolean;
+    // C'è già candidatura per (id, user.id)?
+    const { data: existing, error: selErr } = await supabase
+      .from('applications')
+      .select('id')
+      .eq('opportunity_id', id)
+      .eq('applicant_id', user.id)
+      .maybeSingle();
 
-    if (action === 'apply') {
-      current.add(id);
-      applied = true;
-    } else if (action === 'unapply') {
-      current.delete(id);
-      applied = false;
-    } else {
-      if (current.has(id)) {
-        current.delete(id);
-        applied = false;
-      } else {
-        current.add(id);
-        applied = true;
+    if (action === 'unapply' || (!action && existing)) {
+      // rimuovi candidatura
+      const { error: delErr } = await supabase
+        .from('applications')
+        .delete()
+        .eq('opportunity_id', id)
+        .eq('applicant_id', user.id);
+
+      if (delErr) {
+        return NextResponse.json({ ok: false, error: delErr.message }, { status: 400 });
       }
+    } else if (action === 'apply' || (!action && !existing)) {
+      // crea candidatura (RLS imposterà applicant_id = auth.uid())
+      const { error: insErr } = await supabase
+        .from('applications')
+        .insert({ opportunity_id: id });
+
+      if (insErr) {
+        return NextResponse.json({ ok: false, error: insErr.message }, { status: 400 });
+      }
+    } else if (selErr && selErr.message) {
+      return NextResponse.json({ ok: false, error: selErr.message }, { status: 400 });
     }
 
-    const updatedIds = Array.from(current);
-    await writeAppliedIds(updatedIds);
+    // Ricalcola gli ids dell'utente
+    const { data: rows, error: idsErr } = await supabase
+      .from('applications')
+      .select('opportunity_id')
+      .eq('applicant_id', user.id);
 
-    // Store candidature (solo quando applied = true o quando togliamo)
-    const store = await readApplications();
-
-    // Chi è l'atleta? Proviamo a leggerlo dall'endpoint stub me
-    let athleteId = 'ath-guest';
-    let athleteName = 'Utente';
-    try {
-      const meRes = await fetch(new URL('/api/athletes/me', req.url), {
-        headers: { cookie: req.headers.get('cookie') || '' },
-        cache: 'no-store',
-      });
-      if (meRes.ok) {
-        const mj = await meRes.json().catch(() => ({}));
-        if (mj?.athlete?.id) athleteId = String(mj.athlete.id);
-        if (mj?.athlete?.name) athleteName = String(mj.athlete.name);
-      }
-    } catch {
-      // ignore
+    if (idsErr) {
+      return NextResponse.json({ ok: false, error: idsErr.message }, { status: 400 });
     }
 
-    if (applied) {
-      // Se non esiste già applicazione per (oppId, athleteId), creala
-      const exists = store.applications.some((a) => a.oppId === id && a.athleteId === athleteId);
-      if (!exists) {
-        store.applications.unshift({
-          id: `app_${Date.now()}`, // semplice id
-          oppId: id,
-          oppTitle: meta?.oppTitle,
-          clubId: meta?.clubId,
-          clubName: meta?.clubName,
-          athleteId,
-          athleteName,
-          createdAt: new Date().toISOString(),
-        });
-        // mantieni dimensione ragionevole
-        store.applications = store.applications.slice(0, 200);
-      }
-    } else {
-      // rimuovi eventuali applicazioni per quell'opportunità di questo atleta
-      store.applications = store.applications.filter(
-        (a) => !(a.oppId === id && a.athleteId === athleteId),
-      );
-    }
+    const ids = (rows ?? []).map((r: any) => String(r.opportunity_id));
+    const applied = ids.includes(id);
 
-    await writeApplications(store);
-
-    return NextResponse.json({ ok: true, applied, ids: updatedIds });
-  } catch {
-    return NextResponse.json({ ok: false, error: 'Unexpected error' }, { status: 500 });
+    return NextResponse.json({ ok: true, applied, ids });
+  } catch (e: any) {
+    return NextResponse.json({ ok: false, error: e?.message || 'Unexpected error' }, { status: 500 });
   }
 }
