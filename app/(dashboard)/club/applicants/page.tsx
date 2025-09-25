@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import ToastHub from '@/components/ui/ToastHub';
+import { toastError, toastSuccess } from '@/lib/toast';
 
 type Application = {
   id: string;
@@ -130,6 +132,8 @@ export default function ClubApplicantsPage() {
         prev.map((x) => (x.id === editingId ? { ...x, note } : x)),
       );
       setFlash('Nota salvata.');
+      toastSuccess('Nota candidatura salvata');
+
       // chiude dopo un attimo
       setTimeout(() => {
         setOpen(false);
@@ -137,7 +141,9 @@ export default function ClubApplicantsPage() {
         setFlash(null);
       }, 600);
     } catch (e: any) {
-      setFlash(e?.message || 'Errore nel salvataggio');
+      const msg = e?.message || 'Errore nel salvataggio';
+      setFlash(msg);
+      toastError(msg);
     } finally {
       setSaving(false);
     }
@@ -145,6 +151,9 @@ export default function ClubApplicantsPage() {
 
   return (
     <main className="container mx-auto px-4 py-6">
+      {/* Toasts montati in pagina */}
+      <ToastHub />
+
       <h1 className="text-xl font-semibold">Candidature ricevute</h1>
 
       <section className="mt-4 rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
@@ -256,7 +265,7 @@ export default function ClubApplicantsPage() {
                 onChange={(e) => setNote(e.target.value)}
                 className="w-full rounded-xl border px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
                 placeholder="Es. chiamare domani, ottimo profilo per la Juniores…"
-                maxLength={NOTE_MAX_CHARS + 50} // consenti digit extra ma segnala rosso
+                maxLength={NOTE_MAX_CHARS + 50}
               />
               <div className="flex items-center justify-between">
                 <span className={`text-xs ${noteTooLong ? 'text-red-600' : 'text-neutral-500'}`}>
