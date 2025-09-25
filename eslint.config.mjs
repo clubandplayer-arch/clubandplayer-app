@@ -1,59 +1,85 @@
-// eslint.config.mjs - Flat config per ESLint 9 + Next 15 + TS App Router
-
-import js from "@eslint/js";
-import tseslint from "typescript-eslint";
-import next from "@next/eslint-plugin-next";
-import reactHooks from "eslint-plugin-react-hooks";
-import reactRefresh from "eslint-plugin-react-refresh";
+// ESLint v9 Flat Config
+import js from '@eslint/js';
+import tseslint from 'typescript-eslint';
+import reactHooks from 'eslint-plugin-react-hooks';
+import importX from 'eslint-plugin-import-x';
+import nextPlugin from '@next/eslint-plugin-next';
+import globals from 'globals';
+import prettier from 'eslint-config-prettier';
 
 export default [
-  // ignora build e vendor
+  // Ignora build e asset
   {
-    ignores: ["**/.next/**", "**/node_modules/**", "**/dist/**", "**/build/**"],
+    ignores: [
+      '.next/**',
+      'node_modules/**',
+      'dist/**',
+      'build/**',
+      'public/**',
+      '**/*.min.*',
+    ],
   },
 
-  // base JS recommended
-  js.configs.recommended,
-
-  // TypeScript (con type-checking: richiede tsconfig.json)
-  ...tseslint.configs.recommendedTypeChecked,
+  // Regole generali (JS/TS) + React Hooks + Next + Imports
   {
-    files: ["**/*.{ts,tsx}"],
+    files: ['**/*.{js,jsx,ts,tsx}'],
     languageOptions: {
-      parserOptions: {
-        project: "./tsconfig.json",
-        tsconfigRootDir: process.cwd(),
+      ecmaVersion: 2023,
+      sourceType: 'module',
+      globals: {
+        ...globals.browser,
+        ...globals.node,
       },
     },
-  },
-
-  // Next.js core web vitals
-  next.configs["core-web-vitals"],
-
-  // React hooks/refresh
-  {
     plugins: {
-      "react-hooks": reactHooks,
-      "react-refresh": reactRefresh,
+      'react-hooks': reactHooks,
+      'import-x': importX,
+      '@next/next': nextPlugin,
     },
     rules: {
-      "react-hooks/rules-of-hooks": "error",
-      "react-hooks/exhaustive-deps": "warn",
-      "react-refresh/only-export-components": "off",
+      ...js.configs.recommended.rules,
+
+      // React Hooks
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
+
+      // Next.js (App Router-friendly)
+      '@next/next/no-html-link-for-pages': 'off',
+      '@next/next/no-img-element': 'warn',
+
+      // Imports
+      'import-x/order': ['warn', { 'newlines-between': 'always' }],
+      'import-x/no-duplicates': 'warn',
+
+      // Varie
+      'no-console': ['warn', { allow: ['warn', 'error', 'info', 'debug'] }],
     },
   },
 
-  // Aggiusta qualche regoletta comune del tuo repo (facoltative)
+  // Regole TypeScript (senza project: per velocità in CI)
   {
+    files: ['**/*.{ts,tsx}'],
+    languageOptions: {
+      parser: tseslint.parser,
+      parserOptions: {
+        // project: './tsconfig.json', // abilita se vuoi le regole type-checked
+        ecmaVersion: 2023,
+        sourceType: 'module',
+      },
+    },
+    plugins: {
+      '@typescript-eslint': tseslint.plugin,
+    },
     rules: {
-      // Evita false positive con try/catch “vuoti” che abbiamo commentato
-      "no-empty": ["error", { "allowEmptyCatch": true }],
-      // Preferisci la variante TS per unused vars; ignora underscores
-      "no-unused-vars": "off",
-      "@typescript-eslint/no-unused-vars": [
-        "warn",
-        { argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrors: "none" },
+      ...tseslint.configs.recommended.rules,
+      'no-unused-vars': 'off',
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
     },
   },
+
+  // Disattiva tutto ciò che confligge con Prettier
+  prettier,
 ];
