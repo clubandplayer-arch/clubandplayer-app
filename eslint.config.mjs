@@ -10,14 +10,7 @@ import prettier from 'eslint-config-prettier';
 export default [
   // Ignora build e asset
   {
-    ignores: [
-      '.next/**',
-      'node_modules/**',
-      'dist/**',
-      'build/**',
-      'public/**',
-      '**/*.min.*',
-    ],
+    ignores: ['.next/**', 'node_modules/**', 'dist/**', 'build/**', 'public/**', '**/*.min.*'],
   },
 
   // Regole generali (JS/TS) + React Hooks + Next + Imports
@@ -52,6 +45,7 @@ export default [
       'import-x/no-duplicates': 'warn',
 
       // Varie
+      'no-empty': 'warn',
       'no-console': ['warn', { allow: ['warn', 'error', 'info', 'debug'] }],
     },
   },
@@ -72,6 +66,11 @@ export default [
     },
     rules: {
       ...tseslint.configs.recommended.rules,
+
+      // TS prende il posto di no-undef
+      'no-undef': 'off',
+
+      // Unused (lasciamo warn per non bloccare deploy)
       'no-unused-vars': 'off',
       '@typescript-eslint/no-unused-vars': [
         'warn',
@@ -80,6 +79,6 @@ export default [
     },
   },
 
-  // Disattiva tutto ciò che confligge con Prettier
+  // Disattiva conflitti con Prettier
   prettier,
 ];
