@@ -1,19 +1,42 @@
-import { NextResponse, type NextRequest } from 'next/server';
-import { withAuth, jsonError } from '@/lib/api/auth';
+import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
-export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
-export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
-  const url = new URL(req.url);
-  const oppId = (url.searchParams.get('opportunityId') || '').trim();
+async function getSupabase() {
+  const store = await cookies();
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return store.get(name)?.value;
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          try { store.set(name, value, options); } catch {}
+        },
+        remove(name: string, options: CookieOptions) {
+          try { store.set(name, '', { ...options, maxAge: 0 }); } catch {}
+        },
+      },
+    }
+  );
+}
 
-  let q = supabase
+export async function GET() {
+  const supabase = await getSupabase();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ items: [] });
+
+  // RLS: vedi solo le tue
+  const { data, error } = await supabase
     .from('applications')
-    .select('id, opportunity_id, status')
-    .eq('athlete_id', user.id);
-  if (oppId) q = q.eq('opportunity_id', oppId);
+    .select('id, opportunity_id, created_at')
+    .order('created_at', { ascending: false });
 
-  const { data, error } = await q;
-  if (error) return jsonError(error.message, 400);
-  return NextResponse.json({ data: data ?? [] });
-});
+  if (error) return NextResponse.json({ items: [], error: error.message }, { status: 400 });
+
+  return NextResponse.json({ items: data ?? [] });
+}

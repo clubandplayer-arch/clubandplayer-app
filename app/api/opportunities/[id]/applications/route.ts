@@ -1,57 +1,49 @@
-import { NextResponse, type NextRequest } from 'next/server';
-import { withAuth, jsonError } from '@/lib/api/auth';
-import { rateLimit } from '@/lib/api/rateLimit';
+import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
-export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
-/** GET /api/opportunities/:id/applications  (owner only) */
-export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
-  try {
-    await rateLimit(req, { key: 'applications:LIST', limit: 120, window: '1m' } as any);
-  } catch {
-    return jsonError('Too Many Requests', 429);
-  }
+async function getSupabase() {
+  const store = await cookies();
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return store.get(name)?.value;
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          try { store.set(name, value, options); } catch {}
+        },
+        remove(name: string, options: CookieOptions) {
+          try { store.set(name, '', { ...options, maxAge: 0 }); } catch {}
+        },
+      },
+    }
+  );
+}
 
-  const id = req.nextUrl.pathname.split('/').slice(-2, -1)[0];
-  if (!id) return jsonError('Missing opportunity id', 400);
+export async function GET(
+  _req: Request,
+  { params }: { params: { id: string } }
+) {
+  const supabase = await getSupabase();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ items: [] });
 
-  // check owner
-  const { data: opp, error: oppErr } = await supabase
-    .from('opportunities')
-    .select('created_by')
-    .eq('id', id)
-    .single();
-  if (oppErr) return jsonError(oppErr.message, 400);
-  if (!opp || opp.created_by !== user.id) return jsonError('Forbidden', 403);
+  const id = String(params?.id ?? '').trim();
+  if (!id) return NextResponse.json({ items: [] }, { status: 400 });
 
-  // candidati
-  const { data: rows, error } = await supabase
+  // RLS: il club vedrà risultati solo se owner dell'opportunità id
+  const { data, error } = await supabase
     .from('applications')
-    .select('id, athlete_id, note, status, created_at, updated_at')
+    .select('id, applicant_id, created_at')
     .eq('opportunity_id', id)
     .order('created_at', { ascending: false });
-  if (error) return jsonError(error.message, 400);
 
-  const apps = rows ?? [];
-  const athleteIds = Array.from(new Set(apps.map((a) => a.athlete_id).filter(Boolean)));
+  if (error) return NextResponse.json({ items: [], error: error.message }, { status: 400 });
 
-  // profili atleti
-  let profilesMap = new Map<
-    string,
-    { id: string; display_name: string | null; profile_type: string | null }
-  >();
-  if (athleteIds.length) {
-    const { data: profs } = await supabase
-      .from('profiles')
-      .select('id, display_name, profile_type')
-      .in('id', athleteIds);
-    profs?.forEach((p) => profilesMap.set(p.id, p as any));
-  }
-
-  const enhanced = apps.map((a) => ({
-    ...a,
-    athlete: profilesMap.get(a.athlete_id) ?? null,
-  }));
-
-  return NextResponse.json({ data: enhanced });
-});
+  return NextResponse.json({ items: data ?? [] });
+}
