@@ -45,3 +45,5 @@ next-env.d.ts
 *.swp
 *.swo
 .env.local
+
+package-lock.json
