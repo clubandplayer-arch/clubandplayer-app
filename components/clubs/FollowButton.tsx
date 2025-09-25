@@ -52,10 +52,10 @@ export default function FollowButton({
     size === 'xs'
       ? 'px-2 py-1 text-xs'
       : size === 'sm'
-      ? 'px-3 py-1.5 text-sm'
-      : size === 'md'
-      ? 'px-3.5 py-2 text-sm'
-      : 'px-4 py-2.5 text-base';
+        ? 'px-3 py-1.5 text-sm'
+        : size === 'md'
+          ? 'px-3.5 py-2 text-sm'
+          : 'px-4 py-2.5 text-base';
 
   // carica stato iniziale
   useEffect(() => {
@@ -99,14 +99,13 @@ export default function FollowButton({
       onToggle?.(cur); // 👈 notifica il chiamante (es. per toast)
     } catch {
       setFollowing(prev); // rollback
-      onToggle?.(prev);   // notifica rollback
+      onToggle?.(prev); // notifica rollback
     } finally {
       setPending(false);
     }
   }
 
-  const baseBtn =
-    `inline-flex items-center justify-center rounded-xl border font-semibold transition
+  const baseBtn = `inline-flex items-center justify-center rounded-xl border font-semibold transition
      hover:bg-neutral-50 disabled:opacity-60 dark:border-neutral-700 dark:hover:bg-neutral-800 ${sizeCls}`;
 
   const displayName = clubName ?? name ?? '';
@@ -122,10 +121,12 @@ export default function FollowButton({
         baseBtn,
         following ? 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900' : '',
         className || '',
-      ].join(' ').trim()}
+      ]
+        .join(' ')
+        .trim()}
       title={following ? labelFollowing : labelFollow}
     >
-      {children ?? (pending ? '...' : (following ? labelFollowing : labelFollow))}
+      {children ?? (pending ? '...' : following ? labelFollowing : labelFollow)}
       {displayName ? <span className="sr-only"> {displayName}</span> : null}
     </button>
   );

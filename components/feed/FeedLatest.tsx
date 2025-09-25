@@ -20,64 +20,28 @@ function normalize(raw: RawOpportunity): NormalizedOpp | null {
   if (!raw) return null;
 
   // id
-  const id =
-    String(
-      raw.id ??
-        raw.uuid ??
-        raw.slug ??
-        raw.opportunityId ??
-        raw._id ??
-        raw.key ??
-        '',
-    ).trim();
+  const id = String(
+    raw.id ?? raw.uuid ?? raw.slug ?? raw.opportunityId ?? raw._id ?? raw.key ?? '',
+  ).trim();
   if (!id) return null;
 
   // title / role
-  const title =
-    String(
-      raw.title ??
-        raw.name ??
-        raw.roleTitle ??
-        raw.role ??
-        raw.position ??
-        'Opportunità',
-    ).trim();
+  const title = String(
+    raw.title ?? raw.name ?? raw.roleTitle ?? raw.role ?? raw.position ?? 'Opportunità',
+  ).trim();
 
   // club
   const clubObj = raw.club ?? raw.company ?? raw.org ?? {};
-  const clubId =
-    clubObj.id ??
-    clubObj.uuid ??
-    raw.clubId ??
-    raw.companyId ??
-    undefined;
-  const clubName =
-    clubObj.name ??
-    clubObj.title ??
-    raw.clubName ??
-    raw.companyName ??
-    undefined;
+  const clubId = clubObj.id ?? clubObj.uuid ?? raw.clubId ?? raw.companyId ?? undefined;
+  const clubName = clubObj.name ?? clubObj.title ?? raw.clubName ?? raw.companyName ?? undefined;
 
   // city
-  const city =
-    raw.city ??
-    raw.location?.city ??
-    raw.place?.city ??
-    raw.geo?.city ??
-    undefined;
+  const city = raw.city ?? raw.location?.city ?? raw.place?.city ?? raw.geo?.city ?? undefined;
 
   // sport / roleName
-  const sport =
-    raw.sport ??
-    raw.sport_name ??
-    raw.category ??
-    undefined;
+  const sport = raw.sport ?? raw.sport_name ?? raw.category ?? undefined;
 
-  const roleName =
-    raw.roleName ??
-    raw.role ??
-    raw.position ??
-    undefined;
+  const roleName = raw.roleName ?? raw.role ?? raw.position ?? undefined;
 
   // createdAt
   const createdAtRaw =
@@ -89,7 +53,16 @@ function normalize(raw: RawOpportunity): NormalizedOpp | null {
     undefined;
   const createdAt = createdAtRaw ? new Date(createdAtRaw).toISOString() : undefined;
 
-  return { id, title, clubId: clubId ? String(clubId) : undefined, clubName, city, sport, roleName, createdAt };
+  return {
+    id,
+    title,
+    clubId: clubId ? String(clubId) : undefined,
+    clubName,
+    city,
+    sport,
+    roleName,
+    createdAt,
+  };
 }
 
 export default function FeedLatest() {
@@ -111,14 +84,12 @@ export default function FeedLatest() {
         const rawList: RawOpportunity[] = Array.isArray(data?.items)
           ? data.items
           : Array.isArray(data)
-          ? data
-          : Array.isArray(data?.data)
-          ? data.data
-          : [];
+            ? data
+            : Array.isArray(data?.data)
+              ? data.data
+              : [];
 
-        const normalized = rawList
-          .map(normalize)
-          .filter(Boolean) as NormalizedOpp[];
+        const normalized = rawList.map(normalize).filter(Boolean) as NormalizedOpp[];
 
         setItems(normalized);
       } catch (e: any) {
@@ -166,9 +137,7 @@ export default function FeedLatest() {
         <ul className="space-y-4">
           {items.map((it) => (
             <li key={it.id} className="rounded-lg border p-3 dark:border-neutral-800">
-              <div className="mb-1 text-sm font-medium">
-                {it.title}
-              </div>
+              <div className="mb-1 text-sm font-medium">{it.title}</div>
               <div className="text-xs text-neutral-500">
                 {it.clubName ? `${it.clubName}` : 'Club'}
                 {it.city ? ` · ${it.city}` : ''}

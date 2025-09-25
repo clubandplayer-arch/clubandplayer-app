@@ -28,7 +28,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         if (!cancelled) setLoadingRole(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const profileHref = role === 'club' ? '/club/profile' : '/profile';
@@ -37,10 +39,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     pathname === href || (href !== '/' && pathname?.startsWith(href));
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="flex min-h-screen flex-col">
       {/* Top bar */}
       <header className="sticky top-0 z-40 border-b bg-white/80 backdrop-blur">
-        <div className="mx-auto max-w-6xl px-4 h-14 flex items-center gap-4">
+        <div className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-4">
           <Link href="/feed" className="font-semibold">
             Club&Player
           </Link>
@@ -49,26 +51,26 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <nav className="flex items-center gap-3 text-sm">
             <Link
               href="/feed"
-              className={`px-3 py-1.5 rounded-md hover:bg-gray-100 ${isActive('/feed') ? 'bg-gray-100 font-medium' : ''}`}
+              className={`rounded-md px-3 py-1.5 hover:bg-gray-100 ${isActive('/feed') ? 'bg-gray-100 font-medium' : ''}`}
             >
               Bacheca
             </Link>
             <Link
               href="/opportunities"
-              className={`px-3 py-1.5 rounded-md hover:bg-gray-100 ${isActive('/opportunities') ? 'bg-gray-100 font-medium' : ''}`}
+              className={`rounded-md px-3 py-1.5 hover:bg-gray-100 ${isActive('/opportunities') ? 'bg-gray-100 font-medium' : ''}`}
             >
               Opportunità
             </Link>
             <Link
               href="/clubs"
-              className={`px-3 py-1.5 rounded-md hover:bg-gray-100 ${isActive('/clubs') ? 'bg-gray-100 font-medium' : ''}`}
+              className={`rounded-md px-3 py-1.5 hover:bg-gray-100 ${isActive('/clubs') ? 'bg-gray-100 font-medium' : ''}`}
             >
               Club
             </Link>
             {role === 'club' && (
               <Link
                 href="/club/applicants"
-                className={`px-3 py-1.5 rounded-md hover:bg-gray-100 ${isActive('/club/applicants') ? 'bg-gray-100 font-medium' : ''}`}
+                className={`rounded-md px-3 py-1.5 hover:bg-gray-100 ${isActive('/club/applicants') ? 'bg-gray-100 font-medium' : ''}`}
               >
                 Candidature
               </Link>
@@ -76,7 +78,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             {role === 'athlete' && (
               <Link
                 href="/applications/received"
-                className={`px-3 py-1.5 rounded-md hover:bg-gray-100 ${isActive('/applications') ? 'bg-gray-100 font-medium' : ''}`}
+                className={`rounded-md px-3 py-1.5 hover:bg-gray-100 ${isActive('/applications') ? 'bg-gray-100 font-medium' : ''}`}
               >
                 Le mie candidature
               </Link>
@@ -105,10 +107,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             )}
 
             {/* Logout */}
-            <Link
-              href="/logout"
-              className="rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50"
-            >
+            <Link href="/logout" className="rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50">
               Logout
             </Link>
           </div>

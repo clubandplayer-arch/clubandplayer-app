@@ -47,8 +47,8 @@ export default function ApplyCTA({ oppId, initialApplied, onApplied, size = 'md'
       <span
         className={[
           'inline-flex items-center rounded-lg border px-3 py-1 text-sm font-medium',
-          small ? 'text-xs px-2 py-0.5' : '',
-          'bg-gray-100 text-gray-700 border-gray-200',
+          small ? 'px-2 py-0.5 text-xs' : '',
+          'border-gray-200 bg-gray-100 text-gray-700',
         ].join(' ')}
       >
         Già candidato
@@ -62,7 +62,7 @@ export default function ApplyCTA({ oppId, initialApplied, onApplied, size = 'md'
       disabled={loading}
       className={[
         'inline-flex items-center rounded-lg px-4 py-2 font-medium',
-        small ? 'text-sm px-3 py-1.5' : '',
+        small ? 'px-3 py-1.5 text-sm' : '',
         'bg-gray-900 text-white hover:bg-black/90 disabled:opacity-60',
       ].join(' ')}
     >

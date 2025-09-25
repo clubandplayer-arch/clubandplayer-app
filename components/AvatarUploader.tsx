@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
 );
 
 function getExt(file: File) {
@@ -29,7 +29,9 @@ export default function AvatarUploader() {
   // Carica user + path avatar corrente
   useEffect(() => {
     (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
       setMe({ id: user.id, email: user.email ?? undefined });
 
@@ -49,12 +51,17 @@ export default function AvatarUploader() {
   // Genera signed URL quando abbiamo un path
   useEffect(() => {
     (async () => {
-      if (!avatarPath) { setPreviewUrl(null); return; }
-      const { data, error } = await supabase
-        .storage
+      if (!avatarPath) {
+        setPreviewUrl(null);
+        return;
+      }
+      const { data, error } = await supabase.storage
         .from('avatars')
         .createSignedUrl(avatarPath, 60 * 60); // 1 ora
-      if (error) { setError(error.message); return; }
+      if (error) {
+        setError(error.message);
+        return;
+      }
       setPreviewUrl(data?.signedUrl ?? null);
     })();
   }, [avatarPath]);
@@ -80,8 +87,7 @@ export default function AvatarUploader() {
       const path = `${me.id}/${Date.now()}-${file.name.replace(/\s+/g, '_')}.${ext}`;
 
       // Upload (sovrascriviamo se ri-carichi)
-      const { error: upErr } = await supabase
-        .storage
+      const { error: upErr } = await supabase.storage
         .from('avatars')
         .upload(path, file, { upsert: true });
 
@@ -108,21 +114,25 @@ export default function AvatarUploader() {
     return (
       <div className="rounded-2xl border p-4">
         <p className="text-sm">Non sei loggato.</p>
-        <a className="underline" href="/login">Vai al login</a>
+        <a className="underline" href="/login">
+          Vai al login
+        </a>
       </div>
     );
   }
 
   return (
-    <div className="rounded-2xl border p-4 space-y-4">
+    <div className="space-y-4 rounded-2xl border p-4">
       <div className="flex items-center gap-4">
         <img
           src={previewUrl ?? '/avatar-placeholder.png'}
           alt="Avatar"
-          className="h-24 w-24 rounded-full object-cover border"
+          className="h-24 w-24 rounded-full border object-cover"
         />
         <div className="flex-1">
-          <p className="text-sm text-gray-600">Loggato come <b>{me.email ?? me.id}</b></p>
+          <p className="text-sm text-gray-600">
+            Loggato come <b>{me.email ?? me.id}</b>
+          </p>
           <input
             ref={fileRef}
             type="file"
@@ -131,14 +141,22 @@ export default function AvatarUploader() {
             disabled={busy}
             className="mt-2 block"
           />
-          <p className="text-xs text-gray-500 mt-1">PNG/JPG/WebP, max 2 MB</p>
+          <p className="mt-1 text-xs text-gray-500">PNG/JPG/WebP, max 2 MB</p>
         </div>
       </div>
       {error && (
-        <p className="rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700">{error}</p>
+        <p className="rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700">
+          {error}
+        </p>
       )}
       <div className="text-xs text-gray-500">
-        {avatarPath ? <>Path: <code>{avatarPath}</code></> : 'Nessun avatar caricato.'}
+        {avatarPath ? (
+          <>
+            Path: <code>{avatarPath}</code>
+          </>
+        ) : (
+          'Nessun avatar caricato.'
+        )}
       </div>
     </div>
   );

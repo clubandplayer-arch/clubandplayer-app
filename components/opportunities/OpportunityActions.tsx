@@ -44,13 +44,19 @@ export default function OpportunityActions({
         const nextRole: Role = raw === 'club' || raw === 'athlete' ? raw : 'guest';
         setRole(nextRole);
 
-        const ga = await fetch('/api/opportunities/apply', { credentials: 'include', cache: 'no-store' });
+        const ga = await fetch('/api/opportunities/apply', {
+          credentials: 'include',
+          cache: 'no-store',
+        });
         const aj = await ga.json().catch(() => ({}));
         const aIds: string[] = Array.isArray(aj?.ids) ? aj.ids : [];
         setAppliedSet(new Set(aIds));
 
         if (clubId) {
-          const gf = await fetch('/api/follows/toggle', { credentials: 'include', cache: 'no-store' });
+          const gf = await fetch('/api/follows/toggle', {
+            credentials: 'include',
+            cache: 'no-store',
+          });
           const fj = await gf.json().catch(() => ({}));
           const fIds: string[] = Array.isArray(fj?.ids) ? fj.ids : [];
           setFollowSet(new Set(fIds));
@@ -210,7 +216,7 @@ export default function OpportunityActions({
               <button
                 type="button"
                 onClick={() => toggleApply(false)}
-                className="text-xs underline text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+                className="text-xs text-zinc-500 underline hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
                 title="Annulla candidatura"
               >
                 Annulla
@@ -230,7 +236,7 @@ export default function OpportunityActions({
 
       {/* Segui club */}
       {clubId ? (
-        !(followSet.has(clubId)) ? (
+        !followSet.has(clubId) ? (
           <button
             type="button"
             onClick={() => toggleFollow(true)}
@@ -257,7 +263,7 @@ export default function OpportunityActions({
               <button
                 type="button"
                 onClick={() => toggleFollow(false)}
-                className="text-xs underline text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+                className="text-xs text-zinc-500 underline hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
                 title="Annulla segui"
               >
                 Annulla

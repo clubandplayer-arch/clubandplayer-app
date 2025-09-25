@@ -1,39 +1,38 @@
-'use client'
+'use client';
 
-import { useMemo, useState } from 'react'
-import { supabaseBrowser } from '@/lib/supabaseBrowser'
+import { useMemo, useState } from 'react';
+import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 type Props = {
-  targetType: 'opportunity'
-  targetId: string
-}
+  targetType: 'opportunity';
+  targetId: string;
+};
 
 const REASONS = [
   { value: 'spam', label: 'Spam / promozionale' },
   { value: 'illecito', label: 'Contenuto illecito' },
   { value: 'offensivo', label: 'Contenuto offensivo' },
   { value: 'altro', label: 'Altro' },
-] as const
+] as const;
 
 export default function ReportButton({ targetType, targetId }: Props) {
-  const supabase = useMemo(() => supabaseBrowser(), [])
-  const [open, setOpen] = useState(false)
-  const [reason, setReason] =
-    useState<(typeof REASONS)[number]['value']>('spam')
-  const [description, setDescription] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [msg, setMsg] = useState<string>('')
+  const supabase = useMemo(() => supabaseBrowser(), []);
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState<(typeof REASONS)[number]['value']>('spam');
+  const [description, setDescription] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [msg, setMsg] = useState<string>('');
 
   const submit = async () => {
-    setMsg('')
-    setSubmitting(true)
+    setMsg('');
+    setSubmitting(true);
 
-    const { data: ures } = await supabase.auth.getUser()
-    const user = ures?.user ?? null
+    const { data: ures } = await supabase.auth.getUser();
+    const user = ures?.user ?? null;
     if (!user) {
-      setMsg('Devi essere loggato per inviare una segnalazione.')
-      setSubmitting(false)
-      return
+      setMsg('Devi essere loggato per inviare una segnalazione.');
+      setSubmitting(false);
+      return;
     }
 
     // Evita segnalazioni duplicate aperte sullo stesso target
@@ -44,17 +43,17 @@ export default function ReportButton({ targetType, targetId }: Props) {
       .eq('target_type', targetType)
       .eq('target_id', targetId)
       .eq('status', 'open')
-      .maybeSingle()
+      .maybeSingle();
 
     if (e1) {
-      setMsg(`Errore: ${e1.message}`)
-      setSubmitting(false)
-      return
+      setMsg(`Errore: ${e1.message}`);
+      setSubmitting(false);
+      return;
     }
     if (exists) {
-      setMsg('Hai già inviato una segnalazione per questo contenuto (in attesa di revisione).')
-      setSubmitting(false)
-      return
+      setMsg('Hai già inviato una segnalazione per questo contenuto (in attesa di revisione).');
+      setSubmitting(false);
+      return;
     }
 
     const { error } = await supabase.from('reports').insert({
@@ -64,22 +63,22 @@ export default function ReportButton({ targetType, targetId }: Props) {
       reason,
       description: description || null,
       status: 'open',
-    })
+    });
 
-    setSubmitting(false)
+    setSubmitting(false);
     if (error) {
-      setMsg(`Errore invio: ${error.message}`)
-      return
+      setMsg(`Errore invio: ${error.message}`);
+      return;
     }
 
-    setMsg('Segnalazione inviata. Grazie!')
+    setMsg('Segnalazione inviata. Grazie!');
     setTimeout(() => {
-      setOpen(false)
-      setDescription('')
-      setReason('spam')
-      setMsg('')
-    }, 1000)
-  }
+      setOpen(false);
+      setDescription('');
+      setReason('spam');
+      setMsg('');
+    }, 1000);
+  };
 
   return (
     <div style={{ display: 'inline-block' }}>
@@ -212,5 +211,5 @@ export default function ReportButton({ targetType, targetId }: Props) {
         </div>
       )}
     </div>
-  )
+  );
 }

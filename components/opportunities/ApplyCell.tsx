@@ -24,7 +24,10 @@ export default function ApplyCell({
 
         // Chi sono
         try {
-          const meR = await fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' });
+          const meR = await fetch('/api/auth/whoami', {
+            credentials: 'include',
+            cache: 'no-store',
+          });
           const meJ = await meR.json().catch(() => null);
           if (!cancelled) setMeId(meJ?.id ?? null);
         } catch {
@@ -50,10 +53,13 @@ export default function ApplyCell({
 
         // Ha già applicato?
         try {
-          const r = await fetch(`/api/applications/mine?opportunityId=${encodeURIComponent(opportunityId)}`, {
-            credentials: 'include',
-            cache: 'no-store',
-          });
+          const r = await fetch(
+            `/api/applications/mine?opportunityId=${encodeURIComponent(opportunityId)}`,
+            {
+              credentials: 'include',
+              cache: 'no-store',
+            },
+          );
           if (r.ok) {
             const j = await r.json().catch(() => ({}));
             const has = Array.isArray(j?.data) && j.data.length > 0;
@@ -97,18 +103,18 @@ export default function ApplyCell({
 
   // Club → blocco sempre
   if (!isAthlete) {
-    return <span className="text-xs text-gray-500 border rounded px-2 py-1">Solo atleti</span>;
+    return <span className="rounded border px-2 py-1 text-xs text-gray-500">Solo atleti</span>;
   }
 
   // Proprietario dell’annuncio → blocco
   if (meId && ownerId && meId === ownerId) {
-    return <span className="text-xs text-gray-500 border rounded px-2 py-1">Solo atleti</span>;
+    return <span className="rounded border px-2 py-1 text-xs text-gray-500">Solo atleti</span>;
   }
 
   // Già applicato → badge
   if (applied) {
     return (
-      <span className="text-xs text-green-700 bg-green-100 border border-green-200 rounded px-2 py-1">
+      <span className="rounded border border-green-200 bg-green-100 px-2 py-1 text-xs text-green-700">
         Candidatura inviata
       </span>
     );

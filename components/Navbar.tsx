@@ -1,61 +1,65 @@
-'use client'
+'use client';
 
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { useEffect, useMemo, useState } from 'react'
-import { supabaseBrowser } from '@/lib/supabaseBrowser'
-import NotificationsBell from './NotificationsBell'
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
+import { supabaseBrowser } from '@/lib/supabaseBrowser';
+import NotificationsBell from './NotificationsBell';
 
 type ProfileRow = {
-  id: string
-  account_type: 'athlete' | 'club' | null
-  is_admin: boolean | null
-}
+  id: string;
+  account_type: 'athlete' | 'club' | null;
+  is_admin: boolean | null;
+};
 
 export default function Navbar() {
-  const pathname = usePathname()
-  const supabase = useMemo(() => supabaseBrowser(), [])
-  const [sessionUserId, setSessionUserId] = useState<string | null>(null)
-  const [accountType, setAccountType] = useState<'athlete' | 'club' | null>(null)
-  const [isAdmin, setIsAdmin] = useState<boolean>(false)
+  const pathname = usePathname();
+  const supabase = useMemo(() => supabaseBrowser(), []);
+  const [sessionUserId, setSessionUserId] = useState<string | null>(null);
+  const [accountType, setAccountType] = useState<'athlete' | 'club' | null>(null);
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
 
   useEffect(() => {
     const fetchMe = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
-        setSessionUserId(null)
-        setAccountType(null)
-        setIsAdmin(false)
-        return
+        setSessionUserId(null);
+        setAccountType(null);
+        setIsAdmin(false);
+        return;
       }
-      setSessionUserId(user.id)
+      setSessionUserId(user.id);
 
       const { data } = await supabase
         .from('profiles')
         .select('id, account_type, is_admin')
         .eq('id', user.id)
-        .maybeSingle()
+        .maybeSingle();
 
       if (data) {
-        setAccountType((data.account_type as ProfileRow['account_type']) ?? null)
-        setIsAdmin(Boolean(data.is_admin))
+        setAccountType((data.account_type as ProfileRow['account_type']) ?? null);
+        setIsAdmin(Boolean(data.is_admin));
       }
-    }
+    };
 
-    fetchMe()
-  }, [supabase, pathname])
+    fetchMe();
+  }, [supabase, pathname]);
 
-  const isOnboardingNeeded = sessionUserId !== null && accountType == null
+  const isOnboardingNeeded = sessionUserId !== null && accountType == null;
 
   const linkClass = (href: string) =>
     `px-3 py-2 rounded-md text-sm font-medium ${
-      pathname === href ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-    }`
+      pathname === href
+        ? 'bg-gray-900 text-white'
+        : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+    }`;
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
-    window.location.href = '/login'
-  }
+    await supabase.auth.signOut();
+    window.location.href = '/login';
+  };
 
   return (
     <nav className="bg-gray-800">
@@ -67,17 +71,31 @@ export default function Navbar() {
               <span className="font-bold">Club&Player</span>
             </Link>
 
-            <div className="ml-4 hidden md:flex items-center gap-1">
-              <Link href="/" className={linkClass('/')}>Home</Link>
-              <Link href="/opportunities" className={linkClass('/opportunities')}>Opportunità</Link>
-              <Link href="/search/athletes" className={linkClass('/search/athletes')}>Atleti</Link>
-              <Link href="/search/club" className={linkClass('/search/club')}>Club</Link>
-              <Link href="/favorites" className={linkClass('/favorites')}>Preferiti</Link>
+            <div className="ml-4 hidden items-center gap-1 md:flex">
+              <Link href="/" className={linkClass('/')}>
+                Home
+              </Link>
+              <Link href="/opportunities" className={linkClass('/opportunities')}>
+                Opportunità
+              </Link>
+              <Link href="/search/athletes" className={linkClass('/search/athletes')}>
+                Atleti
+              </Link>
+              <Link href="/search/club" className={linkClass('/search/club')}>
+                Club
+              </Link>
+              <Link href="/favorites" className={linkClass('/favorites')}>
+                Preferiti
+              </Link>
               {isAdmin && (
-                <Link href="/admin/reports" className={linkClass('/admin/reports')}>Moderazione</Link>
+                <Link href="/admin/reports" className={linkClass('/admin/reports')}>
+                  Moderazione
+                </Link>
               )}
               {isOnboardingNeeded && (
-                <Link href="/onboarding" className={linkClass('/onboarding')}>Onboarding</Link>
+                <Link href="/onboarding" className={linkClass('/onboarding')}>
+                  Onboarding
+                </Link>
               )}
             </div>
           </div>
@@ -90,7 +108,9 @@ export default function Navbar() {
             {/* Login/Logout */}
             {sessionUserId ? (
               <>
-                <Link href="/settings" className="text-sm text-gray-300 hover:text-white">Impostazioni</Link>
+                <Link href="/settings" className="text-sm text-gray-300 hover:text-white">
+                  Impostazioni
+                </Link>
                 <button
                   onClick={handleLogout}
                   className="rounded-md bg-gray-700 px-3 py-2 text-sm text-white hover:bg-gray-600"
@@ -110,5 +130,5 @@ export default function Navbar() {
         </div>
       </div>
     </nav>
-  )
+  );
 }

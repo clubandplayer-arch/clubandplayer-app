@@ -32,7 +32,9 @@ export default function AthletePosts({ handle }: { handle: string }) {
 
   return (
     <section className="rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-      <div className="mb-3 text-sm font-semibold text-neutral-700 dark:text-neutral-200">📣 Aggiornamenti</div>
+      <div className="mb-3 text-sm font-semibold text-neutral-700 dark:text-neutral-200">
+        📣 Aggiornamenti
+      </div>
 
       {loading ? (
         <ul className="space-y-4">
@@ -55,7 +57,9 @@ export default function AthletePosts({ handle }: { handle: string }) {
         <ul className="space-y-4">
           {items.map((p) => (
             <li key={p.id} className="rounded-lg border p-3 dark:border-neutral-800">
-              <div className="whitespace-pre-wrap text-sm text-neutral-800 dark:text-neutral-100">{p.text}</div>
+              <div className="text-sm whitespace-pre-wrap text-neutral-800 dark:text-neutral-100">
+                {p.text}
+              </div>
               <div className="mt-2 text-xs text-neutral-500">
                 {new Date(p.createdAt).toLocaleString()}
               </div>

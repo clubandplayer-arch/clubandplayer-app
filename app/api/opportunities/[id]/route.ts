@@ -1,17 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
-export async function GET(
-  _req: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
+export async function GET(_req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
 
   const supabase = await getSupabaseServerClient();
   const { data, error } = await supabase
     .from('opportunities')
     .select(
-      'id, owner_id, title, description, sport, required_category, city, province, region, country, created_at'
+      'id, owner_id, title, description, sport, required_category, city, province, region, country, created_at',
     )
     .eq('id', id)
     .maybeSingle();
@@ -21,10 +18,7 @@ export async function GET(
   return NextResponse.json({ data });
 }
 
-export async function PATCH(
-  req: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
 
   const supabase = await getSupabaseServerClient();
@@ -54,8 +48,7 @@ export async function PATCH(
     .maybeSingle();
 
   if (!opp) return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  if (opp.owner_id !== user.id)
-    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  if (opp.owner_id !== user.id) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
 
   const { data, error } = await supabase
     .from('opportunities')

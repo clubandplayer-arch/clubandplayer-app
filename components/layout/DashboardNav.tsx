@@ -12,7 +12,7 @@ function cx(...cls: Array<string | false | null | undefined>) {
 function pill(active: boolean) {
   return cx(
     'px-3 py-2 rounded-lg border transition-colors',
-    active ? 'bg-gray-900 text-white border-gray-900' : 'bg-white hover:bg-gray-50'
+    active ? 'bg-gray-900 text-white border-gray-900' : 'bg-white hover:bg-gray-50',
   );
 }
 
@@ -36,9 +36,7 @@ export default function DashboardNav() {
           cache: 'no-store',
         });
         const jp = await rProf.json().catch(() => ({}));
-        const t = (jp?.data?.type ?? jp?.data?.profile_type ?? '')
-          .toString()
-          .toLowerCase();
+        const t = (jp?.data?.type ?? jp?.data?.profile_type ?? '').toString().toLowerCase();
 
         if (!ignore) {
           if (t.includes('club')) setRole('club');
@@ -91,7 +89,7 @@ export default function DashboardNav() {
     (isAthlete ? pathname.startsWith('/applications/sent') : pathname === '/applications');
 
   return (
-    <nav className="flex gap-2 items-center p-3 border-b bg-white sticky top-0 z-10">
+    <nav className="sticky top-0 z-10 flex items-center gap-2 border-b bg-white p-3">
       <Link href="/clubs" className={pill(pathname.startsWith('/clubs'))}>
         Clubs
       </Link>
@@ -107,7 +105,7 @@ export default function DashboardNav() {
       {loaded && (
         <Link href={applicationsHref} className={pill(applicationsActive)}>
           {isAthlete ? 'Candidature inviate' : 'Candidature ricevute'}
-          <span className="ml-2 inline-flex items-center justify-center min-w-[1.5rem] h-[1.5rem] text-xs rounded-full border px-1">
+          <span className="ml-2 inline-flex h-[1.5rem] min-w-[1.5rem] items-center justify-center rounded-full border px-1 text-xs">
             {isAthlete ? sentCount : receivedCount}
           </span>
         </Link>

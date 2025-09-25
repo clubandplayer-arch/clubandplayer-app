@@ -1,5 +1,5 @@
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default function DebugEnvPage() {
   const info = {
@@ -9,8 +9,6 @@ export default function DebugEnvPage() {
     sha: process.env.VERCEL_GIT_COMMIT_SHA ?? null,
     node: process.version,
     mode: process.env.VERCEL_ENV ?? 'local',
-  }
-  return (
-    <pre style={{ padding: 16 }}>{JSON.stringify(info, null, 2)}</pre>
-  )
+  };
+  return <pre style={{ padding: 16 }}>{JSON.stringify(info, null, 2)}</pre>;
 }

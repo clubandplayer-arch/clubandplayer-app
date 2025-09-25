@@ -1,7 +1,7 @@
 // hooks/useInfiniteScroll.ts
-"use client";
+'use client';
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef } from 'react';
 
 type Options = {
   rootMargin?: string;
@@ -11,7 +11,7 @@ type Options = {
 };
 
 export function useInfiniteScroll<T extends HTMLElement>({
-  rootMargin = "400px",
+  rootMargin = '400px',
   threshold = 0,
   disabled = false,
   onIntersect,
@@ -29,7 +29,7 @@ export function useInfiniteScroll<T extends HTMLElement>({
           if (entry.isIntersecting) onIntersect();
         });
       },
-      { root: null, rootMargin, threshold }
+      { root: null, rootMargin, threshold },
     );
 
     observer.observe(el);

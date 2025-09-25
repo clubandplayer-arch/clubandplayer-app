@@ -38,7 +38,10 @@ export default function AthleteHeader({ handle }: { handle: string }) {
         if (!r.ok || !dj?.athlete) throw new Error(dj?.error || 'Errore caricamento atleta');
         setAth(dj.athlete);
 
-        const gf = await fetch('/api/follows/toggle', { cache: 'no-store', credentials: 'include' });
+        const gf = await fetch('/api/follows/toggle', {
+          cache: 'no-store',
+          credentials: 'include',
+        });
         const fj = await gf.json().catch(() => ({}));
         const ids: string[] = Array.isArray(fj?.ids) ? fj.ids : [];
         setFollowing(ids.includes(dj.athlete.id));
@@ -119,7 +122,10 @@ export default function AthleteHeader({ handle }: { handle: string }) {
 
   return (
     <header className="overflow-hidden rounded-xl border bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-      <div className="h-32 w-full bg-cover bg-center" style={{ backgroundImage: `url(${cover})` }} />
+      <div
+        className="h-32 w-full bg-cover bg-center"
+        style={{ backgroundImage: `url(${cover})` }}
+      />
       <div className="flex flex-wrap items-center gap-4 p-4">
         <img
           src={avatar}
@@ -156,7 +162,7 @@ export default function AthleteHeader({ handle }: { handle: string }) {
               <button
                 type="button"
                 onClick={() => toggleFollow(false)}
-                className="text-xs underline text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
+                className="text-xs text-neutral-500 underline hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
                 title="Annulla"
               >
                 Annulla

@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import React, { useCallback } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import React, { useCallback } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 type Props = {
   /** Pagina corrente (>=1) letta dal server o dallo stato client */
@@ -20,12 +20,12 @@ export default function PrevNextPager({ currentPage, hasMore, label }: Props) {
   const goTo = useCallback(
     (page: number) => {
       const params = new URLSearchParams(sp.toString());
-      if (page <= 1) params.delete("page");
-      else params.set("page", String(page));
+      if (page <= 1) params.delete('page');
+      else params.set('page', String(page));
       const qs = params.toString();
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: true });
     },
-    [pathname, router, sp]
+    [pathname, router, sp],
   );
 
   const onPrev = useCallback(() => {
@@ -40,14 +40,14 @@ export default function PrevNextPager({ currentPage, hasMore, label }: Props) {
     <div className="mt-4 flex items-center justify-between border-t pt-3">
       <div className="text-xs text-slate-500">
         {label ? `${label} — ` : null}Pagina <b>{currentPage}</b>
-        {hasMore ? " (altre disponibili)" : " (fine lista)"}
+        {hasMore ? ' (altre disponibili)' : ' (fine lista)'}
       </div>
       <div className="flex gap-2">
         <button
           type="button"
           onClick={onPrev}
           disabled={currentPage <= 1}
-          className="rounded-lg border px-3 py-1.5 text-sm disabled:opacity-50 hover:bg-slate-50"
+          className="rounded-lg border px-3 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-50"
           aria-label="Pagina precedente"
         >
           ← Prev
@@ -56,7 +56,7 @@ export default function PrevNextPager({ currentPage, hasMore, label }: Props) {
           type="button"
           onClick={onNext}
           disabled={!hasMore}
-          className="rounded-lg border px-3 py-1.5 text-sm disabled:opacity-50 hover:bg-slate-50"
+          className="rounded-lg border px-3 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-50"
           aria-label="Pagina successiva"
         >
           Next →

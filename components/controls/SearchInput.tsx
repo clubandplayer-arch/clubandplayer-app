@@ -40,7 +40,7 @@ export default function SearchInput({ placeholder = 'Search clubs...' }: { place
       value={q}
       onChange={(e) => setQ(e.target.value)}
       placeholder={placeholder}
-      className="w-full md:w-80 rounded-xl border px-4 py-2 outline-none focus:ring"
+      className="w-full rounded-xl border px-4 py-2 outline-none focus:ring md:w-80"
       aria-label="Search clubs"
     />
   );

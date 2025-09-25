@@ -1,84 +1,84 @@
-'use client'
+'use client';
 
-import { useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
-import { supabaseBrowser } from '@/lib/supabaseBrowser'
+import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 type Profile = {
-  id: string
-  account_type: 'athlete' | 'club' | null
-  notify_email_new_message: boolean | null
-}
+  id: string;
+  account_type: 'athlete' | 'club' | null;
+  notify_email_new_message: boolean | null;
+};
 
 export default function SettingsPage() {
-  const supabase = useMemo(() => supabaseBrowser(), [])
+  const supabase = useMemo(() => supabaseBrowser(), []);
 
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [msg, setMsg] = useState<string>('')
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<string>('');
 
-  const [userId, setUserId] = useState<string | null>(null)
-  const [accountType, setAccountType] = useState<'athlete' | 'club' | null>(null)
-  const [notifyEmailNewMessage, setNotifyEmailNewMessage] = useState<boolean>(false)
+  const [userId, setUserId] = useState<string | null>(null);
+  const [accountType, setAccountType] = useState<'athlete' | 'club' | null>(null);
+  const [notifyEmailNewMessage, setNotifyEmailNewMessage] = useState<boolean>(false);
 
   useEffect(() => {
     const load = async () => {
-      setMsg('')
-      setLoading(true)
-      const { data: ures } = await supabase.auth.getUser()
-      const user = ures?.user ?? null
+      setMsg('');
+      setLoading(true);
+      const { data: ures } = await supabase.auth.getUser();
+      const user = ures?.user ?? null;
       if (!user) {
-        setMsg('Devi effettuare il login.')
-        setLoading(false)
-        return
+        setMsg('Devi effettuare il login.');
+        setLoading(false);
+        return;
       }
-      setUserId(user.id)
+      setUserId(user.id);
 
       const { data, error } = await supabase
         .from('profiles')
         .select('id, account_type, notify_email_new_message')
         .eq('id', user.id)
-        .maybeSingle()
+        .maybeSingle();
 
       if (error) {
-        setMsg(`Errore caricamento profilo: ${error.message}`)
-        setLoading(false)
-        return
+        setMsg(`Errore caricamento profilo: ${error.message}`);
+        setLoading(false);
+        return;
       }
 
-      const p = (data ?? null) as Profile | null
-      setAccountType(p?.account_type ?? null)
-      setNotifyEmailNewMessage(!!p?.notify_email_new_message)
-      setLoading(false)
-    }
+      const p = (data ?? null) as Profile | null;
+      setAccountType(p?.account_type ?? null);
+      setNotifyEmailNewMessage(!!p?.notify_email_new_message);
+      setLoading(false);
+    };
 
-    load()
-  }, [supabase])
+    load();
+  }, [supabase]);
 
   const save = async () => {
-    if (!userId) return
-    setMsg('')
-    setSaving(true)
+    if (!userId) return;
+    setMsg('');
+    setSaving(true);
     const { error } = await supabase
       .from('profiles')
       .update({
         // aggiorniamo solo il flag email messaggi (la colonna esiste dal passo notifiche)
         notify_email_new_message: notifyEmailNewMessage,
       })
-      .eq('id', userId)
+      .eq('id', userId);
 
-    setSaving(false)
+    setSaving(false);
     if (error) {
-      setMsg(`Errore salvataggio: ${error.message}`)
-      return
+      setMsg(`Errore salvataggio: ${error.message}`);
+      return;
     }
-    setMsg('Impostazioni salvate.')
-  }
+    setMsg('Impostazioni salvate.');
+  };
 
   const logout = async () => {
-    await supabase.auth.signOut()
-    window.location.href = '/'
-  }
+    await supabase.auth.signOut();
+    window.location.href = '/';
+  };
 
   return (
     <main style={{ maxWidth: 820, margin: '0 auto', padding: 24 }}>
@@ -92,12 +92,10 @@ export default function SettingsPage() {
           <section style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 16 }}>
             <h2 style={{ marginTop: 0 }}>Profilo</h2>
             <p style={{ margin: '8px 0' }}>
-              Tipo account:{' '}
-              <b>{accountType ?? '—'}</b>
+              Tipo account: <b>{accountType ?? '—'}</b>
             </p>
             <p style={{ margin: '8px 0' }}>
-              Profilo pubblico:{' '}
-              <Link href="/u/me">/u/me</Link>
+              Profilo pubblico: <Link href="/u/me">/u/me</Link>
             </p>
           </section>
 
@@ -121,7 +119,7 @@ export default function SettingsPage() {
                   borderRadius: 8,
                   border: '1px solid #e5e7eb',
                   background: '#fff',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
                 }}
               >
                 {saving ? 'Salvataggio…' : 'Salva'}
@@ -138,7 +136,7 @@ export default function SettingsPage() {
                 borderRadius: 8,
                 border: '1px solid #e5e7eb',
                 background: '#fff',
-                cursor: 'pointer'
+                cursor: 'pointer',
               }}
             >
               Logout
@@ -147,5 +145,5 @@ export default function SettingsPage() {
         </div>
       )}
     </main>
-  )
+  );
 }

@@ -38,12 +38,20 @@ export default function UpdatePasswordPage() {
   };
 
   return (
-    <main className="min-h-[60vh] flex items-center justify-center p-6">
-      <div className="w-full max-w-sm rounded-2xl border p-6 shadow-sm space-y-4">
+    <main className="flex min-h-[60vh] items-center justify-center p-6">
+      <div className="w-full max-w-sm space-y-4 rounded-2xl border p-6 shadow-sm">
         <h1 className="text-xl font-semibold">Imposta nuova password</h1>
 
-        {err && <p className="rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700">{err}</p>}
-        {ok && <p className="rounded-md border border-green-300 bg-green-50 p-2 text-sm text-green-700">{ok}</p>}
+        {err && (
+          <p className="rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700">
+            {err}
+          </p>
+        )}
+        {ok && (
+          <p className="rounded-md border border-green-300 bg-green-50 p-2 text-sm text-green-700">
+            {ok}
+          </p>
+        )}
 
         <form onSubmit={onSubmit} className="space-y-3">
           <label className="block text-sm">
@@ -83,7 +91,10 @@ export default function UpdatePasswordPage() {
 
         <p className="text-xs text-gray-500">
           Se vedi errori, prova a ripetere il reset dalla pagina{' '}
-          <a href="/reset-password" className="underline">reset-password</a>.
+          <a href="/reset-password" className="underline">
+            reset-password
+          </a>
+          .
         </p>
       </div>
     </main>

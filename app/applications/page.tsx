@@ -20,11 +20,7 @@ async function detectRoleReceived(): Promise<Role> {
       .or(`id.eq.${uid},user_id.eq.${uid}`)
       .maybeSingle();
 
-    const t = (
-      (prof as any)?.type ??
-      (prof as any)?.profile_type ??
-      ''
-    ).toString().toLowerCase();
+    const t = ((prof as any)?.type ?? (prof as any)?.profile_type ?? '').toString().toLowerCase();
 
     if (t.includes('club')) return 'club';
     if (t.includes('atlet')) return 'athlete';
@@ -59,7 +55,10 @@ function getOriginFromHeaders(h: Headers) {
 
 async function cookieHeader(): Promise<string> {
   const ck = await cookies();
-  return ck.getAll().map(c => `${c.name}=${c.value}`).join('; ');
+  return ck
+    .getAll()
+    .map((c) => `${c.name}=${c.value}`)
+    .join('; ');
 }
 
 async function fetchReceivedRows() {
@@ -73,11 +72,13 @@ async function fetchReceivedRows() {
       headers: { cookie: await cookieHeader() },
     });
     if (!res.ok) return [];
-    const data = await res.json().catch(() => ({} as any));
-    return (Array.isArray(data) && data)
-      || (Array.isArray(data.items) && data.items)
-      || (Array.isArray(data.data) && data.data)
-      || [];
+    const data = await res.json().catch(() => ({}) as any);
+    return (
+      (Array.isArray(data) && data) ||
+      (Array.isArray(data.items) && data.items) ||
+      (Array.isArray(data.data) && data.data) ||
+      []
+    );
   } catch {
     return [];
   }
@@ -87,13 +88,13 @@ export default async function ReceivedApplicationsPage() {
   const [role, rows] = await Promise.all([detectRoleReceived(), fetchReceivedRows()]);
 
   return (
-    <div className="max-w-6xl mx-auto p-4">
-      <h1 className="text-2xl font-semibold mb-2">Candidature ricevute</h1>
-      <p className="text-sm text-gray-600 mb-4">
+    <div className="mx-auto max-w-6xl p-4">
+      <h1 className="mb-2 text-2xl font-semibold">Candidature ricevute</h1>
+      <p className="mb-4 text-sm text-gray-600">
         Sei loggato come <b>{role ?? 'non loggato'}</b>.
       </p>
       {role === 'athlete' ? (
-        <div className="mb-3 text-sm text-yellow-800 bg-yellow-50 border border-yellow-200 px-3 py-2 rounded">
+        <div className="mb-3 rounded border border-yellow-200 bg-yellow-50 px-3 py-2 text-sm text-yellow-800">
           Stai visualizzando come <b>Atleta</b>. Le candidature ricevute sono per i <b>Club</b>.
         </div>
       ) : null}

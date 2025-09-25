@@ -1,10 +1,10 @@
 // lib/types/entities.ts
 
 // --- Entità ---
-export type OpportunityRole = "player" | "coach" | "staff" | "scout" | "director";
-export type CountryCode = "IT" | "ES" | "FR" | "DE" | "UK" | "US";
-export type OpportunityStatus = "open" | "closed" | "draft" | "archived";
-export type ClubStatus = "active" | "inactive" | "archived";
+export type OpportunityRole = 'player' | 'coach' | 'staff' | 'scout' | 'director';
+export type CountryCode = 'IT' | 'ES' | 'FR' | 'DE' | 'UK' | 'US';
+export type OpportunityStatus = 'open' | 'closed' | 'draft' | 'archived';
+export type ClubStatus = 'active' | 'inactive' | 'archived';
 
 export type Opportunity = {
   id: string;
@@ -28,12 +28,12 @@ export type Club = {
 // --- Filtri comuni (coerenti con SavedViews/URL) ---
 export type SearchFilters = {
   q?: string;
-  role?: string;        // compat: presente su Opportunities; accettato/ignorato su Clubs
+  role?: string; // compat: presente su Opportunities; accettato/ignorato su Clubs
   country?: string;
   status?: string;
   city?: string;
-  from?: string;        // YYYY-MM-DD
-  to?: string;          // YYYY-MM-DD
+  from?: string; // YYYY-MM-DD
+  to?: string; // YYYY-MM-DD
 };
 
 // Versione “normalizzata” (stringhe vuote -> undefined)

@@ -27,7 +27,7 @@ export interface Opportunity {
   // Club/owner
   club_name?: string | null;
   created_by?: string | null; // id del club owner (presente nelle tue UI)
-  owner_id?: string | null;   // opzionale per compatibilità retro
+  owner_id?: string | null; // opzionale per compatibilità retro
 
   // Meta
   created_at: string; // ISO string

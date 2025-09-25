@@ -6,8 +6,11 @@ export const runtime = 'nodejs';
 
 /** GET /api/profiles/:id  (legge profilo per user_id) */
 export const GET = withAuth(async (req: NextRequest, { supabase }) => {
-  try { await rateLimit(req, { key: 'profiles:GET', limit: 120, window: '1m' } as any); }
-  catch { return jsonError('Too Many Requests', 429); }
+  try {
+    await rateLimit(req, { key: 'profiles:GET', limit: 120, window: '1m' } as any);
+  } catch {
+    return jsonError('Too Many Requests', 429);
+  }
 
   const id = req.nextUrl.pathname.split('/').pop();
   if (!id) return jsonError('Missing id', 400);

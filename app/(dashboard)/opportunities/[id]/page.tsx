@@ -32,20 +32,30 @@ export default function OpportunityDetailPage({ params }: { params: { id: string
         if (!cancelled) setRole('guest');
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Dati opportunità
   useEffect(() => {
     let cancelled = false;
-    setLoading(true); setErr(null);
+    setLoading(true);
+    setErr(null);
     (async () => {
       try {
-        const r = await fetch(`/api/opportunities/${id}`, { credentials: 'include', cache: 'no-store' });
+        const r = await fetch(`/api/opportunities/${id}`, {
+          credentials: 'include',
+          cache: 'no-store',
+        });
         const t = await r.text();
         if (!r.ok) {
-          try { const j = JSON.parse(t); throw new Error(j.error || `HTTP ${r.status}`); }
-          catch { throw new Error(t || `HTTP ${r.status}`); }
+          try {
+            const j = JSON.parse(t);
+            throw new Error(j.error || `HTTP ${r.status}`);
+          } catch {
+            throw new Error(t || `HTTP ${r.status}`);
+          }
         }
         const j = JSON.parse(t);
         if (!cancelled) setOpp(j?.data ?? j);
@@ -55,7 +65,9 @@ export default function OpportunityDetailPage({ params }: { params: { id: string
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
   // Ho già candidato?
@@ -64,7 +76,10 @@ export default function OpportunityDetailPage({ params }: { params: { id: string
     let cancelled = false;
     (async () => {
       try {
-        const r = await fetch('/api/applications/mine', { credentials: 'include', cache: 'no-store' });
+        const r = await fetch('/api/applications/mine', {
+          credentials: 'include',
+          cache: 'no-store',
+        });
         const j = await r.json().catch(() => ({}));
         if (!cancelled) {
           const has = !!(j?.data ?? []).find((a: any) => a?.opportunity_id === id);
@@ -74,29 +89,40 @@ export default function OpportunityDetailPage({ params }: { params: { id: string
         /* noop */
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [role, id]);
 
   if (loading) return <div className="p-6">Caricamento…</div>;
-  if (err || !opp) return <div className="p-6 text-red-600">Errore: {err || 'Dati non trovati'}</div>;
+  if (err || !opp)
+    return <div className="p-6 text-red-600">Errore: {err || 'Dati non trovati'}</div>;
 
   const place = [opp.city, opp.province, opp.region, opp.country].filter(Boolean).join(', ');
   const genderLabel =
-    (opp as any).gender === 'male' ? 'Maschile' :
-    (opp as any).gender === 'female' ? 'Femminile' :
-    (opp as any).gender === 'mixed' ? 'Misto' : undefined;
+    (opp as any).gender === 'male'
+      ? 'Maschile'
+      : (opp as any).gender === 'female'
+        ? 'Femminile'
+        : (opp as any).gender === 'mixed'
+          ? 'Misto'
+          : undefined;
   const ageLabel =
-    opp.age_min != null && opp.age_max != null ? `${opp.age_min}-${opp.age_max}` :
-    opp.age_min != null ? `${opp.age_min}+` :
-    opp.age_max != null ? `≤${opp.age_max}` : undefined;
+    opp.age_min != null && opp.age_max != null
+      ? `${opp.age_min}-${opp.age_max}`
+      : opp.age_min != null
+        ? `${opp.age_min}+`
+        : opp.age_max != null
+          ? `≤${opp.age_max}`
+          : undefined;
 
   const isOwner = !!meId && (opp.created_by === meId || (opp as any).owner_id === meId);
   const showCTA = role === 'athlete' && !isOwner;
 
   return (
-    <div className="p-4 md:p-6 space-y-4">
+    <div className="space-y-4 p-4 md:p-6">
       <header className="flex items-start justify-between gap-3">
-        <h1 className="text-2xl md:text-3xl font-semibold">{opp.title}</h1>
+        <h1 className="text-2xl font-semibold md:text-3xl">{opp.title}</h1>
         {showCTA && (
           <ApplyCTA
             oppId={opp.id}
@@ -106,7 +132,7 @@ export default function OpportunityDetailPage({ params }: { params: { id: string
         )}
       </header>
 
-      <div className="text-sm text-gray-600 flex flex-wrap gap-x-3 gap-y-1">
+      <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-gray-600">
         {opp.sport && <span>{opp.sport}</span>}
         {opp.role && <span>{opp.role}</span>}
         {genderLabel && <span>{genderLabel}</span>}

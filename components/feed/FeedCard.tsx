@@ -26,16 +26,16 @@ export default function FeedCard({
   mediaUrl,
 }: Props) {
   return (
-    <article className="bg-white rounded-xl border p-4">
+    <article className="rounded-xl border bg-white p-4">
       <header className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-full bg-gray-200 overflow-hidden">
+        <div className="h-10 w-10 overflow-hidden rounded-full bg-gray-200">
           {avatarUrl ? (
             <Image src={avatarUrl} alt="" width={40} height={40} className="object-cover" />
           ) : null}
         </div>
         <div className="min-w-0">
-          <div className="font-medium truncate">{headerTitle}</div>
-          <div className="text-xs text-gray-500 truncate">
+          <div className="truncate font-medium">{headerTitle}</div>
+          <div className="truncate text-xs text-gray-500">
             {headerSubtitle ?? ''} {timeLabel ? `• ${timeLabel}` : ''}
           </div>
         </div>
@@ -49,7 +49,7 @@ export default function FeedCard({
           {tags.map((t) => (
             <span
               key={t}
-              className="text-xs px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200"
+              className="rounded-full border border-blue-200 bg-blue-50 px-2 py-1 text-xs text-blue-700"
             >
               {t}
             </span>
@@ -57,9 +57,7 @@ export default function FeedCard({
         </div>
       )}
 
-      {mediaUrl && (
-        <div className="mt-3 h-56 w-full rounded-lg bg-gray-100 overflow-hidden" />
-      )}
+      {mediaUrl && <div className="mt-3 h-56 w-full overflow-hidden rounded-lg bg-gray-100" />}
 
       {actions.length > 0 && (
         <footer className="mt-4 flex gap-2">
@@ -69,7 +67,7 @@ export default function FeedCard({
               onClick={a.onClick}
               className={
                 a.variant === 'primary'
-                  ? 'rounded-lg bg-blue-600 text-white px-3 py-1.5'
+                  ? 'rounded-lg bg-blue-600 px-3 py-1.5 text-white'
                   : 'rounded-lg border px-3 py-1.5'
               }
             >

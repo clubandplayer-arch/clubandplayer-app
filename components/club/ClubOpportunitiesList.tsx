@@ -42,7 +42,9 @@ export default function ClubOpportunitiesList({ slug }: { slug: string }) {
 
   return (
     <section className="rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-      <div className="mb-3 text-sm font-semibold text-neutral-700 dark:text-neutral-200">📌 Opportunità del club</div>
+      <div className="mb-3 text-sm font-semibold text-neutral-700 dark:text-neutral-200">
+        📌 Opportunità del club
+      </div>
 
       {loading ? (
         <ul className="space-y-4">

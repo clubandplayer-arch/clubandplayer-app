@@ -9,7 +9,7 @@ const MAX_AGE_SECONDS = 60 * 60 * 24 * 365; // 1 anno
 
 type ApplicationsCookie = {
   applications: Array<{
-    id: string;        // application id
+    id: string; // application id
     oppId: string;
     oppTitle?: string;
     clubId?: string;
@@ -17,7 +17,7 @@ type ApplicationsCookie = {
     athleteId?: string;
     athleteName?: string;
     createdAt: string; // ISO
-    note?: string;     // C3
+    note?: string; // C3
   }>;
 };
 
@@ -59,7 +59,7 @@ async function writeApplications(data: ApplicationsCookie) {
   const store = await cookies();
   store.set(COOKIE_APPS_KEY, JSON.stringify(data), {
     path: '/',
-    httpOnly: true,   // solo server-side
+    httpOnly: true, // solo server-side
     sameSite: 'lax',
     maxAge: MAX_AGE_SECONDS,
   });

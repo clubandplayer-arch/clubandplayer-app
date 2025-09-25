@@ -83,7 +83,10 @@ export default function ClubApplicantsPage() {
       try {
         setErr(null);
         setLoading(true);
-        const r = await fetch('/api/clubs/applicants', { cache: 'no-store', credentials: 'include' });
+        const r = await fetch('/api/clubs/applicants', {
+          cache: 'no-store',
+          credentials: 'include',
+        });
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         const j = await r.json().catch(() => ({}));
         const arr: Application[] = Array.isArray(j?.items) ? j.items : [];
@@ -127,9 +130,7 @@ export default function ClubApplicantsPage() {
       if (ok?.ok !== true) throw new Error('Salvataggio non riuscito');
 
       // aggiorna stato locale
-      setItems((prev) =>
-        prev.map((x) => (x.id === editingId ? { ...x, note } : x)),
-      );
+      setItems((prev) => prev.map((x) => (x.id === editingId ? { ...x, note } : x)));
       setFlash('Nota salvata.');
       // toast globale
       toastSuccess('Nota candidatura salvata');
@@ -252,10 +253,15 @@ export default function ClubApplicantsPage() {
         {current ? (
           <div className="space-y-3">
             <div className="text-xs text-neutral-500">
-              Candidato: <span className="font-medium text-neutral-700 dark:text-neutral-200">{current.athleteName || '—'}</span>
+              Candidato:{' '}
+              <span className="font-medium text-neutral-700 dark:text-neutral-200">
+                {current.athleteName || '—'}
+              </span>
             </div>
             <div className="space-y-1">
-              <label className="block text-sm font-medium">Nota (max {NOTE_MAX_CHARS} caratteri)</label>
+              <label className="block text-sm font-medium">
+                Nota (max {NOTE_MAX_CHARS} caratteri)
+              </label>
               <textarea
                 rows={6}
                 value={note}

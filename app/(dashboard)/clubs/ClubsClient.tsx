@@ -104,10 +104,13 @@ export default function ClubsClient() {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-4">
+    <div className="space-y-4 p-4 md:p-6">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">Clubs</h1>
-        <button onClick={() => setOpenCreate(true)} className="px-3 py-2 rounded-lg bg-gray-900 text-white">
+        <button
+          onClick={() => setOpenCreate(true)}
+          className="rounded-lg bg-gray-900 px-3 py-2 text-white"
+        >
           + Nuovo club
         </button>
       </div>
@@ -118,15 +121,18 @@ export default function ClubsClient() {
 
       {loading && (
         <div className="animate-pulse">
-          <div className="h-10 w-80 bg-gray-200 rounded mb-4" />
-          <div className="h-64 w-full bg-gray-200 rounded" />
+          <div className="mb-4 h-10 w-80 rounded bg-gray-200" />
+          <div className="h-64 w-full rounded bg-gray-200" />
         </div>
       )}
 
       {err && (
-        <div className="border rounded-xl p-4 bg-red-50 text-red-700">
+        <div className="rounded-xl border bg-red-50 p-4 text-red-700">
           Errore nel caricamento: {err}{' '}
-          <button onClick={() => setReloadKey((k) => k + 1)} className="ml-3 px-3 py-1 border rounded-lg bg-white hover:bg-gray-50">
+          <button
+            onClick={() => setReloadKey((k) => k + 1)}
+            className="ml-3 rounded-lg border bg-white px-3 py-1 hover:bg-gray-50"
+          >
             Riprova
           </button>
         </div>
@@ -156,7 +162,11 @@ export default function ClubsClient() {
       </Modal>
 
       {/* Modal Edit */}
-      <Modal open={!!editClub} title={`Modifica: ${editClub?.display_name || editClub?.name || ''}`} onClose={() => setEditClub(null)}>
+      <Modal
+        open={!!editClub}
+        title={`Modifica: ${editClub?.display_name || editClub?.name || ''}`}
+        onClose={() => setEditClub(null)}
+      >
         {editClub && (
           <ClubForm
             initial={editClub}

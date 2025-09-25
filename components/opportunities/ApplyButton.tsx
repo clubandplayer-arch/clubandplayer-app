@@ -17,7 +17,7 @@ export default function ApplyButton({ onApply, disabled = false, applied = false
 
   if (applied) {
     return (
-      <span className="text-xs text-green-700 bg-green-100 border border-green-200 rounded px-2 py-1">
+      <span className="rounded border border-green-200 bg-green-100 px-2 py-1 text-xs text-green-700">
         Candidatura inviata
       </span>
     );
@@ -37,7 +37,7 @@ export default function ApplyButton({ onApply, disabled = false, applied = false
   return (
     <div className="flex items-center gap-2">
       <input
-        className="border rounded px-2 py-1 text-sm w-56"
+        className="w-56 rounded border px-2 py-1 text-sm"
         placeholder="Nota (opzionale)"
         value={note}
         onChange={(e) => setNote(e.currentTarget.value)}
@@ -46,7 +46,7 @@ export default function ApplyButton({ onApply, disabled = false, applied = false
       <button
         onClick={handleClick}
         disabled={disabled || busy}
-        className={`px-3 py-1 rounded ${
+        className={`rounded px-3 py-1 ${
           disabled || busy ? 'bg-gray-300 text-gray-600' : 'bg-gray-900 text-white hover:opacity-90'
         }`}
       >

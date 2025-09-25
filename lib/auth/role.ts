@@ -29,9 +29,7 @@ export async function getUserAndRole(): GetUserAndRole {
     .eq('user_id', user.id)
     .maybeSingle();
 
-  const role = prof?.type
-    ? (String(prof.type).toLowerCase() as UserRole)
-    : null;
+  const role = prof?.type ? (String(prof.type).toLowerCase() as UserRole) : null;
 
   return { user, role, supabase };
 }

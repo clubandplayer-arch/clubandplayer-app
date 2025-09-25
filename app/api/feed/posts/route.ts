@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
       const waitMs = RATE_LIMIT_MS - (now - lastTs);
       return NextResponse.json(
         { ok: false, error: 'rate_limited', retryInMs: waitMs },
-        { status: 429 }
+        { status: 429 },
       );
     }
 

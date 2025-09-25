@@ -14,10 +14,7 @@ function srHeaders(extra?: Record<string, string>) {
 }
 
 // GET /api/follows/:clubId -> { following: boolean }
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ clubId: string }> }
-) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ clubId: string }> }) {
   const auth = await requireAuth(req);
   if ('res' in auth) return auth.res;
   const { user } = auth.ctx;
@@ -38,10 +35,7 @@ export async function GET(
 }
 
 // POST /api/follows/:clubId -> follow
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ clubId: string }> }
-) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ clubId: string }> }) {
   const auth = await requireAuth(req);
   if ('res' in auth) return auth.res;
   const { user } = auth.ctx;
@@ -71,7 +65,7 @@ export async function POST(
 // DELETE /api/follows/:clubId -> unfollow
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: Promise<{ clubId: string }> }
+  { params }: { params: Promise<{ clubId: string }> },
 ) {
   const auth = await requireAuth(req);
   if ('res' in auth) return auth.res;
@@ -83,7 +77,10 @@ export async function DELETE(
     if (!SUPA_URL || !SERVICE_ROLE) return jsonError('Supabase server env missing', 500);
 
     const url = `${SUPA_URL}/rest/v1/follows?user_id=eq.${user.id}&club_id=eq.${clubId}`;
-    const r = await fetch(url, { method: 'DELETE', headers: srHeaders({ Prefer: 'return=minimal' }) });
+    const r = await fetch(url, {
+      method: 'DELETE',
+      headers: srHeaders({ Prefer: 'return=minimal' }),
+    });
     if (!r.ok) {
       const t = await r.text();
       return jsonError(`Supabase error: ${t || r.status}`, r.status);

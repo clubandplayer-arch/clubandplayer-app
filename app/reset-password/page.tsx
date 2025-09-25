@@ -19,7 +19,9 @@ export default function ResetPasswordPage() {
       const redirectTo = `${window.location.origin}/update-password`;
       const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
       if (error) throw error;
-      setOk('Email inviata. Controlla la tua casella e segui il link per impostare la nuova password.');
+      setOk(
+        'Email inviata. Controlla la tua casella e segui il link per impostare la nuova password.',
+      );
     } catch (e: any) {
       setErr(e?.message ?? 'Errore durante l’invio dell’email di reset.');
     } finally {
@@ -28,12 +30,20 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <main className="min-h-[60vh] flex items-center justify-center p-6">
-      <div className="w-full max-w-sm rounded-2xl border p-6 shadow-sm space-y-4">
+    <main className="flex min-h-[60vh] items-center justify-center p-6">
+      <div className="w-full max-w-sm space-y-4 rounded-2xl border p-6 shadow-sm">
         <h1 className="text-xl font-semibold">Reimposta password</h1>
 
-        {err && <p className="rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700">{err}</p>}
-        {ok && <p className="rounded-md border border-green-300 bg-green-50 p-2 text-sm text-green-700">{ok}</p>}
+        {err && (
+          <p className="rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700">
+            {err}
+          </p>
+        )}
+        {ok && (
+          <p className="rounded-md border border-green-300 bg-green-50 p-2 text-sm text-green-700">
+            {ok}
+          </p>
+        )}
 
         <form onSubmit={onSubmit} className="space-y-3">
           <label className="block text-sm">
@@ -58,7 +68,8 @@ export default function ResetPasswordPage() {
         </form>
 
         <p className="text-xs text-gray-500">
-          Riceverai un link che ti porterà alla pagina <code>/update-password</code> per impostare la nuova password.
+          Riceverai un link che ti porterà alla pagina <code>/update-password</code> per impostare
+          la nuova password.
         </p>
       </div>
     </main>

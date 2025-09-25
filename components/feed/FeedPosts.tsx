@@ -50,7 +50,9 @@ export default function FeedPosts() {
   if (loading) {
     return (
       <section className="rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-        <div className="mb-3 text-sm font-semibold text-neutral-700 dark:text-neutral-200">📣 Post recenti</div>
+        <div className="mb-3 text-sm font-semibold text-neutral-700 dark:text-neutral-200">
+          📣 Post recenti
+        </div>
         <ul className="space-y-4">
           {Array.from({ length: 2 }).map((_, i) => (
             <li key={i} className="rounded-lg border p-3 dark:border-neutral-800">
@@ -66,7 +68,9 @@ export default function FeedPosts() {
   if (err) {
     return (
       <section className="rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-        <div className="mb-3 text-sm font-semibold text-neutral-700 dark:text-neutral-200">📣 Post recenti</div>
+        <div className="mb-3 text-sm font-semibold text-neutral-700 dark:text-neutral-200">
+          📣 Post recenti
+        </div>
         <div className="rounded-lg border border-dashed p-4 text-sm text-red-600 dark:border-neutral-800">
           Errore: {err}
         </div>
@@ -76,7 +80,9 @@ export default function FeedPosts() {
 
   return (
     <section className="rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-      <div className="mb-3 text-sm font-semibold text-neutral-700 dark:text-neutral-200">📣 Post recenti</div>
+      <div className="mb-3 text-sm font-semibold text-neutral-700 dark:text-neutral-200">
+        📣 Post recenti
+      </div>
       {items.length === 0 ? (
         <div className="rounded-lg border border-dashed p-4 text-sm text-neutral-500 dark:border-neutral-800">
           Ancora nessun post. Scrivi il primo!
@@ -85,7 +91,9 @@ export default function FeedPosts() {
         <ul className="space-y-4">
           {items.map((p) => (
             <li key={p.id} className="rounded-lg border p-3 dark:border-neutral-800">
-              <div className="whitespace-pre-wrap text-sm text-neutral-800 dark:text-neutral-100">{p.text}</div>
+              <div className="text-sm whitespace-pre-wrap text-neutral-800 dark:text-neutral-100">
+                {p.text}
+              </div>
               <div className="mt-2 text-xs text-neutral-500">
                 {new Date(p.createdAt).toLocaleString()}
               </div>

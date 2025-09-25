@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import React, { useMemo, useCallback } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import React, { useMemo, useCallback } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 type Props = {
   /** Elenco di chiavi filtro da mostrare come badge se presenti nell'URL */
@@ -12,48 +12,48 @@ type Props = {
 
 // ---- Label e mappe di visualizzazione (stabili, fuori dal componente) ----
 const LABELS: Record<string, string> = {
-  q: "Cerca",
-  role: "Ruolo",
-  country: "Paese",
-  status: "Stato",
-  city: "Città",
-  from: "Dal",
-  to: "Al",
+  q: 'Cerca',
+  role: 'Ruolo',
+  country: 'Paese',
+  status: 'Stato',
+  city: 'Città',
+  from: 'Dal',
+  to: 'Al',
 };
 
 const COUNTRY_MAP: Record<string, string> = {
-  IT: "Italia",
-  ES: "Spagna",
-  FR: "Francia",
-  DE: "Germania",
-  UK: "Regno Unito",
-  US: "USA",
+  IT: 'Italia',
+  ES: 'Spagna',
+  FR: 'Francia',
+  DE: 'Germania',
+  UK: 'Regno Unito',
+  US: 'USA',
 };
 
 const ROLE_MAP: Record<string, string> = {
-  player: "Giocatore",
-  coach: "Allenatore",
-  staff: "Staff",
-  scout: "Scout",
-  director: "Direttore",
+  player: 'Giocatore',
+  coach: 'Allenatore',
+  staff: 'Staff',
+  scout: 'Scout',
+  director: 'Direttore',
 };
 
 const STATUS_MAP: Record<string, string> = {
-  open: "Aperto",
-  closed: "Chiuso",
-  draft: "Bozza",
-  archived: "Archiviato",
+  open: 'Aperto',
+  closed: 'Chiuso',
+  draft: 'Bozza',
+  archived: 'Archiviato',
 };
 
 function displayValue(key: string, value: string) {
-  if (key === "country") return COUNTRY_MAP[value] ?? value;
-  if (key === "role") return ROLE_MAP[value] ?? value;
-  if (key === "status") return STATUS_MAP[value] ?? value;
+  if (key === 'country') return COUNTRY_MAP[value] ?? value;
+  if (key === 'role') return ROLE_MAP[value] ?? value;
+  if (key === 'status') return STATUS_MAP[value] ?? value;
   return value;
 }
 
 export default function ActiveFiltersBar({
-  keys = ["q", "role", "country", "status", "city", "from", "to"],
+  keys = ['q', 'role', 'country', 'status', 'city', 'from', 'to'],
   resetPageOnChange = true,
 }: Props) {
   const router = useRouter();
@@ -64,7 +64,7 @@ export default function ActiveFiltersBar({
     const out: Array<{ key: string; label: string; value: string }> = [];
     for (const k of keys) {
       const raw = sp.get(k);
-      if (raw && raw.trim() !== "") {
+      if (raw && raw.trim() !== '') {
         out.push({ key: k, label: LABELS[k] ?? k, value: displayValue(k, raw) });
       }
     }
@@ -75,31 +75,29 @@ export default function ActiveFiltersBar({
     (mutate: (p: URLSearchParams) => void) => {
       const params = new URLSearchParams(sp.toString());
       mutate(params);
-      if (resetPageOnChange) params.delete("page");
+      if (resetPageOnChange) params.delete('page');
       const qs = params.toString();
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     },
-    [pathname, router, sp, resetPageOnChange]
+    [pathname, router, sp, resetPageOnChange],
   );
 
-  const clearOne = useCallback(
-    (k: string) => replaceParams((p) => p.delete(k)),
-    [replaceParams]
-  );
+  const clearOne = useCallback((k: string) => replaceParams((p) => p.delete(k)), [replaceParams]);
 
   const clearAll = useCallback(
-    () => replaceParams((p) => { for (const k of keys) p.delete(k); }),
-    [keys, replaceParams]
+    () =>
+      replaceParams((p) => {
+        for (const k of keys) p.delete(k);
+      }),
+    [keys, replaceParams],
   );
 
   if (active.length === 0) return null;
 
   return (
     <div className="w-full border-b bg-white">
-      <div className="max-w-7xl mx-auto px-4 py-2 flex flex-wrap items-center gap-2">
-        <span className="text-xs uppercase tracking-wide text-slate-500">
-          Filtri attivi:
-        </span>
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-2 px-4 py-2">
+        <span className="text-xs tracking-wide text-slate-500 uppercase">Filtri attivi:</span>
 
         {active.map(({ key, label, value }) => (
           <span

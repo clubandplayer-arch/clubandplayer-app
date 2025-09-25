@@ -26,14 +26,14 @@ export default function Pagination({
   const pages = Array.from({ length: pageCount }, (_, i) => i + 1).slice(0, 7);
 
   return (
-    <div className="flex items-center gap-2 justify-between mt-4">
+    <div className="mt-4 flex items-center justify-between gap-2">
       <div className="text-xs text-gray-500">
         Pagina {page} di {pageCount}
       </div>
       <div className="flex items-center gap-1">
         <Link
           href={pageLink(basePath, searchParams, prev)}
-          className="px-3 py-1 rounded-lg border hover:bg-gray-50 aria-disabled:opacity-50"
+          className="rounded-lg border px-3 py-1 hover:bg-gray-50 aria-disabled:opacity-50"
           aria-disabled={page === 1}
         >
           ‹
@@ -42,7 +42,7 @@ export default function Pagination({
           <Link
             key={p}
             href={pageLink(basePath, searchParams, p)}
-            className={`px-3 py-1 rounded-lg border hover:bg-gray-50 ${
+            className={`rounded-lg border px-3 py-1 hover:bg-gray-50 ${
               p === page ? 'bg-gray-900 text-white hover:bg-gray-900' : ''
             }`}
           >
@@ -51,7 +51,7 @@ export default function Pagination({
         ))}
         <Link
           href={pageLink(basePath, searchParams, next)}
-          className="px-3 py-1 rounded-lg border hover:bg-gray-50 aria-disabled:opacity-50"
+          className="rounded-lg border px-3 py-1 hover:bg-gray-50 aria-disabled:opacity-50"
           aria-disabled={page === pageCount}
         >
           ›

@@ -50,10 +50,7 @@ const DATA: Record<string, Opportunity[]> = {
   ],
 };
 
-export async function GET(
-  _req: NextRequest,
-  context: { params: Promise<{ slug: string }> },
-) {
+export async function GET(_req: NextRequest, context: { params: Promise<{ slug: string }> }) {
   const { slug } = await context.params; // 👈 Next 15.5: params è Promise
   const s = (slug || '').toLowerCase();
 

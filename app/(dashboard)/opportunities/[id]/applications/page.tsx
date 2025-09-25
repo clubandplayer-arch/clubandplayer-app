@@ -14,10 +14,13 @@ type Application = {
 
 function StatusBadge({ s }: { s: Application['status'] }) {
   const style =
-    s === 'accepted' ? 'bg-green-100 text-green-700' :
-    s === 'rejected' ? 'bg-red-100 text-red-700' :
-    s === 'seen'     ? 'bg-blue-100 text-blue-700' :
-                       'bg-gray-100 text-gray-700';
+    s === 'accepted'
+      ? 'bg-green-100 text-green-700'
+      : s === 'rejected'
+        ? 'bg-red-100 text-red-700'
+        : s === 'seen'
+          ? 'bg-blue-100 text-blue-700'
+          : 'bg-gray-100 text-gray-700';
   return <span className={`inline-block rounded px-2 py-0.5 text-xs ${style}`}>{s}</span>;
 }
 
@@ -30,9 +33,13 @@ export default function OpportunityApplicationsPage({ params }: { params: { id: 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      setLoading(true); setErr(null);
+      setLoading(true);
+      setErr(null);
       try {
-        const r = await fetch(`/api/opportunities/${id}/applications`, { credentials: 'include', cache: 'no-store' });
+        const r = await fetch(`/api/opportunities/${id}/applications`, {
+          credentials: 'include',
+          cache: 'no-store',
+        });
         const j = await r.json();
         if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
         if (!cancelled) setApps(j.data || []);
@@ -42,7 +49,9 @@ export default function OpportunityApplicationsPage({ params }: { params: { id: 
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
   async function setStatus(appId: string, status: Application['status']) {
@@ -53,42 +62,51 @@ export default function OpportunityApplicationsPage({ params }: { params: { id: 
       body: JSON.stringify({ status }),
     });
     const j = await r.json();
-    if (!r.ok) { alert(j.error || `HTTP ${r.status}`); return; }
-    setApps(prev => prev.map(a => a.id === appId ? j.data : a));
+    if (!r.ok) {
+      alert(j.error || `HTTP ${r.status}`);
+      return;
+    }
+    setApps((prev) => prev.map((a) => (a.id === appId ? j.data : a)));
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-4">
+    <div className="space-y-4 p-4 md:p-6">
       <h1 className="text-2xl font-semibold">Candidature</h1>
-      {loading && <div className="h-24 rounded-xl bg-gray-200 animate-pulse" />}
-      {err && <div className="border rounded-xl p-3 bg-red-50 text-red-700">{err}</div>}
-      {!loading && !err && !apps.length && <div className="text-sm text-gray-600">Nessuna candidatura.</div>}
+      {loading && <div className="h-24 animate-pulse rounded-xl bg-gray-200" />}
+      {err && <div className="rounded-xl border bg-red-50 p-3 text-red-700">{err}</div>}
+      {!loading && !err && !apps.length && (
+        <div className="text-sm text-gray-600">Nessuna candidatura.</div>
+      )}
 
       {!loading && !err && !!apps.length && (
         <div className="overflow-x-auto rounded-xl border">
           <table className="w-full text-sm">
             <thead className="bg-gray-50">
-              <tr className="text-left border-b">
-                <th className="py-2 px-3">Atleta</th>
-                <th className="py-2 px-3">Nota</th>
-                <th className="py-2 px-3">Stato</th>
-                <th className="py-2 px-3">Data</th>
-                <th className="py-2 px-3">Azione</th>
+              <tr className="border-b text-left">
+                <th className="px-3 py-2">Atleta</th>
+                <th className="px-3 py-2">Nota</th>
+                <th className="px-3 py-2">Stato</th>
+                <th className="px-3 py-2">Data</th>
+                <th className="px-3 py-2">Azione</th>
               </tr>
             </thead>
             <tbody>
-              {apps.map(a => (
+              {apps.map((a) => (
                 <tr key={a.id} className="border-b">
-                  <td className="py-2 px-3">
+                  <td className="px-3 py-2">
                     <div className="font-medium">{a.athlete?.display_name || a.athlete_id}</div>
-                    <div className="text-xs text-gray-500">{a.athlete?.profile_type || 'Atleta'}</div>
+                    <div className="text-xs text-gray-500">
+                      {a.athlete?.profile_type || 'Atleta'}
+                    </div>
                   </td>
-                  <td className="py-2 px-3">{a.note || '—'}</td>
-                  <td className="py-2 px-3"><StatusBadge s={a.status} /></td>
-                  <td className="py-2 px-3">{new Date(a.created_at).toLocaleString()}</td>
-                  <td className="py-2 px-3">
+                  <td className="px-3 py-2">{a.note || '—'}</td>
+                  <td className="px-3 py-2">
+                    <StatusBadge s={a.status} />
+                  </td>
+                  <td className="px-3 py-2">{new Date(a.created_at).toLocaleString()}</td>
+                  <td className="px-3 py-2">
                     <select
-                      className="border rounded-md px-2 py-1"
+                      className="rounded-md border px-2 py-1"
                       value={a.status}
                       onChange={(e) => setStatus(a.id, e.target.value as Application['status'])}
                     >

@@ -6,8 +6,11 @@ export const runtime = 'nodejs';
 
 /** GET /api/profiles/me  (profilo dell’utente loggato) */
 export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
-  try { await rateLimit(_req, { key: 'profiles:ME', limit: 60, window: '1m' } as any); }
-  catch { return jsonError('Too Many Requests', 429); }
+  try {
+    await rateLimit(_req, { key: 'profiles:ME', limit: 60, window: '1m' } as any);
+  } catch {
+    return jsonError('Too Many Requests', 429);
+  }
 
   const { data, error } = await supabase
     .from('profiles')

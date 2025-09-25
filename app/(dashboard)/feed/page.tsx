@@ -135,10 +135,16 @@ export default function FeedPage() {
             <div className="rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
               <div className="mb-2 text-sm text-neutral-500">Azioni rapide</div>
               <div className="flex flex-col gap-2">
-                <Link href="/opportunities/new" className="rounded-md border px-3 py-2 hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800">
+                <Link
+                  href="/opportunities/new"
+                  className="rounded-md border px-3 py-2 hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
+                >
                   + Pubblica opportunità
                 </Link>
-                <Link href="/club/applicants" className="rounded-md border px-3 py-2 hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800">
+                <Link
+                  href="/club/applicants"
+                  className="rounded-md border px-3 py-2 hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
+                >
                   Vedi candidature
                 </Link>
               </div>
@@ -147,7 +153,7 @@ export default function FeedPage() {
         </aside>
 
         {/* CENTRO */}
-        <section className="lg:col-span-6 flex flex-col gap-6">
+        <section className="flex flex-col gap-6 lg:col-span-6">
           {/* Composer abilitato */}
           <div className="rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
             <div className="mb-3 text-sm text-neutral-500">Condividi un aggiornamento</div>
@@ -155,7 +161,11 @@ export default function FeedPage() {
             <textarea
               className="w-full rounded-xl border px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
               rows={3}
-              placeholder={canPublish ? 'Scrivi qualcosa… (Ctrl/Cmd + Invio per pubblicare)' : 'Accedi come club o atleta per pubblicare'}
+              placeholder={
+                canPublish
+                  ? 'Scrivi qualcosa… (Ctrl/Cmd + Invio per pubblicare)'
+                  : 'Accedi come club o atleta per pubblicare'
+              }
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={onKeyDown}
@@ -169,7 +179,7 @@ export default function FeedPage() {
               </span>
               {canPublish ? (
                 <button
-                  className="rounded-md border px-3 py-1.5 hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800 disabled:opacity-60"
+                  className="rounded-md border px-3 py-1.5 hover:bg-neutral-50 disabled:opacity-60 dark:border-neutral-700 dark:hover:bg-neutral-800"
                   onClick={publish}
                   disabled={publishing || empty || tooLong}
                 >
@@ -219,9 +229,10 @@ export default function FeedPage() {
                 {posts.map((p) => (
                   <li key={p.id} className="rounded-lg border p-3 dark:border-neutral-800">
                     <div className="mb-1 text-xs text-neutral-500">
-                      {p.role === 'club' ? 'Club' : 'Atleta'} · {new Date(p.createdAt).toLocaleString()}
+                      {p.role === 'club' ? 'Club' : 'Atleta'} ·{' '}
+                      {new Date(p.createdAt).toLocaleString()}
                     </div>
-                    <div className="whitespace-pre-wrap text-sm text-neutral-800 dark:text-neutral-200">
+                    <div className="text-sm whitespace-pre-wrap text-neutral-800 dark:text-neutral-200">
                       {p.text}
                     </div>
                   </li>
@@ -234,24 +245,59 @@ export default function FeedPage() {
         {/* DESTRA */}
         <aside className="hidden xl:col-span-3 xl:flex xl:flex-col xl:gap-6">
           <div className="rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-            <h3 className="mb-3 text-sm font-semibold text-neutral-700 dark:text-neutral-200">🔥 Trending</h3>
+            <h3 className="mb-3 text-sm font-semibold text-neutral-700 dark:text-neutral-200">
+              🔥 Trending
+            </h3>
             <ul className="space-y-2 text-sm">
-              <li><a href="/search/athletes?trend=mercato" className="text-blue-600 hover:underline dark:text-blue-400">Calciomercato Dilettanti</a></li>
-              <li><a href="/opportunities?role=goalkeeper&gender=f" className="text-blue-600 hover:underline dark:text-blue-400">Portieri femminili U21</a></li>
-              <li><a href="/feed?tag=preparazione" className="text-blue-600 hover:underline dark:text-blue-400">Preparazione invernale</a></li>
-              <li><a href="/opportunities?league=serie-d&role=winger" className="text-blue-600 hover:underline dark:text-blue-400">Serie D – Esterni veloci</a></li>
+              <li>
+                <a
+                  href="/search/athletes?trend=mercato"
+                  className="text-blue-600 hover:underline dark:text-blue-400"
+                >
+                  Calciomercato Dilettanti
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/opportunities?role=goalkeeper&gender=f"
+                  className="text-blue-600 hover:underline dark:text-blue-400"
+                >
+                  Portieri femminili U21
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/feed?tag=preparazione"
+                  className="text-blue-600 hover:underline dark:text-blue-400"
+                >
+                  Preparazione invernale
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/opportunities?league=serie-d&role=winger"
+                  className="text-blue-600 hover:underline dark:text-blue-400"
+                >
+                  Serie D – Esterni veloci
+                </a>
+              </li>
             </ul>
           </div>
 
           <div className="rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-            <h3 className="mb-3 text-sm font-semibold text-neutral-700 dark:text-neutral-200">👥 Chi seguire</h3>
+            <h3 className="mb-3 text-sm font-semibold text-neutral-700 dark:text-neutral-200">
+              👥 Chi seguire
+            </h3>
             <ul className="space-y-3 text-sm">
               <li className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <div className="truncate font-medium">ASD Siracusa</div>
                   <div className="truncate text-xs text-neutral-500">Eccellenza • Sicilia</div>
                 </div>
-                <a href="/c/asd-siracusa" className="whitespace-nowrap rounded-full border px-3 py-1 text-xs font-medium hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800">
+                <a
+                  href="/c/asd-siracusa"
+                  className="rounded-full border px-3 py-1 text-xs font-medium whitespace-nowrap hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
+                >
                   Vedi
                 </a>
               </li>
@@ -260,7 +306,10 @@ export default function FeedPage() {
                   <div className="truncate font-medium">SSD Virtus Rosa</div>
                   <div className="truncate text-xs text-neutral-500">Femminile • Serie C</div>
                 </div>
-                <a href="/c/virtus-rosa" className="whitespace-nowrap rounded-full border px-3 py-1 text-xs font-medium hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800">
+                <a
+                  href="/c/virtus-rosa"
+                  className="rounded-full border px-3 py-1 text-xs font-medium whitespace-nowrap hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
+                >
                   Vedi
                 </a>
               </li>
@@ -269,13 +318,21 @@ export default function FeedPage() {
                   <div className="truncate font-medium">Davide Bianchi</div>
                   <div className="truncate text-xs text-neutral-500">Punta centrale • 21 anni</div>
                 </div>
-                <a href="/u/davide-bianchi" className="whitespace-nowrap rounded-full border px-3 py-1 text-xs font-medium hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800">
+                <a
+                  href="/u/davide-bianchi"
+                  className="rounded-full border px-3 py-1 text-xs font-medium whitespace-nowrap hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
+                >
                   Vedi
                 </a>
               </li>
             </ul>
             <div className="mt-4 text-right">
-              <a href="/search/club" className="text-xs text-blue-600 hover:underline dark:text-blue-400">Mostra tutto</a>
+              <a
+                href="/search/club"
+                className="text-xs text-blue-600 hover:underline dark:text-blue-400"
+              >
+                Mostra tutto
+              </a>
             </div>
           </div>
         </aside>

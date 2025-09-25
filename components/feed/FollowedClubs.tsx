@@ -17,7 +17,9 @@ function readFollowed(): FollowMap {
     if (!raw) return {};
     const obj = JSON.parse(raw);
     return obj && typeof obj === 'object' ? obj : {};
-  } catch { return {}; }
+  } catch {
+    return {};
+  }
 }
 
 function writeFollowed(data: FollowMap) {
@@ -63,11 +65,11 @@ export default function FollowedClubs() {
 
   const entries = useMemo(
     () => Object.entries(map).sort((a, b) => (b[1]?.followedAt || 0) - (a[1]?.followedAt || 0)),
-    [map]
+    [map],
   );
 
   return (
-    <section className="bg-white rounded-xl border p-4">
+    <section className="rounded-xl border bg-white p-4">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold">Club seguiti</h3>
         <label className="flex items-center gap-2 text-xs">
@@ -82,7 +84,9 @@ export default function FollowedClubs() {
       </div>
 
       {!entries.length ? (
-        <p className="mt-3 text-xs text-gray-600">Segui un club dalle opportunità per vederlo qui.</p>
+        <p className="mt-3 text-xs text-gray-600">
+          Segui un club dalle opportunità per vederlo qui.
+        </p>
       ) : (
         <ul className="mt-3 space-y-2">
           {entries.slice(0, 8).map(([id, it]) => (
@@ -95,7 +99,7 @@ export default function FollowedClubs() {
                   delete next[id];
                   writeFollowed(next);
                 }}
-                className="text-xs px-2 py-1 rounded border hover:bg-gray-50"
+                className="rounded border px-2 py-1 text-xs hover:bg-gray-50"
                 title="Smetti di seguire"
               >
                 Rimuovi

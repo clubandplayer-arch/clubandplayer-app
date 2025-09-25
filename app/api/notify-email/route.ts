@@ -1,25 +1,25 @@
-import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
-export const runtime = 'nodejs'
+export const runtime = 'nodejs';
 
-type Body = { senderId: string; receiverId: string; text: string }
+type Body = { senderId: string; receiverId: string; text: string };
 
 export async function POST(req: Request) {
   try {
-    const { senderId, receiverId, text } = (await req.json()) as Body
+    const { senderId, receiverId, text } = (await req.json()) as Body;
     if (!senderId || !receiverId || !text) {
-      return NextResponse.json({ ok: false, error: 'bad_request' }, { status: 400 })
+      return NextResponse.json({ ok: false, error: 'bad_request' }, { status: 400 });
     }
 
-    const url = process.env.SUPABASE_URL!
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-    const supabase = createClient(url, serviceKey, { auth: { persistSession: false } })
+    const url = process.env.SUPABASE_URL!;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const supabase = createClient(url, serviceKey, { auth: { persistSession: false } });
 
     // email destinatario
-    const { data: receiverUser, error: rErr } = await supabase.auth.admin.getUserById(receiverId)
+    const { data: receiverUser, error: rErr } = await supabase.auth.admin.getUserById(receiverId);
     if (rErr || !receiverUser?.user?.email) {
-      return NextResponse.json({ ok: false, error: 'receiver_not_found' }, { status: 404 })
+      return NextResponse.json({ ok: false, error: 'receiver_not_found' }, { status: 404 });
     }
 
     // nome mittente (facoltativo)
@@ -27,14 +27,16 @@ export async function POST(req: Request) {
       .from('profiles')
       .select('full_name')
       .eq('id', senderId)
-      .limit(1)
+      .limit(1);
 
     const senderName =
-      senderProf && senderProf[0] ? (senderProf[0] as { full_name: string | null }).full_name : null
+      senderProf && senderProf[0]
+        ? (senderProf[0] as { full_name: string | null }).full_name
+        : null;
 
-    const subject = 'Nuovo messaggio su Club&Player'
-    const preview = text.length > 120 ? text.slice(0, 120) + '…' : text
-    const chatUrl = `${process.env.NEXT_PUBLIC_BASE_URL ?? ''}/messages/${senderId}`
+    const subject = 'Nuovo messaggio su Club&Player';
+    const preview = text.length > 120 ? text.slice(0, 120) + '…' : text;
+    const chatUrl = `${process.env.NEXT_PUBLIC_BASE_URL ?? ''}/messages/${senderId}`;
 
     // invio via API HTTP di Resend
     const res = await fetch('https://api.resend.com/emails', {
@@ -56,15 +58,15 @@ export async function POST(req: Request) {
           </div>
         `,
       }),
-    })
+    });
 
     if (!res.ok) {
-      const detail = await res.text()
-      return NextResponse.json({ ok: false, error: 'resend_error', detail }, { status: 502 })
+      const detail = await res.text();
+      return NextResponse.json({ ok: false, error: 'resend_error', detail }, { status: 502 });
     }
 
-    return NextResponse.json({ ok: true })
+    return NextResponse.json({ ok: true });
   } catch {
-    return NextResponse.json({ ok: false, error: 'server_error' }, { status: 500 })
+    return NextResponse.json({ ok: false, error: 'server_error' }, { status: 500 });
   }
 }

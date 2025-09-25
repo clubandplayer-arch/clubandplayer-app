@@ -53,12 +53,12 @@ export default function ProfileEditForm() {
   const [interestCity, setInterestCity] = useState<string>('');
 
   const provinces = useMemo(
-    () => (interestCountry === 'Italia' ? PROVINCES_BY_REGION[interestRegion] ?? [] : []),
-    [interestCountry, interestRegion]
+    () => (interestCountry === 'Italia' ? (PROVINCES_BY_REGION[interestRegion] ?? []) : []),
+    [interestCountry, interestRegion],
   );
   const cities = useMemo(
-    () => (interestCountry === 'Italia' ? CITIES_BY_PROVINCE[interestProvince] ?? [] : []),
-    [interestCountry, interestProvince]
+    () => (interestCountry === 'Italia' ? (CITIES_BY_PROVINCE[interestProvince] ?? []) : []),
+    [interestCountry, interestProvince],
   );
 
   const [visibility, setVisibility] = useState<Visibility>('public');
@@ -92,9 +92,13 @@ export default function ProfileEditForm() {
         setSport(initSport);
         setRole((p?.role ?? p?.profile?.role ?? '') as string);
 
-        setInterestCountry((p?.interest_country ?? p?.profile?.interest_country ?? 'Italia') as string);
+        setInterestCountry(
+          (p?.interest_country ?? p?.profile?.interest_country ?? 'Italia') as string,
+        );
         setInterestRegion((p?.interest_region ?? p?.profile?.interest_region ?? '') as string);
-        setInterestProvince((p?.interest_province ?? p?.profile?.interest_province ?? '') as string);
+        setInterestProvince(
+          (p?.interest_province ?? p?.profile?.interest_province ?? '') as string,
+        );
         setInterestCity((p?.interest_city ?? p?.profile?.interest_city ?? '') as string);
 
         setVisibility((p?.visibility ?? p?.profile?.visibility ?? 'public') as Visibility);
@@ -184,15 +188,15 @@ export default function ProfileEditForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {err && <div className="border rounded-lg p-3 bg-red-50 text-red-700">{err}</div>}
-      {okMsg && <div className="border rounded-lg p-3 bg-green-50 text-green-700">{okMsg}</div>}
+      {err && <div className="rounded-lg border bg-red-50 p-3 text-red-700">{err}</div>}
+      {okMsg && <div className="rounded-lg border bg-green-50 p-3 text-green-700">{okMsg}</div>}
 
       {/* Dati base */}
-      <section className="bg-white rounded-xl border p-4 space-y-3">
+      <section className="space-y-3 rounded-xl border bg-white p-4">
         <h2 className="text-sm font-semibold">Dati base</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <div>
-            <label className="block text-sm font-medium mb-1">Nome mostrato</label>
+            <label className="mb-1 block text-sm font-medium">Nome mostrato</label>
             <input
               className="w-full rounded-xl border px-3 py-2"
               value={displayName}
@@ -201,7 +205,7 @@ export default function ProfileEditForm() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Visibilità</label>
+            <label className="mb-1 block text-sm font-medium">Visibilità</label>
             <select
               className="w-full rounded-xl border px-3 py-2"
               value={visibility}
@@ -213,9 +217,9 @@ export default function ProfileEditForm() {
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Bio</label>
+          <label className="mb-1 block text-sm font-medium">Bio</label>
           <textarea
-            className="w-full rounded-xl border px-3 py-2 min-h-24"
+            className="min-h-24 w-full rounded-xl border px-3 py-2"
             value={bio}
             onChange={(e) => setBio(e.target.value)}
             placeholder="Breve descrizione del tuo profilo, esperienze, obiettivi…"
@@ -224,11 +228,11 @@ export default function ProfileEditForm() {
       </section>
 
       {/* Fisico & Tecnico */}
-      <section className="bg-white rounded-xl border p-4 space-y-3">
+      <section className="space-y-3 rounded-xl border bg-white p-4">
         <h2 className="text-sm font-semibold">Dati fisici & tecnici</h2>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Altezza (cm)</label>
+            <label className="mb-1 block text-sm font-medium">Altezza (cm)</label>
             <input
               inputMode="numeric"
               className="w-full rounded-xl border px-3 py-2"
@@ -238,7 +242,7 @@ export default function ProfileEditForm() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Peso (kg)</label>
+            <label className="mb-1 block text-sm font-medium">Peso (kg)</label>
             <input
               inputMode="numeric"
               className="w-full rounded-xl border px-3 py-2"
@@ -248,7 +252,7 @@ export default function ProfileEditForm() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Piede</label>
+            <label className="mb-1 block text-sm font-medium">Piede</label>
             <select
               className="w-full rounded-xl border px-3 py-2"
               value={foot}
@@ -264,24 +268,29 @@ export default function ProfileEditForm() {
       </section>
 
       {/* Sport & Ruolo */}
-      <section className="bg-white rounded-xl border p-4 space-y-3">
+      <section className="space-y-3 rounded-xl border bg-white p-4">
         <h2 className="text-sm font-semibold">Sport & ruolo</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <div>
-            <label className="block text-sm font-medium mb-1">Sport</label>
+            <label className="mb-1 block text-sm font-medium">Sport</label>
             <select
               className="w-full rounded-xl border px-3 py-2"
               value={sport}
-              onChange={(e) => { setSport(e.target.value); setRole(''); }}
+              onChange={(e) => {
+                setSport(e.target.value);
+                setRole('');
+              }}
             >
               <option value="">—</option>
               {SPORTS.map((s: string) => (
-                <option key={s} value={s}>{s}</option>
+                <option key={s} value={s}>
+                  {s}
+                </option>
               ))}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Ruolo</label>
+            <label className="mb-1 block text-sm font-medium">Ruolo</label>
             <select
               className="w-full rounded-xl border px-3 py-2"
               value={role}
@@ -289,7 +298,9 @@ export default function ProfileEditForm() {
             >
               <option value="">—</option>
               {roleOptions.map((r: string) => (
-                <option key={r} value={r}>{r}</option>
+                <option key={r} value={r}>
+                  {r}
+                </option>
               ))}
             </select>
           </div>
@@ -297,24 +308,26 @@ export default function ProfileEditForm() {
       </section>
 
       {/* Zona di interesse (per matching feed/opportunità) */}
-      <section className="bg-white rounded-xl border p-4 space-y-3">
+      <section className="space-y-3 rounded-xl border bg-white p-4">
         <h2 className="text-sm font-semibold">Zona di interesse</h2>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Paese</label>
+            <label className="mb-1 block text-sm font-medium">Paese</label>
             <select
               className="w-full rounded-xl border px-3 py-2"
               value={interestCountry}
               onChange={(e) => resetLocationCascade(e.target.value)}
             >
               {COUNTRIES.map((c) => (
-                <option key={c.code} value={c.label}>{c.label}</option>
+                <option key={c.code} value={c.label}>
+                  {c.label}
+                </option>
               ))}
             </select>
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Regione</label>
+            <label className="mb-1 block text-sm font-medium">Regione</label>
             {interestCountry === 'Italia' ? (
               <select
                 className="w-full rounded-xl border px-3 py-2"
@@ -323,7 +336,9 @@ export default function ProfileEditForm() {
               >
                 <option value="">—</option>
                 {ITALY_REGIONS.map((r: string) => (
-                  <option key={r} value={r}>{r}</option>
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
                 ))}
               </select>
             ) : (
@@ -337,7 +352,7 @@ export default function ProfileEditForm() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Provincia</label>
+            <label className="mb-1 block text-sm font-medium">Provincia</label>
             {interestCountry === 'Italia' && provinces.length > 0 ? (
               <select
                 className="w-full rounded-xl border px-3 py-2"
@@ -346,7 +361,9 @@ export default function ProfileEditForm() {
               >
                 <option value="">—</option>
                 {provinces.map((p: string) => (
-                  <option key={p} value={p}>{p}</option>
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
                 ))}
               </select>
             ) : (
@@ -360,7 +377,7 @@ export default function ProfileEditForm() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Città</label>
+            <label className="mb-1 block text-sm font-medium">Città</label>
             {interestCountry === 'Italia' && cities.length > 0 ? (
               <select
                 className="w-full rounded-xl border px-3 py-2"
@@ -369,7 +386,9 @@ export default function ProfileEditForm() {
               >
                 <option value="">—</option>
                 {cities.map((c: string) => (
-                  <option key={c} value={c}>{c}</option>
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
                 ))}
               </select>
             ) : (
@@ -391,7 +410,7 @@ export default function ProfileEditForm() {
         <button
           type="submit"
           disabled={saving}
-          className="px-4 py-2 rounded-lg bg-gray-900 text-white"
+          className="rounded-lg bg-gray-900 px-4 py-2 text-white"
         >
           {saving ? 'Salvataggio…' : 'Salva profilo'}
         </button>

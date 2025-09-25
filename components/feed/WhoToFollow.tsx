@@ -42,7 +42,11 @@ export default function WhoToFollow() {
         setRole(nextRole);
 
         // 2) Prima pagina suggerimenti
-        const { items: firstItems, nextCursor: nc } = await fetchSuggestions(nextRole, undefined, TARGET_VISIBLE);
+        const { items: firstItems, nextCursor: nc } = await fetchSuggestions(
+          nextRole,
+          undefined,
+          TARGET_VISIBLE,
+        );
         setItems(firstItems);
         setNextCursor(nc ?? null);
 
@@ -203,7 +207,11 @@ export default function WhoToFollow() {
   return (
     <aside className="rounded-2xl border bg-white/60 p-4 shadow-sm dark:bg-zinc-900/60">
       <h3 className="mb-3 text-sm font-semibold text-zinc-700 dark:text-zinc-200">
-        {role === 'club' ? 'Atleti suggeriti' : role === 'athlete' ? 'Club da seguire' : 'Chi seguire'}
+        {role === 'club'
+          ? 'Atleti suggeriti'
+          : role === 'athlete'
+            ? 'Club da seguire'
+            : 'Chi seguire'}
       </h3>
 
       {visibleItems.length > 0 ? (
@@ -264,7 +272,7 @@ export default function WhoToFollow() {
                         <button
                           type="button"
                           onClick={() => toggleFollow(it.id)}
-                          className="text-xs underline text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+                          className="text-xs text-zinc-500 underline hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
                           aria-label="Annulla"
                         >
                           Annulla

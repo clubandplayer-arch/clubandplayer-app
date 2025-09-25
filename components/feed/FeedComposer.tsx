@@ -24,19 +24,21 @@ export default function FeedComposer() {
         if (!c) setRole('guest');
       }
     })();
-    return () => { c = true; };
+    return () => {
+      c = true;
+    };
   }, []);
 
   return (
-    <div className="bg-white rounded-xl border p-4">
+    <div className="rounded-xl border bg-white p-4">
       <div className="flex gap-3">
         <div className="h-10 w-10 rounded-full bg-gray-200" />
         <input
           className="flex-1 rounded-lg border px-3 py-2"
           placeholder={
             role === 'club'
-              ? "Scrivi un aggiornamento per i tuoi follower…"
-              : "Condividi un aggiornamento…"
+              ? 'Scrivi un aggiornamento per i tuoi follower…'
+              : 'Condividi un aggiornamento…'
           }
           disabled
         />

@@ -6,9 +6,9 @@ import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 // Pagine pubbliche (nessun controllo auth)
 const PUBLIC_PATHS = new Set<string>([
-  '/',               // se vuoi landing libera
+  '/', // se vuoi landing libera
   '/login',
-  '/signup',         // 👈 aggiunta qui
+  '/signup', // 👈 aggiunta qui
   '/reset-password',
   '/update-password',
   '/debug/env',

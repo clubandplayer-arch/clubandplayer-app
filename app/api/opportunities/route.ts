@@ -76,14 +76,14 @@ export const GET = withAuth(async (req: NextRequest, { supabase }) => {
     .from('opportunities')
     .select(
       'id,title,description,created_by,created_at,country,region,province,city,sport,role,age_min,age_max,club_name',
-      { count: 'exact' }
+      { count: 'exact' },
     )
     .order('created_at', { ascending: sort === 'oldest' })
     .range(from, to);
 
   if (q)
     query = query.or(
-      `title.ilike.%${q}%,description.ilike.%${q}%,city.ilike.%${q}%,region.ilike.%${q}%,province.ilike.%${q}%,country.ilike.%${q}%,sport.ilike.%${q}%,role.ilike.%${q}%`
+      `title.ilike.%${q}%,description.ilike.%${q}%,city.ilike.%${q}%,region.ilike.%${q}%,province.ilike.%${q}%,country.ilike.%${q}%,sport.ilike.%${q}%,role.ilike.%${q}%`,
     );
   if (country && country !== '[object Object]') query = query.eq('country', country);
   if (region && region !== '[object Object]') query = query.eq('region', region);
@@ -155,7 +155,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
       club_name,
     })
     .select(
-      'id,title,description,created_by,created_at,country,region,province,city,sport,role,age_min,age_max,club_name'
+      'id,title,description,created_by,created_at,country,region,province,city,sport,role,age_min,age_max,club_name',
     )
     .single();
 

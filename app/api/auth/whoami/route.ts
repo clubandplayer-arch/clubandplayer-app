@@ -22,8 +22,11 @@ export async function GET(_req: NextRequest) {
     .maybeSingle();
 
   const raw = (prof?.type ?? '').toString().toLowerCase();
-  const role: 'club' | 'athlete' | 'guest' =
-    raw.startsWith('club') ? 'club' : raw === 'athlete' ? 'athlete' : 'guest';
+  const role: 'club' | 'athlete' | 'guest' = raw.startsWith('club')
+    ? 'club'
+    : raw === 'athlete'
+      ? 'athlete'
+      : 'guest';
 
   return NextResponse.json({
     user: { id: user.id, email: user.email ?? undefined },

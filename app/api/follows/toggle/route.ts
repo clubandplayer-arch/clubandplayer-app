@@ -21,7 +21,7 @@ async function writeFollowedIds(ids: string[]): Promise<void> {
   const store = await cookies(); // 👈 serve await anche qui
   store.set(COOKIE_KEY, JSON.stringify(ids), {
     path: '/',
-    httpOnly: false,     // lato client leggibile (stub)
+    httpOnly: false, // lato client leggibile (stub)
     sameSite: 'lax',
     maxAge: MAX_AGE_SECONDS,
   });

@@ -7,7 +7,7 @@ export default function DashboardLoading() {
           <div className="h-28 animate-pulse rounded-xl border bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900" />
         </aside>
 
-        <section className="lg:col-span-6 flex flex-col gap-6">
+        <section className="flex flex-col gap-6 lg:col-span-6">
           <div className="h-36 animate-pulse rounded-xl border bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900" />
           <div className="h-48 animate-pulse rounded-xl border bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900" />
           <div className="h-48 animate-pulse rounded-xl border bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900" />

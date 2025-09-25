@@ -44,8 +44,12 @@ export default function LogoUploader({ initialUrl, onUploaded }: Props) {
       const r = await fetch('/api/club/logo', { method: 'POST', body: fd, credentials: 'include' });
       const t = await r.text();
       if (!r.ok) {
-        try { const j = JSON.parse(t); throw new Error(j.error || `HTTP ${r.status}`); }
-        catch { throw new Error(t || `HTTP ${r.status}`); }
+        try {
+          const j = JSON.parse(t);
+          throw new Error(j.error || `HTTP ${r.status}`);
+        } catch {
+          throw new Error(t || `HTTP ${r.status}`);
+        }
       }
       const j = JSON.parse(t) as { url: string };
       setPreview(j.url);
@@ -61,10 +65,10 @@ export default function LogoUploader({ initialUrl, onUploaded }: Props) {
 
   return (
     <div className="flex items-center gap-4">
-      <div className="w-24 h-24 rounded-xl bg-gray-100 border overflow-hidden flex items-center justify-center">
+      <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-xl border bg-gray-100">
         {preview ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={preview} alt="Logo" className="w-full h-full object-cover" />
+          <img src={preview} alt="Logo" className="h-full w-full object-cover" />
         ) : (
           <span className="text-xs text-gray-500">Nessun logo</span>
         )}
@@ -82,7 +86,7 @@ export default function LogoUploader({ initialUrl, onUploaded }: Props) {
           type="button"
           onClick={handlePick}
           disabled={uploading}
-          className="px-3 py-1 rounded-lg border bg-white hover:bg-gray-50 disabled:opacity-50"
+          className="rounded-lg border bg-white px-3 py-1 hover:bg-gray-50 disabled:opacity-50"
         >
           {uploading ? 'Caricamento…' : 'Carica logo'}
         </button>

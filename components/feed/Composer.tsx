@@ -37,7 +37,9 @@ export default function Composer() {
       if (!res.ok || data?.ok === false) {
         const msg =
           data?.error ||
-          (res.status === 429 ? 'Stai andando troppo veloce, riprova tra poco.' : 'Errore durante la pubblicazione.');
+          (res.status === 429
+            ? 'Stai andando troppo veloce, riprova tra poco.'
+            : 'Errore durante la pubblicazione.');
         setError(msg);
         return;
       }
@@ -97,7 +99,11 @@ export default function Composer() {
       />
 
       <div className="mt-2 flex items-center justify-between text-xs text-neutral-500">
-        <span>{remaining >= 0 ? `${remaining} caratteri rimanenti` : `-${Math.abs(remaining)} oltre il limite`}</span>
+        <span>
+          {remaining >= 0
+            ? `${remaining} caratteri rimanenti`
+            : `-${Math.abs(remaining)} oltre il limite`}
+        </span>
         <button
           onClick={onPublish}
           disabled={disabled}

@@ -7,7 +7,7 @@ import type { Opportunity } from '@/types/opportunity';
 type Application = {
   id: string;
   opportunity_id?: string;
-  status?: string;          // 'inviata' | 'in_review' | 'accettata' | 'rifiutata' | 'ritirata' | ...
+  status?: string; // 'inviata' | 'in_review' | 'accettata' | 'rifiutata' | 'ritirata' | ...
   created_at?: string;
   opportunity?: Opportunity; // opzionale: denormalizzata dall'API
 };
@@ -39,7 +39,9 @@ function StatusChip({ status }: { status?: string }) {
     ritirata: 'Ritirata',
     pending: 'In revisione',
   };
-  return <span className={`px-2 py-0.5 rounded-lg text-xs font-medium ${cls}`}>{label[s] ?? s}</span>;
+  return (
+    <span className={`rounded-lg px-2 py-0.5 text-xs font-medium ${cls}`}>{label[s] ?? s}</span>
+  );
 }
 
 export default function MyApplications() {
@@ -67,7 +69,9 @@ export default function MyApplications() {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const hasItems = useMemo(() => items && items.length > 0, [items]);
@@ -79,7 +83,7 @@ export default function MyApplications() {
 
     // update ottimistico
     const prev = items;
-    const next = prev.map(a => a.id === appl.id ? { ...a, status: 'ritirata' } : a);
+    const next = prev.map((a) => (a.id === appl.id ? { ...a, status: 'ritirata' } : a));
     setItems(next);
 
     try {
@@ -101,23 +105,27 @@ export default function MyApplications() {
   if (loading) {
     return (
       <div className="space-y-3">
-        <div className="h-24 rounded-2xl bg-gray-200 animate-pulse" />
-        <div className="h-24 rounded-2xl bg-gray-200 animate-pulse" />
-        <div className="h-24 rounded-2xl bg-gray-200 animate-pulse" />
+        <div className="h-24 animate-pulse rounded-2xl bg-gray-200" />
+        <div className="h-24 animate-pulse rounded-2xl bg-gray-200" />
+        <div className="h-24 animate-pulse rounded-2xl bg-gray-200" />
       </div>
     );
   }
 
   if (err) {
-    return <div className="border rounded-xl p-4 bg-red-50 text-red-700">{err}</div>;
+    return <div className="rounded-xl border bg-red-50 p-4 text-red-700">{err}</div>;
   }
 
   if (!hasItems) {
     return (
-      <div className="rounded-xl border p-6 bg-white">
-        <div className="text-lg font-semibold mb-1">Nessuna candidatura inviata</div>
+      <div className="rounded-xl border bg-white p-6">
+        <div className="mb-1 text-lg font-semibold">Nessuna candidatura inviata</div>
         <div className="text-sm text-gray-600">
-          Cerca nuove <Link href="/opportunities" className="underline">opportunità</Link> e candidati in un tap.
+          Cerca nuove{' '}
+          <Link href="/opportunities" className="underline">
+            opportunità
+          </Link>{' '}
+          e candidati in un tap.
         </div>
       </div>
     );
@@ -128,11 +136,13 @@ export default function MyApplications() {
       {items.map((appl) => {
         const opp = appl.opportunity;
         const oppId = opp?.id || appl.opportunity_id || '';
-        const place = [opp?.city, opp?.province, opp?.region, opp?.country].filter(Boolean).join(', ');
+        const place = [opp?.city, opp?.province, opp?.region, opp?.country]
+          .filter(Boolean)
+          .join(', ');
         const canWithdraw = WITHDRAW_ALLOWED.has((appl.status || 'inviata').toLowerCase());
 
         return (
-          <div key={appl.id} className="rounded-xl border p-4 bg-white">
+          <div key={appl.id} className="rounded-xl border bg-white p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="text-base font-semibold">{opp?.title ?? 'Annuncio'}</div>
@@ -141,19 +151,24 @@ export default function MyApplications() {
                 </div>
                 <div className="mt-1 flex items-center gap-2 text-xs text-gray-500">
                   Stato: <StatusChip status={appl.status} />
-                  {appl.created_at ? <>• inviata il {new Date(appl.created_at).toLocaleDateString('it-IT')}</> : null}
+                  {appl.created_at ? (
+                    <>• inviata il {new Date(appl.created_at).toLocaleDateString('it-IT')}</>
+                  ) : null}
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 {oppId ? (
-                  <Link href={`/opportunities/${oppId}`} className="px-3 py-1.5 rounded-lg border text-sm hover:bg-gray-50">
+                  <Link
+                    href={`/opportunities/${oppId}`}
+                    className="rounded-lg border px-3 py-1.5 text-sm hover:bg-gray-50"
+                  >
                     Apri annuncio
                   </Link>
                 ) : null}
                 {canWithdraw ? (
                   <button
                     onClick={() => handleWithdraw(appl)}
-                    className="px-3 py-1.5 rounded-lg border text-sm hover:bg-gray-50"
+                    className="rounded-lg border px-3 py-1.5 text-sm hover:bg-gray-50"
                   >
                     Ritira candidatura
                   </button>

@@ -11,10 +11,10 @@ export default function ClubsTable(props: AnyProps) {
   const items: any[] = Array.isArray(props?.items)
     ? props.items
     : Array.isArray(props?.data)
-    ? props.data
-    : Array.isArray(props?.rows)
-    ? props.rows
-    : [];
+      ? props.data
+      : Array.isArray(props?.rows)
+        ? props.rows
+        : [];
 
   return (
     <div className="overflow-x-auto rounded-xl border bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900">

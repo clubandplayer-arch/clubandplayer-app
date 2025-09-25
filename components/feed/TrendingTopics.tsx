@@ -2,10 +2,10 @@
 // Server component semplice (niente stato)
 export default function TrendingTopics() {
   const topics = [
-    { label: "Calciomercato Dilettanti", href: "/search/athletes?trend=mercato" },
-    { label: "Portieri femminili U21", href: "/opportunities?role=goalkeeper&gender=f" },
-    { label: "Preparazione invernale", href: "/feed?tag=preparazione" },
-    { label: "Serie D – Esterni veloci", href: "/opportunities?league=serie-d&role=winger" },
+    { label: 'Calciomercato Dilettanti', href: '/search/athletes?trend=mercato' },
+    { label: 'Portieri femminili U21', href: '/opportunities?role=goalkeeper&gender=f' },
+    { label: 'Preparazione invernale', href: '/feed?tag=preparazione' },
+    { label: 'Serie D – Esterni veloci', href: '/opportunities?league=serie-d&role=winger' },
   ];
 
   return (
@@ -16,10 +16,7 @@ export default function TrendingTopics() {
       <ul className="space-y-2">
         {topics.map((t) => (
           <li key={t.label}>
-            <a
-              href={t.href}
-              className="text-sm text-blue-600 hover:underline dark:text-blue-400"
-            >
+            <a href={t.href} className="text-sm text-blue-600 hover:underline dark:text-blue-400">
               {t.label}
             </a>
           </li>

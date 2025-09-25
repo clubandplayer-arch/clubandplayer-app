@@ -13,7 +13,10 @@ const GENDERS: Array<{ value: Gender; label: string }> = [
   { value: 'mixed', label: 'Misto' },
 ];
 
-function rangeFromBracket(b: AgeBracket | '' | undefined): { age_min: number | null; age_max: number | null } {
+function rangeFromBracket(b: AgeBracket | '' | undefined): {
+  age_min: number | null;
+  age_max: number | null;
+} {
   if (!b) return { age_min: null, age_max: null };
   if (b.endsWith('+')) {
     const n = parseInt(b.replace('+', ''), 10);
@@ -35,7 +38,7 @@ function rangeFromBracket(b: AgeBracket | '' | undefined): { age_min: number | n
 function bracketFromRange(min?: number | null, max?: number | null): AgeBracket | '' {
   if (min != null && max != null) return `${min}-${max}` as AgeBracket;
   if (min != null && max == null) return `${min}+` as AgeBracket;
-  if (min == null && max != null) return (`≤${max}` as unknown) as AgeBracket;
+  if (min == null && max != null) return `≤${max}` as unknown as AgeBracket;
   return '';
 }
 
@@ -58,22 +61,22 @@ export default function OpportunityForm({
 
   // Località
   const [countryCode, setCountryCode] = useState<string>(
-    COUNTRIES.find((c) => c.label === initial?.country)?.code ?? 'IT'
+    COUNTRIES.find((c) => c.label === initial?.country)?.code ?? 'IT',
   );
   const [countryFree, setCountryFree] = useState<string>(
-    initial?.country && !COUNTRIES.find((c) => c.label === initial.country) ? initial.country : ''
+    initial?.country && !COUNTRIES.find((c) => c.label === initial.country) ? initial.country : '',
   );
   const [region, setRegion] = useState<string>(initial?.region ?? '');
   const [province, setProvince] = useState<string>(initial?.province ?? '');
   const [city, setCity] = useState<string>(initial?.city ?? '');
 
   const provinces: string[] = useMemo(
-    () => (countryCode === 'IT' ? PROVINCES_BY_REGION[region] ?? [] : []),
-    [countryCode, region]
+    () => (countryCode === 'IT' ? (PROVINCES_BY_REGION[region] ?? []) : []),
+    [countryCode, region],
   );
   const cities: string[] = useMemo(
-    () => (countryCode === 'IT' ? CITIES_BY_PROVINCE[province] ?? [] : []),
-    [countryCode, province]
+    () => (countryCode === 'IT' ? (CITIES_BY_PROVINCE[province] ?? []) : []),
+    [countryCode, province],
   );
 
   // Sport/ruolo
@@ -86,7 +89,7 @@ export default function OpportunityForm({
 
   // Età (mappa ⇄ age_min/age_max)
   const [ageBracket, setAgeBracket] = useState<AgeBracket | ''>(() =>
-    bracketFromRange(initial?.age_min ?? null, initial?.age_max ?? null)
+    bracketFromRange(initial?.age_min ?? null, initial?.age_max ?? null),
   );
 
   const [saving, setSaving] = useState(false);
@@ -168,7 +171,7 @@ export default function OpportunityForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="block text-sm font-medium mb-1">Titolo *</label>
+        <label className="mb-1 block text-sm font-medium">Titolo *</label>
         <input
           className="w-full rounded-xl border px-3 py-2"
           value={title}
@@ -177,9 +180,9 @@ export default function OpportunityForm({
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-1">Descrizione</label>
+        <label className="mb-1 block text-sm font-medium">Descrizione</label>
         <textarea
-          className="w-full rounded-xl border px-3 py-2 min-h-28"
+          className="min-h-28 w-full rounded-xl border px-3 py-2"
           value={description ?? ''}
           onChange={(e) => setDescription(e.target.value)}
         />
@@ -187,9 +190,9 @@ export default function OpportunityForm({
 
       <fieldset className="space-y-3">
         <legend className="text-sm font-semibold">Località</legend>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Paese</label>
+            <label className="mb-1 block text-sm font-medium">Paese</label>
             <select
               className="w-full rounded-xl border px-3 py-2"
               value={countryCode}
@@ -212,7 +215,7 @@ export default function OpportunityForm({
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Regione</label>
+            <label className="mb-1 block text-sm font-medium">Regione</label>
             {countryCode === 'IT' ? (
               <select
                 className="w-full rounded-xl border px-3 py-2"
@@ -236,7 +239,7 @@ export default function OpportunityForm({
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Provincia</label>
+            <label className="mb-1 block text-sm font-medium">Provincia</label>
             {countryCode === 'IT' && provinces.length > 0 ? (
               <select
                 className="w-full rounded-xl border px-3 py-2"
@@ -260,7 +263,7 @@ export default function OpportunityForm({
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Città</label>
+            <label className="mb-1 block text-sm font-medium">Città</label>
             {countryCode === 'IT' && cities.length > 0 ? (
               <select
                 className="w-full rounded-xl border px-3 py-2"
@@ -287,9 +290,9 @@ export default function OpportunityForm({
 
       <fieldset className="space-y-3">
         <legend className="text-sm font-semibold">Sport & Profilo</legend>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Sport</label>
+            <label className="mb-1 block text-sm font-medium">Sport</label>
             <select
               className="w-full rounded-xl border px-3 py-2"
               value={sport}
@@ -307,7 +310,7 @@ export default function OpportunityForm({
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">
+            <label className="mb-1 block text-sm font-medium">
               Ruolo {sport === 'Calcio' && <span className="text-red-600">*</span>}
             </label>
             <select
@@ -327,7 +330,7 @@ export default function OpportunityForm({
 
           {/* GENERE obbligatorio */}
           <div>
-            <label className="block text-sm font-medium mb-1">
+            <label className="mb-1 block text-sm font-medium">
               Genere <span className="text-red-600">*</span>
             </label>
             <select
@@ -346,7 +349,7 @@ export default function OpportunityForm({
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Età</label>
+            <label className="mb-1 block text-sm font-medium">Età</label>
             <select
               className="w-full rounded-xl border px-3 py-2"
               value={ageBracket}
@@ -363,21 +366,21 @@ export default function OpportunityForm({
         </div>
       </fieldset>
 
-      {err && <div className="border rounded-lg p-2 bg-red-50 text-red-700">{err}</div>}
+      {err && <div className="rounded-lg border bg-red-50 p-2 text-red-700">{err}</div>}
 
       <div className="flex items-center justify-end gap-2 pt-2">
         <button
           type="button"
           disabled={saving}
           onClick={onCancel}
-          className="px-3 py-2 rounded-lg border hover:bg-gray-50"
+          className="rounded-lg border px-3 py-2 hover:bg-gray-50"
         >
           Annulla
         </button>
         <button
           type="submit"
           disabled={saving}
-          className="px-3 py-2 rounded-lg bg-gray-900 text-white"
+          className="rounded-lg bg-gray-900 px-3 py-2 text-white"
         >
           {saving ? 'Salvataggio…' : isEdit ? 'Salva' : 'Crea'}
         </button>

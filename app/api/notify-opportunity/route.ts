@@ -1,97 +1,97 @@
-import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
-export const runtime = 'nodejs'
+export const runtime = 'nodejs';
 
-type Body = { opportunityId: string }
+type Body = { opportunityId: string };
 
 type OpportunityRow = {
-  id: string
-  sport: string
-  role: string
-  region: string | null
-  province: string | null
-  city: string
-  title: string
-  club_name: string
-}
+  id: string;
+  sport: string;
+  role: string;
+  region: string | null;
+  province: string | null;
+  city: string;
+  title: string;
+  club_name: string;
+};
 
 type AlertRow = {
-  user_id: string
-  sport: string
-  role: string | null
-  region: string | null
-  province: string | null
-  city: string | null
-}
+  user_id: string;
+  sport: string;
+  role: string | null;
+  region: string | null;
+  province: string | null;
+  city: string | null;
+};
 
 export async function POST(req: Request) {
   try {
-    const { opportunityId } = (await req.json()) as Body
+    const { opportunityId } = (await req.json()) as Body;
     if (!opportunityId) {
-      return NextResponse.json({ ok: false, error: 'bad_request' }, { status: 400 })
+      return NextResponse.json({ ok: false, error: 'bad_request' }, { status: 400 });
     }
 
-    const url = process.env.SUPABASE_URL!
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-    const supabase = createClient(url, serviceKey, { auth: { persistSession: false } })
+    const url = process.env.SUPABASE_URL!;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const supabase = createClient(url, serviceKey, { auth: { persistSession: false } });
 
     // 1) Carica annuncio
     const { data: opps, error: oErr } = await supabase
       .from('opportunities')
       .select('id, sport, role, region, province, city, title, club_name')
       .eq('id', opportunityId)
-      .limit(1)
+      .limit(1);
 
     if (oErr || !opps || opps.length === 0) {
-      return NextResponse.json({ ok: false, error: 'opportunity_not_found' }, { status: 404 })
+      return NextResponse.json({ ok: false, error: 'opportunity_not_found' }, { status: 404 });
     }
-    const opp = opps[0] as OpportunityRow
+    const opp = opps[0] as OpportunityRow;
 
     // 2) Trova alert candidati (match minimo per sport; refino lato app)
     const { data: alerts, error: aErr } = await supabase
       .from('alerts')
       .select('user_id, sport, role, region, province, city')
-      .eq('sport', opp.sport)
+      .eq('sport', opp.sport);
 
     if (aErr) {
-      return NextResponse.json({ ok: false, error: 'alerts_query_error' }, { status: 500 })
+      return NextResponse.json({ ok: false, error: 'alerts_query_error' }, { status: 500 });
     }
 
-    const list = (alerts ?? []) as AlertRow[]
+    const list = (alerts ?? []) as AlertRow[];
 
     // 3) Filtro applicativo: ruolo (se specificato) + località (priorità city > province > region)
     const matches: AlertRow[] = list.filter((a) => {
-      const roleOk = !a.role || a.role === opp.role
-      const cityOk = a.city ? a.city === opp.city : true
-      const provOk = a.province ? a.province === opp.province : true
-      const regOk = a.region ? a.region === opp.region : true
-      if (a.city) return roleOk && cityOk
-      if (a.province) return roleOk && provOk
-      if (a.region) return roleOk && regOk
-      return roleOk
-    })
+      const roleOk = !a.role || a.role === opp.role;
+      const cityOk = a.city ? a.city === opp.city : true;
+      const provOk = a.province ? a.province === opp.province : true;
+      const regOk = a.region ? a.region === opp.region : true;
+      if (a.city) return roleOk && cityOk;
+      if (a.province) return roleOk && provOk;
+      if (a.region) return roleOk && regOk;
+      return roleOk;
+    });
 
     if (matches.length === 0) {
-      return NextResponse.json({ ok: true, notified: 0 })
+      return NextResponse.json({ ok: true, notified: 0 });
     }
 
     // 4) Recupera email destinatari
-    const userIds = Array.from(new Set(matches.map((m) => m.user_id)))
-    const emails: { id: string; email: string }[] = []
+    const userIds = Array.from(new Set(matches.map((m) => m.user_id)));
+    const emails: { id: string; email: string }[] = [];
     for (const uid of userIds) {
-      const { data: ures } = await supabase.auth.admin.getUserById(uid)
-      const email = ures?.user?.email
-      if (email) emails.push({ id: uid, email })
+      const { data: ures } = await supabase.auth.admin.getUserById(uid);
+      const email = ures?.user?.email;
+      if (email) emails.push({ id: uid, email });
     }
     if (emails.length === 0) {
-      return NextResponse.json({ ok: true, notified: 0 })
+      return NextResponse.json({ ok: true, notified: 0 });
     }
 
     // 5) Invio email via Resend (HTTP)
-    const subject = `Nuova opportunità: ${opp.title}`
-    const urlApp = process.env.NEXT_PUBLIC_BASE_URL ?? ''
-    const oppUrl = `${urlApp}/opportunities` // (in futuro: link diretto all’annuncio)
+    const subject = `Nuova opportunità: ${opp.title}`;
+    const urlApp = process.env.NEXT_PUBLIC_BASE_URL ?? '';
+    const oppUrl = `${urlApp}/opportunities`; // (in futuro: link diretto all’annuncio)
     const html = `
       <div style="font-family:system-ui,Segoe UI,Roboto,Arial;">
         <p><b>${opp.club_name}</b> ha pubblicato un nuovo annuncio.</p>
@@ -99,7 +99,7 @@ export async function POST(req: Request) {
         <p><a href="${oppUrl}" style="display:inline-block;padding:10px 14px;border:1px solid #e5e7eb;border-radius:8px;text-decoration:none;">Apri le opportunità →</a></p>
         <p style="color:#6b7280;font-size:12px">Non rispondere a questa email.</p>
       </div>
-    `
+    `;
 
     for (const rec of emails) {
       await fetch('https://api.resend.com/emails', {
@@ -114,11 +114,11 @@ export async function POST(req: Request) {
           subject,
           html,
         }),
-      })
+      });
     }
 
-    return NextResponse.json({ ok: true, notified: emails.length })
+    return NextResponse.json({ ok: true, notified: emails.length });
   } catch {
-    return NextResponse.json({ ok: false, error: 'server_error' }, { status: 500 })
+    return NextResponse.json({ ok: false, error: 'server_error' }, { status: 500 });
   }
 }

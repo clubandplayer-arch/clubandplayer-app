@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import React, { useMemo } from "react";
+import React, { useMemo } from 'react';
 
 type Props = {
   /** Totale risultati dal backend (se disponibile) */
@@ -27,10 +27,10 @@ export default function ResultBadge({
   page,
   pageSize,
   hasMore,
-  label = "Risultati",
+  label = 'Risultati',
 }: Props) {
   const text = useMemo(() => {
-    if (typeof total === "number") return `${label}: ${total}`;
+    if (typeof total === 'number') return `${label}: ${total}`;
     const maxSoFar = page * pageSize;
     return hasMore ? `${label}: ≥ ${maxSoFar}` : `${label}: ~ ${maxSoFar}`;
   }, [total, page, pageSize, hasMore, label]);

@@ -35,7 +35,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   const id = extractId(req);
   if (!id) return jsonError('Missing id', 400);
 
-  const body = await req.json().catch(() => ({} as any));
+  const body = await req.json().catch(() => ({}) as any);
 
   const patch: Record<string, any> = {};
   for (const k of ['name', 'display_name', 'city', 'country', 'level', 'logo_url'] as const) {
@@ -68,11 +68,7 @@ export const DELETE = withAuth(async (req: NextRequest, { supabase, user }) => {
   const id = extractId(req);
   if (!id) return jsonError('Missing id', 400);
 
-  const { error } = await supabase
-    .from('clubs')
-    .delete()
-    .eq('id', id)
-    .eq('owner_id', user.id);
+  const { error } = await supabase.from('clubs').delete().eq('id', id).eq('owner_id', user.id);
 
   if (error) return jsonError(error.message, 400);
   return NextResponse.json({ ok: true });

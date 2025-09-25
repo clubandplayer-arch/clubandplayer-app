@@ -15,7 +15,8 @@ export default function AthletePrivateProfilePage() {
         setErr(null);
         const r = await fetch('/api/athletes/me', { cache: 'no-store', credentials: 'include' });
         const dj = await r.json().catch(() => ({}));
-        if (!r.ok || !dj?.athlete) throw new Error(dj?.error || 'Impossibile recuperare il profilo');
+        if (!r.ok || !dj?.athlete)
+          throw new Error(dj?.error || 'Impossibile recuperare il profilo');
         setMe(dj.athlete);
       } catch (e: any) {
         setErr(e?.message || 'Errore inatteso');
@@ -29,7 +30,9 @@ export default function AthletePrivateProfilePage() {
     <main className="container mx-auto px-4 py-6">
       <div className="rounded-xl border bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
         <h1 className="text-lg font-semibold">Il tuo profilo atleta</h1>
-        <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-300">Modifica e anteprima del profilo.</p>
+        <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-300">
+          Modifica e anteprima del profilo.
+        </p>
 
         {loading ? (
           <div className="mt-4 h-16 w-1/2 animate-pulse rounded bg-neutral-200 dark:bg-neutral-800" />

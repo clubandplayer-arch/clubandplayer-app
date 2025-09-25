@@ -70,12 +70,12 @@ export default function InterestsPanel({ onChange }: Props) {
   }, [state.country]);
 
   const provinces = useMemo(
-    () => (countryCode === 'IT' ? PROVINCES_BY_REGION[state.region ?? ''] ?? [] : []),
-    [countryCode, state.region]
+    () => (countryCode === 'IT' ? (PROVINCES_BY_REGION[state.region ?? ''] ?? []) : []),
+    [countryCode, state.region],
   );
   const cities = useMemo(
-    () => (countryCode === 'IT' ? CITIES_BY_PROVINCE[state.province ?? ''] ?? [] : []),
-    [countryCode, state.province]
+    () => (countryCode === 'IT' ? (CITIES_BY_PROVINCE[state.province ?? ''] ?? []) : []),
+    [countryCode, state.province],
   );
 
   function set<K extends keyof Interests>(k: K, v: Interests[K]) {
@@ -101,12 +101,12 @@ export default function InterestsPanel({ onChange }: Props) {
   const selSport = state.sports[0] ?? '';
 
   return (
-    <section className="bg-white rounded-xl border p-4">
+    <section className="rounded-xl border bg-white p-4">
       <h3 className="text-sm font-semibold">Interessi feed</h3>
 
       <div className="mt-3 grid grid-cols-1 gap-3">
         <div>
-          <label className="block text-xs text-gray-600 mb-1">Sport</label>
+          <label className="mb-1 block text-xs text-gray-600">Sport</label>
           <select
             className="w-full rounded-lg border px-3 py-2 text-sm"
             value={selSport}
@@ -114,26 +114,30 @@ export default function InterestsPanel({ onChange }: Props) {
           >
             <option value="">Tutti</option>
             {SPORTS.map((s) => (
-              <option key={s} value={s}>{s}</option>
+              <option key={s} value={s}>
+                {s}
+              </option>
             ))}
           </select>
         </div>
 
         <div>
-          <label className="block text-xs text-gray-600 mb-1">Paese</label>
+          <label className="mb-1 block text-xs text-gray-600">Paese</label>
           <select
             className="w-full rounded-lg border px-3 py-2 text-sm"
             value={state.country ?? 'Italia'}
             onChange={(e) => set('country', e.target.value)}
           >
             {COUNTRIES.map((c) => (
-              <option key={c.code} value={c.label}>{c.label}</option>
+              <option key={c.code} value={c.label}>
+                {c.label}
+              </option>
             ))}
           </select>
         </div>
 
         <div>
-          <label className="block text-xs text-gray-600 mb-1">Regione</label>
+          <label className="mb-1 block text-xs text-gray-600">Regione</label>
           {countryCode === 'IT' ? (
             <select
               className="w-full rounded-lg border px-3 py-2 text-sm"
@@ -142,7 +146,9 @@ export default function InterestsPanel({ onChange }: Props) {
             >
               <option value="">—</option>
               {ITALY_REGIONS.map((r) => (
-                <option key={r} value={r}>{r}</option>
+                <option key={r} value={r}>
+                  {r}
+                </option>
               ))}
             </select>
           ) : (
@@ -155,7 +161,7 @@ export default function InterestsPanel({ onChange }: Props) {
         </div>
 
         <div>
-          <label className="block text-xs text-gray-600 mb-1">Provincia</label>
+          <label className="mb-1 block text-xs text-gray-600">Provincia</label>
           {countryCode === 'IT' && provinces.length > 0 ? (
             <select
               className="w-full rounded-lg border px-3 py-2 text-sm"
@@ -164,7 +170,9 @@ export default function InterestsPanel({ onChange }: Props) {
             >
               <option value="">—</option>
               {provinces.map((p) => (
-                <option key={p} value={p}>{p}</option>
+                <option key={p} value={p}>
+                  {p}
+                </option>
               ))}
             </select>
           ) : (
@@ -177,7 +185,7 @@ export default function InterestsPanel({ onChange }: Props) {
         </div>
 
         <div>
-          <label className="block text-xs text-gray-600 mb-1">Città</label>
+          <label className="mb-1 block text-xs text-gray-600">Città</label>
           {countryCode === 'IT' && cities.length > 0 ? (
             <select
               className="w-full rounded-lg border px-3 py-2 text-sm"
@@ -186,7 +194,9 @@ export default function InterestsPanel({ onChange }: Props) {
             >
               <option value="">—</option>
               {cities.map((c) => (
-                <option key={c} value={c}>{c}</option>
+                <option key={c} value={c}>
+                  {c}
+                </option>
               ))}
             </select>
           ) : (
@@ -201,7 +211,7 @@ export default function InterestsPanel({ onChange }: Props) {
         <div className="flex justify-end">
           <button
             type="button"
-            className="text-xs px-3 py-1.5 rounded-lg border hover:bg-gray-50"
+            className="rounded-lg border px-3 py-1.5 text-xs hover:bg-gray-50"
             onClick={() => {
               const next: Interests = { sports: [] };
               setState(next);

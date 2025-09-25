@@ -26,15 +26,19 @@ function norm(v: unknown): string | null {
 
 /** POST /api/profiles  (upsert del profilo dell’utente loggato) */
 export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
-  try { await rateLimit(req, { key: 'profiles:POST', limit: 20, window: '1m' } as any); }
-  catch { return jsonError('Too Many Requests', 429); }
+  try {
+    await rateLimit(req, { key: 'profiles:POST', limit: 20, window: '1m' } as any);
+  } catch {
+    return jsonError('Too Many Requests', 429);
+  }
 
   const body = await req.json().catch(() => ({}));
 
-  const type = norm((body as any).type) as 'athlete'|'club'|null;
+  const type = norm((body as any).type) as 'athlete' | 'club' | null;
   const display_name = norm((body as any).display_name);
 
-  if (!type || (type !== 'athlete' && type !== 'club')) return jsonError('Invalid profile type', 400);
+  if (!type || (type !== 'athlete' && type !== 'club'))
+    return jsonError('Invalid profile type', 400);
   if (!display_name) return jsonError('Display name is required', 400);
 
   const payload: any = {
@@ -54,7 +58,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   const linksRaw = (body as any).links;
   if (linksRaw && typeof linksRaw === 'object') {
     const l: Record<string, string | null> = {};
-    for (const k of ['website','instagram','facebook','x','linkedin']) {
+    for (const k of ['website', 'instagram', 'facebook', 'x', 'linkedin']) {
       const v = norm((linksRaw as any)[k]);
       if (v) l[k] = v;
     }

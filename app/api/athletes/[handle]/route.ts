@@ -3,11 +3,11 @@ import { NextRequest, NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 
 type Athlete = {
-  id: string;          // usato nel follow cookie
-  handle: string;      // usato nel path pubblico
+  id: string; // usato nel follow cookie
+  handle: string; // usato nel path pubblico
   name: string;
   age?: number;
-  position?: string;   // es. ATT, CC, POR...
+  position?: string; // es. ATT, CC, POR...
   city?: string;
   sport?: string;
   avatarUrl?: string;
@@ -45,10 +45,7 @@ const ATHLETES: Record<string, Athlete> = {
   },
 };
 
-export async function GET(
-  _req: NextRequest,
-  context: { params: Promise<{ handle: string }> },
-) {
+export async function GET(_req: NextRequest, context: { params: Promise<{ handle: string }> }) {
   const { handle } = await context.params; // Next 15.5: Promise
   const key = (handle || '').toLowerCase();
   const athlete = ATHLETES[key];

@@ -36,7 +36,7 @@ export default function ApplicationsTable({
       { key: 'note', label: kind === 'sent' ? 'Nota (mia)' : 'Nota' },
       { key: 'actions', label: 'Azioni' },
     ],
-    [kind]
+    [kind],
   );
 
   const STATUS_LABEL: Record<string, string> = {
@@ -87,30 +87,24 @@ export default function ApplicationsTable({
   }
 
   if (loading) {
-    return (
-      <div className="border rounded-lg p-6 text-gray-600">
-        Caricamento candidature…
-      </div>
-    );
+    return <div className="rounded-lg border p-6 text-gray-600">Caricamento candidature…</div>;
   }
 
   if (!rows?.length) {
     return (
-      <div className="border rounded-lg p-10 text-center text-gray-500">
-        {kind === 'sent'
-          ? 'Non hai ancora inviato candidature.'
-          : 'Nessuna candidatura ricevuta.'}
+      <div className="rounded-lg border p-10 text-center text-gray-500">
+        {kind === 'sent' ? 'Non hai ancora inviato candidature.' : 'Nessuna candidatura ricevuta.'}
       </div>
     );
   }
 
   return (
-    <div className="border rounded-lg overflow-x-auto bg-white">
+    <div className="overflow-x-auto rounded-lg border bg-white">
       <table className="w-full text-sm">
         <thead className="bg-gray-50 text-gray-600">
           <tr>
             {headers.map((h) => (
-              <th key={h.key} className="text-left px-3 py-2 whitespace-nowrap">
+              <th key={h.key} className="px-3 py-2 text-left whitespace-nowrap">
                 {h.label}
               </th>
             ))}
@@ -120,17 +114,13 @@ export default function ApplicationsTable({
           {rows.map((r) => {
             const sKey = (r.status || 'submitted').toLowerCase();
             const chipLabel = STATUS_LABEL[sKey] ?? sKey;
-            const chipClass =
-              STATUS_CLASS[sKey] ??
-              'bg-gray-100 text-gray-700';
+            const chipClass = STATUS_CLASS[sKey] ?? 'bg-gray-100 text-gray-700';
 
             return (
               <tr key={r.id} className="border-t">
                 {/* Data */}
                 <td className="px-3 py-2 whitespace-nowrap">
-                  {r.created_at
-                    ? new Date(r.created_at).toLocaleString('it-IT')
-                    : '—'}
+                  {r.created_at ? new Date(r.created_at).toLocaleString('it-IT') : '—'}
                 </td>
 
                 {/* Annuncio */}
@@ -176,7 +166,7 @@ export default function ApplicationsTable({
                 </td>
 
                 {/* Nota */}
-                <td className="px-3 py-2 max-w-[28rem] truncate" title={r.note ?? ''}>
+                <td className="max-w-[28rem] truncate px-3 py-2" title={r.note ?? ''}>
                   {r.note ?? '—'}
                 </td>
 
@@ -187,14 +177,14 @@ export default function ApplicationsTable({
                       <button
                         disabled={savingId === r.id || sKey === 'accepted'}
                         onClick={() => updateStatus(r.id, 'accepted')}
-                        className="px-2 py-1 border rounded-md hover:bg-gray-50 disabled:opacity-50"
+                        className="rounded-md border px-2 py-1 hover:bg-gray-50 disabled:opacity-50"
                       >
                         Accetta
                       </button>
                       <button
                         disabled={savingId === r.id || sKey === 'rejected'}
                         onClick={() => updateStatus(r.id, 'rejected')}
-                        className="px-2 py-1 border rounded-md hover:bg-gray-50 disabled:opacity-50"
+                        className="rounded-md border px-2 py-1 hover:bg-gray-50 disabled:opacity-50"
                       >
                         Rifiuta
                       </button>
@@ -202,7 +192,7 @@ export default function ApplicationsTable({
                   ) : (
                     <Link
                       href={r.opportunity_id ? `/opportunities/${r.opportunity_id}` : '#'}
-                      className="px-2 py-1 border rounded-md hover:bg-gray-50 inline-block"
+                      className="inline-block rounded-md border px-2 py-1 hover:bg-gray-50"
                     >
                       Apri annuncio
                     </Link>

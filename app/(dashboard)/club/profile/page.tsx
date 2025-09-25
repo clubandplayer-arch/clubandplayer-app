@@ -164,18 +164,17 @@ export default function ClubProfilePage() {
     setOkMsg(null);
 
     try {
-      const ext =
-        (logoFile.name.split('.').pop() || (logoFile.type.includes('png') ? 'png' : 'jpg')).toLowerCase();
+      const ext = (
+        logoFile.name.split('.').pop() || (logoFile.type.includes('png') ? 'png' : 'jpg')
+      ).toLowerCase();
       const fileName = `logo-${Date.now()}.${ext}`;
       const path = `${userId}/${fileName}`;
 
-      const { error: upErr } = await supabase.storage
-        .from('club-logos')
-        .upload(path, logoFile, {
-          cacheControl: '3600',
-          upsert: true,
-          contentType: logoFile.type,
-        });
+      const { error: upErr } = await supabase.storage.from('club-logos').upload(path, logoFile, {
+        cacheControl: '3600',
+        upsert: true,
+        contentType: logoFile.type,
+      });
       if (upErr) throw upErr;
 
       const { data: pub } = supabase.storage.from('club-logos').getPublicUrl(path);
@@ -184,7 +183,10 @@ export default function ClubProfilePage() {
 
       if (!clubId) throw new Error('Club non inizializzato');
 
-      const { error: updErr } = await supabase.from('clubs').update({ logo_url: publicUrl }).eq('id', clubId);
+      const { error: updErr } = await supabase
+        .from('clubs')
+        .update({ logo_url: publicUrl })
+        .eq('id', clubId);
       if (updErr) throw updErr;
 
       setLogoUrl(publicUrl);
@@ -276,7 +278,9 @@ export default function ClubProfilePage() {
                   priority={false}
                 />
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-gray-400">Nessun logo</div>
+                <div className="flex h-full w-full items-center justify-center text-gray-400">
+                  Nessun logo
+                </div>
               )}
             </div>
 
@@ -345,7 +349,7 @@ export default function ClubProfilePage() {
             {/* Link utili (profilo pubblico / opportunità / candidature) */}
             <a
               href={publicSlug ? `/c/${publicSlug}` : '#'}
-              className="rounded-md border px-3 py-2 text-sm font-semibold hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800 disabled:opacity-50"
+              className="rounded-md border px-3 py-2 text-sm font-semibold hover:bg-neutral-50 disabled:opacity-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
               aria-disabled={!publicSlug}
               onClick={(e) => {
                 if (!publicSlug) e.preventDefault();

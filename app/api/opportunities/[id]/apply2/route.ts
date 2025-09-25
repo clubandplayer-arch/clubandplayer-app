@@ -2,10 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: opportunityId } = await params;
   const supabase = await getSupabaseServerClient();
 
@@ -25,10 +22,7 @@ export async function POST(
 
   const role = (prof?.type ?? '').toString().toLowerCase();
   if (role !== 'athlete') {
-    return NextResponse.json(
-      { error: 'Solo gli atleti possono candidarsi.' },
-      { status: 403 }
-    );
+    return NextResponse.json({ error: 'Solo gli atleti possono candidarsi.' }, { status: 403 });
   }
 
   // L’owner non può candidarsi al proprio annuncio
@@ -42,10 +36,7 @@ export async function POST(
     return NextResponse.json({ error: 'Annuncio non trovato.' }, { status: 404 });
   }
   if (opp.owner_id === user.id) {
-    return NextResponse.json(
-      { error: 'Non puoi candidarti a un tuo annuncio.' },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: 'Non puoi candidarti a un tuo annuncio.' }, { status: 400 });
   }
 
   // Body opzionale: { note?: string }

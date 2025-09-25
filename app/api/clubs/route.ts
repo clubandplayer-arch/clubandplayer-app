@@ -50,7 +50,9 @@ export const GET = withAuth(async (req: NextRequest, { supabase }) => {
 
   let query = supabase
     .from('clubs')
-    .select('id,name,display_name,city,country,level,logo_url,owner_id,created_at', { count: 'exact' })
+    .select('id,name,display_name,city,country,level,logo_url,owner_id,created_at', {
+      count: 'exact',
+    })
     .order('name', { ascending: true })
     .range(from, to);
 

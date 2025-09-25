@@ -40,10 +40,7 @@ const CLUBS: Record<string, Club> = {
   },
 };
 
-export async function GET(
-  _req: NextRequest,
-  context: { params: Promise<{ slug: string }> },
-) {
+export async function GET(_req: NextRequest, context: { params: Promise<{ slug: string }> }) {
   const { slug } = await context.params; // 👈 Next 15.5: params è Promise
   const key = (slug || '').toLowerCase();
   const club = CLUBS[key];

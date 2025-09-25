@@ -94,13 +94,13 @@ export default function FeedOpportunities() {
     };
   }, [role]);
 
-  if (loading) return <div className="h-40 rounded-xl bg-gray-200 animate-pulse" />;
+  if (loading) return <div className="h-40 animate-pulse rounded-xl bg-gray-200" />;
   if (err) {
     return (
-      <div className="rounded-xl border p-4 bg-red-50 text-red-700">
+      <div className="rounded-xl border bg-red-50 p-4 text-red-700">
         Errore: {err}{' '}
         <button
-          className="ml-3 px-3 py-1 rounded-lg border bg-white hover:bg-gray-50"
+          className="ml-3 rounded-lg border bg-white px-3 py-1 hover:bg-gray-50"
           onClick={() => location.reload()}
         >
           Riprova
@@ -110,7 +110,7 @@ export default function FeedOpportunities() {
   }
 
   if (!items.length) {
-    return <div className="rounded-xl border p-4 bg-white">Nessuna opportunità trovata.</div>;
+    return <div className="rounded-xl border bg-white p-4">Nessuna opportunità trovata.</div>;
   }
 
   return (

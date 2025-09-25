@@ -72,7 +72,9 @@ export default function ActivityList() {
         if (!cancelled) setRole('guest');
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Carica attività
@@ -107,13 +109,18 @@ export default function ActivityList() {
 
         // 2) Candidature inviate (atleta)
         if (role === 'athlete') {
-          const r = await fetch('/api/applications/mine', { credentials: 'include', cache: 'no-store' });
+          const r = await fetch('/api/applications/mine', {
+            credentials: 'include',
+            cache: 'no-store',
+          });
           const j = await r.json().catch(() => ({}));
-          const rows: ApplicationRow[] =
-            Array.isArray(j?.data) ? j.data :
-            Array.isArray(j) ? j :
-            Array.isArray(j?.applications) ? j.applications :
-            [];
+          const rows: ApplicationRow[] = Array.isArray(j?.data)
+            ? j.data
+            : Array.isArray(j)
+              ? j
+              : Array.isArray(j?.applications)
+                ? j.applications
+                : [];
 
           for (const a of rows) {
             // inviata
@@ -142,13 +149,18 @@ export default function ActivityList() {
 
         // 3) Candidature ricevute (club)
         if (role === 'club') {
-          const r = await fetch('/api/applications/received', { credentials: 'include', cache: 'no-store' });
+          const r = await fetch('/api/applications/received', {
+            credentials: 'include',
+            cache: 'no-store',
+          });
           const j = await r.json().catch(() => ({}));
-          const rows: ApplicationRow[] =
-            Array.isArray(j?.data) ? j.data :
-            Array.isArray(j) ? j :
-            Array.isArray(j?.applications) ? j.applications :
-            [];
+          const rows: ApplicationRow[] = Array.isArray(j?.data)
+            ? j.data
+            : Array.isArray(j)
+              ? j
+              : Array.isArray(j?.applications)
+                ? j.applications
+                : [];
 
           for (const a of rows) {
             out.push({
@@ -174,29 +186,34 @@ export default function ActivityList() {
       }
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [role, reloadKey]);
 
   const grouped = useMemo(() => {
-    return items.reduce((acc, it) => {
-      const d = new Date(it.at);
-      const key = d.toLocaleDateString();
-      (acc[key] ||= []).push(it);
-      return acc;
-    }, {} as Record<string, ActivityItem[]>);
+    return items.reduce(
+      (acc, it) => {
+        const d = new Date(it.at);
+        const key = d.toLocaleDateString();
+        (acc[key] ||= []).push(it);
+        return acc;
+      },
+      {} as Record<string, ActivityItem[]>,
+    );
   }, [items]);
 
   if (loading) {
-    return <div className="border rounded-xl p-6 animate-pulse bg-white/40">Carico attività…</div>;
+    return <div className="animate-pulse rounded-xl border bg-white/40 p-6">Carico attività…</div>;
   }
 
   if (error) {
     return (
-      <div className="border rounded-xl p-4 bg-red-50 text-red-700">
+      <div className="rounded-xl border bg-red-50 p-4 text-red-700">
         {error}{' '}
         <button
-          onClick={() => setReloadKey(k => k + 1)}
-          className="ml-2 px-2 py-1 border rounded-md bg-white hover:bg-gray-50"
+          onClick={() => setReloadKey((k) => k + 1)}
+          className="ml-2 rounded-md border bg-white px-2 py-1 hover:bg-gray-50"
         >
           Riprova
         </button>
@@ -206,12 +223,12 @@ export default function ActivityList() {
 
   if (!items.length) {
     return (
-      <div className="border rounded-xl p-10 text-center text-gray-500">
+      <div className="rounded-xl border p-10 text-center text-gray-500">
         Nessuna attività recente.
         <div className="mt-3">
           <button
-            onClick={() => setReloadKey(k => k + 1)}
-            className="px-3 py-1 border rounded-lg hover:bg-gray-50"
+            onClick={() => setReloadKey((k) => k + 1)}
+            className="rounded-lg border px-3 py-1 hover:bg-gray-50"
           >
             Aggiorna
           </button>
@@ -223,12 +240,18 @@ export default function ActivityList() {
   function pill(type: ActivityItem['type']) {
     const base = 'inline-block px-2 py-0.5 rounded-full text-xs';
     switch (type) {
-      case 'application_sent': return <span className={`${base} bg-blue-100 text-blue-800`}>Inviata</span>;
-      case 'application_received': return <span className={`${base} bg-purple-100 text-purple-800`}>Ricevuta</span>;
-      case 'application_accepted': return <span className={`${base} bg-green-100 text-green-800`}>Accettata</span>;
-      case 'application_rejected': return <span className={`${base} bg-red-100 text-red-800`}>Rifiutata</span>;
-      case 'followed_club': return <span className={`${base} bg-amber-100 text-amber-800`}>Segui</span>;
-      default: return null;
+      case 'application_sent':
+        return <span className={`${base} bg-blue-100 text-blue-800`}>Inviata</span>;
+      case 'application_received':
+        return <span className={`${base} bg-purple-100 text-purple-800`}>Ricevuta</span>;
+      case 'application_accepted':
+        return <span className={`${base} bg-green-100 text-green-800`}>Accettata</span>;
+      case 'application_rejected':
+        return <span className={`${base} bg-red-100 text-red-800`}>Rifiutata</span>;
+      case 'followed_club':
+        return <span className={`${base} bg-amber-100 text-amber-800`}>Segui</span>;
+      default:
+        return null;
     }
   }
 
@@ -240,20 +263,20 @@ export default function ActivityList() {
           {meId ? ` • Utente #${meId}` : ''}
         </div>
         <button
-          onClick={() => setReloadKey(k => k + 1)}
-          className="px-3 py-1.5 border rounded-lg hover:bg-gray-50"
+          onClick={() => setReloadKey((k) => k + 1)}
+          className="rounded-lg border px-3 py-1.5 hover:bg-gray-50"
         >
           Aggiorna
         </button>
       </div>
 
-      <div className="border rounded-xl overflow-hidden">
+      <div className="overflow-hidden rounded-xl border">
         {Object.entries(grouped).map(([day, list]) => (
           <div key={day} className="border-b last:border-b-0">
             <div className="bg-gray-50 px-4 py-2 text-sm text-gray-600">{day}</div>
             <ul className="divide-y">
               {list.map((it) => (
-                <li key={it.id} className="p-4 flex items-center gap-3">
+                <li key={it.id} className="flex items-center gap-3 p-4">
                   {pill(it.type)}
                   <div className="flex-1">
                     <div className="font-medium">{it.title}</div>
@@ -261,7 +284,8 @@ export default function ActivityList() {
                       {it.subtitle ?? '—'}
                       {it.href && (
                         <>
-                          {' '}•{' '}
+                          {' '}
+                          •{' '}
                           <Link href={it.href} className="text-blue-700 hover:underline">
                             Apri
                           </Link>
@@ -269,7 +293,7 @@ export default function ActivityList() {
                       )}
                     </div>
                   </div>
-                  <div className="text-xs text-gray-500 whitespace-nowrap">{timeAgo(it.at)}</div>
+                  <div className="text-xs whitespace-nowrap text-gray-500">{timeAgo(it.at)}</div>
                 </li>
               ))}
             </ul>

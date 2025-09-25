@@ -17,10 +17,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   const body = await req.json().catch(() => ({}));
   const opportunity_id = (body.opportunity_id ?? '').trim();
-  const note =
-    typeof body.note === 'string'
-      ? body.note.slice(0, 500)
-      : null;
+  const note = typeof body.note === 'string' ? body.note.slice(0, 500) : null;
 
   if (!opportunity_id) return jsonError('opportunity_id required', 400);
 
@@ -41,7 +38,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     .from('applications')
     .insert({
       opportunity_id,
-      athlete_id: user.id,      // RLS: = auth.uid()
+      athlete_id: user.id, // RLS: = auth.uid()
       note,
       status: 'submitted',
     })

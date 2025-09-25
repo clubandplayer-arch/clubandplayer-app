@@ -20,7 +20,7 @@ export default function ProfileMiniCard({
   valueEUR,
 }: MiniProps) {
   return (
-    <section className="bg-white rounded-xl border p-4">
+    <section className="rounded-xl border bg-white p-4">
       <div className="flex items-center gap-3">
         <div className="h-14 w-14 rounded-full bg-gray-200" />
         <div>
@@ -29,7 +29,7 @@ export default function ProfileMiniCard({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 text-xs mt-4">
+      <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
         {heightCm != null && (
           <div className="rounded-lg bg-gray-50 p-2">
             <div className="text-gray-500">Altezza</div>

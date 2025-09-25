@@ -33,11 +33,20 @@ export default function OpportunitiesFilterBar({
   }
 
   return (
-    <div className={['rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900', className || ''].join(' ')}>
-      <div className="mb-3 text-sm font-semibold text-neutral-700 dark:text-neutral-200">🔎 Filtri</div>
+    <div
+      className={[
+        'rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900',
+        className || '',
+      ].join(' ')}
+    >
+      <div className="mb-3 text-sm font-semibold text-neutral-700 dark:text-neutral-200">
+        🔎 Filtri
+      </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="sm:col-span-1">
-          <label className="mb-1 block text-xs font-medium text-neutral-600 dark:text-neutral-300">Ruolo/Posizione</label>
+          <label className="mb-1 block text-xs font-medium text-neutral-600 dark:text-neutral-300">
+            Ruolo/Posizione
+          </label>
           <input
             className="w-full rounded-md border px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
             placeholder="Es. Portiere, ATT, Centrocampista…"
@@ -46,7 +55,9 @@ export default function OpportunitiesFilterBar({
           />
         </div>
         <div className="sm:col-span-1">
-          <label className="mb-1 block text-xs font-medium text-neutral-600 dark:text-neutral-300">Città</label>
+          <label className="mb-1 block text-xs font-medium text-neutral-600 dark:text-neutral-300">
+            Città
+          </label>
           <input
             className="w-full rounded-md border px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
             placeholder="Es. Catania, Siracusa…"
@@ -54,7 +65,7 @@ export default function OpportunitiesFilterBar({
             onChange={(e) => setCity(e.target.value)}
           />
         </div>
-        <div className="sm:col-span-1 flex items-end gap-2">
+        <div className="flex items-end gap-2 sm:col-span-1">
           <button
             type="button"
             onClick={apply}

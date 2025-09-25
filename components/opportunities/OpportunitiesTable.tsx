@@ -30,7 +30,7 @@ export default function OpportunitiesTable({
 }) {
   if (!items.length) {
     return (
-      <div className="text-sm text-gray-500 py-8">
+      <div className="py-8 text-sm text-gray-500">
         Nessuna opportunità trovata. Prova a rimuovere i filtri.
       </div>
     );
@@ -48,7 +48,7 @@ export default function OpportunitiesTable({
             <th className="px-4 py-2">Età</th>
             <th className="px-4 py-2">Club</th>
             <th className="px-4 py-2">Creato</th>
-            <th className="px-4 py-2 w-40">Azioni</th>
+            <th className="w-40 px-4 py-2">Azioni</th>
           </tr>
         </thead>
         <tbody>
@@ -84,21 +84,19 @@ export default function OpportunitiesTable({
                 <td className="px-4 py-2">{new Date(o.created_at).toLocaleString()}</td>
                 <td className="px-4 py-2">
                   <div className="flex items-center gap-2">
-                    {showApply && (
-                      <ApplyCell opportunityId={o.id} ownerId={o.created_by ?? null} />
-                    )}
+                    {showApply && <ApplyCell opportunityId={o.id} ownerId={o.created_by ?? null} />}
                     {canEdit && (
                       <>
                         <button
                           onClick={() => onEdit?.(o)}
-                          className="px-2 py-1 text-xs rounded border hover:bg-gray-50"
+                          className="rounded border px-2 py-1 text-xs hover:bg-gray-50"
                           type="button"
                         >
                           Modifica
                         </button>
                         <button
                           onClick={() => onDelete?.(o)}
-                          className="px-2 py-1 text-xs rounded border hover:bg-red-50"
+                          className="rounded border px-2 py-1 text-xs hover:bg-red-50"
                           type="button"
                         >
                           Elimina

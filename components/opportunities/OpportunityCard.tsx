@@ -27,28 +27,28 @@ export default function OpportunityCard({
     (opp as any).gender === 'male'
       ? 'Maschile'
       : (opp as any).gender === 'female'
-      ? 'Femminile'
-      : (opp as any).gender === 'mixed'
-      ? 'Misto'
-      : undefined;
+        ? 'Femminile'
+        : (opp as any).gender === 'mixed'
+          ? 'Misto'
+          : undefined;
 
   const ageLabel =
     opp.age_min != null && opp.age_max != null
       ? `${opp.age_min}-${opp.age_max}`
       : opp.age_min != null && opp.age_max == null
-      ? `${opp.age_min}+`
-      : opp.age_min == null && opp.age_max != null
-      ? `≤${opp.age_max}`
-      : undefined;
+        ? `${opp.age_min}+`
+        : opp.age_min == null && opp.age_max != null
+          ? `≤${opp.age_max}`
+          : undefined;
 
   const canApply = userRole === 'athlete';
 
   return (
-    <article className="bg-white rounded-xl border p-4">
+    <article className="rounded-xl border bg-white p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <Link href={`/opportunities/${opp.id}`} className="block">
-            <h3 className="text-base md:text-lg font-semibold truncate">{opp.title}</h3>
+            <h3 className="truncate text-base font-semibold md:text-lg">{opp.title}</h3>
           </Link>
           <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm text-gray-600">
             {opp.sport && <span>{opp.sport}</span>}
@@ -71,7 +71,7 @@ export default function OpportunityCard({
       </div>
 
       {opp.description && (
-        <p className="mt-3 text-sm text-gray-700 line-clamp-3">{opp.description}</p>
+        <p className="mt-3 line-clamp-3 text-sm text-gray-700">{opp.description}</p>
       )}
     </article>
   );

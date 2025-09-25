@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useState } from 'react';
 
 type Props = {
   text: string;
@@ -13,9 +13,9 @@ type Props = {
 export default function CopyButton({
   text,
   title,
-  className = "",
+  className = '',
   onCopied,
-  label = "Copia",
+  label = 'Copia',
 }: Props) {
   const [ok, setOk] = useState(false);
 
@@ -25,13 +25,13 @@ export default function CopyButton({
         await navigator.clipboard.writeText(text);
       } else {
         // fallback
-        const ta = document.createElement("textarea");
+        const ta = document.createElement('textarea');
         ta.value = text;
-        ta.style.position = "fixed";
-        ta.style.opacity = "0";
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
         document.body.appendChild(ta);
         ta.select();
-        document.execCommand("copy");
+        document.execCommand('copy');
         document.body.removeChild(ta);
       }
       setOk(true);
@@ -50,7 +50,7 @@ export default function CopyButton({
       className={`rounded-lg border px-2 py-1 text-xs hover:bg-slate-50 ${className}`}
       aria-live="polite"
     >
-      {ok ? "Copiato ✓" : label}
+      {ok ? 'Copiato ✓' : label}
     </button>
   );
 }

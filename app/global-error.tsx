@@ -10,9 +10,7 @@ export default function GlobalError({
   return (
     <html>
       <body style={{ padding: 20, fontFamily: 'ui-sans-serif, system-ui' }}>
-        <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>
-          Qualcosa è andato storto
-        </h1>
+        <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>Qualcosa è andato storto</h1>
         <pre
           style={{
             background: '#f8f8f8',

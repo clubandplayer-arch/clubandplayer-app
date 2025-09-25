@@ -33,7 +33,9 @@ export default function NewOpportunityPage() {
         }
       }
     })();
-    return () => { c = true; };
+    return () => {
+      c = true;
+    };
   }, [router]);
 
   if (!ready) {
@@ -45,7 +47,7 @@ export default function NewOpportunityPage() {
 
   return (
     <div className="p-4 md:p-6">
-      <h1 className="text-2xl font-semibold mb-4">Nuova opportunità</h1>
+      <h1 className="mb-4 text-2xl font-semibold">Nuova opportunità</h1>
       <OpportunityForm
         onCancel={() => router.push('/opportunities')}
         onSaved={() => router.push('/opportunities')}

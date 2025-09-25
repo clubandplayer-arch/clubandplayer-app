@@ -29,7 +29,9 @@ export default async function EditOpportunityPage({ params }: { params: { id: st
   // Carico l’annuncio (se fallisce, il form farà fallback client-side fetch)
   const { data: opp } = await supabase
     .from('opportunities')
-    .select('id, owner_id, title, description, sport, required_category, city, province, region, country, created_at')
+    .select(
+      'id, owner_id, title, description, sport, required_category, city, province, region, country, created_at',
+    )
     .eq('id', params.id)
     .maybeSingle<Opp>();
 
@@ -41,14 +43,17 @@ export default async function EditOpportunityPage({ params }: { params: { id: st
   }
 
   return (
-    <div className="max-w-3xl mx-auto p-4">
-      <div className="flex items-center justify-between mb-3">
+    <div className="mx-auto max-w-3xl p-4">
+      <div className="mb-3 flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Modifica annuncio</h1>
-        <Link href={`/opportunities/${params.id}`} className="px-3 py-2 border rounded-md hover:bg-gray-50">
+        <Link
+          href={`/opportunities/${params.id}`}
+          className="rounded-md border px-3 py-2 hover:bg-gray-50"
+        >
           Apri annuncio
         </Link>
       </div>
-      <p className="text-sm text-gray-600 mb-6">
+      <p className="mb-6 text-sm text-gray-600">
         ID: <code>{params.id}</code>
       </p>
 

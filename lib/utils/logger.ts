@@ -1,8 +1,8 @@
 // lib/utils/logger.ts
-export type LogLevel = "debug" | "info" | "warn" | "error";
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
-const LEVELS: LogLevel[] = ["debug", "info", "warn", "error"];
-const envLevel = (process.env.LOG_LEVEL as LogLevel) || "info";
+const LEVELS: LogLevel[] = ['debug', 'info', 'warn', 'error'];
+const envLevel = (process.env.LOG_LEVEL as LogLevel) || 'info';
 const current = LEVELS.indexOf(envLevel);
 
 function shouldLog(level: LogLevel) {
@@ -10,8 +10,8 @@ function shouldLog(level: LogLevel) {
 }
 
 export const logger = {
-  debug: (...a: any[]) => shouldLog("debug") && console.debug("[debug]", ...a),
-  info:  (...a: any[]) => shouldLog("info")  && console.info("[info] ", ...a),
-  warn:  (...a: any[]) => shouldLog("warn")  && console.warn("[warn] ", ...a),
-  error: (...a: any[]) => shouldLog("error") && console.error("[error]", ...a),
+  debug: (...a: any[]) => shouldLog('debug') && console.debug('[debug]', ...a),
+  info: (...a: any[]) => shouldLog('info') && console.info('[info] ', ...a),
+  warn: (...a: any[]) => shouldLog('warn') && console.warn('[warn] ', ...a),
+  error: (...a: any[]) => shouldLog('error') && console.error('[error]', ...a),
 };

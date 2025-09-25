@@ -25,7 +25,10 @@ export default function MyApplicationsPage() {
         setLoading(true);
         setErr(null);
         // API: usa /api/applications/mine (elenco candidature dell'atleta)
-        const r = await fetch('/api/applications/mine', { credentials: 'include', cache: 'no-store' });
+        const r = await fetch('/api/applications/mine', {
+          credentials: 'include',
+          cache: 'no-store',
+        });
         const txt = await r.text();
         if (!r.ok) throw new Error(txt || `HTTP ${r.status}`);
         const json = JSON.parse(txt);
@@ -37,17 +40,15 @@ export default function MyApplicationsPage() {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
-    <div className="p-4 md:p-6 space-y-4">
+    <div className="space-y-4 p-4 md:p-6">
       <h1 className="text-2xl font-semibold">Le mie candidature</h1>
-      {err && (
-        <div className="border rounded-lg p-3 bg-red-50 text-red-700">
-          Errore: {err}
-        </div>
-      )}
+      {err && <div className="rounded-lg border bg-red-50 p-3 text-red-700">Errore: {err}</div>}
       <ApplicationsTable rows={rows} kind="sent" loading={loading} />
     </div>
   );

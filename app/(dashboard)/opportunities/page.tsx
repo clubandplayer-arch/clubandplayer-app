@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import OpportunitiesFilterBar, { OppFilters } from '@/components/opportunities/OpportunitiesFilterBar';
+import OpportunitiesFilterBar, {
+  OppFilters,
+} from '@/components/opportunities/OpportunitiesFilterBar';
 import OpportunityActions from '@/components/opportunities/OpportunityActions';
 
 type RawOpportunity = any;
@@ -22,12 +24,12 @@ function normalize(raw: RawOpportunity): NormalizedOpp | null {
   if (!raw) return null;
 
   const id = String(
-    raw.id ?? raw.uuid ?? raw.slug ?? raw.opportunityId ?? raw._id ?? raw.key ?? ''
+    raw.id ?? raw.uuid ?? raw.slug ?? raw.opportunityId ?? raw._id ?? raw.key ?? '',
   ).trim();
   if (!id) return null;
 
   const title = String(
-    raw.title ?? raw.name ?? raw.roleTitle ?? raw.role ?? raw.position ?? 'Opportunità'
+    raw.title ?? raw.name ?? raw.roleTitle ?? raw.role ?? raw.position ?? 'Opportunità',
   ).trim();
 
   const clubObj = raw.club ?? raw.company ?? raw.org ?? {};
@@ -40,7 +42,12 @@ function normalize(raw: RawOpportunity): NormalizedOpp | null {
   const roleName = raw.roleName ?? raw.role ?? raw.position ?? undefined;
 
   const createdAtRaw =
-    raw.createdAt ?? raw.created_at ?? raw.publishedAt ?? raw.published_at ?? raw.inserted_at ?? undefined;
+    raw.createdAt ??
+    raw.created_at ??
+    raw.publishedAt ??
+    raw.published_at ??
+    raw.inserted_at ??
+    undefined;
   const createdAt = createdAtRaw ? new Date(createdAtRaw).toISOString() : undefined;
 
   return {
@@ -99,10 +106,10 @@ export default function OpportunitiesPage() {
       const rawList: RawOpportunity[] = Array.isArray(data?.items)
         ? data.items
         : Array.isArray(data)
-        ? data
-        : Array.isArray(data?.data)
-        ? data.data
-        : [];
+          ? data
+          : Array.isArray(data?.data)
+            ? data.data
+            : [];
 
       // Se endpoint generico, applichiamo filtro lato client (best effort)
       let normalized = rawList.map(normalize).filter(Boolean) as NormalizedOpp[];
@@ -111,7 +118,9 @@ export default function OpportunitiesPage() {
           const okRole = f.role
             ? (it.roleName || it.title || '').toLowerCase().includes(f.role!.toLowerCase())
             : true;
-          const okCity = f.city ? (it.city || '').toLowerCase().includes(f.city!.toLowerCase()) : true;
+          const okCity = f.city
+            ? (it.city || '').toLowerCase().includes(f.city!.toLowerCase())
+            : true;
           return okRole && okCity;
         });
       }
@@ -143,12 +152,9 @@ export default function OpportunitiesPage() {
   return (
     <main className="container mx-auto px-4 py-6">
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-        <section className="lg:col-span-8 flex flex-col gap-6">
+        <section className="flex flex-col gap-6 lg:col-span-8">
           {/* Filtri */}
-          <OpportunitiesFilterBar
-            initial={filters}
-            onApply={(f) => load(f)}
-          />
+          <OpportunitiesFilterBar initial={filters} onApply={(f) => load(f)} />
 
           {/* Lista opportunità */}
           <section className="rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
@@ -224,9 +230,12 @@ export default function OpportunitiesPage() {
         {/* Sidebar destra (facoltativa) */}
         <aside className="hidden xl:col-span-4 xl:block">
           <div className="rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-            <h3 className="mb-2 text-sm font-semibold text-neutral-700 dark:text-neutral-200">Suggerimenti</h3>
+            <h3 className="mb-2 text-sm font-semibold text-neutral-700 dark:text-neutral-200">
+              Suggerimenti
+            </h3>
             <p className="text-sm text-neutral-600 dark:text-neutral-300">
-              A breve qui compariranno alert salvati, ricerche recenti e suggerimenti personalizzati.
+              A breve qui compariranno alert salvati, ricerche recenti e suggerimenti
+              personalizzati.
             </p>
           </div>
         </aside>

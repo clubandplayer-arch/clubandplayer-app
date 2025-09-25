@@ -13,22 +13,14 @@ export type AuthContext = {
 };
 
 /** Helper usato da molti endpoint */
-export function jsonError(
-  message: string,
-  status = 400,
-  extra?: Record<string, unknown>
-) {
-  return NextResponse.json(
-    { error: message, ...(extra ?? {}) },
-    { status }
-  );
+export function jsonError(message: string, status = 400, extra?: Record<string, unknown>) {
+  return NextResponse.json({ error: message, ...(extra ?? {}) }, { status });
 }
 
 /** Restituisce { ctx } se autenticato, altrimenti { res } con 401 */
-export async function requireAuth(_req: NextRequest): Promise<
-  | { ctx: AuthContext }
-  | { res: NextResponse<{ error: string }> }
-> {
+export async function requireAuth(
+  _req: NextRequest,
+): Promise<{ ctx: AuthContext } | { res: NextResponse<{ error: string }> }> {
   const supabase = await getSupabaseServerClient();
   const { data, error } = await supabase.auth.getUser();
   const user = data?.user ?? null;
@@ -41,7 +33,7 @@ export async function requireAuth(_req: NextRequest): Promise<
 
 /** Wrapper comodo per i route handlers protetti */
 export function withAuth(
-  handler: (req: NextRequest, ctx: AuthContext) => Promise<Response> | Response
+  handler: (req: NextRequest, ctx: AuthContext) => Promise<Response> | Response,
 ) {
   return async (req: NextRequest) => {
     const r = await requireAuth(req);

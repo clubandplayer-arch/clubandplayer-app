@@ -123,11 +123,11 @@ export default function OpportunitiesClient() {
   return (
     <section className="space-y-4">
       {/* Filtri / controlli */}
-      <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <input
           type="search"
           placeholder="Cerca per titolo o descrizione…"
-          className="w-full sm:max-w-md rounded-md border px-3 py-2"
+          className="w-full rounded-md border px-3 py-2 sm:max-w-md"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
@@ -152,7 +152,9 @@ export default function OpportunitiesClient() {
             onChange={(e) => setPageSize(Number(e.target.value))}
           >
             {PAGE_SIZE_OPTIONS.map((n) => (
-              <option key={n} value={n}>{n}</option>
+              <option key={n} value={n}>
+                {n}
+              </option>
             ))}
           </select>
         </div>
@@ -180,9 +182,7 @@ export default function OpportunitiesClient() {
 
       {/* Stati */}
       {loading && (
-        <div className="rounded-md border p-4 text-sm text-gray-600">
-          Caricamento opportunità…
-        </div>
+        <div className="rounded-md border p-4 text-sm text-gray-600">Caricamento opportunità…</div>
       )}
 
       {!loading && err && (
@@ -193,7 +193,8 @@ export default function OpportunitiesClient() {
 
       {!loading && !err && filtered.length === 0 && (
         <div className="rounded-md border p-4 text-sm text-gray-600">
-          Nessuna opportunità trovata. {role === 'club' ? 'Crea la prima opportunità.' : 'Prova a rimuovere i filtri.'}
+          Nessuna opportunità trovata.{' '}
+          {role === 'club' ? 'Crea la prima opportunità.' : 'Prova a rimuovere i filtri.'}
         </div>
       )}
 
@@ -207,11 +208,11 @@ export default function OpportunitiesClient() {
                   <div>
                     <div className="font-medium">{o.title ?? `#${o.id}`}</div>
                     {o.description && (
-                      <div className="text-sm text-gray-600 line-clamp-2">{o.description}</div>
+                      <div className="line-clamp-2 text-sm text-gray-600">{o.description}</div>
                     )}
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="text-xs text-gray-500 text-right">
+                    <div className="text-right text-xs text-gray-500">
                       {o.created_at ? new Date(o.created_at).toLocaleString() : '—'}
                     </div>
                     {role === 'club' && (

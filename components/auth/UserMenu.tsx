@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase/client";
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase/client';
 
 export function UserMenu() {
   const router = useRouter();
@@ -40,7 +40,7 @@ export function UserMenu() {
 
   async function handleLogout() {
     await supabase.auth.signOut();
-    router.push("/login");
+    router.push('/login');
   }
 
   if (loading || !email) return null;
@@ -50,7 +50,7 @@ export function UserMenu() {
       <span className="text-sm text-slate-600">{email}</span>
       <button
         onClick={handleLogout}
-        className="px-3 py-1 text-sm rounded border border-slate-300 hover:bg-slate-50"
+        className="rounded border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50"
       >
         Logout
       </button>
