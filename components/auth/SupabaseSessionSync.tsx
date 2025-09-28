@@ -2,48 +2,59 @@
 
 import { useEffect } from 'react';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
-import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 
 export default function SupabaseSessionSync() {
-  const supabase = getSupabaseBrowserClient();
-
   useEffect(() => {
-    let mounted = true;
+    const supabase = getSupabaseBrowserClient();
+    let active = true;
 
-    // Prime: verifica utente e "riscalda" cookie server
-    (async () => {
+    async function push(session: Session | null) {
+      if (!session) return;
       try {
-        const { data }: { data: { user: User | null } } = await supabase.auth.getUser();
-        // opzionale: ping a whoami per coerenza cookie lato server
-        await fetch('/api/auth/whoami', { cache: 'no-store' });
-      } catch {
-        // ignora
-      }
-    })();
-
-    // Sync cookie server ↔︎ client ad ogni cambio sessione
-    const { data: subscription } = supabase.auth.onAuthStateChange(
-      async (_event: AuthChangeEvent, session: Session | null) => {
-        if (!mounted) return;
-
-        const access_token = session?.access_token ?? null;
-        const refresh_token = session?.refresh_token ?? null;
-
-        // invia i token all’endpoint server che imposta i cookie HttpOnly
         await fetch('/api/auth/session', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ access_token, refresh_token }),
-          // niente cache
-        }).catch(() => {});
+          credentials: 'include',
+          body: JSON.stringify({
+            access_token: session.access_token,
+            refresh_token: session.refresh_token,
+          }),
+        });
+      } catch {
+        // no-op
+      }
+    }
+
+    // 1) tenta subito
+    supabase
+      .auth
+      .getSession()
+      .then(({ data }: { data: { session: Session | null } }) => {
+        if (!active) return;
+        void push(data.session);
+      });
+
+    // 2) ascolta i cambi stato (login/logout/refresh)
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (_event: AuthChangeEvent, session: Session | null) => {
+        void push(session);
       }
     );
 
+    // 3) poll di sicurezza (eventuale perdita evento)
+    const iv = setInterval(async () => {
+      const { data }: { data: { session: Session | null } } =
+        await supabase.auth.getSession();
+      await push(data.session);
+    }, 5000);
+
     return () => {
-      mounted = false;
-      subscription?.subscription.unsubscribe();
+      active = false;
+      clearInterval(iv);
+      authListener?.subscription?.unsubscribe();
     };
-  }, [supabase]);
+  }, []);
 
   return null;
 }
