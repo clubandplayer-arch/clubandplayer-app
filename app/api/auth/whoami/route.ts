@@ -1,51 +1,65 @@
 // app/api/auth/whoami/route.ts
-import { NextResponse, type NextRequest } from 'next/server';
-import { cookies } from 'next/headers';
-import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
-export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
-export async function GET(_req: NextRequest) {
-  const jar = await cookies();
+function headersFrom(res: NextResponse) {
+  return Object.fromEntries(res.headers);
+}
 
-  // Se non ci sono cookie di sessione Supabase → rispondiamo direttamente "guest"
-  const hasSession =
-    Boolean(jar.get('sb-access-token')) || Boolean(jar.get('sb-refresh-token'));
+export async function GET(req: NextRequest) {
+  // Response "carrier" per propagare eventuali Set-Cookie del refresh
+  const res = new NextResponse();
 
-  if (!hasSession) {
-    return NextResponse.json({ user: null, role: 'guest' as const }, { status: 200 });
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return req.cookies.get(name)?.value;
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          res.cookies.set({ name, value, ...options });
+        },
+        remove(name: string, options: CookieOptions) {
+          res.cookies.set({ name, value: '', ...options, maxAge: 0 });
+        },
+      },
+    }
+  );
+
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return new NextResponse(JSON.stringify({ user: null, role: 'guest' as const }), {
+      status: 200,
+      headers: { 'content-type': 'application/json', ...headersFrom(res) },
+    });
   }
 
-  try {
-    const supabase = await getSupabaseServerClient();
-    const { data: auth, error: authErr } = await supabase.auth.getUser();
+  // deduci ruolo dal profilo
+  const { data: prof } = await supabase
+    .from('profiles')
+    .select('type')
+    .eq('user_id', user.id)
+    .maybeSingle();
 
-    // Se non c’è utente valido → guest (silenzia i log di refresh)
-    if (authErr || !auth?.user) {
-      return NextResponse.json({ user: null, role: 'guest' as const }, { status: 200 });
-    }
+  const raw = (prof?.type ?? '').toString().toLowerCase();
+  const role: 'club' | 'athlete' | 'guest' =
+    raw.startsWith('club') ? 'club' : raw === 'athlete' ? 'athlete' : 'guest';
 
-    const user = auth.user;
-
-    // Deduci il ruolo dal profilo (se presente)
-    const { data: prof } = await supabase
-      .from('profiles')
-      .select('id,type')
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    const raw = (prof?.type ?? '').toString().toLowerCase();
-    const role: 'club' | 'athlete' | 'guest' =
-      raw.startsWith('club') ? 'club' : raw === 'athlete' ? 'athlete' : 'guest';
-
-    return NextResponse.json({
+  return new NextResponse(
+    JSON.stringify({
       user: { id: user.id, email: user.email ?? undefined },
       role,
       profile: { type: raw || null },
-    });
-  } catch {
-    // In qualunque errore → guest
-    return NextResponse.json({ user: null, role: 'guest' as const }, { status: 200 });
-  }
+    }),
+    {
+      status: 200,
+      headers: { 'content-type': 'application/json', ...headersFrom(res) },
+    }
+  );
 }
