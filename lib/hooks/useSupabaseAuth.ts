@@ -20,12 +20,14 @@ export function useSupabaseAuth(): Return {
     const supabase = getSupabaseBrowserClient();
     let active = true;
 
-    // utente iniziale
-    supabase.auth.getUser().then(({ data }) => {
-      if (!active) return;
-      setUser(data?.user ?? null);
-      setLoading(false);
-    });
+    // utente iniziale (tipiamo esplicitamente 'data')
+    supabase.auth
+      .getUser()
+      .then(({ data }: { data: { user: User | null } }) => {
+        if (!active) return;
+        setUser(data?.user ?? null);
+        setLoading(false);
+      });
 
     // listener sessione (tipato)
     const {
@@ -46,7 +48,7 @@ export function useSupabaseAuth(): Return {
   const refresh = async () => {
     const supabase = getSupabaseBrowserClient();
     const { data } = await supabase.auth.getUser();
-    setUser(data?.user ?? null);
+    setUser((data?.user ?? null) as User | null);
   };
 
   const signOut = async () => {
