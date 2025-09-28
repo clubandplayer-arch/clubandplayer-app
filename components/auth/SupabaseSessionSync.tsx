@@ -1,40 +1,41 @@
-'use client'
+// components/auth/SupabaseSessionSync.tsx
+"use client";
 
-import { useEffect } from 'react'
-import { getSupabaseBrowserClient } from '@/lib/supabase/client'
-import type { Session, AuthChangeEvent } from '@supabase/supabase-js'
+import { useEffect } from "react";
+import type { Session, AuthChangeEvent } from "@supabase/supabase-js";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export default function SupabaseSessionSync() {
   useEffect(() => {
-    const supabase = getSupabaseBrowserClient()
+    const supabase = getSupabaseBrowserClient();
 
-    const pushSession = async (session: Session | null) => {
-      try {
-        await fetch('/api/auth/session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ session }),
-        })
-      } catch {
-        /* noop */
+    // invia la sessione attuale al server (utile su refresh hard)
+    supabase.auth.getSession().then(({ data }) => {
+      const session = data?.session ?? null;
+      void fetch("/api/auth/session", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ event: "INITIAL_SESSION", session }),
+      });
+    });
+
+    // ascolta i cambi di auth e sincronizza i cookie server
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(
+      (event: AuthChangeEvent, session: Session | null) => {
+        void fetch("/api/auth/session", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ event, session }),
+        });
       }
-    }
+    );
 
-    ;(async () => {
-      const { data }: { data: { session: Session | null } } =
-        await supabase.auth.getSession()
-      await pushSession(data.session)
-    })()
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
-    const { data: sub } = supabase.auth.onAuthStateChange(
-      async (_event: AuthChangeEvent, session: Session | null) => {
-        await pushSession(session)
-      },
-    )
-
-    return () => sub?.subscription.unsubscribe()
-  }, [])
-
-  return null
+  return null;
 }
