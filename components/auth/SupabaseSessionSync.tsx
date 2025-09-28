@@ -1,41 +1,49 @@
-// components/auth/SupabaseSessionSync.tsx
-"use client";
+'use client';
 
-import { useEffect } from "react";
-import type { Session, AuthChangeEvent } from "@supabase/supabase-js";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { useEffect } from 'react';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
 
 export default function SupabaseSessionSync() {
+  const supabase = getSupabaseBrowserClient();
+
   useEffect(() => {
-    const supabase = getSupabaseBrowserClient();
+    let mounted = true;
 
-    // invia la sessione attuale al server (utile su refresh hard)
-    supabase.auth.getSession().then(({ data }) => {
-      const session = data?.session ?? null;
-      void fetch("/api/auth/session", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ event: "INITIAL_SESSION", session }),
-      });
-    });
+    // Prime: verifica utente e "riscalda" cookie server
+    (async () => {
+      try {
+        const { data }: { data: { user: User | null } } = await supabase.auth.getUser();
+        // opzionale: ping a whoami per coerenza cookie lato server
+        await fetch('/api/auth/whoami', { cache: 'no-store' });
+      } catch {
+        // ignora
+      }
+    })();
 
-    // ascolta i cambi di auth e sincronizza i cookie server
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(
-      (event: AuthChangeEvent, session: Session | null) => {
-        void fetch("/api/auth/session", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ event, session }),
-        });
+    // Sync cookie server ↔︎ client ad ogni cambio sessione
+    const { data: subscription } = supabase.auth.onAuthStateChange(
+      async (_event: AuthChangeEvent, session: Session | null) => {
+        if (!mounted) return;
+
+        const access_token = session?.access_token ?? null;
+        const refresh_token = session?.refresh_token ?? null;
+
+        // invia i token all’endpoint server che imposta i cookie HttpOnly
+        await fetch('/api/auth/session', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ access_token, refresh_token }),
+          // niente cache
+        }).catch(() => {});
       }
     );
 
     return () => {
-      subscription.unsubscribe();
+      mounted = false;
+      subscription?.subscription.unsubscribe();
     };
-  }, []);
+  }, [supabase]);
 
   return null;
 }
