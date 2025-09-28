@@ -1,6 +1,8 @@
+// app/api/opportunities/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
+import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
 
@@ -32,7 +34,6 @@ function norm(v: unknown): string | null {
     return s;
   }
   if (typeof v === 'object') {
-    // prova a leggere alcune chiavi frequenti
     const any = v as Record<string, unknown>;
     const s =
       (typeof any.label === 'string' && any.label) ||
@@ -46,13 +47,16 @@ function norm(v: unknown): string | null {
   return String(v).trim() || null;
 }
 
-/** GET /api/opportunities */
-export const GET = withAuth(async (req: NextRequest, { supabase }) => {
+/** GET /api/opportunities  — pubblico (RLS consente SELECT anche anonima) */
+export async function GET(req: NextRequest) {
   try {
+    // rate limit anche per gli anonimi
     await rateLimit(req, { key: 'opps:GET', limit: 60, window: '1m' } as any);
   } catch {
     return jsonError('Too Many Requests', 429);
   }
+
+  const supabase = await getSupabaseServerClient();
 
   const url = new URL(req.url);
   const q = (url.searchParams.get('q') || '').trim();
@@ -110,9 +114,9 @@ export const GET = withAuth(async (req: NextRequest, { supabase }) => {
     pageCount: Math.max(1, Math.ceil((count ?? 0) / pageSize)),
     sort,
   });
-});
+}
 
-/** POST /api/opportunities */
+/** POST /api/opportunities — resta autenticato */
 export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   try {
     await rateLimit(req, { key: 'opps:POST', limit: 20, window: '1m' } as any);
@@ -135,7 +139,6 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   const { age_min, age_max } = bracketToRange((body as any).age_bracket);
 
-  // Validazione: se Sport = Calcio, ruolo obbligatorio
   if (sport === 'Calcio' && !role) return jsonError('Role is required for Calcio', 400);
 
   const { data, error } = await supabase

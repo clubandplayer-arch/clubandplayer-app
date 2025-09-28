@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import FeedLatest from '@/components/feed/FeedLatest';
 import WhoToFollow from '@/components/feed/WhoToFollow';
+import FeedPosts from '@/components/feed/FeedPosts'; // 👈 aggiunto
 
 type Role = 'club' | 'athlete' | 'guest';
 
@@ -29,7 +30,7 @@ export default function FeedPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         {/* SINISTRA */}
         <aside className="hidden lg:col-span-3 lg:flex lg:flex-col lg:gap-6">
-          {/* Mini profilo (placeholder, niente props obbligatorie) */}
+          {/* Mini profilo */}
           <div className="rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
             <div className="mb-2 text-sm text-neutral-500">Il tuo profilo</div>
             <div className="flex items-center gap-3">
@@ -70,7 +71,7 @@ export default function FeedPage() {
 
         {/* CENTRO */}
         <section className="lg:col-span-6 flex flex-col gap-6">
-          {/* Composer semplificato (placeholder) */}
+          {/* Composer (placeholder per ora) */}
           <div className="rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
             <div className="mb-3 text-sm text-neutral-500">Condividi un aggiornamento</div>
             <textarea
@@ -91,45 +92,49 @@ export default function FeedPage() {
           {/* 🔴 DATI REALI: Ultime opportunità */}
           <FeedLatest />
 
-          {/* Post di un club (placeholder) */}
+          {/* 🔴 DATI REALI: Post dal DB */}
           <div className="rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-            <div className="font-medium">Post di un club</div>
-            <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-300">
-              Foto allenamento prima squadra…
-            </p>
-            <div className="mt-3 flex gap-2">
-              <button className="rounded-md border px-3 py-1.5 text-sm hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800" disabled>
-                Mi piace
-              </button>
-              <button className="rounded-md border px-3 py-1.5 text-sm hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800" disabled>
-                Commenta
-              </button>
-            </div>
+            <div className="mb-3 text-sm font-medium">Aggiornamenti della community</div>
+            <FeedPosts />
           </div>
         </section>
 
         {/* DESTRA */}
         <aside className="hidden xl:col-span-3 xl:flex xl:flex-col xl:gap-6">
           <div className="rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-            <h3 className="mb-3 text-sm font-semibold text-neutral-700 dark:text-neutral-200">🔥 Trending</h3>
+            <h3 className="mb-3 text-sm font-semibold text-neutral-700 dark:text-neutral-200">
+              🔥 Trending
+            </h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <a href="/search/athletes?trend=mercato" className="text-blue-600 hover:underline dark:text-blue-400">
+                <a
+                  href="/search/athletes?trend=mercato"
+                  className="text-blue-600 hover:underline dark:text-blue-400"
+                >
                   Calciomercato Dilettanti
                 </a>
               </li>
               <li>
-                <a href="/opportunities?role=goalkeeper&gender=f" className="text-blue-600 hover:underline dark:text-blue-400">
+                <a
+                  href="/opportunities?role=goalkeeper&gender=f"
+                  className="text-blue-600 hover:underline dark:text-blue-400"
+                >
                   Portieri femminili U21
                 </a>
               </li>
               <li>
-                <a href="/feed?tag=preparazione" className="text-blue-600 hover:underline dark:text-blue-400">
+                <a
+                  href="/feed?tag=preparazione"
+                  className="text-blue-600 hover:underline dark:text-blue-400"
+                >
                   Preparazione invernale
                 </a>
               </li>
               <li>
-                <a href="/opportunities?league=serie-d&role=winger" className="text-blue-600 hover:underline dark:text-blue-400">
+                <a
+                  href="/opportunities?league=serie-d&role=winger"
+                  className="text-blue-600 hover:underline dark:text-blue-400"
+                >
                   Serie D – Esterni veloci
                 </a>
               </li>
