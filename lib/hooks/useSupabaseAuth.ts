@@ -1,32 +1,68 @@
+// lib/hooks/useSupabaseAuth.ts
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase/client";
+import type { User, Session, AuthChangeEvent } from "@supabase/supabase-js";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
-export function useSupabaseAuth() {
-  const [user, setUser] = useState<any>(null);
+type Return = {
+  user: User | null;
+  loading: boolean;
+  signOut: () => Promise<void>;
+  refresh: () => Promise<void>;
+};
+
+export function useSupabaseAuth(): Return {
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let mounted = true;
-    const run = async () => {
-      const { data } = await supabase.auth.getUser();
-      if (mounted) setUser(data.user ?? null);
-      setLoading(false);
-    };
-    run();
+    const supabase = getSupabaseBrowserClient();
+    let active = true;
 
+    // utente iniziale (tipiamo esplicitamente 'data')
+    supabase.auth
+      .getUser()
+      .then(({ data }: { data: { user: User | null } }) => {
+        if (!active) return;
+        setUser(data?.user ?? null);
+        setLoading(false);
+      });
+
+    // listener sessione (tipato)
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (mounted) setUser(session?.user ?? null);
-    });
+    } = supabase.auth.onAuthStateChange(
+      (_event: AuthChangeEvent, session: Session | null) => {
+        if (!active) return;
+        setUser(session?.user ?? null);
+      }
+    );
 
     return () => {
-      mounted = false;
+      active = false;
       subscription.unsubscribe();
     };
   }, []);
 
-  return { user, loading };
+  const refresh = async () => {
+    const supabase = getSupabaseBrowserClient();
+    const { data } = await supabase.auth.getUser();
+    setUser((data?.user ?? null) as User | null);
+  };
+
+  const signOut = async () => {
+    const supabase = getSupabaseBrowserClient();
+    await supabase.auth.signOut();
+    try {
+      await fetch("/api/auth/session", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ access_token: null, refresh_token: null }),
+      });
+    } catch {}
+    setUser(null);
+  };
+
+  return { user, loading, signOut, refresh };
 }

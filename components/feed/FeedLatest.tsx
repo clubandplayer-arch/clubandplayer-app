@@ -15,57 +15,62 @@ type Op = Partial<Opportunity> & {
 };
 
 export default function FeedLatest() {
-  const [items, setItems] = useState<Op[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [items, setItems] = useState<Op[] | null>(null); // null = loading
 
   useEffect(() => {
     const ac = new AbortController();
 
     (async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const urls = [
-          '/api/opportunities/filter?limit=10&order=desc',
-          '/api/opportunities?limit=10',
-        ];
-
-        let data: any = null;
-        for (const url of urls) {
-          try {
-            const r = await fetch(url, {
-              signal: ac.signal,
-              credentials: 'include',
-              cache: 'no-store',
-            });
-            if (!r.ok) continue;
-            const j = await r.json().catch(() => null);
-            if (j && Array.isArray(j)) { data = j; break; }
-            if (j && Array.isArray(j?.data)) { data = j.data; break; }
-          } catch {
-            /* tenta il prossimo url */
-          }
+      async function getFrom(url: string, cred: RequestCredentials) {
+        try {
+          const r = await fetch(url, {
+            signal: ac.signal,
+            credentials: cred,
+            cache: 'no-store',
+          });
+          if (!r.ok) return null;
+          const j = await r.json().catch(() => null);
+          if (!j) return null;
+          if (Array.isArray(j)) return j as Op[];
+          if (Array.isArray((j as any).items)) return (j as any).items as Op[];
+          if (Array.isArray((j as any).data)) return (j as any).data as Op[];
+          return null;
+        } catch {
+          return null;
         }
-
-        if (!data) throw new Error('Nessun dato disponibile dalle API');
-
-        setItems(data as Op[]);
-      } catch (e: any) {
-        if (e?.name !== 'AbortError') {
-          setError(e?.message ?? 'Errore di caricamento');
-        }
-      } finally {
-        setLoading(false);
       }
+
+      const urls = [
+        '/api/opportunities?limit=10&order=desc',
+        '/api/opportunities/filter?limit=10&order=desc',
+      ];
+
+      let data: Op[] | null = null;
+
+      for (const url of urls) {
+        // 1) prova con cookie
+        data = await getFrom(url, 'include');
+        if (data && data.length) break;
+
+        // 2) fallback senza cookie
+        const noCreds = await getFrom(url, 'omit');
+        if (noCreds && noCreds.length) {
+          data = noCreds;
+          break;
+        }
+        // se entrambe vuote/null, passa al prossimo URL
+      }
+
+      // se nulla, evita box rosso: mostra zero elementi
+      setItems(data ?? []);
     })();
 
     return () => ac.abort();
   }, []);
 
   const normalized = useMemo(() => {
-    return items.map((it) => {
+    const src = items ?? [];
+    return src.map((it) => {
       const id =
         it.id ??
         (it as any).opportunity_id ??
@@ -90,7 +95,8 @@ export default function FeedLatest() {
     });
   }, [items]);
 
-  if (loading) {
+  // loading
+  if (items === null) {
     return (
       <div className="rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
         <div className="animate-pulse space-y-3">
@@ -102,16 +108,7 @@ export default function FeedLatest() {
     );
   }
 
-  if (error) {
-    return (
-      <div className="rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-        <div className="text-sm text-red-600 dark:text-red-400">
-          Errore: {error}
-        </div>
-      </div>
-    );
-  }
-
+  // nessun dato → messaggio neutro (niente rosso)
   if (!normalized.length) {
     return (
       <div className="rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
@@ -147,7 +144,7 @@ export default function FeedLatest() {
                 </div>
                 {row.when && (
                   <div className="truncate text-xs text-neutral-400 mt-1">
-                    {new Date(row.when).toLocaleDateString()}
+                    {new Date(row.when).toLocaleDateString('it-IT')}
                   </div>
                 )}
               </div>

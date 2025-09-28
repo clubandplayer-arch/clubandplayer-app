@@ -2,60 +2,65 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase/client";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+
+type UserInfo = { id: string; email: string | null };
 
 export function UserMenu() {
   const router = useRouter();
-  const [email, setEmail] = useState<string | null>(null);
+  const [user, setUser] = useState<UserInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let mounted = true;
-
-    async function load() {
-      const { data, error } = await supabase.auth.getUser();
-      if (!mounted) return;
-      if (error) {
-        setEmail(null);
-      } else {
-        setEmail(data.user?.email ?? null);
-      }
+    (async () => {
+      const supabase = getSupabaseBrowserClient();
+      const { data } = await supabase.auth.getUser();
+      const u = data?.user ?? null;
+      setUser(u ? { id: u.id, email: u.email ?? null } : null);
       setLoading(false);
-    }
-
-    load();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!mounted) return;
-      setEmail(session?.user?.email ?? null);
-    });
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
+    })();
   }, []);
 
   async function handleLogout() {
+    const supabase = getSupabaseBrowserClient();
     await supabase.auth.signOut();
+
+    // best-effort: azzera cookie bridged lato server
+    try {
+      await fetch("/api/auth/session", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ access_token: null, refresh_token: null }),
+      });
+    } catch {}
+
     router.push("/login");
   }
 
-  if (loading || !email) return null;
+  if (loading) return null;
+
+  if (!user) {
+    return (
+      <button
+        type="button"
+        onClick={() => router.push("/login")}
+        className="rounded-xl border px-3 py-1.5 text-sm"
+      >
+        Login
+      </button>
+    );
+  }
 
   return (
-    <div className="flex items-center gap-3">
-      <span className="text-sm text-slate-600">{email}</span>
+    <div className="flex items-center gap-2">
+      <span className="text-sm opacity-80">{user.email ?? "Account"}</span>
       <button
+        type="button"
         onClick={handleLogout}
-        className="px-3 py-1 text-sm rounded border border-slate-300 hover:bg-slate-50"
+        className="rounded-xl border px-3 py-1.5 text-sm"
       >
         Logout
       </button>
     </div>
   );
 }
-
-export default UserMenu;
