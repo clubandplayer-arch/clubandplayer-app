@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 export const metadata = {
   title: 'Termini e Condizioni • Club & Player',
 };
@@ -23,15 +22,6 @@ export default function TermsPage() {
         Il servizio è fornito “as-is” senza garanzie; nei limiti di legge la responsabilità è limitata.
       </p>
       <p className="mt-8 text-sm text-neutral-500">Ultimo aggiornamento: {new Date().toLocaleDateString()}</p>
-=======
-export const metadata = { title: 'Termini di Servizio' };
-
-export default function TermsPage() {
-  return (
-    <main className="container mx-auto px-4 py-8 prose dark:prose-invert">
-      <h1>Termini di Servizio</h1>
-      <p>Termini e condizioni d’uso. Inserisci il testo completo quando pronto.</p>
->>>>>>> ebeaf98 (feat(gdpr): cookie consent banner + legal pages (privacy/terms))
     </main>
   );
 }

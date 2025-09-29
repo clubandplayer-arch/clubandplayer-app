@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 export const metadata = {
   title: 'Privacy Policy • Club & Player',
 };
@@ -24,21 +23,6 @@ export default function PrivacyPage() {
         I cookie necessari sono sempre attivi. I cookie di misurazione vengono attivati solo previa accettazione.
       </p>
       <p className="mt-8 text-sm text-neutral-500">Ultimo aggiornamento: {new Date().toLocaleDateString()}</p>
-=======
-export const metadata = { title: 'Privacy' };
-
-export default function PrivacyPage() {
-  return (
-    <main className="container mx-auto px-4 py-8 prose dark:prose-invert">
-      <h1>Informativa Privacy</h1>
-      <p>Questa è un’informativa di esempio. Inserisci qui il testo fornito dal tuo consulente.</p>
-      <ul>
-        <li>Titolare del trattamento</li>
-        <li>Finalità e base giuridica</li>
-        <li>Conservazione dati</li>
-        <li>Diritti degli interessati</li>
-      </ul>
->>>>>>> ebeaf98 (feat(gdpr): cookie consent banner + legal pages (privacy/terms))
     </main>
   );
 }
