@@ -1,59 +1,58 @@
 // app/api/auth/session/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
-
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+import { NextRequest, NextResponse } from 'next/server';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
+
+function mergeCookies(from: NextResponse, into: NextResponse) {
+  // Copia i cookie impostati dal "carrier" nella response finale
+  for (const c of from.cookies.getAll()) into.cookies.set(c);
+  const set = from.headers.get('set-cookie');
+  if (set) into.headers.append('set-cookie', set);
+}
+
 export async function POST(req: NextRequest) {
-  try {
-    const { access_token, refresh_token } = await req.json().catch(() => ({}));
+  // "carrier" che riceve i Set-Cookie generati dal client SSR
+  const carrier = new NextResponse();
 
-    if (!access_token || !refresh_token) {
-      return NextResponse.json({ error: 'Missing tokens' }, { status: 400 });
-    }
-
-    // 1) Response "carrier" su cui il client Supabase scriverà i cookie
-    const carrier = NextResponse.next();
-
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,        // usa le tue ENV già presenti
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return req.cookies.get(name)?.value;
-          },
-          set(name: string, value: string, options: CookieOptions) {
-            carrier.cookies.set({ name, value, ...options }); // scrive sul carrier
-          },
-          remove(name: string, options: CookieOptions) {
-            carrier.cookies.set({ name, value: '', ...options, maxAge: 0 }); // scrive sul carrier
-          },
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return req.cookies.get(name)?.value;
         },
-      }
-    );
-
-    // 2) Imposta la sessione (qui Supabase popola i cookie sul "carrier")
-    const { error } = await supabase.auth.setSession({ access_token, refresh_token });
-    if (error) {
-      return NextResponse.json({ error: `setSession: ${error.message}` }, { status: 401 });
+        set(name: string, value: string, options: CookieOptions) {
+          carrier.cookies.set({ name, value, ...options });
+        },
+        remove(name: string, options: CookieOptions) {
+          carrier.cookies.set({ name, value: '', ...options, maxAge: 0 });
+        },
+      },
     }
+  );
 
-    // 3) (opzionale) valida l’utente, utile anche a triggerare eventuale refresh lato Supabase
-    const { data: { user }, error: uerr } = await supabase.auth.getUser();
-    if (uerr) {
-      // anche in errore, copiamo comunque i cookie del carrier
-      const out = NextResponse.json({ error: `getUser: ${uerr.message}` }, { status: 500 });
-      carrier.cookies.getAll().forEach(c => out.cookies.set(c)); // <<< COPIA COOKIE
-      return out;
-    }
+  const body = await req.json().catch(() => ({} as any));
+  const access_token =
+    body?.access_token ?? body?.accessToken ?? body?.currentSession?.access_token ?? null;
+  const refresh_token =
+    body?.refresh_token ?? body?.refreshToken ?? body?.currentSession?.refresh_token ?? null;
 
-    // 4) Costruiamo la risposta finale **copiando i cookie** dal carrier
-    const out = NextResponse.json({ ok: true, user }, { status: 200 });
-    carrier.cookies.getAll().forEach(c => out.cookies.set(c));  // <<< PASSO CHIAVE
+  // Se non arrivano token, interpreta come "clear"
+  if (!access_token || !refresh_token) {
+    await supabase.auth.signOut().catch(() => {});
+    const out = NextResponse.json({ ok: true, cleared: true });
+    mergeCookies(carrier, out);
     return out;
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? 'Bad request' }, { status: 400 });
   }
+
+  // Imposta la sessione: questo popola i cookie sul "carrier"
+  await supabase.auth.setSession({ access_token, refresh_token });
+
+  // Propaga i cookie sulla response finale (quella che vede il browser)
+  const out = NextResponse.json({ ok: true });
+  mergeCookies(carrier, out);
+  return out;
 }
