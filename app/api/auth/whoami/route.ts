@@ -10,8 +10,8 @@ function headersFrom(res: NextResponse) {
 }
 
 export async function GET(req: NextRequest) {
-  // Response "carrier" per propagare eventuali Set-Cookie del refresh
-  const res = new NextResponse();
+  // Response “carrier” per propagare eventuali Set-Cookie del refresh
+  const carrier = new NextResponse();
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -22,21 +22,36 @@ export async function GET(req: NextRequest) {
           return req.cookies.get(name)?.value;
         },
         set(name: string, value: string, options: CookieOptions) {
-          res.cookies.set({ name, value, ...options });
+          carrier.cookies.set({ name, value, ...options });
         },
         remove(name: string, options: CookieOptions) {
-          res.cookies.set({ name, value: '', ...options, maxAge: 0 });
+          carrier.cookies.set({ name, value: '', ...options, maxAge: 0 });
         },
       },
     }
   );
 
-  const { data: { user } } = await supabase.auth.getUser();
+  // Supporto opzionale al Bearer: usato dallo snippet di bootstrap in console
+  const auth = req.headers.get('authorization') || '';
+  const m = auth.match(/^Bearer\s+(.+)$/i);
+  const bearer = m?.[1];
+
+  let user: { id: string; email?: string | null } | null = null;
+  try {
+    const { data, error } = await supabase.auth.getUser(bearer);
+    if (!error) user = data.user ?? null;
+  } catch {
+    /* ignore */
+  }
 
   if (!user) {
     return new NextResponse(JSON.stringify({ user: null, role: 'guest' as const }), {
       status: 200,
-      headers: { 'content-type': 'application/json', ...headersFrom(res) },
+      headers: {
+        'content-type': 'application/json',
+        'cache-control': 'no-store',
+        ...headersFrom(carrier),
+      },
     });
   }
 
@@ -59,7 +74,11 @@ export async function GET(req: NextRequest) {
     }),
     {
       status: 200,
-      headers: { 'content-type': 'application/json', ...headersFrom(res) },
+      headers: {
+        'content-type': 'application/json',
+        'cache-control': 'no-store',
+        ...headersFrom(carrier),
+      },
     }
   );
 }
