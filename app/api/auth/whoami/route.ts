@@ -12,7 +12,6 @@ function mergeCookies(from: NextResponse, into: NextResponse) {
 }
 
 export async function GET(req: NextRequest) {
-  // carrier per eventuali refresh cookie automatici di Supabase
   const carrier = new NextResponse();
 
   const supabase = createServerClient(

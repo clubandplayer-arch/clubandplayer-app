@@ -6,14 +6,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
 function mergeCookies(from: NextResponse, into: NextResponse) {
-  // Copia i cookie impostati dal "carrier" nella response finale
   for (const c of from.cookies.getAll()) into.cookies.set(c);
   const set = from.headers.get('set-cookie');
   if (set) into.headers.append('set-cookie', set);
 }
 
 export async function POST(req: NextRequest) {
-  // "carrier" che riceve i Set-Cookie generati dal client SSR
   const carrier = new NextResponse();
 
   const supabase = createServerClient(
@@ -40,7 +38,6 @@ export async function POST(req: NextRequest) {
   const refresh_token =
     body?.refresh_token ?? body?.refreshToken ?? body?.currentSession?.refresh_token ?? null;
 
-  // Se non arrivano token, interpreta come "clear"
   if (!access_token || !refresh_token) {
     await supabase.auth.signOut().catch(() => {});
     const out = NextResponse.json({ ok: true, cleared: true });
@@ -48,10 +45,8 @@ export async function POST(req: NextRequest) {
     return out;
   }
 
-  // Imposta la sessione: questo popola i cookie sul "carrier"
   await supabase.auth.setSession({ access_token, refresh_token });
 
-  // Propaga i cookie sulla response finale (quella che vede il browser)
   const out = NextResponse.json({ ok: true });
   mergeCookies(carrier, out);
   return out;
