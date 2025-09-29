@@ -1,23 +1,19 @@
 // app/api/auth/session/route.ts
-import { NextRequest, NextResponse } from "next/server";
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { NextRequest, NextResponse } from 'next/server'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 
-export const runtime = "nodejs";
-
-type Body = {
-  event?: string;
-  session?: {
-    access_token?: string | null;
-    refresh_token?: string | null;
-  } | null;
-};
+export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {
   try {
-    const { event, session }: Body = await req.json().catch(() => ({} as Body));
+    const { access_token, refresh_token } = await req.json()
 
-    // Response “contenitore” per i Set-Cookie generati da supabase
-    const cookieCarrier = new NextResponse();
+    if (!access_token || !refresh_token) {
+      return NextResponse.json({ error: 'Missing tokens' }, { status: 400 })
+    }
+
+    // Carrier per catturare i Set-Cookie generati da supabase.auth.setSession
+    const cookieCarrier = new NextResponse()
 
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -25,59 +21,48 @@ export async function POST(req: NextRequest) {
       {
         cookies: {
           get(name: string) {
-            return req.cookies.get(name)?.value;
+            return req.cookies.get(name)?.value
           },
           set(name: string, value: string, options: CookieOptions) {
-            cookieCarrier.cookies.set({ name, value, ...options });
+            cookieCarrier.cookies.set({ name, value, ...options })
           },
           remove(name: string, options: CookieOptions) {
-            cookieCarrier.cookies.set({ name, value: "", ...options, maxAge: 0 });
+            cookieCarrier.cookies.set({ name, value: '', ...options, maxAge: 0 })
           },
         },
       }
-    );
+    )
 
-    // Sign-out esplicito
-    if (event === "SIGNED_OUT" || !session) {
-      await supabase.auth.signOut();
-      return new NextResponse(JSON.stringify({ ok: true, cleared: true }), {
-        status: 200,
+    const { error: setErr } = await supabase.auth.setSession({ access_token, refresh_token })
+    if (setErr) {
+      return new NextResponse(JSON.stringify({ error: `setSession: ${setErr.message}` }), {
+        status: 401,
         headers: {
           ...Object.fromEntries(cookieCarrier.headers),
-          "content-type": "application/json",
+          'content-type': 'application/json',
         },
-      });
+      })
     }
 
-    // Per sincronizzare i cookie server servono entrambi i token.
-    // Con SIGNED_IN li abbiamo sempre; con TOKEN_REFRESHED non sempre: in quel caso ignoriamo.
-    const at = session.access_token ?? undefined;
-    const rt = session.refresh_token ?? undefined;
-
-    if (at && rt) {
-      const { error } = await supabase.auth.setSession({
-        access_token: at,
-        refresh_token: rt,
-      });
-      if (error) {
-        return new NextResponse(JSON.stringify({ ok: false, error: error.message }), {
-          status: 401,
-          headers: {
-            ...Object.fromEntries(cookieCarrier.headers),
-            "content-type": "application/json",
-          },
-        });
-      }
+    const { data: { user }, error: userErr } = await supabase.auth.getUser()
+    if (userErr) {
+      return new NextResponse(JSON.stringify({ error: `getUser: ${userErr.message}` }), {
+        status: 500,
+        headers: {
+          ...Object.fromEntries(cookieCarrier.headers),
+          'content-type': 'application/json',
+        },
+      })
     }
 
-    return new NextResponse(JSON.stringify({ ok: true, event }), {
+    return new NextResponse(JSON.stringify({ ok: true, user }), {
       status: 200,
       headers: {
         ...Object.fromEntries(cookieCarrier.headers),
-        "content-type": "application/json",
+        'content-type': 'application/json',
       },
-    });
+    })
   } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e?.message ?? "Bad request" }, { status: 400 });
+    return NextResponse.json({ error: e?.message ?? 'Bad request' }, { status: 400 })
   }
 }
