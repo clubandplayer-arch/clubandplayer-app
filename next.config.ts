@@ -8,8 +8,7 @@ const nextConfig: NextConfig = {
   // Evita che Vercel fallisca il build per regole ESLint (il lint lo gestiamo in locale/CI)
   eslint: { ignoreDuringBuilds: true },
 
-  // Next 15 rileva automaticamente l’instrumentation di Sentry.
-  // Non usare experimental.instrumentationHook.
+  // NIENTE experimental.instrumentationHook: in Next 15 è auto-rilevato.
 };
 
 export default withSentryConfig(nextConfig, {
