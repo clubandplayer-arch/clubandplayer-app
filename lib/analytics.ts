@@ -1,3 +1,4 @@
+// lib/analytics.ts
 // Helper lato client per PostHog: tutte le funzioni sono “safe”.
 // Non lancia errori in SSR/Edge e non richiede import espliciti di posthog-js qui.
 
