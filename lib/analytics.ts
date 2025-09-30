@@ -1,9 +1,12 @@
-'use client';
-
+// lib/analytics.ts
 import posthog from 'posthog-js';
 
-export function track(event: string, props?: Record<string, any>) {
+export function captureSafe(event: string, props?: Record<string, unknown>) {
   try {
-    if ((globalThis as any).posthog) posthog.capture(event, props);
-  } catch { /* noop */ }
+    if (typeof window === 'undefined') return;
+    if (!posthog || !posthog.capture) return;
+    posthog.capture(event, props ?? {});
+  } catch {
+    // no-op
+  }
 }
