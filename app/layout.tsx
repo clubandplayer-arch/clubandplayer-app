@@ -6,6 +6,7 @@ import { Suspense } from 'react';
 import HashCleanup from '@/components/auth/HashCleanup';
 import SessionSyncMount from '@/components/auth/SessionSyncMount';
 import CookieConsent from '@/components/misc/CookieConsent';
+import PostHogInit from '@/components/analytics/PostHogInit';
 
 export const metadata: Metadata = {
   title: 'Club & Player',
@@ -16,12 +17,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="it">
       <body>
+        {/* Init analytics (rispetta consenso, pageview & identify) */}
+        <Suspense fallback={null}>
+          <PostHogInit />
+        </Suspense>
+
         {/* Pulisce hash OAuth e fa redirect sicuro */}
         <Suspense fallback={null}>
           <HashCleanup />
         </Suspense>
 
-        {/* Contenuto pagina (mettiamo sotto Suspense per coprire qualsiasi useSearchParams etc.) */}
+        {/* Contenuto pagina (sotto Suspense per coprire useSearchParams, ecc.) */}
         <Suspense fallback={null}>
           {children}
         </Suspense>
