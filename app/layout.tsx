@@ -27,7 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <HashCleanup />
         </Suspense>
 
-        {/* Contenuto pagina (sotto Suspense per coprire useSearchParams, ecc.) */}
+        {/* Contenuto pagina (copre useSearchParams, ecc.) */}
         <Suspense fallback={null}>
           {children}
         </Suspense>
