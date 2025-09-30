@@ -1,77 +1,85 @@
-// lib/analytics.ts
-// Helper sicuri/no-op per PostHog lato client, così non esplode nulla se non inizializzato.
+// Helper lato client per PostHog: tutte le funzioni sono “safe”.
+// Non lancia errori in SSR/Edge e non richiede import espliciti di posthog-js qui.
 
-type Props = Record<string, any> | undefined;
+type Props = Record<string, unknown> | undefined;
 
-function getPH(): any | null {
+function ph() {
+  if (typeof window === 'undefined') return null;
   try {
-    if (typeof window === 'undefined') return null;
-    // @ts-ignore
+    // PostHog viene inizializzato in components/analytics/PostHogInit.tsx
     return (window as any).posthog ?? null;
   } catch {
     return null;
   }
 }
 
-/** Traccia un evento PostHog in modo sicuro (no-op se non disponibile). */
-export function captureSafe(event: string, properties?: Props) {
-  try {
-    const ph = getPH();
-    if (ph && typeof ph.capture === 'function') {
-      ph.capture(event, properties ?? {});
+function sanitize(props: Props) {
+  if (!props) return undefined;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(props)) {
+    if (v == null) continue;
+    switch (typeof v) {
+      case 'string':
+        out[k] = v.slice(0, 200);
+        break;
+      case 'number':
+      case 'boolean':
+        out[k] = v;
+        break;
+      default:
+        try {
+          out[k] = JSON.stringify(v).slice(0, 300);
+        } catch {
+          out[k] = String(v).slice(0, 200);
+        }
     }
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+
+/** Traccia un evento senza mai esplodere in SSR/assenza di PH */
+export function captureSafe(event: string, props?: Record<string, unknown>) {
+  const p = ph();
+  if (!p) return;
+  try {
+    p.capture(event, sanitize(props));
   } catch {
     /* no-op */
   }
 }
 
-/** Alias più breve, alcuni file usano `track(...)`. */
-export const track = captureSafe;
-
-/** Identifica l’utente in modo sicuro (no-op se non disponibile). */
-export function identifySafe(distinctId: string, properties?: Props) {
+/** Identify sicuro (passa id per settare, nothing per non fare nulla; usare resetSafe per logout) */
+export function identifySafe(distinctId?: string, props?: Record<string, unknown>) {
+  const p = ph();
+  if (!p) return;
   try {
-    const ph = getPH();
-    if (ph && typeof ph.identify === 'function') {
-      ph.identify(distinctId, properties ?? {});
-    }
+    if (distinctId) p.identify(distinctId, sanitize(props));
   } catch {
     /* no-op */
   }
 }
 
-/** Opt-in tracciamento (usato per consenso cookie). */
-export function optInAnalytics() {
+/** Reset sicuro (usare al logout) */
+export function resetSafe() {
+  const p = ph();
+  if (!p) return;
   try {
-    const ph = getPH();
-    if (ph?.opt_in_capturing) ph.opt_in_capturing();
+    p.reset();
   } catch {
     /* no-op */
   }
 }
 
-/** Opt-out tracciamento (usato per consenso cookie). */
-export function optOutAnalytics() {
+/** Pageview standard */
+export function pageview(path?: string) {
+  const p = ph();
+  if (!p) return;
   try {
-    const ph = getPH();
-    if (ph?.opt_out_capturing) ph.opt_out_capturing();
+    p.capture('$pageview', {
+      $current_url: typeof location !== 'undefined' ? location.href : undefined,
+      path,
+    });
   } catch {
     /* no-op */
-  }
-}
-
-/** Ritorna true se l’utente ha già dato consenso al tracciamento. */
-export function hasConsented(): boolean {
-  try {
-    const ph = getPH();
-    if (!ph) return false;
-    // PostHog salva un cookie; se l’SDK è opt-in, questo metodo è comodo da esporre.
-    // Alcune versioni hanno ph.has_opted_in_capturing()
-    if (typeof ph.has_opted_in_capturing === 'function') {
-      return !!ph.has_opted_in_capturing();
-    }
-    return true; // fallback
-  } catch {
-    return false;
   }
 }
