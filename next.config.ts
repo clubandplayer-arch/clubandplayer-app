@@ -5,10 +5,11 @@ import { withSentryConfig } from '@sentry/nextjs';
 const nextConfig: NextConfig = {
   reactStrictMode: true,
 
-  // Evita che Vercel fallisca il build per regole ESLint (il lint lo teniamo in locale/CI separato)
+  // Evita che Vercel fallisca il build per regole ESLint (il lint lo gestiamo in locale/CI)
   eslint: { ignoreDuringBuilds: true },
 
-  // NIENTE experimental.instrumentationHook: in Next 15 è auto-rilevato.
+  // Next 15 rileva automaticamente l’instrumentation di Sentry.
+  // Non usare experimental.instrumentationHook.
 };
 
 export default withSentryConfig(nextConfig, {
