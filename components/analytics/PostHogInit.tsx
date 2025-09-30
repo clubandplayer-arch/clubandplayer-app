@@ -2,53 +2,56 @@
 
 import { useEffect } from 'react';
 import posthog from 'posthog-js';
-import { usePathname, useSearchParams } from 'next/navigation';
 
-const KEY  = process.env.NEXT_PUBLIC_POSTHOG_KEY!;
+const KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY!;
 const HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://eu.posthog.com';
 
+// piccolo helper: legge consenso dal nostro banner
+function hasConsent() {
+  try {
+    return localStorage.getItem('cnp-consent') === 'granted';
+  } catch {
+    return false;
+  }
+}
+
 export default function PostHogInit() {
-  const pathname     = usePathname();
-  const searchParams = useSearchParams();
-
-  // 1) Init una volta sola, rispettando il consenso
   useEffect(() => {
-    if (typeof window === 'undefined' || !KEY || (posthog as any).__loaded) return;
+    // evita init se manca la key o non c’è consenso
+    if (!KEY || !hasConsent()) return;
 
-    const hasConsent = localStorage.getItem('cp-consent') === 'true';
+    // init idempotente
+    if (!posthog.__loaded) {
+      posthog.init(KEY, {
+        api_host: HOST,
+        autocapture: true,
+        capture_pageview: true,
+        persistence: 'localStorage+cookie',
+      });
+    }
 
-    posthog.init(KEY, {
-      api_host: HOST,
-      capture_pageview: false,          // tracciamo noi manualmente
-      persistence: 'localStorage+cookie',
-      opt_out_capturing_by_default: !hasConsent,
-    });
-
-    // opzionale: ascolta eventi del banner (se li emette)
-    window.addEventListener('cp:consent-accepted', () => {
-      posthog.opt_in_capturing();
-      posthog.capture('consent_accepted');
-    });
-    window.addEventListener('cp:consent-declined', () => {
-      posthog.opt_out_capturing();
-    });
-
-    // 2) Identifica utente (se loggato)
-    fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' })
-      .then(r => r.json())
-      .then(d => {
-        if (d?.user?.id) {
-          posthog.identify(d.user.id, { role: d.role, email: d.user.email });
+    // identify utente (usa la nostra whoami API)
+    (async () => {
+      try {
+        const res = await fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' });
+        const json = await res.json();
+        const uid = json?.user?.id as string | undefined;
+        if (uid) {
+          posthog.identify(uid, {
+            role: json?.role,
+            profile_type: json?.profile?.type,
+          });
+        } else {
+          posthog.reset(); // utente guest
         }
-      })
-      .catch(() => {});
-  }, []);
+      } catch {
+        /* ignore */
+      }
+    })();
 
-  // 3) Pageview su ogni cambio route/query
-  useEffect(() => {
-    if (!KEY || typeof window === 'undefined' || !(posthog as any).__loaded) return;
-    posthog.capture('$pageview', { path: pathname, search: searchParams?.toString() });
-  }, [pathname, searchParams]);
+    // pulizia opzionale quando si smonta
+    return () => {};
+  }, []);
 
   return null;
 }
