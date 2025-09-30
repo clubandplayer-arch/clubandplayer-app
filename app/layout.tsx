@@ -1,55 +1,35 @@
 // app/layout.tsx
 import './globals.css';
-import type { Metadata, Viewport } from 'next';
-import { Suspense } from 'react';
+import type { Metadata } from 'next';
 
 import HashCleanup from '@/components/auth/HashCleanup';
 import SessionSyncMount from '@/components/auth/SessionSyncMount';
 import CookieConsent from '@/components/misc/CookieConsent';
-import PostHogInit from '@/components/analytics/PostHogInit';
+import PostHogAnalytics from '@/components/analytics/PostHogAnalytics';
 
 export const metadata: Metadata = {
   title: 'Club & Player',
   description: 'Club & Player App',
 };
 
-// ✅ Next 15: viewport deve essere un export separato (non dentro metadata)
-export const viewport: Viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  // facoltativi:
-  // themeColor: '#0b6cff',
-  // colorScheme: 'light dark',
-};
-
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="it">
       <body>
-        {/* Init analytics (rispetta consenso, pageview & identify) */}
-        <Suspense fallback={null}>
-          <PostHogInit />
-        </Suspense>
-
         {/* Pulisce hash OAuth e fa redirect sicuro */}
-        <Suspense fallback={null}>
-          <HashCleanup />
-        </Suspense>
+        <HashCleanup />
 
-        {/* Contenuto pagina (copre useSearchParams, ecc.) */}
-        <Suspense fallback={null}>
-          {children}
-        </Suspense>
+        {/* Contenuto pagina */}
+        {children}
 
         {/* Sync sessione client->server (cookie) */}
-        <Suspense fallback={null}>
-          <SessionSyncMount />
-        </Suspense>
+        <SessionSyncMount />
 
-        {/* Banner GDPR */}
-        <Suspense fallback={null}>
-          <CookieConsent />
-        </Suspense>
+        {/* Analytics (pageview + identify) */}
+        <PostHogAnalytics />
+
+        {/* Banner GDPR (fissato in basso) */}
+        <CookieConsent />
       </body>
     </html>
   );
