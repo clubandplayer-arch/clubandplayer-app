@@ -1,11 +1,11 @@
 // app/layout.tsx
 import './globals.css';
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 
 import HashCleanup from '@/components/auth/HashCleanup';
 import SessionSyncMount from '@/components/auth/SessionSyncMount';
 import CookieConsent from '@/components/misc/CookieConsent';
-import PostHogAnalytics from '@/components/analytics/PostHogAnalytics';
 
 export const metadata: Metadata = {
   title: 'Club & Player',
@@ -17,19 +17,24 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="it">
       <body>
         {/* Pulisce hash OAuth e fa redirect sicuro */}
-        <HashCleanup />
+        <Suspense fallback={null}>
+          <HashCleanup />
+        </Suspense>
 
-        {/* Contenuto pagina */}
-        {children}
+        {/* Contenuto pagina (mettiamo sotto Suspense per coprire qualsiasi useSearchParams etc.) */}
+        <Suspense fallback={null}>
+          {children}
+        </Suspense>
 
         {/* Sync sessione client->server (cookie) */}
-        <SessionSyncMount />
+        <Suspense fallback={null}>
+          <SessionSyncMount />
+        </Suspense>
 
-        {/* Analytics (pageview + identify) */}
-        <PostHogAnalytics />
-
-        {/* Banner GDPR (fissato in basso) */}
-        <CookieConsent />
+        {/* Banner GDPR */}
+        <Suspense fallback={null}>
+          <CookieConsent />
+        </Suspense>
       </body>
     </html>
   );
