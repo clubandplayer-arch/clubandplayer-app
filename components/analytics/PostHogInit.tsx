@@ -2,59 +2,53 @@
 
 import { useEffect } from 'react';
 import posthog from 'posthog-js';
+import { usePathname, useSearchParams } from 'next/navigation';
 
-declare global {
-  interface Window {
-    posthog?: typeof posthog;
-  }
-}
+const KEY  = process.env.NEXT_PUBLIC_POSTHOG_KEY!;
+const HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://eu.posthog.com';
 
 export default function PostHogInit() {
+  const pathname     = usePathname();
+  const searchParams = useSearchParams();
+
+  // 1) Init una volta sola, rispettando il consenso
   useEffect(() => {
-    try {
-      const consent = (localStorage.getItem('cookie_consent') ?? 'rejected') as
-        | 'accepted'
-        | 'rejected';
+    if (typeof window === 'undefined' || !KEY || (posthog as any).__loaded) return;
 
-      const KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
-      const HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://eu.posthog.com';
+    const hasConsent = localStorage.getItem('cp-consent') === 'true';
 
-      // Se mancano le ENV → non inizializzare
-      if (!KEY) {
-        console.info('[Analytics] PostHog DISABLED: missing NEXT_PUBLIC_POSTHOG_KEY');
-        return;
-      }
+    posthog.init(KEY, {
+      api_host: HOST,
+      capture_pageview: false,          // tracciamo noi manualmente
+      persistence: 'localStorage+cookie',
+      opt_out_capturing_by_default: !hasConsent,
+    });
 
-      // Se il consenso non è accettato → opt-out
-      if (consent !== 'accepted') {
-        try { posthog.opt_out_capturing(); } catch {}
-        console.info('[Analytics] PostHog opt-out, consent =', consent);
-        return;
-      }
+    // opzionale: ascolta eventi del banner (se li emette)
+    window.addEventListener('cp:consent-accepted', () => {
+      posthog.opt_in_capturing();
+      posthog.capture('consent_accepted');
+    });
+    window.addEventListener('cp:consent-declined', () => {
+      posthog.opt_out_capturing();
+    });
 
-      // Inizializza una sola volta
-      // (in alcune build Turbopack il global non viene esposto: lo forziamo su window)
-      if (!(window.posthog as any)?._isInited) {
-        posthog.init(KEY, {
-          api_host: HOST,
-          capture_pageview: false,   // tracciamo noi le pageview
-          autocapture: false,        // tracciamo solo eventi espliciti
-          person_profiles: 'identified_only',
-        });
-        (posthog as any)._isInited = true;
-        window.posthog = posthog;
-        console.info('[Analytics] PostHog initialized');
-      }
-
-      // Abilita debug se ?ph_debug=1
-      if (new URLSearchParams(location.search).get('ph_debug') === '1') {
-        posthog.debug(true);
-        console.log('[PostHog] debug ON');
-      }
-    } catch (e) {
-      console.error('[Analytics] PostHog init error', e);
-    }
+    // 2) Identifica utente (se loggato)
+    fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' })
+      .then(r => r.json())
+      .then(d => {
+        if (d?.user?.id) {
+          posthog.identify(d.user.id, { role: d.role, email: d.user.email });
+        }
+      })
+      .catch(() => {});
   }, []);
+
+  // 3) Pageview su ogni cambio route/query
+  useEffect(() => {
+    if (!KEY || typeof window === 'undefined' || !(posthog as any).__loaded) return;
+    posthog.capture('$pageview', { path: pathname, search: searchParams?.toString() });
+  }, [pathname, searchParams]);
 
   return null;
 }
