@@ -4,6 +4,10 @@ import { useEffect, useState } from 'react';
 import ApplyCTA from '@/components/opportunities/ApplyCTA';
 import type { Opportunity } from '@/types/opportunity';
 
+// NEW: analytics
+import TrackOpportunityOpen from '@/components/analytics/TrackOpportunityOpen';
+import { track } from '@/lib/analytics';
+
 type Role = 'athlete' | 'club' | 'guest';
 
 export default function OpportunityDetailPage({ params }: { params: { id: string } }) {
@@ -95,13 +99,20 @@ export default function OpportunityDetailPage({ params }: { params: { id: string
 
   return (
     <div className="p-4 md:p-6 space-y-4">
+      {/* NEW: traccia apertura dettaglio */}
+      <TrackOpportunityOpen id={id} />
+
       <header className="flex items-start justify-between gap-3">
         <h1 className="text-2xl md:text-3xl font-semibold">{opp.title}</h1>
         {showCTA && (
           <ApplyCTA
             oppId={opp.id}
             initialApplied={alreadyApplied}
-            onApplied={() => setAlreadyApplied(true)}
+            onApplied={() => {
+              setAlreadyApplied(true);
+              // NEW: traccia invio candidatura
+              track('application_submit', { opportunity_id: opp.id, role });
+            }}
           />
         )}
       </header>
