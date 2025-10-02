@@ -3,54 +3,57 @@
 import { useEffect } from 'react';
 import posthog from 'posthog-js';
 
-const KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY!;
-const HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://eu.posthog.com';
-
-// piccolo helper: legge consenso dal nostro banner
-function hasConsent() {
-  try {
-    return localStorage.getItem('cnp-consent') === 'granted';
-  } catch {
-    return false;
+declare global {
+  interface Window {
+    posthog?: typeof posthog;
   }
 }
 
 export default function PostHogInit() {
   useEffect(() => {
-    // evita init se manca la key o non c’è consenso
-    if (!KEY || !hasConsent()) return;
+    try {
+      const consent = (localStorage.getItem('cookie_consent') ?? 'rejected') as
+        | 'accepted'
+        | 'rejected';
 
-    // init idempotente
-    if (!posthog.__loaded) {
-      posthog.init(KEY, {
-        api_host: HOST,
-        autocapture: true,
-        capture_pageview: true,
-        persistence: 'localStorage+cookie',
-      });
-    }
+      const KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
+      const HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://eu.posthog.com';
 
-    // identify utente (usa la nostra whoami API)
-    (async () => {
-      try {
-        const res = await fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' });
-        const json = await res.json();
-        const uid = json?.user?.id as string | undefined;
-        if (uid) {
-          posthog.identify(uid, {
-            role: json?.role,
-            profile_type: json?.profile?.type,
-          });
-        } else {
-          posthog.reset(); // utente guest
-        }
-      } catch {
-        /* ignore */
+      // Se mancano le ENV → non inizializzare
+      if (!KEY) {
+        console.info('[Analytics] PostHog DISABLED: missing NEXT_PUBLIC_POSTHOG_KEY');
+        return;
       }
-    })();
 
-    // pulizia opzionale quando si smonta
-    return () => {};
+      // Se il consenso non è accettato → opt-out
+      if (consent !== 'accepted') {
+        try { posthog.opt_out_capturing(); } catch {}
+        console.info('[Analytics] PostHog opt-out, consent =', consent);
+        return;
+      }
+
+      // Inizializza una sola volta
+      // (in alcune build Turbopack il global non viene esposto: lo forziamo su window)
+      if (!(window.posthog as any)?._isInited) {
+        posthog.init(KEY, {
+          api_host: HOST,
+          capture_pageview: false,   // tracciamo noi le pageview
+          autocapture: false,        // tracciamo solo eventi espliciti
+          person_profiles: 'identified_only',
+        });
+        (posthog as any)._isInited = true;
+        window.posthog = posthog;
+        console.info('[Analytics] PostHog initialized');
+      }
+
+      // Abilita debug se ?ph_debug=1
+      if (new URLSearchParams(location.search).get('ph_debug') === '1') {
+        posthog.debug(true);
+        console.log('[PostHog] debug ON');
+      }
+    } catch (e) {
+      console.error('[Analytics] PostHog init error', e);
+    }
   }, []);
 
   return null;
