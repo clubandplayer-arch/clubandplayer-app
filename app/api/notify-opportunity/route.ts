@@ -1,10 +1,9 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
 export const runtime = 'nodejs'
 
 type Body = { opportunityId: string }
-
 type OpportunityRow = {
   id: string
   sport: string
@@ -15,7 +14,6 @@ type OpportunityRow = {
   title: string
   club_name: string
 }
-
 type AlertRow = {
   user_id: string
   sport: string
@@ -25,18 +23,30 @@ type AlertRow = {
   city: string | null
 }
 
-export async function POST(req: Request) {
+export async function GET() {
+  return NextResponse.json({ ok: true, route: '/api/notify-opportunity' })
+}
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: { Allow: 'POST,GET,OPTIONS' },
+  })
+}
+
+export async function POST(req: NextRequest) {
   try {
     const { opportunityId } = (await req.json()) as Body
     if (!opportunityId) {
       return NextResponse.json({ ok: false, error: 'bad_request' }, { status: 400 })
     }
 
-    const url = process.env.SUPABASE_URL!
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+    const url = process.env.SUPABASE_URL
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    if (!url || !serviceKey) {
+      return NextResponse.json({ ok: false, error: 'supabase_env_missing' }, { status: 500 })
+    }
     const supabase = createClient(url, serviceKey, { auth: { persistSession: false } })
 
-    // 1) Carica annuncio
     const { data: opps, error: oErr } = await supabase
       .from('opportunities')
       .select('id, sport, role, region, province, city, title, club_name')
@@ -48,7 +58,6 @@ export async function POST(req: Request) {
     }
     const opp = opps[0] as OpportunityRow
 
-    // 2) Trova alert candidati (match minimo per sport; refino lato app)
     const { data: alerts, error: aErr } = await supabase
       .from('alerts')
       .select('user_id, sport, role, region, province, city')
@@ -60,7 +69,6 @@ export async function POST(req: Request) {
 
     const list = (alerts ?? []) as AlertRow[]
 
-    // 3) Filtro applicativo: ruolo (se specificato) + località (priorità city > province > region)
     const matches: AlertRow[] = list.filter((a) => {
       const roleOk = !a.role || a.role === opp.role
       const cityOk = a.city ? a.city === opp.city : true
@@ -76,7 +84,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, notified: 0 })
     }
 
-    // 4) Recupera email destinatari
     const userIds = Array.from(new Set(matches.map((m) => m.user_id)))
     const emails: { id: string; email: string }[] = []
     for (const uid of userIds) {
@@ -88,10 +95,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, notified: 0 })
     }
 
-    // 5) Invio email via Resend (HTTP)
+    // Guard no-op se manca Resend
+    if (!process.env.RESEND_API_KEY || !process.env.RESEND_FROM) {
+      console.warn('Resend ENV mancanti: no-op')
+      return NextResponse.json({ ok: true, noop: true, notified: 0 })
+    }
+
     const subject = `Nuova opportunità: ${opp.title}`
     const urlApp = process.env.NEXT_PUBLIC_BASE_URL ?? ''
-    const oppUrl = `${urlApp}/opportunities` // (in futuro: link diretto all’annuncio)
+    const oppUrl = `${urlApp}/opportunities`
     const html = `
       <div style="font-family:system-ui,Segoe UI,Roboto,Arial;">
         <p><b>${opp.club_name}</b> ha pubblicato un nuovo annuncio.</p>
@@ -105,11 +117,11 @@ export async function POST(req: Request) {
       await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${process.env.RESEND_API_KEY!}`,
+          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: 'Club&Player <no-reply@mail.clubandplayer.com>',
+          from: process.env.RESEND_FROM, // es. "Club&Player <no-reply@mail.clubandplayer.com>"
           to: rec.email,
           subject,
           html,
