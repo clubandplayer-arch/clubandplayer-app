@@ -1,6 +1,8 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
 import { Resend } from 'resend'
 import { createClient } from '@supabase/supabase-js'
+
+export const runtime = 'nodejs'
 
 type SendBody = {
   to?: string
@@ -11,7 +13,20 @@ type SendBody = {
   from?: string
 }
 
-export async function POST(req: Request) {
+// Health-check GET
+export async function GET() {
+  return NextResponse.json({ ok: true, route: '/api/notifications/send' })
+}
+
+// OPTIONS per evitare 405 su CORS/preflight
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: { Allow: 'POST,GET,OPTIONS' },
+  })
+}
+
+export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as SendBody
     if (!body?.subject) {
@@ -21,16 +36,17 @@ export async function POST(req: Request) {
     // Se non arriva "to" ma arriva "user_id", risaliamo all'email con Supabase Admin
     let to = body.to
     if (!to && body.user_id) {
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+      const supabaseUrl =
+        process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL
       const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
       if (!supabaseUrl || !serviceKey) {
         return NextResponse.json(
-          { error: 'Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY' },
+          { error: 'Missing SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY' },
           { status: 500 }
         )
       }
 
-      const admin = createClient(supabaseUrl, serviceKey)
+      const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } })
       const { data, error } = await admin.auth.admin.getUserById(body.user_id)
       if (error || !data?.user?.email) {
         return NextResponse.json({ error: 'User email not found' }, { status: 404 })
@@ -42,20 +58,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing recipient (to or user_id)' }, { status: 400 })
     }
 
+    // Guard in Preview: niente Resend → no-op 200
     const apiKey = process.env.RESEND_API_KEY
-    if (!apiKey) {
-      return NextResponse.json({ error: 'RESEND_API_KEY not configured' }, { status: 500 })
+    const fromEnv = process.env.RESEND_FROM
+    if (!apiKey || !fromEnv) {
+      console.warn('Resend ENV mancanti: eseguo no-op')
+      return NextResponse.json({ ok: true, noop: true })
     }
 
     const resend = new Resend(apiKey)
-    const from = body.from ?? 'Club&Player <notifications@your-domain.com>' // <-- sostituisci dominio verificato in Resend
+    const from = body.from ?? fromEnv // es. "Club&Player <no-reply@mail.clubandplayer.com>"
 
     const sendRes = await resend.emails.send({
       from,
       to,
       subject: body.subject,
       html: body.html ?? `<p>${body.text ?? 'Hai una nuova notifica.'}</p>`,
-      text: body.text
+      text: body.text,
     })
 
     if (sendRes.error) {
