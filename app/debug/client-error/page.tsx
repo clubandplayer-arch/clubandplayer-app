@@ -1,5 +1,4 @@
 'use client';
-import * as Sentry from '@sentry/nextjs';
 
 export default function ClientErrorPage() {
   return (
@@ -8,9 +7,8 @@ export default function ClientErrorPage() {
       <button
         className="rounded-md border px-3 py-2"
         onClick={() => {
-          const err = new Error('Manual client error');
-          Sentry.captureException(err);
-          throw err;
+          // Sentry lo intercetta come errore non gestito sul client
+          throw new Error('Client error test: manual throw');
         }}
       >
         Throw client error
