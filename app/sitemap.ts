@@ -2,12 +2,13 @@
 import type { MetadataRoute } from "next";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const base = process.env.NEXT_PUBLIC_BASE_URL ?? "https://clubandplayer-app.vercel.app";
+  const baseEnv =
+    process.env.NEXT_PUBLIC_BASE_URL ?? "https://clubandplayer-app.vercel.app";
+  const base = baseEnv.replace(/^http:\/\//, "https://");
   const now = new Date();
 
-  // Rotte principali statiche (puoi aggiungerne / rimuoverne quando vuoi)
   const staticPaths = [
-    "/",                // home
+    "/",
     "/feed",
     "/opportunities",
     "/clubs",
@@ -23,8 +24,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return staticPaths.map((path) => ({
     url: `${base}${path}`,
-    lastModified: now,             // aggiornamento "generico" odierno
-    changeFrequency: "daily",      // suggerimento a Google
+    lastModified: now,
+    changeFrequency: "daily",
     priority: path === "/" ? 1 : 0.7,
   }));
 }
