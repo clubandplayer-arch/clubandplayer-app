@@ -12,16 +12,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title,
     description,
-    alternates: {
-      canonical: `/u/${id}`,
-    },
+    alternates: { canonical: `/u/${id}` },
     openGraph: {
       title,
       description,
       url: `/u/${id}`,
-      images: [
-        { url: '/og.jpg', width: 1200, height: 630, alt: 'Club & Player' },
-      ],
+      images: [{ url: '/og.jpg', width: 1200, height: 630, alt: 'Club & Player' }],
       type: 'profile',
     },
     twitter: {
@@ -30,5 +26,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description,
       images: ['/og.jpg'],
     },
+    robots: { index: true, follow: true },
   };
 }
