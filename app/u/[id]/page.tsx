@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'   // 👈 aggiunto useMemo
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
@@ -27,7 +27,7 @@ type ApplicationRow = {
 export default function PublicAthleteProfile() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
-  const supabase = supabaseBrowser()
+  const supabase = useMemo(() => supabaseBrowser(), [])  // 👈 MEMOIZZA il client
 
   const [profile, setProfile] = useState<Profile | null>(null)
   const [apps, setApps] = useState<ApplicationRow[]>([])
@@ -35,6 +35,8 @@ export default function PublicAthleteProfile() {
   const [msg, setMsg] = useState<string>('')
 
   useEffect(() => {
+    let cancelled = false  // 👈 flag di cancellazione
+
     const load = async () => {
       setLoading(true)
       setMsg('')
@@ -49,6 +51,7 @@ export default function PublicAthleteProfile() {
         .eq('id', athleteId)
         .limit(1)
 
+      if (cancelled) return
       if (perr) { setMsg(`Errore profilo: ${perr.message}`); setLoading(false); return }
       if (!profs || profs.length === 0) { setMsg('Profilo non trovato.'); setLoading(false); return }
 
@@ -63,6 +66,8 @@ export default function PublicAthleteProfile() {
         .order('created_at', { ascending: false })
         .limit(5)
 
+      if (cancelled) return
+
       const appsTyped = (appsData ?? []) as ApplicationRow[]
 
       if (appsTyped.length > 0) {
@@ -72,15 +77,21 @@ export default function PublicAthleteProfile() {
           .select('id, title, club_name, city')
           .in('id', oppIds)
 
+        if (cancelled) return
+
         const byId = Object.fromEntries((opps ?? []).map(o => [o.id, o]))
         const merged = appsTyped.map(a => ({ ...a, opportunity: byId[a.opportunity_id as keyof typeof byId] }))
         setApps(merged)
+      } else {
+        setApps([])
       }
 
       setLoading(false)
     }
-    void load()
-  }, [params.id, router, supabase])
+
+    load()
+    return () => { cancelled = true }  // 👈 cleanup
+  }, [params.id, router, supabase])     // ok mantenere supabase: ora è stabile grazie a useMemo
 
   return (
     <main style={{maxWidth:760, margin:'0 auto', padding:24}}>
