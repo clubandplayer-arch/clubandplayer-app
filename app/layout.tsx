@@ -1,58 +1,82 @@
 // app/layout.tsx
-import "./globals.css";
-import type { Metadata, Viewport } from "next";
-import { Suspense } from "react";
+import './globals.css';
+import type { Metadata } from 'next';
+import { Suspense } from 'react';
 
-import HashCleanup from "@/components/auth/HashCleanup";
-import SessionSyncMount from "@/components/auth/SessionSyncMount";
-import CookieConsent from "@/components/misc/CookieConsent";
-import PostHogInit from "@/components/analytics/PostHogInit";
+import HashCleanup from '@/components/auth/HashCleanup';
+import SessionSyncMount from '@/components/auth/SessionSyncMount';
+import CookieConsent from '@/components/misc/CookieConsent';
+import PostHogInit from '@/components/analytics/PostHogInit';
 
-// Base URL dal tuo env Vercel (Production/Preview)
-const BASE = process.env.NEXT_PUBLIC_BASE_URL ?? "https://clubandplayer-app.vercel.app";
-// Indica a Next/SERP se indicizzare: solo in produzione mettiamo index/follow
-const isProd = process.env.VERCEL_ENV === "production";
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://clubandplayer.com';
+const SITE_NAME = 'Club & Player';
+const DEFAULT_TITLE = SITE_NAME;
+const DEFAULT_DESC = 'Club & Player App';
+const OG_IMAGE = '/og.jpg'; // metti il file in /public/og.jpg (1200x630)
 
 export const metadata: Metadata = {
-  metadataBase: new URL(BASE),
-  title: {
-    default: "Club & Player",
-    template: "%s – Club & Player",
-  },
-  description:
-    "Piattaforma che connette atleti e club: profili, opportunità e candidature in un unico posto.",
-  openGraph: {
-    type: "website",
-    siteName: "Club & Player",
-    url: "/",
-    images: [{ url: "/og.jpg", width: 1200, height: 630, alt: "Club & Player" }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Club & Player",
-    description:
-      "Piattaforma che connette atleti e club: profili, opportunità e candidature.",
-    images: ["/og.jpg"],
-  },
-  robots: {
-    index: isProd,
-    follow: isProd,
-  },
-  alternates: {
-    canonical: "/",
-  },
-  icons: [{ rel: "icon", url: "/favicon.ico" }],
-  themeColor: "#111827",
-};
+  // Serve a rendere assoluti gli URL (og:image, ecc.)
+  metadataBase: new URL(BASE_URL),
 
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
+  title: {
+    default: DEFAULT_TITLE,
+    template: `%s | ${SITE_NAME}`,
+  },
+  description: DEFAULT_DESC,
+  viewport: 'width=device-width, initial-scale=1',
+
+  openGraph: {
+    type: 'website',
+    url: BASE_URL,
+    siteName: SITE_NAME,
+    title: DEFAULT_TITLE,
+    description: DEFAULT_DESC,
+    images: [{ url: OG_IMAGE, width: 1200, height: 630, alt: SITE_NAME }],
+    locale: 'it_IT',
+  },
+
+  twitter: {
+    card: 'summary_large_image',
+    title: DEFAULT_TITLE,
+    description: DEFAULT_DESC,
+    images: [OG_IMAGE],
+  },
+
+  // niente canonical globale qui: meglio lasciarlo per-pagina se servirà
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // JSON-LD (Organization)
+  const jsonLdOrg = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: SITE_NAME,
+    url: BASE_URL,
+    logo: `${BASE_URL}${OG_IMAGE}`,
+  };
+
+  // JSON-LD (WebSite + SearchAction futura, se aggiungerai una ricerca interna)
+  const jsonLdWebsite = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: SITE_NAME,
+    url: BASE_URL,
+  };
+
   return (
     <html lang="it">
+      <head>
+        {/* Structured Data */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdOrg) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdWebsite) }}
+        />
+      </head>
+
       <body>
         {/* Init analytics (rispetta consenso, pageview & identify) */}
         <Suspense fallback={null}>
@@ -64,7 +88,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <HashCleanup />
         </Suspense>
 
-        {/* Contenuto pagina (copre useSearchParams, ecc.) */}
+        {/* Contenuto pagina */}
         <Suspense fallback={null}>{children}</Suspense>
 
         {/* Sync sessione client->server (cookie) */}
