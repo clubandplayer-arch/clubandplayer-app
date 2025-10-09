@@ -1,31 +1,21 @@
 // app/sitemap.ts
-import type { MetadataRoute } from "next";
+import type { MetadataRoute } from 'next';
 
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseEnv =
-    process.env.NEXT_PUBLIC_BASE_URL ?? "https://clubandplayer-app.vercel.app";
-  const base = baseEnv.replace(/^http:\/\//, "https://");
-  const now = new Date();
+export default function sitemap(): MetadataRoute.Sitemap {
+  const base =
+    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, '') ||
+    'https://clubandplayer.app';
 
-  const staticPaths = [
-    "/",
-    "/feed",
-    "/opportunities",
-    "/clubs",
-    "/search/athletes",
-    "/search/club",
-    "/login",
-    "/signup",
-    "/profile",
-    "/settings",
-    "/legal/privacy",
-    "/legal/terms",
+  // NB: /clubs rimosso (legacy)
+  return [
+    { url: `${base}/`, changeFrequency: 'weekly', priority: 1 },
+    { url: `${base}/feed`, changeFrequency: 'daily', priority: 0.9 },
+    { url: `${base}/opportunities`, changeFrequency: 'hourly', priority: 1 },
+    { url: `${base}/opportunities/new`, changeFrequency: 'weekly', priority: 0.6 },
+    { url: `${base}/profile`, changeFrequency: 'weekly', priority: 0.6 },
+    { url: `${base}/login`, changeFrequency: 'yearly', priority: 0.3 },
+    { url: `${base}/signup`, changeFrequency: 'yearly', priority: 0.3 },
+    { url: `${base}/legal/privacy`, changeFrequency: 'yearly', priority: 0.2 },
+    { url: `${base}/legal/terms`, changeFrequency: 'yearly', priority: 0.2 },
   ];
-
-  return staticPaths.map((path) => ({
-    url: `${base}${path}`,
-    lastModified: now,
-    changeFrequency: "daily",
-    priority: path === "/" ? 1 : 0.7,
-  }));
 }
