@@ -2,20 +2,22 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
+import { Inter } from 'next/font/google';
 
 import HashCleanup from '@/components/auth/HashCleanup';
 import SessionSyncMount from '@/components/auth/SessionSyncMount';
 import CookieConsent from '@/components/misc/CookieConsent';
 import PostHogInit from '@/components/analytics/PostHogInit';
 
+const inter = Inter({ subsets: ['latin'], display: 'swap' });
+
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://clubandplayer.com';
 const SITE_NAME = 'Club & Player';
 const DEFAULT_TITLE = SITE_NAME;
 const DEFAULT_DESC = 'Club & Player App';
-const OG_IMAGE = '/og.jpg'; // metti il file in /public/og.jpg (1200x630)
+const OG_IMAGE = '/og.jpg'; // /public/og.jpg (1200x630)
 
 export const metadata: Metadata = {
-  // Serve a rendere assoluti gli URL (og:image, ecc.)
   metadataBase: new URL(BASE_URL),
 
   title: {
@@ -41,8 +43,6 @@ export const metadata: Metadata = {
     description: DEFAULT_DESC,
     images: [OG_IMAGE],
   },
-
-  // niente canonical globale qui: meglio lasciarlo per-pagina se servirà
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -55,7 +55,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     logo: `${BASE_URL}${OG_IMAGE}`,
   };
 
-  // JSON-LD (WebSite + SearchAction futura, se aggiungerai una ricerca interna)
+  // JSON-LD (WebSite)
   const jsonLdWebsite = {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
@@ -77,7 +77,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
 
-      <body>
+      <body className={`${inter.className} antialiased bg-neutral-50 text-neutral-900`}>
         {/* Init analytics (rispetta consenso, pageview & identify) */}
         <Suspense fallback={null}>
           <PostHogInit />
