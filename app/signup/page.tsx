@@ -69,18 +69,20 @@ export default function SignupPage() {
 
   return (
     <main className="container mx-auto py-10">
-      {/* barra sottile flag-like */}
-      <div className="bg-gradient-to-r from-[var(--brand)] via-white to-[var(--accent)] h-1 rounded-full mb-8" />
+      {/* barra sottile tricolore 🇮🇹 */}
+      <div className="bg-gradient-to-r from-[#009246] via-white to-[#CE2B37] h-1 rounded-full mb-8" />
 
       <div className="grid gap-10 md:grid-cols-12 items-start">
         {/* HERO TESTO - stile LinkedIn */}
         <section className="md:col-span-7">
           <h1 className="text-3xl sm:text-4xl font-bold leading-tight">
-            Ti diamo il benvenuto nella community sportiva più grande d'Italia, ma che ci auguriamo diventi la più grande al mondo.
+            Ti diamo il benvenuto nella community sportiva più grande d'Italia.
           </h1>
-          <h2 className="text-1xl sm:text-2xl font-bold leading-tight"><em>
-            entra a far parte di questo nuovo progetto
-          </em></h2>
+          <br />
+          <h2 className="text-1xl sm:text-2xl font-bold leading-tight">
+            <em>entra a far parte di questo nuovo progetto!</em>
+          </h2>
+          <br />
           <p className="mt-4 lead max-w-2xl">
             Connettiti con club e atleti, pubblica opportunità, costruisci la tua carriera.
             Iscriviti in pochi secondi: scegli se sei un <b>Club</b> o un <b>Atleta</b>.
