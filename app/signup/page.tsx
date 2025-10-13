@@ -78,9 +78,9 @@ export default function SignupPage() {
           <h1 className="text-3xl sm:text-4xl font-bold leading-tight">
             Ti diamo il benvenuto nella community sportiva più grande d'Italia, ma che ci auguriamo diventi la più grande al mondo.
           </h1>
-          <h2 className="text-2xl sm:text-3xl font-bold leading-tight">
+          <h2 className="text-1xl sm:text-2xl font-bold leading-tight"><em></em>
             entra a far parte di questo nuovo progetto
-          </h2>
+          </em></h2>
           <p className="mt-4 lead max-w-2xl">
             Connettiti con club e atleti, pubblica opportunità, costruisci la tua carriera.
             Iscriviti in pochi secondi: scegli se sei un <b>Club</b> o un <b>Atleta</b>.
