@@ -2,9 +2,10 @@
 
 /* === Theme tokens (CSS variables) === */
 :root {
-  /* Colori corporate */
-  --brand:  #0A66C2; /* Celeste LinkedIn */
-  --accent: #B31B1B; /* Rosso “pompeiano” */
+  /* Palette bandiera norvegese */
+  --brand:  #00205B; /* navy blue */
+  --accent: #EF2B2D; /* red */
+
   /* Neutri */
   --bg:     #ffffff;
   --fg:     #111827; /* gray-900 */
@@ -29,7 +30,7 @@ html, body {
 
 /* Migliore rendering testo + focus accessibile */
 * { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
-:focus-visible { 
+:focus-visible {
   outline: none;
   @apply ring-2 ring-[var(--brand)] ring-offset-2 ring-offset-white dark:ring-offset-neutral-900;
 }
@@ -40,20 +41,20 @@ html, body {
 /* ------------------------------------ */
 /* Bottoni riutilizzabili               */
 /* ------------------------------------ */
-.btn { 
-  @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium 
+.btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium
          transition active:scale-[.98] disabled:opacity-60;
 }
 .btn-brand   { @apply text-white bg-[var(--brand)] hover:opacity-95; }
-.btn-primary { @apply text-white bg-[var(--brand)] hover:opacity-95; } /* alias utile */
+.btn-primary { @apply text-white bg-[var(--brand)] hover:opacity-95; } /* alias */
 .btn-outline { @apply border border-neutral-200 bg-white hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800; }
 .btn-ghost   { @apply hover:bg-neutral-100 dark:hover:bg-neutral-800; }
 
 /* ------------------------------------ */
 /* Card                                 */
 /* ------------------------------------ */
-.card { 
-  @apply rounded-2xl border border-neutral-200 bg-white shadow-sm 
+.card {
+  @apply rounded-2xl border border-neutral-200 bg-white shadow-sm
          dark:border-neutral-800 dark:bg-neutral-900;
 }
 .card-hover { @apply transition-shadow hover:shadow-md; }
@@ -65,8 +66,8 @@ html, body {
 .badge-brand  { @apply text-white bg-[var(--brand)]; }
 .badge-accent { @apply text-white bg-[var(--accent)]; }
 
-.chip { 
-  @apply inline-flex items-center gap-1 rounded-full border border-neutral-200 px-2.5 py-1 text-xs 
+.chip {
+  @apply inline-flex items-center gap-1 rounded-full border border-neutral-200 px-2.5 py-1 text-xs
          dark:border-neutral-700;
 }
 .chip-brand { @apply text-white bg-[var(--brand)] border-transparent; }
@@ -78,8 +79,8 @@ html, body {
 .label { @apply mb-1 block text-sm font-medium text-neutral-700 dark:text-neutral-300; }
 
 .input, .select, .textarea {
-  @apply w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm 
-         placeholder-neutral-400 
+  @apply w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm
+         placeholder-neutral-400
          focus:outline-none focus:ring-2 focus:ring-[var(--brand)] focus:border-[var(--brand)]
          dark:border-neutral-700 dark:bg-neutral-900;
 }
@@ -94,3 +95,6 @@ h3 { @apply text-lg md:text-xl font-semibold tracking-tight mt-2 mb-2; }
 
 .muted { color: var(--muted); }
 .lead  { @apply text-neutral-600 dark:text-neutral-300; }
+
+/* Link evidenziati */
+.link { @apply underline underline-offset-2 hover:opacity-90; text-decoration-color: var(--brand); }

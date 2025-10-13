@@ -68,104 +68,129 @@ export default function SignupPage() {
   };
 
   return (
-    <main className="min-h-[60vh] flex items-center justify-center p-6">
-      <div className="w-full max-w-sm rounded-2xl border p-6 shadow-sm space-y-4">
-        <h1 className="text-xl font-semibold">Crea un account</h1>
+    <main className="container mx-auto py-10">
+      {/* barra sottile flag-like */}
+      <div className="bg-gradient-to-r from-[var(--brand)] via-white to-[var(--accent)] h-1 rounded-full mb-8" />
 
-        {err && (
-          <p className="rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700">{err}</p>
-        )}
-        {ok && (
-          <p className="rounded-md border border-green-300 bg-green-50 p-2 text-sm text-green-700">{ok}</p>
-        )}
+      <div className="grid gap-10 md:grid-cols-12 items-start">
+        {/* HERO TESTO - stile LinkedIn */}
+        <section className="md:col-span-7">
+          <h1 className="text-3xl sm:text-4xl font-bold leading-tight">
+            Ti diamo il benvenuto nella tua community calcistica
+          </h1>
+          <p className="mt-4 lead max-w-2xl">
+            Connettiti con club e atleti, pubblica opportunità, costruisci la tua carriera.
+            Iscriviti in pochi secondi: scegli se sei un <b>Club</b> o un <b>Atleta</b>.
+          </p>
 
-        <form onSubmit={onSubmit} className="space-y-3">
-          <label className="block text-sm">
-            Nome (facoltativo)
-            <input
-              type="text"
-              className="mt-1 w-full rounded-md border px-3 py-2"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              autoComplete="name"
-            />
-          </label>
+          <ul className="mt-6 space-y-3 text-sm">
+            <li>• Scopri e pubblica <b>opportunità</b> reali</li>
+            <li>• Crea un <b>profilo</b> chiaro e aggiornato</li>
+            <li>• Ricevi <b>candidature</b> e messaggi in app</li>
+          </ul>
+        </section>
 
-          <label className="block text-sm">
-            Email
-            <input
-              type="email"
-              className="mt-1 w-full rounded-md border px-3 py-2"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoComplete="email"
-            />
-          </label>
+        {/* CARD FORM */}
+        <section className="md:col-span-5">
+          <div className="card p-6 space-y-4">
+            <h2 className="sr-only">Crea un account</h2>
 
-          <label className="block text-sm">
-            Password
-            <input
-              type="password"
-              className="mt-1 w-full rounded-md border px-3 py-2"
-              value={pwd1}
-              onChange={(e) => setPwd1(e.target.value)}
-              required
-              minLength={8}
-              autoComplete="new-password"
-            />
-          </label>
+            {err && (
+              <p className="rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700">
+                {err}
+              </p>
+            )}
+            {ok && (
+              <p className="rounded-md border border-green-300 bg-green-50 p-2 text-sm text-green-700">
+                {ok}
+              </p>
+            )}
 
-          <label className="block text-sm">
-            Conferma password
-            <input
-              type="password"
-              className="mt-1 w-full rounded-md border px-3 py-2"
-              value={pwd2}
-              onChange={(e) => setPwd2(e.target.value)}
-              required
-              minLength={8}
-              autoComplete="new-password"
-            />
-          </label>
-
-          {/* Scelta ruolo */}
-          <fieldset className="mt-2">
-            <legend className="block text-sm font-medium mb-1">Che tipo di account vuoi creare?</legend>
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <label className="flex items-center gap-2 rounded-md border px-3 py-2 cursor-pointer hover:bg-gray-50">
+            <form onSubmit={onSubmit} className="space-y-3">
+              <label className="label">
+                Nome (facoltativo)
                 <input
-                  type="radio"
-                  name="role"
-                  checked={role === 'athlete'}
-                  onChange={() => setRole('athlete')}
+                  type="text"
+                  className="input"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  autoComplete="name"
                 />
-                Atleta
               </label>
-              <label className="flex items-center gap-2 rounded-md border px-3 py-2 cursor-pointer hover:bg-gray-50">
+
+              <label className="label">
+                Email
                 <input
-                  type="radio"
-                  name="role"
-                  checked={role === 'club'}
-                  onChange={() => setRole('club')}
+                  type="email"
+                  className="input"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  autoComplete="email"
                 />
-                Club
               </label>
-            </div>
-          </fieldset>
 
-          <button
-            type="submit"
-            disabled={busy}
-            className="w-full rounded-md bg-black px-4 py-2 text-white disabled:opacity-50"
-          >
-            {busy ? 'Registrazione…' : 'Registrati'}
-          </button>
-        </form>
+              <label className="label">
+                Password
+                <input
+                  type="password"
+                  className="input"
+                  value={pwd1}
+                  onChange={(e) => setPwd1(e.target.value)}
+                  required
+                  minLength={8}
+                  autoComplete="new-password"
+                />
+              </label>
 
-        <p className="text-xs text-gray-500">
-          Hai già un account? <a href="/login" className="underline">Accedi</a>
-        </p>
+              <label className="label">
+                Conferma password
+                <input
+                  type="password"
+                  className="input"
+                  value={pwd2}
+                  onChange={(e) => setPwd2(e.target.value)}
+                  required
+                  minLength={8}
+                  autoComplete="new-password"
+                />
+              </label>
+
+              {/* Scelta ruolo */}
+              <fieldset className="mt-2">
+                <legend className="label mb-1">Che tipo di account vuoi creare?</legend>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <label className="flex items-center gap-2 rounded-md border px-3 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-neutral-800 dark:border-neutral-700">
+                    <input
+                      type="radio"
+                      name="role"
+                      checked={role === 'athlete'}
+                      onChange={() => setRole('athlete')}
+                    />
+                    Atleta
+                  </label>
+                  <label className="flex items-center gap-2 rounded-md border px-3 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-neutral-800 dark:border-neutral-700">
+                    <input
+                      type="radio"
+                      name="role"
+                      checked={role === 'club'}
+                      onChange={() => setRole('club')}
+                    />
+                    Club
+                  </label>
+                </div>
+              </fieldset>
+
+              <button type="submit" disabled={busy} className="btn btn-brand w-full">
+                {busy ? 'Registrazione…' : 'Registrati'}
+              </button>
+            </form>
+
+            <p className="text-xs text-gray-500">
+              Hai già un account? <a href="/login" className="link">Accedi</a>
+            </p>
+          </div>
+        </section>
       </div>
     </main>
   );
