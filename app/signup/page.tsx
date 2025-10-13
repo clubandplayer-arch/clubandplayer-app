@@ -1,8 +1,11 @@
+// app/signup/page.tsx
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
+
+type Role = 'athlete' | 'club';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -12,9 +15,20 @@ export default function SignupPage() {
   const [name, setName] = useState('');
   const [pwd1, setPwd1] = useState('');
   const [pwd2, setPwd2] = useState('');
+  const [role, setRole] = useState<Role>('athlete');
+
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
+
+  // se già loggato → vai alla feed
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) router.replace('/feed');
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,18 +40,25 @@ export default function SignupPage() {
 
     setBusy(true);
     try {
-      const emailRedirectTo = `${window.location.origin}/login`;
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? window.location.origin;
+      const emailRedirectTo = `${baseUrl}/auth/callback`;
+
       const { error } = await supabase.auth.signUp({
         email,
         password: pwd1,
         options: {
-          data: name ? { full_name: name } : undefined,
+          // salviamo anche il ruolo scelto
+          data: {
+            ...(name ? { full_name: name } : {}),
+            role,
+          },
           emailRedirectTo,
         },
       });
       if (error) throw error;
 
       setOk('Registrazione avviata! Controlla la tua email per confermare l’account.');
+      // opzionale: dopo 1.5s porta alla login
       setTimeout(() => router.replace('/login'), 1500);
     } catch (e: any) {
       setErr(e?.message ?? 'Errore durante la registrazione.');
@@ -107,6 +128,31 @@ export default function SignupPage() {
               autoComplete="new-password"
             />
           </label>
+
+          {/* Scelta ruolo */}
+          <fieldset className="mt-2">
+            <legend className="block text-sm font-medium mb-1">Che tipo di account vuoi creare?</legend>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <label className="flex items-center gap-2 rounded-md border px-3 py-2 cursor-pointer hover:bg-gray-50">
+                <input
+                  type="radio"
+                  name="role"
+                  checked={role === 'athlete'}
+                  onChange={() => setRole('athlete')}
+                />
+                Atleta
+              </label>
+              <label className="flex items-center gap-2 rounded-md border px-3 py-2 cursor-pointer hover:bg-gray-50">
+                <input
+                  type="radio"
+                  name="role"
+                  checked={role === 'club'}
+                  onChange={() => setRole('club')}
+                />
+                Club
+              </label>
+            </div>
+          </fieldset>
 
           <button
             type="submit"
