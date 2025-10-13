@@ -78,7 +78,7 @@ export default function SignupPage() {
           <h1 className="text-3xl sm:text-4xl font-bold leading-tight">
             Ti diamo il benvenuto nella community sportiva più grande d'Italia, ma che ci auguriamo diventi la più grande al mondo.
           </h1>
-          <h2 className="text-1xl sm:text-2xl font-bold leading-tight"><em></em>
+          <h2 className="text-1xl sm:text-2xl font-bold leading-tight"><em>
             entra a far parte di questo nuovo progetto
           </em></h2>
           <p className="mt-4 lead max-w-2xl">
