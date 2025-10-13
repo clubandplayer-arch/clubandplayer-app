@@ -76,8 +76,11 @@ export default function SignupPage() {
         {/* HERO TESTO - stile LinkedIn */}
         <section className="md:col-span-7">
           <h1 className="text-3xl sm:text-4xl font-bold leading-tight">
-            Ti diamo il benvenuto nella community sportiva più grande al mondo
+            Ti diamo il benvenuto nella community sportiva più grande d'Italia, ma che ci auguriamo diventi la più grande al mondo.
           </h1>
+          <h2 className="text-2xl sm:text-3xl font-bold leading-tight">
+            entra a far parte di questo nuovo progetto
+          </h2>
           <p className="mt-4 lead max-w-2xl">
             Connettiti con club e atleti, pubblica opportunità, costruisci la tua carriera.
             Iscriviti in pochi secondi: scegli se sei un <b>Club</b> o un <b>Atleta</b>.
