@@ -76,7 +76,7 @@ export default function SignupPage() {
         {/* HERO TESTO - stile LinkedIn */}
         <section className="md:col-span-7">
           <h1 className="text-3xl sm:text-4xl font-bold leading-tight">
-            Ti diamo il benvenuto nella tua community calcistica
+            Ti diamo il benvenuto nella community sportiva più grande al mondo
           </h1>
           <p className="mt-4 lead max-w-2xl">
             Connettiti con club e atleti, pubblica opportunità, costruisci la tua carriera.
