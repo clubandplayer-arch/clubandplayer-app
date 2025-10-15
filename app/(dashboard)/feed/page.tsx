@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import FeedLatest from '@/components/feed/FeedLatest';
 import WhoToFollow from '@/components/feed/WhoToFollow';
 import FeedPosts from '@/components/feed/FeedPosts';
+import ProfileMiniCard from '@/components/profiles/ProfileMiniCard';
 
 type Role = 'club' | 'athlete' | 'guest';
 
@@ -33,21 +34,10 @@ export default function FeedPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         {/* SINISTRA */}
         <aside className="hidden lg:col-span-3 lg:flex lg:flex-col lg:gap-6">
-          {/* Mini profilo */}
+          {/* Mini profilo (sostituisce “Benvenuto! / Vai al profilo”) */}
           <div className="card p-4">
             <div className="mb-2 text-sm text-neutral-500">Il tuo profilo</div>
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-neutral-200" />
-              <div className="min-w-0">
-                <div className="truncate font-medium">Benvenuto!</div>
-                <Link
-                  href={role === 'club' ? '/club/profile' : '/profile'}
-                  className="link text-sm"
-                >
-                  Vai al profilo
-                </Link>
-              </div>
-            </div>
+            <ProfileMiniCard />
           </div>
 
           {/* Azioni rapide per club */}
@@ -71,11 +61,7 @@ export default function FeedPage() {
           {/* Composer (placeholder per ora) */}
           <div className="card p-4">
             <div className="mb-3 text-sm text-neutral-500">Condividi un aggiornamento</div>
-            <textarea
-              className="textarea"
-              rows={3}
-              placeholder="Scrivi qualcosa…"
-            />
+            <textarea className="textarea" rows={3} placeholder="Scrivi qualcosa…" />
             <div className="mt-3 flex justify-end">
               <button className="btn btn-outline text-sm" disabled>
                 Pubblica (coming soon)
@@ -96,39 +82,12 @@ export default function FeedPage() {
         {/* DESTRA */}
         <aside className="hidden xl:col-span-3 xl:flex xl:flex-col xl:gap-6">
           <div className="card p-4">
-            <h3 className="mb-3 text-sm font-semibold text-neutral-700 dark:text-neutral-200">
-              🔥 Trending
-            </h3>
+            <h3 className="mb-3 text-sm font-semibold text-neutral-700 dark:text-neutral-200">🔥 Trending</h3>
             <ul className="space-y-2 text-sm">
-              <li>
-                <a
-                  href="/search/athletes?trend=mercato"
-                  className="link"
-                >
-                  Calciomercato Dilettanti
-                </a>
-              </li>
-              <li>
-                <a
-                  href="/opportunities?role=goalkeeper&gender=f"
-                  className="link"
-                >
-                  Portieri femminili U21
-                </a>
-              </li>
-              <li>
-                <a href="/feed?tag=preparazione" className="link">
-                  Preparazione invernale
-                </a>
-              </li>
-              <li>
-                <a
-                  href="/opportunities?league=serie-d&role=winger"
-                  className="link"
-                >
-                  Serie D – Esterni veloci
-                </a>
-              </li>
+              <li><a href="/search/athletes?trend=mercato" className="link">Calciomercato Dilettanti</a></li>
+              <li><a href="/opportunities?role=goalkeeper&gender=f" className="link">Portieri femminili U21</a></li>
+              <li><a href="/feed?tag=preparazione" className="link">Preparazione invernale</a></li>
+              <li><a href="/opportunities?league=serie-d&role=winger" className="link">Serie D – Esterni veloci</a></li>
             </ul>
           </div>
 
