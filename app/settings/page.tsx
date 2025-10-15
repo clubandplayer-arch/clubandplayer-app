@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
+import InterestAreaForm from '@/components/profiles/InterestAreaForm' // 👈 PLURALE
 
 type Profile = {
   id: string
@@ -62,7 +63,6 @@ export default function SettingsPage() {
     const { error } = await supabase
       .from('profiles')
       .update({
-        // aggiorniamo solo il flag email messaggi (la colonna esiste dal passo notifiche)
         notify_email_new_message: notifyEmailNewMessage,
       })
       .eq('id', userId)
@@ -92,13 +92,16 @@ export default function SettingsPage() {
           <section style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 16 }}>
             <h2 style={{ marginTop: 0 }}>Profilo</h2>
             <p style={{ margin: '8px 0' }}>
-              Tipo account:{' '}
-              <b>{accountType ?? '—'}</b>
+              Tipo account: <b>{accountType ?? '—'}</b>
             </p>
             <p style={{ margin: '8px 0' }}>
-              Profilo pubblico:{' '}
-              <Link href="/u/me">/u/me</Link>
+              Profilo pubblico: <Link href="/u/me">/u/me</Link>
             </p>
+          </section>
+
+          <section style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 16 }}>
+            <h2 style={{ marginTop: 0 }}>Zona di interesse</h2>
+            <InterestAreaForm />
           </section>
 
           <section style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 16 }}>
@@ -136,7 +139,7 @@ export default function SettingsPage() {
               style={{
                 padding: '8px 12px',
                 borderRadius: 8,
-                border: '1px solid #e5e7eb',
+                border: '1px solid '#e5e7eb',
                 background: '#fff',
                 cursor: 'pointer'
               }}
