@@ -1,274 +1,392 @@
-// components/profiles/ProfileEditForm.tsx
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import InterestAreaForm from '@/components/profiles/InterestAreaForm';
-import { SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
+import { useRouter } from 'next/navigation';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
-type Foot = 'Destro' | 'Sinistro' | 'Ambidestro' | '';
-type Visibility = 'public' | 'private' | '';
+type LocationLevel = 'region' | 'province' | 'municipality';
 
-type ServerProfile = {
-  id?: string;
-  display_name?: string;
-  bio?: string;
-  height_cm?: number | null;
-  weight_kg?: number | null;
-  foot?: string | null;
-  sport?: string | null;
-  role?: string | null;
-  visibility?: Visibility | null;
-  // fallback shapes
-  profile?: any;
+type LocationRow = {
+  id: number;
+  name: string;
 };
 
+type AccountType = 'club' | 'athlete' | null;
+
+type Profile = {
+  account_type: AccountType;
+  interest_country: string | null;
+  interest_region_id: number | null;
+  interest_province_id: number | null;
+  interest_municipality_id: number | null;
+  foot: string | null;
+  height_cm: number | null;
+  weight_kg: number | null;
+  notify_email_new_message: boolean;
+};
+
+// Crea un client Supabase browser-side usando le env pubbliche
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabase = createSupabaseClient(supabaseUrl, supabaseAnonKey);
+
 export default function ProfileEditForm() {
+  const router = useRouter();
+
+  // Profile state
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-  const [okMsg, setOkMsg] = useState<string | null>(null);
-  const [pid, setPid] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  // Campi base
-  const [displayName, setDisplayName] = useState('');
-  const [bio, setBio] = useState('');
+  // Cascata local state
+  const [regionId, setRegionId] = useState<number | null>(null);
+  const [provinceId, setProvinceId] = useState<number | null>(null);
+  const [municipalityId, setMunicipalityId] = useState<number | null>(null);
 
-  // Fisico/tecnico
-  const [height, setHeight] = useState<string>(''); // string per input number
-  const [weight, setWeight] = useState<string>('');
-  const [foot, setFoot] = useState<Foot>('');
+  const [regions, setRegions] = useState<LocationRow[]>([]);
+  const [provinces, setProvinces] = useState<LocationRow[]>([]);
+  const [municipalities, setMunicipalities] = useState<LocationRow[]>([]);
 
-  // Sport & ruolo
-  const [sport, setSport] = useState<string>('');
-  const roleOptions = useMemo(() => SPORTS_ROLES[sport] ?? [], [sport]);
-  const [role, setRole] = useState<string>('');
+  // Altri campi profilo
+  const [foot, setFoot] = useState<string>('');
+  const [heightCm, setHeightCm] = useState<number | ''>('');
+  const [weightKg, setWeightKg] = useState<number | ''>('');
+  const [notifyEmail, setNotifyEmail] = useState<boolean>(true);
 
-  const [visibility, setVisibility] = useState<Visibility>('public');
+  // Helpers RPC
+  async function fetchChildren(level: LocationLevel, parent: number | null) {
+    const { data, error } = await supabase.rpc('location_children', {
+      level,
+      parent,
+    });
+    if (error) throw error;
+    return (data ?? []) as LocationRow[];
+  }
 
-  // Carica profilo
+  // Prima load: profilo + regioni
   useEffect(() => {
-    let cancelled = false;
     (async () => {
-      setLoading(true);
-      setErr(null);
-      setOkMsg(null);
       try {
-        const r = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
-        const t = await r.text();
-        if (!r.ok) throw new Error(t || `HTTP ${r.status}`);
-        const j = t ? JSON.parse(t) : {};
-        const p: ServerProfile = j?.data ?? j?.profile ?? j ?? {};
+        setLoading(true);
 
-        if (cancelled) return;
+        // 1) profilo attuale
+        const r = await fetch('/api/profiles/me', {
+          credentials: 'include',
+          cache: 'no-store',
+        });
+        if (!r.ok) throw new Error('Impossibile leggere il profilo');
+        const j = await r.json();
 
-        setPid(p?.id ?? p?.profile?.id ?? null);
-        setDisplayName(p?.display_name ?? p?.profile?.display_name ?? '');
-        setBio(p?.bio ?? p?.profile?.bio ?? '');
+        const p: Profile = {
+          account_type: (j?.account_type ?? null) as AccountType,
+          interest_country: j?.interest_country ?? 'IT',
+          interest_region_id: j?.interest_region_id ?? null,
+          interest_province_id: j?.interest_province_id ?? null,
+          interest_municipality_id: j?.interest_municipality_id ?? null,
+          foot: j?.foot ?? '',
+          height_cm: j?.height_cm ?? null,
+          weight_kg: j?.weight_kg ?? null,
+          notify_email_new_message: Boolean(j?.notify_email_new_message ?? true),
+        };
 
-        setHeight((p?.height_cm ?? p?.profile?.height_cm ?? '')?.toString() || '');
-        setWeight((p?.weight_kg ?? p?.profile?.weight_kg ?? '')?.toString() || '');
-        setFoot(((p?.foot ?? p?.profile?.foot) as Foot) ?? '');
+        setProfile(p);
 
-        const initSport = (p?.sport ?? p?.profile?.sport ?? '') as string;
-        setSport(initSport);
-        setRole((p?.role ?? p?.profile?.role ?? '') as string);
+        setRegionId(p.interest_region_id);
+        setProvinceId(p.interest_province_id);
+        setMunicipalityId(p.interest_municipality_id);
 
-        setVisibility((p?.visibility ?? p?.profile?.visibility ?? 'public') as Visibility);
+        setFoot(p.foot || '');
+        setHeightCm(p.height_cm ?? '');
+        setWeightKg(p.weight_kg ?? '');
+        setNotifyEmail(Boolean(p.notify_email_new_message));
+
+        // 2) carica regioni
+        const rs = await fetchChildren('region', null);
+        setRegions(rs);
+
+        // 3) se presenti selezioni pregresse, popola a cascata
+        if (p.interest_region_id) {
+          const ps = await fetchChildren('province', p.interest_region_id);
+          setProvinces(ps);
+        } else {
+          setProvinces([]);
+        }
+
+        if (p.interest_province_id) {
+          const ms = await fetchChildren('municipality', p.interest_province_id);
+          setMunicipalities(ms);
+        } else {
+          setMunicipalities([]);
+        }
       } catch (e: any) {
-        if (!cancelled) setErr(e.message || 'Errore nel caricamento profilo');
+        console.error(e);
+        setError(e?.message ?? 'Errore caricamento profilo');
       } finally {
-        if (!cancelled) setLoading(false);
+        setLoading(false);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
-  async function handleSubmit(e: React.FormEvent) {
+  // Quando cambia regionId, ricarica province e resetta municipality
+  useEffect(() => {
+    (async () => {
+      if (regionId == null) {
+        setProvinces([]);
+        setProvinceId(null);
+        setMunicipalities([]);
+        setMunicipalityId(null);
+        return;
+      }
+      try {
+        const ps = await fetchChildren('province', regionId);
+        setProvinces(ps);
+        setProvinceId((prev) =>
+          ps.some((p) => p.id === prev) ? prev : null
+        );
+        setMunicipalities([]);
+        setMunicipalityId(null);
+      } catch (e) {
+        console.error(e);
+        setProvinces([]);
+        setProvinceId(null);
+      }
+    })();
+  }, [regionId]);
+
+  // Quando cambia provinceId, ricarica municipalities
+  useEffect(() => {
+    (async () => {
+      if (provinceId == null) {
+        setMunicipalities([]);
+        setMunicipalityId(null);
+        return;
+      }
+      try {
+        const ms = await fetchChildren('municipality', provinceId);
+        setMunicipalities(ms);
+        setMunicipalityId((prev) =>
+          ms.some((m) => m.id === prev) ? prev : null
+        );
+      } catch (e) {
+        console.error(e);
+        setMunicipalities([]);
+        setMunicipalityId(null);
+      }
+    })();
+  }, [provinceId]);
+
+  const canSave = useMemo(() => {
+    return !saving && profile != null;
+  }, [saving, profile]);
+
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setErr(null);
-    setOkMsg(null);
-
-    const h = height.trim() ? Number(height) : null;
-    const w = weight.trim() ? Number(weight) : null;
-    if (h != null && (isNaN(h) || h < 100 || h > 230)) {
-      setErr('Altezza non valida (100–230 cm).');
-      return;
-    }
-    if (w != null && (isNaN(w) || w < 30 || w > 180)) {
-      setErr('Peso non valido (30–180 kg).');
-      return;
-    }
-
-    // ⛔️ Niente interest_* legacy qui: li gestisce InterestAreaForm salvando direttamente su `profiles`
-    const payload = {
-      display_name: displayName.trim() || null,
-      bio: bio.trim() || null,
-      height_cm: h,
-      weight_kg: w,
-      foot: foot || null,
-      sport: sport || null,
-      role: role || null,
-      visibility: visibility || 'public',
-      type: 'athlete',
-    };
+    if (!canSave) return;
 
     setSaving(true);
+    setError(null);
+    setMessage(null);
+
     try {
-      const url = pid ? `/api/profiles/${pid}` : '/api/profiles/me';
-      const r = await fetch(url, {
+      const payload = {
+        interest_country: 'IT',
+        interest_region_id: regionId,
+        interest_province_id: provinceId,
+        interest_municipality_id: municipalityId,
+        foot: (foot || '').trim() || null,
+        height_cm: heightCm === '' ? null : Number(heightCm),
+        weight_kg: weightKg === '' ? null : Number(weightKg),
+        notify_email_new_message: !!notifyEmail,
+      };
+
+      const r = await fetch('/api/profiles/me', {
         method: 'PATCH',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'content-type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      const t = await r.text();
-      const j = t ? JSON.parse(t) : {};
-      if (!r.ok) throw new Error(j?.error || `HTTP ${r.status}`);
-      setOkMsg('Profilo aggiornato ✅');
+
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({}));
+        throw new Error(j?.error ?? 'Salvataggio non riuscito');
+      }
+
+      setMessage('Profilo aggiornato correttamente.');
+      router.refresh();
     } catch (e: any) {
-      setErr(e.message || 'Errore durante il salvataggio');
+      console.error(e);
+      setError(e?.message ?? 'Errore durante il salvataggio');
     } finally {
       setSaving(false);
+      setTimeout(() => setMessage(null), 4000);
     }
   }
 
-  if (loading) return <div className="p-4">Caricamento profilo…</div>;
+  if (loading) {
+    return (
+      <div className="rounded-xl border p-4 text-sm text-gray-600">
+        Caricamento profilo…
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-800">
+        {error}
+      </div>
+    );
+  }
+  if (!profile) return null;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {err && <div className="border rounded-lg p-3 bg-red-50 text-red-700">{err}</div>}
-      {okMsg && <div className="border rounded-lg p-3 bg-green-50 text-green-700">{okMsg}</div>}
-
-      {/* Dati base */}
-      <section className="bg-white rounded-xl border p-4 space-y-3">
-        <h2 className="text-sm font-semibold">Dati base</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
-            <label className="block text-sm font-medium mb-1">Nome mostrato</label>
-            <input
-              className="w-full rounded-xl border px-3 py-2"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="Es. Gabriele Basso"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Visibilità</label>
+    <form onSubmit={onSubmit} className="space-y-6">
+      {/* Interest area (DB-driven) */}
+      <section className="rounded-2xl border p-4 md:p-5">
+        <h2 className="mb-3 text-lg font-semibold">Zona di interesse</h2>
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="flex flex-col gap-1">
+            <label className="text-sm text-gray-600">Regione</label>
             <select
-              className="w-full rounded-xl border px-3 py-2"
-              value={visibility}
-              onChange={(e) => setVisibility(e.target.value as Visibility)}
+              className="rounded-lg border p-2"
+              value={regionId ?? ''}
+              onChange={(e) =>
+                setRegionId(e.target.value ? Number(e.target.value) : null)
+              }
             >
-              <option value="public">Pubblico</option>
-              <option value="private">Privato</option>
-            </select>
-          </div>
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Bio</label>
-          <textarea
-            className="w-full rounded-xl border px-3 py-2 min-h-24"
-            value={bio}
-            onChange={(e) => setBio(e.target.value)}
-            placeholder="Breve descrizione del tuo profilo, esperienze, obiettivi…"
-          />
-        </div>
-      </section>
-
-      {/* Dati fisici & tecnici */}
-      <section className="bg-white rounded-xl border p-4 space-y-3">
-        <h2 className="text-sm font-semibold">Dati fisici & tecnici</h2>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <div>
-            <label className="block text-sm font-medium mb-1">Altezza (cm)</label>
-            <input
-              inputMode="numeric"
-              className="w-full rounded-xl border px-3 py-2"
-              value={height}
-              onChange={(e) => setHeight(e.target.value)}
-              placeholder="182"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Peso (kg)</label>
-            <input
-              inputMode="numeric"
-              className="w-full rounded-xl border px-3 py-2"
-              value={weight}
-              onChange={(e) => setWeight(e.target.value)}
-              placeholder="78"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Piede</label>
-            <select
-              className="w-full rounded-xl border px-3 py-2"
-              value={foot}
-              onChange={(e) => setFoot(e.target.value as Foot)}
-            >
-              <option value="">—</option>
-              <option value="Destro">Destro</option>
-              <option value="Sinistro">Sinistro</option>
-              <option value="Ambidestro">Ambidestro</option>
-            </select>
-          </div>
-        </div>
-      </section>
-
-      {/* Sport & Ruolo */}
-      <section className="bg-white rounded-xl border p-4 space-y-3">
-        <h2 className="text-sm font-semibold">Sport & ruolo</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div>
-            <label className="block text-sm font-medium mb-1">Sport</label>
-            <select
-              className="w-full rounded-xl border px-3 py-2"
-              value={sport}
-              onChange={(e) => { setSport(e.target.value); setRole(''); }}
-            >
-              <option value="">—</option>
-              {SPORTS.map((s: string) => (
-                <option key={s} value={s}>{s}</option>
+              <option value="">— Seleziona regione —</option>
+              {regions.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                </option>
               ))}
             </select>
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Ruolo</label>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-sm text-gray-600">Provincia</label>
             <select
-              className="w-full rounded-xl border px-3 py-2"
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
+              className="rounded-lg border p-2 disabled:bg-gray-50"
+              value={provinceId ?? ''}
+              onChange={(e) =>
+                setProvinceId(e.target.value ? Number(e.target.value) : null)
+              }
+              disabled={!regionId}
             >
-              <option value="">—</option>
-              {roleOptions.map((r: string) => (
-                <option key={r} value={r}>{r}</option>
+              <option value="">— Seleziona provincia —</option>
+              {provinces.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-sm text-gray-600">Comune</label>
+            <select
+              className="rounded-lg border p-2 disabled:bg-gray-50"
+              value={municipalityId ?? ''}
+              onChange={(e) =>
+                setMunicipalityId(
+                  e.target.value ? Number(e.target.value) : null
+                )
+              }
+              disabled={!provinceId}
+            >
+              <option value="">— Seleziona comune —</option>
+              {municipalities.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
               ))}
             </select>
           </div>
         </div>
-      </section>
-
-      {/* Zona di interesse: componente condiviso (RPC) */}
-      <section className="bg-white rounded-xl border p-4 space-y-3">
-        <h2 className="text-sm font-semibold">Zona di interesse</h2>
-        <div className="mt-1">
-          <InterestAreaForm />
-        </div>
-        <p className="text-xs text-gray-500">
-          La zona di interesse personalizza il feed e le opportunità suggerite.
+        <p className="mt-2 text-xs text-gray-500">
+          I menu sono alimentati dal DB (RPC <code>location_children</code>).
         </p>
       </section>
 
-      <div className="flex items-center justify-end gap-2">
+      {/* Altri campi profilo essenziali presenti in schema */}
+      <section className="rounded-2xl border p-4 md:p-5">
+        <h2 className="mb-3 text-lg font-semibold">Dettagli atleta</h2>
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="flex flex-col gap-1">
+            <label className="text-sm text-gray-600">Piede preferito</label>
+            <select
+              className="rounded-lg border p-2"
+              value={foot}
+              onChange={(e) => setFoot(e.target.value)}
+            >
+              <option value="">— Seleziona —</option>
+              <option value="right">Destro</option>
+              <option value="left">Sinistro</option>
+              <option value="both">Entrambi</option>
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-sm text-gray-600">Altezza (cm)</label>
+            <input
+              type="number"
+              inputMode="numeric"
+              className="rounded-lg border p-2"
+              value={heightCm}
+              onChange={(e) =>
+                setHeightCm(e.target.value === '' ? '' : Number(e.target.value))
+              }
+              min={100}
+              max={230}
+              placeholder="es. 178"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-sm text-gray-600">Peso (kg)</label>
+            <input
+              type="number"
+              inputMode="numeric"
+              className="rounded-lg border p-2"
+              value={weightKg}
+              onChange={(e) =>
+                setWeightKg(e.target.value === '' ? '' : Number(e.target.value))
+              }
+              min={40}
+              max={150}
+              placeholder="es. 72"
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Notifiche */}
+      <section className="rounded-2xl border p-4 md:p-5">
+        <h2 className="mb-3 text-lg font-semibold">Notifiche</h2>
+        <label className="flex items-center gap-3">
+          <input
+            type="checkbox"
+            className="h-4 w-4"
+            checked={notifyEmail}
+            onChange={(e) => setNotifyEmail(e.target.checked)}
+          />
+          <span className="text-sm">Email per nuovi messaggi</span>
+        </label>
+      </section>
+
+      <div className="flex items-center gap-3">
         <button
           type="submit"
-          disabled={saving}
-          className="px-4 py-2 rounded-lg bg-gray-900 text-white"
+          disabled={!canSave}
+          className="rounded-xl bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-60"
         >
-          {saving ? 'Salvataggio…' : 'Salva profilo'}
+          {saving ? 'Salvataggio…' : 'Salva modifiche'}
         </button>
+        {message && (
+          <span className="text-sm text-green-700">{message}</span>
+        )}
+        {error && <span className="text-sm text-red-700">{error}</span>}
       </div>
     </form>
   );
