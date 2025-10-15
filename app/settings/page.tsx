@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
-import InterestAreaForm from '@/components/profiles/InterestAreaForm' // 👈 PLURALE
+import InterestAreaForm from '@/components/profiles/InterestAreaForm' // path corretto
 
 type Profile = {
   id: string
@@ -139,7 +139,7 @@ export default function SettingsPage() {
               style={{
                 padding: '8px 12px',
                 borderRadius: 8,
-                border: '1px solid '#e5e7eb',
+                border: '1px solid #e5e7eb', // 👈 FIX
                 background: '#fff',
                 cursor: 'pointer'
               }}
