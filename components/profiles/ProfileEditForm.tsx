@@ -25,10 +25,46 @@ type Profile = {
   notify_email_new_message: boolean;
 };
 
-// Crea un client Supabase browser-side usando le env pubbliche
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createSupabaseClient(supabaseUrl, supabaseAnonKey);
+// Supabase browser client
+const supabase = createSupabaseClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
+// --- Helpers: RPC with fallback ---------------------------------------------
+async function rpcChildren(level: LocationLevel, parent: number | null) {
+  // 1) prova RPC
+  try {
+    const { data, error } = await supabase.rpc('location_children', { level, parent });
+    if (!error && Array.isArray(data)) return data as LocationRow[];
+    // se l'RPC risponde ma non dà dati utili, continua col fallback
+    // eslint-disable-next-line no-empty
+  } catch {}
+
+  // 2) fallback query diretta
+  if (level === 'region') {
+    const { data } = await supabase.from('regions').select('id,name').order('name', { ascending: true });
+    return (data ?? []) as LocationRow[];
+  }
+  if (level === 'province') {
+    if (parent == null) return [];
+    const { data } = await supabase
+      .from('provinces')
+      .select('id,name')
+      .eq('region_id', parent)
+      .order('name', { ascending: true });
+    return (data ?? []) as LocationRow[];
+  }
+  // municipality
+  if (parent == null) return [];
+  const { data } = await supabase
+    .from('municipalities')
+    .select('id,name')
+    .eq('province_id', parent)
+    .order('name', { ascending: true });
+  return (data ?? []) as LocationRow[];
+}
+// -----------------------------------------------------------------------------
 
 export default function ProfileEditForm() {
   const router = useRouter();
@@ -54,16 +90,6 @@ export default function ProfileEditForm() {
   const [heightCm, setHeightCm] = useState<number | ''>('');
   const [weightKg, setWeightKg] = useState<number | ''>('');
   const [notifyEmail, setNotifyEmail] = useState<boolean>(true);
-
-  // Helpers RPC
-  async function fetchChildren(level: LocationLevel, parent: number | null) {
-    const { data, error } = await supabase.rpc('location_children', {
-      level,
-      parent,
-    });
-    if (error) throw error;
-    return (data ?? []) as LocationRow[];
-  }
 
   // Prima load: profilo + regioni
   useEffect(() => {
@@ -103,19 +129,19 @@ export default function ProfileEditForm() {
         setNotifyEmail(Boolean(p.notify_email_new_message));
 
         // 2) carica regioni
-        const rs = await fetchChildren('region', null);
+        const rs = await rpcChildren('region', null);
         setRegions(rs);
 
-        // 3) se presenti selezioni pregresse, popola a cascata
+        // 3) cascata pre-selezionata
         if (p.interest_region_id) {
-          const ps = await fetchChildren('province', p.interest_region_id);
+          const ps = await rpcChildren('province', p.interest_region_id);
           setProvinces(ps);
         } else {
           setProvinces([]);
         }
 
         if (p.interest_province_id) {
-          const ms = await fetchChildren('municipality', p.interest_province_id);
+          const ms = await rpcChildren('municipality', p.interest_province_id);
           setMunicipalities(ms);
         } else {
           setMunicipalities([]);
@@ -140,11 +166,9 @@ export default function ProfileEditForm() {
         return;
       }
       try {
-        const ps = await fetchChildren('province', regionId);
+        const ps = await rpcChildren('province', regionId);
         setProvinces(ps);
-        setProvinceId((prev) =>
-          ps.some((p) => p.id === prev) ? prev : null
-        );
+        setProvinceId((prev) => (ps.some((p) => p.id === prev) ? prev : null));
         setMunicipalities([]);
         setMunicipalityId(null);
       } catch (e) {
@@ -164,11 +188,9 @@ export default function ProfileEditForm() {
         return;
       }
       try {
-        const ms = await fetchChildren('municipality', provinceId);
+        const ms = await rpcChildren('municipality', provinceId);
         setMunicipalities(ms);
-        setMunicipalityId((prev) =>
-          ms.some((m) => m.id === prev) ? prev : null
-        );
+        setMunicipalityId((prev) => (ms.some((m) => m.id === prev) ? prev : null));
       } catch (e) {
         console.error(e);
         setMunicipalities([]);
@@ -177,9 +199,7 @@ export default function ProfileEditForm() {
     })();
   }, [provinceId]);
 
-  const canSave = useMemo(() => {
-    return !saving && profile != null;
-  }, [saving, profile]);
+  const canSave = useMemo(() => !saving && profile != null, [saving, profile]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -225,18 +245,10 @@ export default function ProfileEditForm() {
   }
 
   if (loading) {
-    return (
-      <div className="rounded-xl border p-4 text-sm text-gray-600">
-        Caricamento profilo…
-      </div>
-    );
+    return <div className="rounded-xl border p-4 text-sm text-gray-600">Caricamento profilo…</div>;
   }
   if (error) {
-    return (
-      <div className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-800">
-        {error}
-      </div>
-    );
+    return <div className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-800">{error}</div>;
   }
   if (!profile) return null;
 
@@ -245,15 +257,21 @@ export default function ProfileEditForm() {
       {/* Interest area (DB-driven) */}
       <section className="rounded-2xl border p-4 md:p-5">
         <h2 className="mb-3 text-lg font-semibold">Zona di interesse</h2>
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-4">
+          {/* Paese (fisso IT) */}
+          <div className="flex flex-col gap-1">
+            <label className="text-sm text-gray-600">Paese</label>
+            <select className="rounded-lg border p-2" value="IT" disabled>
+              <option value="IT">Italia</option>
+            </select>
+          </div>
+
           <div className="flex flex-col gap-1">
             <label className="text-sm text-gray-600">Regione</label>
             <select
               className="rounded-lg border p-2"
               value={regionId ?? ''}
-              onChange={(e) =>
-                setRegionId(e.target.value ? Number(e.target.value) : null)
-              }
+              onChange={(e) => setRegionId(e.target.value ? Number(e.target.value) : null)}
             >
               <option value="">— Seleziona regione —</option>
               {regions.map((r) => (
@@ -269,9 +287,7 @@ export default function ProfileEditForm() {
             <select
               className="rounded-lg border p-2 disabled:bg-gray-50"
               value={provinceId ?? ''}
-              onChange={(e) =>
-                setProvinceId(e.target.value ? Number(e.target.value) : null)
-              }
+              onChange={(e) => setProvinceId(e.target.value ? Number(e.target.value) : null)}
               disabled={!regionId}
             >
               <option value="">— Seleziona provincia —</option>
@@ -284,18 +300,14 @@ export default function ProfileEditForm() {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Comune</label>
+            <label className="text-sm text-gray-600">Città</label>
             <select
               className="rounded-lg border p-2 disabled:bg-gray-50"
               value={municipalityId ?? ''}
-              onChange={(e) =>
-                setMunicipalityId(
-                  e.target.value ? Number(e.target.value) : null
-                )
-              }
+              onChange={(e) => setMunicipalityId(e.target.value ? Number(e.target.value) : null)}
               disabled={!provinceId}
             >
-              <option value="">— Seleziona comune —</option>
+              <option value="">— Seleziona città —</option>
               {municipalities.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.name}
@@ -305,25 +317,21 @@ export default function ProfileEditForm() {
           </div>
         </div>
         <p className="mt-2 text-xs text-gray-500">
-          I menu sono alimentati dal DB (RPC <code>location_children</code>).
+          I menu sono alimentati dal DB (RPC <code>location_children</code> con fallback su tabelle).
         </p>
       </section>
 
-      {/* Altri campi profilo essenziali presenti in schema */}
+      {/* Dettagli atleta */}
       <section className="rounded-2xl border p-4 md:p-5">
         <h2 className="mb-3 text-lg font-semibold">Dettagli atleta</h2>
         <div className="grid gap-4 md:grid-cols-3">
           <div className="flex flex-col gap-1">
             <label className="text-sm text-gray-600">Piede preferito</label>
-            <select
-              className="rounded-lg border p-2"
-              value={foot}
-              onChange={(e) => setFoot(e.target.value)}
-            >
+            <select className="rounded-lg border p-2" value={foot} onChange={(e) => setFoot(e.target.value)}>
               <option value="">— Seleziona —</option>
-              <option value="right">Destro</option>
-              <option value="left">Sinistro</option>
-              <option value="both">Entrambi</option>
+              <option value="Destro">Destro</option>
+              <option value="Sinistro">Sinistro</option>
+              <option value="Ambidestro">Ambidestro</option>
             </select>
           </div>
 
@@ -334,12 +342,10 @@ export default function ProfileEditForm() {
               inputMode="numeric"
               className="rounded-lg border p-2"
               value={heightCm}
-              onChange={(e) =>
-                setHeightCm(e.target.value === '' ? '' : Number(e.target.value))
-              }
+              onChange={(e) => setHeightCm(e.target.value === '' ? '' : Number(e.target.value))}
               min={100}
               max={230}
-              placeholder="es. 178"
+              placeholder="es. 183"
             />
           </div>
 
@@ -350,12 +356,10 @@ export default function ProfileEditForm() {
               inputMode="numeric"
               className="rounded-lg border p-2"
               value={weightKg}
-              onChange={(e) =>
-                setWeightKg(e.target.value === '' ? '' : Number(e.target.value))
-              }
+              onChange={(e) => setWeightKg(e.target.value === '' ? '' : Number(e.target.value))}
               min={40}
               max={150}
-              placeholder="es. 72"
+              placeholder="es. 85"
             />
           </div>
         </div>
@@ -381,11 +385,9 @@ export default function ProfileEditForm() {
           disabled={!canSave}
           className="rounded-xl bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-60"
         >
-          {saving ? 'Salvataggio…' : 'Salva modifiche'}
+          {saving ? 'Salvataggio…' : 'Salva profilo'}
         </button>
-        {message && (
-          <span className="text-sm text-green-700">{message}</span>
-        )}
+        {message && <span className="text-sm text-green-700">{message}</span>}
         {error && <span className="text-sm text-red-700">{error}</span>}
       </div>
     </form>
