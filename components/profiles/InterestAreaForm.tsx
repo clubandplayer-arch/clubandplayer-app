@@ -1,188 +1,113 @@
+// components/profile/InterestAreaForm.tsx
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
-
-type Opt = { id: string; name: string };
+import LocationPicker, { type LocationValue } from '@/components/forms/LocationPicker';
 
 export default function InterestAreaForm() {
-  const supabase = useMemo(() => supabaseBrowser(), []);
+  const supabase = supabaseBrowser();
 
-  const [uid, setUid] = useState<string | null>(null);
+  const [value, setValue] = useState<LocationValue>({
+    region_id: null,
+    province_id: null,
+    municipality_id: null,
+  });
 
-  // valori selezionati (string per coerenza con col. text nel profilo)
-  const [country, setCountry] = useState('IT');
-  const [regionId, setRegionId] = useState<string>('');
-  const [provinceId, setProvinceId] = useState<string>('');
-  const [cityId, setCityId] = useState<string>('');
-
-  // opzioni
-  const [regions, setRegions] = useState<Opt[]>([]);
-  const [provinces, setProvinces] = useState<Opt[]>([]);
-  const [cities, setCities] = useState<Opt[]>([]);
-
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState('');
+  const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
 
-  // --- RPC helpers
-  const fetchRegions = async () => {
-    const { data, error } = await supabase.rpc('location_children', {
-      level: 'region',
-      parent: null as unknown as string, // ignorato dalla funzione
-    });
-    if (!error) setRegions((data ?? []) as Opt[]);
-  };
-
-  const fetchProvinces = async (rid: string) => {
-    if (!rid) { setProvinces([]); return; }
-    const { data, error } = await supabase.rpc('location_children', {
-      level: 'province',
-      parent: String(rid),
-    });
-    if (!error) setProvinces((data ?? []) as Opt[]);
-  };
-
-  const fetchCities = async (pid: string) => {
-    if (!pid) { setCities([]); return; }
-    const { data, error } = await supabase.rpc('location_children', {
-      level: 'municipality',
-      parent: String(pid),
-    });
-    if (!error) setCities((data ?? []) as Opt[]);
-  };
-
-  // load iniziale
+  // carica il valore già salvato sul profilo
   useEffect(() => {
     (async () => {
-      const { data: ures } = await supabase.auth.getUser();
-      const u = ures?.user ?? null;
-      if (!u) return;
-      setUid(u.id);
-
-      await fetchRegions();
-
-      const { data: p } = await supabase
-        .from('profiles')
-        .select('interest_country, interest_region_id, interest_province_id, interest_municipality_id')
-        .eq('id', u.id)
-        .maybeSingle();
-
-      if (p) {
-        if (p.interest_country) setCountry(p.interest_country);
-        if (p.interest_region_id) {
-          setRegionId(String(p.interest_region_id));
-          await fetchProvinces(String(p.interest_region_id));
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setLoading(false);
+          return;
         }
-        if (p.interest_province_id) {
-          setProvinceId(String(p.interest_province_id));
-          await fetchCities(String(p.interest_province_id));
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('region_id, province_id, municipality_id')
+          .eq('id', user.id)
+          .single();
+        if (!error && data) {
+          setValue({
+            region_id: data.region_id ?? null,
+            province_id: data.province_id ?? null,
+            municipality_id: data.municipality_id ?? null,
+          });
         }
-        if (p.interest_municipality_id) setCityId(String(p.interest_municipality_id));
+      } finally {
+        setLoading(false);
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [supabase]);
 
-  // cambia regione → reset e carica province
-  useEffect(() => {
-    setProvinceId('');
-    setCityId('');
-    fetchProvinces(regionId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [regionId]);
-
-  // cambia provincia → reset e carica comuni
-  useEffect(() => {
-    setCityId('');
-    fetchCities(provinceId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [provinceId]);
-
-  const save = async () => {
-    if (!uid) return;
+  async function onSave(e: React.FormEvent) {
+    e.preventDefault();
+    setMsg(null);
     setSaving(true);
-    setMsg('');
-    const { error } = await supabase
-      .from('profiles')
-      .update({
-        interest_country: country || null,
-        interest_region_id: regionId || null,
-        interest_province_id: provinceId || null,
-        interest_municipality_id: cityId || null,
-      })
-      .eq('id', uid);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Devi effettuare l’accesso');
 
-    setSaving(false);
-    if (error) setMsg(`Errore: ${error.message}`);
-    else setMsg('Salvato.');
-  };
+      // Salviamo gli ID normalizzati sul profilo
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          region_id: value.region_id,
+          province_id: value.province_id,
+          municipality_id: value.municipality_id,
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
+      setMsg({ type: 'ok', text: 'Zona di interesse salvata ✅' });
+    } catch (e: any) {
+      setMsg({ type: 'err', text: e?.message ?? 'Errore durante il salvataggio' });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="card p-4">
+        <div className="animate-pulse h-6 w-40 bg-neutral-200 rounded mb-4" />
+        <div className="animate-pulse h-10 w-full bg-neutral-200 rounded" />
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-3">
+    <form onSubmit={onSave} className="card p-4 space-y-4">
+      <h3 className="text-lg font-semibold">Zona di interesse</h3>
+
+      <LocationPicker value={value} onChange={setValue} required />
+
+      <p className="text-sm text-neutral-500">
+        La zona di interesse personalizza il feed e le opportunità suggerite.
+      </p>
+
       {msg && (
-        <p className={`text-sm ${msg.startsWith('Errore') ? 'text-red-600' : 'text-green-700'}`}>
-          {msg}
+        <p
+          className={
+            msg.type === 'ok'
+              ? 'text-sm text-green-700'
+              : 'text-sm text-red-700'
+          }
+        >
+          {msg.text}
         </p>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-        <label className="label">
-          Paese
-          <select className="select" value={country} onChange={(e) => setCountry(e.target.value)}>
-            <option value="IT">Italia</option>
-          </select>
-        </label>
-
-        <label className="label">
-          Regione
-          <select
-            className="select"
-            value={regionId}
-            onChange={(e) => setRegionId(e.target.value)}
-          >
-            <option value="">Seleziona</option>
-            {regions.map((r) => (
-              <option key={r.id} value={r.id}>{r.name}</option>
-            ))}
-          </select>
-        </label>
-
-        <label className="label">
-          Provincia
-          <select
-            className="select"
-            disabled={!regionId}
-            value={provinceId}
-            onChange={(e) => setProvinceId(e.target.value)}
-          >
-            <option value="">{regionId ? 'Seleziona' : '—'}</option>
-            {provinces.map((p) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
-        </label>
-
-        <label className="label">
-          Città
-          <select
-            className="select"
-            disabled={!provinceId}
-            value={cityId}
-            onChange={(e) => setCityId(e.target.value)}
-          >
-            <option value="">{provinceId ? 'Seleziona' : '—'}</option>
-            {cities.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      <div>
-        <button onClick={save} disabled={saving} className="btn btn-brand">
+      <div className="flex gap-2">
+        <button className="btn btn-brand" disabled={saving}>
           {saving ? 'Salvataggio…' : 'Salva'}
         </button>
       </div>
-    </div>
+    </form>
   );
 }
