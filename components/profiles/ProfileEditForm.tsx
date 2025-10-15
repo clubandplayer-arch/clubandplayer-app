@@ -1,7 +1,8 @@
+// components/profiles/ProfileEditForm.tsx
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { COUNTRIES, ITALY_REGIONS, PROVINCES_BY_REGION, CITIES_BY_PROVINCE } from '@/lib/opps/geo';
+import InterestAreaForm from '@/components/profiles/InterestAreaForm';
 import { SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
 
 type Foot = 'Destro' | 'Sinistro' | 'Ambidestro' | '';
@@ -16,10 +17,6 @@ type ServerProfile = {
   foot?: string | null;
   sport?: string | null;
   role?: string | null;
-  interest_country?: string | null;
-  interest_region?: string | null;
-  interest_province?: string | null;
-  interest_city?: string | null;
   visibility?: Visibility | null;
   // fallback shapes
   profile?: any;
@@ -37,7 +34,7 @@ export default function ProfileEditForm() {
   const [bio, setBio] = useState('');
 
   // Fisico/tecnico
-  const [height, setHeight] = useState<string>(''); // mantengo come string per input number
+  const [height, setHeight] = useState<string>(''); // string per input number
   const [weight, setWeight] = useState<string>('');
   const [foot, setFoot] = useState<Foot>('');
 
@@ -45,21 +42,6 @@ export default function ProfileEditForm() {
   const [sport, setSport] = useState<string>('');
   const roleOptions = useMemo(() => SPORTS_ROLES[sport] ?? [], [sport]);
   const [role, setRole] = useState<string>('');
-
-  // Zona di interesse (usiamo LABEL paese — “Italia” abilita select region/provincia/città)
-  const [interestCountry, setInterestCountry] = useState<string>('Italia');
-  const [interestRegion, setInterestRegion] = useState<string>('');
-  const [interestProvince, setInterestProvince] = useState<string>('');
-  const [interestCity, setInterestCity] = useState<string>('');
-
-  const provinces = useMemo(
-    () => (interestCountry === 'Italia' ? PROVINCES_BY_REGION[interestRegion] ?? [] : []),
-    [interestCountry, interestRegion]
-  );
-  const cities = useMemo(
-    () => (interestCountry === 'Italia' ? CITIES_BY_PROVINCE[interestProvince] ?? [] : []),
-    [interestCountry, interestProvince]
-  );
 
   const [visibility, setVisibility] = useState<Visibility>('public');
 
@@ -75,7 +57,6 @@ export default function ProfileEditForm() {
         const t = await r.text();
         if (!r.ok) throw new Error(t || `HTTP ${r.status}`);
         const j = t ? JSON.parse(t) : {};
-        // il payload può essere {data}, {profile} o piatto
         const p: ServerProfile = j?.data ?? j?.profile ?? j ?? {};
 
         if (cancelled) return;
@@ -92,11 +73,6 @@ export default function ProfileEditForm() {
         setSport(initSport);
         setRole((p?.role ?? p?.profile?.role ?? '') as string);
 
-        setInterestCountry((p?.interest_country ?? p?.profile?.interest_country ?? 'Italia') as string);
-        setInterestRegion((p?.interest_region ?? p?.profile?.interest_region ?? '') as string);
-        setInterestProvince((p?.interest_province ?? p?.profile?.interest_province ?? '') as string);
-        setInterestCity((p?.interest_city ?? p?.profile?.interest_city ?? '') as string);
-
         setVisibility((p?.visibility ?? p?.profile?.visibility ?? 'public') as Visibility);
       } catch (e: any) {
         if (!cancelled) setErr(e.message || 'Errore nel caricamento profilo');
@@ -108,24 +84,6 @@ export default function ProfileEditForm() {
       cancelled = true;
     };
   }, []);
-
-  function resetLocationCascade(countryLabel: string) {
-    setInterestCountry(countryLabel);
-    if (countryLabel !== 'Italia') {
-      setInterestRegion('');
-      setInterestProvince('');
-      setInterestCity('');
-    }
-  }
-  function onChangeRegion(r: string) {
-    setInterestRegion(r);
-    setInterestProvince('');
-    setInterestCity('');
-  }
-  function onChangeProvince(p: string) {
-    setInterestProvince(p);
-    setInterestCity('');
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -143,6 +101,7 @@ export default function ProfileEditForm() {
       return;
     }
 
+    // ⛔️ Niente interest_* legacy qui: li gestisce InterestAreaForm salvando direttamente su `profiles`
     const payload = {
       display_name: displayName.trim() || null,
       bio: bio.trim() || null,
@@ -151,17 +110,12 @@ export default function ProfileEditForm() {
       foot: foot || null,
       sport: sport || null,
       role: role || null,
-      interest_country: interestCountry || null,
-      interest_region: interestRegion || null,
-      interest_province: interestCountry === 'Italia' ? interestProvince || null : null,
-      interest_city: interestCity || null,
       visibility: visibility || 'public',
       type: 'athlete',
     };
 
     setSaving(true);
     try {
-      // PATCH su /api/profiles/{id} se lo abbiamo, altrimenti /api/profiles/me
       const url = pid ? `/api/profiles/${pid}` : '/api/profiles/me';
       const r = await fetch(url, {
         method: 'PATCH',
@@ -223,7 +177,7 @@ export default function ProfileEditForm() {
         </div>
       </section>
 
-      {/* Fisico & Tecnico */}
+      {/* Dati fisici & tecnici */}
       <section className="bg-white rounded-xl border p-4 space-y-3">
         <h2 className="text-sm font-semibold">Dati fisici & tecnici</h2>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
@@ -296,91 +250,11 @@ export default function ProfileEditForm() {
         </div>
       </section>
 
-      {/* Zona di interesse (per matching feed/opportunità) */}
+      {/* Zona di interesse: componente condiviso (RPC) */}
       <section className="bg-white rounded-xl border p-4 space-y-3">
         <h2 className="text-sm font-semibold">Zona di interesse</h2>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <div>
-            <label className="block text-sm font-medium mb-1">Paese</label>
-            <select
-              className="w-full rounded-xl border px-3 py-2"
-              value={interestCountry}
-              onChange={(e) => resetLocationCascade(e.target.value)}
-            >
-              {COUNTRIES.map((c) => (
-                <option key={c.code} value={c.label}>{c.label}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Regione</label>
-            {interestCountry === 'Italia' ? (
-              <select
-                className="w-full rounded-xl border px-3 py-2"
-                value={interestRegion}
-                onChange={(e) => onChangeRegion(e.target.value)}
-              >
-                <option value="">—</option>
-                {ITALY_REGIONS.map((r: string) => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
-              </select>
-            ) : (
-              <input
-                className="w-full rounded-xl border px-3 py-2"
-                value={interestRegion}
-                onChange={(e) => setInterestRegion(e.target.value)}
-                placeholder="Regione/Area"
-              />
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Provincia</label>
-            {interestCountry === 'Italia' && provinces.length > 0 ? (
-              <select
-                className="w-full rounded-xl border px-3 py-2"
-                value={interestProvince}
-                onChange={(e) => onChangeProvince(e.target.value)}
-              >
-                <option value="">—</option>
-                {provinces.map((p: string) => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
-              </select>
-            ) : (
-              <input
-                className="w-full rounded-xl border px-3 py-2"
-                value={interestProvince}
-                onChange={(e) => setInterestProvince(e.target.value)}
-                placeholder="Provincia/Contea"
-              />
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Città</label>
-            {interestCountry === 'Italia' && cities.length > 0 ? (
-              <select
-                className="w-full rounded-xl border px-3 py-2"
-                value={interestCity}
-                onChange={(e) => setInterestCity(e.target.value)}
-              >
-                <option value="">—</option>
-                {cities.map((c: string) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-            ) : (
-              <input
-                className="w-full rounded-xl border px-3 py-2"
-                value={interestCity}
-                onChange={(e) => setInterestCity(e.target.value)}
-                placeholder="Città"
-              />
-            )}
-          </div>
+        <div className="mt-1">
+          <InterestAreaForm />
         </div>
         <p className="text-xs text-gray-500">
           La zona di interesse personalizza il feed e le opportunità suggerite.
