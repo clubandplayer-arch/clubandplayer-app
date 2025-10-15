@@ -1,544 +1,274 @@
+// components/profiles/ProfileEditForm.tsx
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import InterestAreaForm from '@/components/profiles/InterestAreaForm';
+import { SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
 
-type LocationLevel = 'region' | 'province' | 'municipality';
+type Foot = 'Destro' | 'Sinistro' | 'Ambidestro' | '';
+type Visibility = 'public' | 'private' | '';
 
-type LocationRow = {
-  id: number;
-  name: string;
+type ServerProfile = {
+  id?: string;
+  display_name?: string;
+  bio?: string;
+  height_cm?: number | null;
+  weight_kg?: number | null;
+  foot?: string | null;
+  sport?: string | null;
+  role?: string | null;
+  visibility?: Visibility | null;
+  // fallback shapes
+  profile?: any;
 };
-
-type AccountType = 'club' | 'athlete' | null;
-
-type Links = {
-  instagram?: string | null;
-  facebook?: string | null;
-  tiktok?: string | null;
-  x?: string | null;
-};
-
-type Profile = {
-  account_type: AccountType;
-
-  // anagrafica
-  full_name: string | null;
-  bio: string | null;
-  birth_year: number | null;
-  birth_place: string | null; // NEW
-  city: string | null;        // residenza
-  country: string | null;     // ISO2 o nome
-
-  // interessi geo
-  interest_country: string | null;
-  interest_region_id: number | null;
-  interest_province_id: number | null;
-  interest_municipality_id: number | null;
-
-  // atleta
-  foot: string | null;
-  height_cm: number | null;
-  weight_kg: number | null;
-
-  // social
-  links: Links | null;
-
-  // notifiche
-  notify_email_new_message: boolean;
-};
-
-// Supabase browser client
-const supabase = createSupabaseClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
-/* ------------------ helpers ------------------ */
-function pickData<T = any>(raw: any): T {
-  if (raw && typeof raw === 'object' && 'data' in raw) return (raw as any).data as T;
-  return raw as T;
-}
-const sortByName = (arr: LocationRow[]) =>
-  [...arr].sort((a, b) => a.name.localeCompare(b.name, 'it', { sensitivity: 'accent' }));
-
-async function rpcChildren(level: LocationLevel, parent: number | null) {
-  try {
-    const { data, error } = await supabase.rpc('location_children', { level, parent });
-    if (!error && Array.isArray(data)) return sortByName(data as LocationRow[]);
-    // eslint-disable-next-line no-empty
-  } catch {}
-  if (level === 'region') {
-    const { data } = await supabase.from('regions').select('id,name').order('name', { ascending: true });
-    return sortByName((data ?? []) as LocationRow[]);
-  }
-  if (level === 'province') {
-    if (parent == null) return [];
-    const { data } = await supabase
-      .from('provinces')
-      .select('id,name')
-      .eq('region_id', parent)
-      .order('name', { ascending: true });
-    return sortByName((data ?? []) as LocationRow[]);
-  }
-  if (parent == null) return [];
-  const { data } = await supabase
-    .from('municipalities')
-    .select('id,name')
-    .eq('province_id', parent)
-    .order('name', { ascending: true });
-  return sortByName((data ?? []) as LocationRow[]);
-}
-
-// Social: normalizza → URL
-function normalizeSocial(kind: keyof Links, value: string): string | null {
-  const v = (value || '').trim();
-  if (!v) return null;
-  const isUrl = /^https?:\/\//i.test(v);
-  const map: Record<keyof Links, (h: string) => string> = {
-    instagram: (h) => `https://instagram.com/${h.replace(/^@/, '')}`,
-    facebook: (h) => (isUrl ? h : `https://facebook.com/${h.replace(/^@/, '')}`),
-    tiktok: (h) => `https://tiktok.com/@${h.replace(/^@/, '')}`,
-    x: (h) => `https://twitter.com/${h.replace(/^@/, '')}`,
-  };
-  if (isUrl) return v;
-  return map[kind](v);
-}
-
-// Flag emoji + nome localizzato (per preview nel form)
-function flagEmoji(iso2?: string | null) {
-  const code = (iso2 || '').trim().toUpperCase();
-  if (!/^[A-Z]{2}$/.test(code)) return '';
-  const A = 0x1f1e6;
-  const a = 'A'.charCodeAt(0);
-  return String.fromCodePoint(A + code.charCodeAt(0) - a) + String.fromCodePoint(A + code.charCodeAt(1) - a);
-}
-function countryName(codeOrText?: string | null) {
-  if (!codeOrText) return '';
-  const v = codeOrText.trim();
-  if (/^[A-Za-z]{2}$/.test(v)) {
-    try {
-      const dn = new Intl.DisplayNames(['it'], { type: 'region' });
-      return dn.of(v.toUpperCase()) || v.toUpperCase();
-    } catch {
-      return v.toUpperCase();
-    }
-  }
-  return v;
-}
-/* ------------------------------------------- */
 
 export default function ProfileEditForm() {
-  const router = useRouter();
-
-  // Profile state
-  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [okMsg, setOkMsg] = useState<string | null>(null);
+  const [pid, setPid] = useState<string | null>(null);
 
-  // Anagrafica
-  const [fullName, setFullName] = useState<string>('');
-  const [bio, setBio] = useState<string>('');
-  const [birthYear, setBirthYear] = useState<number | ''>('');
-  const [birthPlace, setBirthPlace] = useState<string>('');   // NEW
-  const [residenceCity, setResidenceCity] = useState<string>('');
-  const [country, setCountry] = useState<string>(''); // ISO2 o nome
+  // Campi base
+  const [displayName, setDisplayName] = useState('');
+  const [bio, setBio] = useState('');
 
-  // Cascata local state
-  const [regionId, setRegionId] = useState<number | null>(null);
-  const [provinceId, setProvinceId] = useState<number | null>(null);
-  const [municipalityId, setMunicipalityId] = useState<number | null>(null);
+  // Fisico/tecnico
+  const [height, setHeight] = useState<string>(''); // string per input number
+  const [weight, setWeight] = useState<string>('');
+  const [foot, setFoot] = useState<Foot>('');
 
-  const [regions, setRegions] = useState<LocationRow[]>([]);
-  const [provinces, setProvinces] = useState<LocationRow[]>([]);
-  const [municipalities, setMunicipalities] = useState<LocationRow[]>([]);
+  // Sport & ruolo
+  const [sport, setSport] = useState<string>('');
+  const roleOptions = useMemo(() => SPORTS_ROLES[sport] ?? [], [sport]);
+  const [role, setRole] = useState<string>('');
 
-  // Altri campi profilo
-  const [foot, setFoot] = useState<string>('');
-  const [heightCm, setHeightCm] = useState<number | ''>('');
-  const [weightKg, setWeightKg] = useState<number | ''>('');
-  const [notifyEmail, setNotifyEmail] = useState<boolean>(true);
+  const [visibility, setVisibility] = useState<Visibility>('public');
 
-  // Social
-  const [instagram, setInstagram] = useState<string>('');
-  const [facebook, setFacebook] = useState<string>('');
-  const [tiktok, setTiktok] = useState<string>('');
-  const [x, setX] = useState<string>('');
-
-  async function loadProfile() {
-    const r = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
-    if (!r.ok) throw new Error('Impossibile leggere il profilo');
-    const raw = await r.json().catch(() => ({}));
-    const j = pickData<Partial<Profile>>(raw) || {};
-
-    const p: Profile = {
-      account_type: (j?.account_type ?? null) as AccountType,
-
-      full_name: (j as any)?.full_name ?? null,
-      bio: (j as any)?.bio ?? null,
-      birth_year: (j as any)?.birth_year ?? null,
-      birth_place: (j as any)?.birth_place ?? null,
-      city: (j as any)?.city ?? null,
-      country: (j as any)?.country ?? null,
-
-      interest_country: j?.interest_country ?? 'IT',
-      interest_region_id: j?.interest_region_id ?? null,
-      interest_province_id: j?.interest_province_id ?? null,
-      interest_municipality_id: j?.interest_municipality_id ?? null,
-
-      foot: j?.foot ?? '',
-      height_cm: j?.height_cm ?? null,
-      weight_kg: j?.weight_kg ?? null,
-
-      links: (j as any)?.links ?? null,
-
-      notify_email_new_message: Boolean(j?.notify_email_new_message ?? true),
-    };
-
-    setProfile(p);
-
-    // init form fields
-    setFullName(p.full_name || '');
-    setBio(p.bio || '');
-    setBirthYear(p.birth_year ?? '');
-    setBirthPlace(p.birth_place || '');
-    setResidenceCity(p.city || '');
-    setCountry(p.country || '');
-
-    setRegionId(p.interest_region_id);
-    setProvinceId(p.interest_province_id);
-    setMunicipalityId(p.interest_municipality_id);
-
-    setFoot(p.foot || '');
-    setHeightCm(p.height_cm ?? '');
-    setWeightKg(p.weight_kg ?? '');
-    setNotifyEmail(Boolean(p.notify_email_new_message));
-
-    setInstagram(p.links?.instagram || '');
-    setFacebook(p.links?.facebook || '');
-    setTiktok(p.links?.tiktok || '');
-    setX(p.links?.x || '');
-  }
-
-  // Prima load: profilo + regioni
+  // Carica profilo
   useEffect(() => {
+    let cancelled = false;
     (async () => {
+      setLoading(true);
+      setErr(null);
+      setOkMsg(null);
       try {
-        setLoading(true);
-        await loadProfile();
+        const r = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
+        const t = await r.text();
+        if (!r.ok) throw new Error(t || `HTTP ${r.status}`);
+        const j = t ? JSON.parse(t) : {};
+        const p: ServerProfile = j?.data ?? j?.profile ?? j ?? {};
 
-        const rs = await rpcChildren('region', null);
-        setRegions(sortByName(rs));
+        if (cancelled) return;
 
-        if (regionId != null) setProvinces(sortByName(await rpcChildren('province', regionId)));
-        if (provinceId != null) setMunicipalities(sortByName(await rpcChildren('municipality', provinceId)));
+        setPid(p?.id ?? p?.profile?.id ?? null);
+        setDisplayName(p?.display_name ?? p?.profile?.display_name ?? '');
+        setBio(p?.bio ?? p?.profile?.bio ?? '');
+
+        setHeight((p?.height_cm ?? p?.profile?.height_cm ?? '')?.toString() || '');
+        setWeight((p?.weight_kg ?? p?.profile?.weight_kg ?? '')?.toString() || '');
+        setFoot(((p?.foot ?? p?.profile?.foot) as Foot) ?? '');
+
+        const initSport = (p?.sport ?? p?.profile?.sport ?? '') as string;
+        setSport(initSport);
+        setRole((p?.role ?? p?.profile?.role ?? '') as string);
+
+        setVisibility((p?.visibility ?? p?.profile?.visibility ?? 'public') as Visibility);
       } catch (e: any) {
-        console.error(e);
-        setError(e?.message ?? 'Errore caricamento profilo');
+        if (!cancelled) setErr(e.message || 'Errore nel caricamento profilo');
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  // Quando cambia regionId, ricarica province e resetta municipality
-  useEffect(() => {
-    (async () => {
-      if (regionId == null) {
-        setProvinces([]);
-        setProvinceId(null);
-        setMunicipalities([]);
-        setMunicipalityId(null);
-        return;
-      }
-      try {
-        const ps = await rpcChildren('province', regionId);
-        setProvinces(sortByName(ps));
-        setProvinceId((prev) => (ps.some((p) => p.id === prev) ? prev : null));
-        setMunicipalities([]);
-        setMunicipalityId(null);
-      } catch (e) {
-        console.error(e);
-        setProvinces([]);
-        setProvinceId(null);
-      }
-    })();
-  }, [regionId]);
-
-  // Quando cambia provinceId, ricarica municipalities
-  useEffect(() => {
-    (async () => {
-      if (provinceId == null) {
-        setMunicipalities([]);
-        setMunicipalityId(null);
-        return;
-      }
-      try {
-        const ms = await rpcChildren('municipality', provinceId);
-        setMunicipalities(sortByName(ms));
-        setMunicipalityId((prev) => (ms.some((m) => m.id === prev) ? prev : null));
-      } catch (e) {
-        console.error(e);
-        setMunicipalities([]);
-        setMunicipalityId(null);
-      }
-    })();
-  }, [provinceId]);
-
-  const canSave = useMemo(() => !saving && profile != null, [saving, profile]);
-  const currentYear = new Date().getFullYear();
-
-  async function onSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!canSave) return;
+    setErr(null);
+    setOkMsg(null);
+
+    const h = height.trim() ? Number(height) : null;
+    const w = weight.trim() ? Number(weight) : null;
+    if (h != null && (isNaN(h) || h < 100 || h > 230)) {
+      setErr('Altezza non valida (100–230 cm).');
+      return;
+    }
+    if (w != null && (isNaN(w) || w < 30 || w > 180)) {
+      setErr('Peso non valido (30–180 kg).');
+      return;
+    }
+
+    // ⛔️ Niente interest_* legacy qui: li gestisce InterestAreaForm salvando direttamente su `profiles`
+    const payload = {
+      display_name: displayName.trim() || null,
+      bio: bio.trim() || null,
+      height_cm: h,
+      weight_kg: w,
+      foot: foot || null,
+      sport: sport || null,
+      role: role || null,
+      visibility: visibility || 'public',
+      type: 'athlete',
+    };
 
     setSaving(true);
-    setError(null);
-    setMessage(null);
-
     try {
-      const links: Links = {
-        instagram: normalizeSocial('instagram', instagram) ?? undefined,
-        facebook: normalizeSocial('facebook', facebook) ?? undefined,
-        tiktok: normalizeSocial('tiktok', tiktok) ?? undefined,
-        x: normalizeSocial('x', x) ?? undefined,
-      };
-      Object.keys(links).forEach((k) => (links as any)[k] === undefined && delete (links as any)[k]);
-
-      const payload = {
-        // anagrafica
-        full_name: (fullName || '').trim() || null,
-        bio: (bio || '').trim() || null,
-        birth_year: birthYear === '' ? null : Number(birthYear),
-        birth_place: (birthPlace || '').trim() || null,
-        city: (residenceCity || '').trim() || null,
-        country: (country || '').trim() || null,
-
-        // interesse geo
-        interest_country: 'IT',
-        interest_region_id: regionId,
-        interest_province_id: provinceId,
-        interest_municipality_id: municipalityId,
-
-        // atleta
-        foot: (foot || '').trim() || null,
-        height_cm: heightCm === '' ? null : Number(heightCm),
-        weight_kg: weightKg === '' ? null : Number(weightKg),
-
-        // social
-        links,
-
-        // notifiche
-        notify_email_new_message: !!notifyEmail,
-      };
-
-      const r = await fetch('/api/profiles/me', {
+      const url = pid ? `/api/profiles/${pid}` : '/api/profiles/me';
+      const r = await fetch(url, {
         method: 'PATCH',
         credentials: 'include',
-        headers: { 'content-type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-
-      if (!r.ok) {
-        const j = await r.json().catch(() => ({}));
-        throw new Error(j?.error ?? 'Salvataggio non riuscito');
-      }
-
-      await loadProfile();
-      setMessage('Profilo aggiornato correttamente.');
-      router.refresh();
+      const t = await r.text();
+      const j = t ? JSON.parse(t) : {};
+      if (!r.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+      setOkMsg('Profilo aggiornato ✅');
     } catch (e: any) {
-      console.error(e);
-      setError(e?.message ?? 'Errore durante il salvataggio');
+      setErr(e.message || 'Errore durante il salvataggio');
     } finally {
       setSaving(false);
-      setTimeout(() => setMessage(null), 4000);
     }
   }
 
-  if (loading) return <div className="rounded-xl border p-4 text-sm text-gray-600">Caricamento profilo…</div>;
-  if (error) return <div className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-800">{error}</div>;
-  if (!profile) return null;
-
-  const countryPreview = country ? `${flagEmoji(country)} ${countryName(country)}` : '';
+  if (loading) return <div className="p-4">Caricamento profilo…</div>;
 
   return (
-    <form onSubmit={onSubmit} className="space-y-6">
-      {/* Dati personali */}
-      <section className="rounded-2xl border p-4 md:p-5">
-        <h2 className="mb-3 text-lg font-semibold">Dati personali</h2>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Nome e cognome</label>
-            <input className="rounded-lg border p-2" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Es. Mario Rossi" />
-          </div>
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {err && <div className="border rounded-lg p-3 bg-red-50 text-red-700">{err}</div>}
+      {okMsg && <div className="border rounded-lg p-3 bg-green-50 text-green-700">{okMsg}</div>}
 
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Anno di nascita</label>
+      {/* Dati base */}
+      <section className="bg-white rounded-xl border p-4 space-y-3">
+        <h2 className="text-sm font-semibold">Dati base</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium mb-1">Nome mostrato</label>
             <input
-              type="number"
-              inputMode="numeric"
-              className="rounded-lg border p-2"
-              value={birthYear}
-              onChange={(e) => setBirthYear(e.target.value === '' ? '' : Number(e.target.value))}
-              min={1950}
-              max={currentYear - 5}
-              placeholder="Es. 2002"
+              className="w-full rounded-xl border px-3 py-2"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="Es. Gabriele Basso"
             />
           </div>
-
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Luogo di nascita (città)</label>
-            <input className="rounded-lg border p-2" value={birthPlace} onChange={(e) => setBirthPlace(e.target.value)} placeholder="Es. Laguna Larga" />
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Luogo di residenza (città)</label>
-            <input className="rounded-lg border p-2" value={residenceCity} onChange={(e) => setResidenceCity(e.target.value)} placeholder="Es. Carlentini (SR)" />
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Nazionalità (ISO2 o nome)</label>
-            <input className="rounded-lg border p-2" value={country} onChange={(e) => setCountry(e.target.value)} placeholder="Es. IT oppure Italia" />
-            {country && <span className="text-xs text-gray-500">{countryPreview}</span>}
-          </div>
-
-          <div className="md:col-span-2 flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Biografia</label>
-            <textarea className="rounded-lg border p-2" rows={4} value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Racconta in breve ruolo, caratteristiche, esperienze…" />
-          </div>
-        </div>
-      </section>
-
-      {/* Zona di interesse */}
-      <section className="rounded-2xl border p-4 md:p-5">
-        <h2 className="mb-3 text-lg font-semibold">Zona di interesse</h2>
-        <div className="grid gap-4 md:grid-cols-4">
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Paese</label>
-            <select className="rounded-lg border p-2" value="IT" disabled>
-              <option value="IT">Italia</option>
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Regione</label>
-            <select className="rounded-lg border p-2" value={regionId ?? ''} onChange={(e) => setRegionId(e.target.value ? Number(e.target.value) : null)}>
-              <option value="">— Seleziona regione —</option>
-              {regions.map((r) => (
-                <option key={r.id} value={r.id}>{r.name}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Provincia</label>
+          <div>
+            <label className="block text-sm font-medium mb-1">Visibilità</label>
             <select
-              className="rounded-lg border p-2 disabled:bg-gray-50"
-              value={provinceId ?? ''}
-              onChange={(e) => setProvinceId(e.target.value ? Number(e.target.value) : null)}
-              disabled={!regionId}
+              className="w-full rounded-xl border px-3 py-2"
+              value={visibility}
+              onChange={(e) => setVisibility(e.target.value as Visibility)}
             >
-              <option value="">— Seleziona provincia —</option>
-              {provinces.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Città</label>
-            <select
-              className="rounded-lg border p-2 disabled:bg-gray-50"
-              value={municipalityId ?? ''}
-              onChange={(e) => setMunicipalityId(e.target.value ? Number(e.target.value) : null)}
-              disabled={!provinceId}
-            >
-              <option value="">— Seleziona città —</option>
-              {municipalities.map((m) => (
-                <option key={m.id} value={m.id}>{m.name}</option>
-              ))}
+              <option value="public">Pubblico</option>
+              <option value="private">Privato</option>
             </select>
           </div>
         </div>
-        <p className="mt-2 text-xs text-gray-500">
-          I menu sono alimentati dal DB (RPC <code>location_children</code> con fallback su tabelle) e ordinati A→Z.
-        </p>
+        <div>
+          <label className="block text-sm font-medium mb-1">Bio</label>
+          <textarea
+            className="w-full rounded-xl border px-3 py-2 min-h-24"
+            value={bio}
+            onChange={(e) => setBio(e.target.value)}
+            placeholder="Breve descrizione del tuo profilo, esperienze, obiettivi…"
+          />
+        </div>
       </section>
 
-      {/* Dettagli atleta */}
-      <section className="rounded-2xl border p-4 md:p-5">
-        <h2 className="mb-3 text-lg font-semibold">Dettagli atleta</h2>
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Piede preferito</label>
-            <select className="rounded-lg border p-2" value={foot} onChange={(e) => setFoot(e.target.value)}>
-              <option value="">— Seleziona —</option>
+      {/* Dati fisici & tecnici */}
+      <section className="bg-white rounded-xl border p-4 space-y-3">
+        <h2 className="text-sm font-semibold">Dati fisici & tecnici</h2>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div>
+            <label className="block text-sm font-medium mb-1">Altezza (cm)</label>
+            <input
+              inputMode="numeric"
+              className="w-full rounded-xl border px-3 py-2"
+              value={height}
+              onChange={(e) => setHeight(e.target.value)}
+              placeholder="182"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Peso (kg)</label>
+            <input
+              inputMode="numeric"
+              className="w-full rounded-xl border px-3 py-2"
+              value={weight}
+              onChange={(e) => setWeight(e.target.value)}
+              placeholder="78"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Piede</label>
+            <select
+              className="w-full rounded-xl border px-3 py-2"
+              value={foot}
+              onChange={(e) => setFoot(e.target.value as Foot)}
+            >
+              <option value="">—</option>
               <option value="Destro">Destro</option>
               <option value="Sinistro">Sinistro</option>
               <option value="Ambidestro">Ambidestro</option>
             </select>
           </div>
+        </div>
+      </section>
 
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Altezza (cm)</label>
-            <input type="number" inputMode="numeric" className="rounded-lg border p-2" value={heightCm}
-              onChange={(e) => setHeightCm(e.target.value === '' ? '' : Number(e.target.value))}
-              min={100} max={230} placeholder="es. 183" />
+      {/* Sport & Ruolo */}
+      <section className="bg-white rounded-xl border p-4 space-y-3">
+        <h2 className="text-sm font-semibold">Sport & ruolo</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div>
+            <label className="block text-sm font-medium mb-1">Sport</label>
+            <select
+              className="w-full rounded-xl border px-3 py-2"
+              value={sport}
+              onChange={(e) => { setSport(e.target.value); setRole(''); }}
+            >
+              <option value="">—</option>
+              {SPORTS.map((s: string) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
           </div>
-
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Peso (kg)</label>
-            <input type="number" inputMode="numeric" className="rounded-lg border p-2" value={weightKg}
-              onChange={(e) => setWeightKg(e.target.value === '' ? '' : Number(e.target.value))}
-              min={40} max={150} placeholder="es. 85" />
+          <div>
+            <label className="block text-sm font-medium mb-1">Ruolo</label>
+            <select
+              className="w-full rounded-xl border px-3 py-2"
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+            >
+              <option value="">—</option>
+              {roleOptions.map((r: string) => (
+                <option key={r} value={r}>{r}</option>
+              ))}
+            </select>
           </div>
         </div>
       </section>
 
-      {/* Social */}
-      <section className="rounded-2xl border p-4 md:p-5">
-        <h2 className="mb-3 text-lg font-semibold">Profili social</h2>
-        <p className="mb-3 text-xs text-gray-500">Inserisci URL completi o semplici @handle.</p>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Instagram</label>
-            <input className="rounded-lg border p-2" value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="@tuonome oppure https://instagram.com/tuonome" />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Facebook</label>
-            <input className="rounded-lg border p-2" value={facebook} onChange={(e) => setFacebook(e.target.value)} placeholder="pagina o profilo" />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">TikTok</label>
-            <input className="rounded-lg border p-2" value={tiktok} onChange={(e) => setTiktok(e.target.value)} placeholder="@tuonome" />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">X (Twitter)</label>
-            <input className="rounded-lg border p-2" value={x} onChange={(e) => setX(e.target.value)} placeholder="@tuonome" />
-          </div>
+      {/* Zona di interesse: componente condiviso (RPC) */}
+      <section className="bg-white rounded-xl border p-4 space-y-3">
+        <h2 className="text-sm font-semibold">Zona di interesse</h2>
+        <div className="mt-1">
+          <InterestAreaForm />
         </div>
+        <p className="text-xs text-gray-500">
+          La zona di interesse personalizza il feed e le opportunità suggerite.
+        </p>
       </section>
 
-      {/* Notifiche */}
-      <section className="rounded-2xl border p-4 md:p-5">
-        <h2 className="mb-3 text-lg font-semibold">Notifiche</h2>
-        <label className="flex items-center gap-3">
-          <input type="checkbox" className="h-4 w-4" checked={notifyEmail} onChange={(e) => setNotifyEmail(e.target.checked)} />
-          <span className="text-sm">Email per nuovi messaggi</span>
-        </label>
-      </section>
-
-      <div className="flex items-center gap-3">
-        <button type="submit" disabled={!canSave} className="rounded-xl bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-60">
+      <div className="flex items-center justify-end gap-2">
+        <button
+          type="submit"
+          disabled={saving}
+          className="px-4 py-2 rounded-lg bg-gray-900 text-white"
+        >
           {saving ? 'Salvataggio…' : 'Salva profilo'}
         </button>
-        {message && <span className="text-sm text-green-700">{message}</span>}
-        {error && <span className="text-sm text-red-700">{error}</span>}
       </div>
     </form>
   );
