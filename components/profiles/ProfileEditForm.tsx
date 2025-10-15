@@ -10,21 +10,17 @@ type AccountType = 'club' | 'athlete' | null;
 
 type Profile = {
   account_type: AccountType;
-  // anagrafica
   full_name: string | null;
   bio: string | null;
   birth_year: number | null;
-  city: string | null; // residenza testuale (se presente in schema)
-  // interesse geografico
+  city: string | null;
   interest_country: string | null;
   interest_region_id: number | null;
   interest_province_id: number | null;
   interest_municipality_id: number | null;
-  // sport
   foot: string | null;
   height_cm: number | null;
   weight_kg: number | null;
-  // notifiche
   notify_email_new_message: boolean;
 };
 
@@ -33,14 +29,14 @@ const supabase = createSupabaseClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-// --- Helpers: RPC with fallback ---------------------------------------------
+// RPC con fallback su tabelle
 async function rpcChildren(level: LocationLevel, parent: number | null) {
   try {
     const { data, error } = await supabase.rpc('location_children', { level, parent });
     if (!error && Array.isArray(data)) return data as LocationRow[];
   } catch {}
   if (level === 'region') {
-    const { data } = await supabase.from('regions').select('id,name').order('name', { ascending: true });
+    const { data } = await supabase.from('regions').select('id,name').order('name');
     return (data ?? []) as LocationRow[];
   }
   if (level === 'province') {
@@ -49,30 +45,24 @@ async function rpcChildren(level: LocationLevel, parent: number | null) {
     return (data ?? []) as LocationRow[];
   }
   if (parent == null) return [];
-  const { data } = await supabase
-    .from('municipalities')
-    .select('id,name')
-    .eq('province_id', parent)
-    .order('name');
+  const { data } = await supabase.from('municipalities').select('id,name').eq('province_id', parent).order('name');
   return (data ?? []) as LocationRow[];
 }
-// -----------------------------------------------------------------------------
 
 export default function ProfileEditForm() {
   const router = useRouter();
 
-  // state profilo
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // campi anagrafica
+  // anagrafica
   const [fullName, setFullName] = useState('');
   const [bio, setBio] = useState('');
   const [birthYear, setBirthYear] = useState<number | ''>('');
-  const [residenceCity, setResidenceCity] = useState<string>(''); // se usi profiles.city
+  const [residenceCity, setResidenceCity] = useState<string>('');
 
   // cascata interesse
   const [regionId, setRegionId] = useState<number | null>(null);
@@ -95,7 +85,10 @@ export default function ProfileEditForm() {
         setLoading(true);
         const r = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
         if (!r.ok) throw new Error('Impossibile leggere il profilo');
-        const j = await r.json();
+
+        // 🔧 accetta sia {…} che { data: {…} }
+        const raw = await r.json().catch(() => ({}));
+        const j = (raw && typeof raw === 'object' && 'data' in raw ? (raw as any).data : raw) || {};
 
         const p: Profile = {
           account_type: (j?.account_type ?? null) as AccountType,
@@ -130,8 +123,7 @@ export default function ProfileEditForm() {
         setNotifyEmail(Boolean(p.notify_email_new_message));
 
         // geo
-        const rs = await rpcChildren('region', null);
-        setRegions(rs);
+        setRegions(await rpcChildren('region', null));
         if (p.interest_region_id) setProvinces(await rpcChildren('province', p.interest_region_id));
         if (p.interest_province_id) setMunicipalities(await rpcChildren('municipality', p.interest_province_id));
       } catch (e: any) {
@@ -177,21 +169,17 @@ export default function ProfileEditForm() {
 
     try {
       const payload = {
-        // anagrafica
         full_name: (fullName || '').trim() || null,
         bio: (bio || '').trim() || null,
         birth_year: birthYear === '' ? null : Number(birthYear),
-        city: (residenceCity || '').trim() || null, // se la colonna esiste
-        // interesse
+        city: (residenceCity || '').trim() || null,
         interest_country: 'IT',
         interest_region_id: regionId,
         interest_province_id: provinceId,
         interest_municipality_id: municipalityId,
-        // sport
         foot: (foot || '').trim() || null,
         height_cm: heightCm === '' ? null : Number(heightCm),
         weight_kg: weightKg === '' ? null : Number(weightKg),
-        // notifiche
         notify_email_new_message: !!notifyEmail,
       };
 
@@ -205,7 +193,9 @@ export default function ProfileEditForm() {
         const j = await r.json().catch(() => ({}));
         throw new Error(j?.error ?? 'Salvataggio non riuscito');
       }
+
       setMessage('Profilo aggiornato correttamente.');
+      // forza rilettura senza cache
       router.refresh();
     } catch (e: any) {
       console.error(e);
@@ -222,50 +212,27 @@ export default function ProfileEditForm() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
-      {/* Anagrafica */}
+      {/* Dati personali */}
       <section className="rounded-2xl border p-4 md:p-5">
         <h2 className="mb-3 text-lg font-semibold">Dati personali</h2>
         <div className="grid gap-4 md:grid-cols-2">
           <div className="flex flex-col gap-1">
             <label className="text-sm text-gray-600">Nome e cognome</label>
-            <input
-              className="rounded-lg border p-2"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="Es. Mario Rossi"
-            />
+            <input className="rounded-lg border p-2" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Es. Mario Rossi" />
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-sm text-gray-600">Anno di nascita</label>
-            <input
-              type="number"
-              inputMode="numeric"
-              className="rounded-lg border p-2"
-              value={birthYear}
-              onChange={(e) => setBirthYear(e.target.value === '' ? '' : Number(e.target.value))}
-              min={1950}
-              max={currentYear - 5}
-              placeholder="Es. 2002"
-            />
+            <input type="number" inputMode="numeric" className="rounded-lg border p-2"
+              value={birthYear} onChange={(e) => setBirthYear(e.target.value === '' ? '' : Number(e.target.value))}
+              min={1950} max={currentYear - 5} placeholder="Es. 2002" />
           </div>
           <div className="md:col-span-2 flex flex-col gap-1">
             <label className="text-sm text-gray-600">Città di residenza</label>
-            <input
-              className="rounded-lg border p-2"
-              value={residenceCity}
-              onChange={(e) => setResidenceCity(e.target.value)}
-              placeholder="Es. Carlentini (SR)"
-            />
+            <input className="rounded-lg border p-2" value={residenceCity} onChange={(e) => setResidenceCity(e.target.value)} placeholder="Es. Carlentini (SR)" />
           </div>
           <div className="md:col-span-2 flex flex-col gap-1">
             <label className="text-sm text-gray-600">Biografia</label>
-            <textarea
-              className="rounded-lg border p-2"
-              rows={4}
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              placeholder="Racconta in breve ruolo, caratteristiche, esperienze…"
-            />
+            <textarea className="rounded-lg border p-2" rows={4} value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Racconta in breve ruolo, caratteristiche, esperienze…" />
           </div>
         </div>
       </section>
@@ -276,49 +243,31 @@ export default function ProfileEditForm() {
         <div className="grid gap-4 md:grid-cols-4">
           <div className="flex flex-col gap-1">
             <label className="text-sm text-gray-600">Paese</label>
-            <select className="rounded-lg border p-2" value="IT" disabled>
-              <option value="IT">Italia</option>
-            </select>
+            <select className="rounded-lg border p-2" value="IT" disabled><option value="IT">Italia</option></select>
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-sm text-gray-600">Regione</label>
-            <select
-              className="rounded-lg border p-2"
-              value={regionId ?? ''}
-              onChange={(e) => setRegionId(e.target.value ? Number(e.target.value) : null)}
-            >
+            <select className="rounded-lg border p-2" value={regionId ?? ''} onChange={(e) => setRegionId(e.target.value ? Number(e.target.value) : null)}>
               <option value="">— Seleziona regione —</option>
               {regions.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
             </select>
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-sm text-gray-600">Provincia</label>
-            <select
-              className="rounded-lg border p-2 disabled:bg-gray-50"
-              value={provinceId ?? ''}
-              onChange={(e) => setProvinceId(e.target.value ? Number(e.target.value) : null)}
-              disabled={!regionId}
-            >
+            <select className="rounded-lg border p-2 disabled:bg-gray-50" value={provinceId ?? ''} onChange={(e) => setProvinceId(e.target.value ? Number(e.target.value) : null)} disabled={!regionId}>
               <option value="">— Seleziona provincia —</option>
               {provinces.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-sm text-gray-600">Città</label>
-            <select
-              className="rounded-lg border p-2 disabled:bg-gray-50"
-              value={municipalityId ?? ''}
-              onChange={(e) => setMunicipalityId(e.target.value ? Number(e.target.value) : null)}
-              disabled={!provinceId}
-            >
+            <select className="rounded-lg border p-2 disabled:bg-gray-50" value={municipalityId ?? ''} onChange={(e) => setMunicipalityId(e.target.value ? Number(e.target.value) : null)} disabled={!provinceId}>
               <option value="">— Seleziona città —</option>
               {municipalities.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
             </select>
           </div>
         </div>
-        <p className="mt-2 text-xs text-gray-500">
-          I menu sono alimentati dal DB (RPC <code>location_children</code> con fallback su tabelle).
-        </p>
+        <p className="mt-2 text-xs text-gray-500">I menu sono alimentati dal DB (RPC <code>location_children</code> con fallback su tabelle).</p>
       </section>
 
       {/* Dettagli atleta */}
@@ -336,21 +285,15 @@ export default function ProfileEditForm() {
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-sm text-gray-600">Altezza (cm)</label>
-            <input
-              type="number" inputMode="numeric" className="rounded-lg border p-2"
-              value={heightCm}
+            <input type="number" inputMode="numeric" className="rounded-lg border p-2" value={heightCm}
               onChange={(e) => setHeightCm(e.target.value === '' ? '' : Number(e.target.value))}
-              min={100} max={230} placeholder="es. 183"
-            />
+              min={100} max={230} placeholder="es. 183" />
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-sm text-gray-600">Peso (kg)</label>
-            <input
-              type="number" inputMode="numeric" className="rounded-lg border p-2"
-              value={weightKg}
+            <input type="number" inputMode="numeric" className="rounded-lg border p-2" value={weightKg}
               onChange={(e) => setWeightKg(e.target.value === '' ? '' : Number(e.target.value))}
-              min={40} max={150} placeholder="es. 85"
-            />
+              min={40} max={150} placeholder="es. 85" />
           </div>
         </div>
       </section>
