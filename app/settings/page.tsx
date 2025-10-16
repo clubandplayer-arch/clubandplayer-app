@@ -1,8 +1,11 @@
+// app/settings/page.tsx
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
+import InterestAreaForm from '@/components/profiles/InterestAreaForm'
 
 type Profile = {
   id: string
@@ -12,6 +15,7 @@ type Profile = {
 
 export default function SettingsPage() {
   const supabase = useMemo(() => supabaseBrowser(), [])
+  const router = useRouter()
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -62,7 +66,6 @@ export default function SettingsPage() {
     const { error } = await supabase
       .from('profiles')
       .update({
-        // aggiorniamo solo il flag email messaggi (la colonna esiste dal passo notifiche)
         notify_email_new_message: notifyEmailNewMessage,
       })
       .eq('id', userId)
@@ -80,25 +83,58 @@ export default function SettingsPage() {
     window.location.href = '/'
   }
 
+  const goBack = () => {
+    // se non c'è history (es. aperto da link diretto), vai al feed
+    if (typeof window !== 'undefined' && window.history.length > 1) router.back()
+    else router.push('/feed')
+  }
+
   return (
     <main style={{ maxWidth: 820, margin: '0 auto', padding: 24 }}>
+      {/* Action bar: back + link al feed */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 12,
+        }}
+      >
+        <button
+          onClick={goBack}
+          className="btn btn-outline"
+          aria-label="Torna alla pagina precedente"
+        >
+          ← Torna indietro
+        </button>
+
+        <Link href="/feed" className="btn btn-ghost">
+          Vai al feed →
+        </Link>
+      </div>
+
       <h1>Impostazioni</h1>
 
       {loading && <p>Caricamento…</p>}
-      {!!msg && <p style={{ color: msg.includes('Errore') ? '#b91c1c' : '#065f46' }}>{msg}</p>}
+      {!!msg && (
+        <p style={{ color: msg.includes('Errore') ? '#b91c1c' : '#065f46' }}>{msg}</p>
+      )}
 
       {!loading && (
         <div style={{ display: 'grid', gap: 16 }}>
           <section style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 16 }}>
             <h2 style={{ marginTop: 0 }}>Profilo</h2>
             <p style={{ margin: '8px 0' }}>
-              Tipo account:{' '}
-              <b>{accountType ?? '—'}</b>
+              Tipo account: <b>{accountType ?? '—'}</b>
             </p>
             <p style={{ margin: '8px 0' }}>
-              Profilo pubblico:{' '}
-              <Link href="/u/me">/u/me</Link>
+              Profilo pubblico: <Link href="/u/me">/u/me</Link>
             </p>
+          </section>
+
+          <section style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 16 }}>
+            <h2 style={{ marginTop: 0 }}>Zona di interesse</h2>
+            <InterestAreaForm />
           </section>
 
           <section style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 16 }}>
@@ -121,7 +157,7 @@ export default function SettingsPage() {
                   borderRadius: 8,
                   border: '1px solid #e5e7eb',
                   background: '#fff',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
                 }}
               >
                 {saving ? 'Salvataggio…' : 'Salva'}
@@ -138,7 +174,7 @@ export default function SettingsPage() {
                 borderRadius: 8,
                 border: '1px solid #e5e7eb',
                 background: '#fff',
-                cursor: 'pointer'
+                cursor: 'pointer',
               }}
             >
               Logout
