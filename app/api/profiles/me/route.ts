@@ -47,6 +47,8 @@ const FIELDS: Record<string, 'text' | 'number' | 'bool'> = {
   notify_email_new_message: 'bool',
   // onboarding ruolo
   account_type: 'text',
+  // ✅ avatar (nuovo)
+  avatar_url: 'text',
 };
 
 /* ---------------------------------- GET ---------------------------------- */
