@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import FeedLatest from '@/components/feed/FeedLatest';
 import WhoToFollow from '@/components/feed/WhoToFollow';
-import FeedPosts from '@/components/feed/FeedPosts'; // 👈 aggiunto
+import FeedPosts from '@/components/feed/FeedPosts';
+import ProfileMiniCard from '@/components/profiles/ProfileMiniCard';
 
 type Role = 'club' | 'athlete' | 'guest';
 
@@ -26,42 +27,28 @@ export default function FeedPage() {
 
   return (
     <main className="container mx-auto px-4 py-6">
+      {/* h1 “nascosto” per SEO/accessibilità senza cambiare il layout */}
+      <h1 className="sr-only">Bacheca</h1>
+
       {/* Griglia tipo LinkedIn: 3 colonne su lg (3/6/3), singola colonna su mobile */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         {/* SINISTRA */}
         <aside className="hidden lg:col-span-3 lg:flex lg:flex-col lg:gap-6">
-          {/* Mini profilo */}
-          <div className="rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+          {/* Mini profilo (sostituisce “Benvenuto! / Vai al profilo”) */}
+          <div className="card p-4">
             <div className="mb-2 text-sm text-neutral-500">Il tuo profilo</div>
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-neutral-200" />
-              <div className="min-w-0">
-                <div className="truncate font-medium">Benvenuto!</div>
-                <Link
-                  href={role === 'club' ? '/club/profile' : '/profile'}
-                  className="text-sm text-blue-600 hover:underline dark:text-blue-400"
-                >
-                  Vai al profilo
-                </Link>
-              </div>
-            </div>
+            <ProfileMiniCard />
           </div>
 
           {/* Azioni rapide per club */}
           {role === 'club' && (
-            <div className="rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+            <div className="card p-4">
               <div className="mb-2 text-sm text-neutral-500">Azioni rapide</div>
               <div className="flex flex-col gap-2">
-                <Link
-                  href="/opportunities/new"
-                  className="rounded-md border px-3 py-2 hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
-                >
+                <Link href="/opportunities/new" className="btn btn-outline">
                   + Pubblica opportunità
                 </Link>
-                <Link
-                  href="/club/applicants"
-                  className="rounded-md border px-3 py-2 hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
-                >
+                <Link href="/club/applicants" className="btn btn-outline">
                   Vedi candidature
                 </Link>
               </div>
@@ -72,18 +59,11 @@ export default function FeedPage() {
         {/* CENTRO */}
         <section className="lg:col-span-6 flex flex-col gap-6">
           {/* Composer (placeholder per ora) */}
-          <div className="rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+          <div className="card p-4">
             <div className="mb-3 text-sm text-neutral-500">Condividi un aggiornamento</div>
-            <textarea
-              className="w-full rounded-xl border px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
-              rows={3}
-              placeholder="Scrivi qualcosa…"
-            />
+            <textarea className="textarea" rows={3} placeholder="Scrivi qualcosa…" />
             <div className="mt-3 flex justify-end">
-              <button
-                className="rounded-md border px-3 py-1.5 text-sm hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
-                disabled
-              >
+              <button className="btn btn-outline text-sm" disabled>
                 Pubblica (coming soon)
               </button>
             </div>
@@ -93,7 +73,7 @@ export default function FeedPage() {
           <FeedLatest />
 
           {/* 🔴 DATI REALI: Post dal DB */}
-          <div className="rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+          <div className="card p-4">
             <div className="mb-3 text-sm font-medium">Aggiornamenti della community</div>
             <FeedPosts />
           </div>
@@ -101,43 +81,13 @@ export default function FeedPage() {
 
         {/* DESTRA */}
         <aside className="hidden xl:col-span-3 xl:flex xl:flex-col xl:gap-6">
-          <div className="rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-            <h3 className="mb-3 text-sm font-semibold text-neutral-700 dark:text-neutral-200">
-              🔥 Trending
-            </h3>
+          <div className="card p-4">
+            <h3 className="mb-3 text-sm font-semibold text-neutral-700 dark:text-neutral-200">🔥 Trending</h3>
             <ul className="space-y-2 text-sm">
-              <li>
-                <a
-                  href="/search/athletes?trend=mercato"
-                  className="text-blue-600 hover:underline dark:text-blue-400"
-                >
-                  Calciomercato Dilettanti
-                </a>
-              </li>
-              <li>
-                <a
-                  href="/opportunities?role=goalkeeper&gender=f"
-                  className="text-blue-600 hover:underline dark:text-blue-400"
-                >
-                  Portieri femminili U21
-                </a>
-              </li>
-              <li>
-                <a
-                  href="/feed?tag=preparazione"
-                  className="text-blue-600 hover:underline dark:text-blue-400"
-                >
-                  Preparazione invernale
-                </a>
-              </li>
-              <li>
-                <a
-                  href="/opportunities?league=serie-d&role=winger"
-                  className="text-blue-600 hover:underline dark:text-blue-400"
-                >
-                  Serie D – Esterni veloci
-                </a>
-              </li>
+              <li><a href="/search/athletes?trend=mercato" className="link">Calciomercato Dilettanti</a></li>
+              <li><a href="/opportunities?role=goalkeeper&gender=f" className="link">Portieri femminili U21</a></li>
+              <li><a href="/feed?tag=preparazione" className="link">Preparazione invernale</a></li>
+              <li><a href="/opportunities?league=serie-d&role=winger" className="link">Serie D – Esterni veloci</a></li>
             </ul>
           </div>
 
