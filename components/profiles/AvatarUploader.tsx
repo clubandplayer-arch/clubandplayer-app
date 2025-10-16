@@ -8,9 +8,9 @@ const supabase = createSupabaseClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-// placeholder inline per evitare asset extra
+// Placeholder inline (niente asset esterni)
 const PLACEHOLDER =
-  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128"><rect width="100%" height="100%" fill="%23e5e7eb"/><circle cx="64" cy="48" r="24" fill="%23cbd5e1"/><rect x="24" y="86" width="80" height="18" rx="9" fill="%23cbd5e1"/></svg>';
+  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="256" height="320"><rect width="100%" height="100%" fill="%23e5e7eb"/><circle cx="128" cy="110" r="60" fill="%23cbd5e1"/><rect x="48" y="220" width="160" height="40" rx="20" fill="%23cbd5e1"/></svg>';
 
 type Props = { value?: string | null; onChange?: (url: string | null) => void; };
 
@@ -84,9 +84,17 @@ export default function AvatarUploader({ value, onChange }: Props) {
   }
 
   return (
-    <div className="flex items-center gap-4">
-      <img src={value || PLACEHOLDER} alt="Avatar" className="h-16 w-16 rounded-full object-cover border bg-gray-100" />
-      <div className="flex flex-col gap-2">
+    <div className="flex items-start gap-5">
+      {/* Wrapper con ratio 4:5 e dimensioni grandi (≈ 192×240) */}
+      <div className="relative w-48" style={{ aspectRatio: '4 / 5' }}>
+        <img
+          src={value || PLACEHOLDER}
+          alt="Avatar"
+          className="absolute inset-0 h-full w-full rounded-2xl object-cover border bg-gray-100"
+        />
+      </div>
+
+      <div className="flex flex-col gap-2 pt-2">
         <div className="flex gap-2">
           <button type="button" className="btn btn-outline" onClick={openPicker} disabled={uploading}>
             {uploading ? 'Caricamento…' : 'Carica foto'}
@@ -97,8 +105,12 @@ export default function AvatarUploader({ value, onChange }: Props) {
             </button>
           )}
         </div>
+        <p className="text-xs text-gray-500">
+          Formato consigliato: verticale (4:5), fino a 5MB.
+        </p>
         {error && <div className="text-xs text-red-600">{error}</div>}
       </div>
+
       <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
     </div>
   );

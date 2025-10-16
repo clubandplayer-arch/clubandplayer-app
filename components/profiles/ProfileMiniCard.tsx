@@ -26,9 +26,9 @@ const supabase = createSupabaseClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-// piccolo placeholder inline
+// placeholder verticale 4:5
 const PH =
-  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96"><rect width="100%" height="100%" fill="%23e5e7eb"/><circle cx="48" cy="36" r="18" fill="%23cbd5e1"/><rect x="20" y="62" width="56" height="12" rx="6" fill="%23cbd5e1"/></svg>';
+  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="160" height="200"><rect width="100%" height="100%" fill="%23e5e7eb"/><circle cx="80" cy="70" r="40" fill="%23cbd5e1"/><rect x="32" y="140" width="96" height="24" rx="12" fill="%23cbd5e1"/></svg>';
 
 function pickData<T = any>(raw: any): T {
   if (raw && typeof raw === 'object' && 'data' in raw) return (raw as any).data as T;
@@ -81,14 +81,17 @@ export default function ProfileMiniCard() {
   return (
     <div className="rounded-2xl border p-4 shadow-sm">
       <div className="flex items-center gap-3">
-        <img
-          src={p?.avatar_url || PH}
-          alt=""
-          className="h-12 w-12 rounded-full object-cover bg-gray-200"
-        />
-        <div>
-          <div className="text-base font-semibold">{name}</div>
-          <div className="text-xs text-gray-600">{place}</div>
+        {/* avatar verticale 4:5 (≈ 96×120) */}
+        <div className="relative w-24 shrink-0" style={{ aspectRatio: '4 / 5' }}>
+          <img
+            src={p?.avatar_url || PH}
+            alt=""
+            className="absolute inset-0 h-full w-full rounded-xl object-cover bg-gray-200"
+          />
+        </div>
+        <div className="min-w-0">
+          <div className="truncate text-base font-semibold">{name}</div>
+          <div className="truncate text-xs text-gray-600">{place}</div>
         </div>
       </div>
 
