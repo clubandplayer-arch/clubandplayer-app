@@ -8,7 +8,7 @@ type P = {
   full_name?: string | null;
   display_name?: string | null;
   bio?: string | null;
-  birth_year?: number | null;
+  birth_year?: number | string | null;
   city?: string | null;
   foot?: string | null;
   height_cm?: number | null;
@@ -26,6 +26,15 @@ const supabase = createSupabaseClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
+// piccolo placeholder inline
+const PH =
+  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96"><rect width="100%" height="100%" fill="%23e5e7eb"/><circle cx="48" cy="36" r="18" fill="%23cbd5e1"/><rect x="20" y="62" width="56" height="12" rx="6" fill="%23cbd5e1"/></svg>';
+
+function pickData<T = any>(raw: any): T {
+  if (raw && typeof raw === 'object' && 'data' in raw) return (raw as any).data as T;
+  return raw as T;
+}
+
 export default function ProfileMiniCard() {
   const [p, setP] = useState<P | null>(null);
   const [place, setPlace] = useState<string>('—');
@@ -35,9 +44,10 @@ export default function ProfileMiniCard() {
       try {
         const r = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
         const raw = await r.json().catch(() => ({}));
-        const j = (raw && typeof raw === 'object' && 'data' in raw ? (raw as any).data : raw) || {};
-        setP(j || {});
-        // etichetta luogo
+        const j = pickData<P>(raw) || {};
+        setP(j);
+
+        // Etichetta luogo: city > (municipality, province, region)
         let label = (j?.city ?? '').trim();
         if (!label) {
           const [mun, prov, reg] = await Promise.all([
@@ -64,13 +74,18 @@ export default function ProfileMiniCard() {
   }, []);
 
   const year = new Date().getFullYear();
-  const age = p?.birth_year ? Math.max(0, year - p.birth_year) : null;
+  const by = p?.birth_year == null ? null : Number(p.birth_year);
+  const age = by && Number.isFinite(by) ? Math.max(0, year - by) : null;
   const name = p?.full_name || p?.display_name || 'Benvenuto!';
 
   return (
     <div className="rounded-2xl border p-4 shadow-sm">
       <div className="flex items-center gap-3">
-        <div className="h-12 w-12 rounded-full bg-gray-200" />
+        <img
+          src={p?.avatar_url || PH}
+          alt=""
+          className="h-12 w-12 rounded-full object-cover bg-gray-200"
+        />
         <div>
           <div className="text-base font-semibold">{name}</div>
           <div className="text-xs text-gray-600">{place}</div>
