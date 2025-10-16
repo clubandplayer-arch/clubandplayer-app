@@ -82,7 +82,7 @@ export default function ProfileMiniCard() {
     <div className="rounded-2xl border p-4 shadow-sm">
       <div className="flex items-center gap-3">
         {/* avatar verticale 4:5 (≈ 96×120) */}
-        <div className="relative w-24 shrink-0" style={{ aspectRatio: '4 / 5' }}>
+        <div className="relative w-32 shrink-0" style={{ aspectRatio: '4 / 5' }}>
           <img
             src={p?.avatar_url || PH}
             alt=""
