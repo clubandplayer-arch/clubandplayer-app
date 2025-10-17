@@ -1,6 +1,6 @@
 // app/layout.tsx
 import './globals.css';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Suspense } from 'react';
 
 import HashCleanup from '@/components/auth/HashCleanup';
@@ -11,6 +11,15 @@ import PostHogInit from '@/components/analytics/PostHogInit';
 export const metadata: Metadata = {
   title: 'Club & Player',
   description: 'Club & Player App',
+};
+
+// ✅ Next 15: viewport deve essere un export separato (non dentro metadata)
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  // facoltativi:
+  // themeColor: '#0b6cff',
+  // colorScheme: 'light dark',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
