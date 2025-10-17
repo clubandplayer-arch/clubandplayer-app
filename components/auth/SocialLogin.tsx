@@ -9,23 +9,22 @@ const supabase = createSupabaseClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
+// dominio di produzione per il redirect (override opzionale con NEXT_PUBLIC_SITE_URL)
+const PROD_ORIGIN =
+  process.env.NEXT_PUBLIC_SITE_URL || 'https://clubandplayer-app.vercel.app';
+
 export default function SocialLogin() {
   const [loading, setLoading] = useState(false);
 
   async function signInWithGoogle() {
     try {
       setLoading(true);
-      const redirectTo =
-        typeof window !== 'undefined'
-          ? `${window.location.origin}/auth/callback`
-          : undefined;
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo,
+          redirectTo: `${PROD_ORIGIN}/auth/callback`,
           queryParams: {
-            // refresh_token affidabile
             access_type: 'offline',
             prompt: 'consent',
           },
