@@ -55,17 +55,42 @@ const COUNTRY_ALIASES: Record<string, string> = {
   russia: 'RU', 'south korea': 'KR', 'north korea': 'KP', 'viet nam': 'VN',
 };
 
+/** Estrae un ISO2 robustamente da:
+ *  - "IT"
+ *  - "it Italia"
+ *  - "Italia (IT)"
+ *  - "United States / US"
+ *  - "Regno Unito uk"
+ */
 function nameToIso2(v?: string | null): string | null {
   const raw = (v || '').trim();
   if (!raw) return null;
-  if (/^[A-Za-z]{2}$/.test(raw)) return raw.toUpperCase();
+
+  // 1) se c'è un codice ISO di 2 lettere ovunque nella stringa, usalo
+  const m = raw.match(/\b([A-Za-z]{2})\b/);
+  if (m) {
+    const code = m[1].toUpperCase();
+    if (REGION_CODES.includes(code)) return code;
+  }
+
+  // 2) alias comuni
   const key = raw.toLowerCase();
   if (COUNTRY_ALIASES[key]) return COUNTRY_ALIASES[key];
+
+  // 3) match preciso nome paese (IT o EN)
   for (const code of REGION_CODES) {
     const it = (DN_IT.of(code) || '').toLowerCase();
     const en = (DN_EN.of(code) || '').toLowerCase();
     if (key === it || key === en) return code as string;
   }
+
+  // 4) match "contenuto" (es. "Repubblica Ceca - Europe")
+  for (const code of REGION_CODES) {
+    const it = (DN_IT.of(code) || '').toLowerCase();
+    const en = (DN_EN.of(code) || '').toLowerCase();
+    if (key.includes(it) || key.includes(en)) return code as string;
+  }
+
   return null;
 }
 /* -------------------------------------------------- */
@@ -112,7 +137,7 @@ export default function ProfileMiniCard() {
   const age = p?.birth_year ? Math.max(0, year - p.birth_year) : null;
   const name = p?.full_name || p?.display_name || 'Benvenuto!';
 
-  // nazionalità: flag + nome
+  // nazionalità: flag (via FlagCDN) + nome
   const iso = nameToIso2(p?.country || '');
   const countryLabel = iso ? (DN_IT.of(iso) || iso) : (p?.country || '');
   const flagUrl = iso ? `https://flagcdn.com/24x18/${iso.toLowerCase()}.png` : null;
@@ -151,16 +176,16 @@ export default function ProfileMiniCard() {
         <div className="min-w-0">
           <div className="text-base font-semibold">{name}</div>
 
-          {/* Luogo di residenza */}
-          { (p?.city || placeCascade !== '—') && (
+          {/* Residenza */}
+          {(p?.city || placeCascade !== '—') && (
             <div className="text-xs text-gray-600">
               <span className="font-medium">Luogo di residenza:</span>{' '}
               {p?.city || placeCascade}
             </div>
           )}
 
-          {/* Luogo di nascita */}
-          { p?.birth_place && (
+          {/* Nascita */}
+          {p?.birth_place && (
             <div className="text-xs text-gray-600">
               <span className="font-medium">Luogo di nascita:</span>{' '}
               {p.birth_place}
@@ -168,7 +193,7 @@ export default function ProfileMiniCard() {
           )}
 
           {/* Nazionalità */}
-          { p?.country && (
+          {p?.country && (
             <div className="text-xs text-gray-600 flex items-center gap-1">
               <span className="font-medium">Nazionalità:</span>
               {flagUrl && (
@@ -195,7 +220,7 @@ export default function ProfileMiniCard() {
 
       {p?.bio ? <p className="mt-3 line-clamp-3 text-sm text-gray-700">{p.bio}</p> : null}
 
-      {/* Icone social colorate */}
+      {/* Social colorati */}
       {(socials.instagram || socials.facebook || socials.tiktok || socials.x) && (
         <div className="mt-3 flex items-center gap-2">
           {socials.instagram && (
@@ -229,4 +254,3 @@ export default function ProfileMiniCard() {
     </div>
   );
 }
-

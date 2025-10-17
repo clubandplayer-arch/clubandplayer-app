@@ -55,22 +55,28 @@ const supabase = createSupabaseClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-// --- Helpers -------------------------------------------------
+/* ------------------------------- Helpers -------------------------------- */
+
+// Estrai {data} se presente
 function pickData<T = any>(raw: any): T {
   if (raw && typeof raw === 'object' && 'data' in raw) return (raw as any).data as T;
   return raw as T;
 }
 
-// RPC con fallback tabelle pubbliche
+// Ordinamento A→Z robusto (collation italiana)
+function sortAZ<T extends { name: string }>(rows: T[]) {
+  return [...rows].sort((a, b) => a.name.localeCompare(b.name, 'it', { sensitivity: 'base' }));
+}
+
+// RPC con fallback tabelle pubbliche + sort AZ lato client
 async function rpcChildren(level: LocationLevel, parent: number | null) {
   try {
     const { data, error } = await supabase.rpc('location_children', { level, parent });
-    if (!error && Array.isArray(data)) return data as LocationRow[];
-    // eslint-disable-next-line no-empty
+    if (!error && Array.isArray(data)) return sortAZ(data as LocationRow[]);
   } catch {}
   if (level === 'region') {
     const { data } = await supabase.from('regions').select('id,name').order('name', { ascending: true });
-    return (data ?? []) as LocationRow[];
+    return sortAZ((data ?? []) as LocationRow[]);
   }
   if (level === 'province') {
     if (parent == null) return [];
@@ -79,7 +85,7 @@ async function rpcChildren(level: LocationLevel, parent: number | null) {
       .select('id,name')
       .eq('region_id', parent)
       .order('name', { ascending: true });
-    return (data ?? []) as LocationRow[];
+    return sortAZ((data ?? []) as LocationRow[]);
   }
   if (parent == null) return [];
   const { data } = await supabase
@@ -87,52 +93,78 @@ async function rpcChildren(level: LocationLevel, parent: number | null) {
     .select('id,name')
     .eq('province_id', parent)
     .order('name', { ascending: true });
-  return (data ?? []) as LocationRow[];
+  return sortAZ((data ?? []) as LocationRow[]);
 }
 
 // Normalizza valori social → URL completi
 function normalizeSocial(kind: keyof Links, value: string): string | null {
   const v = (value || '').trim();
   if (!v) return null;
-
   const isUrl = /^https?:\/\//i.test(v);
-
   const map: Record<keyof Links, (h: string) => string> = {
     instagram: (h) => `https://instagram.com/${h.replace(/^@/, '')}`,
     facebook: (h) => (isUrl ? h : `https://facebook.com/${h.replace(/^@/, '')}`),
     tiktok: (h) => `https://tiktok.com/@${h.replace(/^@/, '')}`,
     x: (h) => `https://twitter.com/${h.replace(/^@/, '')}`,
   };
-
   if (isUrl) return v;
   return map[kind](v);
 }
 
-// Flag emoji da ISO2
+/* ----- bandiera/nome paese (ISO2) ----- */
+
+// region codes disponibili nel runtime
+function getRegionCodes(): string[] {
+  try {
+    // @ts-ignore
+    return (Intl as any).supportedValuesOf?.('region') ?? [];
+  } catch {
+    return [];
+  }
+}
+const REGION_CODES = getRegionCodes();
+const DN_IT = new Intl.DisplayNames(['it'], { type: 'region' });
+
+// alias comuni → ISO2
+const COUNTRY_ALIASES: Record<string, string> = {
+  uk: 'GB', 'u.k.': 'GB', 'united kingdom': 'GB', 'great britain': 'GB', 'inghilterra': 'GB',
+  usa: 'US', 'u.s.a.': 'US', 'united states': 'US', 'stati uniti': 'US',
+  'repubblica ceca': 'CZ', 'czech republic': 'CZ',
+  "côte d’ivoire": 'CI', "cote d’ivoire": 'CI', "costa d'avorio": 'CI',
+  russia: 'RU', 'south korea': 'KR', 'north korea': 'KP', 'viet nam': 'VN',
+};
+
+// nome testuale → ISO2 (se riconosciuto)
+function nameToIso2(v?: string | null): string | null {
+  const raw = (v || '').trim();
+  if (!raw) return null;
+  if (/^[A-Za-z]{2}$/.test(raw)) return raw.toUpperCase();
+  const key = raw.toLowerCase();
+  if (COUNTRY_ALIASES[key]) return COUNTRY_ALIASES[key];
+  for (const code of REGION_CODES) {
+    const it = (DN_IT.of(code) || '').toLowerCase();
+    if (it === key) return code as string;
+  }
+  return null;
+}
+
+// 🇮🇹 da ISO2
 function flagEmoji(iso2?: string | null) {
   const code = (iso2 || '').trim().toUpperCase();
   if (!/^[A-Z]{2}$/.test(code)) return '';
-  const A = 0x1f1e6;
-  const a = 'A'.charCodeAt(0);
+  const A = 0x1f1e6, a = 'A'.charCodeAt(0);
   return String.fromCodePoint(A + code.charCodeAt(0) - a) + String.fromCodePoint(A + code.charCodeAt(1) - a);
 }
 
-// Nome paese localizzato da ISO2 (fallback al testo)
-function countryName(codeOrText?: string | null) {
-  if (!codeOrText) return '';
-  const v = codeOrText.trim();
-  if (/^[A-Za-z]{2}$/.test(v)) {
-    try {
-      const dn = new Intl.DisplayNames(['it'], { type: 'region' });
-      return dn.of(v.toUpperCase()) || v.toUpperCase();
-    } catch {
-      return v.toUpperCase();
-    }
-  }
-  return v;
+// label per anteprima nel form
+function countryPreviewText(value?: string | null) {
+  if (!value) return '';
+  const iso = nameToIso2(value);
+  if (iso) return `${flagEmoji(iso)} ${DN_IT.of(iso) || iso}`;
+  return value.trim();
 }
 
-// -------------------------------------------------------------
+/* ------------------------------------------------------------------------ */
 
 export default function ProfileEditForm() {
   const router = useRouter();
@@ -174,10 +206,7 @@ export default function ProfileEditForm() {
   const [x, setX] = useState<string>('');
 
   async function loadProfile() {
-    const r = await fetch('/api/profiles/me', {
-      credentials: 'include',
-      cache: 'no-store',
-    });
+    const r = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
     if (!r.ok) throw new Error('Impossibile leggere il profilo');
     const raw = await r.json().catch(() => ({}));
     const j = pickData<Partial<Profile>>(raw) || {};
@@ -188,7 +217,7 @@ export default function ProfileEditForm() {
       full_name: (j as any)?.full_name ?? null,
       bio: (j as any)?.bio ?? null,
       birth_year: (j as any)?.birth_year ?? null,
-      birth_place: (j as any)?.birth_place ?? null, // <-- NEW
+      birth_place: (j as any)?.birth_place ?? null,
       city: (j as any)?.city ?? null,
       country: (j as any)?.country ?? null,
 
@@ -212,7 +241,7 @@ export default function ProfileEditForm() {
     setFullName(p.full_name || '');
     setBio(p.bio || '');
     setBirthYear(p.birth_year ?? '');
-    setBirthPlace(p.birth_place || '');      // <-- NEW
+    setBirthPlace(p.birth_place || '');
     setResidenceCity(p.city || '');
     setCountry(p.country || '');
 
@@ -238,17 +267,11 @@ export default function ProfileEditForm() {
         setLoading(true);
         await loadProfile();
 
-        // regioni iniziali
         const rs = await rpcChildren('region', null);
         setRegions(rs);
 
-        // cascata pre-selezionata
-        if (regionId != null) {
-          setProvinces(await rpcChildren('province', regionId));
-        }
-        if (provinceId != null) {
-          setMunicipalities(await rpcChildren('municipality', provinceId));
-        }
+        if (regionId != null) setProvinces(await rpcChildren('province', regionId));
+        if (provinceId != null) setMunicipalities(await rpcChildren('municipality', provinceId));
       } catch (e: any) {
         console.error(e);
         setError(e?.message ?? 'Errore caricamento profilo');
@@ -315,23 +338,28 @@ export default function ProfileEditForm() {
     setMessage(null);
 
     try {
+      // Normalizza social
       const links: Links = {
         instagram: normalizeSocial('instagram', instagram) ?? undefined,
         facebook: normalizeSocial('facebook', facebook) ?? undefined,
         tiktok: normalizeSocial('tiktok', tiktok) ?? undefined,
         x: normalizeSocial('x', x) ?? undefined,
       };
-      // rimuovi chiavi undefined per salvare pulito
       Object.keys(links).forEach((k) => (links as any)[k] === undefined && delete (links as any)[k]);
+
+      // Normalizza paese: preferisci ISO2 se riconosciuto, altrimenti testo originale
+      const countryTrim = (country || '').trim();
+      const isoCountry = nameToIso2(countryTrim);
+      const countryToSave = isoCountry ?? (countryTrim || null);
 
       const payload = {
         // anagrafica
         full_name: (fullName || '').trim() || null,
         bio: (bio || '').trim() || null,
         birth_year: birthYear === '' ? null : Number(birthYear),
-        birth_place: (birthPlace || '').trim() || null, // <-- NEW
+        birth_place: (birthPlace || '').trim() || null,
         city: (residenceCity || '').trim() || null,
-        country: (country || '').trim() || null,
+        country: countryToSave,
 
         // interesse geo
         interest_country: 'IT',
@@ -363,9 +391,7 @@ export default function ProfileEditForm() {
         throw new Error(j?.error ?? 'Salvataggio non riuscito');
       }
 
-      // ricarica i dati appena salvati (accetta {data:{...}})
       await loadProfile();
-
       setMessage('Profilo aggiornato correttamente.');
       router.refresh();
     } catch (e: any) {
@@ -385,7 +411,7 @@ export default function ProfileEditForm() {
   }
   if (!profile) return null;
 
-  const countryPreview = country ? `${flagEmoji(country)} ${countryName(country)}` : '';
+  const preview = country ? countryPreviewText(country) : '';
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
@@ -445,9 +471,7 @@ export default function ProfileEditForm() {
               onChange={(e) => setCountry(e.target.value)}
               placeholder="Es. IT oppure Italia"
             />
-            {country && (
-              <span className="text-xs text-gray-500">{countryPreview}</span>
-            )}
+            {country ? <span className="text-xs text-gray-500">{preview}</span> : null}
           </div>
 
           <div className="md:col-span-2 flex flex-col gap-1">
@@ -526,7 +550,7 @@ export default function ProfileEditForm() {
           </div>
         </div>
         <p className="mt-2 text-xs text-gray-500">
-          I menu sono alimentati dal DB (RPC <code>location_children</code> con fallback su tabelle).
+          I menu sono alimentati dal DB (RPC <code>location_children</code> con fallback su tabelle) e ordinati A→Z.
         </p>
       </section>
 
