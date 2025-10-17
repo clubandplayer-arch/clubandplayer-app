@@ -33,7 +33,7 @@ const supabase = createSupabaseClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-/* ---------- helpers bandiera/nome paese ---------- */
+/* ---------------- Helpers bandiera/nome paese ---------------- */
 function getRegionCodes(): string[] {
   try {
     // @ts-ignore
@@ -63,14 +63,10 @@ function flagEmoji(iso2?: string | null) {
 
 // prova a estrarre ISO2 anche da stringhe tipo "us Stati Uniti" / "IT Italia"
 function tryExtractIso2(raw: string): string | null {
-  // 1) se inizia con due lettere
   const firstToken = raw.trim().split(/[\s,()\-]+/)[0];
   if (/^[A-Za-z]{2}$/.test(firstToken)) return firstToken.toUpperCase();
-
-  // 2) se contiene un ISO2 fra spazi o parentesi
   const m = raw.match(/(?:^|\s|\()([A-Za-z]{2})(?:\)|\s|$)/);
   if (m && m[1]) return m[1].toUpperCase();
-
   return null;
 }
 
@@ -92,14 +88,7 @@ function nameToIso2(v?: string | null): string | null {
   }
   return null;
 }
-
-function countryDisplay(value?: string | null): string {
-  if (!value) return '';
-  const iso = nameToIso2(value);
-  if (iso) return `${flagEmoji(iso)} ${DN_IT.of(iso) || iso}`;
-  return value;
-}
-/* -------------------------------------------------- */
+/* ------------------------------------------------------------- */
 
 export default function ProfileMiniCard() {
   const [p, setP] = useState<P | null>(null);
@@ -141,7 +130,14 @@ export default function ProfileMiniCard() {
   const year = new Date().getFullYear();
   const age = p?.birth_year ? Math.max(0, year - p.birth_year) : null;
   const name = p?.full_name || p?.display_name || 'Benvenuto!';
-  const nat = countryDisplay(p?.country);
+
+  // — nazionalità in formato "Nazionalità: Italia 🇮🇹"
+  const iso = nameToIso2(p?.country ?? null);
+  const countryNameIt = iso ? (DN_IT.of(iso) || iso) : (p?.country || '');
+  const countryFlag = iso ? flagEmoji(iso) : '';
+  const nationalityRow = countryNameIt
+    ? `Nazionalità: ${countryNameIt}${countryFlag ? ' ' + countryFlag : ''}`
+    : '';
 
   const socials = {
     instagram: p?.links?.instagram,
@@ -184,7 +180,9 @@ export default function ProfileMiniCard() {
         <div className="min-w-0">
           <div className="text-base font-semibold">{name}</div>
           <div className="text-xs text-gray-600">{place}</div>
-          {nat ? <div className="text-xs text-gray-600">{nat}</div> : null}
+          {nationalityRow ? (
+            <div className="text-xs text-gray-600">{nationalityRow}</div>
+          ) : null}
         </div>
       </div>
 
