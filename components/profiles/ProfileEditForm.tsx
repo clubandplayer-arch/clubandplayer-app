@@ -27,8 +27,9 @@ type Profile = {
   full_name: string | null;
   bio: string | null;
   birth_year: number | null;
-  city: string | null;
-  country: string | null; // ISO2 o nome
+  birth_place: string | null; // <-- NEW
+  city: string | null;        // residenza
+  country: string | null;     // ISO2 o nome
 
   // interessi geo
   interest_country: string | null;
@@ -54,7 +55,7 @@ const supabase = createSupabaseClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-/* ------------------------- helpers generici ------------------------- */
+// --- Helpers -------------------------------------------------
 function pickData<T = any>(raw: any): T {
   if (raw && typeof raw === 'object' && 'data' in raw) return (raw as any).data as T;
   return raw as T;
@@ -89,61 +90,7 @@ async function rpcChildren(level: LocationLevel, parent: number | null) {
   return (data ?? []) as LocationRow[];
 }
 
-/* -------------------- nazionalità: ISO2 + bandiera ------------------- */
-function getRegionCodes(): string[] {
-  try {
-    // @ts-ignore
-    return (Intl as any).supportedValuesOf?.('region') ?? [];
-  } catch {
-    return [];
-  }
-}
-const REGION_CODES = getRegionCodes();
-const DN_IT = new Intl.DisplayNames(['it'], { type: 'region' });
-const DN_EN = new Intl.DisplayNames(['en'], { type: 'region' });
-
-// alias comuni -> ISO2
-const COUNTRY_ALIASES: Record<string, string> = {
-  uk: 'GB', 'u.k.': 'GB', 'united kingdom': 'GB', 'great britain': 'GB',
-  usa: 'US', 'u.s.a.': 'US', 'united states': 'US', 'stati uniti': 'US',
-  'repubblica ceca': 'CZ', 'czech republic': 'CZ',
-  'cote d’ivoire': 'CI', "côte d’ivoire": 'CI',
-  russia: 'RU', 'south korea': 'KR', 'north korea': 'KP', 'viet nam': 'VN',
-};
-
-// “IT” → “🇮🇹”
-function flagEmoji(iso2?: string | null) {
-  const code = (iso2 || '').trim().toUpperCase();
-  if (!/^[A-Z]{2}$/.test(code)) return '';
-  const A = 0x1f1e6, a = 'A'.charCodeAt(0);
-  return String.fromCodePoint(A + code.charCodeAt(0) - a) + String.fromCodePoint(A + code.charCodeAt(1) - a);
-}
-
-// ricava ISO2 dal testo inserito
-function nameToIso2(v?: string | null): string | null {
-  const raw = (v || '').trim();
-  if (!raw) return null;
-  if (/^[A-Za-z]{2}$/.test(raw)) return raw.toUpperCase();
-
-  const key = raw.toLowerCase();
-  if (COUNTRY_ALIASES[key]) return COUNTRY_ALIASES[key];
-
-  for (const code of REGION_CODES) {
-    const it = (DN_IT.of(code) || '').toLowerCase();
-    const en = (DN_EN.of(code) || '').toLowerCase();
-    if (key === it || key === en) return code as string;
-  }
-  return null;
-}
-
-function countryPreview(value?: string | null): string {
-  if (!value) return '';
-  const iso = nameToIso2(value);
-  if (iso) return `${flagEmoji(iso)} ${DN_IT.of(iso) || iso}`;
-  return value.trim();
-}
-
-/* ---------------------- normalizza link social ---------------------- */
+// Normalizza valori social → URL completi
 function normalizeSocial(kind: keyof Links, value: string): string | null {
   const v = (value || '').trim();
   if (!v) return null;
@@ -161,7 +108,31 @@ function normalizeSocial(kind: keyof Links, value: string): string | null {
   return map[kind](v);
 }
 
-/* ------------------------------------------------------------------- */
+// Flag emoji da ISO2
+function flagEmoji(iso2?: string | null) {
+  const code = (iso2 || '').trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(code)) return '';
+  const A = 0x1f1e6;
+  const a = 'A'.charCodeAt(0);
+  return String.fromCodePoint(A + code.charCodeAt(0) - a) + String.fromCodePoint(A + code.charCodeAt(1) - a);
+}
+
+// Nome paese localizzato da ISO2 (fallback al testo)
+function countryName(codeOrText?: string | null) {
+  if (!codeOrText) return '';
+  const v = codeOrText.trim();
+  if (/^[A-Za-z]{2}$/.test(v)) {
+    try {
+      const dn = new Intl.DisplayNames(['it'], { type: 'region' });
+      return dn.of(v.toUpperCase()) || v.toUpperCase();
+    } catch {
+      return v.toUpperCase();
+    }
+  }
+  return v;
+}
+
+// -------------------------------------------------------------
 
 export default function ProfileEditForm() {
   const router = useRouter();
@@ -177,8 +148,9 @@ export default function ProfileEditForm() {
   const [fullName, setFullName] = useState<string>('');
   const [bio, setBio] = useState<string>('');
   const [birthYear, setBirthYear] = useState<number | ''>('');
+  const [birthPlace, setBirthPlace] = useState<string>('');   // <-- NEW
   const [residenceCity, setResidenceCity] = useState<string>('');
-  const [country, setCountry] = useState<string>(''); // input libero (IT / Italia / Italy)
+  const [country, setCountry] = useState<string>(''); // ISO2 o nome
 
   // Cascata local state
   const [regionId, setRegionId] = useState<number | null>(null);
@@ -202,7 +174,10 @@ export default function ProfileEditForm() {
   const [x, setX] = useState<string>('');
 
   async function loadProfile() {
-    const r = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
+    const r = await fetch('/api/profiles/me', {
+      credentials: 'include',
+      cache: 'no-store',
+    });
     if (!r.ok) throw new Error('Impossibile leggere il profilo');
     const raw = await r.json().catch(() => ({}));
     const j = pickData<Partial<Profile>>(raw) || {};
@@ -213,6 +188,7 @@ export default function ProfileEditForm() {
       full_name: (j as any)?.full_name ?? null,
       bio: (j as any)?.bio ?? null,
       birth_year: (j as any)?.birth_year ?? null,
+      birth_place: (j as any)?.birth_place ?? null, // <-- NEW
       city: (j as any)?.city ?? null,
       country: (j as any)?.country ?? null,
 
@@ -236,6 +212,7 @@ export default function ProfileEditForm() {
     setFullName(p.full_name || '');
     setBio(p.bio || '');
     setBirthYear(p.birth_year ?? '');
+    setBirthPlace(p.birth_place || '');      // <-- NEW
     setResidenceCity(p.city || '');
     setCountry(p.country || '');
 
@@ -254,17 +231,24 @@ export default function ProfileEditForm() {
     setX(p.links?.x || '');
   }
 
+  // Prima load: profilo + regioni
   useEffect(() => {
     (async () => {
       try {
         setLoading(true);
         await loadProfile();
 
+        // regioni iniziali
         const rs = await rpcChildren('region', null);
         setRegions(rs);
 
-        if (regionId != null) setProvinces(await rpcChildren('province', regionId));
-        if (provinceId != null) setMunicipalities(await rpcChildren('municipality', provinceId));
+        // cascata pre-selezionata
+        if (regionId != null) {
+          setProvinces(await rpcChildren('province', regionId));
+        }
+        if (provinceId != null) {
+          setMunicipalities(await rpcChildren('municipality', provinceId));
+        }
       } catch (e: any) {
         console.error(e);
         setError(e?.message ?? 'Errore caricamento profilo');
@@ -275,34 +259,46 @@ export default function ProfileEditForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Cascata
+  // Quando cambia regionId, ricarica province e resetta municipality
   useEffect(() => {
     (async () => {
       if (regionId == null) {
-        setProvinces([]); setProvinceId(null);
-        setMunicipalities([]); setMunicipalityId(null);
+        setProvinces([]);
+        setProvinceId(null);
+        setMunicipalities([]);
+        setMunicipalityId(null);
         return;
       }
       try {
         const ps = await rpcChildren('province', regionId);
         setProvinces(ps);
         setProvinceId((prev) => (ps.some((p) => p.id === prev) ? prev : null));
-        setMunicipalities([]); setMunicipalityId(null);
-      } catch {
-        setProvinces([]); setProvinceId(null);
+        setMunicipalities([]);
+        setMunicipalityId(null);
+      } catch (e) {
+        console.error(e);
+        setProvinces([]);
+        setProvinceId(null);
       }
     })();
   }, [regionId]);
 
+  // Quando cambia provinceId, ricarica municipalities
   useEffect(() => {
     (async () => {
-      if (provinceId == null) { setMunicipalities([]); setMunicipalityId(null); return; }
+      if (provinceId == null) {
+        setMunicipalities([]);
+        setMunicipalityId(null);
+        return;
+      }
       try {
         const ms = await rpcChildren('municipality', provinceId);
         setMunicipalities(ms);
         setMunicipalityId((prev) => (ms.some((m) => m.id === prev) ? prev : null));
-      } catch {
-        setMunicipalities([]); setMunicipalityId(null);
+      } catch (e) {
+        console.error(e);
+        setMunicipalities([]);
+        setMunicipalityId(null);
       }
     })();
   }, [provinceId]);
@@ -325,19 +321,17 @@ export default function ProfileEditForm() {
         tiktok: normalizeSocial('tiktok', tiktok) ?? undefined,
         x: normalizeSocial('x', x) ?? undefined,
       };
+      // rimuovi chiavi undefined per salvare pulito
       Object.keys(links).forEach((k) => (links as any)[k] === undefined && delete (links as any)[k]);
-
-      // FIX: parentesi per combinare ?? e ||
-      const iso = nameToIso2(country);
-      const countryToSave = iso ?? ((country || '').trim() || null);
 
       const payload = {
         // anagrafica
         full_name: (fullName || '').trim() || null,
         bio: (bio || '').trim() || null,
         birth_year: birthYear === '' ? null : Number(birthYear),
+        birth_place: (birthPlace || '').trim() || null, // <-- NEW
         city: (residenceCity || '').trim() || null,
-        country: countryToSave,
+        country: (country || '').trim() || null,
 
         // interesse geo
         interest_country: 'IT',
@@ -369,7 +363,9 @@ export default function ProfileEditForm() {
         throw new Error(j?.error ?? 'Salvataggio non riuscito');
       }
 
+      // ricarica i dati appena salvati (accetta {data:{...}})
       await loadProfile();
+
       setMessage('Profilo aggiornato correttamente.');
       router.refresh();
     } catch (e: any) {
@@ -381,11 +377,15 @@ export default function ProfileEditForm() {
     }
   }
 
-  if (loading) return <div className="rounded-xl border p-4 text-sm text-gray-600">Caricamento profilo…</div>;
-  if (error) return <div className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-800">{error}</div>;
+  if (loading) {
+    return <div className="rounded-xl border p-4 text-sm text-gray-600">Caricamento profilo…</div>;
+  }
+  if (error) {
+    return <div className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-800">{error}</div>;
+  }
   if (!profile) return null;
 
-  const countryHint = country ? countryPreview(country) : '';
+  const countryPreview = country ? `${flagEmoji(country)} ${countryName(country)}` : '';
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
@@ -395,27 +395,70 @@ export default function ProfileEditForm() {
         <div className="grid gap-4 md:grid-cols-2">
           <div className="flex flex-col gap-1">
             <label className="text-sm text-gray-600">Nome e cognome</label>
-            <input className="rounded-lg border p-2" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Es. Mario Rossi" />
+            <input
+              className="rounded-lg border p-2"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="Es. Mario Rossi"
+            />
           </div>
+
           <div className="flex flex-col gap-1">
             <label className="text-sm text-gray-600">Anno di nascita</label>
-            <input type="number" inputMode="numeric" className="rounded-lg border p-2" value={birthYear} onChange={(e) => setBirthYear(e.target.value === '' ? '' : Number(e.target.value))} min={1950} max={currentYear - 5} placeholder="Es. 2002" />
+            <input
+              type="number"
+              inputMode="numeric"
+              className="rounded-lg border p-2"
+              value={birthYear}
+              onChange={(e) => setBirthYear(e.target.value === '' ? '' : Number(e.target.value))}
+              min={1950}
+              max={currentYear - 5}
+              placeholder="Es. 2002"
+            />
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Città di residenza</label>
-            <input className="rounded-lg border p-2" value={residenceCity} onChange={(e) => setResidenceCity(e.target.value)} placeholder="Es. Carlentini (SR)" />
+            <label className="text-sm text-gray-600">Luogo di nascita (città)</label>
+            <input
+              className="rounded-lg border p-2"
+              value={birthPlace}
+              onChange={(e) => setBirthPlace(e.target.value)}
+              placeholder="Es. Laguna Larga"
+            />
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Nazionalità (IT / Italia / Italy)</label>
-            <input className="rounded-lg border p-2" value={country} onChange={(e) => setCountry(e.target.value)} placeholder="Es. IT oppure Italia" />
-            {country && <span className="text-xs text-gray-500">{countryHint}</span>}
+            <label className="text-sm text-gray-600">Luogo di residenza (città)</label>
+            <input
+              className="rounded-lg border p-2"
+              value={residenceCity}
+              onChange={(e) => setResidenceCity(e.target.value)}
+              placeholder="Es. Carlentini (SR)"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-sm text-gray-600">Nazionalità (ISO2 o nome)</label>
+            <input
+              className="rounded-lg border p-2"
+              value={country}
+              onChange={(e) => setCountry(e.target.value)}
+              placeholder="Es. IT oppure Italia"
+            />
+            {country && (
+              <span className="text-xs text-gray-500">{countryPreview}</span>
+            )}
           </div>
 
           <div className="md:col-span-2 flex flex-col gap-1">
             <label className="text-sm text-gray-600">Biografia</label>
-            <textarea className="rounded-lg border p-2" rows={4} value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Racconta in breve ruolo, caratteristiche, esperienze…" />
+            <textarea
+              className="rounded-lg border p-2"
+              rows={4}
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              placeholder="Racconta in breve ruolo, caratteristiche, esperienze…"
+            />
           </div>
         </div>
       </section>
@@ -424,6 +467,7 @@ export default function ProfileEditForm() {
       <section className="rounded-2xl border p-4 md:p-5">
         <h2 className="mb-3 text-lg font-semibold">Zona di interesse</h2>
         <div className="grid gap-4 md:grid-cols-4">
+          {/* Paese (fisso IT) */}
           <div className="flex flex-col gap-1">
             <label className="text-sm text-gray-600">Paese</label>
             <select className="rounded-lg border p-2" value="IT" disabled>
@@ -433,30 +477,50 @@ export default function ProfileEditForm() {
 
           <div className="flex flex-col gap-1">
             <label className="text-sm text-gray-600">Regione</label>
-            <select className="rounded-lg border p-2" value={regionId ?? ''} onChange={(e) => setRegionId(e.target.value ? Number(e.target.value) : null)}>
+            <select
+              className="rounded-lg border p-2"
+              value={regionId ?? ''}
+              onChange={(e) => setRegionId(e.target.value ? Number(e.target.value) : null)}
+            >
               <option value="">— Seleziona regione —</option>
               {regions.map((r) => (
-                <option key={r.id} value={r.id}>{r.name}</option>
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                </option>
               ))}
             </select>
           </div>
 
           <div className="flex flex-col gap-1">
             <label className="text-sm text-gray-600">Provincia</label>
-            <select className="rounded-lg border p-2 disabled:bg-gray-50" value={provinceId ?? ''} onChange={(e) => setProvinceId(e.target.value ? Number(e.target.value) : null)} disabled={!regionId}>
+            <select
+              className="rounded-lg border p-2 disabled:bg-gray-50"
+              value={provinceId ?? ''}
+              onChange={(e) => setProvinceId(e.target.value ? Number(e.target.value) : null)}
+              disabled={!regionId}
+            >
               <option value="">— Seleziona provincia —</option>
               {provinces.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
               ))}
             </select>
           </div>
 
           <div className="flex flex-col gap-1">
             <label className="text-sm text-gray-600">Città</label>
-            <select className="rounded-lg border p-2 disabled:bg-gray-50" value={municipalityId ?? ''} onChange={(e) => setMunicipalityId(e.target.value ? Number(e.target.value) : null)} disabled={!provinceId}>
+            <select
+              className="rounded-lg border p-2 disabled:bg-gray-50"
+              value={municipalityId ?? ''}
+              onChange={(e) => setMunicipalityId(e.target.value ? Number(e.target.value) : null)}
+              disabled={!provinceId}
+            >
               <option value="">— Seleziona città —</option>
               {municipalities.map((m) => (
-                <option key={m.id} value={m.id}>{m.name}</option>
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
               ))}
             </select>
           </div>
@@ -482,12 +546,30 @@ export default function ProfileEditForm() {
 
           <div className="flex flex-col gap-1">
             <label className="text-sm text-gray-600">Altezza (cm)</label>
-            <input type="number" inputMode="numeric" className="rounded-lg border p-2" value={heightCm} onChange={(e) => setHeightCm(e.target.value === '' ? '' : Number(e.target.value))} min={100} max={230} placeholder="es. 183" />
+            <input
+              type="number"
+              inputMode="numeric"
+              className="rounded-lg border p-2"
+              value={heightCm}
+              onChange={(e) => setHeightCm(e.target.value === '' ? '' : Number(e.target.value))}
+              min={100}
+              max={230}
+              placeholder="es. 183"
+            />
           </div>
 
           <div className="flex flex-col gap-1">
             <label className="text-sm text-gray-600">Peso (kg)</label>
-            <input type="number" inputMode="numeric" className="rounded-lg border p-2" value={weightKg} onChange={(e) => setWeightKg(e.target.value === '' ? '' : Number(e.target.value))} min={40} max={150} placeholder="es. 85" />
+            <input
+              type="number"
+              inputMode="numeric"
+              className="rounded-lg border p-2"
+              value={weightKg}
+              onChange={(e) => setWeightKg(e.target.value === '' ? '' : Number(e.target.value))}
+              min={40}
+              max={150}
+              placeholder="es. 85"
+            />
           </div>
         </div>
       </section>
@@ -520,13 +602,22 @@ export default function ProfileEditForm() {
       <section className="rounded-2xl border p-4 md:p-5">
         <h2 className="mb-3 text-lg font-semibold">Notifiche</h2>
         <label className="flex items-center gap-3">
-          <input type="checkbox" className="h-4 w-4" checked={notifyEmail} onChange={(e) => setNotifyEmail(e.target.checked)} />
+          <input
+            type="checkbox"
+            className="h-4 w-4"
+            checked={notifyEmail}
+            onChange={(e) => setNotifyEmail(e.target.checked)}
+          />
           <span className="text-sm">Email per nuovi messaggi</span>
         </label>
       </section>
 
       <div className="flex items-center gap-3">
-        <button type="submit" disabled={!canSave} className="rounded-xl bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-60">
+        <button
+          type="submit"
+          disabled={!canSave}
+          className="rounded-xl bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-60"
+        >
           {saving ? 'Salvataggio…' : 'Salva profilo'}
         </button>
         {message && <span className="text-sm text-green-700">{message}</span>}
