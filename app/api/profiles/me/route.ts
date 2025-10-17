@@ -1,3 +1,4 @@
+// app/api/profiles/me/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
@@ -29,7 +30,6 @@ function toJsonOrNull(v: unknown) {
     }
   }
   if (typeof v === 'object') {
-    // se oggetto vuoto -> null
     if (v && Object.keys(v as Record<string, unknown>).length === 0) return null;
     return v as Record<string, unknown>;
   }
@@ -42,9 +42,10 @@ const FIELDS: Record<string, 'text' | 'number' | 'bool' | 'json'> = {
   full_name: 'text',
   display_name: 'text',
   bio: 'text',
-  city: 'text',
+  city: 'text',          // residenza
+  birth_place: 'text',   // <-- AGGIUNTO (luogo di nascita)
   birth_year: 'number',
-  country: 'text', // <- NAZIONALITÀ (ISO2 o testo)
+  country: 'text',       // nazionalità (ISO2 o testo)
 
   // atleta
   foot: 'text',

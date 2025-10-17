@@ -9,7 +9,8 @@ type P = {
   display_name?: string | null;
   bio?: string | null;
   birth_year?: number | null;
-  city?: string | null;
+  birth_place?: string | null; // <-- NEW
+  city?: string | null;        // residenza
   country?: string | null;
   foot?: string | null;
   height_cm?: number | null;
@@ -61,7 +62,6 @@ function flagEmoji(iso2?: string | null) {
   return String.fromCodePoint(A + code.charCodeAt(0) - a) + String.fromCodePoint(A + code.charCodeAt(1) - a);
 }
 
-// prova a estrarre ISO2 anche da stringhe tipo "us Stati Uniti" / "IT Italia"
 function tryExtractIso2(raw: string): string | null {
   const firstToken = raw.trim().split(/[\s,()\-]+/)[0];
   if (/^[A-Za-z]{2}$/.test(firstToken)) return firstToken.toUpperCase();
@@ -101,7 +101,7 @@ export default function ProfileMiniCard() {
         const raw = await r.json().catch(() => ({}));
         const j = (raw && typeof raw === 'object' && 'data' in raw ? (raw as any).data : raw) || {};
         setP(j || {});
-        // etichetta luogo
+        // etichetta luogo d'interesse (fallback alla cascata DB se city manca)
         let label = (j?.city ?? '').trim();
         if (!label) {
           const [mun, prov, reg] = await Promise.all([
@@ -131,13 +131,11 @@ export default function ProfileMiniCard() {
   const age = p?.birth_year ? Math.max(0, year - p.birth_year) : null;
   const name = p?.full_name || p?.display_name || 'Benvenuto!';
 
-  // — nazionalità in formato "Nazionalità: Italia 🇮🇹"
+  // — nazionalità in formato "Nazionalità: 🇮🇹 Italia"
   const iso = nameToIso2(p?.country ?? null);
   const countryNameIt = iso ? (DN_IT.of(iso) || iso) : (p?.country || '');
   const countryFlag = iso ? flagEmoji(iso) : '';
-  const nationalityRow = countryNameIt
-    ? `Nazionalità: ${countryNameIt}${countryFlag ? ' ' + countryFlag : ''}`
-    : '';
+  const nationalityRow = countryNameIt ? `Nazionalità: ${countryFlag ? countryFlag + ' ' : ''}${countryNameIt}` : '';
 
   const socials = {
     instagram: p?.links?.instagram,
@@ -179,10 +177,12 @@ export default function ProfileMiniCard() {
         )}
         <div className="min-w-0">
           <div className="text-base font-semibold">{name}</div>
-          <div className="text-xs text-gray-600">{place}</div>
-          {nationalityRow ? (
-            <div className="text-xs text-gray-600">{nationalityRow}</div>
-          ) : null}
+          {/* Luogo di residenza */}
+          {p?.city ? <div className="text-xs text-gray-600">Luogo di residenza: {p.city}</div> : null}
+          {/* Luogo di nascita */}
+          {p?.birth_place ? <div className="text-xs text-gray-600">Luogo di nascita: {p.birth_place}</div> : null}
+          {/* Nazionalità */}
+          {nationalityRow ? <div className="text-xs text-gray-600">{nationalityRow}</div> : null}
         </div>
       </div>
 
@@ -195,7 +195,7 @@ export default function ProfileMiniCard() {
 
       {p?.bio ? <p className="mt-3 line-clamp-3 text-sm text-gray-700">{p.bio}</p> : null}
 
-      {/* Icone social colorate e più grandi */}
+      {/* Icone social colorate */}
       {(socials.instagram || socials.facebook || socials.tiktok || socials.x) && (
         <div className="mt-3 flex items-center gap-3">
           {socials.instagram && (
