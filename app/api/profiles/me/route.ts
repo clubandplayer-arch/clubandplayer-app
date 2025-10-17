@@ -1,4 +1,3 @@
-// app/api/profiles/me/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
@@ -36,16 +35,27 @@ function toJsonOrNull(v: unknown) {
   return null;
 }
 
-/** Mappa dei campi ammessi in PATCH e del tipo */
+/** campi ammessi in PATCH */
 const FIELDS: Record<string, 'text' | 'number' | 'bool' | 'json'> = {
   // anagrafica
   full_name: 'text',
   display_name: 'text',
   bio: 'text',
-  city: 'text',          // residenza
-  birth_place: 'text',   // <-- AGGIUNTO (luogo di nascita)
   birth_year: 'number',
-  country: 'text',       // nazionalità (ISO2 o testo)
+  birth_place: 'text',
+  city: 'text',
+  country: 'text', // nazionalità
+
+  // residenza (nuovi)
+  residence_region_id: 'number',
+  residence_province_id: 'number',
+  residence_municipality_id: 'number',
+
+  // nascita (nuovi)
+  birth_country: 'text',
+  birth_region_id: 'number',
+  birth_province_id: 'number',
+  birth_municipality_id: 'number',
 
   // atleta
   foot: 'text',
@@ -55,29 +65,28 @@ const FIELDS: Record<string, 'text' | 'number' | 'bool' | 'json'> = {
   role: 'text',
   visibility: 'text',
 
-  // interesse geografico (DB-driven)
+  // interesse geo esistente
   interest_country: 'text',
   interest_region_id: 'number',
   interest_province_id: 'number',
   interest_municipality_id: 'number',
 
-  // compat vecchi form (stringhe)
+  // compat vecchi form
   interest_region: 'text',
   interest_province: 'text',
   interest_city: 'text',
 
-  // social links (JSON: {instagram, facebook, tiktok, x})
+  // social
   links: 'json',
 
   // notifiche
   notify_email_new_message: 'bool',
 
-  // onboarding ruolo
+  // onboarding
   account_type: 'text',
 };
 
 /* ---------------------------------- GET ---------------------------------- */
-/** GET /api/profiles/me — profilo dell’utente loggato (sempre { data }) */
 export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   try {
     await rateLimit(req, { key: `profiles:ME:${user.id}`, limit: 60, window: '1m' } as any);
@@ -96,7 +105,6 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
 });
 
 /* --------------------------------- PATCH --------------------------------- */
-/** PATCH /api/profiles/me — aggiorna i campi whitelisted del proprio profilo */
 export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   try {
     await rateLimit(req, { key: `profiles:ME:PATCH:${user.id}`, limit: 40, window: '1m' } as any);
@@ -106,7 +114,6 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
 
-  // Costruisci l’oggetto updates filtrando e normalizzando
   const updates: Record<string, any> = {};
   for (const [key, kind] of Object.entries(FIELDS)) {
     if (!(key in body)) continue;
@@ -117,10 +124,8 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
     if (kind === 'json') updates[key] = toJsonOrNull(val);
   }
 
-  // default coerente (Italia) se non impostato
   if (updates.interest_country === undefined) updates.interest_country = 'IT';
 
-  // 1) tentativo di UPDATE
   let { data, error } = await supabase
     .from('profiles')
     .update({ ...updates, updated_at: new Date().toISOString() })
@@ -128,7 +133,6 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
     .select('*')
     .maybeSingle();
 
-  // 2) se non esiste riga, fai UPSERT difensivo
   if (!data && !error) {
     const up = await supabase
       .from('profiles')
