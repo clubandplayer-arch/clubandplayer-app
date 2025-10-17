@@ -61,12 +61,30 @@ function flagEmoji(iso2?: string | null) {
   return String.fromCodePoint(A + code.charCodeAt(0) - a) + String.fromCodePoint(A + code.charCodeAt(1) - a);
 }
 
+// prova a estrarre ISO2 anche da stringhe tipo "us Stati Uniti" / "IT Italia"
+function tryExtractIso2(raw: string): string | null {
+  // 1) se inizia con due lettere
+  const firstToken = raw.trim().split(/[\s,()\-]+/)[0];
+  if (/^[A-Za-z]{2}$/.test(firstToken)) return firstToken.toUpperCase();
+
+  // 2) se contiene un ISO2 fra spazi o parentesi
+  const m = raw.match(/(?:^|\s|\()([A-Za-z]{2})(?:\)|\s|$)/);
+  if (m && m[1]) return m[1].toUpperCase();
+
+  return null;
+}
+
 function nameToIso2(v?: string | null): string | null {
   const raw = (v || '').trim();
   if (!raw) return null;
   if (/^[A-Za-z]{2}$/.test(raw)) return raw.toUpperCase();
+
+  const guess = tryExtractIso2(raw);
+  if (guess) return guess;
+
   const key = raw.toLowerCase();
   if (COUNTRY_ALIASES[key]) return COUNTRY_ALIASES[key];
+
   for (const code of REGION_CODES) {
     const it = (DN_IT.of(code) || '').toLowerCase();
     const en = (DN_EN.of(code) || '').toLowerCase();
@@ -132,13 +150,19 @@ export default function ProfileMiniCard() {
     x: p?.links?.x,
   };
 
-  const IconWrap = ({ href, label, children }: any) => (
+  const IconWrap = ({
+    href,
+    label,
+    color,
+    children,
+  }: { href: string; label: string; color: string; children: React.ReactNode }) => (
     <a
       href={href}
       target="_blank"
       rel="noopener noreferrer"
       aria-label={label}
-      className="inline-flex h-9 w-9 items-center justify-center rounded-full border text-neutral-700 hover:bg-neutral-50"
+      className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-black/5 hover:ring-black/10"
+      style={{ color }}
     >
       {children}
     </a>
@@ -173,27 +197,35 @@ export default function ProfileMiniCard() {
 
       {p?.bio ? <p className="mt-3 line-clamp-3 text-sm text-gray-700">{p.bio}</p> : null}
 
-      {/* Solo icone social, più grandi */}
+      {/* Icone social colorate e più grandi */}
       {(socials.instagram || socials.facebook || socials.tiktok || socials.x) && (
-        <div className="mt-3 flex items-center gap-2">
+        <div className="mt-3 flex items-center gap-3">
           {socials.instagram && (
-            <IconWrap href={socials.instagram} label="Instagram">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3H7zm5 3a5 5 0 1 1 0 10 5 5 0 0 1 0-10zm0 2a3 3 0 1 0 .001 6.001A3 3 0 0 0 12 9zm4.5-3a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3z"/></svg>
+            <IconWrap href={socials.instagram} label="Instagram" color="#E4405F">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3H7zm5 3a5 5 0 1 1 0 10 5 5 0 0 1 0-10zm0 2a3 3 0 1 0 .001 6.001A3 3 0 0 0 12 9zm4.5-3a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3z"/>
+              </svg>
             </IconWrap>
           )}
           {socials.facebook && (
-            <IconWrap href={socials.facebook} label="Facebook">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12a10 10 0 1 0-11.6 9.9v-7h-2.4V12h2.4V9.8c0-2.4 1.4-3.7 3.6-3.7 1 0 2 .2 2 .2v2.2h-1.1c-1.1 0-1.5.7-1.5 1.5V12h2.6l-.4 2.9h-2.2v7A10 10 0 0 0 22 12z"/></svg>
+            <IconWrap href={socials.facebook} label="Facebook" color="#1877F2">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M22 12a10 10 0 1 0-11.6 9.9v-7h-2.4V12h2.4V9.8c0-2.4 1.4-3.7 3.6-3.7 1 0 2 .2 2 .2v2.2h-1.1c-1.1 0-1.5.7-1.5 1.5V12h2.6l-.4 2.9h-2.2v7A10 10 0 0 0 22 12z"/>
+              </svg>
             </IconWrap>
           )}
           {socials.tiktok && (
-            <IconWrap href={socials.tiktok} label="TikTok">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M16 3c.6 2.2 2.2 4 4.3 4.7V11a8.3 8.3 0 0 1-4.3-1.3v6.1a5.9 5.9 0 1 1-5.9-5.9c.5 0 1 .1 1.5.2v2.7a3.2 3.2 0 1 0 2.2 3V3h2.2z"/></svg>
+            <IconWrap href={socials.tiktok} label="TikTok" color="#EE1D52">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M16 3c.6 2.2 2.2 4 4.3 4.7V11a8.3 8.3 0 0 1-4.3-1.3v6.1a5.9 5.9 0 1 1-5.9-5.9c.5 0 1 .1 1.5.2v2.7a3.2 3.2 0 1 0 2.2 3V3h2.2z"/>
+              </svg>
             </IconWrap>
           )}
           {socials.x && (
-            <IconWrap href={socials.x} label="X">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h4.6l4.1 5.8L16.8 3H21l-7.2 9.1L21.5 21h-4.6l-4.6-6.4L7.2 21H3l7.6-9.6L3 3z"/></svg>
+            <IconWrap href={socials.x} label="X" color="#000000">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M3 3h4.6l4.1 5.8L16.8 3H21l-7.2 9.1L21.5 21h-4.6l-4.6-6.4L7.2 21H3l7.6-9.6L3 3z"/>
+              </svg>
             </IconWrap>
           )}
         </div>
