@@ -8,7 +8,6 @@ const SUPA_URL  = process.env.NEXT_PUBLIC_SUPABASE_URL  ?? ''
 const SUPA_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''
 const HAS_ENV   = Boolean(SUPA_URL && SUPA_ANON)
 
-/** domini su cui permettiamo l’OAuth (oltre a *.vercel.app) */
 const FIXED_ALLOWED = new Set<string>([
   'https://clubandplayer-app.vercel.app',
   'http://localhost:3000',
@@ -28,7 +27,6 @@ export default function LoginPage() {
   const origin   = typeof window !== 'undefined' ? window.location.origin   : ''
   const hostname = typeof window !== 'undefined' ? window.location.hostname : ''
 
-  /** abilito il bottone Google su localhost, su *.vercel.app e sui domini whitelisit */
   const oauthAllowedHere = useMemo(() => {
     try {
       if (!origin) return false
@@ -42,7 +40,6 @@ export default function LoginPage() {
 
   const oauthReady = HAS_ENV && oauthAllowedHere
 
-  // Pre-carica utente (client-only)
   useEffect(() => {
     let active = true
     if (!HAS_ENV) return
@@ -67,13 +64,10 @@ export default function LoginPage() {
       const { createClient } = await import('@supabase/supabase-js')
       const supabase = createClient(SUPA_URL, SUPA_ANON)
 
-      const { data: { session }, error } = await supabase.auth.signInWithPassword({
-        email, password,
-      })
+      const { data: { session }, error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) throw error
       if (!session) throw new Error('Sessione mancante dopo login')
 
-      // 🔁 Sync cookie SSR per le API Route Handlers
       const r = await fetch('/api/auth/session', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -123,7 +117,6 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY`}
           </div>
         )}
 
-        {/* Google OAuth */}
         {oauthReady ? (
           <div className="space-y-3">
             <SocialLogin />
@@ -145,7 +138,6 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY`}
           </p>
         )}
 
-        {/* Email + Password */}
         <form onSubmit={signInEmail} className="space-y-3">
           <input
             type="email"
