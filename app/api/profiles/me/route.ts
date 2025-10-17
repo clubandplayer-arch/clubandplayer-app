@@ -18,15 +18,34 @@ function toNumberOrNull(v: unknown) {
 function toBool(v: unknown) {
   return !!v;
 }
+function toJsonOrNull(v: unknown) {
+  if (v === null || v === undefined) return null;
+  if (typeof v === 'string') {
+    try {
+      const parsed = JSON.parse(v);
+      return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+  if (typeof v === 'object') {
+    // se oggetto vuoto -> null
+    if (v && Object.keys(v as Record<string, unknown>).length === 0) return null;
+    return v as Record<string, unknown>;
+  }
+  return null;
+}
 
 /** Mappa dei campi ammessi in PATCH e del tipo */
-const FIELDS: Record<string, 'text' | 'number' | 'bool'> = {
+const FIELDS: Record<string, 'text' | 'number' | 'bool' | 'json'> = {
   // anagrafica
   full_name: 'text',
   display_name: 'text',
   bio: 'text',
   city: 'text',
   birth_year: 'number',
+  country: 'text', // <- NAZIONALITÀ (ISO2 o testo)
+
   // atleta
   foot: 'text',
   height_cm: 'number',
@@ -34,21 +53,26 @@ const FIELDS: Record<string, 'text' | 'number' | 'bool'> = {
   sport: 'text',
   role: 'text',
   visibility: 'text',
+
   // interesse geografico (DB-driven)
   interest_country: 'text',
   interest_region_id: 'number',
   interest_province_id: 'number',
   interest_municipality_id: 'number',
+
   // compat vecchi form (stringhe)
   interest_region: 'text',
   interest_province: 'text',
   interest_city: 'text',
+
+  // social links (JSON: {instagram, facebook, tiktok, x})
+  links: 'json',
+
   // notifiche
   notify_email_new_message: 'bool',
+
   // onboarding ruolo
   account_type: 'text',
-  // ✅ avatar (nuovo)
-  avatar_url: 'text',
 };
 
 /* ---------------------------------- GET ---------------------------------- */
@@ -89,6 +113,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
     if (kind === 'text') updates[key] = toTextOrNull(val);
     if (kind === 'number') updates[key] = toNumberOrNull(val);
     if (kind === 'bool') updates[key] = toBool(val);
+    if (kind === 'json') updates[key] = toJsonOrNull(val);
   }
 
   // default coerente (Italia) se non impostato
