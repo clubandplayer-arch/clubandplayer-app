@@ -1,4 +1,3 @@
-// app/api/profiles/me/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
@@ -42,10 +41,10 @@ const FIELDS: Record<string, 'text' | 'number' | 'bool' | 'json'> = {
   full_name: 'text',
   display_name: 'text',
   bio: 'text',
-  city: 'text',          // residenza
-  birth_place: 'text',   // <-- AGGIUNTO (luogo di nascita)
+  city: 'text',            // residenza
   birth_year: 'number',
-  country: 'text',       // nazionalità (ISO2 o testo)
+  birth_place: 'text',     // NEW: luogo di nascita (città)
+  country: 'text',         // NAZIONALITÀ (ISO2 o nome)
 
   // atleta
   foot: 'text',
