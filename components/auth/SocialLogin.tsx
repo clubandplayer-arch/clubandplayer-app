@@ -1,5 +1,7 @@
+// components/auth/SocialLogin.tsx
 'use client';
 
+import { useState } from 'react';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 const supabase = createSupabaseClient(
@@ -8,34 +10,39 @@ const supabase = createSupabaseClient(
 );
 
 export default function SocialLogin() {
+  const [loading, setLoading] = useState(false);
+
   async function signInWithGoogle() {
-    const origin =
-      typeof window !== 'undefined' ? window.location.origin : '';
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${origin}/auth/callback`,
-        // refresh token affidabile
-        queryParams: { access_type: 'offline', prompt: 'consent' },
-      },
-    });
-    if (error) {
-      console.error(error);
-      alert(error.message);
+    try {
+      setLoading(true);
+      const redirectTo =
+        typeof window !== 'undefined'
+          ? `${window.location.origin}/auth/callback`
+          : undefined;
+
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo },
+      });
+      if (error) throw error;
+    } catch (e) {
+      console.error(e);
+      alert('Accesso con Google non riuscito.');
+    } finally {
+      setLoading(false);
     }
   }
 
   return (
     <button
       onClick={signInWithGoogle}
-      className="inline-flex items-center gap-2 rounded-xl border px-4 py-2 hover:bg-gray-50"
+      disabled={loading}
+      className="mt-4 inline-flex items-center gap-2 rounded-xl border px-4 py-2 hover:bg-gray-50 disabled:opacity-60"
     >
-      {/* logo google minimal */}
-      <svg width="18" height="18" viewBox="0 0 24 24">
-        <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.3-1.7 3.7-5.5 3.7a6.4 6.4 0 1 1 0-12.8 5.6 5.6 0 0 1 4 1.6l2.7-2.7A9.4 9.4 0 1 0 12 21.4c5.4 0 9-3.8 9-9.1 0-.6-.1-1.1-.2-1.6H12z"/>
-        <path fill="#4285F4" d="M12 10.2v3.9h5.5c-.4 2.3-2.2 3.9-5.5 3.9-3.3 0-6-2.7-6-6s2.7-6 6-6a5.6 5.6 0 0 1 4 1.6l2.7-2.7A9.4 9.4 0 1 0 12 21.4c5.4 0 9-3.8 9-9.1 0-.6-.1-1.1-.2-1.6H12z" opacity=".001"/>
+      <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden>
+        <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.24 1.4-1.66 4.1-5.5 4.1-3.32 0-6.02-2.75-6.02-6.14S8.18 5.9 11.5 5.9c1.9 0 3.18.8 3.9 1.5l2.66-2.57C16.88 3.5 14.7 2.6 12 2.6 6.95 2.6 2.9 6.65 2.9 11.7c0 5.06 4.05 9.11 9.1 9.11 5.25 0 8.71-3.69 8.71-8.89 0-.6-.06-1.06-.14-1.52H12z"/>
       </svg>
-      Continua con Google
+      {loading ? 'Attendere…' : 'Continua con Google'}
     </button>
   );
 }

@@ -2,11 +2,13 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import SocialLogin from '@/components/auth/SocialLogin'
 
-const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
+const SUPA_URL  = process.env.NEXT_PUBLIC_SUPABASE_URL  ?? ''
 const SUPA_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''
-const HAS_ENV = Boolean(SUPA_URL && SUPA_ANON)
+const HAS_ENV   = Boolean(SUPA_URL && SUPA_ANON)
 
+/** domini su cui permettiamo l’OAuth (oltre a *.vercel.app) */
 const FIXED_ALLOWED = new Set<string>([
   'https://clubandplayer-app.vercel.app',
   'http://localhost:3000',
@@ -21,11 +23,12 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [currentEmail, setCurrentEmail] = useState<string | null>(null)
 
-  const BUILD_TAG = 'login-v4.1-email-only+cookie-sync'
+  const BUILD_TAG = 'login-v5 Google+Email cookie-sync'
 
-  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  const origin   = typeof window !== 'undefined' ? window.location.origin   : ''
   const hostname = typeof window !== 'undefined' ? window.location.hostname : ''
 
+  /** abilito il bottone Google su localhost, su *.vercel.app e sui domini whitelisit */
   const oauthAllowedHere = useMemo(() => {
     try {
       if (!origin) return false
@@ -36,6 +39,8 @@ export default function LoginPage() {
       return false
     }
   }, [origin, hostname])
+
+  const oauthReady = HAS_ENV && oauthAllowedHere
 
   // Pre-carica utente (client-only)
   useEffect(() => {
@@ -118,10 +123,21 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY`}
           </div>
         )}
 
-        {/* Google temporaneamente rimosso */}
-        <div className="rounded-md border border-blue-200 bg-blue-50 p-2 text-xs text-blue-800">
-          Login con Google momentaneamente disabilitato per sbloccare la preview. Usa email + password.
-        </div>
+        {/* Google OAuth */}
+        {oauthReady ? (
+          <div className="space-y-3">
+            <SocialLogin />
+            <div className="flex items-center gap-3 text-xs text-gray-500">
+              <span className="h-px flex-1 bg-gray-200" />
+              <span>oppure</span>
+              <span className="h-px flex-1 bg-gray-200" />
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-md border border-blue-200 bg-blue-50 p-2 text-xs text-blue-800">
+            Google OAuth non abilitato su questo dominio (<code>{origin || 'n/d'}</code>).
+          </div>
+        )}
 
         {errorMsg && (
           <p className="rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700">
@@ -129,6 +145,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY`}
           </p>
         )}
 
+        {/* Email + Password */}
         <form onSubmit={signInEmail} className="space-y-3">
           <input
             type="email"
