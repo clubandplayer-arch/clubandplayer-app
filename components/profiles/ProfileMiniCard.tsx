@@ -8,8 +8,9 @@ type P = {
   full_name?: string | null;
   display_name?: string | null;
   bio?: string | null;
-  birth_year?: number | string | null;
+  birth_year?: number | null;
   city?: string | null;
+  country?: string | null; // <- nazionalità
   foot?: string | null;
   height_cm?: number | null;
   weight_kg?: number | null;
@@ -17,6 +18,12 @@ type P = {
   interest_province_id?: number | null;
   interest_municipality_id?: number | null;
   avatar_url?: string | null;
+  links?: {
+    instagram?: string | null;
+    facebook?: string | null;
+    tiktok?: string | null;
+    x?: string | null;
+  } | null;
 };
 
 type Row = { id: number; name: string };
@@ -26,13 +33,25 @@ const supabase = createSupabaseClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-// placeholder verticale 4:5
-const PH =
-  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="160" height="200"><rect width="100%" height="100%" fill="%23e5e7eb"/><circle cx="80" cy="70" r="40" fill="%23cbd5e1"/><rect x="32" y="140" width="96" height="24" rx="12" fill="%23cbd5e1"/></svg>';
-
-function pickData<T = any>(raw: any): T {
-  if (raw && typeof raw === 'object' && 'data' in raw) return (raw as any).data as T;
-  return raw as T;
+// helpers
+function flagEmoji(iso2?: string | null) {
+  const code = (iso2 || '').trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(code)) return '';
+  const A = 0x1f1e6, a = 'A'.charCodeAt(0);
+  return String.fromCodePoint(A + code.charCodeAt(0) - a) + String.fromCodePoint(A + code.charCodeAt(1) - a);
+}
+function countryName(codeOrText?: string | null) {
+  if (!codeOrText) return '';
+  const v = codeOrText.trim();
+  if (/^[A-Za-z]{2}$/.test(v)) {
+    try {
+      const dn = new Intl.DisplayNames(['it'], { type: 'region' });
+      return dn.of(v.toUpperCase()) || v.toUpperCase();
+    } catch {
+      return v.toUpperCase();
+    }
+  }
+  return v;
 }
 
 export default function ProfileMiniCard() {
@@ -44,10 +63,9 @@ export default function ProfileMiniCard() {
       try {
         const r = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
         const raw = await r.json().catch(() => ({}));
-        const j = pickData<P>(raw) || {};
-        setP(j);
-
-        // Etichetta luogo: city > (municipality, province, region)
+        const j = (raw && typeof raw === 'object' && 'data' in raw ? (raw as any).data : raw) || {};
+        setP(j || {});
+        // etichetta luogo
         let label = (j?.city ?? '').trim();
         if (!label) {
           const [mun, prov, reg] = await Promise.all([
@@ -74,24 +92,34 @@ export default function ProfileMiniCard() {
   }, []);
 
   const year = new Date().getFullYear();
-  const by = p?.birth_year == null ? null : Number(p.birth_year);
-  const age = by && Number.isFinite(by) ? Math.max(0, year - by) : null;
+  const age = p?.birth_year ? Math.max(0, year - p.birth_year) : null;
   const name = p?.full_name || p?.display_name || 'Benvenuto!';
+  const nat = p?.country ? `${flagEmoji(p.country)} ${countryName(p.country)}` : '';
+
+  const socials = {
+    instagram: p?.links?.instagram,
+    facebook: p?.links?.facebook,
+    tiktok: p?.links?.tiktok,
+    x: p?.links?.x,
+  };
 
   return (
     <div className="rounded-2xl border p-4 shadow-sm">
-      <div className="flex items-center gap-3">
-        {/* avatar verticale 4:5 (≈ 96×120) */}
-        <div className="relative w-32 shrink-0" style={{ aspectRatio: '4 / 5' }}>
+      <div className="flex items-start gap-3">
+        {/* Avatar verticale 4:5 se presente */}
+        {p?.avatar_url ? (
           <img
-            src={p?.avatar_url || PH}
-            alt=""
-            className="absolute inset-0 h-full w-full rounded-xl object-cover bg-gray-200"
+            src={p.avatar_url}
+            alt={name}
+            className="h-24 w-[4.8rem] flex-shrink-0 rounded-xl object-cover"
           />
-        </div>
+        ) : (
+          <div className="h-24 w-[4.8rem] flex-shrink-0 rounded-xl bg-gray-200" />
+        )}
         <div className="min-w-0">
-          <div className="truncate text-base font-semibold">{name}</div>
-          <div className="truncate text-xs text-gray-600">{place}</div>
+          <div className="text-base font-semibold">{name}</div>
+          <div className="text-xs text-gray-600">{place}</div>
+          {nat ? <div className="text-xs text-gray-600">{nat}</div> : null}
         </div>
       </div>
 
@@ -103,6 +131,37 @@ export default function ProfileMiniCard() {
       </div>
 
       {p?.bio ? <p className="mt-3 line-clamp-3 text-sm text-gray-700">{p.bio}</p> : null}
+
+      {/* Social links */}
+      {(socials.instagram || socials.facebook || socials.tiktok || socials.x) && (
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          {socials.instagram && (
+            <a href={socials.instagram} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="inline-flex items-center gap-1 text-sm text-pink-600 hover:underline">
+              {/* IG icon (mono) */}
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3H7zm5 3a5 5 0 1 1 0 10 5 5 0 0 1 0-10zm0 2a3 3 0 1 0 .001 6.001A3 3 0 0 0 12 9zm4.5-3a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3z"/></svg>
+              Instagram
+            </a>
+          )}
+          {socials.facebook && (
+            <a href={socials.facebook} target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="inline-flex items-center gap-1 text-sm text-blue-700 hover:underline">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12a10 10 0 1 0-11.6 9.9v-7h-2.4V12h2.4V9.8c0-2.4 1.4-3.7 3.6-3.7 1 0 2 .2 2 .2v2.2h-1.1c-1.1 0-1.5.7-1.5 1.5V12h2.6l-.4 2.9h-2.2v7A10 10 0 0 0 22 12z"/></svg>
+              Facebook
+            </a>
+          )}
+          {socials.tiktok && (
+            <a href={socials.tiktok} target="_blank" rel="noopener noreferrer" aria-label="TikTok" className="inline-flex items-center gap-1 text-sm hover:underline">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 3c.6 2.2 2.2 4 4.3 4.7V11a8.3 8.3 0 0 1-4.3-1.3v6.1a5.9 5.9 0 1 1-5.9-5.9c.5 0 1 .1 1.5.2v2.7a3.2 3.2 0 1 0 2.2 3V3h2.2z"/></svg>
+              TikTok
+            </a>
+          )}
+          {socials.x && (
+            <a href={socials.x} target="_blank" rel="noopener noreferrer" aria-label="X" className="inline-flex items-center gap-1 text-sm hover:underline">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h4.6l4.1 5.8L16.8 3H21l-7.2 9.1L21.5 21h-4.6l-4.6-6.4L7.2 21H3l7.6-9.6L3 3z"/></svg>
+              X
+            </a>
+          )}
+        </div>
+      )}
 
       <div className="mt-4">
         <Link href="/profile" className="inline-block rounded-xl border px-3 py-1.5 text-sm hover:bg-gray-50">
