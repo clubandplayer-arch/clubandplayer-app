@@ -1,35 +1,53 @@
-// components/profiles/ProfileHeader.tsx
-'use client'
-import { useEffect, useState } from 'react'
+'use client';
 
-type AccountType = 'club' | 'athlete' | null
+import { useEffect, useState } from 'react';
+
+type AccountType = 'club' | 'athlete' | null;
+
+function pickData<T = any>(raw: any): T {
+  if (raw && typeof raw === 'object' && 'data' in raw) return (raw as any).data as T;
+  return raw as T;
+}
 
 export default function ProfileHeader() {
-  const [role, setRole] = useState<AccountType>(null)
+  const [type, setType] = useState<AccountType>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    ;(async () => {
+    (async () => {
       try {
-        const r = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' })
-        const j = await r.json().catch(() => ({}))
-        const data = (j && typeof j === 'object' && 'data' in j ? (j as any).data : j) || {}
-        setRole((data?.account_type as AccountType) ?? null)
+        const r = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
+        const raw = await r.json().catch(() => ({}));
+        const j = pickData<any>(raw) || {};
+        setType(j?.account_type ?? null);
       } catch {
-        setRole(null)
+        setType(null);
+      } finally {
+        setLoading(false);
       }
-    })()
-  }, [])
+    })();
+  }, []);
 
-  const isClub = role === 'club'
+  if (loading) {
+    return (
+      <header className="space-y-2">
+        <div className="h-7 w-40 animate-pulse rounded-md bg-gray-100" />
+        <div className="h-4 w-72 animate-pulse rounded-md bg-gray-100" />
+      </header>
+    );
+  }
+
+  const isClub = type === 'club';
 
   return (
-    <header className="mb-4">
-      <h1 className="text-2xl font-semibold">
-        {isClub ? 'Il mio profilo club' : 'Il mio profilo atleta'}
+    <header className="space-y-1">
+      {/* Titolo richiesto: solo CLUB / ATLETA */}
+      <h1 className="text-2xl font-bold tracking-tight">
+        {isClub ? 'CLUB' : 'ATLETA'}
       </h1>
-      <p className="mt-1 text-sm text-gray-600">
+      <p className="text-sm text-gray-500">
         Aggiorna i tuoi dati per migliorare il matching con club e opportunità.
       </p>
     </header>
-  )
+  );
 }
