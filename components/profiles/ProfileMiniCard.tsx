@@ -5,12 +5,14 @@ import { useEffect, useState } from 'react';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 type P = {
+  account_type?: 'club' | 'athlete' | null;
+
   full_name?: string | null;
   display_name?: string | null;
   bio?: string | null;
   birth_year?: number | null;
-  city?: string | null;            // residenza libera (estero)
-  country?: string | null;         // nazionalità ISO2 o testo
+  city?: string | null;
+  country?: string | null;
 
   // residenza IT
   residence_region_id?: number | null;
@@ -18,8 +20,8 @@ type P = {
   residence_municipality_id?: number | null;
 
   // nascita
-  birth_country?: string | null;   // ISO2
-  birth_place?: string | null;     // città estera fallback
+  birth_country?: string | null;
+  birth_place?: string | null;
   birth_region_id?: number | null;
   birth_province_id?: number | null;
   birth_municipality_id?: number | null;
@@ -33,6 +35,16 @@ type P = {
   interest_region_id?: number | null;
   interest_province_id?: number | null;
   interest_municipality_id?: number | null;
+
+  // club
+  club_founded_year?: number | null;
+  club_sport?: string | null;
+  club_category?: string | null;
+  club_stadium?: string | null;
+  club_country?: string | null;
+  club_region_id?: number | null;
+  club_province_id?: number | null;
+  club_municipality_id?: number | null;
 
   avatar_url?: string | null;
   links?: {
@@ -96,6 +108,7 @@ export default function ProfileMiniCard() {
   const [p, setP] = useState<P | null>(null);
   const [residenza, setResidenza] = useState<string>('—');
   const [nascita, setNascita] = useState<string>('—');
+  const [clubPlace, setClubPlace] = useState<string>('—');
 
   useEffect(() => {
     (async () => {
@@ -105,7 +118,7 @@ export default function ProfileMiniCard() {
         const j = (raw && typeof raw === 'object' && 'data' in raw ? (raw as any).data : raw) || {};
         setP(j || {});
 
-        // RESIDENZA: se ci sono gli id italiani, etichetta da DB; altrimenti usa city testo
+        // RESIDENZA: se it usa ids, altrimenti city
         if (j?.residence_municipality_id || j?.residence_province_id || j?.residence_region_id) {
           const [mun, prov, reg] = await Promise.all([
             j?.residence_municipality_id
@@ -126,7 +139,7 @@ export default function ProfileMiniCard() {
           setResidenza((j?.city ?? '').trim() || '—');
         }
 
-        // NASCITA: se IT usa ids, se estero mostra "Città (Paese)"
+        // NASCITA
         const bc = (j?.birth_country || '').toUpperCase();
         if (bc === 'IT' && (j?.birth_municipality_id || j?.birth_province_id || j?.birth_region_id)) {
           const [mun, prov, reg] = await Promise.all([
@@ -149,6 +162,27 @@ export default function ProfileMiniCard() {
           const city = (j?.birth_place || '').trim();
           setNascita([city, country].filter(Boolean).join(' · ') || country || '—');
         }
+
+        // CLUB: sede
+        if (j?.club_municipality_id || j?.club_province_id || j?.club_region_id) {
+          const [munC, provC, regC] = await Promise.all([
+            j?.club_municipality_id
+              ? supabase.from('municipalities').select('id,name').eq('id', j.club_municipality_id).maybeSingle()
+              : Promise.resolve({ data: null }),
+            j?.club_province_id
+              ? supabase.from('provinces').select('id,name').eq('id', j.club_province_id).maybeSingle()
+              : Promise.resolve({ data: null }),
+            j?.club_region_id
+              ? supabase.from('regions').select('id,name').eq('id', j.club_region_id).maybeSingle()
+              : Promise.resolve({ data: null }),
+          ]);
+          const mC = (munC as any)?.data as Row | null;
+          const pC = (provC as any)?.data as Row | null;
+          const rC = (regC as any)?.data as Row | null;
+          setClubPlace([mC?.name, pC?.name, rC?.name].filter(Boolean).join(', ') || '—');
+        } else {
+          setClubPlace('—');
+        }
       } catch {
         setP({});
       }
@@ -159,7 +193,7 @@ export default function ProfileMiniCard() {
   const age = p?.birth_year ? Math.max(0, year - p.birth_year) : null;
   const name = p?.full_name || p?.display_name || 'Benvenuto!';
 
-  // nazionalità con bandiera
+  // nazionalità (per atleta)
   const nat = countryLabel(p?.country);
   const flagUrl = nat.iso ? `https://flagcdn.com/w20/${nat.iso.toLowerCase()}.png` : null;
 
@@ -193,23 +227,35 @@ export default function ProfileMiniCard() {
         <div className="min-w-0">
           <div className="text-base font-semibold">{name}</div>
 
-          {/* righe info */}
-          <div className="text-xs text-gray-600">Luogo di residenza: {residenza}</div>
-          <div className="text-xs text-gray-600">Luogo di nascita: {nascita}</div>
-          <div className="text-xs text-gray-600 flex items-center gap-1">
-            <span>Nazionalità:</span>
-            {flagUrl ? <img src={flagUrl} alt={nat.label} className="inline-block h-3 w-5 rounded-[2px]" /> : null}
-            <span>{nat.label || '—'}</span>
-          </div>
+          {p?.account_type === 'club' ? (
+            <>
+              <div className="text-xs text-gray-600">Sport: {p?.club_sport || '—'}</div>
+              <div className="text-xs text-gray-600">Categoria: {p?.club_category || '—'}</div>
+              <div className="text-xs text-gray-600">Sede: {clubPlace}</div>
+              {p?.club_stadium && <div className="text-xs text-gray-600">Stadio: {p.club_stadium}</div>}
+            </>
+          ) : (
+            <>
+              <div className="text-xs text-gray-600">Luogo di residenza: {residenza}</div>
+              <div className="text-xs text-gray-600">Luogo di nascita: {nascita}</div>
+              <div className="text-xs text-gray-600 flex items-center gap-1">
+                <span>Nazionalità:</span>
+                {flagUrl ? <img src={flagUrl} alt={nat.label} className="inline-block h-3 w-5 rounded-[2px]" /> : null}
+                <span>{nat.label || '—'}</span>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-        <div><span className="text-gray-500">Età:</span> {age ?? '—'}</div>
-        <div><span className="text-gray-500">Piede:</span> {p?.foot || '—'}</div>
-        <div><span className="text-gray-500">Altezza:</span> {p?.height_cm ? `${p.height_cm} cm` : '—'}</div>
-        <div><span className="text-gray-500">Peso:</span> {p?.weight_kg ? `${p.weight_kg} kg` : '—'}</div>
-      </div>
+      {p?.account_type !== 'club' && (
+        <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+          <div><span className="text-gray-500">Età:</span> {age ?? '—'}</div>
+          <div><span className="text-gray-500">Piede:</span> {p?.foot || '—'}</div>
+          <div><span className="text-gray-500">Altezza:</span> {p?.height_cm ? `${p.height_cm} cm` : '—'}</div>
+          <div><span className="text-gray-500">Peso:</span> {p?.weight_kg ? `${p.weight_kg} kg` : '—'}</div>
+        </div>
+      )}
 
       {p?.bio ? <p className="mt-3 line-clamp-3 text-sm text-gray-700">{p.bio}</p> : null}
 
