@@ -1,3 +1,4 @@
+// components/auth/SocialLogin.tsx
 'use client';
 
 import { useState } from 'react';
@@ -15,19 +16,20 @@ export default function SocialLogin() {
     try {
       setLoading(true);
 
-      // Usa un domain stabile se disponibile, altrimenti fallback all’origin
-      const SITE_URL =
-        process.env.NEXT_PUBLIC_SITE_URL ||
-        (typeof window !== 'undefined' ? window.location.origin : '');
-
-      const redirectTo = `${SITE_URL}/auth/callback`;
+      // redirect SUL DOMINIO CORRENTE, sempre
+      const origin =
+        typeof window !== 'undefined' ? window.location.origin : '';
+      const redirectTo = `${origin}/auth/callback`;
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo },
+        options: {
+          redirectTo,            // torna sempre qui
+          // scopes: 'email profile', // opzionale
+        },
       });
-      if (error) throw error;
-      // verrà fatto redirect esterno, qui non serve altro
+      if (error) throw error; // il browser ora viene rediretto
+
     } catch (e) {
       console.error(e);
       alert('Accesso con Google non riuscito.');
