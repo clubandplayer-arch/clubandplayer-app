@@ -7,7 +7,7 @@ type AccountType = 'club' | 'athlete' | null;
 export default function ProfileHeader() {
   const [type, setType] = useState<AccountType>(null);
 
-  // leggo il tipo account
+  // carica il tipo di account
   useEffect(() => {
     (async () => {
       try {
@@ -21,22 +21,19 @@ export default function ProfileHeader() {
     })();
   }, []);
 
-  // Nascondi qualunque titolo/paragrafo legacy NON dentro al nostro header
-  useEffect(() => {
+  // funzione che nasconde i titoli/paragrafi legacy ovunque nella pagina
+  function hideLegacy() {
     try {
-      const OUR_WRAP_SELECTOR = '#cp-dyn-profile-header';
+      const WRAP = document.getElementById('cp-dyn-profile-header');
 
-      // nascondi <h1> "Il mio profilo …"
-      const h1s = Array.from(document.querySelectorAll('h1'));
-      h1s
-        .filter(
-          (el) =>
-            !el.closest(OUR_WRAP_SELECTOR) &&
-            /il mio profilo\s+/i.test(el.textContent || '')
-        )
-        .forEach((el) => {
+      // nascondi qualunque H1 che inizia con "Il mio profilo ..."
+      document.querySelectorAll('h1').forEach((el) => {
+        if (WRAP && WRAP.contains(el)) return; // non toccare il nostro header
+        const txt = (el.textContent || '').trim().toLowerCase();
+        if (txt.startsWith('il mio profilo')) {
           (el as HTMLElement).style.display = 'none';
-          // prova a nascondere anche il paragrafo subito dopo, se è quello descrittivo
+
+          // prova a nascondere anche il paragrafo di descrizione che segue
           const sib = el.nextElementSibling as HTMLElement | null;
           if (
             sib &&
@@ -45,18 +42,25 @@ export default function ProfileHeader() {
           ) {
             sib.style.display = 'none';
           }
-        });
+        }
+      });
 
-      // fallback: se c'è un paragrafo descrittivo duplicato fuori dal nostro wrapper, nascondilo
-      const ps = Array.from(document.querySelectorAll('p'));
-      ps
-        .filter(
-          (el) =>
-            !el.closest(OUR_WRAP_SELECTOR) &&
-            /aggiorna i tuoi dati per migliorare il matching/i.test(el.textContent || '')
-        )
-        .forEach((el) => ((el as HTMLElement).style.display = 'none'));
+      // fallback: se c'è un paragrafo duplicato della descrizione, nascondilo
+      document.querySelectorAll('p').forEach((p) => {
+        if (WRAP && WRAP.contains(p)) return;
+        if (/aggiorna i tuoi dati per migliorare il matching/i.test(p.textContent || '')) {
+          (p as HTMLElement).style.display = 'none';
+        }
+      });
     } catch {}
+  }
+
+  // esegui subito e poi osserva il DOM per eventuali inserimenti successivi
+  useEffect(() => {
+    hideLegacy();
+    const mo = new MutationObserver(() => hideLegacy());
+    mo.observe(document.body, { childList: true, subtree: true });
+    return () => mo.disconnect();
   }, []);
 
   const label = type === 'club' ? 'CLUB' : 'ATLETA';
