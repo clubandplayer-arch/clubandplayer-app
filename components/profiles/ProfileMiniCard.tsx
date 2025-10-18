@@ -1,3 +1,4 @@
+// components/profiles/ProfileMiniCard.tsx
 'use client';
 
 import Link from 'next/link';
@@ -121,6 +122,7 @@ export default function ProfileMiniCard() {
 
         // Solo per atleta ha senso calcolare residenza/nascita
         if (j?.account_type !== 'club') {
+          // RESIDENZA (id IT -> etichette, altrimenti city testo libero)
           if (j?.residence_municipality_id || j?.residence_province_id || j?.residence_region_id) {
             const [mun, prov, reg] = await Promise.all([
               j?.residence_municipality_id
@@ -141,6 +143,7 @@ export default function ProfileMiniCard() {
             setResidenza((j?.city ?? '').trim() || '—');
           }
 
+          // NASCITA (IT -> id, estero -> city + paese)
           const bc = (j?.birth_country || '').toUpperCase();
           if (bc === 'IT' && (j?.birth_municipality_id || j?.birth_province_id || j?.birth_region_id)) {
             const [mun, prov, reg] = await Promise.all([
