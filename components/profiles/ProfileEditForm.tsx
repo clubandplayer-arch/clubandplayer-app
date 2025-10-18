@@ -1,3 +1,4 @@
+// components/profiles/ProfileEditForm.tsx
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
@@ -5,8 +6,8 @@ import { useRouter } from 'next/navigation';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 type LocationLevel = 'region' | 'province' | 'municipality';
-type LocationRow = { id: number; name: string };
-type AccountType = 'club' | 'athlete' | null;
+type LocationRow   = { id: number; name: string };
+type AccountType   = 'club' | 'athlete' | null;
 
 type Links = {
   instagram?: string | null;
@@ -21,12 +22,12 @@ type Profile = {
   // anagrafica comune
   full_name: string | null;
   bio: string | null;
-  country: string | null; // nazionalità (ISO2 o stringa)
+  country: string | null; // ISO2 o testo
 
   // atleta
   birth_year: number | null;
-  birth_place: string | null; // fallback estero
-  city: string | null;        // residenza estero
+  birth_place: string | null; // fallback (estero)
+  city: string | null;        // residenza (estero)
 
   // residenza IT (atleta)
   residence_region_id: number | null;
@@ -34,7 +35,7 @@ type Profile = {
   residence_municipality_id: number | null;
 
   // nascita IT (atleta)
-  birth_country: string | null;
+  birth_country: string | null; // ISO2 o testo
   birth_region_id: number | null;
   birth_province_id: number | null;
   birth_municipality_id: number | null;
@@ -50,7 +51,7 @@ type Profile = {
   height_cm: number | null;
   weight_kg: number | null;
 
-  // club (NEW)
+  // club (nuovi)
   sport: string | null;
   club_foundation_year: number | null;
   club_stadium: string | null;
@@ -131,7 +132,7 @@ function countryName(codeOrText?: string | null) {
   return v;
 }
 
-/** categorie/campionati per sport (puoi estendere) */
+/** categorie/campionati per sport (estendibile) */
 const CATEGORIES_BY_SPORT: Record<string, string[]> = {
   Calcio: [
     'Serie D',
@@ -153,7 +154,7 @@ const CATEGORIES_BY_SPORT: Record<string, string[]> = {
 export default function ProfileEditForm() {
   const router = useRouter();
 
-  // Profile state
+  // Profile
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -163,16 +164,16 @@ export default function ProfileEditForm() {
   const isClub = profile?.account_type === 'club';
 
   // Anagrafica base
-  const [fullName, setFullName] = useState<string>('');
-  const [bio, setBio] = useState<string>('');
-  const [country, setCountry] = useState<string>('IT'); // nazionalità
+  const [fullName, setFullName] = useState('');
+  const [bio, setBio] = useState('');
+  const [country, setCountry] = useState('IT');
 
   // Atleta only
   const [birthYear, setBirthYear] = useState<number | ''>('');
-  const [birthPlace, setBirthPlace] = useState<string>('');           // fallback solo estero
-  const [residenceCity, setResidenceCity] = useState<string>('');     // fallback per estero
+  const [birthPlace, setBirthPlace] = useState('');
+  const [residenceCity, setResidenceCity] = useState('');
 
-  // Residenza (Italia - atleta)
+  // Residenza IT (atleta)
   const [resRegionId, setResRegionId] = useState<number | null>(null);
   const [resProvinceId, setResProvinceId] = useState<number | null>(null);
   const [resMunicipalityId, setResMunicipalityId] = useState<number | null>(null);
@@ -181,7 +182,7 @@ export default function ProfileEditForm() {
   const [municipalitiesRes, setMunicipalitiesRes] = useState<LocationRow[]>([]);
 
   // Nascita (atleta)
-  const [birthCountry, setBirthCountry] = useState<string>('IT');
+  const [birthCountry, setBirthCountry] = useState('IT');
   const [birthRegionId, setBirthRegionId] = useState<number | null>(null);
   const [birthProvinceId, setBirthProvinceId] = useState<number | null>(null);
   const [birthMunicipalityId, setBirthMunicipalityId] = useState<number | null>(null);
@@ -189,7 +190,7 @@ export default function ProfileEditForm() {
   const [provincesBirth, setProvincesBirth] = useState<LocationRow[]>([]);
   const [municipalitiesBirth, setMunicipalitiesBirth] = useState<LocationRow[]>([]);
 
-  // Zona di interesse (comune)
+  // Zona interesse (comune)
   const [regionId, setRegionId] = useState<number | null>(null);
   const [provinceId, setProvinceId] = useState<number | null>(null);
   const [municipalityId, setMunicipalityId] = useState<number | null>(null);
@@ -198,22 +199,22 @@ export default function ProfileEditForm() {
   const [municipalities, setMunicipalities] = useState<LocationRow[]>([]);
 
   // Atleta + notifiche
-  const [foot, setFoot] = useState<string>('');
+  const [foot, setFoot] = useState('');
   const [heightCm, setHeightCm] = useState<number | ''>('');
   const [weightKg, setWeightKg] = useState<number | ''>('');
-  const [notifyEmail, setNotifyEmail] = useState<boolean>(true);
+  const [notifyEmail, setNotifyEmail] = useState(true);
 
   // Social
-  const [instagram, setInstagram] = useState<string>('');
-  const [facebook, setFacebook] = useState<string>('');
-  const [tiktok, setTiktok] = useState<string>('');
-  const [x, setX] = useState<string>('');
+  const [instagram, setInstagram] = useState('');
+  const [facebook, setFacebook]   = useState('');
+  const [tiktok, setTiktok]       = useState('');
+  const [x, setX]                 = useState('');
 
   // Club only
-  const [sport, setSport] = useState<string>('Calcio');
-  const [clubCategory, setClubCategory] = useState<string>('Altro');
+  const [sport, setSport] = useState('Calcio');
+  const [clubCategory, setClubCategory] = useState('Altro');
   const [foundationYear, setFoundationYear] = useState<number | ''>('');
-  const [stadium, setStadium] = useState<string>('');
+  const [stadium, setStadium] = useState('');
 
   // categorie dinamiche per sport
   const sportCategories = CATEGORIES_BY_SPORT[sport] ?? ['Altro'];
@@ -426,16 +427,16 @@ export default function ProfileEditForm() {
     try {
       const links: Links = {
         instagram: normalizeSocial('instagram', instagram) ?? undefined,
-        facebook: normalizeSocial('facebook', facebook) ?? undefined,
-        tiktok: normalizeSocial('tiktok', tiktok) ?? undefined,
-        x: normalizeSocial('x', x) ?? undefined,
+        facebook:  normalizeSocial('facebook',  facebook)  ?? undefined,
+        tiktok:    normalizeSocial('tiktok',    tiktok)    ?? undefined,
+        x:         normalizeSocial('x',         x)         ?? undefined,
       };
       Object.keys(links).forEach((k) => (links as any)[k] === undefined && delete (links as any)[k]);
 
       const basePayload: any = {
         full_name: (fullName || '').trim() || null,
-        bio: (bio || '').trim() || null,
-        country: (country || '').trim() || null,
+        bio:       (bio || '').trim() || null,
+        country:   (country || '').trim() || null,
 
         // interesse
         interest_country: 'IT',
@@ -454,7 +455,8 @@ export default function ProfileEditForm() {
           club_league_category: (clubCategory || '').trim() || null,
           club_foundation_year: foundationYear === '' ? null : Number(foundationYear),
           club_stadium: (stadium || '').trim() || null,
-          // pulizia di campi atleta (in caso di switch ruolo)
+
+          // pulizia campi atleta
           birth_year: null,
           birth_place: null,
           residence_region_id: null,
@@ -481,17 +483,17 @@ export default function ProfileEditForm() {
 
           // nascita
           birth_country: birthCountry || null,
-          birth_region_id: birthCountry === 'IT' ? birthRegionId : null,
-          birth_province_id: birthCountry === 'IT' ? birthProvinceId : null,
-          birth_municipality_id: birthCountry === 'IT' ? birthMunicipalityId : null,
-          birth_place: birthCountry !== 'IT' ? (birthPlace || '').trim() || null : null,
+          birth_region_id:      birthCountry === 'IT' ? birthRegionId      : null,
+          birth_province_id:    birthCountry === 'IT' ? birthProvinceId    : null,
+          birth_municipality_id:birthCountry === 'IT' ? birthMunicipalityId: null,
+          birth_place:          birthCountry !== 'IT' ? (birthPlace || '').trim() || null : null,
 
           // atleta
           foot: (foot || '').trim() || null,
           height_cm: heightCm === '' ? null : Number(heightCm),
           weight_kg: weightKg === '' ? null : Number(weightKg),
 
-          // pulizia di campi club (in caso di switch ruolo)
+          // pulizia campi club
           sport: null,
           club_league_category: null,
           club_foundation_year: null,
@@ -530,258 +532,505 @@ export default function ProfileEditForm() {
   const countryPreview = country ? `${flagEmoji(country)} ${countryName(country)}` : '';
 
   return (
-    <form onSubmit={onSubmit} className="space-y-6">
-      {/* Dati personali */}
-      <section className="rounded-2xl border p-4 md:p-5">
-        <h2 className="mb-3 text-lg font-semibold">Dati personali</h2>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="flex flex-col gap-1 md:col-span-2">
-            <label className="text-sm text-gray-600">{isClub ? 'Nome del club' : 'Nome e cognome'}</label>
-            <input className="rounded-lg border p-2" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder={isClub ? 'Es. ASD Carlentini' : 'Es. Mario Rossi'}/>
-          </div>
+    <>
+      {/* Titolo dinamico */}
+      <h1 className="mb-4 text-xl font-semibold">
+        {isClub ? 'Il mio profilo club' : 'Il mio profilo atleta'}
+      </h1>
 
-          {!isClub && (
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-gray-600">Anno di nascita</label>
-              <input type="number" inputMode="numeric" className="rounded-lg border p-2" value={birthYear}
-                onChange={(e) => setBirthYear(e.target.value === '' ? '' : Number(e.target.value))}
-                min={1950} max={new Date().getFullYear() - 5} placeholder="Es. 2002"/>
-            </div>
-          )}
-
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Nazionalità</label>
-            <select className="rounded-lg border p-2" value={country} onChange={(e) => setCountry(e.target.value)}>
-              {COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
-            </select>
-            {country && <span className="text-xs text-gray-500">{countryPreview}</span>}
-          </div>
-
-          <div className="md:col-span-2 flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Biografia</label>
-            <textarea className="rounded-lg border p-2" rows={4} value={bio} onChange={(e) => setBio(e.target.value)} placeholder={isClub ? 'Storia, valori, palmarès…' : 'Racconta in breve ruolo, caratteristiche, esperienze…'} />
-          </div>
-        </div>
-      </section>
-
-      {/* Residenza (solo atleta) */}
-      {!isClub && (
+      <form onSubmit={onSubmit} className="space-y-6">
+        {/* Dati personali / club */}
         <section className="rounded-2xl border p-4 md:p-5">
-          <h2 className="mb-3 text-lg font-semibold">Luogo di residenza</h2>
-          <div className="grid gap-4 md:grid-cols-3">
+          <h2 className="mb-3 text-lg font-semibold">
+            {isClub ? 'Dati club' : 'Dati personali'}
+          </h2>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="flex flex-col gap-1 md:col-span-2">
+              <label className="text-sm text-gray-600">
+                {isClub ? 'Nome del club' : 'Nome e cognome'}
+              </label>
+              <input
+                className="rounded-lg border p-2"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder={isClub ? 'Es. ASD Carlentini' : 'Es. Mario Rossi'}
+              />
+            </div>
+
+            {!isClub && (
+              <div className="flex flex-col gap-1">
+                <label className="text-sm text-gray-600">Anno di nascita</label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  className="rounded-lg border p-2"
+                  value={birthYear}
+                  onChange={(e) =>
+                    setBirthYear(e.target.value === '' ? '' : Number(e.target.value))
+                  }
+                  min={1950}
+                  max={new Date().getFullYear() - 5}
+                  placeholder="Es. 2002"
+                />
+              </div>
+            )}
+
+            <div className="flex flex-col gap-1">
+              <label className="text-sm text-gray-600">Nazionalità</label>
+              <select
+                className="rounded-lg border p-2"
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+              >
+                {COUNTRIES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+              {country && (
+                <span className="text-xs text-gray-500">{countryPreview}</span>
+              )}
+            </div>
+
+            <div className="md:col-span-2 flex flex-col gap-1">
+              <label className="text-sm text-gray-600">Biografia</label>
+              <textarea
+                className="rounded-lg border p-2"
+                rows={4}
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                placeholder={
+                  isClub
+                    ? 'Storia, valori, palmarès…'
+                    : 'Racconta in breve ruolo, caratteristiche, esperienze…'
+                }
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* Residenza (solo atleta) */}
+        {!isClub && (
+          <section className="rounded-2xl border p-4 md:p-5">
+            <h2 className="mb-3 text-lg font-semibold">Luogo di residenza</h2>
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="flex flex-col gap-1">
+                <label className="text-sm text-gray-600">Regione</label>
+                <select
+                  className="rounded-lg border p-2"
+                  value={resRegionId ?? ''}
+                  onChange={(e) =>
+                    setResRegionId(e.target.value ? Number(e.target.value) : null)
+                  }
+                >
+                  <option value="">— Seleziona regione —</option>
+                  {regionsRes.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-sm text-gray-600">Provincia</label>
+                <select
+                  className="rounded-lg border p-2 disabled:bg-gray-50"
+                  value={resProvinceId ?? ''}
+                  onChange={(e) =>
+                    setResProvinceId(e.target.value ? Number(e.target.value) : null)
+                  }
+                  disabled={!resRegionId}
+                >
+                  <option value="">— Seleziona provincia —</option>
+                  {provincesRes.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-sm text-gray-600">Città</label>
+                <select
+                  className="rounded-lg border p-2 disabled:bg-gray-50"
+                  value={resMunicipalityId ?? ''}
+                  onChange={(e) =>
+                    setResMunicipalityId(
+                      e.target.value ? Number(e.target.value) : null
+                    )
+                  }
+                  disabled={!resProvinceId}
+                >
+                  <option value="">— Seleziona città —</option>
+                  {municipalitiesRes.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <p className="mt-2 text-xs text-gray-500">
+              Se vivi all’estero, lascia vuoto e indica la città qui sotto.
+            </p>
+            <div className="mt-2 flex flex-col gap-1">
+              <label className="text-sm text-gray-600">
+                Residenza (estero) – città (solo se NON Italia)
+              </label>
+              <input
+                className="rounded-lg border p-2"
+                value={residenceCity}
+                onChange={(e) => setResidenceCity(e.target.value)}
+                placeholder="Es. Madrid"
+              />
+            </div>
+          </section>
+        )}
+
+        {/* Nascita (solo atleta) */}
+        {!isClub && (
+          <section className="rounded-2xl border p-4 md:p-5">
+            <h2 className="mb-3 text-lg font-semibold">Luogo di nascita</h2>
+            <div className="grid gap-4 md:grid-cols-4">
+              <div className="flex flex-col gap-1">
+                <label className="text-sm text-gray-600">Paese di nascita</label>
+                <select
+                  className="rounded-lg border p-2"
+                  value={birthCountry}
+                  onChange={(e) => setBirthCountry(e.target.value)}
+                >
+                  {COUNTRIES.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {birthCountry === 'IT' ? (
+                <>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-sm text-gray-600">Regione</label>
+                    <select
+                      className="rounded-lg border p-2"
+                      value={birthRegionId ?? ''}
+                      onChange={(e) =>
+                        setBirthRegionId(
+                          e.target.value ? Number(e.target.value) : null
+                        )
+                      }
+                    >
+                      <option value="">— Seleziona regione —</option>
+                      {regionsBirth.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-sm text-gray-600">Provincia</label>
+                    <select
+                      className="rounded-lg border p-2 disabled:bg-gray-50"
+                      value={birthProvinceId ?? ''}
+                      onChange={(e) =>
+                        setBirthProvinceId(
+                          e.target.value ? Number(e.target.value) : null
+                        )
+                      }
+                      disabled={!birthRegionId}
+                    >
+                      <option value="">— Seleziona provincia —</option>
+                      {provincesBirth.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-sm text-gray-600">Città</label>
+                    <select
+                      className="rounded-lg border p-2 disabled:bg-gray-50"
+                      value={birthMunicipalityId ?? ''}
+                      onChange={(e) =>
+                        setBirthMunicipalityId(
+                          e.target.value ? Number(e.target.value) : null
+                        )
+                      }
+                      disabled={!birthProvinceId}
+                    >
+                      <option value="">— Seleziona città —</option>
+                      {municipalitiesBirth.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              ) : (
+                <div className="md:col-span-3 flex flex-col gap-1">
+                  <label className="text-sm text-gray-600">Città di nascita (estero)</label>
+                  <input
+                    className="rounded-lg border p-2"
+                    value={birthPlace}
+                    onChange={(e) => setBirthPlace(e.target.value)}
+                    placeholder="Es. Paris"
+                  />
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* Zona di interesse (comune) */}
+        <section className="rounded-2xl border p-4 md:p-5">
+          <h2 className="mb-3 text-lg font-semibold">Zona di interesse</h2>
+          <div className="grid gap-4 md:grid-cols-4">
+            <div className="flex flex-col gap-1">
+              <label className="text-sm text-gray-600">Paese</label>
+              <select className="rounded-lg border p-2" value="IT" disabled>
+                <option value="IT">Italia</option>
+              </select>
+            </div>
             <div className="flex flex-col gap-1">
               <label className="text-sm text-gray-600">Regione</label>
-              <select className="rounded-lg border p-2" value={resRegionId ?? ''} onChange={(e) => setResRegionId(e.target.value ? Number(e.target.value) : null)}>
+              <select
+                className="rounded-lg border p-2"
+                value={regionId ?? ''}
+                onChange={(e) => setRegionId(e.target.value ? Number(e.target.value) : null)}
+              >
                 <option value="">— Seleziona regione —</option>
-                {regionsRes.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                {regions.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-sm text-gray-600">Provincia</label>
-              <select className="rounded-lg border p-2 disabled:bg-gray-50" value={resProvinceId ?? ''} onChange={(e) => setResProvinceId(e.target.value ? Number(e.target.value) : null)} disabled={!resRegionId}>
+              <select
+                className="rounded-lg border p-2 disabled:bg-gray-50"
+                value={provinceId ?? ''}
+                onChange={(e) => setProvinceId(e.target.value ? Number(e.target.value) : null)}
+                disabled={!regionId}
+              >
                 <option value="">— Seleziona provincia —</option>
-                {provincesRes.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                {provinces.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-sm text-gray-600">Città</label>
-              <select className="rounded-lg border p-2 disabled:bg-gray-50" value={resMunicipalityId ?? ''} onChange={(e) => setResMunicipalityId(e.target.value ? Number(e.target.value) : null)} disabled={!resProvinceId}>
+              <select
+                className="rounded-lg border p-2 disabled:bg-gray-50"
+                value={municipalityId ?? ''}
+                onChange={(e) => setMunicipalityId(e.target.value ? Number(e.target.value) : null)}
+                disabled={!provinceId}
+              >
                 <option value="">— Seleziona città —</option>
-                {municipalitiesRes.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                {municipalities.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
               </select>
             </div>
-          </div>
-          <p className="mt-2 text-xs text-gray-500">Se vivi all’estero, lascia vuoto e indica la città qui sotto.</p>
-          <div className="mt-2 flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Residenza (estero) – città (solo se NON Italia)</label>
-            <input className="rounded-lg border p-2" value={residenceCity} onChange={(e) => setResidenceCity(e.target.value)} placeholder="Es. Madrid"/>
           </div>
         </section>
-      )}
 
-      {/* Nascita (solo atleta) */}
-      {!isClub && (
-        <section className="rounded-2xl border p-4 md:p-5">
-          <h2 className="mb-3 text-lg font-semibold">Luogo di nascita</h2>
-          <div className="grid gap-4 md:grid-cols-4">
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-gray-600">Paese di nascita</label>
-              <select className="rounded-lg border p-2" value={birthCountry} onChange={(e) => setBirthCountry(e.target.value)}>
-                {COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
-              </select>
-            </div>
-
-            {birthCountry === 'IT' ? (
-              <>
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm text-gray-600">Regione</label>
-                  <select className="rounded-lg border p-2" value={birthRegionId ?? ''} onChange={(e) => setBirthRegionId(e.target.value ? Number(e.target.value) : null)}>
-                    <option value="">— Seleziona regione —</option>
-                    {regionsBirth.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-                  </select>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm text-gray-600">Provincia</label>
-                  <select className="rounded-lg border p-2 disabled:bg-gray-50" value={birthProvinceId ?? ''} onChange={(e) => setBirthProvinceId(e.target.value ? Number(e.target.value) : null)} disabled={!birthRegionId}>
-                    <option value="">— Seleziona provincia —</option>
-                    {provincesBirth.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                  </select>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm text-gray-600">Città</label>
-                  <select className="rounded-lg border p-2 disabled:bg-gray-50" value={birthMunicipalityId ?? ''} onChange={(e) => setBirthMunicipalityId(e.target.value ? Number(e.target.value) : null)} disabled={!birthProvinceId}>
-                    <option value="">— Seleziona città —</option>
-                    {municipalitiesBirth.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-                  </select>
-                </div>
-              </>
-            ) : (
-              <div className="md:col-span-3 flex flex-col gap-1">
-                <label className="text-sm text-gray-600">Città di nascita (estero)</label>
-                <input className="rounded-lg border p-2" value={birthPlace} onChange={(e) => setBirthPlace(e.target.value)} placeholder="Es. Paris"/>
+        {/* Dettagli atleta / club */}
+        {isClub ? (
+          <section className="rounded-2xl border p-4 md:p-5">
+            <h2 className="mb-3 text-lg font-semibold">Dettagli club</h2>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="flex flex-col gap-1">
+                <label className="text-sm text-gray-600">Sport</label>
+                <select
+                  className="rounded-lg border p-2"
+                  value={sport}
+                  onChange={(e) => setSport(e.target.value)}
+                >
+                  {Object.keys(CATEGORIES_BY_SPORT).map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
               </div>
-            )}
-          </div>
-        </section>
-      )}
 
-      {/* Zona di interesse (comune) */}
-      <section className="rounded-2xl border p-4 md:p-5">
-        <h2 className="mb-3 text-lg font-semibold">Zona di interesse</h2>
-        <div className="grid gap-4 md:grid-cols-4">
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Paese</label>
-            <select className="rounded-lg border p-2" value="IT" disabled><option value="IT">Italia</option></select>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Regione</label>
-            <select className="rounded-lg border p-2" value={regionId ?? ''} onChange={(e) => setRegionId(e.target.value ? Number(e.target.value) : null)}>
-              <option value="">— Seleziona regione —</option>
-              {regions.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-            </select>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Provincia</label>
-            <select className="rounded-lg border p-2 disabled:bg-gray-50" value={provinceId ?? ''} onChange={(e) => setProvinceId(e.target.value ? Number(e.target.value) : null)} disabled={!regionId}>
-              <option value="">— Seleziona provincia —</option>
-              {provinces.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Città</label>
-            <select className="rounded-lg border p-2 disabled:bg-gray-50" value={municipalityId ?? ''} onChange={(e) => setMunicipalityId(e.target.value ? Number(e.target.value) : null)} disabled={!provinceId}>
-              <option value="">— Seleziona città —</option>
-              {municipalities.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-            </select>
-          </div>
-        </div>
-      </section>
+              <div className="flex flex-col gap-1">
+                <label className="text-sm text-gray-600">Categoria / Campionato</label>
+                <select
+                  className="rounded-lg border p-2"
+                  value={clubCategory}
+                  onChange={(e) => setClubCategory(e.target.value)}
+                >
+                  {(CATEGORIES_BY_SPORT[sport] ?? ['Altro']).map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-      {/* Dettagli atleta / club */}
-      {isClub ? (
+              <div className="flex flex-col gap-1">
+                <label className="text-sm text-gray-600">Anno di fondazione</label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  className="rounded-lg border p-2"
+                  value={foundationYear}
+                  onChange={(e) =>
+                    setFoundationYear(e.target.value === '' ? '' : Number(e.target.value))
+                  }
+                  min={1850}
+                  max={currentYear}
+                  placeholder="es. 1926"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1 md:col-span-2">
+                <label className="text-sm text-gray-600">Stadio / Impianto</label>
+                <input
+                  className="rounded-lg border p-2"
+                  value={stadium}
+                  onChange={(e) => setStadium(e.target.value)}
+                  placeholder='Es. "Sebastiano Romano"'
+                />
+              </div>
+            </div>
+          </section>
+        ) : (
+          <section className="rounded-2xl border p-4 md:p-5">
+            <h2 className="mb-3 text-lg font-semibold">Dettagli atleta</h2>
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="flex flex-col gap-1">
+                <label className="text-sm text-gray-600">Piede preferito</label>
+                <select
+                  className="rounded-lg border p-2"
+                  value={foot}
+                  onChange={(e) => setFoot(e.target.value)}
+                >
+                  <option value="">— Seleziona —</option>
+                  <option value="Destro">Destro</option>
+                  <option value="Sinistro">Sinistro</option>
+                  <option value="Ambidestro">Ambidestro</option>
+                </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-sm text-gray-600">Altezza (cm)</label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  className="rounded-lg border p-2"
+                  value={heightCm}
+                  onChange={(e) =>
+                    setHeightCm(e.target.value === '' ? '' : Number(e.target.value))
+                  }
+                  min={100}
+                  max={230}
+                  placeholder="es. 183"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-sm text-gray-600">Peso (kg)</label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  className="rounded-lg border p-2"
+                  value={weightKg}
+                  onChange={(e) =>
+                    setWeightKg(e.target.value === '' ? '' : Number(e.target.value))
+                  }
+                  min={40}
+                  max={150}
+                  placeholder="es. 85"
+                />
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Social */}
         <section className="rounded-2xl border p-4 md:p-5">
-          <h2 className="mb-3 text-lg font-semibold">Dettagli club</h2>
+          <h2 className="mb-3 text-lg font-semibold">Profili social</h2>
+          <p className="mb-3 text-xs text-gray-500">
+            Inserisci URL completi o semplici @handle.
+          </p>
           <div className="grid gap-4 md:grid-cols-2">
             <div className="flex flex-col gap-1">
-              <label className="text-sm text-gray-600">Sport</label>
-              <select className="rounded-lg border p-2" value={sport} onChange={(e) => setSport(e.target.value)}>
-                {Object.keys(CATEGORIES_BY_SPORT).map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-gray-600">Categoria / Campionato</label>
-              <select className="rounded-lg border p-2" value={clubCategory} onChange={(e) => setClubCategory(e.target.value)}>
-                {sportCategories.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-gray-600">Anno di fondazione</label>
+              <label className="text-sm text-gray-600">Instagram</label>
               <input
-                type="number" inputMode="numeric" className="rounded-lg border p-2"
-                value={foundationYear}
-                onChange={(e) => setFoundationYear(e.target.value === '' ? '' : Number(e.target.value))}
-                min={1850} max={currentYear}
-                placeholder="es. 1926"
+                className="rounded-lg border p-2"
+                value={instagram}
+                onChange={(e) => setInstagram(e.target.value)}
+                placeholder="@tuonome oppure https://instagram.com/tuonome"
               />
             </div>
-
             <div className="flex flex-col gap-1">
-              <label className="text-sm text-gray-600">Stadio / Impianto</label>
-              <input className="rounded-lg border p-2" value={stadium} onChange={(e) => setStadium(e.target.value)} placeholder='Es. "Sebastiano Romano"'/>
+              <label className="text-sm text-gray-600">Facebook</label>
+              <input
+                className="rounded-lg border p-2"
+                value={facebook}
+                onChange={(e) => setFacebook(e.target.value)}
+                placeholder="pagina o profilo"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-sm text-gray-600">TikTok</label>
+              <input
+                className="rounded-lg border p-2"
+                value={tiktok}
+                onChange={(e) => setTiktok(e.target.value)}
+                placeholder="@tuonome"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-sm text-gray-600">X (Twitter)</label>
+              <input
+                className="rounded-lg border p-2"
+                value={x}
+                onChange={(e) => setX(e.target.value)}
+                placeholder="@tuonome"
+              />
             </div>
           </div>
         </section>
-      ) : (
+
+        {/* Notifiche */}
         <section className="rounded-2xl border p-4 md:p-5">
-          <h2 className="mb-3 text-lg font-semibold">Dettagli atleta</h2>
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-gray-600">Piede preferito</label>
-              <select className="rounded-lg border p-2" value={foot} onChange={(e) => setFoot(e.target.value)}>
-                <option value="">— Seleziona —</option>
-                <option value="Destro">Destro</option>
-                <option value="Sinistro">Sinistro</option>
-                <option value="Ambidestro">Ambidestro</option>
-              </select>
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-gray-600">Altezza (cm)</label>
-              <input type="number" inputMode="numeric" className="rounded-lg border p-2" value={heightCm}
-                onChange={(e) => setHeightCm(e.target.value === '' ? '' : Number(e.target.value))}
-                min={100} max={230} placeholder="es. 183"/>
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-gray-600">Peso (kg)</label>
-              <input type="number" inputMode="numeric" className="rounded-lg border p-2" value={weightKg}
-                onChange={(e) => setWeightKg(e.target.value === '' ? '' : Number(e.target.value))}
-                min={40} max={150} placeholder="es. 85"/>
-            </div>
-          </div>
+          <h2 className="mb-3 text-lg font-semibold">Notifiche</h2>
+          <label className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              className="h-4 w-4"
+              checked={notifyEmail}
+              onChange={(e) => setNotifyEmail(e.target.checked)}
+            />
+            <span className="text-sm">Email per nuovi messaggi</span>
+          </label>
         </section>
-      )}
 
-      {/* Social */}
-      <section className="rounded-2xl border p-4 md:p-5">
-        <h2 className="mb-3 text-lg font-semibold">Profili social</h2>
-        <p className="mb-3 text-xs text-gray-500">Inserisci URL completi o semplici @handle.</p>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Instagram</label>
-            <input className="rounded-lg border p-2" value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="@tuonome oppure https://instagram.com/tuonome"/>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Facebook</label>
-            <input className="rounded-lg border p-2" value={facebook} onChange={(e) => setFacebook(e.target.value)} placeholder="pagina o profilo"/>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">TikTok</label>
-            <input className="rounded-lg border p-2" value={tiktok} onChange={(e) => setTiktok(e.target.value)} placeholder="@tuonome"/>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">X (Twitter)</label>
-            <input className="rounded-lg border p-2" value={x} onChange={(e) => setX(e.target.value)} placeholder="@tuonome"/>
-          </div>
+        <div className="flex items-center gap-3">
+          <button
+            type="submit"
+            disabled={!canSave}
+            className="rounded-xl bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-60"
+          >
+            {saving ? 'Salvataggio…' : 'Salva profilo'}
+          </button>
+          {message && <span className="text-sm text-green-700">{message}</span>}
+          {error && <span className="text-sm text-red-700">{error}</span>}
         </div>
-      </section>
-
-      {/* Notifiche */}
-      <section className="rounded-2xl border p-4 md:p-5">
-        <h2 className="mb-3 text-lg font-semibold">Notifiche</h2>
-        <label className="flex items-center gap-3">
-          <input type="checkbox" className="h-4 w-4" checked={notifyEmail} onChange={(e) => setNotifyEmail(e.target.checked)}/>
-          <span className="text-sm">Email per nuovi messaggi</span>
-        </label>
-      </section>
-
-      <div className="flex items-center gap-3">
-        <button type="submit" disabled={!canSave} className="rounded-xl bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-60">
-          {saving ? 'Salvataggio…' : 'Salva profilo'}
-        </button>
-        {message && <span className="text-sm text-green-700">{message}</span>}
-        {error && <span className="text-sm text-red-700">{error}</span>}
-      </div>
-    </form>
+      </form>
+    </>
   );
 }
