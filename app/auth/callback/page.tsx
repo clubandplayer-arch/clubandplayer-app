@@ -1,3 +1,4 @@
+// app/auth/callback/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -24,22 +25,26 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     (async () => {
       try {
-        // 1) Flow "implicit" (ritorno con #access_token=...&refresh_token=...)
+        // DEBUG veloce
+        if (typeof window !== 'undefined') {
+          console.log('[callback] href:', window.location.href);
+          console.log('[callback] search:', window.location.search);
+          console.log('[callback] hash:', window.location.hash);
+        }
+
+        // 1) Implicit flow (#access_token & #refresh_token)
         if (typeof window !== 'undefined' && window.location.hash) {
           const frag = parseFragment(window.location.hash);
           const access_token = frag['access_token'] || null;
           const refresh_token = frag['refresh_token'] || null;
 
-          // Se Google rimanda con errore via fragment
           const fragmentErr = frag['error_description'] || frag['error'];
           if (fragmentErr) throw new Error(fragmentErr);
 
           if (access_token && refresh_token) {
-            // salva la sessione nel client
             const { error } = await supabase.auth.setSession({ access_token, refresh_token });
             if (error) throw error;
 
-            // sync cookie SSR per le API route
             await fetch('/api/auth/session', {
               method: 'POST',
               headers: { 'content-type': 'application/json' },
@@ -51,7 +56,7 @@ export default function AuthCallbackPage() {
           }
         }
 
-        // 2) Flow "PKCE code" (ritorno con ?code=...)
+        // 2) PKCE flow (?code=...)
         const code = search.get('code');
         if (code) {
           const { data, error } = await supabase.auth.exchangeCodeForSession(code);
@@ -73,7 +78,7 @@ export default function AuthCallbackPage() {
           return;
         }
 
-        // 3) Nessun token / Nessun code → mostra errore
+        // 3) Nessun token, nessun code → errore
         const err =
           search.get('error_description') ||
           search.get('error') ||
