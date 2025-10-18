@@ -77,6 +77,12 @@ const COUNTRY_ALIASES: Record<string, string> = {
   'czech republic': 'CZ', 'repubblica ceca': 'CZ',
   'cote d’ivoire': 'CI', "côte d’ivoire": 'CI',
   russia: 'RU', 'south korea': 'KR', 'north korea': 'KP', 'viet nam': 'VN',
+  // aggiunte per testi comuni
+  italia: 'IT', italy: 'IT',
+  francia: 'FR', france: 'FR',
+  spagna: 'ES', spain: 'ES',
+  germania: 'DE', germany: 'DE',
+  portogallo: 'PT', portugal: 'PT',
 };
 
 function nameToIso2(v?: string | null): string | null {
