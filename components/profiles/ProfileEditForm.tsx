@@ -49,6 +49,16 @@ type Profile = {
   height_cm: number | null;
   weight_kg: number | null;
 
+  // club
+  club_founded_year?: number | null;
+  club_sport?: string | null;
+  club_category?: string | null;
+  club_stadium?: string | null;
+  club_country?: string | null;
+  club_region_id?: number | null;
+  club_province_id?: number | null;
+  club_municipality_id?: number | null;
+
   // social
   links: Links | null;
 
@@ -125,6 +135,14 @@ function countryName(codeOrText?: string | null) {
   }
   return v;
 }
+
+// categorie per sport (estendibile)
+const SPORT_CATEGORIES: Record<string, string[]> = {
+  Calcio: ['Serie D', 'Eccellenza', 'Promozione', 'Prima Categoria', 'Seconda Categoria', 'Terza Categoria', 'Giovanili'],
+  Basket: ['Serie A', 'Serie A2', 'Serie B Nazionale', 'Serie B Interregionale', 'Serie C Unica', 'Serie D Regionale', 'Giovanili'],
+  Pallavolo: ['SuperLega', 'Serie A2', 'Serie A3', 'Serie B', 'Serie C', 'Serie D', 'Prima Divisione', 'Seconda Divisione', 'Terza Divisione', 'Giovanili'],
+  Rugby: ['Serie A Élite', 'Serie A', 'Serie B', 'Serie C', 'Giovanili'],
+};
 // ------------------------------
 
 export default function ProfileEditForm() {
@@ -184,6 +202,19 @@ export default function ProfileEditForm() {
   const [tiktok, setTiktok] = useState<string>('');
   const [x, setX] = useState<string>('');
 
+  // -------- Club --------
+  const [clubSport, setClubSport] = useState('Calcio');
+  const [clubCategory, setClubCategory] = useState('');
+  const [clubFounded, setClubFounded] = useState<number | ''>('');
+  const [clubStadium, setClubStadium] = useState('');
+  const [clubCountry, setClubCountry] = useState('IT');
+  const [clubRegionId, setClubRegionId] = useState<number | null>(null);
+  const [clubProvinceId, setClubProvinceId] = useState<number | null>(null);
+  const [clubMunicipalityId, setClubMunicipalityId] = useState<number | null>(null);
+  const [clubRegions, setClubRegions] = useState<LocationRow[]>([]);
+  const [clubProvinces, setClubProvinces] = useState<LocationRow[]>([]);
+  const [clubMunicipalities, setClubMunicipalities] = useState<LocationRow[]>([]);
+
   async function loadProfile() {
     const r = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
     if (!r.ok) throw new Error('Impossibile leggere il profilo');
@@ -217,6 +248,16 @@ export default function ProfileEditForm() {
       foot: j?.foot ?? '',
       height_cm: j?.height_cm ?? null,
       weight_kg: j?.weight_kg ?? null,
+
+      // club
+      club_founded_year: (j as any)?.club_founded_year ?? null,
+      club_sport: (j as any)?.club_sport ?? null,
+      club_category: (j as any)?.club_category ?? null,
+      club_stadium: (j as any)?.club_stadium ?? null,
+      club_country: (j as any)?.club_country ?? 'IT',
+      club_region_id: (j as any)?.club_region_id ?? null,
+      club_province_id: (j as any)?.club_province_id ?? null,
+      club_municipality_id: (j as any)?.club_municipality_id ?? null,
 
       links: (j as any)?.links ?? null,
 
@@ -258,6 +299,16 @@ export default function ProfileEditForm() {
     setFacebook(p.links?.facebook || '');
     setTiktok(p.links?.tiktok || '');
     setX(p.links?.x || '');
+
+    // club
+    setClubSport(p.club_sport || 'Calcio');
+    setClubCategory(p.club_category || '');
+    setClubFounded(p.club_founded_year ?? '');
+    setClubStadium(p.club_stadium || '');
+    setClubCountry(p.club_country || 'IT');
+    setClubRegionId(p.club_region_id ?? null);
+    setClubProvinceId(p.club_province_id ?? null);
+    setClubMunicipalityId(p.club_municipality_id ?? null);
   }
 
   // prima load
@@ -268,9 +319,11 @@ export default function ProfileEditForm() {
         await loadProfile();
 
         // liste iniziali
-        setRegions(sortByName(await rpcChildren('region', null)));
-        setRegionsRes(sortByName(await rpcChildren('region', null)));
-        setRegionsBirth(sortByName(await rpcChildren('region', null)));
+        const regs = await rpcChildren('region', null);
+        setRegions(sortByName(regs));
+        setRegionsRes(sortByName(regs));
+        setRegionsBirth(sortByName(regs));
+        setClubRegions(sortByName(regs));
 
         if (regionId != null) setProvinces(sortByName(await rpcChildren('province', regionId)));
         if (provinceId != null) setMunicipalities(sortByName(await rpcChildren('municipality', provinceId)));
@@ -280,6 +333,9 @@ export default function ProfileEditForm() {
 
         if (birthRegionId != null) setProvincesBirth(sortByName(await rpcChildren('province', birthRegionId)));
         if (birthProvinceId != null) setMunicipalitiesBirth(sortByName(await rpcChildren('municipality', birthProvinceId)));
+
+        if (clubRegionId != null) setClubProvinces(sortByName(await rpcChildren('province', clubRegionId)));
+        if (clubProvinceId != null) setClubMunicipalities(sortByName(await rpcChildren('municipality', clubProvinceId)));
       } catch (e: any) {
         console.error(e);
         setError(e?.message ?? 'Errore caricamento profilo');
@@ -352,8 +408,32 @@ export default function ProfileEditForm() {
     })();
   }, [provinceId]);
 
+  // club cascade
+  useEffect(() => {
+    (async () => {
+      if (clubRegionId == null) {
+        setClubProvinces([]); setClubProvinceId(null);
+        setClubMunicipalities([]); setClubMunicipalityId(null);
+        return;
+      }
+      const ps = await rpcChildren('province', clubRegionId);
+      setClubProvinces(ps);
+      setClubProvinceId((prev) => (ps.some((p) => p.id === prev) ? prev : null));
+      setClubMunicipalities([]); setClubMunicipalityId(null);
+    })();
+  }, [clubRegionId]);
+  useEffect(() => {
+    (async () => {
+      if (clubProvinceId == null) { setClubMunicipalities([]); setClubMunicipalityId(null); return; }
+      const ms = await rpcChildren('municipality', clubProvinceId);
+      setClubMunicipalities(ms);
+      setClubMunicipalityId((prev) => (ms.some((m) => m.id === prev) ? prev : null));
+    })();
+  }, [clubProvinceId]);
+
   const canSave = useMemo(() => !saving && profile != null, [saving, profile]);
   const currentYear = new Date().getFullYear();
+  const isClub = profile?.account_type === 'club';
 
   function normalizeSocial(kind: keyof Links, value: string): string | null {
     const v = (value || '').trim();
@@ -386,7 +466,7 @@ export default function ProfileEditForm() {
       };
       Object.keys(links).forEach((k) => (links as any)[k] === undefined && delete (links as any)[k]);
 
-      const payload = {
+      const payload: any = {
         // anagrafica
         full_name: (fullName || '').trim() || null,
         bio: (bio || '').trim() || null,
@@ -426,6 +506,24 @@ export default function ProfileEditForm() {
         notify_email_new_message: !!notifyEmail,
       };
 
+      // se è un club: aggiungi campi club e disattiva atleta
+      if (isClub) {
+        Object.assign(payload, {
+          club_founded_year: clubFounded === '' ? null : Number(clubFounded),
+          club_sport: (clubSport || '').trim() || null,
+          club_category: (clubCategory || '').trim() || null,
+          club_stadium: (clubStadium || '').trim() || null,
+          club_country: (clubCountry || '').trim() || 'IT',
+          club_region_id: clubRegionId,
+          club_province_id: clubProvinceId,
+          club_municipality_id: clubMunicipalityId,
+
+          foot: null,
+          height_cm: null,
+          weight_kg: null,
+        });
+      }
+
       const r = await fetch('/api/profiles/me', {
         method: 'PATCH',
         credentials: 'include',
@@ -463,8 +561,8 @@ export default function ProfileEditForm() {
         <h2 className="mb-3 text-lg font-semibold">Dati personali</h2>
         <div className="grid gap-4 md:grid-cols-2">
           <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Nome e cognome</label>
-            <input className="rounded-lg border p-2" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Es. Mario Rossi"/>
+            <label className="text-sm text-gray-600">{isClub ? 'Nome del club' : 'Nome e cognome'}</label>
+            <input className="rounded-lg border p-2" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder={isClub ? 'Es. ASD Carlentini Calcio' : 'Es. Mario Rossi'}/>
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-sm text-gray-600">Anno di nascita</label>
@@ -478,6 +576,10 @@ export default function ProfileEditForm() {
               {COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
             </select>
             {country && <span className="text-xs text-gray-500">{countryPreview}</span>}
+          </div>
+          <div className="md:col-span-2 flex flex-col gap-1">
+            <label className="text-sm text-gray-600">Biografia</label>
+            <textarea className="rounded-lg border p-2" rows={3} value={bio} onChange={(e) => setBio(e.target.value)} placeholder={isClub ? "Storia, valori, palmarès…" : "Ruolo, caratteristiche, esperienze…"} />
           </div>
         </div>
       </section>
@@ -591,33 +693,102 @@ export default function ProfileEditForm() {
         </div>
       </section>
 
-      {/* Dettagli atleta */}
-      <section className="rounded-2xl border p-4 md:p-5">
-        <h2 className="mb-3 text-lg font-semibold">Dettagli atleta</h2>
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Piede preferito</label>
-            <select className="rounded-lg border p-2" value={foot} onChange={(e) => setFoot(e.target.value)}>
-              <option value="">— Seleziona —</option>
-              <option value="Destro">Destro</option>
-              <option value="Sinistro">Sinistro</option>
-              <option value="Ambidestro">Ambidestro</option>
-            </select>
+      {/* Dettagli atleta (solo se NON club) */}
+      {!isClub && (
+        <section className="rounded-2xl border p-4 md:p-5">
+          <h2 className="mb-3 text-lg font-semibold">Dettagli atleta</h2>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="flex flex-col gap-1">
+              <label className="text-sm text-gray-600">Piede preferito</label>
+              <select className="rounded-lg border p-2" value={foot} onChange={(e) => setFoot(e.target.value)}>
+                <option value="">— Seleziona —</option>
+                <option value="Destro">Destro</option>
+                <option value="Sinistro">Sinistro</option>
+                <option value="Ambidestro">Ambidestro</option>
+              </select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-sm text-gray-600">Altezza (cm)</label>
+              <input type="number" inputMode="numeric" className="rounded-lg border p-2" value={heightCm}
+                onChange={(e) => setHeightCm(e.target.value === '' ? '' : Number(e.target.value))}
+                min={100} max={230} placeholder="es. 183"/>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-sm text-gray-600">Peso (kg)</label>
+              <input type="number" inputMode="numeric" className="rounded-lg border p-2" value={weightKg}
+                onChange={(e) => setWeightKg(e.target.value === '' ? '' : Number(e.target.value))}
+                min={40} max={150} placeholder="es. 85"/>
+            </div>
           </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Altezza (cm)</label>
-            <input type="number" inputMode="numeric" className="rounded-lg border p-2" value={heightCm}
-              onChange={(e) => setHeightCm(e.target.value === '' ? '' : Number(e.target.value))}
-              min={100} max={230} placeholder="es. 183"/>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Peso (kg)</label>
-            <input type="number" inputMode="numeric" className="rounded-lg border p-2" value={weightKg}
-              onChange={(e) => setWeightKg(e.target.value === '' ? '' : Number(e.target.value))}
-              min={40} max={150} placeholder="es. 85"/>
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
+
+      {/* CLUB — Dettagli (solo se club) */}
+      {isClub && (
+        <>
+          <section className="rounded-2xl border p-4 md:p-5">
+            <h2 className="mb-3 text-lg font-semibold">Dettagli club</h2>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="flex flex-col gap-1">
+                <label className="text-sm text-gray-600">Sport</label>
+                <select className="rounded-lg border p-2" value={clubSport} onChange={(e) => { setClubSport(e.target.value); setClubCategory(''); }}>
+                  {Object.keys(SPORT_CATEGORIES).map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-sm text-gray-600">Categoria / Campionato</label>
+                <select className="rounded-lg border p-2" value={clubCategory} onChange={(e) => setClubCategory(e.target.value)}>
+                  <option value="">— Seleziona —</option>
+                  {(SPORT_CATEGORIES[clubSport] ?? []).map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-sm text-gray-600">Anno di fondazione</label>
+                <input type="number" inputMode="numeric" className="rounded-lg border p-2" value={clubFounded}
+                  onChange={(e) => setClubFounded(e.target.value === '' ? '' : Number(e.target.value))}
+                  min={1850} max={currentYear} placeholder="Es. 1970" />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-sm text-gray-600">Stadio / Impianto</label>
+                <input className="rounded-lg border p-2" value={clubStadium} onChange={(e) => setClubStadium(e.target.value)} placeholder="Es. Stadio Comunale" />
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border p-4 md:p-5">
+            <h2 className="mb-3 text-lg font-semibold">Sede del club</h2>
+            <div className="grid gap-4 md:grid-cols-4">
+              <div className="flex flex-col gap-1">
+                <label className="text-sm text-gray-600">Paese</label>
+                <select className="rounded-lg border p-2" value={clubCountry} onChange={(e) => setClubCountry(e.target.value)}>
+                  <option value="IT">Italia</option>
+                </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-sm text-gray-600">Regione</label>
+                <select className="rounded-lg border p-2" value={clubRegionId ?? ''} onChange={(e) => setClubRegionId(e.target.value ? Number(e.target.value) : null)}>
+                  <option value="">— Seleziona regione —</option>
+                  {clubRegions.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-sm text-gray-600">Provincia</label>
+                <select className="rounded-lg border p-2 disabled:bg-gray-50" value={clubProvinceId ?? ''} onChange={(e) => setClubProvinceId(e.target.value ? Number(e.target.value) : null)} disabled={!clubRegionId}>
+                  <option value="">— Seleziona provincia —</option>
+                  {clubProvinces.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-sm text-gray-600">Città</label>
+                <select className="rounded-lg border p-2 disabled:bg-gray-50" value={clubMunicipalityId ?? ''} onChange={(e) => setClubMunicipalityId(e.target.value ? Number(e.target.value) : null)} disabled={!clubProvinceId}>
+                  <option value="">— Seleziona città —</option>
+                  {clubMunicipalities.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                </select>
+              </div>
+            </div>
+          </section>
+        </>
+      )}
 
       {/* Social */}
       <section className="rounded-2xl border p-4 md:p-5">
