@@ -1,4 +1,3 @@
-// components/auth/SocialLogin.tsx
 'use client';
 
 import { useState } from 'react';
@@ -9,33 +8,29 @@ const supabase = createSupabaseClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-// Redirect STABILE: punta sempre al dominio di produzione
-const PROD_BASE =
-  (process.env.NEXT_PUBLIC_SITE_URL ||
-    process.env.NEXT_PUBLIC_BASE_URL ||
-    'https://clubandplayer-app.vercel.app')
-    .replace(/\/$/, '');
-
-const REDIRECT_TO = `${PROD_BASE}/auth/callback`;
-
 export default function SocialLogin() {
   const [loading, setLoading] = useState(false);
 
   async function signInWithGoogle() {
     try {
       setLoading(true);
+
+      // Usa un domain stabile se disponibile, altrimenti fallback all’origin
+      const SITE_URL =
+        process.env.NEXT_PUBLIC_SITE_URL ||
+        (typeof window !== 'undefined' ? window.location.origin : '');
+
+      const redirectTo = `${SITE_URL}/auth/callback`;
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: {
-          redirectTo: REDIRECT_TO,
-          queryParams: { prompt: 'select_account' }, // UX migliore se hai più account Google
-        },
+        options: { redirectTo },
       });
       if (error) throw error;
-      // verrà fatto redirect da Supabase → Google → /auth/callback (prod)
-    } catch (e: any) {
+      // verrà fatto redirect esterno, qui non serve altro
+    } catch (e) {
       console.error(e);
-      alert(e?.message ?? 'Accesso con Google non riuscito.');
+      alert('Accesso con Google non riuscito.');
     } finally {
       setLoading(false);
     }
