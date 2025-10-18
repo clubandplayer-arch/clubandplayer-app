@@ -11,17 +11,17 @@ type P = {
   display_name?: string | null;
   bio?: string | null;
   birth_year?: number | null;
-  city?: string | null;
-  country?: string | null;
+  city?: string | null;            // residenza libera (estero)
+  country?: string | null;         // nazionalità ISO2 o testo
 
-  // residenza IT
+  // residenza IT (atleta)
   residence_region_id?: number | null;
   residence_province_id?: number | null;
   residence_municipality_id?: number | null;
 
-  // nascita
-  birth_country?: string | null;
-  birth_place?: string | null;
+  // nascita (atleta)
+  birth_country?: string | null;   // ISO2
+  birth_place?: string | null;     // città estera fallback
   birth_region_id?: number | null;
   birth_province_id?: number | null;
   birth_municipality_id?: number | null;
@@ -31,20 +31,16 @@ type P = {
   height_cm?: number | null;
   weight_kg?: number | null;
 
+  // club
+  sport?: string | null;
+  club_foundation_year?: number | null;
+  club_stadium?: string | null;
+  club_league_category?: string | null;
+
   // interesse (non mostrato)
   interest_region_id?: number | null;
   interest_province_id?: number | null;
   interest_municipality_id?: number | null;
-
-  // club
-  club_founded_year?: number | null;
-  club_sport?: string | null;
-  club_category?: string | null;
-  club_stadium?: string | null;
-  club_country?: string | null;
-  club_region_id?: number | null;
-  club_province_id?: number | null;
-  club_municipality_id?: number | null;
 
   avatar_url?: string | null;
   links?: {
@@ -108,7 +104,6 @@ export default function ProfileMiniCard() {
   const [p, setP] = useState<P | null>(null);
   const [residenza, setResidenza] = useState<string>('—');
   const [nascita, setNascita] = useState<string>('—');
-  const [clubPlace, setClubPlace] = useState<string>('—');
 
   useEffect(() => {
     (async () => {
@@ -118,70 +113,50 @@ export default function ProfileMiniCard() {
         const j = (raw && typeof raw === 'object' && 'data' in raw ? (raw as any).data : raw) || {};
         setP(j || {});
 
-        // RESIDENZA: se it usa ids, altrimenti city
-        if (j?.residence_municipality_id || j?.residence_province_id || j?.residence_region_id) {
-          const [mun, prov, reg] = await Promise.all([
-            j?.residence_municipality_id
-              ? supabase.from('municipalities').select('id,name').eq('id', j.residence_municipality_id).maybeSingle()
-              : Promise.resolve({ data: null }),
-            j?.residence_province_id
-              ? supabase.from('provinces').select('id,name').eq('id', j.residence_province_id).maybeSingle()
-              : Promise.resolve({ data: null }),
-            j?.residence_region_id
-              ? supabase.from('regions').select('id,name').eq('id', j.residence_region_id).maybeSingle()
-              : Promise.resolve({ data: null }),
-          ]);
-          const m = (mun as any)?.data as Row | null;
-          const pr = (prov as any)?.data as Row | null;
-          const re = (reg as any)?.data as Row | null;
-          setResidenza([m?.name, pr?.name, re?.name].filter(Boolean).join(', ') || '—');
-        } else {
-          setResidenza((j?.city ?? '').trim() || '—');
-        }
+        // Solo per atleta ha senso calcolare residenza/nascita
+        if (j?.account_type !== 'club') {
+          if (j?.residence_municipality_id || j?.residence_province_id || j?.residence_region_id) {
+            const [mun, prov, reg] = await Promise.all([
+              j?.residence_municipality_id
+                ? supabase.from('municipalities').select('id,name').eq('id', j.residence_municipality_id).maybeSingle()
+                : Promise.resolve({ data: null }),
+              j?.residence_province_id
+                ? supabase.from('provinces').select('id,name').eq('id', j.residence_province_id).maybeSingle()
+                : Promise.resolve({ data: null }),
+              j?.residence_region_id
+                ? supabase.from('regions').select('id,name').eq('id', j.residence_region_id).maybeSingle()
+                : Promise.resolve({ data: null }),
+            ]);
+            const m = (mun as any)?.data as Row | null;
+            const pr = (prov as any)?.data as Row | null;
+            const re = (reg as any)?.data as Row | null;
+            setResidenza([m?.name, pr?.name, re?.name].filter(Boolean).join(', ') || '—');
+          } else {
+            setResidenza((j?.city ?? '').trim() || '—');
+          }
 
-        // NASCITA
-        const bc = (j?.birth_country || '').toUpperCase();
-        if (bc === 'IT' && (j?.birth_municipality_id || j?.birth_province_id || j?.birth_region_id)) {
-          const [mun, prov, reg] = await Promise.all([
-            j?.birth_municipality_id
-              ? supabase.from('municipalities').select('id,name').eq('id', j.birth_municipality_id).maybeSingle()
-              : Promise.resolve({ data: null }),
-            j?.birth_province_id
-              ? supabase.from('provinces').select('id,name').eq('id', j.birth_province_id).maybeSingle()
-              : Promise.resolve({ data: null }),
-            j?.birth_region_id
-              ? supabase.from('regions').select('id,name').eq('id', j.birth_region_id).maybeSingle()
-              : Promise.resolve({ data: null }),
-          ]);
-          const m = (mun as any)?.data as Row | null;
-          const pr = (prov as any)?.data as Row | null;
-          const re = (reg as any)?.data as Row | null;
-          setNascita([m?.name, pr?.name, re?.name].filter(Boolean).join(', ') || '—');
-        } else {
-          const country = countryLabel(j?.birth_country).label;
-          const city = (j?.birth_place || '').trim();
-          setNascita([city, country].filter(Boolean).join(' · ') || country || '—');
-        }
-
-        // CLUB: sede
-        if (j?.club_municipality_id || j?.club_province_id || j?.club_region_id) {
-          const [munC, provC, regC] = await Promise.all([
-            j?.club_municipality_id
-              ? supabase.from('municipalities').select('id,name').eq('id', j.club_municipality_id).maybeSingle()
-              : Promise.resolve({ data: null }),
-            j?.club_province_id
-              ? supabase.from('provinces').select('id,name').eq('id', j.club_province_id).maybeSingle()
-              : Promise.resolve({ data: null }),
-            j?.club_region_id
-              ? supabase.from('regions').select('id,name').eq('id', j.club_region_id).maybeSingle()
-              : Promise.resolve({ data: null }),
-          ]);
-          const mC = (munC as any)?.data as Row | null;
-          const pC = (provC as any)?.data as Row | null;
-          const rC = (regC as any)?.data as Row | null;
-          setClubPlace([mC?.name, pC?.name, rC?.name].filter(Boolean).join(', ') || '—');
-        } else {
-          setClubPlace('—');
+          const bc = (j?.birth_country || '').toUpperCase();
+          if (bc === 'IT' && (j?.birth_municipality_id || j?.birth_province_id || j?.birth_region_id)) {
+            const [mun, prov, reg] = await Promise.all([
+              j?.birth_municipality_id
+                ? supabase.from('municipalities').select('id,name').eq('id', j.birth_municipality_id).maybeSingle()
+                : Promise.resolve({ data: null }),
+              j?.birth_province_id
+                ? supabase.from('provinces').select('id,name').eq('id', j.birth_province_id).maybeSingle()
+                : Promise.resolve({ data: null }),
+              j?.birth_region_id
+                ? supabase.from('regions').select('id,name').eq('id', j.birth_region_id).maybeSingle()
+                : Promise.resolve({ data: null }),
+            ]);
+            const m = (mun as any)?.data as Row | null;
+            const pr = (prov as any)?.data as Row | null;
+            const re = (reg as any)?.data as Row | null;
+            setNascita([m?.name, pr?.name, re?.name].filter(Boolean).join(', ') || '—');
+          } else {
+            const country = countryLabel(j?.birth_country).label;
+            const city = (j?.birth_place || '').trim();
+            setNascita([city, country].filter(Boolean).join(' · ') || country || '—');
+          }
         }
       } catch {
         setP({});
@@ -189,11 +164,12 @@ export default function ProfileMiniCard() {
     })();
   }, []);
 
+  const isClub = p?.account_type === 'club';
   const year = new Date().getFullYear();
-  const age = p?.birth_year ? Math.max(0, year - p.birth_year) : null;
-  const name = p?.full_name || p?.display_name || 'Benvenuto!';
+  const age = !isClub && p?.birth_year ? Math.max(0, year - p.birth_year) : null;
+  const name = p?.full_name || p?.display_name || (isClub ? 'Il tuo club' : 'Benvenuto!');
 
-  // nazionalità (per atleta)
+  // nazionalità con bandiera
   const nat = countryLabel(p?.country);
   const flagUrl = nat.iso ? `https://flagcdn.com/w20/${nat.iso.toLowerCase()}.png` : null;
 
@@ -227,28 +203,27 @@ export default function ProfileMiniCard() {
         <div className="min-w-0">
           <div className="text-base font-semibold">{name}</div>
 
-          {p?.account_type === 'club' ? (
-            <>
-              <div className="text-xs text-gray-600">Sport: {p?.club_sport || '—'}</div>
-              <div className="text-xs text-gray-600">Categoria: {p?.club_category || '—'}</div>
-              <div className="text-xs text-gray-600">Sede: {clubPlace}</div>
-              {p?.club_stadium && <div className="text-xs text-gray-600">Stadio: {p.club_stadium}</div>}
-            </>
-          ) : (
-            <>
-              <div className="text-xs text-gray-600">Luogo di residenza: {residenza}</div>
-              <div className="text-xs text-gray-600">Luogo di nascita: {nascita}</div>
-              <div className="text-xs text-gray-600 flex items-center gap-1">
-                <span>Nazionalità:</span>
-                {flagUrl ? <img src={flagUrl} alt={nat.label} className="inline-block h-3 w-5 rounded-[2px]" /> : null}
-                <span>{nat.label || '—'}</span>
-              </div>
-            </>
-          )}
+          {/* righe info */}
+          {!isClub && <div className="text-xs text-gray-600">Luogo di residenza: {residenza}</div>}
+          {!isClub && <div className="text-xs text-gray-600">Luogo di nascita: {nascita}</div>}
+
+          <div className="text-xs text-gray-600 flex items-center gap-1">
+            <span>Nazionalità:</span>
+            {flagUrl ? <img src={flagUrl} alt={nat.label} className="inline-block h-3 w-5 rounded-[2px]" /> : null}
+            <span>{nat.label || '—'}</span>
+          </div>
         </div>
       </div>
 
-      {p?.account_type !== 'club' && (
+      {/* Dettagli rapidi */}
+      {isClub ? (
+        <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+          <div><span className="text-gray-500">Sport:</span> {p?.sport || '—'}</div>
+          <div><span className="text-gray-500">Categoria:</span> {p?.club_league_category || '—'}</div>
+          <div><span className="text-gray-500">Fondazione:</span> {p?.club_foundation_year ?? '—'}</div>
+          <div><span className="text-gray-500">Stadio:</span> {p?.club_stadium || '—'}</div>
+        </div>
+      ) : (
         <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
           <div><span className="text-gray-500">Età:</span> {age ?? '—'}</div>
           <div><span className="text-gray-500">Piede:</span> {p?.foot || '—'}</div>
