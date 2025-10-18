@@ -7,7 +7,7 @@ type AccountType = 'club' | 'athlete' | null;
 export default function ProfileHeader() {
   const [type, setType] = useState<AccountType>(null);
 
-  // Leggo il tipo account
+  // leggo il tipo account
   useEffect(() => {
     (async () => {
       try {
@@ -21,32 +21,48 @@ export default function ProfileHeader() {
     })();
   }, []);
 
-  // Nascondo con JS il titolo statico legacy ("Il mio profilo ...") e il paragrafo sotto
+  // Nascondi qualunque titolo/paragrafo legacy NON dentro al nostro header
   useEffect(() => {
     try {
-      const root: HTMLElement | null = document.querySelector('main') || document.body;
-      if (!root) return;
-      const firstH1 = root.querySelector('h1');
-      if (!firstH1) return;
-      const txt = (firstH1.textContent || '').toLowerCase();
-      if (txt.includes('il mio profilo')) {
-        (firstH1 as HTMLElement).style.display = 'none';
-        const next = firstH1.nextElementSibling as HTMLElement | null;
-        if (next && next.tagName.toLowerCase() === 'p') next.style.display = 'none';
-      }
+      const OUR_WRAP_SELECTOR = '#cp-dyn-profile-header';
+
+      // nascondi <h1> "Il mio profilo …"
+      const h1s = Array.from(document.querySelectorAll('h1'));
+      h1s
+        .filter(
+          (el) =>
+            !el.closest(OUR_WRAP_SELECTOR) &&
+            /il mio profilo\s+/i.test(el.textContent || '')
+        )
+        .forEach((el) => {
+          (el as HTMLElement).style.display = 'none';
+          // prova a nascondere anche il paragrafo subito dopo, se è quello descrittivo
+          const sib = el.nextElementSibling as HTMLElement | null;
+          if (
+            sib &&
+            sib.tagName.toLowerCase() === 'p' &&
+            /aggiorna i tuoi dati per migliorare il matching/i.test(sib.textContent || '')
+          ) {
+            sib.style.display = 'none';
+          }
+        });
+
+      // fallback: se c'è un paragrafo descrittivo duplicato fuori dal nostro wrapper, nascondilo
+      const ps = Array.from(document.querySelectorAll('p'));
+      ps
+        .filter(
+          (el) =>
+            !el.closest(OUR_WRAP_SELECTOR) &&
+            /aggiorna i tuoi dati per migliorare il matching/i.test(el.textContent || '')
+        )
+        .forEach((el) => ((el as HTMLElement).style.display = 'none'));
     } catch {}
   }, []);
 
   const label = type === 'club' ? 'CLUB' : 'ATLETA';
 
   return (
-    <div className="mb-4">
-      {/* fallback CSS se il DOM avesse proprio quell'albero */}
-      <style jsx global>{`
-        main > h1:first-of-type { display: none !important; }
-        main > h1:first-of-type + p { display: none !important; }
-      `}</style>
-
+    <div id="cp-dyn-profile-header" className="mb-4">
       <h1 className="text-2xl font-bold">{label}</h1>
       <p className="text-sm text-gray-500">
         Aggiorna i tuoi dati per migliorare il matching con club e opportunità.
