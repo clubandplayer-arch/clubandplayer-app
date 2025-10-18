@@ -37,21 +37,23 @@ function toJsonOrNull(v: unknown) {
 
 /** campi ammessi in PATCH */
 const FIELDS: Record<string, 'text' | 'number' | 'bool' | 'json'> = {
-  // anagrafica
+  // anagrafica comune
   full_name: 'text',
   display_name: 'text',
   bio: 'text',
+  country: 'text', // nazionalità
+
+  // atleta (solo per account_type=athlete)
   birth_year: 'number',
   birth_place: 'text',
   city: 'text',
-  country: 'text', // nazionalità
 
-  // residenza (nuovi)
+  // residenza (IT) – solo atleta
   residence_region_id: 'number',
   residence_province_id: 'number',
   residence_municipality_id: 'number',
 
-  // nascita (nuovi)
+  // nascita (IT) – solo atleta
   birth_country: 'text',
   birth_region_id: 'number',
   birth_province_id: 'number',
@@ -65,7 +67,7 @@ const FIELDS: Record<string, 'text' | 'number' | 'bool' | 'json'> = {
   role: 'text',
   visibility: 'text',
 
-  // interesse geo esistente
+  // interesse geo (comune)
   interest_country: 'text',
   interest_region_id: 'number',
   interest_province_id: 'number',
@@ -84,6 +86,12 @@ const FIELDS: Record<string, 'text' | 'number' | 'bool' | 'json'> = {
 
   // onboarding
   account_type: 'text',
+
+  // --------- NUOVI CAMPI CLUB ----------
+  club_foundation_year: 'number',
+  club_stadium: 'text',
+  club_league_category: 'text',
+  // -------------------------------------
 };
 
 /* ---------------------------------- GET ---------------------------------- */
