@@ -571,7 +571,6 @@ export default function ProfileEditForm() {
       {/* Titolo sintetico per la pagina */}
       <h1 className="mb-1 text-2xl font-bold">{isClub ? 'CLUB' : 'ATLETA'}</h1>
       <p className="mb-4 text-sm text-gray-500">
-        Aggiorna i tuoi dati per migliorare il matching con club e opportunità.
       </p>
 
       <form onSubmit={onSubmit} className="space-y-6">
