@@ -116,7 +116,7 @@ export async function GET(req: NextRequest) {
   });
 }
 
-/** POST /api/opportunities — resta autenticato */
+/** POST /api/opportunities — deve essere un club */
 export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   try {
     await rateLimit(req, { key: 'opps:POST', limit: 20, window: '1m' } as any);
@@ -124,6 +124,30 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     return jsonError('Too Many Requests', 429);
   }
 
+  // ✅ Verifica permesso lato server
+  const metaRole = String(user.user_metadata?.role ?? '').toLowerCase();
+  let isClub = metaRole === 'club';
+  if (!isClub) {
+    // prova profilo (compatibile sia con chiave id sia user_id)
+    let acct: string | null | undefined = null;
+
+    const tryBy = async (col: 'id' | 'user_id') => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('account_type')
+        .eq(col, user.id)
+        .maybeSingle();
+      return data?.account_type as string | null | undefined;
+    };
+
+    acct = await tryBy('id');
+    if (!acct) acct = await tryBy('user_id');
+
+    isClub = String(acct ?? '').toLowerCase() === 'club';
+  }
+  if (!isClub) return jsonError('forbidden_not_club', 403);
+
+  // Body & validazioni
   const body = await req.json().catch(() => ({}));
   const title = norm((body as any).title);
   if (!title) return jsonError('Title is required', 400);
