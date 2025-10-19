@@ -8,7 +8,6 @@ type AccountType = 'club' | 'athlete' | null;
 export default function ProfileHeader() {
   const [type, setType] = useState<AccountType>(null);
 
-  // --- carica tipo account ---------------------------------------------------
   useEffect(() => {
     (async () => {
       try {
@@ -22,75 +21,55 @@ export default function ProfileHeader() {
     })();
   }, []);
 
-  // --- utility per nascondere definitivamente un nodo ------------------------
-  function hideEl(el: Element | null | undefined) {
-    const e = el as HTMLElement | null;
-    if (!e) return;
-    e.setAttribute('aria-hidden', 'true');
-    e.setAttribute('data-cp-legacy-hidden', '1');
-    e.style.setProperty('display', 'none', 'important');
-    e.style.setProperty('visibility', 'hidden', 'important');
-    e.style.setProperty('pointer-events', 'none', 'important');
-  }
-
-  // --- nasconde vecchi titoli/paragrafi duplicati ----------------------------
+  // Nasconde header/descrizioni legacy e qualunque H1 "di troppo"
   function hideLegacy() {
     try {
       const WRAP = document.getElementById('cp-dyn-profile-header');
 
-      // 1) H1 che iniziano con "Il mio profilo ..."
       document.querySelectorAll('h1').forEach((el) => {
         if (WRAP && WRAP.contains(el)) return; // non toccare il nostro
-        const txt = (el.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
-        if (/^il mio profilo\b/.test(txt)) {
-          hideEl(el);
-
-          // Nascondi fino a due fratelli <p> successivi che contengono la frase
-          let sib: Element | null = el.nextElementSibling;
-          for (let i = 0; i < 2 && sib; i++) {
-            const isP = sib.tagName.toLowerCase() === 'p';
-            const hasMsg = /aggiorna i tuoi dati per migliorare il matching/i.test(
-              (sib.textContent || '').trim()
-            );
-            if (isP && hasMsg) hideEl(sib);
-            sib = sib.nextElementSibling;
+        const txt = (el.textContent || '').trim().toLowerCase();
+        if (
+          txt.startsWith('il mio profilo') ||
+          txt === 'atleta' ||
+          txt === 'club'
+        ) {
+          (el as HTMLElement).style.display = 'none';
+          // se dopo c’è il paragrafo “Aggiorna i tuoi dati…”, nascondilo
+          const sib = el.nextElementSibling as HTMLElement | null;
+          if (
+            sib &&
+            sib.tagName.toLowerCase() === 'p' &&
+            /aggiorna i tuoi dati per migliorare il matching/i.test(sib.textContent || '')
+          ) {
+            sib.style.display = 'none';
           }
         }
       });
 
-      // 2) Paragrafi con la descrizione duplicata (in qualsiasi punto)
+      // nascondi ogni paragrafo duplicato con quel testo (ovunque) tranne dentro il nostro wrapper
       document.querySelectorAll('p').forEach((p) => {
         if (WRAP && WRAP.contains(p)) return;
-        if (/aggiorna i tuoi dati per migliorare il matching/i.test((p.textContent || '').trim())) {
-          hideEl(p);
+        if (/aggiorna i tuoi dati per migliorare il matching/i.test(p.textContent || '')) {
+          (p as HTMLElement).style.display = 'none';
         }
       });
-    } catch {
-      /* noop */
-    }
+    } catch {}
   }
 
-  // esegui subito, dopo l’hydration e osserva cambi futuri
   useEffect(() => {
-    // primo colpo subito
     hideLegacy();
-    // dopo il paint/hydration
-    requestAnimationFrame(() => hideLegacy());
-    setTimeout(() => hideLegacy(), 60);
-    setTimeout(() => hideLegacy(), 250);
-
     const mo = new MutationObserver(() => hideLegacy());
     mo.observe(document.body, { childList: true, subtree: true });
     return () => mo.disconnect();
   }, []);
 
   const label = type === 'club' ? 'CLUB' : 'ATLETA';
-  const subtitle = 'Aggiorna i tuoi dati per migliorare il matching con club e opportunità.';
 
+  // Niente descrizione (paragrafo) per evitare qualsiasi duplicazione visiva
   return (
     <div id="cp-dyn-profile-header" className="mb-4">
       <h1 className="text-2xl font-bold">{label}</h1>
-      <p className="text-sm text-gray-500">{subtitle}</p>
     </div>
   );
 }

@@ -1,6 +1,8 @@
 // app/(dashboard)/profile/page.tsx
-import ProfileHeader from '@/components/profiles/ProfileHeader'
-import ProfileEditForm from '@/components/profiles/ProfileEditForm'
+'use client';
+
+import ProfileHeader from '@/components/profiles/ProfileHeader';
+import ProfileEditForm from '@/components/profiles/ProfileEditForm';
 
 export default function ProfilePage() {
   return (
@@ -8,5 +10,5 @@ export default function ProfilePage() {
       <ProfileHeader />
       <ProfileEditForm />
     </main>
-  )
+  );
 }

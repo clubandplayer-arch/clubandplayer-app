@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 type Opportunity = {
@@ -30,18 +31,35 @@ export default function OpportunitiesClient() {
   const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc');
 
   // ruolo utente per abilitare azioni
-  const [role, setRole] = useState<string | null>(null);
+  const [role, setRole] = useState<'club' | 'athlete' | null>(null);
+
+  // ruolo: fonte principale /api/auth/whoami, fallback supabase metadata
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' });
+        const j = await r.json().catch(() => ({}));
+        const raw = (j?.role ?? '').toString().toLowerCase();
+        if (raw === 'club' || raw === 'athlete') {
+          setRole(raw as 'club' | 'athlete');
+          return;
+        }
+        // fallback
+        const supabase = supabaseBrowser();
+        const { data } = await supabase.auth.getUser();
+        const meta = (data.user?.user_metadata as any)?.role;
+        if (meta === 'club' || meta === 'athlete') setRole(meta);
+        else setRole(null);
+      } catch {
+        setRole(null);
+      }
+    })();
+  }, []);
 
   const fetchData = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     setErr(null);
     try {
-      // Ruolo user
-      const supabase = supabaseBrowser();
-      const { data } = await supabase.auth.getUser();
-      setRole((data.user?.user_metadata as any)?.role ?? null);
-
-      // Dati
       const url = new URL('/api/opportunities', window.location.origin);
       url.searchParams.set('limit', String(200));
       url.searchParams.set('offset', '0');
@@ -160,12 +178,12 @@ export default function OpportunitiesClient() {
         <div className="flex-1" />
 
         {role === 'club' && (
-          <a
+          <Link
             className="rounded-md bg-black px-3 py-2 text-sm text-white hover:opacity-90"
             href="/opportunities/new"
           >
             + Nuova opportunità
-          </a>
+          </Link>
         )}
 
         <button

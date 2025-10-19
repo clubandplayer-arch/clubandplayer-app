@@ -2,12 +2,11 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 
 type Role = 'athlete' | 'club' | 'guest';
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
   const pathname = usePathname();
 
   const [role, setRole] = useState<Role>('guest');
@@ -17,11 +16,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     let cancelled = false;
     (async () => {
       try {
+        // fonte principale
         const r = await fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' });
         const j = await r.json().catch(() => ({}));
         if (cancelled) return;
         const raw = (j?.role ?? '').toString().toLowerCase();
-        setRole(raw === 'club' || raw === 'athlete' ? (raw as Role) : 'guest');
+        if (raw === 'club' || raw === 'athlete') {
+          setRole(raw as Role);
+        } else {
+          setRole('guest');
+        }
       } catch {
         if (!cancelled) setRole('guest');
       } finally {
@@ -34,7 +38,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const profileHref = role === 'club' ? '/club/profile' : '/profile';
 
   const isActive = (href: string) =>
-    pathname === href || (href !== '/' && pathname?.startsWith(href));
+    pathname === href || (href !== '/' && (pathname?.startsWith(href) ?? false));
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -84,10 +88,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className="ml-auto flex items-center gap-2">
-            {/* CTA “Nuova opportunità” solo club */}
+            {/* CTA “Nuova opportunità” — sempre visibile ai club */}
             {role === 'club' && (
               <Link
-                href="/opportunities?new=1"
+                href="/opportunities/new"
                 className="rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50"
               >
                 + Nuova opportunità
