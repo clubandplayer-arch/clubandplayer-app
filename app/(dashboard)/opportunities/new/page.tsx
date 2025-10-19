@@ -1,50 +1,30 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import OpportunityForm from '@/components/opportunities/OpportunityForm';
-
-type Role = 'athlete' | 'club' | 'guest';
+import useIsClub from '@/hooks/useIsClub';
 
 export default function NewOpportunityPage() {
   const router = useRouter();
-  const [role, setRole] = useState<Role>('guest');
-  const [ready, setReady] = useState(false);
+  const { isClub, loading } = useIsClub();
 
-  useEffect(() => {
-    let c = false;
-    (async () => {
-      try {
-        const r = await fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' });
-        const j = await r.json().catch(() => ({}));
-        if (c) return;
-        const raw = (j?.role ?? '').toString().toLowerCase();
-        const r2 = raw === 'club' || raw === 'athlete' ? (raw as Role) : 'guest';
-        setRole(r2);
-        setReady(true);
-        if (r2 !== 'club') {
-          router.replace('/opportunities');
-        }
-      } catch {
-        if (!c) {
-          setRole('guest');
-          setReady(true);
-          router.replace('/opportunities');
-        }
-      }
-    })();
-    return () => { c = true; };
-  }, [router]);
-
-  if (!ready) {
+  if (loading) {
     return <div className="p-6 text-sm text-gray-500">Verifica permessi…</div>;
   }
-  if (role !== 'club') {
-    return <div className="p-6 text-sm text-gray-500">Reindirizzamento…</div>;
+
+  if (!isClub) {
+    return (
+      <div className="max-w-2xl mx-auto rounded-xl border p-4 bg-yellow-50 text-yellow-900">
+        Devi essere un <b>Club</b> per creare un’opportunità.
+        <div className="mt-2">
+          <a href="/profile" className="underline">Apri il profilo</a> e imposta il tipo account su <b>Club</b>.
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="p-4 md:p-6">
+    <div className="p-4 md:p-6 max-w-3xl mx-auto">
       <h1 className="text-2xl font-semibold mb-4">Nuova opportunità</h1>
       <OpportunityForm
         onCancel={() => router.push('/opportunities')}

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import useIsClub from '@/hooks/useIsClub';
 
 type Opportunity = {
   id: string | number;
@@ -22,26 +23,18 @@ export default function OpportunitiesClient() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
-  // controlli UI
   const [query, setQuery] = useState('');
   const [pageSize, setPageSize] = useState<number>(20);
   const [page, setPage] = useState<number>(1);
   const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc');
 
-  // ruolo utente per abilitare azioni (via whoami)
-  const [role, setRole] = useState<'club' | 'athlete' | 'guest'>('guest');
+  // unica fonte per permessi club
+  const { isClub } = useIsClub();
 
   const fetchData = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     setErr(null);
     try {
-      // Ruolo robusto dal backend
-      const rRole = await fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store', signal });
-      const jRole = await rRole.json().catch(() => ({}));
-      const raw = (jRole?.role ?? '').toString().toLowerCase();
-      setRole(raw === 'club' || raw === 'athlete' ? raw : 'guest');
-
-      // Dati opportunità
       const url = new URL('/api/opportunities', window.location.origin);
       url.searchParams.set('limit', String(200));
       url.searchParams.set('offset', '0');
@@ -66,7 +59,6 @@ export default function OpportunitiesClient() {
     return () => ac.abort();
   }, [fetchData]);
 
-  // filtro + sort client-side
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     let rows = serverRows;
@@ -80,40 +72,30 @@ export default function OpportunitiesClient() {
     rows = [...rows].sort((a, b) => {
       const aKey = a.created_at ?? '';
       const bKey = b.created_at ?? '';
-      if (aKey && bKey) {
-        return sortDir === 'desc' ? bKey.localeCompare(aKey) : aKey.localeCompare(bKey);
-      }
-      const ai = String(a.id);
-      const bi = String(b.id);
+      if (aKey && bKey) return sortDir === 'desc' ? bKey.localeCompare(aKey) : aKey.localeCompare(bKey);
+      const ai = String(a.id), bi = String(b.id);
       return sortDir === 'desc' ? bi.localeCompare(ai) : ai.localeCompare(bi);
     });
     return rows;
   }, [serverRows, query, sortDir]);
 
-  // paginazione client-side
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, pageCount);
   const start = (currentPage - 1) * pageSize;
   const end = start + pageSize;
   const pageRows = filtered.slice(start, end);
 
-  useEffect(() => {
-    setPage(1);
-  }, [query, pageSize, sortDir]);
+  useEffect(() => { setPage(1); }, [query, pageSize, sortDir]);
 
   const onDelete = async (id: string | number) => {
-    if (role !== 'club') return;
+    if (!isClub) return;
     if (!confirm('Eliminare questa opportunità?')) return;
     try {
-      const res = await fetch(`/api/opportunities/${id}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
+      const res = await fetch(`/api/opportunities/${id}`, { method: 'DELETE', credentials: 'include' });
       if (!res.ok) {
         const text = await res.text().catch(() => '');
         throw new Error(text || `HTTP ${res.status}`);
       }
-      // Refresh lista
       fetchData();
     } catch (e: any) {
       alert(e?.message ?? 'Errore durante l’eliminazione.');
@@ -122,7 +104,6 @@ export default function OpportunitiesClient() {
 
   return (
     <section className="space-y-4">
-      {/* Filtri / controlli */}
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
         <input
           type="search"
@@ -134,11 +115,7 @@ export default function OpportunitiesClient() {
 
         <div className="flex items-center gap-2">
           <label className="text-sm text-gray-600">Ordina</label>
-          <select
-            className="rounded-md border px-2 py-2 text-sm"
-            value={sortDir}
-            onChange={(e) => setSortDir(e.target.value as 'asc' | 'desc')}
-          >
+          <select className="rounded-md border px-2 py-2 text-sm" value={sortDir} onChange={(e) => setSortDir(e.target.value as 'asc' | 'desc')}>
             <option value="desc">Più recenti</option>
             <option value="asc">Più vecchie</option>
           </select>
@@ -146,58 +123,34 @@ export default function OpportunitiesClient() {
 
         <div className="flex items-center gap-2">
           <label className="text-sm text-gray-600">Per pagina</label>
-          <select
-            className="rounded-md border px-2 py-2 text-sm"
-            value={pageSize}
-            onChange={(e) => setPageSize(Number(e.target.value))}
-          >
-            {PAGE_SIZE_OPTIONS.map((n) => (
-              <option key={n} value={n}>{n}</option>
-            ))}
+          <select className="rounded-md border px-2 py-2 text-sm" value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))}>
+            {PAGE_SIZE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
           </select>
         </div>
 
         <div className="flex-1" />
 
-        {role === 'club' && (
-          <a
-            className="rounded-md bg-black px-3 py-2 text-sm text-white hover:opacity-90"
-            href="/opportunities/new"
-          >
+        {isClub && (
+          <a href="/opportunities/new" className="rounded-md bg-black px-3 py-2 text-sm text-white hover:opacity-90">
             + Nuova opportunità
           </a>
         )}
 
-        <button
-          type="button"
-          onClick={() => fetchData()}
-          className="rounded-md border px-3 py-2 text-sm hover:bg-gray-50"
-          disabled={loading}
-        >
+        <button type="button" onClick={() => fetchData()} className="rounded-md border px-3 py-2 text-sm hover:bg-gray-50" disabled={loading}>
           {loading ? 'Aggiorno…' : 'Ricarica'}
         </button>
       </div>
 
-      {/* Stati */}
-      {loading && (
-        <div className="rounded-md border p-4 text-sm text-gray-600">
-          Caricamento opportunità…
-        </div>
-      )}
+      {loading && <div className="rounded-md border p-4 text-sm text-gray-600">Caricamento opportunità…</div>}
 
-      {!loading && err && (
-        <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">
-          {err}
-        </div>
-      )}
+      {!loading && err && <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">{err}</div>}
 
       {!loading && !err && filtered.length === 0 && (
         <div className="rounded-md border p-4 text-sm text-gray-600">
-          Nessuna opportunità trovata. {role === 'club' ? 'Crea la prima opportunità.' : 'Prova a rimuovere i filtri.'}
+          Nessuna opportunità trovata. {isClub ? 'Crea la prima opportunità.' : 'Prova a rimuovere i filtri.'}
         </div>
       )}
 
-      {/* Lista */}
       {!loading && !err && filtered.length > 0 && (
         <>
           <ul className="space-y-2">
@@ -206,20 +159,12 @@ export default function OpportunitiesClient() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <div className="font-medium">{o.title ?? `#${o.id}`}</div>
-                    {o.description && (
-                      <div className="text-sm text-gray-600 line-clamp-2">{o.description}</div>
-                    )}
+                    {o.description && <div className="text-sm text-gray-600 line-clamp-2">{o.description}</div>}
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="text-xs text-gray-500 text-right">
-                      {o.created_at ? new Date(o.created_at).toLocaleString() : '—'}
-                    </div>
-                    {role === 'club' && (
-                      <button
-                        className="rounded-md border px-2 py-1 text-xs hover:bg-red-50"
-                        onClick={() => onDelete(o.id)}
-                        title="Elimina"
-                      >
+                    <div className="text-xs text-gray-500 text-right">{o.created_at ? new Date(o.created_at).toLocaleString() : '—'}</div>
+                    {isClub && (
+                      <button className="rounded-md border px-2 py-1 text-xs hover:bg-red-50" onClick={() => onDelete(o.id)} title="Elimina">
                         Elimina
                       </button>
                     )}
@@ -229,26 +174,11 @@ export default function OpportunitiesClient() {
             ))}
           </ul>
 
-          {/* Paginazione */}
           <div className="flex items-center justify-between gap-3 pt-2">
-            <div className="text-sm text-gray-600">
-              {filtered.length} risultati totali · Pagina {currentPage}/{pageCount}
-            </div>
+            <div className="text-sm text-gray-600">{filtered.length} risultati totali · Pagina {currentPage}/{pageCount}</div>
             <div className="flex items-center gap-2">
-              <button
-                className="rounded-md border px-3 py-2 text-sm disabled:opacity-50"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage <= 1}
-              >
-                ← Precedente
-              </button>
-              <button
-                className="rounded-md border px-3 py-2 text-sm disabled:opacity-50"
-                onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
-                disabled={currentPage >= pageCount}
-              >
-                Successiva →
-              </button>
+              <button className="rounded-md border px-3 py-2 text-sm disabled:opacity-50" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={currentPage <= 1}>← Precedente</button>
+              <button className="rounded-md border px-3 py-2 text-sm disabled:opacity-50" onClick={() => setPage((p) => Math.min(pageCount, p + 1))} disabled={currentPage >= pageCount}>Successiva →</button>
             </div>
           </div>
         </>
