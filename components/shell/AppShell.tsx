@@ -16,16 +16,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     let cancelled = false;
     (async () => {
       try {
-        // fonte principale
+        // ruolo robusto dal backend
         const r = await fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' });
         const j = await r.json().catch(() => ({}));
         if (cancelled) return;
         const raw = (j?.role ?? '').toString().toLowerCase();
-        if (raw === 'club' || raw === 'athlete') {
-          setRole(raw as Role);
-        } else {
-          setRole('guest');
-        }
+        setRole(raw === 'club' || raw === 'athlete' ? (raw as Role) : 'guest');
       } catch {
         if (!cancelled) setRole('guest');
       } finally {
@@ -38,7 +34,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const profileHref = role === 'club' ? '/club/profile' : '/profile';
 
   const isActive = (href: string) =>
-    pathname === href || (href !== '/' && (pathname?.startsWith(href) ?? false));
+    pathname === href || (href !== '/' && pathname?.startsWith(href));
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -57,18 +53,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             >
               Bacheca
             </Link>
+
             <Link
               href="/opportunities"
               className={`px-3 py-1.5 rounded-md hover:bg-gray-100 ${isActive('/opportunities') ? 'bg-gray-100 font-medium' : ''}`}
             >
               Opportunità
             </Link>
-            <Link
-              href="/clubs"
-              className={`px-3 py-1.5 rounded-md hover:bg-gray-100 ${isActive('/clubs') ? 'bg-gray-100 font-medium' : ''}`}
-            >
-              Club
-            </Link>
+
+            {/* (RIMOSSO) Tab "Club" – non più in navbar */}
+
             {role === 'club' && (
               <Link
                 href="/club/applicants"
@@ -77,10 +71,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 Candidature
               </Link>
             )}
+
             {role === 'athlete' && (
               <Link
-                href="/applications/received"
-                className={`px-3 py-1.5 rounded-md hover:bg-gray-100 ${isActive('/applications') ? 'bg-gray-100 font-medium' : ''}`}
+                href="/my/applications"
+                className={`px-3 py-1.5 rounded-md hover:bg-gray-100 ${isActive('/my/applications') ? 'bg-gray-100 font-medium' : ''}`}
               >
                 Le mie candidature
               </Link>
@@ -88,7 +83,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className="ml-auto flex items-center gap-2">
-            {/* CTA “Nuova opportunità” — sempre visibile ai club */}
+            {/* CTA “Nuova opportunità” sempre visibile ai club */}
             {role === 'club' && (
               <Link
                 href="/opportunities/new"

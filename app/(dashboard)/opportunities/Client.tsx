@@ -1,8 +1,6 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
-import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 type Opportunity = {
   id: string | number;
@@ -30,36 +28,20 @@ export default function OpportunitiesClient() {
   const [page, setPage] = useState<number>(1);
   const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc');
 
-  // ruolo utente per abilitare azioni
-  const [role, setRole] = useState<'club' | 'athlete' | null>(null);
-
-  // ruolo: fonte principale /api/auth/whoami, fallback supabase metadata
-  useEffect(() => {
-    (async () => {
-      try {
-        const r = await fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' });
-        const j = await r.json().catch(() => ({}));
-        const raw = (j?.role ?? '').toString().toLowerCase();
-        if (raw === 'club' || raw === 'athlete') {
-          setRole(raw as 'club' | 'athlete');
-          return;
-        }
-        // fallback
-        const supabase = supabaseBrowser();
-        const { data } = await supabase.auth.getUser();
-        const meta = (data.user?.user_metadata as any)?.role;
-        if (meta === 'club' || meta === 'athlete') setRole(meta);
-        else setRole(null);
-      } catch {
-        setRole(null);
-      }
-    })();
-  }, []);
+  // ruolo utente per abilitare azioni (via whoami)
+  const [role, setRole] = useState<'club' | 'athlete' | 'guest'>('guest');
 
   const fetchData = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     setErr(null);
     try {
+      // Ruolo robusto dal backend
+      const rRole = await fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store', signal });
+      const jRole = await rRole.json().catch(() => ({}));
+      const raw = (jRole?.role ?? '').toString().toLowerCase();
+      setRole(raw === 'club' || raw === 'athlete' ? raw : 'guest');
+
+      // Dati opportunità
       const url = new URL('/api/opportunities', window.location.origin);
       url.searchParams.set('limit', String(200));
       url.searchParams.set('offset', '0');
@@ -72,7 +54,7 @@ export default function OpportunitiesClient() {
       const json: ApiResponse = await res.json();
       setServerRows(Array.isArray(json.data) ? json.data : []);
     } catch (e: any) {
-      setErr(e?.message ?? 'Errore di rete');
+      if (e?.name !== 'AbortError') setErr(e?.message ?? 'Errore di rete');
     } finally {
       setLoading(false);
     }
@@ -178,12 +160,12 @@ export default function OpportunitiesClient() {
         <div className="flex-1" />
 
         {role === 'club' && (
-          <Link
+          <a
             className="rounded-md bg-black px-3 py-2 text-sm text-white hover:opacity-90"
             href="/opportunities/new"
           >
             + Nuova opportunità
-          </Link>
+          </a>
         )}
 
         <button
