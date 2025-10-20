@@ -11,6 +11,15 @@ function mergeCookies(from: NextResponse, into: NextResponse) {
   if (set) into.headers.append('set-cookie', set);
 }
 
+type Role = 'guest' | 'athlete' | 'club';
+
+function normRole(v: unknown): 'club' | 'athlete' | null {
+  const s = (typeof v === 'string' ? v : '').trim().toLowerCase();
+  if (s === 'club') return 'club';
+  if (s === 'athlete') return 'athlete';
+  return null;
+}
+
 export async function GET(req: NextRequest) {
   const carrier = new NextResponse();
 
@@ -35,25 +44,55 @@ export async function GET(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
-    const out = NextResponse.json({ user: null, role: 'guest' as const });
+    const out = NextResponse.json({ user: null, role: 'guest' as const, profile: null });
     mergeCookies(carrier, out);
     return out;
   }
 
-  const { data: prof } = await supabase
-    .from('profiles')
-    .select('type')
-    .eq('user_id', user.id)
-    .maybeSingle();
+  // 1) profiles.account_type (nuovo), 2) profiles.type (legacy)
+  let accountType: 'club' | 'athlete' | null = null;
+  let legacyType: string | null = null;
 
-  const raw = (prof?.type ?? '').toString().toLowerCase();
-  const role: 'club' | 'athlete' | 'guest' =
-    raw.startsWith('club') ? 'club' : raw === 'athlete' ? 'athlete' : 'guest';
+  try {
+    const { data: prof } = await supabase
+      .from('profiles')
+      .select('account_type,type')
+      .eq('user_id', user.id) // il tuo schema usa user_id
+      .maybeSingle();
+
+    accountType = normRole(prof?.account_type as any);
+    legacyType = typeof prof?.type === 'string' ? prof!.type.trim().toLowerCase() : null;
+
+    if (!accountType) accountType = normRole(legacyType);
+  } catch {
+    // ignore
+  }
+
+  // 3) Fallback: metadati auth
+  if (!accountType) {
+    const meta = (user.user_metadata?.role ?? '').toString().toLowerCase();
+    accountType = normRole(meta);
+  }
+
+  // 4) Fallback euristico: se ha creato opportunità => club
+  if (!accountType) {
+    try {
+      const { count } = await supabase
+        .from('opportunities')
+        .select('id', { head: true, count: 'exact' })
+        .eq('created_by', user.id);
+      if ((count ?? 0) > 0) accountType = 'club';
+    } catch {
+      // ignore
+    }
+  }
+
+  const role: Role = accountType ?? 'guest';
 
   const out = NextResponse.json({
     user: { id: user.id, email: user.email ?? undefined },
     role,
-    profile: { type: raw || null },
+    profile: { account_type: accountType, type: legacyType },
   });
   mergeCookies(carrier, out);
   return out;
