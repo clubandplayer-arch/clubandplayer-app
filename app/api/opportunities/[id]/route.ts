@@ -5,25 +5,19 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import {
-  normalizePlayingCategory,
+  normalizePlayingCategory, // <- restituisce SEMPRE: 'portiere'|'difensore'|'centrocampista'|'attaccante'
   PLAYING_CATEGORY,
 } from '@/lib/enums';
 
 /**
- * Next 15 in alcune build genera tipi con:
- *   { params: { id: string } }
- * ...e in altre con:
- *   { params: Promise<{ id: string }> }
- * Per rendere il codice robusto, accettiamo `context: any`
- * e risolviamo sempre l'id in modo sicuro.
+ * Next 15 a volte tipizza params come {id:string}, altre come Promise<{id:string}>.
+ * Qui li gestiamo entrambi.
  */
 async function resolveId(context: any): Promise<string> {
   const p = context?.params;
   const obj = (p && typeof p.then === 'function') ? await p : p;
   const id = obj?.id;
-  if (!id || typeof id !== 'string') {
-    throw new Error('missing_id_param');
-  }
+  if (!id || typeof id !== 'string') throw new Error('missing_id_param');
   return id;
 }
 
@@ -60,10 +54,10 @@ export async function GET(_req: NextRequest, context: any) {
     if (!data) return NextResponse.json({ error: 'not_found' }, { status: 404 });
     return NextResponse.json({ data });
   } catch (e: any) {
-    if (e?.message === 'missing_id_param') {
-      return NextResponse.json({ error: 'bad_request' }, { status: 400 });
-    }
-    return NextResponse.json({ error: 'internal_error' }, { status: 500 });
+    return NextResponse.json(
+      { error: e?.message === 'missing_id_param' ? 'bad_request' : 'internal_error' },
+      { status: e?.message === 'missing_id_param' ? 400 : 500 }
+    );
   }
 }
 
@@ -90,7 +84,7 @@ export async function PATCH(req: NextRequest, context: any) {
     setIfPresent('description');
     setIfPresent('sport');
 
-    // ruolo / categoria (label IT/EN → slug EN della enum)
+    // ruolo/categoria: accettiamo IT/EN/sinonimi e mappiamo allo slug ITA del DB
     if ('role' in body || 'required_category' in body) {
       const normalized = normalizePlayingCategory(
         (body as any).role ?? (body as any).required_category
@@ -101,7 +95,7 @@ export async function PATCH(req: NextRequest, context: any) {
           { status: 400 }
         );
       }
-      update.required_category = normalized;
+      update.required_category = normalized; // <- 'portiere' | 'difensore' | 'centrocampista' | 'attaccante'
     }
 
     // età (snake o camel)
@@ -144,10 +138,10 @@ export async function PATCH(req: NextRequest, context: any) {
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
     return NextResponse.json({ ok: true, data });
   } catch (e: any) {
-    if (e?.message === 'missing_id_param') {
-      return NextResponse.json({ error: 'bad_request' }, { status: 400 });
-    }
-    return NextResponse.json({ error: 'internal_error' }, { status: 500 });
+    return NextResponse.json(
+      { error: e?.message === 'missing_id_param' ? 'bad_request' : 'internal_error' },
+      { status: e?.message === 'missing_id_param' ? 400 : 500 }
+    );
   }
 }
 
@@ -179,9 +173,9 @@ export async function DELETE(_req: NextRequest, context: any) {
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
     return NextResponse.json({ ok: true });
   } catch (e: any) {
-    if (e?.message === 'missing_id_param') {
-      return NextResponse.json({ error: 'bad_request' }, { status: 400 });
-    }
-    return NextResponse.json({ error: 'internal_error' }, { status: 500 });
+    return NextResponse.json(
+      { error: e?.message === 'missing_id_param' ? 'bad_request' : 'internal_error' },
+      { status: e?.message === 'missing_id_param' ? 400 : 500 }
+    );
   }
 }

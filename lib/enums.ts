@@ -1,77 +1,84 @@
 // lib/enums.ts
-export const PLAYING_CATEGORY = [
-  'goalkeeper',
-  'defender',
-  'midfielder',
-  'forward',
-] as const;
-export type PlayingCategory = typeof PLAYING_CATEGORY[number];
 
-// per mostrare etichette italiane quando serve
-export const PLAYING_CATEGORY_LABEL: Record<PlayingCategory, string> = {
-  goalkeeper: 'Portiere',
-  defender: 'Difensore',
-  midfielder: 'Centrocampista',
-  forward: 'Attaccante',
+// Valori ACCETTATI dal DB (enum playing_category)
+export const PLAYING_CATEGORY = ['portiere', 'difensore', 'centrocampista', 'attaccante'] as const;
+export type DbPlayingCategory = (typeof PLAYING_CATEGORY)[number];
+
+// sinonimi IT/EN -> slug IT (DB)
+const MAP: Record<string, DbPlayingCategory> = {
+  // Portiere
+  'portiere': 'portiere',
+  'por': 'portiere',
+  'gk': 'portiere',
+  'keeper': 'portiere',
+  'goalkeeper': 'portiere',
+
+  // Difensore
+  'difensore': 'difensore',
+  'difensivo': 'difensore',
+  'terzino': 'difensore',
+  'centrale difensivo': 'difensore',
+  'terzino destro': 'difensore',
+  'terzino sinistro': 'difensore',
+  'defender': 'difensore',
+  'df': 'difensore',
+  'rb': 'difensore',
+  'lb': 'difensore',
+  'cb': 'difensore',
+  'wing back': 'difensore',
+
+  // Centrocampista
+  'centrocampista': 'centrocampista',
+  'mediano': 'centrocampista',
+  'mezzala': 'centrocampista',
+  'regista': 'centrocampista',
+  'trequartista': 'centrocampista',
+  'esterno di centrocampo': 'centrocampista',
+  'midfielder': 'centrocampista',
+  'mf': 'centrocampista',
+  'cm': 'centrocampista',
+  'dm': 'centrocampista',
+  'am': 'centrocampista',
+  'rm': 'centrocampista',
+  'lm': 'centrocampista',
+
+  // Attaccante
+  'attaccante': 'attaccante',
+  'punta': 'attaccante',
+  'centravanti': 'attaccante',
+  'seconda punta': 'attaccante',
+  'ala': 'attaccante',
+  'esterno offensivo': 'attaccante',
+  'forward': 'attaccante',
+  'fw': 'attaccante',
+  'winger': 'attaccante',
 };
 
-/** Converte etichette/sinonimi IT/EN → slug enum (EN) accettato dal DB */
-export function normalizePlayingCategory(input: unknown): PlayingCategory | null {
+function stripDiacritics(s: string) {
+  return s.normalize('NFD').replace(/\p{Diacritic}/gu, '');
+}
+function toKey(s: string) {
+  return stripDiacritics(String(s).trim().toLowerCase())
+    .replace(/[\/_-]+$/g, '') // es. "Terzino/" -> "terzino"
+    .replace(/\s+/g, ' ');
+}
+
+/**
+ * Accetta label IT/EN/sinonimi e restituisce SEMPRE lo slug IT
+ * richiesto dall'enum del DB: 'portiere' | 'difensore' | 'centrocampista' | 'attaccante'
+ */
+export function normalizePlayingCategory(input: unknown): DbPlayingCategory | null {
   if (input == null) return null;
-  const s = String(input).trim().toLowerCase();
-  const n = s.normalize('NFD').replace(/\p{Diacritic}/gu, ''); // rimuove accenti
+  let key = toKey(String(input));
 
-  // se già slug valido inglese, accettalo
-  if (PLAYING_CATEGORY.includes(n as PlayingCategory)) {
-    return n as PlayingCategory;
-  }
+  // mappa diretta
+  if (MAP[key]) return MAP[key];
 
-  switch (n) {
-    // Portiere
-    case 'portiere':
-    case 'gk':
-    case 'goalkeeper':
-      return 'goalkeeper';
+  // fallback per match parziali
+  if (/(portier|keeper|goalkeep)/.test(key)) return 'portiere';
+  if (/(difens|defend|terzin|rb|lb|cb|wing back)/.test(key)) return 'difensore';
+  if (/(centrocamp|mediano|mezzala|regist|trequart|midfield|rm|lm|cm|dm|am)/.test(key)) return 'centrocampista';
+  if (/(attacc|punta|centravant|seconda punta|ala|esterno offens|wing|forward|fw)/.test(key)) return 'attaccante';
 
-    // Difensore (qualsiasi ruolo difensivo)
-    case 'difensore':
-    case 'difensore centrale':
-    case 'centrale':
-    case 'terzino':
-    case 'terzino sinistro':
-    case 'terzino destro':
-    case 'esterno difensivo':
-    case 'terzino/esterno difensivo':
-    case 'defender':
-    case 'cb':
-    case 'lb':
-    case 'rb':
-      return 'defender';
-
-    // Centrocampista
-    case 'centrocampista':
-    case 'centrocampista centrale':
-    case 'mezzala':
-    case 'mediano':
-    case 'regista':
-    case 'trequartista':
-    case 'midfielder':
-    case 'cm':
-    case 'dm':
-    case 'am':
-      return 'midfielder';
-
-    // Attaccante / Ala
-    case 'attaccante':
-    case 'punta':
-    case 'seconda punta':
-    case 'ala':
-    case 'esterno offensivo':
-    case 'esterno offensivo/ala':
-    case 'winger':
-    case 'striker':
-    case 'forward':
-      return 'forward';
-  }
   return null;
 }
