@@ -1,19 +1,19 @@
 // lib/analytics.ts
+import type { PostHog } from 'posthog-js';
+
 type Props = Record<string, unknown>;
 
 declare global {
   interface Window {
-    posthog?: {
-      capture: (event: string, props?: Props) => void;
-      identify: (id: string, props?: Props) => void;
-    };
+    // deve combaciare con la dichiarazione in PostHogInit.tsx
+    posthog?: PostHog;
   }
 }
 
 const isClient = typeof window !== 'undefined';
 
 export function captureSafe(event: string, props?: Props) {
-  if (isClient && window.posthog?.capture) {
+  if (isClient && window.posthog) {
     try {
       window.posthog.capture(event, props);
     } catch {
@@ -23,7 +23,7 @@ export function captureSafe(event: string, props?: Props) {
 }
 
 export function identifySafe(id: string, props?: Props) {
-  if (isClient && window.posthog?.identify) {
+  if (isClient && window.posthog) {
     try {
       window.posthog.identify(id, props);
     } catch {
@@ -32,9 +32,8 @@ export function identifySafe(id: string, props?: Props) {
   }
 }
 
-// Compat: alcuni file importano { track } e { identify }
+// Compat: alcuni file importano { track } / { identify }
 export const track = captureSafe;
 export const identify = identifySafe;
 
-// opzionale: export di comodo
 export default { track, identify };
