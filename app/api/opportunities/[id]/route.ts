@@ -5,71 +5,97 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
-/**
- * Slug ammessi dall'enum del DB.
- */
-const PLAYING_CATEGORY = ['portiere', 'difensore', 'centrocampista', 'attaccante'] as const;
-type PlayingCategory = (typeof PLAYING_CATEGORY)[number];
+// ---------- Helpers: normalizzazione ruolo/categoria ----------
+type CatEN = 'goalkeeper' | 'defender' | 'midfielder' | 'forward';
+type CatIT = 'portiere' | 'difensore' | 'centrocampista' | 'attaccante';
 
-/**
- * Normalizza un valore libero (IT/EN/sinonimi) nello slug dell'enum DB.
- * Esempi validi: "Portiere", "GK", "difensore", "fullback", "midfielder",
- * "centrocampista", "esterno", "ala", "forward", "striker", "trequartista"...
- */
-function normalizePlayingCategory(input: unknown): PlayingCategory | null {
-  if (typeof input !== 'string') return null;
-  const s = input.trim().toLowerCase();
+const EN_OF_IT: Record<CatIT, CatEN> = {
+  portiere: 'goalkeeper',
+  difensore: 'defender',
+  centrocampista: 'midfielder',
+  attaccante: 'forward',
+};
 
-  // portiere
-  const gk = [
-    'portiere', 'estremo difensore', 'keeper', 'goalkeeper', 'gk'
-  ];
-  if (gk.includes(s)) return 'portiere';
+const IT_OF_EN: Record<CatEN, CatIT> = {
+  goalkeeper: 'portiere',
+  defender: 'difensore',
+  midfielder: 'centrocampista',
+  forward: 'attaccante',
+};
 
-  // difensore (terzino, centrale, full/wing back, ecc.)
-  const dfExact = [
-    'difensore', 'difensore centrale', 'centrale', 'terzino', 'terzino destro', 'terzino sinistro',
-    'fullback', 'full back', 'wingback', 'wing back', 'center back', 'centre back', 'cb', 'rb', 'lb',
-    'defender', 'right back', 'left back', 'back'
-  ];
-  if (dfExact.includes(s)) return 'difensore';
-  if (s.includes('back') || s.includes('defender') || s.includes('center back') || s.includes('centre back'))
-    return 'difensore';
+// sinonimi -> “macro” ruolo
+const SYNONYMS_TO_MACRO: Record<string, CatEN> = {
+  // EN
+  gk: 'goalkeeper',
+  goalie: 'goalkeeper',
+  keeper: 'goalkeeper',
+  cb: 'defender',
+  lb: 'defender',
+  rb: 'defender',
+  fb: 'defender',
+  wb: 'defender',
+  dm: 'midfielder',
+  cm: 'midfielder',
+  am: 'midfielder',
+  winger: 'forward',
+  wing: 'forward',
+  striker: 'forward',
+  // IT
+  portiere: 'goalkeeper',
+  estremo: 'goalkeeper',
+  difensore: 'defender',
+  terzino: 'defender',
+  centrale: 'defender',
+  mediano: 'midfielder',
+  mezzala: 'midfielder',
+  regista: 'midfielder',
+  trequartista: 'midfielder',
+  esterno: 'forward',
+  ala: 'forward',
+  punta: 'forward',
+  centravanti: 'forward',
+  attaccante: 'forward',
+};
 
-  // centrocampista (mediano, mezzala, regista, box to box, ecc.)
-  const mfExact = [
-    'centrocampista', 'mediano', 'mezzala', 'regista', 'interno', 'playmaker',
-    'midfielder', 'holding midfielder', 'central midfielder', 'cm', 'dm', 'am (mezzala)'
-  ];
-  if (mfExact.includes(s)) return 'centrocampista';
-  if (s.includes('midfield')) return 'centrocampista';
+function normalizeCandidates(input: unknown): string[] {
+  if (!input) return [];
+  const raw = String(input).trim().toLowerCase();
 
-  // attaccante (ala/esterno offensivo/trequartista/seconda punta/striker/forward/winger)
-  const fwExact = [
-    'attaccante', 'punta', 'seconda punta', 'ala', 'esterno offensivo', 'esterno',
-    'trequartista', 'esterno alto', 'winger', 'forward', 'striker', 'center forward', 'centre forward', 'cf'
-  ];
-  if (fwExact.includes(s)) return 'attaccante';
-  if (s.includes('forward') || s.includes('striker') || s.includes('wing'))
-    return 'attaccante';
+  // se già è uno dei 4 EN
+  if ((['goalkeeper','defender','midfielder','forward'] as string[]).includes(raw)) {
+    const en = raw as CatEN;
+    const it = IT_OF_EN[en];
+    return [en, it];
+  }
 
-  return null;
+  // se è uno dei 4 IT
+  if ((['portiere','difensore','centrocampista','attaccante'] as string[]).includes(raw)) {
+    const it = raw as CatIT;
+    const en = EN_OF_IT[it];
+    return [en, it];
+  }
+
+  // prova sinonimi
+  const enFromSyn = SYNONYMS_TO_MACRO[raw];
+  if (enFromSyn) {
+    const it = IT_OF_EN[enFromSyn];
+    return [enFromSyn, it];
+  }
+
+  // fallback: niente candidati
+  return [];
 }
 
-/** Ritorna il primo definito (non undefined) */
-function firstDefined<T>(...values: Array<T | undefined>): T | undefined {
-  for (const v of values) if (typeof v !== 'undefined') return v;
-  return undefined;
+function isEnumError(errMsg?: string) {
+  return !!errMsg && /invalid input value for enum\s+playing_category/i.test(errMsg);
 }
 
-// ---------------------------------------------------------------------------
-// GET /api/opportunities/[id]
-// ---------------------------------------------------------------------------
+// ---------- GET ----------
 export async function GET(
   _req: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const { id } = context.params;
+  const { id } = await context.params;
 
   const supabase = await getSupabaseServerClient();
   const { data, error } = await supabase
@@ -100,14 +126,12 @@ export async function GET(
   return NextResponse.json({ data });
 }
 
-// ---------------------------------------------------------------------------
-// PATCH /api/opportunities/[id]
-// ---------------------------------------------------------------------------
+// ---------- PATCH ----------
 export async function PATCH(
   req: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const { id } = context.params;
+  const { id } = await context.params;
 
   const supabase = await getSupabaseServerClient();
   const { data: ures, error: authErr } = await supabase.auth.getUser();
@@ -116,54 +140,6 @@ export async function PATCH(
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
-
-  // Costruzione payload aggiornabile (whitelist)
-  const update: Record<string, unknown> = {};
-  const setIfPresent = (src: string, dst = src) => {
-    if (Object.prototype.hasOwnProperty.call(body, src)) update[dst] = body[src];
-  };
-
-  // campi semplici
-  setIfPresent('title');
-  setIfPresent('description');
-  setIfPresent('sport');
-
-  // età (snake & camel)
-  setIfPresent('min_age');
-  setIfPresent('max_age');
-  setIfPresent('ageMin', 'min_age');
-  setIfPresent('ageMax', 'max_age');
-
-  // localizzazione
-  setIfPresent('city');
-  setIfPresent('province');
-  setIfPresent('region');
-  setIfPresent('country');
-
-  // categoria: accetta molte chiavi e normalizza SEMPRE
-  const rawRole = firstDefined<string>(
-    body.role as string | undefined,
-    body.required_category as string | undefined,
-    (body as any)?.requiredCategory,
-    (body as any)?.playing_category,
-    (body as any)?.playingCategory,
-    (body as any)?.position
-  );
-
-  if (typeof rawRole !== 'undefined') {
-    const normalized = normalizePlayingCategory(rawRole);
-    if (!normalized) {
-      return NextResponse.json(
-        { error: 'invalid_required_category', allowed: PLAYING_CATEGORY },
-        { status: 400 }
-      );
-    }
-    update.required_category = normalized;
-  }
-
-  if (Object.keys(update).length === 0) {
-    return NextResponse.json({ error: 'empty_update' }, { status: 400 });
-  }
 
   // verifica proprietario
   const { data: opp, error: oppErr } = await supabase
@@ -174,32 +150,88 @@ export async function PATCH(
 
   if (oppErr) return NextResponse.json({ error: oppErr.message }, { status: 400 });
   if (!opp) return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  if (opp.owner_id !== user.id) {
+  if (opp.owner_id !== user.id)
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+
+  // costruisci payload aggiornamento (tranne required_category, che gestiamo a parte)
+  const updateBase: Record<string, unknown> = {};
+  const setIfPresent = (src: string, dst = src) => {
+    if (Object.prototype.hasOwnProperty.call(body, src)) updateBase[dst] = body[src];
+  };
+
+  setIfPresent('title');
+  setIfPresent('description');
+  setIfPresent('sport');
+  setIfPresent('min_age');
+  setIfPresent('max_age');
+  setIfPresent('ageMin', 'min_age');
+  setIfPresent('ageMax', 'max_age');
+  setIfPresent('city');
+  setIfPresent('province');
+  setIfPresent('region');
+  setIfPresent('country');
+
+  // normalizza categoria
+  const roleRaw = (body as any).role ?? (body as any).required_category;
+  const candidates = normalizeCandidates(roleRaw);
+
+  // se non ci sono altri campi e nemmeno required_category, errore
+  if (Object.keys(updateBase).length === 0 && candidates.length === 0) {
+    return NextResponse.json({ error: 'empty_update' }, { status: 400 });
   }
 
-  // update
-  const { data, error } = await supabase
-    .from('opportunities')
-    .update({ ...update, updated_at: new Date().toISOString() })
-    .eq('id', id)
-    .select('id')
-    .maybeSingle();
+  // prova update:
+  // 1) senza categoria (se non richiesta)
+  // 2) con categoria, provando EN poi IT (o viceversa, secondo i candidati)
+  const tryOnce = async (payload: Record<string, unknown>) => {
+    return supabase
+      .from('opportunities')
+      .update({ ...payload, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select('id')
+      .maybeSingle();
+  };
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-  return NextResponse.json({ ok: true, data });
+  // Se non stiamo cambiando la categoria, un solo tentativo
+  if (candidates.length === 0 && !('required_category' in body) && !('role' in body)) {
+    const { data, error } = await tryOnce(updateBase);
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    return NextResponse.json({ ok: true, data });
+  }
+
+  // Proviamo in ordine i candidati
+  for (const cat of candidates) {
+    const { data, error } = await tryOnce({ ...updateBase, required_category: cat });
+    if (!error) return NextResponse.json({ ok: true, data });
+    if (!isEnumError(error.message)) {
+      // errore diverso dall'enum -> esci subito
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    // enum error: prova il prossimo candidato
+  }
+
+  // se siamo qui, tutti i candidati sono stati rifiutati dall'enum
+  return NextResponse.json(
+    {
+      error: 'invalid_required_category',
+      tried: candidates,
+      hint:
+        'Il valore non appartiene all’enum del DB. Riprova con uno tra: ' +
+        'goalkeeper/defender/midfielder/forward oppure portiere/difensore/centrocampista/attaccante.',
+    },
+    { status: 400 }
+  );
 }
 
-// ---------------------------------------------------------------------------
-// DELETE /api/opportunities/[id]
-// ---------------------------------------------------------------------------
+// ---------- DELETE ----------
 export async function DELETE(
   _req: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const { id } = context.params;
+  const { id } = await context.params;
 
   const supabase = await getSupabaseServerClient();
+
   const { data: ures, error: authErr } = await supabase.auth.getUser();
   if (authErr) return NextResponse.json({ error: authErr.message }, { status: 400 });
   const user = ures?.user;
@@ -213,9 +245,8 @@ export async function DELETE(
 
   if (oppErr) return NextResponse.json({ error: oppErr.message }, { status: 400 });
   if (!opp) return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  if (opp.owner_id !== user.id) {
+  if (opp.owner_id !== user.id)
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
-  }
 
   const { error } = await supabase.from('opportunities').delete().eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
