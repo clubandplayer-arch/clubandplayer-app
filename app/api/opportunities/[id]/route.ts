@@ -12,29 +12,31 @@ import {
 // GET /api/opportunities/[id]
 export async function GET(
   _req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
-  const { id } = await context.params;
+  const { id } = params;
 
   const supabase = await getSupabaseServerClient();
   const { data, error } = await supabase
     .from('opportunities')
-    .select([
-      'id',
-      'owner_id',
-      'title',
-      'description',
-      'sport',
-      'required_category',
-      'min_age',
-      'max_age',
-      'city',
-      'province',
-      'region',
-      'country',
-      'created_at',
-      'updated_at',
-    ].join(', '))
+    .select(
+      [
+        'id',
+        'owner_id',
+        'title',
+        'description',
+        'sport',
+        'required_category',
+        'min_age',
+        'max_age',
+        'city',
+        'province',
+        'region',
+        'country',
+        'created_at',
+        'updated_at',
+      ].join(', ')
+    )
     .eq('id', id)
     .maybeSingle();
 
@@ -46,13 +48,14 @@ export async function GET(
 // PATCH /api/opportunities/[id]
 export async function PATCH(
   req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
-  const { id } = await context.params;
+  const { id } = params;
 
   const supabase = await getSupabaseServerClient();
   const { data: ures, error: authErr } = await supabase.auth.getUser();
   if (authErr) return NextResponse.json({ error: authErr.message }, { status: 400 });
+
   const user = ures?.user;
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
@@ -68,7 +71,7 @@ export async function PATCH(
   setIfPresent('description');
   setIfPresent('sport');
 
-  // ruolo / categoria giocatore (label → slug enum)
+  // ruolo / categoria giocatore (label IT/EN → slug EN della enum)
   if ('role' in body || 'required_category' in body) {
     const normalized = normalizePlayingCategory(
       (body as any).role ?? (body as any).required_category
@@ -77,7 +80,7 @@ export async function PATCH(
       return NextResponse.json(
         {
           error: 'invalid_required_category',
-          allowed: PLAYING_CATEGORY, // es: ["portiere","difensore","centrocampista","attaccante"]
+          allowed: PLAYING_CATEGORY, // ["goalkeeper","defender","midfielder","forward"]
         },
         { status: 400 }
       );
@@ -129,14 +132,15 @@ export async function PATCH(
 // DELETE /api/opportunities/[id]
 export async function DELETE(
   _req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
-  const { id } = await context.params;
+  const { id } = params;
 
   const supabase = await getSupabaseServerClient();
 
   const { data: ures, error: authErr } = await supabase.auth.getUser();
   if (authErr) return NextResponse.json({ error: authErr.message }, { status: 400 });
+
   const user = ures?.user;
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
