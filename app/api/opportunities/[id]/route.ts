@@ -5,14 +5,12 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import {
-  normalizePlayingCategory, // <- restituisce SEMPRE: 'portiere'|'difensore'|'centrocampista'|'attaccante'
-  PLAYING_CATEGORY,
+  PLAYING_CATEGORY_IT,
+  PLAYING_CATEGORY_EN,
+  normalizePlayingCategoryCandidates,
 } from '@/lib/enums';
 
-/**
- * Next 15 a volte tipizza params come {id:string}, altre come Promise<{id:string}>.
- * Qui li gestiamo entrambi.
- */
+// --- helper per compatibilità Next 15 (params può essere oggetto o Promise) ---
 async function resolveId(context: any): Promise<string> {
   const p = context?.params;
   const obj = (p && typeof p.then === 'function') ? await p : p;
@@ -75,28 +73,14 @@ export async function PATCH(req: NextRequest, context: any) {
     const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
 
     // campi ammessi
-    const update: Record<string, unknown> = {};
+    const baseUpdate: Record<string, unknown> = {};
     const setIfPresent = (src: string, dst = src) => {
-      if (Object.prototype.hasOwnProperty.call(body, src)) update[dst] = body[src];
+      if (Object.prototype.hasOwnProperty.call(body, src)) baseUpdate[dst] = body[src];
     };
 
     setIfPresent('title');
     setIfPresent('description');
     setIfPresent('sport');
-
-    // ruolo/categoria: accettiamo IT/EN/sinonimi e mappiamo allo slug ITA del DB
-    if ('role' in body || 'required_category' in body) {
-      const normalized = normalizePlayingCategory(
-        (body as any).role ?? (body as any).required_category
-      );
-      if (!normalized) {
-        return NextResponse.json(
-          { error: 'invalid_required_category', allowed: PLAYING_CATEGORY },
-          { status: 400 }
-        );
-      }
-      update.required_category = normalized; // <- 'portiere' | 'difensore' | 'centrocampista' | 'attaccante'
-    }
 
     // età (snake o camel)
     setIfPresent('min_age');
@@ -109,10 +93,6 @@ export async function PATCH(req: NextRequest, context: any) {
     setIfPresent('province');
     setIfPresent('region');
     setIfPresent('country');
-
-    if (Object.keys(update).length === 0) {
-      return NextResponse.json({ error: 'empty_update' }, { status: 400 });
-    }
 
     // verifica proprietario
     const { data: opp, error: oppErr } = await supabase
@@ -127,16 +107,74 @@ export async function PATCH(req: NextRequest, context: any) {
       return NextResponse.json({ error: 'forbidden' }, { status: 403 });
     }
 
-    // update
-    const { data, error } = await supabase
-      .from('opportunities')
-      .update({ ...update, updated_at: new Date().toISOString() })
-      .eq('id', id)
-      .select('id')
-      .maybeSingle();
+    // prepara update finale
+    const applyUpdate = async (patch: Record<string, unknown>) => {
+      return await supabase
+        .from('opportunities')
+        .update({ ...baseUpdate, ...patch, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select('id')
+        .maybeSingle();
+    };
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-    return NextResponse.json({ ok: true, data });
+    // Se non stiamo aggiornando la categoria, fai un update semplice
+    const wantsRoleUpdate = 'role' in body || 'required_category' in body;
+
+    if (!wantsRoleUpdate) {
+      if (Object.keys(baseUpdate).length === 0) {
+        return NextResponse.json({ error: 'empty_update' }, { status: 400 });
+      }
+      const { data, error } = await applyUpdate({});
+      if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+      return NextResponse.json({ ok: true, data });
+    }
+
+    // Normalizza ruolo -> candidati IT/EN
+    const { it, en } = normalizePlayingCategoryCandidates(
+      (body as any).role ?? (body as any).required_category
+    );
+
+    if (!it && !en) {
+      return NextResponse.json(
+        {
+          error: 'invalid_required_category',
+          allowed_it: PLAYING_CATEGORY_IT,
+          allowed_en: PLAYING_CATEGORY_EN,
+        },
+        { status: 400 }
+      );
+    }
+
+    // 1° tentativo: slug IT
+    if (it) {
+      const { data, error } = await applyUpdate({ required_category: it });
+      if (!error) return NextResponse.json({ ok: true, data });
+
+      // se il DB rifiuta l'IT per enum, prova l'ENG
+      if (
+        en &&
+        /invalid input value for enum\s+playing_category/i.test(error.message)
+      ) {
+        const retry = await applyUpdate({ required_category: en });
+        if (!retry.error) return NextResponse.json({ ok: true, data: retry.data });
+        return NextResponse.json({ error: retry.error.message }, { status: 400 });
+      }
+
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    // solo EN disponibile: prova con EN
+    if (en) {
+      const { data, error } = await applyUpdate({ required_category: en });
+      if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+      return NextResponse.json({ ok: true, data });
+    }
+
+    // fallback
+    return NextResponse.json(
+      { error: 'invalid_required_category' },
+      { status: 400 }
+    );
   } catch (e: any) {
     return NextResponse.json(
       { error: e?.message === 'missing_id_param' ? 'bad_request' : 'internal_error' },
@@ -151,7 +189,6 @@ export async function DELETE(_req: NextRequest, context: any) {
     const id = await resolveId(context);
 
     const supabase = await getSupabaseServerClient();
-
     const { data: ures, error: authErr } = await supabase.auth.getUser();
     if (authErr) return NextResponse.json({ error: authErr.message }, { status: 400 });
     const user = ures?.user;
