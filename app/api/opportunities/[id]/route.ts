@@ -12,9 +12,9 @@ import {
 // ========== GET /api/opportunities/[id] ==========
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = params;
+  const { id } = await params;
 
   const supabase = await getSupabaseServerClient();
   // NB: niente min_age/max_age: la tabella non li ha
@@ -27,7 +27,7 @@ export async function GET(
         'title',
         'description',
         'sport',
-        'required_category', // enum IT (portiere/difensore/centrocampista/attaccante)
+        'required_category', // enum IT
         'city',
         'province',
         'region',
@@ -48,9 +48,9 @@ export async function GET(
 // ========== PATCH /api/opportunities/[id] ==========
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = params;
+  const { id } = await params;
 
   const supabase = await getSupabaseServerClient();
   const { data: ures, error: authErr } = await supabase.auth.getUser();
@@ -75,14 +75,13 @@ export async function PATCH(
   setIfPresent('region');
   setIfPresent('country');
 
-  // ruolo / playing category:
-  // accettiamo vari possibili nomi nel payload provenienti dal client
+  // ruolo / playing category (accettiamo vari nomi in input)
   const roleRaw =
-    body.role ??
-    body.required_category ??
-    body.playing_category ??
-    body.category ??
-    body.position ??
+    (body as any).role ??
+    (body as any).required_category ??
+    (body as any).playing_category ??
+    (body as any).category ??
+    (body as any).position ??
     null;
 
   if (roleRaw !== null) {
@@ -93,7 +92,7 @@ export async function PATCH(
         { status: 400 }
       );
     }
-    update.required_category = normalized; // <- colonna della tabella
+    update.required_category = normalized; // <- colonna reale
   }
 
   if (Object.keys(update).length === 0) {
@@ -128,9 +127,9 @@ export async function PATCH(
 // ========== DELETE /api/opportunities/[id] ==========
 export async function DELETE(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = params;
+  const { id } = await params;
 
   const supabase = await getSupabaseServerClient();
   const { data: ures, error: authErr } = await supabase.auth.getUser();
