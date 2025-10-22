@@ -14,9 +14,9 @@ import {
 // GET /api/opportunities/[id]
 export async function GET(
   _req: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const { id } = context.params;
+  const { id } = await context.params;
 
   const supabase = await getSupabaseServerClient();
   const { data, error } = await supabase
@@ -48,9 +48,9 @@ export async function GET(
 // PATCH /api/opportunities/[id]
 export async function PATCH(
   req: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const { id } = context.params;
+  const { id } = await context.params;
 
   const supabase = await getSupabaseServerClient();
   const { data: ures, error: authErr } = await supabase.auth.getUser();
@@ -86,18 +86,16 @@ export async function PATCH(
   setIfPresent('region');
   setIfPresent('country');
 
-  // required_category: accetta IT/EN → prova EN, in fallback IT
+  // required_category: accetta IT/EN → prova EN, fallback IT
   const rawRole =
     (body as any)?.role ??
     (body as any)?.required_category ??
     (body as any)?.playing_category;
 
-  let normEN = normalizeToEN(rawRole);
-  let normIT = normalizeToIT(rawRole);
-
+  const normEN = normalizeToEN(rawRole);
+  const normIT = normalizeToIT(rawRole);
   if (normEN || normIT) {
-    // preferisci EN, ma se fallisce l’update riprovi in IT
-    update.required_category = normEN ?? normIT;
+    update.required_category = normEN ?? normIT; // tentativo 1
   }
 
   if (Object.keys(update).length === 0) {
@@ -118,11 +116,11 @@ export async function PATCH(
       .maybeSingle();
   };
 
-  // 1° tentativo (quello che abbiamo in update.required_category)
+  // 1° tentativo
   let { data, error } = await doUpdate(update.required_category as string | undefined);
   if (!error) return NextResponse.json({ ok: true, data });
 
-  // se l’errore è l’enum, prova l’altra lingua
+  // enum mismatch → riprova con l’altra lingua
   if (/invalid input value for enum .*playing_category/i.test(error.message)) {
     const first = update.required_category as string | undefined;
     const second =
@@ -130,7 +128,7 @@ export async function PATCH(
     if (second) {
       const retry = await doUpdate(second);
       if (!retry.error) return NextResponse.json({ ok: true, data: retry.data });
-      error = retry.error; // aggiorna error per la risposta finale
+      error = retry.error;
     }
     return NextResponse.json(
       {
@@ -149,9 +147,9 @@ export async function PATCH(
 // DELETE /api/opportunities/[id]
 export async function DELETE(
   _req: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const { id } = context.params;
+  const { id } = await context.params;
 
   const supabase = await getSupabaseServerClient();
   const { data: ures, error: authErr } = await supabase.auth.getUser();
