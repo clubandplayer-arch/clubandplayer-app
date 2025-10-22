@@ -5,19 +5,20 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import {
-  normalizeRequiredCategory,
+  normalizeToEN,
+  normalizeToIT,
+  PLAYING_CATEGORY_EN,
   PLAYING_CATEGORY_IT,
 } from '@/lib/enums';
 
-// ========== GET /api/opportunities/[id] ==========
+// GET /api/opportunities/[id]
 export async function GET(
   _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: { id: string } }
 ) {
-  const { id } = await params;
+  const { id } = context.params;
 
   const supabase = await getSupabaseServerClient();
-  // NB: niente min_age/max_age: la tabella non li ha
   const { data, error } = await supabase
     .from('opportunities')
     .select(
@@ -27,7 +28,7 @@ export async function GET(
         'title',
         'description',
         'sport',
-        'required_category', // enum IT
+        'required_category',
         'city',
         'province',
         'region',
@@ -41,27 +42,37 @@ export async function GET(
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   if (!data) return NextResponse.json({ error: 'not_found' }, { status: 404 });
-
   return NextResponse.json({ data });
 }
 
-// ========== PATCH /api/opportunities/[id] ==========
+// PATCH /api/opportunities/[id]
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: { id: string } }
 ) {
-  const { id } = await params;
+  const { id } = context.params;
 
   const supabase = await getSupabaseServerClient();
   const { data: ures, error: authErr } = await supabase.auth.getUser();
   if (authErr) return NextResponse.json({ error: authErr.message }, { status: 400 });
-
   const user = ures?.user;
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
 
-  // campi semplici ammessi
+  // verifica proprietario
+  const { data: opp, error: oppErr } = await supabase
+    .from('opportunities')
+    .select('id, owner_id')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (oppErr) return NextResponse.json({ error: oppErr.message }, { status: 400 });
+  if (!opp) return NextResponse.json({ error: 'not_found' }, { status: 404 });
+  if (opp.owner_id !== user.id)
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+
+  // build update
   const update: Record<string, unknown> = {};
   const setIfPresent = (src: string, dst = src) => {
     if (Object.prototype.hasOwnProperty.call(body, src)) update[dst] = body[src];
@@ -75,66 +86,76 @@ export async function PATCH(
   setIfPresent('region');
   setIfPresent('country');
 
-  // ruolo / playing category (accettiamo vari nomi in input)
-  const roleRaw =
-    (body as any).role ??
-    (body as any).required_category ??
-    (body as any).playing_category ??
-    (body as any).category ??
-    (body as any).position ??
-    null;
+  // required_category: accetta IT/EN → prova EN, in fallback IT
+  const rawRole =
+    (body as any)?.role ??
+    (body as any)?.required_category ??
+    (body as any)?.playing_category;
 
-  if (roleRaw !== null) {
-    const normalized = normalizeRequiredCategory(roleRaw);
-    if (!normalized) {
-      return NextResponse.json(
-        { error: 'invalid_required_category', allowed: PLAYING_CATEGORY_IT },
-        { status: 400 }
-      );
-    }
-    update.required_category = normalized; // <- colonna reale
+  let normEN = normalizeToEN(rawRole);
+  let normIT = normalizeToIT(rawRole);
+
+  if (normEN || normIT) {
+    // preferisci EN, ma se fallisce l’update riprovi in IT
+    update.required_category = normEN ?? normIT;
   }
 
   if (Object.keys(update).length === 0) {
     return NextResponse.json({ error: 'empty_update' }, { status: 400 });
   }
 
-  // verifica proprietario
-  const { data: opp, error: oppErr } = await supabase
-    .from('opportunities')
-    .select('id, owner_id')
-    .eq('id', id)
-    .maybeSingle();
+  const doUpdate = async (required_category?: string) => {
+    const payload = {
+      ...update,
+      ...(required_category ? { required_category } : {}),
+      updated_at: new Date().toISOString(),
+    };
+    return supabase
+      .from('opportunities')
+      .update(payload)
+      .eq('id', id)
+      .select('id')
+      .maybeSingle();
+  };
 
-  if (oppErr) return NextResponse.json({ error: oppErr.message }, { status: 400 });
-  if (!opp) return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  if (opp.owner_id !== user.id) {
-    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  // 1° tentativo (quello che abbiamo in update.required_category)
+  let { data, error } = await doUpdate(update.required_category as string | undefined);
+  if (!error) return NextResponse.json({ ok: true, data });
+
+  // se l’errore è l’enum, prova l’altra lingua
+  if (/invalid input value for enum .*playing_category/i.test(error.message)) {
+    const first = update.required_category as string | undefined;
+    const second =
+      first && normEN && first === normEN ? normIT : normEN; // switch lingua
+    if (second) {
+      const retry = await doUpdate(second);
+      if (!retry.error) return NextResponse.json({ ok: true, data: retry.data });
+      error = retry.error; // aggiorna error per la risposta finale
+    }
+    return NextResponse.json(
+      {
+        error: 'invalid_required_category',
+        allowed_en: PLAYING_CATEGORY_EN,
+        allowed_it: PLAYING_CATEGORY_IT,
+      },
+      { status: 400 }
+    );
   }
 
-  // aggiorna
-  const { data, error } = await supabase
-    .from('opportunities')
-    .update({ ...update, updated_at: new Date().toISOString() })
-    .eq('id', id)
-    .select('id')
-    .maybeSingle();
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-  return NextResponse.json({ ok: true, data });
+  // altri errori
+  return NextResponse.json({ error: error.message }, { status: 400 });
 }
 
-// ========== DELETE /api/opportunities/[id] ==========
+// DELETE /api/opportunities/[id]
 export async function DELETE(
   _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: { id: string } }
 ) {
-  const { id } = await params;
+  const { id } = context.params;
 
   const supabase = await getSupabaseServerClient();
   const { data: ures, error: authErr } = await supabase.auth.getUser();
   if (authErr) return NextResponse.json({ error: authErr.message }, { status: 400 });
-
   const user = ures?.user;
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
@@ -146,9 +167,8 @@ export async function DELETE(
 
   if (oppErr) return NextResponse.json({ error: oppErr.message }, { status: 400 });
   if (!opp) return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  if (opp.owner_id !== user.id) {
+  if (opp.owner_id !== user.id)
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
-  }
 
   const { error } = await supabase.from('opportunities').delete().eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });

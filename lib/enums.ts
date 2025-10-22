@@ -1,11 +1,16 @@
 // lib/enums.ts
 
-// Valori CANONICI (quelli accettati dal tipo Postgres "playing_category")
 export type EnPlayingCategory =
   | 'goalkeeper'
   | 'defender'
   | 'midfielder'
   | 'forward';
+
+export type ItPlayingCategory =
+  | 'portiere'
+  | 'difensore'
+  | 'centrocampista'
+  | 'attaccante';
 
 export const PLAYING_CATEGORY_EN = [
   'goalkeeper',
@@ -14,7 +19,6 @@ export const PLAYING_CATEGORY_EN = [
   'forward',
 ] as const;
 
-// Etichette IT usate in UI (solo per reference / messaggi)
 export const PLAYING_CATEGORY_IT = [
   'portiere',
   'difensore',
@@ -22,7 +26,6 @@ export const PLAYING_CATEGORY_IT = [
   'attaccante',
 ] as const;
 
-// util per confronti robusti
 function norm(s: string): string {
   return s
     .normalize('NFD')
@@ -31,11 +34,12 @@ function norm(s: string): string {
     .trim();
 }
 
-// Sinonimi IT → EN
+// ---- map IT -> EN (sinonimi italiani) ----
 const itToEn: Record<string, EnPlayingCategory> = {
   // Portiere
   portiere: 'goalkeeper',
-  // Difensore
+
+  // Difesa
   difensore: 'defender',
   'difensore centrale': 'defender',
   'centrale difensivo': 'defender',
@@ -44,6 +48,7 @@ const itToEn: Record<string, EnPlayingCategory> = {
   'terzino sinistro': 'defender',
   'esterno difensivo': 'defender',
   braccetto: 'defender',
+
   // Centrocampo
   centrocampista: 'midfielder',
   mediano: 'midfielder',
@@ -51,25 +56,25 @@ const itToEn: Record<string, EnPlayingCategory> = {
   regista: 'midfielder',
   trequartista: 'midfielder',
   interno: 'midfielder',
+
   // Attacco
   attaccante: 'forward',
   punta: 'forward',
   'punta centrale': 'forward',
   'seconda punta': 'forward',
-  esterno: 'forward',           // esterno alto/ala -> attacco
+  esterno: 'forward',
   'esterno alto': 'forward',
   ala: 'forward',
   'ala destra': 'forward',
   'ala sinistra': 'forward',
 };
 
-// Sinonimi EN → EN
+// ---- map EN -> EN (sinonimi inglesi) ----
 const enSyn: Record<string, EnPlayingCategory> = {
-  // GK
   goalkeeper: 'goalkeeper',
   keeper: 'goalkeeper',
   gk: 'goalkeeper',
-  // DEF
+
   defender: 'defender',
   'centre-back': 'defender',
   'center-back': 'defender',
@@ -80,13 +85,13 @@ const enSyn: Record<string, EnPlayingCategory> = {
   lb: 'defender',
   rb: 'defender',
   wingback: 'defender',
-  // MID
+
   midfielder: 'midfielder',
   dm: 'midfielder',
   cm: 'midfielder',
   am: 'midfielder',
   playmaker: 'midfielder',
-  // FWD
+
   forward: 'forward',
   striker: 'forward',
   'center forward': 'forward',
@@ -95,21 +100,33 @@ const enSyn: Record<string, EnPlayingCategory> = {
   winger: 'forward',
 };
 
-// ⚙️ Normalizza qualsiasi label (IT/EN/variazioni) → EN canonico
-export function normalizeRequiredCategory(
-  input: unknown
-): EnPlayingCategory | null {
+// ---- map EN canonico -> IT canonico ----
+export const enToIt: Record<EnPlayingCategory, ItPlayingCategory> = {
+  goalkeeper: 'portiere',
+  defender: 'difensore',
+  midfielder: 'centrocampista',
+  forward: 'attaccante',
+};
+
+// ---- map IT canonico -> EN canonico ----
+export const itToEnCanon: Record<ItPlayingCategory, EnPlayingCategory> = {
+  portiere: 'goalkeeper',
+  difensore: 'defender',
+  centrocampista: 'midfielder',
+  attaccante: 'forward',
+};
+
+// Normalizza verso EN canonico
+export function normalizeToEN(input: unknown): EnPlayingCategory | null {
   if (typeof input !== 'string') return null;
   const s = norm(input);
 
-  // già uno dei canonici
   if ((PLAYING_CATEGORY_EN as readonly string[]).includes(s))
     return s as EnPlayingCategory;
 
   if (s in itToEn) return itToEn[s];
   if (s in enSyn) return enSyn[s];
 
-  // match parziali robusti
   if (s.includes('portier')) return 'goalkeeper';
   if (s.includes('terzin') || s.includes('difens') || s.includes('back'))
     return 'defender';
@@ -135,4 +152,10 @@ export function normalizeRequiredCategory(
     return 'forward';
 
   return null;
+}
+
+// Normalizza verso IT canonico
+export function normalizeToIT(input: unknown): ItPlayingCategory | null {
+  const en = normalizeToEN(input);
+  return en ? enToIt[en] : null;
 }
