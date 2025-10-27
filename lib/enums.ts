@@ -63,7 +63,7 @@ const enSyn: Record<string, EnPlayingCategory> = {
   lb: 'defender', rb: 'defender', wingback: 'defender',
 
   midfielder: 'midfielder', dm: 'midfielder', cm: 'midfielder', am: 'midfielder',
-  playmaker: 'midfielder',
+  playmaker: 'midfielder', 'wide midfielder': 'midfielder',
 
   forward: 'forward', striker: 'forward',
   'center forward': 'forward', 'centre forward': 'forward', cf: 'forward',

@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
-import { normalizeToEN } from '@/lib/enums';
+import { normalizeToEN, normalizeToIT, PLAYING_CATEGORY_EN, PLAYING_CATEGORY_IT } from '@/lib/enums';
 
 export const runtime = 'nodejs';
 
@@ -69,15 +69,16 @@ export async function GET(req: NextRequest) {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
-  let query = supabase
+  const supa = supabase
     .from('opportunities')
     .select(
-      'id,title,description,created_by,created_at,country,region,province,city,sport,role,age_min,age_max,club_name,required_category',
+      'id,title,description,created_by,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name',
       { count: 'exact' }
     )
     .order('created_at', { ascending: sort === 'oldest' })
     .range(from, to);
 
+  let query = supa;
   if (q)
     query = query.or(
       `title.ilike.%${q}%,description.ilike.%${q}%,city.ilike.%${q}%,region.ilike.%${q}%,province.ilike.%${q}%,country.ilike.%${q}%,sport.ilike.%${q}%,role.ilike.%${q}%`
@@ -109,7 +110,7 @@ export async function GET(req: NextRequest) {
   });
 }
 
-/** POST /api/opportunities — deve essere un club, + normalizzazione required_category */
+/** POST /api/opportunities — club + normalizzazione ruolo con retry EN→IT */
 export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   try {
     await rateLimit(req, { key: 'opps:POST', limit: 20, window: '1m' } as any);
@@ -117,7 +118,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     return jsonError('Too Many Requests', 429);
   }
 
-  // Verifica ruolo club
+  // Verifica club
   const metaRole = String(user.user_metadata?.role ?? '').toLowerCase();
   let isClub = metaRole === 'club';
   if (!isClub) {
@@ -141,11 +142,14 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   const province = norm((body as any).province);
   const city = norm((body as any).city);
   const sport = norm((body as any).sport);
-  const roleHuman = norm((body as any).role) ?? norm((body as any).roleLabel) ?? norm((body as any).roleValue);
+  const roleHuman =
+    norm((body as any).role) ??
+    norm((body as any).roleLabel) ??
+    norm((body as any).roleValue);
   const club_name = norm((body as any).club_name);
   const { age_min, age_max } = bracketToRange((body as any).age_bracket);
 
-  // required_category: prova dai campi più comuni e normalizza verso EN (DB)
+  // Candidato per required_category (se Calcio)
   const requiredCandidate =
     norm((body as any).required_category) ??
     norm((body as any).requiredCategory) ??
@@ -153,13 +157,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     norm((body as any).playingCategory) ??
     roleHuman;
 
-  const required_category = requiredCandidate ? normalizeToEN(requiredCandidate) : null;
-
-  if (sport === 'Calcio' && !required_category) {
-    return jsonError('invalid_required_category', 400);
-  }
-
-  const insertPayload: Record<string, unknown> = {
+  const basePayload = {
     title,
     description,
     created_by: user.id,
@@ -168,21 +166,55 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     province,
     city,
     sport,
-    role: roleHuman,              // campo “descrittivo” già usato in UI
-    required_category,            // slug EN per enum DB
+    role: roleHuman, // stringa descrittiva per UI
     age_min,
     age_max,
     club_name,
   };
 
-  const { data, error } = await supabase
-    .from('opportunities')
-    .insert(insertPayload)
-    .select(
-      'id,title,description,created_by,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name'
-    )
-    .single();
+  const doInsert = async (required_category?: string) => {
+    const payload = { ...basePayload, ...(required_category ? { required_category } : {}) };
+    return supabase
+      .from('opportunities')
+      .insert(payload)
+      .select(
+        'id,title,description,created_by,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name'
+      )
+      .single();
+  };
 
-  if (error) return jsonError(error.message, 400);
-  return NextResponse.json({ data }, { status: 201 });
+  // Se non è Calcio, inserisci senza enum (o eventuale valore libero di role)
+  if (sport !== 'Calcio') {
+    const { data, error } = await doInsert(undefined);
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    return NextResponse.json({ data }, { status: 201 });
+  }
+
+  // Calcio: obbligatorio required_category → prova EN, fallback IT
+  const normEN = requiredCandidate ? normalizeToEN(requiredCandidate) : null;
+  const normIT = requiredCandidate ? normalizeToIT(requiredCandidate) : null;
+
+  if (!normEN && !normIT) {
+    return NextResponse.json(
+      { error: 'invalid_required_category', allowed_en: PLAYING_CATEGORY_EN, allowed_it: PLAYING_CATEGORY_IT },
+      { status: 400 }
+    );
+  }
+
+  // 1° tentativo EN
+  let { data, error } = await doInsert(normEN ?? undefined);
+  if (!error) return NextResponse.json({ data }, { status: 201 });
+
+  // Se Postgres rifiuta l'enum (come nel tuo screenshot), riprova IT
+  if (/invalid input value for enum .*playing_category/i.test(error.message)) {
+    const retry = await doInsert(normIT ?? undefined);
+    if (!retry.error) return NextResponse.json({ data: retry.data }, { status: 201 });
+
+    return NextResponse.json(
+      { error: 'invalid_required_category', allowed_en: PLAYING_CATEGORY_EN, allowed_it: PLAYING_CATEGORY_IT },
+      { status: 400 }
+    );
+  }
+
+  return NextResponse.json({ error: error.message }, { status: 400 });
 });

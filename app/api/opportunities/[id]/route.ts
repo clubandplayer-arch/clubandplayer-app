@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { normalizeToEN, normalizeToIT, PLAYING_CATEGORY_EN, PLAYING_CATEGORY_IT } from '@/lib/enums';
 
-// Piccolo helper: estrae una stringa sensata anche se arriva un oggetto {label,value}
+// Estrae stringhe utili anche da oggetti {label,value}
 function pickStr(v: unknown): string | null {
   if (v == null) return null;
   if (typeof v === 'string') {
@@ -78,7 +78,7 @@ export async function PATCH(
   // verifica proprietario
   const { data: opp, error: oppErr } = await supabase
     .from('opportunities')
-    .select('id, owner_id')
+    .select('id, owner_id, sport')
     .eq('id', id)
     .maybeSingle();
 
@@ -101,7 +101,7 @@ export async function PATCH(
   setIfPresent('region');
   setIfPresent('country');
 
-  // ---- required_category: normalizza SEMPRE se presente in una delle chiavi note
+  // ---- required_category: se toccato, normalizza + fallback
   const rawCandidate =
     pickStr((body as any).required_category) ??
     pickStr((body as any).requiredCategory) ??
@@ -111,44 +111,49 @@ export async function PATCH(
     pickStr((body as any).roleValue) ??
     pickStr((body as any).roleLabel);
 
-  if (rawCandidate) {
+  const touchesRole = rawCandidate != null;
+
+  const doUpdate = async (required_category?: string) => {
+    const payload = {
+      ...update,
+      ...(required_category ? { required_category } : {}),
+      updated_at: new Date().toISOString(),
+    };
+    return supabase
+      .from('opportunities')
+      .update(payload)
+      .eq('id', id)
+      .select('id')
+      .maybeSingle();
+  };
+
+  if (touchesRole) {
+    // Preferisci IT per Calcio se l’enum DB è in IT, ma rendilo robusto: prova EN poi IT
     const normEN = normalizeToEN(rawCandidate);
     const normIT = normalizeToIT(rawCandidate);
-    // DB vuole EN canonico
-    const finalEN = normEN ?? (normIT ? normalizeToEN(normIT) : null);
 
-    if (!finalEN) {
-      return NextResponse.json(
-        { error: 'invalid_required_category', allowed_en: PLAYING_CATEGORY_EN, allowed_it: PLAYING_CATEGORY_IT },
-        { status: 400 }
-      );
-    }
-    update.required_category = finalEN;
-  }
+    // 1° tentativo: EN
+    let { data, error } = await doUpdate(normEN ?? undefined);
+    if (!error) return NextResponse.json({ ok: true, data });
 
-  if (Object.keys(update).length === 0) {
-    return NextResponse.json({ error: 'empty_update' }, { status: 400 });
-  }
-
-  const payload = { ...update, updated_at: new Date().toISOString() };
-
-  const { data, error } = await supabase
-    .from('opportunities')
-    .update(payload)
-    .eq('id', id)
-    .select('id')
-    .maybeSingle();
-
-  if (error) {
+    // enum mismatch → riprova IT
     if (/invalid input value for enum .*playing_category/i.test(error.message)) {
+      const retry = await doUpdate(normIT ?? undefined);
+      if (!retry.error) return NextResponse.json({ ok: true, data: retry.data });
+
       return NextResponse.json(
         { error: 'invalid_required_category', allowed_en: PLAYING_CATEGORY_EN, allowed_it: PLAYING_CATEGORY_IT },
         { status: 400 }
       );
     }
+
+    // altri errori
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
+  // Se non si tocca il ruolo, aggiorna gli altri campi
+  const { data, error } = await doUpdate(undefined);
+  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   return NextResponse.json({ ok: true, data });
 }
 
