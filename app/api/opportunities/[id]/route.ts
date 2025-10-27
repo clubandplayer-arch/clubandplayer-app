@@ -4,12 +4,27 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
-import {
-  normalizeToEN,
-  normalizeToIT,
-  PLAYING_CATEGORY_EN,
-  PLAYING_CATEGORY_IT,
-} from '@/lib/enums';
+import { normalizeToEN, normalizeToIT, PLAYING_CATEGORY_EN, PLAYING_CATEGORY_IT } from '@/lib/enums';
+
+// Piccolo helper: estrae una stringa sensata anche se arriva un oggetto {label,value}
+function pickStr(v: unknown): string | null {
+  if (v == null) return null;
+  if (typeof v === 'string') {
+    const s = v.trim();
+    return s && s !== '[object Object]' ? s : null;
+  }
+  if (typeof v === 'object') {
+    const any = v as Record<string, unknown>;
+    const s =
+      (typeof any.value === 'string' && any.value) ||
+      (typeof any.label === 'string' && any.label) ||
+      (typeof any.name === 'string' && any.name) ||
+      (typeof any.nome === 'string' && any.nome) ||
+      '';
+    return s ? String(s).trim() : null;
+  }
+  return String(v).trim() || null;
+}
 
 // GET /api/opportunities/[id]
 export async function GET(
@@ -86,62 +101,55 @@ export async function PATCH(
   setIfPresent('region');
   setIfPresent('country');
 
-  // required_category: accetta IT/EN → prova EN, fallback IT
-  const rawRole =
-    (body as any)?.role ??
-    (body as any)?.required_category ??
-    (body as any)?.playing_category;
+  // ---- required_category: normalizza SEMPRE se presente in una delle chiavi note
+  const rawCandidate =
+    pickStr((body as any).required_category) ??
+    pickStr((body as any).requiredCategory) ??
+    pickStr((body as any).playing_category) ??
+    pickStr((body as any).playingCategory) ??
+    pickStr((body as any).role) ??
+    pickStr((body as any).roleValue) ??
+    pickStr((body as any).roleLabel);
 
-  const normEN = normalizeToEN(rawRole);
-  const normIT = normalizeToIT(rawRole);
-  if (normEN || normIT) {
-    update.required_category = normEN ?? normIT; // tentativo 1
+  if (rawCandidate) {
+    const normEN = normalizeToEN(rawCandidate);
+    const normIT = normalizeToIT(rawCandidate);
+    // DB vuole EN canonico
+    const finalEN = normEN ?? (normIT ? normalizeToEN(normIT) : null);
+
+    if (!finalEN) {
+      return NextResponse.json(
+        { error: 'invalid_required_category', allowed_en: PLAYING_CATEGORY_EN, allowed_it: PLAYING_CATEGORY_IT },
+        { status: 400 }
+      );
+    }
+    update.required_category = finalEN;
   }
 
   if (Object.keys(update).length === 0) {
     return NextResponse.json({ error: 'empty_update' }, { status: 400 });
   }
 
-  const doUpdate = async (required_category?: string) => {
-    const payload = {
-      ...update,
-      ...(required_category ? { required_category } : {}),
-      updated_at: new Date().toISOString(),
-    };
-    return supabase
-      .from('opportunities')
-      .update(payload)
-      .eq('id', id)
-      .select('id')
-      .maybeSingle();
-  };
+  const payload = { ...update, updated_at: new Date().toISOString() };
 
-  // 1° tentativo
-  let { data, error } = await doUpdate(update.required_category as string | undefined);
-  if (!error) return NextResponse.json({ ok: true, data });
+  const { data, error } = await supabase
+    .from('opportunities')
+    .update(payload)
+    .eq('id', id)
+    .select('id')
+    .maybeSingle();
 
-  // enum mismatch → riprova con l’altra lingua
-  if (/invalid input value for enum .*playing_category/i.test(error.message)) {
-    const first = update.required_category as string | undefined;
-    const second =
-      first && normEN && first === normEN ? normIT : normEN; // switch lingua
-    if (second) {
-      const retry = await doUpdate(second);
-      if (!retry.error) return NextResponse.json({ ok: true, data: retry.data });
-      error = retry.error;
+  if (error) {
+    if (/invalid input value for enum .*playing_category/i.test(error.message)) {
+      return NextResponse.json(
+        { error: 'invalid_required_category', allowed_en: PLAYING_CATEGORY_EN, allowed_it: PLAYING_CATEGORY_IT },
+        { status: 400 }
+      );
     }
-    return NextResponse.json(
-      {
-        error: 'invalid_required_category',
-        allowed_en: PLAYING_CATEGORY_EN,
-        allowed_it: PLAYING_CATEGORY_IT,
-      },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  // altri errori
-  return NextResponse.json({ error: error.message }, { status: 400 });
+  return NextResponse.json({ ok: true, data });
 }
 
 // DELETE /api/opportunities/[id]

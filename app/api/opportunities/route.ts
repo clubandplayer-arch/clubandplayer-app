@@ -3,39 +3,33 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { normalizeToEN } from '@/lib/enums';
 
 export const runtime = 'nodejs';
 
 function clamp(n: number, min: number, max: number) {
   return Math.min(Math.max(n, min), max);
 }
-
 function bracketToRange(code?: string): { age_min: number | null; age_max: number | null } {
   switch ((code || '').trim()) {
-    case '17-20':
-      return { age_min: 17, age_max: 20 };
-    case '21-25':
-      return { age_min: 21, age_max: 25 };
-    case '26-30':
-      return { age_min: 26, age_max: 30 };
-    case '31+':
-      return { age_min: 31, age_max: null };
-    default:
-      return { age_min: null, age_max: null };
+    case '17-20': return { age_min: 17, age_max: 20 };
+    case '21-25': return { age_min: 21, age_max: 25 };
+    case '26-30': return { age_min: 26, age_max: 30 };
+    case '31+':   return { age_min: 31, age_max: null };
+    default:      return { age_min: null, age_max: null };
   }
 }
-
-// Normalizza qualsiasi input (stringa/oggetto/numero) in stringa pulita o null
+// Normalizza qualsiasi input in stringa pulita (o null)
 function norm(v: unknown): string | null {
   if (v == null) return null;
   if (typeof v === 'string') {
     const s = v.trim();
-    if (!s || s === '[object Object]') return null;
-    return s;
+    return s && s !== '[object Object]' ? s : null;
   }
   if (typeof v === 'object') {
     const any = v as Record<string, unknown>;
     const s =
+      (typeof any.value === 'string' && any.value) ||
       (typeof any.label === 'string' && any.label) ||
       (typeof any.nome === 'string' && any.nome) ||
       (typeof any.name === 'string' && any.name) ||
@@ -47,10 +41,9 @@ function norm(v: unknown): string | null {
   return String(v).trim() || null;
 }
 
-/** GET /api/opportunities  — pubblico (RLS consente SELECT anche anonima) */
+/** GET /api/opportunities  — pubblico */
 export async function GET(req: NextRequest) {
   try {
-    // rate limit anche per gli anonimi
     await rateLimit(req, { key: 'opps:GET', limit: 60, window: '1m' } as any);
   } catch {
     return jsonError('Too Many Requests', 429);
@@ -79,7 +72,7 @@ export async function GET(req: NextRequest) {
   let query = supabase
     .from('opportunities')
     .select(
-      'id,title,description,created_by,created_at,country,region,province,city,sport,role,age_min,age_max,club_name',
+      'id,title,description,created_by,created_at,country,region,province,city,sport,role,age_min,age_max,club_name,required_category',
       { count: 'exact' }
     )
     .order('created_at', { ascending: sort === 'oldest' })
@@ -116,7 +109,7 @@ export async function GET(req: NextRequest) {
   });
 }
 
-/** POST /api/opportunities — deve essere un club */
+/** POST /api/opportunities — deve essere un club, + normalizzazione required_category */
 export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   try {
     await rateLimit(req, { key: 'opps:POST', limit: 20, window: '1m' } as any);
@@ -124,25 +117,15 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     return jsonError('Too Many Requests', 429);
   }
 
-  // ✅ Verifica permesso lato server
+  // Verifica ruolo club
   const metaRole = String(user.user_metadata?.role ?? '').toLowerCase();
   let isClub = metaRole === 'club';
   if (!isClub) {
-    // prova profilo (compatibile sia con chiave id sia user_id)
-    let acct: string | null | undefined = null;
-
     const tryBy = async (col: 'id' | 'user_id') => {
-      const { data } = await supabase
-        .from('profiles')
-        .select('account_type')
-        .eq(col, user.id)
-        .maybeSingle();
+      const { data } = await supabase.from('profiles').select('account_type').eq(col, user.id).maybeSingle();
       return data?.account_type as string | null | undefined;
     };
-
-    acct = await tryBy('id');
-    if (!acct) acct = await tryBy('user_id');
-
+    const acct = (await tryBy('id')) ?? (await tryBy('user_id'));
     isClub = String(acct ?? '').toLowerCase() === 'club';
   }
   if (!isClub) return jsonError('forbidden_not_club', 403);
@@ -158,31 +141,45 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   const province = norm((body as any).province);
   const city = norm((body as any).city);
   const sport = norm((body as any).sport);
-  const role = norm((body as any).role);
+  const roleHuman = norm((body as any).role) ?? norm((body as any).roleLabel) ?? norm((body as any).roleValue);
   const club_name = norm((body as any).club_name);
-
   const { age_min, age_max } = bracketToRange((body as any).age_bracket);
 
-  if (sport === 'Calcio' && !role) return jsonError('Role is required for Calcio', 400);
+  // required_category: prova dai campi più comuni e normalizza verso EN (DB)
+  const requiredCandidate =
+    norm((body as any).required_category) ??
+    norm((body as any).requiredCategory) ??
+    norm((body as any).playing_category) ??
+    norm((body as any).playingCategory) ??
+    roleHuman;
+
+  const required_category = requiredCandidate ? normalizeToEN(requiredCandidate) : null;
+
+  if (sport === 'Calcio' && !required_category) {
+    return jsonError('invalid_required_category', 400);
+  }
+
+  const insertPayload: Record<string, unknown> = {
+    title,
+    description,
+    created_by: user.id,
+    country,
+    region,
+    province,
+    city,
+    sport,
+    role: roleHuman,              // campo “descrittivo” già usato in UI
+    required_category,            // slug EN per enum DB
+    age_min,
+    age_max,
+    club_name,
+  };
 
   const { data, error } = await supabase
     .from('opportunities')
-    .insert({
-      title,
-      description,
-      created_by: user.id,
-      country,
-      region,
-      province,
-      city,
-      sport,
-      role,
-      age_min,
-      age_max,
-      club_name,
-    })
+    .insert(insertPayload)
     .select(
-      'id,title,description,created_by,created_at,country,region,province,city,sport,role,age_min,age_max,club_name'
+      'id,title,description,created_by,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name'
     )
     .single();
 
