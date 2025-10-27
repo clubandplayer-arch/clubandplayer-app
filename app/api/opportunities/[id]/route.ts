@@ -26,6 +26,19 @@ function pickStr(v: unknown): string | null {
   return String(v).trim() || null;
 }
 
+// Bracket → range
+function bracketToRange(code?: string): { age_min: number | null; age_max: number | null; known: boolean } {
+  const v = (code || '').trim();
+  switch (v) {
+    case '17-20': return { age_min: 17, age_max: 20, known: true };
+    case '21-25': return { age_min: 21, age_max: 25, known: true };
+    case '26-30': return { age_min: 26, age_max: 30, known: true };
+    case '31+':   return { age_min: 31, age_max: null, known: true };
+    case '':      return { age_min: null, age_max: null, known: true }; // reset esplicito
+    default:      return { age_min: null, age_max: null, known: false };
+  }
+}
+
 // GET /api/opportunities/[id]
 export async function GET(
   _req: NextRequest,
@@ -45,6 +58,8 @@ export async function GET(
         'sport',
         'role',
         'required_category',
+        'age_min',
+        'age_max',
         'city',
         'province',
         'region',
@@ -79,7 +94,7 @@ export async function PATCH(
   // verifica proprietario + dati correnti
   const { data: opp, error: oppErr } = await supabase
     .from('opportunities')
-    .select('id, owner_id, sport, role, required_category')
+    .select('id, owner_id, sport, role, required_category, age_min, age_max')
     .eq('id', id)
     .maybeSingle();
 
@@ -109,6 +124,51 @@ export async function PATCH(
     pickStr((body as any).roleValue);
   if (roleHuman) {
     update.role = roleHuman; // ✅ aggiorna la label visibile
+  }
+
+  // 🔹 Age: accetta sia bracket che numeri diretti
+  let touchedAge = false;
+  let nextAgeMin: number | null | undefined = undefined;
+  let nextAgeMax: number | null | undefined = undefined;
+
+  // 1) bracket
+  if ('age_bracket' in body || 'ageBracket' in body || 'age' in body) {
+    const br =
+      pickStr((body as any).age_bracket) ??
+      pickStr((body as any).ageBracket) ??
+      pickStr((body as any).age);
+
+    const { age_min, age_max, known } = bracketToRange(br ?? '');
+    if (known) {
+      nextAgeMin = age_min;
+      nextAgeMax = age_max;
+      touchedAge = true;
+    }
+  }
+
+  // 2) numeri diretti (overrides se presenti)
+  const rawMin = (body as any).age_min ?? (body as any).ageMin;
+  const rawMax = (body as any).age_max ?? (body as any).ageMax;
+  if ('age_min' in body || 'ageMin' in body) {
+    const v = Number.parseInt(String(rawMin), 10);
+    nextAgeMin = Number.isFinite(v) ? v : null;
+    touchedAge = true;
+  }
+  if ('age_max' in body || 'ageMax' in body) {
+    const v = Number.parseInt(String(rawMax), 10);
+    nextAgeMax = Number.isFinite(v) ? v : null;
+    touchedAge = true;
+  }
+
+  if (touchedAge) {
+    // Coerenza base: se entrambi presenti e min > max, scambiali
+    if (nextAgeMin != null && nextAgeMax != null && nextAgeMin > nextAgeMax) {
+      const tmp = nextAgeMin;
+      nextAgeMin = nextAgeMax;
+      nextAgeMax = tmp;
+    }
+    update.age_min = nextAgeMin ?? null;
+    update.age_max = nextAgeMax ?? null;
   }
 
   // 🔹 required_category (slug EN per enum playing_role) SOLO per Calcio
@@ -147,7 +207,7 @@ export async function PATCH(
     .from('opportunities')
     .update(payload)
     .eq('id', id)
-    .select('id')
+    .select('id, age_min, age_max, role, required_category')
     .maybeSingle();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
