@@ -43,6 +43,7 @@ export async function GET(
         'title',
         'description',
         'sport',
+        'role',
         'required_category',
         'city',
         'province',
@@ -75,10 +76,10 @@ export async function PATCH(
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
 
-  // verifica proprietario
+  // verifica proprietario + dati correnti
   const { data: opp, error: oppErr } = await supabase
     .from('opportunities')
-    .select('id, owner_id, sport')
+    .select('id, owner_id, sport, role, required_category')
     .eq('id', id)
     .maybeSingle();
 
@@ -101,17 +102,28 @@ export async function PATCH(
   setIfPresent('region');
   setIfPresent('country');
 
-  // required_category: SOLO se presente nel body e SOLO per Calcio → EN
+  // 🔹 Ruolo (label umana mostrata in lista/UI)
+  const roleHuman =
+    pickStr((body as any).role) ??
+    pickStr((body as any).roleLabel) ??
+    pickStr((body as any).roleValue);
+  if (roleHuman) {
+    update.role = roleHuman; // ✅ aggiorna la label visibile
+  }
+
+  // 🔹 required_category (slug EN per enum playing_role) SOLO per Calcio
   const rawCandidate =
     pickStr((body as any).required_category) ??
     pickStr((body as any).requiredCategory) ??
     pickStr((body as any).playing_category) ??
     pickStr((body as any).playingCategory) ??
-    pickStr((body as any).role) ??
-    pickStr((body as any).roleValue) ??
-    pickStr((body as any).roleLabel);
+    roleHuman;
 
-  if (opp.sport === 'Calcio' && rawCandidate) {
+  // se l'edit cambia lo sport in qualcosa ≠ Calcio → azzera required_category
+  const sportInBody = pickStr((body as any).sport);
+  const nextSport = sportInBody ?? opp.sport;
+
+  if (nextSport === 'Calcio' && rawCandidate) {
     const en = normalizeToEN(rawCandidate);
     if (!en) {
       return NextResponse.json(
@@ -119,7 +131,10 @@ export async function PATCH(
         { status: 400 }
       );
     }
-    update.required_category = en; // 👈 EN per enum playing_role
+    update.required_category = en;
+  } else if (sportInBody && nextSport !== 'Calcio') {
+    // se l'utente ha cambiato sport a non-Calcio, togliamo il vincolo
+    update.required_category = null;
   }
 
   if (Object.keys(update).length === 0) {
