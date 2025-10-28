@@ -1,7 +1,6 @@
 # Club and Player
 
-"Club and Player" è una piattaforma social che mette in contatto società sportive dilettantistiche e atleti, ispirata al flusso
-di lavoro di LinkedIn. Il progetto è costruito con [Next.js](https://nextjs.org/) e fa uso di Supabase per autenticazione e gestione dati.
+"Club and Player" è una piattaforma social che mette in contatto società sportive dilettantistiche e atleti, ispirata al flusso di lavoro di LinkedIn. Il progetto è costruito con [Next.js](https://nextjs.org/) e fa uso di Supabase per autenticazione e gestione dati.
 
 ## Struttura del repository
 - `app/`: pagine e route handlers dell'app Next.js (App Router).

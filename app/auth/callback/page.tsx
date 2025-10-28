@@ -1,117 +1,82 @@
-// app/auth/callback/page.tsx
-'use client';
+export const runtime = 'nodejs';
 
-import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { supabaseBrowser } from '@/lib/supabaseBrowser';
+import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
+import { createServerClient } from '@supabase/ssr';
 
-function parseFragment(hash: string): Record<string, string> {
-  const h = hash.startsWith('#') ? hash.slice(1) : hash;
-  const out: Record<string, string> = {};
-  for (const part of h.split('&')) {
-    const [k, v] = part.split('=');
-    if (k) out[decodeURIComponent(k)] = decodeURIComponent(v ?? '');
-  }
-  return out;
+type SearchParams = Record<string, string | string[] | undefined>;
+
+type Props = {
+  searchParams: SearchParams;
+};
+
+/**
+ * Next 15: cookies() è async. Questa utility replica il client SSR usato nel route handler.
+ */
+async function getServerSupabase() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const store = await cookies();
+
+  return createServerClient(supabaseUrl, supabaseKey, {
+    cookies: {
+      get: (name: string) => store.get(name)?.value,
+      set: (name: string, value: string, options: any) =>
+        store.set({ name, value, ...options }),
+      remove: (name: string, options: any) =>
+        store.set({ name, value: '', ...options, maxAge: 0 }),
+    } as any,
+    cookieOptions: { sameSite: 'lax' },
+  });
 }
 
-export default function AuthCallbackPage() {
-  const router = useRouter();
-  const search = useSearchParams();
-  const supabase = supabaseBrowser();
+function normalizeParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] ?? null : value ?? null;
+}
 
-  const [msg, setMsg] = useState('Completo l’accesso…');
-
-  // helper: sincronizza cookie SSR + bootstrap profilo + redirect smart
-  async function syncAndRoute(access_token: string, refresh_token: string) {
-    // 1) sync cookie SSR per Route Handlers
-    await fetch('/api/auth/session', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ access_token, refresh_token }),
-    }).catch(() => {});
-
-    // 2) crea la riga su profiles se manca
-    let accountType: string | null = null;
-    try {
-      const boot = await fetch('/api/profiles/bootstrap', { method: 'POST' });
-      if (boot.ok) {
-        const j = await boot.json().catch(() => ({}));
-        accountType = j?.data?.account_type ?? null;
-      }
-    } catch {
-      // non bloccare il login se il bootstrap fallisce
-    }
-
-    // 3) redirect: se non c'è role → onboarding
-    router.replace(accountType ? '/' : '/onboarding/choose-role');
+export default async function AuthCallbackPage({ searchParams }: Props) {
+  const errorParam =
+    normalizeParam(searchParams.error_description) ??
+    normalizeParam(searchParams.error);
+  if (errorParam) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center">
+        <h1 className="text-xl font-semibold">Accesso non completato</h1>
+        <p className="max-w-md text-sm text-neutral-600">
+          Non è stato possibile completare il login: {String(errorParam)}.
+          Prova a ripetere l&apos;autenticazione oppure contatta il supporto se il problema persiste.
+        </p>
+        <a
+          href="/login"
+          className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-neutral-50"
+        >
+          Torna al login
+        </a>
+      </main>
+    );
   }
 
-  useEffect(() => {
-    (async () => {
-      try {
-        // DEBUG
-        if (typeof window !== 'undefined') {
-          console.log('[callback] href:', window.location.href);
-          console.log('[callback] search:', window.location.search);
-          console.log('[callback] hash:', window.location.hash);
-        }
+  const code = normalizeParam(searchParams.code);
+  if (!code) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center">
+        <h1 className="text-xl font-semibold">Accesso non completato</h1>
+        <p className="max-w-md text-sm text-neutral-600">
+          Supabase non ha fornito il codice di autenticazione necessario.
+          Chiudi la finestra e ripeti l&apos;operazione di login dal portale principale.
+        </p>
+      </main>
+    );
+  }
 
-        // ---- (1) Implicit flow (#access_token & #refresh_token)
-        if (typeof window !== 'undefined' && window.location.hash) {
-          const frag = parseFragment(window.location.hash);
-          const fragmentErr = frag['error_description'] || frag['error'];
-          if (fragmentErr) throw new Error(fragmentErr);
+  const supabase = await getServerSupabase();
 
-          const access_token = frag['access_token'] || null;
-          const refresh_token = frag['refresh_token'] || null;
+  try {
+    await supabase.auth.exchangeCodeForSession(code);
+  } catch {
+    // @ts-expect-error: fallback per la firma alternativa supportata da supabase-js
+    await supabase.auth.exchangeCodeForSession({ authCode: code });
+  }
 
-          if (access_token && refresh_token) {
-            // salva la sessione nel client SDK
-            const { error } = await supabase.auth.setSession({ access_token, refresh_token });
-            if (error) throw error;
-
-            await syncAndRoute(access_token, refresh_token);
-            return;
-          }
-        }
-
-        // ---- (2) PKCE flow (?code=...)
-        const code = search.get('code');
-        if (code) {
-          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-          if (error) throw error;
-
-          const session = data.session;
-          if (session?.access_token && session?.refresh_token) {
-            await syncAndRoute(session.access_token, session.refresh_token);
-            return;
-          }
-
-          // se manca la sessione, errore esplicito
-          throw new Error('Sessione non disponibile dopo exchange PKCE.');
-        }
-
-        // ---- (3) Nessun token, nessun code → errore
-        const err =
-          search.get('error_description') ||
-          search.get('error') ||
-          'Missing auth response';
-        throw new Error(err);
-      } catch (e: any) {
-        console.error(e);
-        setMsg(e?.message ?? 'Errore durante il login.');
-      }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  return (
-    <main className="min-h-[60vh] flex items-center justify-center p-6">
-      <div className="w-full max-w-sm rounded-2xl border p-6 shadow-sm space-y-2 text-center">
-        <div className="text-lg font-semibold">Accesso</div>
-        <p className="text-sm text-gray-600">{msg}</p>
-      </div>
-    </main>
-  );
+  redirect('/feed');
 }

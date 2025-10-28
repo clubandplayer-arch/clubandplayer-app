@@ -9,8 +9,8 @@ type P = {
   display_name?: string | null;
   bio?: string | null;
   birth_year?: number | null;
-  birth_place?: string | null;
-  city?: string | null;
+  birth_place?: string | null; // NEW
+  city?: string | null;        // residenza
   country?: string | null;
   foot?: string | null;
   height_cm?: number | null;
@@ -19,7 +19,12 @@ type P = {
   interest_province_id?: number | null;
   interest_municipality_id?: number | null;
   avatar_url?: string | null;
-  links?: { instagram?: string | null; facebook?: string | null; tiktok?: string | null; x?: string | null } | null;
+  links?: {
+    instagram?: string | null;
+    facebook?: string | null;
+    tiktok?: string | null;
+    x?: string | null;
+  } | null;
 };
 
 type Row = { id: number; name: string };
@@ -66,7 +71,7 @@ function nameToIso2(v?: string | null): string | null {
 
 export default function ProfileMiniCard() {
   const [p, setP] = useState<P | null>(null);
-  const [place, setPlace] = useState<string>('—');
+  const [place, setPlace] = useState<string>('—'); // residenza
 
   useEffect(() => {
     (async () => {
@@ -76,6 +81,7 @@ export default function ProfileMiniCard() {
         const j = (raw && typeof raw === 'object' && 'data' in raw ? (raw as any).data : raw) || {};
         setP(j || {});
 
+        // etichetta luogo (residenza) da cascade se city non presente
         let label = (j?.city ?? '').trim();
         if (!label) {
           const [mun, prov, reg] = await Promise.all([
@@ -105,6 +111,7 @@ export default function ProfileMiniCard() {
   const age = p?.birth_year ? Math.max(0, year - p.birth_year) : null;
   const name = p?.full_name || p?.display_name || 'Benvenuto!';
 
+  // nazionalità
   const iso = nameToIso2(p?.country);
   const countryLabel = iso ? DN_IT.of(iso) || iso : (p?.country || '');
   const flagUrl = iso ? `https://flagcdn.com/20x15/${iso.toLowerCase()}.png` : null;
@@ -131,6 +138,7 @@ export default function ProfileMiniCard() {
   return (
     <div className="rounded-2xl border p-4 shadow-sm">
       <div className="flex items-start gap-3">
+        {/* Avatar verticale 4:5 se presente */}
         {p?.avatar_url ? (
           <img src={p.avatar_url} alt={name} className="h-24 w-[4.8rem] flex-shrink-0 rounded-xl object-cover" />
         ) : (
@@ -138,6 +146,8 @@ export default function ProfileMiniCard() {
         )}
         <div className="min-w-0">
           <div className="text-base font-semibold">{name}</div>
+
+          {/* righe tipo Transfermarkt */}
           {place ? <div className="text-xs text-gray-600">Luogo di residenza: <span className="font-normal">{place}</span></div> : null}
           {p?.birth_place ? <div className="text-xs text-gray-600">Luogo di nascita: <span className="font-normal">{p.birth_place}</span></div> : null}
           {(iso || p?.country) ? (
@@ -161,26 +171,25 @@ export default function ProfileMiniCard() {
 
       {(socials.instagram || socials.facebook || socials.tiktok || socials.x) && (
         <div className="mt-3 flex items-center gap-2">
-          {/* icone social (omesse per brevità, identiche alla tua versione) */}
           {socials.instagram && (
-            <a href={socials.instagram} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="inline-flex h-9 w-9 items-center justify-center rounded-full border text-neutral-700 hover:bg-neutral-50">
-              <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#E1306C" d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5z"/><circle cx="12" cy="12" r="3.2" fill="#fff"/><circle cx="17.3" cy="6.7" r="1.4" fill="#fff"/></svg>
-            </a>
+            <IconWrap href={socials.instagram} label="Instagram">
+              <svg width="20" height="20" viewBox="0 0 24 24"><defs/><path fill="#E1306C" d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5z"/><circle cx="12" cy="12" r="3.2" fill="#fff"/><circle cx="17.3" cy="6.7" r="1.4" fill="#fff"/></svg>
+            </IconWrap>
           )}
           {socials.facebook && (
-            <a href={socials.facebook} target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="inline-flex h-9 w-9 items-center justify-center rounded-full border text-neutral-700 hover:bg-neutral-50">
+            <IconWrap href={socials.facebook} label="Facebook">
               <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#1877F2" d="M22 12a10 10 0 1 0-11.6 9.9v-7H8v-3h2.4V9.8c0-2.4 1.4-3.7 3.6-3.7 1 0 2 .2 2 .2v2.2h-1.1c-1.1 0-1.5.7-1.5 1.5V12h2.6l-.4 2.9h-2.2v7A10 10 0 0 0 22 12z"/></svg>
-            </a>
+            </IconWrap>
           )}
           {socials.tiktok && (
-            <a href={socials.tiktok} target="_blank" rel="noopener noreferrer" aria-label="TikTok" className="inline-flex h-9 w-9 items-center justify-center rounded-full border text-neutral-700 hover:bg-neutral-50">
+            <IconWrap href={socials.tiktok} label="TikTok">
               <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#000" d="M16 3c.6 2.2 2.2 4 4.3 4.7V11a8.3 8.3 0 0 1-4.3-1.3v6.1a5.9 5.9 0 1 1-5.9-5.9c.5 0 1 .1 1.5.2v2.7a3.2 3.2 0 1 0 2.2 3V3h2.2z"/></svg>
-            </a>
+            </IconWrap>
           )}
           {socials.x && (
-            <a href={socials.x} target="_blank" rel="noopener noreferrer" aria-label="X" className="inline-flex h-9 w-9 items-center justify-center rounded-full border text-neutral-700 hover:bg-neutral-50">
+            <IconWrap href={socials.x} label="X">
               <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#111" d="M3 3h4.6l4.1 5.8L16.8 3H21l-7.2 9.1L21.5 21h-4.6l-4.6-6.4L7.2 21H3l7.6-9.6L3 3z"/></svg>
-            </a>
+            </IconWrap>
           )}
         </div>
       )}

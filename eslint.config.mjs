@@ -42,7 +42,13 @@ const nextCoreWebVitals = {
 export default [
   // ignora build e vendor
   {
-    ignores: ["**/.next/**", "**/node_modules/**", "**/dist/**", "**/build/**"],
+    ignores: [
+      "**/.next/**",
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/build/**",
+      "next-env.d.ts",
+    ],
   },
 
   // base JS recommended
@@ -81,19 +87,16 @@ export default [
     },
   },
 
-  // Aggiusta qualche regoletta comune del tuo repo (facoltative)
+  // Aggiusta qualche regoletta comune del repo
   {
     files: ["**/*.{ts,tsx,cts,mts}"],
     rules: {
-      // Evita false positive con try/catch “vuoti” che abbiamo commentato
       "no-empty": ["error", { "allowEmptyCatch": true }],
-      // Preferisci la variante TS per unused vars; ignora underscores
       "no-unused-vars": "off",
       "@typescript-eslint/no-unused-vars": [
         "warn",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrors: "none" },
       ],
-      // Nel codice attuale circolano ancora molti `any` espliciti
       "@typescript-eslint/no-explicit-any": "off",
     },
   },

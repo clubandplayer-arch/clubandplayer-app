@@ -64,8 +64,10 @@ export default function FeedPage() {
             </div>
           </div>
 
+          {/* 🔴 DATI REALI: Ultime opportunità */}
           <FeedLatest />
 
+          {/* 🔴 DATI REALI: Post dal DB */}
           <div className="card p-4">
             <div className="mb-3 text-sm font-medium">Aggiornamenti della community</div>
             <FeedPosts />
@@ -77,10 +79,26 @@ export default function FeedPage() {
           <div className="card p-4">
             <h3 className="mb-3 text-sm font-semibold text-neutral-700 dark:text-neutral-200">🔥 Trending</h3>
             <ul className="space-y-2 text-sm">
-              <li><Link href="/search/athletes?trend=mercato" className="link">Calciomercato Dilettanti</Link></li>
-              <li><Link href="/opportunities?role=goalkeeper&gender=f" className="link">Portieri femminili U21</Link></li>
-              <li><Link href="/feed?tag=preparazione" className="link">Preparazione invernale</Link></li>
-              <li><Link href="/opportunities?league=serie-d&role=winger" className="link">Serie D – Esterni veloci</Link></li>
+              <li>
+                <Link href="/search/athletes?trend=mercato" className="link">
+                  Calciomercato Dilettanti
+                </Link>
+              </li>
+              <li>
+                <Link href="/opportunities?role=goalkeeper&gender=f" className="link">
+                  Portieri femminili U21
+                </Link>
+              </li>
+              <li>
+                <Link href="/feed?tag=preparazione" className="link">
+                  Preparazione invernale
+                </Link>
+              </li>
+              <li>
+                <Link href="/opportunities?league=serie-d&role=winger" className="link">
+                  Serie D – Esterni veloci
+                </Link>
+              </li>
             </ul>
           </div>
 
