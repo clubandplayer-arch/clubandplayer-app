@@ -1,177 +1,133 @@
-'use client'
+'use client';
 
-import { useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import SocialLogin from '@/components/auth/SocialLogin'
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useMemo, useState } from 'react';
+import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
-const SUPA_URL  = process.env.NEXT_PUBLIC_SUPABASE_URL  ?? ''
-const SUPA_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''
-const HAS_ENV   = Boolean(SUPA_URL && SUPA_ANON)
-
-const FIXED_ALLOWED = new Set<string>([
-  'https://clubandplayer-app.vercel.app',
-  'http://localhost:3000',
-])
+function safeNext(sp: URLSearchParams) {
+  const raw = sp.get('redirect_to') || '/feed';
+  return raw.startsWith('/') ? raw : '/feed';
+}
 
 export default function LoginPage() {
-  const router = useRouter()
+  const router = useRouter();
+  const search = useSearchParams();
+  const supabase = supabaseBrowser();
 
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [errorMsg, setErrorMsg] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [currentEmail, setCurrentEmail] = useState<string | null>(null)
+  const next = useMemo(() => safeNext(search), [search]);
 
-  const BUILD_TAG = 'login-v5 Google+Email cookie-sync'
+  // se il callback ti ha rimandato un errore OAuth lo mostriamo qui
+  const initialErr = search.get('oauth_error') || null;
+  const [error, setError] = useState<string | null>(initialErr);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const origin   = typeof window !== 'undefined' ? window.location.origin   : ''
-  const hostname = typeof window !== 'undefined' ? window.location.hostname : ''
-
-  const oauthAllowedHere = useMemo(() => {
+  async function signInWithGoogle() {
+    setLoading(true);
+    setError(null);
     try {
-      if (!origin) return false
-      if (FIXED_ALLOWED.has(origin)) return true
-      if (hostname.endsWith('.vercel.app')) return true
-      return false
-    } catch {
-      return false
-    }
-  }, [origin, hostname])
+      const origin = window.location.origin;
+      const redirectTo = `${origin}/auth/callback?redirect_to=${encodeURIComponent(next)}`;
 
-  const oauthReady = HAS_ENV && oauthAllowedHere
-
-  useEffect(() => {
-    let active = true
-    if (!HAS_ENV) return
-    ;(async () => {
-      const { createClient } = await import('@supabase/supabase-js')
-      const supabase = createClient(SUPA_URL, SUPA_ANON)
-      const { data: { user } } = await supabase.auth.getUser()
-      if (active) setCurrentEmail(user?.email ?? null)
-    })()
-    return () => { active = false }
-  }, [])
-
-  async function signInEmail(e: React.FormEvent) {
-    e.preventDefault()
-    setErrorMsg(null)
-    if (!HAS_ENV) {
-      setErrorMsg('Config mancante: NEXT_PUBLIC_SUPABASE_*')
-      return
-    }
-    setLoading(true)
-    try {
-      const { createClient } = await import('@supabase/supabase-js')
-      const supabase = createClient(SUPA_URL, SUPA_ANON)
-
-      const { data: { session }, error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) throw error
-      if (!session) throw new Error('Sessione mancante dopo login')
-
-      const r = await fetch('/api/auth/session', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          access_token: session.access_token,
-          refresh_token: session.refresh_token,
-        }),
-      })
-      if (!r.ok) {
-        const j = await r.json().catch(() => ({}))
-        throw new Error(j?.error || 'Sync cookie fallito')
-      }
-
-      router.replace('/')
-    } catch (err: any) {
-      setErrorMsg(err?.message ?? 'Errore login')
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo,
+          queryParams: { access_type: 'offline', prompt: 'consent' },
+        },
+      } as any);
+      if (error) throw error;
+      // Redireziona automaticamente verso Google → Supabase → /auth/callback
+    } catch (e: any) {
+      setError(e?.message || 'Errore login con Google');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
-  async function signOut() {
-    if (!HAS_ENV) return
-    const { createClient } = await import('@supabase/supabase-js')
-    const supabase = createClient(SUPA_URL, SUPA_ANON)
-    await supabase.auth.signOut()
-    setCurrentEmail(null)
+  async function signInWithEmail(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+
+      // Allinea cookie lato server per i route handlers (best effort)
+      const at = data.session?.access_token;
+      const rt = data.session?.refresh_token;
+      if (at && rt) {
+        await fetch('/api/auth/session', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ access_token: at, refresh_token: rt }),
+        }).catch(() => {});
+      }
+
+      router.replace(next);
+    } catch (e: any) {
+      setError(e?.message || 'Credenziali non valide');
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
-    <main className="min-h-[60vh] flex items-center justify-center p-6">
-      <div className="w-full max-w-sm rounded-2xl border p-6 shadow-sm space-y-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold">Login</h1>
-          <span className="text-[10px] rounded bg-gray-100 px-2 py-0.5 text-gray-600" title={BUILD_TAG}>
-            {BUILD_TAG}
-          </span>
+    <main className="min-h-[70vh] grid place-items-center p-6">
+      <div className="w-full max-w-md rounded-2xl border p-6 shadow-sm space-y-4">
+        <h1 className="text-xl font-semibold text-center">Accedi</h1>
+
+        {error ? (
+          <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+            {error}
+          </div>
+        ) : null}
+
+        <button
+          type="button"
+          onClick={signInWithGoogle}
+          disabled={loading}
+          className="w-full rounded-lg border px-4 py-2 text-sm hover:bg-gray-50 disabled:opacity-60"
+        >
+          Continua con Google
+        </button>
+
+        <div className="relative my-2">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-white px-2 text-gray-500">oppure</span>
+          </div>
         </div>
 
-        {!HAS_ENV && (
-          <div className="rounded-md border border-yellow-300 bg-yellow-50 p-2 text-sm text-yellow-800">
-            Variabili mancanti:
-            <pre className="mt-1 whitespace-pre-wrap text-xs">
-{`NEXT_PUBLIC_SUPABASE_URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY`}
-            </pre>
-          </div>
-        )}
-
-        {oauthReady ? (
-          <div className="space-y-3">
-            <SocialLogin />
-            <div className="flex items-center gap-3 text-xs text-gray-500">
-              <span className="h-px flex-1 bg-gray-200" />
-              <span>oppure</span>
-              <span className="h-px flex-1 bg-gray-200" />
-            </div>
-          </div>
-        ) : (
-          <div className="rounded-md border border-blue-200 bg-blue-50 p-2 text-xs text-blue-800">
-            Google OAuth non abilitato su questo dominio (<code>{origin || 'n/d'}</code>).
-          </div>
-        )}
-
-        {errorMsg && (
-          <p className="rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700">
-            {errorMsg}
-          </p>
-        )}
-
-        <form onSubmit={signInEmail} className="space-y-3">
+        <form onSubmit={signInWithEmail} className="space-y-3">
           <input
             type="email"
-            placeholder="Email"
-            className="w-full rounded-md border px-3 py-2"
+            required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            required
-            autoComplete="email"
+            placeholder="Email"
+            className="w-full rounded-lg border px-3 py-2 text-sm"
           />
           <input
             type="password"
-            placeholder="Password"
-            className="w-full rounded-md border px-3 py-2"
+            required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            required
-            autoComplete="current-password"
+            placeholder="Password"
+            className="w-full rounded-lg border px-3 py-2 text-sm"
           />
           <button
-            disabled={loading || !HAS_ENV}
-            className="w-full rounded-md bg-blue-600 py-2 text-white disabled:opacity-50"
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-lg bg-black px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-60"
           >
-            {loading ? 'Accesso…' : 'Entra'}
+            Accedi
           </button>
         </form>
-
-        {currentEmail && (
-          <div className="mt-2 text-center text-xs text-gray-600">
-            Sei loggato come <strong>{currentEmail}</strong>.{' '}
-            <button onClick={signOut} className="underline">Esci</button>
-          </div>
-        )}
       </div>
     </main>
-  )
+  );
 }
