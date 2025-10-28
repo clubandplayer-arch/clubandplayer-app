@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -167,12 +168,9 @@ export default function OpportunitiesClient() {
         <div className="flex-1" />
 
         {role === 'club' && (
-          <a
-            className="rounded-md bg-black px-3 py-2 text-sm text-white hover:opacity-90"
-            href="/opportunities/new"
-          >
+          <Link className="rounded-md bg-black px-3 py-2 text-sm text-white hover:opacity-90" href="/opportunities/new">
             + Nuova opportunità
-          </a>
+          </Link>
         )}
 
         <button
@@ -224,23 +222,23 @@ export default function OpportunitiesClient() {
                     </div>
 
                     {/* Azioni */}
-                    <a
+                    <Link
                       href={`/opportunities/${o.id}`}
                       className="rounded-md border px-2 py-1 text-xs hover:bg-gray-50"
                       title="Apri dettaglio"
                     >
                       Apri
-                    </a>
+                    </Link>
 
                     {role === 'club' && isOwner(o) && (
                       <>
-                        <a
+                        <Link
                           href={`/club/post/edit/${o.id}`}
                           className="rounded-md border px-2 py-1 text-xs hover:bg-gray-50"
                           title="Modifica"
                         >
                           Modifica
-                        </a>
+                        </Link>
                         <button
                           className="rounded-md border px-2 py-1 text-xs hover:bg-red-50"
                           onClick={() => onDelete(o.id)}

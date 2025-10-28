@@ -33,7 +33,7 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   const athleteIds = Array.from(new Set(apps.map(a => a.athlete_id).filter(Boolean)));
 
   // profili atleti
-  let profilesMap = new Map<string, { id: string; display_name: string | null; profile_type: string | null }>();
+  const profilesMap = new Map<string, { id: string; display_name: string | null; profile_type: string | null }>();
   if (athleteIds.length) {
     const { data: profs } = await supabase
       .from('profiles')

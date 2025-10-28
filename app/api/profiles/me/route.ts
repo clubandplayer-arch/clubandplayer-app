@@ -134,7 +134,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   if (updates.interest_country === undefined) updates.interest_country = 'IT';
 
-  let { data, error } = await supabase
+  const { data, error } = await supabase
     .from('profiles')
     .update({ ...updates, updated_at: new Date().toISOString() })
     .eq('user_id', user.id)

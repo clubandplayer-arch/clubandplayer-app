@@ -62,7 +62,6 @@ const supabase = createSupabaseClient(
 /* ---------- helpers bandiera/nome paese ---------- */
 function getRegionCodes(): string[] {
   try {
-    // @ts-ignore
     return (Intl as any).supportedValuesOf?.('region') ?? [];
   } catch {
     return [];

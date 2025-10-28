@@ -99,7 +99,6 @@ async function rpcChildren(level: LocationLevel, parent: number | null) {
 // elenco paesi
 function getCountries(): { code: string; name: string }[] {
   try {
-    // @ts-ignore
     const codes: string[] = (Intl as any).supportedValuesOf?.('region') ?? [];
     const two = codes.filter((c) => /^[A-Z]{2}$/.test(c));
     const dn = new Intl.DisplayNames(['it'], { type: 'region' });
@@ -151,7 +150,6 @@ function normalizeCountryCode(v?: string | null) {
   if (aliases[key]) return aliases[key];
 
   try {
-    // @ts-ignore
     const codes: string[] = (Intl as any).supportedValuesOf?.('region') ?? [];
     const dnIt = new Intl.DisplayNames(['it'], { type: 'region' });
     const dnEn = new Intl.DisplayNames(['en'], { type: 'region' });
