@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 /**
  * SSE endpoint minimale per notifiche lato client.
  * Invia un ping ogni 25s e chiude correttamente sullo stop della richiesta.

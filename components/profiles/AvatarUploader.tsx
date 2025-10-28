@@ -1,6 +1,7 @@
+/* eslint-disable @next/next/no-img-element */
 'use client';
 
-import { useRef, useState, useCallback, useMemo, useEffect } from 'react';
+import { useRef, useState, useCallback } from 'react';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import Cropper, { Area } from 'react-easy-crop';
 

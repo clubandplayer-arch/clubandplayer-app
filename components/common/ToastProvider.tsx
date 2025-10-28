@@ -94,10 +94,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       // Implementazione minima per sbloccare il deploy.
       // Sostituisci con la tua UI di toast preferita in futuro.
       if (title) {
-        // eslint-disable-next-line no-console
         console.log(prefix, title, "-", message, duration ? `(dur:${duration}ms)` : "");
       } else {
-        // eslint-disable-next-line no-console
         console.log(prefix, message, duration ? `(dur:${duration}ms)` : "");
       }
     },

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import OpportunityCard from '@/components/opportunities/OpportunityCard';
 import type { Opportunity } from '@/types/opportunity';
 
@@ -120,7 +120,7 @@ export default function FeedOpportunities() {
           key={opp.id}
           opp={opp}
           userRole={role}
-          currentUserId={meId}
+          _currentUserId={meId}
           alreadyApplied={!!appliedMap[opp.id]}
           onApplied={(id) => setAppliedMap((m) => ({ ...m, [id]: true }))}
         />
