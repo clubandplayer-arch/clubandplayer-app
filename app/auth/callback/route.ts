@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
   if (err) {
     return NextResponse.redirect(
       `${url.origin}/login?oauth_error=${encodeURIComponent(String(err))}`,
-      { status: 302 },
+      { status: 302 }
     );
   }
 
@@ -44,20 +44,19 @@ export async function GET(req: NextRequest) {
   if (!code) {
     return NextResponse.redirect(
       `${url.origin}/login?oauth_error=${encodeURIComponent('Missing auth code')}`,
-      { status: 302 },
+      { status: 302 }
     );
   }
 
   const supabase = await getServerSupabase();
 
+  // Gestisce entrambe le versioni dell’SDK:
+  // - nuova: exchangeCodeForSession({ authCode })
+  // - vecchia: exchangeCodeForSession(code)
   try {
-    // firma 1
-    // @ts-expect-error: supabase-js accetta anche la stringa
-    await supabase.auth.exchangeCodeForSession(code);
+    await supabase.auth.exchangeCodeForSession({ authCode: code } as any);
   } catch {
-    // firma 2 (fallback)
-    // @ts-expect-error
-    await supabase.auth.exchangeCodeForSession({ authCode: code });
+    await (supabase.auth as any).exchangeCodeForSession(code);
   }
 
   return NextResponse.redirect(`${url.origin}${next}`, { status: 302 });
