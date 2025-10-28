@@ -1,13 +1,14 @@
 'use client';
 
+import Link from 'next/link';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 type Opportunity = {
   id: string | number;
   title?: string | null;
   description?: string | null;
   created_at?: string | null;
-  created_by?: string | null;
 };
 
 type ApiResponse = {
@@ -17,8 +18,6 @@ type ApiResponse = {
 };
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
-
-type Role = 'club' | 'athlete' | 'guest';
 
 export default function OpportunitiesClient() {
   const [serverRows, setServerRows] = useState<Opportunity[]>([]);
@@ -31,22 +30,19 @@ export default function OpportunitiesClient() {
   const [page, setPage] = useState<number>(1);
   const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc');
 
-  // ruolo + utente corrente (per ownership)
-  const [role, setRole] = useState<Role>('guest');
-  const [userId, setUserId] = useState<string | null>(null);
+  // ruolo utente per abilitare azioni
+  const [role, setRole] = useState<string | null>(null);
 
   const fetchData = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     setErr(null);
     try {
-      // Ruolo & utente dal backend
-      const rRole = await fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store', signal });
-      const jRole = await rRole.json().catch(() => ({}));
-      const rawRole = (jRole?.role ?? '').toString().toLowerCase();
-      setRole(rawRole === 'club' || rawRole === 'athlete' ? rawRole : 'guest');
-      setUserId(jRole?.user?.id ?? null);
+      // Ruolo user
+      const supabase = supabaseBrowser();
+      const { data } = await supabase.auth.getUser();
+      setRole((data.user?.user_metadata as any)?.role ?? null);
 
-      // Dati opportunità (include created_by)
+      // Dati
       const url = new URL('/api/opportunities', window.location.origin);
       url.searchParams.set('limit', String(200));
       url.searchParams.set('offset', '0');
@@ -59,7 +55,7 @@ export default function OpportunitiesClient() {
       const json: ApiResponse = await res.json();
       setServerRows(Array.isArray(json.data) ? json.data : []);
     } catch (e: any) {
-      if (e?.name !== 'AbortError') setErr(e?.message ?? 'Errore di rete');
+      setErr(e?.message ?? 'Errore di rete');
     } finally {
       setLoading(false);
     }
@@ -118,14 +114,12 @@ export default function OpportunitiesClient() {
         const text = await res.text().catch(() => '');
         throw new Error(text || `HTTP ${res.status}`);
       }
-      // refresh
+      // Refresh lista
       fetchData();
     } catch (e: any) {
       alert(e?.message ?? 'Errore durante l’eliminazione.');
     }
   };
-
-  const isOwner = (row: Opportunity) => !!userId && !!row.created_by && row.created_by === userId;
 
   return (
     <section className="space-y-4">
@@ -159,7 +153,9 @@ export default function OpportunitiesClient() {
             onChange={(e) => setPageSize(Number(e.target.value))}
           >
             {PAGE_SIZE_OPTIONS.map((n) => (
-              <option key={n} value={n}>{n}</option>
+              <option key={n} value={n}>
+                {n}
+              </option>
             ))}
           </select>
         </div>
@@ -167,12 +163,12 @@ export default function OpportunitiesClient() {
         <div className="flex-1" />
 
         {role === 'club' && (
-          <a
+          <Link
             className="rounded-md bg-black px-3 py-2 text-sm text-white hover:opacity-90"
             href="/opportunities/new"
           >
             + Nuova opportunità
-          </a>
+          </Link>
         )}
 
         <button
@@ -217,38 +213,18 @@ export default function OpportunitiesClient() {
                       <div className="text-sm text-gray-600 line-clamp-2">{o.description}</div>
                     )}
                   </div>
-
                   <div className="flex items-center gap-2">
                     <div className="text-xs text-gray-500 text-right">
                       {o.created_at ? new Date(o.created_at).toLocaleString() : '—'}
                     </div>
-
-                    {/* Azioni */}
-                    <a
-                      href={`/opportunities/${o.id}`}
-                      className="rounded-md border px-2 py-1 text-xs hover:bg-gray-50"
-                      title="Apri dettaglio"
-                    >
-                      Apri
-                    </a>
-
-                    {role === 'club' && isOwner(o) && (
-                      <>
-                        <a
-                          href={`/club/post/edit/${o.id}`}
-                          className="rounded-md border px-2 py-1 text-xs hover:bg-gray-50"
-                          title="Modifica"
-                        >
-                          Modifica
-                        </a>
-                        <button
-                          className="rounded-md border px-2 py-1 text-xs hover:bg-red-50"
-                          onClick={() => onDelete(o.id)}
-                          title="Elimina"
-                        >
-                          Elimina
-                        </button>
-                      </>
+                    {role === 'club' && (
+                      <button
+                        className="rounded-md border px-2 py-1 text-xs hover:bg-red-50"
+                        onClick={() => onDelete(o.id)}
+                        title="Elimina"
+                      >
+                        Elimina
+                      </button>
                     )}
                   </div>
                 </div>
@@ -283,3 +259,4 @@ export default function OpportunitiesClient() {
     </section>
   );
 }
+

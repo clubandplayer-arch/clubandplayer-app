@@ -27,20 +27,16 @@ export default function FeedPage() {
 
   return (
     <main className="container mx-auto px-4 py-6">
-      {/* h1 “nascosto” per SEO/accessibilità senza cambiare il layout */}
       <h1 className="sr-only">Bacheca</h1>
 
-      {/* Griglia tipo LinkedIn: 3 colonne su lg (3/6/3), singola colonna su mobile */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         {/* SINISTRA */}
         <aside className="hidden lg:col-span-3 lg:flex lg:flex-col lg:gap-6">
-          {/* Mini profilo (sostituisce “Benvenuto! / Vai al profilo”) */}
           <div className="card p-4">
             <div className="mb-2 text-sm text-neutral-500">Il tuo profilo</div>
             <ProfileMiniCard />
           </div>
 
-          {/* Azioni rapide per club */}
           {role === 'club' && (
             <div className="card p-4">
               <div className="mb-2 text-sm text-neutral-500">Azioni rapide</div>
@@ -58,7 +54,6 @@ export default function FeedPage() {
 
         {/* CENTRO */}
         <section className="lg:col-span-6 flex flex-col gap-6">
-          {/* Composer (placeholder per ora) */}
           <div className="card p-4">
             <div className="mb-3 text-sm text-neutral-500">Condividi un aggiornamento</div>
             <textarea className="textarea" rows={3} placeholder="Scrivi qualcosa…" />
@@ -69,10 +64,8 @@ export default function FeedPage() {
             </div>
           </div>
 
-          {/* 🔴 DATI REALI: Ultime opportunità */}
           <FeedLatest />
 
-          {/* 🔴 DATI REALI: Post dal DB */}
           <div className="card p-4">
             <div className="mb-3 text-sm font-medium">Aggiornamenti della community</div>
             <FeedPosts />
@@ -84,14 +77,13 @@ export default function FeedPage() {
           <div className="card p-4">
             <h3 className="mb-3 text-sm font-semibold text-neutral-700 dark:text-neutral-200">🔥 Trending</h3>
             <ul className="space-y-2 text-sm">
-              <li><a href="/search/athletes?trend=mercato" className="link">Calciomercato Dilettanti</a></li>
-              <li><a href="/opportunities?role=goalkeeper&gender=f" className="link">Portieri femminili U21</a></li>
-              <li><a href="/feed?tag=preparazione" className="link">Preparazione invernale</a></li>
-              <li><a href="/opportunities?league=serie-d&role=winger" className="link">Serie D – Esterni veloci</a></li>
+              <li><Link href="/search/athletes?trend=mercato" className="link">Calciomercato Dilettanti</Link></li>
+              <li><Link href="/opportunities?role=goalkeeper&gender=f" className="link">Portieri femminili U21</Link></li>
+              <li><Link href="/feed?tag=preparazione" className="link">Preparazione invernale</Link></li>
+              <li><Link href="/opportunities?league=serie-d&role=winger" className="link">Serie D – Esterni veloci</Link></li>
             </ul>
           </div>
 
-          {/* 👥 Suggerimenti dinamici */}
           <WhoToFollow />
         </aside>
       </div>
