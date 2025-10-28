@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 // components/profiles/ProfileMiniCard.tsx
 'use client';
 
@@ -204,7 +205,7 @@ export default function ProfileMiniCard() {
     <div className="rounded-2xl border p-4 shadow-sm">
       <div className="flex items-start gap-3">
         {p?.avatar_url ? (
-          <img src={p.avatar_url} alt={name} className="h-24 w-[4.8rem] flex-shrink-0 rounded-xl object-cover" />
+<img src={p.avatar_url} alt={name} className="h-24 w-[4.8rem] flex-shrink-0 rounded-xl object-cover" />
         ) : (
           <div className="h-24 w-[4.8rem] flex-shrink-0 rounded-xl bg-gray-200" />
         )}

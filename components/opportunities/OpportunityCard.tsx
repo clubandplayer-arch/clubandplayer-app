@@ -8,7 +8,7 @@ type Role = 'athlete' | 'club' | 'guest';
 
 type Props = {
   opp: Opportunity;
-  currentUserId?: string | null;
+  _currentUserId?: string | null;
   userRole?: Role;
   alreadyApplied?: boolean;
   onApplied?: (id: string) => void;
@@ -16,7 +16,7 @@ type Props = {
 
 export default function OpportunityCard({
   opp,
-  currentUserId,
+  _currentUserId,
   userRole = 'guest',
   alreadyApplied,
   onApplied,
