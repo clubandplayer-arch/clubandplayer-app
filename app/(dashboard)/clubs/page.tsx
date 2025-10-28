@@ -1,8 +1,9 @@
-'use client';
-
 // app/(dashboard)/clubs/page.tsx
-import ClubsClient from './ClubsClient';
+import { notFound } from 'next/navigation';
 
-export default function ClubsPage() {
-  return <ClubsClient />;
+export const dynamic = 'force-static';
+
+export default function Page() {
+  // Questa rotta non esiste più.
+  notFound();
 }

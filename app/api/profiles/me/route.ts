@@ -35,16 +35,29 @@ function toJsonOrNull(v: unknown) {
   return null;
 }
 
-/** Mappa dei campi ammessi in PATCH e del tipo */
+/** campi ammessi in PATCH */
 const FIELDS: Record<string, 'text' | 'number' | 'bool' | 'json'> = {
-  // anagrafica
+  // anagrafica comune
   full_name: 'text',
   display_name: 'text',
   bio: 'text',
-  city: 'text',            // residenza
+  country: 'text', // nazionalità
+
+  // atleta (solo per account_type=athlete)
   birth_year: 'number',
-  birth_place: 'text',     // NEW: luogo di nascita (città)
-  country: 'text',         // NAZIONALITÀ (ISO2 o nome)
+  birth_place: 'text',
+  city: 'text',
+
+  // residenza (IT) – solo atleta
+  residence_region_id: 'number',
+  residence_province_id: 'number',
+  residence_municipality_id: 'number',
+
+  // nascita (IT) – solo atleta
+  birth_country: 'text',
+  birth_region_id: 'number',
+  birth_province_id: 'number',
+  birth_municipality_id: 'number',
 
   // atleta
   foot: 'text',
@@ -54,29 +67,34 @@ const FIELDS: Record<string, 'text' | 'number' | 'bool' | 'json'> = {
   role: 'text',
   visibility: 'text',
 
-  // interesse geografico (DB-driven)
+  // interesse geo (comune)
   interest_country: 'text',
   interest_region_id: 'number',
   interest_province_id: 'number',
   interest_municipality_id: 'number',
 
-  // compat vecchi form (stringhe)
+  // compat vecchi form
   interest_region: 'text',
   interest_province: 'text',
   interest_city: 'text',
 
-  // social links (JSON: {instagram, facebook, tiktok, x})
+  // social
   links: 'json',
 
   // notifiche
   notify_email_new_message: 'bool',
 
-  // onboarding ruolo
+  // onboarding
   account_type: 'text',
+
+  // --------- NUOVI CAMPI CLUB ----------
+  club_foundation_year: 'number',
+  club_stadium: 'text',
+  club_league_category: 'text',
+  // -------------------------------------
 };
 
 /* ---------------------------------- GET ---------------------------------- */
-/** GET /api/profiles/me — profilo dell’utente loggato (sempre { data }) */
 export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   try {
     await rateLimit(req, { key: `profiles:ME:${user.id}`, limit: 60, window: '1m' } as any);
@@ -95,7 +113,6 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
 });
 
 /* --------------------------------- PATCH --------------------------------- */
-/** PATCH /api/profiles/me — aggiorna i campi whitelisted del proprio profilo */
 export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   try {
     await rateLimit(req, { key: `profiles:ME:PATCH:${user.id}`, limit: 40, window: '1m' } as any);
@@ -105,7 +122,6 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
 
-  // Costruisci l’oggetto updates filtrando e normalizzando
   const updates: Record<string, any> = {};
   for (const [key, kind] of Object.entries(FIELDS)) {
     if (!(key in body)) continue;
@@ -116,18 +132,15 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
     if (kind === 'json') updates[key] = toJsonOrNull(val);
   }
 
-  // default coerente (Italia) se non impostato
   if (updates.interest_country === undefined) updates.interest_country = 'IT';
 
-  // 1) tentativo di UPDATE
-  let { data, error } = await supabase
+  const { data, error } = await supabase
     .from('profiles')
     .update({ ...updates, updated_at: new Date().toISOString() })
     .eq('user_id', user.id)
     .select('*')
     .maybeSingle();
 
-  // 2) se non esiste riga, fai UPSERT difensivo
   if (!data && !error) {
     const up = await supabase
       .from('profiles')

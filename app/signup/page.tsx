@@ -1,11 +1,19 @@
 // app/signup/page.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
+import SocialLogin from '@/components/auth/SocialLogin';
 
 type Role = 'athlete' | 'club';
+
+// env presenti?
+const HAS_ENV = Boolean(
+  process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
+// domini su cui mostriamo il bottone (prod + local). I preview vercel passano cmq
+const FIXED_ALLOWED = new Set(['https://clubandplayer-app.vercel.app', 'http://localhost:3000']);
 
 export default function SignupPage() {
   const router = useRouter();
@@ -24,11 +32,21 @@ export default function SignupPage() {
   // se già loggato → vai alla feed
   useEffect(() => {
     (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (user) router.replace('/feed');
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // mostra il bottone Google solo quando ha senso
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
+  const oauthReady = useMemo(() => {
+    if (!HAS_ENV || !origin) return false;
+    return FIXED_ALLOWED.has(origin) || hostname.endsWith('.vercel.app');
+  }, [origin, hostname]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,7 +65,6 @@ export default function SignupPage() {
         email,
         password: pwd1,
         options: {
-          // salviamo anche il ruolo scelto
           data: {
             ...(name ? { full_name: name } : {}),
             role,
@@ -58,7 +75,6 @@ export default function SignupPage() {
       if (error) throw error;
 
       setOk('Registrazione avviata! Controlla la tua email per confermare l’account.');
-      // opzionale: dopo 1.5s porta alla login
       setTimeout(() => router.replace('/login'), 1500);
     } catch (e: any) {
       setErr(e?.message ?? 'Errore durante la registrazione.');
@@ -99,6 +115,18 @@ export default function SignupPage() {
         <section className="md:col-span-5">
           <div className="card p-6 space-y-4">
             <h2 className="sr-only">Crea un account</h2>
+
+            {/* Google first */}
+            {oauthReady && (
+              <>
+                <SocialLogin />
+                <div className="my-3 flex items-center gap-3 text-xs text-gray-500">
+                  <span className="h-px flex-1 bg-gray-200" />
+                  <span>oppure</span>
+                  <span className="h-px flex-1 bg-gray-200" />
+                </div>
+              </>
+            )}
 
             {err && (
               <p className="rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700">

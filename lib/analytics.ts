@@ -1,21 +1,39 @@
 // lib/analytics.ts
-import posthog from 'posthog-js';
+import type { PostHog } from 'posthog-js';
 
-/**
- * Invio evento a PostHog protetto da try/catch e da check lato client.
- */
-export function captureSafe(event: string, props?: Record<string, unknown>) {
-  try {
-    if (typeof window === 'undefined') return;
-    if (!posthog || typeof posthog.capture !== 'function') return;
-    posthog.capture(event, props ?? {});
-  } catch {
-    // no-op
+type Props = Record<string, unknown>;
+
+declare global {
+  interface Window {
+    // deve combaciare con la dichiarazione in PostHogInit.tsx
+    posthog?: PostHog;
   }
 }
 
-/**
- * Alias retro-compatibile: molti file importano { track } da '@/lib/analytics'.
- * Manteniamo entrambi per comodità.
- */
+const isClient = typeof window !== 'undefined';
+
+export function captureSafe(event: string, props?: Props) {
+  if (isClient && window.posthog) {
+    try {
+      window.posthog.capture(event, props);
+    } catch {
+      // no-op
+    }
+  }
+}
+
+export function identifySafe(id: string, props?: Props) {
+  if (isClient && window.posthog) {
+    try {
+      window.posthog.identify(id, props);
+    } catch {
+      // no-op
+    }
+  }
+}
+
+// Compat: alcuni file importano { track } / { identify }
 export const track = captureSafe;
+export const identify = identifySafe;
+
+export default { track, identify };

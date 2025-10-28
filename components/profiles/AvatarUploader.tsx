@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useMemo, useEffect } from 'react';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import Cropper, { Area } from 'react-easy-crop';
 
@@ -20,7 +20,6 @@ type Props = {
 
 /** Crea un Blob JPEG ritagliando l'immagine sorgente secondo i pixel dell'area */
 async function getCroppedBlob(imageSrc: string, crop: Area): Promise<Blob> {
-  // carica immagine in memoria
   const img = await new Promise<HTMLImageElement>((resolve, reject) => {
     const i = new Image();
     i.onload = () => resolve(i);
@@ -35,7 +34,6 @@ async function getCroppedBlob(imageSrc: string, crop: Area): Promise<Blob> {
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Canvas non disponibile');
 
-  // disegna il ritaglio
   ctx.drawImage(
     img,
     crop.x, crop.y, crop.width, crop.height, // from source
@@ -97,24 +95,27 @@ export default function AvatarUploader({ value, onChange }: Props) {
       const blob = await getCroppedBlob(imageSrc, croppedAreaPixels);
       const file = new File([blob], 'avatar.jpg', { type: 'image/jpeg' });
 
-      // 2) user id
+      // 2) user id + ruolo → path coerente con policy (profiles/<uid>/avatar.jpg oppure clubs/<uid>/avatar.jpg)
       const { data: auth, error: authErr } = await supabase.auth.getUser();
       if (authErr || !auth?.user) throw new Error('Utente non autenticato');
       const uid = auth.user.id;
+      const role = auth.user.user_metadata?.role === 'club' ? 'club' : 'athlete';
 
-      // 3) overwrite a percorso fisso
-      const path = `${uid}/avatar.jpg`;
+      const base = role === 'club' ? `clubs/${uid}` : `profiles/${uid}`;
+      const path = `${base}/avatar.jpg`;
+
+      // 3) overwrite a percorso fisso (upsert)
       const { error: upErr } = await supabase
         .storage.from('avatars')
-        .upload(path, file, { upsert: true, cacheControl: '3600' });
+        .upload(path, file, { upsert: true, cacheControl: '3600', contentType: 'image/jpeg' });
       if (upErr) throw upErr;
 
       // 4) public URL + bust cache
       const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path);
-      const url = `${pub.publicUrl}?v=${Date.now()}`;
+      const url = `${pub.publicUrl}${pub.publicUrl.includes('?') ? '&' : '?'}v=${Date.now()}`;
 
-      // 5) salva su profilo
-      await fetch('/api/profiles/me', {
+      // 5) salva su profilo (API esistente: /api/profiles)
+      await fetch('/api/profiles', {
         method: 'PATCH',
         credentials: 'include',
         headers: { 'content-type': 'application/json' },
@@ -138,13 +139,15 @@ export default function AvatarUploader({ value, onChange }: Props) {
       const { data: auth, error: ue } = await supabase.auth.getUser();
       if (ue || !auth?.user) throw new Error('Utente non autenticato');
       const uid = auth.user.id;
+      const role = auth.user.user_metadata?.role === 'club' ? 'club' : 'athlete';
+      const base = role === 'club' ? `clubs/${uid}` : `profiles/${uid}`;
 
-      // Elimina tutti i file avatar.* nella cartella utente
-      const { data: files } = await supabase.storage.from('avatars').list(uid);
-      const toDelete = (files ?? []).filter(f => f.name.startsWith('avatar.')).map(f => `${uid}/${f.name}`);
+      // Elimina tutti i file avatar.* nella cartella corretta
+      const { data: files } = await supabase.storage.from('avatars').list(base);
+      const toDelete = (files ?? []).filter(f => f.name.startsWith('avatar.')).map(f => `${base}/${f.name}`);
       if (toDelete.length) await supabase.storage.from('avatars').remove(toDelete);
 
-      await fetch('/api/profiles/me', {
+      await fetch('/api/profiles', {
         method: 'PATCH',
         credentials: 'include',
         headers: { 'content-type': 'application/json' },
@@ -161,7 +164,7 @@ export default function AvatarUploader({ value, onChange }: Props) {
 
   return (
     <div className="flex items-start gap-6">
-      {/* Anteprima grande 4:5 (≈ 256×320, maggiore di prima) */}
+      {/* Anteprima grande 4:5 (≈ 256×320) */}
       <div className="relative w-64 shrink-0" style={{ aspectRatio: '4 / 5' }}>
         <img
           src={value || PLACEHOLDER}
