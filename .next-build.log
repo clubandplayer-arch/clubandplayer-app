@@ -1,0 +1,123 @@
+
+> clubandplayer-app@0.1.0 build /workspaces/clubandplayer-app
+> next build --turbopack
+
+   ▲ Next.js 15.5.0 (Turbopack)
+   - Environments: .env.local
+   - Experiments (use with caution):
+     · clientTraceMetadata
+
+   Creating an optimized production build ...
+ ✓ Finished writing to disk in 152ms
+ ✓ Compiled successfully in 31.0s
+   Running next.config.js provided runAfterProductionCompile ...
+ ✓ Completed runAfterProductionCompile in 2784ms
+   Skipping linting
+   Checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/59) ...
+   Generating static pages (14/59) 
+   Generating static pages (29/59) 
+   Generating static pages (44/59) 
+ ✓ Generating static pages (59/59)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                  Size  First Load JS
+┌ ○ /                                         0 B         228 kB
+├ ○ /_not-found                               0 B         228 kB
+├ ○ /admin/reports                        5.88 kB         234 kB
+├ ○ /alerts                               1.51 kB         229 kB
+├ ƒ /api/applications                         0 B            0 B
+├ ƒ /api/applications/[id]                    0 B            0 B
+├ ƒ /api/applications/mine                    0 B            0 B
+├ ƒ /api/applications/received                0 B            0 B
+├ ƒ /api/applications/sent                    0 B         233 kB
+├ ƒ /api/auth/debug                           0 B            0 B
+├ ƒ /api/auth/session                         0 B            0 B
+├ ƒ /api/auth/whoami                          0 B            0 B
+├ ƒ /api/clubs                                0 B            0 B
+├ ƒ /api/clubs/[id]                           0 B            0 B
+├ ƒ /api/debug/error                          0 B            0 B
+├ ƒ /api/env                                  0 B            0 B
+├ ƒ /api/events/stream                        0 B            0 B
+├ ƒ /api/feed/posts                           0 B            0 B
+├ ƒ /api/follows                              0 B            0 B
+├ ƒ /api/follows/suggestions                  0 B            0 B
+├ ƒ /api/follows/toggle                       0 B            0 B
+├ ƒ /api/health                               0 B            0 B
+├ ƒ /api/notifications/send                   0 B            0 B
+├ ƒ /api/notify-email                         0 B            0 B
+├ ƒ /api/notify-opportunity                   0 B            0 B
+├ ƒ /api/opportunities                        0 B            0 B
+├ ƒ /api/opportunities/[id]                   0 B            0 B
+├ ƒ /api/opportunities/[id]/applications      0 B            0 B
+├ ƒ /api/opportunities/filter                 0 B            0 B
+├ ƒ /api/opportunities/mine                   0 B            0 B
+├ ƒ /api/profiles                             0 B            0 B
+├ ƒ /api/profiles/[id]                        0 B            0 B
+├ ƒ /api/profiles/bootstrap                   0 B            0 B
+├ ƒ /api/profiles/me                          0 B            0 B
+├ ƒ /api/views                                0 B            0 B
+├ ƒ /api/views/[id]/subscribe                 0 B            0 B
+├ ƒ /api/views/[id]/unsubscribe               0 B            0 B
+├ ƒ /api/webhooks/sync                        0 B            0 B
+├ ƒ /applications                             0 B         233 kB
+├ ○ /applications/received                    0 B         228 kB
+├ ƒ /applications/sent                        0 B         233 kB
+├ ƒ /athletes/[id]                        5.47 kB         233 kB
+├ ○ /auth/callback                        1.63 kB         230 kB
+├ ƒ /auth/whoami                              0 B            0 B
+├ ƒ /c/[id]                               5.91 kB         234 kB
+├ ○ /club/applicants                      2.02 kB         234 kB
+├ ○ /club/post                            1.76 kB         234 kB
+├ ƒ /club/post/edit/[id]                  1.91 kB         234 kB
+├ ○ /club/profile                         6.25 kB         239 kB
+├ ○ /clubs                                    0 B         232 kB
+├ ○ /debug/client-error                     535 B         228 kB
+├ ƒ /debug/env                                0 B         228 kB
+├ ○ /favorites                            4.86 kB         233 kB
+├ ○ /feed                                 6.38 kB         239 kB
+├ ○ /legal/privacy                            0 B         228 kB
+├ ○ /legal/terms                              0 B         228 kB
+├ ○ /login                                2.64 kB         231 kB
+├ ○ /logout                                 817 B         229 kB
+├ ○ /messages                             5.18 kB         233 kB
+├ ƒ /messages/[peerId]                    5.47 kB         233 kB
+├ ○ /my/applications                      2.05 kB         235 kB
+├ ƒ /my/opportunities                         0 B         228 kB
+├ ○ /notifications                        2.29 kB         235 kB
+├ ○ /onboarding                             841 B         233 kB
+├ ○ /onboarding/choose-role                1.4 kB         229 kB
+├ ○ /opportunities                        8.91 kB         241 kB
+├ ƒ /opportunities/[id]                   1.99 kB         234 kB
+├ ƒ /opportunities/[id]/applications      1.45 kB         234 kB
+├ ○ /opportunities/new                    5.22 kB         238 kB
+├ ○ /post                                 2.05 kB         230 kB
+├ ○ /profile                              6.24 kB         239 kB
+├ ○ /profile/location-settings            2.15 kB         230 kB
+├ ○ /reports                              5.49 kB         233 kB
+├ ○ /reset-password                       1.46 kB         229 kB
+├ ○ /robots.txt                               0 B            0 B
+├ ○ /search/athletes                      5.21 kB         233 kB
+├ ○ /search/club                           9.7 kB         238 kB
+├ ○ /settings                             5.73 kB         234 kB
+├ ○ /signup                               3.03 kB         231 kB
+├ ○ /sitemap.xml                              0 B            0 B
+├ ƒ /u/[id]                               5.25 kB         233 kB
+└ ○ /update-password                      1.57 kB         229 kB
++ First Load JS shared by all              239 kB
+  ├ chunks/06637ce3767d4248.js            41.6 kB
+  ├ chunks/2bc8fb6daccb9782.js            64.5 kB
+  ├ chunks/6280fe4c0b9f2919.js            14.3 kB
+  ├ chunks/a1ecdc779b4ed992.js            59.4 kB
+  ├ chunks/e916b8cf1863607e.js            17.8 kB
+  ├ chunks/38ca75c0d977174c.css           11.1 kB
+  └ other shared chunks (total)           30.4 kB
+
+
+ƒ Middleware                              90.7 kB
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
