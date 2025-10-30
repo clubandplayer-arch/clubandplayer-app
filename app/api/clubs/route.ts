@@ -10,16 +10,7 @@ function clamp(n: number, min: number, max: number) {
   return Math.min(Math.max(n, min), max);
 }
 
-/**
- * GET /api/clubs
- * Query params supportati:
- * - q             : ricerca testuale (name, display_name, city)
- * - page,pageSize : paginazione nuova
- * - limit,offset  : compat legacy
- * - regionId      : (LETTI ma NON applicati finché non mi confermi lo schema)
- * - provinceId    : (LETTI ma NON applicati finché non mi confermi lo schema)
- * - sport         : mappato su `level` (ilike) per compat veloce
- */
+/** GET /api/clubs?q=&page=&pageSize=&regionId=&provinceId=&sport=  |  (compat: limit/offset) */
 export const GET = withAuth(async (req: NextRequest, { supabase }) => {
   try {
     await rateLimit(req, { key: 'clubs:GET', limit: 60, window: '1m' } as any);
@@ -30,7 +21,7 @@ export const GET = withAuth(async (req: NextRequest, { supabase }) => {
   const url = new URL(req.url);
   const q = (url.searchParams.get('q') || '').trim();
 
-  // filtri extra dalla UI
+  // nuovi filtri
   const regionIdRaw = (url.searchParams.get('regionId') || '').trim();
   const provinceIdRaw = (url.searchParams.get('provinceId') || '').trim();
   const sportRaw = (url.searchParams.get('sport') || '').trim();
@@ -62,32 +53,33 @@ export const GET = withAuth(async (req: NextRequest, { supabase }) => {
   const from = offset;
   const to = offset + limit - 1;
 
-  // Base query
   let query = supabase
     .from('clubs')
-    .select('id,name,display_name,city,country,level,logo_url,owner_id,created_at', { count: 'exact' })
+    .select(
+      'id,name,display_name,city,country,level,logo_url,owner_id,created_at,region_id,province_id,municipality_id',
+      { count: 'exact' }
+    )
     .order('name', { ascending: true })
     .range(from, to);
 
-  // Ricerca testuale estesa: name, display_name, city
   if (q) {
     const like = `%${q}%`;
+    // estendiamo la ricerca anche a display_name (oltre a name/city)
     query = query.or(`name.ilike.${like},display_name.ilike.${like},city.ilike.${like}`);
   }
 
-  // Filtro sport → mappato su `level` (ilike) per compatibilità attuale
+  // sport → mappato su "level" (come da tua tabella attuale)
   if (sportRaw) {
-    const like = `%${sportRaw}%`;
-    query = query.filter('level', 'ilike', like);
+    query = query.filter('level', 'ilike', `%${sportRaw}%`);
   }
 
-  // Filtro regione/provincia: in attesa dei nomi colonna confermati
-  // Se nella tabella esistono, applicheremo:
-  //
-  // if (regionIdRaw)   query = query.eq('region_id', Number(regionIdRaw));
-  // if (provinceIdRaw) query = query.eq('province_id', Number(provinceIdRaw));
-  //
-  // Al momento li leggiamo soltanto per compat con la UI e URL.
+  // nuovi filtri geo (ora che le colonne esistono)
+  if (regionIdRaw && Number.isFinite(Number(regionIdRaw))) {
+    query = query.eq('region_id', Number(regionIdRaw));
+  }
+  if (provinceIdRaw && Number.isFinite(Number(provinceIdRaw))) {
+    query = query.eq('province_id', Number(provinceIdRaw));
+  }
 
   const { data, count, error } = await query;
   if (error) return jsonError(error.message, 400);
@@ -113,7 +105,7 @@ export const GET = withAuth(async (req: NextRequest, { supabase }) => {
   });
 });
 
-/** POST /api/clubs  { name, display_name?, city?, country?, level?, logo_url? } */
+/** POST /api/clubs  { name, display_name?, city?, country?, level?, logo_url?, region_id?, province_id?, municipality_id? } */
 export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   try {
     await rateLimit(req, { key: 'clubs:POST', limit: 20, window: '1m' } as any);
@@ -129,13 +121,30 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   const level = (body.level ?? '').trim() || null;
   const logo_url = (body.logo_url ?? '').trim() || null;
 
+  // nuovi (facoltativi)
+  const region_id = Number.isFinite(Number(body.region_id)) ? Number(body.region_id) : null;
+  const province_id = Number.isFinite(Number(body.province_id)) ? Number(body.province_id) : null;
+  const municipality_id = Number.isFinite(Number(body.municipality_id)) ? Number(body.municipality_id) : null;
+
   if (!name) return jsonError('Name is required', 400);
 
-  // RLS: with_check (owner_id = auth.uid())
+  const insert = {
+    name,
+    display_name,
+    city,
+    country,
+    level,
+    logo_url,
+    owner_id: user.id,
+    region_id,
+    province_id,
+    municipality_id,
+  };
+
   const { data, error } = await supabase
     .from('clubs')
-    .insert({ name, display_name, city, country, level, logo_url, owner_id: user.id })
-    .select('id,name,display_name,city,country,level,logo_url,owner_id,created_at')
+    .insert(insert)
+    .select('id,name,display_name,city,country,level,logo_url,owner_id,created_at,region_id,province_id,municipality_id')
     .single();
 
   if (error) return jsonError(error.message, 400);
