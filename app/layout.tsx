@@ -25,7 +25,6 @@ export const metadata: Metadata = {
     template: `%s | ${SITE_NAME}`,
   },
   description: DEFAULT_DESC,
-  viewport: 'width=device-width, initial-scale=1',
 
   openGraph: {
     type: 'website',
