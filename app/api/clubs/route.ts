@@ -10,7 +10,16 @@ function clamp(n: number, min: number, max: number) {
   return Math.min(Math.max(n, min), max);
 }
 
-/** GET /api/clubs?q=&page=&pageSize=  |  oppure  ?limit=&offset= */
+/**
+ * GET /api/clubs
+ * Query params supportati:
+ * - q             : ricerca testuale (name, display_name, city)
+ * - page,pageSize : paginazione nuova
+ * - limit,offset  : compat legacy
+ * - regionId      : (LETTI ma NON applicati finché non mi confermi lo schema)
+ * - provinceId    : (LETTI ma NON applicati finché non mi confermi lo schema)
+ * - sport         : mappato su `level` (ilike) per compat veloce
+ */
 export const GET = withAuth(async (req: NextRequest, { supabase }) => {
   try {
     await rateLimit(req, { key: 'clubs:GET', limit: 60, window: '1m' } as any);
@@ -20,6 +29,11 @@ export const GET = withAuth(async (req: NextRequest, { supabase }) => {
 
   const url = new URL(req.url);
   const q = (url.searchParams.get('q') || '').trim();
+
+  // filtri extra dalla UI
+  const regionIdRaw = (url.searchParams.get('regionId') || '').trim();
+  const provinceIdRaw = (url.searchParams.get('provinceId') || '').trim();
+  const sportRaw = (url.searchParams.get('sport') || '').trim();
 
   // page/pageSize (nuovo) o limit/offset (legacy)
   const pageParam = Number(url.searchParams.get('page'));
@@ -48,15 +62,32 @@ export const GET = withAuth(async (req: NextRequest, { supabase }) => {
   const from = offset;
   const to = offset + limit - 1;
 
+  // Base query
   let query = supabase
     .from('clubs')
     .select('id,name,display_name,city,country,level,logo_url,owner_id,created_at', { count: 'exact' })
     .order('name', { ascending: true })
     .range(from, to);
 
+  // Ricerca testuale estesa: name, display_name, city
   if (q) {
-    query = query.or(`name.ilike.%${q}%,city.ilike.%${q}%`);
+    const like = `%${q}%`;
+    query = query.or(`name.ilike.${like},display_name.ilike.${like},city.ilike.${like}`);
   }
+
+  // Filtro sport → mappato su `level` (ilike) per compatibilità attuale
+  if (sportRaw) {
+    const like = `%${sportRaw}%`;
+    query = query.filter('level', 'ilike', like);
+  }
+
+  // Filtro regione/provincia: in attesa dei nomi colonna confermati
+  // Se nella tabella esistono, applicheremo:
+  //
+  // if (regionIdRaw)   query = query.eq('region_id', Number(regionIdRaw));
+  // if (provinceIdRaw) query = query.eq('province_id', Number(provinceIdRaw));
+  //
+  // Al momento li leggiamo soltanto per compat con la UI e URL.
 
   const { data, count, error } = await query;
   if (error) return jsonError(error.message, 400);
@@ -69,6 +100,11 @@ export const GET = withAuth(async (req: NextRequest, { supabase }) => {
   return NextResponse.json({
     data: data ?? [],
     q,
+    filters: {
+      regionId: regionIdRaw || null,
+      provinceId: provinceIdRaw || null,
+      sport: sportRaw || null,
+    },
     total,
     page,
     pageSize,
