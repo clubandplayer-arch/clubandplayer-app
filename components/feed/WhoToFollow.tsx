@@ -1,7 +1,8 @@
-/* eslint-disable @next/next/no-img-element */
 'use client';
 
 import { useEffect, useState } from 'react';
+import NextImage from 'next/image';
+import Link from 'next/link';
 
 type Role = 'club' | 'athlete' | 'guest';
 
@@ -148,16 +149,23 @@ export default function WhoToFollow() {
           <ul className="space-y-3">
             {visibleItems.map((it) => {
               const isPending = pendingId === it.id;
+              const src =
+                it.avatarUrl ||
+                `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(it.name)}`;
+
               return (
                 <li key={it.id} className="flex items-center gap-3">
-                  <img
-                    src={
-                      it.avatarUrl ||
-                      `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(it.name)}`
-                    }
-                    alt={it.name}
-                    className="h-10 w-10 rounded-full object-cover ring-1 ring-zinc-200 dark:ring-zinc-800"
-                  />
+                  <div className="relative h-10 w-10 overflow-hidden rounded-full ring-1 ring-zinc-200 dark:ring-zinc-800">
+                    <NextImage
+                      src={src}
+                      alt={it.name}
+                      fill
+                      className="object-cover"
+                      sizes="40px"
+                      unoptimized
+                    />
+                  </div>
+
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-medium">{it.name}</div>
                     <div className="truncate text-xs text-zinc-500">
@@ -217,12 +225,9 @@ export default function WhoToFollow() {
             </div>
           ) : (
             <div className="mt-2">
-              <a
-                href="/search/club"
-                className="text-blue-600 hover:underline dark:text-blue-400"
-              >
+              <Link href="/search/club" className="text-blue-600 hover:underline dark:text-blue-400">
                 Cerca altri profili
-              </a>
+              </Link>
             </div>
           )}
         </div>
