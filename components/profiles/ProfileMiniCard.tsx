@@ -3,6 +3,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
@@ -204,11 +205,20 @@ export default function ProfileMiniCard() {
   return (
     <div className="rounded-2xl border p-4 shadow-sm">
       <div className="flex items-start gap-3">
-        {p?.avatar_url ? (
-<img src={p.avatar_url} alt={name} className="h-24 w-[4.8rem] flex-shrink-0 rounded-xl object-cover" />
-        ) : (
-          <div className="h-24 w-[4.8rem] flex-shrink-0 rounded-xl bg-gray-200" />
-        )}
+        <div className="relative h-24 w-[4.8rem] flex-shrink-0 rounded-xl bg-gray-200 overflow-hidden">
+          {p?.avatar_url ? (
+            <Image
+              src={p.avatar_url}
+              alt={name}
+              fill
+              className="object-cover"
+              sizes="77px"
+              unoptimized
+              priority={false}
+            />
+          ) : null}
+        </div>
+
         <div className="min-w-0">
           <div className="text-base font-semibold">{name}</div>
 

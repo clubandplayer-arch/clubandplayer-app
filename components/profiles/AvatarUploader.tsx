@@ -1,9 +1,10 @@
-/* eslint-disable @next/next/no-img-element */
+// components/profiles/AvatarUploader.tsx
 'use client';
 
 import { useRef, useState, useCallback } from 'react';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import Cropper, { Area } from 'react-easy-crop';
+import NextImage from 'next/image';
 
 const supabase = createSupabaseClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -21,11 +22,11 @@ type Props = {
 
 /** Crea un Blob JPEG ritagliando l'immagine sorgente secondo i pixel dell'area */
 async function getCroppedBlob(imageSrc: string, crop: Area): Promise<Blob> {
-  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-    const i = new Image();
-    i.onload = () => resolve(i);
-    i.onerror = reject;
-    i.src = imageSrc; // data URL (no CORS issue)
+  const img: HTMLImageElement = await new Promise((resolve, reject) => {
+    const el = new window.Image();
+    el.onload = () => resolve(el);
+    el.onerror = reject;
+    el.src = imageSrc; // data URL (no CORS issue)
   });
 
   const canvas = document.createElement('canvas');
@@ -166,11 +167,15 @@ export default function AvatarUploader({ value, onChange }: Props) {
   return (
     <div className="flex items-start gap-6">
       {/* Anteprima grande 4:5 (≈ 256×320) */}
-      <div className="relative w-64 shrink-0" style={{ aspectRatio: '4 / 5' }}>
-        <img
+      <div className="relative w-64 shrink-0 rounded-2xl border bg-gray-100" style={{ aspectRatio: '4 / 5' }}>
+        <NextImage
           src={value || PLACEHOLDER}
           alt="Avatar"
-          className="absolute inset-0 h-full w-full rounded-2xl object-cover border bg-gray-100"
+          fill
+          className="object-cover rounded-2xl"
+          sizes="256px"
+          unoptimized
+          priority
         />
       </div>
 
