@@ -3,9 +3,9 @@ _Stato al 30/10/2025 — timezone: Europe/Rome_
 
 ## ✅ Fatto di recente
 - CP21: API `/api/clubs` (GET/POST) e `/api/clubs/[id]` (GET/PATCH/DELETE)
-- ClubForm con cascade Regione → Provincia → Comune (Supabase)
+- CP21.2 – ClubForm con cascade Regione → Provincia → Comune (Supabase)
 - **/clubs** disabilitata: 404 forzato via `middleware.ts`
-- E2E smoke (Playwright): home, login, /clubs 404, /api/health
+- CP21.3 – mini E2E smoke (Playwright): home, login, /clubs 404, /api/health
 - Next 15: **viewport pass-2** (rimosso `metadata.viewport`, centralizzato in `app/viewport.ts`)
 - **next/image pass-1**: componenti core migrati
 - Tag stabile: `v2025.10.30-stable`
