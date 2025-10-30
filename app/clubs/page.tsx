@@ -1,8 +1,11 @@
+// app/clubs/page.tsx
 import { notFound } from 'next/navigation';
 
-export const dynamic = 'force-static';
+// Forziamo rendering server-side e niente cache,
+// così notFound() produce HTTP 404 (non 200).
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default function Page() {
-  // Route disabilitata: /clubs non è accessibile
   notFound();
 }
