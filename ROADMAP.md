@@ -9,17 +9,18 @@ _Stato al 30/10/2025 — timezone: Europe/Rome_
 - Next 15: **viewport pass-2** (rimosso `metadata.viewport`, centralizzato in `app/viewport.ts`)
 - **next/image pass-1**: componenti core migrati
 - Tag stabile: `v2025.10.30-stable`
+- Next/image: allowlist immagini (Dicebear + Supabase) in `next.config.ts`
 
-## 🟡 In corso / PR
+## �� In corso / PR
 - Nessuna critica aperta (main allineato).
 
 ## 🎯 Prossime 24–48h (ordine consigliato)
 1) **ESLint v9 flat-config definitivo**
-   - Consolidare `eslint.config.js`
+   - Consolidare `eslint.config.mjs`
    - Allineare pacchetti `@typescript-eslint`
    - Ripulire `eslint-disable` orfani
 2) **Sentry Verify (EU DSN)**
-   - Verifica eventi da `/api/debug/error` e da client
+   - Verifica eventi da `/api/debug/error` e dal client
 3) **E2E estesi**
    - CTA “Login con Google” su `/login`
    - Onboarding: ChooseRole → Club → salvataggio geo
@@ -31,4 +32,4 @@ _Stato al 30/10/2025 — timezone: Europe/Rome_
 ## 📌 Note operative
 - CI: branch protection su “Lint” e “Type check”
 - Supabase: Google OAuth ➜ `/auth/callback`; env coerenti su Vercel
-- Sentry: DSN EU configurati (verificare ingestion)
+- Sentry: DSN EU configurati (da verificare ingestion)
