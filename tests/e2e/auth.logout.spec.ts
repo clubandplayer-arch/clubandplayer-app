@@ -1,28 +1,23 @@
 // tests/e2e/auth.logout.spec.ts
 import { test, expect } from '@playwright/test';
 
-/**
- * Auth smoke:
- * - /logout risponde 200 (pagina esiste)
- * - /feed da guest porta alla pagina di Login (gating attivo)
- *
- * Test robusti: non dipendono da cookie/sessione preesistente.
- */
+const BASE =
+  process.env.PLAYWRIGHT_BASE_URL ||
+  process.env.BASE_URL ||
+  'http://localhost:3010';
+
 test.describe('Auth smoke', () => {
   test('GET /logout -> 200', async ({ request }) => {
-    const resp = await request.get('/logout');
+    const resp = await request.get(`${BASE}/logout`);
     expect(resp.ok()).toBeTruthy();
   });
 
   test('guest che apre /feed vede la pagina di Login', async ({ page }) => {
-    const resp = await page.goto('/feed', { waitUntil: 'domcontentloaded' });
+    const resp = await page.goto(`${BASE}/feed`, { waitUntil: 'domcontentloaded' });
     expect(resp?.ok()).toBeTruthy();
 
-    // Verifichiamo che sia la Login page:
-    // accettiamo due segnali stabili: titolo "Login" o il pulsante "Entra"
-    const sawLoginTitle = await page.locator('text=Login').first().isVisible().catch(() => false);
-    const sawEntraBtn = await page.locator('button:has-text("Entra")').first().isVisible().catch(() => false);
-
-    expect(sawLoginTitle || sawEntraBtn).toBeTruthy();
+    // Verifica redirect alla login
+    await expect(page).toHaveURL(/\/login(\?|$)/i);
+    await expect(page.getByRole('heading', { name: /login/i })).toBeVisible();
   });
 });
