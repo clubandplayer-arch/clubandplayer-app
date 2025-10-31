@@ -1,72 +1,101 @@
-'use client'
+// app/login/page.tsx
+'use client';
 
-import { useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import SocialLogin from '@/components/auth/SocialLogin'
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import SocialLogin from '@/components/auth/SocialLogin';
 
-const SUPA_URL  = process.env.NEXT_PUBLIC_SUPABASE_URL  ?? ''
-const SUPA_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''
-const HAS_ENV   = Boolean(SUPA_URL && SUPA_ANON)
+const SUPA_URL  = process.env.NEXT_PUBLIC_SUPABASE_URL  ?? '';
+const SUPA_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
+const HAS_ENV   = Boolean(SUPA_URL && SUPA_ANON);
 
 const FIXED_ALLOWED = new Set<string>([
   'https://clubandplayer-app.vercel.app',
   'http://localhost:3000',
-])
+]);
+
+function sanitizeRedirect(input: string | null, origin: string): string | null {
+  if (!input) return null;
+  try {
+    const u = new URL(input, origin);
+    if (u.origin !== origin) return null;
+    return `${u.pathname}${u.search}${u.hash}`;
+  } catch {
+    return input.startsWith('/') ? input : null;
+  }
+}
 
 export default function LoginPage() {
-  const router = useRouter()
+  const router = useRouter();
 
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [errorMsg, setErrorMsg] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [currentEmail, setCurrentEmail] = useState<string | null>(null)
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [currentEmail, setCurrentEmail] = useState<string | null>(null);
 
-  const BUILD_TAG = 'login-v5 Google+Email cookie-sync'
+  const BUILD_TAG = 'login-v6 Google+Email cookie-sync + redirect_to';
 
-  const origin   = typeof window !== 'undefined' ? window.location.origin   : ''
-  const hostname = typeof window !== 'undefined' ? window.location.hostname : ''
+  const origin   = typeof window !== 'undefined' ? window.location.origin   : '';
+  const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
 
   const oauthAllowedHere = useMemo(() => {
     try {
-      if (!origin) return false
-      if (FIXED_ALLOWED.has(origin)) return true
-      if (hostname.endsWith('.vercel.app')) return true
-      return false
+      if (!origin) return false;
+      if (FIXED_ALLOWED.has(origin)) return true;
+      if (hostname.endsWith('.vercel.app')) return true;
+      return false;
     } catch {
-      return false
+      return false;
     }
-  }, [origin, hostname])
+  }, [origin, hostname]);
 
-  const oauthReady = HAS_ENV && oauthAllowedHere
+  const oauthReady = HAS_ENV && oauthAllowedHere;
+
+  // Salva l'eventuale ?redirect_to= in sessionStorage per l'uso in /auth/callback
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const rt = sanitizeRedirect(params.get('redirect_to'), window.location.origin);
+      if (rt) {
+        sessionStorage.setItem('auth:redirect_to', rt);
+      } else {
+        // se non valido, puliamo
+        sessionStorage.removeItem('auth:redirect_to');
+      }
+    } catch {
+      // ignora
+    }
+  }, []);
 
   useEffect(() => {
-    let active = true
-    if (!HAS_ENV) return
-    ;(async () => {
-      const { createClient } = await import('@supabase/supabase-js')
-      const supabase = createClient(SUPA_URL, SUPA_ANON)
-      const { data: { user } } = await supabase.auth.getUser()
-      if (active) setCurrentEmail(user?.email ?? null)
-    })()
-    return () => { active = false }
-  }, [])
+    let active = true;
+    if (!HAS_ENV) return;
+    (async () => {
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(SUPA_URL, SUPA_ANON);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (active) setCurrentEmail(user?.email ?? null);
+    })();
+    return () => { active = false; };
+  }, []);
 
   async function signInEmail(e: React.FormEvent) {
-    e.preventDefault()
-    setErrorMsg(null)
+    e.preventDefault();
+    setErrorMsg(null);
     if (!HAS_ENV) {
-      setErrorMsg('Config mancante: NEXT_PUBLIC_SUPABASE_*')
-      return
+      setErrorMsg('Config mancante: NEXT_PUBLIC_SUPABASE_*');
+      return;
     }
-    setLoading(true)
+    setLoading(true);
     try {
-      const { createClient } = await import('@supabase/supabase-js')
-      const supabase = createClient(SUPA_URL, SUPA_ANON)
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(SUPA_URL, SUPA_ANON);
 
-      const { data: { session }, error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) throw error
-      if (!session) throw new Error('Sessione mancante dopo login')
+      const { data: { session }, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      if (!session) throw new Error('Sessione mancante dopo login');
 
       const r = await fetch('/api/auth/session', {
         method: 'POST',
@@ -75,26 +104,31 @@ export default function LoginPage() {
           access_token: session.access_token,
           refresh_token: session.refresh_token,
         }),
-      })
+      });
       if (!r.ok) {
-        const j = await r.json().catch(() => ({}))
-        throw new Error(j?.error || 'Sync cookie fallito')
+        const j = await r.json().catch(() => ({}));
+        throw new Error(j?.error || 'Sync cookie fallito');
       }
 
-      router.replace('/')
+      // Se abbiamo un redirect_to valido, andiamo lì, altrimenti home
+      let target: string | null = null;
+      try {
+        target = sanitizeRedirect(sessionStorage.getItem('auth:redirect_to'), window.location.origin);
+      } catch {}
+      router.replace(target || '/');
     } catch (err: any) {
-      setErrorMsg(err?.message ?? 'Errore login')
+      setErrorMsg(err?.message ?? 'Errore login');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
   async function signOut() {
-    if (!HAS_ENV) return
-    const { createClient } = await import('@supabase/supabase-js')
-    const supabase = createClient(SUPA_URL, SUPA_ANON)
-    await supabase.auth.signOut()
-    setCurrentEmail(null)
+    if (!HAS_ENV) return;
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabase = createClient(SUPA_URL, SUPA_ANON);
+    await supabase.auth.signOut();
+    setCurrentEmail(null);
   }
 
   return (
@@ -173,5 +207,5 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY`}
         )}
       </div>
     </main>
-  )
+  );
 }
