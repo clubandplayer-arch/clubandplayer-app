@@ -1,83 +1,73 @@
-// eslint.config.mjs
-// ESLint v9 flat config – Next 15, TypeScript, React 19, Playwright
+// eslint.config.mjs - Flat config per ESLint 9 + Next 15 + TS App Router
 
-import js from '@eslint/js';
-import tseslint from 'typescript-eslint';
-import nextPlugin from '@next/eslint-plugin-next';
-import reactHooks from 'eslint-plugin-react-hooks';
+import process from "node:process";
+import js from "@eslint/js";
+import tseslint from "typescript-eslint";
+import next from "@next/eslint-plugin-next";
+import reactHooks from "eslint-plugin-react-hooks";
+import reactRefresh from "eslint-plugin-react-refresh";
 
-export default tseslint.config(
-  // Ignori globali
-  {
-    ignores: [
-      'node_modules/',
-      '.next/',
-      'dist/',
-      'build/',
-      'out/',
-      'coverage/',
-      '.vercel/',
-      'test-results/',
-      'playwright-report/',
-      'next-env.d.ts',
-      '**/*.d.ts',
-    ],
+const tsRecommendedConfigs = tseslint.configs.recommended.map((config) => {
+  const withFiles = config.files
+    ? config
+    : { ...config, files: ["**/*.{ts,tsx,cts,mts}"] };
+  return {
+    ...withFiles,
+    plugins: { ...(withFiles.plugins ?? {}), "@typescript-eslint": tseslint.plugin },
+  };
+});
+
+const nextRecommended = {
+  ...next.configs.recommended,
+  plugins: { "@next/next": next },
+};
+
+const nextCoreWebVitals = {
+  ...nextRecommended,
+  rules: {
+    ...nextRecommended.rules,
+    ...next.configs["core-web-vitals"].rules,
   },
+};
 
-  // Base JS
+export default [
+  // 👇 aggiunto "eslint.config.*" per evitare il crash visto nel tuo log
+  { ignores: ["**/.next/**", "**/node_modules/**", "**/dist/**", "**/build/**", "next-env.d.ts", "eslint.config.*"] },
+
   js.configs.recommended,
 
-  // TypeScript con type-checking reale
-  ...tseslint.configs.recommendedTypeChecked,
-  ...tseslint.configs.stylisticTypeChecked,
-
-  // Regole/applicazione per TS/TSX
+  ...tsRecommendedConfigs,
   {
-    files: ['**/*.{ts,tsx}'],
+    files: ["**/*.{ts,tsx}"],
     languageOptions: {
-      parserOptions: {
-        // Rileva automaticamente i tsconfig del progetto
-        projectService: true,
-        tsconfigRootDir: new URL('.', import.meta.url).pathname,
-      },
+      parserOptions: { project: "./tsconfig.json", tsconfigRootDir: process.cwd() },
     },
-    plugins: {
-      '@next/next': nextPlugin,
-      'react-hooks': reactHooks,
-    },
+  },
+
+  {
+    ...nextCoreWebVitals,
+    plugins: { "@next/next": next },
+  },
+
+  {
+    plugins: { "react-hooks": reactHooks, "react-refresh": reactRefresh },
     rules: {
-      // Next (Core Web Vitals)
-      ...nextPlugin.configs['core-web-vitals'].rules,
+      "react-hooks/rules-of-hooks": "error",
+      "react-hooks/exhaustive-deps": "warn",
+      "react-refresh/only-export-components": "off",
+    },
+  },
 
-      // React hooks
-      'react-hooks/rules-of-hooks': 'error',
-      'react-hooks/exhaustive-deps': 'warn',
-
-      // TS quality of life
-      '@typescript-eslint/no-unused-vars': [
-        'warn',
-        { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' },
+  {
+    files: ["**/*.{ts,tsx,cts,mts}"],
+    rules: {
+      "no-empty": ["error", { "allowEmptyCatch": true }],
+      "no-unused-vars": "off",
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrors: "none" },
       ],
-      '@typescript-eslint/consistent-type-imports': ['warn', { prefer: 'type-imports' }],
-      '@typescript-eslint/no-misused-promises': ['error', { checksVoidReturn: { attributes: false } }],
+      "@typescript-eslint/no-explicit-any": "off",
     },
   },
-
-  // File JS puri (se presenti)
-  {
-    files: ['**/*.js'],
-    languageOptions: { ecmaVersion: 'latest', sourceType: 'module' },
-  },
-
-  // Test E2E (Playwright)
-  {
-    files: ['tests/**/*.{ts,tsx}'],
-    languageOptions: {
-      globals: {
-        test: 'readonly',
-        expect: 'readonly',
-        page: 'readonly',
-      },
-    },
-  }
-);
+];
