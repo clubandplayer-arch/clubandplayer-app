@@ -25,7 +25,6 @@ export const metadata: Metadata = {
     template: `%s | ${SITE_NAME}`,
   },
   description: DEFAULT_DESC,
-  viewport: 'width=device-width, initial-scale=1',
 
   openGraph: {
     type: 'website',
@@ -49,7 +48,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  // facoltativi:
+  // opzionale:
   // themeColor: '#0b6cff',
   // colorScheme: 'light dark',
 };
