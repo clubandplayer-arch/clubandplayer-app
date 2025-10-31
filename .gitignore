@@ -49,3 +49,8 @@ next-env.d.ts
 # Playwright artifacts
 test-results/
 playwright-report/
+
+# Playwright artifacts
+playwright-report/
+blob-report/
+test-results/
