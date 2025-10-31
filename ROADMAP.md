@@ -2,23 +2,23 @@
 _Stato al 31/10/2025 — timezone: Europe/Rome_
 
 ## ✅ Fatto di recente
-- CP21: API `/api/clubs` (GET/POST) e `/api/clubs/[id]` (GET/PATCH/DELETE)
-- ClubForm con cascade Regione → Provincia → Comune (Supabase)
-- **/clubs** disabilitata: 404 forzato via `middleware.ts`
-- E2E smoke (Playwright): home, login, /clubs 404, /api/health
-- Next 15: **viewport pass-2** (centralizzato in `app/viewport.ts`)
-- **next/image pass-1**: componenti core migrati + allowlist (Dicebear + Supabase)
-- Tag stabile: `v2025.10.30-stable`
-- **Supabase security hardening**: RLS su `public.profiles` e `public.clubs`
-- **Email branding**: template HTML unico (logo+URL+footer), Resend SDK allineato
+- Next 15: **viewport pass-2** completato (rimosso `metadata.viewport`, `export const viewport` centralizzato).
+- **next/image**: allowlist domini (Dicebear + Supabase) in `next.config.ts`.
+- **Email branding & resilienza**:
+  - Endpoint `/api/notifications/send` con brand base URL + logo; no-op sicuro se ENV mancanti.
+  - Endpoint `/api/notify-email` resiliente: invia se chiavi presenti, altrimenti risponde con `noop:true` o segnala env mancanti.
+  - **E2E** Playwright per entrambi gli endpoint (+ security E2E per /api/clubs non autenticato).
+- **/clubs** disabilitata (404) lato routing come da policy prodotto.
+- **RLS hardening** su Supabase (policy idempotenti applicate).
 
 ## 🟡 In corso / PR
-- Nessuna critica aperta (main allineato).
+- Chiusura PR docs/email-branding (se non già mergiata).
 
-## 🎯 Prossime 24–48h
-1) E2E **API security**: 401 per accesso non autenticato a `/api/*` protette
-2) next/image **pass-2** (componenti rimanenti a bassa priorità)
+## 🎯 Prossime 24–48h (ordine consigliato)
+1) **E2E smoke aggiuntivi (bassa manutenzione)**: logout, apertura /feed loggato.
+2) **Security** (light): password policy + OTP 900–1800s in Supabase.
+3) **next/image pass-2** (quando comodo): migrazione immagini residue.
 
 ## 📌 Backlog mirato
-- HIBP: attivare quando disponibile sul piano
-- E2E: flusso OAuth `redirect_to` su domini preview/prod
+- Sentry quick-smoke (facoltativo): POST `/api/debug/error` e verifica ingestion.
+- Dataset località: doppio check copertura completa (inclusi Lazio/Roma e Sicilia/Siracusa già note).
