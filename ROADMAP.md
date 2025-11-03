@@ -69,3 +69,8 @@ _Stato al 31/10/2025 — timezone: Europe/Rome_
 - **CI**: mantenere solo “Lint” e “Type check” come required checks.
 - **A11y**: sweep veloce (landmarks, alt text, focus ring) su pagine principali.
 
+
+## 3 novembre 2025 — Aggiornamento (CP21 read-only)
+- **Clubs UI**: tipizzazione allineata (page → ClubsClient → ClubsTable), colonna "Azioni" nascosta in read-only.
+- **Sentry**: ingest in produzione verificato con `/api/debug/error`.
+- **Lint/Build**: verdi.
