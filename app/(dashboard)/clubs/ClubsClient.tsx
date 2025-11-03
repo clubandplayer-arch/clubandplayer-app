@@ -166,6 +166,7 @@ export default function ClubsClient({ readOnly = false }: Props) {
           <ClubsTable
             items={data.data}
             currentUserId={me?.id}
+            readOnly={readOnly}
             {...(!readOnly && { onEdit: (c: Club) => setEditClub(c) })}
             {...(!readOnly && { onDelete: (c: Club) => handleDelete(c) })}
           />
@@ -196,9 +197,9 @@ export default function ClubsClient({ readOnly = false }: Props) {
                 initial={editClub}
                 onCancel={() => setEditClub(null)}
                 onSaved={() => {
-                setEditClub(null);
-                setReloadKey((k) => k + 1);
-              }}
+                  setEditClub(null);
+                  setReloadKey((k) => k + 1);
+                }}
               />
             )}
           </Modal>
