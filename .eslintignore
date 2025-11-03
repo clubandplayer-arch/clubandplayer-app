@@ -1,5 +1,0 @@
-# Ignora Playwright e config di test
-playwright.config.ts
-tests/e2e/**
-playwright.config.ts
-tests/e2e/**
