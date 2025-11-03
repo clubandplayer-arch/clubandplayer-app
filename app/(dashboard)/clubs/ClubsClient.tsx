@@ -10,7 +10,7 @@ import ClubForm from '@/components/clubs/ClubForm';
 import type { ClubsApiResponse, Club } from '@/types/club';
 
 type Props = {
-  /** Se true, nasconde creazione/modifica/cancellazione e mostra sola lettura */
+  /** Se true, nasconde creazione/modifica/cancellazione e modali (sola lettura) */
   readOnly?: boolean;
 };
 
@@ -108,6 +108,8 @@ export default function ClubsClient({ readOnly = false }: Props) {
     }
   }
 
+  const isAuthError = err?.includes('401');
+
   return (
     <div className="p-4 md:p-6 space-y-4">
       <div className="flex items-center justify-between gap-3">
@@ -135,13 +137,27 @@ export default function ClubsClient({ readOnly = false }: Props) {
 
       {err && (
         <div className="border rounded-xl p-4 bg-red-50 text-red-700">
-          Errore nel caricamento: {err}{' '}
-          <button
-            onClick={() => setReloadKey((k) => k + 1)}
-            className="ml-3 px-3 py-1 border rounded-lg bg-white hover:bg-gray-50"
-          >
-            Riprova
-          </button>
+          {isAuthError ? (
+            <>
+              Devi effettuare l’accesso per vedere i club.
+              <a
+                href="/login"
+                className="ml-3 inline-block px-3 py-1 border rounded-lg bg-white hover:bg-gray-50 underline"
+              >
+                Vai al login
+              </a>
+            </>
+          ) : (
+            <>
+              Errore nel caricamento: {err}{' '}
+              <button
+                onClick={() => setReloadKey((k) => k + 1)}
+                className="ml-3 px-3 py-1 border rounded-lg bg-white hover:bg-gray-50"
+              >
+                Riprova
+              </button>
+            </>
+          )}
         </div>
       )}
 
@@ -160,7 +176,6 @@ export default function ClubsClient({ readOnly = false }: Props) {
       {/* Modali disabilitate in sola lettura */}
       {!readOnly && (
         <>
-          {/* Modal Crea */}
           <Modal open={openCreate} title="Nuovo club" onClose={() => setOpenCreate(false)}>
             <ClubForm
               onCancel={() => setOpenCreate(false)}
@@ -171,7 +186,6 @@ export default function ClubsClient({ readOnly = false }: Props) {
             />
           </Modal>
 
-          {/* Modal Edit */}
           <Modal
             open={!!editClub}
             title={`Modifica: ${editClub?.display_name || editClub?.name || ''}`}
@@ -182,9 +196,9 @@ export default function ClubsClient({ readOnly = false }: Props) {
                 initial={editClub}
                 onCancel={() => setEditClub(null)}
                 onSaved={() => {
-                  setEditClub(null);
-                  setReloadKey((k) => k + 1);
-                }}
+                setEditClub(null);
+                setReloadKey((k) => k + 1);
+              }}
               />
             )}
           </Modal>
