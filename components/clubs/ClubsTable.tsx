@@ -1,6 +1,6 @@
-// components/clubs/ClubsTable.tsx
 import Image from 'next/image';
 import type { Club } from '@/types/club';
+import { formatDateIT } from '@/lib/format';
 
 export default function ClubsTable({
   items,
@@ -32,18 +32,18 @@ export default function ClubsTable({
       <table className="min-w-full text-sm">
         <thead className="bg-gray-50">
           <tr className="text-left">
-            <th className="px-4 py-2">Club</th>
-            <th className="px-4 py-2">Città</th>
-            <th className="px-4 py-2">Paese</th>
-            <th className="px-4 py-2">Livello</th>
-            <th className="px-4 py-2">Creato</th>
-            {showActions && <th className="px-4 py-2 w-32">Azioni</th>}
+            <th scope="col" className="px-4 py-2">Club</th>
+            <th scope="col" className="px-4 py-2">Città</th>
+            <th scope="col" className="px-4 py-2">Paese</th>
+            <th scope="col" className="px-4 py-2">Livello</th>
+            <th scope="col" className="px-4 py-2">Creato</th>
+            {showActions && <th scope="col" className="px-4 py-2 w-32">Azioni</th>}
           </tr>
         </thead>
         <tbody>
           {items.map((c) => {
             const canEdit = showActions && !!currentUserId && c.owner_id === currentUserId;
-            const created = c.created_at ? new Date(c.created_at).toLocaleDateString() : '—';
+            const createdLabel = formatDateIT(c.created_at);
             return (
               <tr key={c.id} className="border-t">
                 <td className="px-4 py-2 flex items-center gap-3">
@@ -63,7 +63,9 @@ export default function ClubsTable({
                 <td className="px-4 py-2">{c.city ?? '—'}</td>
                 <td className="px-4 py-2">{c.country ?? '—'}</td>
                 <td className="px-4 py-2">{c.level ?? '—'}</td>
-                <td className="px-4 py-2">{created}</td>
+                <td className="px-4 py-2" title={typeof c.created_at === 'string' ? c.created_at : ''}>
+                  {createdLabel}
+                </td>
                 {showActions && (
                   <td className="px-4 py-2">
                     {canEdit ? (
