@@ -20,9 +20,8 @@ test.describe('Auth smoke', () => {
 
     // Verifichiamo che sia la Login page:
     // accettiamo due segnali stabili: titolo "Login" o il pulsante "Entra"
-    const sawLoginTitle = await page.locator('text=Login').first().isVisible().catch(() => false);
-    const sawEntraBtn = await page.locator('button:has-text("Entra")').first().isVisible().catch(() => false);
-
-    expect(sawLoginTitle || sawEntraBtn).toBeTruthy();
+    const sawLoginTitle = await page.getByRole('heading', { name: /login/i }).first().isVisible().catch(() => false);
+const sawEntraBtn = await page.getByRole('button', { name: /entra/i }).first().isVisible().catch(() => false);
+expect(sawLoginTitle || sawEntraBtn).toBeTruthy();
   });
 });
