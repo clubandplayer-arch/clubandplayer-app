@@ -13,7 +13,7 @@ export default async function Page() {
     redirect('/applications/sent');
   }
 
-  const { data: ops, error } = await supabase
+  const { data: ops, error: _error } = await supabase
     .from('opportunities')
     .select('id,title,city,province,region,country,created_at')
     .eq('owner_id', user.id)
