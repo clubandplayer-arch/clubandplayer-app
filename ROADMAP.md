@@ -74,3 +74,34 @@ _Stato al 31/10/2025 — timezone: Europe/Rome_
 - **Clubs UI**: tipizzazione allineata (page → ClubsClient → ClubsTable), colonna "Azioni" nascosta in read-only.
 - **Sentry**: ingest in produzione verificato con `/api/debug/error`.
 - **Lint/Build**: verdi.
+
+## 3 novembre 2025 — Wrap-up finale
+
+### ✅ Completato
+- **Sentry**: ingest verificato in produzione (`/api/debug/error`) e client-side (`/debug/client-error`) — eventi visibili su Sentry (EU).
+- **CP21 — /clubs (read-only)**:
+  - Pagina **sempre attiva** in sola lettura; wiring `page → ClubsClient → ClubsTable` con `readOnly`.
+  - Tabella aggiornata con `next/image` e data “Creato” formattata **it-IT (Europe/Rome)**.
+  - Ricerca + paginazione funzionanti; colonna **Azioni** nascosta in read-only.
+- **E2E Playwright**:
+  - Aggiunta **config** `playwright.config.ts` con `use.baseURL` e `webServer` su `127.0.0.1:3010`.
+  - **tests/tsconfig.json** valido (UTF-8, no BOM).
+  - Spec rese robuste:
+    - `/feed`: accetta redirect a `/login` **oppure** feed pubblico.
+    - `/clubs`: accetta tabella, stato vuoto **oppure** banner 401/errore.
+- **Build & Lint**:
+  - Esclusi `tests` e `playwright.config.ts` dal type-check Next (build Vercel OK).
+  - ESLint v9 (flat): override `playwright.config.ts` (no project), `tests/tsconfig.json`, fix variabili inutilizzate.
+- **Viewport pass-3**: rimossa `metadata.viewport` dalle route residue (Next 15).
+
+### 🟡 In corso / To-Do breve
+- **Adapter tipizzato /clubs**: mappatura campi reali per colonne finali (Nome, Città, Paese/Regione, Livello, Creato) e ordinamento coerente.
+- (Facoltativo) **Snellire bundle** read-only rimuovendo codice di creazione/modifica lato client (tree-shake).
+
+### 🎯 Prossime azioni
+1. Implementare **adapter tipizzato /clubs** e aggiornare la tabella (solo lettura, colonne definitive).
+2. (Opzionale) Sentry tuning (sample rate / env filters) e silenziare warning dev non rilevanti.
+3. Decidere se/come abilitare in futuro la **creazione** del club via UI (oggi nascosta per policy: un solo club “ente”).
+
+### 🔖 Tag
+- Consigliato: `v2025.11.03-stable-2` (CP21 read-only stabile + Sentry OK + E2E robusti + viewport cleanup).
