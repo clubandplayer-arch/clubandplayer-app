@@ -31,12 +31,14 @@ const nextCoreWebVitals = {
 };
 
 export default [
-  // 👇 aggiunto "eslint.config.*" per evitare il crash visto nel tuo log
+  // ✅ ignora output e il file di config stesso (già presente nel tuo repo)
   { ignores: ["**/.next/**", "**/node_modules/**", "**/dist/**", "**/build/**", "next-env.d.ts", "eslint.config.*"] },
 
   js.configs.recommended,
 
   ...tsRecommendedConfigs,
+
+  // ✅ codice TypeScript dell'app
   {
     files: ["**/*.{ts,tsx}"],
     languageOptions: {
@@ -44,11 +46,13 @@ export default [
     },
   },
 
+  // ✅ Next.js rules
   {
     ...nextCoreWebVitals,
     plugins: { "@next/next": next },
   },
 
+  // ✅ React rules
   {
     plugins: { "react-hooks": reactHooks, "react-refresh": reactRefresh },
     rules: {
@@ -58,6 +62,7 @@ export default [
     },
   },
 
+  // ✅ regole comuni
   {
     files: ["**/*.{ts,tsx,cts,mts}"],
     rules: {
@@ -68,6 +73,22 @@ export default [
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrors: "none" },
       ],
       "@typescript-eslint/no-explicit-any": "off",
+    },
+  },
+
+  // ➕ tests: usa il progetto TS dei test
+  {
+    files: ["tests/**/*.ts"],
+    languageOptions: {
+      parserOptions: { project: "./tests/tsconfig.json", tsconfigRootDir: process.cwd() },
+    },
+  },
+
+  // ➕ Playwright config: non cercare un project TS (evita il parsing error)
+  {
+    files: ["playwright.config.ts"],
+    languageOptions: {
+      parserOptions: { project: null },
     },
   },
 ];
