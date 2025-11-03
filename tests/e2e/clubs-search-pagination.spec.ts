@@ -7,7 +7,7 @@ test.describe('Clubs — ricerca & paginazione (read-only)', () => {
     // Attendi o redirect a /login o intestazione "Clubs"
     const first = await Promise.race([
       page.waitForURL(/\/login(\/|$)/, { timeout: 7000 }).then(() => 'login').catch(() => null),
-      page.getByRole('heading', { name: /clubs/i }).waitFor({ state: 'visible', timeout: 7000 }).then(() => 'clubs').catch(() => null),
+      page.getByRole('heading', { name: /clubs/i }).first().waitFor({ state: 'visible', timeout: 7000 }).then(() => 'clubs').catch(() => null),
     ]);
 
     if (first === 'login' || page.url().includes('/login')) {
@@ -16,7 +16,7 @@ test.describe('Clubs — ricerca & paginazione (read-only)', () => {
     }
 
     // Siamo su /clubs
-    await expect(page.getByRole('heading', { name: /clubs/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /clubs/i }).first()).toBeVisible();
 
     // In read-only: nessun bottone di creazione
     await expect(page.getByRole('button', { name: /\+\s*nuovo club/i })).toHaveCount(0);
