@@ -58,7 +58,7 @@ export default function ClubsTable({
                   ) : (
                     <div className="h-8 w-8 rounded-full bg-gray-200" />
                   )}
-                  <span className="font-medium">{c.display_name || c.name}</span>
+                  <span className="font-medium">{(c as any).displayLabel ?? c.display_name ?? c.name}</span>
                 </td>
                 <td className="px-4 py-2">{c.city ?? '—'}</td>
                 <td className="px-4 py-2">{c.country ?? '—'}</td>
