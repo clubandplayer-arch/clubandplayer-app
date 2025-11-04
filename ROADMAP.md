@@ -129,3 +129,7 @@ _Stato al 03/11/2025 — timezone: Europe/Rome_
 
 ## 4 novembre 2025 — CI
 - **CI**: aggiunto workflow GitHub Actions E2E (non-bloccante) con Playwright.
+
+## 4 novembre 2025 — Ricerca club (performance)
+- **Indici `pg_trgm`** creati su `name`, `display_name`, `city` + indice `created_at` per sort recente.
+- **ANALYZE** eseguito su `public.clubs`; `EXPLAIN` conferma *Bitmap Index Scan* (clubs_*_trgm).
