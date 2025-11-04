@@ -122,3 +122,7 @@ _Stato al 03/11/2025 — timezone: Europe/Rome_
   - /clubs read-only sempre attiva; adapter `mapClubsList` + wiring; data it-IT
   - Sentry client+server verificati; Playwright baseURL+webServer; E2E robusti
   - Esclusi test dal type-check Next; viewport pass-3 completato
+
+## 4 novembre 2025 — Rifinitura tabella
+- **/clubs**: colonna Nome ora usa `displayLabel` (adapter) con fallback `display_name|name`.
+- Smoke check: /api/health 200; /api/debug/error 500 (Sentry server); client-error page ok.
