@@ -6,7 +6,7 @@ export type ClubListItem = Club & {
   displayLabel?: string;
 };
 
-/** Collator locale-aware (Italiano), case-insensitive, ignore punctuation */
+/** Collator locale-aware (Italiano), case-insensitive, ignora punteggiatura */
 const collator = new Intl.Collator('it', {
   sensitivity: 'base',
   ignorePunctuation: true,
@@ -23,7 +23,6 @@ export function mapClubListItem(c: Club): ClubListItem {
 export function mapClubsList(list: Club[] | null | undefined): ClubListItem[] {
   if (!Array.isArray(list)) return [];
   const mapped = list.map(mapClubListItem);
-  // Ordina per displayLabel in modo stabile/locale-aware
   mapped.sort((a, b) => collator.compare(a.displayLabel ?? '—', b.displayLabel ?? '—'));
   return mapped;
 }
