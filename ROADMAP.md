@@ -130,3 +130,6 @@ _Stato al 03/11/2025 — timezone: Europe/Rome_
 ## 4 novembre 2025 — Ordinamento e CI
 - **/clubs**: lista ordinata A→Z su `displayLabel` con collator locale `it`.
 - **CI**: aggiunto workflow GitHub Actions E2E (non-bloccante) con Playwright.
+
+## 4 novembre 2025 — Sentry server
+- **Sentry (server)**: aggiunta `release` (SENTRY_RELEASE || VERCEL_GIT_COMMIT_SHA) con `environment=VERCEL_ENV`. Evento di prova da `/api/debug/error` verificato.
