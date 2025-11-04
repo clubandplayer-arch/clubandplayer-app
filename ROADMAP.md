@@ -133,3 +133,8 @@ _Stato al 03/11/2025 — timezone: Europe/Rome_
 ## 4 novembre 2025 — Ricerca club (performance)
 - **Indici `pg_trgm`** creati su `name`, `display_name`, `city` + indice `created_at` per sort recente.
 - **ANALYZE** eseguito su `public.clubs`; `EXPLAIN` conferma *Bitmap Index Scan* (clubs_*_trgm).
+
+## 4 novembre 2025 — MVP chiusa
+- **Stato**: MVP pronta all’uso con /clubs read-only, Sentry client+server ok (env+release), E2E locali e CI non-bloccante, viewport cleanup, next/image allowlist, indici pg_trgm per ricerca.
+- **Email**: modalità NOOP confermata per MVP.
+- **Smoke**: /api/health 200, /api/debug/error 500, /debug/client-error ok.
