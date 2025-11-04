@@ -1,22 +1,12 @@
 // app/(dashboard)/clubs/page.tsx
-import type { Metadata } from 'next';
-import ClubsClient from './ClubsClient';
+import { notFound } from 'next/navigation';
 
 export const dynamic = 'force-static';
 
-export const metadata: Metadata = {
-  title: 'Clubs — sola lettura',
-  description: 'Elenco club con ricerca e paginazione (sola lettura).',
-};
-
+/**
+ * Rotta disabilitata per policy di prodotto.
+ * Mostra 404 (Next.js notFound) e lascia all’utente l’azione di tornare in home.
+ */
 export default function Page() {
-  return (
-    <main className="container mx-auto p-4">
-      <h1 className="text-2xl font-semibold mb-2">Clubs</h1>
-      <p className="text-sm text-muted-foreground mb-4">
-        Vista in sola lettura con ricerca e paginazione.
-      </p>
-      <ClubsClient readOnly />
-    </main>
-  );
+  notFound();
 }
