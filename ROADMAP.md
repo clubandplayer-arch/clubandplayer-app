@@ -138,3 +138,6 @@ _Stato al 03/11/2025 — timezone: Europe/Rome_
 - **Stato**: MVP pronta all’uso con /clubs read-only, Sentry client+server ok (env+release), E2E locali e CI non-bloccante, viewport cleanup, next/image allowlist, indici pg_trgm per ricerca.
 - **Email**: modalità NOOP confermata per MVP.
 - **Smoke**: /api/health 200, /api/debug/error 500, /debug/client-error ok.
+
+## 4 novembre 2025 — Rotta /clubs
+- **/clubs** disabilitata (404), client rimosso.
