@@ -126,3 +126,6 @@ _Stato al 03/11/2025 — timezone: Europe/Rome_
 ## 4 novembre 2025 — Rifinitura tabella
 - **/clubs**: colonna Nome ora usa `displayLabel` (adapter) con fallback `display_name|name`.
 - Smoke check: /api/health 200; /api/debug/error 500 (Sentry server); client-error page ok.
+
+## 4 novembre 2025 — CI
+- **CI**: aggiunto workflow GitHub Actions E2E (non-bloccante) con Playwright.
