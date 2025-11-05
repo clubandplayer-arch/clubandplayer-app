@@ -1,3 +1,4 @@
+// app/api/applications/[id]/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
@@ -21,7 +22,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   const allowed = ['submitted', 'seen', 'accepted', 'rejected'];
   if (!allowed.includes(status)) return jsonError('Invalid status', 400);
 
-  // Recupero opportunità della candidatura
+  // Recupero candidatura -> opportunity_id
   const { data: app, error: e1 } = await supabase
     .from('applications')
     .select('opportunity_id')
@@ -29,13 +30,16 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
     .single();
   if (e1) return jsonError(e1.message, 400);
 
+  // Owner dell'opportunità (compat: owner_id || created_by)
   const { data: opp, error: e2 } = await supabase
     .from('opportunities')
-    .select('created_by')
-    .eq('id', app.opportunity_id)
+    .select('owner_id, created_by')
+    .eq('id', (app as any).opportunity_id)
     .single();
   if (e2) return jsonError(e2.message, 400);
-  if (!opp || opp.created_by !== user.id) return jsonError('Forbidden', 403);
+
+  const owner = (opp as any)?.owner_id ?? (opp as any)?.created_by ?? null;
+  if (!owner || owner !== user.id) return jsonError('Forbidden', 403);
 
   const { data, error } = await supabase
     .from('applications')
@@ -67,15 +71,17 @@ export const DELETE = withAuth(async (req: NextRequest, { supabase, user }) => {
     .single();
   if (e1) return jsonError(e1.message, 400);
 
-  // Se non è l'atleta, verifico che sia l'owner dell'opportunità
-  if (app.athlete_id !== user.id) {
+  // Se non è l'atleta, verifico che sia l'owner dell'opportunità (compat)
+  if ((app as any).athlete_id !== user.id) {
     const { data: opp, error: e2 } = await supabase
       .from('opportunities')
-      .select('created_by')
-      .eq('id', app.opportunity_id)
+      .select('owner_id, created_by')
+      .eq('id', (app as any).opportunity_id)
       .single();
     if (e2) return jsonError(e2.message, 400);
-    if (!opp || opp.created_by !== user.id) return jsonError('Forbidden', 403);
+
+    const owner = (opp as any)?.owner_id ?? (opp as any)?.created_by ?? null;
+    if (!owner || owner !== user.id) return jsonError('Forbidden', 403);
   }
 
   const { error } = await supabase.from('applications').delete().eq('id', id);
