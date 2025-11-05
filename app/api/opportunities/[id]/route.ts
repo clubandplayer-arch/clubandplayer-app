@@ -1,4 +1,3 @@
-// app/api/opportunities/[id]/route.ts
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
@@ -53,6 +52,7 @@ export async function GET(
       [
         'id',
         'owner_id',
+        'created_by', // 👈 aggiunto per fallback
         'title',
         'description',
         'sport',
@@ -73,7 +73,11 @@ export async function GET(
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   if (!data) return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  return NextResponse.json({ data });
+
+  // 👇 fallback owner_id <- created_by
+  const row = { ...(data as any), owner_id: (data as any).owner_id ?? (data as any).created_by ?? null };
+
+  return NextResponse.json({ data: row });
 }
 
 // PATCH /api/opportunities/[id]
@@ -91,7 +95,7 @@ export async function PATCH(
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
 
-  // verifica proprietario + dati correnti
+  // verifica proprietario + dati correnti (invariato)
   const { data: opp, error: oppErr } = await supabase
     .from('opportunities')
     .select('id, owner_id, sport, role, required_category, age_min, age_max')
@@ -100,10 +104,10 @@ export async function PATCH(
 
   if (oppErr) return NextResponse.json({ error: oppErr.message }, { status: 400 });
   if (!opp) return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  if (opp.owner_id !== user.id)
+  if ((opp as any).owner_id !== user.id)
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
 
-  // build update
+  // build update (invariato vs tuo file)
   const update: Record<string, unknown> = {};
   const setIfPresent = (src: string, dst = src) => {
     if (Object.prototype.hasOwnProperty.call(body, src)) update[dst] = body[src];
@@ -117,21 +121,18 @@ export async function PATCH(
   setIfPresent('region');
   setIfPresent('country');
 
-  // 🔹 Ruolo (label umana mostrata in lista/UI)
   const roleHuman =
     pickStr((body as any).role) ??
     pickStr((body as any).roleLabel) ??
     pickStr((body as any).roleValue);
   if (roleHuman) {
-    update.role = roleHuman; // ✅ aggiorna la label visibile
+    update.role = roleHuman;
   }
 
-  // 🔹 Age: accetta sia bracket che numeri diretti
   let touchedAge = false;
   let nextAgeMin: number | null | undefined = undefined;
   let nextAgeMax: number | null | undefined = undefined;
 
-  // 1) bracket
   if ('age_bracket' in body || 'ageBracket' in body || 'age' in body) {
     const br =
       pickStr((body as any).age_bracket) ??
@@ -146,7 +147,6 @@ export async function PATCH(
     }
   }
 
-  // 2) numeri diretti (overrides se presenti)
   const rawMin = (body as any).age_min ?? (body as any).ageMin;
   const rawMax = (body as any).age_max ?? (body as any).ageMax;
   if ('age_min' in body || 'ageMin' in body) {
@@ -161,7 +161,6 @@ export async function PATCH(
   }
 
   if (touchedAge) {
-    // Coerenza base: se entrambi presenti e min > max, scambiali
     if (nextAgeMin != null && nextAgeMax != null && nextAgeMin > nextAgeMax) {
       const tmp = nextAgeMin;
       nextAgeMin = nextAgeMax;
@@ -171,7 +170,6 @@ export async function PATCH(
     update.age_max = nextAgeMax ?? null;
   }
 
-  // 🔹 required_category (slug EN per enum playing_role) SOLO per Calcio
   const rawCandidate =
     pickStr((body as any).required_category) ??
     pickStr((body as any).requiredCategory) ??
@@ -179,9 +177,8 @@ export async function PATCH(
     pickStr((body as any).playingCategory) ??
     roleHuman;
 
-  // se l'edit cambia lo sport in qualcosa ≠ Calcio → azzera required_category
   const sportInBody = pickStr((body as any).sport);
-  const nextSport = sportInBody ?? opp.sport;
+  const nextSport = sportInBody ?? (opp as any).sport;
 
   if (nextSport === 'Calcio' && rawCandidate) {
     const en = normalizeToEN(rawCandidate);
@@ -193,7 +190,6 @@ export async function PATCH(
     }
     update.required_category = en;
   } else if (sportInBody && nextSport !== 'Calcio') {
-    // se l'utente ha cambiato sport a non-Calcio, togliamo il vincolo
     update.required_category = null;
   }
 
@@ -235,7 +231,7 @@ export async function DELETE(
 
   if (oppErr) return NextResponse.json({ error: oppErr.message }, { status: 400 });
   if (!opp) return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  if (opp.owner_id !== user.id)
+  if ((opp as any).owner_id !== user.id)
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
 
   const { error } = await supabase.from('opportunities').delete().eq('id', id);

@@ -73,7 +73,8 @@ export async function GET(req: NextRequest) {
   let query = supabase
     .from('opportunities')
     .select(
-      'id,title,description,created_by,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name',
+      // 👇 aggiunto owner_id al tuo select
+      'id,title,description,created_by,owner_id,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name',
       { count: 'exact' }
     )
     .order('created_at', { ascending: sort === 'oldest' })
@@ -99,8 +100,11 @@ export async function GET(req: NextRequest) {
   const { data, count, error } = await query;
   if (error) return jsonError(error.message, 400);
 
+  // 👇 fallback in output
+  const rows = (data ?? []).map((r: any) => ({ ...r, owner_id: r.owner_id ?? r.created_by ?? null }));
+
   return NextResponse.json({
-    data: data ?? [],
+    data: rows,
     q,
     page,
     pageSize,
@@ -184,7 +188,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   const { data, error } = await supabase
     .from('opportunities')
     .insert(insertPayload)
-    .select('id,title,description,created_by,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name')
+    .select('id,title,description,created_by,owner_id,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name')
     .single();
 
   if (error) return jsonError(error.message, 400);
