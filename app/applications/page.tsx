@@ -20,20 +20,16 @@ async function detectRoleReceived(): Promise<Role> {
       .or(`id.eq.${uid},user_id.eq.${uid}`)
       .maybeSingle();
 
-    const t = (
-      (prof as any)?.type ??
-      (prof as any)?.profile_type ??
-      ''
-    ).toString().toLowerCase();
+    const t = ((prof as any)?.type ?? (prof as any)?.profile_type ?? '').toString().toLowerCase();
 
     if (t.includes('club')) return 'club';
     if (t.includes('atlet')) return 'athlete';
 
-    // Fallback: se ha opportunità pubblicate → è club
+    // Fallback: se ha opportunità pubblicate → è club (compat owner_id||created_by)
     const { count: opps } = await supabase
       .from('opportunities')
       .select('id', { head: true, count: 'exact' })
-      .eq('owner_id', uid);
+      .or(`owner_id.eq.${uid},created_by.eq.${uid}`);
 
     if ((opps ?? 0) > 0) return 'club';
 
@@ -59,7 +55,7 @@ function getOriginFromHeaders(h: Headers) {
 
 async function cookieHeader(): Promise<string> {
   const ck = await cookies();
-  return ck.getAll().map(c => `${c.name}=${c.value}`).join('; ');
+  return ck.getAll().map((c) => `${c.name}=${c.value}`).join('; ');
 }
 
 async function fetchReceivedRows() {
