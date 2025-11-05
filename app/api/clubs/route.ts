@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { listParamsSchema } from '@/lib/api/schemas';
 import { rateLimit } from '@/lib/api/rateLimit';
+import { isAdminUser } from '@/lib/api/admin'; // 👈 admin guard
 
 export const runtime = 'nodejs'; // sessione/cookie
 
@@ -77,13 +78,17 @@ export const GET = withAuth(async (req: NextRequest, { supabase }) => {
   });
 });
 
-/** POST /api/clubs  { name, display_name?, city?, country?, level?, logo_url? } */
+/** POST /api/clubs  { name, display_name?, city?, country?, level?, logo_url? }  (ADMIN ONLY) */
 export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   try {
     await rateLimit(req, { key: 'clubs:POST', limit: 20, window: '1m' } as any);
   } catch {
     return jsonError('Too Many Requests', 429);
   }
+
+  // 👇 Admin only
+  const isAdmin = await isAdminUser(supabase, user);
+  if (!isAdmin) return jsonError('forbidden_admin_only', 403);
 
   const body = await req.json().catch(() => ({}));
   const name = (body.name ?? '').trim();
@@ -95,7 +100,6 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   if (!name) return jsonError('Name is required', 400);
 
-  // RLS: with_check (owner_id = auth.uid())
   const { data, error } = await supabase
     .from('clubs')
     .insert({ name, display_name, city, country, level, logo_url, owner_id: user.id })
