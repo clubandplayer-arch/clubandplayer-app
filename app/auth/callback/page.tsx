@@ -20,25 +20,20 @@ function parseFragment(hash: string): Record<string, string> {
 function sanitizeRedirect(input: string | null): string | null {
   if (!input) return null;
   try {
-    // Supporta sia path "/qualcosa" che URL assoluti della stessa origin.
     const u = new URL(input, window.location.origin);
     if (u.origin !== window.location.origin) return null;
-    // Manteniamo solo path+query+hash
     return `${u.pathname}${u.search}${u.hash}`;
   } catch {
-    // Se non è un URL valido, accettiamo solo path assoluti
     return input.startsWith('/') ? input : null;
   }
 }
 
 /** Legge `redirect_to` dai parametri o da sessionStorage (chiave: auth:redirect_to) */
 function pickRedirectTarget(search: URLSearchParams): string | null {
-  // 1) query ?redirect_to=
   const q = search.get('redirect_to');
   const fromQuery = typeof window !== 'undefined' ? sanitizeRedirect(q) : null;
   if (fromQuery) return fromQuery;
 
-  // 2) sessionStorage (es. impostato da /login)
   if (typeof window !== 'undefined') {
     const raw = sessionStorage.getItem('auth:redirect_to');
     const fromStore = sanitizeRedirect(raw);
@@ -54,9 +49,7 @@ export default function AuthCallbackPage() {
 
   const [msg, setMsg] = useState('Completo l’accesso…');
 
-  // helper: sincronizza cookie SSR + bootstrap profilo + redirect smart
   async function syncAndRoute(access_token: string, refresh_token: string) {
-    // 1) sync cookie SSR per Route Handlers
     try {
       await fetch('/api/auth/session', {
         method: 'POST',
@@ -67,7 +60,6 @@ export default function AuthCallbackPage() {
       // non fallire il login per un sync instabile
     }
 
-    // 2) crea la riga su profiles se manca
     let accountType: string | null = null;
     try {
       const boot = await fetch('/api/profiles/bootstrap', { method: 'POST' });
@@ -75,21 +67,11 @@ export default function AuthCallbackPage() {
         const j = await boot.json().catch(() => ({}));
         accountType = j?.data?.account_type ?? null;
       }
-    } catch {
-      // non bloccare il login se il bootstrap fallisce
-    }
+    } catch {}
 
-    // 3) target di redirect
     let target = pickRedirectTarget(search);
+    if (!target) target = accountType ? '/' : '/onboarding/choose-role';
 
-    // Se non è stato specificato nulla, fallback come prima:
-    // - se non c'è role/accountType → onboarding/choose-role
-    // - altrimenti home/feed
-    if (!target) {
-      target = accountType ? '/' : '/onboarding/choose-role';
-    }
-
-    // pulizia: non tenere il redirect dopo l'uso
     try {
       if (typeof window !== 'undefined') {
         sessionStorage.removeItem('auth:redirect_to');
@@ -102,7 +84,7 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     (async () => {
       try {
-        // ---- (1) Implicit flow (#access_token & #refresh_token)
+        // (1) Implicit flow (#access_token & #refresh_token)
         if (typeof window !== 'undefined' && window.location.hash) {
           const frag = parseFragment(window.location.hash);
           const fragmentErr = frag['error_description'] || frag['error'];
@@ -112,7 +94,6 @@ export default function AuthCallbackPage() {
           const refresh_token = frag['refresh_token'] || null;
 
           if (access_token && refresh_token) {
-            // salva la sessione nel client SDK
             const { error } = await supabase.auth.setSession({ access_token, refresh_token });
             if (error) throw error;
 
@@ -121,7 +102,7 @@ export default function AuthCallbackPage() {
           }
         }
 
-        // ---- (2) PKCE flow (?code=...)
+        // (2) PKCE flow (?code=...)
         const code = search.get('code');
         if (code) {
           const { data, error } = await supabase.auth.exchangeCodeForSession(code);
@@ -132,12 +113,10 @@ export default function AuthCallbackPage() {
             await syncAndRoute(session.access_token, session.refresh_token);
             return;
           }
-
-          // se manca la sessione, errore esplicito
           throw new Error('Sessione non disponibile dopo exchange PKCE.');
         }
 
-        // ---- (3) Nessun token, nessun code → errore
+        // (3) Nessun token/code → errore
         const err =
           search.get('error_description') ||
           search.get('error') ||

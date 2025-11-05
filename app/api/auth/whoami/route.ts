@@ -5,6 +5,15 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
+function resolveEnv() {
+  const url =
+    process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+  const anon =
+    process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
+  if (!url || !anon) throw new Error('Supabase env missing');
+  return { url, anon };
+}
+
 function mergeCookies(from: NextResponse, into: NextResponse) {
   for (const c of from.cookies.getAll()) into.cookies.set(c);
   const set = from.headers.get('set-cookie');
@@ -12,7 +21,6 @@ function mergeCookies(from: NextResponse, into: NextResponse) {
 }
 
 type Role = 'guest' | 'athlete' | 'club';
-
 function normRole(v: unknown): 'club' | 'athlete' | null {
   const s = (typeof v === 'string' ? v : '').trim().toLowerCase();
   if (s === 'club') return 'club';
@@ -22,24 +30,21 @@ function normRole(v: unknown): 'club' | 'athlete' | null {
 
 export async function GET(req: NextRequest) {
   const carrier = new NextResponse();
+  const { url, anon } = resolveEnv();
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return req.cookies.get(name)?.value;
-        },
-        set(name: string, value: string, options: CookieOptions) {
-          carrier.cookies.set({ name, value, ...options });
-        },
-        remove(name: string, options: CookieOptions) {
-          carrier.cookies.set({ name, value: '', ...options, maxAge: 0 });
-        },
+  const supabase = createServerClient(url, anon, {
+    cookies: {
+      get(name: string) {
+        return req.cookies.get(name)?.value;
       },
-    }
-  );
+      set(name: string, value: string, options: CookieOptions) {
+        carrier.cookies.set({ name, value, ...options });
+      },
+      remove(name: string, options: CookieOptions) {
+        carrier.cookies.set({ name, value: '', ...options, maxAge: 0 });
+      },
+    },
+  });
 
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -57,11 +62,13 @@ export async function GET(req: NextRequest) {
     const { data: prof } = await supabase
       .from('profiles')
       .select('account_type,type')
-      .eq('user_id', user.id) // il tuo schema usa user_id
+      .eq('user_id', user.id)
       .maybeSingle();
 
-    accountType = normRole(prof?.account_type as any);
-    legacyType = typeof prof?.type === 'string' ? prof!.type.trim().toLowerCase() : null;
+    accountType = normRole((prof as any)?.account_type);
+    legacyType = typeof (prof as any)?.type === 'string'
+      ? (prof as any)!.type.trim().toLowerCase()
+      : null;
 
     if (!accountType) accountType = normRole(legacyType);
   } catch {
@@ -74,7 +81,7 @@ export async function GET(req: NextRequest) {
     accountType = normRole(meta);
   }
 
-  // 4) Fallback euristico: se ha creato opportunità => club
+  // 4) Fallback: se ha creato opportunità => club (legacy su created_by)
   if (!accountType) {
     try {
       const { count } = await supabase
