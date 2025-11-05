@@ -1,21 +1,22 @@
 // lib/api/admin.ts
-import type { CookieOptions } from '@supabase/ssr';
-
-type MaybeUser = { id: string; email?: string | null; user_metadata?: Record<string, unknown> } | null | undefined;
+type MaybeUser =
+  | { id: string; email?: string | null; user_metadata?: Record<string, unknown> }
+  | null
+  | undefined;
 
 function parseList(env?: string | null) {
   return (env ?? '')
     .split(',')
-    .map(s => s.trim())
+    .map((s) => s.trim().toLowerCase())
     .filter(Boolean);
 }
 
 /**
- * Ritorna true se l'utente è admin secondo una delle regole:
- * - EMAIL in ADMIN_EMAILS (lista CSV)
- * - USER ID in ADMIN_USER_IDS (lista CSV)
+ * true se l'utente è admin secondo una delle regole:
+ * - EMAIL in ADMIN_EMAILS (CSV, case-insensitive)
+ * - USER ID in ADMIN_USER_IDS (CSV)
  * - user_metadata.role === 'admin'
- * - profiles.is_admin === true (se la colonna esiste)
+ * - profiles.is_admin === true (se esiste la colonna)
  */
 export async function isAdminUser(supabase: any, user: MaybeUser): Promise<boolean> {
   if (!user?.id) return false;
@@ -39,7 +40,7 @@ export async function isAdminUser(supabase: any, user: MaybeUser): Promise<boole
       .maybeSingle();
     if (data && (data as any).is_admin === true) return true;
   } catch {
-    // la colonna potrebbe non esistere: ignoriamo
+    // la colonna potrebbe non esistere
   }
 
   return false;
