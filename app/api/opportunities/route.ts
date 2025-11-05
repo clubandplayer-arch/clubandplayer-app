@@ -21,7 +21,6 @@ function bracketToRange(code?: string): { age_min: number | null; age_max: numbe
   }
 }
 
-// Pulisce qualsiasi input in stringa o null (evita [object Object])
 function norm(v: unknown): string | null {
   if (v == null) return null;
   if (typeof v === 'string') {
@@ -43,7 +42,7 @@ function norm(v: unknown): string | null {
   return String(v).trim() || null;
 }
 
-/** GET /api/opportunities — pubblico */
+/** GET /api/opportunities — pubblico (READ) */
 export async function GET(req: NextRequest) {
   try {
     await rateLimit(req, { key: 'opps:GET', limit: 60, window: '1m' } as any);
@@ -73,7 +72,7 @@ export async function GET(req: NextRequest) {
   let query = supabase
     .from('opportunities')
     .select(
-      'id,title,description,created_by,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name',
+      'id,title,description,created_by,owner_id,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name',
       { count: 'exact' }
     )
     .order('created_at', { ascending: sort === 'oldest' })
@@ -99,8 +98,10 @@ export async function GET(req: NextRequest) {
   const { data, count, error } = await query;
   if (error) return jsonError(error.message, 400);
 
+  const rows = (data ?? []).map((r: any) => ({ ...r, owner_id: r.owner_id ?? r.created_by ?? null }));
+
   return NextResponse.json({
-    data: data ?? [],
+    data: rows,
     q,
     page,
     pageSize,
@@ -110,7 +111,7 @@ export async function GET(req: NextRequest) {
   });
 }
 
-/** POST /api/opportunities — deve essere club; Calcio richiede required_category (EN) */
+/** POST /api/opportunities — club only; scrittura compat owner_id/created_by */
 export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   try {
     await rateLimit(req, { key: 'opps:POST', limit: 20, window: '1m' } as any);
@@ -118,7 +119,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     return jsonError('Too Many Requests', 429);
   }
 
-  // verifica club
+  // ruolo club?
   const metaRole = String(user.user_metadata?.role ?? '').toLowerCase();
   let isClub = metaRole === 'club';
   if (!isClub) {
@@ -145,7 +146,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   const club_name = norm((body as any).club_name);
   const { age_min, age_max } = bracketToRange((body as any).age_bracket);
 
-  // required_category (solo Calcio) → EN per enum playing_role
+  // required_category → EN (solo Calcio)
   let required_category: string | null = null;
   if (sport === 'Calcio') {
     const candidate =
@@ -162,13 +163,13 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
         { status: 400 }
       );
     }
-    required_category = en; // 👈 EN per il nuovo enum playing_role
+    required_category = en;
   }
 
-  const insertPayload: Record<string, unknown> = {
+  const basePayload: Record<string, unknown> = {
     title,
     description,
-    created_by: user.id,
+    created_by: user.id, // legacy sempre popolato
     country,
     region,
     province,
@@ -181,12 +182,22 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     club_name,
   };
 
-  const { data, error } = await supabase
-    .from('opportunities')
-    .insert(insertPayload)
-    .select('id,title,description,created_by,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name')
-    .single();
+  // INSERT con retry: prima proviamo con owner_id, se la colonna non esiste ritentiamo senza
+  const insertAndSelect = async (payload: Record<string, unknown>) =>
+    supabase
+      .from('opportunities')
+      .insert(payload)
+      .select(
+        'id,title,description,created_by,owner_id,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name'
+      )
+      .single();
 
-  if (error) return jsonError(error.message, 400);
-  return NextResponse.json({ data }, { status: 201 });
+  let result = await insertAndSelect({ ...basePayload, owner_id: user.id });
+  if (result.error && /owner_id/i.test(result.error.message)) {
+    // colonna assente → retry senza owner_id
+    result = await insertAndSelect(basePayload);
+  }
+
+  if (result.error) return jsonError(result.error.message, 400);
+  return NextResponse.json({ data: result.data }, { status: 201 });
 });
