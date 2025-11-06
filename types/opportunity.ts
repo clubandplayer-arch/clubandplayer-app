@@ -1,4 +1,4 @@
-// Tipi per le opportunità
+// types/opportunity.ts
 
 export type Gender = 'male' | 'female' | 'mixed';
 
@@ -21,13 +21,28 @@ export interface Opportunity {
   // Età
   age_min?: number | null;
   age_max?: number | null;
-  // opzionale: traccia della fascia selezionata a UI (se salvata lato API)
+  /**
+   * Eventuale fascia età leggibile (es. "18-22") salvata lato API/UI.
+   * Solo decorativo, non usato per filtri logici.
+   */
   age_bracket?: string | null;
 
-  // Club/owner
+  // Club / owner
   club_name?: string | null;
-  created_by?: string | null; // id del club owner (presente nelle tue UI)
-  owner_id?: string | null;   // opzionale per compatibilità retro
+
+  /**
+   * Owner "vero" dell'opportunità.
+   * - nei dati nuovi deve essere valorizzato
+   * - nei dati legacy potrebbe essere nullo
+   */
+  owner_id?: string | null;
+
+  /**
+   * Alias legacy: vecchio campo usato come owner.
+   * Manteniamo per compatibilità in lettura,
+   * ma tutta la logica nuova deve preferire `owner_id`.
+   */
+  created_by?: string | null;
 
   // Meta
   created_at: string; // ISO string
