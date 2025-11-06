@@ -1,4 +1,3 @@
-// app/login/page.tsx
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
@@ -110,7 +109,7 @@ export default function LoginPage() {
         throw new Error(j?.error || 'Sync cookie fallito');
       }
 
-      // Se abbiamo un redirect_to valido, andiamo lì, altrimenti home
+      // redirect_to valido → usa; altrimenti home
       let target: string | null = null;
       try {
         target = sanitizeRedirect(sessionStorage.getItem('auth:redirect_to'), window.location.origin);
@@ -166,12 +165,14 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY`}
           </div>
         )}
 
+        {/* errori email/password */}
         {errorMsg && (
           <p className="rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700">
             {errorMsg}
           </p>
         )}
 
+        {/* form email/password */}
         <form onSubmit={signInEmail} className="space-y-3">
           <input
             type="email"

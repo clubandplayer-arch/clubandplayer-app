@@ -37,6 +37,7 @@ export async function getSupabaseServerClient() {
         cookieStore.set({ name, value: '', ...(options ?? {}), maxAge: 0 });
       },
     },
+    cookieOptions: { sameSite: 'lax' },
   });
 
   return supabase;

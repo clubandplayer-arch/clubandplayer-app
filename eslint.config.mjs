@@ -1,5 +1,4 @@
 // eslint.config.mjs - Flat config per ESLint 9 + Next 15 + TS App Router
-
 import process from "node:process";
 import js from "@eslint/js";
 import tseslint from "typescript-eslint";
@@ -31,14 +30,13 @@ const nextCoreWebVitals = {
 };
 
 export default [
-  // ✅ ignora output e il file di config stesso (già presente nel tuo repo)
+  // ignora output e il file di config stesso
   { ignores: ["**/.next/**", "**/node_modules/**", "**/dist/**", "**/build/**", "next-env.d.ts", "eslint.config.*"] },
 
   js.configs.recommended,
-
   ...tsRecommendedConfigs,
 
-  // ✅ codice TypeScript dell'app
+  // codice TypeScript dell'app
   {
     files: ["**/*.{ts,tsx}"],
     languageOptions: {
@@ -46,13 +44,13 @@ export default [
     },
   },
 
-  // ✅ Next.js rules
+  // Next.js rules
   {
     ...nextCoreWebVitals,
     plugins: { "@next/next": next },
   },
 
-  // ✅ React rules
+  // React rules
   {
     plugins: { "react-hooks": reactHooks, "react-refresh": reactRefresh },
     rules: {
@@ -62,7 +60,7 @@ export default [
     },
   },
 
-  // ✅ regole comuni
+  // regole comuni
   {
     files: ["**/*.{ts,tsx,cts,mts}"],
     rules: {
@@ -76,7 +74,7 @@ export default [
     },
   },
 
-  // ➕ tests: usa il progetto TS dei test
+  // tests: usa il progetto TS dei test
   {
     files: ["tests/**/*.ts"],
     languageOptions: {
@@ -84,11 +82,27 @@ export default [
     },
   },
 
-  // ➕ Playwright config: non cercare un project TS (evita il parsing error)
+  // Playwright config: non cercare un project TS (evita il parsing error)
   {
     files: ["playwright.config.ts"],
     languageOptions: {
       parserOptions: { project: null },
+    },
+  },
+
+  // ✅ scripts node: dichiara i global necessari (evita i no-undef)
+  {
+    files: ["scripts/**/*.{js,mjs}"],
+    languageOptions: {
+      globals: {
+        process: "readonly",
+        console: "readonly",
+        fetch: "readonly",
+        URLSearchParams: "readonly",
+      },
+    },
+    rules: {
+      "no-undef": "off",
     },
   },
 ];
