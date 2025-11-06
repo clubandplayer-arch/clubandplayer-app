@@ -32,6 +32,6 @@ Legenda: ✅ fatto · 🟡 in corso · ⬜ da fare
 28. docs/status-report.md — ✅
 29. eslint.config.mjs — ✅
 30. lib/supabase/server.ts — ✅
-31. types/opportunity.ts — ⬜
+31. types/opportunity.ts — ✅
 
 > Extra fuori elenco (già fatti): admin guard + /api/admin/guard-test; /api/clubs CRUD admin-only.
