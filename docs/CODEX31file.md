@@ -16,12 +16,12 @@ Legenda: ✅ fatto · 🟡 in corso · ⬜ da fare
 12. app/api/opportunities/[id]/route.ts — ✅
 13. app/api/opportunities/filter/route.ts — ✅
 14. app/api/opportunities/route.ts — ✅
-15. app/api/profiles/me/route.ts — ⬜
+15. app/api/profiles/me/route.ts — ✅
 16. app/applications/page.tsx — ✅
 17. app/applications/sent/page.tsx — ✅
-18. app/auth/callback/route.ts — ⬜
+18. app/auth/callback/route.ts — ✅
 19. app/c/[id]/page.tsx — ⬜
-20. app/login/page.tsx — ⬜
+20. app/login/page.tsx — ✅
 21. club/applicants (rimozione) — ⬜
 22. components/layout/DashboardNav.tsx — ⬜
 23. components/opportunities/ApplyCell.tsx — ⬜
@@ -30,8 +30,8 @@ Legenda: ✅ fatto · 🟡 in corso · ⬜ da fare
 26. components/profiles/ProfileMiniCard.tsx — ⬜
 27. docs/audit-2025-02-13.md — ⬜
 28. docs/status-report.md — ✅
-29. eslint.config.mjs — ⬜
-30. lib/supabase/server.ts — ⬜
+29. eslint.config.mjs — ✅
+30. lib/supabase/server.ts — ✅
 31. types/opportunity.ts — ⬜
 
 > Extra fuori elenco (già fatti): admin guard + /api/admin/guard-test; /api/clubs CRUD admin-only.
