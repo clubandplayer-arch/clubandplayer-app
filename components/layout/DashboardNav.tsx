@@ -29,29 +29,40 @@ export default function DashboardNav() {
     let ignore = false;
 
     (async () => {
+      // 1) Ruolo dal profilo (compat: account_type / profile_type / type)
       try {
-        // 1) Rileva ruolo dal profilo
         const rProf = await fetch('/api/profiles/me', {
           credentials: 'include',
           cache: 'no-store',
         });
         const jp = await rProf.json().catch(() => ({}));
-        const t = (jp?.data?.type ?? jp?.data?.profile_type ?? '')
+
+        const t = (
+          jp?.data?.account_type ??
+          jp?.data?.profile_type ??
+          jp?.data?.type ??
+          ''
+        )
           .toString()
           .toLowerCase();
 
         if (!ignore) {
           if (t.includes('club')) setRole('club');
-          else if (t.includes('athlete') || t.includes('atlet')) setRole('athlete');
+          else if (t.includes('athlete') || t.includes('atlet')) {
+            setRole('athlete');
+          }
         }
       } catch {
-        // ignora
+        // ignora: restiamo su null/guest fino ai fallback
       }
 
+      // 2) Conteggio candidature inviate/ricevute (usato anche come fallback ruolo)
       try {
-        // 2) Conta candidature inviate/ricevute
         const [rMine, rRec] = await Promise.allSettled([
-          fetch('/api/applications/mine', { credentials: 'include', cache: 'no-store' }),
+          fetch('/api/applications/mine', {
+            credentials: 'include',
+            cache: 'no-store',
+          }),
           fetch('/api/applications/received', {
             credentials: 'include',
             cache: 'no-store',
@@ -63,14 +74,14 @@ export default function DashboardNav() {
             const jm = await rMine.value.json().catch(() => ({}));
             const n = Array.isArray(jm?.data) ? jm.data.length : 0;
             setSentCount(n);
-            if (role === null && n > 0) setRole('athlete'); // fallback
+            if (role === null && n > 0) setRole('athlete');
           }
 
           if (rRec.status === 'fulfilled') {
             const jr = await rRec.value.json().catch(() => ({}));
             const n2 = Array.isArray(jr?.data) ? jr.data.length : 0;
             setReceivedCount(n2);
-            if (role === null && n2 > 0) setRole('club'); // fallback
+            if (role === null && n2 > 0) setRole('club');
           }
         }
       } finally {
@@ -86,9 +97,18 @@ export default function DashboardNav() {
 
   const isAthlete = role === 'athlete';
   const applicationsHref = isAthlete ? '/applications/sent' : '/applications';
+
   const applicationsActive =
     pathname === applicationsHref ||
-    (isAthlete ? pathname.startsWith('/applications/sent') : pathname === '/applications');
+    (isAthlete
+      ? pathname.startsWith('/applications/sent')
+      : pathname === '/applications');
+
+  const applicationsLabel = isAthlete
+    ? 'Candidature'
+    : 'Candidature ricevute';
+
+  const badgeCount = isAthlete ? sentCount : receivedCount;
 
   return (
     <nav className="flex gap-2 items-center p-3 border-b bg-white sticky top-0 z-10">
@@ -96,19 +116,32 @@ export default function DashboardNav() {
         Clubs
       </Link>
 
-      <Link href="/opportunities" className={pill(pathname.startsWith('/opportunities'))}>
+      <Link
+        href="/opportunities"
+        className={pill(pathname.startsWith('/opportunities'))}
+      >
         Opportunità
       </Link>
 
-      <Link href="/profile" className={pill(pathname.startsWith('/profile'))}>
+      <Link
+        href="/profile"
+        className={pill(pathname.startsWith('/profile'))}
+      >
         Profilo
       </Link>
 
       {loaded && (
-        <Link href={applicationsHref} className={pill(applicationsActive)}>
-          {isAthlete ? 'Candidature inviate' : 'Candidature ricevute'}
-          <span className="ml-2 inline-flex items-center justify-center min-w-[1.5rem] h-[1.5rem] text-xs rounded-full border px-1">
-            {isAthlete ? sentCount : receivedCount}
+        <Link
+          href={applicationsHref}
+          className={pill(applicationsActive)}
+        >
+          <span className="inline-flex items-center gap-1">
+            {applicationsLabel}
+            {badgeCount > 0 && (
+              <span className="inline-flex min-w-[18px] justify-center rounded-full bg-gray-900 text-white text-[10px] px-1.5">
+                {badgeCount}
+              </span>
+            )}
           </span>
         </Link>
       )}
