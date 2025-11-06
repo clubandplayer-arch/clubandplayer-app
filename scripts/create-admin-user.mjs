@@ -1,5 +1,4 @@
 /* eslint-env node */
-/* global process, console, fetch, URLSearchParams */
 /**
  * Crea/aggiorna l'utente admin:
  *   email: gabasso@gmail.com
