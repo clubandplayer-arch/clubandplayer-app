@@ -53,10 +53,11 @@ export default function OpportunitiesTable({
         </thead>
         <tbody>
           {items.map((o) => {
-            const canEdit = !!currentUserId && o.created_by === currentUserId;
+            const ownerId = o.owner_id ?? o.created_by ?? null; // compat
+            const canEdit = !!currentUserId && !!ownerId && ownerId === currentUserId;
             const place = [o.city, o.province, o.region, o.country].filter(Boolean).join(', ');
             const showApply = userRole === 'athlete' && !canEdit;
-            const showFollow = userRole === 'athlete' && !!o.created_by;
+            const showFollow = userRole === 'athlete' && !!ownerId;
 
             return (
               <tr key={o.id} className="border-t">
@@ -72,10 +73,10 @@ export default function OpportunitiesTable({
                 <td className="px-4 py-2">
                   <div className="flex items-center gap-2">
                     <span>{o.club_name ?? '—'}</span>
-                    {showFollow && (
+                    {showFollow && ownerId && (
                       <FollowButton
-                        clubId={o.created_by!}
-                        clubName={o.club_name ?? undefined}
+                        clubId={ownerId}
+                        clubName={o.club_name ?? 'Club'}
                         size="sm"
                       />
                     )}
@@ -84,9 +85,7 @@ export default function OpportunitiesTable({
                 <td className="px-4 py-2">{new Date(o.created_at).toLocaleString()}</td>
                 <td className="px-4 py-2">
                   <div className="flex items-center gap-2">
-                    {showApply && (
-                      <ApplyCell opportunityId={o.id} ownerId={o.created_by ?? null} />
-                    )}
+                    {showApply && <ApplyCell opportunityId={o.id} ownerId={ownerId} />}
                     {canEdit && (
                       <>
                         <button
