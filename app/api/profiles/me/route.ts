@@ -1,4 +1,3 @@
-// app/api/profiles/me/route.ts
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
@@ -101,6 +100,37 @@ function pickProfilePayload(body: any): Record<string, any> {
 }
 
 /**
+ * Normalizza l'account_type usando anche campi legacy.
+ */
+function normalizeAccountType(row: any | null): 'club' | 'athlete' | null {
+  if (!row) return null;
+
+  const raw = (
+    row.account_type ??
+    row.profile_type ??
+    row.type ??
+    ''
+  )
+    .toString()
+    .toLowerCase();
+
+  if (raw.includes('club')) return 'club';
+  if (raw.includes('athlete') || raw.includes('atlet')) return 'athlete';
+
+  // fallback: se ha campi tipici club → club
+  if (
+    row.club_league_category ||
+    row.club_foundation_year ||
+    row.club_stadium
+  ) {
+    return 'club';
+  }
+
+  // default: atleta
+  return 'athlete';
+}
+
+/**
  * GET /api/profiles/me
  * Ritorna il profilo dell'utente corrente (o null se non presente).
  */
@@ -109,9 +139,10 @@ export async function GET(req: NextRequest) {
 
   const {
     data: { user },
+    error: authError,
   } = await supabase.auth.getUser();
 
-  if (!user) {
+  if (authError || !user) {
     const out = NextResponse.json({ data: null }, { status: 401 });
     mergeCookies(carrier, out);
     return out;
@@ -124,6 +155,7 @@ export async function GET(req: NextRequest) {
     .maybeSingle();
 
   if (error) {
+    console.error('[profiles/me] select error', error);
     const out = NextResponse.json(
       { error: error.message },
       { status: 500 },
@@ -132,7 +164,17 @@ export async function GET(req: NextRequest) {
     return out;
   }
 
-  const out = NextResponse.json({ data: data ?? null });
+  const account_type = normalizeAccountType(data);
+  const normalized = data ? { ...data, account_type } : null;
+
+  const out = NextResponse.json({
+    user: {
+      id: user.id,
+      email: user.email,
+    },
+    data: normalized,
+  });
+
   mergeCookies(carrier, out);
   return out;
 }
@@ -148,9 +190,10 @@ export async function PATCH(req: NextRequest) {
 
   const {
     data: { user },
+    error: authError,
   } = await supabase.auth.getUser();
 
-  if (!user) {
+  if (authError || !user) {
     const out = NextResponse.json(
       { error: 'Unauthorized' },
       { status: 401 },
@@ -164,12 +207,15 @@ export async function PATCH(req: NextRequest) {
 
   // Normalizza account_type per compat
   if (typeof patch.account_type === 'string') {
-    patch.account_type = patch.account_type.toLowerCase();
-  }
-  if (!patch.account_type && typeof patch.type === 'string') {
+    const t = patch.account_type.toLowerCase();
+    if (t.includes('club')) patch.account_type = 'club';
+    else if (t.includes('athlete') || t.includes('atlet'))
+      patch.account_type = 'athlete';
+  } else if (typeof patch.type === 'string') {
     const t = patch.type.toLowerCase();
-    if (t.startsWith('club')) patch.account_type = 'club';
-    else if (t === 'athlete') patch.account_type = 'athlete';
+    if (t.includes('club')) patch.account_type = 'club';
+    else if (t.includes('athlete') || t.includes('atlet'))
+      patch.account_type = 'athlete';
   }
 
   const now = new Date().toISOString();
@@ -188,6 +234,7 @@ export async function PATCH(req: NextRequest) {
     .single();
 
   if (error) {
+    console.error('[profiles/me] upsert error', error);
     const out = NextResponse.json(
       { error: error.message },
       { status: 400 },
@@ -196,7 +243,10 @@ export async function PATCH(req: NextRequest) {
     return out;
   }
 
-  const out = NextResponse.json({ data });
+  const account_type = normalizeAccountType(data);
+  const normalized = { ...data, account_type };
+
+  const out = NextResponse.json({ data: normalized });
   mergeCookies(carrier, out);
   return out;
 }
