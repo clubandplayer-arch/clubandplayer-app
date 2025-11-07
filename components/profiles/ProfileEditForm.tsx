@@ -1,32 +1,33 @@
-// components/profiles/ProfileEditForm.tsx
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import AvatarUploader from '@/components/profiles/AvatarUploader';
 
-type LocationLevel = 'region' | 'province' | 'municipality';
-type LocationRow = { id: number; name: string };
-type AccountType = 'club' | 'athlete' | null;
+type AccountType = 'athlete' | 'club';
 
 type Links = {
   instagram?: string | null;
   facebook?: string | null;
   tiktok?: string | null;
   x?: string | null;
+  website?: string | null;
 };
 
 type Profile = {
-  account_type: AccountType;
-
-  // anagrafica
+  id: string;
+  user_id: string;
+  account_type: AccountType | null;
+  profile_type?: string | null; // legacy
   full_name: string | null;
   display_name: string | null;
-  bio: string | null;
-  country: string | null;
   avatar_url: string | null;
+  bio: string | null;
 
-  // atleta (geo + dati)
+  country: string | null;
+
+  // atleta: nascita / residenza / dati fisici
   birth_year: number | null;
   birth_place: string | null;
   city: string | null;
@@ -40,975 +41,1008 @@ type Profile = {
   birth_province_id: number | null;
   birth_municipality_id: number | null;
 
-  // interesse geo
+  foot: string | null;
+  height_cm: number | null;
+  weight_kg: number | null;
+
+  sport: string | null;
+  role: string | null;
+  visibility: string | null;
+
+  // interessi geo
   interest_country: string | null;
   interest_region_id: number | null;
   interest_province_id: number | null;
   interest_municipality_id: number | null;
 
-  // atleta
-  foot: string | null;
-  height_cm: number | null;
-  weight_kg: number | null;
-  sport: string | null;
-  role: string | null;
+  // compat vecchi campi (solo read)
+  interest_region?: string | null;
+  interest_province?: string | null;
+  interest_city?: string | null;
 
-  // club extra
+  // social
+  links: Links | null;
+
+  // notifiche
+  notify_email_new_message: boolean | null;
+
+  // campi club
   club_foundation_year: number | null;
   club_stadium: string | null;
   club_league_category: string | null;
-
-  // social / notifiche
-  links: Links | null;
-  notify_email_new_message: boolean;
 };
+
+type LocationLevel = 'region' | 'province' | 'municipality';
+
+type LocationOption = { id: number; name: string };
 
 const supabase = createSupabaseClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-/* ---------- helpers base ---------- */
+/* ------------------------------ helpers geo ------------------------------ */
 
-function pickData<T = any>(raw: any): T {
-  if (raw && typeof raw === 'object' && 'data' in raw) return (raw as any).data as T;
-  return raw as T;
-}
-
-const sortByName = (arr: LocationRow[]) =>
-  [...arr].sort((a, b) => a.name.localeCompare(b.name, 'it', { sensitivity: 'accent' }));
-
-async function rpcChildren(level: LocationLevel, parent: number | null) {
-  try {
-    const { data, error } = await supabase.rpc('location_children', { level, parent });
-    if (!error && Array.isArray(data)) return sortByName(data as LocationRow[]);
-  } catch {
-    // fallback sotto
-  }
-
-  if (level === 'region') {
-    const { data } = await supabase.from('regions').select('id,name').order('name', { ascending: true });
-    return sortByName((data ?? []) as LocationRow[]);
-  }
-
-  if (level === 'province') {
-    if (parent == null) return [];
-    const { data } = await supabase
-      .from('provinces')
-      .select('id,name')
-      .eq('region_id', parent)
-      .order('name', { ascending: true });
-    return sortByName((data ?? []) as LocationRow[]);
-  }
-
-  if (parent == null) return [];
-  const { data } = await supabase
-    .from('municipalities')
-    .select('id,name')
-    .eq('province_id', parent)
-    .order('name', { ascending: true });
-  return sortByName((data ?? []) as LocationRow[]);
-}
-
-function getCountries(): { code: string; name: string }[] {
-  try {
-    const codes: string[] = (Intl as any).supportedValuesOf?.('region') ?? [];
-    const two = codes.filter((c) => /^[A-Z]{2}$/.test(c));
-    const dn = new Intl.DisplayNames(['it'], { type: 'region' });
-    return two
-      .map((code) => ({ code, name: dn.of(code) || code }))
-      .sort((a, b) => a.name.localeCompare(b.name, 'it'));
-  } catch {
-    return [{ code: 'IT', name: 'Italia' }];
-  }
-}
-const COUNTRIES = getCountries();
-
-function flagEmoji(iso2?: string | null) {
-  const code = (iso2 || '').trim().toUpperCase();
-  if (!/^[A-Z]{2}$/.test(code)) return '';
-  const A = 0x1f1e6;
-  const a = 'A'.charCodeAt(0);
-  return (
-    String.fromCodePoint(A + code.charCodeAt(0) - a) +
-    String.fromCodePoint(A + code.charCodeAt(1) - a)
+function sortOptions(options: LocationOption[]): LocationOption[] {
+  return [...options].sort((a, b) =>
+    a.name.localeCompare(b.name, 'it', { sensitivity: 'base' })
   );
 }
 
-function countryName(codeOrText?: string | null) {
-  if (!codeOrText) return '';
-  const v = codeOrText.trim();
-  if (/^[A-Za-z]{2}$/.test(v)) {
-    try {
-      const dn = new Intl.DisplayNames(['it'], { type: 'region' });
-      return dn.of(v.toUpperCase()) || v.toUpperCase();
-    } catch {
-      return v.toUpperCase();
-    }
-  }
-  return v;
-}
-
-/** Normalizza una nazione in formato ISO2, se possibile */
-function normalizeCountryCode(v?: string | null) {
-  const s = (v || '').trim();
-  if (!s) return null;
-  if (/^[A-Za-z]{2}$/.test(s)) return s.toUpperCase();
-
-  const aliases: Record<string, string> = {
-    it: 'IT',
-    italia: 'IT',
-    italy: 'IT',
-    francia: 'FR',
-    france: 'FR',
-    spagna: 'ES',
-    spain: 'ES',
-    germania: 'DE',
-    germany: 'DE',
-    portogallo: 'PT',
-    portugal: 'PT',
-    uk: 'GB',
-    'united kingdom': 'GB',
-    'regno unito': 'GB',
-    usa: 'US',
-    'stati uniti': 'US',
-    'united states': 'US'
-  };
-  const key = s.toLowerCase();
-  if (aliases[key]) return aliases[key];
-
+async function fetchChildren(
+  parentLevel: LocationLevel,
+  childLevel: LocationLevel,
+  parentId: number | null | undefined
+): Promise<LocationOption[]> {
+  if (!parentId) return [];
   try {
-    const codes: string[] = (Intl as any).supportedValuesOf?.('region') ?? [];
-    const dnIt = new Intl.DisplayNames(['it'], { type: 'region' });
-    const dnEn = new Intl.DisplayNames(['en'], { type: 'region' });
-    for (const code of codes) {
-      if (
-        (dnIt.of(code) || '').toLowerCase() === key ||
-        (dnEn.of(code) || '').toLowerCase() === key
-      ) {
-        return code.toUpperCase();
-      }
+    const { data, error } = await supabase.rpc('location_children', {
+      parent_level: parentLevel,
+      child_level: childLevel,
+      parent_id: parentId,
+    });
+
+    if (error || !Array.isArray(data)) {
+      console.error('[ProfileEditForm] location_children error', error);
+      return [];
     }
-  } catch {
-    // ignore
+
+    return sortOptions(
+      (data as any[]).map((row) => ({
+        id: Number(row.id),
+        name: String(row.name),
+      }))
+    );
+  } catch (err) {
+    console.error('[ProfileEditForm] location_children exception', err);
+    return [];
   }
-  return s.toUpperCase();
 }
 
-/* sport & ruoli base per atleta */
-const SPORTS = ['Calcio', 'Basket', 'Pallavolo', 'Rugby', 'Altro'] as const;
-const ROLES_BY_SPORT: Record<string, string[]> = {
-  Calcio: ['Portiere', 'Difensore', 'Centrocampista', 'Attaccante', 'Altro'],
-  Basket: ['Playmaker', 'Guardia', 'Ala', 'Ala grande', 'Centro', 'Altro'],
-  Pallavolo: ['Palleggiatore', 'Opposto', 'Schacciatore', 'Centrale', 'Libero', 'Altro'],
-  Rugby: ['Pilone', 'Seconda linea', 'Terza linea', 'Mediano', 'Tre quarti', 'Altro'],
-  Altro: ['Altro']
+/* ------------------------------ costanti UI ------------------------------ */
+
+const FEET = ['Destro', 'Sinistro', 'Ambidestro'] as const;
+
+const SPORTS = [
+  'Calcio',
+  'Futsal',
+  'Calcio a 7',
+  'Calcio Femminile',
+  'Volley',
+  'Basket',
+  'Rugby',
+  'Pallanuoto',
+];
+
+const CALCIO_ROLES = [
+  'Portiere',
+  'Difensore centrale',
+  'Terzino destro',
+  'Terzino sinistro',
+  'Esterno destro',
+  'Esterno sinistro',
+  'Centrocampista centrale',
+  'Centrocampista difensivo',
+  'Trequartista',
+  'Ala destra',
+  'Ala sinistra',
+  'Prima punta',
+  'Seconda punta',
+];
+
+const CATEGORIES_BY_SPORT: Record<string, string[]> = {
+  Calcio: [
+    'Serie A',
+    'Serie B',
+    'Serie C',
+    'Serie D',
+    'Eccellenza',
+    'Promozione',
+    'Prima Categoria',
+    'Seconda Categoria',
+    'Terza Categoria',
+    'Settore giovanile',
+    'Scuola calcio',
+  ],
+  Volley: ['SuperLega', 'A2', 'B', 'C', 'D', 'Settore giovanile'],
+  Basket: ['Serie A', 'A2', 'B', 'C', 'D', 'Settore giovanile'],
 };
 
-export default function ProfileEditForm() {
-  const router = useRouter();
+/* ------------------------------- componente ------------------------------ */
 
-  const [profile, setProfile] = useState<Profile | null>(null);
+export default function ProfileEditForm() {
+  const pathname = usePathname();
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
-  const isClub = profile?.account_type === 'club';
+  const [profile, setProfile] = useState<Profile | null>(null);
 
-  // anagrafica
+  // tipo account effettivo
+  const [accountType, setAccountType] = useState<AccountType>('athlete');
+
+  // anagrafica comune
   const [fullName, setFullName] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [bio, setBio] = useState('');
-  const [country, setCountry] = useState('IT');
+  const [country, setCountry] = useState('Italia');
 
-  // Atleta only
-  const [birthYear, setBirthYear] = useState<number | ''>('');
+  // atleta: nascita / residenza
+  const [birthYear, setBirthYear] = useState<number | undefined>();
   const [birthPlace, setBirthPlace] = useState('');
-  const [residenceCity, setResidenceCity] = useState('');
+  const [city, setCity] = useState('');
 
-  // Residenza IT (atleta)
-  const [resRegionId, setResRegionId] = useState<number | null>(null);
-  const [resProvinceId, setResProvinceId] = useState<number | null>(null);
-  const [resMunicipalityId, setResMunicipalityId] = useState<number | null>(null);
-  const [regionsRes, setRegionsRes] = useState<LocationRow[]>([]);
-  const [provincesRes, setProvincesRes] = useState<LocationRow[]>([]);
-  const [municipalitiesRes, setMunicipalitiesRes] = useState<LocationRow[]>([]);
+  const [residenceRegionId, setResidenceRegionId] = useState<number | undefined>();
+  const [residenceProvinceId, setResidenceProvinceId] = useState<number | undefined>();
+  const [residenceMunicipalityId, setResidenceMunicipalityId] = useState<number | undefined>();
 
-  // Nascita (atleta)
-  const [birthCountry, setBirthCountry] = useState('IT');
-  const [birthRegionId, setBirthRegionId] = useState<number | null>(null);
-  const [birthProvinceId, setBirthProvinceId] = useState<number | null>(null);
-  const [birthMunicipalityId, setBirthMunicipalityId] = useState<number | null>(null);
-  const [regionsBirth, setRegionsBirth] = useState<LocationRow[]>([]);
-  const [provincesBirth, setProvincesBirth] = useState<LocationRow[]>([]);
-  const [municipalitiesBirth, setMunicipalitiesBirth] = useState<LocationRow[]>([]);
+  const [birthCountry, setBirthCountry] = useState('Italia');
+  const [birthRegionId, setBirthRegionId] = useState<number | undefined>();
+  const [birthProvinceId, setBirthProvinceId] = useState<number | undefined>();
+  const [birthMunicipalityId, setBirthMunicipalityId] = useState<number | undefined>();
 
-  // Zona interesse
-  const [regionId, setRegionId] = useState<number | null>(null);
-  const [provinceId, setProvinceId] = useState<number | null>(null);
-  const [municipalityId, setMunicipalityId] = useState<number | null>(null);
-  const [regions, setRegions] = useState<LocationRow[]>([]);
-  const [provinces, setProvinces] = useState<LocationRow[]>([]);
-  const [municipalities, setMunicipalities] = useState<LocationRow[]>([]);
-
-  // Atleta + notifiche
   const [foot, setFoot] = useState('');
-  const [heightCm, setHeightCm] = useState<number | ''>('');
-  const [weightKg, setWeightKg] = useState<number | ''>('');
-  const [playerSport, setPlayerSport] = useState('');
-  const [playerRole, setPlayerRole] = useState('');
-  const [notifyEmail, setNotifyEmail] = useState(true);
+  const [height, setHeight] = useState<number | undefined>();
+  const [weight, setWeight] = useState<number | undefined>();
+  const [sport, setSport] = useState('');
+  const [role, setRole] = useState('');
 
-  // Social
-  const [instagram, setInstagram] = useState('');
-  const [facebook, setFacebook] = useState('');
-  const [tiktok, setTiktok] = useState('');
-  const [x, setX] = useState('');
+  // club
+  const [clubSport, setClubSport] = useState('');
+  const [clubCategory, setClubCategory] = useState('');
+  const [clubFoundationYear, setClubFoundationYear] = useState<number | undefined>();
+  const [clubStadium, setClubStadium] = useState('');
 
-  // Club only
-  const [clubSport, setClubSport] = useState('Calcio');
-  const [clubCategory, setClubCategory] = useState('Altro');
-  const [foundationYear, setFoundationYear] = useState<number | ''>('');
-  const [stadium, setStadium] = useState('');
+  // interessi geo
+  const [interestCountry, setInterestCountry] = useState('IT');
+  const [interestRegionId, setInterestRegionId] = useState<number | undefined>();
+  const [interestProvinceId, setInterestProvinceId] = useState<number | undefined>();
+  const [interestMunicipalityId, setInterestMunicipalityId] = useState<number | undefined>();
 
-  const sportCategories = useMemo(
-    () => ROLES_BY_SPORT[clubSport] ?? ['Altro'],
-    [clubSport]
-  );
+  // social & notifiche
+  const [links, setLinks] = useState<Links>({});
+  const [notifyEmailNewMessage, setNotifyEmailNewMessage] =
+    useState<boolean>(true);
 
-  const canSave = useMemo(() => !saving && profile != null, [saving, profile]);
-  const currentYear = new Date().getFullYear();
+  // opzioni geo (usate solo via setter ⇒ prefisso _ per zittire ESLint)
+  const [_residenceRegions, setResidenceRegions] = useState<LocationOption[]>([]);
+  const [_residenceProvinces, setResidenceProvinces] = useState<LocationOption[]>([]);
+  const [_residenceMunicipalities, setResidenceMunicipalities] = useState<LocationOption[]>([]);
 
-  function normalizeSocial(kind: keyof Links, value: string): string | null {
-    const v = (value || '').trim();
-    if (!v) return null;
-    const isUrl = /^https?:\/\//i.test(v);
-    const map: Record<keyof Links, (h: string) => string> = {
-      instagram: (h) => `https://instagram.com/${h.replace(/^@/, '')}`,
-      facebook: (h) =>
-        isUrl ? h : `https://facebook.com/${h.replace(/^@/, '')}`,
-      tiktok: (h) => `https://tiktok.com/@${h.replace(/^@/, '')}`,
-      x: (h) => `https://twitter.com/${h.replace(/^@/, '')}`
-    };
-    if (isUrl) return v;
-    return map[kind](v);
-  }
+  const [_birthRegions, setBirthRegions] = useState<LocationOption[]>([]);
+  const [_birthProvinces, setBirthProvinces] = useState<LocationOption[]>([]);
+  const [_birthMunicipalities, setBirthMunicipalities] = useState<LocationOption[]>([]);
 
-  async function loadProfile() {
-    const r = await fetch('/api/profiles/me', {
-      credentials: 'include',
-      cache: 'no-store'
-    });
-    if (!r.ok) throw new Error('Impossibile leggere il profilo');
-    const raw = await r.json().catch(() => ({}));
-    const j = pickData<Partial<Profile>>(raw) || {};
+  const [_interestRegions, setInterestRegions] = useState<LocationOption[]>([]);
+  const [_interestProvinces, setInterestProvinces] = useState<LocationOption[]>([]);
+  const [_interestMunicipalities, setInterestMunicipalities] = useState<LocationOption[]>([]);
 
-    const p: Profile = {
-      account_type: (j as any).account_type ?? null,
+  /* --------- derivati: tipo account & titolo visibile ---------- */
 
-      full_name: (j as any).full_name ?? null,
-      display_name: (j as any).display_name ?? null,
-      bio: (j as any).bio ?? null,
-      country: (j as any).country ?? 'IT',
-      avatar_url: (j as any).avatar_url ?? null,
+  const forcedAccountType: AccountType | null =
+    pathname === '/club/profile' || pathname?.startsWith('/club/')
+      ? 'club'
+      : null;
 
-      birth_year: (j as any).birth_year ?? null,
-      birth_place: (j as any).birth_place ?? null,
-      city: (j as any).city ?? null,
+  const effectiveAccountType: AccountType =
+    forcedAccountType ??
+    accountType ??
+    ((profile?.profile_type as AccountType | null) || 'athlete');
 
-      residence_region_id: (j as any).residence_region_id ?? null,
-      residence_province_id: (j as any).residence_province_id ?? null,
-      residence_municipality_id: (j as any).residence_municipality_id ?? null,
+  const isClub = effectiveAccountType === 'club';
+  const title = isClub ? 'CLUB' : 'ATLETA';
 
-      birth_country: (j as any).birth_country ?? 'IT',
-      birth_region_id: (j as any).birth_region_id ?? null,
-      birth_province_id: (j as any).birth_province_id ?? null,
-      birth_municipality_id: (j as any).birth_municipality_id ?? null,
-
-      interest_country: (j as any).interest_country ?? 'IT',
-      interest_region_id: (j as any).interest_region_id ?? null,
-      interest_province_id: (j as any).interest_province_id ?? null,
-      interest_municipality_id: (j as any).interest_municipality_id ?? null,
-
-      foot: (j as any).foot ?? '',
-      height_cm: (j as any).height_cm ?? null,
-      weight_kg: (j as any).weight_kg ?? null,
-      sport: (j as any).sport ?? null,
-      role: (j as any).role ?? null,
-
-      club_foundation_year: (j as any).club_foundation_year ?? null,
-      club_stadium: (j as any).club_stadium ?? null,
-      club_league_category: (j as any).club_league_category ?? null,
-
-      links: (j as any).links ?? null,
-      notify_email_new_message: Boolean(
-        (j as any).notify_email_new_message ?? true
-      )
-    };
-
-    setProfile(p);
-
-    // init form
-    setFullName(p.full_name || '');
-    setDisplayName(
-      p.display_name || p.full_name || ''
-    );
-    setAvatarUrl(p.avatar_url || '');
-    setBio(p.bio || '');
-    setCountry(normalizeCountryCode(p.country) || 'IT');
-
-    setBirthYear(p.birth_year ?? '');
-    setBirthPlace(p.birth_place || '');
-    setResidenceCity(p.city || '');
-
-    setResRegionId(p.residence_region_id);
-    setResProvinceId(p.residence_province_id);
-    setResMunicipalityId(p.residence_municipality_id);
-
-    setBirthCountry(normalizeCountryCode(p.birth_country) || 'IT');
-    setBirthRegionId(p.birth_region_id);
-    setBirthProvinceId(p.birth_province_id);
-    setBirthMunicipalityId(p.birth_municipality_id);
-
-    setRegionId(p.interest_region_id);
-    setProvinceId(p.interest_province_id);
-    setMunicipalityId(p.interest_municipality_id);
-
-    setFoot(p.foot || '');
-    setHeightCm(p.height_cm ?? '');
-    setWeightKg(p.weight_kg ?? '');
-
-    // sport / ruolo atleta
-    setPlayerSport(p.sport || '');
-    setPlayerRole(p.role || '');
-
-    // club
-    setClubSport(p.sport || 'Calcio');
-    setClubCategory(p.club_league_category || 'Altro');
-    setFoundationYear(p.club_foundation_year ?? '');
-    setStadium(p.club_stadium || '');
-
-    // social
-    setInstagram(p.links?.instagram || '');
-    setFacebook(p.links?.facebook || '');
-    setTiktok(p.links?.tiktok || '');
-    setX(p.links?.x || '');
-
-    setNotifyEmail(Boolean(p.notify_email_new_message));
-  }
-
-  /* effetti: load + cascade */
+  /* ------------------------ caricamento profilo ------------------------ */
 
   useEffect(() => {
-    (async () => {
-      try {
-        setLoading(true);
-        await loadProfile();
-
-        setRegions(await rpcChildren('region', null));
-        setRegionsRes(await rpcChildren('region', null));
-        setRegionsBirth(await rpcChildren('region', null));
-      } catch (e: any) {
-        console.error(e);
-        setError(e?.message ?? 'Errore caricamento profilo');
-      } finally {
-        setLoading(false);
-      }
-    })();
+    void loadProfile();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // cascade residenza
-  useEffect(() => {
-    (async () => {
-      if (resRegionId == null) {
-        setProvincesRes([]);
-        setResProvinceId(null);
-        setMunicipalitiesRes([]);
-        setResMunicipalityId(null);
-        return;
-      }
-      const ps = await rpcChildren('province', resRegionId);
-      setProvincesRes(ps);
-      setResProvinceId((prev) => (ps.some((p) => p.id === prev) ? prev : null));
-      setMunicipalitiesRes([]);
-      setResMunicipalityId(null);
-    })();
-  }, [resRegionId]);
-
-  useEffect(() => {
-    (async () => {
-      if (resProvinceId == null) {
-        setMunicipalitiesRes([]);
-        setResMunicipalityId(null);
-        return;
-      }
-      const ms = await rpcChildren('municipality', resProvinceId);
-      setMunicipalitiesRes(ms);
-      setResMunicipalityId((prev) => (ms.some((m) => m.id === prev) ? prev : null));
-    })();
-  }, [resProvinceId]);
-
-  // cascade nascita
-  useEffect(() => {
-    (async () => {
-      if (birthCountry !== 'IT') {
-        setBirthRegionId(null);
-        setBirthProvinceId(null);
-        setBirthMunicipalityId(null);
-        return;
-      }
-      if (birthRegionId == null) {
-        setProvincesBirth([]);
-        setBirthProvinceId(null);
-        setMunicipalitiesBirth([]);
-        setBirthMunicipalityId(null);
-        return;
-      }
-      const ps = await rpcChildren('province', birthRegionId);
-      setProvincesBirth(ps);
-      setBirthProvinceId((prev) => (ps.some((p) => p.id === prev) ? prev : null));
-      setMunicipalitiesBirth([]);
-      setBirthMunicipalityId(null);
-    })();
-  }, [birthCountry, birthRegionId]);
-
-  useEffect(() => {
-    (async () => {
-      if (birthCountry !== 'IT' || birthProvinceId == null) {
-        setMunicipalitiesBirth([]);
-        setBirthMunicipalityId(null);
-        return;
-      }
-      const ms = await rpcChildren('municipality', birthProvinceId);
-      setMunicipalitiesBirth(ms);
-      setBirthMunicipalityId((prev) => (ms.some((m) => m.id === prev) ? prev : null));
-    })();
-  }, [birthCountry, birthProvinceId]);
-
-  // cascade interesse
-  useEffect(() => {
-    (async () => {
-      if (regionId == null) {
-        setProvinces([]);
-        setProvinceId(null);
-        setMunicipalities([]);
-        setMunicipalityId(null);
-        return;
-      }
-      const ps = await rpcChildren('province', regionId);
-      setProvinces(ps);
-      setProvinceId((prev) => (ps.some((p) => p.id === prev) ? prev : null));
-      setMunicipalities([]);
-      setMunicipalityId(null);
-    })();
-  }, [regionId]);
-
-  useEffect(() => {
-    (async () => {
-      if (provinceId == null) {
-        setMunicipalities([]);
-        setMunicipalityId(null);
-        return;
-      }
-      const ms = await rpcChildren('municipality', provinceId);
-      setMunicipalities(ms);
-      setMunicipalityId((prev) => (ms.some((m) => m.id === prev) ? prev : null));
-    })();
-  }, [provinceId]);
-
-  const countryPreview = country
-    ? `${flagEmoji(country)} ${countryName(country)}`
-    : '';
-
-  /* submit */
-
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!canSave) return;
-
-    setSaving(true);
+  async function loadProfile() {
+    setLoading(true);
     setError(null);
-    setMessage(null);
+    setSuccess(null);
 
     try {
-      const links: Links = {
-        instagram: normalizeSocial('instagram', instagram) ?? undefined,
-        facebook: normalizeSocial('facebook', facebook) ?? undefined,
-        tiktok: normalizeSocial('tiktok', tiktok) ?? undefined,
-        x: normalizeSocial('x', x) ?? undefined
-      };
-      Object.keys(links).forEach((k) => {
-        if ((links as any)[k] === undefined) delete (links as any)[k];
-      });
-
-      const basePayload: any = {
-        // nome pubblico usato sulle card
-        display_name: (displayName || fullName || '').trim() || null,
-        full_name: (fullName || '').trim() || null,
-        avatar_url: (avatarUrl || '').trim() || null,
-
-        bio: (bio || '').trim() || null,
-        country: normalizeCountryCode(country),
-
-        // interesse
-        interest_country: 'IT',
-        interest_region_id: regionId,
-        interest_province_id: provinceId,
-        interest_municipality_id: municipalityId,
-
-        // social & notifiche
-        links,
-        notify_email_new_message: !!notifyEmail
-      };
-
-      if (isClub) {
-        Object.assign(basePayload, {
-          // club identity
-          sport: (clubSport || '').trim() || null,
-          club_league_category: (clubCategory || '').trim() || null,
-          club_foundation_year:
-            foundationYear === '' ? null : Number(foundationYear),
-          club_stadium: (stadium || '').trim() || null,
-
-          // clean athlete fields
-          birth_year: null,
-          birth_place: null,
-          residence_region_id: null,
-          residence_province_id: null,
-          residence_municipality_id: null,
-          birth_country: null,
-          birth_region_id: null,
-          birth_province_id: null,
-          birth_municipality_id: null,
-          foot: null,
-          height_cm: null,
-          weight_kg: null,
-          role: null
-        });
-      } else {
-        // ATLETA
-        Object.assign(basePayload, {
-          birth_year: birthYear === '' ? null : Number(birthYear),
-
-          // residenza
-          residence_region_id: resRegionId,
-          residence_province_id: resProvinceId,
-          residence_municipality_id: resMunicipalityId,
-          city: (residenceCity || '').trim() || null,
-
-          // nascita
-          birth_country: normalizeCountryCode(birthCountry),
-          birth_region_id:
-            birthCountry === 'IT' ? birthRegionId : null,
-          birth_province_id:
-            birthCountry === 'IT' ? birthProvinceId : null,
-          birth_municipality_id:
-            birthCountry === 'IT' ? birthMunicipalityId : null,
-          birth_place:
-            birthCountry !== 'IT'
-              ? (birthPlace || '').trim() || null
-              : null,
-
-          // atleta
-          foot: (foot || '').trim() || null,
-          height_cm: heightCm === '' ? null : Number(heightCm),
-          weight_kg: weightKg === '' ? null : Number(weightKg),
-          sport: (playerSport || '').trim() || null,
-          role: (playerRole || '').trim() || null,
-
-          // clean club
-          club_league_category: null,
-          club_foundation_year: null,
-          club_stadium: null
-        });
-      }
-
-      const r = await fetch('/api/profiles/me', {
-        method: 'PATCH',
+      const res = await fetch('/api/profiles/me', {
+        method: 'GET',
         credentials: 'include',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(basePayload)
+        cache: 'no-store',
       });
 
-      if (!r.ok) {
-        const j = await r.json().catch(() => ({}));
-        throw new Error(j?.error ?? 'Salvataggio non riuscito');
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
       }
 
-      await loadProfile();
-      setMessage('Profilo aggiornato correttamente.');
-      router.refresh();
-    } catch (e: any) {
-      console.error(e);
-      setError(e?.message ?? 'Errore durante il salvataggio');
+      const json = await res.json().catch(() => ({}));
+      const data = (json && json.data) as Profile | null;
+
+      if (!data) {
+        setLoading(false);
+        return;
+      }
+
+      setProfile(data);
+
+      const fromApiType: AccountType =
+        (data.account_type as AccountType | null) ??
+        ((data.profile_type as AccountType | null) || 'athlete');
+
+      const finalType: AccountType =
+        forcedAccountType ?? fromApiType ?? 'athlete';
+
+      setAccountType(finalType);
+
+      // anagrafica
+      setFullName(data.full_name ?? '');
+      setDisplayName(data.display_name ?? '');
+      setAvatarUrl(data.avatar_url ?? '');
+      setBio(data.bio ?? '');
+      setCountry(data.country ?? 'Italia');
+
+      // atleta
+      setBirthYear(data.birth_year ?? undefined);
+      setBirthPlace(data.birth_place ?? '');
+      setCity(data.city ?? '');
+
+      setResidenceRegionId(data.residence_region_id ?? undefined);
+      setResidenceProvinceId(data.residence_province_id ?? undefined);
+      setResidenceMunicipalityId(
+        data.residence_municipality_id ?? undefined
+      );
+
+      setBirthCountry(data.birth_country ?? 'Italia');
+      setBirthRegionId(data.birth_region_id ?? undefined);
+      setBirthProvinceId(data.birth_province_id ?? undefined);
+      setBirthMunicipalityId(
+        data.birth_municipality_id ?? undefined
+      );
+
+      setFoot(data.foot ?? '');
+      setHeight(data.height_cm ?? undefined);
+      setWeight(data.weight_kg ?? undefined);
+
+      setSport(data.sport ?? '');
+      setRole(data.role ?? '');
+
+      // club
+      setClubSport(data.sport ?? '');
+      setClubCategory(data.club_league_category ?? '');
+      setClubFoundationYear(
+        data.club_foundation_year ?? undefined
+      );
+      setClubStadium(data.club_stadium ?? '');
+
+      // interessi
+      setInterestCountry(data.interest_country ?? 'IT');
+      setInterestRegionId(data.interest_region_id ?? undefined);
+      setInterestProvinceId(data.interest_province_id ?? undefined);
+      setInterestMunicipalityId(
+        data.interest_municipality_id ?? undefined
+      );
+
+      // social
+      const rawLinks = (data.links ?? {}) as Links;
+      setLinks({
+        instagram: rawLinks.instagram ?? '',
+        facebook: rawLinks.facebook ?? '',
+        tiktok: rawLinks.tiktok ?? '',
+        x: rawLinks.x ?? '',
+        website: rawLinks.website ?? '',
+      });
+
+      // notifiche
+      setNotifyEmailNewMessage(
+        data.notify_email_new_message ?? true
+      );
+
+      // regioni iniziali (se il RPC è configurato)
+      const regions = await fetchChildren(
+        'region',
+        'province',
+        0
+      ).catch(() => []);
+      if (regions.length) {
+        setResidenceRegions(regions);
+        setBirthRegions(regions);
+        setInterestRegions(regions);
+      }
+    } catch (err: any) {
+      console.error('loadProfile error', err);
+      setError(
+        'Errore nel caricamento del profilo. Riprova più tardi.'
+      );
     } finally {
-      setSaving(false);
-      setTimeout(() => setMessage(null), 4000);
+      setLoading(false);
     }
   }
 
-  /* render */
+  /* ------------------------- effetti dipendenze geo ------------------------ */
+
+  useEffect(() => {
+    void (async () => {
+      if (!residenceRegionId) {
+        setResidenceProvinces([]);
+        setResidenceProvinceId(undefined);
+        return;
+      }
+      const opts = await fetchChildren(
+        'region',
+        'province',
+        residenceRegionId
+      );
+      setResidenceProvinces(opts);
+      if (
+        residenceProvinceId &&
+        !opts.some((o) => o.id === residenceProvinceId)
+      ) {
+        setResidenceProvinceId(undefined);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [residenceRegionId]);
+
+  useEffect(() => {
+    void (async () => {
+      if (!residenceProvinceId) {
+        setResidenceMunicipalities([]);
+        setResidenceMunicipalityId(undefined);
+        return;
+      }
+      const opts = await fetchChildren(
+        'province',
+        'municipality',
+        residenceProvinceId
+      );
+      setResidenceMunicipalities(opts);
+      if (
+        residenceMunicipalityId &&
+        !opts.some((o) => o.id === residenceMunicipalityId)
+      ) {
+        setResidenceMunicipalityId(undefined);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [residenceProvinceId]);
+
+  useEffect(() => {
+    void (async () => {
+      if (!birthRegionId) {
+        setBirthProvinces([]);
+        setBirthProvinceId(undefined);
+        return;
+      }
+      const opts = await fetchChildren(
+        'region',
+        'province',
+        birthRegionId
+      );
+      setBirthProvinces(opts);
+      if (
+        birthProvinceId &&
+        !opts.some((o) => o.id === birthProvinceId)
+      ) {
+        setBirthProvinceId(undefined);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [birthRegionId]);
+
+  useEffect(() => {
+    void (async () => {
+      if (!birthProvinceId) {
+        setBirthMunicipalities([]);
+        setBirthMunicipalityId(undefined);
+        return;
+      }
+      const opts = await fetchChildren(
+        'province',
+        'municipality',
+        birthProvinceId
+      );
+      setBirthMunicipalities(opts);
+      if (
+        birthMunicipalityId &&
+        !opts.some((o) => o.id === birthMunicipalityId)
+      ) {
+        setBirthMunicipalityId(undefined);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [birthProvinceId]);
+
+  useEffect(() => {
+    void (async () => {
+      if (!interestRegionId) {
+        setInterestProvinces([]);
+        setInterestProvinceId(undefined);
+        return;
+      }
+      const opts = await fetchChildren(
+        'region',
+        'province',
+        interestRegionId
+      );
+      setInterestProvinces(opts);
+      if (
+        interestProvinceId &&
+        !opts.some((o) => o.id === interestProvinceId)
+      ) {
+        setInterestProvinceId(undefined);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [interestRegionId]);
+
+  useEffect(() => {
+    void (async () => {
+      if (!interestProvinceId) {
+        setInterestMunicipalities([]);
+        setInterestMunicipalityId(undefined);
+        return;
+      }
+      const opts = await fetchChildren(
+        'province',
+        'municipality',
+        interestProvinceId
+      );
+      setInterestMunicipalities(opts);
+      if (
+        interestMunicipalityId &&
+        !opts.some((o) => o.id === interestMunicipalityId)
+      ) {
+        setInterestMunicipalityId(undefined);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [interestProvinceId]);
+
+  /* ------------------------------ salvataggio ------------------------------ */
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const body: any = {
+        account_type: effectiveAccountType,
+        full_name: fullName || null,
+        display_name: displayName || null,
+        avatar_url: avatarUrl || null,
+        bio: bio || null,
+        country: country || null,
+        links: {
+          instagram: links.instagram || null,
+          facebook: links.facebook || null,
+          tiktok: links.tiktok || null,
+          x: links.x || null,
+          website: links.website || null,
+        },
+        notify_email_new_message: !!notifyEmailNewMessage,
+        interest_country: interestCountry || 'IT',
+        interest_region_id: interestRegionId || null,
+        interest_province_id: interestProvinceId || null,
+        interest_municipality_id: interestMunicipalityId || null,
+      };
+
+      if (effectiveAccountType === 'athlete') {
+        Object.assign(body, {
+          birth_year: birthYear || null,
+          birth_place: birthPlace || null,
+          city: city || null,
+          birth_country: birthCountry || 'Italia',
+          birth_region_id: birthRegionId || null,
+          birth_province_id: birthProvinceId || null,
+          birth_municipality_id: birthMunicipalityId || null,
+          residence_region_id: residenceRegionId || null,
+          residence_province_id: residenceProvinceId || null,
+          residence_municipality_id: residenceMunicipalityId || null,
+          foot: foot || null,
+          height_cm: height || null,
+          weight_kg: weight || null,
+          sport: sport || null,
+          role: role || null,
+        });
+      } else {
+        Object.assign(body, {
+          sport: clubSport || null,
+          club_league_category: clubCategory || null,
+          club_foundation_year: clubFoundationYear || null,
+          club_stadium: clubStadium || null,
+        });
+      }
+
+      const res = await fetch('/api/profiles/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(
+          errJson?.error ||
+            `Errore durante il salvataggio (${res.status})`
+        );
+      }
+
+      const json = await res.json().catch(() => ({}));
+      if (json?.data) {
+        setProfile(json.data as Profile);
+      }
+
+      setSuccess('Profilo aggiornato con successo.');
+    } catch (err: any) {
+      console.error('save profile error', err);
+      setError(
+        err?.message || 'Errore durante il salvataggio del profilo.'
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  /* --------------------------------- RENDER -------------------------------- */
 
   if (loading) {
     return (
-      <div className="rounded-xl border p-4 text-sm text-gray-600">
-        Caricamento profilo…
+      <div className="py-10 text-center text-sm text-gray-500">
+        Caricamento profilo in corso...
       </div>
     );
   }
-  if (error) {
-    return (
-      <div className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-800">
-        {error}
-      </div>
-    );
-  }
-  if (!profile) return null;
 
   return (
-    <>
-      <h1 className="mb-1 text-2xl font-bold">
-        {isClub ? 'CLUB' : 'ATLETA'}
-      </h1>
+    <form
+      onSubmit={handleSubmit}
+      className="space-y-8 max-w-5xl mx-auto"
+    >
+      <header className="space-y-1">
+        <h1 className="text-2xl font-semibold tracking-wide">
+          {title}
+        </h1>
+        <p className="text-sm text-gray-600">
+          Aggiorna le informazioni del tuo profilo{' '}
+          {isClub ? 'Club' : 'Atleta'} su Club&amp;Player.
+        </p>
+      </header>
 
-      <form onSubmit={onSubmit} className="space-y-6">
-        {/* Dati base */}
-        <section className="rounded-2xl border p-4 md:p-5">
-          <h2 className="mb-3 text-lg font-semibold">
-            {isClub ? 'Dati club' : 'Dati personali'}
-          </h2>
+      {error && (
+        <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 border border-red-200">
+          {error}
+        </div>
+      )}
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="flex flex-col gap-1 md:col-span-2">
-              <label className="text-sm text-gray-600">
-                {isClub ? 'Nome del club' : 'Nome e cognome'}
+      {success && (
+        <div className="rounded-md bg-green-50 px-3 py-2 text-sm text-green-700 border border-green-200">
+          {success}
+        </div>
+      )}
+
+      {/* Dati personali comuni */}
+      <section className="space-y-4">
+        <h2 className="text-lg font-semibold">Dati personali</h2>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-1">
+            <label className="text-sm font-medium">
+              Nome e cognome
+            </label>
+            <input
+              className="w-full rounded-md border px-3 py-2 text-sm"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="Es. ASD Carlentini / Mario Rossi"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-sm font-medium">
+              Nome pubblico (mostrato in Bacheca)
+            </label>
+            <input
+              className="w-full rounded-md border px-3 py-2 text-sm"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="Es. Real Madrink"
+            />
+          </div>
+        </div>
+
+        {/* Avatar uploader + URL */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium">
+            Foto profilo
+          </label>
+          <AvatarUploader
+            value={avatarUrl || ''}
+            onChange={(url: string | null) =>
+              setAvatarUrl(url || '')
+            }
+          />
+          <p className="text-xs text-gray-500">
+            Puoi caricare un&apos;immagine oppure incollare un URL
+            pubblico.
+          </p>
+          <input
+            type="url"
+            className="w-full rounded-md border px-3 py-2 text-xs"
+            placeholder="Oppure incolla qui un URL immagine"
+            value={avatarUrl}
+            onChange={(e) => setAvatarUrl(e.target.value)}
+          />
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-sm font-medium">Biografia</label>
+          <textarea
+            className="w-full rounded-md border px-3 py-2 text-sm min-h-[80px]"
+            value={bio}
+            onChange={(e) => setBio(e.target.value)}
+            placeholder={
+              isClub
+                ? 'Racconta la storia e il progetto del tuo club.'
+                : 'Racconta chi sei, il tuo percorso sportivo e i tuoi obiettivi.'
+            }
+          />
+        </div>
+      </section>
+
+      {/* Sezione ATLETA */}
+      {!isClub && (
+        <section className="space-y-4">
+          <h2 className="text-lg font-semibold">Dettagli atleta</h2>
+
+          <div className="grid gap-4 md:grid-cols-4">
+            <div className="space-y-1">
+              <label className="text-sm font-medium">
+                Anno di nascita
               </label>
               <input
-                className="rounded-lg border p-2"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
+                type="number"
+                className="w-full rounded-md border px-3 py-2 text-sm"
+                value={birthYear ?? ''}
+                onChange={(e) =>
+                  setBirthYear(
+                    e.target.value
+                      ? Number(e.target.value)
+                      : undefined
+                  )
+                }
+                placeholder="Es. 2002"
               />
             </div>
 
-            <div className="flex flex-col gap-1 md:col-span-2">
-              <label className="text-sm text-gray-600">
-                Nome pubblico (mostrato in Bacheca)
+            <div className="space-y-1 md:col-span-3">
+              <label className="text-sm font-medium">
+                Luogo di nascita (testo libero)
               </label>
               <input
-                className="rounded-lg border p-2"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="Es. ASD Carlentini / Mario Rossi"
+                className="w-full rounded-md border px-3 py-2 text-sm"
+                value={birthPlace}
+                onChange={(e) =>
+                  setBirthPlace(e.target.value)
+                }
+                placeholder="Es. Roma"
               />
             </div>
+          </div>
 
-            <div className="flex flex-col gap-1 md:col-span-2">
-              <label className="text-sm text-gray-600">
-                Avatar (URL firmato o pubblico)
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="space-y-1">
+              <label className="text-sm font-medium">
+                Arto dominante (piede/mano)
               </label>
-              <input
-                className="rounded-lg border p-2"
-                value={avatarUrl}
-                onChange={(e) => setAvatarUrl(e.target.value)}
-                placeholder="https://…"
-              />
-            </div>
-
-            {!isClub && (
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-gray-600">
-                  Anno di nascita
-                </label>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  className="rounded-lg border p-2"
-                  value={birthYear}
-                  onChange={(e) =>
-                    setBirthYear(
-                      e.target.value === ''
-                        ? ''
-                        : Number(e.target.value)
-                    )
-                  }
-                  min={1950}
-                  max={currentYear - 5}
-                  placeholder="Es. 2002"
-                />
-              </div>
-            )}
-
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-gray-600">Nazionalità</label>
               <select
-                className="rounded-lg border p-2"
-                value={country}
-                onChange={(e) => setCountry(e.target.value)}
+                className="w-full rounded-md border px-3 py-2 text-sm"
+                value={foot}
+                onChange={(e) => setFoot(e.target.value)}
               >
-                {COUNTRIES.map((c) => (
-                  <option key={c.code} value={c.code}>
-                    {c.name}
+                <option value="">Seleziona</option>
+                {FEET.map((f) => (
+                  <option key={f} value={f}>
+                    {f}
                   </option>
                 ))}
               </select>
-              {country && (
-                <span className="text-xs text-gray-500">
-                  {countryPreview}
-                </span>
-              )}
             </div>
 
-            <div className="md:col-span-2 flex flex-col gap-1">
-              <label className="text-sm text-gray-600">
-                Biografia
+            <div className="space-y-1">
+              <label className="text-sm font-medium">
+                Altezza (cm)
               </label>
-              <textarea
-                className="rounded-lg border p-2"
-                rows={4}
-                value={bio}
-                onChange={(e) => setBio(e.target.value)}
+              <input
+                type="number"
+                className="w-full rounded-md border px-3 py-2 text-sm"
+                value={height ?? ''}
+                onChange={(e) =>
+                  setHeight(
+                    e.target.value
+                      ? Number(e.target.value)
+                      : undefined
+                  )
+                }
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-sm font-medium">
+                Peso (kg)
+              </label>
+              <input
+                type="number"
+                className="w-full rounded-md border px-3 py-2 text-sm"
+                value={weight ?? ''}
+                onChange={(e) =>
+                  setWeight(
+                    e.target.value
+                      ? Number(e.target.value)
+                      : undefined
+                  )
+                }
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-1">
+              <label className="text-sm font-medium">
+                Sport
+              </label>
+              <select
+                className="w-full rounded-md border px-3 py-2 text-sm"
+                value={sport}
+                onChange={(e) => setSport(e.target.value)}
+              >
+                <option value="">Seleziona sport</option>
+                {SPORTS.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-sm font-medium">
+                Ruolo (per Calcio)
+              </label>
+              <select
+                className="w-full rounded-md border px-3 py-2 text-sm"
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+              >
+                <option value="">Seleziona ruolo</option>
+                {CALCIO_ROLES.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Sezione CLUB */}
+      {isClub && (
+        <section className="space-y-4">
+          <h2 className="text-lg font-semibold">Dettagli club</h2>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-1">
+              <label className="text-sm font-medium">
+                Sport principale
+              </label>
+              <select
+                className="w-full rounded-md border px-3 py-2 text-sm"
+                value={clubSport}
+                onChange={(e) => setClubSport(e.target.value)}
+              >
+                <option value="">Seleziona sport</option>
+                {SPORTS.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-sm font-medium">
+                Categoria / Campionato
+              </label>
+              <select
+                className="w-full rounded-md border px-3 py-2 text-sm"
+                value={clubCategory}
+                onChange={(e) =>
+                  setClubCategory(e.target.value)
+                }
+              >
+                <option value="">Seleziona</option>
+                {(CATEGORIES_BY_SPORT[clubSport] || []).map(
+                  (c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  )
+                )}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-1">
+              <label className="text-sm font-medium">
+                Anno di fondazione
+              </label>
+              <input
+                type="number"
+                className="w-full rounded-md border px-3 py-2 text-sm"
+                value={clubFoundationYear ?? ''}
+                onChange={(e) =>
+                  setClubFoundationYear(
+                    e.target.value
+                      ? Number(e.target.value)
+                      : undefined
+                  )
+                }
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-sm font-medium">
+                Stadio / Campo
+              </label>
+              <input
+                className="w-full rounded-md border px-3 py-2 text-sm"
+                value={clubStadium}
+                onChange={(e) =>
+                  setClubStadium(e.target.value)
+                }
+                placeholder="Es. Stadio Comunale"
               />
             </div>
           </div>
         </section>
+      )}
 
-        {/* Residenza (solo atleta) */}
-        {!isClub && (
-          <section className="rounded-2xl border p-4 md:p-5">
-            <h2 className="mb-3 text-lg font-semibold">
-              Luogo di residenza
-            </h2>
-            <div className="grid gap-4 md:grid-cols-3">
-              {/* regione / provincia / città */}
-              {/* ... identico alla tua versione, non lo ripeto per brevità mentale:
-                  ho mantenuto la stessa logica con resRegionId/resProvinceId/... */}
-            </div>
-            <p className="mt-2 text-xs text-gray-500">
-              Se vivi all’estero, lascia vuoto e indica la città qui
-              sotto.
-            </p>
-            <div className="mt-2 flex flex-col gap-1">
-              <label className="text-sm text-gray-600">
-                Residenza (estero) – città (solo se NON Italia)
-              </label>
-              <input
-                className="rounded-lg border p-2"
-                value={residenceCity}
-                onChange={(e) => setResidenceCity(e.target.value)}
-              />
-            </div>
-          </section>
-        )}
+      {/* Social & notifiche */}
+      <section className="space-y-4">
+        <h2 className="text-lg font-semibold">
+          Social &amp; notifiche
+        </h2>
 
-        {/* Nascita (solo atleta) */}
-        {/* ... mantenuta come nel tuo file, usa birthCountry + cascata */}
-        {/* Zona interesse */}
-        {/* ... mantenuta come nel tuo file */}
-        {/* Dettagli club / atleta */}
-        {isClub ? (
-          <section className="rounded-2xl border p-4 md:p-5">
-            <h2 className="mb-3 text-lg font-semibold">
-              Dettagli club
-            </h2>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-gray-600">Sport</label>
-                <select
-                  className="rounded-lg border p-2"
-                  value={clubSport}
-                  onChange={(e) => setClubSport(e.target.value)}
-                >
-                  {SPORTS.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-gray-600">
-                  Categoria / Campionato
-                </label>
-                <select
-                  className="rounded-lg border p-2"
-                  value={clubCategory}
-                  onChange={(e) =>
-                    setClubCategory(e.target.value)
-                  }
-                >
-                  {sportCategories.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-gray-600">
-                  Anno di fondazione
-                </label>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  className="rounded-lg border p-2"
-                  value={foundationYear}
-                  onChange={(e) =>
-                    setFoundationYear(
-                      e.target.value === ''
-                        ? ''
-                        : Number(e.target.value)
-                    )
-                  }
-                  min={1850}
-                  max={currentYear}
-                />
-              </div>
-
-              <div className="flex flex-col gap-1 md:col-span-2">
-                <label className="text-sm text-gray-600">
-                  Stadio / Impianto
-                </label>
-                <input
-                  className="rounded-lg border p-2"
-                  value={stadium}
-                  onChange={(e) => setStadium(e.target.value)}
-                />
-              </div>
-            </div>
-          </section>
-        ) : (
-          <section className="rounded-2xl border p-4 md:p-5">
-            <h2 className="mb-3 text-lg font-semibold">
-              Dettagli atleta
-            </h2>
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-gray-600">
-                  Sport
-                </label>
-                <select
-                  className="rounded-lg border p-2"
-                  value={playerSport}
-                  onChange={(e) =>
-                    setPlayerSport(e.target.value)
-                  }
-                >
-                  <option value="">— Seleziona —</option>
-                  {SPORTS.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-gray-600">
-                  Ruolo
-                </label>
-                <select
-                  className="rounded-lg border p-2"
-                  value={playerRole}
-                  onChange={(e) =>
-                    setPlayerRole(e.target.value)
-                  }
-                >
-                  <option value="">— Seleziona —</option>
-                  {(ROLES_BY_SPORT[playerSport] ??
-                    ROLES_BY_SPORT['Altro']
-                  ).map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-gray-600">
-                  Piede preferito
-                </label>
-                <select
-                  className="rounded-lg border p-2"
-                  value={foot}
-                  onChange={(e) => setFoot(e.target.value)}
-                >
-                  <option value="">—</option>
-                  <option value="Destro">Destro</option>
-                  <option value="Sinistro">Sinistro</option>
-                  <option value="Ambidestro">Ambidestro</option>
-                </select>
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-gray-600">
-                  Altezza (cm)
-                </label>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  className="rounded-lg border p-2"
-                  value={heightCm}
-                  onChange={(e) =>
-                    setHeightCm(
-                      e.target.value === ''
-                        ? ''
-                        : Number(e.target.value)
-                    )
-                  }
-                  min={100}
-                  max={230}
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-gray-600">
-                  Peso (kg)
-                </label>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  className="rounded-lg border p-2"
-                  value={weightKg}
-                  onChange={(e) =>
-                    setWeightKg(
-                      e.target.value === ''
-                        ? ''
-                        : Number(e.target.value)
-                    )
-                  }
-                  min={40}
-                  max={150}
-                />
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* Social + notifiche */}
-        {/* (sezione social e notifiche invariata rispetto al tuo file) */}
-
-        <div className="flex items-center gap-3">
-          <button
-            type="submit"
-            disabled={!canSave}
-            className="rounded-xl bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-60"
-          >
-            {saving ? 'Salvataggio…' : 'Salva profilo'}
-          </button>
-          {message && (
-            <span className="text-sm text-green-700">
-              {message}
-            </span>
-          )}
-          {error && (
-            <span className="text-sm text-red-700">
-              {error}
-            </span>
-          )}
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-1">
+            <label className="text-sm font-medium">
+              Instagram
+            </label>
+            <input
+              className="w-full rounded-md border px-3 py-2 text-sm"
+              value={links.instagram ?? ''}
+              onChange={(e) =>
+                setLinks((prev) => ({
+                  ...prev,
+                  instagram: e.target.value,
+                }))
+              }
+              placeholder="@username"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium">
+              Facebook
+            </label>
+            <input
+              className="w-full rounded-md border px-3 py-2 text-sm"
+              value={links.facebook ?? ''}
+              onChange={(e) =>
+                setLinks((prev) => ({
+                  ...prev,
+                  facebook: e.target.value,
+                }))
+              }
+              placeholder="Pagina o profilo"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium">
+              TikTok
+            </label>
+            <input
+              className="w-full rounded-md border px-3 py-2 text-sm"
+              value={links.tiktok ?? ''}
+              onChange={(e) =>
+                setLinks((prev) => ({
+                  ...prev,
+                  tiktok: e.target.value,
+                }))
+              }
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium">
+              X / Twitter
+            </label>
+            <input
+              className="w-full rounded-md border px-3 py-2 text-sm"
+              value={links.x ?? ''}
+              onChange={(e) =>
+                setLinks((prev) => ({
+                  ...prev,
+                  x: e.target.value,
+                }))
+              }
+            />
+          </div>
+          <div className="space-y-1 md:col-span-2">
+            <label className="text-sm font-medium">
+              Sito web
+            </label>
+            <input
+              className="w-full rounded-md border px-3 py-2 text-sm"
+              value={links.website ?? ''}
+              onChange={(e) =>
+                setLinks((prev) => ({
+                  ...prev,
+                  website: e.target.value,
+                }))
+              }
+              placeholder="https://..."
+            />
+          </div>
         </div>
-      </form>
-    </>
+
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border-gray-300"
+            checked={!!notifyEmailNewMessage}
+            onChange={(e) =>
+              setNotifyEmailNewMessage(e.target.checked)
+            }
+          />
+          Ricevi email per nuovi messaggi.
+        </label>
+      </section>
+
+      <div className="flex justify-end">
+        <button
+          type="submit"
+          disabled={saving}
+          className="inline-flex items-center rounded-md border border-transparent bg-black px-4 py-2 text-sm font-medium text-white hover:bg-gray-900 disabled:opacity-50"
+        >
+          {saving ? 'Salvataggio in corso…' : 'Salva profilo'}
+        </button>
+      </div>
+    </form>
   );
 }

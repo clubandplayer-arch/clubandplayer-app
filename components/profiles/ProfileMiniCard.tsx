@@ -1,4 +1,3 @@
-// components/profiles/ProfileMiniCard.tsx
 import Link from 'next/link';
 
 type Links = {
@@ -51,7 +50,7 @@ const COUNTRY_ALIASES: Record<string, string> = {
   russia: 'RU',
   'south korea': 'KR',
   'north korea': 'KP',
-  'viet nam': 'VN'
+  'viet nam': 'VN',
 };
 
 function safeTrim(v?: string | null): string {
@@ -135,19 +134,17 @@ function normalizeUrl(url?: string | null): string | null {
   return `https://${v}`;
 }
 
-// Mini helpers per social (se in futuro li vogliamo mostrare)
-function hasAnyLink(links?: Links | null): boolean {
-  if (!links) return false;
-  return !!(links.instagram || links.facebook || links.tiktok || links.x);
-}
-
 /**
  * Card profilo compatibile con i dati CODEX:
- * - CLUB: mostra box ricco con nazionalità, sport, categoria, fondazione, stadio.
- * - ATLETA: mostra nome, ruolo, sport, dati fisici base.
+ * - CLUB: box ricco con nazionalità, sport, categoria, fondazione, stadio.
+ * - ATLETA: nome, ruolo, sport, dati fisici base.
  * - fallback: box semplice.
  */
-export default function ProfileMiniCard({ profile }: { profile?: Profile | null }) {
+export default function ProfileMiniCard({
+  profile,
+}: {
+  profile?: Profile | null;
+}) {
   const name = displayName(profile);
   const country = profile?.country;
   const flag = flagEmoji(country);
@@ -216,7 +213,7 @@ export default function ProfileMiniCard({ profile }: { profile?: Profile | null 
 
         <div className="flex">
           <Link
-            href="/profile"
+            href="/club/profile"
             className="inline-flex items-center justify-center rounded-full border px-3 py-1 text-xs font-medium text-gray-800 hover:bg-gray-50"
           >
             Modifica profilo

@@ -1,4 +1,3 @@
-// components/layout/DashboardNav.tsx
 'use client';
 
 import Link from 'next/link';
@@ -12,7 +11,9 @@ function cx(...cls: Array<string | false | null | undefined>) {
 function pill(active: boolean) {
   return cx(
     'px-3 py-2 rounded-lg border transition-colors',
-    active ? 'bg-gray-900 text-white border-gray-900' : 'bg-white hover:bg-gray-50'
+    active
+      ? 'bg-gray-900 text-white border-gray-900'
+      : 'bg-white hover:bg-gray-50'
   );
 }
 
@@ -35,25 +36,26 @@ export default function DashboardNav() {
           credentials: 'include',
           cache: 'no-store',
         });
-        const jp = await rProf.json().catch(() => ({}));
+        if (rProf.ok) {
+          const jp = await rProf.json().catch(() => ({}));
 
-        const t = (
-          jp?.data?.account_type ??
-          jp?.data?.profile_type ??
-          jp?.data?.type ??
-          ''
-        )
-          .toString()
-          .toLowerCase();
+          const raw =
+            jp?.data?.account_type ??
+            jp?.data?.profile_type ??
+            jp?.data?.type ??
+            '';
 
-        if (!ignore) {
-          if (t.includes('club')) setRole('club');
-          else if (t.includes('athlete') || t.includes('atlet')) {
-            setRole('athlete');
+          const t = raw.toString().toLowerCase();
+
+          if (!ignore) {
+            if (t.includes('club')) setRole('club');
+            else if (t.includes('athlete') || t.includes('atlet')) {
+              setRole('athlete');
+            }
           }
         }
       } catch {
-        // ignora: restiamo su null/guest fino ai fallback
+        // ignora: resterà null finché non troviamo altro
       }
 
       // 2) Conteggio candidature inviate/ricevute (usato anche come fallback ruolo)
@@ -70,14 +72,14 @@ export default function DashboardNav() {
         ]);
 
         if (!ignore) {
-          if (rMine.status === 'fulfilled') {
+          if (rMine.status === 'fulfilled' && rMine.value.ok) {
             const jm = await rMine.value.json().catch(() => ({}));
             const n = Array.isArray(jm?.data) ? jm.data.length : 0;
             setSentCount(n);
             if (role === null && n > 0) setRole('athlete');
           }
 
-          if (rRec.status === 'fulfilled') {
+          if (rRec.status === 'fulfilled' && rRec.value.ok) {
             const jr = await rRec.value.json().catch(() => ({}));
             const n2 = Array.isArray(jr?.data) ? jr.data.length : 0;
             setReceivedCount(n2);
@@ -96,6 +98,10 @@ export default function DashboardNav() {
   }, []);
 
   const isAthlete = role === 'athlete';
+  const isClub = role === 'club';
+
+  const profileHref = isClub ? '/club/profile' : '/profile';
+
   const applicationsHref = isAthlete ? '/applications/sent' : '/applications';
 
   const applicationsActive =
@@ -110,10 +116,19 @@ export default function DashboardNav() {
 
   const badgeCount = isAthlete ? sentCount : receivedCount;
 
+  const profileActive = pathname.startsWith(profileHref);
+
   return (
     <nav className="flex gap-2 items-center p-3 border-b bg-white sticky top-0 z-10">
-      <Link href="/clubs" className={pill(pathname.startsWith('/clubs'))}>
-        Clubs
+      <Link href="/feed" className="mr-2 text-lg font-semibold">
+        Club&Player
+      </Link>
+
+      <Link
+        href="/feed"
+        className={pill(pathname === '/feed')}
+      >
+        Bacheca
       </Link>
 
       <Link
@@ -121,13 +136,6 @@ export default function DashboardNav() {
         className={pill(pathname.startsWith('/opportunities'))}
       >
         Opportunità
-      </Link>
-
-      <Link
-        href="/profile"
-        className={pill(pathname.startsWith('/profile'))}
-      >
-        Profilo
       </Link>
 
       {loaded && (
@@ -145,6 +153,21 @@ export default function DashboardNav() {
           </span>
         </Link>
       )}
+
+      <div className="ml-auto flex items-center gap-2">
+        <Link
+          href={profileHref}
+          className={pill(profileActive)}
+        >
+          Profilo
+        </Link>
+        <Link
+          href="/logout"
+          className={pill(pathname === '/logout')}
+        >
+          Logout
+        </Link>
+      </div>
     </nav>
   );
 }
