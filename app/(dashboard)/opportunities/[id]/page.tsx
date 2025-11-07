@@ -1,131 +1,141 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import ApplyCTA from '@/components/opportunities/ApplyCTA';
-import type { Opportunity } from '@/types/opportunity';
 
-// NEW: analytics
-import TrackOpportunityOpen from '@/components/analytics/TrackOpportunityOpen';
-import { track } from '@/lib/analytics';
+type Opportunity = {
+  id: string | number;
+  title?: string | null;
+  description?: string | null;
+  created_at?: string | null;
+  owner_id?: string | null;
+  created_by?: string | null;
+};
 
-type Role = 'athlete' | 'club' | 'guest';
+type WhoAmI = {
+  user: { id: string; email?: string } | null;
+  role: 'guest' | 'club' | 'athlete';
+};
 
-export default function OpportunityDetailPage({ params }: { params: { id: string } }) {
-  const id = params.id;
+export default function OpportunityDetailPage({
+  params,
+}: {
+  params: { id: string };
+}) {
+  const { id } = params;
 
   const [opp, setOpp] = useState<Opportunity | null>(null);
+  const [me, setMe] = useState<WhoAmI | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
-  const [meId, setMeId] = useState<string | null>(null);
-  const [role, setRole] = useState<Role>('guest');
-  const [alreadyApplied, setAlreadyApplied] = useState(false);
-
-  // Chi sono?
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      try {
-        const r = await fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' });
-        const j = await r.json().catch(() => ({}));
-        if (cancelled) return;
-        setMeId(j?.user?.id ?? null);
-        const raw = (j?.role ?? '').toString().toLowerCase();
-        setRole(raw === 'athlete' || raw === 'club' ? (raw as Role) : 'guest');
-      } catch {
-        if (!cancelled) setRole('guest');
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
 
-  // Dati opportunità
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true); setErr(null);
     (async () => {
       try {
-        const r = await fetch(`/api/opportunities/${id}`, { credentials: 'include', cache: 'no-store' });
-        const t = await r.text();
-        if (!r.ok) {
-          try { const j = JSON.parse(t); throw new Error(j.error || `HTTP ${r.status}`); }
-          catch { throw new Error(t || `HTTP ${r.status}`); }
+        setLoading(true);
+        setErr(null);
+
+        const [oppRes, meRes] = await Promise.all([
+          fetch(`/api/opportunities/${id}`, {
+            credentials: 'include',
+            cache: 'no-store',
+          }),
+          fetch('/api/auth/whoami', {
+            credentials: 'include',
+            cache: 'no-store',
+          }),
+        ]);
+
+        const oppJson = await oppRes.json().catch(() => ({}));
+        const meJson = await meRes.json().catch(() => ({}));
+
+        if (!oppRes.ok) {
+          throw new Error(oppJson.error || `HTTP ${oppRes.status}`);
         }
-        const j = JSON.parse(t);
-        if (!cancelled) setOpp(j?.data ?? j);
+
+        if (cancelled) return;
+
+        setOpp(oppJson.data || null);
+        setMe({
+          user: meJson?.user ?? null,
+          role:
+            meJson?.role === 'club' || meJson?.role === 'athlete'
+              ? meJson.role
+              : 'guest',
+        });
       } catch (e: any) {
-        if (!cancelled) setErr(e.message || 'Errore caricamento');
+        if (!cancelled) {
+          setErr(e?.message || 'Errore nel caricamento');
+          setOpp(null);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
-  // Ho già candidato?
-  useEffect(() => {
-    if (role !== 'athlete') return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const r = await fetch('/api/applications/mine', { credentials: 'include', cache: 'no-store' });
-        const j = await r.json().catch(() => ({}));
-        if (!cancelled) {
-          const has = !!(j?.data ?? []).find((a: any) => a?.opportunity_id === id);
-          setAlreadyApplied(has);
-        }
-      } catch {
-        /* noop */
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [role, id]);
+  const isOwner = (() => {
+    if (!opp || !me?.user?.id) return false;
+    const ownerId = (opp as any).owner_id ?? opp.created_by ?? null;
+    return !!ownerId && ownerId === me.user.id;
+  })();
 
-  if (loading) return <div className="p-6">Caricamento…</div>;
-  if (err || !opp) return <div className="p-6 text-red-600">Errore: {err || 'Dati non trovati'}</div>;
+  if (loading) {
+    return (
+      <div className="p-4 text-sm text-gray-600">
+        Caricamento opportunità…
+      </div>
+    );
+  }
 
-  const place = [opp.city, opp.province, opp.region, opp.country].filter(Boolean).join(', ');
-  const genderLabel =
-    (opp as any).gender === 'male' ? 'Maschile' :
-    (opp as any).gender === 'female' ? 'Femminile' :
-    (opp as any).gender === 'mixed' ? 'Misto' : undefined;
-  const ageLabel =
-    opp.age_min != null && opp.age_max != null ? `${opp.age_min}-${opp.age_max}` :
-    opp.age_min != null ? `${opp.age_min}+` :
-    opp.age_max != null ? `≤${opp.age_max}` : undefined;
-
-  const isOwner = !!meId && (opp.created_by === meId || (opp as any).owner_id === meId);
-  const showCTA = role === 'athlete' && !isOwner;
+  if (err || !opp) {
+    return (
+      <div className="p-4 text-sm text-red-600">
+        {err || 'Opportunità non trovata.'}
+      </div>
+    );
+  }
 
   return (
-    <div className="p-4 md:p-6 space-y-4">
-      {/* NEW: traccia apertura dettaglio */}
-      <TrackOpportunityOpen id={id} />
+    <div className="space-y-4 p-4">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold">
+            {opp.title || 'Opportunità'}
+          </h1>
+          <p className="mt-1 text-xs text-gray-500">
+            ID: {opp.id}
+            {opp.created_at && (
+              <>
+                {' '}
+                · pubblicata il{' '}
+                {new Date(opp.created_at).toLocaleDateString('it-IT')}
+              </>
+            )}
+          </p>
+        </div>
 
-      <header className="flex items-start justify-between gap-3">
-        <h1 className="text-2xl md:text-3xl font-semibold">{opp.title}</h1>
-        {showCTA && (
-          <ApplyCTA
-            oppId={opp.id}
-            initialApplied={alreadyApplied}
-            onApplied={() => {
-              setAlreadyApplied(true);
-              // NEW: traccia invio candidatura
-              track('application_submit', { opportunity_id: opp.id, role });
-            }}
-          />
+        {isOwner && (
+          <Link
+            href={`/opportunities/new?edit=${opp.id}`}
+            className="rounded-md border px-3 py-1.5 text-xs hover:bg-gray-50"
+          >
+            Modifica
+          </Link>
         )}
-      </header>
-
-      <div className="text-sm text-gray-600 flex flex-wrap gap-x-3 gap-y-1">
-        {opp.sport && <span>{opp.sport}</span>}
-        {opp.role && <span>{opp.role}</span>}
-        {genderLabel && <span>{genderLabel}</span>}
-        {ageLabel && <span>Età: {ageLabel}</span>}
-        {place && <span>📍 {place}</span>}
       </div>
 
-      {opp.description && <p className="text-gray-800">{opp.description}</p>}
+      {opp.description && (
+        <div className="whitespace-pre-wrap rounded-md border bg-white p-3 text-sm text-gray-800">
+          {opp.description}
+        </div>
+      )}
     </div>
   );
 }

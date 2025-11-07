@@ -3,57 +3,108 @@
 import { useEffect, useState } from 'react';
 import ApplicationsTable from '@/components/applications/ApplicationsTable';
 
-type Row = {
+type ApplicationRow = {
   id: string;
   created_at?: string | null;
+  status?: string | null;
   note?: string | null;
   opportunity_id?: string | null;
-  status?: string | null;
   athlete_id?: string | null;
-  [k: string]: any;
+  [key: string]: any;
 };
 
 export default function ClubApplicantsPage() {
-  const [rows, setRows] = useState<Row[]>([]);
+  const [rows, setRows] = useState<ApplicationRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function load() {
+    (async () => {
+      setLoading(true);
+      setErr(null);
+
       try {
-        setLoading(true);
-        const r = await fetch('/api/applications/received', {
+        const res = await fetch('/api/applications/received', {
           credentials: 'include',
           cache: 'no-store',
         });
-        const t = await r.text();
-        if (!r.ok) {
+
+        const text = await res.text();
+        if (!res.ok) {
+          // provo a leggere eventuale JSON { error }
           try {
-            const j = JSON.parse(t);
-            throw new Error(j.error || `HTTP ${r.status}`);
+            const j = JSON.parse(text);
+            throw new Error(j.error || `HTTP ${res.status}`);
           } catch {
-            throw new Error(t || `HTTP ${r.status}`);
+            throw new Error(text || `HTTP ${res.status}`);
           }
         }
-        const j = JSON.parse(t);
-        if (!cancelled) setRows(Array.isArray(j?.data) ? j.data : j);
-      } catch (e) {
-        console.error('Errore caricamento candidature ricevute', e);
-        if (!cancelled) setRows([]);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
 
-    load();
-    return () => { cancelled = true; };
+        let data: any = null;
+        try {
+          data = JSON.parse(text);
+        } catch {
+          data = text;
+        }
+
+        const arr = Array.isArray(data?.data)
+          ? data.data
+          : Array.isArray(data)
+          ? data
+          : [];
+
+        if (!cancelled) {
+          setRows(arr as ApplicationRow[]);
+        }
+      } catch (e: any) {
+        if (!cancelled) {
+          setErr(
+            e?.message || 'Errore nel caricamento delle candidature'
+          );
+          setRows([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
-    <div className="p-4 md:p-6 space-y-4">
-      <h1 className="text-2xl font-semibold">Candidature ricevute</h1>
-      <ApplicationsTable rows={rows} kind="received" loading={loading} />
-    </div>
+    <main className="mx-auto max-w-5xl p-4 space-y-4">
+      <header className="space-y-1">
+        <h1 className="text-xl font-semibold">
+          Candidature ricevute
+        </h1>
+        <p className="text-sm text-gray-600">
+          Elenco delle candidature alle opportunità pubblicate dal tuo club.
+        </p>
+      </header>
+
+      {err && (
+        <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+          {err}
+        </div>
+      )}
+
+      <ApplicationsTable
+        rows={rows}
+        kind="received"
+        loading={loading}
+      />
+
+      {!loading && !err && rows.length === 0 && (
+        <div className="text-sm text-gray-500">
+          Nessuna candidatura ricevuta al momento.
+        </div>
+      )}
+    </main>
   );
 }
