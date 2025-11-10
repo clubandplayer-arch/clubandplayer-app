@@ -4,6 +4,8 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
+/* -------------------------- Supabase SSR helper -------------------------- */
+
 function resolveEnv() {
   const url =
     process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
@@ -18,13 +20,12 @@ function resolveEnv() {
 }
 
 /**
- * Crea un client Supabase server-side usando lo stesso pattern
- * già usato nel progetto (cookies get/set/remove).
+ * Crea un client Supabase server-side usando i cookie della request
+ * e una NextResponse "carrier" per propagare eventuali modifiche.
  */
 function createSupabase(req: NextRequest) {
   const { url, anon } = resolveEnv();
 
-  // response "carrier" per applicare le modifiche ai cookie
   const res = NextResponse.next();
 
   const supabase = createServerClient(url, anon, {
@@ -55,10 +56,8 @@ function mergeCookies(from: NextResponse, into: NextResponse) {
   }
 }
 
-/**
- * Seleziona solo i campi ammessi per il profilo.
- * (Compat con schema CODEX/Club&Player esistente)
- */
+/* ------------------------ Normalizzazione profilo ------------------------ */
+
 function pickProfilePayload(body: any): Record<string, any> {
   if (!body || typeof body !== 'object') return {};
 
@@ -66,7 +65,7 @@ function pickProfilePayload(body: any): Record<string, any> {
     'display_name',
     'full_name',
     'account_type',
-    'type', // legacy → normalizzato sotto
+    'type', // legacy
     'country',
     'birth_date',
     'birth_country',
@@ -99,9 +98,6 @@ function pickProfilePayload(body: any): Record<string, any> {
   return patch;
 }
 
-/**
- * Normalizza l'account_type usando anche campi legacy.
- */
 function normalizeAccountType(row: any | null): 'club' | 'athlete' | null {
   if (!row) return null;
 
@@ -117,22 +113,17 @@ function normalizeAccountType(row: any | null): 'club' | 'athlete' | null {
   if (raw.includes('club')) return 'club';
   if (raw.includes('athlete') || raw.includes('atlet')) return 'athlete';
 
-  // fallback: se ha campi tipici club → club
-  if (
-    row.club_league_category ||
-    row.club_foundation_year ||
-    row.club_stadium
-  ) {
+  if (row.club_league_category || row.club_foundation_year || row.club_stadium) {
     return 'club';
   }
 
-  // default: atleta
   return 'athlete';
 }
 
+/* ---------------------------------- GET ---------------------------------- */
 /**
  * GET /api/profiles/me
- * Ritorna il profilo dell'utente corrente (o null se non presente).
+ * Ritorna { user, data } con account_type normalizzato.
  */
 export async function GET(req: NextRequest) {
   const { supabase, carrier } = createSupabase(req);
@@ -143,7 +134,7 @@ export async function GET(req: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (authError || !user) {
-    const out = NextResponse.json({ data: null }, { status: 401 });
+    const out = NextResponse.json({ user: null, data: null }, { status: 401 });
     mergeCookies(carrier, out);
     return out;
   }
@@ -151,15 +142,12 @@ export async function GET(req: NextRequest) {
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
-    .eq('id', user.id)
+    .or(`id.eq.${user.id},user_id.eq.${user.id}`)
     .maybeSingle();
 
   if (error) {
     console.error('[profiles/me] select error', error);
-    const out = NextResponse.json(
-      { error: error.message },
-      { status: 500 },
-    );
+    const out = NextResponse.json({ error: error.message }, { status: 500 });
     mergeCookies(carrier, out);
     return out;
   }
@@ -179,11 +167,12 @@ export async function GET(req: NextRequest) {
   return out;
 }
 
+/* --------------------------------- PATCH --------------------------------- */
 /**
  * PATCH /api/profiles/me
- * Upsert del profilo collegato all'utente loggato.
- * - Nessuna differenza tra login Google / email+password.
- * - Usa id utente Supabase come PK del profilo.
+ * Upsert del profilo:
+ * - usa id = user.id come PK "nuovo standard"
+ * - valorizza SEMPRE user_id = user.id per compat legacy
  */
 export async function PATCH(req: NextRequest) {
   const { supabase, carrier } = createSupabase(req);
@@ -194,10 +183,7 @@ export async function PATCH(req: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (authError || !user) {
-    const out = NextResponse.json(
-      { error: 'Unauthorized' },
-      { status: 401 },
-    );
+    const out = NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     mergeCookies(carrier, out);
     return out;
   }
@@ -205,17 +191,14 @@ export async function PATCH(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const patch = pickProfilePayload(body);
 
-  // Normalizza account_type per compat
   if (typeof patch.account_type === 'string') {
     const t = patch.account_type.toLowerCase();
     if (t.includes('club')) patch.account_type = 'club';
-    else if (t.includes('athlete') || t.includes('atlet'))
-      patch.account_type = 'athlete';
+    else if (t.includes('athlete') || t.includes('atlet')) patch.account_type = 'athlete';
   } else if (typeof patch.type === 'string') {
     const t = patch.type.toLowerCase();
     if (t.includes('club')) patch.account_type = 'club';
-    else if (t.includes('athlete') || t.includes('atlet'))
-      patch.account_type = 'athlete';
+    else if (t.includes('athlete') || t.includes('atlet')) patch.account_type = 'athlete';
   }
 
   const now = new Date().toISOString();
@@ -225,6 +208,7 @@ export async function PATCH(req: NextRequest) {
     .upsert(
       {
         id: user.id,
+        user_id: user.id,
         ...patch,
         updated_at: now,
       },
@@ -235,10 +219,7 @@ export async function PATCH(req: NextRequest) {
 
   if (error) {
     console.error('[profiles/me] upsert error', error);
-    const out = NextResponse.json(
-      { error: error.message },
-      { status: 400 },
-    );
+    const out = NextResponse.json({ error: error.message }, { status: 400 });
     mergeCookies(carrier, out);
     return out;
   }
