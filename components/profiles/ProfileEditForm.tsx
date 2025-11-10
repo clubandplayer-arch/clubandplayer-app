@@ -32,6 +32,7 @@ type Profile = {
   // atleta
   birth_year?: number | null;
   birth_place?: string | null;
+  birth_country?: string | null;
   foot?: string | null;
   height_cm?: number | null;
   weight_kg?: number | null;
@@ -43,44 +44,108 @@ type Profile = {
   club_foundation_year?: number | null;
   club_stadium?: string | null;
 
-  // interessi
+  // interests
   interest_country?: string | null;
 
   // social
   links?: Links | null;
 
-  // notifiche
+  // notifications
   notify_email_new_message?: boolean | null;
 };
 
+const LATERAL_PREFERENCE = ['Destro', 'Sinistro', 'Ambidestro'];
+
 const SPORTS = [
   'Calcio',
+  'Calcio Femminile',
   'Futsal',
   'Calcio a 7',
-  'Calcio Femminile',
   'Volley',
   'Basket',
   'Rugby',
   'Pallanuoto',
 ];
 
-const CALCIO_ROLES = [
-  'Portiere',
-  'Difensore centrale',
-  'Terzino destro',
-  'Terzino sinistro',
-  'Esterno destro',
-  'Esterno sinistro',
-  'Centrocampista centrale',
-  'Centrocampista difensivo',
-  'Trequartista',
-  'Ala destra',
-  'Ala sinistra',
-  'Prima punta',
-  'Seconda punta',
-];
-
-const FEET = ['Destro', 'Sinistro', 'Ambidestro'];
+const ROLES_BY_SPORT: Record<string, string[]> = {
+  Calcio: [
+    'Portiere',
+    'Difensore centrale',
+    'Terzino destro',
+    'Terzino sinistro',
+    'Esterno destro',
+    'Esterno sinistro',
+    'Centrocampista centrale',
+    'Centrocampista difensivo',
+    'Trequartista',
+    'Ala destra',
+    'Ala sinistra',
+    'Prima punta',
+    'Seconda punta',
+  ],
+  'Calcio Femminile': [
+    'Portiere',
+    'Difensore centrale',
+    'Terzino destro',
+    'Terzino sinistro',
+    'Esterno destro',
+    'Esterno sinistro',
+    'Centrocampista centrale',
+    'Centrocampista difensivo',
+    'Trequartista',
+    'Ala destra',
+    'Ala sinistra',
+    'Prima punta',
+    'Seconda punta',
+  ],
+  Futsal: [
+    'Portiere',
+    'Ultimo',
+    'Laterale',
+    'Pivot',
+    'Universale',
+  ],
+  'Calcio a 7': [
+    'Portiere',
+    'Difensore',
+    'Esterno',
+    'Centrale',
+    'Attaccante',
+  ],
+  Volley: [
+    'Palleggiatore',
+    'Opposto',
+    'Centrale',
+    'Schiacciatore',
+    'Libero',
+  ],
+  Basket: [
+    'Playmaker',
+    'Guardia',
+    'Guardia/Ala',
+    'Ala piccola',
+    'Ala grande',
+    'Centro',
+  ],
+  Rugby: [
+    'Pilone',
+    'Talloner',
+    'Seconda linea',
+    'Terza linea',
+    'Mediano di mischia',
+    'Mediano di apertura',
+    'Centro',
+    'Ala',
+    'Estremo',
+  ],
+  Pallanuoto: [
+    'Portiere',
+    'Difensore',
+    'Attaccante',
+    'Centroboa',
+    'Esterno',
+  ],
+};
 
 function normalizeAccountType(p?: Profile | null): AccountType {
   const raw =
@@ -103,19 +168,22 @@ export default function ProfileEditForm() {
   const [success, setSuccess] = useState<string | null>(null);
 
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [accountType, setAccountType] = useState<AccountType>('athlete');
+  const [accountType, setAccountType] =
+    useState<AccountType>('athlete');
 
-  // campi base
+  // common
   const [fullName, setFullName] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [bio, setBio] = useState('');
   const [country, setCountry] = useState('Italia');
 
-  // atleta
+  // athlete
   const [birthYear, setBirthYear] = useState<number | ''>('');
   const [birthPlace, setBirthPlace] = useState('');
   const [city, setCity] = useState('');
+  const [birthCountry, setBirthCountry] =
+    useState('Italia');
   const [foot, setFoot] = useState('');
   const [height, setHeight] = useState<number | ''>('');
   const [weight, setWeight] = useState<number | ''>('');
@@ -125,16 +193,20 @@ export default function ProfileEditForm() {
   // club
   const [clubSport, setClubSport] = useState('');
   const [clubCategory, setClubCategory] = useState('');
-  const [clubFoundationYear, setClubFoundationYear] = useState<number | ''>('');
+  const [clubFoundationYear, setClubFoundationYear] =
+    useState<number | ''>('');
   const [clubStadium, setClubStadium] = useState('');
 
-  // interessi / social / notifiche
-  const [interestCountry, setInterestCountry] = useState('IT');
+  // other
+  const [interestCountry, setInterestCountry] =
+    useState('IT');
   const [links, setLinks] = useState<Links>({});
-  const [notifyEmailNewMessage, setNotifyEmailNewMessage] = useState(true);
+  const [notifyEmailNewMessage, setNotifyEmailNewMessage] =
+    useState(true);
 
   const forcedAccountType: AccountType | null =
-    pathname === '/club/profile' || pathname.startsWith('/club/')
+    pathname === '/club/profile' ||
+    pathname.startsWith('/club/')
       ? 'club'
       : null;
 
@@ -145,7 +217,7 @@ export default function ProfileEditForm() {
   const isClub = effectiveAccountType === 'club';
   const title = isClub ? 'Profilo CLUB' : 'Profilo ATLETA';
 
-  // ---------------- Caricamento iniziale ----------------
+  /* ------------------------ LOAD PROFILO ------------------------ */
 
   useEffect(() => {
     let cancelled = false;
@@ -162,11 +234,21 @@ export default function ProfileEditForm() {
           cache: 'no-store',
         });
 
+        if (cancelled) return;
+
+        if (res.status === 401) {
+          // non loggato: lascio campi vuoti, niente errore rumoroso
+          setLoading(false);
+          return;
+        }
+
         if (!res.ok) {
-          if (!cancelled) {
-            setLoading(false);
-            setError('Impossibile caricare il profilo.');
-          }
+          console.error(
+            '[ProfileEditForm] GET /api/profiles/me status',
+            res.status
+          );
+          setError('Errore nel caricamento del profilo.');
+          setLoading(false);
           return;
         }
 
@@ -177,8 +259,7 @@ export default function ProfileEditForm() {
         if (cancelled) return;
 
         if (!data) {
-          setProfile(null);
-          setAccountType(forcedAccountType || 'athlete');
+          // utente loggato ma nessun profilo ancora: form vuoto, ok
           setLoading(false);
           return;
         }
@@ -197,6 +278,7 @@ export default function ProfileEditForm() {
         setBirthYear(data.birth_year ?? '');
         setBirthPlace(data.birth_place || '');
         setCity(data.city || '');
+        setBirthCountry(data.birth_country || 'Italia');
         setFoot(data.foot || '');
         setHeight(data.height_cm ?? '');
         setWeight(data.weight_kg ?? '');
@@ -204,19 +286,25 @@ export default function ProfileEditForm() {
         setRole(data.role || '');
 
         setClubSport(data.sport || '');
-        setClubCategory(data.club_league_category || '');
-        setClubFoundationYear(data.club_foundation_year ?? '');
+        setClubCategory(
+          data.club_league_category || ''
+        );
+        setClubFoundationYear(
+          data.club_foundation_year ?? ''
+        );
         setClubStadium(data.club_stadium || '');
 
-        setInterestCountry(data.interest_country || 'IT');
+        setInterestCountry(
+          data.interest_country || 'IT'
+        );
 
-        const rawLinks = data.links || {};
+        const rawLinks = (data.links || {}) as Links;
         setLinks({
           instagram: rawLinks.instagram || '',
           facebook: rawLinks.facebook || '',
           tiktok: rawLinks.tiktok || '',
           x: rawLinks.x || '',
-          website: (rawLinks as any).website || '',
+          website: rawLinks.website || '',
         });
 
         setNotifyEmailNewMessage(
@@ -239,7 +327,7 @@ export default function ProfileEditForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
-  // ---------------- Salvataggio ----------------
+  /* ------------------------ SUBMIT PROFILO ------------------------ */
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -263,7 +351,8 @@ export default function ProfileEditForm() {
           x: links.x || null,
           website: links.website || null,
         },
-        notify_email_new_message: !!notifyEmailNewMessage,
+        notify_email_new_message:
+          !!notifyEmailNewMessage,
       };
 
       if (!isClub) {
@@ -271,6 +360,7 @@ export default function ProfileEditForm() {
           birth_year: birthYear || null,
           birth_place: birthPlace || null,
           city: city || null,
+          birth_country: birthCountry || 'Italia',
           foot: foot || null,
           height_cm: height || null,
           weight_kg: weight || null,
@@ -280,24 +370,29 @@ export default function ProfileEditForm() {
       } else {
         Object.assign(body, {
           sport: clubSport || null,
-          club_league_category: clubCategory || null,
-          club_foundation_year: clubFoundationYear || null,
+          club_league_category:
+            clubCategory || null,
+          club_foundation_year:
+            clubFoundationYear || null,
           club_stadium: clubStadium || null,
         });
       }
 
       const res = await fetch('/api/profiles/me', {
         method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
 
-      const json = await res.json().catch(() => ({} as any));
+      const json = await res.json().catch(() => ({}));
 
       if (!res.ok) {
         throw new Error(
-          json?.error || `Errore salvataggio (${res.status})`
+          json?.error ||
+            `Errore durante il salvataggio (${res.status})`
         );
       }
 
@@ -309,14 +404,15 @@ export default function ProfileEditForm() {
     } catch (err: any) {
       console.error('[ProfileEditForm] save error', err);
       setError(
-        err?.message || 'Errore durante il salvataggio del profilo.'
+        err?.message ||
+          'Errore durante il salvataggio del profilo.'
       );
     } finally {
       setSaving(false);
     }
   }
 
-  // ---------------- Render ----------------
+  /* ------------------------------ RENDER ------------------------------ */
 
   if (loading) {
     return (
@@ -325,6 +421,9 @@ export default function ProfileEditForm() {
       </div>
     );
   }
+
+  const rolesForSport =
+    ROLES_BY_SPORT[sport] || [];
 
   return (
     <form
@@ -337,7 +436,7 @@ export default function ProfileEditForm() {
         </h1>
         <p className="text-sm text-gray-600">
           Aggiorna le informazioni del tuo profilo{' '}
-          {isClub ? 'Club' : 'Atleta'}.
+          {isClub ? 'Club' : 'Atleta'} su Club&Player.
         </p>
       </header>
 
@@ -353,20 +452,12 @@ export default function ProfileEditForm() {
         </div>
       )}
 
-      {/* Avatar */}
-      <section className="rounded-2xl border bg-white p-4 md:p-5 space-y-3">
-        <h2 className="text-lg font-semibold">Foto profilo</h2>
-        <AvatarUploader
-          value={avatarUrl || null}
-          onChange={(url) => setAvatarUrl(url || '')}
-        />
-      </section>
-
-      {/* Dati generali */}
-      <section className="rounded-2xl border bg-white p-4 md:p-5 space-y-4">
+      {/* Avatar + dati base */}
+      <section className="space-y-4 rounded-2xl border bg-white p-4 md:p-5">
         <h2 className="text-lg font-semibold">
           Dati generali
         </h2>
+
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <label className="text-sm font-medium">
@@ -390,10 +481,23 @@ export default function ProfileEditForm() {
               onChange={(e) =>
                 setDisplayName(e.target.value)
               }
-              placeholder="Come vuoi apparire agli altri"
+              placeholder="Come comparirai nella bacheca"
             />
           </div>
         </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium">
+            Foto profilo
+          </label>
+          <AvatarUploader
+            value={avatarUrl || null}
+            onChange={(url) =>
+              setAvatarUrl(url || '')
+            }
+          />
+        </div>
+
         <div>
           <label className="text-sm font-medium">
             Bio
@@ -405,20 +509,21 @@ export default function ProfileEditForm() {
             onChange={(e) => setBio(e.target.value)}
             placeholder={
               isClub
-                ? 'Racconta la storia e il progetto del club.'
-                : 'Racconta chi sei e cosa cerchi.'
+                ? 'Racconta storia, valori e progetto sportivo del club.'
+                : 'Racconta chi sei, carriera sportiva e obiettivi.'
             }
           />
         </div>
       </section>
 
-      {/* Blocco Atleta */}
+      {/* Atleta */}
       {!isClub && (
-        <section className="rounded-2xl border bg-white p-4 md:p-5 space-y-4">
+        <section className="space-y-4 rounded-2xl border bg-white p-4 md:p-5">
           <h2 className="text-lg font-semibold">
             Dettagli atleta
           </h2>
-          <div className="grid gap-4 md:grid-cols-2">
+
+          <div className="grid gap-4 md:grid-cols-4">
             <div>
               <label className="text-sm font-medium">
                 Anno di nascita
@@ -436,7 +541,7 @@ export default function ProfileEditForm() {
                 }
               />
             </div>
-            <div>
+            <div className="md:col-span-3">
               <label className="text-sm font-medium">
                 Luogo di nascita
               </label>
@@ -448,6 +553,9 @@ export default function ProfileEditForm() {
                 }
               />
             </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
             <div>
               <label className="text-sm font-medium">
                 Città di residenza
@@ -460,15 +568,19 @@ export default function ProfileEditForm() {
             </div>
             <div>
               <label className="text-sm font-medium">
-                Piede preferito
+                Preferenza laterale
               </label>
               <select
                 className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
                 value={foot}
-                onChange={(e) => setFoot(e.target.value)}
+                onChange={(e) =>
+                  setFoot(e.target.value)
+                }
               >
-                <option value="">Seleziona</option>
-                {FEET.map((f) => (
+                <option value="">
+                  Seleziona
+                </option>
+                {LATERAL_PREFERENCE.map((f) => (
                   <option key={f} value={f}>
                     {f}
                   </option>
@@ -492,6 +604,9 @@ export default function ProfileEditForm() {
                 }
               />
             </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
             <div>
               <label className="text-sm font-medium">
                 Peso (kg)
@@ -516,9 +631,23 @@ export default function ProfileEditForm() {
               <select
                 className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
                 value={sport}
-                onChange={(e) => setSport(e.target.value)}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setSport(next);
+                  // se cambio sport e il ruolo attuale non è più valido, resetto
+                  const allowed =
+                    ROLES_BY_SPORT[next] || [];
+                  if (
+                    allowed.length &&
+                    !allowed.includes(role)
+                  ) {
+                    setRole('');
+                  }
+                }}
               >
-                <option value="">Seleziona</option>
+                <option value="">
+                  Seleziona
+                </option>
                 {SPORTS.map((s) => (
                   <option key={s} value={s}>
                     {s}
@@ -528,15 +657,19 @@ export default function ProfileEditForm() {
             </div>
             <div>
               <label className="text-sm font-medium">
-                Ruolo (per il calcio)
+                Ruolo
               </label>
               <select
                 className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
                 value={role}
-                onChange={(e) => setRole(e.target.value)}
+                onChange={(e) =>
+                  setRole(e.target.value)
+                }
               >
-                <option value="">Seleziona</option>
-                {CALCIO_ROLES.map((r) => (
+                <option value="">
+                  Seleziona ruolo
+                </option>
+                {rolesForSport.map((r) => (
                   <option key={r} value={r}>
                     {r}
                   </option>
@@ -547,16 +680,17 @@ export default function ProfileEditForm() {
         </section>
       )}
 
-      {/* Blocco Club */}
+      {/* Club */}
       {isClub && (
-        <section className="rounded-2xl border bg-white p-4 md:p-5 space-y-4">
+        <section className="space-y-4 rounded-2xl border bg-white p-4 md:p-5">
           <h2 className="text-lg font-semibold">
             Dettagli club
           </h2>
+
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <label className="text-sm font-medium">
-                Sport
+                Sport principale
               </label>
               <select
                 className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
@@ -565,7 +699,9 @@ export default function ProfileEditForm() {
                   setClubSport(e.target.value)
                 }
               >
-                <option value="">Seleziona</option>
+                <option value="">
+                  Seleziona
+                </option>
                 {SPORTS.map((s) => (
                   <option key={s} value={s}>
                     {s}
@@ -575,7 +711,7 @@ export default function ProfileEditForm() {
             </div>
             <div>
               <label className="text-sm font-medium">
-                Categoria / Lega
+                Categoria / campionato
               </label>
               <input
                 className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
@@ -583,9 +719,12 @@ export default function ProfileEditForm() {
                 onChange={(e) =>
                   setClubCategory(e.target.value)
                 }
-                placeholder="Es. Promozione, Eccellenza..."
+                placeholder="Es. Eccellenza, Promozione..."
               />
             </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
             <div>
               <label className="text-sm font-medium">
                 Anno di fondazione
@@ -620,31 +759,88 @@ export default function ProfileEditForm() {
       )}
 
       {/* Social & notifiche */}
-      <section className="rounded-2xl border bg-white p-4 md:p-5 space-y-4">
+      <section className="space-y-4 rounded-2xl border bg-white p-4 md:p-5">
         <h2 className="text-lg font-semibold">
           Social & notifiche
         </h2>
-        <div className="grid gap-3 md:grid-cols-2">
-          {['instagram', 'facebook', 'tiktok', 'x', 'website'].map(
-            (key) => (
-              <div key={key}>
-                <label className="text-sm font-medium capitalize">
-                  {key === 'x' ? 'X / Twitter' : key}
-                </label>
-                <input
-                  className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
-                  value={(links as any)[key] || ''}
-                  onChange={(e) =>
-                    setLinks((prev) => ({
-                      ...prev,
-                      [key]: e.target.value,
-                    }))
-                  }
-                />
-              </div>
-            )
-          )}
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <label className="text-sm font-medium">
+              Instagram
+            </label>
+            <input
+              className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+              value={links.instagram || ''}
+              onChange={(e) =>
+                setLinks((prev) => ({
+                  ...prev,
+                  instagram: e.target.value,
+                }))
+              }
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium">
+              Facebook
+            </label>
+            <input
+              className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+              value={links.facebook || ''}
+              onChange={(e) =>
+                setLinks((prev) => ({
+                  ...prev,
+                  facebook: e.target.value,
+                }))
+              }
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium">
+              TikTok
+            </label>
+            <input
+              className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+              value={links.tiktok || ''}
+              onChange={(e) =>
+                setLinks((prev) => ({
+                  ...prev,
+                  tiktok: e.target.value,
+                }))
+              }
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium">
+              X / Twitter
+            </label>
+            <input
+              className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+              value={links.x || ''}
+              onChange={(e) =>
+                setLinks((prev) => ({
+                  ...prev,
+                  x: e.target.value,
+                }))
+              }
+            />
+          </div>
+          <div className="md:col-span-2">
+            <label className="text-sm font-medium">
+              Sito web
+            </label>
+            <input
+              className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+              value={links.website || ''}
+              onChange={(e) =>
+                setLinks((prev) => ({
+                  ...prev,
+                  website: e.target.value,
+                }))
+              }
+            />
+          </div>
         </div>
+
         <label className="mt-2 flex items-center gap-2 text-sm">
           <input
             type="checkbox"
