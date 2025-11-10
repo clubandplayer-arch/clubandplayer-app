@@ -4,20 +4,22 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-function cx(...cls: Array<string | false | null | undefined>) {
+type Role = 'athlete' | 'club' | null;
+
+function cx(
+  ...cls: Array<string | false | null | undefined>
+) {
   return cls.filter(Boolean).join(' ');
 }
 
 function pill(active: boolean) {
   return cx(
-    'px-3 py-2 rounded-lg border transition-colors',
+    'px-3 py-2 rounded-lg border text-xs md:text-sm transition-colors',
     active
       ? 'bg-gray-900 text-white border-gray-900'
-      : 'bg-white hover:bg-gray-50'
+      : 'bg-white text-gray-800 hover:bg-gray-50'
   );
 }
-
-type Role = 'athlete' | 'club' | null;
 
 export default function DashboardNav() {
   const pathname = usePathname();
@@ -30,38 +32,35 @@ export default function DashboardNav() {
     let ignore = false;
 
     (async () => {
-      // 1) Ruolo dal profilo (compat: account_type / profile_type / type)
+      // 1) Ruolo da /api/profiles/me
       try {
-        const rProf = await fetch('/api/profiles/me', {
+        const r = await fetch('/api/profiles/me', {
           credentials: 'include',
           cache: 'no-store',
         });
-        if (rProf.ok) {
-          const jp = await rProf.json().catch(() => ({}));
-
+        if (r.ok) {
+          const j = await r.json().catch(() => ({} as any));
+          const data = j?.data || j?.profile || null;
           const raw =
-            jp?.data?.account_type ??
-            jp?.data?.profile_type ??
-            jp?.data?.type ??
+            data?.account_type ??
+            data?.profile_type ??
+            data?.type ??
             '';
-
-          const t = raw.toString().toLowerCase();
-
+          const t = String(raw).toLowerCase();
           if (!ignore) {
             if (t.includes('club')) setRole('club');
-            else if (t.includes('athlete') || t.includes('atlet')) {
+            else if (t.includes('athlete') || t.includes('atlet'))
               setRole('athlete');
-            }
           }
         }
       } catch {
-        // ignora: resterà null finché non troviamo altro
+        // ignore, fallback sotto
       }
 
-      // 2) Conteggio candidature inviate/ricevute (usato anche come fallback ruolo)
+      // 2) Fallback da applications
       try {
-        const [rMine, rRec] = await Promise.allSettled([
-          fetch('/api/applications/mine', {
+        const [mine, rec] = await Promise.allSettled([
+          fetch('/api/applications', {
             credentials: 'include',
             cache: 'no-store',
           }),
@@ -71,24 +70,42 @@ export default function DashboardNav() {
           }),
         ]);
 
-        if (!ignore) {
-          if (rMine.status === 'fulfilled' && rMine.value.ok) {
-            const jm = await rMine.value.json().catch(() => ({}));
-            const n = Array.isArray(jm?.data) ? jm.data.length : 0;
+        if (
+          mine.status === 'fulfilled' &&
+          mine.value.ok
+        ) {
+          const jm = await mine.value
+            .json()
+            .catch(() => ({} as any));
+          const n = Array.isArray(jm?.data)
+            ? jm.data.length
+            : 0;
+          if (!ignore) {
             setSentCount(n);
-            if (role === null && n > 0) setRole('athlete');
-          }
-
-          if (rRec.status === 'fulfilled' && rRec.value.ok) {
-            const jr = await rRec.value.json().catch(() => ({}));
-            const n2 = Array.isArray(jr?.data) ? jr.data.length : 0;
-            setReceivedCount(n2);
-            if (role === null && n2 > 0) setRole('club');
+            if (!role && n > 0) setRole('athlete');
           }
         }
-      } finally {
-        if (!ignore) setLoaded(true);
+
+        if (
+          rec.status === 'fulfilled' &&
+          rec.value.ok
+        ) {
+          const jr = await rec.value
+            .json()
+            .catch(() => ({} as any));
+          const n = Array.isArray(jr?.data)
+            ? jr.data.length
+            : 0;
+          if (!ignore) {
+            setReceivedCount(n);
+            if (!role && n > 0) setRole('club');
+          }
+        }
+      } catch {
+        // ignore
       }
+
+      if (!ignore) setLoaded(true);
     })();
 
     return () => {
@@ -97,76 +114,70 @@ export default function DashboardNav() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const isAthlete = role === 'athlete';
-  const isClub = role === 'club';
+  const isActive = (href: string) =>
+    pathname === href ||
+    (href !== '/' && pathname.startsWith(href));
 
-  const profileHref = isClub ? '/club/profile' : '/profile';
-
-  const applicationsHref = isAthlete ? '/applications/sent' : '/applications';
-
-  const applicationsActive =
-    pathname === applicationsHref ||
-    (isAthlete
-      ? pathname.startsWith('/applications/sent')
-      : pathname === '/applications');
-
-  const applicationsLabel = isAthlete
-    ? 'Candidature'
-    : 'Candidature ricevute';
-
-  const badgeCount = isAthlete ? sentCount : receivedCount;
-
-  const profileActive = pathname.startsWith(profileHref);
+  const profileHref =
+    role === 'club' ? '/club/profile' : '/profile';
 
   return (
-    <nav className="flex gap-2 items-center p-3 border-b bg-white sticky top-0 z-10">
-      <Link href="/feed" className="mr-2 text-lg font-semibold">
-        Club&Player
-      </Link>
-
-      <Link
-        href="/feed"
-        className={pill(pathname === '/feed')}
-      >
-        Bacheca
-      </Link>
-
-      <Link
-        href="/opportunities"
-        className={pill(pathname.startsWith('/opportunities'))}
-      >
-        Opportunità
-      </Link>
-
-      {loaded && (
-        <Link
-          href={applicationsHref}
-          className={pill(applicationsActive)}
-        >
-          <span className="inline-flex items-center gap-1">
-            {applicationsLabel}
-            {badgeCount > 0 && (
-              <span className="inline-flex min-w-[18px] justify-center rounded-full bg-gray-900 text-white text-[10px] px-1.5">
-                {badgeCount}
+    <nav className="w-full border-b bg-gray-50">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-3 py-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/feed" className={pill(isActive('/feed'))}>
+            Bacheca
+          </Link>
+          <Link
+            href="/opportunities"
+            className={pill(isActive('/opportunities'))}
+          >
+            Opportunità
+          </Link>
+          <Link
+            href={profileHref}
+            className={pill(
+              isActive('/profile') ||
+                isActive('/club/profile')
+            )}
+          >
+            Profilo
+          </Link>
+          <Link
+            href="/applications/sent"
+            className={pill(
+              isActive('/applications/sent')
+            )}
+          >
+            Candidature inviate
+            {sentCount > 0 && (
+              <span className="ml-1 rounded-full bg-gray-900 px-1.5 text-[10px] text-white">
+                {sentCount}
               </span>
             )}
-          </span>
-        </Link>
-      )}
+          </Link>
+          <Link
+            href="/applications"
+            className={pill(isActive('/applications'))}
+          >
+            Candidature ricevute
+            {receivedCount > 0 && (
+              <span className="ml-1 rounded-full bg-gray-900 px-1.5 text-[10px] text-white">
+                {receivedCount}
+              </span>
+            )}
+          </Link>
+        </div>
 
-      <div className="ml-auto flex items-center gap-2">
-        <Link
-          href={profileHref}
-          className={pill(profileActive)}
-        >
-          Profilo
-        </Link>
-        <Link
-          href="/logout"
-          className={pill(pathname === '/logout')}
-        >
-          Logout
-        </Link>
+        <div className="hidden text-[10px] text-gray-500 md:block">
+          {loaded
+            ? role === 'club'
+              ? 'Accesso CLUB'
+              : role === 'athlete'
+              ? 'Accesso ATLETA'
+              : 'Utente non profilato'
+            : 'Caricamento...'}
+        </div>
       </div>
     </nav>
   );

@@ -44,7 +44,7 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
 
   const normalized = rows.map((row: any) => {
     const opp = row.opportunities ?? row.opportunity ?? null;
-    let ownerId: string | null =
+    const ownerId: string | null =
       (opp && (opp.owner_id as string)) ??
       (opp && (opp.created_by as string)) ??
       null;
