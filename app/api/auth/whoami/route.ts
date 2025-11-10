@@ -1,125 +1,94 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { NextResponse, type NextRequest } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-type Role = 'club' | 'athlete' | 'guest';
+type WhoAmIResponse = {
+  user: {
+    id: string;
+    email: string | null;
+  } | null;
+  role: 'guest' | 'athlete' | 'club';
+};
 
-function normRole(input: any): 'club' | 'athlete' | null {
-  if (!input) return null;
-  const v = String(input).toLowerCase();
-  if (v.includes('club')) return 'club';
-  if (v.includes('athlete') || v.includes('player')) return 'athlete';
-  return null;
-}
+export async function GET(_req: NextRequest) {
+  // In questa versione di Next cookies() è async → usiamo await
+  const cookieStore = await cookies();
 
-export async function GET(req: NextRequest) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const supabaseUrl =
+    process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey =
+    process.env.SUPABASE_ANON_KEY ??
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  if (!supabaseUrl || !supabaseAnon) {
-    return NextResponse.json(
-      { user: null, role: 'guest' as Role, profile: null },
-      { status: 200 }
-    );
+  if (!supabaseUrl || !supabaseKey) {
+    const res: WhoAmIResponse = {
+      user: null,
+      role: 'guest',
+    };
+    return NextResponse.json(res);
   }
 
-  // Response temporanea per raccogliere eventuali Set-Cookie da Supabase
-  const cookieResponse = new NextResponse();
-
-  const supabase = createServerClient(supabaseUrl, supabaseAnon, {
+  const supabase = createServerClient(supabaseUrl, supabaseKey, {
     cookies: {
       get(name: string) {
-        return req.cookies.get(name)?.value;
+        return cookieStore.get(name)?.value;
       },
-      set(name: string, value: string, options: CookieOptions) {
-        cookieResponse.cookies.set(name, value, options);
+      set(name: string, value: string, options: any) {
+        cookieStore.set(name, value, options);
       },
-      remove(name: string, options: CookieOptions) {
-        cookieResponse.cookies.set(name, '', { ...options, maxAge: 0 });
+      remove(name: string, options: any) {
+        cookieStore.set(name, '', { ...options, maxAge: 0 });
       },
     },
   });
 
   const {
     data: { user },
+    error,
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    const res = NextResponse.json(
-      { user: null, role: 'guest' as Role, profile: null },
-      { status: 200 }
-    );
-    // Propaga eventuali cookie
-    for (const c of cookieResponse.cookies.getAll()) {
-      res.cookies.set(c.name, c.value, {
-        path: c.path,
-        domain: c.domain,
-        httpOnly: c.httpOnly,
-        secure: c.secure,
-        maxAge: c.maxAge,
-        sameSite: c.sameSite,
-      });
-    }
-    return res;
+  if (error || !user) {
+    const res: WhoAmIResponse = {
+      user: null,
+      role: 'guest',
+    };
+    return NextResponse.json(res);
   }
 
-  let accountType: 'club' | 'athlete' | null = null;
-  let legacyType: string | null = null;
+  // Recupera il profilo per determinare il ruolo
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('account_type, profile_type, type')
+    .eq('user_id', user.id)
+    .maybeSingle();
 
-  try {
-    const { data: prof } = await supabase
-      .from('profiles')
-      .select('account_type,type')
-      .eq('id', user.id)
-      .maybeSingle();
+  const rawType = (
+    profile?.account_type ??
+    profile?.profile_type ??
+    profile?.type ??
+    ''
+  )
+    .toString()
+    .toLowerCase();
 
-    accountType = normRole(prof?.account_type);
-    legacyType =
-      typeof prof?.type === 'string'
-        ? prof.type.trim().toLowerCase()
-        : null;
+  let role: 'guest' | 'athlete' | 'club' = 'guest';
 
-    if (!accountType) {
-      accountType = normRole(legacyType);
-    }
-  } catch {
-    // fallback sotto
+  if (rawType.startsWith('club')) {
+    role = 'club';
+  } else if (rawType.startsWith('athlet')) {
+    role = 'athlete';
   }
 
-  if (!accountType) {
-    accountType = normRole(user.user_metadata?.role);
-  }
-
-  const role: Role = accountType ?? 'guest';
-
-  const res = NextResponse.json(
-    {
-      user: {
-        id: user.id,
-        email: user.email ?? undefined,
-      },
-      role,
-      profile: {
-        account_type: accountType,
-        type: legacyType,
-      },
+  const res: WhoAmIResponse = {
+    user: {
+      id: user.id,
+      email: user.email ?? null,
     },
-    { status: 200 }
-  );
+    role,
+  };
 
-  // Propaga i cookie raccolti
-  for (const c of cookieResponse.cookies.getAll()) {
-    res.cookies.set(c.name, c.value, {
-      path: c.path,
-      domain: c.domain,
-      httpOnly: c.httpOnly,
-      secure: c.secure,
-      maxAge: c.maxAge,
-      sameSite: c.sameSite,
-    });
-  }
-
-  return res;
+  return NextResponse.json(res);
 }
