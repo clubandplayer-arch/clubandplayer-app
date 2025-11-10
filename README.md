@@ -1,29 +1,23 @@
-cat > README.md <<'EOF'
+# README.md
 # Club and Player
 
-“Club and Player” è una piattaforma social che mette in contatto società sportive dilettantistiche e atleti, ispirata ai flussi di LinkedIn.  
-Stack: **Next.js 15.5**, **React 19**, **TypeScript**, **Tailwind**, **Supabase** (Auth/Storage/DB), **Vercel** (deploy), **Sentry** (monitoring), **Playwright** (E2E), **pnpm 10**.
+"Club and Player" è una piattaforma social che mette in contatto società sportive dilettantistiche e atleti, ispirata al flusso
+di lavoro di LinkedIn. Il progetto è costruito con [Next.js](https://nextjs.org/) e fa uso di Supabase per autenticazione e gestione dati.
 
-## Struttura repository
-- `app/` – App Router (pagine + route handlers).
-- `components/` – UI condivisa (es. mini-card profilo).
-- `lib/`, `hooks/`, `types/` – helpers, hook e tipizzazioni.
-- `public/` – asset statici.
-- `supabase/` – client e note di schema (se presenti).
-- `docs/` – documentazione di progetto.
+## Struttura del repository
+- `app/`: pagine e route handlers dell'app Next.js (App Router).
+- `components/`: componenti UI condivisi, incluse le mini-card di profilo.
+- `lib/`, `hooks/`, `types/`: funzioni di supporto, hook e definizioni TypeScript.
+- `supabase/`: definizioni del client e schema utilizzato per l'integrazione con Supabase.
+- `public/`: asset statici disponibili direttamente dal client.
 
 ## Requisiti locali
-- **Node.js 18+**
-- **pnpm 10** (il repo è **pinnato** a `pnpm@10.17.1` via `packageManager`).
-- Variabili d’ambiente in `.env.local`:
+- Node.js 18 o superiore.
+- pnpm 10 (il progetto blocca `pnpm@10.17.1` tramite `packageManager`).
+- Variabili d'ambiente Supabase salvate in `.env.local`:
   ```bash
-  # Supabase (client web)
   NEXT_PUBLIC_SUPABASE_URL=...
   NEXT_PUBLIC_SUPABASE_ANON_KEY=...
-
-  # Supabase (server fallback: handler/API/server)
-  SUPABASE_URL=...           # opzionale, fallback coerente lato server
-  SUPABASE_ANON_KEY=...      # opzionale, fallback coerente lato server
-
-  # Sentry / altre integrazioni (se usate)
-  # SENTRY_DSN=...
+  SUPABASE_URL=...                    # facoltativo, fallback per le API server-side
+  SUPABASE_ANON_KEY=...               # facoltativo, fallback per le API server-side
+  SUPABASE_SERVICE_ROLE_KEY=...       # opzionale per script amministrativi

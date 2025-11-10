@@ -43,8 +43,8 @@ export default function OpportunityApplicationsPage({ params }: { params: { id: 
               athlete: a.athlete
                 ? {
                     ...a.athlete,
-                    // normalizzazione del tipo profilo
-                    account_type: (a.athlete.account_type ?? a.athlete.profile_type ?? a.athlete.type ?? null) || null,
+                    account_type:
+                      (a.athlete.account_type ?? a.athlete.profile_type ?? a.athlete.type ?? null) || null,
                   }
                 : null,
             }))
@@ -68,19 +68,18 @@ export default function OpportunityApplicationsPage({ params }: { params: { id: 
     });
     const j = await r.json();
     if (!r.ok) { alert(j.error || `HTTP ${r.status}`); return; }
-
     const normalized = j.data
       ? {
           ...j.data,
           athlete: j.data.athlete
             ? {
                 ...j.data.athlete,
-                account_type: (j.data.athlete.account_type ?? j.data.athlete.profile_type ?? j.data.athlete.type ?? null) || null,
+                account_type:
+                  (j.data.athlete.account_type ?? j.data.athlete.profile_type ?? j.data.athlete.type ?? null) || null,
               }
             : null,
         }
       : null;
-
     setApps(prev => prev.map(a => (a.id === appId && normalized ? normalized : a)));
   }
 
