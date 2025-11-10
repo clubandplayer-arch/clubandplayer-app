@@ -1,111 +1,151 @@
-// app/api/opportunities/[id]/applications/route.ts
-import { NextResponse, type NextRequest } from 'next/server';
+// app/api/opportunities/[id]/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
 
 export const runtime = 'nodejs';
 
-/** GET /api/opportunities/:id/applications  (solo owner) */
-export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
-  try {
-    await rateLimit(req, {
-      key: 'applications:LIST',
-      limit: 120,
-      window: '1m',
-    } as any);
-  } catch {
-    return jsonError('Too Many Requests', 429);
-  }
+/**
+ * GET /api/opportunities/:id
+ * Pubblico: restituisce i dettagli dell'opportunità normalizzando owner_id/created_by.
+ */
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const { id } = params;
 
-  const segments = req.nextUrl.pathname.split('/');
-  const opportunityId = segments[segments.length - 2];
+  const supabase = await getSupabaseServerClient();
 
-  if (!opportunityId) {
-    return jsonError('Missing opportunity id', 400);
-  }
-
-  // Verifica proprietà opportunità (owner_id + fallback created_by)
-  const { data: opp, error: oppErr } = await supabase
+  const { data, error } = await supabase
     .from('opportunities')
-    .select('owner_id, created_by')
-    .eq('id', opportunityId)
+    .select(
+      'id, owner_id, created_by, title, description, sport, required_category, city, province, region, country, club_name, created_at, role, age_min, age_max'
+    )
+    .eq('id', id)
     .maybeSingle();
 
-  if (oppErr || !opp) {
-    return jsonError('Opportunity not found', 404);
+  if (error) {
+    return jsonError(error.message, 400);
+  }
+  if (!data) {
+    return jsonError('not_found', 404);
   }
 
   const ownerId =
-    (opp as any).owner_id ??
-    (opp as any).created_by ??
+    (data as any).owner_id ??
+    (data as any).created_by ??
     null;
 
-  if (!ownerId || ownerId !== user.id) {
-    return jsonError('Forbidden', 403);
-  }
-
-  // Candidature per l’opportunità
-  const { data: rows, error: appsErr } = await supabase
-    .from('applications')
-    .select('id, opportunity_id, athlete_id, note, status, created_at, updated_at')
-    .eq('opportunity_id', opportunityId)
-    .order('created_at', { ascending: false });
-
-  if (appsErr) {
-    return jsonError(appsErr.message, 400);
-  }
-
-  const apps = rows ?? [];
-  const athleteIds = Array.from(
-    new Set(apps.map((a) => a.athlete_id).filter(Boolean)),
-  );
-
-  // Profili atleti
-  const profilesMap = new Map<
-    string,
-    { id: string; display_name: string | null; account_type: string | null }
-  >();
-
-  if (athleteIds.length) {
-    const { data: profs, error: profErr } = await supabase
-      .from('profiles')
-      .select('user_id, display_name, account_type, profile_type, type')
-      .in('user_id', athleteIds);
-
-    if (!profErr && profs) {
-      for (const p of profs) {
-        const raw = (
-          p.account_type ??
-          p.profile_type ??
-          p.type ??
-          ''
-        )
-          .toString()
-          .toLowerCase();
-
-        const accountType =
-          raw.startsWith('club')
-            ? 'club'
-            : raw.startsWith('athlet')
-            ? 'athlete'
-            : null;
-
-        profilesMap.set(p.user_id, {
-          id: p.user_id,
-          display_name: p.display_name ?? null,
-          account_type: accountType,
-        });
-      }
-    }
-  }
-
-  const data = apps.map((app) => {
-    const athlete =
-      app.athlete_id != null
-        ? profilesMap.get(app.athlete_id) ?? null
-        : null;
-    return { ...app, athlete };
+  return NextResponse.json({
+    data: {
+      ...data,
+      owner_id: ownerId,
+      created_by: (data as any).created_by ?? null,
+    },
   });
+}
 
-  return NextResponse.json({ data });
-});
+/**
+ * PATCH /api/opportunities/:id
+ * Solo owner (owner_id o created_by).
+ */
+export const PATCH = withAuth(
+  async (req: NextRequest, { supabase, user }) => {
+    try {
+      await rateLimit(req, {
+        key: `opps:PATCH:${user.id}`,
+        limit: 60,
+        window: '1m',
+      } as any);
+    } catch {
+      return jsonError('Too Many Requests', 429);
+    }
+
+    const segments = req.nextUrl.pathname.split('/');
+    const id = segments[segments.length - 1];
+
+    if (!id) {
+      return jsonError('Missing id', 400);
+    }
+
+    const body = await req.json().catch(() => ({} as any));
+
+    const allowed = [
+      'title',
+      'description',
+      'sport',
+      'required_category',
+      'city',
+      'province',
+      'region',
+      'country',
+      'role',
+      'age_min',
+      'age_max',
+      'club_name',
+    ] as const;
+
+    const update: Record<string, any> = {};
+    for (const k of allowed) {
+      if (k in body) update[k] = body[k];
+    }
+
+    if (Object.keys(update).length === 0) {
+      return jsonError('No valid fields to update', 400);
+    }
+
+    // Verifica proprietario
+    const { data: opp, error: oppErr } = await supabase
+      .from('opportunities')
+      .select('id, owner_id, created_by')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (oppErr) {
+      return jsonError(oppErr.message, 400);
+    }
+    if (!opp) {
+      return jsonError('not_found', 404);
+    }
+
+    const ownerId =
+      (opp as any).owner_id ??
+      (opp as any).created_by ??
+      null;
+
+    if (!ownerId || ownerId !== user.id) {
+      return jsonError('forbidden', 403);
+    }
+
+    const { data: updated, error: updateErr } = await supabase
+      .from('opportunities')
+      .update(update)
+      .eq('id', id)
+      .select(
+        'id, owner_id, created_by, title, description, sport, required_category, city, province, region, country, club_name, created_at, role, age_min, age_max'
+      )
+      .maybeSingle();
+
+    if (updateErr) {
+      return jsonError(updateErr.message, 400);
+    }
+    if (!updated) {
+      return jsonError('Update failed', 400);
+    }
+
+    const newOwnerId =
+      (updated as any).owner_id ??
+      (updated as any).created_by ??
+      null;
+
+    return NextResponse.json({
+      data: {
+        ...updated,
+        owner_id: newOwnerId,
+        created_by: (updated as any).created_by ?? null,
+      },
+    });
+  }
+);
