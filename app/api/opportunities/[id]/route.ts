@@ -5,19 +5,23 @@ import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/opportunities/:id
- * Pubblico: restituisce i dettagli dell'opportunità normalizzando owner_id/created_by.
+ * Pubblico: restituisce i dettagli dell'opportunità
+ * normalizzando owner_id / created_by.
+ *
+ * Nota: in questo progetto Next tipizza context.params come Promise<{ id: string }>,
+ * quindi rispettiamo quella firma.
  */
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const { id } = params;
+  const { id } = await context.params;
 
   const supabase = await getSupabaseServerClient();
-
   const { data, error } = await supabase
     .from('opportunities')
     .select(
@@ -33,23 +37,24 @@ export async function GET(
     return jsonError('not_found', 404);
   }
 
-  const ownerId =
-    (data as any).owner_id ??
-    (data as any).created_by ??
-    null;
+  const row: any = data;
+  const ownerId = row.owner_id ?? row.created_by ?? null;
 
   return NextResponse.json({
     data: {
-      ...data,
+      ...row,
       owner_id: ownerId,
-      created_by: (data as any).created_by ?? null,
+      created_by: row.created_by ?? null,
     },
   });
 }
 
 /**
  * PATCH /api/opportunities/:id
- * Solo owner (owner_id o created_by).
+ * Solo il proprietario (owner_id || created_by) può modificare.
+ *
+ * Usiamo withAuth: il wrapper gestisce auth + supabase.
+ * L'id lo leggiamo dall'URL per evitare dipendenze dal tipo di context.params.
  */
 export const PATCH = withAuth(
   async (req: NextRequest, { supabase, user }) => {
@@ -63,9 +68,9 @@ export const PATCH = withAuth(
       return jsonError('Too Many Requests', 429);
     }
 
+    // Estrae l'id dal path: /api/opportunities/[id]
     const segments = req.nextUrl.pathname.split('/');
-    const id = segments[segments.length - 1];
-
+    const id = segments[segments.length - 1] || segments[segments.length - 2];
     if (!id) {
       return jsonError('Missing id', 400);
     }
@@ -88,15 +93,17 @@ export const PATCH = withAuth(
     ] as const;
 
     const update: Record<string, any> = {};
-    for (const k of allowed) {
-      if (k in body) update[k] = body[k];
+    for (const key of allowed) {
+      if (key in body) {
+        update[key] = body[key];
+      }
     }
 
     if (Object.keys(update).length === 0) {
       return jsonError('No valid fields to update', 400);
     }
 
-    // Verifica proprietario
+    // Verifica proprietà opportunità
     const { data: opp, error: oppErr } = await supabase
       .from('opportunities')
       .select('id, owner_id, created_by')
@@ -135,16 +142,17 @@ export const PATCH = withAuth(
       return jsonError('Update failed', 400);
     }
 
+    const row: any = updated;
     const newOwnerId =
-      (updated as any).owner_id ??
-      (updated as any).created_by ??
-      null;
+      row.owner_id ??
+      row.created_by ??
+      user.id;
 
     return NextResponse.json({
       data: {
-        ...updated,
+        ...row,
         owner_id: newOwnerId,
-        created_by: (updated as any).created_by ?? null,
+        created_by: row.created_by ?? null,
       },
     });
   }
