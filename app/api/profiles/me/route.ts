@@ -22,7 +22,6 @@ function normalizeAccountType(row: any | null): AccountType | null {
   if (raw.includes('club')) return 'club';
   if (raw.includes('athlete') || raw.includes('atlet')) return 'athlete';
 
-  // heuristics
   if (
     row.club_league_category ||
     row.club_foundation_year ||
@@ -35,26 +34,20 @@ function normalizeAccountType(row: any | null): AccountType | null {
 }
 
 const ALLOWED_FIELDS = new Set([
-  // common
+  // comuni
   'account_type',
-  'type', // legacy in input, verrà mappato
+  'type', // alias in input
   'full_name',
   'display_name',
   'avatar_url',
   'bio',
   'country',
+  'city',
 
-  // athlete
+  // atleta
   'birth_year',
   'birth_place',
-  'city',
   'birth_country',
-  'birth_region_id',
-  'birth_province_id',
-  'birth_municipality_id',
-  'residence_region_id',
-  'residence_province_id',
-  'residence_municipality_id',
   'foot',
   'height_cm',
   'weight_kg',
@@ -62,7 +55,7 @@ const ALLOWED_FIELDS = new Set([
   'role',
   'visibility',
 
-  // interests
+  // interessi geo
   'interest_country',
   'interest_region_id',
   'interest_province_id',
@@ -71,7 +64,7 @@ const ALLOWED_FIELDS = new Set([
   // social
   'links',
 
-  // notifications
+  // notifiche
   'notify_email_new_message',
 
   // club
@@ -132,7 +125,6 @@ export async function GET(_req: NextRequest) {
     .maybeSingle();
 
   if (error && error.code !== 'PGRST116') {
-    // PGRST116 = no rows on maybeSingle
     console.error('[profiles/me] select error', error);
     return NextResponse.json(
       { error: 'profile_fetch_failed' },
@@ -141,7 +133,6 @@ export async function GET(_req: NextRequest) {
   }
 
   if (!data) {
-    // utente loggato ma nessun profilo ancora creato
     return NextResponse.json({
       user: { id: user.id, email: user.email },
       data: null,
@@ -174,14 +165,56 @@ export async function PATCH(req: NextRequest) {
     );
   }
 
-  const json = await req.json().catch(() => ({}));
-  const patch = pickPatch(json);
+  const body = await req.json().catch(() => ({} as any));
+  const patch = pickPatch(body);
+
+  // account_type safe
+  if (patch.account_type) {
+    const t = String(patch.account_type).toLowerCase();
+    if (t.includes('club')) patch.account_type = 'club';
+    else if (t.includes('athlete') || t.includes('atlet'))
+      patch.account_type = 'athlete';
+    else delete patch.account_type;
+  }
+
+  // links → oggetto json pulito o null
+  if (patch.links && typeof patch.links === 'object') {
+    const safeLinks: Record<string, string | null> = {};
+    for (const [k, v] of Object.entries(patch.links as any)) {
+      if (typeof v === 'string' && v.trim()) {
+        safeLinks[k] = v.trim();
+      } else if (v == null || v === '') {
+        safeLinks[k] = null;
+      }
+    }
+    patch.links =
+      Object.keys(safeLinks).length > 0 ? safeLinks : null;
+  }
+
+  // numerici
+  const numericKeys = [
+    'birth_year',
+    'height_cm',
+    'weight_kg',
+    'club_foundation_year',
+  ];
+  for (const key of numericKeys) {
+    if (key in patch) {
+      const v = (patch as any)[key];
+      if (v === '' || v == null) {
+        (patch as any)[key] = null;
+      } else if (typeof v === 'string') {
+        const n = Number(v);
+        (patch as any)[key] = Number.isFinite(n) ? n : null;
+      }
+    }
+  }
 
   const now = new Date().toISOString();
 
   const upsertPayload = {
     id: user.id,
-    user_id: user.id, // compat legacy
+    user_id: user.id,
     ...patch,
     updated_at: now,
   };
@@ -195,7 +228,10 @@ export async function PATCH(req: NextRequest) {
   if (error) {
     console.error('[profiles/me] upsert error', error);
     return NextResponse.json(
-      { error: 'profile_update_failed' },
+      {
+        error: 'profile_update_failed',
+        details: error.message,
+      },
       { status: 400 }
     );
   }
