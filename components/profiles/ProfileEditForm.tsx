@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { TEAM_SPORTS } from '@/types/domain';
 import AvatarUploader from './AvatarUploader';
 
 type LocationLevel = 'region' | 'province' | 'municipality';
@@ -32,6 +33,7 @@ type Profile = {
   birth_place: string | null; // NEW
   city: string | null;        // residenza
   country: string | null;     // ISO2 o nome
+  sport: string | null;
 
   // interessi geo
   interest_country: string | null;
@@ -56,6 +58,32 @@ const supabase = createSupabaseClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
+
+const FOOT_OPTIONS = [
+  { value: 'right', label: 'Destro' },
+  { value: 'left', label: 'Sinistro' },
+  { value: 'both', label: 'Ambidestro' },
+] as const;
+
+const SPORT_OPTIONS = TEAM_SPORTS.map((slug) => ({ value: slug, label: sportLabel(slug) }));
+
+function normalizeFoot(value: string | null | undefined): string {
+  const raw = (value ?? '').toString().trim().toLowerCase();
+  if (!raw) return '';
+  if (['right', 'destro', 'dx', 'r'].includes(raw)) return 'right';
+  if (['left', 'sinistro', 'sx', 'l'].includes(raw)) return 'left';
+  if (['both', 'ambidestro', 'ambi', 'ambidex', 'ambidextrous'].includes(raw)) return 'both';
+  return '';
+}
+
+function sportLabel(slug: string) {
+  if (!slug) return '';
+  return slug
+    .replace(/_/g, ' ')
+    .split(' ')
+    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+    .join(' ');
+}
 
 /* ------------------ helpers ------------------ */
 function pickData<T = any>(raw: any): T {
@@ -149,6 +177,7 @@ export default function ProfileEditForm() {
   const [birthPlace, setBirthPlace] = useState<string>('');   // NEW
   const [residenceCity, setResidenceCity] = useState<string>('');
   const [country, setCountry] = useState<string>(''); // ISO2 o nome
+  const [sport, setSport] = useState<string>('');
 
   // Cascata local state
   const [regionId, setRegionId] = useState<number | null>(null);
@@ -187,6 +216,7 @@ export default function ProfileEditForm() {
       birth_place: (j as any)?.birth_place ?? null,
       city: (j as any)?.city ?? null,
       country: (j as any)?.country ?? null,
+      sport: (j as any)?.sport ?? null,
 
       interest_country: j?.interest_country ?? 'IT',
       interest_region_id: j?.interest_region_id ?? null,
@@ -212,12 +242,13 @@ export default function ProfileEditForm() {
     setBirthPlace(p.birth_place || '');
     setResidenceCity(p.city || '');
     setCountry(p.country || '');
+    setSport(p.sport || '');
 
     setRegionId(p.interest_region_id);
     setProvinceId(p.interest_province_id);
     setMunicipalityId(p.interest_municipality_id);
 
-    setFoot(p.foot || '');
+    setFoot(normalizeFoot(p.foot) || '');
     setHeightCm(p.height_cm ?? '');
     setWeightKg(p.weight_kg ?? '');
     setNotifyEmail(Boolean(p.notify_email_new_message));
@@ -331,7 +362,8 @@ export default function ProfileEditForm() {
         interest_municipality_id: municipalityId,
 
         // atleta
-        foot: (foot || '').trim() || null,
+        foot: normalizeFoot(foot) || null,
+        sport: (sport || '').trim() || null,
         height_cm: heightCm === '' ? null : Number(heightCm),
         weight_kg: weightKg === '' ? null : Number(weightKg),
 
@@ -485,14 +517,28 @@ export default function ProfileEditForm() {
       {/* Dettagli atleta */}
       <section className="rounded-2xl border p-4 md:p-5">
         <h2 className="mb-3 text-lg font-semibold">Dettagli atleta</h2>
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <div className="flex flex-col gap-1">
             <label className="text-sm text-gray-600">Piede preferito</label>
             <select className="rounded-lg border p-2" value={foot} onChange={(e) => setFoot(e.target.value)}>
               <option value="">— Seleziona —</option>
-              <option value="Destro">Destro</option>
-              <option value="Sinistro">Sinistro</option>
-              <option value="Ambidestro">Ambidestro</option>
+              {FOOT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-sm text-gray-600">Sport</label>
+            <select className="rounded-lg border p-2" value={sport} onChange={(e) => setSport(e.target.value)}>
+              <option value="">— Seleziona sport —</option>
+              {SPORT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
             </select>
           </div>
 

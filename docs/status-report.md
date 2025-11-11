@@ -15,6 +15,12 @@ Questo documento riassume la situazione corrente della repository dopo il rollba
 - ✅ **Script duplicato rimosso** – eliminato il file `club/applicants` che replicava la pagina JSX e poteva causare sovrascritture.
 - ✅ **README aggiornato** – le istruzioni riportano ora `pnpm@10.17.1` e i passaggi reali per installare le dipendenze con Corepack.
 
+## Nuove osservazioni (marzo 2025)
+- ⚠️ **Form profilo atleta** – il campo "piede preferito" deve salvare valori normalizzati (`right/left/both`) per rispettare il vincolo `profiles_foot_check`; i menu sportivi vanno popolati con l'elenco completo degli sport di squadra.
+- ⚠️ **Feed: sezione social** – la colonna "Chi seguire" deve mostrare anche i profili già seguiti, non solo le proposte, così da non farli sparire dopo il follow.
+- ⚠️ **Esperienza visiva** – la mini-card profilo necessita di font e avatar più grandi per rispettare il design previsto.
+- 🔜 **MVP da completare** – restano da implementare il composer dei post, la colonna pubblicitaria e la sostituzione definitiva dei repository mock con query Supabase (vedi `docs/mvp-next-steps.md`).
+
 ## Come utilizzare questo documento
 - Condividere l'URL GitHub di `docs/status-report.md` nella chat di supporto o in qualsiasi conversazione con altri collaboratori.
 - Usarlo come checklist per pianificare correzioni mirate, una volta deciso di intervenire sul codice.

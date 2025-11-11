@@ -14,6 +14,7 @@ type P = {
   city?: string | null;        // residenza
   country?: string | null;
   foot?: string | null;
+  sport?: string | null;
   height_cm?: number | null;
   weight_kg?: number | null;
   interest_region_id?: number | null;
@@ -67,6 +68,24 @@ function nameToIso2(v?: string | null): string | null {
     if (key === it || key === en) return code as string;
   }
   return null;
+}
+
+function formatFoot(value?: string | null) {
+  const raw = (value ?? '').toString().toLowerCase();
+  if (!raw) return '';
+  if (['right', 'destro', 'dx', 'r'].includes(raw)) return 'Destro';
+  if (['left', 'sinistro', 'sx', 'l'].includes(raw)) return 'Sinistro';
+  if (['both', 'ambidestro', 'ambi', 'ambidextrous'].includes(raw)) return 'Ambidestro';
+  return value ?? '';
+}
+
+function formatSport(slug?: string | null) {
+  if (!slug) return '';
+  return slug
+    .replace(/_/g, ' ')
+    .split(' ')
+    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+    .join(' ');
 }
 /* -------------------------------------------------- */
 
@@ -146,39 +165,47 @@ export default function ProfileMiniCard() {
     </a>
   );
 
+  const footLabel = formatFoot(p?.foot);
+  const sportLabel = formatSport(p?.sport);
+
   return (
-    <div className="rounded-2xl border p-4 shadow-sm">
+    <div className="rounded-3xl border bg-white p-5 shadow-sm">
       <div className="flex items-start gap-3">
         {/* Avatar verticale 4:5 se presente */}
         {p?.avatar_url ? (
-          <img src={p.avatar_url} alt={name} className="h-24 w-[4.8rem] flex-shrink-0 rounded-xl object-cover" />
+          <img src={p.avatar_url} alt={name} className="h-28 w-24 flex-shrink-0 rounded-2xl object-cover" />
         ) : (
-          <div className="h-24 w-[4.8rem] flex-shrink-0 rounded-xl bg-gray-200" />
+          <div className="h-28 w-24 flex-shrink-0 rounded-2xl bg-gray-200" />
         )}
         <div className="min-w-0">
-          <div className="text-base font-semibold">{name}</div>
+          <div className="text-lg font-semibold text-gray-900">{name}</div>
 
           {/* righe tipo Transfermarkt */}
-          {place ? <div className="text-xs text-gray-600">Luogo di residenza: <span className="font-normal">{place}</span></div> : null}
-          {p?.birth_place ? <div className="text-xs text-gray-600">Luogo di nascita: <span className="font-normal">{p.birth_place}</span></div> : null}
+          {place ? <div className="text-sm text-gray-600">Luogo di residenza: <span className="font-normal">{place}</span></div> : null}
+          {p?.birth_place ? <div className="text-sm text-gray-600">Luogo di nascita: <span className="font-normal">{p.birth_place}</span></div> : null}
           {(iso || p?.country) ? (
-            <div className="text-xs text-gray-600 flex items-center gap-1">
+            <div className="text-sm text-gray-600 flex items-center gap-1">
               <span>Nazionalità:</span>
               {flagUrl ? <img src={flagUrl} alt={countryLabel || ''} className="inline-block rounded-[2px]" width={20} height={15} /> : null}
               <span className="font-normal">{countryLabel}</span>
             </div>
           ) : null}
+          {sportLabel ? (
+            <div className="text-sm text-gray-600">
+              Sport principale: <span className="font-normal">{sportLabel}</span>
+            </div>
+          ) : null}
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-        <div><span className="text-gray-500">Età:</span> {age ?? '—'}</div>
-        <div><span className="text-gray-500">Piede:</span> {p?.foot || '—'}</div>
-        <div><span className="text-gray-500">Altezza:</span> {p?.height_cm ? `${p.height_cm} cm` : '—'}</div>
-        <div><span className="text-gray-500">Peso:</span> {p?.weight_kg ? `${p.weight_kg} kg` : '—'}</div>
+      <div className="mt-5 grid grid-cols-2 gap-4 text-sm">
+        <div><span className="text-gray-500">Età:</span> <span className="font-medium text-gray-800">{age ?? '—'}</span></div>
+        <div><span className="text-gray-500">Piede:</span> <span className="font-medium text-gray-800">{footLabel || '—'}</span></div>
+        <div><span className="text-gray-500">Altezza:</span> <span className="font-medium text-gray-800">{p?.height_cm ? `${p.height_cm} cm` : '—'}</span></div>
+        <div><span className="text-gray-500">Peso:</span> <span className="font-medium text-gray-800">{p?.weight_kg ? `${p.weight_kg} kg` : '—'}</span></div>
       </div>
 
-      {p?.bio ? <p className="mt-3 line-clamp-3 text-sm text-gray-700">{p.bio}</p> : null}
+      {p?.bio ? <p className="mt-4 line-clamp-4 text-sm text-gray-700 leading-relaxed">{p.bio}</p> : null}
 
       {/* Solo icone social, colorate */}
       {(socials.instagram || socials.facebook || socials.tiktok || socials.x) && (
@@ -207,8 +234,8 @@ export default function ProfileMiniCard() {
         </div>
       )}
 
-      <div className="mt-4">
-        <Link href={editHref} className="inline-block rounded-xl border px-3 py-1.5 text-sm hover:bg-gray-50">
+      <div className="mt-5">
+        <Link href={editHref} className="inline-block rounded-xl border px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
           {editLabel}
         </Link>
       </div>
