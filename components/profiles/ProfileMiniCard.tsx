@@ -15,6 +15,7 @@ type P = {
   country?: string | null;
   foot?: string | null;
   sport?: string | null;
+  role?: string | null;
   height_cm?: number | null;
   weight_kg?: number | null;
   interest_region_id?: number | null;
@@ -167,6 +168,7 @@ export default function ProfileMiniCard() {
 
   const footLabel = formatFoot(p?.foot);
   const sportLabel = formatSport(p?.sport);
+  const roleLabel = (p?.role ?? '').toString();
 
   return (
     <div className="rounded-3xl border bg-white p-5 shadow-sm">
@@ -193,6 +195,11 @@ export default function ProfileMiniCard() {
           {sportLabel ? (
             <div className="text-sm text-gray-600">
               Sport principale: <span className="font-normal">{sportLabel}</span>
+            </div>
+          ) : null}
+          {roleLabel ? (
+            <div className="text-sm text-gray-600">
+              Ruolo: <span className="font-normal">{roleLabel}</span>
             </div>
           ) : null}
         </div>

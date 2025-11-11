@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
-import { TEAM_SPORTS } from '@/types/domain';
+import { SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
 import AvatarUploader from './AvatarUploader';
 
 type LocationLevel = 'region' | 'province' | 'municipality';
@@ -34,6 +34,7 @@ type Profile = {
   city: string | null;        // residenza
   country: string | null;     // ISO2 o nome
   sport: string | null;
+  role: string | null;
 
   // interessi geo
   interest_country: string | null;
@@ -65,7 +66,7 @@ const FOOT_OPTIONS = [
   { value: 'both', label: 'Ambidestro' },
 ] as const;
 
-const SPORT_OPTIONS = TEAM_SPORTS.map((slug) => ({ value: slug, label: sportLabel(slug) }));
+const SPORT_OPTIONS = SPORTS.map((label) => ({ value: label, label }));
 
 function normalizeFoot(value: string | null | undefined): string {
   const raw = (value ?? '').toString().trim().toLowerCase();
@@ -76,13 +77,11 @@ function normalizeFoot(value: string | null | undefined): string {
   return '';
 }
 
-function sportLabel(slug: string) {
-  if (!slug) return '';
-  return slug
-    .replace(/_/g, ' ')
-    .split(' ')
-    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
-    .join(' ');
+function footToDb(value: string): string | null {
+  if (value === 'right') return 'destro';
+  if (value === 'left') return 'sinistro';
+  if (value === 'both') return 'ambidestro';
+  return null;
 }
 
 /* ------------------ helpers ------------------ */
@@ -178,6 +177,7 @@ export default function ProfileEditForm() {
   const [residenceCity, setResidenceCity] = useState<string>('');
   const [country, setCountry] = useState<string>(''); // ISO2 o nome
   const [sport, setSport] = useState<string>('');
+  const [sportRole, setSportRole] = useState<string>('');
 
   // Cascata local state
   const [regionId, setRegionId] = useState<number | null>(null);
@@ -217,6 +217,7 @@ export default function ProfileEditForm() {
       city: (j as any)?.city ?? null,
       country: (j as any)?.country ?? null,
       sport: (j as any)?.sport ?? null,
+      role: (j as any)?.role ?? null,
 
       interest_country: j?.interest_country ?? 'IT',
       interest_region_id: j?.interest_region_id ?? null,
@@ -243,6 +244,7 @@ export default function ProfileEditForm() {
     setResidenceCity(p.city || '');
     setCountry(p.country || '');
     setSport(p.sport || '');
+    setSportRole(p.role || '');
 
     setRegionId(p.interest_region_id);
     setProvinceId(p.interest_province_id);
@@ -327,6 +329,17 @@ export default function ProfileEditForm() {
 
   const canSave = useMemo(() => !saving && profile != null, [saving, profile]);
   const currentYear = new Date().getFullYear();
+  const roleOptions = useMemo(() => SPORTS_ROLES[sport] ?? [], [sport]);
+
+  useEffect(() => {
+    if (!roleOptions.length) {
+      setSportRole('');
+      return;
+    }
+    if (!roleOptions.includes(sportRole)) {
+      setSportRole('');
+    }
+  }, [roleOptions, sportRole]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -362,8 +375,9 @@ export default function ProfileEditForm() {
         interest_municipality_id: municipalityId,
 
         // atleta
-        foot: normalizeFoot(foot) || null,
+        foot: footToDb(normalizeFoot(foot)),
         sport: (sport || '').trim() || null,
+        role: (sportRole || '').trim() || null,
         height_cm: heightCm === '' ? null : Number(heightCm),
         weight_kg: weightKg === '' ? null : Number(weightKg),
 
@@ -518,6 +532,38 @@ export default function ProfileEditForm() {
       <section className="rounded-2xl border p-4 md:p-5">
         <h2 className="mb-3 text-lg font-semibold">Dettagli atleta</h2>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="flex flex-col gap-1 lg:col-span-2">
+            <label className="text-sm text-gray-600">Sport principale</label>
+            <select className="rounded-lg border p-2" value={sport} onChange={(e) => setSport(e.target.value)}>
+              <option value="">— Seleziona sport —</option>
+              {SPORT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1 lg:col-span-2">
+            <label className="text-sm text-gray-600">Ruolo</label>
+            <select
+              className="rounded-lg border p-2 disabled:bg-gray-50"
+              value={sportRole}
+              onChange={(e) => setSportRole(e.target.value)}
+              disabled={!sport || roleOptions.length === 0}
+            >
+              <option value="">— Seleziona ruolo —</option>
+              {roleOptions.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+            {!sport && (
+              <span className="text-xs text-gray-500">Scegli uno sport per vedere i ruoli disponibili.</span>
+            )}
+          </div>
+
           <div className="flex flex-col gap-1">
             <label className="text-sm text-gray-600">Piede preferito</label>
             <select className="rounded-lg border p-2" value={foot} onChange={(e) => setFoot(e.target.value)}>
@@ -531,29 +577,31 @@ export default function ProfileEditForm() {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Sport</label>
-            <select className="rounded-lg border p-2" value={sport} onChange={(e) => setSport(e.target.value)}>
-              <option value="">— Seleziona sport —</option>
-              {SPORT_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-1">
             <label className="text-sm text-gray-600">Altezza (cm)</label>
-            <input type="number" inputMode="numeric" className="rounded-lg border p-2" value={heightCm}
+            <input
+              type="number"
+              inputMode="numeric"
+              className="rounded-lg border p-2"
+              value={heightCm}
               onChange={(e) => setHeightCm(e.target.value === '' ? '' : Number(e.target.value))}
-              min={100} max={230} placeholder="es. 183" />
+              min={100}
+              max={230}
+              placeholder="es. 183"
+            />
           </div>
 
           <div className="flex flex-col gap-1">
             <label className="text-sm text-gray-600">Peso (kg)</label>
-            <input type="number" inputMode="numeric" className="rounded-lg border p-2" value={weightKg}
+            <input
+              type="number"
+              inputMode="numeric"
+              className="rounded-lg border p-2"
+              value={weightKg}
               onChange={(e) => setWeightKg(e.target.value === '' ? '' : Number(e.target.value))}
-              min={40} max={150} placeholder="es. 85" />
+              min={40}
+              max={150}
+              placeholder="es. 85"
+            />
           </div>
         </div>
       </section>
