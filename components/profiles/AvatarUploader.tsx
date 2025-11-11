@@ -57,14 +57,12 @@ export default function AvatarUploader({ value, onChange }: Props) {
     try {
       setUploading(true);
 
-      // 1) Utente corrente per path RLS
       const {
         data: { user },
         error: userError,
       } = await supabase.auth.getUser();
 
       if (userError || !user) {
-        console.error('[AvatarUploader] auth.getUser error', userError);
         throw new Error('Sessione non valida. Effettua di nuovo l’accesso.');
       }
 
@@ -73,7 +71,6 @@ export default function AvatarUploader({ value, onChange }: Props) {
         .toString(36)
         .slice(2)}.${ext}`;
 
-      // 2) Upload su bucket avatars
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(path, file, {
@@ -97,17 +94,17 @@ export default function AvatarUploader({ value, onChange }: Props) {
         );
       }
 
-      // 3) URL pubblico
       const { data: publicData } = supabase.storage
         .from('avatars')
         .getPublicUrl(path);
 
       const publicUrl = publicData?.publicUrl || null;
       if (!publicUrl) {
-        throw new Error('Impossibile ottenere URL pubblico dell’immagine.');
+        throw new Error(
+          'Impossibile ottenere URL pubblico dell’immagine.'
+        );
       }
 
-      // 4) Salva su profilo
       const res = await fetch('/api/profiles/me', {
         method: 'PATCH',
         credentials: 'include',
@@ -120,7 +117,10 @@ export default function AvatarUploader({ value, onChange }: Props) {
       const json = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        console.error('[AvatarUploader] PATCH /api/profiles/me failed', json);
+        console.error(
+          '[AvatarUploader] PATCH /api/profiles/me failed',
+          json
+        );
         const msg =
           json?.details ||
           json?.error ||
@@ -144,8 +144,8 @@ export default function AvatarUploader({ value, onChange }: Props) {
 
   return (
     <div className="flex items-start gap-4">
-      {/* Preview con le stesse proporzioni della mini card */}
-      <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border bg-gray-50">
+      {/* Preview 4:5, stessa della mini-card */}
+      <div className="flex h-28 w-22 items-center justify-center overflow-hidden rounded-2xl border bg-gray-50">
         {value ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -155,8 +155,8 @@ export default function AvatarUploader({ value, onChange }: Props) {
           />
         ) : (
           <div className="flex flex-col items-center gap-2 text-gray-300">
-            <div className="h-10 w-10 rounded-full bg-gray-200" />
-            <div className="h-2 w-12 rounded-full bg-gray-200" />
+            <div className="h-14 w-14 rounded-full bg-gray-200" />
+            <div className="h-2 w-16 rounded-full bg-gray-200" />
           </div>
         )}
       </div>
@@ -173,8 +173,8 @@ export default function AvatarUploader({ value, onChange }: Props) {
           {uploading ? 'Caricamento...' : 'Carica nuova immagine'}
         </label>
         <div>
-          Immagine quadrata consigliata. Max 10MB. Formati supportati:
-          JPG/PNG.
+          Immagine verticale 4:5 consigliata. Max 10MB.
+          Formati supportati: JPG/PNG.
         </div>
         {error && (
           <div className="text-[11px] text-red-600">

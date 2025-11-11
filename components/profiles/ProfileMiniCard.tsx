@@ -11,18 +11,14 @@ type Profile = {
   display_name?: string | null;
   avatar_url?: string | null;
 
-  // dettagli atleta
   city?: string | null;
   birth_year?: number | null;
   birth_place?: string | null;
   birth_country?: string | null;
   height_cm?: number | null;
   weight_kg?: number | null;
-  foot?: string | null; // lato dominante
+  foot?: string | null;
   bio?: string | null;
-
-  // club
-  club_name?: string | null;
 };
 
 function normalizeAccountType(p?: Profile | null): AccountType {
@@ -34,12 +30,8 @@ function normalizeAccountType(p?: Profile | null): AccountType {
 
 function getDisplayName(p: Profile | null): string {
   if (!p) return '';
-  const full =
-    (p.full_name || '').trim();
-  const disp =
-    (p.display_name || '').trim();
-
-  // preferiamo SEMPRE il nome reale
+  const full = (p.full_name || '').trim();
+  const disp = (p.display_name || '').trim();
   if (full) return full;
   if (disp) return disp;
   return '';
@@ -68,15 +60,12 @@ function isProfileComplete(p: Profile | null): boolean {
   const name = getDisplayName(p);
   const hasAvatar =
     !!(p.avatar_url && p.avatar_url.trim());
-  // criteri minimi: nome o avatar
   return !!name || hasAvatar;
 }
 
 export default function ProfileMiniCard() {
-  const [profile, setProfile] =
-    useState<Profile | null>(null);
-  const [role, setRole] =
-    useState<AccountType>('athlete');
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [role, setRole] = useState<AccountType>('athlete');
 
   useEffect(() => {
     let cancelled = false;
@@ -125,14 +114,13 @@ export default function ProfileMiniCard() {
   const name = getDisplayName(profile);
   const href =
     role === 'club' ? '/club/profile' : '/profile';
-
   const avatarSrc =
     profile?.avatar_url &&
     profile.avatar_url.trim()
       ? profile.avatar_url
       : null;
 
-  // 1) Nessun profilo / incompleto → card invito
+  // 1) profilo mancante / incompleto → card invito
   if (!complete) {
     return (
       <Link
@@ -159,14 +147,14 @@ export default function ProfileMiniCard() {
     );
   }
 
-  // 2) Club → card compatta (nome + avatar)
+  // 2) club → card compatta
   if (role === 'club') {
     return (
       <Link
         href={href}
         className="flex items-center gap-3 rounded-2xl border bg-white px-4 py-3 hover:bg-gray-50"
       >
-        <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl bg-gray-100 text-xs font-semibold text-gray-500">
+        <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl bg-gray-100">
           {avatarSrc ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -175,7 +163,9 @@ export default function ProfileMiniCard() {
               className="h-full w-full object-cover"
             />
           ) : (
-            <span>CP</span>
+            <span className="text-xs font-semibold text-gray-500">
+              CP
+            </span>
           )}
         </div>
         <div className="flex flex-col leading-tight">
@@ -193,14 +183,13 @@ export default function ProfileMiniCard() {
     );
   }
 
-  // 3) Atleta con profilo completo → card dettagliata (come screenshot)
+  // 3) atleta completo → card dettagliata
+
   const age = getAge(profile?.birth_year ?? null);
   const latoDominante = mapFootLabel(profile?.foot);
   const city = (profile?.city || '').trim();
-  const birthPlace =
-    (profile?.birth_place || '').trim();
-  const nationality =
-    (profile?.birth_country || '').trim();
+  const birthPlace = (profile?.birth_place || '').trim();
+  const nationality = (profile?.birth_country || '').trim();
   const height =
     profile?.height_cm && profile.height_cm > 0
       ? `${profile.height_cm} cm`
@@ -215,7 +204,8 @@ export default function ProfileMiniCard() {
   return (
     <div className="w-full rounded-2xl border bg-white px-4 py-3">
       <div className="flex gap-3">
-        <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl bg-gray-100">
+        {/* Avatar grande 4:5 */}
+        <div className="flex h-28 w-20 items-center justify-center overflow-hidden rounded-2xl bg-gray-100">
           {avatarSrc ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -225,21 +215,21 @@ export default function ProfileMiniCard() {
             />
           ) : (
             <div className="flex flex-col items-center gap-2 text-gray-300">
-              <div className="h-10 w-10 rounded-full bg-gray-200" />
-              <div className="h-2 w-12 rounded-full bg-gray-200" />
+              <div className="h-14 w-14 rounded-full bg-gray-200" />
+              <div className="h-2 w-16 rounded-full bg-gray-200" />
             </div>
           )}
         </div>
 
-        <div className="flex flex-col justify-start gap-0.5 text-xs leading-snug">
+        <div className="flex flex-col justify-start gap-0.5 text-[11px] leading-snug">
           <div className="text-[10px] text-gray-500">
             Il tuo profilo
           </div>
-          <div className="text-sm font-semibold">
+          <div className="text-base font-semibold">
             {name}
           </div>
           {city && (
-            <div className="text-[11px] text-gray-700">
+            <div className="text-[11px] text-gray-800">
               Luogo di residenza:{' '}
               <span className="font-medium">
                 {city}
@@ -247,7 +237,7 @@ export default function ProfileMiniCard() {
             </div>
           )}
           {birthPlace && (
-            <div className="text-[11px] text-gray-700">
+            <div className="text-[11px] text-gray-800">
               Luogo di nascita:{' '}
               <span className="font-medium">
                 {birthPlace}
@@ -255,7 +245,7 @@ export default function ProfileMiniCard() {
             </div>
           )}
           {nationality && (
-            <div className="text-[11px] text-gray-700">
+            <div className="text-[11px] text-gray-800">
               Nazionalità:{' '}
               <span className="font-medium">
                 {nationality}
@@ -265,7 +255,7 @@ export default function ProfileMiniCard() {
         </div>
       </div>
 
-      <div className="mt-3 grid gap-y-1 gap-x-6 text-[11px] text-gray-800 md:grid-cols-2">
+      <div className="mt-3 grid gap-y-1 gap-x-8 text-[11px] text-gray-900 md:grid-cols-2">
         {age !== null && (
           <div>
             <span className="font-semibold">
@@ -274,7 +264,6 @@ export default function ProfileMiniCard() {
             {age}
           </div>
         )}
-
         {latoDominante && (
           <div>
             <span className="font-semibold">
@@ -283,7 +272,6 @@ export default function ProfileMiniCard() {
             {latoDominante}
           </div>
         )}
-
         {height && (
           <div>
             <span className="font-semibold">
@@ -292,7 +280,6 @@ export default function ProfileMiniCard() {
             {height}
           </div>
         )}
-
         {weight && (
           <div>
             <span className="font-semibold">
