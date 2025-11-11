@@ -212,80 +212,37 @@ export async function PATCH(req: NextRequest) {
 
   const now = new Date().toISOString();
 
-  // 🔍 1) Cerca un profilo esistente per id o user_id
-  const {
-    data: existing,
-    error: existingError,
-  } = await supabase
+  const upsertPayload: any = {
+    user_id: user.id,
+    ...patch,
+    updated_at: now,
+  };
+
+  // NOTA CHIAVE:
+  // - usiamo onConflict: 'user_id'
+  // - NON forziamo id = user.id
+  // In questo modo:
+  //   * se esiste una riga con lo stesso user_id -> UPDATE
+  //   * se non esiste -> INSERT con nuovo id
+  const { data, error } = await supabase
     .from('profiles')
-    .select('id,user_id')
-    .or(`id.eq.${user.id},user_id.eq.${user.id}`)
-    .maybeSingle();
+    .upsert(upsertPayload, { onConflict: 'user_id' })
+    .select('*')
+    .single();
 
-  if (existingError && existingError.code !== 'PGRST116') {
-    console.error(
-      '[profiles/me] existing select error',
-      existingError
-    );
-    return NextResponse.json(
-      { error: 'profile_update_failed', details: existingError.message },
-      { status: 400 }
-    );
-  }
-
-  let resultData: any;
-  let resultError: any;
-
-  if (existing) {
-    // 📝 2a) UPDATE della riga esistente
-    const updatePayload = {
-      ...patch,
-      user_id: existing.user_id || user.id,
-      updated_at: now,
-    };
-
-    const { data, error } = await supabase
-      .from('profiles')
-      .update(updatePayload)
-      .eq('id', existing.id)
-      .select('*')
-      .single();
-
-    resultData = data;
-    resultError = error;
-  } else {
-    // 🆕 2b) INSERT nuova riga (nessun conflitto con unique user_id)
-    const insertPayload = {
-      id: user.id,
-      user_id: user.id,
-      ...patch,
-      created_at: now,
-      updated_at: now,
-    };
-
-    const { data, error } = await supabase
-      .from('profiles')
-      .insert(insertPayload)
-      .select('*')
-      .single();
-
-    resultData = data;
-    resultError = error;
-  }
-
-  if (resultError) {
-    console.error('[profiles/me] write error', resultError);
+  if (error) {
+    console.error('[profiles/me] upsert error', error);
     return NextResponse.json(
       {
         error: 'profile_update_failed',
-        details: resultError.message,
+        details: error.message,
       },
       { status: 400 }
     );
   }
 
-  const account_type = normalizeAccountType(resultData);
-  const normalized = { ...resultData, account_type };
+  const account_type = normalizeAccountType(data);
+  const normalized = { ...data, account_type };
 
   return NextResponse.json({ data: normalized });
 }
