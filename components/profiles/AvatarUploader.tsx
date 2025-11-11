@@ -1,20 +1,34 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
-import { createClient } from '@supabase/supabase-js';
+import { createBrowserClient } from '@supabase/ssr';
 
 type Props = {
   value: string | null;
   onChange: (url: string | null) => void;
 };
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+function createSupabaseClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !key) {
+    console.error(
+      '[AvatarUploader] NEXT_PUBLIC_SUPABASE_URL / ANON_KEY non configurati'
+    );
+    return null;
+  }
+
+  try {
+    return createBrowserClient(url, key);
+  } catch (err) {
+    console.error('[AvatarUploader] errore creazione client', err);
+    return null;
+  }
+}
 
 export default function AvatarUploader({ value, onChange }: Props) {
+  const [supabase] = useState(() => createSupabaseClient());
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,8 +40,17 @@ export default function AvatarUploader({ value, onChange }: Props) {
 
     setError(null);
 
+    if (!supabase) {
+      setError(
+        'Configurazione Supabase mancante: contatta il supporto.'
+      );
+      e.target.value = '';
+      return;
+    }
+
     if (file.size > 10 * 1024 * 1024) {
       setError('File troppo grande (max 10MB).');
+      e.target.value = '';
       return;
     }
 
@@ -39,6 +62,7 @@ export default function AvatarUploader({ value, onChange }: Props) {
     try {
       setUploading(true);
 
+      // 1) Upload su Supabase Storage con sessione utente
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(path, file, {
@@ -47,10 +71,17 @@ export default function AvatarUploader({ value, onChange }: Props) {
         });
 
       if (uploadError) {
-        console.error('[AvatarUploader] upload error', uploadError);
-        throw new Error('Errore durante il caricamento.');
+        console.error(
+          '[AvatarUploader] upload error',
+          uploadError
+        );
+        throw new Error(
+          uploadError.message ||
+            'Errore durante il caricamento sullo storage.'
+        );
       }
 
+      // 2) Ottieni URL pubblico
       const { data: publicData } = supabase.storage
         .from('avatars')
         .getPublicUrl(path);
@@ -62,7 +93,7 @@ export default function AvatarUploader({ value, onChange }: Props) {
         );
       }
 
-      // Aggiorna profilo server-side
+      // 3) Aggiorna il profilo via API ufficiale
       const res = await fetch('/api/profiles/me', {
         method: 'PATCH',
         credentials: 'include',
@@ -73,23 +104,26 @@ export default function AvatarUploader({ value, onChange }: Props) {
       });
 
       const json = await res.json().catch(() => ({}));
+
       if (!res.ok) {
         console.error(
           '[AvatarUploader] PATCH /api/profiles/me failed',
           json
         );
-        throw new Error(
+        const msg =
+          json?.details ||
           json?.error ||
-            'Impossibile salvare la foto profilo.'
-        );
+          'Impossibile salvare la foto profilo.';
+        throw new Error(msg);
       }
 
       onChange(publicUrl);
     } catch (err: any) {
       console.error('[AvatarUploader] error', err);
       setError(
-        err?.message ||
-          'Errore durante il caricamento della foto.'
+        typeof err?.message === 'string' && err.message
+          ? err.message
+          : 'Errore durante il caricamento.'
       );
     } finally {
       setUploading(false);
