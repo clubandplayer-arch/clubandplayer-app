@@ -27,6 +27,84 @@ function createSupabaseClient() {
   }
 }
 
+// Crop centrale a rapporto 4:5 (verticale) e resize a dimensione fissa
+async function cropToAvatar(file: File): Promise<Blob> {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') resolve(reader.result);
+      else reject(new Error('Impossibile leggere il file'));
+    };
+    reader.onerror = () => reject(reader.error || new Error('Errore lettura file'));
+    reader.readAsDataURL(file);
+  });
+
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error('Impossibile caricare l’immagine'));
+    image.src = dataUrl;
+  });
+
+  const targetRatio = 4 / 5; // width / height (verticale)
+  const srcW = img.naturalWidth;
+  const srcH = img.naturalHeight;
+  const srcRatio = srcW / srcH;
+
+  let cropW = srcW;
+  let cropH = srcH;
+  let offsetX = 0;
+  let offsetY = 0;
+
+  if (srcRatio > targetRatio) {
+    // troppo larga → taglia ai lati
+    cropW = srcH * targetRatio;
+    offsetX = (srcW - cropW) / 2;
+  } else if (srcRatio < targetRatio) {
+    // troppo alta/stretto → taglia sopra/sotto
+    cropH = srcW / targetRatio;
+    offsetY = (srcH - cropH) / 2;
+  }
+
+  // dimensione finale (abbondante per qualità, poi il CSS scala)
+  const outW = 400;
+  const outH = 500;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = outW;
+  canvas.height = outH;
+  const ctx = canvas.getContext('2d');
+
+  if (!ctx) {
+    throw new Error('Impossibile inizializzare il canvas');
+  }
+
+  ctx.drawImage(
+    img,
+    offsetX,
+    offsetY,
+    cropW,
+    cropH,
+    0,
+    0,
+    outW,
+    outH
+  );
+
+  const blob: Blob = await new Promise((resolve, reject) => {
+    canvas.toBlob(
+      b => {
+        if (b) resolve(b);
+        else reject(new Error('Impossibile generare il blob'));
+      },
+      'image/jpeg',
+      0.9
+    );
+  });
+
+  return blob;
+}
+
 export default function AvatarUploader({ value, onChange }: Props) {
   const [supabase] = useState(() => createSupabaseClient());
   const [uploading, setUploading] = useState(false);
@@ -66,16 +144,19 @@ export default function AvatarUploader({ value, onChange }: Props) {
         throw new Error('Sessione non valida. Effettua di nuovo l’accesso.');
       }
 
-      const ext = file.name.split('.').pop() || 'jpg';
+      // 🔴 crop & resize automatico 4:5 prima dell’upload
+      const avatarBlob = await cropToAvatar(file);
+      const ext = 'jpg';
       const path = `${user.id}/${Date.now()}-${Math.random()
         .toString(36)
         .slice(2)}.${ext}`;
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(path, file, {
+        .upload(path, avatarBlob, {
           cacheControl: '3600',
           upsert: false,
+          contentType: 'image/jpeg',
         });
 
       if (uploadError) {
@@ -144,8 +225,8 @@ export default function AvatarUploader({ value, onChange }: Props) {
 
   return (
     <div className="flex items-start gap-4">
-      {/* Preview 4:5, stessa della mini-card */}
-      <div className="flex h-28 w-22 items-center justify-center overflow-hidden rounded-2xl border bg-gray-50">
+      {/* Preview 4:5 coerente con la mini-card */}
+      <div className="flex h-28 w-20 items-center justify-center overflow-hidden rounded-2xl border bg-gray-50">
         {value ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
