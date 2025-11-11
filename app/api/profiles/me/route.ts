@@ -14,33 +14,40 @@ type Links = {
   x?: string | null;
 };
 
-type ProfilePayload = {
-  full_name?: string | null;
-  bio?: string | null;
-  avatar_url?: string | null;
+type ProfileRow = {
+  user_id: string;
+  account_type: string | null;
 
-  birth_year?: number | null;
-  birth_place?: string | null;
+  full_name: string | null;
+  bio: string | null;
+  avatar_url: string | null;
 
-  city?: string | null;
-  country?: string | null;
+  birth_year: number | null;
+  birth_place: string | null;
 
-  sport?: string | null;
-  role?: string | null;
+  city: string | null;
+  country: string | null;
 
-  foot?: 'destro' | 'sinistro' | 'ambidestro' | null;
-  height_cm?: number | null;
-  weight_kg?: number | null;
+  sport: string | null;
+  role: string | null;
 
-  interest_country?: string | null;
-  interest_region_id?: number | null;
-  interest_province_id?: number | null;
-  interest_municipality_id?: number | null;
+  foot: 'destro' | 'sinistro' | 'ambidestro' | null;
+  height_cm: number | null;
+  weight_kg: number | null;
 
-  links?: Links | null;
+  interest_country: string | null;
+  interest_region_id: number | null;
+  interest_province_id: number | null;
+  interest_municipality_id: number | null;
 
-  notify_email_new_message?: boolean | null;
+  links: Links | null;
+
+  notify_email_new_message: boolean | null;
 };
+
+type PatchBody = Partial<ProfileRow>;
+
+const ALLOWED_FEET = ['destro', 'sinistro', 'ambidestro'] as const;
 
 function normalizeAccountType(raw: any): AccountType {
   const v = String(raw ?? '').toLowerCase();
@@ -49,24 +56,24 @@ function normalizeAccountType(raw: any): AccountType {
   return null;
 }
 
-function normalizeFoot(raw: any): ProfilePayload['foot'] {
-  const v = String(raw ?? '').toLowerCase();
+function normalizeFoot(raw: any): ProfileRow['foot'] {
+  const v = String(raw ?? '').toLowerCase().trim();
   if (!v) return null;
-  if (['destro', 'right', 'dx', 'r'].includes(v)) return 'destro';
-  if (['sinistro', 'left', 'sx', 'l'].includes(v)) return 'sinistro';
-  if (['ambidestro', 'ambi', 'both'].includes(v)) return 'ambidestro';
+  if (ALLOWED_FEET.includes(v as any)) return v as any;
+  if (['right', 'dx', 'r'].includes(v)) return 'destro';
+  if (['left', 'sx', 'l'].includes(v)) return 'sinistro';
+  if (['ambi', 'both'].includes(v)) return 'ambidestro';
   return null;
 }
 
 function sanitizeLinks(raw: any): Links | null {
   if (!raw || typeof raw !== 'object') return null;
-  const out: Links = {};
   const src = raw as Record<string, any>;
+  const out: Links = {};
 
-  const set = (key: keyof Links) => {
-    const v = (src[key] ?? '').toString().trim();
-    if (!v) return;
-    out[key] = v;
+  const set = (k: keyof Links) => {
+    const v = (src[k] ?? '').toString().trim();
+    if (v) out[k] = v;
   };
 
   set('instagram');
@@ -77,23 +84,23 @@ function sanitizeLinks(raw: any): Links | null {
   return Object.keys(out).length ? out : null;
 }
 
-function pickPatchBody(body: any): ProfilePayload {
+function numOrNull(v: any): number | null {
+  if (v === '' || v == null) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function pickPatchBody(body: any): PatchBody {
   if (!body || typeof body !== 'object') return {};
 
   const b = body as Record<string, any>;
 
-  const cleanNumber = (v: any): number | null => {
-    if (v === '' || v == null) return null;
-    const n = Number(v);
-    return Number.isFinite(n) ? n : null;
-  };
-
-  const payload: ProfilePayload = {
+  const patch: PatchBody = {
     full_name: b.full_name?.toString().trim() || null,
     bio: b.bio?.toString().trim() || null,
     avatar_url: b.avatar_url?.toString().trim() || null,
 
-    birth_year: cleanNumber(b.birth_year),
+    birth_year: numOrNull(b.birth_year),
     birth_place: b.birth_place?.toString().trim() || null,
 
     city: b.city?.toString().trim() || null,
@@ -103,39 +110,40 @@ function pickPatchBody(body: any): ProfilePayload {
     role: b.role?.toString().trim() || null,
 
     foot: normalizeFoot(b.foot),
-    height_cm: cleanNumber(b.height_cm),
-    weight_kg: cleanNumber(b.weight_kg),
+    height_cm: numOrNull(b.height_cm),
+    weight_kg: numOrNull(b.weight_kg),
 
-    interest_country: (b.interest_country || 'IT').toString().trim() || 'IT',
-    interest_region_id: cleanNumber(b.interest_region_id),
-    interest_province_id: cleanNumber(b.interest_province_id),
-    interest_municipality_id: cleanNumber(b.interest_municipality_id),
+    interest_country:
+      b.interest_country?.toString().trim() || undefined,
+    interest_region_id: numOrNull(b.interest_region_id) ?? undefined,
+    interest_province_id:
+      numOrNull(b.interest_province_id) ?? undefined,
+    interest_municipality_id:
+      numOrNull(b.interest_municipality_id) ?? undefined,
 
-    links: sanitizeLinks(b.links),
+    links: sanitizeLinks(b.links) ?? undefined,
 
+    // lo normalizziamo dopo; qui prendiamo solo se è boolean
     notify_email_new_message:
       typeof b.notify_email_new_message === 'boolean'
         ? b.notify_email_new_message
-        : null,
+        : undefined,
   };
 
-  // ripuliamo le chiavi undefined per non scrivere roba sporca
-  Object.keys(payload).forEach((k) => {
-    if ((payload as any)[k] === undefined) {
-      delete (payload as any)[k];
+  // rimuovi undefined così non scriviamo colonne a caso
+  Object.keys(patch).forEach((k) => {
+    if ((patch as any)[k] === undefined) {
+      delete (patch as any)[k];
     }
   });
 
-  return payload;
+  return patch;
 }
 
-/**
- * GET /api/profiles/me
- * Ritorna { user, profile } con account_type normalizzato.
- */
-export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
-  // profilo esistente (by user_id, compat con eventuale colonna id legacy)
-  const { data: profileRow, error } = await supabase
+/* ========== GET /api/profiles/me ========== */
+
+export const GET = withAuth(async (_req, { supabase, user }) => {
+  const { data, error } = await supabase
     .from('profiles')
     .select('*')
     .eq('user_id', user.id)
@@ -146,62 +154,137 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
   }
 
   const account_type =
-    normalizeAccountType(profileRow?.account_type) ??
+    normalizeAccountType(data?.account_type) ??
     normalizeAccountType(user.user_metadata?.account_type) ??
     normalizeAccountType(user.user_metadata?.role);
-
-  const profile = {
-    ...profileRow,
-    account_type,
-  };
 
   return NextResponse.json({
     user: {
       id: user.id,
       email: user.email,
     },
-    profile,
+    profile: data
+      ? {
+          ...data,
+          account_type,
+        }
+      : {
+          user_id: user.id,
+          account_type,
+        },
   });
 });
 
-/**
- * PATCH /api/profiles/me
- * Upsert sicuro del profilo autenticato.
- */
-export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
-  let body: any = {};
+/* ========== PATCH /api/profiles/me ========== */
+
+export const PATCH = withAuth(async (req: NextRequest, ctx) => {
+  const supabase = ctx.supabase;
+  const user = ctx.user;
+
+  let raw: any = {};
   try {
-    body = await req.json();
+    raw = await req.json();
   } catch {
-    body = {};
+    raw = {};
   }
 
-  const patch = pickPatchBody(body);
+  const patch = pickPatchBody(raw);
 
-  // difesa extra sul foot_check: se arriva qualcosa di invalido → null
-  if (patch.foot && !['destro', 'sinistro', 'ambidestro'].includes(patch.foot)) {
-    patch.foot = null;
+  // leggi eventuale profilo esistente per merge sicuro
+  const { data: existing, error: readError } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (readError && readError.code !== 'PGRST116') {
+    // errore reale diverso da "no rows"
+    return jsonError(readError.message, 500);
   }
 
-  // account_type: non forziamo da form, ma se il record non c'è proviamo a dedurlo dai metadata
-  const account_type =
-    normalizeAccountType(body.account_type) ??
+  const existingRow = (existing as ProfileRow | null) ?? null;
+
+  const account_type: AccountType =
+    normalizeAccountType(raw.account_type) ??
+    normalizeAccountType(existingRow?.account_type) ??
     normalizeAccountType(user.user_metadata?.account_type) ??
     normalizeAccountType(user.user_metadata?.role) ??
     null;
 
-  const baseRow: any = {
+  // FOOT: scegliamo in ordine: patch valido -> existing valido -> null
+  let foot: ProfileRow['foot'] = null;
+  if (patch.foot && ALLOWED_FEET.includes(patch.foot)) {
+    foot = patch.foot;
+  } else if (
+    existingRow?.foot &&
+    ALLOWED_FEET.includes(existingRow.foot)
+  ) {
+    foot = existingRow.foot;
+  }
+
+  // NOTIFY EMAIL: la colonna è NOT NULL → sempre boolean
+  const notify_email_new_message: boolean =
+    typeof patch.notify_email_new_message === 'boolean'
+      ? patch.notify_email_new_message
+      : typeof existingRow?.notify_email_new_message === 'boolean'
+      ? existingRow.notify_email_new_message
+      : true;
+
+  const row: ProfileRow = {
     user_id: user.id,
-    account_type,
-    ...patch,
-    updated_at: new Date().toISOString(),
+    account_type: account_type,
+
+    full_name:
+      patch.full_name ?? existingRow?.full_name ?? null,
+    bio: patch.bio ?? existingRow?.bio ?? null,
+    avatar_url:
+      patch.avatar_url ?? existingRow?.avatar_url ?? null,
+
+    birth_year:
+      patch.birth_year ?? existingRow?.birth_year ?? null,
+    birth_place:
+      patch.birth_place ?? existingRow?.birth_place ?? null,
+
+    city: patch.city ?? existingRow?.city ?? null,
+    country: patch.country ?? existingRow?.country ?? null,
+
+    sport: patch.sport ?? existingRow?.sport ?? null,
+    role: patch.role ?? existingRow?.role ?? null,
+
+    foot, // già normalizzato e sempre valido o null
+    height_cm:
+      patch.height_cm ?? existingRow?.height_cm ?? null,
+    weight_kg:
+      patch.weight_kg ?? existingRow?.weight_kg ?? null,
+
+    interest_country:
+      patch.interest_country ??
+      existingRow?.interest_country ??
+      'IT',
+    interest_region_id:
+      patch.interest_region_id ??
+      existingRow?.interest_region_id ??
+      null,
+    interest_province_id:
+      patch.interest_province_id ??
+      existingRow?.interest_province_id ??
+      null,
+    interest_municipality_id:
+      patch.interest_municipality_id ??
+      existingRow?.interest_municipality_id ??
+      null,
+
+    links:
+      patch.links !== undefined
+        ? patch.links
+        : existingRow?.links ?? null,
+
+    notify_email_new_message,
   };
 
-  // Se non esiste ancora nessun profilo per l'utente, impostiamo created_at ora.
-  // Supabase upsert con onConflict:user_id evita il duplicate key.
   const { data, error } = await supabase
     .from('profiles')
-    .upsert(baseRow, {
+    .upsert(row, {
       onConflict: 'user_id',
       ignoreDuplicates: false,
     })
@@ -209,29 +292,27 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
     .maybeSingle();
 
   if (error) {
-    // Esponiamo un codice chiaro al client (ProfileEditForm mostra profile_update_failed)
     return NextResponse.json(
-      { error: error.message || 'profile_update_failed' },
+      {
+        error:
+          error.message ||
+          'profile_update_failed',
+      },
       { status: 400 }
     );
   }
 
-  const normalized = {
-    ...data,
-    account_type:
-      normalizeAccountType(data.account_type) ??
-      normalizeAccountType(user.user_metadata?.account_type) ??
-      normalizeAccountType(user.user_metadata?.role),
-  };
+  const normalizedAccountType =
+    normalizeAccountType(data?.account_type) ?? account_type;
 
-  return NextResponse.json(
-    {
-      user: {
-        id: user.id,
-        email: user.email,
-      },
-      profile: normalized,
+  return NextResponse.json({
+    user: {
+      id: user.id,
+      email: user.email,
     },
-    { status: 200 }
-  );
+    profile: {
+      ...data,
+      account_type: normalizedAccountType,
+    },
+  });
 });
