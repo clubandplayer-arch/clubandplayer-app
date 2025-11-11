@@ -42,7 +42,7 @@ export default function AvatarUploader({ value, onChange }: Props) {
 
     if (!supabase) {
       setError(
-        'Configurazione Supabase mancante: contatta il supporto.'
+        'Configurazione Supabase mancante. Contatta il supporto.'
       );
       e.target.value = '';
       return;
@@ -54,15 +54,35 @@ export default function AvatarUploader({ value, onChange }: Props) {
       return;
     }
 
-    const ext = file.name.split('.').pop() || 'jpg';
-    const path = `avatars/${Date.now()}-${Math.random()
-      .toString(36)
-      .slice(2)}.${ext}`;
-
     try {
       setUploading(true);
 
-      // 1) Upload su Supabase Storage con sessione utente
+      // 1) Recupera utente corrente (serve per path RLS)
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        console.error(
+          '[AvatarUploader] auth.getUser error',
+          userError
+        );
+        throw new Error(
+          'Sessione non valida. Effettua di nuovo l’accesso.'
+        );
+      }
+
+      const ext =
+        file.name.split('.').pop() || 'jpg';
+      // Path conforme alle policy:
+      // bucket: avatars
+      // path: <user.id>/<nome-file>
+      const path = `${user.id}/${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2)}.${ext}`;
+
+      // 2) Upload su bucket avatars
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(path, file, {
@@ -75,13 +95,24 @@ export default function AvatarUploader({ value, onChange }: Props) {
           '[AvatarUploader] upload error',
           uploadError
         );
+        // Messaggio chiaro se è una violazione RLS
+        if (
+          uploadError.message &&
+          uploadError.message
+            .toLowerCase()
+            .includes('row-level security')
+        ) {
+          throw new Error(
+            'Permesso negato dalle regole di sicurezza. Verifica le policy del bucket avatars (path deve iniziare con il tuo user.id).'
+          );
+        }
         throw new Error(
           uploadError.message ||
             'Errore durante il caricamento sullo storage.'
         );
       }
 
-      // 2) Ottieni URL pubblico
+      // 3) Ottieni URL pubblico
       const { data: publicData } = supabase.storage
         .from('avatars')
         .getPublicUrl(path);
@@ -93,7 +124,7 @@ export default function AvatarUploader({ value, onChange }: Props) {
         );
       }
 
-      // 3) Aggiorna il profilo via API ufficiale
+      // 4) Aggiorna il profilo
       const res = await fetch('/api/profiles/me', {
         method: 'PATCH',
         credentials: 'include',
