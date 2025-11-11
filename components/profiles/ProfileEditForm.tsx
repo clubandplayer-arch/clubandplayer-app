@@ -1,321 +1,116 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { usePathname } from 'next/navigation';
-import AvatarUploader from '@/components/profiles/AvatarUploader';
+import { useEffect, useState, FormEvent } from 'react';
+import AvatarUploader from './AvatarUploader';
 
 type AccountType = 'athlete' | 'club';
 
-type Links = {
-  instagram?: string | null;
-  facebook?: string | null;
-  tiktok?: string | null;
-  x?: string | null;
-  website?: string | null;
-};
-
 type Profile = {
-  id?: string;
-  user_id?: string;
   account_type?: string | null;
-  profile_type?: string | null;
-  type?: string | null;
-
   full_name?: string | null;
   display_name?: string | null;
   avatar_url?: string | null;
   bio?: string | null;
 
-  country?: string | null;
-  city?: string | null;
-
-  // atleta
+  // athlete
   birth_year?: number | null;
   birth_place?: string | null;
   birth_country?: string | null;
-  foot?: string | null;
+  city?: string | null;
   height_cm?: number | null;
   weight_kg?: number | null;
+  foot?: string | null; // lato dominante
   sport?: string | null;
   role?: string | null;
 
   // club
-  club_league_category?: string | null;
   club_foundation_year?: number | null;
   club_stadium?: string | null;
-
-  // interests
-  interest_country?: string | null;
-
-  // social
-  links?: Links | null;
-
-  // notifications
-  notify_email_new_message?: boolean | null;
-};
-
-const LATERAL_PREFERENCE = ['Destro', 'Sinistro', 'Ambidestro'];
-
-const SPORTS = [
-  'Calcio',
-  'Calcio Femminile',
-  'Futsal',
-  'Calcio a 7',
-  'Volley',
-  'Basket',
-  'Rugby',
-  'Pallanuoto',
-];
-
-const ROLES_BY_SPORT: Record<string, string[]> = {
-  Calcio: [
-    'Portiere',
-    'Difensore centrale',
-    'Terzino destro',
-    'Terzino sinistro',
-    'Esterno destro',
-    'Esterno sinistro',
-    'Centrocampista centrale',
-    'Centrocampista difensivo',
-    'Trequartista',
-    'Ala destra',
-    'Ala sinistra',
-    'Prima punta',
-    'Seconda punta',
-  ],
-  'Calcio Femminile': [
-    'Portiere',
-    'Difensore centrale',
-    'Terzino destro',
-    'Terzino sinistro',
-    'Esterno destro',
-    'Esterno sinistro',
-    'Centrocampista centrale',
-    'Centrocampista difensivo',
-    'Trequartista',
-    'Ala destra',
-    'Ala sinistra',
-    'Prima punta',
-    'Seconda punta',
-  ],
-  Futsal: [
-    'Portiere',
-    'Ultimo',
-    'Laterale',
-    'Pivot',
-    'Universale',
-  ],
-  'Calcio a 7': [
-    'Portiere',
-    'Difensore',
-    'Esterno',
-    'Centrale',
-    'Attaccante',
-  ],
-  Volley: [
-    'Palleggiatore',
-    'Opposto',
-    'Centrale',
-    'Schiacciatore',
-    'Libero',
-  ],
-  Basket: [
-    'Playmaker',
-    'Guardia',
-    'Guardia/Ala',
-    'Ala piccola',
-    'Ala grande',
-    'Centro',
-  ],
-  Rugby: [
-    'Pilone',
-    'Talloner',
-    'Seconda linea',
-    'Terza linea',
-    'Mediano di mischia',
-    'Mediano di apertura',
-    'Centro',
-    'Ala',
-    'Estremo',
-  ],
-  Pallanuoto: [
-    'Portiere',
-    'Difensore',
-    'Attaccante',
-    'Centroboa',
-    'Esterno',
-  ],
+  club_league_category?: string | null;
 };
 
 function normalizeAccountType(p?: Profile | null): AccountType {
   const raw =
-    (p?.account_type ??
-      p?.profile_type ??
-      p?.type ??
-      '') as string;
-  const t = raw.toLowerCase();
-  if (t.includes('club')) return 'club';
-  if (t.includes('athlete') || t.includes('atlet')) return 'athlete';
+    (p?.account_type ?? '').toString().toLowerCase();
+  if (raw.includes('club')) return 'club';
   return 'athlete';
 }
 
-export default function ProfileEditForm() {
-  const pathname = usePathname();
+const LATO_DOMINANTE_OPTIONS = [
+  { value: '', label: 'Seleziona' },
+  { value: 'right', label: 'Destro' },
+  { value: 'left', label: 'Sinistro' },
+  { value: 'both', label: 'Ambidestro' },
+];
 
+export default function ProfileEditForm() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [error, setError] =
+    useState<string | null>(null);
+  const [success, setSuccess] =
+    useState<string | null>(null);
   const [accountType, setAccountType] =
     useState<AccountType>('athlete');
 
-  // common
-  const [fullName, setFullName] = useState('');
-  const [displayName, setDisplayName] = useState('');
-  const [avatarUrl, setAvatarUrl] = useState('');
-  const [bio, setBio] = useState('');
-  const [country, setCountry] = useState('Italia');
+  const [profile, setProfile] =
+    useState<Profile>({
+      full_name: '',
+      avatar_url: null,
+      bio: '',
+      city: '',
+      sport: '',
+      role: '',
+      foot: '',
+    });
 
-  // athlete
-  const [birthYear, setBirthYear] = useState<number | ''>('');
-  const [birthPlace, setBirthPlace] = useState('');
-  const [city, setCity] = useState('');
-  const [birthCountry, setBirthCountry] =
-    useState('Italia');
-  const [foot, setFoot] = useState('');
-  const [height, setHeight] = useState<number | ''>('');
-  const [weight, setWeight] = useState<number | ''>('');
-  const [sport, setSport] = useState('');
-  const [role, setRole] = useState('');
-
-  // club
-  const [clubSport, setClubSport] = useState('');
-  const [clubCategory, setClubCategory] = useState('');
-  const [clubFoundationYear, setClubFoundationYear] =
-    useState<number | ''>('');
-  const [clubStadium, setClubStadium] = useState('');
-
-  // other
-  const [interestCountry, setInterestCountry] =
-    useState('IT');
-  const [links, setLinks] = useState<Links>({});
-  const [notifyEmailNewMessage, setNotifyEmailNewMessage] =
-    useState(true);
-
-  const forcedAccountType: AccountType | null =
-    pathname === '/club/profile' ||
-    pathname.startsWith('/club/')
-      ? 'club'
-      : null;
-
-  const effectiveAccountType: AccountType =
-    forcedAccountType ??
-    (accountType || normalizeAccountType(profile));
-
-  const isClub = effectiveAccountType === 'club';
-  const title = isClub ? 'Profilo CLUB' : 'Profilo ATLETA';
-
-  /* ------------------------ LOAD PROFILO ------------------------ */
-
+  // Carica profilo
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
       try {
-        setLoading(true);
-        setError(null);
-        setSuccess(null);
-
         const res = await fetch('/api/profiles/me', {
-          method: 'GET',
           credentials: 'include',
           cache: 'no-store',
         });
 
-        if (cancelled) return;
-
-        if (res.status === 401) {
-          // non loggato: lascio campi vuoti, niente errore rumoroso
-          setLoading(false);
-          return;
-        }
-
         if (!res.ok) {
-          console.error(
-            '[ProfileEditForm] GET /api/profiles/me status',
-            res.status
-          );
-          setError('Errore nel caricamento del profilo.');
-          setLoading(false);
+          if (!cancelled) {
+            setError('Impossibile caricare il profilo.');
+            setLoading(false);
+          }
           return;
         }
 
-        const json = await res.json().catch(() => ({} as any));
+        const json = await res.json().catch(() => ({}));
         const data: Profile | null =
-          (json && (json.data || json.profile)) || null;
+          (json && json.data) ||
+          (json && json.profile) ||
+          null;
 
         if (cancelled) return;
 
-        if (!data) {
-          // utente loggato ma nessun profilo ancora: form vuoto, ok
-          setLoading(false);
-          return;
+        if (data) {
+          const acc = normalizeAccountType(data);
+          setAccountType(acc);
+
+          setProfile({
+            ...data,
+            // garantiamo che sia stringa
+            full_name: data.full_name || '',
+            bio: data.bio || '',
+          });
         }
-
-        setProfile(data);
-
-        const detected = normalizeAccountType(data);
-        setAccountType(forcedAccountType || detected);
-
-        setFullName(data.full_name || '');
-        setDisplayName(data.display_name || '');
-        setAvatarUrl(data.avatar_url || '');
-        setBio(data.bio || '');
-        setCountry(data.country || 'Italia');
-
-        setBirthYear(data.birth_year ?? '');
-        setBirthPlace(data.birth_place || '');
-        setCity(data.city || '');
-        setBirthCountry(data.birth_country || 'Italia');
-        setFoot(data.foot || '');
-        setHeight(data.height_cm ?? '');
-        setWeight(data.weight_kg ?? '');
-        setSport(data.sport || '');
-        setRole(data.role || '');
-
-        setClubSport(data.sport || '');
-        setClubCategory(
-          data.club_league_category || ''
-        );
-        setClubFoundationYear(
-          data.club_foundation_year ?? ''
-        );
-        setClubStadium(data.club_stadium || '');
-
-        setInterestCountry(
-          data.interest_country || 'IT'
-        );
-
-        const rawLinks = (data.links || {}) as Links;
-        setLinks({
-          instagram: rawLinks.instagram || '',
-          facebook: rawLinks.facebook || '',
-          tiktok: rawLinks.tiktok || '',
-          x: rawLinks.x || '',
-          website: rawLinks.website || '',
-        });
-
-        setNotifyEmailNewMessage(
-          data.notify_email_new_message ?? true
-        );
 
         setLoading(false);
       } catch (err) {
-        console.error('[ProfileEditForm] load error', err);
         if (!cancelled) {
-          setError('Errore nel caricamento del profilo.');
+          console.error(
+            '[ProfileEditForm] load error',
+            err
+          );
+          setError('Impossibile caricare il profilo.');
           setLoading(false);
         }
       }
@@ -324,85 +119,90 @@ export default function ProfileEditForm() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname]);
+  }, []);
 
-  /* ------------------------ SUBMIT PROFILO ------------------------ */
+  function onFieldChange(
+    field: keyof Profile,
+    value: any
+  ) {
+    setProfile(prev => ({
+      ...prev,
+      [field]: value,
+    }));
+  }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    setSaving(true);
     setError(null);
     setSuccess(null);
+    setSaving(true);
 
     try {
-      const body: any = {
-        account_type: effectiveAccountType,
-        full_name: fullName || null,
-        display_name: displayName || null,
-        avatar_url: avatarUrl || null,
-        bio: bio || null,
-        country: country || null,
-        interest_country: interestCountry || 'IT',
-        links: {
-          instagram: links.instagram || null,
-          facebook: links.facebook || null,
-          tiktok: links.tiktok || null,
-          x: links.x || null,
-          website: links.website || null,
-        },
-        notify_email_new_message:
-          !!notifyEmailNewMessage,
+      const payload: any = {
+        // solo i campi effettivamente editabili
+        full_name: profile.full_name || null,
+        bio: profile.bio || null,
+        city: profile.city || null,
+        sport: profile.sport || null,
+        role: profile.role || null,
+        height_cm: profile.height_cm || null,
+        weight_kg: profile.weight_kg || null,
+        birth_year: profile.birth_year || null,
+        birth_place: profile.birth_place || null,
+        birth_country: profile.birth_country || null,
+        foot: profile.foot || null,
+        club_foundation_year:
+          profile.club_foundation_year || null,
+        club_stadium: profile.club_stadium || null,
+        club_league_category:
+          profile.club_league_category || null,
+        avatar_url: profile.avatar_url || null,
+        // manteniamo account_type se già noto
+        account_type: profile.account_type || accountType,
       };
 
-      if (!isClub) {
-        Object.assign(body, {
-          birth_year: birthYear || null,
-          birth_place: birthPlace || null,
-          city: city || null,
-          birth_country: birthCountry || 'Italia',
-          foot: foot || null,
-          height_cm: height || null,
-          weight_kg: weight || null,
-          sport: sport || null,
-          role: role || null,
-        });
-      } else {
-        Object.assign(body, {
-          sport: clubSport || null,
-          club_league_category:
-            clubCategory || null,
-          club_foundation_year:
-            clubFoundationYear || null,
-          club_stadium: clubStadium || null,
-        });
-      }
+      // 🔴 nessun "nome pubblico": NON inviamo display_name dall'input
+      // (se in futuro servirà per compat, potremo valorizzarlo lato API)
 
       const res = await fetch('/api/profiles/me', {
         method: 'PATCH',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
-        credentials: 'include',
-        body: JSON.stringify(body),
+        body: JSON.stringify(payload),
       });
 
       const json = await res.json().catch(() => ({}));
 
       if (!res.ok) {
+        console.error(
+          '[ProfileEditForm] PATCH error',
+          json
+        );
         throw new Error(
-          json?.error ||
-            `Errore durante il salvataggio (${res.status})`
+          json?.details ||
+            json?.error ||
+            'Salvataggio non riuscito.'
         );
       }
 
-      if (json?.data) {
-        setProfile(json.data as Profile);
-      }
+      const saved: Profile =
+        (json && json.data) || profile;
 
-      setSuccess('Profilo aggiornato con successo.');
+      setProfile(prev => ({
+        ...prev,
+        ...saved,
+        full_name:
+          saved.full_name || prev.full_name || '',
+      }));
+      setAccountType(
+        normalizeAccountType(saved)
+      );
+      setSuccess(
+        'Profilo aggiornato con successo.'
+      );
     } catch (err: any) {
-      console.error('[ProfileEditForm] save error', err);
       setError(
         err?.message ||
           'Errore durante il salvataggio del profilo.'
@@ -412,345 +212,351 @@ export default function ProfileEditForm() {
     }
   }
 
-  /* ------------------------------ RENDER ------------------------------ */
-
   if (loading) {
     return (
-      <div className="py-10 text-center text-sm text-gray-500">
-        Caricamento profilo in corso...
+      <div className="text-sm text-gray-500">
+        Caricamento profilo...
       </div>
     );
   }
 
-  const rolesForSport =
-    ROLES_BY_SPORT[sport] || [];
-
   return (
     <form
       onSubmit={handleSubmit}
-      className="space-y-8 max-w-5xl mx-auto"
+      className="space-y-8"
     >
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-wide">
-          {title}
-        </h1>
-        <p className="text-sm text-gray-600">
-          Aggiorna le informazioni del tuo profilo{' '}
-          {isClub ? 'Club' : 'Atleta'} su Club&Player.
-        </p>
-      </header>
-
       {error && (
-        <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 border border-red-200">
+        <div className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">
           {error}
         </div>
       )}
-
       {success && (
-        <div className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-700 border border-emerald-200">
+        <div className="rounded-md bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
           {success}
         </div>
       )}
 
-      {/* Avatar + dati base */}
-      <section className="space-y-4 rounded-2xl border bg-white p-4 md:p-5">
+      {/* DATI GENERALI */}
+      <section className="space-y-4">
         <h2 className="text-lg font-semibold">
           Dati generali
         </h2>
 
         <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label className="text-sm font-medium">
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-gray-700">
               Nome completo
             </label>
             <input
-              className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
-              value={fullName}
-              onChange={(e) =>
-                setFullName(e.target.value)
+              type="text"
+              className="w-full rounded-lg border px-3 py-2 text-sm"
+              value={profile.full_name || ''}
+              onChange={e =>
+                onFieldChange(
+                  'full_name',
+                  e.target.value
+                )
               }
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium">
-              Nome pubblico
-            </label>
-            <input
-              className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
-              value={displayName}
-              onChange={(e) =>
-                setDisplayName(e.target.value)
-              }
-              placeholder="Come comparirai nella bacheca"
+              placeholder="Nome e cognome"
             />
           </div>
         </div>
 
+        {/* Foto profilo */}
         <div className="space-y-2">
-          <label className="text-sm font-medium">
+          <label className="text-xs font-medium text-gray-700">
             Foto profilo
           </label>
           <AvatarUploader
-            value={avatarUrl || null}
-            onChange={(url) =>
-              setAvatarUrl(url || '')
+            value={
+              profile.avatar_url || null
+            }
+            onChange={url =>
+              onFieldChange(
+                'avatar_url',
+                url
+              )
             }
           />
         </div>
 
-        <div>
-          <label className="text-sm font-medium">
+        {/* Bio */}
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-gray-700">
             Bio
           </label>
           <textarea
-            className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
-            rows={3}
-            value={bio}
-            onChange={(e) => setBio(e.target.value)}
-            placeholder={
-              isClub
-                ? 'Racconta storia, valori e progetto sportivo del club.'
-                : 'Racconta chi sei, carriera sportiva e obiettivi.'
+            className="w-full rounded-lg border px-3 py-2 text-sm"
+            rows={4}
+            placeholder="Racconta chi sei, carriera sportiva e obiettivi."
+            value={profile.bio || ''}
+            onChange={e =>
+              onFieldChange(
+                'bio',
+                e.target.value
+              )
             }
           />
         </div>
       </section>
 
-      {/* Atleta */}
-      {!isClub && (
-        <section className="space-y-4 rounded-2xl border bg-white p-4 md:p-5">
+      {/* DETTAGLI ATLETA */}
+      {accountType === 'athlete' && (
+        <section className="space-y-4">
           <h2 className="text-lg font-semibold">
             Dettagli atleta
           </h2>
 
-          <div className="grid gap-4 md:grid-cols-4">
-            <div>
-              <label className="text-sm font-medium">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-700">
                 Anno di nascita
               </label>
               <input
                 type="number"
-                className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
-                value={birthYear}
-                onChange={(e) =>
-                  setBirthYear(
+                className="w-full rounded-lg border px-3 py-2 text-sm"
+                value={
+                  profile.birth_year || ''
+                }
+                onChange={e =>
+                  onFieldChange(
+                    'birth_year',
                     e.target.value
-                      ? Number(e.target.value)
-                      : ''
+                      ? Number(
+                          e.target.value
+                        )
+                      : null
                   )
                 }
               />
             </div>
-            <div className="md:col-span-3">
-              <label className="text-sm font-medium">
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-700">
                 Luogo di nascita
               </label>
               <input
-                className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
-                value={birthPlace}
-                onChange={(e) =>
-                  setBirthPlace(e.target.value)
+                type="text"
+                className="w-full rounded-lg border px-3 py-2 text-sm"
+                value={
+                  profile.birth_place ||
+                  ''
+                }
+                onChange={e =>
+                  onFieldChange(
+                    'birth_place',
+                    e.target.value
+                  )
                 }
               />
             </div>
-          </div>
 
-          <div className="grid gap-4 md:grid-cols-3">
-            <div>
-              <label className="text-sm font-medium">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-700">
                 Città di residenza
               </label>
               <input
-                className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
+                type="text"
+                className="w-full rounded-lg border px-3 py-2 text-sm"
+                value={profile.city || ''}
+                onChange={e =>
+                  onFieldChange(
+                    'city',
+                    e.target.value
+                  )
+                }
               />
             </div>
-            <div>
-              <label className="text-sm font-medium">
-                Preferenza laterale
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-700">
+                Lato dominante
               </label>
               <select
-                className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
-                value={foot}
-                onChange={(e) =>
-                  setFoot(e.target.value)
+                className="w-full rounded-lg border px-3 py-2 text-sm"
+                value={
+                  profile.foot || ''
+                }
+                onChange={e =>
+                  onFieldChange(
+                    'foot',
+                    e.target.value ||
+                      null
+                  )
                 }
               >
-                <option value="">
-                  Seleziona
-                </option>
-                {LATERAL_PREFERENCE.map((f) => (
-                  <option key={f} value={f}>
-                    {f}
-                  </option>
-                ))}
+                {LATO_DOMINANTE_OPTIONS.map(
+                  opt => (
+                    <option
+                      key={opt.value}
+                      value={
+                        opt.value
+                      }
+                    >
+                      {opt.label}
+                    </option>
+                  )
+                )}
               </select>
             </div>
-            <div>
-              <label className="text-sm font-medium">
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-700">
                 Altezza (cm)
               </label>
               <input
                 type="number"
-                className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
-                value={height}
-                onChange={(e) =>
-                  setHeight(
+                className="w-full rounded-lg border px-3 py-2 text-sm"
+                value={
+                  profile.height_cm ||
+                  ''
+                }
+                onChange={e =>
+                  onFieldChange(
+                    'height_cm',
                     e.target.value
-                      ? Number(e.target.value)
-                      : ''
+                      ? Number(
+                          e.target.value
+                        )
+                      : null
                   )
                 }
               />
             </div>
-          </div>
 
-          <div className="grid gap-4 md:grid-cols-3">
-            <div>
-              <label className="text-sm font-medium">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-700">
                 Peso (kg)
               </label>
               <input
                 type="number"
-                className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
-                value={weight}
-                onChange={(e) =>
-                  setWeight(
+                className="w-full rounded-lg border px-3 py-2 text-sm"
+                value={
+                  profile.weight_kg ||
+                  ''
+                }
+                onChange={e =>
+                  onFieldChange(
+                    'weight_kg',
                     e.target.value
-                      ? Number(e.target.value)
-                      : ''
+                      ? Number(
+                          e.target.value
+                        )
+                      : null
                   )
                 }
               />
             </div>
-            <div>
-              <label className="text-sm font-medium">
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-700">
                 Sport principale
               </label>
-              <select
-                className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
-                value={sport}
-                onChange={(e) => {
-                  const next = e.target.value;
-                  setSport(next);
-                  // se cambio sport e il ruolo attuale non è più valido, resetto
-                  const allowed =
-                    ROLES_BY_SPORT[next] || [];
-                  if (
-                    allowed.length &&
-                    !allowed.includes(role)
-                  ) {
-                    setRole('');
-                  }
-                }}
-              >
-                <option value="">
-                  Seleziona
-                </option>
-                {SPORTS.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
+              <input
+                type="text"
+                className="w-full rounded-lg border px-3 py-2 text-sm"
+                value={
+                  profile.sport || ''
+                }
+                onChange={e =>
+                  onFieldChange(
+                    'sport',
+                    e.target.value
+                  )
+                }
+              />
             </div>
-            <div>
-              <label className="text-sm font-medium">
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-700">
                 Ruolo
               </label>
-              <select
-                className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
-                value={role}
-                onChange={(e) =>
-                  setRole(e.target.value)
+              <input
+                type="text"
+                className="w-full rounded-lg border px-3 py-2 text-sm"
+                value={
+                  profile.role || ''
                 }
-              >
-                <option value="">
-                  Seleziona ruolo
-                </option>
-                {rolesForSport.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
-                  </option>
-                ))}
-              </select>
+                onChange={e =>
+                  onFieldChange(
+                    'role',
+                    e.target.value
+                  )
+                }
+              />
             </div>
           </div>
         </section>
       )}
 
-      {/* Club */}
-      {isClub && (
-        <section className="space-y-4 rounded-2xl border bg-white p-4 md:p-5">
+      {/* DETTAGLI CLUB */}
+      {accountType === 'club' && (
+        <section className="space-y-4">
           <h2 className="text-lg font-semibold">
             Dettagli club
           </h2>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label className="text-sm font-medium">
-                Sport principale
-              </label>
-              <select
-                className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
-                value={clubSport}
-                onChange={(e) =>
-                  setClubSport(e.target.value)
-                }
-              >
-                <option value="">
-                  Seleziona
-                </option>
-                {SPORTS.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-sm font-medium">
-                Categoria / campionato
-              </label>
-              <input
-                className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
-                value={clubCategory}
-                onChange={(e) =>
-                  setClubCategory(e.target.value)
-                }
-                placeholder="Es. Eccellenza, Promozione..."
-              />
-            </div>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label className="text-sm font-medium">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-700">
                 Anno di fondazione
               </label>
               <input
                 type="number"
-                className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
-                value={clubFoundationYear}
-                onChange={(e) =>
-                  setClubFoundationYear(
+                className="w-full rounded-lg border px-3 py-2 text-sm"
+                value={
+                  profile.club_foundation_year ||
+                  ''
+                }
+                onChange={e =>
+                  onFieldChange(
+                    'club_foundation_year',
                     e.target.value
-                      ? Number(e.target.value)
-                      : ''
+                      ? Number(
+                          e.target.value
+                        )
+                      : null
                   )
                 }
               />
             </div>
-            <div>
-              <label className="text-sm font-medium">
-                Stadio / Centro sportivo
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-700">
+                Stadio / impianto
               </label>
               <input
-                className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
-                value={clubStadium}
-                onChange={(e) =>
-                  setClubStadium(e.target.value)
+                type="text"
+                className="w-full rounded-lg border px-3 py-2 text-sm"
+                value={
+                  profile.club_stadium ||
+                  ''
+                }
+                onChange={e =>
+                  onFieldChange(
+                    'club_stadium',
+                    e.target.value
+                  )
+                }
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-700">
+                Categoria / campionato
+              </label>
+              <input
+                type="text"
+                className="w-full rounded-lg border px-3 py-2 text-sm"
+                value={
+                  profile.club_league_category ||
+                  ''
+                }
+                onChange={e =>
+                  onFieldChange(
+                    'club_league_category',
+                    e.target.value
+                  )
                 }
               />
             </div>
@@ -758,111 +564,15 @@ export default function ProfileEditForm() {
         </section>
       )}
 
-      {/* Social & notifiche */}
-      <section className="space-y-4 rounded-2xl border bg-white p-4 md:p-5">
-        <h2 className="text-lg font-semibold">
-          Social & notifiche
-        </h2>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label className="text-sm font-medium">
-              Instagram
-            </label>
-            <input
-              className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
-              value={links.instagram || ''}
-              onChange={(e) =>
-                setLinks((prev) => ({
-                  ...prev,
-                  instagram: e.target.value,
-                }))
-              }
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium">
-              Facebook
-            </label>
-            <input
-              className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
-              value={links.facebook || ''}
-              onChange={(e) =>
-                setLinks((prev) => ({
-                  ...prev,
-                  facebook: e.target.value,
-                }))
-              }
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium">
-              TikTok
-            </label>
-            <input
-              className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
-              value={links.tiktok || ''}
-              onChange={(e) =>
-                setLinks((prev) => ({
-                  ...prev,
-                  tiktok: e.target.value,
-                }))
-              }
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium">
-              X / Twitter
-            </label>
-            <input
-              className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
-              value={links.x || ''}
-              onChange={(e) =>
-                setLinks((prev) => ({
-                  ...prev,
-                  x: e.target.value,
-                }))
-              }
-            />
-          </div>
-          <div className="md:col-span-2">
-            <label className="text-sm font-medium">
-              Sito web
-            </label>
-            <input
-              className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
-              value={links.website || ''}
-              onChange={(e) =>
-                setLinks((prev) => ({
-                  ...prev,
-                  website: e.target.value,
-                }))
-              }
-            />
-          </div>
-        </div>
-
-        <label className="mt-2 flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            className="h-4 w-4 rounded border-gray-300"
-            checked={!!notifyEmailNewMessage}
-            onChange={(e) =>
-              setNotifyEmailNewMessage(e.target.checked)
-            }
-          />
-          Ricevi email per nuovi messaggi.
-        </label>
-      </section>
-
-      <div className="flex justify-end">
+      <div>
         <button
           type="submit"
           disabled={saving}
-          className="inline-flex items-center rounded-md bg-black px-4 py-2 text-sm font-medium text-white hover:bg-gray-900 disabled:opacity-50"
+          className="rounded-full bg-black px-5 py-2 text-sm font-semibold text-white hover:bg-gray-900 disabled:opacity-60"
         >
           {saving
-            ? 'Salvataggio in corso…'
-            : 'Salva profilo'}
+            ? 'Salvataggio...'
+            : 'Salva modifiche'}
         </button>
       </div>
     </form>
