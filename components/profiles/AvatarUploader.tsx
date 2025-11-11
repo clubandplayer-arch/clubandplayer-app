@@ -57,27 +57,18 @@ export default function AvatarUploader({ value, onChange }: Props) {
     try {
       setUploading(true);
 
-      // 1) Recupera utente corrente (serve per path RLS)
+      // 1) Utente corrente per path RLS
       const {
         data: { user },
         error: userError,
       } = await supabase.auth.getUser();
 
       if (userError || !user) {
-        console.error(
-          '[AvatarUploader] auth.getUser error',
-          userError
-        );
-        throw new Error(
-          'Sessione non valida. Effettua di nuovo l’accesso.'
-        );
+        console.error('[AvatarUploader] auth.getUser error', userError);
+        throw new Error('Sessione non valida. Effettua di nuovo l’accesso.');
       }
 
-      const ext =
-        file.name.split('.').pop() || 'jpg';
-      // Path conforme alle policy:
-      // bucket: avatars
-      // path: <user.id>/<nome-file>
+      const ext = file.name.split('.').pop() || 'jpg';
       const path = `${user.id}/${Date.now()}-${Math.random()
         .toString(36)
         .slice(2)}.${ext}`;
@@ -91,19 +82,13 @@ export default function AvatarUploader({ value, onChange }: Props) {
         });
 
       if (uploadError) {
-        console.error(
-          '[AvatarUploader] upload error',
-          uploadError
-        );
-        // Messaggio chiaro se è una violazione RLS
+        console.error('[AvatarUploader] upload error', uploadError);
         if (
           uploadError.message &&
-          uploadError.message
-            .toLowerCase()
-            .includes('row-level security')
+          uploadError.message.toLowerCase().includes('row-level security')
         ) {
           throw new Error(
-            'Permesso negato dalle regole di sicurezza. Verifica le policy del bucket avatars (path deve iniziare con il tuo user.id).'
+            'Permesso negato dalle regole di sicurezza. Verifica le policy del bucket avatars.'
           );
         }
         throw new Error(
@@ -112,19 +97,17 @@ export default function AvatarUploader({ value, onChange }: Props) {
         );
       }
 
-      // 3) Ottieni URL pubblico
+      // 3) URL pubblico
       const { data: publicData } = supabase.storage
         .from('avatars')
         .getPublicUrl(path);
 
       const publicUrl = publicData?.publicUrl || null;
       if (!publicUrl) {
-        throw new Error(
-          'Impossibile ottenere URL pubblico dell’immagine.'
-        );
+        throw new Error('Impossibile ottenere URL pubblico dell’immagine.');
       }
 
-      // 4) Aggiorna il profilo
+      // 4) Salva su profilo
       const res = await fetch('/api/profiles/me', {
         method: 'PATCH',
         credentials: 'include',
@@ -137,10 +120,7 @@ export default function AvatarUploader({ value, onChange }: Props) {
       const json = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        console.error(
-          '[AvatarUploader] PATCH /api/profiles/me failed',
-          json
-        );
+        console.error('[AvatarUploader] PATCH /api/profiles/me failed', json);
         const msg =
           json?.details ||
           json?.error ||
@@ -164,7 +144,8 @@ export default function AvatarUploader({ value, onChange }: Props) {
 
   return (
     <div className="flex items-start gap-4">
-      <div className="flex h-48 w-36 items-center justify-center overflow-hidden rounded-3xl border bg-gray-50">
+      {/* Preview con le stesse proporzioni della mini card */}
+      <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border bg-gray-50">
         {value ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -174,8 +155,8 @@ export default function AvatarUploader({ value, onChange }: Props) {
           />
         ) : (
           <div className="flex flex-col items-center gap-2 text-gray-300">
-            <div className="h-16 w-16 rounded-full bg-gray-200" />
-            <div className="h-3 w-20 rounded-full bg-gray-200" />
+            <div className="h-10 w-10 rounded-full bg-gray-200" />
+            <div className="h-2 w-12 rounded-full bg-gray-200" />
           </div>
         )}
       </div>
@@ -189,13 +170,11 @@ export default function AvatarUploader({ value, onChange }: Props) {
             onChange={handleFileChange}
             disabled={uploading}
           />
-          {uploading
-            ? 'Caricamento...'
-            : 'Carica nuova immagine'}
+          {uploading ? 'Caricamento...' : 'Carica nuova immagine'}
         </label>
         <div>
-          Immagine verticale 4:5 consigliata. Max 10MB.
-          Formati supportati: JPG/PNG.
+          Immagine quadrata consigliata. Max 10MB. Formati supportati:
+          JPG/PNG.
         </div>
         {error && (
           <div className="text-[11px] text-red-600">
