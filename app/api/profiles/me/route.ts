@@ -118,33 +118,72 @@ export async function GET(_req: NextRequest) {
     );
   }
 
-  const { data, error } = await supabase
+  // 1) Nuovo schema: profilo indicizzato per user_id (univoco)
+  const byUserId = await supabase
     .from('profiles')
     .select('*')
-    .or(`id.eq.${user.id},user_id.eq.${user.id}`)
+    .eq('user_id', user.id)
     .maybeSingle();
 
-  if (error && error.code !== 'PGRST116') {
-    console.error('[profiles/me] select error', error);
+  if (byUserId.data) {
+    const account_type = normalizeAccountType(byUserId.data);
+    const normalized = { ...byUserId.data, account_type };
+
+    return NextResponse.json({
+      user: { id: user.id, email: user.email },
+      data: normalized,
+    });
+  }
+
+  if (
+    byUserId.error &&
+    byUserId.error.code !== 'PGRST116' // 0 rows
+  ) {
+    console.error(
+      '[profiles/me] select by user_id error',
+      byUserId.error
+    );
     return NextResponse.json(
       { error: 'profile_fetch_failed' },
       { status: 500 }
     );
   }
 
-  if (!data) {
+  // 2) Fallback legacy: riga con id == user.id
+  const byId = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (byId.data) {
+    const account_type = normalizeAccountType(byId.data);
+    const normalized = { ...byId.data, account_type };
+
     return NextResponse.json({
       user: { id: user.id, email: user.email },
-      data: null,
+      data: normalized,
     });
   }
 
-  const account_type = normalizeAccountType(data);
-  const normalized = { ...data, account_type };
+  if (
+    byId.error &&
+    byId.error.code !== 'PGRST116'
+  ) {
+    console.error(
+      '[profiles/me] select by id error',
+      byId.error
+    );
+    return NextResponse.json(
+      { error: 'profile_fetch_failed' },
+      { status: 500 }
+    );
+  }
 
+  // 3) Nessun profilo: ritorna user + data null
   return NextResponse.json({
     user: { id: user.id, email: user.email },
-    data: normalized,
+    data: null,
   });
 }
 
@@ -218,12 +257,9 @@ export async function PATCH(req: NextRequest) {
     updated_at: now,
   };
 
-  // NOTA CHIAVE:
-  // - usiamo onConflict: 'user_id'
-  // - NON forziamo id = user.id
-  // In questo modo:
-  //   * se esiste una riga con lo stesso user_id -> UPDATE
-  //   * se non esiste -> INSERT con nuovo id
+  // Usa sempre user_id come chiave unica:
+  // - se esiste riga con user_id -> UPDATE
+  // - altrimenti -> INSERT nuova riga con nuovo id
   const { data, error } = await supabase
     .from('profiles')
     .upsert(upsertPayload, { onConflict: 'user_id' })
