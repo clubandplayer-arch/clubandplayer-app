@@ -26,7 +26,12 @@ export default function ApplyCell({
         try {
           const meR = await fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' });
           const meJ = await meR.json().catch(() => null);
-          if (!cancelled) setMeId(meJ?.id ?? null);
+          if (!cancelled) setMeId(meJ?.user?.id ?? null);
+          if (!cancelled) {
+            const role = (meJ?.role ?? '').toString().toLowerCase();
+            if (role === 'athlete') setIsAthlete(true);
+            else if (role === 'club') setIsAthlete(false);
+          }
         } catch {
           if (!cancelled) setMeId(null);
         }
@@ -35,11 +40,14 @@ export default function ApplyCell({
         try {
           const pr = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
           const pj = await pr.json().catch(() => ({}));
-          const pt = (pj?.data?.profile_type ?? '').toString().toLowerCase();
+          const rawType =
+            (pj?.data?.account_type ?? pj?.data?.profile_type ?? pj?.data?.type ?? '')
+              .toString()
+              .toLowerCase();
 
-          if (pt.includes('club') || pt.includes('soc') || pt.includes('owner')) {
+          if (rawType.includes('club') || rawType.includes('soc') || rawType.includes('owner')) {
             if (!cancelled) setIsAthlete(false);
-          } else if (pt.includes('atlet')) {
+          } else if (rawType.includes('atlet')) {
             if (!cancelled) setIsAthlete(true);
           } else {
             if (!cancelled) setIsAthlete(true); // fallback ragionevole

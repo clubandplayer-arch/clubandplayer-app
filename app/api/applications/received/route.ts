@@ -10,16 +10,33 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   catch { return jsonError('Too Many Requests', 429); }
 
   // 1) Opportunità dell’owner
-  const { data: opps, error: e1 } = await supabase
+  const { data: oppsOwner, error: eOwner } = await supabase
     .from('opportunities')
-    .select('id, title, city, province, region, country')
-    .eq('created_by', user.id);
-  if (e1) return jsonError(e1.message, 400);
+    .select('id, title, city, province, region, country, owner_id')
+    .eq('owner_id', user.id);
+  if (eOwner) return jsonError(eOwner.message, 400);
 
-  if (!opps?.length) return NextResponse.json({ data: [] });
+  let opps = oppsOwner ?? [];
+
+  // Fallback per dati legacy con colonna created_by popolata
+  if (!opps.length) {
+    const { data: legacyOpps, error: legacyErr } = await supabase
+      .from('opportunities')
+      .select('id, title, city, province, region, country, created_by')
+      .eq('created_by', user.id);
+    if (legacyErr) return jsonError(legacyErr.message, 400);
+    opps = (legacyOpps ?? []).map((row: any) => ({ ...row, owner_id: row.created_by }));
+  }
+
+  if (!opps.length) return NextResponse.json({ data: [] });
 
   const oppIds = opps.map(o => o.id);
-  const oppMap = new Map(opps.map(o => [o.id, o]));
+  const oppMap = new Map(
+    opps.map((o: any) => {
+      const ownerId = o.owner_id ?? o.created_by ?? null;
+      return [o.id, { ...o, owner_id: ownerId, created_by: ownerId }];
+    })
+  );
 
   // 2) Candidature su quelle opportunità
   const { data: rows, error: e2 } = await supabase
@@ -36,10 +53,18 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   const athleteIds = Array.from(new Set(apps.map(a => a.athlete_id)));
   const { data: profs } = await supabase
     .from('profiles')
-    .select('id, display_name, profile_type')
+    .select('id, display_name, account_type, profile_type, type')
     .in('id', athleteIds);
 
-  const profMap = new Map((profs ?? []).map(p => [p.id, p]));
+  const profMap = new Map(
+    (profs ?? []).map((p) => [
+      p.id,
+      {
+        ...p,
+        account_type: (p.account_type ?? p.profile_type ?? p.type ?? null) as string | null,
+      },
+    ])
+  );
 
   // 4) Arricchisci
   const enhanced = apps.map(a => ({

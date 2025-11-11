@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
@@ -160,12 +161,12 @@ export default function OpportunitiesClient() {
         <div className="flex-1" />
 
         {role === 'club' && (
-          <a
+          <Link
             className="rounded-md bg-black px-3 py-2 text-sm text-white hover:opacity-90"
             href="/opportunities/new"
           >
             + Nuova opportunità
-          </a>
+          </Link>
         )}
 
         <button

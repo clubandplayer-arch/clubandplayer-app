@@ -52,7 +52,11 @@ export default function OpportunityDetailPage({ params }: { params: { id: string
           catch { throw new Error(t || `HTTP ${r.status}`); }
         }
         const j = JSON.parse(t);
-        if (!cancelled) setOpp(j?.data ?? j);
+        if (!cancelled) {
+          const raw = j?.data ?? j;
+          const ownerId = raw?.owner_id ?? raw?.created_by ?? null;
+          setOpp(raw ? { ...raw, owner_id: ownerId, created_by: ownerId } : null);
+        }
       } catch (e: any) {
         if (!cancelled) setErr(e.message || 'Errore caricamento');
       } finally {
@@ -94,7 +98,8 @@ export default function OpportunityDetailPage({ params }: { params: { id: string
     opp.age_min != null ? `${opp.age_min}+` :
     opp.age_max != null ? `≤${opp.age_max}` : undefined;
 
-  const isOwner = !!meId && (opp.created_by === meId || (opp as any).owner_id === meId);
+  const ownerId = opp.owner_id ?? opp.created_by ?? null;
+  const isOwner = !!meId && !!ownerId && ownerId === meId;
   const showCTA = role === 'athlete' && !isOwner;
 
   return (
@@ -110,7 +115,6 @@ export default function OpportunityDetailPage({ params }: { params: { id: string
             initialApplied={alreadyApplied}
             onApplied={() => {
               setAlreadyApplied(true);
-              // NEW: traccia invio candidatura
               track('application_submit', { opportunity_id: opp.id, role });
             }}
           />

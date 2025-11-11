@@ -15,11 +15,12 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   // check owner
   const { data: opp, error: oppErr } = await supabase
     .from('opportunities')
-    .select('created_by')
+    .select('owner_id, created_by')
     .eq('id', id)
     .single();
   if (oppErr) return jsonError(oppErr.message, 400);
-  if (!opp || opp.created_by !== user.id) return jsonError('Forbidden', 403);
+  const ownerId = (opp as any)?.owner_id ?? (opp as any)?.created_by;
+  if (!opp || ownerId !== user.id) return jsonError('Forbidden', 403);
 
   // candidati
   const { data: rows, error } = await supabase
@@ -33,13 +34,19 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   const athleteIds = Array.from(new Set(apps.map(a => a.athlete_id).filter(Boolean)));
 
   // profili atleti
-  let profilesMap = new Map<string, { id: string; display_name: string | null; profile_type: string | null }>();
+  const profilesMap = new Map<string, { id: string; display_name: string | null; account_type: string | null }>();
   if (athleteIds.length) {
     const { data: profs } = await supabase
       .from('profiles')
-      .select('id, display_name, profile_type')
+      .select('id, display_name, account_type, profile_type, type')
       .in('id', athleteIds);
-    profs?.forEach(p => profilesMap.set(p.id, p as any));
+    profs?.forEach((p) => {
+      profilesMap.set(p.id, {
+        id: p.id,
+        display_name: p.display_name,
+        account_type: (p.account_type ?? p.profile_type ?? p.type ?? null) as string | null,
+      });
+    });
   }
 
   const enhanced = apps.map(a => ({

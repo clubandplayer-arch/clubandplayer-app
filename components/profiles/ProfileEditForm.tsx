@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import AvatarUploader from './AvatarUploader';
 
 type LocationLevel = 'region' | 'province' | 'municipality';
 
@@ -26,6 +27,7 @@ type Profile = {
   // anagrafica
   full_name: string | null;
   bio: string | null;
+  avatar_url: string | null;
   birth_year: number | null;
   birth_place: string | null; // NEW
   city: string | null;        // residenza
@@ -142,6 +144,7 @@ export default function ProfileEditForm() {
   // Anagrafica
   const [fullName, setFullName] = useState<string>('');
   const [bio, setBio] = useState<string>('');
+  const [avatarUrl, setAvatarUrl] = useState<string>('');
   const [birthYear, setBirthYear] = useState<number | ''>('');
   const [birthPlace, setBirthPlace] = useState<string>('');   // NEW
   const [residenceCity, setResidenceCity] = useState<string>('');
@@ -179,6 +182,7 @@ export default function ProfileEditForm() {
 
       full_name: (j as any)?.full_name ?? null,
       bio: (j as any)?.bio ?? null,
+      avatar_url: (j as any)?.avatar_url ?? null,
       birth_year: (j as any)?.birth_year ?? null,
       birth_place: (j as any)?.birth_place ?? null,
       city: (j as any)?.city ?? null,
@@ -203,6 +207,7 @@ export default function ProfileEditForm() {
     // init form fields
     setFullName(p.full_name || '');
     setBio(p.bio || '');
+    setAvatarUrl(p.avatar_url || '');
     setBirthYear(p.birth_year ?? '');
     setBirthPlace(p.birth_place || '');
     setResidenceCity(p.city || '');
@@ -313,6 +318,7 @@ export default function ProfileEditForm() {
         // anagrafica
         full_name: (fullName || '').trim() || null,
         bio: (bio || '').trim() || null,
+        avatar_url: avatarUrl || null,
         birth_year: birthYear === '' ? null : Number(birthYear),
         birth_place: (birthPlace || '').trim() || null,
         city: (residenceCity || '').trim() || null,
@@ -368,6 +374,12 @@ export default function ProfileEditForm() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
+      {/* Foto profilo */}
+      <section className="rounded-2xl border p-4 md:p-5">
+        <h2 className="mb-3 text-lg font-semibold">Foto profilo</h2>
+        <AvatarUploader value={avatarUrl || null} onChange={(url) => setAvatarUrl(url ?? '')} />
+      </section>
+
       {/* Dati personali */}
       <section className="rounded-2xl border p-4 md:p-5">
         <h2 className="mb-3 text-lg font-semibold">Dati personali</h2>

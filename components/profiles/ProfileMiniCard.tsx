@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 type P = {
+  account_type?: string | null;
   full_name?: string | null;
   display_name?: string | null;
   bio?: string | null;
@@ -37,7 +38,6 @@ const supabase = createSupabaseClient(
 /* ---------- helpers bandiera/nome paese ---------- */
 function getRegionCodes(): string[] {
   try {
-    // @ts-ignore
     return (Intl as any).supportedValuesOf?.('region') ?? [];
   } catch {
     return [];
@@ -73,6 +73,7 @@ function nameToIso2(v?: string | null): string | null {
 export default function ProfileMiniCard() {
   const [p, setP] = useState<P | null>(null);
   const [place, setPlace] = useState<string>('—'); // residenza
+  const [role, setRole] = useState<'club' | 'athlete' | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -81,6 +82,12 @@ export default function ProfileMiniCard() {
         const raw = await r.json().catch(() => ({}));
         const j = (raw && typeof raw === 'object' && 'data' in raw ? (raw as any).data : raw) || {};
         setP(j || {});
+        const type = (j?.account_type ?? j?.profile_type ?? j?.type ?? '')
+          .toString()
+          .toLowerCase();
+        if (type.includes('club')) setRole('club');
+        else if (type.includes('athlete') || type.includes('atlet')) setRole('athlete');
+        else setRole(null);
 
         // etichetta luogo (residenza) da cascade se city non presente
         let label = (j?.city ?? '').trim();
@@ -123,6 +130,9 @@ export default function ProfileMiniCard() {
     tiktok: p?.links?.tiktok,
     x: p?.links?.x,
   };
+
+  const editHref = role === 'club' ? '/club/profile' : '/profile';
+  const editLabel = role === 'club' ? 'Modifica profilo club' : 'Modifica profilo';
 
   const IconWrap = ({ href, label, children }: any) => (
     <a
@@ -198,8 +208,8 @@ export default function ProfileMiniCard() {
       )}
 
       <div className="mt-4">
-        <Link href="/profile" className="inline-block rounded-xl border px-3 py-1.5 text-sm hover:bg-gray-50">
-          Modifica profilo
+        <Link href={editHref} className="inline-block rounded-xl border px-3 py-1.5 text-sm hover:bg-gray-50">
+          {editLabel}
         </Link>
       </div>
     </div>

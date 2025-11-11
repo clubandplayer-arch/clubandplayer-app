@@ -1,4 +1,5 @@
 // Tipi per le opportunità
+import type { CountryCode, OpportunityRole, OpportunityStatus } from '@/lib/types/entities';
 
 export type Gender = 'male' | 'female' | 'mixed';
 
@@ -8,14 +9,15 @@ export interface Opportunity {
   description?: string | null;
 
   // Località
-  country?: string | null;
+  country?: CountryCode | string | null;
   region?: string | null;
   province?: string | null;
   city?: string | null;
 
   // Profilo sportivo
   sport?: string | null;
-  role?: string | null;
+  role?: OpportunityRole | string | null;
+  status?: OpportunityStatus | string | null;
   gender?: Gender | null;
 
   // Età
@@ -26,12 +28,15 @@ export interface Opportunity {
 
   // Club/owner
   club_name?: string | null;
-  created_by?: string | null; // id del club owner (presente nelle tue UI)
-  owner_id?: string | null;   // opzionale per compatibilità retro
+  owner_id?: string | null;   // id del club proprietario (snake_case legacy)
+  ownerId?: string | null;    // camelCase normalizzato
+  created_by?: string | null; // alias legacy → verrà eliminato quando i dati saranno migrati
 
   // Meta
-  created_at: string; // ISO string
+  created_at: string; // ISO string (come da API storiche)
+  createdAt?: string; // camelCase per i repo server-side
   updated_at?: string | null;
+  updatedAt?: string | null;
 }
 
 export interface OpportunitiesApiResponse {

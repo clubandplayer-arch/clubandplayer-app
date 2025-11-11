@@ -36,7 +36,12 @@ export default function DashboardNav() {
           cache: 'no-store',
         });
         const jp = await rProf.json().catch(() => ({}));
-        const t = (jp?.data?.type ?? jp?.data?.profile_type ?? '')
+        const t = (
+          jp?.data?.account_type ??
+          jp?.data?.profile_type ??
+          jp?.data?.type ??
+          ''
+        )
           .toString()
           .toLowerCase();
 
@@ -85,6 +90,8 @@ export default function DashboardNav() {
   }, []);
 
   const isAthlete = role === 'athlete';
+  const profileHref = role === 'club' ? '/club/profile' : '/profile';
+  const profileActive = pathname === profileHref || pathname.startsWith(`${profileHref}/`);
   const applicationsHref = isAthlete ? '/applications/sent' : '/applications';
   const applicationsActive =
     pathname === applicationsHref ||
@@ -100,7 +107,7 @@ export default function DashboardNav() {
         Opportunità
       </Link>
 
-      <Link href="/profile" className={pill(pathname.startsWith('/profile'))}>
+      <Link href={profileHref} className={pill(profileActive)}>
         Profilo
       </Link>
 

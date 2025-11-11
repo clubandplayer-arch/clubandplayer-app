@@ -27,12 +27,26 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   // Verifica esistenza opportunità e che non sia tua
   const { data: opp, error: oppErr } = await supabase
     .from('opportunities')
-    .select('id, created_by')
+    .select('id, owner_id')
     .eq('id', opportunity_id)
-    .single();
+    .maybeSingle();
 
-  if (oppErr || !opp) return jsonError('Opportunity not found', 404);
-  if (opp.created_by === user.id) {
+  let ownerId = (opp as any)?.owner_id ?? null;
+
+  if ((!opp || !ownerId) && !oppErr) {
+    const legacy = await supabase
+      .from('opportunities')
+      .select('id, created_by')
+      .eq('id', opportunity_id)
+      .maybeSingle();
+    if (!legacy.error && legacy.data) {
+      ownerId = (legacy.data as any).created_by ?? null;
+    }
+  }
+
+  if (oppErr || (!opp && !ownerId)) return jsonError('Opportunity not found', 404);
+  if (!ownerId) return jsonError('Opportunity not available', 400);
+  if (ownerId === user.id) {
     return jsonError('Cannot apply to your own opportunity', 400);
   }
 

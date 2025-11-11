@@ -1,17 +1,28 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
+function resolveEnv(key: "URL" | "ANON_KEY") {
+  const envKey = key === "URL" ? "SUPABASE_URL" : "SUPABASE_ANON_KEY";
+  const publicKey = key === "URL" ? "NEXT_PUBLIC_SUPABASE_URL" : "NEXT_PUBLIC_SUPABASE_ANON_KEY";
+
+  const direct = process.env[envKey];
+  if (direct) return direct;
+  const nextPublic = process.env[publicKey];
+  if (nextPublic) return nextPublic;
+  throw new Error(`Missing Supabase environment variable ${envKey}`);
+}
+
 /**
- * Next.js 15: cookies() è ASYNC → qui lo attendiamo e
+ * Next.js 15: cookies() è async → qui lo attendiamo e
  * ritorniamo un client pronto. Nei chiamanti:
  *   const supabase = await getSupabaseServerClient();
  */
 export async function getSupabaseServerClient() {
-  const cookieStore = await cookies(); // differenza chiave in Next 15
+  const cookieStore = await cookies();
 
   const supabase = createServerClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_ANON_KEY!,
+    resolveEnv("URL"),
+    resolveEnv("ANON_KEY"),
     {
       cookies: {
         get(name: string) {

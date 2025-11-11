@@ -16,13 +16,14 @@ async function detectRoleReceived(): Promise<Role> {
 
     const { data: prof } = await supabase
       .from('profiles')
-      .select('type, profile_type, id, user_id')
+      .select('account_type, type, profile_type, id, user_id')
       .or(`id.eq.${uid},user_id.eq.${uid}`)
       .maybeSingle();
 
     const t = (
-      (prof as any)?.type ??
+      (prof as any)?.account_type ??
       (prof as any)?.profile_type ??
+      (prof as any)?.type ??
       ''
     ).toString().toLowerCase();
 

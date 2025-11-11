@@ -41,6 +41,7 @@ const FIELDS: Record<string, 'text' | 'number' | 'bool' | 'json'> = {
   full_name: 'text',
   display_name: 'text',
   bio: 'text',
+  avatar_url: 'text',
   city: 'text',            // residenza
   birth_year: 'number',
   birth_place: 'text',     // NEW: luogo di nascita (città)
@@ -120,7 +121,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   if (updates.interest_country === undefined) updates.interest_country = 'IT';
 
   // 1) tentativo di UPDATE
-  let { data, error } = await supabase
+  const { data, error } = await supabase
     .from('profiles')
     .update({ ...updates, updated_at: new Date().toISOString() })
     .eq('user_id', user.id)

@@ -36,7 +36,7 @@ export default function OpportunitiesClient() {
       'q', 'page', 'pageSize', 'sort',
       'country', 'region', 'province', 'city',
       'sport', 'role', 'age',
-      'created_by',            // <-- aggiunto
+      'owner', 'owner_id', 'created_by',
     ]) {
       const v = sp.get(k);
       if (v) p.set(k, v);
@@ -83,7 +83,17 @@ export default function OpportunitiesClient() {
         const r = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
         const j = await r.json().catch(() => ({}));
         if (cancelled) return;
-        const t = (j?.type ?? j?.profile?.type ?? '').toString().toLowerCase();
+        const t = (
+          j?.data?.account_type ??
+          j?.data?.profile_type ??
+          j?.data?.type ??
+          j?.type ??
+          j?.profile?.account_type ??
+          j?.profile?.type ??
+          ''
+        )
+          .toString()
+          .toLowerCase();
         setProfileType(t);
         if (t.startsWith('club')) setRole('club');
         else if (t === 'athlete') setRole('athlete');
@@ -121,12 +131,17 @@ export default function OpportunitiesClient() {
     setLoading(true);
     setErr(null);
 
-    // Clona i filtri e risolvi created_by=me -> created_by=<meId>
     const p = new URLSearchParams(urlFilters.toString());
-    if (p.get('created_by') === 'me') {
-      if (meId) p.set('created_by', meId);
-      else p.delete('created_by'); // se non sono loggato, non filtrare per "me"
-    }
+    const resolveMe = (key: string) => {
+      if (p.get(key) === 'me') {
+        if (meId) p.set(key, meId);
+        else p.delete(key);
+      }
+    };
+    resolveMe('owner');
+    resolveMe('owner_id');
+    resolveMe('created_by');
+
     const qs = p.toString();
 
     fetch(`/api/opportunities?${qs}`, { credentials: 'include', cache: 'no-store' })
@@ -138,7 +153,15 @@ export default function OpportunitiesClient() {
         }
         return JSON.parse(t) as OpportunitiesApiResponse;
       })
-      .then((json) => !cancelled && setData(json))
+      .then((json) => {
+        if (cancelled) return;
+        const rows = Array.isArray((json as any)?.data) ? (json as any).data : [];
+        const normalized = rows.map((row: any) => {
+          const ownerId = row?.owner_id ?? row?.created_by ?? null;
+          return { ...row, owner_id: ownerId, created_by: ownerId };
+        });
+        setData({ ...(json as any), data: normalized } as OpportunitiesApiResponse);
+      })
       .catch((e) => !cancelled && setErr(e.message || 'Errore'))
       .finally(() => !cancelled && setLoading(false));
 
@@ -163,9 +186,12 @@ export default function OpportunitiesClient() {
   }
 
   const items: Opportunity[] = useMemo(() => {
-    // difesa: se data/data non esiste, restituisci array vuoto
     const arr = (data as any)?.data;
-    return Array.isArray(arr) ? arr : [];
+    if (!Array.isArray(arr)) return [];
+    return arr.map((row: any) => {
+      const ownerId = row?.owner_id ?? row?.created_by ?? null;
+      return { ...row, owner_id: ownerId, created_by: ownerId } as Opportunity;
+    });
   }, [data]);
 
   return (

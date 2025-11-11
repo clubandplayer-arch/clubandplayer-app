@@ -50,8 +50,12 @@ export default function ClubPage({ params }: { params: { id: string } }) {
           }
         }
         // fallback filtro client
-        const onlyMine = rows.filter((o) => o.created_by === clubId);
-        if (!cancelled) setOpps((onlyMine.length ? onlyMine : rows).slice(0, 10));
+        const normalized = rows.map((o) => {
+          const ownerId = o.owner_id ?? o.created_by ?? null;
+          return { ...o, owner_id: ownerId, created_by: ownerId } as Opportunity;
+        });
+        const onlyMine = normalized.filter((o) => o.owner_id === clubId);
+        if (!cancelled) setOpps((onlyMine.length ? onlyMine : normalized).slice(0, 10));
       } catch (e: any) {
         if (!cancelled) setErr(e?.message || 'Errore caricamento club');
       } finally {

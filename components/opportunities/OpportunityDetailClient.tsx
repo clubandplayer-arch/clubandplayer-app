@@ -59,7 +59,8 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
         const j: ApiOne<Opportunity> = t ? JSON.parse(t) : {};
         const o = (j.data ?? j) as any;
         if (!o?.id) throw new Error('Annuncio non trovato');
-        if (!c) setOpp(o as Opportunity);
+        const ownerId = o.owner_id ?? o.created_by ?? null;
+        if (!c) setOpp({ ...o, owner_id: ownerId, created_by: ownerId } as Opportunity);
       } catch (e: any) {
         if (!c) setErr(e.message || 'Errore caricamento annuncio');
       } finally {
@@ -69,9 +70,10 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
     return () => { c = true; };
   }, [id]);
 
+  const ownerId = opp?.owner_id ?? opp?.created_by ?? null;
   const isOwner = useMemo(
-    () => !!meId && !!opp && opp.created_by === meId,
-    [meId, opp]
+    () => !!meId && !!ownerId && ownerId === meId,
+    [meId, ownerId]
   );
   const showApply = role === 'athlete' && !isOwner;
 
@@ -116,7 +118,7 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
 
           <div className="flex items-center gap-2">
             {showApply && (
-              <ApplyCell opportunityId={opp.id} ownerId={opp.created_by ?? null} />
+              <ApplyCell opportunityId={opp.id} ownerId={ownerId} />
             )}
           </div>
         </header>
@@ -128,8 +130,8 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
         <footer className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-gray-600">
           <div className="flex items-center gap-2">
             <span className="font-medium">{opp.club_name ?? 'Club'}</span>
-            {opp.created_by && (
-              <FollowButton clubId={opp.created_by} clubName={opp.club_name ?? undefined} size="md" />
+            {ownerId && (
+              <FollowButton clubId={ownerId} clubName={opp.club_name ?? undefined} size="md" />
             )}
           </div>
           <div className="flex items-center gap-2">

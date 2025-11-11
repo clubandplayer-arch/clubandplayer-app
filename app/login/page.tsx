@@ -1,41 +1,38 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
 const SUPA_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''
 const HAS_ENV = Boolean(SUPA_URL && SUPA_ANON)
 
-const FIXED_ALLOWED = new Set<string>([
-  'https://clubandplayer-app.vercel.app',
-  'http://localhost:3000',
-])
-
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [oauthLoading, setOauthLoading] = useState(false)
   const [currentEmail, setCurrentEmail] = useState<string | null>(null)
 
-  const BUILD_TAG = 'login-v4.1-email-only+cookie-sync'
+  const BUILD_TAG = 'login-v5.0-google-oauth'
 
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
-  const hostname = typeof window !== 'undefined' ? window.location.hostname : ''
 
-  const oauthAllowedHere = useMemo(() => {
-    try {
-      if (!origin) return false
-      if (FIXED_ALLOWED.has(origin)) return true
-      if (hostname.endsWith('.vercel.app')) return true
-      return false
-    } catch {
-      return false
-    }
-  }, [origin, hostname])
+  const oauthError = searchParams?.get('oauth_error') || null
+  const redirectParam = searchParams?.get('redirect_to') || null
+
+  const redirectTarget = useMemo(() => {
+    if (!redirectParam) return null
+    const trimmed = redirectParam.trim()
+    if (!trimmed) return null
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return null
+    if (trimmed.startsWith('/')) return trimmed
+    return `/${trimmed}`
+  }, [redirectParam])
 
   // Pre-carica utente (client-only)
   useEffect(() => {
@@ -49,6 +46,38 @@ export default function LoginPage() {
     })()
     return () => { active = false }
   }, [])
+
+  useEffect(() => {
+    if (oauthError) {
+      setErrorMsg(oauthError)
+    }
+  }, [oauthError])
+
+  async function signInWithGoogle() {
+    setErrorMsg(null)
+    if (!HAS_ENV) {
+      setErrorMsg('Config mancante: NEXT_PUBLIC_SUPABASE_*')
+      return
+    }
+    setOauthLoading(true)
+    try {
+      const { createClient } = await import('@supabase/supabase-js')
+      const supabase = createClient(SUPA_URL, SUPA_ANON)
+      const callbackBase = origin || window.location.origin
+      const redirectSuffix = redirectTarget ? `?redirect_to=${encodeURIComponent(redirectTarget)}` : ''
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${callbackBase}/auth/callback${redirectSuffix}`,
+        },
+      })
+      if (error) throw error
+      // Supabase effettua un redirect automatico; in caso contrario resetta loading
+    } catch (err: any) {
+      setOauthLoading(false)
+      setErrorMsg(err?.message ?? 'Errore login Google')
+    }
+  }
 
   async function signInEmail(e: React.FormEvent) {
     e.preventDefault()
@@ -82,7 +111,7 @@ export default function LoginPage() {
         throw new Error(j?.error || 'Sync cookie fallito')
       }
 
-      router.replace('/')
+      router.replace(redirectTarget ?? '/')
     } catch (err: any) {
       setErrorMsg(err?.message ?? 'Errore login')
     } finally {
@@ -118,10 +147,14 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY`}
           </div>
         )}
 
-        {/* Google temporaneamente rimosso */}
-        <div className="rounded-md border border-blue-200 bg-blue-50 p-2 text-xs text-blue-800">
-          Login con Google momentaneamente disabilitato per sbloccare la preview. Usa email + password.
-        </div>
+        <button
+          type="button"
+          onClick={signInWithGoogle}
+          disabled={loading || oauthLoading || !HAS_ENV}
+          className="w-full rounded-md border border-gray-300 bg-white py-2 text-sm font-medium shadow-sm transition hover:bg-gray-50 disabled:opacity-50"
+        >
+          {oauthLoading ? 'Reindirizzamento…' : 'Accedi con Google'}
+        </button>
 
         {errorMsg && (
           <p className="rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700">
