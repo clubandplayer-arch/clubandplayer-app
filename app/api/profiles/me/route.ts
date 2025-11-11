@@ -1,284 +1,237 @@
 // app/api/profiles/me/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { withAuth, jsonError } from '@/lib/api/auth';
 
 export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
 
-type AccountType = 'club' | 'athlete';
+type AccountType = 'club' | 'athlete' | null;
 
-function normalizeAccountType(row: any | null): AccountType | null {
-  if (!row) return null;
+type Links = {
+  instagram?: string | null;
+  facebook?: string | null;
+  tiktok?: string | null;
+  x?: string | null;
+};
 
-  const raw = (
-    row.account_type ??
-    row.profile_type ??
-    row.type ??
-    ''
-  )
-    .toString()
-    .toLowerCase();
+type ProfilePayload = {
+  full_name?: string | null;
+  bio?: string | null;
+  avatar_url?: string | null;
 
-  if (raw.includes('club')) return 'club';
-  if (raw.includes('athlete') || raw.includes('atlet')) return 'athlete';
+  birth_year?: number | null;
+  birth_place?: string | null;
 
-  if (
-    row.club_league_category ||
-    row.club_foundation_year ||
-    row.club_stadium
-  ) {
-    return 'club';
-  }
+  city?: string | null;
+  country?: string | null;
 
-  return 'athlete';
+  sport?: string | null;
+  role?: string | null;
+
+  foot?: 'destro' | 'sinistro' | 'ambidestro' | null;
+  height_cm?: number | null;
+  weight_kg?: number | null;
+
+  interest_country?: string | null;
+  interest_region_id?: number | null;
+  interest_province_id?: number | null;
+  interest_municipality_id?: number | null;
+
+  links?: Links | null;
+
+  notify_email_new_message?: boolean | null;
+};
+
+function normalizeAccountType(raw: any): AccountType {
+  const v = String(raw ?? '').toLowerCase();
+  if (v === 'club') return 'club';
+  if (v === 'athlete' || v === 'atleta') return 'athlete';
+  return null;
 }
 
-const ALLOWED_FIELDS = new Set([
-  // comuni
-  'account_type',
-  'type', // alias input
-  'full_name',
-  'display_name',
-  'avatar_url',
-  'bio',
-  'country',
-  'city',
+function normalizeFoot(raw: any): ProfilePayload['foot'] {
+  const v = String(raw ?? '').toLowerCase();
+  if (!v) return null;
+  if (['destro', 'right', 'dx', 'r'].includes(v)) return 'destro';
+  if (['sinistro', 'left', 'sx', 'l'].includes(v)) return 'sinistro';
+  if (['ambidestro', 'ambi', 'both'].includes(v)) return 'ambidestro';
+  return null;
+}
 
-  // atleta
-  'birth_year',
-  'birth_place',
-  'birth_country',
-  'foot',
-  'height_cm',
-  'weight_kg',
-  'sport',
-  'role',
-  'visibility',
+function sanitizeLinks(raw: any): Links | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const out: Links = {};
+  const src = raw as Record<string, any>;
 
-  // interessi geo
-  'interest_country',
-  'interest_region_id',
-  'interest_province_id',
-  'interest_municipality_id',
+  const set = (key: keyof Links) => {
+    const v = (src[key] ?? '').toString().trim();
+    if (!v) return;
+    out[key] = v;
+  };
 
-  // social
-  'links',
+  set('instagram');
+  set('facebook');
+  set('tiktok');
+  set('x');
 
-  // notifiche
-  'notify_email_new_message',
+  return Object.keys(out).length ? out : null;
+}
 
-  // club
-  'club_foundation_year',
-  'club_stadium',
-  'club_league_category',
-]);
-
-function pickPatch(body: any): Record<string, any> {
+function pickPatchBody(body: any): ProfilePayload {
   if (!body || typeof body !== 'object') return {};
-  const out: Record<string, any> = {};
 
-  for (const [key, value] of Object.entries(body)) {
-    if (!ALLOWED_FIELDS.has(key)) continue;
-    out[key] = value;
-  }
+  const b = body as Record<string, any>;
 
-  // normalizza account_type anche da "type"
-  if (!out.account_type && typeof body.type === 'string') {
-    const t = body.type.toLowerCase();
-    if (t.includes('club')) out.account_type = 'club';
-    else if (t.includes('athlete') || t.includes('atlet'))
-      out.account_type = 'athlete';
-  }
+  const cleanNumber = (v: any): number | null => {
+    if (v === '' || v == null) return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  };
 
-  if (typeof out.account_type === 'string') {
-    const t = out.account_type.toLowerCase();
-    if (t.includes('club')) out.account_type = 'club';
-    else if (t.includes('athlete') || t.includes('atlet'))
-      out.account_type = 'athlete';
-    else delete out.account_type;
-  }
+  const payload: ProfilePayload = {
+    full_name: b.full_name?.toString().trim() || null,
+    bio: b.bio?.toString().trim() || null,
+    avatar_url: b.avatar_url?.toString().trim() || null,
 
-  return out;
+    birth_year: cleanNumber(b.birth_year),
+    birth_place: b.birth_place?.toString().trim() || null,
+
+    city: b.city?.toString().trim() || null,
+    country: b.country?.toString().trim() || null,
+
+    sport: b.sport?.toString().trim() || null,
+    role: b.role?.toString().trim() || null,
+
+    foot: normalizeFoot(b.foot),
+    height_cm: cleanNumber(b.height_cm),
+    weight_kg: cleanNumber(b.weight_kg),
+
+    interest_country: (b.interest_country || 'IT').toString().trim() || 'IT',
+    interest_region_id: cleanNumber(b.interest_region_id),
+    interest_province_id: cleanNumber(b.interest_province_id),
+    interest_municipality_id: cleanNumber(b.interest_municipality_id),
+
+    links: sanitizeLinks(b.links),
+
+    notify_email_new_message:
+      typeof b.notify_email_new_message === 'boolean'
+        ? b.notify_email_new_message
+        : null,
+  };
+
+  // ripuliamo le chiavi undefined per non scrivere roba sporca
+  Object.keys(payload).forEach((k) => {
+    if ((payload as any)[k] === undefined) {
+      delete (payload as any)[k];
+    }
+  });
+
+  return payload;
 }
 
-/* ---------------------------------- GET ---------------------------------- */
-
-export async function GET(_req: NextRequest) {
-  const supabase = await getSupabaseServerClient();
-
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return NextResponse.json(
-      { user: null, data: null },
-      { status: 401 }
-    );
-  }
-
-  // 1) Nuovo schema: profilo indicizzato per user_id (univoco)
-  const byUserId = await supabase
+/**
+ * GET /api/profiles/me
+ * Ritorna { user, profile } con account_type normalizzato.
+ */
+export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
+  // profilo esistente (by user_id, compat con eventuale colonna id legacy)
+  const { data: profileRow, error } = await supabase
     .from('profiles')
     .select('*')
     .eq('user_id', user.id)
     .maybeSingle();
 
-  if (byUserId.data) {
-    const account_type = normalizeAccountType(byUserId.data);
-    const normalized = { ...byUserId.data, account_type };
-
-    return NextResponse.json({
-      user: { id: user.id, email: user.email },
-      data: normalized,
-    });
+  if (error) {
+    return jsonError(error.message, 500);
   }
 
-  if (
-    byUserId.error &&
-    byUserId.error.code !== 'PGRST116' // 0 rows
-  ) {
-    console.error(
-      '[profiles/me] select by user_id error',
-      byUserId.error
-    );
-    return NextResponse.json(
-      { error: 'profile_fetch_failed' },
-      { status: 500 }
-    );
-  }
+  const account_type =
+    normalizeAccountType(profileRow?.account_type) ??
+    normalizeAccountType(user.user_metadata?.account_type) ??
+    normalizeAccountType(user.user_metadata?.role);
 
-  // 2) Fallback legacy: riga con id == user.id
-  const byId = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .maybeSingle();
-
-  if (byId.data) {
-    const account_type = normalizeAccountType(byId.data);
-    const normalized = { ...byId.data, account_type };
-
-    return NextResponse.json({
-      user: { id: user.id, email: user.email },
-      data: normalized,
-    });
-  }
-
-  if (
-    byId.error &&
-    byId.error.code !== 'PGRST116'
-  ) {
-    console.error(
-      '[profiles/me] select by id error',
-      byId.error
-    );
-    return NextResponse.json(
-      { error: 'profile_fetch_failed' },
-      { status: 500 }
-    );
-  }
-
-  // 3) Nessun profilo: ritorna user + data null
-  return NextResponse.json({
-    user: { id: user.id, email: user.email },
-    data: null,
-  });
-}
-
-/* --------------------------------- PATCH --------------------------------- */
-
-export async function PATCH(req: NextRequest) {
-  const supabase = await getSupabaseServerClient();
-
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return NextResponse.json(
-      { error: 'unauthorized' },
-      { status: 401 }
-    );
-  }
-
-  const body = await req.json().catch(() => ({} as any));
-  const patch = pickPatch(body);
-
-  // account_type safe
-  if (patch.account_type) {
-    const t = String(patch.account_type).toLowerCase();
-    if (t.includes('club')) patch.account_type = 'club';
-    else if (t.includes('athlete') || t.includes('atlet'))
-      patch.account_type = 'athlete';
-    else delete patch.account_type;
-  }
-
-  // links → oggetto json pulito o null
-  if (patch.links && typeof patch.links === 'object') {
-    const safeLinks: Record<string, string | null> = {};
-    for (const [k, v] of Object.entries(patch.links as any)) {
-      if (typeof v === 'string' && v.trim()) {
-        safeLinks[k] = v.trim();
-      } else if (v == null || v === '') {
-        safeLinks[k] = null;
-      }
-    }
-    patch.links =
-      Object.keys(safeLinks).length > 0 ? safeLinks : null;
-  }
-
-  // numerici
-  const numericKeys = [
-    'birth_year',
-    'height_cm',
-    'weight_kg',
-    'club_foundation_year',
-  ];
-  for (const key of numericKeys) {
-    if (key in patch) {
-      const v = (patch as any)[key];
-      if (v === '' || v == null) {
-        (patch as any)[key] = null;
-      } else if (typeof v === 'string') {
-        const n = Number(v);
-        (patch as any)[key] = Number.isFinite(n) ? n : null;
-      }
-    }
-  }
-
-  const now = new Date().toISOString();
-
-  const upsertPayload: any = {
-    user_id: user.id,
-    ...patch,
-    updated_at: now,
+  const profile = {
+    ...profileRow,
+    account_type,
   };
 
-  // Usa sempre user_id come chiave unica:
-  // - se esiste riga con user_id -> UPDATE
-  // - altrimenti -> INSERT nuova riga con nuovo id
+  return NextResponse.json({
+    user: {
+      id: user.id,
+      email: user.email,
+    },
+    profile,
+  });
+});
+
+/**
+ * PATCH /api/profiles/me
+ * Upsert sicuro del profilo autenticato.
+ */
+export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
+  let body: any = {};
+  try {
+    body = await req.json();
+  } catch {
+    body = {};
+  }
+
+  const patch = pickPatchBody(body);
+
+  // difesa extra sul foot_check: se arriva qualcosa di invalido → null
+  if (patch.foot && !['destro', 'sinistro', 'ambidestro'].includes(patch.foot)) {
+    patch.foot = null;
+  }
+
+  // account_type: non forziamo da form, ma se il record non c'è proviamo a dedurlo dai metadata
+  const account_type =
+    normalizeAccountType(body.account_type) ??
+    normalizeAccountType(user.user_metadata?.account_type) ??
+    normalizeAccountType(user.user_metadata?.role) ??
+    null;
+
+  const baseRow: any = {
+    user_id: user.id,
+    account_type,
+    ...patch,
+    updated_at: new Date().toISOString(),
+  };
+
+  // Se non esiste ancora nessun profilo per l'utente, impostiamo created_at ora.
+  // Supabase upsert con onConflict:user_id evita il duplicate key.
   const { data, error } = await supabase
     .from('profiles')
-    .upsert(upsertPayload, { onConflict: 'user_id' })
+    .upsert(baseRow, {
+      onConflict: 'user_id',
+      ignoreDuplicates: false,
+    })
     .select('*')
-    .single();
+    .maybeSingle();
 
   if (error) {
-    console.error('[profiles/me] upsert error', error);
+    // Esponiamo un codice chiaro al client (ProfileEditForm mostra profile_update_failed)
     return NextResponse.json(
-      {
-        error: 'profile_update_failed',
-        details: error.message,
-      },
+      { error: error.message || 'profile_update_failed' },
       { status: 400 }
     );
   }
 
-  const account_type = normalizeAccountType(data);
-  const normalized = { ...data, account_type };
+  const normalized = {
+    ...data,
+    account_type:
+      normalizeAccountType(data.account_type) ??
+      normalizeAccountType(user.user_metadata?.account_type) ??
+      normalizeAccountType(user.user_metadata?.role),
+  };
 
-  return NextResponse.json({ data: normalized });
-}
+  return NextResponse.json(
+    {
+      user: {
+        id: user.id,
+        email: user.email,
+      },
+      profile: normalized,
+    },
+    { status: 200 }
+  );
+});
