@@ -11,7 +11,7 @@ export default function ApplyCell({
   ownerId: string | null | undefined;
 }) {
   const [loading, setLoading] = useState(true);
-  const [isAthlete, setIsAthlete] = useState<boolean | null>(null);
+  const [isAthlete, setIsAthlete] = useState<boolean | null>(null); // null finché non sappiamo
   const [meId, setMeId] = useState<string | null>(null);
   const [applied, setApplied] = useState<boolean>(false);
 
@@ -26,47 +26,26 @@ export default function ApplyCell({
         try {
           const meR = await fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' });
           const meJ = await meR.json().catch(() => null);
-<<<<<<< HEAD
-          if (!cancelled) setMeId(meJ?.user?.id ?? null); // <- fix
-=======
-          if (!cancelled) setMeId(meJ?.user?.id ?? null);
->>>>>>> codex/verify-repository-correctness
-          if (!cancelled) {
-            const role = (meJ?.role ?? '').toString().toLowerCase();
-            if (role === 'athlete') setIsAthlete(true);
-            else if (role === 'club') setIsAthlete(false);
-          }
+          if (!cancelled) setMeId(meJ?.id ?? null);
         } catch {
           if (!cancelled) setMeId(null);
         }
 
-        // Tipo profilo (fallback robusto)
+        // Tipo profilo
         try {
           const pr = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
           const pj = await pr.json().catch(() => ({}));
-<<<<<<< HEAD
-          const rawType = (
-            pj?.data?.account_type ??
-            pj?.data?.profile_type ??
-            pj?.data?.type ??
-            ''
-          ).toString().toLowerCase();
-=======
-          const rawType =
-            (pj?.data?.account_type ?? pj?.data?.profile_type ?? pj?.data?.type ?? '')
-              .toString()
-              .toLowerCase();
->>>>>>> codex/verify-repository-correctness
+          const pt = (pj?.data?.profile_type ?? '').toString().toLowerCase();
 
-          if (rawType.includes('club') || rawType.includes('soc') || rawType.includes('owner')) {
+          if (pt.includes('club') || pt.includes('soc') || pt.includes('owner')) {
             if (!cancelled) setIsAthlete(false);
-          } else if (rawType.includes('atlet')) {
+          } else if (pt.includes('atlet')) {
             if (!cancelled) setIsAthlete(true);
           } else {
             if (!cancelled) setIsAthlete(true); // fallback ragionevole
           }
         } catch {
-          if (!cancelled) setIsAthlete(true);
+          if (!cancelled) setIsAthlete(true); // fallback ragionevole
         }
 
         // Ha già applicato?
@@ -116,10 +95,12 @@ export default function ApplyCell({
   // --- rendering ---
   if (loading || isAthlete === null) return <span className="text-gray-400">…</span>;
 
-  // Non atleti → non possono candidarsi
-  if (!isAthlete) return <span className="text-xs text-gray-500 border rounded px-2 py-1">Solo atleti</span>;
+  // Club → blocco sempre
+  if (!isAthlete) {
+    return <span className="text-xs text-gray-500 border rounded px-2 py-1">Solo atleti</span>;
+  }
 
-  // Proprietario annuncio → non può candidarsi
+  // Proprietario dell’annuncio → blocco
   if (meId && ownerId && meId === ownerId) {
     return <span className="text-xs text-gray-500 border rounded px-2 py-1">Solo atleti</span>;
   }

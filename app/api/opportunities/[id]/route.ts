@@ -14,16 +14,23 @@ function getSupabase() {
 const SELECT =
   'id,title,description,owner_id,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name';
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(
+  _req: NextRequest,
+  ctx: { params: Promise<{ id: string }> }
+) {
   try {
+    const { id } = await ctx.params;
+
     const supabase = getSupabase();
     const { data, error } = await supabase
       .from('opportunities')
       .select(SELECT)
-      .eq('id', params.id)
-      .single();
+      .eq('id', id)
+      .maybeSingle();
 
-    if (error) return jsonError(error.message, 404);
+    if (error) return jsonError(error.message, 500);
+    if (!data) return jsonError('Not found', 404);
+
     return NextResponse.json({ data });
   } catch (err: any) {
     return jsonError(err?.message || 'Unexpected error', 500);
