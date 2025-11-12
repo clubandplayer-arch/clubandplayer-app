@@ -1,198 +1,31 @@
-// app/api/opportunities/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseServerClient } from '@/lib/supabase/server';
-import { withAuth, jsonError } from '@/lib/api/auth';
-import { rateLimit } from '@/lib/api/rateLimit';
+import { createClient } from '@supabase/supabase-js';
+import { jsonError } from '@/lib/api/auth';
 
 export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
 
-/**
- * GET /api/opportunities/:id
- * Pubblico: restituisce i dettagli dell'opportunità
- * normalizzando owner_id / created_by.
- *
- * Nota: in questo progetto Next tipizza context.params come Promise<{ id: string }>,
- * quindi rispettiamo quella firma.
- */
-export async function GET(
-  _req: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
-  const { id } = await context.params;
-
-  const supabase = await getSupabaseServerClient();
-  const { data, error } = await supabase
-    .from('opportunities')
-    .select(
-<<<<<<< HEAD
-      'id, owner_id, created_by, title, description, sport, required_category, city, province, region, country, club_name, created_at, role, age_min, age_max'
-=======
-      'id, owner_id, title, description, sport, required_category, city, province, region, country, club_name, created_at'
->>>>>>> codex/verify-repository-correctness
-    )
-    .eq('id', id)
-    .maybeSingle();
-
-<<<<<<< HEAD
-  if (error) {
-    return jsonError(error.message, 400);
-  }
-  if (!data) {
-    return jsonError('not_found', 404);
-  }
-
-  const row: any = data;
-  const ownerId = row.owner_id ?? row.created_by ?? null;
-
-  return NextResponse.json({
-    data: {
-      ...row,
-      owner_id: ownerId,
-      created_by: row.created_by ?? null,
-    },
-  });
-=======
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-  if (!data) return NextResponse.json({ error: 'not_found' }, { status: 404 });
-
-  const ownerId = (data as any).owner_id ?? (data as any).created_by ?? null;
-  return NextResponse.json({ data: { ...data, owner_id: ownerId, created_by: ownerId } });
->>>>>>> codex/verify-repository-correctness
+function getSupabase() {
+  const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+  const anon = process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
+  if (!url || !anon) throw new Error('Supabase env missing');
+  return createClient(url, anon);
 }
 
-/**
- * PATCH /api/opportunities/:id
- * Solo il proprietario (owner_id || created_by) può modificare.
- *
- * Usiamo withAuth: il wrapper gestisce auth + supabase.
- * L'id lo leggiamo dall'URL per evitare dipendenze dal tipo di context.params.
- */
-export const PATCH = withAuth(
-  async (req: NextRequest, { supabase, user }) => {
-    try {
-      await rateLimit(req, {
-        key: `opps:PATCH:${user.id}`,
-        limit: 60,
-        window: '1m',
-      } as any);
-    } catch {
-      return jsonError('Too Many Requests', 429);
-    }
+const SELECT =
+  'id,title,description,owner_id,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name';
 
-    // Estrae l'id dal path: /api/opportunities/[id]
-    const segments = req.nextUrl.pathname.split('/');
-    const id = segments[segments.length - 1] || segments[segments.length - 2];
-    if (!id) {
-      return jsonError('Missing id', 400);
-    }
-
-    const body = await req.json().catch(() => ({} as any));
-
-<<<<<<< HEAD
-    const allowed = [
-      'title',
-      'description',
-      'sport',
-      'required_category',
-      'city',
-      'province',
-      'region',
-      'country',
-      'role',
-      'age_min',
-      'age_max',
-      'club_name',
-    ] as const;
-
-    const update: Record<string, any> = {};
-    for (const key of allowed) {
-      if (key in body) {
-        update[key] = body[key];
-      }
-    }
-
-    if (Object.keys(update).length === 0) {
-      return jsonError('No valid fields to update', 400);
-    }
-
-    // Verifica proprietà opportunità
-    const { data: opp, error: oppErr } = await supabase
+export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
       .from('opportunities')
-      .select('id, owner_id, created_by')
-      .eq('id', id)
-      .maybeSingle();
+      .select(SELECT)
+      .eq('id', params.id)
+      .single();
 
-    if (oppErr) {
-      return jsonError(oppErr.message, 400);
-    }
-    if (!opp) {
-      return jsonError('not_found', 404);
-    }
-
-    const ownerId =
-      (opp as any).owner_id ??
-      (opp as any).created_by ??
-      null;
-
-    if (!ownerId || ownerId !== user.id) {
-      return jsonError('forbidden', 403);
-    }
-
-    const { data: updated, error: updateErr } = await supabase
-      .from('opportunities')
-      .update(update)
-      .eq('id', id)
-      .select(
-        'id, owner_id, created_by, title, description, sport, required_category, city, province, region, country, club_name, created_at, role, age_min, age_max'
-      )
-      .maybeSingle();
-
-    if (updateErr) {
-      return jsonError(updateErr.message, 400);
-    }
-    if (!updated) {
-      return jsonError('Update failed', 400);
-    }
-
-    const row: any = updated;
-    const newOwnerId =
-      row.owner_id ??
-      row.created_by ??
-      user.id;
-
-    return NextResponse.json({
-      data: {
-        ...row,
-        owner_id: newOwnerId,
-        created_by: row.created_by ?? null,
-      },
-    });
+    if (error) return jsonError(error.message, 404);
+    return NextResponse.json({ data });
+  } catch (err: any) {
+    return jsonError(err?.message || 'Unexpected error', 500);
   }
-);
-=======
-  // Verifica proprietario
-  const { data: opp } = await supabase
-    .from('opportunities')
-    .select('id, owner_id, created_by')
-    .eq('id', id)
-    .maybeSingle();
-
-  if (!opp) return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  const ownerId = (opp as any).owner_id ?? (opp as any).created_by;
-  if (ownerId !== user.id)
-    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
-
-  const { data: updated, error: updateErr } = await supabase
-    .from('opportunities')
-    .update(update)
-    .eq('id', id)
-    .select('id, owner_id')
-    .maybeSingle();
-
-  if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 400 });
-
-  const normalizedOwner = (updated as any)?.owner_id ?? ownerId;
-  return NextResponse.json({ ok: true, data: { ...(updated ?? {}), owner_id: normalizedOwner, created_by: normalizedOwner } });
 }
->>>>>>> codex/verify-repository-correctness
