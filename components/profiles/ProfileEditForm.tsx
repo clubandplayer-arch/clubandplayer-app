@@ -79,7 +79,10 @@ function normalizeFoot(value: string | null | undefined): string {
 
 function footToDb(value: string): string | null {
   const normalized = normalizeFoot(value);
-  return normalized || null;
+  if (normalized === 'right') return 'destro';
+  if (normalized === 'left') return 'sinistro';
+  if (normalized === 'both') return 'ambidestro';
+  return null;
 }
 
 /* ------------------ helpers ------------------ */
