@@ -1,7 +1,7 @@
-// components/profiles/ProfileMiniCard.tsx
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
@@ -173,31 +173,58 @@ export default function ProfileMiniCard() {
 
   return (
     <div className="rounded-3xl border bg-white p-5 shadow-sm">
-      <div className="flex items-start gap-3">
-        {/* Avatar verticale 4:5 se presente */}
-        {p?.avatar_url ? (
-          <img src={p.avatar_url} alt={name} className="h-28 w-24 flex-shrink-0 rounded-2xl object-cover" />
-        ) : (
-          <div className="h-28 w-24 flex-shrink-0 rounded-2xl bg-gray-200" />
-        )}
+      <div className="flex items-start gap-4">
+        {/* Avatar verticale 4:5 più grande (no bande: object-cover) */}
+        <div className="h-40 w-32 flex-shrink-0 overflow-hidden rounded-2xl bg-gray-200">
+          <Image
+            src={p?.avatar_url || '/images/avatar-fallback.png'}
+            alt={name}
+            width={128}
+            height={160}
+            className="h-40 w-32 object-cover object-center"
+            unoptimized
+          />
+        </div>
+
         <div className="min-w-0">
-          <div className="text-lg font-semibold text-gray-900">{name}</div>
+          <div className="text-2xl font-semibold text-gray-900 leading-snug">{name}</div>
 
           {/* righe tipo Transfermarkt */}
-          {place ? <div className="text-sm text-gray-600">Luogo di residenza: <span className="font-normal">{place}</span></div> : null}
-          {p?.birth_place ? <div className="text-sm text-gray-600">Luogo di nascita: <span className="font-normal">{p.birth_place}</span></div> : null}
+          {place ? (
+            <div className="text-sm text-gray-600">
+              Luogo di residenza: <span className="font-normal">{place}</span>
+            </div>
+          ) : null}
+
+          {p?.birth_place ? (
+            <div className="text-sm text-gray-600">
+              Luogo di nascita: <span className="font-normal">{p.birth_place}</span>
+            </div>
+          ) : null}
+
           {(iso || p?.country) ? (
-            <div className="text-sm text-gray-600 flex items-center gap-1">
+            <div className="flex items-center gap-1 text-sm text-gray-600">
               <span>Nazionalità:</span>
-              {flagUrl ? <img src={flagUrl} alt={countryLabel || ''} className="inline-block rounded-[2px]" width={20} height={15} /> : null}
+              {flagUrl ? (
+                <Image
+                  src={flagUrl}
+                  alt={countryLabel || ''}
+                  width={20}
+                  height={12}
+                  className="inline-block h-3 w-5 rounded-[2px] object-cover"
+                  unoptimized
+                />
+              ) : null}
               <span className="font-normal">{countryLabel}</span>
             </div>
           ) : null}
+
           {sportLabel ? (
             <div className="text-sm text-gray-600">
               Sport principale: <span className="font-normal">{sportLabel}</span>
             </div>
           ) : null}
+
           {roleLabel ? (
             <div className="text-sm text-gray-600">
               Ruolo: <span className="font-normal">{roleLabel}</span>
@@ -207,15 +234,28 @@ export default function ProfileMiniCard() {
       </div>
 
       <div className="mt-5 grid grid-cols-2 gap-4 text-sm">
-        <div><span className="text-gray-500">Età:</span> <span className="font-medium text-gray-800">{age ?? '—'}</span></div>
-        <div><span className="text-gray-500">Piede:</span> <span className="font-medium text-gray-800">{footLabel || '—'}</span></div>
-        <div><span className="text-gray-500">Altezza:</span> <span className="font-medium text-gray-800">{p?.height_cm ? `${p.height_cm} cm` : '—'}</span></div>
-        <div><span className="text-gray-500">Peso:</span> <span className="font-medium text-gray-800">{p?.weight_kg ? `${p.weight_kg} kg` : '—'}</span></div>
+        <div>
+          <span className="text-gray-500">Età:</span>{' '}
+          <span className="font-medium text-gray-800">{age ?? '—'}</span>
+        </div>
+        <div>
+          <span className="text-gray-500">Lato dominante:</span>{' '}
+          <span className="font-medium text-gray-800">{footLabel || '—'}</span>
+        </div>
+        <div>
+          <span className="text-gray-500">Altezza:</span>{' '}
+          <span className="font-medium text-gray-800">{p?.height_cm ? `${p.height_cm} cm` : '—'}</span>
+        </div>
+        <div>
+          <span className="text-gray-500">Peso:</span>{' '}
+          <span className="font-medium text-gray-800">{p?.weight_kg ? `${p.weight_kg} kg` : '—'}</span>
+        </div>
       </div>
 
-      {p?.bio ? <p className="mt-4 line-clamp-4 text-sm text-gray-700 leading-relaxed">{p.bio}</p> : null}
+      {p?.bio ? (
+        <p className="mt-4 line-clamp-4 text-sm text-gray-700 leading-relaxed">{p.bio}</p>
+      ) : null}
 
-      {/* Solo icone social, colorate */}
       {(socials.instagram || socials.facebook || socials.tiktok || socials.x) && (
         <div className="mt-3 flex items-center gap-2">
           {socials.instagram && (
