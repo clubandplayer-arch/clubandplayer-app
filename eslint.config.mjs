@@ -1,4 +1,8 @@
 // eslint.config.mjs - Flat config per ESLint 9 + Next 15 + TS App Router
+<<<<<<< HEAD
+=======
+
+>>>>>>> codex/verify-repository-correctness
 import process from "node:process";
 import js from "@eslint/js";
 import tseslint from "typescript-eslint";
@@ -9,16 +13,36 @@ import reactRefresh from "eslint-plugin-react-refresh";
 const tsRecommendedConfigs = tseslint.configs.recommended.map((config) => {
   const withFiles = config.files
     ? config
+<<<<<<< HEAD
     : { ...config, files: ["**/*.{ts,tsx,cts,mts}"] };
   return {
     ...withFiles,
     plugins: { ...(withFiles.plugins ?? {}), "@typescript-eslint": tseslint.plugin },
+=======
+    : {
+        ...config,
+        files: ["**/*.{ts,tsx,cts,mts}"],
+      };
+
+  return {
+    ...withFiles,
+    plugins: {
+      ...(withFiles.plugins ?? {}),
+      "@typescript-eslint": tseslint.plugin,
+    },
+>>>>>>> codex/verify-repository-correctness
   };
 });
 
 const nextRecommended = {
   ...next.configs.recommended,
+<<<<<<< HEAD
   plugins: { "@next/next": next },
+=======
+  plugins: {
+    "@next/next": next,
+  },
+>>>>>>> codex/verify-repository-correctness
 };
 
 const nextCoreWebVitals = {
@@ -26,6 +50,22 @@ const nextCoreWebVitals = {
   rules: {
     ...nextRecommended.rules,
     ...next.configs["core-web-vitals"].rules,
+<<<<<<< HEAD
+=======
+  },
+};
+
+export default [
+  // ignora build e vendor
+  {
+    ignores: [
+      "**/.next/**",
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/build/**",
+      "next-env.d.ts",
+    ],
+>>>>>>> codex/verify-repository-correctness
   },
 };
 
@@ -36,7 +76,12 @@ export default [
   js.configs.recommended,
   ...tsRecommendedConfigs,
 
+<<<<<<< HEAD
   // codice TypeScript dell'app
+=======
+  // TypeScript base (senza type-checking pesante)
+  ...tsRecommendedConfigs,
+>>>>>>> codex/verify-repository-correctness
   {
     files: ["**/*.{ts,tsx}"],
     languageOptions: {
@@ -44,7 +89,19 @@ export default [
     },
   },
 
+<<<<<<< HEAD
   // Next.js rules
+=======
+  // Next.js core web vitals
+  {
+    ...nextCoreWebVitals,
+    plugins: {
+      "@next/next": next,
+    },
+  },
+
+  // React hooks/refresh
+>>>>>>> codex/verify-repository-correctness
   {
     ...nextCoreWebVitals,
     plugins: { "@next/next": next },
@@ -70,6 +127,7 @@ export default [
         "warn",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrors: "none" },
       ],
+<<<<<<< HEAD
       "@typescript-eslint/no-explicit-any": "off",
     },
   },
@@ -103,6 +161,10 @@ export default [
     },
     rules: {
       "no-undef": "off",
+=======
+      // Nel codice attuale circolano ancora molti `any` espliciti
+      "@typescript-eslint/no-explicit-any": "off",
+>>>>>>> codex/verify-repository-correctness
     },
   },
 ];

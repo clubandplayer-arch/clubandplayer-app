@@ -35,15 +35,34 @@ function toJsonOrNull(v: unknown) {
   return null;
 }
 
+<<<<<<< HEAD
 /** campi ammessi in PATCH */
+=======
+function normalizeFoot(value: unknown) {
+  if (value === null || value === undefined) return null;
+  const raw = String(value).trim().toLowerCase();
+  if (!raw) return null;
+  if (['right', 'destro', 'dx', 'r'].includes(raw)) return 'right';
+  if (['left', 'sinistro', 'sx', 'l'].includes(raw)) return 'left';
+  if (['both', 'ambidestro', 'ambi', 'ambidex', 'ambidextrous'].includes(raw)) return 'both';
+  return null;
+}
+
+/** Mappa dei campi ammessi in PATCH e del tipo */
+>>>>>>> codex/verify-repository-correctness
 const FIELDS: Record<string, 'text' | 'number' | 'bool' | 'json'> = {
   // anagrafica comune
   full_name: 'text',
   display_name: 'text',
   bio: 'text',
+<<<<<<< HEAD
   country: 'text', // nazionalità
 
   // atleta (solo per account_type=athlete)
+=======
+  avatar_url: 'text',
+  city: 'text',            // residenza
+>>>>>>> codex/verify-repository-correctness
   birth_year: 'number',
   birth_place: 'text',
   city: 'text',
@@ -132,8 +151,19 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
     if (kind === 'json') updates[key] = toJsonOrNull(val);
   }
 
+<<<<<<< HEAD
   if (updates.interest_country === undefined) updates.interest_country = 'IT';
 
+=======
+  if (Object.prototype.hasOwnProperty.call(updates, 'foot')) {
+    updates.foot = normalizeFoot(updates.foot);
+  }
+
+  // default coerente (Italia) se non impostato
+  if (updates.interest_country === undefined) updates.interest_country = 'IT';
+
+  // 1) tentativo di UPDATE
+>>>>>>> codex/verify-repository-correctness
   const { data, error } = await supabase
     .from('profiles')
     .update({ ...updates, updated_at: new Date().toISOString() })

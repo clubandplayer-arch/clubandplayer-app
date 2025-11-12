@@ -94,8 +94,37 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   const body = await req.json().catch(() => null);
 
+<<<<<<< HEAD
   if (!body || !body.opportunity_id) {
     return jsonError('Missing opportunity_id', 400);
+=======
+  if (!opportunity_id) return jsonError('opportunity_id required', 400);
+
+  // Verifica esistenza opportunità e che non sia tua
+  const { data: opp, error: oppErr } = await supabase
+    .from('opportunities')
+    .select('id, owner_id')
+    .eq('id', opportunity_id)
+    .maybeSingle();
+
+  let ownerId = (opp as any)?.owner_id ?? null;
+
+  if ((!opp || !ownerId) && !oppErr) {
+    const legacy = await supabase
+      .from('opportunities')
+      .select('id, created_by')
+      .eq('id', opportunity_id)
+      .maybeSingle();
+    if (!legacy.error && legacy.data) {
+      ownerId = (legacy.data as any).created_by ?? null;
+    }
+  }
+
+  if (oppErr || (!opp && !ownerId)) return jsonError('Opportunity not found', 404);
+  if (!ownerId) return jsonError('Opportunity not available', 400);
+  if (ownerId === user.id) {
+    return jsonError('Cannot apply to your own opportunity', 400);
+>>>>>>> codex/verify-repository-correctness
   }
 
   const opportunityId = String(body.opportunity_id);

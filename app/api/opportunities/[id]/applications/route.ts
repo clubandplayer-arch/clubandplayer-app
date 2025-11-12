@@ -23,9 +23,14 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
     .eq('id', id)
     .single();
   if (oppErr) return jsonError(oppErr.message, 400);
+<<<<<<< HEAD
 
   const owner = (opp as any)?.owner_id ?? (opp as any)?.created_by ?? null;
   if (!owner || owner !== user.id) return jsonError('Forbidden', 403);
+=======
+  const ownerId = (opp as any)?.owner_id ?? (opp as any)?.created_by;
+  if (!opp || ownerId !== user.id) return jsonError('Forbidden', 403);
+>>>>>>> codex/verify-repository-correctness
 
   // candidati
   const { data: rows, error } = await supabase
@@ -38,6 +43,7 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   const apps = rows ?? [];
   const athleteIds = Array.from(new Set(apps.map((a) => a.athlete_id).filter(Boolean)));
 
+<<<<<<< HEAD
   // profili atleti (compat)
   const profilesMap = new Map<string, any>();
   if (athleteIds.length) {
@@ -48,6 +54,21 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
     (profs ?? []).forEach((p: any) => {
       if (p.id) profilesMap.set(p.id, p);
       if (p.user_id) profilesMap.set(p.user_id, p);
+=======
+  // profili atleti
+  const profilesMap = new Map<string, { id: string; display_name: string | null; account_type: string | null }>();
+  if (athleteIds.length) {
+    const { data: profs } = await supabase
+      .from('profiles')
+      .select('id, display_name, account_type, profile_type, type')
+      .in('id', athleteIds);
+    profs?.forEach((p) => {
+      profilesMap.set(p.id, {
+        id: p.id,
+        display_name: p.display_name,
+        account_type: (p.account_type ?? p.profile_type ?? p.type ?? null) as string | null,
+      });
+>>>>>>> codex/verify-repository-correctness
     });
   }
 

@@ -53,7 +53,11 @@ export default function OpportunitiesTable({
         </thead>
         <tbody>
           {items.map((o) => {
+<<<<<<< HEAD
             const ownerId = o.owner_id ?? o.created_by ?? null; // compat
+=======
+            const ownerId = o.owner_id ?? o.created_by ?? null;
+>>>>>>> codex/verify-repository-correctness
             const canEdit = !!currentUserId && !!ownerId && ownerId === currentUserId;
             const place = [o.city, o.province, o.region, o.country].filter(Boolean).join(', ');
             const showApply = userRole === 'athlete' && !canEdit;
@@ -76,7 +80,11 @@ export default function OpportunitiesTable({
                     {showFollow && ownerId && (
                       <FollowButton
                         clubId={ownerId}
+<<<<<<< HEAD
                         clubName={o.club_name ?? 'Club'}
+=======
+                        clubName={o.club_name ?? undefined}
+>>>>>>> codex/verify-repository-correctness
                         size="sm"
                       />
                     )}
@@ -85,7 +93,13 @@ export default function OpportunitiesTable({
                 <td className="px-4 py-2">{new Date(o.created_at).toLocaleString()}</td>
                 <td className="px-4 py-2">
                   <div className="flex items-center gap-2">
+<<<<<<< HEAD
                     {showApply && <ApplyCell opportunityId={o.id} ownerId={ownerId} />}
+=======
+                    {showApply && (
+                      <ApplyCell opportunityId={o.id} ownerId={ownerId} />
+                    )}
+>>>>>>> codex/verify-repository-correctness
                     {canEdit && (
                       <>
                         <button

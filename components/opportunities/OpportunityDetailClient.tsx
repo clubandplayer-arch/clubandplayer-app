@@ -57,8 +57,12 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
         const j: ApiOne<Opportunity> = t ? JSON.parse(t) : {};
         const o = (j.data ?? j) as any;
         if (!o?.id) throw new Error('Annuncio non trovato');
+<<<<<<< HEAD
 
         const ownerId = o.owner_id ?? o.created_by ?? null; // compat
+=======
+        const ownerId = o.owner_id ?? o.created_by ?? null;
+>>>>>>> codex/verify-repository-correctness
         if (!c) setOpp({ ...o, owner_id: ownerId, created_by: ownerId } as Opportunity);
       } catch (e: any) {
         if (!c) setErr(e.message || 'Errore caricamento annuncio');
@@ -70,8 +74,16 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
   }, [id]);
 
   const ownerId = opp?.owner_id ?? opp?.created_by ?? null;
+<<<<<<< HEAD
   const isOwner = useMemo(() => !!meId && !!ownerId && meId === ownerId, [meId, ownerId]);
   const showCTA = role === 'athlete' && !isOwner;
+=======
+  const isOwner = useMemo(
+    () => !!meId && !!ownerId && ownerId === meId,
+    [meId, ownerId]
+  );
+  const showApply = role === 'athlete' && !isOwner;
+>>>>>>> codex/verify-repository-correctness
 
   if (loading) return <div className="p-6">Caricamento…</div>;
   if (err || !opp) return <div className="p-6 text-red-600">Errore: {err || 'Dati non trovati'}</div>;
@@ -100,13 +112,61 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
         {place && <span>📍 {place}</span>}
       </div>
 
+<<<<<<< HEAD
       {!!ownerId && (
         <div className="text-sm">
           <FollowButton clubId={ownerId} clubName={opp.club_name ?? 'Club'} size="sm" />
+=======
+      <div className="bg-white rounded-xl border p-4">
+        <header className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-xl font-semibold">{opp.title}</h1>
+            <div className="mt-1 text-sm text-gray-600 flex flex-wrap items-center gap-2">
+              <span>{opp.sport ?? '—'}</span>
+              <span>•</span>
+              <span>{opp.role ?? '—'}</span>
+              <span>•</span>
+              <span>Età: {fmtAge(opp.age_min as any, opp.age_max as any)}</span>
+              {gender && (
+                <>
+                  <span>•</span>
+                  <span>{gender}</span>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {showApply && (
+              <ApplyCell opportunityId={opp.id} ownerId={ownerId} />
+            )}
+          </div>
+        </header>
+
+        <div className="mt-3 text-sm text-gray-700 whitespace-pre-wrap">
+          {opp.description || '—'}
+>>>>>>> codex/verify-repository-correctness
         </div>
       )}
 
+<<<<<<< HEAD
       {opp.description && <p className="text-gray-800">{opp.description}</p>}
+=======
+        <footer className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-gray-600">
+          <div className="flex items-center gap-2">
+            <span className="font-medium">{opp.club_name ?? 'Club'}</span>
+            {ownerId && (
+              <FollowButton clubId={ownerId} clubName={opp.club_name ?? undefined} size="md" />
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {place && <span>{place}</span>}
+            <span>•</span>
+            <span>{created}</span>
+          </div>
+        </footer>
+      </div>
+>>>>>>> codex/verify-repository-correctness
     </div>
   );
 }

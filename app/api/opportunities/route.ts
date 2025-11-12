@@ -52,7 +52,20 @@ function norm(v: unknown): string | null {
   return out || null;
 }
 
+<<<<<<< HEAD
 /** GET /api/opportunities — pubblico (READ) */
+=======
+function normalizeRow<T extends Record<string, any>>(row: T) {
+  const ownerId = row.owner_id ?? row.created_by ?? null;
+  return {
+    ...row,
+    owner_id: ownerId,
+    created_by: ownerId,
+  };
+}
+
+/** GET /api/opportunities  — pubblico (RLS consente SELECT anche anonima) */
+>>>>>>> codex/verify-repository-correctness
 export async function GET(req: NextRequest) {
   try {
     await rateLimit(req, { key: 'opps:GET', limit: 60, window: '1m' } as any);
@@ -75,6 +88,10 @@ export async function GET(req: NextRequest) {
   const sport = (url.searchParams.get('sport') || '').trim();
   const role = (url.searchParams.get('role') || '').trim();
   const ageB = (url.searchParams.get('age') || '').trim();
+  const ownerFilter =
+    (url.searchParams.get('owner') || '').trim() ||
+    (url.searchParams.get('owner_id') || '').trim() ||
+    (url.searchParams.get('created_by') || '').trim();
 
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -82,7 +99,11 @@ export async function GET(req: NextRequest) {
   let query = supabase
     .from('opportunities')
     .select(
+<<<<<<< HEAD
       'id,title,description,created_by,owner_id,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name',
+=======
+      'id,title,description,owner_id,created_at,country,region,province,city,sport,role,age_min,age_max,club_name',
+>>>>>>> codex/verify-repository-correctness
       { count: 'exact' }
     )
     .order('created_at', { ascending: sort === 'oldest' })
@@ -116,10 +137,14 @@ export async function GET(req: NextRequest) {
     if (age_max != null) query = query.lte('age_max', age_max);
     if (age_max == null) query = query.is('age_max', null);
   }
+  if (ownerFilter) {
+    query = query.eq('owner_id', ownerFilter);
+  }
 
-  const { data, count, error } = await query;
+  const { data: initialData, count: initialCount, error } = await query;
   if (error) return jsonError(error.message, 400);
 
+<<<<<<< HEAD
   const rows = (data ?? []).map((r: any) => {
     const ownerId = r.owner_id ?? r.created_by ?? null;
     return {
@@ -131,11 +156,34 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     data: rows,
+=======
+  let data = initialData ?? [];
+  let totalCount = initialCount ?? 0;
+
+  if (ownerFilter && data.length === 0) {
+    const fallback = await supabase
+      .from('opportunities')
+      .select(
+        'id,title,description,created_by,created_at,country,region,province,city,sport,role,age_min,age_max,club_name',
+        { count: 'exact' }
+      )
+      .eq('created_by', ownerFilter)
+      .order('created_at', { ascending: sort === 'oldest' })
+      .range(from, to);
+    if (!fallback.error) {
+      data = (fallback.data ?? []).map((row: any) => ({ ...row, owner_id: row.created_by }));
+      totalCount = fallback.count ?? totalCount;
+    }
+  }
+
+  return NextResponse.json({
+    data: data.map((row) => normalizeRow(row as Record<string, any>)),
+>>>>>>> codex/verify-repository-correctness
     q,
     page,
     pageSize,
-    total: count ?? 0,
-    pageCount: Math.max(1, Math.ceil((count ?? 0) / pageSize)),
+    total: totalCount,
+    pageCount: Math.max(1, Math.ceil(totalCount / pageSize)),
     sort,
   });
 }
@@ -231,6 +279,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   // Insert + select
   const { data, error } = await supabase
     .from('opportunities')
+<<<<<<< HEAD
     .insert(payload)
     .select(
       'id,title,description,created_by,owner_id,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name'
@@ -251,4 +300,27 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   };
 
   return NextResponse.json({ data: normalized }, { status: 201 });
+=======
+    .insert({
+      title,
+      description,
+      owner_id: user.id,
+      country,
+      region,
+      province,
+      city,
+      sport,
+      role,
+      age_min,
+      age_max,
+      club_name,
+    })
+    .select(
+      'id,title,description,owner_id,created_at,country,region,province,city,sport,role,age_min,age_max,club_name'
+    )
+    .single();
+
+  if (error) return jsonError(error.message, 400);
+  return NextResponse.json({ data: normalizeRow(data as Record<string, any>) }, { status: 201 });
+>>>>>>> codex/verify-repository-correctness
 });

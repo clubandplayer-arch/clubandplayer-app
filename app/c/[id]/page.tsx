@@ -21,7 +21,40 @@ async function getClub(id: string): Promise<ClubProfile | null> {
     cache: 'no-store',
   }).catch(() => null);
 
+<<<<<<< HEAD
   if (!res || !res.ok) return null;
+=======
+        // carica opportunità del club (fallback: filtra client)
+        const rOpps = await fetch(`/api/opportunities?pageSize=50&owner=${clubId}`, {
+          credentials: 'include',
+          cache: 'no-store',
+        });
+        const t = await rOpps.text();
+        let rows: Opportunity[] = [];
+        if (t) {
+          try {
+            const j = JSON.parse(t);
+            rows = (j?.data ?? j ?? []) as Opportunity[];
+          } catch {
+            rows = [];
+          }
+        }
+        // fallback filtro client
+        const normalized = rows.map((o) => {
+          const ownerId = o.owner_id ?? o.created_by ?? null;
+          return { ...o, owner_id: ownerId, created_by: ownerId } as Opportunity;
+        });
+        const onlyMine = normalized.filter((o) => o.owner_id === clubId);
+        if (!cancelled) setOpps((onlyMine.length ? onlyMine : normalized).slice(0, 10));
+      } catch (e: any) {
+        if (!cancelled) setErr(e?.message || 'Errore caricamento club');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [clubId]);
+>>>>>>> codex/verify-repository-correctness
 
   const j = await res.json().catch(() => ({}));
   const p = j?.data || j;

@@ -3,6 +3,58 @@ export const dynamic = 'force-dynamic';
 
 import ApplicationsTable from '@/components/applications/ApplicationsTable';
 import { cookies, headers as nextHeaders } from 'next/headers';
+<<<<<<< HEAD
+=======
+import { getSupabaseServerClient } from '@/lib/supabase/server';
+
+type Role = 'athlete' | 'club' | null;
+
+async function detectRoleSent(): Promise<Role> {
+  try {
+    const supabase = await getSupabaseServerClient();
+    const { data: u } = await supabase.auth.getUser();
+    if (!u?.user) return null;
+    const uid = u.user.id;
+
+    // 1) Provo dal profilo (sia id che user_id)
+    const { data: prof } = await supabase
+      .from('profiles')
+      .select('account_type, type, profile_type, id, user_id')
+      .or(`id.eq.${uid},user_id.eq.${uid}`)
+      .maybeSingle();
+
+    const t = (
+      (prof as any)?.account_type ??
+      (prof as any)?.profile_type ??
+      (prof as any)?.type ??
+      ''
+    ).toString().toLowerCase();
+
+    if (t.includes('club')) return 'club';
+    if (t.includes('atlet')) return 'athlete';
+
+    // 2) Fallback: se ha candidature → è atleta
+    const { count } = await supabase
+      .from('applications')
+      .select('id', { head: true, count: 'exact' })
+      .eq('athlete_id', uid);
+
+    if ((count ?? 0) > 0) return 'athlete';
+
+    // 3) Fallback secondario: se ha opportunità → potrebbe essere club
+    const { count: opps } = await supabase
+      .from('opportunities')
+      .select('id', { head: true, count: 'exact' })
+      .eq('owner_id', uid);
+
+    if ((opps ?? 0) > 0) return 'club';
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+>>>>>>> codex/verify-repository-correctness
 
 function getOriginFromHeaders(h: Headers) {
   const proto = h.get('x-forwarded-proto') ?? 'https';
