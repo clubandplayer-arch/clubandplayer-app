@@ -78,9 +78,9 @@ function normalizeFoot(value: string | null | undefined): string {
 }
 
 function footToDb(value: string): string | null {
-  if (value === 'right') return 'destro';
-  if (value === 'left') return 'sinistro';
-  if (value === 'both') return 'ambidestro';
+  if (value === 'right' || value === 'left' || value === 'both') {
+    return value;
+  }
   return null;
 }
 
@@ -565,7 +565,7 @@ export default function ProfileEditForm() {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Piede preferito</label>
+            <label className="text-sm text-gray-600">Lato dominante</label>
             <select className="rounded-lg border p-2" value={foot} onChange={(e) => setFoot(e.target.value)}>
               <option value="">— Seleziona —</option>
               {FOOT_OPTIONS.map((opt) => (

@@ -207,7 +207,7 @@ export default function ProfileMiniCard() {
 
       <div className="mt-5 grid grid-cols-2 gap-4 text-sm">
         <div><span className="text-gray-500">Età:</span> <span className="font-medium text-gray-800">{age ?? '—'}</span></div>
-        <div><span className="text-gray-500">Piede:</span> <span className="font-medium text-gray-800">{footLabel || '—'}</span></div>
+        <div><span className="text-gray-500">Lato dominante:</span> <span className="font-medium text-gray-800">{footLabel || '—'}</span></div>
         <div><span className="text-gray-500">Altezza:</span> <span className="font-medium text-gray-800">{p?.height_cm ? `${p.height_cm} cm` : '—'}</span></div>
         <div><span className="text-gray-500">Peso:</span> <span className="font-medium text-gray-800">{p?.weight_kg ? `${p.weight_kg} kg` : '—'}</span></div>
       </div>
