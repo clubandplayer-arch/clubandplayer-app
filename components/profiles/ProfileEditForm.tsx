@@ -2,8 +2,11 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+
+const AvatarUploader = dynamic(() => import('./AvatarUploader'), { ssr: false });
 
 type LocationLevel = 'region' | 'province' | 'municipality';
 type LocationRow   = { id: number; name: string };
@@ -23,11 +26,12 @@ type Profile = {
   full_name: string | null;
   bio: string | null;
   country: string | null; // ISO2 o testo
+  avatar_url?: string | null;
 
   // atleta
   birth_year: number | null;
-  birth_place: string | null; // fallback (estero)
-  city: string | null;        // residenza (estero)
+  birth_place: string | null; // (solo estero)
+  city: string | null;        // residenza (solo estero)
 
   // residenza IT (atleta)
   residence_region_id: number | null;
@@ -47,15 +51,16 @@ type Profile = {
   interest_municipality_id: number | null;
 
   // atleta
-  foot: string | null;
+  foot: string | null; // DB: 'right' | 'left' | 'both'
   height_cm: number | null;
   weight_kg: number | null;
+  sport?: string | null;     // sport principale atleta (opzionale)
+  role?: string | null;      // ruolo atleta (opzionale)
 
-  // club (nuovi)
-  sport: string | null;
-  club_foundation_year: number | null;
-  club_stadium: string | null;
-  club_league_category: string | null;
+  // club
+  club_foundation_year?: number | null;
+  club_stadium?: string | null;
+  club_league_category?: string | null;
 
   // social / notifiche
   links: Links | null;
@@ -168,18 +173,26 @@ function normalizeCountryCode(v?: string | null) {
 /** categorie/campionati per sport (estendibile) */
 const CATEGORIES_BY_SPORT: Record<string, string[]> = {
   Calcio: [
-    'Serie D',
-    'Eccellenza',
-    'Promozione',
-    'Prima Categoria',
-    'Seconda Categoria',
-    'Terza Categoria',
-    'Giovanili',
-    'Altro',
+    'Serie D','Eccellenza','Promozione',
+    'Prima Categoria','Seconda Categoria','Terza Categoria',
+    'Giovanili','Altro',
   ],
-  Basket: ['Serie A', 'A2', 'B', 'C Gold', 'C Silver', 'D', 'Giovanili', 'Altro'],
-  Pallavolo: ['SuperLega', 'A2', 'A3', 'B', 'C', 'D', 'Giovanili', 'Altro'],
-  Rugby: ['Top10', 'Serie A', 'Serie B', 'Serie C', 'Giovanili', 'Altro'],
+  Basket: ['Serie A','A2','B','C Gold','C Silver','D','Giovanili','Altro'],
+  Pallavolo: ['SuperLega','A2','A3','B','C','D','Giovanili','Altro'],
+  Rugby: ['Top10','Serie A','Serie B','Serie C','Giovanili','Altro'],
+};
+
+/** ruoli per sport (ATLETA) - minimo vitale con Calcio + fallback */
+const ROLES_BY_SPORT: Record<string, string[]> = {
+  Calcio: [
+    'Portiere','Terzino Destro','Terzino Sinistro','Difensore Centrale',
+    'Centrocampista','Esterno Destro','Esterno Sinistro',
+    'Trequartista','Seconda Punta','Attaccante Centrale',
+  ],
+  Basket: ['Playmaker','Guardia','Ala Piccola','Ala Grande','Centro'],
+  Pallavolo: ['Palleggiatore','Opposto','Centrale','Schiacciatore','Libero'],
+  Rugby: ['Pilone','Tallonatore','Seconda Linea','Flanker','Numero 8','Mediano','Apertura','Centri','Estremo','Ala'],
+  Altro: ['—'],
 };
 
 /* ------------------------------ */
@@ -200,6 +213,7 @@ export default function ProfileEditForm() {
   const [fullName, setFullName] = useState('');
   const [bio, setBio] = useState('');
   const [country, setCountry] = useState('IT');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   // Atleta only
   const [birthYear, setBirthYear] = useState<number | ''>('');
@@ -232,7 +246,7 @@ export default function ProfileEditForm() {
   const [municipalities, setMunicipalities] = useState<LocationRow[]>([]);
 
   // Atleta + notifiche
-  const [foot, setFoot] = useState('');
+  const [footCode, setFootCode] = useState<'' | 'right' | 'left' | 'both'>('');
   const [heightCm, setHeightCm] = useState<number | ''>('');
   const [weightKg, setWeightKg] = useState<number | ''>('');
   const [notifyEmail, setNotifyEmail] = useState(true);
@@ -243,14 +257,19 @@ export default function ProfileEditForm() {
   const [tiktok, setTiktok]       = useState('');
   const [x, setX]                 = useState('');
 
-  // Club only
-  const [sport, setSport] = useState('Calcio');
+  // Club
+  const [clubSport, setClubSport] = useState('Calcio');
   const [clubCategory, setClubCategory] = useState('Altro');
   const [foundationYear, setFoundationYear] = useState<number | ''>('');
   const [stadium, setStadium] = useState('');
 
+  // ATLETA: sport/ruolo
+  const [athleteSport, setAthleteSport] = useState('Calcio');
+  const [athleteRole, setAthleteRole] = useState<string>('');
+
   // categorie dinamiche per sport
-  const sportCategories = CATEGORIES_BY_SPORT[sport] ?? ['Altro'];
+  const clubCategories = CATEGORIES_BY_SPORT[clubSport] ?? ['Altro'];
+  const athleteRoles = ROLES_BY_SPORT[athleteSport] ?? ROLES_BY_SPORT.Altro;
 
   async function loadProfile() {
     const r = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
@@ -264,6 +283,7 @@ export default function ProfileEditForm() {
       full_name: (j as any)?.full_name ?? null,
       bio: (j as any)?.bio ?? null,
       country: (j as any)?.country ?? 'IT',
+      avatar_url: (j as any)?.avatar_url ?? null,
 
       // atleta
       birth_year: (j as any)?.birth_year ?? null,
@@ -284,15 +304,18 @@ export default function ProfileEditForm() {
       interest_province_id: j?.interest_province_id ?? null,
       interest_municipality_id: j?.interest_municipality_id ?? null,
 
-      foot: j?.foot ?? '',
+      foot: (j?.foot ?? null) as any,
       height_cm: j?.height_cm ?? null,
       weight_kg: j?.weight_kg ?? null,
 
-      // club
-      sport: (j as any)?.sport ?? 'Calcio',
+      // club (se presenti)
+      sport: (j as any)?.sport ?? null,
       club_foundation_year: (j as any)?.club_foundation_year ?? null,
       club_stadium: (j as any)?.club_stadium ?? null,
       club_league_category: (j as any)?.club_league_category ?? null,
+
+      // atleta extra
+      role: (j as any)?.role ?? null,
 
       links: (j as any)?.links ?? null,
       notify_email_new_message: Boolean(j?.notify_email_new_message ?? true),
@@ -304,6 +327,7 @@ export default function ProfileEditForm() {
     setFullName(p.full_name || '');
     setBio(p.bio || '');
     setCountry(normalizeCountryCode(p.country) || 'IT');
+    setAvatarUrl(p.avatar_url || null);
 
     // atleta
     setBirthYear(p.birth_year ?? '');
@@ -323,7 +347,10 @@ export default function ProfileEditForm() {
     setProvinceId(p.interest_province_id);
     setMunicipalityId(p.interest_municipality_id);
 
-    setFoot(p.foot || '');
+    // foot code coerente con CHECK ('right','left','both')
+    const f = (p.foot || '').toString().toLowerCase();
+    setFootCode(f === 'right' || f === 'left' || f === 'both' ? (f as any) : '');
+
     setHeightCm(p.height_cm ?? '');
     setWeightKg(p.weight_kg ?? '');
     setNotifyEmail(Boolean(p.notify_email_new_message));
@@ -333,11 +360,14 @@ export default function ProfileEditForm() {
     setTiktok(p.links?.tiktok || '');
     setX(p.links?.x || '');
 
-    // club
-    setSport(p.sport || 'Calcio');
+    // club/atleta
+    setClubSport(p.sport || 'Calcio');
     setClubCategory(p.club_league_category || 'Altro');
     setFoundationYear(p.club_foundation_year ?? '');
     setStadium(p.club_stadium || '');
+
+    setAthleteSport((p as any)?.sport || 'Calcio');
+    setAthleteRole((p as any)?.role || '');
   }
 
   // prima load
@@ -441,9 +471,9 @@ export default function ProfileEditForm() {
     const isUrl = /^https?:\/\//i.test(v);
     const map: Record<keyof Links, (h: string) => string> = {
       instagram: (h) => `https://instagram.com/${h.replace(/^@/, '')}`,
-      facebook: (h) => (isUrl ? h : `https://facebook.com/${h.replace(/^@/, '')}`),
-      tiktok: (h) => `https://tiktok.com/@${h.replace(/^@/, '')}`,
-      x: (h) => `https://twitter.com/${h.replace(/^@/, '')}`,
+      facebook:  (h) => (isUrl ? h : `https://facebook.com/${h.replace(/^@/, '')}`),
+      tiktok:    (h) => `https://tiktok.com/@${h.replace(/^@/, '')}`,
+      x:         (h) => `https://twitter.com/${h.replace(/^@/, '')}`,
     };
     if (isUrl) return v;
     return map[kind](v);
@@ -470,6 +500,7 @@ export default function ProfileEditForm() {
         full_name: (fullName || '').trim() || null,
         bio:       (bio || '').trim() || null,
         country:   normalizeCountryCode(country),   // ISO2 sempre
+        avatar_url: avatarUrl ?? null,
 
         // interesse
         interest_country: 'IT',
@@ -484,7 +515,7 @@ export default function ProfileEditForm() {
 
       if (isClub) {
         Object.assign(basePayload, {
-          sport: (sport || '').trim() || null,
+          sport: (clubSport || '').trim() || null,
           club_league_category: (clubCategory || '').trim() || null,
           club_foundation_year: foundationYear === '' ? null : Number(foundationYear),
           club_stadium: (stadium || '').trim() || null,
@@ -502,6 +533,7 @@ export default function ProfileEditForm() {
           foot: null,
           height_cm: null,
           weight_kg: null,
+          role: null,
         });
       } else {
         // ATLETA
@@ -522,12 +554,14 @@ export default function ProfileEditForm() {
           birth_place:          birthCountry !== 'IT' ? (birthPlace || '').trim() || null : null,
 
           // atleta
-          foot: (foot || '').trim() || null,
+          // NB: rispettiamo il CHECK del DB usando i codici EN
+          foot: footCode || null, // 'right' | 'left' | 'both'
           height_cm: heightCm === '' ? null : Number(heightCm),
           weight_kg: weightKg === '' ? null : Number(weightKg),
+          sport: (athleteSport || '').trim() || null,
+          role: (athleteRole || '').trim() || null,
 
           // pulizia campi club
-          sport: null,
           club_league_category: null,
           club_foundation_year: null,
           club_stadium: null,
@@ -566,80 +600,79 @@ export default function ProfileEditForm() {
 
   return (
     <>
-      {/* Titolo sintetico per la pagina */}
       <h1 className="mb-1 text-2xl font-bold">{isClub ? 'CLUB' : 'ATLETA'}</h1>
-      <p className="mb-4 text-sm text-gray-500">
-      </p>
 
       <form onSubmit={onSubmit} className="space-y-6">
-        {/* Dati personali / club */}
+        {/* Header con avatar + nome */}
         <section className="rounded-2xl border p-4 md:p-5">
-          <h2 className="mb-3 text-lg font-semibold">
-            {isClub ? 'Dati club' : 'Dati personali'}
-          </h2>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="flex flex-col gap-1 md:col-span-2">
-              <label className="text-sm text-gray-600">
-                {isClub ? 'Nome del club' : 'Nome e cognome'}
-              </label>
-              <input
-                className="rounded-lg border p-2"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder={isClub ? 'Es. ASD Carlentini' : 'Es. Mario Rossi'}
-              />
-            </div>
-
-            {!isClub && (
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-gray-600">Anno di nascita</label>
+          <div className="flex items-start gap-5">
+            <AvatarUploader
+              value={avatarUrl}
+              onChange={(url) => setAvatarUrl(url)}
+            />
+            <div className="flex-1 grid gap-4 md:grid-cols-2">
+              <div className="flex flex-col gap-1 md:col-span-2">
+                <label className="text-sm text-gray-600">
+                  {isClub ? 'Nome del club' : 'Nome e cognome'}
+                </label>
                 <input
-                  type="number"
-                  inputMode="numeric"
                   className="rounded-lg border p-2"
-                  value={birthYear}
-                  onChange={(e) =>
-                    setBirthYear(e.target.value === '' ? '' : Number(e.target.value))
-                  }
-                  min={1950}
-                  max={new Date().getFullYear() - 5}
-                  placeholder="Es. 2002"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder={isClub ? 'Es. ASD Carlentini' : 'Es. Mario Rossi'}
                 />
               </div>
-            )}
 
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-gray-600">Nazionalità</label>
-              <select
-                className="rounded-lg border p-2"
-                value={country}
-                onChange={(e) => setCountry(e.target.value)}
-              >
-                {COUNTRIES.map((c) => (
-                  <option key={c.code} value={c.code}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-              {country && (
-                <span className="text-xs text-gray-500">{countryPreview}</span>
+              {!isClub && (
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm text-gray-600">Anno di nascita</label>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    className="rounded-lg border p-2"
+                    value={birthYear}
+                    onChange={(e) =>
+                      setBirthYear(e.target.value === '' ? '' : Number(e.target.value))
+                    }
+                    min={1950}
+                    max={new Date().getFullYear() - 5}
+                    placeholder="Es. 2002"
+                  />
+                </div>
               )}
-            </div>
 
-            <div className="md:col-span-2 flex flex-col gap-1">
-              <label className="text-sm text-gray-600">Biografia</label>
-              <textarea
-                className="rounded-lg border p-2"
-                rows={4}
-                value={bio}
-                onChange={(e) => setBio(e.target.value)}
-                placeholder={
-                  isClub
-                    ? 'Storia, valori, palmarès…'
-                    : 'Racconta in breve ruolo, caratteristiche, esperienze…'
-                }
-              />
+              <div className="flex flex-col gap-1">
+                <label className="text-sm text-gray-600">Nazionalità</label>
+                <select
+                  className="rounded-lg border p-2"
+                  value={country}
+                  onChange={(e) => setCountry(e.target.value)}
+                >
+                  {COUNTRIES.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                {country && (
+                  <span className="text-xs text-gray-500">{countryPreview}</span>
+                )}
+              </div>
+
+              <div className="md:col-span-2 flex flex-col gap-1">
+                <label className="text-sm text-gray-600">Biografia</label>
+                <textarea
+                  className="rounded-lg border p-2"
+                  rows={4}
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  placeholder={
+                    isClub
+                      ? 'Storia, valori, palmarès…'
+                      : 'Racconta in breve ruolo, caratteristiche, esperienze…'
+                  }
+                />
+              </div>
             </div>
           </div>
         </section>
@@ -879,7 +912,7 @@ export default function ProfileEditForm() {
           </div>
         </section>
 
-        {/* Dettagli atleta / club */}
+        {/* Dettagli club / atleta */}
         {isClub ? (
           <section className="rounded-2xl border p-4 md:p-5">
             <h2 className="mb-3 text-lg font-semibold">Dettagli club</h2>
@@ -888,8 +921,8 @@ export default function ProfileEditForm() {
                 <label className="text-sm text-gray-600">Sport</label>
                 <select
                   className="rounded-lg border p-2"
-                  value={sport}
-                  onChange={(e) => setSport(e.target.value)}
+                  value={clubSport}
+                  onChange={(e) => setClubSport(e.target.value)}
                 >
                   {Object.keys(CATEGORIES_BY_SPORT).map((s) => (
                     <option key={s} value={s}>
@@ -906,7 +939,7 @@ export default function ProfileEditForm() {
                   value={clubCategory}
                   onChange={(e) => setClubCategory(e.target.value)}
                 >
-                  {sportCategories.map((c) => (
+                  {clubCategories.map((c) => (
                     <option key={c} value={c}>
                       {c}
                     </option>
@@ -949,13 +982,13 @@ export default function ProfileEditForm() {
                 <label className="text-sm text-gray-600">Lato dominante</label>
                 <select
                   className="rounded-lg border p-2"
-                  value={foot}
-                  onChange={(e) => setFoot(e.target.value)}
+                  value={footCode}
+                  onChange={(e) => setFootCode(e.target.value as any)}
                 >
                   <option value="">— Seleziona —</option>
-                  <option value="Destro">Destro</option>
-                  <option value="Sinistro">Sinistro</option>
-                  <option value="Ambidestro">Ambidestro</option>
+                  <option value="right">Destro</option>
+                  <option value="left">Sinistro</option>
+                  <option value="both">Ambidestro</option>
                 </select>
               </div>
               <div className="flex flex-col gap-1">
@@ -987,6 +1020,40 @@ export default function ProfileEditForm() {
                   max={150}
                   placeholder="es. 85"
                 />
+              </div>
+
+              {/* SPORT & RUOLO (ATLETA) */}
+              <div className="flex flex-col gap-1">
+                <label className="text-sm text-gray-600">Sport</label>
+                <select
+                  className="rounded-lg border p-2"
+                  value={athleteSport}
+                  onChange={(e) => {
+                    setAthleteSport(e.target.value);
+                    setAthleteRole(''); // reset ruolo quando cambia sport
+                  }}
+                >
+                  {Object.keys(ROLES_BY_SPORT).map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1 md:col-span-2">
+                <label className="text-sm text-gray-600">Ruolo</label>
+                <select
+                  className="rounded-lg border p-2"
+                  value={athleteRole}
+                  onChange={(e) => setAthleteRole(e.target.value)}
+                >
+                  <option value="">— Seleziona ruolo —</option>
+                  {athleteRoles.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
           </section>
