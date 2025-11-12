@@ -35,6 +35,16 @@ function toJsonOrNull(v: unknown) {
   return null;
 }
 
+function normalizeFoot(value: unknown) {
+  if (value === null || value === undefined) return null;
+  const raw = String(value).trim().toLowerCase();
+  if (!raw) return null;
+  if (['destro', 'right', 'dx', 'r'].includes(raw)) return 'destro';
+  if (['sinistro', 'left', 'sx', 'l'].includes(raw)) return 'sinistro';
+  if (['ambidestro', 'both', 'ambi', 'ambidex', 'ambidextrous'].includes(raw)) return 'ambidestro';
+  return null;
+}
+
 /** Mappa dei campi ammessi in PATCH e del tipo */
 const FIELDS: Record<string, 'text' | 'number' | 'bool' | 'json'> = {
   // anagrafica
@@ -115,6 +125,10 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
     if (kind === 'number') updates[key] = toNumberOrNull(val);
     if (kind === 'bool') updates[key] = toBool(val);
     if (kind === 'json') updates[key] = toJsonOrNull(val);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(updates, 'foot')) {
+    updates.foot = normalizeFoot(updates.foot);
   }
 
   // default coerente (Italia) se non impostato
