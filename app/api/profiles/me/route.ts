@@ -39,9 +39,9 @@ function normalizeFoot(value: unknown) {
   if (value === null || value === undefined) return null;
   const raw = String(value).trim().toLowerCase();
   if (!raw) return null;
-  if (['destro', 'right', 'dx', 'r'].includes(raw)) return 'destro';
-  if (['sinistro', 'left', 'sx', 'l'].includes(raw)) return 'sinistro';
-  if (['ambidestro', 'both', 'ambi', 'ambidex', 'ambidextrous'].includes(raw)) return 'ambidestro';
+  if (['right', 'destro', 'dx', 'r'].includes(raw)) return 'right';
+  if (['left', 'sinistro', 'sx', 'l'].includes(raw)) return 'left';
+  if (['both', 'ambidestro', 'ambi', 'ambidex', 'ambidextrous'].includes(raw)) return 'both';
   return null;
 }
 
