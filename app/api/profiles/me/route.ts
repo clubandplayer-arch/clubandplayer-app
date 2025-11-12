@@ -115,6 +115,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   }
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+  const hasFootInBody = Object.prototype.hasOwnProperty.call(body, 'foot');
 
   // Costruisci l’oggetto updates filtrando e normalizzando
   const updates: Record<string, any> = {};
@@ -127,8 +128,23 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
     if (kind === 'json') updates[key] = toJsonOrNull(val);
   }
 
+  let existingProfile: { foot?: string | null } | null = null;
+  if (!hasFootInBody) {
+    const { data } = await supabase
+      .from('profiles')
+      .select('foot')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    existingProfile = data ?? null;
+  }
+
   if (Object.prototype.hasOwnProperty.call(updates, 'foot')) {
     updates.foot = normalizeFoot(updates.foot);
+  } else if (existingProfile && existingProfile.foot) {
+    const normalizedExisting = normalizeFoot(existingProfile.foot);
+    if (normalizedExisting && normalizedExisting !== existingProfile.foot) {
+      updates.foot = normalizedExisting;
+    }
   }
 
   // default coerente (Italia) se non impostato
