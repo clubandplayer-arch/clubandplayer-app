@@ -7,12 +7,8 @@ import { useEffect, useState } from 'react';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 type P = {
-<<<<<<< HEAD
   account_type?: 'club' | 'athlete' | null;
 
-=======
-  account_type?: string | null;
->>>>>>> codex/verify-repository-correctness
   full_name?: string | null;
   display_name?: string | null;
   bio?: string | null;
@@ -34,8 +30,6 @@ type P = {
 
   // atleta
   foot?: string | null;
-  sport?: string | null;
-  role?: string | null;
   height_cm?: number | null;
   weight_kg?: number | null;
 
@@ -105,43 +99,18 @@ function nameToIso2(v?: string | null): string | null {
   }
   return null;
 }
-<<<<<<< HEAD
 function countryLabel(value?: string | null): { iso: string | null; label: string } {
   if (!value) return { iso: null, label: '' };
   const iso = nameToIso2(value);
   if (iso) return { iso, label: DN_IT.of(iso) || iso };
   return { iso: null, label: value };
-=======
-
-function formatFoot(value?: string | null) {
-  const raw = (value ?? '').toString().toLowerCase();
-  if (!raw) return '';
-  if (['right', 'destro', 'dx', 'r'].includes(raw)) return 'Destro';
-  if (['left', 'sinistro', 'sx', 'l'].includes(raw)) return 'Sinistro';
-  if (['both', 'ambidestro', 'ambi', 'ambidextrous'].includes(raw)) return 'Ambidestro';
-  return value ?? '';
-}
-
-function formatSport(slug?: string | null) {
-  if (!slug) return '';
-  return slug
-    .replace(/_/g, ' ')
-    .split(' ')
-    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
-    .join(' ');
->>>>>>> codex/verify-repository-correctness
 }
 /* -------------------------------------------------- */
 
 export default function ProfileMiniCard() {
   const [p, setP] = useState<P | null>(null);
-<<<<<<< HEAD
   const [residenza, setResidenza] = useState<string>('—');
   const [nascita, setNascita] = useState<string>('—');
-=======
-  const [place, setPlace] = useState<string>('—'); // residenza
-  const [role, setRole] = useState<'club' | 'athlete' | null>(null);
->>>>>>> codex/verify-repository-correctness
 
   useEffect(() => {
     (async () => {
@@ -150,12 +119,6 @@ export default function ProfileMiniCard() {
         const raw = await r.json().catch(() => ({}));
         const j = (raw && typeof raw === 'object' && 'data' in raw ? (raw as any).data : raw) || {};
         setP(j || {});
-        const type = (j?.account_type ?? j?.profile_type ?? j?.type ?? '')
-          .toString()
-          .toLowerCase();
-        if (type.includes('club')) setRole('club');
-        else if (type.includes('athlete') || type.includes('atlet')) setRole('athlete');
-        else setRole(null);
 
         // Solo per atleta ha senso calcolare residenza/nascita
         if (j?.account_type !== 'club') {
@@ -226,14 +189,7 @@ export default function ProfileMiniCard() {
     x: p?.links?.x,
   };
 
-<<<<<<< HEAD
   const IconWrap = ({ href, label, children, className = '' }: any) => (
-=======
-  const editHref = role === 'club' ? '/club/profile' : '/profile';
-  const editLabel = role === 'club' ? 'Modifica profilo club' : 'Modifica profilo';
-
-  const IconWrap = ({ href, label, children }: any) => (
->>>>>>> codex/verify-repository-correctness
     <a
       href={href}
       target="_blank"
@@ -245,26 +201,17 @@ export default function ProfileMiniCard() {
     </a>
   );
 
-  const footLabel = formatFoot(p?.foot);
-  const sportLabel = formatSport(p?.sport);
-  const roleLabel = (p?.role ?? '').toString();
-
   return (
-    <div className="rounded-3xl border bg-white p-5 shadow-sm">
+    <div className="rounded-2xl border p-4 shadow-sm">
       <div className="flex items-start gap-3">
         {p?.avatar_url ? (
-<<<<<<< HEAD
 <img src={p.avatar_url} alt={name} className="h-24 w-[4.8rem] flex-shrink-0 rounded-xl object-cover" />
-=======
-          <img src={p.avatar_url} alt={name} className="h-28 w-24 flex-shrink-0 rounded-2xl object-cover" />
->>>>>>> codex/verify-repository-correctness
         ) : (
-          <div className="h-28 w-24 flex-shrink-0 rounded-2xl bg-gray-200" />
+          <div className="h-24 w-[4.8rem] flex-shrink-0 rounded-xl bg-gray-200" />
         )}
         <div className="min-w-0">
-          <div className="text-lg font-semibold text-gray-900">{name}</div>
+          <div className="text-base font-semibold">{name}</div>
 
-<<<<<<< HEAD
           {/* righe info */}
           {!isClub && <div className="text-xs text-gray-600">Luogo di residenza: {residenza}</div>}
           {!isClub && <div className="text-xs text-gray-600">Luogo di nascita: {nascita}</div>}
@@ -293,39 +240,8 @@ export default function ProfileMiniCard() {
           <div><span className="text-gray-500">Peso:</span> {p?.weight_kg ? `${p.weight_kg} kg` : '—'}</div>
         </div>
       )}
-=======
-          {/* righe tipo Transfermarkt */}
-          {place ? <div className="text-sm text-gray-600">Luogo di residenza: <span className="font-normal">{place}</span></div> : null}
-          {p?.birth_place ? <div className="text-sm text-gray-600">Luogo di nascita: <span className="font-normal">{p.birth_place}</span></div> : null}
-          {(iso || p?.country) ? (
-            <div className="text-sm text-gray-600 flex items-center gap-1">
-              <span>Nazionalità:</span>
-              {flagUrl ? <img src={flagUrl} alt={countryLabel || ''} className="inline-block rounded-[2px]" width={20} height={15} /> : null}
-              <span className="font-normal">{countryLabel}</span>
-            </div>
-          ) : null}
-          {sportLabel ? (
-            <div className="text-sm text-gray-600">
-              Sport principale: <span className="font-normal">{sportLabel}</span>
-            </div>
-          ) : null}
-          {roleLabel ? (
-            <div className="text-sm text-gray-600">
-              Ruolo: <span className="font-normal">{roleLabel}</span>
-            </div>
-          ) : null}
-        </div>
-      </div>
 
-      <div className="mt-5 grid grid-cols-2 gap-4 text-sm">
-        <div><span className="text-gray-500">Età:</span> <span className="font-medium text-gray-800">{age ?? '—'}</span></div>
-        <div><span className="text-gray-500">Lato dominante:</span> <span className="font-medium text-gray-800">{footLabel || '—'}</span></div>
-        <div><span className="text-gray-500">Altezza:</span> <span className="font-medium text-gray-800">{p?.height_cm ? `${p.height_cm} cm` : '—'}</span></div>
-        <div><span className="text-gray-500">Peso:</span> <span className="font-medium text-gray-800">{p?.weight_kg ? `${p.weight_kg} kg` : '—'}</span></div>
-      </div>
->>>>>>> codex/verify-repository-correctness
-
-      {p?.bio ? <p className="mt-4 line-clamp-4 text-sm text-gray-700 leading-relaxed">{p.bio}</p> : null}
+      {p?.bio ? <p className="mt-3 line-clamp-3 text-sm text-gray-700">{p.bio}</p> : null}
 
       {(socials.instagram || socials.facebook || socials.tiktok || socials.x) && (
         <div className="mt-3 flex items-center gap-2">
@@ -352,9 +268,9 @@ export default function ProfileMiniCard() {
         </div>
       )}
 
-      <div className="mt-5">
-        <Link href={editHref} className="inline-block rounded-xl border px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
-          {editLabel}
+      <div className="mt-4">
+        <Link href="/profile" className="inline-block rounded-xl border px-3 py-1.5 text-sm hover:bg-gray-50">
+          Modifica profilo
         </Link>
       </div>
     </div>

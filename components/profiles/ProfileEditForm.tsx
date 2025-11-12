@@ -2,13 +2,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
-import { SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
-import AvatarUploader from './AvatarUploader';
-
-const AvatarUploader = dynamic(() => import('./AvatarUploader'), { ssr: false });
 
 type LocationLevel = 'region' | 'province' | 'municipality';
 type LocationRow   = { id: number; name: string };
@@ -27,23 +22,12 @@ type Profile = {
   // anagrafica comune
   full_name: string | null;
   bio: string | null;
-<<<<<<< HEAD
   country: string | null; // ISO2 o testo
-  avatar_url?: string | null;
-=======
-  avatar_url: string | null;
-  birth_year: number | null;
-  birth_place: string | null; // NEW
-  city: string | null;        // residenza
-  country: string | null;     // ISO2 o nome
-  sport: string | null;
-  role: string | null;
->>>>>>> codex/verify-repository-correctness
 
   // atleta
   birth_year: number | null;
-  birth_place: string | null; // (solo estero)
-  city: string | null;        // residenza (solo estero)
+  birth_place: string | null; // fallback (estero)
+  city: string | null;        // residenza (estero)
 
   // residenza IT (atleta)
   residence_region_id: number | null;
@@ -63,16 +47,15 @@ type Profile = {
   interest_municipality_id: number | null;
 
   // atleta
-  foot: string | null; // DB: 'right' | 'left' | 'both'
+  foot: string | null;
   height_cm: number | null;
   weight_kg: number | null;
-  sport?: string | null;     // sport principale atleta (opzionale)
-  role?: string | null;      // ruolo atleta (opzionale)
 
-  // club
-  club_foundation_year?: number | null;
-  club_stadium?: string | null;
-  club_league_category?: string | null;
+  // club (nuovi)
+  sport: string | null;
+  club_foundation_year: number | null;
+  club_stadium: string | null;
+  club_league_category: string | null;
 
   // social / notifiche
   links: Links | null;
@@ -84,33 +67,7 @@ const supabase = createSupabaseClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-<<<<<<< HEAD
 /* ---------- helpers ---------- */
-=======
-const FOOT_OPTIONS = [
-  { value: 'right', label: 'Destro' },
-  { value: 'left', label: 'Sinistro' },
-  { value: 'both', label: 'Ambidestro' },
-] as const;
-
-const SPORT_OPTIONS = SPORTS.map((label) => ({ value: label, label }));
-
-function normalizeFoot(value: string | null | undefined): string {
-  const raw = (value ?? '').toString().trim().toLowerCase();
-  if (!raw) return '';
-  if (['right', 'destro', 'dx', 'r'].includes(raw)) return 'right';
-  if (['left', 'sinistro', 'sx', 'l'].includes(raw)) return 'left';
-  if (['both', 'ambidestro', 'ambi', 'ambidex', 'ambidextrous'].includes(raw)) return 'both';
-  return '';
-}
-
-function footToDb(value: string): string | null {
-  const normalized = normalizeFoot(value);
-  return normalized || null;
-}
-
-/* ------------------ helpers ------------------ */
->>>>>>> codex/verify-repository-correctness
 function pickData<T = any>(raw: any): T {
   if (raw && typeof raw === 'object' && 'data' in raw) return (raw as any).data as T;
   return raw as T;
@@ -211,26 +168,18 @@ function normalizeCountryCode(v?: string | null) {
 /** categorie/campionati per sport (estendibile) */
 const CATEGORIES_BY_SPORT: Record<string, string[]> = {
   Calcio: [
-    'Serie D','Eccellenza','Promozione',
-    'Prima Categoria','Seconda Categoria','Terza Categoria',
-    'Giovanili','Altro',
+    'Serie D',
+    'Eccellenza',
+    'Promozione',
+    'Prima Categoria',
+    'Seconda Categoria',
+    'Terza Categoria',
+    'Giovanili',
+    'Altro',
   ],
-  Basket: ['Serie A','A2','B','C Gold','C Silver','D','Giovanili','Altro'],
-  Pallavolo: ['SuperLega','A2','A3','B','C','D','Giovanili','Altro'],
-  Rugby: ['Top10','Serie A','Serie B','Serie C','Giovanili','Altro'],
-};
-
-/** ruoli per sport (ATLETA) - minimo vitale con Calcio + fallback */
-const ROLES_BY_SPORT: Record<string, string[]> = {
-  Calcio: [
-    'Portiere','Terzino Destro','Terzino Sinistro','Difensore Centrale',
-    'Centrocampista','Esterno Destro','Esterno Sinistro',
-    'Trequartista','Seconda Punta','Attaccante Centrale',
-  ],
-  Basket: ['Playmaker','Guardia','Ala Piccola','Ala Grande','Centro'],
-  Pallavolo: ['Palleggiatore','Opposto','Centrale','Schiacciatore','Libero'],
-  Rugby: ['Pilone','Tallonatore','Seconda Linea','Flanker','Numero 8','Mediano','Apertura','Centri','Estremo','Ala'],
-  Altro: ['—'],
+  Basket: ['Serie A', 'A2', 'B', 'C Gold', 'C Silver', 'D', 'Giovanili', 'Altro'],
+  Pallavolo: ['SuperLega', 'A2', 'A3', 'B', 'C', 'D', 'Giovanili', 'Altro'],
+  Rugby: ['Top10', 'Serie A', 'Serie B', 'Serie C', 'Giovanili', 'Altro'],
 };
 
 /* ------------------------------ */
@@ -245,26 +194,12 @@ export default function ProfileEditForm() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-<<<<<<< HEAD
   const isClub = profile?.account_type === 'club';
-=======
-  // Anagrafica
-  const [fullName, setFullName] = useState<string>('');
-  const [bio, setBio] = useState<string>('');
-  const [avatarUrl, setAvatarUrl] = useState<string>('');
-  const [birthYear, setBirthYear] = useState<number | ''>('');
-  const [birthPlace, setBirthPlace] = useState<string>('');   // NEW
-  const [residenceCity, setResidenceCity] = useState<string>('');
-  const [country, setCountry] = useState<string>(''); // ISO2 o nome
-  const [sport, setSport] = useState<string>('');
-  const [sportRole, setSportRole] = useState<string>('');
->>>>>>> codex/verify-repository-correctness
 
   // Anagrafica base
   const [fullName, setFullName] = useState('');
   const [bio, setBio] = useState('');
   const [country, setCountry] = useState('IT');
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   // Atleta only
   const [birthYear, setBirthYear] = useState<number | ''>('');
@@ -297,7 +232,7 @@ export default function ProfileEditForm() {
   const [municipalities, setMunicipalities] = useState<LocationRow[]>([]);
 
   // Atleta + notifiche
-  const [footCode, setFootCode] = useState<'' | 'right' | 'left' | 'both'>('');
+  const [foot, setFoot] = useState('');
   const [heightCm, setHeightCm] = useState<number | ''>('');
   const [weightKg, setWeightKg] = useState<number | ''>('');
   const [notifyEmail, setNotifyEmail] = useState(true);
@@ -308,19 +243,14 @@ export default function ProfileEditForm() {
   const [tiktok, setTiktok]       = useState('');
   const [x, setX]                 = useState('');
 
-  // Club
-  const [clubSport, setClubSport] = useState('Calcio');
+  // Club only
+  const [sport, setSport] = useState('Calcio');
   const [clubCategory, setClubCategory] = useState('Altro');
   const [foundationYear, setFoundationYear] = useState<number | ''>('');
   const [stadium, setStadium] = useState('');
 
-  // ATLETA: sport/ruolo
-  const [athleteSport, setAthleteSport] = useState('Calcio');
-  const [athleteRole, setAthleteRole] = useState<string>('');
-
   // categorie dinamiche per sport
-  const clubCategories = CATEGORIES_BY_SPORT[clubSport] ?? ['Altro'];
-  const athleteRoles = ROLES_BY_SPORT[athleteSport] ?? ROLES_BY_SPORT.Altro;
+  const sportCategories = CATEGORIES_BY_SPORT[sport] ?? ['Altro'];
 
   async function loadProfile() {
     const r = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
@@ -333,9 +263,7 @@ export default function ProfileEditForm() {
 
       full_name: (j as any)?.full_name ?? null,
       bio: (j as any)?.bio ?? null,
-<<<<<<< HEAD
       country: (j as any)?.country ?? 'IT',
-      avatar_url: (j as any)?.avatar_url ?? null,
 
       // atleta
       birth_year: (j as any)?.birth_year ?? null,
@@ -350,33 +278,21 @@ export default function ProfileEditForm() {
       birth_region_id: (j as any)?.birth_region_id ?? null,
       birth_province_id: (j as any)?.birth_province_id ?? null,
       birth_municipality_id: (j as any)?.birth_municipality_id ?? null,
-=======
-      avatar_url: (j as any)?.avatar_url ?? null,
-      birth_year: (j as any)?.birth_year ?? null,
-      birth_place: (j as any)?.birth_place ?? null,
-      city: (j as any)?.city ?? null,
-      country: (j as any)?.country ?? null,
-      sport: (j as any)?.sport ?? null,
-      role: (j as any)?.role ?? null,
->>>>>>> codex/verify-repository-correctness
 
       interest_country: j?.interest_country ?? 'IT',
       interest_region_id: j?.interest_region_id ?? null,
       interest_province_id: j?.interest_province_id ?? null,
       interest_municipality_id: j?.interest_municipality_id ?? null,
 
-      foot: (j?.foot ?? null) as any,
+      foot: j?.foot ?? '',
       height_cm: j?.height_cm ?? null,
       weight_kg: j?.weight_kg ?? null,
 
-      // club (se presenti)
-      sport: (j as any)?.sport ?? null,
+      // club
+      sport: (j as any)?.sport ?? 'Calcio',
       club_foundation_year: (j as any)?.club_foundation_year ?? null,
       club_stadium: (j as any)?.club_stadium ?? null,
       club_league_category: (j as any)?.club_league_category ?? null,
-
-      // atleta extra
-      role: (j as any)?.role ?? null,
 
       links: (j as any)?.links ?? null,
       notify_email_new_message: Boolean(j?.notify_email_new_message ?? true),
@@ -387,9 +303,7 @@ export default function ProfileEditForm() {
     // init form fields (normalizzo a ISO2 per sicurezza)
     setFullName(p.full_name || '');
     setBio(p.bio || '');
-<<<<<<< HEAD
     setCountry(normalizeCountryCode(p.country) || 'IT');
-    setAvatarUrl(p.avatar_url || null);
 
     // atleta
     setBirthYear(p.birth_year ?? '');
@@ -404,28 +318,12 @@ export default function ProfileEditForm() {
     setBirthRegionId(p.birth_region_id);
     setBirthProvinceId(p.birth_province_id);
     setBirthMunicipalityId(p.birth_municipality_id);
-=======
-    setAvatarUrl(p.avatar_url || '');
-    setBirthYear(p.birth_year ?? '');
-    setBirthPlace(p.birth_place || '');
-    setResidenceCity(p.city || '');
-    setCountry(p.country || '');
-    setSport(p.sport || '');
-    setSportRole(p.role || '');
->>>>>>> codex/verify-repository-correctness
 
     setRegionId(p.interest_region_id);
     setProvinceId(p.interest_province_id);
     setMunicipalityId(p.interest_municipality_id);
 
-<<<<<<< HEAD
-    // foot code coerente con CHECK ('right','left','both')
-    const f = (p.foot || '').toString().toLowerCase();
-    setFootCode(f === 'right' || f === 'left' || f === 'both' ? (f as any) : '');
-
-=======
-    setFoot(normalizeFoot(p.foot) || '');
->>>>>>> codex/verify-repository-correctness
+    setFoot(p.foot || '');
     setHeightCm(p.height_cm ?? '');
     setWeightKg(p.weight_kg ?? '');
     setNotifyEmail(Boolean(p.notify_email_new_message));
@@ -435,14 +333,11 @@ export default function ProfileEditForm() {
     setTiktok(p.links?.tiktok || '');
     setX(p.links?.x || '');
 
-    // club/atleta
-    setClubSport(p.sport || 'Calcio');
+    // club
+    setSport(p.sport || 'Calcio');
     setClubCategory(p.club_league_category || 'Altro');
     setFoundationYear(p.club_foundation_year ?? '');
     setStadium(p.club_stadium || '');
-
-    setAthleteSport((p as any)?.sport || 'Calcio');
-    setAthleteRole((p as any)?.role || '');
   }
 
   // prima load
@@ -539,17 +434,6 @@ export default function ProfileEditForm() {
 
   const canSave = useMemo(() => !saving && profile != null, [saving, profile]);
   const currentYear = new Date().getFullYear();
-  const roleOptions = useMemo(() => SPORTS_ROLES[sport] ?? [], [sport]);
-
-  useEffect(() => {
-    if (!roleOptions.length) {
-      setSportRole('');
-      return;
-    }
-    if (!roleOptions.includes(sportRole)) {
-      setSportRole('');
-    }
-  }, [roleOptions, sportRole]);
 
   function normalizeSocial(kind: keyof Links, value: string): string | null {
     const v = (value || '').trim();
@@ -557,9 +441,9 @@ export default function ProfileEditForm() {
     const isUrl = /^https?:\/\//i.test(v);
     const map: Record<keyof Links, (h: string) => string> = {
       instagram: (h) => `https://instagram.com/${h.replace(/^@/, '')}`,
-      facebook:  (h) => (isUrl ? h : `https://facebook.com/${h.replace(/^@/, '')}`),
-      tiktok:    (h) => `https://tiktok.com/@${h.replace(/^@/, '')}`,
-      x:         (h) => `https://twitter.com/${h.replace(/^@/, '')}`,
+      facebook: (h) => (isUrl ? h : `https://facebook.com/${h.replace(/^@/, '')}`),
+      tiktok: (h) => `https://tiktok.com/@${h.replace(/^@/, '')}`,
+      x: (h) => `https://twitter.com/${h.replace(/^@/, '')}`,
     };
     if (isUrl) return v;
     return map[kind](v);
@@ -584,18 +468,8 @@ export default function ProfileEditForm() {
 
       const basePayload: any = {
         full_name: (fullName || '').trim() || null,
-<<<<<<< HEAD
         bio:       (bio || '').trim() || null,
         country:   normalizeCountryCode(country),   // ISO2 sempre
-        avatar_url: avatarUrl ?? null,
-=======
-        bio: (bio || '').trim() || null,
-        avatar_url: avatarUrl || null,
-        birth_year: birthYear === '' ? null : Number(birthYear),
-        birth_place: (birthPlace || '').trim() || null,
-        city: (residenceCity || '').trim() || null,
-        country: (country || '').trim() || null,
->>>>>>> codex/verify-repository-correctness
 
         // interesse
         interest_country: 'IT',
@@ -603,25 +477,14 @@ export default function ProfileEditForm() {
         interest_province_id: provinceId,
         interest_municipality_id: municipalityId,
 
-<<<<<<< HEAD
         // social & notifiche
-=======
-        // atleta
-        foot: footToDb(normalizeFoot(foot)),
-        sport: (sport || '').trim() || null,
-        role: (sportRole || '').trim() || null,
-        height_cm: heightCm === '' ? null : Number(heightCm),
-        weight_kg: weightKg === '' ? null : Number(weightKg),
-
-        // social
->>>>>>> codex/verify-repository-correctness
         links,
         notify_email_new_message: !!notifyEmail,
       };
 
       if (isClub) {
         Object.assign(basePayload, {
-          sport: (clubSport || '').trim() || null,
+          sport: (sport || '').trim() || null,
           club_league_category: (clubCategory || '').trim() || null,
           club_foundation_year: foundationYear === '' ? null : Number(foundationYear),
           club_stadium: (stadium || '').trim() || null,
@@ -639,7 +502,6 @@ export default function ProfileEditForm() {
           foot: null,
           height_cm: null,
           weight_kg: null,
-          role: null,
         });
       } else {
         // ATLETA
@@ -660,14 +522,12 @@ export default function ProfileEditForm() {
           birth_place:          birthCountry !== 'IT' ? (birthPlace || '').trim() || null : null,
 
           // atleta
-          // NB: rispettiamo il CHECK del DB usando i codici EN
-          foot: footCode || null, // 'right' | 'left' | 'both'
+          foot: (foot || '').trim() || null,
           height_cm: heightCm === '' ? null : Number(heightCm),
           weight_kg: weightKg === '' ? null : Number(weightKg),
-          sport: (athleteSport || '').trim() || null,
-          role: (athleteRole || '').trim() || null,
 
           // pulizia campi club
+          sport: null,
           club_league_category: null,
           club_foundation_year: null,
           club_stadium: null,
@@ -705,98 +565,81 @@ export default function ProfileEditForm() {
   const countryPreview = country ? `${flagEmoji(country)} ${countryName(country)}` : '';
 
   return (
-<<<<<<< HEAD
     <>
+      {/* Titolo sintetico per la pagina */}
       <h1 className="mb-1 text-2xl font-bold">{isClub ? 'CLUB' : 'ATLETA'}</h1>
-=======
-    <form onSubmit={onSubmit} className="space-y-6">
-      {/* Foto profilo */}
-      <section className="rounded-2xl border p-4 md:p-5">
-        <h2 className="mb-3 text-lg font-semibold">Foto profilo</h2>
-        <AvatarUploader value={avatarUrl || null} onChange={(url) => setAvatarUrl(url ?? '')} />
-      </section>
-
-      {/* Dati personali */}
-      <section className="rounded-2xl border p-4 md:p-5">
-        <h2 className="mb-3 text-lg font-semibold">Dati personali</h2>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Nome e cognome</label>
-            <input className="rounded-lg border p-2" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Es. Mario Rossi" />
-          </div>
->>>>>>> codex/verify-repository-correctness
+      <p className="mb-4 text-sm text-gray-500">
+      </p>
 
       <form onSubmit={onSubmit} className="space-y-6">
-        {/* Header con avatar + nome */}
+        {/* Dati personali / club */}
         <section className="rounded-2xl border p-4 md:p-5">
-          <div className="flex items-start gap-5">
-            <AvatarUploader
-              value={avatarUrl}
-              onChange={(url) => setAvatarUrl(url)}
-            />
-            <div className="flex-1 grid gap-4 md:grid-cols-2">
-              <div className="flex flex-col gap-1 md:col-span-2">
-                <label className="text-sm text-gray-600">
-                  {isClub ? 'Nome del club' : 'Nome e cognome'}
-                </label>
-                <input
-                  className="rounded-lg border p-2"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder={isClub ? 'Es. ASD Carlentini' : 'Es. Mario Rossi'}
-                />
-              </div>
+          <h2 className="mb-3 text-lg font-semibold">
+            {isClub ? 'Dati club' : 'Dati personali'}
+          </h2>
 
-              {!isClub && (
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm text-gray-600">Anno di nascita</label>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    className="rounded-lg border p-2"
-                    value={birthYear}
-                    onChange={(e) =>
-                      setBirthYear(e.target.value === '' ? '' : Number(e.target.value))
-                    }
-                    min={1950}
-                    max={new Date().getFullYear() - 5}
-                    placeholder="Es. 2002"
-                  />
-                </div>
-              )}
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="flex flex-col gap-1 md:col-span-2">
+              <label className="text-sm text-gray-600">
+                {isClub ? 'Nome del club' : 'Nome e cognome'}
+              </label>
+              <input
+                className="rounded-lg border p-2"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder={isClub ? 'Es. ASD Carlentini' : 'Es. Mario Rossi'}
+              />
+            </div>
 
+            {!isClub && (
               <div className="flex flex-col gap-1">
-                <label className="text-sm text-gray-600">Nazionalità</label>
-                <select
+                <label className="text-sm text-gray-600">Anno di nascita</label>
+                <input
+                  type="number"
+                  inputMode="numeric"
                   className="rounded-lg border p-2"
-                  value={country}
-                  onChange={(e) => setCountry(e.target.value)}
-                >
-                  {COUNTRIES.map((c) => (
-                    <option key={c.code} value={c.code}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-                {country && (
-                  <span className="text-xs text-gray-500">{countryPreview}</span>
-                )}
-              </div>
-
-              <div className="md:col-span-2 flex flex-col gap-1">
-                <label className="text-sm text-gray-600">Biografia</label>
-                <textarea
-                  className="rounded-lg border p-2"
-                  rows={4}
-                  value={bio}
-                  onChange={(e) => setBio(e.target.value)}
-                  placeholder={
-                    isClub
-                      ? 'Storia, valori, palmarès…'
-                      : 'Racconta in breve ruolo, caratteristiche, esperienze…'
+                  value={birthYear}
+                  onChange={(e) =>
+                    setBirthYear(e.target.value === '' ? '' : Number(e.target.value))
                   }
+                  min={1950}
+                  max={new Date().getFullYear() - 5}
+                  placeholder="Es. 2002"
                 />
               </div>
+            )}
+
+            <div className="flex flex-col gap-1">
+              <label className="text-sm text-gray-600">Nazionalità</label>
+              <select
+                className="rounded-lg border p-2"
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+              >
+                {COUNTRIES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+              {country && (
+                <span className="text-xs text-gray-500">{countryPreview}</span>
+              )}
+            </div>
+
+            <div className="md:col-span-2 flex flex-col gap-1">
+              <label className="text-sm text-gray-600">Biografia</label>
+              <textarea
+                className="rounded-lg border p-2"
+                rows={4}
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                placeholder={
+                  isClub
+                    ? 'Storia, valori, palmarès…'
+                    : 'Racconta in breve ruolo, caratteristiche, esperienze…'
+                }
+              />
             </div>
           </div>
         </section>
@@ -1036,7 +879,7 @@ export default function ProfileEditForm() {
           </div>
         </section>
 
-        {/* Dettagli club / atleta */}
+        {/* Dettagli atleta / club */}
         {isClub ? (
           <section className="rounded-2xl border p-4 md:p-5">
             <h2 className="mb-3 text-lg font-semibold">Dettagli club</h2>
@@ -1045,8 +888,8 @@ export default function ProfileEditForm() {
                 <label className="text-sm text-gray-600">Sport</label>
                 <select
                   className="rounded-lg border p-2"
-                  value={clubSport}
-                  onChange={(e) => setClubSport(e.target.value)}
+                  value={sport}
+                  onChange={(e) => setSport(e.target.value)}
                 >
                   {Object.keys(CATEGORIES_BY_SPORT).map((s) => (
                     <option key={s} value={s}>
@@ -1063,7 +906,7 @@ export default function ProfileEditForm() {
                   value={clubCategory}
                   onChange={(e) => setClubCategory(e.target.value)}
                 >
-                  {clubCategories.map((c) => (
+                  {sportCategories.map((c) => (
                     <option key={c} value={c}>
                       {c}
                     </option>
@@ -1103,16 +946,16 @@ export default function ProfileEditForm() {
             <h2 className="mb-3 text-lg font-semibold">Dettagli atleta</h2>
             <div className="grid gap-4 md:grid-cols-3">
               <div className="flex flex-col gap-1">
-                <label className="text-sm text-gray-600">Lato dominante</label>
+                <label className="text-sm text-gray-600">Piede preferito</label>
                 <select
                   className="rounded-lg border p-2"
-                  value={footCode}
-                  onChange={(e) => setFootCode(e.target.value as any)}
+                  value={foot}
+                  onChange={(e) => setFoot(e.target.value)}
                 >
                   <option value="">— Seleziona —</option>
-                  <option value="right">Destro</option>
-                  <option value="left">Sinistro</option>
-                  <option value="both">Ambidestro</option>
+                  <option value="Destro">Destro</option>
+                  <option value="Sinistro">Sinistro</option>
+                  <option value="Ambidestro">Ambidestro</option>
                 </select>
               </div>
               <div className="flex flex-col gap-1">
@@ -1144,40 +987,6 @@ export default function ProfileEditForm() {
                   max={150}
                   placeholder="es. 85"
                 />
-              </div>
-
-              {/* SPORT & RUOLO (ATLETA) */}
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-gray-600">Sport</label>
-                <select
-                  className="rounded-lg border p-2"
-                  value={athleteSport}
-                  onChange={(e) => {
-                    setAthleteSport(e.target.value);
-                    setAthleteRole(''); // reset ruolo quando cambia sport
-                  }}
-                >
-                  {Object.keys(ROLES_BY_SPORT).map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex flex-col gap-1 md:col-span-2">
-                <label className="text-sm text-gray-600">Ruolo</label>
-                <select
-                  className="rounded-lg border p-2"
-                  value={athleteRole}
-                  onChange={(e) => setAthleteRole(e.target.value)}
-                >
-                  <option value="">— Seleziona ruolo —</option>
-                  {athleteRoles.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </select>
               </div>
             </div>
           </section>
@@ -1254,187 +1063,7 @@ export default function ProfileEditForm() {
           {message && <span className="text-sm text-green-700">{message}</span>}
           {error && <span className="text-sm text-red-700">{error}</span>}
         </div>
-<<<<<<< HEAD
       </form>
     </>
-=======
-      </section>
-
-      {/* Zona di interesse */}
-      <section className="rounded-2xl border p-4 md:p-5">
-        <h2 className="mb-3 text-lg font-semibold">Zona di interesse</h2>
-        <div className="grid gap-4 md:grid-cols-4">
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Paese</label>
-            <select className="rounded-lg border p-2" value="IT" disabled>
-              <option value="IT">Italia</option>
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Regione</label>
-            <select className="rounded-lg border p-2" value={regionId ?? ''} onChange={(e) => setRegionId(e.target.value ? Number(e.target.value) : null)}>
-              <option value="">— Seleziona regione —</option>
-              {regions.map((r) => (
-                <option key={r.id} value={r.id}>{r.name}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Provincia</label>
-            <select
-              className="rounded-lg border p-2 disabled:bg-gray-50"
-              value={provinceId ?? ''}
-              onChange={(e) => setProvinceId(e.target.value ? Number(e.target.value) : null)}
-              disabled={!regionId}
-            >
-              <option value="">— Seleziona provincia —</option>
-              {provinces.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Città</label>
-            <select
-              className="rounded-lg border p-2 disabled:bg-gray-50"
-              value={municipalityId ?? ''}
-              onChange={(e) => setMunicipalityId(e.target.value ? Number(e.target.value) : null)}
-              disabled={!provinceId}
-            >
-              <option value="">— Seleziona città —</option>
-              {municipalities.map((m) => (
-                <option key={m.id} value={m.id}>{m.name}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-        <p className="mt-2 text-xs text-gray-500">
-          I menu sono alimentati dal DB (RPC <code>location_children</code> con fallback su tabelle) e ordinati A→Z.
-        </p>
-      </section>
-
-      {/* Dettagli atleta */}
-      <section className="rounded-2xl border p-4 md:p-5">
-        <h2 className="mb-3 text-lg font-semibold">Dettagli atleta</h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <div className="flex flex-col gap-1 lg:col-span-2">
-            <label className="text-sm text-gray-600">Sport principale</label>
-            <select className="rounded-lg border p-2" value={sport} onChange={(e) => setSport(e.target.value)}>
-              <option value="">— Seleziona sport —</option>
-              {SPORT_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-1 lg:col-span-2">
-            <label className="text-sm text-gray-600">Ruolo</label>
-            <select
-              className="rounded-lg border p-2 disabled:bg-gray-50"
-              value={sportRole}
-              onChange={(e) => setSportRole(e.target.value)}
-              disabled={!sport || roleOptions.length === 0}
-            >
-              <option value="">— Seleziona ruolo —</option>
-              {roleOptions.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </select>
-            {!sport && (
-              <span className="text-xs text-gray-500">Scegli uno sport per vedere i ruoli disponibili.</span>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Lato dominante</label>
-            <select className="rounded-lg border p-2" value={foot} onChange={(e) => setFoot(e.target.value)}>
-              <option value="">— Seleziona —</option>
-              {FOOT_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Altezza (cm)</label>
-            <input
-              type="number"
-              inputMode="numeric"
-              className="rounded-lg border p-2"
-              value={heightCm}
-              onChange={(e) => setHeightCm(e.target.value === '' ? '' : Number(e.target.value))}
-              min={100}
-              max={230}
-              placeholder="es. 183"
-            />
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Peso (kg)</label>
-            <input
-              type="number"
-              inputMode="numeric"
-              className="rounded-lg border p-2"
-              value={weightKg}
-              onChange={(e) => setWeightKg(e.target.value === '' ? '' : Number(e.target.value))}
-              min={40}
-              max={150}
-              placeholder="es. 85"
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* Social */}
-      <section className="rounded-2xl border p-4 md:p-5">
-        <h2 className="mb-3 text-lg font-semibold">Profili social</h2>
-        <p className="mb-3 text-xs text-gray-500">Inserisci URL completi o semplici @handle.</p>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Instagram</label>
-            <input className="rounded-lg border p-2" value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="@tuonome oppure https://instagram.com/tuonome" />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">Facebook</label>
-            <input className="rounded-lg border p-2" value={facebook} onChange={(e) => setFacebook(e.target.value)} placeholder="pagina o profilo" />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">TikTok</label>
-            <input className="rounded-lg border p-2" value={tiktok} onChange={(e) => setTiktok(e.target.value)} placeholder="@tuonome" />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-600">X (Twitter)</label>
-            <input className="rounded-lg border p-2" value={x} onChange={(e) => setX(e.target.value)} placeholder="@tuonome" />
-          </div>
-        </div>
-      </section>
-
-      {/* Notifiche */}
-      <section className="rounded-2xl border p-4 md:p-5">
-        <h2 className="mb-3 text-lg font-semibold">Notifiche</h2>
-        <label className="flex items-center gap-3">
-          <input type="checkbox" className="h-4 w-4" checked={notifyEmail} onChange={(e) => setNotifyEmail(e.target.checked)} />
-          <span className="text-sm">Email per nuovi messaggi</span>
-        </label>
-      </section>
-
-      <div className="flex items-center gap-3">
-        <button type="submit" disabled={!canSave} className="rounded-xl bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-60">
-          {saving ? 'Salvataggio…' : 'Salva profilo'}
-        </button>
-        {message && <span className="text-sm text-green-700">{message}</span>}
-        {error && <span className="text-sm text-red-700">{error}</span>}
-      </div>
-    </form>
->>>>>>> codex/verify-repository-correctness
   );
 }

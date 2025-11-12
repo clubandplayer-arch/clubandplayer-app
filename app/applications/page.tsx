@@ -16,29 +16,24 @@ async function detectRoleReceived(): Promise<Role> {
 
     const { data: prof } = await supabase
       .from('profiles')
-      .select('account_type, type, profile_type, id, user_id')
+      .select('type, profile_type, id, user_id')
       .or(`id.eq.${uid},user_id.eq.${uid}`)
       .maybeSingle();
 
-<<<<<<< HEAD
-    const t = ((prof as any)?.type ?? (prof as any)?.profile_type ?? '').toString().toLowerCase();
-=======
     const t = (
-      (prof as any)?.account_type ??
-      (prof as any)?.profile_type ??
       (prof as any)?.type ??
+      (prof as any)?.profile_type ??
       ''
     ).toString().toLowerCase();
->>>>>>> codex/verify-repository-correctness
 
     if (t.includes('club')) return 'club';
     if (t.includes('atlet')) return 'athlete';
 
-    // Fallback: se ha opportunità pubblicate → è club (compat owner_id||created_by)
+    // Fallback: se ha opportunità pubblicate → è club
     const { count: opps } = await supabase
       .from('opportunities')
       .select('id', { head: true, count: 'exact' })
-      .or(`owner_id.eq.${uid},created_by.eq.${uid}`);
+      .eq('owner_id', uid);
 
     if ((opps ?? 0) > 0) return 'club';
 
@@ -64,7 +59,7 @@ function getOriginFromHeaders(h: Headers) {
 
 async function cookieHeader(): Promise<string> {
   const ck = await cookies();
-  return ck.getAll().map((c) => `${c.name}=${c.value}`).join('; ');
+  return ck.getAll().map(c => `${c.name}=${c.value}`).join('; ');
 }
 
 async function fetchReceivedRows() {
