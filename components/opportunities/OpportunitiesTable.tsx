@@ -5,6 +5,8 @@ import ApplyCell from '@/components/opportunities/ApplyCell';
 import FollowButton from '@/components/clubs/FollowButton';
 import type { Opportunity } from '@/types/opportunity';
 
+type Role = 'athlete' | 'club' | 'guest';
+
 function formatBracket(min: number | null | undefined, max: number | null | undefined) {
   if (min == null && max == null) return '—';
   if (min != null && max != null) return `${min}-${max}`;
@@ -13,7 +15,11 @@ function formatBracket(min: number | null | undefined, max: number | null | unde
   return '—';
 }
 
-type Role = 'athlete' | 'club' | 'guest';
+function fmtDate(s?: string | null) {
+  if (!s) return '—';
+  const d = new Date(s);
+  return Number.isNaN(d.valueOf()) ? '—' : d.toLocaleString();
+}
 
 export default function OpportunitiesTable({
   items,
@@ -74,14 +80,16 @@ export default function OpportunitiesTable({
                     <span>{o.club_name ?? '—'}</span>
                     {showFollow && (
                       <FollowButton
-                        clubId={o.created_by!}
+                        clubId={o.created_by as string}
                         clubName={o.club_name ?? undefined}
                         size="sm"
                       />
                     )}
                   </div>
                 </td>
-                <td className="px-4 py-2">{new Date(o.created_at).toLocaleString()}</td>
+                <td className="px-4 py-2">
+                  {fmtDate((o as any)?.created_at ?? (o as any)?.createdAt ?? null)}
+                </td>
                 <td className="px-4 py-2">
                   <div className="flex items-center gap-2">
                     {showApply && (
