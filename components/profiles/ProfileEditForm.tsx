@@ -946,7 +946,7 @@ export default function ProfileEditForm() {
             <h2 className="mb-3 text-lg font-semibold">Dettagli atleta</h2>
             <div className="grid gap-4 md:grid-cols-3">
               <div className="flex flex-col gap-1">
-                <label className="text-sm text-gray-600">Piede preferito</label>
+                <label className="text-sm text-gray-600">Lato dominante</label>
                 <select
                   className="rounded-lg border p-2"
                   value={foot}
