@@ -1,117 +1,93 @@
-'use client';
-
+// app/(dashboard)/feed/page.tsx
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import FeedLatest from '@/components/feed/FeedLatest';
-import WhoToFollow from '@/components/feed/WhoToFollow';
-import FeedPosts from '@/components/feed/FeedPosts';
-import ProfileMiniCard from '@/components/profiles/ProfileMiniCard';
 import FeedComposer from '@/components/feed/FeedComposer';
+// (se questi componenti esistono già nel repo, li teniamo. Se non esistono, puoi commentarli)
+// import FollowedClubs from '@/components/feed/FollowedClubs';
+// import WhoToFollow from '@/components/feed/WhoToFollow';
 
-type Role = 'club' | 'athlete' | 'guest';
+export const dynamic = 'force-dynamic';
 
-export default function FeedPage() {
-  const [role, setRole] = useState<Role>('guest');
+type FeedPost = {
+  id: string;
+  content: string;
+  created_at: string;
+  author_id: string | null;
+};
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const r = await fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' });
-        const j = await r.json().catch(() => ({}));
-        const raw = (j?.role ?? '').toString().toLowerCase();
-        setRole(raw === 'club' || raw === 'athlete' ? raw : 'guest');
-      } catch {
-        setRole('guest');
-      }
-    })();
-  }, []);
+async function getPosts(): Promise<FeedPost[]> {
+  const res = await fetch('/api/feed/posts', { cache: 'no-store', credentials: 'include' as any });
+  const json = await res.json().catch(() => ({}));
+  // accetta sia {data:[...]} che {items:[...]}
+  const rows = (json?.data ?? json?.items ?? []) as FeedPost[];
+  return Array.isArray(rows) ? rows : [];
+}
+
+async function FeedList() {
+  const posts = await getPosts();
+
+  if (!posts.length) {
+    return (
+      <div className="rounded-2xl border bg-white p-4 text-sm text-gray-500">
+        Nessun post ancora. Scrivi il primo aggiornamento!
+      </div>
+    );
+  }
 
   return (
-    <main className="container mx-auto px-4 py-6">
-      {/* h1 “nascosto” per SEO/accessibilità senza cambiare il layout */}
-      <h1 className="sr-only">Bacheca</h1>
-
-      {/* Griglia tipo LinkedIn: 3 colonne su lg (3/6/3), singola colonna su mobile */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-        {/* SINISTRA */}
-        <aside className="hidden lg:col-span-3 lg:flex lg:flex-col lg:gap-6">
-          {/* Mini profilo (sostituisce “Benvenuto! / Vai al profilo”) */}
-          <div className="card p-4">
-            <div className="mb-2 text-sm text-neutral-500">Il tuo profilo</div>
-            <ProfileMiniCard />
+    <div className="space-y-3">
+      {posts.map((p) => (
+        <article key={p.id} className="rounded-2xl border bg-white p-4">
+          <div className="text-xs text-gray-500">
+            {new Date(p.created_at).toLocaleString()}
           </div>
+          <p className="mt-1 whitespace-pre-wrap text-sm">{p.content}</p>
+        </article>
+      ))}
+    </div>
+  );
+}
 
-          {/* Azioni rapide per club */}
-          {role === 'club' && (
-            <div className="card p-4">
-              <div className="mb-2 text-sm text-neutral-500">Azioni rapide</div>
-              <div className="flex flex-col gap-2">
-                <Link href="/opportunities/new" className="btn btn-outline">
-                  + Pubblica opportunità
-                </Link>
-                <Link href="/club/applicants" className="btn btn-outline">
-                  Vedi candidature
-                </Link>
-              </div>
+export default async function FeedPage() {
+  return (
+    <div className="mx-auto max-w-6xl px-4 py-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Colonna sinistra: profilo rapido (markup leggero per non rompere) */}
+        <aside className="lg:col-span-1 space-y-4">
+          <div className="rounded-2xl border bg-white p-4">
+            <div className="text-sm font-semibold mb-2">Il tuo profilo</div>
+            <div className="text-xs text-gray-600">
+              Aggiorna i tuoi dati per farti trovare dai club.
             </div>
-          )}
+            <Link
+              href="/profile"
+              className="inline-block mt-3 text-xs rounded-lg border px-3 py-1 hover:bg-gray-50"
+            >
+              Modifica profilo
+            </Link>
+          </div>
+          {/* Se avevi altri widget a sinistra, rimettili qui */}
         </aside>
 
-        {/* CENTRO */}
-        <section className="lg:col-span-6 flex flex-col gap-6">
-          {/* Composer (placeholder per ora) */}
-          <div className="card p-4">
-            <div className="mb-3 text-sm text-neutral-500">Condividi un aggiornamento</div>
-            <textarea className="textarea" rows={3} placeholder="Scrivi qualcosa…" />
-            <div className="mt-3 flex justify-end">
-              <button className="btn btn-outline text-sm" disabled>
-                Pubblica (coming soon)
-              </button>
-            </div>
+        {/* Colonna centrale: composer + feed */}
+        <main className="lg:col-span-2 space-y-4">
+          <FeedComposer />
+          <FeedList />
+        </main>
+
+        {/* Colonna destra: suggerimenti / trending */}
+        <aside className="lg:col-span-1 space-y-4">
+          <div className="rounded-2xl border bg-white p-4">
+            <div className="text-sm font-semibold mb-2">?? Trending</div>
+            <div className="text-xs text-gray-600">Contenuti in arrivo.</div>
           </div>
 
-          {/* ?? DATI REALI: Ultime opportunità */}
-          <FeedLatest />
-
-          {/* ?? DATI REALI: Post dal DB */}
-          <div className="card p-4">
-            <div className="mb-3 text-sm font-medium">Aggiornamenti della community</div>
-            <FeedPosts />
-          </div>
-        </section>
-
-        {/* DESTRA */}
-        <aside className="hidden xl:col-span-3 xl:flex xl:flex-col xl:gap-6">
-          <div className="card p-4">
-            <h3 className="mb-3 text-sm font-semibold text-neutral-700 dark:text-neutral-200">?? Trending</h3>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <Link href="/search/athletes?trend=mercato" className="link">
-                  Calciomercato Dilettanti
-                </Link>
-              </li>
-              <li>
-                <Link href="/opportunities?role=goalkeeper&gender=f" className="link">
-                  Portieri femminili U21
-                </Link>
-              </li>
-              <li>
-                <Link href="/feed?tag=preparazione" className="link">
-                  Preparazione invernale
-                </Link>
-              </li>
-              <li>
-                <Link href="/opportunities?league=serie-d&role=winger" className="link">
-                  Serie D – Esterni veloci
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* ?? Suggerimenti dinamici */}
+          {/* Se nel tuo repo esistono, puoi riattivare: */}
+          {/*
+          <FollowedClubs />
           <WhoToFollow />
+          */}
         </aside>
       </div>
-    </main>
+    </div>
   );
 }

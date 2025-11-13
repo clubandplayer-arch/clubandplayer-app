@@ -1,21 +1,26 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
+
+type Props = {
+  className?: string;
+};
 
 const MAX = 500;
 
-export default function FeedComposer({ onPosted }: { onPosted?: () => void }) {
+export default function FeedComposer({ className }: Props) {
   const router = useRouter();
   const [text, setText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const remaining = useMemo(() => MAX - (text?.length ?? 0), [text]);
-  const disabled = submitting || !text.trim() || remaining < 0;
+  const len = text.trim().length;
+  const tooLong = len > MAX;
+  const canPost = !submitting && !tooLong && len > 0;
 
-  async function handlePost() {
-    if (disabled) return;
+  async function onSubmit() {
+    if (!canPost) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -23,54 +28,47 @@ export default function FeedComposer({ onPosted }: { onPosted?: () => void }) {
         method: 'POST',
         credentials: 'include',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ content: text.trim() }),
       });
-
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok || json?.ok === false) {
-        const msg =
-          json?.error === 'too_long'
-            ? `Testo troppo lungo (max ${MAX} caratteri)`
-            : json?.error === 'empty'
-            ? 'Il testo è vuoto'
-            : json?.error === 'rate_limited'
-            ? 'Stai pubblicando troppo velocemente. Riprova tra pochi secondi.'
-            : 'Impossibile pubblicare';
-        throw new Error(msg);
+      if (!res.ok) {
+        const t = await res.text().catch(() => '');
+        let msg = t;
+        try { msg = JSON.parse(t)?.error ?? t; } catch {}
+        throw new Error(msg || 'Errore pubblicazione');
       }
-
       setText('');
-      onPosted?.();
-      // Forza il refresh della bacheca (server components)
-      router.refresh();
+      router.refresh(); // ricarica la /feed
     } catch (e: any) {
-      setError(e?.message ?? 'Errore di pubblicazione');
+      setError(e?.message || 'Errore pubblicazione');
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <div className="rounded-2xl border">
-      <div className="p-4">
+    <div className={className}>
+      <div className="rounded-2xl border p-4 bg-white">
+        <label className="block text-sm font-medium mb-2">Condividi un aggiornamento</label>
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Condividi un aggiornamento…"
-          className="w-full resize-vertical rounded-xl border px-3 py-2 outline-none focus:ring"
           rows={3}
-          maxLength={MAX + 100} // permetti digitazione ma blocchiamo a MAX lato server
+          placeholder="Scrivi qualcosa…"
+          className="w-full resize-none rounded-xl border px-3 py-2 outline-none focus:ring-2"
         />
-        <div className="mt-2 flex items-center justify-between text-xs text-gray-600">
-          <span>{remaining >= 0 ? `${remaining} caratteri rimanenti` : `-${Math.abs(remaining)} oltre il limite`}</span>
-          <button
-            type="button"
-            onClick={handlePost}
-            disabled={disabled}
-            className={`px-3 py-1 rounded border ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}`}
-          >
-            {submitting ? 'Pubblico…' : 'Pubblica'}
-          </button>
+        <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+          <span>{len}/{MAX}</span>
+          <div className="flex items-center gap-2">
+            {tooLong && <span className="text-red-600">Testo troppo lungo</span>}
+            <button
+              type="button"
+              onClick={onSubmit}
+              disabled={!canPost}
+              className="px-3 py-1 rounded-lg border disabled:opacity-50"
+            >
+              {submitting ? 'Pubblico…' : 'Pubblica'}
+            </button>
+          </div>
         </div>
         {error && <div className="mt-2 text-xs text-red-600">{error}</div>}
       </div>
