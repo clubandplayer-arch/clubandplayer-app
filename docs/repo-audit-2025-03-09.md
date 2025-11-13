@@ -6,7 +6,7 @@ Questa analisi riepiloga lo stato attuale del branch `work`, evidenziando le car
 
 - Ho rimosso i file temporanei `build.log`, `conflicts.txt` e `struttura.txt`, non funzionali al prodotto.
 - Ho esteso `.gitignore` per evitare che log generati localmente ricompaiano nelle prossime commit.
-- Ogni directory principale è stata verificata e classificata tra **core**, **supporto** o **documentazione**; eventuali vuoti funzionali sono riportati come attività suggerite.
+- README aggiornato con requisiti, variabili e checklist MVP; roadmap allineata allo stato attuale.
 
 ## Stato delle principali directory
 
@@ -22,7 +22,7 @@ Questa analisi riepiloga lo stato attuale del branch `work`, evidenziando le car
 | `data/` | Supporto | Costanti (geo, ruoli). | Convertire in seed Supabase quando pronte API dinamiche. |
 | `public/` | Supporto | Asset statici (icone). | Ok. |
 | `docs/` | Documentazione | Report, checklist MVP, audit corrente. | Aggiornare `docs/mvp-next-steps.md` al termine di ogni milestone. |
-| `tests/` | Supporto | Config Playwright + e2e. | Va riattivato nel CI appena la suite è aggiornata. |
+| `tests/` | Supporto | Smoke test Node (`pnpm test:e2e`) + harness Next.js. | Valutare reintroduzione Playwright solo se servono scenari completi. |
 | `.github/` | Supporto | Workflow CI (Next.js, lint, e2e). | Verificare che i workflow puntino a PNPM 10. |
 | `.vscode/` | Supporto | Settings consigliati per il team. | Nessuna azione. |
 | `node_modules/` | Ambiente | Installazione dipendenze (non tracciata da git). | Assicurarsi che rimanga esclusa dal repository. |
@@ -35,11 +35,11 @@ Questa analisi riepiloga lo stato attuale del branch `work`, evidenziando le car
 | `conflicts.txt` | Segnaposto vuoto derivato da merge tool. |
 | `struttura.txt` | Output di `tree`/inventario non aggiornato, duplicato delle informazioni fornite qui. |
 
-## Suggerimenti per completare la MVP
+## Suggerimenti per il post-MVP
 
 1. **Pulizia codice dead:** eseguire un controllo degli import con `pnpm lint -- --report-unused-disable-directives` per isolare componenti non utilizzati.
 2. **Mock vs dati reali:** consolidare le query Supabase e rimuovere progressivamente i fallback in `lib/data` e `components/**/mock.ts` (dove presenti).
-3. **Test di regressione:** ripristinare la pipeline Playwright (`tests/e2e`) con scenari minimi: registrazione, creazione profilo atleta, pubblicazione post, candidatura opportunità.
-4. **Documentazione deploy:** aggiungere nella README le variabili ambiente richieste da Supabase, Resend e PostHog per permettere bootstrap immediato di nuovi ambienti.
+3. **Test di regressione:** valutare il ripristino di una suite Playwright completa quando riprenderà lo sviluppo oltre l'MVP.
+4. **Documentazione deploy:** sincronizzare README e roadmap dopo ogni rilascio per mantenere un'unica fonte di verità.
 
-Questa fotografia rappresenta il punto di partenza per rifinire la MVP. Aggiorna il file quando completi un blocco di attività significative, così il team mantiene una visione condivisa della base codice.
+Questa fotografia rappresenta il punto di partenza per rifinire la MVP. Aggiorna il file quando completi un blocco di attività significativo, così il team mantiene una visione condivisa della base codice.

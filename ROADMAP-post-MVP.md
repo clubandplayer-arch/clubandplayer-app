@@ -1,6 +1,6 @@
 # Club&Player — Roadmap post-MVP
 _Stato iniziale: 04/11/2025 — timezone: Europe/Rome_  
-_Base: Next.js 15.5 · React 19 · TypeScript · Supabase (Auth/DB/Storage) · Vercel · Sentry · Playwright · pnpm 10.17.1_
+_Base: Next.js 15.5 · React 19 · TypeScript · Supabase (Auth/DB/Storage) · Vercel · Sentry · Smoke test Node · pnpm 10.17.1_
 
 > Questa roadmap copre il periodo post-MVP. Ogni voce ha un ID progressivo (PM-xx), una checklist eseguibile e criteri di accettazione. Aggiorniamo questo file a ogni passaggio.
 
@@ -109,10 +109,11 @@ Legenda: ☐ todo · ◐ in corso · ✅ fatto
 ---
 
 ### PM-08 — **CI/CD** (E2E “quasi-bloccanti” + artifacts)
-**Obiettivo:** alzare il segnale CI senza bloccare il flusso.  
+**Obiettivo:** alzare il segnale CI senza bloccare il flusso, riutilizzando lo smoke test Node o estendendolo.
 **Checklist**
-- ☐ Upload tracce Playwright come artifact in GitHub Actions.
-- ☐ Modalità “quasi-bloccante”: fallire PR che toccano `app/**` o `api/**` se E2E fallisce (flag).  
+- ☐ Salva log/trace degli smoke test (`pnpm test:e2e`) come artifact GitHub Actions.
+- ☐ Modalità “quasi-bloccante”: fallire PR che toccano `app/**` o `api/**` se gli smoke falliscono (flag).
+- ☐ (Facoltativo) Reintrodurre Playwright per scenari completi se torna necessario.
 **Accettazione**
 - Artifact disponibili per ogni run; policy PR configurabile.
 
