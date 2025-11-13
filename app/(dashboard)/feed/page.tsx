@@ -1,93 +1,81 @@
-// app/(dashboard)/feed/page.tsx
-import Link from 'next/link';
-import FeedComposer from '@/components/feed/FeedComposer';
-// (se questi componenti esistono già nel repo, li teniamo. Se non esistono, puoi commentarli)
-// import FollowedClubs from '@/components/feed/FollowedClubs';
-// import WhoToFollow from '@/components/feed/WhoToFollow';
+'use client';
 
-export const dynamic = 'force-dynamic';
+import { useEffect, useState } from 'react';
+import FeedComposer from '@/components/feed/FeedComposer';
 
 type FeedPost = {
   id: string;
-  content: string;
-  created_at: string;
-  author_id: string | null;
+  content?: string;
+  text?: string;
+  created_at?: string | null;
+  createdAt?: string | null;
+  author_id?: string | null;
+  authorId?: string | null;
 };
 
-async function getPosts(): Promise<FeedPost[]> {
-  const res = await fetch('/api/feed/posts', { cache: 'no-store', credentials: 'include' as any });
-  const json = await res.json().catch(() => ({}));
-  // accetta sia {data:[...]} che {items:[...]}
-  const rows = (json?.data ?? json?.items ?? []) as FeedPost[];
-  return Array.isArray(rows) ? rows : [];
+async function fetchPosts(): Promise<FeedPost[]> {
+  const res = await fetch('/api/feed/posts?limit=20', {
+    credentials: 'include',
+    cache: 'no-store',
+  });
+  if (!res.ok) return [];
+  const j = await res.json().catch(() => ({} as any));
+  const arr = Array.isArray(j?.items ?? j?.data) ? (j.items ?? j.data) : [];
+  return arr.map((p: any) => ({
+    id: p.id,
+    content: p.content ?? p.text ?? '',
+    createdAt: p.created_at ?? p.createdAt ?? null,
+    authorId: p.author_id ?? p.authorId ?? null,
+  }));
 }
 
-async function FeedList() {
-  const posts = await getPosts();
+export default function FeedPage() {
+  const [items, setItems] = useState<FeedPost[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
 
-  if (!posts.length) {
-    return (
-      <div className="rounded-2xl border bg-white p-4 text-sm text-gray-500">
-        Nessun post ancora. Scrivi il primo aggiornamento!
-      </div>
-    );
+  async function reload() {
+    setLoading(true);
+    setErr(null);
+    try {
+      const data = await fetchPosts();
+      setItems(data);
+    } catch (e: any) {
+      setErr(e?.message ?? 'Errore caricamento bacheca');
+    } finally {
+      setLoading(false);
+    }
   }
 
+  useEffect(() => {
+    void reload();
+  }, []);
+
   return (
-    <div className="space-y-3">
-      {posts.map((p) => (
-        <article key={p.id} className="rounded-2xl border bg-white p-4">
-          <div className="text-xs text-gray-500">
-            {new Date(p.created_at).toLocaleString()}
-          </div>
-          <p className="mt-1 whitespace-pre-wrap text-sm">{p.content}</p>
-        </article>
-      ))}
-    </div>
-  );
-}
+    <div className="container mx-auto max-w-4xl px-4 py-4">
+      <section className="mb-6">
+        {/* Quando pubblico, ricarico la lista */}
+        <FeedComposer onPosted={reload} />
+      </section>
 
-export default async function FeedPage() {
-  return (
-    <div className="mx-auto max-w-6xl px-4 py-6">
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Colonna sinistra: profilo rapido (markup leggero per non rompere) */}
-        <aside className="lg:col-span-1 space-y-4">
-          <div className="rounded-2xl border bg-white p-4">
-            <div className="text-sm font-semibold mb-2">Il tuo profilo</div>
-            <div className="text-xs text-gray-600">
-              Aggiorna i tuoi dati per farti trovare dai club.
-            </div>
-            <Link
-              href="/profile"
-              className="inline-block mt-3 text-xs rounded-lg border px-3 py-1 hover:bg-gray-50"
-            >
-              Modifica profilo
-            </Link>
-          </div>
-          {/* Se avevi altri widget a sinistra, rimettili qui */}
-        </aside>
+      {loading && <div>Caricamento…</div>}
+      {err && <div className="text-red-600">{err}</div>}
 
-        {/* Colonna centrale: composer + feed */}
-        <main className="lg:col-span-2 space-y-4">
-          <FeedComposer />
-          <FeedList />
-        </main>
-
-        {/* Colonna destra: suggerimenti / trending */}
-        <aside className="lg:col-span-1 space-y-4">
-          <div className="rounded-2xl border bg-white p-4">
-            <div className="text-sm font-semibold mb-2">?? Trending</div>
-            <div className="text-xs text-gray-600">Contenuti in arrivo.</div>
-          </div>
-
-          {/* Se nel tuo repo esistono, puoi riattivare: */}
-          {/*
-          <FollowedClubs />
-          <WhoToFollow />
-          */}
-        </aside>
-      </div>
+      {!loading && !err && (
+        <ul className="space-y-4">
+          {items.map((p) => (
+            <li key={p.id} className="rounded-xl border p-4">
+              <div className="text-xs text-gray-500">
+                {p.createdAt ? new Date(p.createdAt).toLocaleString() : '—'}
+              </div>
+              <div className="mt-1 whitespace-pre-wrap">{p.content || '—'}</div>
+            </li>
+          ))}
+          {items.length === 0 && (
+            <li className="text-sm text-gray-600">Nessun post ancora.</li>
+          )}
+        </ul>
+      )}
     </div>
   );
 }
