@@ -1,93 +1,78 @@
 'use client';
 
-import { useState, KeyboardEvent } from 'react';
+import { useRouter } from 'next/navigation';
+import { useState, useMemo } from 'react';
 
-type Props = {
-  /** chiamata dopo un post andato a buon fine (es. per ricaricare la lista) */
-  onPosted?: () => void;
-  className?: string;
-  autoFocus?: boolean;
-};
+const MAX = 500;
 
-export default function FeedComposer({ onPosted, className, autoFocus = false }: Props) {
+export default function FeedComposer({ onPosted }: { onPosted?: () => void }) {
+  const router = useRouter();
   const [text, setText] = useState('');
-  const [posting, setPosting] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const canPost = text.trim().length > 0 && !posting;
+  const remaining = useMemo(() => MAX - (text?.length ?? 0), [text]);
+  const disabled = submitting || !text.trim() || remaining < 0;
 
-  async function submit() {
-    if (!canPost) return;
-    setPosting(true);
+  async function handlePost() {
+    if (disabled) return;
+    setSubmitting(true);
     setError(null);
     try {
       const res = await fetch('/api/feed/posts', {
         method: 'POST',
         credentials: 'include',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ text: text.trim() }),
+        body: JSON.stringify({ text }),
       });
 
-      if (!res.ok) {
-        const t = await res.text().catch(() => '');
-        let msg = t;
-        try {
-          const j = JSON.parse(t);
-          msg = j?.error ?? t;
-        } catch {}
-        throw new Error(msg || 'Impossibile pubblicare il post');
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || json?.ok === false) {
+        const msg =
+          json?.error === 'too_long'
+            ? `Testo troppo lungo (max ${MAX} caratteri)`
+            : json?.error === 'empty'
+            ? 'Il testo è vuoto'
+            : json?.error === 'rate_limited'
+            ? 'Stai pubblicando troppo velocemente. Riprova tra pochi secondi.'
+            : 'Impossibile pubblicare';
+        throw new Error(msg);
       }
 
-      // reset e callback di refresh
       setText('');
       onPosted?.();
+      // Forza il refresh della bacheca (server components)
+      router.refresh();
     } catch (e: any) {
-      setError(e?.message || 'Errore durante la pubblicazione');
+      setError(e?.message ?? 'Errore di pubblicazione');
     } finally {
-      setPosting(false);
-    }
-  }
-
-  function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
-    // Invio + Ctrl/Cmd per postare rapidamente
-    if ((e.key === 'Enter' || e.keyCode === 13) && (e.ctrlKey || e.metaKey)) {
-      e.preventDefault();
-      void submit();
+      setSubmitting(false);
     }
   }
 
   return (
-    <div className={className}>
-      <div className="flex items-start gap-3">
-        {/* avatar placeholder */}
-        <div className="h-10 w-10 rounded-full bg-gray-200 shrink-0" />
-
-        <div className="flex-1">
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={onKeyDown}
-            placeholder="Condividi un aggiornamento…"
-            className="w-full resize-y rounded-xl border px-3 py-2 text-sm outline-none focus:ring"
-            rows={3}
-            autoFocus={autoFocus}
-            disabled={posting}
-          />
-          <div className="mt-2 flex items-center justify-between">
-            <div className="text-xs text-gray-500">
-              {posting ? 'Pubblicazione in corso…' : 'Suggerimento: Ctrl/Cmd + Enter per pubblicare'}
-            </div>
-            <button
-              type="button"
-              onClick={submit}
-              disabled={!canPost}
-              className="px-3 py-1.5 text-sm rounded-lg border hover:bg-gray-50 disabled:opacity-50"
-            >
-              {posting ? 'Post…' : 'Post'}
-            </button>
-          </div>
-          {error && <div className="mt-2 text-xs text-red-600">{error}</div>}
+    <div className="rounded-2xl border">
+      <div className="p-4">
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Condividi un aggiornamento…"
+          className="w-full resize-vertical rounded-xl border px-3 py-2 outline-none focus:ring"
+          rows={3}
+          maxLength={MAX + 100} // permetti digitazione ma blocchiamo a MAX lato server
+        />
+        <div className="mt-2 flex items-center justify-between text-xs text-gray-600">
+          <span>{remaining >= 0 ? `${remaining} caratteri rimanenti` : `-${Math.abs(remaining)} oltre il limite`}</span>
+          <button
+            type="button"
+            onClick={handlePost}
+            disabled={disabled}
+            className={`px-3 py-1 rounded border ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}`}
+          >
+            {submitting ? 'Pubblico…' : 'Pubblica'}
+          </button>
         </div>
+        {error && <div className="mt-2 text-xs text-red-600">{error}</div>}
       </div>
     </div>
   );

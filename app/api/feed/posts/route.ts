@@ -39,7 +39,6 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // 🔁 Normalizzazione: esponi sia i nomi nuovi che quelli legacy
   const items =
     (data ?? []).map((r) => ({
       id: r.id,
@@ -51,7 +50,6 @@ export async function GET(req: NextRequest) {
       created_at: r.created_at,
       authorId: r.author_id ?? null,
       author_id: r.author_id ?? null,
-      // facoltativo: la UI vecchia usava "role" per label; lo lasciamo undefined
       role: undefined as unknown as 'club' | 'athlete' | undefined,
     })) || [];
 
@@ -113,7 +111,6 @@ export async function POST(req: NextRequest) {
     const res = NextResponse.json(
       {
         ok: true,
-        // normalizza anche l’item creato
         item: {
           id: data.id,
           text: data.content ?? '',
