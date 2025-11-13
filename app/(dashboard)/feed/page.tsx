@@ -1,6 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import FeedLatest from '@/components/feed/FeedLatest';
+import WhoToFollow from '@/components/feed/WhoToFollow';
+import FeedPosts from '@/components/feed/FeedPosts';
+import ProfileMiniCard from '@/components/profiles/ProfileMiniCard';
 import FeedComposer from '@/components/feed/FeedComposer';
 
 type FeedPost = {
