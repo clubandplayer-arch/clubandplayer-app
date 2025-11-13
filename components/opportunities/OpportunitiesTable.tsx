@@ -2,115 +2,127 @@
 
 import Link from 'next/link';
 import ApplyCell from '@/components/opportunities/ApplyCell';
-import FollowButton from '@/components/clubs/FollowButton';
 import type { Opportunity } from '@/types/opportunity';
 
-type Role = 'athlete' | 'club' | 'guest';
+type Props = {
+  items: Opportunity[];
+  currentUserId?: string | null;
+  userRole?: 'athlete' | 'club' | string | null;
+  onEdit?: (opportunity: Opportunity) => void;
+  onDelete?: (opportunity: Opportunity) => void;
+};
 
-function formatBracket(min: number | null | undefined, max: number | null | undefined) {
-  if (min == null && max == null) return '—';
-  if (min != null && max != null) return `${min}-${max}`;
-  if (min != null) return `${min}+`;
-  if (max != null) return `≤${max}`;
-  return '—';
+function formatLocation(opportunity: Opportunity) {
+  const city = opportunity.city ?? '';
+  const region = (opportunity as any).region ?? '';
+  const country = opportunity.country ?? '';
+  const parts = [city, region, country].filter(Boolean);
+  return parts.length ? parts.join(', ') : '—';
 }
 
-function fmtDate(s?: string | null) {
-  if (!s) return '—';
-  const d = new Date(s);
-  return Number.isNaN(d.valueOf()) ? '—' : d.toLocaleString();
+function formatCreatedAt(opportunity: Opportunity) {
+  const raw =
+    (opportunity as any).created_at ??
+    (opportunity as any).createdAt ??
+    (opportunity as any).created_at ?? null;
+
+  if (!raw) return '—';
+
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return '—';
+
+  return date.toLocaleString();
 }
 
 export default function OpportunitiesTable({
   items,
   currentUserId,
-  userRole = 'guest',
+  userRole,
   onEdit,
   onDelete,
-}: {
-  items: Opportunity[];
-  currentUserId?: string | null;
-  userRole?: Role;
-  onEdit?: (opp: Opportunity) => void;
-  onDelete?: (opp: Opportunity) => void;
-}) {
+}: Props) {
+  const isClub = (userRole ?? '').toLowerCase().includes('club');
+
   if (!items.length) {
     return (
-      <div className="text-sm text-gray-500 py-8">
-        Nessuna opportunità trovata. Prova a rimuovere i filtri.
+      <div className="rounded-2xl border border-dashed p-6 text-center text-sm text-gray-500">
+        Nessuna opportunità trovata.
       </div>
     );
   }
 
   return (
     <div className="overflow-x-auto rounded-2xl border">
-      <table className="min-w-full text-sm">
+      <table className="min-w-full divide-y divide-gray-200 text-sm">
         <thead className="bg-gray-50">
-          <tr className="text-left">
-            <th className="px-4 py-2">Titolo</th>
-            <th className="px-4 py-2">Luogo</th>
-            <th className="px-4 py-2">Sport</th>
-            <th className="px-4 py-2">Ruolo</th>
-            <th className="px-4 py-2">Età</th>
-            <th className="px-4 py-2">Club</th>
-            <th className="px-4 py-2">Creato</th>
-            <th className="px-4 py-2 w-40">Azioni</th>
+          <tr className="text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+            <th className="px-4 py-3">Titolo</th>
+            <th className="px-4 py-3">Ruolo</th>
+            <th className="px-4 py-3">Località</th>
+            <th className="px-4 py-3">Stato</th>
+            <th className="px-4 py-3">Creato</th>
+            <th className="px-4 py-3 text-right">Azioni</th>
           </tr>
         </thead>
-        <tbody>
-          {items.map((o) => {
-            const canEdit = !!currentUserId && o.created_by === currentUserId;
-            const place = [o.city, o.province, o.region, o.country].filter(Boolean).join(', ');
-            const showApply = userRole === 'athlete' && !canEdit;
-            const showFollow = userRole === 'athlete' && !!o.created_by;
+        <tbody className="divide-y divide-gray-100 bg-white">
+          {items.map((opportunity) => {
+            const ownerId =
+              (opportunity as any).owner_id ??
+              (opportunity as any).created_by ??
+              null;
+            const isOwner = !!currentUserId && !!ownerId && ownerId === currentUserId;
+            const status = opportunity.status ?? (opportunity as any).status ?? '—';
 
             return (
-              <tr key={o.id} className="border-t">
-                <td className="px-4 py-2 font-medium">
-                  <Link href={`/opportunities/${o.id}`} className="hover:underline">
-                    {o.title}
+              <tr key={opportunity.id} className="hover:bg-gray-50">
+                <td className="whitespace-nowrap px-4 py-3 font-medium text-gray-900">
+                  <Link
+                    href={`/opportunities/${opportunity.id}`}
+                    className="underline-offset-2 hover:underline"
+                  >
+                    {opportunity.title || `#${opportunity.id}`}
                   </Link>
                 </td>
-                <td className="px-4 py-2 text-gray-600">{place || '—'}</td>
-                <td className="px-4 py-2">{o.sport ?? '—'}</td>
-                <td className="px-4 py-2">{o.role ?? '—'}</td>
-                <td className="px-4 py-2">{formatBracket(o.age_min as any, o.age_max as any)}</td>
-                <td className="px-4 py-2">
-                  <div className="flex items-center gap-2">
-                    <span>{o.club_name ?? '—'}</span>
-                    {showFollow && (
-                      <FollowButton
-                        clubId={o.created_by as string}
-                        clubName={o.club_name ?? undefined}
-                        size="sm"
+                <td className="px-4 py-3 text-gray-700">
+                  {opportunity.role ?? '—'}
+                </td>
+                <td className="px-4 py-3 text-gray-700">{formatLocation(opportunity)}</td>
+                <td className="px-4 py-3">
+                  <span className="inline-flex rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700">
+                    {status}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-gray-700">{formatCreatedAt(opportunity)}</td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center justify-end gap-2">
+                    {!isOwner && (
+                      <ApplyCell
+                        opportunityId={String(opportunity.id)}
+                        ownerId={ownerId}
+                        className="shrink-0"
                       />
                     )}
-                  </div>
-                </td>
-                <td className="px-4 py-2">
-                  {fmtDate((o as any)?.created_at ?? (o as any)?.createdAt ?? null)}
-                </td>
-                <td className="px-4 py-2">
-                  <div className="flex items-center gap-2">
-                    {showApply && (
-                      <ApplyCell opportunityId={o.id} ownerId={o.created_by ?? null} />
-                    )}
-                    {canEdit && (
+
+                    {isOwner && (
                       <>
-                        <button
-                          onClick={() => onEdit?.(o)}
-                          className="px-2 py-1 text-xs rounded border hover:bg-gray-50"
-                          type="button"
-                        >
-                          Modifica
-                        </button>
-                        <button
-                          onClick={() => onDelete?.(o)}
-                          className="px-2 py-1 text-xs rounded border hover:bg-red-50"
-                          type="button"
-                        >
-                          Elimina
-                        </button>
+                        {onEdit && (
+                          <button
+                            type="button"
+                            onClick={() => onEdit(opportunity)}
+                            className="rounded-md border px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-100"
+                          >
+                            Modifica
+                          </button>
+                        )}
+                        {onDelete && (
+                          <button
+                            type="button"
+                            onClick={() => onDelete(opportunity)}
+                            className="rounded-md border border-red-200 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+                          >
+                            Elimina
+                          </button>
+                        )}
                       </>
                     )}
                   </div>
