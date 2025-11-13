@@ -1,12 +1,25 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import FeedLatest from '@/components/feed/FeedLatest';
-import WhoToFollow from '@/components/feed/WhoToFollow';
-import FeedPosts from '@/components/feed/FeedPosts';
-import ProfileMiniCard from '@/components/profiles/ProfileMiniCard';
+import dynamic from 'next/dynamic';
 import FeedComposer from '@/components/feed/FeedComposer';
+
+// carico le sidebar in modo "sicuro" (se il componente esiste lo usa, altrimenti mostra un box vuoto)
+// N.B. ssr: false evita problemi coi Server Components in prod
+const ProfileMiniCard = dynamic(() => import('@/components/profiles/ProfileMiniCard'), {
+  ssr: false,
+  loading: () => <SidebarCard title="Il tuo profilo" />,
+});
+
+const WhoToFollow = dynamic(() => import('@/components/feed/WhoToFollow'), {
+  ssr: false,
+  loading: () => <SidebarCard title="Chi seguire" />,
+});
+
+const FollowedClubs = dynamic(() => import('@/components/feed/FollowedClubs'), {
+  ssr: false,
+  loading: () => <SidebarCard title="Club che segui" />,
+});
 
 type FeedPost = {
   id: string;
@@ -57,30 +70,85 @@ export default function FeedPage() {
   }, []);
 
   return (
-    <div className="container mx-auto max-w-4xl px-4 py-4">
-      <section className="mb-6">
-        {/* Quando pubblico, ricarico la lista */}
-        <FeedComposer onPosted={reload} />
-      </section>
+    <div className="mx-auto max-w-7xl px-4 py-6">
+      {/* layout a 3 colonne: sx (minicard) / centro (composer + post) / dx (suggerimenti) */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Colonna sinistra: mini profilo */}
+        <aside className="lg:col-span-1 space-y-4">
+          <SidebarCard title="Il tuo profilo">
+            {/* Se esiste, il componente reale rimpiazzerà questo blocco via dynamic() */}
+            <ProfileMiniCard />
+          </SidebarCard>
+        </aside>
 
-      {loading && <div>Caricamento…</div>}
-      {err && <div className="text-red-600">{err}</div>}
+        {/* Colonna centrale: composer + feed */}
+        <main className="lg:col-span-1 space-y-4">
+          <div className="rounded-2xl border bg-white p-4">
+            <FeedComposer onPosted={reload} />
+          </div>
 
-      {!loading && !err && (
-        <ul className="space-y-4">
-          {items.map((p) => (
-            <li key={p.id} className="rounded-xl border p-4">
-              <div className="text-xs text-gray-500">
-                {p.createdAt ? new Date(p.createdAt).toLocaleString() : '—'}
+          <div className="space-y-4">
+            {loading && <div className="rounded-2xl border p-4">Caricamento…</div>}
+            {err && <div className="rounded-2xl border p-4 text-red-600">{err}</div>}
+            {!loading && !err && items.length === 0 && (
+              <div className="rounded-2xl border p-4 text-sm text-gray-600">
+                Nessun post ancora.
               </div>
-              <div className="mt-1 whitespace-pre-wrap">{p.content || '—'}</div>
-            </li>
-          ))}
-          {items.length === 0 && (
-            <li className="text-sm text-gray-600">Nessun post ancora.</li>
-          )}
-        </ul>
-      )}
+            )}
+            {!loading &&
+              !err &&
+              items.map((p) => <PostItem key={p.id} post={p} />)}
+          </div>
+        </main>
+
+        {/* Colonna destra: suggerimenti/annunci/club seguiti */}
+        <aside className="lg:col-span-1 space-y-4">
+          <SidebarCard title="Chi seguire">
+            <WhoToFollow />
+          </SidebarCard>
+
+          <SidebarCard title="Club che segui">
+            <FollowedClubs />
+          </SidebarCard>
+
+          <SidebarCard title="In evidenza">
+            {/* Qui in seguito collegheremo le “opportunità più viste” da Supabase */}
+            <div className="text-sm text-gray-600">Prossimamente: opportunità in evidenza</div>
+          </SidebarCard>
+        </aside>
+      </div>
     </div>
+  );
+}
+
+/* ====== UI helpers ====== */
+
+function SidebarCard({
+  title,
+  children,
+}: {
+  title?: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border bg-white">
+      {title ? (
+        <div className="border-b px-4 py-3 text-sm font-semibold">{title}</div>
+      ) : null}
+      <div className="px-4 py-3">{children}</div>
+    </div>
+  );
+}
+
+function PostItem({ post }: { post: FeedPost }) {
+  return (
+    <article className="rounded-2xl border bg-white p-4">
+      <div className="text-xs text-gray-500">
+        {post.createdAt ? new Date(post.createdAt).toLocaleString() : '—'}
+      </div>
+      <div className="mt-1 whitespace-pre-wrap text-sm">
+        {post.content || '—'}
+      </div>
+    </article>
   );
 }
