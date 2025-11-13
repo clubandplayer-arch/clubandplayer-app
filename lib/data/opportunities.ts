@@ -1,4 +1,4 @@
-// lib/data/opportunities.ts
+import { getSupabaseServerClient } from '@/lib/supabase/server';
 import type { Opportunity } from '@/types/opportunity';
 
 export type OppFilters = {
@@ -14,70 +14,114 @@ export type OppFilters = {
 export type Page = { page: number; limit: number };
 export type OppResult = { items: Opportunity[]; total: number; hasMore: boolean };
 
-function inDateRange(d: string, from?: string, to?: string) {
-  if (from && d < from) return false;
-  if (to && d > to) return false;
-  return true;
+const SELECT_FIELDS =
+  'id,title,description,owner_id,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,status,club_name';
+
+function sanitizeLike(value: string) {
+  return value.replace(/[%_]/g, (char) => `\\${char}`);
 }
 
-/** ----- MOCK REPO (attuale) ----- */
-const ROLES: NonNullable<Opportunity['role']>[] = ['player', 'coach', 'staff', 'scout', 'director'] as any;
-const COUNTRIES: NonNullable<Opportunity['country']>[] = ['IT', 'ES', 'FR', 'DE', 'UK', 'US'] as any;
-const CITIES = ['Roma', 'Milano', 'Torino', 'Madrid', 'Paris', 'Berlin', 'London', 'New York'];
-const STATUSES: NonNullable<Opportunity['status']>[] = ['open', 'closed', 'draft', 'archived'] as any;
+function toIsoDate(value?: string | null) {
+  if (!value) return undefined;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return undefined;
+  return date.toISOString();
+}
 
-const startDate = new Date();
-startDate.setMonth(startDate.getMonth() - 6);
-const addDays = (d: Date, days: number) => {
-  const x = new Date(d);
-  x.setDate(x.getDate() + days);
-  return x;
-};
-
-const MOCK: Opportunity[] = Array.from({ length: 123 }).map((_, i) => {
-  const o = {
-    id: String(i + 1),
-    title: `Opportunity ${i + 1} — ${ROLES[i % ROLES.length]} @ ${CITIES[i % CITIES.length]}`,
-    role: ROLES[i % ROLES.length],
-    country: COUNTRIES[i % COUNTRIES.length],
-    city: CITIES[i % CITIES.length],
-    status: STATUSES[i % STATUSES.length],
-    createdAt: addDays(startDate, i).toISOString().slice(0, 10),
+function normalizeRow(row: Record<string, any>): Opportunity {
+  return {
+    id: row.id ?? '',
+    title: row.title ?? '',
+    description: row.description ?? null,
+    owner_id: row.owner_id ?? row.created_by ?? null,
+    created_at: toIsoDate(row.created_at) ?? null,
+    country: row.country ?? null,
+    region: row.region ?? null,
+    province: row.province ?? null,
+    city: row.city ?? null,
+    sport: row.sport ?? null,
+    role: row.role ?? null,
+    required_category: row.required_category ?? null,
+    age_min: row.age_min ?? null,
+    age_max: row.age_max ?? null,
+    status: row.status ?? null,
+    club_name: row.club_name ?? null,
   } as Opportunity;
-  return o;
-});
+}
 
 export const OpportunitiesRepo = {
-  /** MOCK implementation (default) */
-  async search(filters: OppFilters, { page, limit }: Page): Promise<OppResult> {
-    const q = (filters.q ?? '').toLowerCase();
-
-    let arr = MOCK.slice();
-
-    if (q) {
-      arr = arr.filter(
-        (o) => o.title.toLowerCase().includes(q) || (o.city ?? '').toLowerCase().includes(q)
-      );
+  async search(filters: OppFilters, page: Page): Promise<OppResult> {
+    try {
+      return await this.searchDB(filters, page);
+    } catch (error) {
+      console.error('OpportunitiesRepo.search fallback to empty result', error);
+      return { items: [], total: 0, hasMore: false };
     }
-    if (filters.role) arr = arr.filter((o) => (o.role ?? '') === filters.role);
-    if (filters.country) arr = arr.filter((o) => (o.country ?? '') === filters.country);
-    if (filters.status) arr = arr.filter((o) => (o.status ?? '') === filters.status);
-    if (filters.city)
-      arr = arr.filter((o) => (o.city ?? '').toLowerCase().includes(filters.city!.toLowerCase()));
-    if (filters.from || filters.to)
-      arr = arr.filter((o) => inDateRange((o.createdAt ?? '') as string, filters.from, filters.to));
-
-    const total = arr.length;
-    const start = (page - 1) * limit;
-    const end = start + limit;
-    const items = arr.slice(start, end);
-    return { items, total, hasMore: end < total };
   },
 
-  /** DB implementation (stub): sostituisci con la tua query reale */
-  async searchDB(filters: OppFilters, { page, limit }: Page): Promise<OppResult> {
-    // TODO: rimpiazza con ORM/SQL; assicurati di restituire la stessa shape
-    return this.search(filters, { page, limit }); // fallback MOCK
+  async searchDB(filters: OppFilters, page: Page): Promise<OppResult> {
+    const supabase = await getSupabaseServerClient();
+
+    const safePage = Number.isFinite(page.page) && page.page > 0 ? Math.floor(page.page) : 1;
+    const safeLimit =
+      Number.isFinite(page.limit) && page.limit > 0 ? Math.min(Math.floor(page.limit), 100) : 20;
+
+    const offset = (safePage - 1) * safeLimit;
+    const to = offset + safeLimit - 1;
+
+    let query = supabase
+      .from('opportunities')
+      .select(SELECT_FIELDS, { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(offset, to);
+
+    const q = filters.q?.trim();
+    if (q) {
+      const like = sanitizeLike(q);
+      query = query.or(`title.ilike.%${like}%,city.ilike.%${like}%`);
+    }
+
+    const role = filters.role?.trim();
+    if (role) {
+      query = query.eq('role', role);
+    }
+
+    const country = filters.country?.trim();
+    if (country) {
+      query = query.eq('country', country);
+    }
+
+    const status = filters.status?.trim();
+    if (status) {
+      query = query.eq('status', status);
+    }
+
+    const city = filters.city?.trim();
+    if (city) {
+      query = query.ilike('city', `%${sanitizeLike(city)}%`);
+    }
+
+    const from = filters.from?.trim();
+    if (from) {
+      query = query.gte('created_at', from);
+    }
+
+    const toDate = filters.to?.trim();
+    if (toDate) {
+      query = query.lte('created_at', toDate);
+    }
+
+    const { data, count, error } = await query;
+
+    if (error) {
+      throw error;
+    }
+
+    const items = (data ?? []).map((row) => normalizeRow(row as Record<string, any>));
+    const total = typeof count === 'number' ? count : items.length;
+    const hasMore = total > offset + items.length;
+
+    return { items, total, hasMore };
   },
 };
 
