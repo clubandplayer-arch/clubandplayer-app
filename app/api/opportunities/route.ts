@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { jsonError, withAuth } from '@/lib/api/auth';
+import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
 
@@ -160,11 +161,24 @@ export const POST = withAuth(async (req, { supabase, user }) => {
       .eq('id', user.id)
       .maybeSingle();
 
+    let profileRow = (profile ?? null) as ProfileRow | null;
     if (profileError) {
-      console.error('[POST /api/opportunities] profile error', profileError);
-      return jsonError('Impossibile verificare il profilo', 500);
+      console.warn('[POST /api/opportunities] profile fetch denied, fallback admin', profileError);
+      const admin = getSupabaseAdminClient();
+      const { data: adminProfile, error: adminError } = await admin
+        .from('profiles')
+        .select('id, account_type, display_name, full_name, club_name')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (adminError) {
+        console.error('[POST /api/opportunities] admin profile error', adminError);
+        return jsonError('Impossibile verificare il profilo', 500);
+      }
+
+      profileRow = (adminProfile ?? null) as ProfileRow | null;
     }
-    const profileRow = (profile ?? null) as ProfileRow | null;
+
     if (!profileRow || profileRow.account_type !== 'club') {
       return jsonError('Solo i club possono creare un’opportunità', 403);
     }
