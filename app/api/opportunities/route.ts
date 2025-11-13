@@ -1,72 +1,105 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { rateLimit } from '@/lib/api/rateLimit';
-import { jsonError } from '@/lib/api/auth';
 
 export const runtime = 'nodejs';
 
+/** Crea un client Supabase lato server (env di Vercel + local) */
 function getSupabase() {
-  const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
-  const anon = process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
+  const url =
+    process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+  const anon =
+    process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
   if (!url || !anon) throw new Error('Supabase env missing');
   return createClient(url, anon);
 }
 
-const SELECT =
-  'id,title,description,owner_id,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name';
+function intParam(sp: URLSearchParams, key: string, fallback: number, min = 1, max = 1000) {
+  const raw = sp.get(key);
+  const n = raw ? Number.parseInt(raw, 10) : NaN;
+  if (Number.isNaN(n)) return fallback;
+  return Math.min(Math.max(n, min), max);
+}
 
 export async function GET(req: NextRequest) {
   try {
-    await rateLimit(req as any, { key: 'opps:GET', limit: 60, window: '1m' } as any);
-
-    const supabase = getSupabase();
     const { searchParams } = new URL(req.url);
 
-    const q = searchParams.get('q')?.trim();
-    const sport = searchParams.get('sport')?.trim();
-    const role = searchParams.get('role')?.trim();
-    const country = searchParams.get('country')?.trim();
-    const region = searchParams.get('region')?.trim();
-    const province = searchParams.get('province')?.trim();
-    const city = searchParams.get('city')?.trim();
-    const sort = (searchParams.get('sort') || 'latest').toLowerCase(); // latest | oldest
-    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
-    const pageSize = Math.min(100, Math.max(1, parseInt(searchParams.get('pageSize') || '20', 10)));
+    // query params
+    const q = (searchParams.get('q') ?? '').trim();
+    const role = (searchParams.get('role') ?? '').trim();
+    const status = (searchParams.get('status') ?? '').trim();
+    const country = (searchParams.get('country') ?? '').trim();
+    const city = (searchParams.get('city') ?? '').trim();
+    const from = (searchParams.get('from') ?? '').trim(); // es. 2025-01-01
+    const to = (searchParams.get('to') ?? '').trim();     // es. 2025-12-31
 
-    let query = getSupabase()
+    const page = intParam(searchParams, 'page', 1, 1, 10_000);
+    const limit = intParam(searchParams, 'limit', 20, 1, 100);
+    const offset = (page - 1) * limit;
+    const toIdx = offset + limit - 1;
+
+    const supabase = getSupabase();
+
+    const SELECT =
+      'id,title,description,owner_id,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name';
+
+    // base query con count esatto per la paginazione
+    let qb = supabase
       .from('opportunities')
-      .select(SELECT, { count: 'exact' });
+      .select(SELECT, { count: 'exact' })
+      .order('created_at', { ascending: false });
 
-    if (q) {
-      // match su titolo o descrizione
-      query = query.or(`title.ilike.%${q}%,description.ilike.%${q}%`);
+    // filtri esatti
+    if (role) qb = qb.eq('role', role);
+    if (status) qb = qb.eq('status', status);
+    if (country) qb = qb.eq('country', country);
+    if (city) qb = qb.ilike('city', `%${city}%`);
+
+    // ricerca "q": match su più colonne (case-insensitive)
+    if (q.length >= 2) {
+      const like = `%${q}%`;
+      qb = qb.or(
+        [
+          `title.ilike.${like}`,
+          `description.ilike.${like}`,
+          `city.ilike.${like}`,
+          `province.ilike.${like}`,
+          `region.ilike.${like}`,
+          `club_name.ilike.${like}`,
+        ].join(',')
+      );
     }
-    if (sport) query = query.eq('sport', sport);
-    if (role) query = query.eq('role', role);
-    if (country) query = query.eq('country', country);
-    if (region) query = query.eq('region', region);
-    if (province) query = query.eq('province', province);
-    if (city) query = query.eq('city', city);
 
-    query = query.order('created_at', { ascending: sort === 'oldest' });
+    // range temporale
+    if (from) qb = qb.gte('created_at', from);
+    if (to) qb = qb.lte('created_at', to);
 
-    const from = (page - 1) * pageSize;
-    const to = from + pageSize - 1;
+    // paginazione
+    qb = qb.range(offset, toIdx);
 
-    const { data, count, error } = await query.range(from, to);
-    if (error) return jsonError(error.message, 400);
+    const { data, count, error } = await qb;
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    const total = count ?? 0;
+    const totalPages = Math.max(1, Math.ceil(total / limit));
 
     return NextResponse.json({
       data: data ?? [],
       meta: {
-        total: count ?? 0,
+        total,
         page,
-        pageSize,
-        totalPages: count ? Math.max(1, Math.ceil(count / pageSize)) : 1,
-        sort,
+        pageSize: limit,   // <<< ora rispetta ?limit=10
+        totalPages,
+        sort: 'latest',
       },
     });
   } catch (err: any) {
-    return jsonError(err?.message || 'Unexpected error', 500);
+    return NextResponse.json(
+      { error: err?.message ?? 'Unexpected error' },
+      { status: 500 }
+    );
   }
 }
