@@ -8,7 +8,7 @@ import FeedComposer from '@/components/feed/FeedComposer';
 // N.B. ssr: false evita problemi coi Server Components in prod
 const ProfileMiniCard = dynamic(() => import('@/components/profiles/ProfileMiniCard'), {
   ssr: false,
-  loading: () => <SidebarCard title="Il tuo profilo" />,
+  loading: () => <ProfileCardFallback />,
 });
 
 const WhoToFollow = dynamic(() => import('@/components/feed/WhoToFollow'), {
@@ -75,17 +75,16 @@ export default function FeedPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[27%_46%_27%]">
         {/* Colonna sinistra: mini profilo */}
         <aside className="space-y-4">
-          <SidebarCard title="Il tuo profilo">
+          <div className="space-y-3">
+            <div className="px-1 text-sm font-semibold text-gray-700">Il tuo profilo</div>
             {/* Se esiste, il componente reale rimpiazzerà questo blocco via dynamic() */}
             <ProfileMiniCard />
-          </SidebarCard>
+          </div>
         </aside>
 
         {/* Colonna centrale: composer + feed */}
         <main className="space-y-4">
-          <div className="rounded-2xl border bg-white p-4">
-            <FeedComposer onPosted={reload} />
-          </div>
+          <FeedComposer onPosted={reload} />
 
           <div className="space-y-4">
             {loading && <div className="rounded-2xl border p-4">Caricamento…</div>}
@@ -136,6 +135,21 @@ function SidebarCard({
         <div className="border-b px-4 py-3 text-sm font-semibold">{title}</div>
       ) : null}
       <div className="px-4 py-3">{children}</div>
+    </div>
+  );
+}
+
+function ProfileCardFallback() {
+  return (
+    <div className="rounded-2xl border bg-white p-4 shadow-sm">
+      <div className="flex items-start gap-3">
+        <div className="h-24 w-[4.8rem] flex-shrink-0 animate-pulse rounded-xl bg-gray-200" />
+        <div className="flex-1 space-y-3">
+          <div className="h-4 w-1/2 animate-pulse rounded bg-gray-200" />
+          <div className="h-3 w-3/4 animate-pulse rounded bg-gray-200" />
+          <div className="h-3 w-2/3 animate-pulse rounded bg-gray-200" />
+        </div>
+      </div>
     </div>
   );
 }

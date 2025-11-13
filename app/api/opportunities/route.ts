@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { jsonError, withAuth } from '@/lib/api/auth';
 
 export const runtime = 'nodejs';
 
@@ -19,6 +20,22 @@ function intParam(sp: URLSearchParams, key: string, fallback: number, min = 1, m
   if (Number.isNaN(n)) return fallback;
   return Math.min(Math.max(n, min), max);
 }
+
+const SELECT_COLUMNS =
+  'id,title,description,owner_id,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name';
+
+function cleanText(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+type ProfileRow = {
+  account_type?: string | null;
+  club_name?: string | null;
+  display_name?: string | null;
+  full_name?: string | null;
+};
 
 export async function GET(req: NextRequest) {
   try {
@@ -40,13 +57,10 @@ export async function GET(req: NextRequest) {
 
     const supabase = getSupabase();
 
-    const SELECT =
-      'id,title,description,owner_id,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name';
-
     // base query con count esatto per la paginazione
     let qb = supabase
       .from('opportunities')
-      .select(SELECT, { count: 'exact' })
+      .select(SELECT_COLUMNS, { count: 'exact' })
       .order('created_at', { ascending: false });
 
     // filtri esatti
@@ -103,3 +117,97 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+
+export const POST = withAuth(async (req, { supabase, user }) => {
+  try {
+    const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
+    if (!body) {
+      return jsonError('Payload non valido', 400);
+    }
+
+    const title = cleanText(body.title);
+    if (!title) return jsonError('Titolo obbligatorio', 400);
+
+    const description = cleanText(body.description);
+    const country = cleanText(body.country);
+    const region = cleanText(body.region);
+    const province = cleanText(body.province);
+    const city = cleanText(body.city);
+    const sport = cleanText(body.sport);
+    const role = cleanText(body.role);
+    const requiredCategory = cleanText(body.required_category);
+
+    const genderRaw = cleanText(body.gender);
+    const allowedGenders = new Set(['male', 'female', 'mixed']);
+    const gender = genderRaw && allowedGenders.has(genderRaw)
+      ? (genderRaw as 'male' | 'female' | 'mixed')
+      : null;
+    if (!gender) return jsonError('Genere obbligatorio', 400);
+
+    const ageBracket = cleanText(body.age_bracket);
+    const rawAgeMin = body.age_min;
+    const rawAgeMax = body.age_max;
+    const ageMin = typeof rawAgeMin === 'number' && Number.isFinite(rawAgeMin)
+      ? rawAgeMin
+      : null;
+    const ageMax = typeof rawAgeMax === 'number' && Number.isFinite(rawAgeMax)
+      ? rawAgeMax
+      : null;
+
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, account_type, display_name, full_name, club_name')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (profileError) {
+      console.error('[POST /api/opportunities] profile error', profileError);
+      return jsonError('Impossibile verificare il profilo', 500);
+    }
+    const profileRow = (profile ?? null) as ProfileRow | null;
+    if (!profileRow || profileRow.account_type !== 'club') {
+      return jsonError('Solo i club possono creare un’opportunità', 403);
+    }
+
+    const clubName =
+      cleanText(profileRow.club_name) ??
+      cleanText(profileRow.display_name) ??
+      cleanText(profileRow.full_name);
+
+    const payload = {
+      title,
+      description,
+      country,
+      region,
+      province,
+      city,
+      sport,
+      role,
+      required_category: requiredCategory,
+      gender,
+      age_bracket: ageBracket,
+      age_min: ageMin,
+      age_max: ageMax,
+      owner_id: user.id,
+      created_by: user.id,
+      club_name: clubName,
+      status: cleanText(body.status) ?? 'open',
+    };
+
+    const { data, error } = await supabase
+      .from('opportunities')
+      .insert(payload)
+      .select(SELECT_COLUMNS)
+      .single();
+
+    if (error) {
+      console.error('[POST /api/opportunities] insert error', error);
+      return jsonError(error.message || 'Errore creazione opportunità', 500);
+    }
+
+    return NextResponse.json({ data });
+  } catch (err: any) {
+    console.error('[POST /api/opportunities] unexpected', err);
+    return jsonError(err?.message || 'Unexpected error', 500);
+  }
+});
