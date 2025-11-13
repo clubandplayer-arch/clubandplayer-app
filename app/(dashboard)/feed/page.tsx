@@ -72,9 +72,9 @@ export default function FeedPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-6">
       {/* layout a 3 colonne: sx (minicard) / centro (composer + post) / dx (suggerimenti) */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[27%_46%_27%]">
         {/* Colonna sinistra: mini profilo */}
-        <aside className="lg:col-span-1 space-y-4">
+        <aside className="space-y-4">
           <SidebarCard title="Il tuo profilo">
             {/* Se esiste, il componente reale rimpiazzerà questo blocco via dynamic() */}
             <ProfileMiniCard />
@@ -82,7 +82,7 @@ export default function FeedPage() {
         </aside>
 
         {/* Colonna centrale: composer + feed */}
-        <main className="lg:col-span-1 space-y-4">
+        <main className="space-y-4">
           <div className="rounded-2xl border bg-white p-4">
             <FeedComposer onPosted={reload} />
           </div>
@@ -102,7 +102,7 @@ export default function FeedPage() {
         </main>
 
         {/* Colonna destra: suggerimenti/annunci/club seguiti */}
-        <aside className="lg:col-span-1 space-y-4">
+        <aside className="space-y-4">
           <SidebarCard title="Chi seguire">
             <WhoToFollow />
           </SidebarCard>
