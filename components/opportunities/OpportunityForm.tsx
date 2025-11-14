@@ -1,11 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { Opportunity } from '@/types/opportunity';
 import { AGE_BRACKETS, type AgeBracket, SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
-import { COUNTRIES } from '@/lib/opps/geo';
-import { normalizeOpportunityGender } from '@/lib/opps/gender';
-import { supabaseBrowser } from '@/lib/supabaseBrowser';
+import { COUNTRIES, ITALY_REGIONS, PROVINCES_BY_REGION, CITIES_BY_PROVINCE } from '@/lib/opps/geo';
 
 type Gender = 'male' | 'female' | 'mixed';
 
@@ -14,14 +12,6 @@ const GENDERS: Array<{ value: Gender; label: string }> = [
   { value: 'female', label: 'Femminile' },
   { value: 'mixed', label: 'Misto' },
 ];
-
-type RegionRow = { id: number; name: string };
-type ProvinceRow = { id: number; name: string; region_id: number };
-type MunicipalityRow = { id: number; name: string; province_id: number };
-
-function normalize(value: string | null | undefined) {
-  return (value ?? '').trim().toLocaleLowerCase('it');
-}
 
 function rangeFromBracket(b: AgeBracket | '' | undefined): { age_min: number | null; age_max: number | null } {
   if (!b) return { age_min: null, age_max: null };
@@ -67,192 +57,24 @@ export default function OpportunityForm({
   const [description, setDescription] = useState(initial?.description ?? '');
 
   // Località
-  const supabase = useMemo(() => supabaseBrowser(), []);
   const [countryCode, setCountryCode] = useState<string>(
     COUNTRIES.find((c) => c.label === initial?.country)?.code ?? 'IT'
   );
   const [countryFree, setCountryFree] = useState<string>(
     initial?.country && !COUNTRIES.find((c) => c.label === initial.country) ? initial.country : ''
   );
-  const [regionLabel, setRegionLabel] = useState<string>(initial?.region ?? '');
-  const [provinceLabel, setProvinceLabel] = useState<string>(initial?.province ?? '');
-  const [cityLabel, setCityLabel] = useState<string>(initial?.city ?? '');
+  const [region, setRegion] = useState<string>(initial?.region ?? '');
+  const [province, setProvince] = useState<string>(initial?.province ?? '');
+  const [city, setCity] = useState<string>(initial?.city ?? '');
 
-  const [regionId, setRegionId] = useState<number | null>(null);
-  const [provinceId, setProvinceId] = useState<number | null>(null);
-  const [municipalityId, setMunicipalityId] = useState<number | null>(null);
-
-  const [regions, setRegions] = useState<RegionRow[]>([]);
-  const [provinces, setProvinces] = useState<ProvinceRow[]>([]);
-  const [municipalities, setMunicipalities] = useState<MunicipalityRow[]>([]);
-  const [loadingRegions, setLoadingRegions] = useState(false);
-  const [loadingProvinces, setLoadingProvinces] = useState(false);
-  const [loadingCities, setLoadingCities] = useState(false);
-
-  const initialRegionName = initial?.region ?? null;
-  const initialProvinceName = initial?.province ?? null;
-  const initialCityName = initial?.city ?? null;
-
-  const initialRegionApplied = useRef(false);
-  const initialProvinceApplied = useRef(false);
-  const initialCityApplied = useRef(false);
-
-  useEffect(() => {
-    if (countryCode !== 'IT') {
-      setRegions([]);
-      setRegionId(null);
-      setLoadingRegions(false);
-      return;
-    }
-
-    let ignore = false;
-    setLoadingRegions(true);
-    supabase
-      .from('regions')
-      .select('id,name')
-      .order('name')
-      .then(({ data, error }) => {
-        if (ignore) return;
-        if (!error && data) {
-          setRegions(data);
-        } else {
-          setRegions([]);
-        }
-        setLoadingRegions(false);
-      });
-
-    return () => {
-      ignore = true;
-    };
-  }, [supabase, countryCode]);
-
-  useEffect(() => {
-    if (countryCode !== 'IT') return;
-    if (!regions.length) return;
-    if (initialRegionApplied.current) return;
-
-    if (initialRegionName) {
-      const match = regions.find((r) => normalize(r.name) === normalize(initialRegionName));
-      if (match) {
-        setRegionId(match.id);
-        setRegionLabel(match.name);
-      }
-    }
-
-    initialRegionApplied.current = true;
-  }, [regions, countryCode, initialRegionName]);
-
-  useEffect(() => {
-    if (countryCode !== 'IT') {
-      setProvinces([]);
-      setProvinceId(null);
-      setMunicipalities([]);
-      setMunicipalityId(null);
-      setLoadingProvinces(false);
-      setLoadingCities(false);
-      return;
-    }
-
-    if (!regionId) {
-      setProvinces([]);
-      setProvinceId(null);
-      setMunicipalities([]);
-      setMunicipalityId(null);
-      setLoadingProvinces(false);
-      setLoadingCities(false);
-      return;
-    }
-
-    let ignore = false;
-    setLoadingProvinces(true);
-    supabase
-      .from('provinces')
-      .select('id,name,region_id')
-      .eq('region_id', regionId)
-      .order('name')
-      .then(({ data, error }) => {
-        if (ignore) return;
-        if (!error && data) {
-          setProvinces(data);
-        } else {
-          setProvinces([]);
-        }
-        setLoadingProvinces(false);
-      });
-
-    return () => {
-      ignore = true;
-    };
-  }, [supabase, countryCode, regionId]);
-
-  useEffect(() => {
-    if (countryCode !== 'IT') return;
-    if (!provinces.length) return;
-    if (initialProvinceApplied.current) return;
-
-    if (initialProvinceName) {
-      const match = provinces.find((p) => normalize(p.name) === normalize(initialProvinceName));
-      if (match) {
-        setProvinceId(match.id);
-        setProvinceLabel(match.name);
-      }
-    }
-
-    initialProvinceApplied.current = true;
-  }, [provinces, countryCode, initialProvinceName]);
-
-  useEffect(() => {
-    if (countryCode !== 'IT') {
-      setMunicipalities([]);
-      setMunicipalityId(null);
-      setLoadingCities(false);
-      return;
-    }
-
-    if (!provinceId) {
-      setMunicipalities([]);
-      setMunicipalityId(null);
-      setLoadingCities(false);
-      return;
-    }
-
-    let ignore = false;
-    setLoadingCities(true);
-    supabase
-      .from('municipalities')
-      .select('id,name,province_id')
-      .eq('province_id', provinceId)
-      .order('name')
-      .then(({ data, error }) => {
-        if (ignore) return;
-        if (!error && data) {
-          setMunicipalities(data);
-        } else {
-          setMunicipalities([]);
-        }
-        setLoadingCities(false);
-      });
-
-    return () => {
-      ignore = true;
-    };
-  }, [supabase, countryCode, provinceId]);
-
-  useEffect(() => {
-    if (countryCode !== 'IT') return;
-    if (!municipalities.length) return;
-    if (initialCityApplied.current) return;
-
-    if (initialCityName) {
-      const match = municipalities.find((m) => normalize(m.name) === normalize(initialCityName));
-      if (match) {
-        setMunicipalityId(match.id);
-        setCityLabel(match.name);
-      }
-    }
-
-    initialCityApplied.current = true;
-  }, [municipalities, countryCode, initialCityName]);
+  const provinces: string[] = useMemo(
+    () => (countryCode === 'IT' ? PROVINCES_BY_REGION[region] ?? [] : []),
+    [countryCode, region]
+  );
+  const cities: string[] = useMemo(
+    () => (countryCode === 'IT' ? CITIES_BY_PROVINCE[province] ?? [] : []),
+    [countryCode, province]
+  );
 
   // Sport/ruolo
   const [sport, setSport] = useState<string>(initial?.sport || 'Calcio');
@@ -260,9 +82,7 @@ export default function OpportunityForm({
   const [role, setRole] = useState<string>(initial?.role ?? '');
 
   // Genere (OBBLIGATORIO)
-  const [gender, setGender] = useState<Gender | ''>(
-    normalizeOpportunityGender(initial?.gender) ?? ''
-  );
+  const [gender, setGender] = useState<Gender | ''>((initial?.gender as Gender) ?? '');
 
   // Età (mappa ⇄ age_min/age_max)
   const [ageBracket, setAgeBracket] = useState<AgeBracket | ''>(() =>
@@ -292,37 +112,17 @@ export default function OpportunityForm({
 
     setSaving(true);
     try {
-      const resolvedRegion =
-        countryCode === 'IT'
-          ? regionId != null
-            ? regions.find((r) => r.id === regionId)?.name ?? (regionLabel.trim() || null)
-            : regionLabel.trim() || null
-          : regionLabel.trim() || null;
-
-      const resolvedProvince =
-        countryCode === 'IT'
-          ? provinceId != null
-            ? provinces.find((p) => p.id === provinceId)?.name ?? (provinceLabel.trim() || null)
-            : provinceLabel.trim() || null
-          : provinceLabel.trim() || null;
-
-      const resolvedCity =
-        countryCode === 'IT'
-          ? municipalityId != null
-            ? municipalities.find((m) => m.id === municipalityId)?.name ?? (cityLabel.trim() || null)
-            : cityLabel.trim() || null
-          : cityLabel.trim() || null;
-
       const payload = {
         title: t,
         description: (description || '').trim() || null,
         country: effectiveCountry(),
-        region: resolvedRegion,
-        province: resolvedProvince,
-        city: resolvedCity,
+        region: region || null,
+        province: countryCode === 'IT' ? province || null : null,
+        city: (city || '').trim() || null,
         sport,
         role: role || null,
         gender: gender as Gender,
+        age_bracket: ageBracket || undefined,
         age_min,
         age_max,
       };
@@ -349,12 +149,20 @@ export default function OpportunityForm({
   function onChangeCountry(code: string) {
     setCountryCode(code);
     setCountryFree('');
-    setRegionLabel('');
-    setProvinceLabel('');
-    setCityLabel('');
-    setRegionId(null);
-    setProvinceId(null);
-    setMunicipalityId(null);
+    if (code !== 'IT') {
+      setRegion('');
+      setProvince('');
+      setCity('');
+    }
+  }
+  function onChangeRegion(r: string) {
+    setRegion(r);
+    setProvince('');
+    setCity('');
+  }
+  function onChangeProvince(p: string) {
+    setProvince(p);
+    setCity('');
   }
 
   return (
@@ -408,105 +216,69 @@ export default function OpportunityForm({
             {countryCode === 'IT' ? (
               <select
                 className="w-full rounded-xl border px-3 py-2"
-                value={regionId ?? ''}
-                onChange={(e) => {
-                  const rid = e.target.value ? Number(e.target.value) : null;
-                  setRegionId(rid);
-                  const label = rid ? regions.find((r) => r.id === rid)?.name ?? '' : '';
-                  setRegionLabel(label);
-                  setProvinceId(null);
-                  setProvinceLabel('');
-                  setMunicipalityId(null);
-                  setCityLabel('');
-                }}
-                disabled={loadingRegions && regions.length === 0}
+                value={region}
+                onChange={(e) => onChangeRegion(e.target.value)}
               >
-                <option value="">{loadingRegions ? 'Caricamento…' : '—'}</option>
-                {regions.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name}
+                <option value="">—</option>
+                {ITALY_REGIONS.map((r: string) => (
+                  <option key={r} value={r}>
+                    {r}
                   </option>
                 ))}
               </select>
             ) : (
               <input
                 className="w-full rounded-xl border px-3 py-2"
-                value={regionLabel}
-                onChange={(e) => setRegionLabel(e.target.value)}
+                value={region ?? ''}
+                onChange={(e) => setRegion(e.target.value)}
               />
             )}
           </div>
 
           <div>
             <label className="block text-sm font-medium mb-1">Provincia</label>
-            {countryCode === 'IT' ? (
+            {countryCode === 'IT' && provinces.length > 0 ? (
               <select
                 className="w-full rounded-xl border px-3 py-2"
-                value={provinceId ?? ''}
-                onChange={(e) => {
-                  const pid = e.target.value ? Number(e.target.value) : null;
-                  setProvinceId(pid);
-                  const label = pid ? provinces.find((p) => p.id === pid)?.name ?? '' : '';
-                  setProvinceLabel(label);
-                  setMunicipalityId(null);
-                  setCityLabel('');
-                }}
-                disabled={!regionId || loadingProvinces}
+                value={province}
+                onChange={(e) => onChangeProvince(e.target.value)}
               >
-                <option value="">
-                  {!regionId ? 'Seleziona la regione…' : loadingProvinces ? 'Caricamento…' : '—'}
-                </option>
-                {provinces.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
+                <option value="">—</option>
+                {provinces.map((p: string) => (
+                  <option key={p} value={p}>
+                    {p}
                   </option>
                 ))}
               </select>
             ) : (
               <input
                 className="w-full rounded-xl border px-3 py-2"
-                value={provinceLabel}
-                onChange={(e) => setProvinceLabel(e.target.value)}
+                value={province ?? ''}
+                onChange={(e) => setProvince(e.target.value)}
               />
             )}
           </div>
 
           <div>
             <label className="block text-sm font-medium mb-1">Città</label>
-            {countryCode === 'IT' ? (
+            {countryCode === 'IT' && cities.length > 0 ? (
               <select
                 className="w-full rounded-xl border px-3 py-2"
-                value={municipalityId ?? ''}
-                onChange={(e) => {
-                  const mid = e.target.value ? Number(e.target.value) : null;
-                  setMunicipalityId(mid);
-                  const label = mid
-                    ? municipalities.find((m) => m.id === mid)?.name ?? ''
-                    : '';
-                  setCityLabel(label);
-                }}
-                disabled={!provinceId || loadingCities}
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
               >
-                <option value="">
-                  {!provinceId
-                    ? 'Seleziona la provincia…'
-                    : loadingCities
-                      ? 'Caricamento…'
-                      : municipalities.length
-                        ? '—'
-                        : 'Nessun risultato'}
-                </option>
-                {municipalities.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
+                <option value="">—</option>
+                {cities.map((c: string) => (
+                  <option key={c} value={c}>
+                    {c}
                   </option>
                 ))}
               </select>
             ) : (
               <input
                 className="w-full rounded-xl border px-3 py-2"
-                value={cityLabel}
-                onChange={(e) => setCityLabel(e.target.value)}
+                value={city ?? ''}
+                onChange={(e) => setCity(e.target.value)}
               />
             )}
           </div>
@@ -613,3 +385,4 @@ export default function OpportunityForm({
     </form>
   );
 }
+
