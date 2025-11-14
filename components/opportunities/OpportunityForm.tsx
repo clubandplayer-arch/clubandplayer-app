@@ -87,23 +87,7 @@ export default function OpportunityForm({
   const [loadingRegions, setLoadingRegions] = useState(false);
   const [loadingProvinces, setLoadingProvinces] = useState(false);
   const [loadingCities, setLoadingCities] = useState(false);
-  const [cityFilter, setCityFilter] = useState('');
-
-  const filteredMunicipalities = useMemo(() => {
-    const q = cityFilter.trim().toLocaleLowerCase('it');
-    if (!q) return municipalities;
-    const filtered = municipalities.filter((m) =>
-      m.name.toLocaleLowerCase('it').includes(q)
-    );
-    if (
-      municipalityId != null &&
-      !filtered.some((m) => m.id === municipalityId)
-    ) {
-      const selected = municipalities.find((m) => m.id === municipalityId);
-      if (selected) filtered.unshift(selected);
-    }
-    return filtered;
-  }, [municipalities, cityFilter, municipalityId]);
+  const filteredMunicipalities = municipalities;
 
   const initialRegionName = initial?.region ?? null;
   const initialProvinceName = initial?.province ?? null;
@@ -493,43 +477,34 @@ export default function OpportunityForm({
           <div>
             <label className="block text-sm font-medium mb-1">Città</label>
             {countryCode === 'IT' ? (
-              <>
-                <input
-                  className="w-full rounded-xl border px-3 py-2"
-                  placeholder={provinceId ? 'Filtra i comuni…' : 'Seleziona prima la provincia'}
-                  value={cityFilter}
-                  onChange={(e) => setCityFilter(e.target.value)}
-                  disabled={!provinceId}
-                />
-                <select
-                  className="mt-2 w-full rounded-xl border px-3 py-2"
-                  value={municipalityId ?? ''}
-                  onChange={(e) => {
-                    const mid = e.target.value ? Number(e.target.value) : null;
-                    setMunicipalityId(mid);
-                    const label = mid
-                      ? municipalities.find((m) => m.id === mid)?.name ?? ''
-                      : '';
-                    setCityLabel(label);
-                  }}
-                  disabled={!provinceId || loadingCities}
-                >
-                  <option value="">
-                    {!provinceId
-                      ? 'Seleziona la provincia…'
-                      : loadingCities
-                        ? 'Caricamento…'
-                        : filteredMunicipalities.length
-                          ? '—'
-                          : 'Nessun risultato'}
+              <select
+                className="w-full rounded-xl border px-3 py-2"
+                value={municipalityId ?? ''}
+                onChange={(e) => {
+                  const mid = e.target.value ? Number(e.target.value) : null;
+                  setMunicipalityId(mid);
+                  const label = mid
+                    ? municipalities.find((m) => m.id === mid)?.name ?? ''
+                    : '';
+                  setCityLabel(label);
+                }}
+                disabled={!provinceId || loadingCities}
+              >
+                <option value="">
+                  {!provinceId
+                    ? 'Seleziona la provincia…'
+                    : loadingCities
+                      ? 'Caricamento…'
+                      : filteredMunicipalities.length
+                        ? '—'
+                        : 'Nessun risultato'}
+                </option>
+                {filteredMunicipalities.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
                   </option>
-                  {filteredMunicipalities.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name}
-                    </option>
-                  ))}
-                </select>
-              </>
+                ))}
+              </select>
             ) : (
               <input
                 className="w-full rounded-xl border px-3 py-2"

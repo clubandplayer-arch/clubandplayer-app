@@ -157,8 +157,8 @@ export const POST = withAuth(async (req, { supabase, user }) => {
 
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('id, account_type, display_name, full_name, club_name')
-      .eq('id', user.id)
+      .select('user_id, account_type, display_name, full_name, club_name')
+      .eq('user_id', user.id)
       .maybeSingle();
 
     let profileRow = (profile ?? null) as ProfileRow | null;
@@ -167,8 +167,8 @@ export const POST = withAuth(async (req, { supabase, user }) => {
       const admin = getSupabaseAdminClient();
       const { data: adminProfile, error: adminError } = await admin
         .from('profiles')
-        .select('id, account_type, display_name, full_name, club_name')
-        .eq('id', user.id)
+        .select('user_id, account_type, display_name, full_name, club_name')
+        .eq('user_id', user.id)
         .maybeSingle();
 
       if (adminError) {

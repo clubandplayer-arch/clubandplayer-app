@@ -9,7 +9,7 @@ export default function LogoutPage() {
   useEffect(() => {
     const run = async () => {
       await supabaseBrowser().auth.signOut()
-      router.replace('/login')
+      router.replace('/signup')
     }
     run()
   }, [router])
