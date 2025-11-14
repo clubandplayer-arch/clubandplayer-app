@@ -45,7 +45,7 @@ function norm(v: unknown): string | null {
 
 function resolveGender(value: unknown): string | null {
   const normalized = normalizeOpportunityGender(value);
-  return normalized ? toOpportunityDbValue(normalized, 'fallback') : null;
+  return normalized ? toOpportunityDbValue(normalized, 'canonical') : null;
 }
 
 /** GET /api/opportunities — pubblico */

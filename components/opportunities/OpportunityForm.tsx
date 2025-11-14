@@ -1,18 +1,20 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Opportunity } from '@/types/opportunity';
 import { AGE_BRACKETS, type AgeBracket, SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
 import { COUNTRIES } from '@/lib/opps/geo';
 import { useItalyLocations } from '@/hooks/useItalyLocations';
+import {
+  OPPORTUNITY_GENDER_LABELS,
+  normalizeOpportunityGender,
+  type OpportunityGenderCode,
+} from '@/lib/opps/gender';
 
-type Gender = 'male' | 'female' | 'mixed';
-
-const GENDERS: Array<{ value: Gender; label: string }> = [
-  { value: 'male', label: 'Maschile' },
-  { value: 'female', label: 'Femminile' },
-  { value: 'mixed', label: 'Misto' },
-];
+const GENDERS = (Object.entries(OPPORTUNITY_GENDER_LABELS) as Array<[
+  OpportunityGenderCode,
+  string,
+]>).map(([value, label]) => ({ value, label }));
 
 function rangeFromBracket(b: AgeBracket | '' | undefined): { age_min: number | null; age_max: number | null } {
   if (!b) return { age_min: null, age_max: null };
@@ -42,7 +44,7 @@ function bracketFromRange(min?: number | null, max?: number | null): AgeBracket 
 
 // Estendiamo il tipo SOLO per il prop initial, senza toccare i tipi globali
 type OpportunityInitial = Partial<Opportunity> & {
-  gender?: Gender | null;
+  gender?: string | null;
 };
 
 export default function OpportunityForm({
@@ -57,14 +59,15 @@ export default function OpportunityForm({
   const [title, setTitle] = useState(initial?.title ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
 
-  const { data: italyLocations } = useItalyLocations();
+  const { data: italyLocations, countries } = useItalyLocations();
+  const availableCountries = countries ?? COUNTRIES;
 
   // Località
   const [countryCode, setCountryCode] = useState<string>(
-    COUNTRIES.find((c) => c.label === initial?.country)?.code ?? 'IT'
+    availableCountries.find((c) => c.label === initial?.country)?.code ?? 'IT'
   );
   const [countryFree, setCountryFree] = useState<string>(
-    initial?.country && !COUNTRIES.find((c) => c.label === initial.country) ? initial.country : ''
+    initial?.country && !availableCountries.find((c) => c.label === initial.country) ? initial.country : ''
   );
   const [region, setRegion] = useState<string>(initial?.region ?? '');
   const [province, setProvince] = useState<string>(initial?.province ?? '');
@@ -85,7 +88,9 @@ export default function OpportunityForm({
   const [role, setRole] = useState<string>(initial?.role ?? '');
 
   // Genere (OBBLIGATORIO)
-  const [gender, setGender] = useState<Gender | ''>((initial?.gender as Gender) ?? '');
+  const [gender, setGender] = useState<OpportunityGenderCode | ''>(
+    () => normalizeOpportunityGender(initial?.gender) ?? ''
+  );
 
   // Età (mappa ⇄ age_min/age_max)
   const [ageBracket, setAgeBracket] = useState<AgeBracket | ''>(() =>
@@ -96,9 +101,35 @@ export default function OpportunityForm({
   const [err, setErr] = useState<string | null>(null);
   const isEdit = Boolean(initial?.id);
 
+  useEffect(() => {
+    if (countryCode !== 'IT') return;
+    if (region && !italyLocations.provincesByRegion[region]) {
+      setRegion('');
+      setProvince('');
+      setCity('');
+    }
+  }, [countryCode, region, italyLocations.provincesByRegion]);
+
+  useEffect(() => {
+    if (countryCode !== 'IT') return;
+    if (province && !italyLocations.citiesByProvince[province]) {
+      setProvince('');
+      setCity('');
+    }
+  }, [countryCode, province, italyLocations.citiesByProvince]);
+
+  useEffect(() => {
+    if (countryCode !== 'IT') return;
+    if (!province) return;
+    const availableCities = italyLocations.citiesByProvince[province] ?? [];
+    if (city && !availableCities.includes(city)) {
+      setCity('');
+    }
+  }, [countryCode, province, city, italyLocations.citiesByProvince]);
+
   function effectiveCountry(): string | null {
     if (countryCode === 'OTHER') return countryFree.trim() || null;
-    const found = COUNTRIES.find((c) => c.code === countryCode);
+    const found = availableCountries.find((c) => c.code === countryCode);
     return found?.label ?? countryCode ?? null;
   }
 
@@ -124,7 +155,7 @@ export default function OpportunityForm({
         city: (city || '').trim() || null,
         sport,
         role: role || null,
-        gender: gender as Gender,
+        gender: gender as OpportunityGenderCode,
         age_bracket: ageBracket || undefined,
         age_min,
         age_max,
@@ -198,7 +229,7 @@ export default function OpportunityForm({
               value={countryCode}
               onChange={(e) => onChangeCountry(e.target.value)}
             >
-              {COUNTRIES.map((c) => (
+              {availableCountries.map((c) => (
                 <option key={c.code} value={c.code}>
                   {c.label}
                 </option>

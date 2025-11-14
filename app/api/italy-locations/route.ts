@@ -4,40 +4,82 @@ import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
 
+type RawRow = Record<string, unknown>;
+
 type LocationRow = {
-  region: string | null;
-  province: string | null;
-  city: string | null;
+  region: string;
+  province: string;
+  city: string;
 };
+
+type SourceConfig = {
+  table: string;
+  regionKey: string;
+  provinceKey: string;
+  cityKey: string;
+};
+
+const SOURCES: SourceConfig[] = [
+  { table: 'it_locations_stage', regionKey: 'regione', provinceKey: 'provincia', cityKey: 'comune' },
+  { table: 'italy_locations_simple', regionKey: 'region', provinceKey: 'province', cityKey: 'city' },
+];
 
 function sortAlpha(values: Iterable<string>) {
   return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b, 'it', { sensitivity: 'base' }));
 }
 
+function normalizeRow(row: RawRow, config: SourceConfig): LocationRow | null {
+  const region = String(row[config.regionKey] ?? '').trim();
+  const province = String(row[config.provinceKey] ?? '').trim();
+  const city = String(row[config.cityKey] ?? '').trim();
+  if (!region || !province || !city) return null;
+  return { region, province, city };
+}
+
+async function loadLocations() {
+  const supabase = await getSupabaseServerClient();
+  let lastError: Error | null = null;
+
+  for (const source of SOURCES) {
+    const { data, error } = await supabase
+      .from(source.table)
+      .select(`${source.regionKey},${source.provinceKey},${source.cityKey}`)
+      .order(source.regionKey, { ascending: true, nullsFirst: false })
+      .order(source.provinceKey, { ascending: true, nullsFirst: false })
+      .order(source.cityKey, { ascending: true, nullsFirst: false });
+
+    if (error) {
+      lastError = error as Error;
+      continue;
+    }
+
+    const rows = Array.isArray(data) ? data : [];
+    const normalized = rows
+      .map((row) => normalizeRow(row as RawRow, source))
+      .filter((row): row is LocationRow => !!row);
+
+    if (normalized.length > 0) {
+      return normalized;
+    }
+  }
+
+  if (lastError) {
+    throw lastError;
+  }
+
+  return [] as LocationRow[];
+}
+
 export async function GET(_req: NextRequest) {
   try {
-    const supabase = await getSupabaseServerClient();
-    const { data, error } = await supabase
-      .from('italy_locations_simple')
-      .select('region,province,city')
-      .order('region', { ascending: true, nullsFirst: false })
-      .order('province', { ascending: true, nullsFirst: false })
-      .order('city', { ascending: true, nullsFirst: false });
-
-    if (error) return jsonError(error.message, 500);
-
-    const rows: LocationRow[] = Array.isArray(data) ? data : [];
+    const rows = await loadLocations();
 
     const regionsSet = new Set<string>();
     const provincesByRegion = new Map<string, Set<string>>();
     const citiesByProvince = new Map<string, Set<string>>();
 
     for (const row of rows) {
-      const region = (row.region ?? '').trim();
-      const province = (row.province ?? '').trim();
-      const city = (row.city ?? '').trim();
-
-      if (!region || !province || !city) continue;
+      const { region, province, city } = row;
 
       regionsSet.add(region);
 
