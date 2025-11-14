@@ -3,7 +3,8 @@
 import { useMemo, useState } from 'react';
 import type { Opportunity } from '@/types/opportunity';
 import { AGE_BRACKETS, type AgeBracket, SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
-import { COUNTRIES, ITALY_REGIONS, PROVINCES_BY_REGION, CITIES_BY_PROVINCE } from '@/lib/opps/geo';
+import { COUNTRIES } from '@/lib/opps/geo';
+import { useItalyLocations } from '@/hooks/useItalyLocations';
 
 type Gender = 'male' | 'female' | 'mixed';
 
@@ -56,6 +57,8 @@ export default function OpportunityForm({
   const [title, setTitle] = useState(initial?.title ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
 
+  const { data: italyLocations } = useItalyLocations();
+
   // Località
   const [countryCode, setCountryCode] = useState<string>(
     COUNTRIES.find((c) => c.label === initial?.country)?.code ?? 'IT'
@@ -68,12 +71,12 @@ export default function OpportunityForm({
   const [city, setCity] = useState<string>(initial?.city ?? '');
 
   const provinces: string[] = useMemo(
-    () => (countryCode === 'IT' ? PROVINCES_BY_REGION[region] ?? [] : []),
-    [countryCode, region]
+    () => (countryCode === 'IT' ? italyLocations.provincesByRegion[region] ?? [] : []),
+    [countryCode, region, italyLocations]
   );
   const cities: string[] = useMemo(
-    () => (countryCode === 'IT' ? CITIES_BY_PROVINCE[province] ?? [] : []),
-    [countryCode, province]
+    () => (countryCode === 'IT' ? italyLocations.citiesByProvince[province] ?? [] : []),
+    [countryCode, province, italyLocations]
   );
 
   // Sport/ruolo
@@ -220,7 +223,7 @@ export default function OpportunityForm({
                 onChange={(e) => onChangeRegion(e.target.value)}
               >
                 <option value="">—</option>
-                {ITALY_REGIONS.map((r: string) => (
+                {italyLocations.regions.map((r: string) => (
                   <option key={r} value={r}>
                     {r}
                   </option>

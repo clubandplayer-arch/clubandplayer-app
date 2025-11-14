@@ -8,8 +8,9 @@ import Modal from '@/components/ui/Modal';
 import OpportunityForm from '@/components/opportunities/OpportunityForm';
 import type { OpportunitiesApiResponse, Opportunity } from '@/types/opportunity';
 
-import { COUNTRIES, ITALY_REGIONS, PROVINCES_BY_REGION, CITIES_BY_PROVINCE } from '@/lib/opps/geo';
+import { COUNTRIES } from '@/lib/opps/geo';
 import { AGE_BRACKETS, SPORTS } from '@/lib/opps/constants';
+import { useItalyLocations } from '@/hooks/useItalyLocations';
 
 type Role = 'athlete' | 'club' | 'guest';
 
@@ -28,6 +29,14 @@ export default function OpportunitiesClient() {
 
   const [openCreate, setOpenCreate] = useState(false);
   const [editItem, setEditItem] = useState<Opportunity | null>(null);
+  const { data: italyLocations } = useItalyLocations();
+  const selectedCountry = sp.get('country') ?? '';
+  const selectedRegion = sp.get('region') ?? '';
+  const selectedProvince = sp.get('province') ?? '';
+  const availableProvinces =
+    selectedCountry === 'Italia' ? italyLocations.provincesByRegion[selectedRegion] ?? [] : [];
+  const availableCities =
+    selectedCountry === 'Italia' ? italyLocations.citiesByProvince[selectedProvince] ?? [] : [];
 
   // Costruisci i filtri base dai parametri URL
   const urlFilters = useMemo(() => {
@@ -220,47 +229,47 @@ export default function OpportunitiesClient() {
         </select>
 
         {/* Regione/Provincia/Città per Italia */}
-        {sp.get('country') === 'Italia' && (
+        {selectedCountry === 'Italia' && (
           <>
             <select
-              value={sp.get('region') ?? ''}
+              value={selectedRegion}
               onChange={(e) => { setParam('region', e.target.value); setParam('province', ''); setParam('city', ''); }}
               className="rounded-xl border px-3 py-2"
             >
               <option value="">Regione</option>
-              {ITALY_REGIONS.map((r: string) => (
+              {italyLocations.regions.map((r: string) => (
                 <option key={r} value={r}>{r}</option>
               ))}
             </select>
 
-            {PROVINCES_BY_REGION[sp.get('region') ?? ''] ? (
+            {availableProvinces.length > 0 ? (
               <select
-                value={sp.get('province') ?? ''}
+                value={selectedProvince}
                 onChange={(e) => { setParam('province', e.target.value); setParam('city', ''); }}
                 className="rounded-xl border px-3 py-2"
               >
                 <option value="">Provincia</option>
-                {PROVINCES_BY_REGION[sp.get('region') ?? '']?.map((p: string) => (
+                {availableProvinces.map((p: string) => (
                   <option key={p} value={p}>{p}</option>
                 ))}
               </select>
             ) : (
               <input
                 placeholder="Provincia"
-                defaultValue={sp.get('province') ?? ''}
+                defaultValue={selectedProvince}
                 onBlur={(e) => setParam('province', e.currentTarget.value)}
                 className="rounded-xl border px-3 py-2"
               />
             )}
 
-            {CITIES_BY_PROVINCE[sp.get('province') ?? ''] ? (
+            {availableCities.length > 0 ? (
               <select
                 value={sp.get('city') ?? ''}
                 onChange={(e) => setParam('city', e.target.value)}
                 className="rounded-xl border px-3 py-2"
               >
                 <option value="">Città</option>
-                {CITIES_BY_PROVINCE[sp.get('province') ?? '']?.map((c: string) => (
+                {availableCities.map((c: string) => (
                   <option key={c} value={c}>{c}</option>
                 ))}
               </select>

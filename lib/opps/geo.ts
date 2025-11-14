@@ -268,3 +268,9 @@ export const CITIES_BY_PROVINCE: Record<string, string[]> = {
     'Zagarolo',
   ],
 };
+
+export const FALLBACK_ITALY_LOCATIONS = {
+  regions: [...ITALY_REGIONS],
+  provincesByRegion: PROVINCES_BY_REGION,
+  citiesByProvince: CITIES_BY_PROVINCE,
+} as const;

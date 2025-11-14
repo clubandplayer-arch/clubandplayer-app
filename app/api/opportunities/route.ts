@@ -3,6 +3,7 @@ import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { normalizeToEN, PLAYING_CATEGORY_EN } from '@/lib/enums';
+import { normalizeOpportunityGender, toOpportunityDbValue } from '@/lib/opps/gender';
 
 export const runtime = 'nodejs';
 
@@ -42,6 +43,11 @@ function norm(v: unknown): string | null {
   return String(v).trim() || null;
 }
 
+function resolveGender(value: unknown): string | null {
+  const normalized = normalizeOpportunityGender(value);
+  return normalized ? toOpportunityDbValue(normalized, 'fallback') : null;
+}
+
 /** GET /api/opportunities — pubblico */
 export async function GET(req: NextRequest) {
   try {
@@ -72,7 +78,7 @@ export async function GET(req: NextRequest) {
   let query = supabase
     .from('opportunities')
     .select(
-      'id,title,description,created_by,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name',
+      'id,title,description,created_by,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name,gender',
       { count: 'exact' }
     )
     .order('created_at', { ascending: sort === 'oldest' })
@@ -143,6 +149,8 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   const roleHuman = norm((body as any).role) ?? norm((body as any).roleLabel) ?? norm((body as any).roleValue);
   const club_name = norm((body as any).club_name);
   const { age_min, age_max } = bracketToRange((body as any).age_bracket);
+  const genderDb = resolveGender((body as any).gender);
+  if (!genderDb) return jsonError('invalid_gender', 400);
 
   // required_category (solo Calcio) → EN per enum playing_role
   let required_category: string | null = null;
@@ -178,12 +186,13 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     age_min,
     age_max,
     club_name,
+    gender: genderDb,
   };
 
   const { data, error } = await supabase
     .from('opportunities')
     .insert(insertPayload)
-    .select('id,title,description,created_by,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name')
+    .select('id,title,description,created_by,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name,gender')
     .single();
 
   if (error) return jsonError(error.message, 400);
