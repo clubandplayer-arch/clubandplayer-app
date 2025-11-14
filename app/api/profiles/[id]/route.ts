@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
-import { fetchPublicProfileById } from '@/lib/profiles/public';
+import { getPublicProfile } from '@/lib/profiles/publicLookup';
 
 export const runtime = 'nodejs';
 
@@ -16,7 +16,7 @@ export const GET = withAuth(async (req: NextRequest, { supabase }) => {
   if (!id) return jsonError('Missing id', 400);
 
   try {
-    const profile = await fetchPublicProfileById(id, supabase, { fallbackToAdmin: true });
+    const profile = await getPublicProfile(id, supabase, { fallbackToAdmin: true });
     if (!profile) return jsonError('Not found', 404);
     return NextResponse.json({ data: profile });
   } catch (error: any) {

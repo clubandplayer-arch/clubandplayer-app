@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
-import { fetchPublicProfilesByIds } from '@/lib/profiles/public';
+import { getPublicProfilesMap } from '@/lib/profiles/publicLookup';
 
 export const runtime = 'nodejs';
 
@@ -54,7 +54,7 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   const athleteIds = Array.from(
     new Set(apps.map(a => String(a.athlete_id ?? '')).filter(id => id.length > 0))
   );
-  const profMap = await fetchPublicProfilesByIds(athleteIds, supabase, { fallbackToAdmin: true });
+  const profMap = await getPublicProfilesMap(athleteIds, supabase, { fallbackToAdmin: true });
 
   // 4) Arricchisci
   const enhanced = apps.map(a => ({
