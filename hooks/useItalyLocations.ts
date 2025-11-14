@@ -1,9 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { COUNTRIES, FALLBACK_ITALY_LOCATIONS } from '@/lib/opps/geo';
-
-export type ItalyLocations = typeof FALLBACK_ITALY_LOCATIONS;
+import { COUNTRIES, FALLBACK_ITALY_LOCATIONS, type ItalyLocations } from '@/lib/opps/geo';
 
 type FetchResponse = {
   regions?: string[];

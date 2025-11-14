@@ -269,8 +269,14 @@ export const CITIES_BY_PROVINCE: Record<string, string[]> = {
   ],
 };
 
-export const FALLBACK_ITALY_LOCATIONS = {
+export type ItalyLocations = {
+  regions: string[];
+  provincesByRegion: Record<string, string[]>;
+  citiesByProvince: Record<string, string[]>;
+};
+
+export const FALLBACK_ITALY_LOCATIONS: ItalyLocations = {
   regions: [...ITALY_REGIONS],
   provincesByRegion: PROVINCES_BY_REGION,
   citiesByProvince: CITIES_BY_PROVINCE,
-} as const;
+};
