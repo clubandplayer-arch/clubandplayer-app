@@ -1,274 +1,191 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { jsonError, withAuth } from '@/lib/api/auth';
-import { getSupabaseAdminClient } from '@/lib/supabase/admin';
-import {
-  normalizeOpportunityGender,
-  toOpportunityDbValue,
-} from '@/lib/opps/gender';
+import { NextResponse, type NextRequest } from 'next/server';
+import { withAuth, jsonError } from '@/lib/api/auth';
+import { rateLimit } from '@/lib/api/rateLimit';
+import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { normalizeToEN, PLAYING_CATEGORY_EN } from '@/lib/enums';
 
 export const runtime = 'nodejs';
 
-/** Crea un client Supabase lato server (env di Vercel + local) */
-function getSupabase() {
-  const url =
-    process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
-  const anon =
-    process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
-  if (!url || !anon) throw new Error('Supabase env missing');
-  return createClient(url, anon);
-}
-
-function intParam(sp: URLSearchParams, key: string, fallback: number, min = 1, max = 1000) {
-  const raw = sp.get(key);
-  const n = raw ? Number.parseInt(raw, 10) : NaN;
-  if (Number.isNaN(n)) return fallback;
+function clamp(n: number, min: number, max: number) {
   return Math.min(Math.max(n, min), max);
 }
 
-const SELECT_COLUMNS =
-  'id,title,description,owner_id,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name';
-
-function cleanText(value: unknown): string | null {
-  if (typeof value !== 'string') return null;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-}
-
-type ProfileRow = {
-  account_type?: string | null;
-  type?: string | null;
-  club_name?: string | null;
-  display_name?: string | null;
-  full_name?: string | null;
-};
-
-function normalizeAccountType(value: unknown): 'club' | 'athlete' | null {
-  if (typeof value !== 'string') return null;
-  const trimmed = value.trim().toLowerCase();
-  if (trimmed === 'club') return 'club';
-  if (trimmed === 'athlete') return 'athlete';
-  return null;
-}
-
-function firstNonEmptyString(...values: Array<unknown>): string | null {
-  for (const value of values) {
-    if (typeof value !== 'string') continue;
-    const trimmed = value.trim();
-    if (trimmed) return trimmed;
+function bracketToRange(code?: string): { age_min: number | null; age_max: number | null } {
+  switch ((code || '').trim()) {
+    case '17-20': return { age_min: 17, age_max: 20 };
+    case '21-25': return { age_min: 21, age_max: 25 };
+    case '26-30': return { age_min: 26, age_max: 30 };
+    case '31+':   return { age_min: 31, age_max: null };
+    default:      return { age_min: null, age_max: null };
   }
-  return null;
 }
 
+// Pulisce qualsiasi input in stringa o null (evita [object Object])
+function norm(v: unknown): string | null {
+  if (v == null) return null;
+  if (typeof v === 'string') {
+    const s = v.trim();
+    return s && s !== '[object Object]' ? s : null;
+  }
+  if (typeof v === 'object') {
+    const any = v as Record<string, unknown>;
+    const s =
+      (typeof any.value === 'string' && any.value) ||
+      (typeof any.label === 'string' && any.label) ||
+      (typeof any.nome === 'string' && any.nome) ||
+      (typeof any.name === 'string' && any.name) ||
+      (typeof any.description === 'string' && any.description) ||
+      '';
+    const out = String(s).trim();
+    return out ? out : null;
+  }
+  return String(v).trim() || null;
+}
+
+/** GET /api/opportunities — pubblico */
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-
-    // query params
-    const q = (searchParams.get('q') ?? '').trim();
-    const role = (searchParams.get('role') ?? '').trim();
-    const status = (searchParams.get('status') ?? '').trim();
-    const country = (searchParams.get('country') ?? '').trim();
-    const city = (searchParams.get('city') ?? '').trim();
-    const from = (searchParams.get('from') ?? '').trim(); // es. 2025-01-01
-    const to = (searchParams.get('to') ?? '').trim();     // es. 2025-12-31
-
-    const page = intParam(searchParams, 'page', 1, 1, 10_000);
-    const limit = intParam(searchParams, 'limit', 20, 1, 100);
-    const offset = (page - 1) * limit;
-    const toIdx = offset + limit - 1;
-
-    const supabase = getSupabase();
-
-    // base query con count esatto per la paginazione
-    let qb = supabase
-      .from('opportunities')
-      .select(SELECT_COLUMNS, { count: 'exact' })
-      .order('created_at', { ascending: false });
-
-    // filtri esatti
-    if (role) qb = qb.eq('role', role);
-    if (status) qb = qb.eq('status', status);
-    if (country) qb = qb.eq('country', country);
-    if (city) qb = qb.ilike('city', `%${city}%`);
-
-    // ricerca "q": match su più colonne (case-insensitive)
-    if (q.length >= 2) {
-      const like = `%${q}%`;
-      qb = qb.or(
-        [
-          `title.ilike.${like}`,
-          `description.ilike.${like}`,
-          `city.ilike.${like}`,
-          `province.ilike.${like}`,
-          `region.ilike.${like}`,
-          `club_name.ilike.${like}`,
-        ].join(',')
-      );
-    }
-
-    // range temporale
-    if (from) qb = qb.gte('created_at', from);
-    if (to) qb = qb.lte('created_at', to);
-
-    // paginazione
-    qb = qb.range(offset, toIdx);
-
-    const { data, count, error } = await qb;
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    const total = count ?? 0;
-    const totalPages = Math.max(1, Math.ceil(total / limit));
-
-    return NextResponse.json({
-      data: data ?? [],
-      meta: {
-        total,
-        page,
-        pageSize: limit,   // <<< ora rispetta ?limit=10
-        totalPages,
-        sort: 'latest',
-      },
-    });
-  } catch (err: any) {
-    return NextResponse.json(
-      { error: err?.message ?? 'Unexpected error' },
-      { status: 500 }
-    );
+    await rateLimit(req, { key: 'opps:GET', limit: 60, window: '1m' } as any);
+  } catch {
+    return jsonError('Too Many Requests', 429);
   }
+
+  const supabase = await getSupabaseServerClient();
+
+  const url = new URL(req.url);
+  const q = (url.searchParams.get('q') || '').trim();
+  const page = Math.max(1, Number(url.searchParams.get('page') || '1'));
+  const pageSize = clamp(Number(url.searchParams.get('pageSize') || '20'), 1, 100);
+  const sort = (url.searchParams.get('sort') || 'recent') as 'recent' | 'oldest';
+
+  const country = (url.searchParams.get('country') || '').trim();
+  const region = (url.searchParams.get('region') || '').trim();
+  const province = (url.searchParams.get('province') || '').trim();
+  const city = (url.searchParams.get('city') || '').trim();
+  const sport = (url.searchParams.get('sport') || '').trim();
+  const role = (url.searchParams.get('role') || '').trim();
+  const ageB = (url.searchParams.get('age') || '').trim();
+
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  let query = supabase
+    .from('opportunities')
+    .select(
+      'id,title,description,created_by,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name',
+      { count: 'exact' }
+    )
+    .order('created_at', { ascending: sort === 'oldest' })
+    .range(from, to);
+
+  if (q)
+    query = query.or(
+      `title.ilike.%${q}%,description.ilike.%${q}%,city.ilike.%${q}%,region.ilike.%${q}%,province.ilike.%${q}%,country.ilike.%${q}%,sport.ilike.%${q}%,role.ilike.%${q}%`
+    );
+  if (country && country !== '[object Object]') query = query.eq('country', country);
+  if (region && region !== '[object Object]') query = query.eq('region', region);
+  if (province && province !== '[object Object]') query = query.eq('province', province);
+  if (city && city !== '[object Object]') query = query.eq('city', city);
+  if (sport) query = query.eq('sport', sport);
+  if (role) query = query.eq('role', role);
+  if (ageB) {
+    const { age_min, age_max } = bracketToRange(ageB);
+    if (age_min != null) query = query.gte('age_min', age_min);
+    if (age_max != null) query = query.lte('age_max', age_max);
+    if (age_max == null) query = query.is('age_max', null);
+  }
+
+  const { data, count, error } = await query;
+  if (error) return jsonError(error.message, 400);
+
+  return NextResponse.json({
+    data: data ?? [],
+    q,
+    page,
+    pageSize,
+    total: count ?? 0,
+    pageCount: Math.max(1, Math.ceil((count ?? 0) / pageSize)),
+    sort,
+  });
 }
 
-export const POST = withAuth(async (req, { supabase, user }) => {
+/** POST /api/opportunities — deve essere club; Calcio richiede required_category (EN) */
+export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   try {
-    const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
-    if (!body) {
-      return jsonError('Payload non valido', 400);
-    }
-
-    const title = cleanText(body.title);
-    if (!title) return jsonError('Titolo obbligatorio', 400);
-
-    const description = cleanText(body.description);
-    const country = cleanText(body.country);
-    const region = cleanText(body.region);
-    const province = cleanText(body.province);
-    const city = cleanText(body.city);
-    const sport = cleanText(body.sport);
-    const role = cleanText(body.role);
-    const requiredCategory = cleanText(body.required_category);
-
-    const genderRaw = cleanText(body.gender);
-    const normalizedGender = normalizeOpportunityGender(genderRaw);
-    if (!normalizedGender) return jsonError('Genere obbligatorio', 400);
-
-    const rawAgeMin = body.age_min;
-    const rawAgeMax = body.age_max;
-    const ageMin = typeof rawAgeMin === 'number' && Number.isFinite(rawAgeMin)
-      ? rawAgeMin
-      : null;
-    const ageMax = typeof rawAgeMax === 'number' && Number.isFinite(rawAgeMax)
-      ? rawAgeMax
-      : null;
-
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('user_id, account_type, type, display_name, full_name, club_name')
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    let profileRow = (profile ?? null) as ProfileRow | null;
-    if (profileError) {
-      console.warn('[POST /api/opportunities] profile fetch denied, fallback admin', profileError);
-      try {
-        const admin = getSupabaseAdminClient();
-        const { data: adminProfile, error: adminError } = await admin
-          .from('profiles')
-          .select('user_id, account_type, type, display_name, full_name, club_name')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (adminError) {
-          console.warn('[POST /api/opportunities] admin profile error', adminError);
-        } else {
-          profileRow = (adminProfile ?? null) as ProfileRow | null;
-        }
-      } catch (adminErr) {
-        console.warn('[POST /api/opportunities] admin fallback unavailable', adminErr);
-      }
-    }
-
-    const userMeta = (user.user_metadata ?? {}) as Record<string, unknown>;
-    const appMeta = (user.app_metadata ?? {}) as Record<string, unknown>;
-
-    const accountType =
-      normalizeAccountType(profileRow?.account_type) ??
-      normalizeAccountType(profileRow?.type) ??
-      normalizeAccountType(userMeta['account_type']) ??
-      normalizeAccountType(userMeta['role']) ??
-      normalizeAccountType(appMeta['role']);
-
-    if (accountType !== 'club') {
-      return jsonError('Solo i club possono creare un’opportunità', 403);
-    }
-
-    const clubName = firstNonEmptyString(
-      profileRow?.club_name,
-      profileRow?.display_name,
-      profileRow?.full_name,
-      userMeta['club_name'],
-      userMeta['display_name'],
-      userMeta['full_name'],
-      appMeta['club_name']
-    );
-
-    const basePayload = {
-      title,
-      description,
-      country,
-      region,
-      province,
-      city,
-      sport,
-      role,
-      required_category: requiredCategory,
-      age_min: ageMin,
-      age_max: ageMax,
-      owner_id: user.id,
-      created_by: user.id,
-      club_name: clubName,
-      status: cleanText(body.status) ?? 'open',
-    };
-
-    const canonicalGender = toOpportunityDbValue(normalizedGender);
-
-    async function insertWithGender(genderValue: string) {
-      return supabase
-        .from('opportunities')
-        .insert({ ...basePayload, gender: genderValue })
-        .select(SELECT_COLUMNS)
-        .single();
-    }
-
-    let { data, error } = await insertWithGender(canonicalGender);
-
-    if (error && /opportunities_gender_check/i.test(error.message ?? '')) {
-      const fallbackGender = toOpportunityDbValue(normalizedGender, 'fallback');
-      if (fallbackGender !== canonicalGender) {
-        ({ data, error } = await insertWithGender(fallbackGender));
-      }
-    }
-
-    if (error) {
-      console.error('[POST /api/opportunities] insert error', error);
-      return jsonError(error.message || 'Errore creazione opportunità', 500);
-    }
-
-    return NextResponse.json({ data });
-  } catch (err: any) {
-    console.error('[POST /api/opportunities] unexpected', err);
-    return jsonError(err?.message || 'Unexpected error', 500);
+    await rateLimit(req, { key: 'opps:POST', limit: 20, window: '1m' } as any);
+  } catch {
+    return jsonError('Too Many Requests', 429);
   }
+
+  // verifica club
+  const metaRole = String(user.user_metadata?.role ?? '').toLowerCase();
+  let isClub = metaRole === 'club';
+  if (!isClub) {
+    const tryBy = async (col: 'id' | 'user_id') => {
+      const { data } = await supabase.from('profiles').select('account_type').eq(col, user.id).maybeSingle();
+      return data?.account_type as string | null | undefined;
+    };
+    const acct = (await tryBy('id')) ?? (await tryBy('user_id'));
+    isClub = String(acct ?? '').toLowerCase() === 'club';
+  }
+  if (!isClub) return jsonError('forbidden_not_club', 403);
+
+  const body = await req.json().catch(() => ({}));
+  const title = norm((body as any).title);
+  if (!title) return jsonError('Title is required', 400);
+
+  const description = norm((body as any).description);
+  const country = norm((body as any).country);
+  const region = norm((body as any).region);
+  const province = norm((body as any).province);
+  const city = norm((body as any).city);
+  const sport = norm((body as any).sport);
+  const roleHuman = norm((body as any).role) ?? norm((body as any).roleLabel) ?? norm((body as any).roleValue);
+  const club_name = norm((body as any).club_name);
+  const { age_min, age_max } = bracketToRange((body as any).age_bracket);
+
+  // required_category (solo Calcio) → EN per enum playing_role
+  let required_category: string | null = null;
+  if (sport === 'Calcio') {
+    const candidate =
+      norm((body as any).required_category) ??
+      norm((body as any).requiredCategory) ??
+      norm((body as any).playing_category) ??
+      norm((body as any).playingCategory) ??
+      roleHuman;
+
+    const en = candidate ? normalizeToEN(candidate) : null;
+    if (!en) {
+      return NextResponse.json(
+        { error: 'invalid_required_category', allowed_en: PLAYING_CATEGORY_EN },
+        { status: 400 }
+      );
+    }
+    required_category = en; // 👈 EN per il nuovo enum playing_role
+  }
+
+  const insertPayload: Record<string, unknown> = {
+    title,
+    description,
+    created_by: user.id,
+    country,
+    region,
+    province,
+    city,
+    sport,
+    role: roleHuman,
+    required_category,
+    age_min,
+    age_max,
+    club_name,
+  };
+
+  const { data, error } = await supabase
+    .from('opportunities')
+    .insert(insertPayload)
+    .select('id,title,description,created_by,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name')
+    .single();
+
+  if (error) return jsonError(error.message, 400);
+  return NextResponse.json({ data }, { status: 201 });
 });
