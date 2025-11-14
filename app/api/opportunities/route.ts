@@ -33,10 +33,28 @@ function cleanText(value: unknown): string | null {
 
 type ProfileRow = {
   account_type?: string | null;
+  type?: string | null;
   club_name?: string | null;
   display_name?: string | null;
   full_name?: string | null;
 };
+
+function normalizeAccountType(value: unknown): 'club' | 'athlete' | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim().toLowerCase();
+  if (trimmed === 'club') return 'club';
+  if (trimmed === 'athlete') return 'athlete';
+  return null;
+}
+
+function firstNonEmptyString(...values: Array<unknown>): string | null {
+  for (const value of values) {
+    if (typeof value !== 'string') continue;
+    const trimmed = value.trim();
+    if (trimmed) return trimmed;
+  }
+  return null;
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -157,36 +175,54 @@ export const POST = withAuth(async (req, { supabase, user }) => {
 
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('user_id, account_type, display_name, full_name, club_name')
+      .select('user_id, account_type, type, display_name, full_name, club_name')
       .eq('user_id', user.id)
       .maybeSingle();
 
     let profileRow = (profile ?? null) as ProfileRow | null;
     if (profileError) {
       console.warn('[POST /api/opportunities] profile fetch denied, fallback admin', profileError);
-      const admin = getSupabaseAdminClient();
-      const { data: adminProfile, error: adminError } = await admin
-        .from('profiles')
-        .select('user_id, account_type, display_name, full_name, club_name')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      try {
+        const admin = getSupabaseAdminClient();
+        const { data: adminProfile, error: adminError } = await admin
+          .from('profiles')
+          .select('user_id, account_type, type, display_name, full_name, club_name')
+          .eq('user_id', user.id)
+          .maybeSingle();
 
-      if (adminError) {
-        console.error('[POST /api/opportunities] admin profile error', adminError);
-        return jsonError('Impossibile verificare il profilo', 500);
+        if (adminError) {
+          console.warn('[POST /api/opportunities] admin profile error', adminError);
+        } else {
+          profileRow = (adminProfile ?? null) as ProfileRow | null;
+        }
+      } catch (adminErr) {
+        console.warn('[POST /api/opportunities] admin fallback unavailable', adminErr);
       }
-
-      profileRow = (adminProfile ?? null) as ProfileRow | null;
     }
 
-    if (!profileRow || profileRow.account_type !== 'club') {
+    const userMeta = (user.user_metadata ?? {}) as Record<string, unknown>;
+    const appMeta = (user.app_metadata ?? {}) as Record<string, unknown>;
+
+    const accountType =
+      normalizeAccountType(profileRow?.account_type) ??
+      normalizeAccountType(profileRow?.type) ??
+      normalizeAccountType(userMeta['account_type']) ??
+      normalizeAccountType(userMeta['role']) ??
+      normalizeAccountType(appMeta['role']);
+
+    if (accountType !== 'club') {
       return jsonError('Solo i club possono creare un’opportunità', 403);
     }
 
-    const clubName =
-      cleanText(profileRow.club_name) ??
-      cleanText(profileRow.display_name) ??
-      cleanText(profileRow.full_name);
+    const clubName = firstNonEmptyString(
+      profileRow?.club_name,
+      profileRow?.display_name,
+      profileRow?.full_name,
+      userMeta['club_name'],
+      userMeta['display_name'],
+      userMeta['full_name'],
+      appMeta['club_name']
+    );
 
     const payload = {
       title,

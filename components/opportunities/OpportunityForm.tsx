@@ -87,7 +87,6 @@ export default function OpportunityForm({
   const [loadingRegions, setLoadingRegions] = useState(false);
   const [loadingProvinces, setLoadingProvinces] = useState(false);
   const [loadingCities, setLoadingCities] = useState(false);
-  const filteredMunicipalities = municipalities;
 
   const initialRegionName = initial?.region ?? null;
   const initialProvinceName = initial?.province ?? null;
@@ -253,10 +252,6 @@ export default function OpportunityForm({
 
     initialCityApplied.current = true;
   }, [municipalities, countryCode, initialCityName]);
-
-  useEffect(() => {
-    setCityFilter('');
-  }, [provinceId, countryCode]);
 
   // Sport/ruolo
   const [sport, setSport] = useState<string>(initial?.sport || 'Calcio');
@@ -495,11 +490,11 @@ export default function OpportunityForm({
                     ? 'Seleziona la provincia…'
                     : loadingCities
                       ? 'Caricamento…'
-                      : filteredMunicipalities.length
+                      : municipalities.length
                         ? '—'
                         : 'Nessun risultato'}
                 </option>
-                {filteredMunicipalities.map((m) => (
+                {municipalities.map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.name}
                   </option>
