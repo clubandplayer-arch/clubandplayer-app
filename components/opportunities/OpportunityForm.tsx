@@ -367,7 +367,10 @@ export default function OpportunityForm({
             <select
               className="w-full rounded-xl border px-3 py-2"
               value={gender}
-              onChange={(e) => setGender(e.target.value as Gender)}
+              onChange={(e) => {
+                const next = (e.target.value || '') as OpportunityGenderCode | '';
+                setGender(next);
+              }}
               required
             >
               <option value="">—</option>
