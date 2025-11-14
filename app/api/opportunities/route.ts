@@ -163,7 +163,6 @@ export const POST = withAuth(async (req, { supabase, user }) => {
       : null;
     if (!gender) return jsonError('Genere obbligatorio', 400);
 
-    const ageBracket = cleanText(body.age_bracket);
     const rawAgeMin = body.age_min;
     const rawAgeMax = body.age_max;
     const ageMin = typeof rawAgeMin === 'number' && Number.isFinite(rawAgeMin)
@@ -235,7 +234,6 @@ export const POST = withAuth(async (req, { supabase, user }) => {
       role,
       required_category: requiredCategory,
       gender,
-      age_bracket: ageBracket,
       age_min: ageMin,
       age_max: ageMax,
       owner_id: user.id,

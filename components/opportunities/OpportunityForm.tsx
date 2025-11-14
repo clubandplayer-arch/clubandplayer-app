@@ -320,7 +320,6 @@ export default function OpportunityForm({
         sport,
         role: role || null,
         gender: gender as Gender,
-        age_bracket: ageBracket || undefined,
         age_min,
         age_max,
       };

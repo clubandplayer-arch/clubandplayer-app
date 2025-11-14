@@ -9,6 +9,16 @@ export default function LogoutPage() {
   useEffect(() => {
     const run = async () => {
       await supabaseBrowser().auth.signOut()
+      try {
+        await fetch('/api/auth/session', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({}),
+        })
+      } catch {
+        // ignoriamo eventuali errori di rete: il sync periodico li coprirà
+      }
       router.replace('/signup')
     }
     run()
