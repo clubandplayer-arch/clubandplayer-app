@@ -4,7 +4,7 @@ import { rateLimit } from '@/lib/api/rateLimit';
 
 export const runtime = 'nodejs';
 
-/** POST /api/applications  Body: { opportunity_id: string, message?: string } */
+/** POST /api/applications  Body: { opportunity_id: string, note?: string } */
 export const POST = withAuth(async (req: NextRequest, { supabase, user }: any) => {
   await rateLimit(req as any, { key: 'apps:POST', limit: 30, window: '1m' } as any);
 
@@ -12,6 +12,11 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }: any) =
   if (!body || !body.opportunity_id) return jsonError('Missing opportunity_id', 400);
 
   const opportunity_id = String(body.opportunity_id);
+  const note = typeof body.note === 'string'
+    ? body.note.trim() || null
+    : typeof body.message === 'string'
+      ? body.message.trim() || null
+      : null;
 
   // verifica exist e che non sia tua
   const { data: opp, error: oppErr } = await supabase
@@ -39,7 +44,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }: any) =
     .insert({
       opportunity_id,
       athlete_id: user.id,
-      message: body.message ?? null,
+      note,
     })
     .select('id, opportunity_id, athlete_id, created_at')
     .single();
