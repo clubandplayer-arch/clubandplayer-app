@@ -28,6 +28,11 @@ function sortAlpha(values: Iterable<string>) {
   return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b, 'it', { sensitivity: 'base' }));
 }
 
+function isRawRow(row: unknown): row is RawRow {
+  if (!row || typeof row !== 'object') return false;
+  return !('error' in (row as Record<string, unknown>));
+}
+
 function normalizeRow(row: RawRow, config: SourceConfig): LocationRow | null {
   const region = String(row[config.regionKey] ?? '').trim();
   const province = String(row[config.provinceKey] ?? '').trim();
@@ -55,7 +60,7 @@ async function loadLocations() {
 
     const rows = Array.isArray(data) ? data : [];
     const normalized = rows
-      .map((row) => normalizeRow(row as RawRow, source))
+      .map((row) => (isRawRow(row) ? normalizeRow(row, source) : null))
       .filter((row): row is LocationRow => !!row);
 
     if (normalized.length > 0) {
