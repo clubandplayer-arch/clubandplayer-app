@@ -10,16 +10,19 @@ export default function SupabaseSessionSync() {
     let active = true;
 
     async function push(session: Session | null) {
-      if (!session) return;
       try {
         await fetch('/api/auth/session', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({
-            access_token: session.access_token,
-            refresh_token: session.refresh_token,
-          }),
+          body: JSON.stringify(
+            session
+              ? {
+                  access_token: session.access_token,
+                  refresh_token: session.refresh_token,
+                }
+              : {}
+          ),
         });
       } catch {
         // no-op
