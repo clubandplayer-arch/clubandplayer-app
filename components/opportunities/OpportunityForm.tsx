@@ -88,8 +88,8 @@ export default function OpportunityForm({
   const [role, setRole] = useState<string>(initial?.role ?? '');
 
   // Genere (OBBLIGATORIO)
-  const [gender, setGender] = useState<Opportunity['gender'] | ''>(
-    () => (normalizeOpportunityGender(initial?.gender) ?? '') as Opportunity['gender'] | ''
+  const [gender, setGender] = useState<OpportunityGenderCode | ''>(
+    () => normalizeOpportunityGender(initial?.gender) ?? ''
   );
 
   // Età (mappa ⇄ age_min/age_max)
@@ -369,7 +369,7 @@ export default function OpportunityForm({
               className="w-full rounded-xl border px-3 py-2"
               value={gender}
               onChange={(e) => {
-                const next = (e.target.value || '') as Opportunity['gender'] | '';
+                const next = (e.target.value || '') as OpportunityGenderCode | '';
                 setGender(next);
               }}
               required
