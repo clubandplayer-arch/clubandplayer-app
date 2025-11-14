@@ -46,7 +46,7 @@ export default function ChatPage() {
 
     const { data: prof, error: profErr } = await supabase
       .from('profiles')
-      .select('display_name, full_name, headline, sport, main_sport, role, city')
+      .select('display_name, full_name, headline, sport, role, city')
       .eq('id', String(peerId))
       .limit(1)
     if (!profErr && prof && prof[0]) {
@@ -55,7 +55,6 @@ export default function ChatPage() {
         full_name: string | null
         headline: string | null
         sport: string | null
-        main_sport: string | null
         role: string | null
         city: string | null
       }
@@ -64,7 +63,7 @@ export default function ChatPage() {
       if (tagline) {
         setPeerTagline(tagline)
       } else {
-        const parts = [row.role, row.sport ?? row.main_sport, row.city]
+        const parts = [row.role, row.sport, row.city]
           .map((part) => (part ?? '').trim())
           .filter(Boolean)
         setPeerTagline(parts.length ? parts.join(' · ') : null)

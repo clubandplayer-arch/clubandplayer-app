@@ -11,7 +11,6 @@ type Profile = {
   headline: string | null
   bio: string | null
   sport: string | null
-  main_sport: string | null
   role: string | null
   country: string | null
   region: string | null
@@ -36,7 +35,7 @@ function buildTagline(p: Profile): string {
   const headline = (p.headline ?? '').trim()
   if (headline) return headline
   const role = p.role ?? 'Ruolo n/d'
-  const sport = p.sport ?? p.main_sport ?? 'Sport n/d'
+  const sport = p.sport ?? 'Sport n/d'
   const city = p.city ?? 'Città n/d'
   return `${role} · ${sport} · ${city}`
 }
@@ -72,7 +71,7 @@ export default function PublicAthleteProfile() {
       const { data: profs, error: perr } = await supabase
         .from('profiles')
         .select(
-          'id, display_name, full_name, headline, bio, sport, main_sport, role, country, region, province, city, avatar_url'
+          'id, display_name, full_name, headline, bio, sport, role, country, region, province, city, avatar_url'
         )
         .eq('id', athleteId)
         .limit(1)
@@ -170,7 +169,7 @@ export default function PublicAthleteProfile() {
           <section style={{border:'1px solid #e5e7eb', borderRadius:12, padding:16, marginTop:12}}>
             <h2 style={{marginTop:0}}>Panoramica</h2>
             <ul style={{marginTop:8}}>
-              <li><b>Sport:</b> {profile.sport ?? profile.main_sport ?? '—'}</li>
+              <li><b>Sport:</b> {profile.sport ?? '—'}</li>
               <li><b>Ruolo:</b> {profile.role ?? '—'}</li>
               <li><b>Città:</b> {profile.city ?? '—'}</li>
             </ul>

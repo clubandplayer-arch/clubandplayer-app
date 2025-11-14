@@ -12,7 +12,6 @@ type Profile = {
   headline: string | null
   bio: string | null
   sport: string | null
-  main_sport: string | null
   role: string | null
   country: string | null
   region: string | null
@@ -61,7 +60,7 @@ export default function AthletePublicProfilePage() {
       const { data: profs, error: pErr } = await supabase
         .from('profiles')
         .select(
-          'id, display_name, full_name, headline, bio, sport, main_sport, role, country, region, province, city, avatar_url'
+          'id, display_name, full_name, headline, bio, sport, role, country, region, province, city, avatar_url'
         )
         .eq('id', athleteId)
         .limit(1)
@@ -118,7 +117,7 @@ export default function AthletePublicProfilePage() {
     const headline = (profile.headline ?? '').trim()
     if (headline) return headline
     const role = profile.role ?? 'Ruolo n/d'
-    const sport = profile.sport ?? profile.main_sport ?? 'Sport n/d'
+    const sport = profile.sport ?? 'Sport n/d'
     const city = profile.city ?? 'Città n/d'
     return `${role} · ${sport} · ${city}`
   }, [profile])
@@ -185,7 +184,7 @@ export default function AthletePublicProfilePage() {
           <section style={{border:'1px solid #e5e7eb', borderRadius:12, padding:16, marginTop:12}}>
             <h2 style={{marginTop:0}}>Panoramica</h2>
             <ul style={{marginTop:8, lineHeight:1.8}}>
-              <li><b>Sport:</b> {profile.sport ?? profile.main_sport ?? '—'}</li>
+              <li><b>Sport:</b> {profile.sport ?? '—'}</li>
               <li><b>Ruolo:</b> {profile.role ?? '—'}</li>
               <li><b>Città:</b> {profileLocation || '—'}</li>
             </ul>
