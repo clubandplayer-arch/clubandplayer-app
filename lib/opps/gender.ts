@@ -3,15 +3,15 @@
 export type OpportunityGenderCode = 'male' | 'female' | 'mixed';
 
 const CANONICAL_DB_VALUES: Record<OpportunityGenderCode, string> = {
-  male: 'male',
-  female: 'female',
-  mixed: 'mixed',
-};
-
-const FALLBACK_DB_VALUES: Record<OpportunityGenderCode, string> = {
   male: 'Maschile',
   female: 'Femminile',
   mixed: 'Misto',
+};
+
+const FALLBACK_DB_VALUES: Record<OpportunityGenderCode, string> = {
+  male: 'male',
+  female: 'female',
+  mixed: 'mixed',
 };
 
 const NORMALIZED_VARIANTS: Record<OpportunityGenderCode, string[]> = {
