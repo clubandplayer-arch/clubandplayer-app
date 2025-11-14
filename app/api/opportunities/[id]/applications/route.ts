@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
+import { fetchPublicProfilesByIds } from '@/lib/profiles/public';
 
 export const runtime = 'nodejs';
 
@@ -30,68 +31,18 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   if (error) return jsonError(error.message, 400);
 
   const apps = rows ?? [];
-  const athleteIds = Array.from(new Set(apps.map(a => a.athlete_id).filter(Boolean)));
+  const athleteIds = Array.from(
+    new Set(apps.map(a => String(a.athlete_id ?? '')).filter(id => id.length > 0))
+  );
 
   // profili atleti
-  const profilesMap = new Map<string, {
-    id: string;
-    display_name: string | null;
-    full_name: string | null;
-    headline: string | null;
-    bio: string | null;
-    sport: string | null;
-    role: string | null;
-    country: string | null;
-    region: string | null;
-    province: string | null;
-    city: string | null;
-    avatar_url: string | null;
-    profile_type: string | null;
-  }>();
-  if (athleteIds.length) {
-    const { data: profs } = await supabase
-      .from('profiles')
-      .select(
-        [
-          'id',
-          'display_name',
-          'full_name',
-          'headline',
-          'bio',
-          'sport',
-          'role',
-          'country',
-          'region',
-          'province',
-          'city',
-          'avatar_url',
-          'profile_type',
-          'type',
-        ].join(',')
-      )
-      .in('id', athleteIds);
-    profs?.forEach((p: any) => {
-      profilesMap.set(p.id, {
-        id: p.id,
-        display_name: p.display_name ?? null,
-        full_name: p.full_name ?? null,
-        headline: p.headline ?? null,
-        bio: p.bio ?? null,
-        sport: p.sport ?? null,
-        role: p.role ?? null,
-        country: p.country ?? null,
-        region: p.region ?? null,
-        province: p.province ?? null,
-        city: p.city ?? null,
-        avatar_url: p.avatar_url ?? null,
-        profile_type: p.profile_type ?? p.type ?? null,
-      });
-    });
-  }
+  const profilesMap = athleteIds.length
+    ? await fetchPublicProfilesByIds(athleteIds, supabase, { fallbackToAdmin: true })
+    : new Map();
 
   const enhanced = apps.map(a => ({
     ...a,
-    athlete: profilesMap.get(a.athlete_id) ?? null,
+    athlete: profilesMap.get(String(a.athlete_id ?? '')) ?? null,
   }));
 
   return NextResponse.json({ data: enhanced });

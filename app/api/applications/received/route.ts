@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
+import { fetchPublicProfilesByIds } from '@/lib/profiles/public';
 
 export const runtime = 'nodejs';
 
@@ -50,56 +51,16 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   if (!apps.length) return NextResponse.json({ data: [] });
 
   // 3) Profili atleti
-  const athleteIds = Array.from(new Set(apps.map(a => a.athlete_id)));
-  const { data: profs } = await supabase
-    .from('profiles')
-    .select(
-      [
-        'id',
-        'display_name',
-        'full_name',
-        'headline',
-        'bio',
-        'sport',
-        'role',
-        'country',
-        'region',
-        'province',
-        'city',
-        'avatar_url',
-        'account_type',
-        'profile_type',
-        'type',
-      ].join(',')
-    )
-    .in('id', athleteIds);
-
-  const profMap = new Map(
-    (profs ?? []).map((p: any) => [
-      p.id,
-      {
-        id: p.id,
-        display_name: p.display_name ?? null,
-        full_name: p.full_name ?? null,
-        headline: p.headline ?? null,
-        bio: p.bio ?? null,
-        sport: p.sport ?? null,
-        role: p.role ?? null,
-        country: p.country ?? null,
-        region: p.region ?? null,
-        province: p.province ?? null,
-        city: p.city ?? null,
-        avatar_url: p.avatar_url ?? null,
-        account_type: (p.account_type ?? p.profile_type ?? p.type ?? null) as string | null,
-      },
-    ])
+  const athleteIds = Array.from(
+    new Set(apps.map(a => String(a.athlete_id ?? '')).filter(id => id.length > 0))
   );
+  const profMap = await fetchPublicProfilesByIds(athleteIds, supabase, { fallbackToAdmin: true });
 
   // 4) Arricchisci
   const enhanced = apps.map(a => ({
     ...a,
     opportunity: oppMap.get(a.opportunity_id) ?? null,
-    athlete: profMap.get(a.athlete_id) ?? null,
+    athlete: profMap.get(String(a.athlete_id ?? '')) ?? null,
   }));
 
   return NextResponse.json({ data: enhanced });

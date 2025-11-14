@@ -57,18 +57,21 @@ export default function AthletePublicProfilePage() {
       setMeId(userRes?.user?.id ?? null)
 
       // 1) profilo pubblico
-      const { data: profs, error: pErr } = await supabase
-        .from('profiles')
-        .select(
-          'id, display_name, full_name, headline, bio, sport, role, country, region, province, city, avatar_url'
-        )
-        .eq('id', athleteId)
-        .limit(1)
+      const profileRes = await fetch(`/api/profiles/${encodeURIComponent(athleteId)}`, {
+        credentials: 'include',
+        cache: 'no-store',
+      })
+      if (profileRes.status === 404) { setMsg('Profilo non trovato.'); setLoading(false); return }
+      if (!profileRes.ok) {
+        const txt = await profileRes.text().catch(() => '')
+        setMsg(txt ? `Errore profilo: ${txt}` : 'Errore profilo')
+        setLoading(false)
+        return
+      }
 
-      if (pErr) { setMsg(`Errore profilo: ${pErr.message}`); setLoading(false); return }
-      if (!profs || profs.length === 0) { setMsg('Profilo non trovato.'); setLoading(false); return }
-
-      const p = profs[0] as Profile
+      const json = await profileRes.json().catch(() => ({}))
+      const p = (json?.data ?? null) as Profile | null
+      if (!p) { setMsg('Profilo non trovato.'); setLoading(false); return }
       setProfile(p)
 
       // 2) (facoltativo) ultime candidature visibili solo all’atleta stesso

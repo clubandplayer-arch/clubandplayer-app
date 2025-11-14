@@ -44,29 +44,34 @@ export default function ChatPage() {
     const me = u.data.user.id
     setUserId(me)
 
-    const { data: prof, error: profErr } = await supabase
-      .from('profiles')
-      .select('display_name, full_name, headline, sport, role, city')
-      .eq('id', String(peerId))
-      .limit(1)
-    if (!profErr && prof && prof[0]) {
-      const row = prof[0] as {
+    const profRes = await fetch(`/api/profiles/${encodeURIComponent(String(peerId))}`, {
+      credentials: 'include',
+      cache: 'no-store',
+    })
+    if (profRes.ok) {
+      const json = await profRes.json().catch(() => ({}))
+      const row = json?.data as {
         display_name: string | null
         full_name: string | null
         headline: string | null
         sport: string | null
         role: string | null
         city: string | null
-      }
-      setPeerName(row.display_name ?? row.full_name ?? null)
-      const tagline = (row.headline ?? '').trim()
-      if (tagline) {
-        setPeerTagline(tagline)
+      } | undefined
+      if (row) {
+        setPeerName(row.display_name ?? row.full_name ?? null)
+        const tagline = (row.headline ?? '').trim()
+        if (tagline) {
+          setPeerTagline(tagline)
+        } else {
+          const parts = [row.role, row.sport, row.city]
+            .map((part) => (part ?? '').trim())
+            .filter(Boolean)
+          setPeerTagline(parts.length ? parts.join(' · ') : null)
+        }
       } else {
-        const parts = [row.role, row.sport, row.city]
-          .map((part) => (part ?? '').trim())
-          .filter(Boolean)
-        setPeerTagline(parts.length ? parts.join(' · ') : null)
+        setPeerName(null)
+        setPeerTagline(null)
       }
     } else {
       setPeerName(null)

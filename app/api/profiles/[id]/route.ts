@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
+import { fetchPublicProfileById } from '@/lib/profiles/public';
 
 export const runtime = 'nodejs';
 
@@ -14,27 +15,14 @@ export const GET = withAuth(async (req: NextRequest, { supabase }) => {
   const id = req.nextUrl.pathname.split('/').pop();
   if (!id) return jsonError('Missing id', 400);
 
-  // Tenta per PK id
-  let { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', id)
-    .maybeSingle();
-
-  // Se non trovato, prova per user_id (retrocompatibilità)
-  if (!data && !error) {
-    const alt = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('user_id', id)
-      .maybeSingle();
-    data = alt.data as any;
-    error = alt.error as any;
+  try {
+    const profile = await fetchPublicProfileById(id, supabase, { fallbackToAdmin: true });
+    if (!profile) return jsonError('Not found', 404);
+    return NextResponse.json({ data: profile });
+  } catch (error: any) {
+    const message = typeof error?.message === 'string' ? error.message : 'Errore profilo'
+    return jsonError(message, 400)
   }
-
-  if (error) return jsonError(error.message, 400);
-  if (!data) return jsonError('Not found', 404);
-  return NextResponse.json({ data });
 });
 
 /** PATCH /api/profiles/:id

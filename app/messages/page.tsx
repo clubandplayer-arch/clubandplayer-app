@@ -51,26 +51,40 @@ export default function MessagesHome() {
     // peers
     const peers = Array.from(new Set(rowsData.map(r => r.sender_id === me ? r.receiver_id : r.sender_id)))
     if (peers.length > 0) {
-      const [{ data: profs }, { data: reads }] = await Promise.all([
-        supabase
-          .from('profiles')
-          .select('id, display_name, full_name, headline')
-          .in('id', peers),
-        supabase.from('message_reads').select('peer_id, last_read_at').eq('user_id', me)
-      ])
-      const names: Record<string, string | null> = Object.fromEntries(
-        (profs ?? []).map((p: any) => [
-          p.id as string,
-          (p.display_name ?? p.full_name ?? p.headline ?? null) as string | null,
+      try {
+        const [profilesJson, readsRes] = await Promise.all([
+          (async () => {
+            const idsParam = encodeURIComponent(peers.join(','))
+            const res = await fetch(`/api/profiles/public?ids=${idsParam}`, {
+              credentials: 'include',
+              cache: 'no-store',
+            })
+            if (!res.ok) return null
+            return res.json().catch(() => null)
+          })(),
+          supabase.from('message_reads').select('peer_id, last_read_at').eq('user_id', me),
         ])
-      )
-      setPeerNames(names)
 
-      const lr: Record<string, string> = {}
-      for (const r of (reads ?? []) as {peer_id: string, last_read_at: string}[]) {
-        lr[r.peer_id] = r.last_read_at
+        const names: Record<string, string | null> = {}
+        const dataList = (profilesJson as any)?.data as Array<{
+          id: string
+          display_name: string | null
+          full_name: string | null
+          headline: string | null
+        }> | undefined
+        dataList?.forEach(p => {
+          names[p.id] = p.display_name ?? p.full_name ?? p.headline ?? null
+        })
+        setPeerNames(names)
+
+        const lr: Record<string, string> = {}
+        const reads = readsRes.data as { peer_id: string; last_read_at: string }[] | null | undefined
+        reads?.forEach(r => { lr[r.peer_id] = r.last_read_at })
+        setLastRead(lr)
+      } catch (error) {
+        console.error('Impossibile caricare i profili messaggi:', error)
+        setPeerNames({})
       }
-      setLastRead(lr)
     }
 
     setLoading(false)
