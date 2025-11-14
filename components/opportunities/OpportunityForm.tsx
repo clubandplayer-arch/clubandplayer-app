@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Opportunity } from '@/types/opportunity';
 import { AGE_BRACKETS, type AgeBracket, SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
 import { COUNTRIES } from '@/lib/opps/geo';
+import { normalizeOpportunityGender } from '@/lib/opps/gender';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 type Gender = 'male' | 'female' | 'mixed';
@@ -259,7 +260,9 @@ export default function OpportunityForm({
   const [role, setRole] = useState<string>(initial?.role ?? '');
 
   // Genere (OBBLIGATORIO)
-  const [gender, setGender] = useState<Gender | ''>((initial?.gender as Gender) ?? '');
+  const [gender, setGender] = useState<Gender | ''>(
+    normalizeOpportunityGender(initial?.gender) ?? ''
+  );
 
   // Età (mappa ⇄ age_min/age_max)
   const [ageBracket, setAgeBracket] = useState<AgeBracket | ''>(() =>

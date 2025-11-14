@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { jsonError, withAuth } from '@/lib/api/auth';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
+import {
+  normalizeOpportunityGender,
+  toOpportunityDbValue,
+} from '@/lib/opps/gender';
 
 export const runtime = 'nodejs';
 
@@ -157,11 +161,8 @@ export const POST = withAuth(async (req, { supabase, user }) => {
     const requiredCategory = cleanText(body.required_category);
 
     const genderRaw = cleanText(body.gender);
-    const allowedGenders = new Set(['male', 'female', 'mixed']);
-    const gender = genderRaw && allowedGenders.has(genderRaw)
-      ? (genderRaw as 'male' | 'female' | 'mixed')
-      : null;
-    if (!gender) return jsonError('Genere obbligatorio', 400);
+    const normalizedGender = normalizeOpportunityGender(genderRaw);
+    if (!normalizedGender) return jsonError('Genere obbligatorio', 400);
 
     const rawAgeMin = body.age_min;
     const rawAgeMax = body.age_max;
@@ -223,7 +224,7 @@ export const POST = withAuth(async (req, { supabase, user }) => {
       appMeta['club_name']
     );
 
-    const payload = {
+    const basePayload = {
       title,
       description,
       country,
@@ -233,7 +234,6 @@ export const POST = withAuth(async (req, { supabase, user }) => {
       sport,
       role,
       required_category: requiredCategory,
-      gender,
       age_min: ageMin,
       age_max: ageMax,
       owner_id: user.id,
@@ -242,11 +242,24 @@ export const POST = withAuth(async (req, { supabase, user }) => {
       status: cleanText(body.status) ?? 'open',
     };
 
-    const { data, error } = await supabase
-      .from('opportunities')
-      .insert(payload)
-      .select(SELECT_COLUMNS)
-      .single();
+    const canonicalGender = toOpportunityDbValue(normalizedGender);
+
+    async function insertWithGender(genderValue: string) {
+      return supabase
+        .from('opportunities')
+        .insert({ ...basePayload, gender: genderValue })
+        .select(SELECT_COLUMNS)
+        .single();
+    }
+
+    let { data, error } = await insertWithGender(canonicalGender);
+
+    if (error && /opportunities_gender_check/i.test(error.message ?? '')) {
+      const fallbackGender = toOpportunityDbValue(normalizedGender, 'fallback');
+      if (fallbackGender !== canonicalGender) {
+        ({ data, error } = await insertWithGender(fallbackGender));
+      }
+    }
 
     if (error) {
       console.error('[POST /api/opportunities] insert error', error);
