@@ -20,7 +20,7 @@ Questa analisi riepiloga lo stato attuale del branch `work`, evidenziando le car
 | `types/` | Core | Tipi condivisi per profili, club, opportunità. | Allineare con schema Supabase quando completata la MVP. |
 | `supabase/` | Core | Migrazioni SQL e politiche RLS. | Tenere sincronizzato con l'istanza gestita. |
 | `scripts/` | Supporto | Script ausiliario (`create-admin-user.mjs`). | Mantenere per bootstrap ambienti. |
-| `data/` | Supporto | Costanti (geo, ruoli). | Convertire in seed Supabase quando pronte API dinamiche. |
+| _(rimosso)_ `data/` | — | Directory eliminata: le costanti geo/ruoli ora vivono in `lib/opps/*` e nelle API Supabase. |
 | `public/` | Supporto | Asset statici (icone). | Ok. |
 | `docs/` | Documentazione | Report, checklist MVP, audit corrente. | Aggiornare `docs/mvp-next-steps.md` al termine di ogni milestone. |
 | `tests/` | Supporto | Smoke test Node (`pnpm test:e2e`) + harness Next.js. | Valutare reintroduzione Playwright solo se servono scenari completi. |

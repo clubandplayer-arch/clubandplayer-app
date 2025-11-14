@@ -33,7 +33,7 @@ type OpportunityWithLegacy = Opportunity & {
   region?: string | null;
   country?: string | null;
 
-  gender?: 'male' | 'female' | 'mixed' | null;
+  gender?: 'uomo' | 'donna' | 'mixed' | 'male' | 'female' | 'maschile' | 'femminile' | null;
 };
 
 function fmtAge(min?: number | null, max?: number | null) {

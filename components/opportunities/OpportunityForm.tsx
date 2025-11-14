@@ -88,8 +88,8 @@ export default function OpportunityForm({
   const [role, setRole] = useState<string>(initial?.role ?? '');
 
   // Genere (OBBLIGATORIO)
-  const [gender, setGender] = useState<OpportunityGenderCode | ''>(
-    () => normalizeOpportunityGender(initial?.gender) ?? ''
+  const [gender, setGender] = useState<Opportunity['gender'] | ''>(
+    () => (normalizeOpportunityGender(initial?.gender) ?? '') as Opportunity['gender'] | ''
   );
 
   // Età (mappa ⇄ age_min/age_max)
@@ -140,7 +140,8 @@ export default function OpportunityForm({
     const t = title.trim();
     if (!t) return setErr('Titolo obbligatorio');
     if (sport === 'Calcio' && !role) return setErr('Seleziona un ruolo per Calcio');
-    if (!gender) return setErr('Seleziona il genere');
+    const normalizedGender = normalizeOpportunityGender(gender);
+    if (!normalizedGender) return setErr('Seleziona il genere');
 
     const { age_min, age_max } = rangeFromBracket(ageBracket);
 
@@ -155,7 +156,7 @@ export default function OpportunityForm({
         city: (city || '').trim() || null,
         sport,
         role: role || null,
-        gender: gender as OpportunityGenderCode,
+        gender: normalizedGender,
         age_bracket: ageBracket || undefined,
         age_min,
         age_max,
@@ -368,7 +369,7 @@ export default function OpportunityForm({
               className="w-full rounded-xl border px-3 py-2"
               value={gender}
               onChange={(e) => {
-                const next = (e.target.value || '') as OpportunityGenderCode | '';
+                const next = (e.target.value || '') as Opportunity['gender'] | '';
                 setGender(next);
               }}
               required

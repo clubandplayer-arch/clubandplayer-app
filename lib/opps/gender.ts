@@ -1,28 +1,28 @@
 // lib/opps/gender.ts
 
-export type OpportunityGenderCode = 'male' | 'female' | 'mixed';
+export type OpportunityGenderCode = 'uomo' | 'donna' | 'mixed';
 
 const CANONICAL_DB_VALUES: Record<OpportunityGenderCode, string> = {
-  male: 'Maschile',
-  female: 'Femminile',
-  mixed: 'Misto',
+  uomo: 'uomo',
+  donna: 'donna',
+  mixed: 'mixed',
 };
 
 const FALLBACK_DB_VALUES: Record<OpportunityGenderCode, string> = {
-  male: 'male',
-  female: 'female',
+  uomo: 'male',
+  donna: 'female',
   mixed: 'mixed',
 };
 
 const NORMALIZED_VARIANTS: Record<OpportunityGenderCode, string[]> = {
-  male: ['male', 'maschile', 'm', 'uomo', 'uomini'],
-  female: ['female', 'femminile', 'f', 'donna', 'donne'],
+  uomo: ['uomo', 'uomini', 'male', 'maschile', 'm', 'man', 'men', 'maschio'],
+  donna: ['donna', 'donne', 'female', 'femminile', 'f', 'woman', 'women', 'femmina'],
   mixed: ['mixed', 'misto', 'coed', 'co-ed', 'entrambi', 'both'],
 };
 
 const LABELS: Record<OpportunityGenderCode, string> = {
-  male: 'Maschile',
-  female: 'Femminile',
+  uomo: 'Uomo',
+  donna: 'Donna',
   mixed: 'Misto',
 };
 

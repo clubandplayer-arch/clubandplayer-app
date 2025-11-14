@@ -16,7 +16,15 @@ export type OpportunityRole =
 export type OpportunitySport = 'football' | (string & {});
 
 /** Genere target (opzionale) */
-export type OpportunityGender = 'male' | 'female' | 'mixed' | null;
+export type OpportunityGender =
+  | 'uomo'
+  | 'donna'
+  | 'mixed'
+  | 'male'
+  | 'female'
+  | 'maschile'
+  | 'femminile'
+  | null;
 
 /**
  * Modello principale opportunità.
