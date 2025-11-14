@@ -5,6 +5,21 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+type AthleteSummary = {
+  id: string;
+  display_name: string | null;
+  full_name: string | null;
+  headline: string | null;
+  bio: string | null;
+  sport: string | null;
+  role: string | null;
+  country: string | null;
+  region: string | null;
+  province: string | null;
+  city: string | null;
+  avatar_url: string | null;
+};
+
 type Row = {
   id: string;
   created_at?: string | null;
@@ -12,6 +27,7 @@ type Row = {
   opportunity_id?: string | null;
   status?: string | null; // submitted | in_review | accepted | rejected | withdrawn | pending...
   athlete_id?: string | null;
+  athlete?: AthleteSummary | null;
   [k: string]: any;
 };
 
@@ -149,14 +165,26 @@ export default function ApplicationsTable({
 
                 {/* Atleta solo per ricevute */}
                 {kind === 'received' && (
-                  <td className="px-3 py-2 whitespace-nowrap">
+                  <td className="px-3 py-2 min-w-[12rem]">
                     {r.athlete_id ? (
-                      <Link
-                        className="text-blue-700 hover:underline"
-                        href={`/athletes/${r.athlete_id}`}
-                      >
-                        {r.athlete_id}
-                      </Link>
+                      <div className="flex flex-col">
+                        <Link
+                          className="text-blue-700 hover:underline font-medium"
+                          href={`/athletes/${r.athlete_id}`}
+                        >
+                          {r.athlete?.display_name || r.athlete?.full_name || r.athlete_id}
+                        </Link>
+                        <span className="text-xs text-gray-600">
+                          {[r.athlete?.role, r.athlete?.sport]
+                            .filter(Boolean)
+                            .join(' · ') || 'Profilo atleta'}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {[r.athlete?.city, r.athlete?.province, r.athlete?.region]
+                            .filter(Boolean)
+                            .join(' · ') || ''}
+                        </span>
+                      </div>
                     ) : (
                       '—'
                     )}

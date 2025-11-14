@@ -22,6 +22,7 @@ export default function ChatPage() {
   const [err, setErr] = useState<string>('')
   const [text, setText] = useState('')
   const [peerName, setPeerName] = useState<string | null>(null)
+  const [peerTagline, setPeerTagline] = useState<string | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
 
   const scrollBottom = () => {
@@ -43,12 +44,35 @@ export default function ChatPage() {
     const me = u.data.user.id
     setUserId(me)
 
-    const { data: prof } = await supabase
+    const { data: prof, error: profErr } = await supabase
       .from('profiles')
-      .select('full_name')
+      .select('display_name, full_name, headline, sport, main_sport, role, city')
       .eq('id', String(peerId))
       .limit(1)
-    setPeerName(prof && prof[0] ? (prof[0] as {full_name: string|null}).full_name : null)
+    if (!profErr && prof && prof[0]) {
+      const row = prof[0] as {
+        display_name: string | null
+        full_name: string | null
+        headline: string | null
+        sport: string | null
+        main_sport: string | null
+        role: string | null
+        city: string | null
+      }
+      setPeerName(row.display_name ?? row.full_name ?? null)
+      const tagline = (row.headline ?? '').trim()
+      if (tagline) {
+        setPeerTagline(tagline)
+      } else {
+        const parts = [row.role, row.sport ?? row.main_sport, row.city]
+          .map((part) => (part ?? '').trim())
+          .filter(Boolean)
+        setPeerTagline(parts.length ? parts.join(' · ') : null)
+      }
+    } else {
+      setPeerName(null)
+      setPeerTagline(null)
+    }
 
     const { data, error } = await supabase
       .from('messages')
@@ -140,8 +164,11 @@ export default function ChatPage() {
         <Link href="/messages">← Torna alle conversazioni</Link>
       </div>
 
-      <div style={{opacity:.8, fontSize:14}}>
-        Con: <b>{peerName ?? <code>{String(peerId)}</code>}</b>
+      <div style={{opacity:.8, fontSize:14, display:'flex', flexDirection:'column', gap:2}}>
+        <span>
+          Con: <b>{peerName ?? <code>{String(peerId)}</code>}</b>
+        </span>
+        {peerTagline && <span style={{fontSize:12, opacity:0.7}}>{peerTagline}</span>}
       </div>
 
       {err && <p style={{color:'#b91c1c'}}>{err}</p>}

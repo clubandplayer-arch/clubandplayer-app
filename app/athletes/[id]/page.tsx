@@ -7,12 +7,18 @@ import { supabaseBrowser } from '@/lib/supabaseBrowser'
 
 type Profile = {
   id: string
+  display_name: string | null
   full_name: string | null
+  headline: string | null
+  bio: string | null
   sport: string | null
+  main_sport: string | null
   role: string | null
+  country: string | null
+  region: string | null
+  province: string | null
   city: string | null
   avatar_url?: string | null
-  bio?: string | null
 }
 
 type ApplicationRow = {
@@ -54,7 +60,9 @@ export default function AthletePublicProfilePage() {
       // 1) profilo pubblico
       const { data: profs, error: pErr } = await supabase
         .from('profiles')
-        .select('id, full_name, sport, role, city, avatar_url, bio')
+        .select(
+          'id, display_name, full_name, headline, bio, sport, main_sport, role, country, region, province, city, avatar_url'
+        )
         .eq('id', athleteId)
         .limit(1)
 
@@ -104,6 +112,25 @@ export default function AthletePublicProfilePage() {
 
   const isMe = useMemo(() => !!meId && !!profile && meId === profile.id, [meId, profile])
 
+  const profileName = profile?.display_name || profile?.full_name || 'Atleta'
+  const profileTagline = useMemo(() => {
+    if (!profile) return ''
+    const headline = (profile.headline ?? '').trim()
+    if (headline) return headline
+    const role = profile.role ?? 'Ruolo n/d'
+    const sport = profile.sport ?? profile.main_sport ?? 'Sport n/d'
+    const city = profile.city ?? 'Città n/d'
+    return `${role} · ${sport} · ${city}`
+  }, [profile])
+
+  const profileLocation = useMemo(() => {
+    if (!profile) return ''
+    const parts = [profile.city, profile.province, profile.region, profile.country]
+      .map((part) => (part ?? '').trim())
+      .filter(Boolean)
+    return parts.join(' · ')
+  }, [profile])
+
   return (
     <main style={{maxWidth:960, margin:'0 auto', padding:24}}>
       {loading && <p>Caricamento…</p>}
@@ -117,7 +144,7 @@ export default function AthletePublicProfilePage() {
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={profile.avatar_url}
-                alt={profile.full_name ?? 'Atleta'}
+                alt={profileName}
                 width={80}
                 height={80}
                 style={{borderRadius:'50%', objectFit:'cover'}}
@@ -126,10 +153,11 @@ export default function AthletePublicProfilePage() {
               <div style={{width:80, height:80, borderRadius:'50%', background:'#e5e7eb'}} />
             )}
             <div>
-              <h1 style={{margin:0}}>{profile.full_name ?? 'Atleta'}</h1>
-              <p style={{margin:'4px 0', opacity:.8}}>
-                {profile.role ?? 'Ruolo n/d'} · {profile.sport ?? 'Sport n/d'} · {profile.city ?? 'Città n/d'}
-              </p>
+              <h1 style={{margin:0}}>{profileName}</h1>
+              <p style={{margin:'4px 0', opacity:.8}}>{profileTagline}</p>
+              {profileLocation && (
+                <p style={{margin:'2px 0', fontSize:13, opacity:.7}}>{profileLocation}</p>
+              )}
               <div style={{display:'flex', gap:12, alignItems:'center'}}>
                 <span style={{fontSize:12, opacity:.7}}>ID: <code>{profile.id}</code></span>
                 {/* Messaggia: apre thread con l’atleta */}
@@ -157,9 +185,9 @@ export default function AthletePublicProfilePage() {
           <section style={{border:'1px solid #e5e7eb', borderRadius:12, padding:16, marginTop:12}}>
             <h2 style={{marginTop:0}}>Panoramica</h2>
             <ul style={{marginTop:8, lineHeight:1.8}}>
-              <li><b>Sport:</b> {profile.sport ?? '—'}</li>
+              <li><b>Sport:</b> {profile.sport ?? profile.main_sport ?? '—'}</li>
               <li><b>Ruolo:</b> {profile.role ?? '—'}</li>
-              <li><b>Città:</b> {profile.city ?? '—'}</li>
+              <li><b>Città:</b> {profileLocation || '—'}</li>
             </ul>
           </section>
 

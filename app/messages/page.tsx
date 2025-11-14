@@ -52,11 +52,18 @@ export default function MessagesHome() {
     const peers = Array.from(new Set(rowsData.map(r => r.sender_id === me ? r.receiver_id : r.sender_id)))
     if (peers.length > 0) {
       const [{ data: profs }, { data: reads }] = await Promise.all([
-        supabase.from('profiles').select('id, full_name').in('id', peers),
+        supabase
+          .from('profiles')
+          .select('id, display_name, full_name, headline')
+          .in('id', peers),
         supabase.from('message_reads').select('peer_id, last_read_at').eq('user_id', me)
       ])
-      const names: Record<string, string | null> =
-        Object.fromEntries((profs ?? []).map(p => [p.id as string, (p as {full_name: string|null}).full_name]))
+      const names: Record<string, string | null> = Object.fromEntries(
+        (profs ?? []).map((p: any) => [
+          p.id as string,
+          (p.display_name ?? p.full_name ?? p.headline ?? null) as string | null,
+        ])
+      )
       setPeerNames(names)
 
       const lr: Record<string, string> = {}

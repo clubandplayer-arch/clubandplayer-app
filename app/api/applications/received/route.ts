@@ -53,14 +53,44 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   const athleteIds = Array.from(new Set(apps.map(a => a.athlete_id)));
   const { data: profs } = await supabase
     .from('profiles')
-    .select('id, display_name, account_type, profile_type, type')
+    .select(
+      [
+        'id',
+        'display_name',
+        'full_name',
+        'headline',
+        'bio',
+        'sport',
+        'main_sport',
+        'role',
+        'country',
+        'region',
+        'province',
+        'city',
+        'avatar_url',
+        'account_type',
+        'profile_type',
+        'type',
+      ].join(',')
+    )
     .in('id', athleteIds);
 
   const profMap = new Map(
-    (profs ?? []).map((p) => [
+    (profs ?? []).map((p: any) => [
       p.id,
       {
-        ...p,
+        id: p.id,
+        display_name: p.display_name ?? null,
+        full_name: p.full_name ?? null,
+        headline: p.headline ?? null,
+        bio: p.bio ?? null,
+        sport: p.sport ?? p.main_sport ?? null,
+        role: p.role ?? null,
+        country: p.country ?? null,
+        region: p.region ?? null,
+        province: p.province ?? null,
+        city: p.city ?? null,
+        avatar_url: p.avatar_url ?? null,
         account_type: (p.account_type ?? p.profile_type ?? p.type ?? null) as string | null,
       },
     ])
