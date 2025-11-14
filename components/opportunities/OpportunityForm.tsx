@@ -1,15 +1,59 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+
 import type { Opportunity } from '@/types/opportunity';
 import { AGE_BRACKETS, type AgeBracket, SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
 import { COUNTRIES } from '@/lib/opps/geo';
-import { useItalyLocations } from '@/hooks/useItalyLocations';
 import {
   OPPORTUNITY_GENDER_LABELS,
   normalizeOpportunityGender,
   type OpportunityGenderCode,
 } from '@/lib/opps/gender';
+
+type LocationLevel = 'region' | 'province' | 'municipality';
+type LocationRow = { id: number; name: string };
+
+const supabase = createSupabaseClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+);
+
+async function fetchLocationChildren(level: LocationLevel, parent: number | null): Promise<LocationRow[]> {
+  try {
+    const { data, error } = await supabase.rpc('location_children', { level, parent });
+    if (!error && Array.isArray(data)) {
+      return (data as LocationRow[]).map((row) => ({ id: Number(row.id), name: row.name }))
+        .sort((a, b) => a.name.localeCompare(b.name, 'it', { sensitivity: 'accent' }));
+    }
+  } catch (err) {
+    console.warn('location_children rpc failed', err);
+  }
+
+  if (level === 'region') {
+    const { data } = await supabase.from('regions').select('id,name').order('name', { ascending: true });
+    return (data ?? []).map((row: any) => ({ id: Number(row.id), name: row.name as string }));
+  }
+
+  if (level === 'province') {
+    if (parent == null) return [];
+    const { data } = await supabase
+      .from('provinces')
+      .select('id,name')
+      .eq('region_id', parent)
+      .order('name', { ascending: true });
+    return (data ?? []).map((row: any) => ({ id: Number(row.id), name: row.name as string }));
+  }
+
+  if (parent == null) return [];
+  const { data } = await supabase
+    .from('municipalities')
+    .select('id,name')
+    .eq('province_id', parent)
+    .order('name', { ascending: true });
+  return (data ?? []).map((row: any) => ({ id: Number(row.id), name: row.name as string }));
+}
 
 const GENDERS = (Object.entries(OPPORTUNITY_GENDER_LABELS) as Array<[
   OpportunityGenderCode,
@@ -59,8 +103,7 @@ export default function OpportunityForm({
   const [title, setTitle] = useState(initial?.title ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
 
-  const { data: italyLocations, countries } = useItalyLocations();
-  const availableCountries = countries ?? COUNTRIES;
+  const availableCountries = COUNTRIES;
 
   // Località
   const [countryCode, setCountryCode] = useState<string>(
@@ -72,15 +115,14 @@ export default function OpportunityForm({
   const [region, setRegion] = useState<string>(initial?.region ?? '');
   const [province, setProvince] = useState<string>(initial?.province ?? '');
   const [city, setCity] = useState<string>(initial?.city ?? '');
-
-  const provinces: string[] = useMemo(
-    () => (countryCode === 'IT' ? italyLocations.provincesByRegion[region] ?? [] : []),
-    [countryCode, region, italyLocations]
-  );
-  const cities: string[] = useMemo(
-    () => (countryCode === 'IT' ? italyLocations.citiesByProvince[province] ?? [] : []),
-    [countryCode, province, italyLocations]
-  );
+  const [regions, setRegions] = useState<LocationRow[]>([]);
+  const [regionId, setRegionId] = useState<number | null>(null);
+  const [provinces, setProvinces] = useState<LocationRow[]>([]);
+  const [provinceId, setProvinceId] = useState<number | null>(null);
+  const [cities, setCities] = useState<string[]>([]);
+  const regionsLoadedRef = useRef(false);
+  const provincesLoadedRef = useRef(false);
+  const citiesLoadedRef = useRef(false);
 
   // Sport/ruolo
   const [sport, setSport] = useState<string>(initial?.sport || 'Calcio');
@@ -102,30 +144,112 @@ export default function OpportunityForm({
   const isEdit = Boolean(initial?.id);
 
   useEffect(() => {
-    if (countryCode !== 'IT') return;
-    if (region && !italyLocations.provincesByRegion[region]) {
+    regionsLoadedRef.current = false;
+    if (countryCode !== 'IT') {
+      setRegions([]);
+      setRegionId(null);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      const rows = await fetchLocationChildren('region', null);
+      if (cancelled) return;
+      setRegions(rows);
+      regionsLoadedRef.current = true;
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [countryCode]);
+
+  useEffect(() => {
+    if (countryCode !== 'IT') {
+      setRegionId(null);
+      return;
+    }
+    if (!regionsLoadedRef.current) return;
+    const match = regions.find((r) => r.name === region);
+    if (!match && region) {
       setRegion('');
+      setRegionId(null);
       setProvince('');
+      setProvinceId(null);
       setCity('');
+      setCities([]);
+      return;
     }
-  }, [countryCode, region, italyLocations.provincesByRegion]);
+    setRegionId(match?.id ?? null);
+  }, [countryCode, region, regions]);
+
+  useEffect(() => {
+    provincesLoadedRef.current = false;
+    if (countryCode !== 'IT' || regionId == null) {
+      setProvinces([]);
+      setProvinceId(null);
+      setCities([]);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      const rows = await fetchLocationChildren('province', regionId);
+      if (cancelled) return;
+      setProvinces(rows);
+      provincesLoadedRef.current = true;
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [countryCode, regionId]);
+
+  useEffect(() => {
+    if (countryCode !== 'IT') {
+      setProvinceId(null);
+      return;
+    }
+    if (!provincesLoadedRef.current) return;
+    const match = provinces.find((p) => p.name === province);
+    if (!match && province) {
+      setProvince('');
+      setProvinceId(null);
+      setCity('');
+      setCities([]);
+      return;
+    }
+    setProvinceId(match?.id ?? null);
+  }, [countryCode, province, provinces]);
+
+  useEffect(() => {
+    citiesLoadedRef.current = false;
+    if (countryCode !== 'IT' || provinceId == null) {
+      setCities([]);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      const rows = await fetchLocationChildren('municipality', provinceId);
+      if (cancelled) return;
+      const names = rows.map((row) => row.name).sort((a, b) => a.localeCompare(b, 'it', { sensitivity: 'accent' }));
+      setCities(names);
+      citiesLoadedRef.current = true;
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [countryCode, provinceId]);
 
   useEffect(() => {
     if (countryCode !== 'IT') return;
-    if (province && !italyLocations.citiesByProvince[province]) {
-      setProvince('');
+    if (!citiesLoadedRef.current) return;
+    if (city && !cities.includes(city)) {
       setCity('');
     }
-  }, [countryCode, province, italyLocations.citiesByProvince]);
-
-  useEffect(() => {
-    if (countryCode !== 'IT') return;
-    if (!province) return;
-    const availableCities = italyLocations.citiesByProvince[province] ?? [];
-    if (city && !availableCities.includes(city)) {
-      setCity('');
-    }
-  }, [countryCode, province, city, italyLocations.citiesByProvince]);
+  }, [countryCode, city, cities]);
 
   function effectiveCountry(): string | null {
     if (countryCode === 'OTHER') return countryFree.trim() || null;
@@ -186,17 +310,26 @@ export default function OpportunityForm({
     setCountryFree('');
     if (code !== 'IT') {
       setRegion('');
+      setRegionId(null);
       setProvince('');
+      setProvinceId(null);
       setCity('');
+      setCities([]);
     }
   }
   function onChangeRegion(r: string) {
     setRegion(r);
+    const match = regions.find((row) => row.name === r);
+    setRegionId(match?.id ?? null);
     setProvince('');
+    setProvinceId(null);
     setCity('');
+    setCities([]);
   }
   function onChangeProvince(p: string) {
     setProvince(p);
+    const match = provinces.find((row) => row.name === p);
+    setProvinceId(match?.id ?? null);
     setCity('');
   }
 
@@ -255,9 +388,9 @@ export default function OpportunityForm({
                 onChange={(e) => onChangeRegion(e.target.value)}
               >
                 <option value="">—</option>
-                {italyLocations.regions.map((r: string) => (
-                  <option key={r} value={r}>
-                    {r}
+                {regions.map((r) => (
+                  <option key={r.id} value={r.name}>
+                    {r.name}
                   </option>
                 ))}
               </select>
@@ -265,7 +398,10 @@ export default function OpportunityForm({
               <input
                 className="w-full rounded-xl border px-3 py-2"
                 value={region ?? ''}
-                onChange={(e) => setRegion(e.target.value)}
+                onChange={(e) => {
+                  setRegion(e.target.value);
+                  setRegionId(null);
+                }}
               />
             )}
           </div>
@@ -279,9 +415,9 @@ export default function OpportunityForm({
                 onChange={(e) => onChangeProvince(e.target.value)}
               >
                 <option value="">—</option>
-                {provinces.map((p: string) => (
-                  <option key={p} value={p}>
-                    {p}
+                {provinces.map((p) => (
+                  <option key={p.id} value={p.name}>
+                    {p.name}
                   </option>
                 ))}
               </select>
@@ -289,7 +425,10 @@ export default function OpportunityForm({
               <input
                 className="w-full rounded-xl border px-3 py-2"
                 value={province ?? ''}
-                onChange={(e) => setProvince(e.target.value)}
+                onChange={(e) => {
+                  setProvince(e.target.value);
+                  setProvinceId(null);
+                }}
               />
             )}
           </div>
