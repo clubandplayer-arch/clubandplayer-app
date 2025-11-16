@@ -5,6 +5,8 @@ export type PublicProfileSummary = {
   id: string;
   profile_id: string | null;
   user_id: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
   display_name: string | null;
   full_name: string | null;
   headline: string | null;
@@ -62,6 +64,8 @@ function normalizeRow(row: Record<string, any>): PublicProfileSummary | null {
     id: userId ?? profileId ?? '',
     profile_id: profileId,
     user_id: userId,
+    first_name: first || null,
+    last_name: last || null,
     display_name: displayName,
     full_name: fullName,
     headline: typeof row.headline === 'string' ? row.headline : null,
