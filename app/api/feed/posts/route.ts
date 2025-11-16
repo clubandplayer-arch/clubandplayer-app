@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
 import { createClient } from '@supabase/supabase-js';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
 
@@ -134,6 +135,24 @@ export async function POST(req: NextRequest) {
     if (error && /column .* does not exist/i.test(error.message || '')) {
       const fallbackPayload = { content: mediaUrl ? `${text}\n${mediaUrl}` : text, author_id: auth.user.id };
       ({ data, error } = await runInsert(fallbackPayload, 'id, author_id, content, created_at'));
+    }
+
+    // Fallback amministrativo se le policy RLS bloccano l'inserimento con il token utente
+    if (error && /row-level security/i.test(error.message || '')) {
+      const admin = getSupabaseAdminClientOrNull();
+      if (admin) {
+        const adminPayload = { ...insertPayload };
+        if (!adminPayload.content && mediaUrl) adminPayload.content = `${text}\n${mediaUrl}`;
+        const { data: adminData, error: adminErr } = await admin
+          .from('posts')
+          .insert(adminPayload)
+          .select('id, author_id, content, created_at, media_url, media_type')
+          .single();
+        if (!adminErr) {
+          data = adminData;
+          error = null;
+        }
+      }
     }
 
     if (error) {

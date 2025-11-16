@@ -203,24 +203,25 @@ export default function ProfileMiniCard() {
 
   return (
     <div className="rounded-2xl border p-4 shadow-sm">
-      <div className="flex items-start gap-3">
+      <div className="flex flex-col items-center gap-3 text-center">
         {p?.avatar_url ? (
           <img
             src={p.avatar_url}
             alt={name}
-            className="h-48 w-[9.6rem] flex-shrink-0 rounded-2xl object-cover"
+            className="h-56 w-full max-w-[14rem] rounded-2xl object-cover"
           />
         ) : (
-          <div className="h-48 w-[9.6rem] flex-shrink-0 rounded-2xl bg-gray-200" />
+          <div className="h-56 w-full max-w-[14rem] rounded-2xl bg-gray-200" />
         )}
-        <div className="min-w-0">
-          <div className="text-base font-semibold">{name}</div>
+
+        <div className="w-full space-y-1">
+          <div className="text-base font-semibold break-words">{name}</div>
 
           {/* righe info */}
           {!isClub && <div className="text-xs text-gray-600">Luogo di residenza: {residenza}</div>}
           {!isClub && <div className="text-xs text-gray-600">Luogo di nascita: {nascita}</div>}
 
-          <div className="text-xs text-gray-600 flex items-center gap-1">
+          <div className="text-xs text-gray-600 flex items-center justify-center gap-1">
             <span>Nazionalità:</span>
             {flagUrl ? <img src={flagUrl} alt={nat.label} className="inline-block h-3 w-5 rounded-[2px]" /> : null}
             <span>{nat.label || '—'}</span>
