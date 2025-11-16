@@ -147,20 +147,20 @@ export async function getPublicProfilesMap(
 
   const missing = new Set(cleanIds);
 
-  await fillFromClient(result, missing, supabase, 'id', cleanIds);
-  if (missing.size) {
-    await fillFromClient(result, missing, supabase, 'user_id', Array.from(missing));
+  const clients: Array<{ client: GenericClient | null; label: string }> = [];
+  if (options.fallbackToAdmin) {
+    clients.push({ client: getSupabaseAdminClientOrNull(), label: 'admin' });
   }
+  clients.push({ client: supabase, label: 'supabase' });
 
-  if (missing.size && options.fallbackToAdmin) {
-    const admin = getSupabaseAdminClientOrNull();
-    if (admin) {
-      const stillMissing = Array.from(missing);
-      await fillFromClient(result, missing, admin, 'id', stillMissing);
-      if (missing.size) {
-        await fillFromClient(result, missing, admin, 'user_id', Array.from(missing));
-      }
+  for (const { client } of clients) {
+    if (!client || !missing.size) continue;
+
+    await fillFromClient(result, missing, client, 'id', Array.from(missing));
+    if (missing.size) {
+      await fillFromClient(result, missing, client, 'user_id', Array.from(missing));
     }
+    if (!missing.size) break;
   }
 
   return result;
