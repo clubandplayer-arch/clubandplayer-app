@@ -35,10 +35,12 @@ export default function ApplicationsTable({
   rows,
   kind,
   loading = false,
+  onStatusChange,
 }: {
   rows: Row[];
   kind: 'sent' | 'received';
   loading?: boolean;
+  onStatusChange?: (id: string, status: 'accepted' | 'rejected') => void;
 }) {
   const router = useRouter();
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -94,11 +96,15 @@ export default function ApplicationsTable({
         const t = await res.text().catch(() => '');
         throw new Error(t || `HTTP ${res.status}`);
       }
+
+      onStatusChange?.(id, next);
     } catch (e: any) {
       alert(e?.message || 'Errore durante l’aggiornamento dello stato');
     } finally {
       setSavingId(null);
-      router.refresh();
+      if (!onStatusChange) {
+        router.refresh();
+      }
     }
   }
 

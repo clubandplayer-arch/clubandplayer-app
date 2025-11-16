@@ -57,11 +57,10 @@ export default function AthletePublicProfilePage() {
       setMeId(userRes?.user?.id ?? null)
 
       // 1) profilo pubblico
-      const profileRes = await fetch(`/api/profiles/${encodeURIComponent(athleteId)}`, {
-        credentials: 'include',
-        cache: 'no-store',
-      })
-      if (profileRes.status === 404) { setMsg('Profilo non trovato.'); setLoading(false); return }
+      const profileRes = await fetch(
+        `/api/profiles/public?ids=${encodeURIComponent(athleteId)}`,
+        { cache: 'no-store' }
+      )
       if (!profileRes.ok) {
         const txt = await profileRes.text().catch(() => '')
         setMsg(txt ? `Errore profilo: ${txt}` : 'Errore profilo')
@@ -70,7 +69,8 @@ export default function AthletePublicProfilePage() {
       }
 
       const json = await profileRes.json().catch(() => ({}))
-      const p = (json?.data ?? null) as Profile | null
+      const first = Array.isArray(json?.data) ? json.data[0] : null
+      const p = (first ?? null) as Profile | null
       if (!p) { setMsg('Profilo non trovato.'); setLoading(false); return }
       setProfile(p)
 

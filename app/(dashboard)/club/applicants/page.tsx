@@ -18,6 +18,12 @@ export default function ClubApplicantsPage() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
+  const handleStatusChange = (id: string, status: 'accepted' | 'rejected') => {
+    setRows((prev) =>
+      prev.map((row) => (row.id === id ? { ...row, status } : row))
+    );
+  };
+
   useEffect(() => {
     let cancelled = false;
 
@@ -98,6 +104,7 @@ export default function ClubApplicantsPage() {
         rows={rows}
         kind="received"
         loading={loading}
+        onStatusChange={handleStatusChange}
       />
 
       {!loading && !err && rows.length === 0 && (
