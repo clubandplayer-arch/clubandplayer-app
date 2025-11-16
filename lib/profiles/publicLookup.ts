@@ -94,8 +94,13 @@ async function fillFromClient(
 
     if (error) throw error;
 
-    for (const row of data ?? []) {
-      const summary = normalizeRow(row as Record<string, any>);
+    const rows = Array.isArray(data) ? data : [];
+
+    for (const raw of rows) {
+      if (!raw || typeof raw !== 'object' || (raw as any).error) continue;
+
+      const row = raw as Record<string, any>;
+      const summary = normalizeRow(row);
       if (!summary) continue;
 
       const keys = new Set<string>();
