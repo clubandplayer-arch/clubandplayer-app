@@ -46,15 +46,7 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   const { data: rows, error: e2 } = await client
     .from('applications')
-    .select(
-      `
-        id, opportunity_id, athlete_id, note, status, created_at, updated_at,
-        athlete:profiles!applications_athlete_id_fkey(
-          id, user_id, display_name, full_name, first_name, last_name,
-          headline, bio, sport, role, country, region, province, city, avatar_url
-        )
-      `
-    )
+    .select('id, opportunity_id, athlete_id, note, status, created_at, updated_at')
     .in('opportunity_id', oppIds)
     .order('created_at', { ascending: false });
   if (e2) return jsonError(e2.message, 400);
@@ -72,8 +64,7 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   // 4) Arricchisci con nomi e link sempre disponibili
   const enhanced = apps.map(a => {
-    const joined = (a as any).athlete || null;
-    const profile = joined || profMap.get(String(a.athlete_id ?? '')) || null;
+    const profile = profMap.get(String(a.athlete_id ?? '')) || null;
 
     const first = typeof profile?.first_name === 'string' ? profile.first_name.trim() : '';
     const last = typeof profile?.last_name === 'string' ? profile.last_name.trim() : '';
