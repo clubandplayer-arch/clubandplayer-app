@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'not_authenticated' }, { status: 401 });
     }
 
-    const insertPayload: Record<string, any> = { content: text };
+    const insertPayload: Record<string, any> = { content: text, author_id: auth.user.id };
     if (mediaUrl) insertPayload.media_url = mediaUrl;
     if (mediaType) insertPayload.media_type = mediaType;
 
@@ -132,7 +132,7 @@ export async function POST(req: NextRequest) {
     ({ data, error } = await runInsert(insertPayload, 'id, author_id, content, created_at, media_url, media_type'));
 
     if (error && /column .* does not exist/i.test(error.message || '')) {
-      const fallbackPayload = { content: mediaUrl ? `${text}\n${mediaUrl}` : text };
+      const fallbackPayload = { content: mediaUrl ? `${text}\n${mediaUrl}` : text, author_id: auth.user.id };
       ({ data, error } = await runInsert(fallbackPayload, 'id, author_id, content, created_at'));
     }
 

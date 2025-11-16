@@ -76,11 +76,10 @@ export default function FeedPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-6">
       {/* layout a 3 colonne: sx (minicard) / centro (composer + post) / dx (suggerimenti) */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[27%_46%_27%]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[20%_55%_25%]">
         {/* Colonna sinistra: mini profilo */}
         <aside className="space-y-4">
           <div className="space-y-3">
-            <div className="px-1 text-sm font-semibold text-gray-700">Il tuo profilo</div>
             {/* Se esiste, il componente reale rimpiazzerà questo blocco via dynamic() */}
             <ProfileMiniCard />
           </div>

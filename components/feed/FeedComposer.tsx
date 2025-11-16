@@ -7,6 +7,8 @@ type Props = {
   onPosted?: () => void;
 };
 
+type Mode = 'text' | 'photo' | 'video';
+
 export default function FeedComposer({ onPosted }: Props) {
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
@@ -14,8 +16,9 @@ export default function FeedComposer({ onPosted }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [mode, setMode] = useState<Mode>('text');
 
-  const canSend = text.trim().length > 0 && !sending && !uploading;
+  const canSend = (text.trim().length > 0 || (!!file && mode !== 'text')) && !sending && !uploading;
 
   const supabase = useMemo(() => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -48,7 +51,7 @@ export default function FeedComposer({ onPosted }: Props) {
       throw new Error('Storage non configurato');
     }
 
-    const kind = file.type.startsWith('video') ? 'video' : 'image';
+    const kind = mode === 'video' || file.type.startsWith('video') ? 'video' : 'image';
     setUploading(true);
     try {
       const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_') || `${Date.now()}`;
@@ -76,6 +79,10 @@ export default function FeedComposer({ onPosted }: Props) {
     setSending(true);
     setErr(null);
     try {
+      if (mode !== 'text' && !file) {
+        throw new Error('Aggiungi un allegato prima di pubblicare');
+      }
+
       let media: { url: string; kind: 'image' | 'video' } | null = null;
 
       if (file) {
@@ -107,61 +114,130 @@ export default function FeedComposer({ onPosted }: Props) {
     }
   }
 
+  function toggleMode(next: Mode) {
+    setMode(next);
+    setErr(null);
+    if (next === 'text') {
+      onSelectFile(null);
+    } else if (file && next === 'photo' && file.type.startsWith('video')) {
+      onSelectFile(null);
+    } else if (file && next === 'video' && !file.type.startsWith('video')) {
+      onSelectFile(null);
+    }
+  }
+
+  const accept = mode === 'photo' ? 'image/*' : mode === 'video' ? 'video/*' : 'image/*,video/*';
+
   return (
-    <div className="rounded-2xl border p-4">
-      <textarea
-        className="w-full resize-y rounded-xl border px-3 py-2 text-sm outline-none focus:ring"
-        rows={3}
-        placeholder="Condividi un aggiornamento…"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        disabled={sending}
-      />
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-3 text-xs text-neutral-500">
-        <div className="flex items-center gap-2">
-          <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border px-2 py-1 hover:bg-gray-50">
-            <input
-              type="file"
-              accept="image/*,video/*"
-              className="hidden"
-              disabled={sending || uploading}
-              onChange={(e) => onSelectFile(e.target.files?.[0] ?? null)}
-            />
-            <span role="img" aria-label="media">📎</span>
-            <span>Foto o video</span>
-          </label>
-          {file && (
-            <button
-              type="button"
-              className="text-red-600 hover:underline"
-              onClick={() => onSelectFile(null)}
-              disabled={uploading || sending}
-            >
-              Rimuovi allegato
-            </button>
-          )}
-        </div>
+    <div className="rounded-2xl border bg-white p-4 shadow-sm">
+      <div className="flex flex-wrap items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium text-gray-700">
         <button
           type="button"
-          onClick={handlePost}
-          disabled={!canSend}
-          className="rounded-lg border px-3 py-1.5 text-sm hover:bg-gray-50 disabled:opacity-50"
+          onClick={() => toggleMode('video')}
+          className={`flex items-center gap-2 rounded-full px-3 py-1 ${
+            mode === 'video' ? 'bg-gray-900 text-white' : 'hover:bg-gray-100'
+          }`}
         >
-          {sending || uploading ? 'Invio…' : 'Pubblica'}
+          <span role="img" aria-label="video">🎥</span>
+          <span>Video</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => toggleMode('photo')}
+          className={`flex items-center gap-2 rounded-full px-3 py-1 ${
+            mode === 'photo' ? 'bg-gray-900 text-white' : 'hover:bg-gray-100'
+          }`}
+        >
+          <span role="img" aria-label="foto">📷</span>
+          <span>Foto</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => toggleMode('text')}
+          className={`flex items-center gap-2 rounded-full px-3 py-1 ${
+            mode === 'text' ? 'bg-gray-900 text-white' : 'hover:bg-gray-100'
+          }`}
+        >
+          <span role="img" aria-label="testo">📝</span>
+          <span>Cosa penso</span>
         </button>
       </div>
 
-      {previewUrl && (
-        <div className="mt-3 overflow-hidden rounded-xl border bg-neutral-50">
-          {file?.type.startsWith('video') ? (
-            <video src={previewUrl} controls className="max-h-80 w-full" />
-          ) : (
-            <img src={previewUrl} alt="Anteprima" className="max-h-80 w-full object-cover" />
-          )}
-        </div>
-      )}
+      <div className="mt-4 space-y-3">
+        {mode === 'text' ? (
+          <textarea
+            className="w-full resize-y rounded-2xl border px-3 py-3 text-sm outline-none focus:ring"
+            rows={3}
+            placeholder="Condividi un pensiero…"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            disabled={sending}
+          />
+        ) : (
+          <div className="space-y-2">
+            <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-4 py-6 text-sm text-gray-600 hover:bg-gray-50">
+              <input
+                type="file"
+                accept={accept}
+                className="hidden"
+                disabled={sending || uploading}
+                onChange={(e) => onSelectFile(e.target.files?.[0] ?? null)}
+              />
+              <span className="text-lg font-semibold">
+                {mode === 'photo' ? 'Carica una foto' : 'Carica un video'}
+              </span>
+              <span className="text-xs text-gray-500">Trascina o clicca per selezionare</span>
+            </label>
+            {previewUrl && (
+              <div className="overflow-hidden rounded-2xl border bg-neutral-50">
+                {mode === 'video' ? (
+                  <video src={previewUrl} controls className="max-h-80 w-full" />
+                ) : (
+                  <img src={previewUrl} alt="Anteprima" className="max-h-80 w-full object-cover" />
+                )}
+              </div>
+            )}
+            <div className="flex items-center justify-between gap-2 text-xs text-gray-600">
+              {file ? <span>{file.name}</span> : <span>Nessun allegato</span>}
+              {file && (
+                <button
+                  type="button"
+                  className="text-red-600 hover:underline"
+                  onClick={() => onSelectFile(null)}
+                  disabled={uploading || sending}
+                >
+                  Rimuovi allegato
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
-      {err && <div className="mt-2 text-xs text-red-600">{err}</div>}
+        <div className="flex items-center justify-end gap-3 text-sm">
+          <button
+            type="button"
+            onClick={() => {
+              setText('');
+              onSelectFile(null);
+              setErr(null);
+            }}
+            disabled={sending || uploading}
+            className="rounded-lg border px-4 py-2 hover:bg-gray-50 disabled:opacity-50"
+          >
+            Annulla
+          </button>
+          <button
+            type="button"
+            onClick={handlePost}
+            disabled={!canSend}
+            className="rounded-lg bg-gray-900 px-4 py-2 font-semibold text-white disabled:opacity-50"
+          >
+            {sending || uploading ? 'Invio…' : 'Pubblica'}
+          </button>
+        </div>
+
+        {err && <div className="text-xs text-red-600">{err}</div>}
+      </div>
     </div>
   );
 }
