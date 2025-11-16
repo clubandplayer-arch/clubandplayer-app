@@ -11,6 +11,15 @@ const MAX_CHARS = 500;
 const RATE_LIMIT_MS = 5_000;
 const LAST_POST_TS_COOKIE = 'feed_last_post_ts';
 
+type Role = 'club' | 'athlete';
+
+function normRole(v: unknown): Role | null {
+  const s = typeof v === 'string' ? v.trim().toLowerCase() : '';
+  if (s === 'club') return 'club';
+  if (s === 'athlete') return 'athlete';
+  return null;
+}
+
 function getSupabaseAnonServer() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -34,10 +43,31 @@ function normalizeRow(row: any) {
   };
 }
 
-// GET: lettura pubblica, normalizza i campi per la UI legacy
+// GET: lettura autenticata, filtra i post per ruolo dell'autore
 export async function GET(req: NextRequest) {
   const debug = new URL(req.url).searchParams.get('debug') === '1';
-  const supabase = getSupabaseAnonServer();
+  const supabase = await getSupabaseServerClient();
+
+  // determina ruolo dell'utente corrente
+  let currentRole: Role | null = null;
+  let currentUserId: string | null = null;
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (!error && data?.user) {
+      currentUserId = data.user.id;
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('account_type,type')
+        .eq('user_id', data.user.id)
+        .maybeSingle();
+      currentRole =
+        normRole((profile as any)?.account_type) ||
+        normRole((profile as any)?.type) ||
+        normRole(data.user.user_metadata?.role);
+    }
+  } catch {
+    // se qualcosa fallisce, continuiamo senza ruolo
+  }
 
   const baseSelect = 'id, author_id, content, created_at';
   const extendedSelect = 'id, author_id, content, created_at, media_url, media_type';
@@ -70,13 +100,57 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const items = (data ?? []).map((r) => normalizeRow(r)) || [];
+  const rows = (data ?? []).map((r) => normalizeRow(r)) || [];
+
+  if (!currentRole) {
+    return NextResponse.json(
+      { ok: true, items: rows },
+      { status: 200 }
+    );
+  }
+
+  const authorIds = Array.from(
+    new Set(rows.map((r) => r.author_id || r.authorId).filter(Boolean))
+  ) as string[];
+
+  let profiles: any[] = [];
+  if (authorIds.length > 0) {
+    const selectCols = 'user_id,id,account_type,type';
+    const { data: profs, error: profErr } = await supabase
+      .from('profiles')
+      .select(selectCols)
+      .in('user_id', authorIds);
+    if (!profErr && Array.isArray(profs)) {
+      profiles = profs;
+    } else {
+      const admin = getSupabaseAdminClientOrNull();
+      if (admin) {
+        const { data: adminProfs } = await admin
+          .from('profiles')
+          .select(selectCols)
+          .in('user_id', authorIds);
+        if (Array.isArray(adminProfs)) profiles = adminProfs;
+      }
+    }
+  }
+
+  const map = new Map<string, Role>();
+  for (const p of profiles) {
+    const key = (p?.user_id ?? p?.id ?? '').toString();
+    const role = normRole(p?.account_type) || normRole(p?.type);
+    if (key && role) map.set(key, role);
+  }
+
+  const filtered = rows.filter((r) => {
+    const role = map.get((r.author_id || r.authorId || '').toString());
+    return role ? role === currentRole : false;
+  });
 
   return NextResponse.json(
     {
       ok: true,
-      items,
-      ...(debug ? { _debug: { count: items.length } } : {}),
+      items: filtered,
+      ...(debug ? { _debug: { count: filtered.length, role: currentRole, userId: currentUserId } } : {}),
     },
     { status: 200 }
   );
