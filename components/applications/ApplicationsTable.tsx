@@ -25,6 +25,7 @@ type Row = {
   created_at?: string | null;
   note?: string | null;
   opportunity_id?: string | null;
+  opportunity?: { title?: string | null } | null;
   status?: string | null; // submitted | in_review | accepted | rejected | withdrawn | pending...
   athlete_id?: string | null;
   athlete?: AthleteSummary | null;
@@ -160,15 +161,18 @@ export default function ApplicationsTable({
                   {r.opportunity_id ? (
                     (() => {
                       const fullId = r.opportunity_id ?? '';
-                      const shortId =
-                        fullId.length > 12 ? `${fullId.slice(0, 8)}…` : fullId;
+                      const title = (r.opportunity?.title ?? '').trim();
+                      const shortTitle = title
+                        ? `${title.slice(0, 12)}${title.length > 12 ? '…' : ''}`
+                        : '';
+                      const label = shortTitle || (fullId.length > 12 ? `${fullId.slice(0, 8)}…` : fullId);
                       return (
                         <Link
                           className="text-blue-700 hover:underline"
                           href={`/opportunities/${r.opportunity_id}`}
                           title={fullId}
                         >
-                          {shortId || 'Apri annuncio'}
+                          {label || 'Apri annuncio'}
                         </Link>
                       );
                     })()
@@ -182,14 +186,23 @@ export default function ApplicationsTable({
                   <td className="px-3 py-2 min-w-[12rem] align-top">
                     {r.athlete_id ? (
                       <div className="flex flex-col">
-                        <Link
-                          className="text-blue-700 hover:underline font-medium"
-                          href={`/athletes/${r.athlete_id}`}
-                        >
-                          {r.athlete?.display_name ||
+                        {(() => {
+                          const athleteId = r.athlete?.id ?? r.athlete_id;
+                          const display =
+                            r.athlete?.display_name ||
                             r.athlete?.full_name ||
-                            r.athlete_id}
-                        </Link>
+                            r.athlete_id;
+                          return athleteId ? (
+                            <Link
+                              className="text-blue-700 hover:underline font-medium"
+                              href={`/athletes/${athleteId}`}
+                            >
+                              {display}
+                            </Link>
+                          ) : (
+                            <span className="text-gray-700">{display}</span>
+                          );
+                        })()}
                         <span className="text-xs text-gray-600">
                           {[r.athlete?.role, r.athlete?.sport]
                             .filter(Boolean)

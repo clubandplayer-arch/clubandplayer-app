@@ -61,18 +61,36 @@ export default function AthletePublicProfilePage() {
         `/api/profiles/public?ids=${encodeURIComponent(athleteId)}`,
         { cache: 'no-store' }
       )
-      if (!profileRes.ok) {
-        const txt = await profileRes.text().catch(() => '')
-        setMsg(txt ? `Errore profilo: ${txt}` : 'Errore profilo')
+      let fetchedProfile: Profile | null = null
+
+      if (profileRes.ok) {
+        const json = await profileRes.json().catch(() => ({}))
+        const first = Array.isArray(json?.data) ? json.data[0] : null
+        fetchedProfile = (first ?? null) as Profile | null
+      }
+
+      // Fallback: prova l'endpoint autenticato che usa il client admin se necessario
+      if (!fetchedProfile) {
+        const res = await fetch(`/api/profiles/${athleteId}`, {
+          cache: 'no-store',
+          credentials: 'include',
+        })
+        if (res.ok) {
+          const json = await res.json().catch(() => ({}))
+          fetchedProfile = (json?.data ?? null) as Profile | null
+        }
+      }
+
+      if (!fetchedProfile) {
+        const txt = profileRes.ok
+          ? ''
+          : await profileRes.text().catch(() => '')
+        setMsg(txt ? `Profilo non trovato: ${txt}` : 'Profilo non trovato.')
         setLoading(false)
         return
       }
 
-      const json = await profileRes.json().catch(() => ({}))
-      const first = Array.isArray(json?.data) ? json.data[0] : null
-      const p = (first ?? null) as Profile | null
-      if (!p) { setMsg('Profilo non trovato.'); setLoading(false); return }
-      setProfile(p)
+      setProfile(fetchedProfile)
 
       // 2) (facoltativo) ultime candidature visibili solo all’atleta stesso
       if (userRes?.user?.id === athleteId) {
