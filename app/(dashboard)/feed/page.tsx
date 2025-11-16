@@ -29,6 +29,8 @@ type FeedPost = {
   createdAt?: string | null;
   author_id?: string | null;
   authorId?: string | null;
+  media_url?: string | null;
+  media_type?: 'image' | 'video' | null;
 };
 
 async function fetchPosts(): Promise<FeedPost[]> {
@@ -44,6 +46,8 @@ async function fetchPosts(): Promise<FeedPost[]> {
     content: p.content ?? p.text ?? '',
     createdAt: p.created_at ?? p.createdAt ?? null,
     authorId: p.author_id ?? p.authorId ?? null,
+    media_url: p.media_url ?? null,
+    media_type: p.media_type ?? null,
   }));
 }
 
@@ -163,6 +167,15 @@ function PostItem({ post }: { post: FeedPost }) {
       <div className="mt-1 whitespace-pre-wrap text-sm">
         {post.content || '—'}
       </div>
+      {post.media_url ? (
+        <div className="mt-3 overflow-hidden rounded-xl border bg-neutral-50">
+          {post.media_type === 'video' ? (
+            <video src={post.media_url} controls className="max-h-96 w-full" />
+          ) : (
+            <img src={post.media_url} alt="Allegato" className="max-h-96 w-full object-cover" />
+          )}
+        </div>
+      ) : null}
     </article>
   );
 }

@@ -11,12 +11,16 @@ type ApiPost = {
   content?: string;
   createdAt?: string;
   created_at?: string;
+  media_url?: string | null;
+  media_type?: 'image' | 'video' | null;
 };
 
 type Post = {
   id: string | number;
   content: string;
   createdAt: string;
+  mediaUrl?: string | null;
+  mediaType?: 'image' | 'video' | null;
 };
 
 const MAX_CHARS = 500;
@@ -30,6 +34,8 @@ function normalizePosts(items?: ApiPost[] | null): Post[] {
       p.created_at ??
       p.createdAt ??
       new Date().toISOString(),
+    mediaUrl: p.media_url ?? null,
+    mediaType: p.media_type ?? null,
   }));
 }
 
@@ -183,6 +189,15 @@ export default function FeedClient() {
                   <div className="whitespace-pre-line">
                     {post.content}
                   </div>
+                  {post.mediaUrl ? (
+                    <div className="mt-2 overflow-hidden rounded-lg border bg-white">
+                      {post.mediaType === 'video' ? (
+                        <video src={post.mediaUrl} controls className="max-h-96 w-full" />
+                      ) : (
+                        <img src={post.mediaUrl} alt="Allegato" className="max-h-96 w-full object-cover" />
+                      )}
+                    </div>
+                  ) : null}
                   <div className="mt-1 text-[9px] text-neutral-400">
                     {new Date(
                       post.createdAt

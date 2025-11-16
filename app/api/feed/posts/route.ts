@@ -16,16 +16,46 @@ function getSupabaseAnonServer() {
   return createClient(url, anon, { auth: { persistSession: false } });
 }
 
+function normalizeRow(row: any) {
+  return {
+    id: row.id,
+    // legacy
+    text: row.content ?? '',
+    createdAt: row.created_at,
+    // nuovi
+    content: row.content ?? '',
+    created_at: row.created_at,
+    authorId: row.author_id ?? null,
+    author_id: row.author_id ?? null,
+    media_url: row.media_url ?? null,
+    media_type: row.media_type ?? null,
+    role: undefined as unknown as 'club' | 'athlete' | undefined,
+  };
+}
+
 // GET: lettura pubblica, normalizza i campi per la UI legacy
 export async function GET(req: NextRequest) {
   const debug = new URL(req.url).searchParams.get('debug') === '1';
   const supabase = getSupabaseAnonServer();
 
-  const { data, error } = await supabase
-    .from('posts')
-    .select('id, author_id, content, created_at')
-    .order('created_at', { ascending: false })
-    .limit(50);
+  const baseSelect = 'id, author_id, content, created_at';
+  const extendedSelect = 'id, author_id, content, created_at, media_url, media_type';
+
+  const fetchPosts = async (sel: string) =>
+    supabase
+      .from('posts')
+      .select(sel)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+  let data: any[] | null = null;
+  let error: any = null;
+
+  ({ data, error } = await fetchPosts(extendedSelect));
+
+  if (error && /column .* does not exist/i.test(error.message || '')) {
+    ({ data, error } = await fetchPosts(baseSelect));
+  }
 
   if (error) {
     return NextResponse.json(
@@ -39,19 +69,7 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const items =
-    (data ?? []).map((r) => ({
-      id: r.id,
-      // legacy
-      text: r.content ?? '',
-      createdAt: r.created_at,
-      // nuovi
-      content: r.content ?? '',
-      created_at: r.created_at,
-      authorId: r.author_id ?? null,
-      author_id: r.author_id ?? null,
-      role: undefined as unknown as 'club' | 'athlete' | undefined,
-    })) || [];
+  const items = (data ?? []).map((r) => normalizeRow(r)) || [];
 
   return NextResponse.json(
     {
@@ -68,7 +86,13 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
     const rawText = (body?.text ?? body?.content ?? '').toString();
+    const mediaUrlRaw = (body as any)?.media_url ?? null;
+    const mediaTypeRaw = (body as any)?.media_type ?? null;
     const text = rawText.trim();
+    const mediaUrl = typeof mediaUrlRaw === 'string' && mediaUrlRaw.trim() ? mediaUrlRaw.trim() : null;
+    const mediaType = mediaUrl
+      ? (mediaTypeRaw === 'video' ? 'video' : 'image')
+      : null;
 
     if (!text) return NextResponse.json({ ok: false, error: 'empty' }, { status: 400 });
     if (text.length > MAX_CHARS) {
@@ -95,11 +119,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'not_authenticated' }, { status: 401 });
     }
 
-    const { data, error } = await supabase
-      .from('posts')
-      .insert({ content: text })
-      .select('id, author_id, content, created_at')
-      .single();
+    const insertPayload: Record<string, any> = { content: text };
+    if (mediaUrl) insertPayload.media_url = mediaUrl;
+    if (mediaType) insertPayload.media_type = mediaType;
+
+    const runInsert = (payload: Record<string, any>, select: string) =>
+      supabase.from('posts').insert(payload).select(select).single();
+
+    let data: any = null;
+    let error: any = null;
+
+    ({ data, error } = await runInsert(insertPayload, 'id, author_id, content, created_at, media_url, media_type'));
+
+    if (error && /column .* does not exist/i.test(error.message || '')) {
+      const fallbackPayload = { content: mediaUrl ? `${text}\n${mediaUrl}` : text };
+      ({ data, error } = await runInsert(fallbackPayload, 'id, author_id, content, created_at'));
+    }
 
     if (error) {
       return NextResponse.json(
@@ -111,16 +146,7 @@ export async function POST(req: NextRequest) {
     const res = NextResponse.json(
       {
         ok: true,
-        item: {
-          id: data.id,
-          text: data.content ?? '',
-          createdAt: data.created_at,
-          content: data.content ?? '',
-          created_at: data.created_at,
-          authorId: data.author_id ?? null,
-          author_id: data.author_id ?? null,
-          role: undefined as unknown as 'club' | 'athlete' | undefined,
-        },
+        item: normalizeRow(data),
       },
       { status: 201 }
     );
