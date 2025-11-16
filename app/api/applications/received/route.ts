@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
 import { getPublicProfilesMap } from '@/lib/profiles/publicLookup';
+import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
 
@@ -54,7 +55,11 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   const athleteIds = Array.from(
     new Set(apps.map(a => String(a.athlete_id ?? '')).filter(id => id.length > 0))
   );
-  const profMap = await getPublicProfilesMap(athleteIds, supabase, { fallbackToAdmin: true });
+  const admin = getSupabaseAdminClientOrNull();
+  const profMap = await getPublicProfilesMap(athleteIds, admin ?? supabase, {
+    // Se abbiamo la service key usiamo il client admin per bypassare eventuali RLS
+    fallbackToAdmin: !admin,
+  });
 
   // 4) Arricchisci
   const enhanced = apps.map(a => ({

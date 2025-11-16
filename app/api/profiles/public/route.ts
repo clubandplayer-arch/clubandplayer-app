@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 import { getPublicProfilesMap } from '@/lib/profiles/publicLookup';
 
 export const runtime = 'nodejs';
@@ -26,8 +27,9 @@ export async function GET(req: NextRequest) {
   if (!ids.length) return NextResponse.json({ data: [] });
 
   try {
-    const supabase = await getSupabaseServerClient();
-    const map = await getPublicProfilesMap(ids, supabase, { fallbackToAdmin: true });
+    const admin = getSupabaseAdminClientOrNull();
+    const supabase = admin ?? (await getSupabaseServerClient());
+    const map = await getPublicProfilesMap(ids, supabase, { fallbackToAdmin: !admin });
     const data = ids
       .map((id) => map.get(id) ?? null)
       .filter((value): value is NonNullable<typeof value> => Boolean(value));

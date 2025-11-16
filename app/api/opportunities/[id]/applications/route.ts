@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
 import { getPublicProfilesMap } from '@/lib/profiles/publicLookup';
+import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
 
@@ -36,8 +37,13 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   );
 
   // profili atleti
+  const admin = getSupabaseAdminClientOrNull();
   const profilesMap = athleteIds.length
-    ? await getPublicProfilesMap(athleteIds, supabase, { fallbackToAdmin: true })
+    ? await getPublicProfilesMap(
+        athleteIds,
+        admin ?? supabase,
+        { fallbackToAdmin: !admin },
+      )
     : new Map();
 
   const enhanced = apps.map(a => ({
