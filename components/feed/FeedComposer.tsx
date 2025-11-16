@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { createBrowserClient } from '@supabase/ssr';
+import { useEffect, useState } from 'react';
 
 type Props = {
   onPosted?: () => void;
@@ -20,18 +19,6 @@ export default function FeedComposer({ onPosted }: Props) {
 
   const canSend = (text.trim().length > 0 || (!!file && mode !== 'text')) && !sending && !uploading;
 
-  const supabase = useMemo(() => {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    if (!url || !key) return null;
-    try {
-      return createBrowserClient(url, key);
-    } catch (e) {
-      console.error('[FeedComposer] errore creazione client', e);
-      return null;
-    }
-  }, []);
-
   useEffect(() => {
     return () => {
       if (previewUrl?.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
@@ -47,28 +34,27 @@ export default function FeedComposer({ onPosted }: Props) {
 
   async function uploadMedia(): Promise<{ url: string; kind: 'image' | 'video' } | null> {
     if (!file) return null;
-    if (!supabase) {
-      throw new Error('Storage non configurato');
-    }
 
     const kind = mode === 'video' || file.type.startsWith('video') ? 'video' : 'image';
+    const form = new FormData();
+    form.append('file', file);
+    form.append('kind', kind);
+
     setUploading(true);
     try {
-      const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_') || `${Date.now()}`;
-      const path = `feed/${Date.now()}-${safeName}`;
+      const res = await fetch('/api/feed/upload', {
+        method: 'POST',
+        credentials: 'include',
+        body: form,
+      });
 
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(path, file, { cacheControl: '3600', upsert: false, contentType: file.type || undefined });
-
-      if (uploadError) {
-        throw new Error(uploadError.message || 'Upload fallito');
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json?.ok) {
+        const msg = json?.error || 'Upload fallito';
+        throw new Error(msg);
       }
 
-      const { data: publicData } = supabase.storage.from('avatars').getPublicUrl(path);
-      const url = publicData?.publicUrl;
-      if (!url) throw new Error('URL pubblico non disponibile');
-      return { url, kind };
+      return { url: json.url as string, kind };
     } finally {
       setUploading(false);
     }
