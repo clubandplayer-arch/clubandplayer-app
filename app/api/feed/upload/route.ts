@@ -1,16 +1,21 @@
 // app/api/feed/upload/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
+import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   const admin = getSupabaseAdminClientOrNull();
+  const supabase = admin ?? (await getSupabaseServerClient().catch(() => null));
+  if (!supabase) return NextResponse.json({ ok: false, error: 'storage_unavailable' }, { status: 500 });
+
+  // se non abbiamo il client admin, verifichiamo che l'utente sia autenticato
   if (!admin) {
-    return NextResponse.json(
-      { ok: false, error: 'storage_admin_unavailable' },
-      { status: 500 }
-    );
+    const { data: authData, error: authErr } = await supabase.auth.getUser();
+    if (authErr || !authData?.user) {
+      return NextResponse.json({ ok: false, error: 'not_authenticated' }, { status: 401 });
+    }
   }
 
   const form = await req.formData().catch(() => null);
@@ -27,7 +32,7 @@ export async function POST(req: NextRequest) {
   const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_') || `${Date.now()}`;
   const path = `feed/${Date.now()}-${safeName}`;
 
-  const { error: uploadError } = await admin.storage
+  const { error: uploadError } = await supabase.storage
     .from('avatars')
     .upload(path, file, { cacheControl: '3600', upsert: false, contentType: file.type || undefined });
 
@@ -38,7 +43,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { data: publicData } = admin.storage.from('avatars').getPublicUrl(path);
+  const { data: publicData } = supabase.storage.from('avatars').getPublicUrl(path);
   const url = publicData?.publicUrl || null;
   if (!url) return NextResponse.json({ ok: false, error: 'public_url_unavailable' }, { status: 400 });
 
