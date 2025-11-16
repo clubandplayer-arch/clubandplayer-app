@@ -49,7 +49,6 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
     .select(
       `
         id, opportunity_id, athlete_id, note, status, created_at, updated_at,
-        opportunity:opportunities(id, title, city, province, region, country),
         athlete:profiles!applications_athlete_id_fkey(
           id, user_id, display_name, full_name, first_name, last_name,
           headline, bio, sport, role, country, region, province, city, avatar_url
