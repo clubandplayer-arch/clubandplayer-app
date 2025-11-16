@@ -41,9 +41,21 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   );
 
   // 2) Candidature su quelle opportunità
-  const { data: rows, error: e2 } = await supabase
+  const admin = getSupabaseAdminClientOrNull();
+  const client = admin ?? supabase;
+
+  const { data: rows, error: e2 } = await client
     .from('applications')
-    .select('id, opportunity_id, athlete_id, note, status, created_at, updated_at')
+    .select(
+      `
+        id, opportunity_id, athlete_id, note, status, created_at, updated_at,
+        opportunity:opportunities(id, title, city, province, region, country),
+        athlete:profiles!applications_athlete_id_fkey(
+          id, user_id, display_name, full_name, first_name, last_name,
+          headline, bio, sport, role, country, region, province, city, avatar_url
+        )
+      `
+    )
     .in('opportunity_id', oppIds)
     .order('created_at', { ascending: false });
   if (e2) return jsonError(e2.message, 400);
@@ -51,22 +63,41 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   const apps = rows ?? [];
   if (!apps.length) return NextResponse.json({ data: [] });
 
-  // 3) Profili atleti
+  // 3) Profili atleti (fallback se la JOIN non restituisce nulla)
   const athleteIds = Array.from(
     new Set(apps.map(a => String(a.athlete_id ?? '')).filter(id => id.length > 0))
   );
-  const admin = getSupabaseAdminClientOrNull();
-  const profMap = await getPublicProfilesMap(athleteIds, admin ?? supabase, {
-    // Se abbiamo la service key usiamo il client admin per bypassare eventuali RLS
-    fallbackToAdmin: !admin,
+  const profMap = await getPublicProfilesMap(athleteIds, client, {
+    fallbackToAdmin: true,
   });
 
-  // 4) Arricchisci
-  const enhanced = apps.map(a => ({
-    ...a,
-    opportunity: oppMap.get(a.opportunity_id) ?? null,
-    athlete: profMap.get(String(a.athlete_id ?? '')) ?? null,
-  }));
+  // 4) Arricchisci con nomi e link sempre disponibili
+  const enhanced = apps.map(a => {
+    const joined = (a as any).athlete || null;
+    const profile = joined || profMap.get(String(a.athlete_id ?? '')) || null;
+
+    const first = typeof profile?.first_name === 'string' ? profile.first_name.trim() : '';
+    const last = typeof profile?.last_name === 'string' ? profile.last_name.trim() : '';
+    const nameFromParts = [first, last].filter(Boolean).join(' ').trim() || null;
+
+    const name =
+      (profile as any)?.display_name ||
+      (profile as any)?.full_name ||
+      nameFromParts ||
+      null;
+
+    return {
+      ...a,
+      opportunity: oppMap.get(a.opportunity_id) ?? (a as any).opportunity ?? null,
+      athlete: profile
+        ? {
+            ...profile,
+            id: (profile as any).user_id ?? (profile as any).id ?? a.athlete_id ?? null,
+            name,
+          }
+        : null,
+    };
+  });
 
   return NextResponse.json({ data: enhanced });
 });

@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 
 type AthleteSummary = {
   id: string;
+  name?: string | null;
   display_name: string | null;
   full_name: string | null;
   headline: string | null;
@@ -189,6 +190,7 @@ export default function ApplicationsTable({
                         {(() => {
                           const athleteId = r.athlete?.id ?? r.athlete_id;
                           const display =
+                            r.athlete?.name ||
                             r.athlete?.display_name ||
                             r.athlete?.full_name ||
                             r.athlete_id;

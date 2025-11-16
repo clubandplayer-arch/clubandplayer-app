@@ -36,13 +36,13 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
     new Set(apps.map(a => String(a.athlete_id ?? '')).filter(id => id.length > 0))
   );
 
-  // profili atleti
+  // profili atleti (usa l’admin se disponibile per bypassare le RLS)
   const admin = getSupabaseAdminClientOrNull();
   const profilesMap = athleteIds.length
     ? await getPublicProfilesMap(
         athleteIds,
         admin ?? supabase,
-        { fallbackToAdmin: !admin },
+        { fallbackToAdmin: true },
       )
     : new Map();
 
