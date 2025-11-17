@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
 import { getPublicProfilesMap } from '@/lib/profiles/publicLookup';
-import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
+import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
 
@@ -11,9 +11,16 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   try { await rateLimit(req, { key: 'applications:RECEIVED', limit: 120, window: '1m' } as any); }
   catch { return jsonError('Too Many Requests', 429); }
 
-  // 1) Opportunità dell’owner (preferendo il client admin per bypassare RLS)
-  const admin = getSupabaseAdminClientOrNull();
-  const client = admin ?? supabase;
+  // 1) Client admin obbligatorio per bypassare le RLS sulle candidature
+  let client = supabase;
+  try {
+    client = getSupabaseAdminClient();
+  } catch (err: any) {
+    return jsonError(
+      'Servizio non configurato: aggiungi SUPABASE_SERVICE_ROLE_KEY per leggere le candidature',
+      500,
+    );
+  }
 
   const { data: oppsRaw, error: oppErr } = await client
     .from('opportunities')
