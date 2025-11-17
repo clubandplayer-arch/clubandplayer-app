@@ -12,6 +12,15 @@ const release =
   process.env.SENTRY_RELEASE ||
   process.env.VERCEL_GIT_COMMIT_SHA;
 
+const ignoreErrors = [
+  // Rumore comune sui browser moderni: non impatta l'utente
+  /ResizeObserver loop limit exceeded/i,
+  /ResizeObserver loop completed with undelivered notifications/i,
+  // Errori di rete transitori o abort espliciti
+  /NetworkError when attempting to fetch resource/i,
+  /AbortError: The user aborted a request/i,
+];
+
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN || undefined,
   enabled: !!process.env.NEXT_PUBLIC_SENTRY_DSN,
@@ -19,6 +28,9 @@ Sentry.init({
   // 👇 Etichetta corretta in Sentry (production / preview / development)
   environment,
   release,
+
+  // Riduce il rumore più comune lato client
+  ignoreErrors,
 
   tracesSampleRate: 0.1,
   replaysSessionSampleRate: 0.1,
