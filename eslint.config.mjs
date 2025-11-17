@@ -76,6 +76,20 @@ export default [
     },
   },
 
+  // ➕ script utilità: abilita i global Node
+  {
+    files: ["scripts/**/*.{js,mjs,cjs}", "scripts/*.{js,mjs,cjs}"],
+    languageOptions: {
+      globals: {
+        console: "readonly",
+        process: "readonly",
+        fetch: "readonly",
+        URLSearchParams: "readonly",
+      },
+      sourceType: "module",
+    },
+  },
+
   // ➕ tests: usa il progetto TS dei test
   {
     files: ["tests/**/*.ts"],
