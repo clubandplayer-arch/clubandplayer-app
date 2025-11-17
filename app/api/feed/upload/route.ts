@@ -32,13 +32,15 @@ export async function POST(req: NextRequest) {
   const form = await req.formData().catch(() => null);
   if (!form) return NextResponse.json({ ok: false, error: 'invalid_form' }, { status: 400 });
 
-  const file = form.get('file');
+  const rawFile = form.get('file');
   const kindRaw = form.get('kind');
   const kind = kindRaw === 'video' ? 'video' : 'image';
 
-  if (!(file instanceof File)) {
+  if (!(rawFile instanceof Blob)) {
     return NextResponse.json({ ok: false, error: 'file_required' }, { status: 400 });
   }
+
+  const file = rawFile as File;
 
   if (admin) {
     await ensureBucketExists(bucket, admin);
