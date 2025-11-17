@@ -5,7 +5,18 @@ import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
 
+async function ensureBucketExists(bucket: string, admin: ReturnType<typeof getSupabaseAdminClientOrNull>) {
+  if (!admin) return false;
+  const { data, error } = await admin.storage.getBucket(bucket);
+  if (data) return true;
+  if (error && !error.message?.toLowerCase().includes('not found')) return false;
+
+  const { error: createErr } = await admin.storage.createBucket(bucket, { public: true });
+  return !createErr;
+}
+
 export async function POST(req: NextRequest) {
+  const bucket = process.env.NEXT_PUBLIC_POSTS_BUCKET || 'posts';
   const admin = getSupabaseAdminClientOrNull();
   const userSupabase = await getSupabaseServerClient().catch(() => null);
 
@@ -29,22 +40,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: 'file_required' }, { status: 400 });
   }
 
+  if (admin) {
+    await ensureBucketExists(bucket, admin);
+  }
+
   const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_') || `${Date.now()}`;
-  const path = `posts/${authData.user.id}/${Date.now()}-${safeName}`;
+  const path = `${bucket}/${authData.user.id}/${Date.now()}-${safeName}`;
   const storage = (admin ?? userSupabase).storage;
 
   const { error: uploadError } = await storage
-    .from('posts')
+    .from(bucket)
     .upload(path, file, { cacheControl: '3600', upsert: false, contentType: file.type || undefined });
 
   if (uploadError) {
-    return NextResponse.json(
-      { ok: false, error: uploadError.message || 'upload_failed' },
-      { status: 400 }
-    );
+    const msg = uploadError.message || 'upload_failed';
+    const normalized = msg.toLowerCase().includes('bucket not found') ? 'bucket_not_found' : msg;
+    return NextResponse.json({ ok: false, error: normalized }, { status: 400 });
   }
 
-  const { data: publicData } = storage.from('posts').getPublicUrl(path);
+  const { data: publicData } = storage.from(bucket).getPublicUrl(path);
   const url = publicData?.publicUrl || null;
   if (!url) return NextResponse.json({ ok: false, error: 'public_url_unavailable' }, { status: 400 });
 
