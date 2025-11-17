@@ -38,6 +38,9 @@
 | `SUPABASE_SERVICE_ROLE_KEY` | server | ⚪️ | Necessaria per API che usano privilegi elevati (notify/email, bootstrap admin). |
 | `NEXT_PUBLIC_BASE_URL` | client/server | ⚪️ | URL pubblico dell'app (es. `https://clubandplayer.app`). |
 | `NEXT_PUBLIC_FEATURE_CLUBS_READONLY` | client | ✅ in prod | Mantienilo a `1` per lasciare `/clubs` in sola lettura sull'MVP. |
+| `NEXT_PUBLIC_FEATURE_CLUBS_ADMIN` | client | ⚪️ | Abilita i controlli di creazione/modifica/cancellazione su `/clubs` (solo per admin allowlist). |
+| `NEXT_PUBLIC_CLUBS_ADMIN_EMAILS` | client | ⚪️ | Lista CSV di email autorizzate all'editing `/clubs` (allineala a `CLUBS_ADMIN_EMAILS`). |
+| `CLUBS_ADMIN_EMAILS` | server | ⚪️ | Allowlist server per CRUD club; usala insieme a `ADMIN_EMAILS`/`ADMIN_USER_IDS`. |
 | `ADMIN_EMAILS` / `ADMIN_USER_IDS` | server | ⚪️ | Liste (CSV) per concedere privilegi amministrativi. |
 | `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` | server/client | ⚪️ | Abilitano il tracking errori Sentry. |
 | `SENTRY_ENVIRONMENT`, `NEXT_PUBLIC_SENTRY_ENVIRONMENT` | server/client | ⚪️ | Ambiente usato in Sentry (es. `production`). |

@@ -10,6 +10,14 @@ Questo documento fotografa l'analisi corrente della codebase e i passi prioritar
 - MVP stabilizzata con `/clubs` in sola lettura e smoke test Node runner già documentati; deployment orientato a Vercel con flag di feature e configurazione Sentry/Resend opzionale.
 - Documentazione aggiornata e coerente: README, roadmap operative (`ROADMAP.md`, `ROADMAP-post-MVP.md`) e audit repository già disponibili come base di riferimento.
 
+### Aggiornamento 06/11
+- `/clubs` torna visibile (rimuovendo il 404) e resta **read-only** di default; i controlli CRUD sono caricati solo se `NEXT_PUBLIC_FEATURE_CLUBS_ADMIN=1` e l'utente è in allowlist (`NEXT_PUBLIC_CLUBS_ADMIN_EMAILS` / `CLUBS_ADMIN_EMAILS`).
+- Le modali di creazione/modifica club sono ora importate in modo dinamico, per contenere il bundle iniziale quando la pagina opera in sola lettura.
+
+### Da fare subito (Beta)
+- Popolare `NEXT_PUBLIC_CLUBS_ADMIN_EMAILS` e `CLUBS_ADMIN_EMAILS` con l'allowlist effettiva e decidere quando attivare `NEXT_PUBLIC_FEATURE_CLUBS_ADMIN` in staging/preview.
+- Validare che la protezione API (guard admin) sia allineata agli allowlist aggiornati e che l'esperienza guest su `/clubs` non mostri errori 401/403.
+
 ## Prossimi passi prioritari verso la Beta
 1. **Email reali (PM-01)**: configurare Resend (`RESEND_API_KEY`, `RESEND_FROM`, `BRAND_REPLY_TO`) e disattivare il guard NOOP, validando le rotte `/api/notify-email` e `/api/notifications/send` su un ambiente protetto.
 2. **Tuning Sentry (PM-07)**: impostare `SENTRY_ENVIRONMENT` / `NEXT_PUBLIC_SENTRY_ENVIRONMENT` e, se possibile, taggare le release con `VERCEL_GIT_COMMIT_SHA`; definire regole di ignore per errori rumorosi.
