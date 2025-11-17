@@ -8,11 +8,13 @@ const BUCKET = process.env.NEXT_PUBLIC_AVATARS_BUCKET || 'avatars';
 
 export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   const form = await req.formData();
-  const file = form.get('file');
+  const fileEntry = form.get('file');
 
-  if (!(file instanceof File) || file.size === 0) {
+  if (!(fileEntry instanceof File) || fileEntry.size === 0) {
     return jsonError('file_missing', 400);
   }
+
+  const file = fileEntry as File;
 
   const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
   const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
