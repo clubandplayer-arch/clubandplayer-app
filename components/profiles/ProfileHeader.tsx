@@ -5,8 +5,8 @@ import { useEffect, useState } from 'react';
 
 type AccountType = 'club' | 'athlete' | null;
 
-export default function ProfileHeader() {
-  const [type, setType] = useState<AccountType>(null);
+export default function ProfileHeader({ expectedType }: { expectedType?: AccountType }) {
+  const [type, setType] = useState<AccountType>(expectedType ?? null);
 
   useEffect(() => {
     (async () => {
@@ -64,7 +64,7 @@ export default function ProfileHeader() {
     return () => mo.disconnect();
   }, []);
 
-  const label = type === 'club' ? 'CLUB' : 'ATLETA';
+  const label = (type ?? expectedType) === 'club' ? 'CLUB' : 'ATLETA';
 
   // Niente descrizione (paragrafo) per evitare qualsiasi duplicazione visiva
   return (
