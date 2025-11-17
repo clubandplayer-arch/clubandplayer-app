@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
             <p style="color:#6b7280;font-size:12px">Non rispondere a questa email.</p>
           </div>
         `,
-      reply_to: resendConfig.replyTo,
+      replyTo: resendConfig.replyTo,
     })
 
     if (sendRes.error) {

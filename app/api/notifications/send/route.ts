@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
       subject: body.subject,
       html: body.html ?? `<p>${body.text ?? 'Hai una nuova notifica.'}</p>`,
       text: body.text,
-      reply_to: resendConfig.replyTo,
+      replyTo: resendConfig.replyTo,
     })
 
     if (sendRes.error) {
