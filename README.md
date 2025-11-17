@@ -86,7 +86,8 @@
    - `/clubs` → tabella read-only con colonna “Nome” basata su `displayLabel` dell'adapter.
    - `/debug/client-error` e `/api/debug/error` → verifiche per Sentry.
 3. Quando abiliti i CRUD su `/clubs` in staging, segui la [checklist di smoke test guest vs admin](docs/smoke-tests/clubs.md) per verificare flag, allowlist e RLS.
-3. Verifica la salute del backend con `curl http://127.0.0.1:3000/api/health` (risposta 200 JSON con info ambiente).
+4. Per feed e candidature, usa le checklist manuali dedicate: [smoke test `/feed`](docs/smoke-tests/feed.md) e [smoke test `/applications/received`](docs/smoke-tests/applications.md).
+5. Verifica la salute del backend con `curl http://127.0.0.1:3000/api/health` (risposta 200 JSON con info ambiente).
 
 ## Smoke test in CI (GitHub Actions)
 - Il workflow **E2E (non-blocking)** esegue `pnpm test:e2e` con il Node test runner e pubblica l'output come artifact `e2e-smoke-log`.
