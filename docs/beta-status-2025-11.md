@@ -14,6 +14,7 @@ Questo documento fotografa l'analisi corrente della codebase e i passi prioritar
 1. **Candidature non visibili dal Club**: verificare le API e i permessi Supabase (service role) per garantire la lettura delle candidature ricevute anche con RLS attive.
 2. **Upload foto profilo (Club/Atleti) bloccato**: indagare le policy RLS sul bucket avatar e forzare l'uso del client con chiave service-role o regole Storage adeguate.
 3. **Upload foto/video su bacheca/feed impossibile**: controllare l'integrazione Storage per gli allegati feed, le regole RLS e i formati supportati.
+4. **Impossibile creare post su /feed**: verificare le API di creazione post, le policy RLS sulle tabelle feed/post e la coerenza con i permessi di upload degli allegati.
 
 ### Aggiornamento 06/11
 - `/clubs` torna visibile (rimuovendo il 404) e resta **read-only** di default; i controlli CRUD sono caricati solo se `NEXT_PUBLIC_FEATURE_CLUBS_ADMIN=1` e l'utente è in allowlist (`NEXT_PUBLIC_CLUBS_ADMIN_EMAILS` / `CLUBS_ADMIN_EMAILS`).
@@ -24,6 +25,8 @@ Questo documento fotografa l'analisi corrente della codebase e i passi prioritar
 - Validare che la protezione API (guard admin) sia allineata agli allowlist aggiornati e che l'esperienza guest su `/clubs` non mostri errori 401/403.
 - Pianificare l'attivazione: testare in staging con account admin/guest e confermare che le azioni CRUD restino invisibili in modalità guest.
 - Eseguire la [checklist di smoke test `/clubs` (guest vs admin)](./smoke-tests/clubs.md) a ogni deploy finché il flag resta attivo.
+- Collegare i segnalibri aperti (candidature, avatar, upload feed, creazione post feed) a un giro di debug dedicato su staging con client service-role e log Sentry per ogni chiamata API.
+- Preparare test manuali guidati per `/feed` (creazione post + upload media) e `/applications/received` usando account guest/admin, così da certificare i fix RLS prima di aprire il flag CRUD in produzione.
 
 ## Prossimi passi prioritari verso la Beta
 1. **Email reali (PM-01)**: configurare Resend (`RESEND_API_KEY`, `RESEND_FROM`, `BRAND_REPLY_TO`) e disattivare il guard NOOP, validando le rotte `/api/notify-email` e `/api/notifications/send` su un ambiente protetto.
