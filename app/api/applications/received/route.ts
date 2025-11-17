@@ -11,38 +11,27 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   try { await rateLimit(req, { key: 'applications:RECEIVED', limit: 120, window: '1m' } as any); }
   catch { return jsonError('Too Many Requests', 429); }
 
-  // 1) Opportunità dell’owner
-  const { data: oppsOwner, error: eOwner } = await supabase
+  // 1) Opportunità dell’owner (preferendo il client admin per bypassare RLS)
+  const admin = getSupabaseAdminClientOrNull();
+  const client = admin ?? supabase;
+
+  const { data: oppsRaw, error: oppErr } = await client
     .from('opportunities')
-    .select('id, title, city, province, region, country, owner_id')
-    .eq('owner_id', user.id);
-  if (eOwner) return jsonError(eOwner.message, 400);
+    .select('id, title, city, province, region, country, owner_id, created_by')
+    .or(`owner_id.eq.${user.id},created_by.eq.${user.id}`);
+  if (oppErr) return jsonError(oppErr.message, 400);
 
-  let opps = oppsOwner ?? [];
-
-  // Fallback per dati legacy con colonna created_by popolata
-  if (!opps.length) {
-    const { data: legacyOpps, error: legacyErr } = await supabase
-      .from('opportunities')
-      .select('id, title, city, province, region, country, created_by')
-      .eq('created_by', user.id);
-    if (legacyErr) return jsonError(legacyErr.message, 400);
-    opps = (legacyOpps ?? []).map((row: any) => ({ ...row, owner_id: row.created_by }));
-  }
+  const opps = (oppsRaw ?? []).map((row: any) => {
+    const ownerId = row.owner_id ?? row.created_by ?? null;
+    return { ...row, owner_id: ownerId, created_by: ownerId };
+  });
 
   if (!opps.length) return NextResponse.json({ data: [] });
 
   const oppIds = opps.map(o => o.id);
-  const oppMap = new Map(
-    opps.map((o: any) => {
-      const ownerId = o.owner_id ?? o.created_by ?? null;
-      return [o.id, { ...o, owner_id: ownerId, created_by: ownerId }];
-    })
-  );
+  const oppMap = new Map(opps.map((o: any) => [o.id, o]));
 
   // 2) Candidature su quelle opportunità
-  const admin = getSupabaseAdminClientOrNull();
-  const client = admin ?? supabase;
 
   const { data: rows, error: e2 } = await client
     .from('applications')

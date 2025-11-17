@@ -175,6 +175,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   const insertPayload: Record<string, unknown> = {
     title,
     description,
+    owner_id: user.id,
     created_by: user.id,
     country,
     region,
