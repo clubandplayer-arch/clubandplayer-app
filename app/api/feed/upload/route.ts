@@ -45,12 +45,27 @@ export async function POST(req: NextRequest) {
   }
 
   const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_') || `${Date.now()}`;
-  const path = `${bucket}/${authData.user.id}/${Date.now()}-${safeName}`;
+  const path = `${authData.user.id}/${Date.now()}-${safeName}`;
   const storage = (admin ?? userSupabase).storage;
 
-  const { error: uploadError } = await storage
-    .from(bucket)
-    .upload(path, file, { cacheControl: '3600', upsert: false, contentType: file.type || undefined });
+  async function uploadOnce() {
+    return storage
+      .from(bucket)
+      .upload(path, file, { cacheControl: '3600', upsert: false, contentType: file.type || undefined });
+  }
+
+  let { error: uploadError } = await uploadOnce();
+
+  if (uploadError && uploadError.message?.toLowerCase().includes('bucket not found')) {
+    if (admin) {
+      const ensured = await ensureBucketExists(bucket, admin);
+      if (ensured) {
+        ({ error: uploadError } = await uploadOnce());
+      }
+    } else {
+      return NextResponse.json({ ok: false, error: 'bucket_not_found' }, { status: 400 });
+    }
+  }
 
   if (uploadError) {
     const msg = uploadError.message || 'upload_failed';
