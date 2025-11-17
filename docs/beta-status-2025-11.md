@@ -26,6 +26,8 @@ Questo documento fotografa l'analisi corrente della codebase e i passi prioritar
 - Pianificare l'attivazione: testare in staging con account admin/guest e confermare che le azioni CRUD restino invisibili in modalità guest.
 - Eseguire la [checklist di smoke test `/clubs` (guest vs admin)](./smoke-tests/clubs.md) a ogni deploy finché il flag resta attivo.
 - Lanciare `node scripts/check-clubs-flags.mjs` per allineare rapidamente le allowlist client/server prima di ogni smoke test.
+- Preparare Sentry per i rollout: popolare `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN`, impostare `SENTRY_ENVIRONMENT` / `NEXT_PUBLIC_SENTRY_ENVIRONMENT` (es. `staging`/`production`) e taggare la release con `SENTRY_RELEASE` / `NEXT_PUBLIC_SENTRY_RELEASE` (o `VERCEL_GIT_COMMIT_SHA`).
+- Eseguire `node scripts/check-sentry-config.mjs` per validare DSN, environment e release Sentry prima dei deploy e degli smoke test.
 - Collegare i segnalibri aperti (candidature, avatar, upload feed, creazione post feed) a un giro di debug dedicato su staging con client service-role e log Sentry per ogni chiamata API.
 - Prima di debuggare la `/feed`, eseguire `node scripts/check-feed-config.mjs` per validare bucket e tabella `posts` con la chiave service-role; seguire la [checklist feed](./smoke-tests/feed.md) per i flussi di creazione post con/ senza media.
 - Per le candidature ricevute, seguire la [checklist dedicata](./smoke-tests/applications.md) e assicurare che le API usino la chiave service-role quando necessario.
