@@ -25,6 +25,7 @@ Questo documento fotografa l'analisi corrente della codebase e i passi prioritar
 - Validare che la protezione API (guard admin) sia allineata agli allowlist aggiornati e che l'esperienza guest su `/clubs` non mostri errori 401/403.
 - Pianificare l'attivazione: testare in staging con account admin/guest e confermare che le azioni CRUD restino invisibili in modalità guest.
 - Eseguire la [checklist di smoke test `/clubs` (guest vs admin)](./smoke-tests/clubs.md) a ogni deploy finché il flag resta attivo.
+- Lanciare `node scripts/check-clubs-flags.mjs` per allineare rapidamente le allowlist client/server prima di ogni smoke test.
 - Collegare i segnalibri aperti (candidature, avatar, upload feed, creazione post feed) a un giro di debug dedicato su staging con client service-role e log Sentry per ogni chiamata API.
 - Preparare test manuali guidati per `/feed` (creazione post + upload media) e `/applications/received` usando account guest/admin, così da certificare i fix RLS prima di aprire il flag CRUD in produzione.
 

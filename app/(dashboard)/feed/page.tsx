@@ -1,5 +1,7 @@
 'use client';
 
+/* eslint-disable @next/next/no-img-element */
+
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import FeedComposer from '@/components/feed/FeedComposer';
