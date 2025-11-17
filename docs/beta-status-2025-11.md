@@ -10,6 +10,11 @@ Questo documento fotografa l'analisi corrente della codebase e i passi prioritar
 - MVP stabilizzata con `/clubs` in sola lettura e smoke test Node runner già documentati; deployment orientato a Vercel con flag di feature e configurazione Sentry/Resend opzionale.
 - Documentazione aggiornata e coerente: README, roadmap operative (`ROADMAP.md`, `ROADMAP-post-MVP.md`) e audit repository già disponibili come base di riferimento.
 
+### Segnalibri problemi aperti (da riprendere)
+1. **Candidature non visibili dal Club**: verificare le API e i permessi Supabase (service role) per garantire la lettura delle candidature ricevute anche con RLS attive.
+2. **Upload foto profilo (Club/Atleti) bloccato**: indagare le policy RLS sul bucket avatar e forzare l'uso del client con chiave service-role o regole Storage adeguate.
+3. **Upload foto/video su bacheca/feed impossibile**: controllare l'integrazione Storage per gli allegati feed, le regole RLS e i formati supportati.
+
 ### Aggiornamento 06/11
 - `/clubs` torna visibile (rimuovendo il 404) e resta **read-only** di default; i controlli CRUD sono caricati solo se `NEXT_PUBLIC_FEATURE_CLUBS_ADMIN=1` e l'utente è in allowlist (`NEXT_PUBLIC_CLUBS_ADMIN_EMAILS` / `CLUBS_ADMIN_EMAILS`).
 - Le modali di creazione/modifica club sono ora importate in modo dinamico, per contenere il bundle iniziale quando la pagina opera in sola lettura.
@@ -17,6 +22,8 @@ Questo documento fotografa l'analisi corrente della codebase e i passi prioritar
 ### Da fare subito (Beta)
 - Popolare `NEXT_PUBLIC_CLUBS_ADMIN_EMAILS` e `CLUBS_ADMIN_EMAILS` con l'allowlist effettiva e decidere quando attivare `NEXT_PUBLIC_FEATURE_CLUBS_ADMIN` in staging/preview.
 - Validare che la protezione API (guard admin) sia allineata agli allowlist aggiornati e che l'esperienza guest su `/clubs` non mostri errori 401/403.
+- Pianificare l'attivazione: testare in staging con account admin/guest e confermare che le azioni CRUD restino invisibili in modalità guest.
+- Aggiungere una checklist di smoke test per `/clubs` (guest vs admin) da eseguire a ogni deploy finché il flag resta attivo.
 
 ## Prossimi passi prioritari verso la Beta
 1. **Email reali (PM-01)**: configurare Resend (`RESEND_API_KEY`, `RESEND_FROM`, `BRAND_REPLY_TO`) e disattivare il guard NOOP, validando le rotte `/api/notify-email` e `/api/notifications/send` su un ambiente protetto.
