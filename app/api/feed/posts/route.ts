@@ -169,7 +169,9 @@ export async function POST(req: NextRequest) {
       ? (mediaTypeRaw === 'video' ? 'video' : 'image')
       : null;
 
-    if (!text) return NextResponse.json({ ok: false, error: 'empty' }, { status: 400 });
+    if (!text && !mediaUrl) {
+      return NextResponse.json({ ok: false, error: 'empty' }, { status: 400 });
+    }
     if (text.length > MAX_CHARS) {
       return NextResponse.json(
         { ok: false, error: 'too_long', limit: MAX_CHARS },
