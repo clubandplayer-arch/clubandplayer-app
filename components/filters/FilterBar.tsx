@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useCallback, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
+import { COUNTRIES } from "@/lib/opps/geo";
+
 export type Scope = "clubs" | "opportunities";
 
 type Props = {
@@ -131,15 +133,7 @@ export default function FilterBar({ scope }: Props) {
 
   // Opzioni UI
   const countries = useMemo(
-    () => [
-      { code: "", name: "Tutti i paesi" },
-      { code: "IT", name: "Italia" },
-      { code: "ES", name: "Spagna" },
-      { code: "FR", name: "Francia" },
-      { code: "DE", name: "Germania" },
-      { code: "UK", name: "Regno Unito" },
-      { code: "US", name: "Stati Uniti" },
-    ],
+    () => [{ code: "", label: "Tutti i paesi" }, ...COUNTRIES],
     []
   );
 
@@ -205,7 +199,7 @@ export default function FilterBar({ scope }: Props) {
             >
               {countries.map((c) => (
                 <option key={c.code} value={c.code}>
-                  {c.name}
+                  {c.label}
                 </option>
               ))}
             </select>

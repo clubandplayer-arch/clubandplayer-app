@@ -7,6 +7,7 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 import AvatarUploader from '@/components/profiles/AvatarUploader';
 import { SPORTS } from '@/lib/opps/constants';
+import { COUNTRIES } from '@/lib/opps/geo';
 
 type LocationLevel = 'region' | 'province' | 'municipality';
 type LocationRow   = { id: number; name: string };
@@ -99,21 +100,6 @@ async function rpcChildren(level: LocationLevel, parent: number | null) {
     .from('municipalities').select('id,name').eq('province_id', parent).order('name', { ascending: true });
   return sortByName((data ?? []) as LocationRow[]);
 }
-
-// elenco paesi
-function getCountries(): { code: string; name: string }[] {
-  try {
-    const codes: string[] = (Intl as any).supportedValuesOf?.('region') ?? [];
-    const two = codes.filter((c) => /^[A-Z]{2}$/.test(c));
-    const dn = new Intl.DisplayNames(['it'], { type: 'region' });
-    return two
-      .map((code) => ({ code, name: dn.of(code) || code }))
-      .sort((a, b) => a.name.localeCompare(b.name, 'it'));
-  } catch {
-    return [{ code: 'IT', name: 'Italia' }];
-  }
-}
-const COUNTRIES = getCountries();
 
 function flagEmoji(iso2?: string | null) {
   const code = (iso2 || '').trim().toUpperCase();
@@ -675,7 +661,7 @@ export default function ProfileEditForm() {
               >
                 {COUNTRIES.map((c) => (
                   <option key={c.code} value={c.code}>
-                    {c.name}
+                    {c.label}
                   </option>
                 ))}
               </select>
@@ -793,7 +779,7 @@ export default function ProfileEditForm() {
                 >
                   {COUNTRIES.map((c) => (
                     <option key={c.code} value={c.code}>
-                      {c.name}
+                      {c.label}
                     </option>
                   ))}
                 </select>
