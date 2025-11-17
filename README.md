@@ -41,6 +41,7 @@
 | `ADMIN_EMAILS` / `ADMIN_USER_IDS` | server | ⚪️ | Liste (CSV) per concedere privilegi amministrativi. |
 | `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` | server/client | ⚪️ | Abilitano il tracking errori Sentry. |
 | `SENTRY_ENVIRONMENT`, `NEXT_PUBLIC_SENTRY_ENVIRONMENT` | server/client | ⚪️ | Ambiente usato in Sentry (es. `production`). |
+| `SENTRY_RELEASE`, `NEXT_PUBLIC_SENTRY_RELEASE` | server/client | ⚪️ | Etichetta release/commit per Sentry (es. `VERCEL_GIT_COMMIT_SHA`). |
 | `NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_POSTHOG_HOST` | client | ⚪️ | Telemetria opzionale PostHog. |
 | `RESEND_API_KEY`, `RESEND_FROM`, `BRAND_REPLY_TO` | server | ⚪️ | Abilitano l'invio email reale. Se assenti, le rotte notifiche rimangono in NOOP. |
 | `NOOP_EMAILS` | server | ⚪️ | Imposta `1` per forzare il NOOP (default). |
@@ -94,6 +95,14 @@
 - Conferma RLS Supabase su `clubs` e tabelle profilo (`WITH CHECK` coerenti con gli inserimenti).
 - Password policy Supabase ≥ 12 caratteri + numero + carattere speciale, OTP 900–1800s.
 - E2E locali verdi (`pnpm test:e2e`).
+
+## Passi rapidi verso la **Beta**
+- **Sentry**: imposta `SENTRY_ENVIRONMENT` / `NEXT_PUBLIC_SENTRY_ENVIRONMENT` e `SENTRY_RELEASE` / `NEXT_PUBLIC_SENTRY_RELEASE` (tipicamente `VERCEL_GIT_COMMIT_SHA`) per distinguere ambienti e release in dashboard.
+- **Email reali**: configura `RESEND_API_KEY`, `RESEND_FROM`, `BRAND_REPLY_TO` e disattiva `NOOP_EMAILS`.
+- **Storage feed**: assicurati che il bucket `posts` esista e che le policy di upload/lettura siano applicate (vedi note in roadmap post-MVP).
+- **Smoke test quasi-bloccanti**: su GitHub abilita `SMOKE_ENFORCE=true` per PR che toccano `app/**` o i pattern personalizzati.
+- **Sicurezza Supabase**: verifica le policy RLS su `profiles`, `clubs` e `posts` (WITH CHECK coerenti), password minima 12 caratteri e OTP con scadenza 15–30 minuti.
+- **Onboarding dev**: mantieni aggiornata `.env.local` e le variabili Vercel per consentire a nuovi dev di avviare l'ambiente in <15 minuti.
 
 ## Documentazione aggiuntiva
 - `ROADMAP.md` — Stato MVP e passaggi futuri.

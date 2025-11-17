@@ -17,7 +17,7 @@ Legenda: ☐ todo · ◐ in corso · ✅ fatto
 | PM-04 | **/clubs edit** dietro **flag admin** (riapertura CRUD) | ☐     | feature  |
 | PM-05 | Ricerca/filtri UI **/search/club**                     | ☐     | feature  |
 | PM-06 | **Security** Supabase (policy, OTP, HIBP, RLS)         | ☐     | security |
-| PM-07 | **Sentry tuning** (env/release + regole)               | ☐     | qualità  |
+| PM-07 | **Sentry tuning** (env/release + regole)               | ◐     | qualità  |
 | PM-08 | **CI/CD**: E2E “quasi-bloccanti” + artifacts           | ☐     | devops   |
 | PM-09 | **Docs & Onboarding** dev                              | ☐     | docs     |
 | PM-10 | **Performance**: immagini/storage/caching              | ☐     | perf     |
@@ -98,13 +98,16 @@ Legenda: ☐ todo · ◐ in corso · ✅ fatto
 ---
 
 ### PM-07 — **Sentry** tuning
-**Obiettivo:** eventi puliti per ambiente/release + regole.  
+**Obiettivo:** eventi puliti per ambiente/release + regole.
 **Checklist**
 - ☐ Imposta (facoltativo ma consigliato): `SENTRY_ENVIRONMENT=production`, `NEXT_PUBLIC_SENTRY_ENVIRONMENT=production`.
 - ☐ Release client visibile: `NEXT_PUBLIC_SENTRY_RELEASE=${VERCEL_GIT_COMMIT_SHA}` (opzionale).
-- ☐ Regole/ignore: errori rumorosi (offline, ResizeObserver, ecc.).  
+- ☐ Regole/ignore: errori rumorosi (offline, ResizeObserver, ecc.).
 **Accettazione**
 - Dashboard pulita; alert solo su errori reali.
+
+**Stato attuale**
+- Le configurazioni Sentry client/server rispettano `SENTRY_ENVIRONMENT` / `NEXT_PUBLIC_SENTRY_ENVIRONMENT` e la release opzionale (`SENTRY_RELEASE` / `NEXT_PUBLIC_SENTRY_RELEASE` o `VERCEL_GIT_COMMIT_SHA`).
 
 ---
 
