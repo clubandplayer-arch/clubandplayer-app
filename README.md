@@ -109,7 +109,7 @@
 - **Sentry**: imposta `SENTRY_ENVIRONMENT` / `NEXT_PUBLIC_SENTRY_ENVIRONMENT` e `SENTRY_RELEASE` / `NEXT_PUBLIC_SENTRY_RELEASE` (tipicamente `VERCEL_GIT_COMMIT_SHA`) per distinguere ambienti e release in dashboard.
   - Usa `node scripts/check-sentry-config.mjs` per validare rapidamente DSN, environment e release prima dei deploy.
   - Il client ignora automaticamente errori rumorosi noti (es. `ResizeObserver loop limit exceeded`, abort di fetch) per mantenere la dashboard più pulita, inclusi quelli generati da estensioni browser comuni.
-- **Email reali**: configura `RESEND_API_KEY`, `RESEND_FROM`, `BRAND_REPLY_TO`, disattiva `NOOP_EMAILS` e valida con `node scripts/check-email-config.mjs`.
+- **Email reali**: configura `RESEND_API_KEY`, `RESEND_FROM`, `BRAND_REPLY_TO`, disattiva `NOOP_EMAILS` e valida con `node scripts/check-email-config.mjs` (le rotte `/api/notify-email` e `/api/notifications/send` rispondono 500 se la configurazione è assente).
 - **Storage feed**: assicurati che il bucket `posts` esista e che le policy di upload/lettura siano applicate (vedi note in roadmap post-MVP).
 - **Smoke test quasi-bloccanti**: su GitHub abilita `SMOKE_ENFORCE=true` per PR che toccano `app/**` o i pattern personalizzati.
 - **Sicurezza Supabase**: verifica le policy RLS su `profiles`, `clubs` e `posts` (WITH CHECK coerenti), password minima 12 caratteri e OTP con scadenza 15–30 minuti.
