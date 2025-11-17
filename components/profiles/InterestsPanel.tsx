@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { SPORTS } from '@/lib/opps/constants';
-import { COUNTRIES, ITALY_REGIONS, PROVINCES_BY_REGION, CITIES_BY_PROVINCE } from '@/lib/opps/geo';
+import { COUNTRIES } from '@/lib/opps/geo';
+import { useItalyLocations } from '@/hooks/useItalyLocations';
 
 export type Interests = {
   sports: string[];
@@ -53,6 +54,7 @@ function writeInterests(next: Interests) {
 
 export default function InterestsPanel({ onChange }: Props) {
   const [state, setState] = useState<Interests>({ sports: [] });
+  const { data: italyLocations } = useItalyLocations();
 
   // carica iniziale
   useEffect(() => {
@@ -70,12 +72,12 @@ export default function InterestsPanel({ onChange }: Props) {
   }, [state.country]);
 
   const provinces = useMemo(
-    () => (countryCode === 'IT' ? PROVINCES_BY_REGION[state.region ?? ''] ?? [] : []),
-    [countryCode, state.region]
+    () => (countryCode === 'IT' ? italyLocations.provincesByRegion[state.region ?? ''] ?? [] : []),
+    [countryCode, state.region, italyLocations]
   );
   const cities = useMemo(
-    () => (countryCode === 'IT' ? CITIES_BY_PROVINCE[state.province ?? ''] ?? [] : []),
-    [countryCode, state.province]
+    () => (countryCode === 'IT' ? italyLocations.citiesByProvince[state.province ?? ''] ?? [] : []),
+    [countryCode, state.province, italyLocations]
   );
 
   function set<K extends keyof Interests>(k: K, v: Interests[K]) {
@@ -141,7 +143,7 @@ export default function InterestsPanel({ onChange }: Props) {
               onChange={(e) => set('region', e.target.value || undefined)}
             >
               <option value="">—</option>
-              {ITALY_REGIONS.map((r) => (
+              {italyLocations.regions.map((r) => (
                 <option key={r} value={r}>{r}</option>
               ))}
             </select>

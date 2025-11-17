@@ -1,4 +1,9 @@
 'use client'
+
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'default-no-store';
+
+
 import React from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
@@ -7,12 +12,17 @@ import { supabaseBrowser } from '@/lib/supabaseBrowser'
 
 type Profile = {
   id: string
+  display_name: string | null
   full_name: string | null
+  headline: string | null
+  bio: string | null
   sport: string | null
   role: string | null
+  country: string | null
+  region: string | null
+  province: string | null
   city: string | null
   avatar_url?: string | null
-  bio?: string | null
 }
 
 type ApplicationRow = {
@@ -52,17 +62,40 @@ export default function AthletePublicProfilePage() {
       setMeId(userRes?.user?.id ?? null)
 
       // 1) profilo pubblico
-      const { data: profs, error: pErr } = await supabase
-        .from('profiles')
-        .select('id, full_name, sport, role, city, avatar_url, bio')
-        .eq('id', athleteId)
-        .limit(1)
+      const profileRes = await fetch(
+        `/api/profiles/public?ids=${encodeURIComponent(athleteId)}`,
+        { cache: 'no-store' }
+      )
+      let fetchedProfile: Profile | null = null
 
-      if (pErr) { setMsg(`Errore profilo: ${pErr.message}`); setLoading(false); return }
-      if (!profs || profs.length === 0) { setMsg('Profilo non trovato.'); setLoading(false); return }
+      if (profileRes.ok) {
+        const json = await profileRes.json().catch(() => ({}))
+        const first = Array.isArray(json?.data) ? json.data[0] : null
+        fetchedProfile = (first ?? null) as Profile | null
+      }
 
-      const p = profs[0] as Profile
-      setProfile(p)
+      // Fallback: prova l'endpoint autenticato che usa il client admin se necessario
+      if (!fetchedProfile) {
+        const res = await fetch(`/api/profiles/${athleteId}`, {
+          cache: 'no-store',
+          credentials: 'include',
+        })
+        if (res.ok) {
+          const json = await res.json().catch(() => ({}))
+          fetchedProfile = (json?.data ?? null) as Profile | null
+        }
+      }
+
+      if (!fetchedProfile) {
+        const txt = profileRes.ok
+          ? ''
+          : await profileRes.text().catch(() => '')
+        setMsg(txt ? `Profilo non trovato: ${txt}` : 'Profilo non trovato.')
+        setLoading(false)
+        return
+      }
+
+      setProfile(fetchedProfile)
 
       // 2) (facoltativo) ultime candidature visibili solo all’atleta stesso
       if (userRes?.user?.id === athleteId) {
@@ -104,6 +137,25 @@ export default function AthletePublicProfilePage() {
 
   const isMe = useMemo(() => !!meId && !!profile && meId === profile.id, [meId, profile])
 
+  const profileName = profile?.display_name || profile?.full_name || 'Atleta'
+  const profileTagline = useMemo(() => {
+    if (!profile) return ''
+    const headline = (profile.headline ?? '').trim()
+    if (headline) return headline
+    const role = profile.role ?? 'Ruolo n/d'
+    const sport = profile.sport ?? 'Sport n/d'
+    const city = profile.city ?? 'Città n/d'
+    return `${role} · ${sport} · ${city}`
+  }, [profile])
+
+  const profileLocation = useMemo(() => {
+    if (!profile) return ''
+    const parts = [profile.city, profile.province, profile.region, profile.country]
+      .map((part) => (part ?? '').trim())
+      .filter(Boolean)
+    return parts.join(' · ')
+  }, [profile])
+
   return (
     <main style={{maxWidth:960, margin:'0 auto', padding:24}}>
       {loading && <p>Caricamento…</p>}
@@ -117,7 +169,7 @@ export default function AthletePublicProfilePage() {
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={profile.avatar_url}
-                alt={profile.full_name ?? 'Atleta'}
+                alt={profileName}
                 width={80}
                 height={80}
                 style={{borderRadius:'50%', objectFit:'cover'}}
@@ -126,10 +178,11 @@ export default function AthletePublicProfilePage() {
               <div style={{width:80, height:80, borderRadius:'50%', background:'#e5e7eb'}} />
             )}
             <div>
-              <h1 style={{margin:0}}>{profile.full_name ?? 'Atleta'}</h1>
-              <p style={{margin:'4px 0', opacity:.8}}>
-                {profile.role ?? 'Ruolo n/d'} · {profile.sport ?? 'Sport n/d'} · {profile.city ?? 'Città n/d'}
-              </p>
+              <h1 style={{margin:0}}>{profileName}</h1>
+              <p style={{margin:'4px 0', opacity:.8}}>{profileTagline}</p>
+              {profileLocation && (
+                <p style={{margin:'2px 0', fontSize:13, opacity:.7}}>{profileLocation}</p>
+              )}
               <div style={{display:'flex', gap:12, alignItems:'center'}}>
                 <span style={{fontSize:12, opacity:.7}}>ID: <code>{profile.id}</code></span>
                 {/* Messaggia: apre thread con l’atleta */}
@@ -159,7 +212,7 @@ export default function AthletePublicProfilePage() {
             <ul style={{marginTop:8, lineHeight:1.8}}>
               <li><b>Sport:</b> {profile.sport ?? '—'}</li>
               <li><b>Ruolo:</b> {profile.role ?? '—'}</li>
-              <li><b>Città:</b> {profile.city ?? '—'}</li>
+              <li><b>Città:</b> {profileLocation || '—'}</li>
             </ul>
           </section>
 

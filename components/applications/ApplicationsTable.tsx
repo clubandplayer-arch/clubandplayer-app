@@ -5,13 +5,31 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+type AthleteSummary = {
+  id: string;
+  name?: string | null;
+  display_name: string | null;
+  full_name: string | null;
+  headline: string | null;
+  bio: string | null;
+  sport: string | null;
+  role: string | null;
+  country: string | null;
+  region: string | null;
+  province: string | null;
+  city: string | null;
+  avatar_url: string | null;
+};
+
 type Row = {
   id: string;
   created_at?: string | null;
   note?: string | null;
   opportunity_id?: string | null;
+  opportunity?: { title?: string | null } | null;
   status?: string | null; // submitted | in_review | accepted | rejected | withdrawn | pending...
   athlete_id?: string | null;
+  athlete?: AthleteSummary | null;
   [k: string]: any;
 };
 
@@ -19,10 +37,12 @@ export default function ApplicationsTable({
   rows,
   kind,
   loading = false,
+  onStatusChange,
 }: {
   rows: Row[];
   kind: 'sent' | 'received';
   loading?: boolean;
+  onStatusChange?: (id: string, status: 'accepted' | 'rejected') => void;
 }) {
   const router = useRouter();
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -78,11 +98,15 @@ export default function ApplicationsTable({
         const t = await res.text().catch(() => '');
         throw new Error(t || `HTTP ${res.status}`);
       }
+
+      onStatusChange?.(id, next);
     } catch (e: any) {
       alert(e?.message || 'Errore durante l’aggiornamento dello stato');
     } finally {
       setSavingId(null);
-      router.refresh();
+      if (!onStatusChange) {
+        router.refresh();
+      }
     }
   }
 
@@ -105,12 +129,12 @@ export default function ApplicationsTable({
   }
 
   return (
-    <div className="border rounded-lg overflow-x-auto bg-white">
+    <div className="border rounded-lg bg-white">
       <table className="w-full text-sm">
         <thead className="bg-gray-50 text-gray-600">
           <tr>
             {headers.map((h) => (
-              <th key={h.key} className="text-left px-3 py-2 whitespace-nowrap">
+              <th key={h.key} className="text-left px-3 py-2 align-top">
                 {h.label}
               </th>
             ))}
@@ -125,23 +149,34 @@ export default function ApplicationsTable({
               'bg-gray-100 text-gray-700';
 
             return (
-              <tr key={r.id} className="border-t">
+              <tr key={r.id} className="border-t align-top">
                 {/* Data */}
-                <td className="px-3 py-2 whitespace-nowrap">
+                <td className="px-3 py-2 align-top">
                   {r.created_at
                     ? new Date(r.created_at).toLocaleString('it-IT')
                     : '—'}
                 </td>
 
                 {/* Annuncio */}
-                <td className="px-3 py-2 whitespace-nowrap">
+                <td className="px-3 py-2 align-top break-words">
                   {r.opportunity_id ? (
-                    <Link
-                      className="text-blue-700 hover:underline"
-                      href={`/opportunities/${r.opportunity_id}`}
-                    >
-                      {r.opportunity_id}
-                    </Link>
+                    (() => {
+                      const fullId = r.opportunity_id ?? '';
+                      const title = (r.opportunity?.title ?? '').trim();
+                      const shortTitle = title
+                        ? `${title.slice(0, 12)}${title.length > 12 ? '…' : ''}`
+                        : '';
+                      const label = shortTitle || (fullId.length > 12 ? `${fullId.slice(0, 8)}…` : fullId);
+                      return (
+                        <Link
+                          className="text-blue-700 hover:underline"
+                          href={`/opportunities/${r.opportunity_id}`}
+                          title={fullId}
+                        >
+                          {label || 'Apri annuncio'}
+                        </Link>
+                      );
+                    })()
                   ) : (
                     '—'
                   )}
@@ -149,14 +184,38 @@ export default function ApplicationsTable({
 
                 {/* Atleta solo per ricevute */}
                 {kind === 'received' && (
-                  <td className="px-3 py-2 whitespace-nowrap">
+                  <td className="px-3 py-2 min-w-[12rem] align-top">
                     {r.athlete_id ? (
-                      <Link
-                        className="text-blue-700 hover:underline"
-                        href={`/athletes/${r.athlete_id}`}
-                      >
-                        {r.athlete_id}
-                      </Link>
+                      <div className="flex flex-col">
+                        {(() => {
+                          const athleteId = r.athlete?.id ?? r.athlete_id;
+                          const display =
+                            r.athlete?.name ||
+                            r.athlete?.display_name ||
+                            r.athlete?.full_name ||
+                            r.athlete_id;
+                          return athleteId ? (
+                            <Link
+                              className="text-blue-700 hover:underline font-medium"
+                              href={`/athletes/${athleteId}`}
+                            >
+                              {display}
+                            </Link>
+                          ) : (
+                            <span className="text-gray-700">{display}</span>
+                          );
+                        })()}
+                        <span className="text-xs text-gray-600">
+                          {[r.athlete?.role, r.athlete?.sport]
+                            .filter(Boolean)
+                            .join(' · ') || '—'}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {[r.athlete?.city, r.athlete?.province, r.athlete?.region]
+                            .filter(Boolean)
+                            .join(' · ') || ''}
+                        </span>
+                      </div>
                     ) : (
                       '—'
                     )}
@@ -164,7 +223,7 @@ export default function ApplicationsTable({
                 )}
 
                 {/* Stato */}
-                <td className="px-3 py-2">
+                <td className="px-3 py-2 align-top">
                   <span
                     className={[
                       'inline-block rounded-full px-2 py-0.5 text-xs capitalize',
@@ -176,12 +235,12 @@ export default function ApplicationsTable({
                 </td>
 
                 {/* Nota */}
-                <td className="px-3 py-2 max-w-[28rem] truncate" title={r.note ?? ''}>
+                <td className="px-3 py-2 max-w-[28rem] truncate align-top" title={r.note ?? ''}>
                   {r.note ?? '—'}
                 </td>
 
                 {/* Azioni */}
-                <td className="px-3 py-2">
+                <td className="px-3 py-2 align-top">
                   {kind === 'received' ? (
                     <div className="flex gap-2">
                       <button

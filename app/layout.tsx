@@ -2,20 +2,22 @@
 import './globals.css';
 import type { Metadata, Viewport } from 'next';
 import { Suspense } from 'react';
-import { Inter } from 'next/font/google';
 
 import HashCleanup from '@/components/auth/HashCleanup';
 import SessionSyncMount from '@/components/auth/SessionSyncMount';
 import CookieConsent from '@/components/misc/CookieConsent';
 import PostHogInit from '@/components/analytics/PostHogInit';
 
-const inter = Inter({ subsets: ['latin'], display: 'swap' });
-
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://clubandplayer.com';
 const SITE_NAME = 'Club & Player';
 const DEFAULT_TITLE = SITE_NAME;
 const DEFAULT_DESC = 'Club & Player App';
 const OG_IMAGE = '/og.jpg'; // /public/og.jpg (1200x630)
+
+// Disabilita la prerenderizzazione statica per evitare errori quando le variabili
+// Supabase non sono disponibili in fase di build.
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'default-no-store';
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
@@ -85,7 +87,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
 
-      <body className={`${inter.className} antialiased bg-neutral-50 text-neutral-900`}>
+      <body className="antialiased bg-neutral-50 text-neutral-900 font-sans">
         {/* Init analytics (rispetta consenso, pageview & identify) */}
         <Suspense fallback={null}>
           <PostHogInit />

@@ -1,5 +1,10 @@
 'use client'
 
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'default-no-store';
+
+
+
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
@@ -9,7 +14,17 @@ export default function LogoutPage() {
   useEffect(() => {
     const run = async () => {
       await supabaseBrowser().auth.signOut()
-      router.replace('/login')
+      try {
+        await fetch('/api/auth/session', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({}),
+        })
+      } catch {
+        // ignoriamo eventuali errori di rete: il sync periodico li coprirà
+      }
+      router.replace('/signup')
     }
     run()
   }, [router])

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import FollowButton from '@/components/clubs/FollowButton';
 import ApplyCell from '@/components/opportunities/ApplyCell';
 import type { Opportunity } from '@/types/opportunity';
+import { opportunityGenderLabel } from '@/lib/opps/gender';
 
 type Role = 'athlete' | 'club' | 'guest';
 type ApiOne<T> = { data?: T; [k: string]: any };
@@ -32,7 +33,7 @@ type OpportunityWithLegacy = Opportunity & {
   region?: string | null;
   country?: string | null;
 
-  gender?: 'male' | 'female' | 'mixed' | null;
+  gender?: 'uomo' | 'donna' | 'mixed' | 'male' | 'female' | 'maschile' | 'femminile' | null;
 };
 
 function fmtAge(min?: number | null, max?: number | null) {
@@ -132,14 +133,7 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
   const ageMax = (opp.ageMax ?? opp.age_max) ?? null;
 
   const rawGender = opp.gender ?? null;
-  const gender =
-    rawGender === 'male'
-      ? 'Maschile'
-      : rawGender === 'female'
-      ? 'Femminile'
-      : rawGender === 'mixed'
-      ? 'Misto'
-      : undefined;
+  const gender = opportunityGenderLabel(rawGender) ?? undefined;
 
   const createdBy = opp.createdBy ?? opp.created_by ?? null;
   const clubName = opp.clubName ?? opp.club_name ?? undefined;

@@ -84,11 +84,4 @@ export default [
     },
   },
 
-  // ➕ Playwright config: non cercare un project TS (evita il parsing error)
-  {
-    files: ["playwright.config.ts"],
-    languageOptions: {
-      parserOptions: { project: null },
-    },
-  },
 ];

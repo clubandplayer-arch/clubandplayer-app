@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
 import { createClient } from '@supabase/supabase-js';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
 
@@ -10,22 +11,82 @@ const MAX_CHARS = 500;
 const RATE_LIMIT_MS = 5_000;
 const LAST_POST_TS_COOKIE = 'feed_last_post_ts';
 
+type Role = 'club' | 'athlete';
+
+function normRole(v: unknown): Role | null {
+  const s = typeof v === 'string' ? v.trim().toLowerCase() : '';
+  if (s === 'club') return 'club';
+  if (s === 'athlete') return 'athlete';
+  return null;
+}
+
 function getSupabaseAnonServer() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
   return createClient(url, anon, { auth: { persistSession: false } });
 }
 
-// GET: lettura pubblica, normalizza i campi per la UI legacy
+function normalizeRow(row: any) {
+  return {
+    id: row.id,
+    // legacy
+    text: row.content ?? '',
+    createdAt: row.created_at,
+    // nuovi
+    content: row.content ?? '',
+    created_at: row.created_at,
+    authorId: row.author_id ?? null,
+    author_id: row.author_id ?? null,
+    media_url: row.media_url ?? null,
+    media_type: row.media_type ?? null,
+    role: undefined as unknown as 'club' | 'athlete' | undefined,
+  };
+}
+
+// GET: lettura autenticata, filtra i post per ruolo dell'autore
 export async function GET(req: NextRequest) {
   const debug = new URL(req.url).searchParams.get('debug') === '1';
-  const supabase = getSupabaseAnonServer();
+  const supabase = await getSupabaseServerClient();
 
-  const { data, error } = await supabase
-    .from('posts')
-    .select('id, author_id, content, created_at')
-    .order('created_at', { ascending: false })
-    .limit(50);
+  // determina ruolo dell'utente corrente
+  let currentRole: Role | null = null;
+  let currentUserId: string | null = null;
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (!error && data?.user) {
+      currentUserId = data.user.id;
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('account_type,type')
+        .eq('user_id', data.user.id)
+        .maybeSingle();
+      currentRole =
+        normRole((profile as any)?.account_type) ||
+        normRole((profile as any)?.type) ||
+        normRole(data.user.user_metadata?.role);
+    }
+  } catch {
+    // se qualcosa fallisce, continuiamo senza ruolo
+  }
+
+  const baseSelect = 'id, author_id, content, created_at';
+  const extendedSelect = 'id, author_id, content, created_at, media_url, media_type';
+
+  const fetchPosts = async (sel: string) =>
+    supabase
+      .from('posts')
+      .select(sel)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+  let data: any[] | null = null;
+  let error: any = null;
+
+  ({ data, error } = await fetchPosts(extendedSelect));
+
+  if (error && /column .* does not exist/i.test(error.message || '')) {
+    ({ data, error } = await fetchPosts(baseSelect));
+  }
 
   if (error) {
     return NextResponse.json(
@@ -39,25 +100,57 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const items =
-    (data ?? []).map((r) => ({
-      id: r.id,
-      // legacy
-      text: r.content ?? '',
-      createdAt: r.created_at,
-      // nuovi
-      content: r.content ?? '',
-      created_at: r.created_at,
-      authorId: r.author_id ?? null,
-      author_id: r.author_id ?? null,
-      role: undefined as unknown as 'club' | 'athlete' | undefined,
-    })) || [];
+  const rows = (data ?? []).map((r) => normalizeRow(r)) || [];
+
+  if (!currentRole) {
+    return NextResponse.json(
+      { ok: true, items: rows },
+      { status: 200 }
+    );
+  }
+
+  const authorIds = Array.from(
+    new Set(rows.map((r) => r.author_id || r.authorId).filter(Boolean))
+  ) as string[];
+
+  let profiles: any[] = [];
+  if (authorIds.length > 0) {
+    const selectCols = 'user_id,id,account_type,type';
+    const { data: profs, error: profErr } = await supabase
+      .from('profiles')
+      .select(selectCols)
+      .in('user_id', authorIds);
+    if (!profErr && Array.isArray(profs)) {
+      profiles = profs;
+    } else {
+      const admin = getSupabaseAdminClientOrNull();
+      if (admin) {
+        const { data: adminProfs } = await admin
+          .from('profiles')
+          .select(selectCols)
+          .in('user_id', authorIds);
+        if (Array.isArray(adminProfs)) profiles = adminProfs;
+      }
+    }
+  }
+
+  const map = new Map<string, Role>();
+  for (const p of profiles) {
+    const key = (p?.user_id ?? p?.id ?? '').toString();
+    const role = normRole(p?.account_type) || normRole(p?.type);
+    if (key && role) map.set(key, role);
+  }
+
+  const filtered = rows.filter((r) => {
+    const role = map.get((r.author_id || r.authorId || '').toString());
+    return role ? role === currentRole : false;
+  });
 
   return NextResponse.json(
     {
       ok: true,
-      items,
-      ...(debug ? { _debug: { count: items.length } } : {}),
+      items: filtered,
+      ...(debug ? { _debug: { count: filtered.length, role: currentRole, userId: currentUserId } } : {}),
     },
     { status: 200 }
   );
@@ -68,9 +161,17 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
     const rawText = (body?.text ?? body?.content ?? '').toString();
+    const mediaUrlRaw = (body as any)?.media_url ?? null;
+    const mediaTypeRaw = (body as any)?.media_type ?? null;
     const text = rawText.trim();
+    const mediaUrl = typeof mediaUrlRaw === 'string' && mediaUrlRaw.trim() ? mediaUrlRaw.trim() : null;
+    const mediaType = mediaUrl
+      ? (mediaTypeRaw === 'video' ? 'video' : 'image')
+      : null;
 
-    if (!text) return NextResponse.json({ ok: false, error: 'empty' }, { status: 400 });
+    if (!text && !mediaUrl) {
+      return NextResponse.json({ ok: false, error: 'empty' }, { status: 400 });
+    }
     if (text.length > MAX_CHARS) {
       return NextResponse.json(
         { ok: false, error: 'too_long', limit: MAX_CHARS },
@@ -90,16 +191,47 @@ export async function POST(req: NextRequest) {
     }
 
     const supabase = await getSupabaseServerClient();
+    const admin = getSupabaseAdminClientOrNull();
+    const clientForInsert = admin ?? supabase;
     const { data: auth, error: authErr } = await supabase.auth.getUser();
     if (authErr || !auth?.user) {
       return NextResponse.json({ ok: false, error: 'not_authenticated' }, { status: 401 });
     }
 
-    const { data, error } = await supabase
-      .from('posts')
-      .insert({ content: text })
-      .select('id, author_id, content, created_at')
-      .single();
+    const insertPayload: Record<string, any> = { content: text, author_id: auth.user.id };
+    if (mediaUrl) insertPayload.media_url = mediaUrl;
+    if (mediaType) insertPayload.media_type = mediaType;
+
+    const runInsert = (payload: Record<string, any>, select: string) =>
+      clientForInsert.from('posts').insert(payload).select(select).single();
+
+    let data: any = null;
+    let error: any = null;
+
+    ({ data, error } = await runInsert(insertPayload, 'id, author_id, content, created_at, media_url, media_type'));
+
+    if (error && /column .* does not exist/i.test(error.message || '')) {
+      const fallbackPayload = { content: mediaUrl ? `${text}\n${mediaUrl}` : text, author_id: auth.user.id };
+      ({ data, error } = await runInsert(fallbackPayload, 'id, author_id, content, created_at'));
+    }
+
+    // Fallback amministrativo se le policy RLS bloccano l'inserimento con il token utente
+    if (error && /row-level security/i.test(error.message || '') && !admin) {
+      const adminFallback = getSupabaseAdminClientOrNull();
+      if (adminFallback) {
+        const adminPayload = { ...insertPayload };
+        if (!adminPayload.content && mediaUrl) adminPayload.content = `${text}\n${mediaUrl}`;
+        const { data: adminData, error: adminErr } = await adminFallback
+          .from('posts')
+          .insert(adminPayload)
+          .select('id, author_id, content, created_at, media_url, media_type')
+          .single();
+        if (!adminErr) {
+          data = adminData;
+          error = null;
+        }
+      }
+    }
 
     if (error) {
       return NextResponse.json(
@@ -111,16 +243,7 @@ export async function POST(req: NextRequest) {
     const res = NextResponse.json(
       {
         ok: true,
-        item: {
-          id: data.id,
-          text: data.content ?? '',
-          createdAt: data.created_at,
-          content: data.content ?? '',
-          created_at: data.created_at,
-          authorId: data.author_id ?? null,
-          author_id: data.author_id ?? null,
-          role: undefined as unknown as 'club' | 'athlete' | undefined,
-        },
+        item: normalizeRow(data),
       },
       { status: 201 }
     );

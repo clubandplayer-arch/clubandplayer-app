@@ -1,6 +1,9 @@
 // app/login/page.tsx
 'use client';
 
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'default-no-store';
+
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import SocialLogin from '@/components/auth/SocialLogin';

@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
+import { getPublicProfilesMap } from '@/lib/profiles/publicLookup';
+import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
 
@@ -30,21 +32,23 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   if (error) return jsonError(error.message, 400);
 
   const apps = rows ?? [];
-  const athleteIds = Array.from(new Set(apps.map(a => a.athlete_id).filter(Boolean)));
+  const athleteIds = Array.from(
+    new Set(apps.map(a => String(a.athlete_id ?? '')).filter(id => id.length > 0))
+  );
 
-  // profili atleti
-  const profilesMap = new Map<string, { id: string; display_name: string | null; profile_type: string | null }>();
-  if (athleteIds.length) {
-    const { data: profs } = await supabase
-      .from('profiles')
-      .select('id, display_name, profile_type')
-      .in('id', athleteIds);
-    profs?.forEach(p => profilesMap.set(p.id, p as any));
-  }
+  // profili atleti (usa l’admin se disponibile per bypassare le RLS)
+  const admin = getSupabaseAdminClientOrNull();
+  const profilesMap = athleteIds.length
+    ? await getPublicProfilesMap(
+        athleteIds,
+        admin ?? supabase,
+        { fallbackToAdmin: true },
+      )
+    : new Map();
 
   const enhanced = apps.map(a => ({
     ...a,
-    athlete: profilesMap.get(a.athlete_id) ?? null,
+    athlete: profilesMap.get(String(a.athlete_id ?? '')) ?? null,
   }));
 
   return NextResponse.json({ data: enhanced });

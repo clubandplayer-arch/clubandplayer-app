@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import ApplyCTA from '@/components/opportunities/ApplyCTA';
+import { opportunityGenderLabel } from '@/lib/opps/gender';
 import type { Opportunity } from '@/types/opportunity';
 
 type Role = 'athlete' | 'club' | 'guest';
@@ -23,14 +24,7 @@ export default function OpportunityCard({
 }: Props) {
   const place = [opp.city, opp.province, opp.region, opp.country].filter(Boolean).join(', ');
 
-  const genderLabel =
-    (opp as any).gender === 'male'
-      ? 'Maschile'
-      : (opp as any).gender === 'female'
-      ? 'Femminile'
-      : (opp as any).gender === 'mixed'
-      ? 'Misto'
-      : undefined;
+  const genderLabel = opportunityGenderLabel((opp as any).gender) ?? undefined;
 
   const ageLabel =
     opp.age_min != null && opp.age_max != null

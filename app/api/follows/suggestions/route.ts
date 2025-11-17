@@ -65,7 +65,7 @@ export async function GET(req: NextRequest) {
     const { data, error } = await supabase
       .from('profiles')
       .select(
-        'id, account_type, full_name, display_name, city, main_sport, avatar_url, followers_count'
+        'id, account_type, full_name, display_name, city, sport, avatar_url, followers_count'
       )
       .eq('account_type', targetType)
       .order('followers_count', { ascending: false })
@@ -78,7 +78,7 @@ export async function GET(req: NextRequest) {
           (p.full_name || p.display_name || '').trim() ||
           'Profilo',
         city: p.city || null,
-        sport: p.main_sport || null,
+        sport: p.sport || null,
         avatar_url: p.avatar_url || null,
         followers: p.followers_count ?? null,
       }));

@@ -5,6 +5,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
+import AvatarUploader from '@/components/profiles/AvatarUploader';
+import { SPORTS } from '@/lib/opps/constants';
+
 type LocationLevel = 'region' | 'province' | 'municipality';
 type LocationRow   = { id: number; name: string };
 type AccountType   = 'club' | 'athlete' | null;
@@ -21,6 +24,7 @@ type Profile = {
 
   // anagrafica comune
   full_name: string | null;
+  avatar_url: string | null;
   bio: string | null;
   country: string | null; // ISO2 o testo
 
@@ -166,6 +170,9 @@ function normalizeCountryCode(v?: string | null) {
 }
 
 /** categorie/campionati per sport (estendibile) */
+const DEFAULT_CLUB_CATEGORIES: string[] = ['Altro'];
+const CLUB_SPORT_OPTIONS = Array.from(new Set([...SPORTS, 'Pallavolo']));
+
 const CATEGORIES_BY_SPORT: Record<string, string[]> = {
   Calcio: [
     'Serie D',
@@ -177,9 +184,32 @@ const CATEGORIES_BY_SPORT: Record<string, string[]> = {
     'Giovanili',
     'Altro',
   ],
-  Basket: ['Serie A', 'A2', 'B', 'C Gold', 'C Silver', 'D', 'Giovanili', 'Altro'],
+  Futsal: ['Serie A', 'A2', 'B', 'C1', 'C2', 'Giovanili', 'Altro'],
+  Volley: ['SuperLega', 'A2', 'A3', 'B', 'C', 'D', 'Giovanili', 'Altro'],
   Pallavolo: ['SuperLega', 'A2', 'A3', 'B', 'C', 'D', 'Giovanili', 'Altro'],
+  Basket: ['Serie A', 'A2', 'B', 'C Gold', 'C Silver', 'D', 'Giovanili', 'Altro'],
+  Pallanuoto: ['Serie A1', 'A2', 'B', 'C', 'Giovanili', 'Altro'],
+  Pallamano: ['Serie A Gold', 'A Silver', 'B', 'A2 Femminile', 'Giovanili', 'Altro'],
   Rugby: ['Top10', 'Serie A', 'Serie B', 'Serie C', 'Giovanili', 'Altro'],
+  'Hockey su prato': ['Serie A1', 'A2', 'Serie B', 'Giovanili', 'Altro'],
+  'Hockey su ghiaccio': [
+    'Serie A',
+    'Italian Hockey League',
+    'IHL - Division I',
+    'U19',
+    'Altro',
+  ],
+  Baseball: ['Serie A', 'Serie B', 'Serie C', 'Giovanili', 'Altro'],
+  Softball: ['Serie A1', 'Serie A2', 'Serie B', 'Giovanili', 'Altro'],
+  Lacrosse: ['Serie A', 'Serie B', 'Giovanili', 'Altro'],
+  'Football americano': [
+    'Prima Divisione',
+    'Seconda Divisione',
+    'Terza Divisione',
+    'College',
+    'Giovanili',
+    'Altro',
+  ],
 };
 
 /* ------------------------------ */
@@ -198,6 +228,7 @@ export default function ProfileEditForm() {
 
   // Anagrafica base
   const [fullName, setFullName] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [bio, setBio] = useState('');
   const [country, setCountry] = useState('IT');
 
@@ -250,7 +281,13 @@ export default function ProfileEditForm() {
   const [stadium, setStadium] = useState('');
 
   // categorie dinamiche per sport
-  const sportCategories = CATEGORIES_BY_SPORT[sport] ?? ['Altro'];
+  const sportCategories = CATEGORIES_BY_SPORT[sport] ?? DEFAULT_CLUB_CATEGORIES;
+
+  useEffect(() => {
+    if (!sportCategories.includes(clubCategory)) {
+      setClubCategory(sportCategories[0] ?? 'Altro');
+    }
+  }, [sport, sportCategories, clubCategory]);
 
   async function loadProfile() {
     const r = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
@@ -262,6 +299,7 @@ export default function ProfileEditForm() {
       account_type: (j?.account_type ?? null) as AccountType,
 
       full_name: (j as any)?.full_name ?? null,
+      avatar_url: (j as any)?.avatar_url ?? null,
       bio: (j as any)?.bio ?? null,
       country: (j as any)?.country ?? 'IT',
 
@@ -302,6 +340,7 @@ export default function ProfileEditForm() {
 
     // init form fields (normalizzo a ISO2 per sicurezza)
     setFullName(p.full_name || '');
+    setAvatarUrl(p.avatar_url || null);
     setBio(p.bio || '');
     setCountry(normalizeCountryCode(p.country) || 'IT');
 
@@ -470,6 +509,7 @@ export default function ProfileEditForm() {
         full_name: (fullName || '').trim() || null,
         bio:       (bio || '').trim() || null,
         country:   normalizeCountryCode(country),   // ISO2 sempre
+        avatar_url: avatarUrl || null,
 
         // interesse
         interest_country: 'IT',
@@ -579,6 +619,23 @@ export default function ProfileEditForm() {
           </h2>
 
           <div className="grid gap-4 md:grid-cols-2">
+            <div className="flex flex-col gap-2 md:col-span-2">
+              <label className="text-sm text-gray-600">Foto profilo</label>
+              <AvatarUploader value={avatarUrl} onChange={setAvatarUrl} />
+              <div className="flex items-center gap-3 text-xs text-gray-500">
+                <span>La foto viene mostrata nelle mini-card della bacheca.</span>
+                {avatarUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setAvatarUrl(null)}
+                    className="font-medium text-red-600 hover:underline"
+                  >
+                    Rimuovi foto
+                  </button>
+                )}
+              </div>
+            </div>
+
             <div className="flex flex-col gap-1 md:col-span-2">
               <label className="text-sm text-gray-600">
                 {isClub ? 'Nome del club' : 'Nome e cognome'}
@@ -819,71 +876,131 @@ export default function ProfileEditForm() {
           </section>
         )}
 
-        {/* Zona di interesse (comune) */}
-        <section className="rounded-2xl border p-4 md:p-5">
-          <h2 className="mb-3 text-lg font-semibold">Zona di interesse</h2>
-          <div className="grid gap-4 md:grid-cols-4">
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-gray-600">Paese</label>
-              <select className="rounded-lg border p-2" value="IT" disabled>
-                <option value="IT">Italia</option>
-              </select>
+        {/* Zona di interesse (atleta) */}
+        {!isClub && (
+          <section className="rounded-2xl border p-4 md:p-5">
+            <h2 className="mb-3 text-lg font-semibold">Zona di interesse</h2>
+            <div className="grid gap-4 md:grid-cols-4">
+              <div className="flex flex-col gap-1">
+                <label className="text-sm text-gray-600">Paese</label>
+                <select className="rounded-lg border p-2" value="IT" disabled>
+                  <option value="IT">Italia</option>
+                </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-sm text-gray-600">Regione</label>
+                <select
+                  className="rounded-lg border p-2"
+                  value={regionId ?? ''}
+                  onChange={(e) => setRegionId(e.target.value ? Number(e.target.value) : null)}
+                >
+                  <option value="">— Seleziona regione —</option>
+                  {regions.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-sm text-gray-600">Provincia</label>
+                <select
+                  className="rounded-lg border p-2 disabled:bg-gray-50"
+                  value={provinceId ?? ''}
+                  onChange={(e) => setProvinceId(e.target.value ? Number(e.target.value) : null)}
+                  disabled={!regionId}
+                >
+                  <option value="">— Seleziona provincia —</option>
+                  {provinces.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-sm text-gray-600">Città</label>
+                <select
+                  className="rounded-lg border p-2 disabled:bg-gray-50"
+                  value={municipalityId ?? ''}
+                  onChange={(e) => setMunicipalityId(e.target.value ? Number(e.target.value) : null)}
+                  disabled={!provinceId}
+                >
+                  <option value="">— Seleziona città —</option>
+                  {municipalities.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-gray-600">Regione</label>
-              <select
-                className="rounded-lg border p-2"
-                value={regionId ?? ''}
-                onChange={(e) => setRegionId(e.target.value ? Number(e.target.value) : null)}
-              >
-                <option value="">— Seleziona regione —</option>
-                {regions.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-gray-600">Provincia</label>
-              <select
-                className="rounded-lg border p-2 disabled:bg-gray-50"
-                value={provinceId ?? ''}
-                onChange={(e) => setProvinceId(e.target.value ? Number(e.target.value) : null)}
-                disabled={!regionId}
-              >
-                <option value="">— Seleziona provincia —</option>
-                {provinces.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-gray-600">Città</label>
-              <select
-                className="rounded-lg border p-2 disabled:bg-gray-50"
-                value={municipalityId ?? ''}
-                onChange={(e) => setMunicipalityId(e.target.value ? Number(e.target.value) : null)}
-                disabled={!provinceId}
-              >
-                <option value="">— Seleziona città —</option>
-                {municipalities.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </section>
+          </section>
+        )}
 
         {/* Dettagli atleta / club */}
         {isClub ? (
           <section className="rounded-2xl border p-4 md:p-5">
-            <h2 className="mb-3 text-lg font-semibold">Dettagli club</h2>
+            <h2 className="mb-3 text-lg font-semibold">Dati club</h2>
             <div className="grid gap-4 md:grid-cols-2">
+              <div className="flex flex-col gap-1 md:col-span-2">
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-sm text-gray-600">Regione</label>
+                    <select
+                      className="rounded-lg border p-2"
+                      value={regionId ?? ''}
+                      onChange={(e) => setRegionId(e.target.value ? Number(e.target.value) : null)}
+                    >
+                      <option value="">— Seleziona regione —</option>
+                      {regions.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-sm text-gray-600">Provincia</label>
+                    <select
+                      className="rounded-lg border p-2 disabled:bg-gray-50"
+                      value={provinceId ?? ''}
+                      onChange={(e) => setProvinceId(e.target.value ? Number(e.target.value) : null)}
+                      disabled={!regionId}
+                    >
+                      <option value="">— Seleziona provincia —</option>
+                      {provinces.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-sm text-gray-600">Città</label>
+                    <select
+                      className="rounded-lg border p-2 disabled:bg-gray-50"
+                      value={municipalityId ?? ''}
+                      onChange={(e) =>
+                        setMunicipalityId(
+                          e.target.value ? Number(e.target.value) : null
+                        )
+                      }
+                      disabled={!provinceId}
+                    >
+                      <option value="">— Seleziona città —</option>
+                      {municipalities.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
               <div className="flex flex-col gap-1">
                 <label className="text-sm text-gray-600">Sport</label>
                 <select
@@ -891,7 +1008,7 @@ export default function ProfileEditForm() {
                   value={sport}
                   onChange={(e) => setSport(e.target.value)}
                 >
-                  {Object.keys(CATEGORIES_BY_SPORT).map((s) => (
+                  {CLUB_SPORT_OPTIONS.map((s) => (
                     <option key={s} value={s}>
                       {s}
                     </option>
@@ -922,7 +1039,9 @@ export default function ProfileEditForm() {
                   className="rounded-lg border p-2"
                   value={foundationYear}
                   onChange={(e) =>
-                    setFoundationYear(e.target.value === '' ? '' : Number(e.target.value))
+                    setFoundationYear(
+                      e.target.value === '' ? '' : Number(e.target.value)
+                    )
                   }
                   min={1850}
                   max={currentYear}

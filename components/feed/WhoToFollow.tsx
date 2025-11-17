@@ -116,8 +116,7 @@ export default function WhoToFollow() {
 
   if (loading) {
     return (
-      <aside className="rounded-2xl border bg-white/60 p-4 shadow-sm dark:bg-zinc-900/60">
-        <h3 className="mb-3 text-sm font-semibold text-zinc-700 dark:text-zinc-200">Chi seguire</h3>
+      <div className="space-y-3">
         <ul className="space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (
             <li key={i} className="flex items-center gap-3">
@@ -130,7 +129,7 @@ export default function WhoToFollow() {
             </li>
           ))}
         </ul>
-      </aside>
+      </div>
     );
   }
 
@@ -138,13 +137,9 @@ export default function WhoToFollow() {
   const suggestedItems = items.filter((it) => !following.has(it.id));
 
   return (
-    <aside className="rounded-2xl border bg-white/60 p-4 shadow-sm dark:bg-zinc-900/60">
-      <h3 className="mb-3 text-sm font-semibold text-zinc-700 dark:text-zinc-200">
-        {role === 'club' ? 'Atleti suggeriti' : role === 'athlete' ? 'Club da seguire' : 'Chi seguire'}
-      </h3>
-
+    <div className="space-y-4">
       {followedItems.length > 0 && (
-        <div className="mb-4 space-y-2">
+        <div className="space-y-2 text-sm">
           <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
             Profili che segui già
           </div>
@@ -152,7 +147,7 @@ export default function WhoToFollow() {
             {followedItems.map((it) => {
               const isPending = pendingId === it.id;
               return (
-                <li key={`followed-${it.id}`} className="flex items-center gap-3 text-sm">
+                <li key={`followed-${it.id}`} className="flex items-center gap-3">
                   <img
                     src={
                       it.avatarUrl ||
@@ -230,7 +225,7 @@ export default function WhoToFollow() {
           </ul>
 
           {nextCursor && (
-            <div className="mt-4">
+            <div className="pt-2">
               <button
                 type="button"
                 onClick={loadMore}
@@ -270,6 +265,6 @@ export default function WhoToFollow() {
           )}
         </div>
       )}
-    </aside>
+    </div>
   );
 }
