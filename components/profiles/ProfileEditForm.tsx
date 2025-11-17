@@ -876,71 +876,131 @@ export default function ProfileEditForm() {
           </section>
         )}
 
-        {/* Zona di interesse (comune) */}
-        <section className="rounded-2xl border p-4 md:p-5">
-          <h2 className="mb-3 text-lg font-semibold">Zona di interesse</h2>
-          <div className="grid gap-4 md:grid-cols-4">
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-gray-600">Paese</label>
-              <select className="rounded-lg border p-2" value="IT" disabled>
-                <option value="IT">Italia</option>
-              </select>
+        {/* Zona di interesse (atleta) */}
+        {!isClub && (
+          <section className="rounded-2xl border p-4 md:p-5">
+            <h2 className="mb-3 text-lg font-semibold">Zona di interesse</h2>
+            <div className="grid gap-4 md:grid-cols-4">
+              <div className="flex flex-col gap-1">
+                <label className="text-sm text-gray-600">Paese</label>
+                <select className="rounded-lg border p-2" value="IT" disabled>
+                  <option value="IT">Italia</option>
+                </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-sm text-gray-600">Regione</label>
+                <select
+                  className="rounded-lg border p-2"
+                  value={regionId ?? ''}
+                  onChange={(e) => setRegionId(e.target.value ? Number(e.target.value) : null)}
+                >
+                  <option value="">— Seleziona regione —</option>
+                  {regions.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-sm text-gray-600">Provincia</label>
+                <select
+                  className="rounded-lg border p-2 disabled:bg-gray-50"
+                  value={provinceId ?? ''}
+                  onChange={(e) => setProvinceId(e.target.value ? Number(e.target.value) : null)}
+                  disabled={!regionId}
+                >
+                  <option value="">— Seleziona provincia —</option>
+                  {provinces.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-sm text-gray-600">Città</label>
+                <select
+                  className="rounded-lg border p-2 disabled:bg-gray-50"
+                  value={municipalityId ?? ''}
+                  onChange={(e) => setMunicipalityId(e.target.value ? Number(e.target.value) : null)}
+                  disabled={!provinceId}
+                >
+                  <option value="">— Seleziona città —</option>
+                  {municipalities.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-gray-600">Regione</label>
-              <select
-                className="rounded-lg border p-2"
-                value={regionId ?? ''}
-                onChange={(e) => setRegionId(e.target.value ? Number(e.target.value) : null)}
-              >
-                <option value="">— Seleziona regione —</option>
-                {regions.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-gray-600">Provincia</label>
-              <select
-                className="rounded-lg border p-2 disabled:bg-gray-50"
-                value={provinceId ?? ''}
-                onChange={(e) => setProvinceId(e.target.value ? Number(e.target.value) : null)}
-                disabled={!regionId}
-              >
-                <option value="">— Seleziona provincia —</option>
-                {provinces.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-gray-600">Città</label>
-              <select
-                className="rounded-lg border p-2 disabled:bg-gray-50"
-                value={municipalityId ?? ''}
-                onChange={(e) => setMunicipalityId(e.target.value ? Number(e.target.value) : null)}
-                disabled={!provinceId}
-              >
-                <option value="">— Seleziona città —</option>
-                {municipalities.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </section>
+          </section>
+        )}
 
         {/* Dettagli atleta / club */}
         {isClub ? (
           <section className="rounded-2xl border p-4 md:p-5">
-            <h2 className="mb-3 text-lg font-semibold">Dettagli club</h2>
+            <h2 className="mb-3 text-lg font-semibold">Dati club</h2>
             <div className="grid gap-4 md:grid-cols-2">
+              <div className="flex flex-col gap-1 md:col-span-2">
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-sm text-gray-600">Regione</label>
+                    <select
+                      className="rounded-lg border p-2"
+                      value={regionId ?? ''}
+                      onChange={(e) => setRegionId(e.target.value ? Number(e.target.value) : null)}
+                    >
+                      <option value="">— Seleziona regione —</option>
+                      {regions.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-sm text-gray-600">Provincia</label>
+                    <select
+                      className="rounded-lg border p-2 disabled:bg-gray-50"
+                      value={provinceId ?? ''}
+                      onChange={(e) => setProvinceId(e.target.value ? Number(e.target.value) : null)}
+                      disabled={!regionId}
+                    >
+                      <option value="">— Seleziona provincia —</option>
+                      {provinces.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-sm text-gray-600">Città</label>
+                    <select
+                      className="rounded-lg border p-2 disabled:bg-gray-50"
+                      value={municipalityId ?? ''}
+                      onChange={(e) =>
+                        setMunicipalityId(
+                          e.target.value ? Number(e.target.value) : null
+                        )
+                      }
+                      disabled={!provinceId}
+                    >
+                      <option value="">— Seleziona città —</option>
+                      {municipalities.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
               <div className="flex flex-col gap-1">
                 <label className="text-sm text-gray-600">Sport</label>
                 <select
@@ -979,7 +1039,9 @@ export default function ProfileEditForm() {
                   className="rounded-lg border p-2"
                   value={foundationYear}
                   onChange={(e) =>
-                    setFoundationYear(e.target.value === '' ? '' : Number(e.target.value))
+                    setFoundationYear(
+                      e.target.value === '' ? '' : Number(e.target.value)
+                    )
                   }
                   min={1850}
                   max={currentYear}

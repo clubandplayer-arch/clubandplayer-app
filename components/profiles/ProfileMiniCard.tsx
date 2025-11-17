@@ -120,8 +120,28 @@ export default function ProfileMiniCard() {
         const j = (raw && typeof raw === 'object' && 'data' in raw ? (raw as any).data : raw) || {};
         setP(j || {});
 
-        // Solo per atleta ha senso calcolare residenza/nascita
-        if (j?.account_type !== 'club') {
+        // Geo
+        if (j?.account_type === 'club') {
+          if (j?.interest_municipality_id || j?.interest_province_id || j?.interest_region_id) {
+            const [mun, prov, reg] = await Promise.all([
+              j?.interest_municipality_id
+                ? supabase.from('municipalities').select('id,name').eq('id', j.interest_municipality_id).maybeSingle()
+                : Promise.resolve({ data: null }),
+              j?.interest_province_id
+                ? supabase.from('provinces').select('id,name').eq('id', j.interest_province_id).maybeSingle()
+                : Promise.resolve({ data: null }),
+              j?.interest_region_id
+                ? supabase.from('regions').select('id,name').eq('id', j.interest_region_id).maybeSingle()
+                : Promise.resolve({ data: null }),
+            ]);
+            const m = (mun as any)?.data as Row | null;
+            const pr = (prov as any)?.data as Row | null;
+            const re = (reg as any)?.data as Row | null;
+            setResidenza([m?.name, pr?.name, re?.name].filter(Boolean).join(', ') || '—');
+          } else {
+            setResidenza((j?.city ?? '').trim() || '—');
+          }
+        } else {
           // RESIDENZA (id IT -> etichette, altrimenti city testo libero)
           if (j?.residence_municipality_id || j?.residence_province_id || j?.residence_region_id) {
             const [mun, prov, reg] = await Promise.all([
@@ -218,8 +238,14 @@ export default function ProfileMiniCard() {
           <div className="text-base font-semibold break-words">{name}</div>
 
           {/* righe info */}
-          {!isClub && <div className="text-xs text-gray-600">Luogo di residenza: {residenza}</div>}
-          {!isClub && <div className="text-xs text-gray-600">Luogo di nascita: {nascita}</div>}
+          {isClub ? (
+            <div className="text-xs text-gray-600">Città: {residenza}</div>
+          ) : (
+            <>
+              <div className="text-xs text-gray-600">Luogo di residenza: {residenza}</div>
+              <div className="text-xs text-gray-600">Luogo di nascita: {nascita}</div>
+            </>
+          )}
 
           <div className="text-xs text-gray-600 flex items-center justify-center gap-1">
             <span>Nazionalità:</span>

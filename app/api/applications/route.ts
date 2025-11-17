@@ -44,6 +44,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }: any) =
     .insert({
       opportunity_id,
       athlete_id: user.id,
+      club_id: ownerId,
       note,
     })
     .select('id, opportunity_id, athlete_id, created_at')

@@ -2,31 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { PointerEvent } from 'react';
-import { createBrowserClient } from '@supabase/ssr';
 
 type Props = {
   value: string | null;
   onChange: (url: string | null) => void;
 };
-
-function createSupabaseClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!url || !key) {
-    console.error(
-      '[AvatarUploader] NEXT_PUBLIC_SUPABASE_URL / ANON_KEY non configurati'
-    );
-    return null;
-  }
-
-  try {
-    return createBrowserClient(url, key);
-  } catch (err) {
-    console.error('[AvatarUploader] errore creazione client', err);
-    return null;
-  }
-}
 
 const TARGET_WIDTH = 400;
 const TARGET_HEIGHT = 500;
@@ -153,7 +133,6 @@ function readFileAsDataUrl(file: File): Promise<string> {
 }
 
 export default function AvatarUploader({ value, onChange }: Props) {
-  const [supabase] = useState(() => createSupabaseClient());
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -205,14 +184,6 @@ export default function AvatarUploader({ value, onChange }: Props) {
 
     setError(null);
 
-    if (!supabase) {
-      setError(
-        'Configurazione Supabase mancante. Contatta il supporto.'
-      );
-      e.target.value = '';
-      return;
-    }
-
     if (file.size > 10 * 1024 * 1024) {
       setError('File troppo grande (max 10MB).');
       e.target.value = '';
@@ -254,11 +225,6 @@ export default function AvatarUploader({ value, onChange }: Props) {
   }
 
   async function saveAvatar() {
-    if (!supabase) {
-      setError('Configurazione Supabase mancante. Contatta il supporto.');
-      return;
-    }
-
     const image = imageRef.current;
     if (!image) {
       setError('Nessuna immagine da caricare. Seleziona un file.');
@@ -269,72 +235,29 @@ export default function AvatarUploader({ value, onChange }: Props) {
       setUploading(true);
       setError(null);
 
-      const { data: authData, error: userError } = await supabase.auth.getUser();
-      const user = authData?.user;
-      if (userError || !user) {
-        throw new Error('Sessione non valida. Effettua di nuovo l’accesso.');
-      }
-
       const avatarBlob = await createAvatarBlob(image, editorCrop);
-      const path = `${user.id}/${Date.now()}-${Math.random()
-        .toString(36)
-        .slice(2)}.jpg`;
+      const form = new FormData();
+      form.append('file', avatarBlob, 'avatar.jpg');
 
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(path, avatarBlob, {
-          cacheControl: '3600',
-          upsert: false,
-          contentType: 'image/jpeg',
-        });
-
-      if (uploadError) {
-        console.error('[AvatarUploader] upload error', uploadError);
-        if (
-          uploadError.message &&
-          uploadError.message.toLowerCase().includes('row-level security')
-        ) {
-          throw new Error(
-            'Permesso negato dalle regole di sicurezza. Verifica le policy del bucket avatars.'
-          );
-        }
-        throw new Error(
-          uploadError.message ||
-            'Errore durante il caricamento sullo storage.'
-        );
-      }
-
-      const { data: publicData } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(path);
-
-      const publicUrl = publicData?.publicUrl || null;
-      if (!publicUrl) {
-        throw new Error('Impossibile ottenere URL pubblico dell’immagine.');
-      }
-
-      const res = await fetch('/api/profiles/me', {
-        method: 'PATCH',
+      const res = await fetch('/api/profiles/avatar', {
+        method: 'POST',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ avatar_url: publicUrl }),
+        body: form,
       });
 
       const json = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        console.error(
-          '[AvatarUploader] PATCH /api/profiles/me failed',
-          json
-        );
+        console.error('[AvatarUploader] upload avatar failed', json);
         const msg =
-          json?.details ||
           json?.error ||
-          'Impossibile salvare la foto profilo.';
+          json?.details ||
+          'Errore durante il caricamento dello storage.';
         throw new Error(msg);
       }
+
+      const publicUrl = json?.avatar_url as string | null;
+      if (!publicUrl) throw new Error('URL avatar non disponibile.');
 
       onChange(publicUrl);
       resetEditor();

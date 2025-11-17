@@ -30,3 +30,14 @@ export function getSupabaseAdminClientOrNull() {
     return null
   }
 }
+
+export async function ensureBucket(name: string, isPublic = true) {
+  const client = getSupabaseAdminClient()
+  const { data: buckets, error: listErr } = await client.storage.listBuckets()
+  if (listErr) throw listErr
+  if (!buckets?.some((b: any) => b.name === name)) {
+    const { error: createErr } = await client.storage.createBucket(name, { public: isPublic })
+    if (createErr) throw createErr
+  }
+  return client
+}
