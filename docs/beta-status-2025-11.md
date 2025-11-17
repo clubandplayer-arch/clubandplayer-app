@@ -28,6 +28,7 @@ Questo documento fotografa l'analisi corrente della codebase e i passi prioritar
 - Lanciare `node scripts/check-clubs-flags.mjs` per allineare rapidamente le allowlist client/server prima di ogni smoke test.
 - Collegare i segnalibri aperti (candidature, avatar, upload feed, creazione post feed) a un giro di debug dedicato su staging con client service-role e log Sentry per ogni chiamata API.
 - Preparare ed eseguire i test manuali guidati per `/feed` (creazione post + upload media) e `/applications/received` usando account guest/admin, così da certificare i fix RLS prima di aprire il flag CRUD in produzione. Vedi [checklist feed](./smoke-tests/feed.md) e [checklist candidature](./smoke-tests/applications.md).
+- Prima di debuggare la `/feed`, eseguire `node scripts/check-feed-config.mjs` per validare bucket e tabella `posts` con la chiave service-role.
 
 ## Prossimi passi prioritari verso la Beta
 1. **Email reali (PM-01)**: configurare Resend (`RESEND_API_KEY`, `RESEND_FROM`, `BRAND_REPLY_TO`) e disattivare il guard NOOP, validando le rotte `/api/notify-email` e `/api/notifications/send` su un ambiente protetto.

@@ -7,6 +7,7 @@ Checklist manuale per verificare la bacheca in modalità autenticata, inclusi gl
   - `SUPABASE_SERVICE_ROLE_KEY` disponibile sull'API per bypassare RLS in fallback (creazione post/upload).
   - `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` valide per l'ambiente di test.
   - `NEXT_PUBLIC_POSTS_BUCKET` valorizzato se usi un bucket diverso da `posts`.
+- Esegui `node scripts/check-feed-config.mjs` per assicurarti che bucket e tabella `posts` siano raggiungibili con il client service-role.
 - Bucket Storage:
   - Esiste il bucket `posts` (o quello indicato in `NEXT_PUBLIC_POSTS_BUCKET`) ed è pubblico. Se non esiste, l'API tenta di crearlo con il client admin.
   - Policy RLS Storage coerenti: l'utente autenticato può fare `upload` sul bucket, oppure è presente il fallback admin.

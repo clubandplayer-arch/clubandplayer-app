@@ -61,6 +61,7 @@
 | `pnpm lint` | ESLint flat-config senza warning ammessi. |
 | `pnpm test:e2e` | Smoke test Node (`node --test`) che avviano Next.js e validano `/api/health`, `/logout` e `/feed`. |
 | `node scripts/check-clubs-flags.mjs` | Diagnostica rapida di flag/allowlist `/clubs` (allinea client/server prima di attivare i CRUD). |
+| `node scripts/check-feed-config.mjs` | Verifica che il bucket Storage `posts` e la tabella `posts` siano accessibili con la chiave service-role. |
 
 ## Struttura repository
 - `app/` — Route Next.js (pagine, layout, API handlers).
