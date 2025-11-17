@@ -21,7 +21,7 @@
    ```bash
    pnpm install --frozen-lockfile
    ```
-3. Copia `.env.example` (se assente, crea `.env.local`) e valorizza le variabili indicate nella tabella seguente.
+3. Copia `docs/env.sample` in `.env.local` e valorizza le variabili indicate nella tabella seguente.
 4. Avvia l'applicazione in sviluppo:
    ```bash
    pnpm dev
@@ -62,6 +62,7 @@
 | `pnpm test:e2e` | Smoke test Node (`node --test`) che avviano Next.js e validano `/api/health`, `/logout` e `/feed`. |
 | `node scripts/check-clubs-flags.mjs` | Diagnostica rapida di flag/allowlist `/clubs` (allinea client/server prima di attivare i CRUD). |
 | `node scripts/check-feed-config.mjs` | Verifica che il bucket Storage `posts` e la tabella `posts` siano accessibili con la chiave service-role. |
+| `node scripts/check-email-config.mjs` | Controlla che le variabili Resend siano presenti e che `NOOP_EMAILS` sia disattivato prima di inviare email reali. |
 
 ## Struttura repository
 - `app/` — Route Next.js (pagine, layout, API handlers).
@@ -105,7 +106,7 @@
 
 ## Passi rapidi verso la **Beta**
 - **Sentry**: imposta `SENTRY_ENVIRONMENT` / `NEXT_PUBLIC_SENTRY_ENVIRONMENT` e `SENTRY_RELEASE` / `NEXT_PUBLIC_SENTRY_RELEASE` (tipicamente `VERCEL_GIT_COMMIT_SHA`) per distinguere ambienti e release in dashboard.
-- **Email reali**: configura `RESEND_API_KEY`, `RESEND_FROM`, `BRAND_REPLY_TO` e disattiva `NOOP_EMAILS`.
+- **Email reali**: configura `RESEND_API_KEY`, `RESEND_FROM`, `BRAND_REPLY_TO`, disattiva `NOOP_EMAILS` e valida con `node scripts/check-email-config.mjs`.
 - **Storage feed**: assicurati che il bucket `posts` esista e che le policy di upload/lettura siano applicate (vedi note in roadmap post-MVP).
 - **Smoke test quasi-bloccanti**: su GitHub abilita `SMOKE_ENFORCE=true` per PR che toccano `app/**` o i pattern personalizzati.
 - **Sicurezza Supabase**: verifica le policy RLS su `profiles`, `clubs` e `posts` (WITH CHECK coerenti), password minima 12 caratteri e OTP con scadenza 15–30 minuti.
