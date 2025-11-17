@@ -191,6 +191,8 @@ export async function POST(req: NextRequest) {
     }
 
     const supabase = await getSupabaseServerClient();
+    const admin = getSupabaseAdminClientOrNull();
+    const clientForInsert = admin ?? supabase;
     const { data: auth, error: authErr } = await supabase.auth.getUser();
     if (authErr || !auth?.user) {
       return NextResponse.json({ ok: false, error: 'not_authenticated' }, { status: 401 });
@@ -201,7 +203,7 @@ export async function POST(req: NextRequest) {
     if (mediaType) insertPayload.media_type = mediaType;
 
     const runInsert = (payload: Record<string, any>, select: string) =>
-      supabase.from('posts').insert(payload).select(select).single();
+      clientForInsert.from('posts').insert(payload).select(select).single();
 
     let data: any = null;
     let error: any = null;
@@ -214,12 +216,12 @@ export async function POST(req: NextRequest) {
     }
 
     // Fallback amministrativo se le policy RLS bloccano l'inserimento con il token utente
-    if (error && /row-level security/i.test(error.message || '')) {
-      const admin = getSupabaseAdminClientOrNull();
-      if (admin) {
+    if (error && /row-level security/i.test(error.message || '') && !admin) {
+      const adminFallback = getSupabaseAdminClientOrNull();
+      if (adminFallback) {
         const adminPayload = { ...insertPayload };
         if (!adminPayload.content && mediaUrl) adminPayload.content = `${text}\n${mediaUrl}`;
-        const { data: adminData, error: adminErr } = await admin
+        const { data: adminData, error: adminErr } = await adminFallback
           .from('posts')
           .insert(adminPayload)
           .select('id, author_id, content, created_at, media_url, media_type')
