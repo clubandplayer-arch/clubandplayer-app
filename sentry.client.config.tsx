@@ -21,6 +21,13 @@ const ignoreErrors = [
   /AbortError: The user aborted a request/i,
 ];
 
+const denyUrls = [
+  // Estensioni browser note per generare errori non riproducibili
+  /extensions\//i,
+  /^chrome-extension:/i,
+  /^moz-extension:/i,
+];
+
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN || undefined,
   enabled: !!process.env.NEXT_PUBLIC_SENTRY_DSN,
@@ -31,6 +38,7 @@ Sentry.init({
 
   // Riduce il rumore più comune lato client
   ignoreErrors,
+  denyUrls,
 
   tracesSampleRate: 0.1,
   replaysSessionSampleRate: 0.1,
