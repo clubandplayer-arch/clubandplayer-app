@@ -23,7 +23,7 @@ Questo documento fotografa l'analisi corrente della codebase e i passi prioritar
 - Popolare `NEXT_PUBLIC_CLUBS_ADMIN_EMAILS` e `CLUBS_ADMIN_EMAILS` con l'allowlist effettiva e decidere quando attivare `NEXT_PUBLIC_FEATURE_CLUBS_ADMIN` in staging/preview.
 - Validare che la protezione API (guard admin) sia allineata agli allowlist aggiornati e che l'esperienza guest su `/clubs` non mostri errori 401/403.
 - Pianificare l'attivazione: testare in staging con account admin/guest e confermare che le azioni CRUD restino invisibili in modalità guest.
-- Aggiungere una checklist di smoke test per `/clubs` (guest vs admin) da eseguire a ogni deploy finché il flag resta attivo.
+- Eseguire la [checklist di smoke test `/clubs` (guest vs admin)](./smoke-tests/clubs.md) a ogni deploy finché il flag resta attivo.
 
 ## Prossimi passi prioritari verso la Beta
 1. **Email reali (PM-01)**: configurare Resend (`RESEND_API_KEY`, `RESEND_FROM`, `BRAND_REPLY_TO`) e disattivare il guard NOOP, validando le rotte `/api/notify-email` e `/api/notifications/send` su un ambiente protetto.

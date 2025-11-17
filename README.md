@@ -84,6 +84,7 @@
    - `/feed` → redirect a `/login` per guest o feed pubblico.
    - `/clubs` → tabella read-only con colonna “Nome” basata su `displayLabel` dell'adapter.
    - `/debug/client-error` e `/api/debug/error` → verifiche per Sentry.
+3. Quando abiliti i CRUD su `/clubs` in staging, segui la [checklist di smoke test guest vs admin](docs/smoke-tests/clubs.md) per verificare flag, allowlist e RLS.
 3. Verifica la salute del backend con `curl http://127.0.0.1:3000/api/health` (risposta 200 JSON con info ambiente).
 
 ## Smoke test in CI (GitHub Actions)
