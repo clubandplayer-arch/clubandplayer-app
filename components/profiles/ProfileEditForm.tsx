@@ -222,6 +222,7 @@ export default function ProfileEditForm() {
   const [birthYear, setBirthYear] = useState<number | ''>('');
   const [birthPlace, setBirthPlace] = useState('');
   const [residenceCity, setResidenceCity] = useState('');
+  const [clubCity, setClubCity] = useState('');
 
   // Residenza IT (atleta)
   const [resRegionId, setResRegionId] = useState<number | null>(null);
@@ -334,6 +335,7 @@ export default function ProfileEditForm() {
     setBirthYear(p.birth_year ?? '');
     setBirthPlace(p.birth_place || '');
     setResidenceCity(p.city || '');
+    setClubCity(p.city || '');
 
     setResRegionId(p.residence_region_id);
     setResProvinceId(p.residence_province_id);
@@ -457,8 +459,22 @@ export default function ProfileEditForm() {
     })();
   }, [provinceId]);
 
+  useEffect(() => {
+    if (isClub && country !== 'IT') {
+      setRegionId(null);
+      setProvinceId(null);
+      setMunicipalityId(null);
+      setProvinces([]);
+      setMunicipalities([]);
+    }
+    if (isClub && country === 'IT') {
+      setClubCity('');
+    }
+  }, [isClub, country]);
+
   const canSave = useMemo(() => !saving && profile != null, [saving, profile]);
   const currentYear = new Date().getFullYear();
+  const normalizedCountry = normalizeCountryCode(country);
 
   function normalizeSocial(kind: keyof Links, value: string): string | null {
     const v = (value || '').trim();
@@ -494,14 +510,14 @@ export default function ProfileEditForm() {
       const basePayload: any = {
         full_name: (fullName || '').trim() || null,
         bio:       (bio || '').trim() || null,
-        country:   normalizeCountryCode(country),   // ISO2 sempre
+        country:   normalizedCountry,   // ISO2 sempre
         avatar_url: avatarUrl || null,
 
         // interesse
-        interest_country: 'IT',
-        interest_region_id: regionId,
-        interest_province_id: provinceId,
-        interest_municipality_id: municipalityId,
+        interest_country: isClub ? normalizedCountry : 'IT',
+        interest_region_id: isClub && country !== 'IT' ? null : regionId,
+        interest_province_id: isClub && country !== 'IT' ? null : provinceId,
+        interest_municipality_id: isClub && country !== 'IT' ? null : municipalityId,
 
         // social & notifiche
         links,
@@ -514,6 +530,8 @@ export default function ProfileEditForm() {
           club_league_category: (clubCategory || '').trim() || null,
           club_foundation_year: foundationYear === '' ? null : Number(foundationYear),
           club_stadium: (stadium || '').trim() || null,
+
+          city: country !== 'IT' ? (clubCity || '').trim() || null : null,
 
           // pulizia campi atleta
           birth_year: null,
@@ -930,60 +948,89 @@ export default function ProfileEditForm() {
             <h2 className="mb-3 text-lg font-semibold">Dati club</h2>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="flex flex-col gap-1 md:col-span-2">
-                <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid gap-4 md:grid-cols-4">
                   <div className="flex flex-col gap-1">
-                    <label className="text-sm text-gray-600">Regione</label>
+                    <label className="text-sm text-gray-600">Paese del club</label>
                     <select
                       className="rounded-lg border p-2"
-                      value={regionId ?? ''}
-                      onChange={(e) => setRegionId(e.target.value ? Number(e.target.value) : null)}
+                      value={country}
+                      onChange={(e) => setCountry(e.target.value)}
                     >
-                      <option value="">— Seleziona regione —</option>
-                      {regions.map((r) => (
-                        <option key={r.id} value={r.id}>
-                          {r.name}
+                      {COUNTRIES.map((c) => (
+                        <option key={c.code} value={c.code}>
+                          {c.label}
                         </option>
                       ))}
                     </select>
                   </div>
 
-                  <div className="flex flex-col gap-1">
-                    <label className="text-sm text-gray-600">Provincia</label>
-                    <select
-                      className="rounded-lg border p-2 disabled:bg-gray-50"
-                      value={provinceId ?? ''}
-                      onChange={(e) => setProvinceId(e.target.value ? Number(e.target.value) : null)}
-                      disabled={!regionId}
-                    >
-                      <option value="">— Seleziona provincia —</option>
-                      {provinces.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  {country === 'IT' ? (
+                    <>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-sm text-gray-600">Regione</label>
+                        <select
+                          className="rounded-lg border p-2"
+                          value={regionId ?? ''}
+                          onChange={(e) => setRegionId(e.target.value ? Number(e.target.value) : null)}
+                        >
+                          <option value="">— Seleziona regione —</option>
+                          {regions.map((r) => (
+                            <option key={r.id} value={r.id}>
+                              {r.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
 
-                  <div className="flex flex-col gap-1">
-                    <label className="text-sm text-gray-600">Città</label>
-                    <select
-                      className="rounded-lg border p-2 disabled:bg-gray-50"
-                      value={municipalityId ?? ''}
-                      onChange={(e) =>
-                        setMunicipalityId(
-                          e.target.value ? Number(e.target.value) : null
-                        )
-                      }
-                      disabled={!provinceId}
-                    >
-                      <option value="">— Seleziona città —</option>
-                      {municipalities.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-sm text-gray-600">Provincia</label>
+                        <select
+                          className="rounded-lg border p-2 disabled:bg-gray-50"
+                          value={provinceId ?? ''}
+                          onChange={(e) => setProvinceId(e.target.value ? Number(e.target.value) : null)}
+                          disabled={!regionId}
+                        >
+                          <option value="">— Seleziona provincia —</option>
+                          {provinces.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        <label className="text-sm text-gray-600">Città</label>
+                        <select
+                          className="rounded-lg border p-2 disabled:bg-gray-50"
+                          value={municipalityId ?? ''}
+                          onChange={(e) =>
+                            setMunicipalityId(
+                              e.target.value ? Number(e.target.value) : null
+                            )
+                          }
+                          disabled={!provinceId}
+                        >
+                          <option value="">— Seleziona città —</option>
+                          {municipalities.map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex flex-col gap-1 md:col-span-3">
+                      <label className="text-sm text-gray-600">Città / area (estero)</label>
+                      <input
+                        className="rounded-lg border p-2"
+                        value={clubCity}
+                        onChange={(e) => setClubCity(e.target.value)}
+                        placeholder="Es. Sydney"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
 
