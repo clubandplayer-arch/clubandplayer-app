@@ -26,8 +26,13 @@ jobs:
       - name: Enable Corepack
         run: corepack enable
 
-      - name: Install deps
-        run: pnpm install --frozen-lockfile
+      - name: Install deps (retry)
+        run: |
+          pnpm install --frozen-lockfile || {
+            echo "Install fallita, ritento tra 5s";
+            sleep 5;
+            pnpm install --frozen-lockfile;
+          }
 
       - name: Run smoke tests (non-blocking)
         id: smoke
