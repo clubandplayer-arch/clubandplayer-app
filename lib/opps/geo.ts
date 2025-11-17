@@ -1,20 +1,6 @@
 // lib/opps/geo.ts
-
-export const COUNTRIES = [
-  { code: 'IT', label: 'Italia' },
-  { code: 'ES', label: 'Spagna' },
-  { code: 'FR', label: 'Francia' },
-  { code: 'DE', label: 'Germania' },
-  { code: 'GB', label: 'Regno Unito' },
-  { code: 'PT', label: 'Portogallo' },
-  { code: 'NL', label: 'Paesi Bassi' },
-  { code: 'BE', label: 'Belgio' },
-  { code: 'CH', label: 'Svizzera' },
-  { code: 'US', label: 'USA' },
-  { code: 'BR', label: 'Brasile' },
-  { code: 'AR', label: 'Argentina' },
-  { code: 'OTHER', label: 'Altro…' },
-];
+export { COUNTRIES } from '@/lib/geo/countries';
+export type { CountryOption } from '@/lib/geo/countries';
 
 // Regioni (testi esattamente come forniti)
 export const ITALY_REGIONS = [

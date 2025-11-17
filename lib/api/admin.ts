@@ -21,7 +21,10 @@ function parseList(env?: string | null) {
 export async function isAdminUser(supabase: any, user: MaybeUser): Promise<boolean> {
   if (!user?.id) return false;
 
-  const emails = parseList(process.env.ADMIN_EMAILS);
+  const emails = [
+    ...parseList(process.env.ADMIN_EMAILS),
+    ...parseList(process.env.CLUBS_ADMIN_EMAILS),
+  ];
   const ids = parseList(process.env.ADMIN_USER_IDS);
 
   const email = (user.email ?? '').toLowerCase();

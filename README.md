@@ -21,7 +21,7 @@
    ```bash
    pnpm install --frozen-lockfile
    ```
-3. Copia `.env.example` (se assente, crea `.env.local`) e valorizza le variabili indicate nella tabella seguente.
+3. Copia `docs/env.sample` in `.env.local` e valorizza le variabili indicate nella tabella seguente.
 4. Avvia l'applicazione in sviluppo:
    ```bash
    pnpm dev
@@ -38,6 +38,9 @@
 | `SUPABASE_SERVICE_ROLE_KEY` | server | ⚪️ | Necessaria per API che usano privilegi elevati (notify/email, bootstrap admin). |
 | `NEXT_PUBLIC_BASE_URL` | client/server | ⚪️ | URL pubblico dell'app (es. `https://clubandplayer.app`). |
 | `NEXT_PUBLIC_FEATURE_CLUBS_READONLY` | client | ✅ in prod | Mantienilo a `1` per lasciare `/clubs` in sola lettura sull'MVP. |
+| `NEXT_PUBLIC_FEATURE_CLUBS_ADMIN` | client | ⚪️ | Abilita i controlli di creazione/modifica/cancellazione su `/clubs` (solo per admin allowlist). |
+| `NEXT_PUBLIC_CLUBS_ADMIN_EMAILS` | client | ⚪️ | Lista CSV di email autorizzate all'editing `/clubs` (allineala a `CLUBS_ADMIN_EMAILS`). |
+| `CLUBS_ADMIN_EMAILS` | server | ⚪️ | Allowlist server per CRUD club; usala insieme a `ADMIN_EMAILS`/`ADMIN_USER_IDS`. |
 | `ADMIN_EMAILS` / `ADMIN_USER_IDS` | server | ⚪️ | Liste (CSV) per concedere privilegi amministrativi. |
 | `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` | server/client | ⚪️ | Abilitano il tracking errori Sentry. |
 | `SENTRY_ENVIRONMENT`, `NEXT_PUBLIC_SENTRY_ENVIRONMENT` | server/client | ⚪️ | Ambiente usato in Sentry (es. `production`). |
@@ -57,6 +60,10 @@
 | `pnpm start` | Avvia il server production dopo la build. |
 | `pnpm lint` | ESLint flat-config senza warning ammessi. |
 | `pnpm test:e2e` | Smoke test Node (`node --test`) che avviano Next.js e validano `/api/health`, `/logout` e `/feed`. |
+| `node scripts/check-clubs-flags.mjs` | Diagnostica rapida di flag/allowlist `/clubs` (allinea client/server prima di attivare i CRUD). |
+| `node scripts/check-feed-config.mjs` | Verifica che il bucket Storage `posts` e la tabella `posts` siano accessibili con la chiave service-role. |
+| `node scripts/check-email-config.mjs` | Controlla che le variabili Resend siano presenti e che `NOOP_EMAILS` sia disattivato prima di inviare email reali. |
+| `node scripts/check-sentry-config.mjs` | Verifica DSN, environment e release Sentry (server/client) prima di abilitare il monitoraggio. |
 
 ## Struttura repository
 - `app/` — Route Next.js (pagine, layout, API handlers).
@@ -81,7 +88,9 @@
    - `/feed` → redirect a `/login` per guest o feed pubblico.
    - `/clubs` → tabella read-only con colonna “Nome” basata su `displayLabel` dell'adapter.
    - `/debug/client-error` e `/api/debug/error` → verifiche per Sentry.
-3. Verifica la salute del backend con `curl http://127.0.0.1:3000/api/health` (risposta 200 JSON con info ambiente).
+3. Quando abiliti i CRUD su `/clubs` in staging, segui la [checklist di smoke test guest vs admin](docs/smoke-tests/clubs.md) per verificare flag, allowlist e RLS.
+4. Per feed e candidature, usa le checklist manuali dedicate: [smoke test `/feed`](docs/smoke-tests/feed.md) e [smoke test `/applications/received`](docs/smoke-tests/applications.md).
+5. Verifica la salute del backend con `curl http://127.0.0.1:3000/api/health` (risposta 200 JSON con info ambiente).
 
 ## Smoke test in CI (GitHub Actions)
 - Il workflow **E2E (non-blocking)** esegue `pnpm test:e2e` con il Node test runner e pubblica l'output come artifact `e2e-smoke-log`.
@@ -98,7 +107,8 @@
 
 ## Passi rapidi verso la **Beta**
 - **Sentry**: imposta `SENTRY_ENVIRONMENT` / `NEXT_PUBLIC_SENTRY_ENVIRONMENT` e `SENTRY_RELEASE` / `NEXT_PUBLIC_SENTRY_RELEASE` (tipicamente `VERCEL_GIT_COMMIT_SHA`) per distinguere ambienti e release in dashboard.
-- **Email reali**: configura `RESEND_API_KEY`, `RESEND_FROM`, `BRAND_REPLY_TO` e disattiva `NOOP_EMAILS`.
+  - Usa `node scripts/check-sentry-config.mjs` per validare rapidamente DSN, environment e release prima dei deploy.
+- **Email reali**: configura `RESEND_API_KEY`, `RESEND_FROM`, `BRAND_REPLY_TO`, disattiva `NOOP_EMAILS` e valida con `node scripts/check-email-config.mjs`.
 - **Storage feed**: assicurati che il bucket `posts` esista e che le policy di upload/lettura siano applicate (vedi note in roadmap post-MVP).
 - **Smoke test quasi-bloccanti**: su GitHub abilita `SMOKE_ENFORCE=true` per PR che toccano `app/**` o i pattern personalizzati.
 - **Sicurezza Supabase**: verifica le policy RLS su `profiles`, `clubs` e `posts` (WITH CHECK coerenti), password minima 12 caratteri e OTP con scadenza 15–30 minuti.

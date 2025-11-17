@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
-import { getSupabaseAdminClientOrNull, ensureBucket } from '@/lib/supabase/admin';
+import { getSupabaseAdminClient, ensureBucket } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
 
 const BUCKET = process.env.NEXT_PUBLIC_AVATARS_BUCKET || 'avatars';
 
-export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
+export const POST = withAuth(async (req: NextRequest, { user }) => {
   const form = await req.formData();
   const fileEntry = form.get('file');
 
@@ -19,8 +19,9 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
   const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
-  const admin = getSupabaseAdminClientOrNull();
-  const client = admin ?? supabase;
+  // Bypassiamo le policy RLS con il client service-role: la scrittura su storage
+  // deve sempre riuscire, indipendentemente dalle policy lato bucket/tabella.
+  const client = getSupabaseAdminClient();
 
   async function uploadOnce() {
     return client.storage.from(BUCKET).upload(path, file, {
@@ -32,7 +33,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   let { error: uploadError } = await uploadOnce();
 
-  if (uploadError && admin && /bucket(.+)?not(.+)?found/i.test(uploadError.message || '')) {
+  if (uploadError && /bucket(.+)?not(.+)?found/i.test(uploadError.message || '')) {
     await ensureBucket(BUCKET, true).catch(() => null);
     ({ error: uploadError } = await uploadOnce());
   }
