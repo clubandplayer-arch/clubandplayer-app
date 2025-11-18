@@ -25,13 +25,23 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
     return clientRes;
   };
 
-  const { data: oppsRaw, error: oppErr } = await runWithFallback((client) =>
+  const { data: oppsRawInitial, error: oppErr } = await runWithFallback((client) =>
     client
       .from('opportunities')
       .select('id, title, city, province, region, country, owner_id, created_by')
       .or(`owner_id.eq.${user.id},created_by.eq.${user.id}`)
   );
   if (oppErr) return jsonError(oppErr.message, 400);
+
+  let oppsRaw = oppsRawInitial;
+
+  if ((!oppsRaw || oppsRaw.length === 0) && admin) {
+    const res = await admin
+      .from('opportunities')
+      .select('id, title, city, province, region, country, owner_id, created_by')
+      .or(`owner_id.eq.${user.id},created_by.eq.${user.id}`);
+    if (!res.error) oppsRaw = res.data;
+  }
 
   const opps = (oppsRaw ?? []).map((row: any) => {
     const ownerId = row.owner_id ?? row.created_by ?? null;
@@ -65,6 +75,26 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
     ({ data: rows, error: e2 } = await runApps(selectNoClub));
   }
   if (e2) return jsonError(e2.message, 400);
+
+  if ((!rows || rows.length === 0) && admin) {
+    const { data: adminRows, error: adminErr } = await admin
+      .from('applications')
+      .select(selectFull)
+      .in('opportunity_id', oppIds)
+      .order('created_at', { ascending: false });
+
+    if (!adminErr && adminRows?.length) {
+      rows = adminRows;
+    } else if (adminErr && /column .*club_id.* does not exist/i.test(adminErr.message || '')) {
+      const { data: fallbackRows, error: fbErr } = await admin
+        .from('applications')
+        .select(selectNoClub)
+        .in('opportunity_id', oppIds)
+        .order('created_at', { ascending: false });
+
+      if (!fbErr) rows = fallbackRows;
+    }
+  }
 
   const apps = rows ?? [];
   if (!apps.length) return NextResponse.json({ data: [] });

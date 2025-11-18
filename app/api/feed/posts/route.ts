@@ -226,6 +226,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    if (error && /row-level security/i.test(error.message || '') && !getSupabaseAdminClientOrNull()) {
+      return NextResponse.json(
+        { ok: false, error: 'rls_blocked', message: 'Configura SUPABASE_SERVICE_ROLE_KEY o applica le policy RLS sui post.' },
+        { status: 403 }
+      );
+    }
+
     if (error) {
       return NextResponse.json(
         { ok: false, error: 'insert_failed', details: error.message },
