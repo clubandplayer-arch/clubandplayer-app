@@ -154,17 +154,21 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
     const rawText = (body?.text ?? body?.content ?? '').toString();
-    const mediaUrlRaw = (body as any)?.media_url ?? null;
-    const mediaTypeRaw = (body as any)?.media_type ?? null;
     const text = rawText.trim();
-    const mediaUrl = typeof mediaUrlRaw === 'string' && mediaUrlRaw.trim() ? mediaUrlRaw.trim() : null;
-    const mediaType = mediaUrl ? (mediaTypeRaw === 'video' ? 'video' : 'image') : null;
+    const hasMedia = Boolean((body as any)?.media_url || (body as any)?.media_type);
 
-    if (!text && !mediaUrl) {
+    if (!text) {
       return NextResponse.json({ ok: false, error: 'empty' }, { status: 400 });
     }
     if (text.length > MAX_CHARS) {
       return NextResponse.json({ ok: false, error: 'too_long', limit: MAX_CHARS }, { status: 400 });
+    }
+
+    if (hasMedia) {
+      return NextResponse.json(
+        { ok: false, error: 'media_not_supported', message: 'Il feed accetta solo post di testo.' },
+        { status: 400 }
+      );
     }
 
     const jar = await cookies();
@@ -186,8 +190,6 @@ export async function POST(req: NextRequest) {
     }
 
     const insertPayload: Record<string, any> = { content: text, author_id: auth.user.id };
-    if (mediaUrl) insertPayload.media_url = mediaUrl;
-    if (mediaType) insertPayload.media_type = mediaType;
 
     const runInsert = (payload: Record<string, any>, select: string) =>
       supabase.from('posts').insert(payload).select(select).single();
@@ -195,11 +197,10 @@ export async function POST(req: NextRequest) {
     let data: any = null;
     let error: any = null;
 
-    ({ data, error } = await runInsert(insertPayload, 'id, author_id, content, created_at, media_url, media_type'));
+    ({ data, error } = await runInsert(insertPayload, 'id, author_id, content, created_at'));
 
     if (error && /column .* does not exist/i.test(error.message || '')) {
-      const fallbackPayload = { content: mediaUrl ? `${text}\n${mediaUrl}` : text, author_id: auth.user.id };
-      ({ data, error } = await runInsert(fallbackPayload, 'id, author_id, content, created_at'));
+      ({ data, error } = await runInsert(insertPayload, 'id, author_id, content, created_at'));
     }
 
     if (error) {
