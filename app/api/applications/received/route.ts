@@ -58,8 +58,10 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   const selectFull = 'id, opportunity_id, athlete_id, club_id, note, status, created_at, updated_at';
   const selectNoClub = 'id, opportunity_id, athlete_id, note, status, created_at, updated_at';
 
-  const runApps = async (sel: string) =>
-    runWithFallback((client) =>
+  const runApps = async (
+    sel: string,
+  ): Promise<{ data: any[] | null; error: any }> =>
+    runWithFallback<any[]>((client) =>
       client
         .from('applications')
         .select(sel)
