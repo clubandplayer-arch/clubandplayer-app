@@ -21,7 +21,7 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
 
   // Bypassiamo le policy RLS con il client service-role: la scrittura su storage
   // deve sempre riuscire, indipendentemente dalle policy lato bucket/tabella.
-  let client;
+  let client: ReturnType<typeof getSupabaseAdminClient>;
   try {
     client = getSupabaseAdminClient();
   } catch (err: any) {
