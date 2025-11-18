@@ -33,9 +33,9 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   );
   if (oppErr) return jsonError(oppErr.message, 400);
 
-  let oppsRaw = oppsRawInitial;
+  let oppsRaw = Array.isArray(oppsRawInitial) ? oppsRawInitial : [];
 
-  if ((!oppsRaw || oppsRaw.length === 0) && admin) {
+  if ((!oppsRaw.length) && admin) {
     const res = await admin
       .from('opportunities')
       .select('id, title, city, province, region, country, owner_id, created_by')
