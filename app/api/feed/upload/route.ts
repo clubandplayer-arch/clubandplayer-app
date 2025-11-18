@@ -24,14 +24,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: 'storage_unavailable' }, { status: 500 });
   }
 
-  // Se manca la service role non possiamo bypassare le policy storage: ritorniamo errore esplicito.
-  if (!admin) {
-    return NextResponse.json(
-      { ok: false, error: 'service_role_missing', message: 'Configura SUPABASE_SERVICE_ROLE_KEY per abilitare upload feed.' },
-      { status: 500 }
-    );
-  }
-
   const { data: authData, error: authErr } = await userSupabase.auth.getUser();
   if (authErr || !authData?.user) {
     return NextResponse.json({ ok: false, error: 'not_authenticated' }, { status: 401 });
@@ -50,11 +42,13 @@ export async function POST(req: NextRequest) {
 
   const file = rawFile as File;
 
-  await ensureBucketExists(bucket, admin);
+  if (admin) {
+    await ensureBucketExists(bucket, admin);
+  }
 
   const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_') || `${Date.now()}`;
   const path = `${authData.user.id}/${Date.now()}-${safeName}`;
-  const storage = admin.storage;
+  const storage = (admin ?? userSupabase).storage;
 
   async function uploadOnce() {
     return storage

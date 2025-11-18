@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
-import { getSupabaseAdminClient, ensureBucket } from '@/lib/supabase/admin';
+import { getSupabaseAdminClientOrNull, ensureBucket } from '@/lib/supabase/admin';
+import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
 
@@ -19,13 +20,12 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
   const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
   const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
-  // Bypassiamo le policy RLS con il client service-role: la scrittura su storage
-  // deve sempre riuscire, indipendentemente dalle policy lato bucket/tabella.
-  let client: ReturnType<typeof getSupabaseAdminClient>;
-  try {
-    client = getSupabaseAdminClient();
-  } catch (err: any) {
-    return jsonError(err?.message || 'service_role_missing', 500);
+  const userClient = await getSupabaseServerClient().catch(() => null);
+  const adminClient = getSupabaseAdminClientOrNull();
+  const client = adminClient ?? userClient;
+
+  if (!client) {
+    return jsonError('supabase_unavailable', 500);
   }
 
   async function uploadOnce() {
@@ -39,8 +39,10 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
   let { error: uploadError } = await uploadOnce();
 
   if (uploadError && /bucket(.+)?not(.+)?found/i.test(uploadError.message || '')) {
-    await ensureBucket(BUCKET, true).catch(() => null);
-    ({ error: uploadError } = await uploadOnce());
+    if (adminClient) {
+      await ensureBucket(BUCKET, true).catch(() => null);
+      ({ error: uploadError } = await uploadOnce());
+    }
   }
 
   if (uploadError) {
@@ -51,10 +53,17 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
   const publicUrl = urlData?.publicUrl || null;
   if (!publicUrl) return jsonError('public_url_unavailable', 400);
 
-  const { error: updErr } = await client
+  let { error: updErr } = await client
     .from('profiles')
     .update({ avatar_url: publicUrl })
     .eq('user_id', user.id);
+
+  if (updErr && adminClient) {
+    ({ error: updErr } = await adminClient
+      .from('profiles')
+      .update({ avatar_url: publicUrl })
+      .eq('user_id', user.id));
+  }
 
   if (updErr) return jsonError(updErr.message, 400);
 

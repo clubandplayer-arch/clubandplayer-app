@@ -184,23 +184,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'not_authenticated' }, { status: 401 });
     }
 
-    // Usa sempre il client admin per bypassare RLS e colonne legacy: richiede SUPABASE_SERVICE_ROLE_KEY.
-    let admin: ReturnType<typeof getSupabaseAdminClient> | null = null;
-    try {
-      admin = getSupabaseAdminClient();
-    } catch (err: any) {
-      return NextResponse.json(
-        { ok: false, error: 'service_role_missing', message: err?.message || 'Configura SUPABASE_SERVICE_ROLE_KEY.' },
-        { status: 500 }
-      );
-    }
+    // Proviamo con il client utente (RLS corrette); in fallback usiamo l'admin se disponibile.
+    const supabaseUser = await getSupabaseServerClient().catch(() => null);
+    const admin = getSupabaseAdminClientOrNull();
 
     const insertPayload: Record<string, any> = { content: text, author_id: auth.user.id };
     if (mediaUrl) insertPayload.media_url = mediaUrl;
     if (mediaType) insertPayload.media_type = mediaType;
 
-    const runInsert = (payload: Record<string, any>, select: string) =>
-      admin!.from('posts').insert(payload).select(select).single();
+    const runInsert = async (payload: Record<string, any>, select: string) => {
+      const client = admin ?? supabaseUser;
+      if (!client) throw new Error('supabase_unavailable');
+      return client.from('posts').insert(payload).select(select).single();
+    };
 
     let data: any = null;
     let error: any = null;
@@ -210,6 +206,15 @@ export async function POST(req: NextRequest) {
     if (error && /column .* does not exist/i.test(error.message || '')) {
       const fallbackPayload = { content: mediaUrl ? `${text}\n${mediaUrl}` : text, author_id: auth.user.id };
       ({ data, error } = await runInsert(fallbackPayload, 'id, author_id, content, created_at'));
+    }
+
+    if (error && admin && supabaseUser) {
+      // Se il client user fallisce per RLS e abbiamo admin, riproviamo per bypassare.
+      ({ data, error } = await getSupabaseAdminClient()
+        .from('posts')
+        .insert(insertPayload)
+        .select('id, author_id, content, created_at, media_url, media_type')
+        .single());
     }
 
     if (error) {
