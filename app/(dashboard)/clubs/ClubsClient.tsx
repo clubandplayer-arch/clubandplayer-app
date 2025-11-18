@@ -12,12 +12,21 @@ import {
   isClubsAdminEnabled,
   isClubsReadOnly as isReadOnlyFlag,
 } from '@/lib/env/features';
-
-const Modal = dynamic(() => import('@/components/ui/Modal'));
-const ClubForm = dynamic(() => import('@/components/clubs/ClubForm'));
-
 import type { ClubsApiResponse, Club } from '@/types/club';
 import { mapClubsList } from '@/lib/adapters/clubs';
+
+type ClubsEditingModalsProps = {
+  openCreate: boolean;
+  onCloseCreate: () => void;
+  editClub: Club | null;
+  onCloseEdit: () => void;
+  onReload: () => void;
+};
+
+const editingEnabledByFlag = !isReadOnlyFlag();
+const ClubsEditingModals = editingEnabledByFlag
+  ? dynamic<ClubsEditingModalsProps>(() => import('./ClubsEditingModals'))
+  : null;
 
 type Me = { id: string; email?: string } | null;
 
@@ -203,37 +212,14 @@ export default function ClubsClient({ readOnly = false }: Props) {
         </>
       )}
 
-      {/* Modal Crea */}
-      {!effectiveReadOnly && (
-        <Modal open={openCreate} title="Nuovo club" onClose={() => setOpenCreate(false)}>
-          <ClubForm
-            onCancel={() => setOpenCreate(false)}
-            onSaved={() => {
-              setOpenCreate(false);
-              setReloadKey((k) => k + 1);
-            }}
-          />
-        </Modal>
-      )}
-
-      {/* Modal Edit */}
-      {!effectiveReadOnly && (
-        <Modal
-          open={!!editClub}
-          title={`Modifica: ${editClub?.display_name || editClub?.name || ''}`}
-          onClose={() => setEditClub(null)}
-        >
-          {editClub && (
-            <ClubForm
-              initial={editClub}
-              onCancel={() => setEditClub(null)}
-              onSaved={() => {
-                setEditClub(null);
-                setReloadKey((k) => k + 1);
-              }}
-            />
-          )}
-        </Modal>
+      {!effectiveReadOnly && ClubsEditingModals && (
+        <ClubsEditingModals
+          openCreate={openCreate}
+          onCloseCreate={() => setOpenCreate(false)}
+          editClub={editClub}
+          onCloseEdit={() => setEditClub(null)}
+          onReload={() => setReloadKey((k) => k + 1)}
+        />
       )}
     </div>
   );
