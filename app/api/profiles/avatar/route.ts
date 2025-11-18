@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { getSupabaseAdminClientOrNull, ensureBucket } from '@/lib/supabase/admin';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 export const runtime = 'nodejs';
 
@@ -22,14 +23,16 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
 
   const userClient = await getSupabaseServerClient().catch(() => null);
   const adminClient = getSupabaseAdminClientOrNull();
-  const client = adminClient ?? userClient;
+  const client: SupabaseClient | null = adminClient ?? userClient;
 
   if (!client) {
     return jsonError('supabase_unavailable', 500);
   }
 
+  const supabase: SupabaseClient = client;
+
   async function uploadOnce() {
-    return client.storage.from(BUCKET).upload(path, file, {
+    return supabase.storage.from(BUCKET).upload(path, file, {
       cacheControl: '3600',
       upsert: false,
       contentType: file.type || undefined,
