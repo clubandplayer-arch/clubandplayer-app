@@ -21,11 +21,12 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
 
   const adminClient = getSupabaseAdminClientOrNull();
   if (!adminClient) return jsonError('service_role_missing', 500);
+  const client = adminClient;
 
   await ensureBucket(BUCKET, true).catch(() => null);
 
   async function uploadOnce() {
-    return adminClient.storage.from(BUCKET).upload(path, file, {
+    return client.storage.from(BUCKET).upload(path, file, {
       cacheControl: '3600',
       upsert: false,
       contentType: file.type || undefined,
@@ -35,21 +36,19 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
   let { error: uploadError } = await uploadOnce();
 
   if (uploadError && /bucket(.+)?not(.+)?found/i.test(uploadError.message || '')) {
-    if (adminClient) {
-      await ensureBucket(BUCKET, true).catch(() => null);
-      ({ error: uploadError } = await uploadOnce());
-    }
+    await ensureBucket(BUCKET, true).catch(() => null);
+    ({ error: uploadError } = await uploadOnce());
   }
 
   if (uploadError) {
     return jsonError(uploadError.message || 'storage_upload_failed', 400);
   }
 
-  const { data: urlData } = adminClient.storage.from(BUCKET).getPublicUrl(path);
+  const { data: urlData } = client.storage.from(BUCKET).getPublicUrl(path);
   const publicUrl = urlData?.publicUrl || null;
   if (!publicUrl) return jsonError('public_url_unavailable', 400);
 
-  const { error: updErr } = await adminClient
+  const { error: updErr } = await client
     .from('profiles')
     .update({ avatar_url: publicUrl })
     .eq('user_id', user.id);
