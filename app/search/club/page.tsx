@@ -49,8 +49,8 @@ export default function SearchClubPage() {
         credentials: 'include',
       })
 
-      const json = (await res.json().catch(() => ({}))) as ClubsApiResponse | { error?: string }
-      if (!res.ok) throw new Error((json as any)?.error || `HTTP ${res.status}`)
+      const json: Partial<ClubsApiResponse> & { error?: string } = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`)
 
       setItems(Array.isArray(json.data) ? json.data : [])
       setMeta({
