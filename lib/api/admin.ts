@@ -1,4 +1,6 @@
 // lib/api/admin.ts
+import { clubsAdminServerAllowlist, isClubsAdminEnabled } from '@/lib/env/features';
+
 type MaybeUser =
   | { id: string; email?: string | null; user_metadata?: Record<string, unknown> }
   | null
@@ -9,6 +11,12 @@ function parseList(env?: string | null) {
     .split(',')
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);
+}
+
+export function isUserInClubsAdminAllowlist(user: MaybeUser) {
+  const email = (user?.email ?? '').toLowerCase();
+  if (!email) return false;
+  return clubsAdminServerAllowlist().includes(email);
 }
 
 /**
@@ -44,6 +52,23 @@ export async function isAdminUser(supabase: any, user: MaybeUser): Promise<boole
     if (data && (data as any).is_admin === true) return true;
   } catch {
     // la colonna potrebbe non esistere
+  }
+
+  return false;
+}
+
+/**
+ * Regola di admin specifica per i CRUD clubs: richiede il flag UI + allowlist server.
+ * Se l'allowlist è vuota, cade sul ruolo admin "generico" per evitare lockout involontari.
+ */
+export async function isClubsAdminUser(supabase: any, user: MaybeUser): Promise<boolean> {
+  if (!isClubsAdminEnabled()) return false;
+
+  if (isUserInClubsAdminAllowlist(user)) return true;
+
+  // fallback: se allowlist vuota, accetta gli admin generici
+  if (clubsAdminServerAllowlist().length === 0) {
+    return isAdminUser(supabase, user);
   }
 
   return false;

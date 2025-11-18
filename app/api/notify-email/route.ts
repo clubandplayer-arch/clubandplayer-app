@@ -1,5 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { Resend } from 'resend'
+import { getResendConfig } from '@/lib/server/resendConfig'
 
 export const runtime = 'nodejs'
 
@@ -48,23 +50,24 @@ export async function POST(req: NextRequest) {
     const preview = text.length > 120 ? text.slice(0, 120) + '…' : text
     const chatUrl = `${process.env.NEXT_PUBLIC_BASE_URL ?? ''}/messages/${senderId}`
 
-    // Guard no-op se manca Resend
-    if (!process.env.RESEND_API_KEY || !process.env.RESEND_FROM) {
-      console.warn('Resend ENV mancanti: no-op')
+    const resendConfig = getResendConfig()
+    if (!resendConfig.ok) {
+      return NextResponse.json(
+        { ok: false, error: 'resend_env_missing', missing: resendConfig.missing },
+        { status: 500 }
+      )
+    }
+    if (resendConfig.noop) {
+      console.warn('NOOP_EMAILS attivo: risposta no-op')
       return NextResponse.json({ ok: true, noop: true })
     }
 
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: process.env.RESEND_FROM, // es. "Club&Player <no-reply@mail.clubandplayer.com>"
-        to: receiverUser.user.email,
-        subject,
-        html: `
+    const resend = new Resend(resendConfig.apiKey)
+    const sendRes = await resend.emails.send({
+      from: resendConfig.from, // es. "Club&Player <no-reply@mail.clubandplayer.com>"
+      to: receiverUser.user.email,
+      subject,
+      html: `
           <div style="font-family:system-ui,Segoe UI,Roboto,Arial;">
             <p>Ciao, hai ricevuto un nuovo messaggio${senderName ? ` da <b>${senderName}</b>` : ''}.</p>
             <blockquote style="margin:12px 0;padding:10px;border-left:3px solid #e5e7eb;background:#f9fafb">${preview}</blockquote>
@@ -72,15 +75,14 @@ export async function POST(req: NextRequest) {
             <p style="color:#6b7280;font-size:12px">Non rispondere a questa email.</p>
           </div>
         `,
-      }),
+      replyTo: resendConfig.replyTo,
     })
 
-    if (!res.ok) {
-      const detail = await res.text()
-      return NextResponse.json({ ok: false, error: 'resend_error', detail }, { status: 502 })
+    if (sendRes.error) {
+      return NextResponse.json({ ok: false, error: sendRes.error.message }, { status: 502 })
     }
 
-    return NextResponse.json({ ok: true })
+    return NextResponse.json({ ok: true, id: sendRes.data?.id ?? null })
   } catch {
     return NextResponse.json({ ok: false, error: 'server_error' }, { status: 500 })
   }

@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { listParamsSchema } from '@/lib/api/schemas';
 import { rateLimit } from '@/lib/api/rateLimit';
-import { isAdminUser } from '@/lib/api/admin'; // 👈 admin guard
+import { isClubsAdminUser } from '@/lib/api/admin'; // 👈 admin guard
 
 export const runtime = 'nodejs'; // sessione/cookie
 
@@ -21,6 +21,10 @@ export const GET = withAuth(async (req: NextRequest, { supabase }) => {
 
   const url = new URL(req.url);
   const q = (url.searchParams.get('q') || '').trim();
+  const city = (url.searchParams.get('city') || '').trim();
+  const province = (url.searchParams.get('province') || '').trim();
+  const region = (url.searchParams.get('region') || '').trim();
+  const country = (url.searchParams.get('country') || '').trim();
 
   // page/pageSize (nuovo) o limit/offset (legacy)
   const pageParam = Number(url.searchParams.get('page'));
@@ -51,13 +55,22 @@ export const GET = withAuth(async (req: NextRequest, { supabase }) => {
 
   let query = supabase
     .from('clubs')
-    .select('id,name,display_name,city,country,level,logo_url,owner_id,created_at', { count: 'exact' })
-    .order('name', { ascending: true })
+    .select('id,name,display_name,city,province,region,country,level,logo_url,bio,owner_id,created_at', { count: 'exact' })
+    // l'ordinamento discendente sfrutta l'indice idx_clubs_created_at
+    .order('created_at', { ascending: false })
     .range(from, to);
 
   if (q) {
-    query = query.or(`name.ilike.%${q}%,city.ilike.%${q}%`);
+    const sanitized = q.replace(/,/g, ' ');
+    const like = `%${sanitized}%`;
+    // usa pg_trgm sugli ilike per ricerche fuzzy su nome/display_name/città
+    query = query.or(`name.ilike.${like},display_name.ilike.${like},city.ilike.${like}`);
   }
+
+  if (city) query = query.ilike('city', `%${city}%`);
+  if (province) query = query.ilike('province', `%${province}%`);
+  if (region) query = query.ilike('region', `%${region}%`);
+  if (country) query = query.ilike('country', `%${country}%`);
 
   const { data, count, error } = await query;
   if (error) return jsonError(error.message, 400);
@@ -87,7 +100,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   }
 
   // 👇 Admin only
-  const isAdmin = await isAdminUser(supabase, user);
+  const isAdmin = await isClubsAdminUser(supabase, user);
   if (!isAdmin) return jsonError('forbidden_admin_only', 403);
 
   const body = await req.json().catch(() => ({}));

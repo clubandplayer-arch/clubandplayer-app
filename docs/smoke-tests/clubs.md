@@ -6,7 +6,7 @@ Questa checklist serve a verificare rapidamente che la pagina `/clubs` si compor
 - Variabili configurate:
   - `NEXT_PUBLIC_FEATURE_CLUBS_READONLY=1` (default in prod).
   - `NEXT_PUBLIC_FEATURE_CLUBS_ADMIN=1` **solo** sull'ambiente di test/staging in cui provi i CRUD.
-  - `NEXT_PUBLIC_CLUBS_ADMIN_EMAILS` e `CLUBS_ADMIN_EMAILS` valorizzate con l'allowlist reale (stesso set su client e server).
+  - `CLUBS_ADMIN_EMAILS` valorizzata con l'allowlist reale (puoi replicarla in `NEXT_PUBLIC_CLUBS_ADMIN_EMAILS` solo per diagnostic/UI).
   - `ADMIN_EMAILS` / `ADMIN_USER_IDS` opzionali ma allineati, se usati per altri privilegi.
 - Prima di iniziare, esegui `node scripts/check-clubs-flags.mjs` per confermare che flag e allowlist siano coerenti (exit code 1 se rileva mismatch).
 - Due account Supabase:
@@ -20,6 +20,7 @@ Questa checklist serve a verificare rapidamente che la pagina `/clubs` si compor
 3. Conferma che:
    - La tabella club è visibile (nessun 404/401).
    - **Non** compaiono pulsanti “Crea club”, “Modifica”, “Elimina” né modali.
+   - In DevTools (Network → JS) non vengono scaricati chunk aggiuntivi per le modali di editing: il primo caricamento resta leggero in modalità read-only.
    - I link delle card/righe portano a `/clubs/[slug]` (o pagina profilo) senza errori.
 4. Verifica che la console browser non mostri errori JS/Supabase.
 

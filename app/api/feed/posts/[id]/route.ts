@@ -55,16 +55,26 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   if (!existing) return jsonError('Not found', 404);
   if (existing.author_id !== user.id) return jsonError('Forbidden', 403);
 
-  const { data, error } = await supabase
-    .from('posts')
-    .update({ content: text })
-    .eq('id', id)
-    .eq('author_id', user.id)
-    .select('id, author_id, content, created_at, media_url, media_type')
-    .maybeSingle();
+  const runUpdate = async (select: string) =>
+    supabase
+      .from('posts')
+      .update({ content: text })
+      .eq('id', id)
+      .eq('author_id', user.id)
+      .select(select)
+      .maybeSingle();
 
-  if (error || !data) return jsonError(error?.message || 'Update failed', 400);
-  return NextResponse.json({ ok: true, item: normalizeRow(data) });
+  let updated: any = null;
+  let updateError: any = null;
+
+  ({ data: updated, error: updateError } = await runUpdate('id, author_id, content, created_at, media_url, media_type'));
+
+  if (updateError && /column .* does not exist/i.test(updateError.message || '')) {
+    ({ data: updated, error: updateError } = await runUpdate('id, author_id, content, created_at'));
+  }
+
+  if (updateError || !updated) return jsonError(updateError?.message || 'Update failed', 400);
+  return NextResponse.json({ ok: true, item: normalizeRow(updated) });
 });
 
 export const DELETE = withAuth(async (req: NextRequest, { supabase, user }) => {

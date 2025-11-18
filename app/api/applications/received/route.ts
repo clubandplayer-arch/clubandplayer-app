@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
 import { getPublicProfilesMap } from '@/lib/profiles/publicLookup';
-import { getSupabaseAdminClient } from '@/lib/supabase/admin';
+import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
 
@@ -11,21 +11,26 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   try { await rateLimit(req, { key: 'applications:RECEIVED', limit: 120, window: '1m' } as any); }
   catch { return jsonError('Too Many Requests', 429); }
 
-  // 1) Client admin obbligatorio per bypassare le RLS sulle candidature
-  let client = supabase;
-  try {
-    client = getSupabaseAdminClient();
-  } catch (err: any) {
-    return jsonError(
-      'Servizio non configurato: aggiungi SUPABASE_SERVICE_ROLE_KEY per leggere le candidature',
-      500,
-    );
-  }
+  const admin = getSupabaseAdminClientOrNull();
 
-  const { data: oppsRaw, error: oppErr } = await client
-    .from('opportunities')
-    .select('id, title, city, province, region, country, owner_id, created_by')
-    .or(`owner_id.eq.${user.id},created_by.eq.${user.id}`);
+  const runWithFallback = async <T>(fn: (c: any) => Promise<{ data: T | null; error: any }>) => {
+    let clientRes = await fn(supabase);
+    if (
+      clientRes.error &&
+      admin &&
+      (/row-level security/i.test(clientRes.error.message || '') || /permission/i.test(clientRes.error.message || ''))
+    ) {
+      clientRes = await fn(admin);
+    }
+    return clientRes;
+  };
+
+  const { data: oppsRaw, error: oppErr } = await runWithFallback((client) =>
+    client
+      .from('opportunities')
+      .select('id, title, city, province, region, country, owner_id, created_by')
+      .or(`owner_id.eq.${user.id},created_by.eq.${user.id}`)
+  );
   if (oppErr) return jsonError(oppErr.message, 400);
 
   const opps = (oppsRaw ?? []).map((row: any) => {
@@ -40,11 +45,25 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   // 2) Candidature su quelle opportunità
 
-  const { data: rows, error: e2 } = await client
-    .from('applications')
-    .select('id, opportunity_id, athlete_id, note, status, created_at, updated_at')
-    .in('opportunity_id', oppIds)
-    .order('created_at', { ascending: false });
+  const selectFull = 'id, opportunity_id, athlete_id, club_id, note, status, created_at, updated_at';
+  const selectNoClub = 'id, opportunity_id, athlete_id, note, status, created_at, updated_at';
+
+  const runApps = async (sel: string) =>
+    runWithFallback((client) =>
+      client
+        .from('applications')
+        .select(sel)
+        .in('opportunity_id', oppIds)
+        .order('created_at', { ascending: false })
+    );
+
+  let rows: any[] | null = null;
+  let e2: any = null;
+
+  ({ data: rows, error: e2 } = await runApps(selectFull));
+  if (e2 && /column .*club_id.* does not exist/i.test(e2.message || '')) {
+    ({ data: rows, error: e2 } = await runApps(selectNoClub));
+  }
   if (e2) return jsonError(e2.message, 400);
 
   const apps = rows ?? [];
@@ -54,9 +73,10 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   const athleteIds = Array.from(
     new Set(apps.map(a => String(a.athlete_id ?? '')).filter(id => id.length > 0))
   );
-  const profMap = await getPublicProfilesMap(athleteIds, client, {
-    fallbackToAdmin: true,
-  });
+    const profileClient = admin ?? supabase;
+    const profMap = await getPublicProfilesMap(athleteIds, profileClient, {
+      fallbackToAdmin: true,
+    });
 
   // 4) Arricchisci con nomi e link sempre disponibili
   const enhanced = apps.map(a => {
