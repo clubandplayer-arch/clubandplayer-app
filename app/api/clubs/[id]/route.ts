@@ -2,7 +2,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
-import { isAdminUser } from '@/lib/api/admin'; // 👈 admin guard
+import { isClubsAdminUser } from '@/lib/api/admin'; // 👈 admin guard
 
 export const runtime = 'nodejs';
 
@@ -38,7 +38,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   if (!id) return jsonError('Missing id', 400);
 
   // 👇 Admin only
-  const isAdmin = await isAdminUser(supabase, user);
+  const isAdmin = await isClubsAdminUser(supabase, user);
   if (!isAdmin) return jsonError('forbidden_admin_only', 403);
 
   const body = await req.json().catch(() => ({} as any));
@@ -75,7 +75,7 @@ export const DELETE = withAuth(async (req: NextRequest, { supabase, user }) => {
   if (!id) return jsonError('Missing id', 400);
 
   // 👇 Admin only
-  const isAdmin = await isAdminUser(supabase, user);
+  const isAdmin = await isClubsAdminUser(supabase, user);
   if (!isAdmin) return jsonError('forbidden_admin_only', 403);
 
   const { error } = await supabase.from('clubs').delete().eq('id', id);
