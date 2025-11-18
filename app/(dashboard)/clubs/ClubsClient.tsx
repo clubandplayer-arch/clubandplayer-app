@@ -7,11 +7,7 @@ import { useSearchParams } from 'next/navigation';
 import SearchInput from '@/components/controls/SearchInput';
 import ClubsTable from '@/components/clubs/ClubsTable';
 import Pagination from '@/components/pagination/Pagination';
-import {
-  clubsAdminAllowlist,
-  isClubsAdminEnabled,
-  isClubsReadOnly as isReadOnlyFlag,
-} from '@/lib/env/features';
+import { isClubsAdminEnabled, isClubsReadOnly as isReadOnlyFlag } from '@/lib/env/features';
 import type { ClubsApiResponse, Club } from '@/types/club';
 import { mapClubsList } from '@/lib/adapters/clubs';
 
@@ -23,12 +19,12 @@ type ClubsEditingModalsProps = {
   onReload: () => void;
 };
 
-const editingEnabledByFlag = !isReadOnlyFlag();
+const editingEnabledByFlag = !isReadOnlyFlag() && isClubsAdminEnabled();
 const ClubsEditingModals = editingEnabledByFlag
   ? dynamic<ClubsEditingModalsProps>(() => import('./ClubsEditingModals'))
   : null;
 
-type Me = { id: string; email?: string } | null;
+type Me = { id: string; email?: string; clubsAdmin?: boolean } | null;
 
 interface Props {
   /** Se true, la pagina è in sola lettura: nasconde pulsanti/azioni */
@@ -44,8 +40,6 @@ export default function ClubsClient({ readOnly = false }: Props) {
   const [reloadKey, setReloadKey] = useState(0);
 
   const [me, setMe] = useState<Me>(null);
-  const adminAllowlist = useMemo(() => clubsAdminAllowlist(), []);
-  const adminFlag = isClubsAdminEnabled();
   const forcedReadOnly = readOnly || isReadOnlyFlag();
 
   // modali (usate solo se readOnly === false)
@@ -70,7 +64,14 @@ export default function ClubsClient({ readOnly = false }: Props) {
     fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' })
       .then((r) => r.json().catch(() => null))
       .then((j) => {
-        if (!cancelled) setMe(j ?? null);
+        if (cancelled) return;
+
+        const user = j?.user;
+        if (user?.id) {
+          setMe({ id: user.id, email: user.email ?? undefined, clubsAdmin: j?.clubsAdmin === true });
+        } else {
+          setMe(null);
+        }
       })
       .catch(() => {
         if (!cancelled) setMe(null);
@@ -132,8 +133,7 @@ export default function ClubsClient({ readOnly = false }: Props) {
 
   const items = useMemo(() => mapClubsList(data?.data), [data]);
 
-  const email = (me?.email ?? '').toLowerCase();
-  const canEdit = adminFlag && !forcedReadOnly && !!email && adminAllowlist.includes(email);
+  const canEdit = !forcedReadOnly && me?.clubsAdmin === true;
   const effectiveReadOnly = !canEdit;
 
   async function handleDelete(c: Club) {
@@ -172,8 +172,7 @@ export default function ClubsClient({ readOnly = false }: Props) {
 
       {effectiveReadOnly && (
         <div className="text-sm text-gray-600 border rounded-lg bg-gray-50 px-3 py-2">
-          Elenco in sola lettura. L'editing è limitato agli admin autorizzati
-          ({process.env.NEXT_PUBLIC_CLUBS_ADMIN_EMAILS || 'lista vuota'}).
+          Elenco in sola lettura. L'editing è limitato agli admin autorizzati.
         </div>
       )}
 

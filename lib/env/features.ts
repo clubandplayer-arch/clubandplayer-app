@@ -22,5 +22,11 @@ export function isClubsAdminEnabled() {
 }
 
 export function clubsAdminAllowlist() {
-  return listFromEnv(process.env.NEXT_PUBLIC_CLUBS_ADMIN_EMAILS);
+  const server = listFromEnv(process.env.CLUBS_ADMIN_EMAILS);
+  const client = listFromEnv(process.env.NEXT_PUBLIC_CLUBS_ADMIN_EMAILS);
+  return Array.from(new Set([...server, ...client]));
+}
+
+export function clubsAdminServerAllowlist() {
+  return listFromEnv(process.env.CLUBS_ADMIN_EMAILS);
 }

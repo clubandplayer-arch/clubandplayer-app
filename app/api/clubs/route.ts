@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { listParamsSchema } from '@/lib/api/schemas';
 import { rateLimit } from '@/lib/api/rateLimit';
-import { isAdminUser } from '@/lib/api/admin'; // 👈 admin guard
+import { isClubsAdminUser } from '@/lib/api/admin'; // 👈 admin guard
 
 export const runtime = 'nodejs'; // sessione/cookie
 
@@ -87,7 +87,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   }
 
   // 👇 Admin only
-  const isAdmin = await isAdminUser(supabase, user);
+  const isAdmin = await isClubsAdminUser(supabase, user);
   if (!isAdmin) return jsonError('forbidden_admin_only', 403);
 
   const body = await req.json().catch(() => ({}));

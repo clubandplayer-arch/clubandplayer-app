@@ -28,18 +28,13 @@ const serverAllowlist = listFromEnv(process.env.CLUBS_ADMIN_EMAILS);
 
 const warnings = [];
 
-if (featureAdmin && clientAllowlist.length === 0 && serverAllowlist.length === 0) {
-  warnings.push('Flag admin attivo ma allowlist vuota (NEXT_PUBLIC_CLUBS_ADMIN_EMAILS / CLUBS_ADMIN_EMAILS).');
+if (featureAdmin && serverAllowlist.length === 0) {
+  warnings.push('Flag admin attivo ma allowlist server vuota (CLUBS_ADMIN_EMAILS).');
 }
 
 const missingOnClient = serverAllowlist.filter((email) => !clientAllowlist.includes(email));
-const missingOnServer = clientAllowlist.filter((email) => !serverAllowlist.includes(email));
-
 if (missingOnClient.length > 0) {
-  warnings.push(`Email solo lato server: ${missingOnClient.join(', ')}`);
-}
-if (missingOnServer.length > 0) {
-  warnings.push(`Email solo lato client: ${missingOnServer.join(', ')}`);
+  warnings.push(`Email allowlist non replicate lato client (facoltativo): ${missingOnClient.join(', ')}`);
 }
 
 console.log('== Flag /clubs ==');

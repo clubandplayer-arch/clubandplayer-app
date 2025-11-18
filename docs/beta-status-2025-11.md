@@ -17,12 +17,12 @@ Questo documento fotografa l'analisi corrente della codebase e i passi prioritar
 4. **Impossibile creare post su /feed**: verificare le API di creazione post, le policy RLS sulle tabelle feed/post e la coerenza con i permessi di upload degli allegati.
 
 ### Aggiornamento 06/11
-- `/clubs` torna visibile (rimuovendo il 404) e resta **read-only** di default; i controlli CRUD sono caricati solo se `NEXT_PUBLIC_FEATURE_CLUBS_ADMIN=1` e l'utente è in allowlist (`NEXT_PUBLIC_CLUBS_ADMIN_EMAILS` / `CLUBS_ADMIN_EMAILS`).
+- `/clubs` torna visibile (rimuovendo il 404) e resta **read-only** di default; i controlli CRUD sono caricati solo se `NEXT_PUBLIC_FEATURE_CLUBS_ADMIN=1` e l'utente è in allowlist server (`CLUBS_ADMIN_EMAILS`).
 - Le modali di creazione/modifica club sono ora importate in modo dinamico, per contenere il bundle iniziale quando la pagina opera in sola lettura.
 - Sentry è allineato su client/server/edge: usa `SENTRY_ENVIRONMENT` (fallback `VERCEL_ENV`) e tagga le release con `SENTRY_RELEASE` o `VERCEL_GIT_COMMIT_SHA`, filtrando errori di rumore (ResizeObserver, aborti fetch, estensioni browser).
 
 ### Da fare subito (Beta)
-- Popolare `NEXT_PUBLIC_CLUBS_ADMIN_EMAILS` e `CLUBS_ADMIN_EMAILS` con l'allowlist effettiva e decidere quando attivare `NEXT_PUBLIC_FEATURE_CLUBS_ADMIN` in staging/preview.
+- Popolare `CLUBS_ADMIN_EMAILS` con l'allowlist effettiva (opzionale replicarla in `NEXT_PUBLIC_CLUBS_ADMIN_EMAILS` per diagnostic) e decidere quando attivare `NEXT_PUBLIC_FEATURE_CLUBS_ADMIN` in staging/preview.
 - Validare che la protezione API (guard admin) sia allineata agli allowlist aggiornati e che l'esperienza guest su `/clubs` non mostri errori 401/403.
 - Pianificare l'attivazione: testare in staging con account admin/guest e confermare che le azioni CRUD restino invisibili in modalità guest.
 - Eseguire la [checklist di smoke test `/clubs` (guest vs admin)](./smoke-tests/clubs.md) a ogni deploy finché il flag resta attivo.
