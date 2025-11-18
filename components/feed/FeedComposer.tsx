@@ -52,7 +52,7 @@ export default function FeedComposer({ onPosted }: Props) {
 
       const json = await res.json().catch(() => ({}));
       if (!res.ok || !json?.ok) {
-        const msg = json?.error || 'Upload fallito';
+        const msg = json?.message || json?.error || 'Upload fallito';
         throw new Error(msg);
       }
 
