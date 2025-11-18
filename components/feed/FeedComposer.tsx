@@ -83,13 +83,11 @@ export default function FeedComposer({ onPosted }: Props) {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ content: text.trim(), media_url: media?.url, media_type: media?.kind }),
       });
-      if (!res.ok) {
-        const t = await res.text().catch(() => '');
-        let msg = 'Impossibile pubblicare';
-        try {
-          const j = JSON.parse(t);
-          msg = j?.error || msg;
-        } catch {}
+
+      const json = await res.json().catch(() => null as any);
+      if (!res.ok || !json?.ok) {
+        const msg =
+          json?.message || json?.error || 'Impossibile pubblicare il post: riprova più tardi.';
         throw new Error(msg);
       }
       setText('');
