@@ -1,40 +1,18 @@
 import * as Sentry from '@sentry/nextjs';
-
-const environment =
-  process.env.SENTRY_ENVIRONMENT ||
-  process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT ||
-  process.env.VERCEL_ENV ||
-  process.env.NODE_ENV ||
-  'development';
-
-const release =
-  process.env.NEXT_PUBLIC_SENTRY_RELEASE ||
-  process.env.SENTRY_RELEASE ||
-  process.env.VERCEL_GIT_COMMIT_SHA;
-
-const ignoreErrors = [
-  // Rumore comune sui browser moderni: non impatta l'utente
-  /ResizeObserver loop limit exceeded/i,
-  /ResizeObserver loop completed with undelivered notifications/i,
-  // Errori di rete transitori o abort espliciti
-  /NetworkError when attempting to fetch resource/i,
-  /AbortError: The user aborted a request/i,
-];
-
-const denyUrls = [
-  // Estensioni browser note per generare errori non riproducibili
-  /extensions\//i,
-  /^chrome-extension:/i,
-  /^moz-extension:/i,
-];
+import {
+  denyUrls,
+  ignoreErrors,
+  sentryEnvironment,
+  sentryRelease,
+} from './lib/sentry/config';
 
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN || undefined,
   enabled: !!process.env.NEXT_PUBLIC_SENTRY_DSN,
 
   // 👇 Etichetta corretta in Sentry (production / preview / development)
-  environment,
-  release,
+  environment: sentryEnvironment,
+  release: sentryRelease,
 
   // Riduce il rumore più comune lato client
   ignoreErrors,

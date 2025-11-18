@@ -108,6 +108,7 @@
 ## Passi rapidi verso la **Beta**
 - **Sentry**: imposta `SENTRY_ENVIRONMENT` / `NEXT_PUBLIC_SENTRY_ENVIRONMENT` e `SENTRY_RELEASE` / `NEXT_PUBLIC_SENTRY_RELEASE` (tipicamente `VERCEL_GIT_COMMIT_SHA`) per distinguere ambienti e release in dashboard.
   - Usa `node scripts/check-sentry-config.mjs` per validare rapidamente DSN, environment e release prima dei deploy.
+  - Se non specifichi la release, Sentry userà automaticamente `VERCEL_GIT_COMMIT_SHA` (anche in edge) così gli errori sono già collegati al commit.
   - Il client ignora automaticamente errori rumorosi noti (es. `ResizeObserver loop limit exceeded`, abort di fetch) per mantenere la dashboard più pulita, inclusi quelli generati da estensioni browser comuni.
 - **Email reali**: configura `RESEND_API_KEY`, `RESEND_FROM`, `BRAND_REPLY_TO`, disattiva `NOOP_EMAILS` e valida con `node scripts/check-email-config.mjs` (le rotte `/api/notify-email` e `/api/notifications/send` rispondono 500 se la configurazione è assente).
 - **Storage feed**: assicurati che il bucket `posts` esista e che le policy di upload/lettura siano applicate (vedi note in roadmap post-MVP).
