@@ -1,6 +1,7 @@
 // app/api/feed/posts/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
+import { createClient } from '@supabase/supabase-js';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 
@@ -17,6 +18,12 @@ function normRole(v: unknown): Role | null {
   if (s === 'club') return 'club';
   if (s === 'athlete') return 'athlete';
   return null;
+}
+
+function getSupabaseAnonServer() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  return createClient(url, anon, { auth: { persistSession: false } });
 }
 
 function normalizeRow(row: any) {
