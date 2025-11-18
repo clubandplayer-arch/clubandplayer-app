@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { getSupabaseAdminClientOrNull, ensureBucket } from '@/lib/supabase/admin';
-import { getSupabaseServerClient } from '@/lib/supabase/server';
-import type { SupabaseClient } from '@supabase/supabase-js';
 
 export const runtime = 'nodejs';
 
@@ -21,18 +19,13 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
   const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
   const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
-  const userClient = await getSupabaseServerClient().catch(() => null);
   const adminClient = getSupabaseAdminClientOrNull();
-  const client: SupabaseClient | null = adminClient ?? userClient;
+  if (!adminClient) return jsonError('service_role_missing', 500);
 
-  if (!client) {
-    return jsonError('supabase_unavailable', 500);
-  }
-
-  const supabase: SupabaseClient = client;
+  await ensureBucket(BUCKET, true).catch(() => null);
 
   async function uploadOnce() {
-    return supabase.storage.from(BUCKET).upload(path, file, {
+    return adminClient.storage.from(BUCKET).upload(path, file, {
       cacheControl: '3600',
       upsert: false,
       contentType: file.type || undefined,
@@ -52,21 +45,14 @@ export const POST = withAuth(async (req: NextRequest, { user }) => {
     return jsonError(uploadError.message || 'storage_upload_failed', 400);
   }
 
-  const { data: urlData } = client.storage.from(BUCKET).getPublicUrl(path);
+  const { data: urlData } = adminClient.storage.from(BUCKET).getPublicUrl(path);
   const publicUrl = urlData?.publicUrl || null;
   if (!publicUrl) return jsonError('public_url_unavailable', 400);
 
-  let { error: updErr } = await client
+  const { error: updErr } = await adminClient
     .from('profiles')
     .update({ avatar_url: publicUrl })
     .eq('user_id', user.id);
-
-  if (updErr && adminClient) {
-    ({ error: updErr } = await adminClient
-      .from('profiles')
-      .update({ avatar_url: publicUrl })
-      .eq('user_id', user.id));
-  }
 
   if (updErr) return jsonError(updErr.message, 400);
 
