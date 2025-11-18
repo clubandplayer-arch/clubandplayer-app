@@ -20,6 +20,7 @@ Questo documento fotografa l'analisi corrente della codebase e i passi prioritar
 - `/clubs` torna visibile (rimuovendo il 404) e resta **read-only** di default; i controlli CRUD sono caricati solo se `NEXT_PUBLIC_FEATURE_CLUBS_ADMIN=1` e l'utente è in allowlist server (`CLUBS_ADMIN_EMAILS`).
 - Le modali di creazione/modifica club sono ora importate in modo dinamico, per contenere il bundle iniziale quando la pagina opera in sola lettura.
 - Sentry è allineato su client/server/edge: usa `SENTRY_ENVIRONMENT` (fallback `VERCEL_ENV`) e tagga le release con `SENTRY_RELEASE` o `VERCEL_GIT_COMMIT_SHA`, filtrando errori di rumore (ResizeObserver, aborti fetch, estensioni browser).
+- `/search/club` è collegata a `/api/clubs` con filtri geo (città/provincia/regione/paese), paginazione server e ordinamento su `created_at` per usare gli indici `pg_trgm`/`idx_clubs_created_at`.
 
 ### Da fare subito (Beta)
 - Popolare `CLUBS_ADMIN_EMAILS` con l'allowlist effettiva (opzionale replicarla in `NEXT_PUBLIC_CLUBS_ADMIN_EMAILS` per diagnostic) e decidere quando attivare `NEXT_PUBLIC_FEATURE_CLUBS_ADMIN` in staging/preview.
@@ -40,7 +41,7 @@ Questo documento fotografa l'analisi corrente della codebase e i passi prioritar
 2. **Tuning Sentry (PM-07)**: impostare `SENTRY_ENVIRONMENT` / `NEXT_PUBLIC_SENTRY_ENVIRONMENT` e, se possibile, taggare le release con `VERCEL_GIT_COMMIT_SHA`; definire regole di ignore per errori rumorosi.
 3. **Snellimento bundle /clubs read-only (PM-02)**: estrarre i componenti di editing dietro `NEXT_PUBLIC_FEATURE_CLUBS_READONLY` o simili (dynamic import/code-split) e verificare che la dimensione “First Load JS” non cresca.
 4. **/clubs edit dietro flag admin (PM-04)**: introdurre la feature flag `NEXT_PUBLIC_FEATURE_CLUBS_ADMIN` con allowlist server `CLUBS_ADMIN_EMAILS`, mostrando i controlli CRUD solo agli admin e proteggendo le API.
-5. **Filtri ricerca club (PM-05)**: completare la UI `/search/club` collegandola a `/api/clubs` con filtri geo, usando gli indici `pg_trgm` e l'indice `created_at` già previsti.
+5. **Filtri ricerca club (PM-05)**: completare la UI `/search/club` collegandola a `/api/clubs` con filtri geo, usando gli indici `pg_trgm` e l'indice `created_at` già previsti. ✅ Collegamento e paginazione completati.
 6. **Security Supabase (PM-06)**: verificare password policy (≥12 caratteri, numeri e simboli), scadenza OTP 900–1800s e rivedere le policy RLS su `profiles`, `clubs` (WITH CHECK coerenti).
 7. **CI/CD quasi-bloccante (PM-08)**: pubblicare gli artifact degli smoke test e valutare l'opzione `SMOKE_ENFORCE` per rendere le PR critiche più robuste; considerare reintroduzione Playwright solo se necessario.
 8. **Docs & onboarding dev (PM-09)**: mantenere README/roadmap allineati e aggiungere troubleshooting per variabili Vercel, auth callback, storage e Sentry; garantire setup <15 minuti.
