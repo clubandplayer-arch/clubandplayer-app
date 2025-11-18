@@ -2,7 +2,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
-import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
+import { getSupabaseAdminClient, getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
 
@@ -158,18 +158,13 @@ export async function POST(req: NextRequest) {
     const mediaTypeRaw = (body as any)?.media_type ?? null;
     const text = rawText.trim();
     const mediaUrl = typeof mediaUrlRaw === 'string' && mediaUrlRaw.trim() ? mediaUrlRaw.trim() : null;
-    const mediaType = mediaUrl
-      ? (mediaTypeRaw === 'video' ? 'video' : 'image')
-      : null;
+    const mediaType = mediaUrl ? (mediaTypeRaw === 'video' ? 'video' : 'image') : null;
 
     if (!text && !mediaUrl) {
       return NextResponse.json({ ok: false, error: 'empty' }, { status: 400 });
     }
     if (text.length > MAX_CHARS) {
-      return NextResponse.json(
-        { ok: false, error: 'too_long', limit: MAX_CHARS },
-        { status: 400 }
-      );
+      return NextResponse.json({ ok: false, error: 'too_long', limit: MAX_CHARS }, { status: 400 });
     }
 
     const jar = await cookies();
@@ -184,11 +179,20 @@ export async function POST(req: NextRequest) {
     }
 
     const supabase = await getSupabaseServerClient();
-    const admin = getSupabaseAdminClientOrNull();
-    const clientForInsert = admin ?? supabase;
     const { data: auth, error: authErr } = await supabase.auth.getUser();
     if (authErr || !auth?.user) {
       return NextResponse.json({ ok: false, error: 'not_authenticated' }, { status: 401 });
+    }
+
+    // Usa sempre il client admin per bypassare RLS e colonne legacy: richiede SUPABASE_SERVICE_ROLE_KEY.
+    let admin: ReturnType<typeof getSupabaseAdminClient> | null = null;
+    try {
+      admin = getSupabaseAdminClient();
+    } catch (err: any) {
+      return NextResponse.json(
+        { ok: false, error: 'service_role_missing', message: err?.message || 'Configura SUPABASE_SERVICE_ROLE_KEY.' },
+        { status: 500 }
+      );
     }
 
     const insertPayload: Record<string, any> = { content: text, author_id: auth.user.id };
@@ -196,7 +200,7 @@ export async function POST(req: NextRequest) {
     if (mediaType) insertPayload.media_type = mediaType;
 
     const runInsert = (payload: Record<string, any>, select: string) =>
-      clientForInsert.from('posts').insert(payload).select(select).single();
+      admin!.from('posts').insert(payload).select(select).single();
 
     let data: any = null;
     let error: any = null;
@@ -208,46 +212,11 @@ export async function POST(req: NextRequest) {
       ({ data, error } = await runInsert(fallbackPayload, 'id, author_id, content, created_at'));
     }
 
-    // Fallback amministrativo se le policy RLS bloccano l'inserimento con il token utente
-    if (error && /row-level security/i.test(error.message || '') && !admin) {
-      const adminFallback = getSupabaseAdminClientOrNull();
-      if (adminFallback) {
-        const adminPayload = { ...insertPayload };
-        if (!adminPayload.content && mediaUrl) adminPayload.content = `${text}\n${mediaUrl}`;
-        const { data: adminData, error: adminErr } = await adminFallback
-          .from('posts')
-          .insert(adminPayload)
-          .select('id, author_id, content, created_at, media_url, media_type')
-          .single();
-        if (!adminErr) {
-          data = adminData;
-          error = null;
-        }
-      }
-    }
-
-    if (error && /row-level security/i.test(error.message || '') && !getSupabaseAdminClientOrNull()) {
-      return NextResponse.json(
-        { ok: false, error: 'rls_blocked', message: 'Configura SUPABASE_SERVICE_ROLE_KEY o applica le policy RLS sui post.' },
-        { status: 403 }
-      );
-    }
-
     if (error) {
-      return NextResponse.json(
-        { ok: false, error: 'insert_failed', details: error.message },
-        { status: 400 }
-      );
+      return NextResponse.json({ ok: false, error: 'insert_failed', details: error.message }, { status: 400 });
     }
 
-    const res = NextResponse.json(
-      {
-        ok: true,
-        item: normalizeRow(data),
-      },
-      { status: 201 }
-    );
-
+    const res = NextResponse.json({ ok: true, item: normalizeRow(data) }, { status: 201 });
     res.cookies.set(LAST_POST_TS_COOKIE, String(now), {
       httpOnly: false,
       path: '/',
@@ -255,7 +224,7 @@ export async function POST(req: NextRequest) {
       maxAge: 60 * 60 * 24 * 30,
     });
     return res;
-  } catch {
-    return NextResponse.json({ ok: false, error: 'invalid_request' }, { status: 400 });
+  } catch (err: any) {
+    return NextResponse.json({ ok: false, error: 'invalid_request', message: err?.message }, { status: 400 });
   }
 }

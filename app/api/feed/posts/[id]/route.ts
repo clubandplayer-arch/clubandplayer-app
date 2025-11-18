@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
-import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
+import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
 
@@ -18,13 +18,10 @@ function normalizeRow(row: any) {
   };
 }
 
-async function getPostOwner(supabase: any, id: string) {
-  const { data, error } = await supabase.from('posts').select('id, author_id').eq('id', id).maybeSingle();
-  if (error) return { data: null, error };
-  return { data, error: null };
-}
+const SELECT_FULL = 'id, author_id, content, created_at, media_url, media_type';
+const SELECT_BASE = 'id, author_id, content, created_at';
 
-export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
+export const PATCH = withAuth(async (req: NextRequest, { user }) => {
   const id = req.nextUrl.pathname.split('/').pop();
   if (!id) return jsonError('Missing id', 400);
 
@@ -32,74 +29,64 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   const text = typeof body?.content === 'string' ? body.content.trim() : '';
   if (!text) return jsonError('Content is required', 400);
 
-  const { data: existing, error: fetchErr } = await getPostOwner(supabase, id);
-
-  if (fetchErr && !existing) {
-    const admin = getSupabaseAdminClientOrNull();
-    if (admin) {
-      const { data: adminRow } = await admin.from('posts').select('id, author_id').eq('id', id).maybeSingle();
-      if (!adminRow) return jsonError('Not found', 404);
-      if (adminRow.author_id !== user.id) return jsonError('Forbidden', 403);
-      const { data: updated, error: adminUpdateErr } = await admin
-        .from('posts')
-        .update({ content: text })
-        .eq('id', id)
-        .select('id, author_id, content, created_at, media_url, media_type')
-        .maybeSingle();
-      if (adminUpdateErr || !updated) return jsonError(adminUpdateErr?.message || 'Update failed', 400);
-      return NextResponse.json({ ok: true, item: normalizeRow(updated) });
-    }
-    return jsonError('Not found', 404);
+  let admin;
+  try {
+    admin = getSupabaseAdminClient();
+  } catch (err: any) {
+    return jsonError(err?.message || 'Service role missing', 500);
   }
 
-  if (!existing) return jsonError('Not found', 404);
+  const { data: existing, error: fetchErr } = await admin
+    .from('posts')
+    .select('id, author_id')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (fetchErr || !existing) return jsonError('Not found', 404);
   if (existing.author_id !== user.id) return jsonError('Forbidden', 403);
 
   const runUpdate = async (select: string) =>
-    supabase
+    admin
       .from('posts')
       .update({ content: text })
       .eq('id', id)
-      .eq('author_id', user.id)
       .select(select)
       .maybeSingle();
 
   let updated: any = null;
   let updateError: any = null;
 
-  ({ data: updated, error: updateError } = await runUpdate('id, author_id, content, created_at, media_url, media_type'));
+  ({ data: updated, error: updateError } = await runUpdate(SELECT_FULL));
 
   if (updateError && /column .* does not exist/i.test(updateError.message || '')) {
-    ({ data: updated, error: updateError } = await runUpdate('id, author_id, content, created_at'));
+    ({ data: updated, error: updateError } = await runUpdate(SELECT_BASE));
   }
 
   if (updateError || !updated) return jsonError(updateError?.message || 'Update failed', 400);
   return NextResponse.json({ ok: true, item: normalizeRow(updated) });
 });
 
-export const DELETE = withAuth(async (req: NextRequest, { supabase, user }) => {
+export const DELETE = withAuth(async (req: NextRequest, { user }) => {
   const id = req.nextUrl.pathname.split('/').pop();
   if (!id) return jsonError('Missing id', 400);
 
-  const { data: existing, error: fetchErr } = await getPostOwner(supabase, id);
-
-  if (fetchErr && !existing) {
-    const admin = getSupabaseAdminClientOrNull();
-    if (admin) {
-      const { data: adminRow } = await admin.from('posts').select('id, author_id').eq('id', id).maybeSingle();
-      if (!adminRow) return jsonError('Not found', 404);
-      if (adminRow.author_id !== user.id) return jsonError('Forbidden', 403);
-      const { error: adminErr } = await admin.from('posts').delete().eq('id', id);
-      if (adminErr) return jsonError(adminErr.message, 400);
-      return NextResponse.json({ ok: true });
-    }
-    return jsonError('Not found', 404);
+  let admin;
+  try {
+    admin = getSupabaseAdminClient();
+  } catch (err: any) {
+    return jsonError(err?.message || 'Service role missing', 500);
   }
+
+  const { data: existing } = await admin
+    .from('posts')
+    .select('id, author_id')
+    .eq('id', id)
+    .maybeSingle();
 
   if (!existing) return jsonError('Not found', 404);
   if (existing.author_id !== user.id) return jsonError('Forbidden', 403);
 
-  const { error } = await supabase.from('posts').delete().eq('id', id).eq('author_id', user.id);
+  const { error } = await admin.from('posts').delete().eq('id', id);
   if (error) return jsonError(error.message, 400);
   return NextResponse.json({ ok: true });
 });
