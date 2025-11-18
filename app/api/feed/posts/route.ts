@@ -179,22 +179,20 @@ export async function POST(req: NextRequest) {
     }
 
     const supabase = await getSupabaseServerClient();
+    const admin = getSupabaseAdminClientOrNull();
+    const clientForInsert = admin ?? supabase;
+
     const { data: auth, error: authErr } = await supabase.auth.getUser();
     if (authErr || !auth?.user) {
       return NextResponse.json({ ok: false, error: 'not_authenticated' }, { status: 401 });
-    }
-
-    const admin = getSupabaseAdminClientOrNull();
-    if (!admin) {
-      return NextResponse.json({ ok: false, error: 'service_role_missing' }, { status: 500 });
     }
 
     const insertPayload: Record<string, any> = { content: text, author_id: auth.user.id };
     if (mediaUrl) insertPayload.media_url = mediaUrl;
     if (mediaType) insertPayload.media_type = mediaType;
 
-    const runInsert = async (payload: Record<string, any>, select: string) =>
-      admin.from('posts').insert(payload).select(select).single();
+    const runInsert = (payload: Record<string, any>, select: string) =>
+      clientForInsert.from('posts').insert(payload).select(select).single();
 
     let data: any = null;
     let error: any = null;
@@ -206,11 +204,38 @@ export async function POST(req: NextRequest) {
       ({ data, error } = await runInsert(fallbackPayload, 'id, author_id, content, created_at'));
     }
 
-    if (error) {
-      return NextResponse.json({ ok: false, error: 'insert_failed', details: error.message }, { status: 400 });
+    // Fallback amministrativo se le policy RLS bloccano l'inserimento con il token utente
+    if (error && /row-level security/i.test(error.message || '') && !admin) {
+      const adminFallback = getSupabaseAdminClientOrNull();
+      if (adminFallback) {
+        const adminPayload = { ...insertPayload };
+        if (!adminPayload.content && mediaUrl) adminPayload.content = `${text}\n${mediaUrl}`;
+        const { data: adminData, error: adminErr } = await adminFallback
+          .from('posts')
+          .insert(adminPayload)
+          .select('id, author_id, content, created_at, media_url, media_type')
+          .single();
+        if (!adminErr) {
+          data = adminData;
+          error = null;
+        }
+      }
     }
 
-    const res = NextResponse.json({ ok: true, item: normalizeRow(data) }, { status: 201 });
+    if (error) {
+      return NextResponse.json(
+        { ok: false, error: 'insert_failed', details: error.message },
+        { status: 400 }
+      );
+    }
+
+    const res = NextResponse.json(
+      {
+        ok: true,
+        item: normalizeRow(data),
+      },
+      { status: 201 }
+    );
     res.cookies.set(LAST_POST_TS_COOKIE, String(now), {
       httpOnly: false,
       path: '/',
