@@ -162,9 +162,13 @@ function isMissingMediaColumns(err: any) {
 
 function isRlsError(err: any) {
   if (!err) return false;
-  const msg = (err.message || '').toLowerCase();
+  const parts = [err.message, err.details, err.hint]
+    .filter(Boolean)
+    .map((v) => v.toString().toLowerCase());
+  const msg = parts.join(' ');
   return (
     err.code === '42501' ||
+    err.code === 'PGRST302' ||
     msg.includes('row-level security') ||
     msg.includes('permission denied') ||
     msg.includes('new row violates')
