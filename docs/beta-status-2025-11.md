@@ -37,12 +37,12 @@ Questo documento fotografa l'analisi corrente della codebase e i passi prioritar
 - Aggiornare `.env.local` partendo da `docs/env.sample` e riflettere le stesse variabili su Vercel (Production/Preview) per mantenere l'onboarding dev sotto i 15 minuti.
 
 ## Prossimi passi prioritari verso la Beta
-1. **Email reali (PM-01)**: configurare Resend (`RESEND_API_KEY`, `RESEND_FROM`, `BRAND_REPLY_TO`) e disattivare il guard NOOP (con `NOOP_EMAILS=0`), poi validare le rotte `/api/notify-email` e `/api/notifications/send` su un ambiente protetto.
-2. **Tuning Sentry (PM-07)**: impostare `SENTRY_ENVIRONMENT` / `NEXT_PUBLIC_SENTRY_ENVIRONMENT` e, se possibile, taggare le release con `VERCEL_GIT_COMMIT_SHA`; definire regole di ignore per errori rumorosi.
-3. **Snellimento bundle /clubs read-only (PM-02)**: estrarre i componenti di editing dietro `NEXT_PUBLIC_FEATURE_CLUBS_READONLY` o simili (dynamic import/code-split) e verificare che la dimensione “First Load JS” non cresca.
-4. **/clubs edit dietro flag admin (PM-04)**: introdurre la feature flag `NEXT_PUBLIC_FEATURE_CLUBS_ADMIN` con allowlist server `CLUBS_ADMIN_EMAILS`, mostrando i controlli CRUD solo agli admin e proteggendo le API.
-5. **Filtri ricerca club (PM-05)**: completare la UI `/search/club` collegandola a `/api/clubs` con filtri geo, usando gli indici `pg_trgm` e l'indice `created_at` già previsti. ✅ Collegamento e paginazione completati.
-6. **Security Supabase (PM-06)**: verificare password policy (≥12 caratteri, numeri e simboli), scadenza OTP 900–1800s e rivedere le policy RLS su `profiles`, `clubs` (WITH CHECK coerenti).
+1. ✅ **Email reali (PM-01)**: configurazione Resend obbligatoria (`RESEND_API_KEY`, `RESEND_FROM`, `BRAND_REPLY_TO`) e NOOP disattivato; gli endpoint `/api/notify-email` e `/api/notifications/send` rifiutano la richiesta se l'env non è completa.
+2. ✅ **Tuning Sentry (PM-07)**: client/server/edge condividono environment (`SENTRY_ENVIRONMENT` / `NEXT_PUBLIC_SENTRY_ENVIRONMENT`) e release (`SENTRY_RELEASE` o `VERCEL_GIT_COMMIT_SHA`) con filtri anti-rumore dedicati.
+3. ✅ **Snellimento bundle /clubs read-only (PM-02)**: i componenti CRUD sono caricati dinamicamente solo quando i flag consentono la modifica, mantenendo invariato il “First Load JS”.
+4. ✅ **/clubs edit dietro flag admin (PM-04)**: flag `NEXT_PUBLIC_FEATURE_CLUBS_ADMIN` e allowlist `CLUBS_ADMIN_EMAILS` governano UI e API, esponendo i controlli CRUD solo agli utenti autorizzati.
+5. ✅ **Filtri ricerca club (PM-05)**: la UI `/search/club` usa `/api/clubs` con filtri geo e ricerca testuale indicizzata (`pg_trgm`, `idx_clubs_created_at`).
+6. ✅ **Security Supabase (PM-06)**: password policy portata a ≥12 caratteri con numeri/simboli, OTP expiry fissato a 900s e policy RLS su `profiles`/`clubs` riallineate con `WITH CHECK` coerenti.
 7. **CI/CD quasi-bloccante (PM-08)**: pubblicare gli artifact degli smoke test e valutare l'opzione `SMOKE_ENFORCE` per rendere le PR critiche più robuste; considerare reintroduzione Playwright solo se necessario.
 8. **Docs & onboarding dev (PM-09)**: mantenere README/roadmap allineati e aggiungere troubleshooting per variabili Vercel, auth callback, storage e Sentry; garantire setup <15 minuti.
 9. **Performance, Legal, Analytics (PM-10/11/12)**: ottimizzare next/image e caching, preparare testi privacy/termini e scegliere una soluzione analytics privacy-first con rispetto DNT.

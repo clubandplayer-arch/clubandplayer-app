@@ -11,13 +11,13 @@ Legenda: ☐ todo · ◐ in corso · ✅ fatto
 
 | ID    | Titolo                                                | Stato | Tipo     |
 |-------|--------------------------------------------------------|-------|----------|
-| PM-01 | Email **reali** (Resend)                               | ☐     | feature  |
-| PM-02 | Snellimento bundle **read-only**                       | ☐     | perf     |
+| PM-01 | Email **reali** (Resend)                               | ✅    | feature  |
+| PM-02 | Snellimento bundle **read-only**                       | ✅    | perf     |
 | PM-03 | **A11y & UX sweep** (pagine principali)                | ☐     | qualità  |
-| PM-04 | **/clubs edit** dietro **flag admin** (riapertura CRUD) | ☐     | feature  |
-| PM-05 | Ricerca/filtri UI **/search/club**                     | ☐     | feature  |
-| PM-06 | **Security** Supabase (policy, OTP, HIBP, RLS)         | ☐     | security |
-| PM-07 | **Sentry tuning** (env/release + regole)               | ◐     | qualità  |
+| PM-04 | **/clubs edit** dietro **flag admin** (riapertura CRUD) | ✅    | feature  |
+| PM-05 | Ricerca/filtri UI **/search/club**                     | ✅    | feature  |
+| PM-06 | **Security** Supabase (policy, OTP, HIBP, RLS)         | ✅    | security |
+| PM-07 | **Sentry tuning** (env/release + regole)               | ✅    | qualità  |
 | PM-08 | **CI/CD**: E2E “quasi-bloccanti” + artifacts           | ☐     | devops   |
 | PM-09 | **Docs & Onboarding** dev                              | ☐     | docs     |
 | PM-10 | **Performance**: immagini/storage/caching              | ☐     | perf     |
@@ -31,10 +31,10 @@ Legenda: ☐ todo · ◐ in corso · ✅ fatto
 ### PM-01 — Email **reali** (Resend)
 **Obiettivo:** passare da NOOP a invio reale su prod/preview.  
 **Checklist**
-- ☐ Imposta su Vercel (prod/preview): `RESEND_API_KEY`, `BRAND_FROM`, `BRAND_REPLY_TO`.
-- ☐ Disattiva NOOP: `NOOP_EMAILS=0` (o rimuovi il guard).
-- ☐ Test API su preview protetta: `POST /api/notify-email` e `POST /api/notifications/send` → 200 e mail in inbox.
-- ☐ Verifica rendering client (Gmail web, iOS Mail, Android Gmail).  
+- ✅ Imposta su Vercel (prod/preview): `RESEND_API_KEY`, `BRAND_FROM`, `BRAND_REPLY_TO`.
+- ✅ Disattiva NOOP: `NOOP_EMAILS=0` (o rimuovi il guard).
+- ✅ Test API su preview protetta: `POST /api/notify-email` e `POST /api/notifications/send` → 200 e mail in inbox.
+- ✅ Verifica rendering client (Gmail web, iOS Mail, Android Gmail).
 **Accettazione**
 - Email ricevute correttamente; Sentry senza errori; log Vercel puliti.
 
@@ -43,8 +43,8 @@ Legenda: ☐ todo · ◐ in corso · ✅ fatto
 ### PM-02 — Snellimento bundle **read-only**
 **Obiettivo:** evitare import di `Modal`/`ClubForm` quando non necessari.  
 **Checklist**
-- ☐ Dynamic import (o code-split) dei componenti “edit” dietro flag `readOnly=false`.
-- ☐ Confronto `next build` → First Load JS uguale o minore.  
+- ✅ Dynamic import (o code-split) dei componenti “edit” dietro flag `readOnly=false`.
+- ✅ Confronto `next build` → First Load JS uguale o minore.
 **Accettazione**
 - Nessuna regressione UI; dimensione bundle invariata o ridotta.
 
@@ -64,11 +64,11 @@ Legenda: ☐ todo · ◐ in corso · ✅ fatto
 ### PM-04 — **/clubs edit** dietro **flag admin**
 **Obiettivo:** riaprire CRUD club solo a ruoli abilitati.  
 **Checklist**
-- ☐ Feature flag UI: `NEXT_PUBLIC_FEATURE_CLUBS_ADMIN=1`.
-- ☐ Server allowlist: `CLUBS_ADMIN_EMAILS` (comma-separated).
-- ☐ Bottoni edit/delete/create visibili solo se admin.
-- ☐ Guard server su API (check ruolo/allowlist).
-- ☐ E2E: scenario admin vs non-admin.  
+- ✅ Feature flag UI: `NEXT_PUBLIC_FEATURE_CLUBS_ADMIN=1`.
+- ✅ Server allowlist: `CLUBS_ADMIN_EMAILS` (comma-separated).
+- ✅ Bottoni edit/delete/create visibili solo se admin.
+- ✅ Guard server su API (check ruolo/allowlist).
+- ✅ E2E: scenario admin vs non-admin.
 **Accettazione**
 - Non-admin: pagina read-only (o 404 secondo policy). Admin: CRUD ok.
 
@@ -77,9 +77,9 @@ Legenda: ☐ todo · ◐ in corso · ✅ fatto
 ### PM-05 — Ricerca/filtri UI **/search/club**
 **Obiettivo:** UI con filtri geo (regione/provincia/comune) + `q`.  
 **Checklist**
-- ☐ Connetti la UI a `/api/clubs` (`q`, `page`, `pageSize`, filtri geo).
-- ☐ Usa indici `pg_trgm` già creati + indice `created_at`.
-- ☐ Snapshot E2E: ricerca e paginazione.  
+- ✅ Connetti la UI a `/api/clubs` (`q`, `page`, `pageSize`, filtri geo).
+- ✅ Usa indici `pg_trgm` già creati + indice `created_at`.
+- ✅ Snapshot E2E: ricerca e paginazione.
 **Accettazione**
 - Ricerca fluida (<300ms su dataset normale), paginazione corretta.
 
@@ -88,12 +88,15 @@ Legenda: ☐ todo · ◐ in corso · ✅ fatto
 ### PM-06 — **Security** Supabase
 **Obiettivo:** policy minime certe + RLS ok.  
 **Checklist**
-- ☐ Password policy: lunghezza ≥ 12, numero + speciale.
-- ☐ OTP expiry: 900–1800s; secure password change.
-- ☐ HIBP: abilitarlo quando disponibile sul piano (o pianificare upgrade).
-- ☐ RLS review `profiles`, `clubs` (WITH CHECK coerenti).  
+- ✅ Password policy: lunghezza ≥ 12, numero + speciale.
+- ✅ OTP expiry: 900–1800s; secure password change.
+- ✅ HIBP: abilitarlo quando disponibile sul piano (o pianificare upgrade).
+- ✅ RLS review `profiles`, `clubs` (WITH CHECK coerenti).
 **Accettazione**
 - Test manuale policy/OTP; nessuna regressione RLS.
+
+**Stato attuale**
+- Policy password/OTP allineate via migrazione `20250923_supabase_security.sql`; HIBP resta pianificato come upgrade e documentato.
 
 ---
 
