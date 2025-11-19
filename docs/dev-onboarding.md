@@ -13,6 +13,7 @@ Questa guida raccoglie gli step minimi per avviare il progetto in meno di 15 min
    ```
 3. **Variabili chiave**
    - Copia su `.env.local` e su Vercel > Project Settings > Environment Variables gli stessi valori per Supabase, Sentry, Resend e feature flag.
+   - Esegui `vercel env pull .env.vercel.preview --environment preview` e `vercel env pull .env.vercel.production --environment production`, quindi lancia `node scripts/check-vercel-env.mjs --local=.env.local --preview=.env.vercel.preview --production=.env.vercel.production` per verificare che i tre ambienti siano allineati.
    - Verifica con `pnpm dev` che il server parta su `http://127.0.0.1:3000`.
 4. **Smoke test**
    - Lancia `pnpm test:e2e` (richiede ~1 minuto) per avere una baseline dello stato dell'app.
@@ -25,8 +26,9 @@ Questa guida raccoglie gli step minimi per avviare il progetto in meno di 15 min
 - **Sintomi**: build preview che falliscono con `NEXT_PUBLIC_*` mancanti, client che usa URL sbagliati.
 - **Check**:
   1. Confronta `.env.local` e `docs/env.sample` con le sezioni "Production" / "Preview" di Vercel.
-  2. Verifica `NEXT_PUBLIC_BASE_URL` e `NEXT_PUBLIC_SUPABASE_URL` coincidano con l'host effettivo del deploy.
-  3. Esegui `node scripts/check-feed-config.mjs` e `node scripts/check-sentry-config.mjs` per individuare variabili mancanti.
+  2. Genera i file `.env.vercel.preview` / `.env.vercel.production` con `vercel env pull` e lancia `node scripts/check-vercel-env.mjs --local=.env.local --preview=.env.vercel.preview --production=.env.vercel.production` per ottenere la lista delle variabili mancanti.
+  3. Verifica `NEXT_PUBLIC_BASE_URL` e `NEXT_PUBLIC_SUPABASE_URL` coincidano con l'host effettivo del deploy.
+  4. Esegui `node scripts/check-feed-config.mjs` e `node scripts/check-sentry-config.mjs` per ulteriori variabili mancanti.
 - **Fix**: aggiorna le environment su Vercel e riesegui `vercel env pull` se usi i file `.vercel/env.*`.
 
 ### Callback Supabase/Auth rotte su URL errati

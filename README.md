@@ -68,6 +68,7 @@
 | `node scripts/check-feed-config.mjs` | Verifica che il bucket Storage `posts` e la tabella `posts` siano accessibili con la chiave service-role. |
 | `node scripts/check-email-config.mjs` | Controlla che le variabili Resend siano presenti e che `NOOP_EMAILS` sia disattivato prima di inviare email reali. |
 | `node scripts/check-sentry-config.mjs` | Verifica DSN, environment e release Sentry (server/client) prima di abilitare il monitoraggio. |
+| `node scripts/check-vercel-env.mjs --local=.env.local --preview=.env.vercel.preview --production=.env.vercel.production` | Confronta `.env.local` con i file generati da `vercel env pull` (Preview/Production) e segnala variabili mancanti per Supabase, Resend, Sentry e analytics. |
 
 ## Struttura repository
 - `app/` — Route Next.js (pagine, layout, API handlers).
@@ -103,7 +104,7 @@
 - Per rendere gli smoke test "quasi-bloccanti" sulle PR, definisci la variabile di repository `SMOKE_ENFORCE=true`. Se i test falliscono e la PR modifica file che combaciano con `app/**` o i pattern configurati in `SMOKE_ENFORCE_PATHS`, il job verrà segnato come failed. I branch `main` e `release/*` li considerano automaticamente obbligatori.
 
 ## Troubleshooting onboarding rapido
-- **Variabili Vercel**: usa `docs/env.sample` come fonte e verifica che `NEXT_PUBLIC_BASE_URL`, Supabase e Sentry coincidano fra `.env.local` e le sezioni Production/Preview di Vercel; gli script `node scripts/check-feed-config.mjs` e `node scripts/check-sentry-config.mjs` evidenziano variabili mancanti.
+- **Variabili Vercel**: copia `docs/env.sample` in `.env.local`, poi genera `.env.vercel.preview` / `.env.vercel.production` con `vercel env pull`. Il comando `node scripts/check-vercel-env.mjs --local=.env.local --preview=.env.vercel.preview --production=.env.vercel.production` evidenzia differenze o variabili mancanti per Supabase, Resend, Sentry e analytics.
 - **Auth callback Supabase**: assicurati che in Supabase > Authentication > URL Settings siano presenti sia il dominio production sia `http://127.0.0.1:3000` / `http://localhost:3000`, e che `NEXT_PUBLIC_BASE_URL` punti allo stesso host.
 - **Storage feed**: controlla che il bucket `posts` esista e applichi le policy RLS previste; il comando `node scripts/check-feed-config.mjs` conferma bucket e permessi.
 - **Sentry**: popola `SENTRY_DSN`/`NEXT_PUBLIC_SENTRY_DSN`, imposta `SENTRY_ENVIRONMENT` e lascia che `VERCEL_GIT_COMMIT_SHA` (o `SENTRY_RELEASE`) tagghi la release; verifica con `node scripts/check-sentry-config.mjs` prima del deploy.
@@ -142,6 +143,7 @@
 - `ROADMAP.md` — Stato MVP e passaggi futuri.
 - `ROADMAP-post-MVP.md` — Milestone successive (email reali, A11y, ecc.).
 - `docs/dev-onboarding.md` — Checklist <15 minuti e troubleshooting per variabili/env/Sentry.
+- `docs/env-sync/2025-03-09.md` — Evidenza dell'ultimo check di allineamento fra `.env.local` e gli ambienti Vercel.
 - `docs/repo-audit-2025-03-09.md` — Audit aggiornato della codebase.
 
 Per dubbi o onboarding, consulta anche `/app/debug/env` (verifica rapida env) e `scripts/create-admin-user.mjs` per promuovere utenti nel database.

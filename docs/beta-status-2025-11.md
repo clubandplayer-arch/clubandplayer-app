@@ -19,7 +19,7 @@ Questo documento fotografa l'analisi corrente della codebase e i passi prioritar
 
 ### Checklist finale per dichiarare la Beta
 1. **Smoke test completi**: ultima esecuzione 09/03/2025 (`docs/smoke-tests/runs/2025-03-09.md`). Allegare gli artifact corrispondenti alla PR/Deploy, ripetere il ciclo a ogni release e mantenere `SMOKE_ENFORCE=true` per i branch di release.
-2. **Allineamento ambienti**: verificare che Vercel (Preview/Production) esponga lo stesso set di variabili di `.env.local` (Resend, Sentry, Supabase, analytics). Usare gli script `scripts/check-*.mjs` per email, Sentry, feed e flag clubs.
+2. ✅ **Allineamento ambienti**: Vercel Preview/Production sono stati confrontati con `.env.local` il 09/03/2025 tramite `node scripts/check-vercel-env.mjs --local=.env.local --preview=.env.vercel.preview --production=.env.vercel.production` (vedi [`docs/env-sync/2025-03-09.md`](./env-sync/2025-03-09.md)). Gli script `scripts/check-*` restano disponibili per replicare il controllo (email, Sentry, feed, flag clubs).
 3. **Feature flag**: decidere il rollout combinato di `NEXT_PUBLIC_FEATURE_CLUBS_ADMIN` e `CLUBS_ADMIN_EMAILS`, assicurando almeno un account admin attivo e monitorato. Documentare il piano di inversione flag in caso di problemi.
 4. **Monitoraggio**: confermare che Sentry riceva eventi con `environment`/`release` corretti e che l'analytics privacy-first sia abilitato solo dopo il consenso. Configurare alert minimi per `/api/*` e feed.
 5. **Comunicazione legale**: rivedere un'ultima volta le pagine `/legal/privacy` e `/legal/terms`, linkarle dal footer e predisporre i testi per l'informativa beta agli utenti invitati.
