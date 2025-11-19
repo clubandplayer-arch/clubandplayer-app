@@ -4,18 +4,11 @@ const requiredEnv = ['RESEND_API_KEY', 'RESEND_FROM', 'BRAND_REPLY_TO'];
 const missing = requiredEnv.filter((key) => !process.env[key]);
 
 console.log('== Check configurazione email Resend ==');
-console.log(`NOOP_EMAILS: ${process.env.NOOP_EMAILS ?? '(non impostato)'}`);
 
 if (missing.length) {
   console.error(`Errore: mancano variabili richieste (${missing.join(', ')})`);
   console.error('Imposta RESEND_API_KEY, RESEND_FROM e BRAND_REPLY_TO per inviare email reali.');
   process.exit(1);
-}
-
-const noopEnabled = ['1', 'true', 'yes'].includes(String(process.env.NOOP_EMAILS).toLowerCase());
-if (noopEnabled) {
-  console.warn('Attenzione: NOOP_EMAILS è attivo, le email non verranno inviate.');
-  console.warn('Imposta NOOP_EMAILS=0 (o rimuovi la variabile) per abilitare l\'invio.');
 }
 
 const apiKey = process.env.RESEND_API_KEY;

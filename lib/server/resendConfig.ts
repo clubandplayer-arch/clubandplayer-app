@@ -1,8 +1,5 @@
-const flagOn = (value: string | undefined | null) =>
-  ['1', 'true', 'yes', 'on'].includes(String(value ?? '').toLowerCase())
-
 export type ResendConfig =
-  | { ok: true; apiKey: string; from: string; replyTo: string; noop: boolean }
+  | { ok: true; apiKey: string; from: string; replyTo: string }
   | { ok: false; missing: string[] }
 
 export function getResendConfig(): ResendConfig {
@@ -23,6 +20,5 @@ export function getResendConfig(): ResendConfig {
     apiKey: apiKey!,
     from: from!,
     replyTo: replyTo!,
-    noop: flagOn(process.env.NOOP_EMAILS),
   }
 }

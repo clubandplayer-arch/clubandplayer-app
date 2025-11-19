@@ -11,7 +11,7 @@ Legenda: ☐ todo · ◐ in corso · ✅ fatto
 
 | ID    | Titolo                                                | Stato | Tipo     |
 |-------|--------------------------------------------------------|-------|----------|
-| PM-01 | Email **reali** (Resend)                               | ☐     | feature  |
+| PM-01 | Email **reali** (Resend)                               | ✅     | feature  |
 | PM-02 | Snellimento bundle **read-only**                       | ☐     | perf     |
 | PM-03 | **A11y & UX sweep** (pagine principali)                | ☐     | qualità  |
 | PM-04 | **/clubs edit** dietro **flag admin** (riapertura CRUD) | ☐     | feature  |
@@ -29,12 +29,12 @@ Legenda: ☐ todo · ◐ in corso · ✅ fatto
 ## Dettaglio milestone
 
 ### PM-01 — Email **reali** (Resend)
-**Obiettivo:** passare da NOOP a invio reale su prod/preview.  
+**Obiettivo:** inviare email reali su prod/preview con Resend.
 **Checklist**
-- ☐ Imposta su Vercel (prod/preview): `RESEND_API_KEY`, `BRAND_FROM`, `BRAND_REPLY_TO`.
-- ☐ Disattiva NOOP: `NOOP_EMAILS=0` (o rimuovi il guard).
-- ☐ Test API su preview protetta: `POST /api/notify-email` e `POST /api/notifications/send` → 200 e mail in inbox.
-- ☐ Verifica rendering client (Gmail web, iOS Mail, Android Gmail).  
+- ✅ Imposta su Vercel (prod/preview): `RESEND_API_KEY`, `RESEND_FROM`, `BRAND_REPLY_TO`.
+- ✅ Rimuovi il guard NOOP: gli endpoint falliscono se la configurazione manca.
+- ✅ Test API su preview protetta: `POST /api/notify-email` e `POST /api/notifications/send` → 200 e mail in inbox.
+- ✅ Verifica rendering client (Gmail web, iOS Mail, Android Gmail).
 **Accettazione**
 - Email ricevute correttamente; Sentry senza errori; log Vercel puliti.
 
@@ -166,9 +166,8 @@ Legenda: ☐ todo · ◐ in corso · ✅ fatto
 
 ## 📌 Note operative
 - **Branch protection**: mantieni “Lint” e “Type check” required; E2E per ora non-bloccanti.
-- **Feature flags** (esempi):  
-  - `NEXT_PUBLIC_FEATURE_CLUBS_ADMIN` — abilita UI admin per /clubs edit  
-  - `NOOP_EMAILS` — 1/0 per mockare o inviare email reali
+- **Feature flags** (esempi):
+  - `NEXT_PUBLIC_FEATURE_CLUBS_ADMIN` — abilita UI admin per /clubs edit
 - **Ambienti**: lato server usa `VERCEL_ENV` come fonte verità; lato client variabili `NEXT_PUBLIC_*`.
 
 ---

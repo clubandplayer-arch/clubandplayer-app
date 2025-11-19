@@ -46,8 +46,7 @@
 | `SENTRY_ENVIRONMENT`, `NEXT_PUBLIC_SENTRY_ENVIRONMENT` | server/client | ⚪️ | Ambiente usato in Sentry (es. `production`). |
 | `SENTRY_RELEASE`, `NEXT_PUBLIC_SENTRY_RELEASE` | server/client | ⚪️ | Etichetta release/commit per Sentry (es. `VERCEL_GIT_COMMIT_SHA`). |
 | `NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_POSTHOG_HOST` | client | ⚪️ | Telemetria opzionale PostHog. |
-| `RESEND_API_KEY`, `RESEND_FROM`, `BRAND_REPLY_TO` | server | ⚪️ | Abilitano l'invio email reale. Se assenti, le rotte notifiche rimangono in NOOP. |
-| `NOOP_EMAILS` | server | ⚪️ | Imposta `1` per forzare il NOOP (default). |
+| `RESEND_API_KEY`, `RESEND_FROM`, `BRAND_REPLY_TO` | server | ⚪️ | Abilitano l'invio email reale. Se assenti, le rotte notifiche rispondono 500. |
 | `E2E_HOST`, `E2E_PORT`, `E2E_BASE_URL` | test | ⚪️ | Override per gli smoke test E2E. |
 
 > Suggerimento: usa `.env.local` per lo sviluppo, mentre su Vercel configura gli stessi valori su Production/Preview.
@@ -62,7 +61,7 @@
 | `pnpm test:e2e` | Smoke test Node (`node --test`) che avviano Next.js e validano `/api/health`, `/logout` e `/feed`. |
 | `node scripts/check-clubs-flags.mjs` | Diagnostica rapida di flag/allowlist `/clubs` (allinea client/server prima di attivare i CRUD). |
 | `node scripts/check-feed-config.mjs` | Verifica che il bucket Storage `posts` e la tabella `posts` siano accessibili con la chiave service-role. |
-| `node scripts/check-email-config.mjs` | Controlla che le variabili Resend siano presenti e che `NOOP_EMAILS` sia disattivato prima di inviare email reali. |
+| `node scripts/check-email-config.mjs` | Verifica che le variabili Resend siano presenti prima di usare le rotte email. |
 | `node scripts/check-sentry-config.mjs` | Verifica DSN, environment e release Sentry (server/client) prima di abilitare il monitoraggio. |
 
 ## Struttura repository
@@ -100,7 +99,7 @@
 ## Checklist deploy MVP
 - `NEXT_PUBLIC_FEATURE_CLUBS_READONLY=1` su produzione.
 - Variabili Supabase e Sentry configurate (vedi tabella).
-- Decisione email: lascia `NOOP_EMAILS=1` oppure imposta chiavi Resend per invio reale.
+- Email: popola `RESEND_API_KEY`, `RESEND_FROM`, `BRAND_REPLY_TO` e testa gli endpoint `/api/notify-email` e `/api/notifications/send`.
 - Conferma RLS Supabase su `clubs` e tabelle profilo (`WITH CHECK` coerenti con gli inserimenti).
 - Password policy Supabase ≥ 12 caratteri + numero + carattere speciale, OTP 900–1800s.
 - E2E locali verdi (`pnpm test:e2e`).
@@ -110,7 +109,7 @@
   - Usa `node scripts/check-sentry-config.mjs` per validare rapidamente DSN, environment e release prima dei deploy.
   - Se non specifichi la release, Sentry userà automaticamente `VERCEL_GIT_COMMIT_SHA` (anche in edge) così gli errori sono già collegati al commit.
   - Il client ignora automaticamente errori rumorosi noti (es. `ResizeObserver loop limit exceeded`, abort di fetch) per mantenere la dashboard più pulita, inclusi quelli generati da estensioni browser comuni.
-- **Email reali**: configura `RESEND_API_KEY`, `RESEND_FROM`, `BRAND_REPLY_TO`, disattiva `NOOP_EMAILS` e valida con `node scripts/check-email-config.mjs` (le rotte `/api/notify-email` e `/api/notifications/send` rispondono 500 se la configurazione è assente).
+- **Email reali**: configura `RESEND_API_KEY`, `RESEND_FROM`, `BRAND_REPLY_TO` e valida con `node scripts/check-email-config.mjs` (le rotte `/api/notify-email` e `/api/notifications/send` rispondono 500 se la configurazione è assente).
 - **Storage feed**: assicurati che il bucket `posts` esista e che le policy di upload/lettura siano applicate (vedi note in roadmap post-MVP).
 - **Smoke test quasi-bloccanti**: su GitHub abilita `SMOKE_ENFORCE=true` per PR che toccano `app/**` o i pattern personalizzati.
 - **Sicurezza Supabase**: verifica le policy RLS su `profiles`, `clubs` e `posts` (WITH CHECK coerenti), password minima 12 caratteri e OTP con scadenza 15–30 minuti.
