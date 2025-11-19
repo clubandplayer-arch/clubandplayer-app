@@ -3,6 +3,7 @@ export const metadata = {
 };
 
 const LEGAL_EMAIL = 'privacy@clubandplayer.com';
+const BETA_EMAIL = 'beta@clubandplayer.com';
 
 export default function PrivacyPage() {
   return (
@@ -28,7 +29,7 @@ export default function PrivacyPage() {
         <h2 className="text-lg font-semibold">Dati trattati e finalità</h2>
         <ul className="list-disc space-y-2 pl-6">
           <li>Dati anagrafici e di contatto forniti durante la registrazione (nome, email, ruolo atleta/club).</li>
-          <li>Dati di profilo e contenuti immessi volontariamente (bio, feed, candidature, messaggi).</li>
+          <li>Dati di profilo e contenuti immessi volontariamente (bio, feed testuale, candidature, messaggi e preferenze).</li>
           <li>
             Log tecnici necessari al funzionamento del servizio (es. IP, user agent) conservati a fini di sicurezza e troubleshooting
             per il tempo strettamente necessario.
@@ -40,7 +41,23 @@ export default function PrivacyPage() {
         </ul>
         <p>
           La base giuridica principale è l’esecuzione del contratto (art. 6.1.b GDPR) per l’erogazione del servizio e il legittimo
-          interesse per attività di sicurezza e miglioramento (art. 6.1.f), bilanciato dal rispetto delle preferenze cookie.
+          interesse per attività di sicurezza e miglioramento (art. 6.1.f), bilanciato dal rispetto delle preferenze cookie. Per
+          eventuali comunicazioni di marketing o aggiornamenti Beta utilizziamo il consenso espresso.
+        </p>
+      </section>
+
+      <section className="mt-8 space-y-3 text-sm text-neutral-700 dark:text-neutral-200">
+        <h2 className="text-lg font-semibold">Responsabili del trattamento</h2>
+        <p>Utilizziamo fornitori conformi al GDPR/CCPA per erogare il servizio:</p>
+        <ul className="list-disc space-y-2 pl-6">
+          <li>Supabase (UE) per autenticazione, database e storage dei contenuti caricati.</li>
+          <li>Vercel (UE/USA) per l’hosting dell’applicazione web e delle API.</li>
+          <li>Resend (USA) per le comunicazioni email transazionali.</li>
+          <li>Soluzione analytics privacy-first (compatibile Plausible) per le metriche aggregate, abilitata solo dopo consenso.</li>
+        </ul>
+        <p>
+          Tutti i fornitori sono vincolati da data processing agreement e operano solo come responsabili del trattamento per conto di
+          Club &amp; Player.
         </p>
       </section>
 
@@ -57,8 +74,9 @@ export default function PrivacyPage() {
         <h2 className="text-lg font-semibold">Conservazione e sicurezza</h2>
         <p>
           I dati sono ospitati su Supabase (UE) e su Vercel. Applichiamo policy di sicurezza come RLS (Row Level Security), password
-          complesse, OTP con scadenza breve e logging degli accessi amministrativi. Le informazioni vengono conservate per la durata del
-          rapporto contrattuale o per gli obblighi di legge.
+          complesse (≥12 caratteri con numeri e simboli), OTP con scadenza a 900 secondi e logging degli accessi amministrativi. Le
+          informazioni vengono conservate per la durata del rapporto contrattuale o per gli obblighi di legge; i log tecnici non essenziali
+          vengono ruotati automaticamente.
         </p>
       </section>
 
@@ -67,6 +85,22 @@ export default function PrivacyPage() {
         <p>
           Puoi esercitare i diritti di accesso, rettifica, cancellazione, limitazione, opposizione e portabilità inviando una richiesta
           a <a className="underline" href={`mailto:${LEGAL_EMAIL}`}>{LEGAL_EMAIL}</a>. Riceverai risposta entro 30 giorni.
+        </p>
+      </section>
+
+      <section className="mt-8 space-y-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <h2 className="text-lg font-semibold">Programma Beta privata</h2>
+        <p>
+          Gli utenti invitati alla Beta ricevono una comunicazione dedicata con l’elenco aggiornato delle funzionalità sperimentali,
+          delle eventuali limitazioni e delle modalità di contatto rapido. L’utilizzo in Beta prevede che i feedback possano essere
+          registrati e associati al tuo profilo per velocizzare il supporto.
+        </p>
+        <p>
+          Se desideri lasciare il programma o revocare il consenso alle comunicazioni Beta scrivi a{' '}
+          <a className="underline" href={`mailto:${BETA_EMAIL}`}>
+            {BETA_EMAIL}
+          </a>
+          : provvederemo alla disiscrizione entro 48 ore.
         </p>
       </section>
 

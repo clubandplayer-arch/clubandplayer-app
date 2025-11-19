@@ -139,6 +139,7 @@
 - **Smoke test quasi-bloccanti**: su GitHub abilita `SMOKE_ENFORCE=true` per PR che toccano `app/**` o i pattern personalizzati.
 - **Sicurezza Supabase**: verifica le policy RLS su `profiles`, `clubs` e `posts` (WITH CHECK coerenti), password minima 12 caratteri e OTP con scadenza 15–30 minuti.
 - **Onboarding dev**: mantieni aggiornata `.env.local` e le variabili Vercel per consentire a nuovi dev di avviare l'ambiente in <15 minuti.
+- **Comunicazione legale**: controlla che `/legal/privacy`, `/legal/terms` e `/legal/beta` siano aggiornati e condividi l'informativa per gli invitati (vedi [`docs/legal/beta-invite.md`](docs/legal/beta-invite.md)).
 
 ## Documentazione aggiuntiva
 - `ROADMAP.md` — Stato MVP e passaggi futuri.
@@ -148,5 +149,6 @@
 - `docs/repo-audit-2025-03-09.md` — Audit aggiornato della codebase.
 - `docs/feature-flags/clubs-admin-rollout.md` — Piano di rollout (e rollback) per `NEXT_PUBLIC_FEATURE_CLUBS_ADMIN` e l'allowlist `CLUBS_ADMIN_EMAILS`.
 - `docs/monitoring/runbook.md` — Self-check monitoraggio (Sentry, analytics privacy-first e alert minimi) con riferimento agli artifact dei test.
+- `docs/legal/beta-invite.md` — Testo pronto all'uso per invitare gli utenti alla Beta e riepilogo delle condizioni applicabili.
 
 Per dubbi o onboarding, consulta anche `/app/debug/env` (verifica rapida env) e `scripts/create-admin-user.mjs` per promuovere utenti nel database.

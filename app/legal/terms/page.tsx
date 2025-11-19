@@ -7,8 +7,9 @@ export default function TermsPage() {
     <main className="container mx-auto max-w-3xl px-4 py-8">
       <h1 className="mb-4 text-3xl font-semibold">Termini e condizioni d’uso</h1>
       <p className="text-sm text-neutral-600 dark:text-neutral-300">
-        L’accesso o l’utilizzo della piattaforma Club & Player implica l’accettazione integrale dei presenti Termini. Ti invitiamo a
-        leggerli con attenzione prima di proseguire.
+        L’accesso o l’utilizzo della piattaforma Club &amp; Player implica l’accettazione integrale dei presenti Termini. Ti
+        invitiamo a leggerli con attenzione prima di proseguire. In caso di adesione al programma Beta privata si applicano anche le
+        condizioni supplementari descritte nell’Informativa Beta.
       </p>
 
       <section className="mt-8 space-y-3 text-sm text-neutral-700 dark:text-neutral-200">
@@ -41,19 +42,34 @@ export default function TermsPage() {
         <p>
           Il servizio è fornito “così com’è”. Nei limiti consentiti, escludiamo garanzie implicite e non siamo responsabili per danni indiretti o
           perdita di opportunità derivanti dall’utilizzo della piattaforma. In ogni caso, l’eventuale responsabilità complessiva è limitata alle
-          somme corrisposte per servizi a pagamento negli ultimi 12 mesi.
+          somme corrisposte per servizi a pagamento negli ultimi 12 mesi. Durante la Beta privata possono verificarsi interruzioni programmate o
+          regressioni funzionali: informeremo gli utenti invitati via email e nel changelog dedicato.
         </p>
       </section>
 
       <section className="mt-8 space-y-3 text-sm text-neutral-700 dark:text-neutral-200">
-        <h2 className="text-lg font-semibold">Privacy e cookie</h2>
+        <h2 className="text-lg font-semibold">Privacy e comunicazioni Beta</h2>
         <p>
           L’utilizzo della piattaforma è subordinato al rispetto della nostra{' '}
           <a className="underline" href="/legal/privacy">
             Informativa Privacy
           </a>
-          , che descrive trattamento dei dati, cookie tecnici e strumenti analytics rispettosi del Do Not Track.
+          . Gli utenti invitati al programma Beta ricevono comunicazioni dedicate e possono uscire dal programma in qualsiasi momento seguendo le
+          istruzioni riportate in{' '}
+          <a className="underline" href="/legal/beta">
+            questa informativa
+          </a>
+          .
         </p>
+      </section>
+
+      <section className="mt-8 space-y-3 rounded-md border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+        <h2 className="text-lg font-semibold">Condizioni aggiuntive per la Beta</h2>
+        <ul className="list-disc space-y-2 pl-6">
+          <li>Gli account invitati sono personali e non trasferibili.</li>
+          <li>Le funzionalità sperimentali possono essere modificate o rimosse senza preavviso.</li>
+          <li>I feedback condivisi possono essere utilizzati per migliorare il prodotto e potrebbero generare follow-up da parte del team.</li>
+        </ul>
       </section>
 
       <p className="mt-10 text-xs uppercase tracking-wide text-neutral-500">

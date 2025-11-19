@@ -162,7 +162,7 @@ Legenda: ☐ todo · ◐ in corso · ✅ fatto
 **Accettazione**
 - Testi aggiornati; link visibili nel footer.
 **Stato attuale**
-- Le pagine `/legal/privacy` e `/legal/terms` includono ora titolare, diritti GDPR, uso consentito e limitazioni di responsabilità, oltre a riferimenti espliciti al loader analytics privacy-first.
+- Le pagine `/legal/privacy`, `/legal/terms` e la nuova `/legal/beta` includono titolare, basi giuridiche, condizioni del programma Beta e link nel footer; il testo condivisibile è archiviato anche in `docs/legal/beta-invite.md`.
 
 ---
 

@@ -55,6 +55,12 @@ export const viewport: Viewport = {
   // colorScheme: 'light dark',
 };
 
+const FOOTER_LINKS = [
+  { href: '/legal/privacy', label: 'Privacy' },
+  { href: '/legal/terms', label: 'Termini' },
+  { href: '/legal/beta', label: 'Informativa Beta' },
+];
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   // JSON-LD (Organization)
   const jsonLdOrg = {
@@ -105,6 +111,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <div id="main-content" tabIndex={-1}>
           <Suspense fallback={null}>{children}</Suspense>
         </div>
+
+        <footer className="border-t border-neutral-200 bg-white/90 py-6 text-sm text-neutral-600">
+          <div className="container mx-auto flex max-w-5xl flex-col gap-2 px-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs uppercase tracking-wide text-neutral-500">
+              © {new Date().getFullYear()} Club &amp; Player
+            </p>
+            <nav className="flex flex-wrap gap-4">
+              {FOOTER_LINKS.map((link) => (
+                <a key={link.href} href={link.href} className="hover:text-neutral-900 underline-offset-2 hover:underline">
+                  {link.label}
+                </a>
+              ))}
+            </nav>
+          </div>
+        </footer>
 
         {/* Sync sessione client->server (cookie) */}
         <Suspense fallback={null}>
