@@ -10,31 +10,22 @@ Questo documento fotografa l'analisi corrente della codebase e i passi prioritar
 - MVP stabilizzata con `/clubs` in sola lettura e smoke test Node runner già documentati; deployment orientato a Vercel con flag di feature e configurazione Sentry/Resend opzionale.
 - Documentazione aggiornata e coerente: README, roadmap operative (`ROADMAP.md`, `ROADMAP-post-MVP.md`) e audit repository già disponibili come base di riferimento.
 
-### Segnalibri problemi aperti (da riprendere)
-1. **Candidature non visibili dal Club**: verificare le API e i permessi Supabase (service role) per garantire la lettura delle candidature ricevute anche con RLS attive.
-2. **Upload foto profilo (Club/Atleti) bloccato**: indagare le policy RLS sul bucket avatar e forzare l'uso del client con chiave service-role o regole Storage adeguate.
-3. **Upload foto/video su bacheca/feed impossibile**: controllare l'integrazione Storage per gli allegati feed, le regole RLS e i formati supportati.
-4. **Impossibile creare post su /feed**: verificare le API di creazione post, le policy RLS sulle tabelle feed/post e la coerenza con i permessi di upload degli allegati.
+### Recap ultimi interventi
+- **Feed**: post di testo, modifica e cancellazione sono ora gestiti interamente con il client di sessione e rispettano le policy RLS. Le tab media sono state dismesse per eliminare i conflitti Storage.
+- **Candidature**: `/club/applicants` legge i dati direttamente con il client autenticato (fallback admin solo se necessario) e le colonne `club_id`/`media` sono consolidate tramite migrazioni Supabase.
+- **Avatar profilo**: l'upload usa helper dedicati con controlli espliciti sulla chiave service-role, rimuovendo gli errori RLS storici.
+- **Pipeline**: gli artifact degli smoke test sono pubblicati a ogni CI run e `SMOKE_ENFORCE` può rendere il check bloccante per percorsi critici.
+- **Documentazione**: README, roadmap, onboarding e stato Beta sono allineati; la sezione troubleshooting copre Vercel env, callback Supabase, storage e Sentry.
 
-### Aggiornamento 06/11
-- `/clubs` torna visibile (rimuovendo il 404) e resta **read-only** di default; i controlli CRUD sono caricati solo se `NEXT_PUBLIC_FEATURE_CLUBS_ADMIN=1` e l'utente è in allowlist server (`CLUBS_ADMIN_EMAILS`).
-- Le modali di creazione/modifica club sono ora importate in modo dinamico, per contenere il bundle iniziale quando la pagina opera in sola lettura.
-- Sentry è allineato su client/server/edge: usa `SENTRY_ENVIRONMENT` (fallback `VERCEL_ENV`) e tagga le release con `SENTRY_RELEASE` o `VERCEL_GIT_COMMIT_SHA`, filtrando errori di rumore (ResizeObserver, aborti fetch, estensioni browser).
-- `/search/club` è collegata a `/api/clubs` con filtri geo (città/provincia/regione/paese), paginazione server e ordinamento su `created_at` per usare gli indici `pg_trgm`/`idx_clubs_created_at`.
+### Checklist finale per dichiarare la Beta
+1. **Smoke test completi**: eseguire tutte le checklist in `docs/smoke-tests/` (feed, clubs, applications, full journey). Allegare gli artifact corrispondenti alla PR/Deploy e mantenere `SMOKE_ENFORCE=true` per i branch di release.
+2. **Allineamento ambienti**: verificare che Vercel (Preview/Production) esponga lo stesso set di variabili di `.env.local` (Resend, Sentry, Supabase, analytics). Usare gli script `scripts/check-*.mjs` per email, Sentry, feed e flag clubs.
+3. **Feature flag**: decidere il rollout combinato di `NEXT_PUBLIC_FEATURE_CLUBS_ADMIN` e `CLUBS_ADMIN_EMAILS`, assicurando almeno un account admin attivo e monitorato. Documentare il piano di inversione flag in caso di problemi.
+4. **Monitoraggio**: confermare che Sentry riceva eventi con `environment`/`release` corretti e che l'analytics privacy-first sia abilitato solo dopo il consenso. Configurare alert minimi per `/api/*` e feed.
+5. **Comunicazione legale**: rivedere un'ultima volta le pagine `/legal/privacy` e `/legal/terms`, linkarle dal footer e predisporre i testi per l'informativa beta agli utenti invitati.
+6. **Supporto/triage**: definire chi gestisce Resend inbox (`BRAND_REPLY_TO`) e predisporre un canale Sentry/Slack per segnalare errori critici durante la beta chiusa.
 
-### Da fare subito (Beta)
-- Popolare `CLUBS_ADMIN_EMAILS` con l'allowlist effettiva (opzionale replicarla in `NEXT_PUBLIC_CLUBS_ADMIN_EMAILS` per diagnostic) e decidere quando attivare `NEXT_PUBLIC_FEATURE_CLUBS_ADMIN` in staging/preview.
-- Validare che la protezione API (guard admin) sia allineata agli allowlist aggiornati e che l'esperienza guest su `/clubs` non mostri errori 401/403.
-- Pianificare l'attivazione: testare in staging con account admin/guest e confermare che le azioni CRUD restino invisibili in modalità guest.
-- Eseguire la [checklist di smoke test `/clubs` (guest vs admin)](./smoke-tests/clubs.md) a ogni deploy finché il flag resta attivo.
-- Lanciare `node scripts/check-clubs-flags.mjs` per allineare rapidamente le allowlist client/server prima di ogni smoke test.
-- Preparare Sentry per i rollout: popolare `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN`, impostare `SENTRY_ENVIRONMENT` / `NEXT_PUBLIC_SENTRY_ENVIRONMENT` (es. `staging`/`production`) e taggare la release con `SENTRY_RELEASE` / `NEXT_PUBLIC_SENTRY_RELEASE` (o `VERCEL_GIT_COMMIT_SHA`).
-- Eseguire `node scripts/check-sentry-config.mjs` per validare DSN, environment e release Sentry prima dei deploy e degli smoke test.
-- Collegare i segnalibri aperti (candidature, avatar, upload feed, creazione post feed) a un giro di debug dedicato su staging con client service-role e log Sentry per ogni chiamata API.
-- Prima di debuggare la `/feed`, eseguire `node scripts/check-feed-config.mjs` per validare bucket e tabella `posts` con la chiave service-role; seguire la [checklist feed](./smoke-tests/feed.md) per i flussi di creazione post con/ senza media.
-- Per le candidature ricevute, seguire la [checklist dedicata](./smoke-tests/applications.md) e assicurare che le API usino la chiave service-role quando necessario.
-- Configurare le email reali: popolare `RESEND_API_KEY`, `RESEND_FROM`, `BRAND_REPLY_TO`, disattivare `NOOP_EMAILS` e lanciare `node scripts/check-email-config.mjs` per validare la configurazione (gli endpoint ora rispondono 500 se la configurazione manca).
-- Aggiornare `.env.local` partendo da `docs/env.sample` e riflettere le stesse variabili su Vercel (Production/Preview) per mantenere l'onboarding dev sotto i 15 minuti.
+Quando la checklist sopra è stata completata, aggiornare questo file con la data del via libera e aprire la sezione “Post Beta” per i miglioramenti successivi (es. reintroduzione upload media, nuove analytics, etc.).
 
 ## Prossimi passi prioritari verso la Beta
 1. ✅ **Email reali (PM-01)**: configurazione Resend obbligatoria (`RESEND_API_KEY`, `RESEND_FROM`, `BRAND_REPLY_TO`) e NOOP disattivato; gli endpoint `/api/notify-email` e `/api/notifications/send` rifiutano la richiesta se l'env non è completa.
