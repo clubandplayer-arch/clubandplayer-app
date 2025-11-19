@@ -19,7 +19,7 @@ Legenda: ☐ todo · ◐ in corso · ✅ fatto
 | PM-06 | **Security** Supabase (policy, OTP, HIBP, RLS)         | ✅    | security |
 | PM-07 | **Sentry tuning** (env/release + regole)               | ✅    | qualità  |
 | PM-08 | **CI/CD**: E2E “quasi-bloccanti” + artifacts           | ✅    | devops   |
-| PM-09 | **Docs & Onboarding** dev                              | ☐     | docs     |
+| PM-09 | **Docs & Onboarding** dev                              | ✅    | docs     |
 | PM-10 | **Performance**: immagini/storage/caching              | ☐     | perf     |
 | PM-11 | **Legal**: privacy/termini + cookie note               | ☐     | legal    |
 | PM-12 | **Analytics** di base (privacy-safe)                    | ☐     | ops      |
@@ -128,13 +128,13 @@ Legenda: ☐ todo · ◐ in corso · ✅ fatto
 ---
 
 ### PM-09 — **Docs & Onboarding** dev
-**Obiettivo:** repo self-service per nuovi dev.  
+**Obiettivo:** repo self-service per nuovi dev.
 **Checklist**
-- ☐ README: setup locale (Node 22, pnpm 10.17.1), env richieste, run dev/build/test.
-- ☐ Sezione “Feature flags” con spiegazioni.
-- ☐ “Troubleshooting” (Vercel build, auth callback, storage, Sentry).  
+- ✅ README con setup ≤15 minuti (Node 22 + pnpm 10.17.1), env richieste e comando smoke test.
+- ✅ Nuova guida [`docs/dev-onboarding.md`](docs/dev-onboarding.md) con troubleshooting per variabili Vercel, auth callback, storage e Sentry.
+- ✅ Sezione “Troubleshooting onboarding” nel README con link rapidi agli script di diagnosi (`check-feed`, `check-sentry`, ecc.).
 **Accettazione**
-- Un nuovo dev avvia il progetto in < 15 minuti.
+- Un nuovo dev avvia il progetto in < 15 minuti (setup verificato e documentato).
 
 ---
 

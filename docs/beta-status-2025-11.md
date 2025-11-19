@@ -44,7 +44,7 @@ Questo documento fotografa l'analisi corrente della codebase e i passi prioritar
 5. ✅ **Filtri ricerca club (PM-05)**: la UI `/search/club` usa `/api/clubs` con filtri geo e ricerca testuale indicizzata (`pg_trgm`, `idx_clubs_created_at`).
 6. ✅ **Security Supabase (PM-06)**: password policy portata a ≥12 caratteri con numeri/simboli, OTP expiry fissato a 900s e policy RLS su `profiles`/`clubs` riallineate con `WITH CHECK` coerenti.
 7. ✅ **CI/CD quasi-bloccante (PM-08)**: gli smoke test salvano log/metadata come artifact `smoke-artifacts` e `SMOKE_ENFORCE` può bloccare PR critiche; Playwright resta opzionale.
-8. **Docs & onboarding dev (PM-09)**: mantenere README/roadmap allineati e aggiungere troubleshooting per variabili Vercel, auth callback, storage e Sentry; garantire setup <15 minuti.
+8. ✅ **Docs & onboarding dev (PM-09)**: README e roadmap sono allineati con il setup ≤15 minuti, includono una sezione di troubleshooting e rimandano alla nuova guida [docs/dev-onboarding.md](./dev-onboarding.md) per variabili Vercel, auth callback, storage e Sentry.
 9. **Performance, Legal, Analytics (PM-10/11/12)**: ottimizzare next/image e caching, preparare testi privacy/termini e scegliere una soluzione analytics privacy-first con rispetto DNT.
 
 ## Note operative

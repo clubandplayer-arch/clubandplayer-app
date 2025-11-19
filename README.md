@@ -11,7 +11,7 @@
 - **pnpm 10.17.1** (bloccato via `packageManager`)
 - **Node.js 22** (consigliato; minimo 20)
 
-## Setup rapido
+## Setup rapido (≤15 minuti)
 1. Abilita Corepack e installa la versione corretta di pnpm:
    ```bash
    corepack enable
@@ -21,12 +21,15 @@
    ```bash
    pnpm install --frozen-lockfile
    ```
-3. Copia `docs/env.sample` in `.env.local` e valorizza le variabili indicate nella tabella seguente.
+3. Copia `docs/env.sample` in `.env.local` e valorizza le variabili indicate nella tabella seguente (mantieni gli stessi valori anche su Vercel per Production/Preview).
 4. Avvia l'applicazione in sviluppo:
-   ```bash
-   pnpm dev
-   ```
-   L'app sarà disponibile su http://127.0.0.1:3000.
+  ```bash
+  pnpm dev
+  ```
+  L'app sarà disponibile su http://127.0.0.1:3000.
+5. Esegui `pnpm test:e2e` per ottenere uno smoke test di riferimento e verificare che l'ambiente sia allineato.
+
+> Se qualcosa blocca il setup (variabili Vercel, auth callback, storage o Sentry), consulta [docs/dev-onboarding.md](docs/dev-onboarding.md) per una diagnosi rapida.
 
 ## Variabili d'ambiente
 | Variabile | Scope | Obbligatoria | Descrizione |
@@ -97,6 +100,14 @@
 - Il riepilogo del job include automaticamente le ultime righe del log oltre allo stato registrato in `metadata.json` per diagnosi rapide.
 - Per rendere gli smoke test "quasi-bloccanti" sulle PR, definisci la variabile di repository `SMOKE_ENFORCE=true`. Se i test falliscono e la PR modifica file che combaciano con `app/**` o i pattern configurati in `SMOKE_ENFORCE_PATHS`, il job verrà segnato come failed.
 
+## Troubleshooting onboarding rapido
+- **Variabili Vercel**: usa `docs/env.sample` come fonte e verifica che `NEXT_PUBLIC_BASE_URL`, Supabase e Sentry coincidano fra `.env.local` e le sezioni Production/Preview di Vercel; gli script `node scripts/check-feed-config.mjs` e `node scripts/check-sentry-config.mjs` evidenziano variabili mancanti.
+- **Auth callback Supabase**: assicurati che in Supabase > Authentication > URL Settings siano presenti sia il dominio production sia `http://127.0.0.1:3000` / `http://localhost:3000`, e che `NEXT_PUBLIC_BASE_URL` punti allo stesso host.
+- **Storage feed**: controlla che il bucket `posts` esista e applichi le policy RLS previste; il comando `node scripts/check-feed-config.mjs` conferma bucket e permessi.
+- **Sentry**: popola `SENTRY_DSN`/`NEXT_PUBLIC_SENTRY_DSN`, imposta `SENTRY_ENVIRONMENT` e lascia che `VERCEL_GIT_COMMIT_SHA` (o `SENTRY_RELEASE`) tagghi la release; verifica con `node scripts/check-sentry-config.mjs` prima del deploy.
+
+> Per maggiori dettagli e altre casistiche consulta [docs/dev-onboarding.md](docs/dev-onboarding.md).
+
 ## Checklist deploy MVP
 - `NEXT_PUBLIC_FEATURE_CLUBS_READONLY=1` su produzione.
 - Variabili Supabase e Sentry configurate (vedi tabella).
@@ -119,6 +130,7 @@
 ## Documentazione aggiuntiva
 - `ROADMAP.md` — Stato MVP e passaggi futuri.
 - `ROADMAP-post-MVP.md` — Milestone successive (email reali, A11y, ecc.).
+- `docs/dev-onboarding.md` — Checklist <15 minuti e troubleshooting per variabili/env/Sentry.
 - `docs/repo-audit-2025-03-09.md` — Audit aggiornato della codebase.
 
 Per dubbi o onboarding, consulta anche `/app/debug/env` (verifica rapida env) e `scripts/create-admin-user.mjs` per promuovere utenti nel database.
