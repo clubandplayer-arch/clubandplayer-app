@@ -66,11 +66,6 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       )
     }
-    if (resendConfig.noop) {
-      console.warn('NOOP_EMAILS attivo: risposta no-op')
-      return NextResponse.json({ ok: true, noop: true })
-    }
-
     const resend = new Resend(resendConfig.apiKey)
     const from = body.from ?? resendConfig.from // es. "Club&Player <no-reply@mail.clubandplayer.com>"
 

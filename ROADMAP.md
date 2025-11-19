@@ -18,7 +18,7 @@ _Stato al 05/11/2025 — timezone: Europe/Rome_
   - `/auth/callback` (PKCE + implicit) → sync cookie via `/api/auth/session`, bootstrap profilo, redirect smart
   - `middleware.ts`: routing base (login/signup redirect se già autenticato, protezione rotte /club/*)
 - **Email branding**
-  - `POST /api/notifications/send` e `POST /api/notify-email` resilienti (noop se ENV mancanti)
+  - `POST /api/notifications/send` e `POST /api/notify-email` usano Resend; falliscono (500) se la configurazione manca
   - Template base predisposto (CTA, previewText)
 - **Sicurezza DB**
   - RLS quick-check applicato su tabelle chiave; policy INSERT corretta
@@ -48,12 +48,12 @@ _Stato al 05/11/2025 — timezone: Europe/Rome_
 - MVP **ready for market**: `/clubs` read-only, onboarding Supabase completato, Sentry client/server configurato.
 - README aggiornato con setup, variabili e checklist deploy.
 - Smoke test eseguibili localmente/CI con `pnpm test:e2e`.
-- Decisione email: default NOOP; abilitare Resend solo quando pronti.
+- Email reali dietro chiavi Resend (`RESEND_API_KEY`, `RESEND_FROM`, `BRAND_REPLY_TO`); gli endpoint notifiche falliscono se non configurati.
 
 > Prossimi passi operativi (fuori codice):
 > 1. Verificare che in produzione `NEXT_PUBLIC_FEATURE_CLUBS_READONLY=1` e variabili Supabase/Sentry siano presenti.
 > 2. Confermare su Supabase password policy ≥ 12, OTP 900–1800s, RLS `clubs` e profili attive.
-> 3. Decidere se lasciare email in NOOP o impostare le chiavi Resend (`RESEND_API_KEY`, `RESEND_FROM`, `BRAND_REPLY_TO`).
+> 3. Configurare le chiavi Resend (`RESEND_API_KEY`, `RESEND_FROM`, `BRAND_REPLY_TO`) e validare `/api/notify-email` / `/api/notifications/send` su ambiente protetto.
 
 ---
 

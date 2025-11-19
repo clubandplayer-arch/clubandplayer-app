@@ -26,6 +26,6 @@ Checklist per verificare rapidamente che le principali funzionalità funzionino 
 
 ## Controlli trasversali
 - **Sicurezza**: verifica che le API protette (CRUD club, opportunità, candidature) rispondano 401/403 se richiamate da utente non autorizzato.
-- **Email/Notifiche**: con `RESEND_API_KEY` configurato e `NOOP_EMAILS=false`, prova una notifica (es. candidatura) e controlla che arrivi impostando `BRAND_REPLY_TO`.
+- **Email/Notifiche**: con `RESEND_API_KEY`, `RESEND_FROM`, `BRAND_REPLY_TO` configurati, prova una notifica (es. candidatura) e controlla che arrivi impostando `BRAND_REPLY_TO`.
 - **Sentry**: assicurati che `SENTRY_ENVIRONMENT`/`NEXT_PUBLIC_SENTRY_ENVIRONMENT` e la release siano valorizzate e che i filtri anti-rumore non blocchino errori reali.
 - **Pulizia dati**: elimina post/opportunità/candidature di test e conferma che l'interfaccia reagisca senza errori; se usi progetto effimero, distruggilo.
