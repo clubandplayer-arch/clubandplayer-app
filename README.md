@@ -64,7 +64,7 @@
 | `pnpm start` | Avvia il server production dopo la build. |
 | `pnpm lint` | ESLint flat-config senza warning ammessi. |
 | `pnpm test:e2e` | Smoke test Node (`node --test`) che avviano Next.js e validano `/api/health`, `/logout` e `/feed`. |
-| `node scripts/check-clubs-flags.mjs` | Diagnostica rapida di flag/allowlist `/clubs` (allinea client/server prima di attivare i CRUD). |
+| `node scripts/check-clubs-flags.mjs [--env-file .env.vercel.preview]` | Diagnostica rapida di flag/allowlist `/clubs` (allinea client/server prima di attivare i CRUD e verifica l'overlap con `ADMIN_EMAILS`). |
 | `node scripts/check-feed-config.mjs` | Verifica che il bucket Storage `posts` e la tabella `posts` siano accessibili con la chiave service-role. |
 | `node scripts/check-email-config.mjs` | Controlla che le variabili Resend siano presenti e che `NOOP_EMAILS` sia disattivato prima di inviare email reali. |
 | `node scripts/check-sentry-config.mjs` | Verifica DSN, environment e release Sentry (server/client) prima di abilitare il monitoraggio. |
@@ -145,5 +145,6 @@
 - `docs/dev-onboarding.md` — Checklist <15 minuti e troubleshooting per variabili/env/Sentry.
 - `docs/env-sync/2025-03-09.md` — Evidenza dell'ultimo check di allineamento fra `.env.local` e gli ambienti Vercel.
 - `docs/repo-audit-2025-03-09.md` — Audit aggiornato della codebase.
+- `docs/feature-flags/clubs-admin-rollout.md` — Piano di rollout (e rollback) per `NEXT_PUBLIC_FEATURE_CLUBS_ADMIN` e l'allowlist `CLUBS_ADMIN_EMAILS`.
 
 Per dubbi o onboarding, consulta anche `/app/debug/env` (verifica rapida env) e `scripts/create-admin-user.mjs` per promuovere utenti nel database.

@@ -10,7 +10,8 @@ Questa checklist serve a verificare rapidamente che la pagina `/clubs` si compor
   - `NEXT_PUBLIC_FEATURE_CLUBS_ADMIN=1` **solo** sull'ambiente di test/staging in cui provi i CRUD.
   - `CLUBS_ADMIN_EMAILS` valorizzata con l'allowlist reale (puoi replicarla in `NEXT_PUBLIC_CLUBS_ADMIN_EMAILS` solo per diagnostic/UI).
   - `ADMIN_EMAILS` / `ADMIN_USER_IDS` opzionali ma allineati, se usati per altri privilegi.
-- Prima di iniziare, esegui `node scripts/check-clubs-flags.mjs` per confermare che flag e allowlist siano coerenti (exit code 1 se rileva mismatch).
+- Prima di iniziare, esegui `node scripts/check-clubs-flags.mjs` (supporta `--env-file`) per confermare che flag e allowlist siano coerenti (exit code 1 se rileva mismatch).
+- Per rollout/rollback coordinati, fai riferimento a [`docs/feature-flags/clubs-admin-rollout.md`](../feature-flags/clubs-admin-rollout.md).
 - Due account Supabase:
   - **Guest**: qualsiasi utente non allowlist.
   - **Admin**: email presente in `CLUBS_ADMIN_EMAILS` (e loggata nell'app).

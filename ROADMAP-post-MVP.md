@@ -68,6 +68,7 @@ Legenda: ☐ todo · ◐ in corso · ✅ fatto
 **Checklist**
 - ✅ Feature flag UI: `NEXT_PUBLIC_FEATURE_CLUBS_ADMIN=1`.
 - ✅ Server allowlist: `CLUBS_ADMIN_EMAILS` (comma-separated).
+- ✅ Runbook rollout/rollback: [`docs/feature-flags/clubs-admin-rollout.md`](docs/feature-flags/clubs-admin-rollout.md).
 - ✅ Bottoni edit/delete/create visibili solo se admin.
 - ✅ Guard server su API (check ruolo/allowlist).
 - ✅ E2E: scenario admin vs non-admin.
