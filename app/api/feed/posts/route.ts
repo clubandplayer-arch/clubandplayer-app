@@ -177,6 +177,24 @@ function isRlsError(err: any) {
 
 const SELECT_WITH_MEDIA = 'id, author_id, content, created_at, media_url, media_type';
 const SELECT_BASE = 'id, author_id, content, created_at';
+const DEFAULT_POSTS_BUCKET = process.env.NEXT_PUBLIC_POSTS_BUCKET || 'posts';
+
+function sanitizeStoragePath(path: string) {
+  return path
+    .replace(/\\/g, '/')
+    .replace(/\.\.+/g, '.')
+    .replace(/^\/+/, '')
+    .replace(/\/+/g, '/');
+}
+
+function inferMediaType(rawType: unknown, rawMime: unknown): 'image' | 'video' | null {
+  const normalized = typeof rawType === 'string' ? rawType.trim().toLowerCase() : '';
+  if (normalized === 'image' || normalized === 'video') return normalized;
+  const mime = typeof rawMime === 'string' ? rawMime.toLowerCase() : '';
+  if (mime.startsWith('video/')) return 'video';
+  if (mime.startsWith('image/')) return 'image';
+  return null;
+}
 
 type ServerClient = Awaited<ReturnType<typeof getSupabaseServerClient>>;
 type AdminClient = NonNullable<ReturnType<typeof getSupabaseAdminClientOrNull>>;
@@ -189,11 +207,38 @@ export async function POST(req: NextRequest) {
     const rawText = (body?.text ?? body?.content ?? '').toString();
     const text = rawText.trim();
     const rawMediaUrl = typeof body?.media_url === 'string' ? body.media_url.trim() : '';
-    const rawMediaType = typeof body?.media_type === 'string' ? body.media_type.trim().toLowerCase() : '';
-    const mediaType = rawMediaUrl ? ((rawMediaType === 'video' ? 'video' : 'image') as 'image' | 'video') : null;
-    const mediaUrl = rawMediaUrl || null;
+    const rawMediaUrlCamel = typeof body?.mediaUrl === 'string' ? body.mediaUrl.trim() : '';
+    const rawMediaType =
+      typeof body?.media_type === 'string'
+        ? body.media_type
+        : typeof body?.mediaType === 'string'
+          ? body.mediaType
+          : '';
+    const rawMediaPath =
+      typeof body?.media_path === 'string'
+        ? body.media_path
+        : typeof body?.mediaPath === 'string'
+          ? body.mediaPath
+          : '';
+    const rawMediaBucket =
+      typeof body?.media_bucket === 'string'
+        ? body.media_bucket
+        : typeof body?.mediaBucket === 'string'
+          ? body.mediaBucket
+          : '';
+    const rawMediaMime =
+      typeof body?.media_mime === 'string'
+        ? body.media_mime
+        : typeof body?.mediaMime === 'string'
+          ? body.mediaMime
+          : '';
 
-    if (!text && !rawMediaUrl) {
+    const normalizedMediaPath = rawMediaPath ? sanitizeStoragePath(rawMediaPath.trim()) : '';
+    const mediaBucket = rawMediaBucket?.trim() || DEFAULT_POSTS_BUCKET;
+    let mediaUrl = rawMediaUrl || rawMediaUrlCamel || null;
+    let mediaType: 'image' | 'video' | null = inferMediaType(rawMediaType, rawMediaMime);
+
+    if (!text && !mediaUrl && !normalizedMediaPath) {
       return NextResponse.json(
         { ok: false, error: 'empty', message: 'Scrivi un testo o allega un media.' },
         { status: 400 }
@@ -201,6 +246,29 @@ export async function POST(req: NextRequest) {
     }
     if (text.length > MAX_CHARS) {
       return NextResponse.json({ ok: false, error: 'too_long', limit: MAX_CHARS }, { status: 400 });
+    }
+
+    const supabase = await getSupabaseServerClient();
+    const admin = getSupabaseAdminClientOrNull();
+
+    if (!mediaUrl && normalizedMediaPath) {
+      const { data: publicInfo } = supabase.storage.from(mediaBucket).getPublicUrl(normalizedMediaPath);
+      if (publicInfo?.publicUrl) {
+        mediaUrl = publicInfo.publicUrl;
+      } else {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: 'media_public_url_failed',
+            message: 'Impossibile generare il link pubblico del media.',
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (mediaUrl && !mediaType) {
+      mediaType = inferMediaType(rawMediaType, rawMediaMime) || 'image';
     }
 
     if (mediaUrl && !/^https?:\/\//i.test(mediaUrl)) {
@@ -220,9 +288,6 @@ export async function POST(req: NextRequest) {
         { status: 429 }
       );
     }
-
-    const supabase = await getSupabaseServerClient();
-    const admin = getSupabaseAdminClientOrNull();
 
     const { data: auth, error: authErr } = await supabase.auth.getUser();
     if (authErr || !auth?.user) {

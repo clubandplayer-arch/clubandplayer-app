@@ -6,13 +6,13 @@ Checklist manuale per verificare la bacheca autenticata con post di testo + imma
 
 ## Prerequisiti
 - Variabili configurate:
-  - `SUPABASE_SERVICE_ROLE_KEY` disponibile sull'API per bypassare RLS in fallback (creazione post/upload).
+  - `SUPABASE_SERVICE_ROLE_KEY` disponibile sull'API solo per il fallback di insert nel caso in cui le RLS blocchino il record `posts`.
   - `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` valide per l'ambiente di test.
   - `NEXT_PUBLIC_POSTS_BUCKET` valorizzato se usi un bucket diverso da `posts`.
-- Esegui `node scripts/check-feed-config.mjs` per assicurarti che bucket e tabella `posts` siano raggiungibili con il client service-role.
+- Esegui `node scripts/check-feed-config.mjs` per assicurarti che bucket e tabella `posts` siano raggiungibili (lo storage ora è gestito direttamente dal client Supabase).
 - Bucket Storage:
-  - Esiste il bucket `posts` (o quello indicato in `NEXT_PUBLIC_POSTS_BUCKET`) ed è pubblico. Se non esiste, l'API tenta di crearlo con il client admin.
-  - Policy RLS Storage coerenti: l'utente autenticato può fare `upload` sul bucket, oppure è presente il fallback admin.
+  - Esiste il bucket `posts` (o quello indicato in `NEXT_PUBLIC_POSTS_BUCKET`) ed è pubblico.
+  - Policy RLS Storage coerenti: l'utente autenticato può fare `upload` sul bucket; non è più previsto il proxy via API.
 - Account Supabase autenticato (club o atleta) e almeno 1 post esistente per confrontare il filtraggio.
 
 ## Flusso base (creazione post)
@@ -26,13 +26,13 @@ Checklist manuale per verificare la bacheca autenticata con post di testo + imma
 ## Allegare immagini/video
 1. Nel composer clicca "Allega foto/video" e scegli un file ammesso:
    - Immagini: JPEG/PNG/WebP/GIF fino a 8MB.
-   - Video: MP4/QuickTime fino a 80MB.
+   - Video: MP4/QuickTime fino a 50MB (upload diretto su Supabase Storage).
 2. Pubblica il post con o senza testo.
-   - Atteso: l'upload su `/api/feed/upload` restituisce l'URL pubblico e il post viene creato con `media_url` e `media_type` compilati.
+   - Atteso: il client carica il file direttamente nel bucket `posts/<auth.uid>/...` e la POST a `/api/feed/posts` salva `media_url`/`media_type` usando il percorso ottenuto.
    - In UI deve comparire l'anteprima immagine o il player video dopo il refresh.
 3. Ripeti con un video per garantire che il bucket `posts` consenta sia immagini sia video.
 
-Se ricevi `new row violates row-level security policy`, verifica le policy di `storage.objects` (bucket `posts`) e che il percorso rispetti lo schema `<auth.uid>/<nome_file>`; gli errori `upload_failed` indicano bucket mancante o chiave admin non configurata.
+Se ricevi `new row violates row-level security policy` durante l'upload, verifica le policy di `storage.objects` (bucket `posts`) e che il percorso rispetti lo schema `<auth.uid>/<nome_file>`; gli errori `Upload non riuscito: ...` indicano bucket mancante o ACL errata.
 
 ## Diagnosi rapida
 - `new row violates row-level security policy` su POST: l'API ha fatto fallback al client utente; verifica che l'utente autenticato sia proprietario del post.

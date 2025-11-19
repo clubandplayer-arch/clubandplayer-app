@@ -3,6 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 
 type Props = {
   onPosted?: () => void;
@@ -10,12 +11,31 @@ type Props = {
 
 const MAX_CHARS = 500;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
-const MAX_VIDEO_BYTES = 80 * 1024 * 1024;
+const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
 const ACCEPT = 'image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime';
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const VIDEO_TYPES = ['video/mp4', 'video/quicktime'];
 
 type MediaType = 'image' | 'video';
+
+type UploadedMedia = {
+  media_url: string | null;
+  media_type: MediaType;
+  media_path: string;
+  media_bucket: string;
+  media_mime: string | null;
+};
+
+const POSTS_BUCKET = process.env.NEXT_PUBLIC_POSTS_BUCKET || 'posts';
+
+function sanitizeFileName(name?: string | null) {
+  return (name || 'media')
+    .toLowerCase()
+    .replace(/[^a-z0-9_.-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80)
+    || 'media';
+}
 
 class FeedUploadError extends Error {
   constructor(message: string) {
@@ -86,32 +106,60 @@ export default function FeedComposer({ onPosted }: Props) {
     setMediaPreview(kind === 'image' ? URL.createObjectURL(file) : null);
   }
 
-  async function uploadMedia(): Promise<{ media_url: string; media_type: MediaType } | null> {
+  async function uploadMedia(): Promise<UploadedMedia | null> {
     if (!mediaFile || !mediaType) return null;
     setMediaErr(null);
-    const form = new FormData();
-    form.append('file', mediaFile);
-    form.append('kind', mediaType);
-    let res: Response;
-    try {
-      res = await fetch('/api/feed/upload', {
-        method: 'POST',
-        credentials: 'include',
-        body: form,
-      });
-    } catch (networkError: any) {
-      const fallback = networkError?.message || 'Upload media fallito';
+    const supabase = getSupabaseBrowserClient();
+    const { data: auth, error: authErr } = await supabase.auth.getUser();
+    if (authErr || !auth?.user) {
+      const fallback = 'Effettua il login per allegare media.';
       setMediaErr(fallback);
       throw new FeedUploadError(fallback);
     }
 
-    const json = await res.json().catch(() => null as any);
-    if (!res.ok || !json?.ok || !json?.url) {
-      const message = json?.message || json?.error || 'Upload media fallito';
-      setMediaErr(message);
-      throw new FeedUploadError(message);
+    const allowedList = mediaType === 'image' ? IMAGE_TYPES : VIDEO_TYPES;
+    if (!allowedList.includes(mediaFile.type)) {
+      const fallback =
+        mediaType === 'image'
+          ? 'Formato immagine non supportato. Usa JPEG/PNG/WebP/GIF.'
+          : 'Formato video non supportato. Usa un file MP4.';
+      setMediaErr(fallback);
+      throw new FeedUploadError(fallback);
     }
-    return { media_url: json.url as string, media_type: (json.mediaType as MediaType) ?? mediaType };
+
+    const limit = mediaType === 'image' ? MAX_IMAGE_BYTES : MAX_VIDEO_BYTES;
+    if (mediaFile.size > limit) {
+      const fallback = `Il file supera il limite di ${Math.round(limit / (1024 * 1024))}MB.`;
+      setMediaErr(fallback);
+      throw new FeedUploadError(fallback);
+    }
+
+    const safeName = sanitizeFileName(mediaFile.name);
+    const objectPath = `${auth.user.id}/${Date.now()}-${safeName}`;
+    const bucket = POSTS_BUCKET;
+
+    const { data, error } = await supabase.storage.from(bucket).upload(objectPath, mediaFile, {
+      cacheControl: '3600',
+      upsert: false,
+      contentType: mediaFile.type || undefined,
+    });
+
+    if (error || !data) {
+      const fallback = error?.message ? `Upload non riuscito: ${error.message}` : 'Upload media fallito';
+      setMediaErr(fallback);
+      throw new FeedUploadError(fallback);
+    }
+
+    const publicInfo = supabase.storage.from(bucket).getPublicUrl(data.path);
+    const url = publicInfo?.data?.publicUrl ?? null;
+
+    return {
+      media_url: url,
+      media_type: mediaType,
+      media_path: data.path,
+      media_bucket: bucket,
+      media_mime: mediaFile.type || null,
+    };
   }
 
   async function handlePost() {
@@ -119,7 +167,7 @@ export default function FeedComposer({ onPosted }: Props) {
     setSending(true);
     setErr(null);
     try {
-      let mediaPayload: { media_url: string; media_type: MediaType } | null = null;
+      let mediaPayload: UploadedMedia | null = null;
       if (mediaFile) {
         mediaPayload = await uploadMedia();
       }
@@ -128,6 +176,9 @@ export default function FeedComposer({ onPosted }: Props) {
       if (mediaPayload) {
         payload.media_url = mediaPayload.media_url;
         payload.media_type = mediaPayload.media_type;
+        payload.media_path = mediaPayload.media_path;
+        payload.media_bucket = mediaPayload.media_bucket;
+        payload.media_mime = mediaPayload.media_mime;
       }
 
       const res = await fetch('/api/feed/posts', {
