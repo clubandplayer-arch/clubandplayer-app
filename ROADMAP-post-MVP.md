@@ -20,9 +20,9 @@ Legenda: ☐ todo · ◐ in corso · ✅ fatto
 | PM-07 | **Sentry tuning** (env/release + regole)               | ✅    | qualità  |
 | PM-08 | **CI/CD**: E2E “quasi-bloccanti” + artifacts           | ✅    | devops   |
 | PM-09 | **Docs & Onboarding** dev                              | ✅    | docs     |
-| PM-10 | **Performance**: immagini/storage/caching              | ☐     | perf     |
-| PM-11 | **Legal**: privacy/termini + cookie note               | ☐     | legal    |
-| PM-12 | **Analytics** di base (privacy-safe)                    | ☐     | ops      |
+| PM-10 | **Performance**: immagini/storage/caching              | ✅    | perf     |
+| PM-11 | **Legal**: privacy/termini + cookie note               | ✅    | legal    |
+| PM-12 | **Analytics** di base (privacy-safe)                    | ✅    | ops      |
 
 ---
 
@@ -139,33 +139,39 @@ Legenda: ☐ todo · ◐ in corso · ✅ fatto
 ---
 
 ### PM-10 — **Performance**
-**Obiettivo:** migliorare TTI/LCP.  
+**Obiettivo:** migliorare TTI/LCP.
 **Checklist**
-- ☐ Verifica `next/image`: lazy, dimensioni coerenti, `priority` dove serve.
-- ☐ Caching lato CDN per contenuti pubblici (se applicabile).
-- ☐ Micro-profiling pagine più pesanti.  
+- ✅ `next/image` configurato con domini Supabase, formati AVIF/WebP, `sizes`/lazy sui componenti che mostrano avatar e loghi.
+- ✅ Header `Cache-Control` per `/_next/static`, `/_next/image` e asset pubblici, con TTL lunghi lato CDN.
+- ✅ Profiling manuale delle pagine feed/club per assicurare assenza di carichi media non necessari.
 **Accettazione**
 - Lighthouse ≥ 90 su pagine target (desktop).
+**Stato attuale**
+- `next.config.ts` applica ora caching aggressivo e ottimizzazioni immagini, mentre i componenti (`FeedCard`, `ClubsTable`, `/search/club`) specificano esplicitamente `sizes`/lazy per ridurre il LCP.
 
 ---
 
 ### PM-11 — **Legal**
-**Obiettivo:** allineamento privacy/termini.  
+**Obiettivo:** allineamento privacy/termini.
 **Checklist**
-- ☐ Review `/legal/privacy` e `/legal/terms`.
-- ☐ Cookie disclosure minima (se/quando introdurrai analytics).  
+- ✅ Review `/legal/privacy` e `/legal/terms` con sezioni su titolare, basi giuridiche, conservazione e responsabilità.
+- ✅ Cookie disclosure aggiornata per descrivere analytics essenziale e rispetto del segnale Do Not Track.
 **Accettazione**
 - Testi aggiornati; link visibili nel footer.
+**Stato attuale**
+- Le pagine `/legal/privacy` e `/legal/terms` includono ora titolare, diritti GDPR, uso consentito e limitazioni di responsabilità, oltre a riferimenti espliciti al loader analytics privacy-first.
 
 ---
 
 ### PM-12 — **Analytics** (privacy-safe)
-**Obiettivo:** telemetria minima rispettosa.  
+**Obiettivo:** telemetria minima rispettosa.
 **Checklist**
-- ☐ Integra soluzione privacy-first (server-side o client con anonimizzazione IP).
-- ☐ Escludi route private; rispetta Do Not Track.  
+- ✅ Loader client compatibile con Plausible, opzionale via `NEXT_PUBLIC_ANALYTICS_*`, senza cookie di terze parti.
+- ✅ Rispetto DNT e consenso cookie (`cp-consent-v1`); eventi aggregati inviati tramite `window.plausible`.
 **Accettazione**
 - Pageviews base su production; nessun alert privacy.
+**Stato attuale**
+- `PrivacyAnalytics` carica lo script solo con consenso esplicito e DNT disattivato, mentre `lib/analytics` e i componenti di tracking inviano eventi aggregati attraverso l’API Plausible-like.
 
 ---
 

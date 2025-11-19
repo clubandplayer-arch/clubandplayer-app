@@ -6,7 +6,7 @@ import { Suspense } from 'react';
 import HashCleanup from '@/components/auth/HashCleanup';
 import SessionSyncMount from '@/components/auth/SessionSyncMount';
 import CookieConsent from '@/components/misc/CookieConsent';
-import PostHogInit from '@/components/analytics/PostHogInit';
+import PrivacyAnalytics from '@/components/analytics/PrivacyAnalytics';
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://clubandplayer.com';
 const SITE_NAME = 'Club & Player';
@@ -88,9 +88,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
 
       <body className="antialiased bg-neutral-50 text-neutral-900 font-sans">
-        {/* Init analytics (rispetta consenso, pageview & identify) */}
+        {/* Analytics privacy-first: si attiva solo con consenso e DNT disattivato */}
         <Suspense fallback={null}>
-          <PostHogInit />
+          <PrivacyAnalytics />
         </Suspense>
 
         {/* Pulisce hash OAuth e fa redirect sicuro */}

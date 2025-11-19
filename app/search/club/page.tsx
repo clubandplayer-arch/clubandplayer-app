@@ -176,7 +176,15 @@ export default function SearchClubPage() {
             <div style={{ display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                 {c.logo_url ? (
-                  <Image src={c.logo_url} alt={c.display_name || c.name} width={56} height={56} style={{ borderRadius: 8, objectFit: 'cover' }} />
+                  <Image
+                    src={c.logo_url}
+                    alt={c.display_name || c.name}
+                    width={56}
+                    height={56}
+                    sizes="56px"
+                    loading="lazy"
+                    style={{ borderRadius: 8, objectFit: 'cover' }}
+                  />
                 ) : (
                   <div style={{ width: 56, height: 56, borderRadius: 8, background: '#e5e7eb' }} />
                 )}

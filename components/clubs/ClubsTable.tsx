@@ -53,6 +53,8 @@ export default function ClubsTable({
                       alt={c.name}
                       width={32}
                       height={32}
+                      sizes="32px"
+                      loading="lazy"
                       className="h-8 w-8 rounded-full object-cover"
                     />
                   ) : (

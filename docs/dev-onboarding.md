@@ -61,4 +61,11 @@ Questa guida raccoglie gli step minimi per avviare il progetto in meno di 15 min
   2. Controlla i log di Vercel per eccezioni legate a `auth.getUser()` o mismatch delle chiavi Supabase.
 - **Fix**: rigenera le chiavi in Supabase, aggiornale su Vercel e ripeti il login.
 
+- **Sintomi**: nessun hit in analytics o lo script non compare in `<head>`.
+- **Check**:
+  1. Imposta `NEXT_PUBLIC_ANALYTICS_DOMAIN` e, se usi un endpoint self-hosted, `NEXT_PUBLIC_ANALYTICS_SRC` / `NEXT_PUBLIC_ANALYTICS_API`.
+  2. Conferma che l'utente abbia accettato i cookie (localStorage `cp-consent-v1` con `consent="all"`).
+  3. Disattiva eventuali estensioni Do Not Track se vuoi testare in locale: il loader rispetta `navigator.doNotTrack` e non carica script quando il segnale è attivo.
+- **Fix**: aggiorna le env e rilancia il client; per forzare un nuovo consenso elimina `cp-consent-v1` da localStorage.
+
 Per problemi diversi, consulta `docs/repo-audit-2025-03-09.md` (sezione rischi) e le checklist in `docs/smoke-tests/`.

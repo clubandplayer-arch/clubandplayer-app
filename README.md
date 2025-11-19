@@ -48,7 +48,8 @@
 | `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` | server/client | ⚪️ | Abilitano il tracking errori Sentry. |
 | `SENTRY_ENVIRONMENT`, `NEXT_PUBLIC_SENTRY_ENVIRONMENT` | server/client | ⚪️ | Ambiente usato in Sentry (es. `production`). |
 | `SENTRY_RELEASE`, `NEXT_PUBLIC_SENTRY_RELEASE` | server/client | ⚪️ | Etichetta release/commit per Sentry (es. `VERCEL_GIT_COMMIT_SHA`). |
-| `NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_POSTHOG_HOST` | client | ⚪️ | Telemetria opzionale PostHog. |
+| `NEXT_PUBLIC_ANALYTICS_DOMAIN` | client | ⚪️ | Dominio tracciato dal loader Plausible-like (es. `clubandplayer.app`). |
+| `NEXT_PUBLIC_ANALYTICS_SRC`, `NEXT_PUBLIC_ANALYTICS_API` | client | ⚪️ | URL script/API della soluzione analytics privacy-first. |
 | `RESEND_API_KEY`, `RESEND_FROM`, `BRAND_REPLY_TO` | server | ⚪️ | Abilitano l'invio email reale. Se assenti, le rotte notifiche rimangono in NOOP. |
 | `NOOP_EMAILS` | server | ⚪️ | Imposta `1` per forzare il NOOP (default). |
 | `E2E_HOST`, `E2E_PORT`, `E2E_BASE_URL` | test | ⚪️ | Override per gli smoke test E2E. |
@@ -107,6 +108,15 @@
 - **Sentry**: popola `SENTRY_DSN`/`NEXT_PUBLIC_SENTRY_DSN`, imposta `SENTRY_ENVIRONMENT` e lascia che `VERCEL_GIT_COMMIT_SHA` (o `SENTRY_RELEASE`) tagghi la release; verifica con `node scripts/check-sentry-config.mjs` prima del deploy.
 
 > Per maggiori dettagli e altre casistiche consulta [docs/dev-onboarding.md](docs/dev-onboarding.md).
+
+## Analytics privacy-first
+- La raccolta di metriche usa uno script compatibile con [Plausible](https://plausible.io/) o equivalenti self-hosted.
+- Lo script viene caricato solo se:
+  1. è presente `NEXT_PUBLIC_ANALYTICS_DOMAIN` (con eventuali `NEXT_PUBLIC_ANALYTICS_SRC` / `NEXT_PUBLIC_ANALYTICS_API`),
+  2. l'utente ha accettato tutti i cookie dal banner (`cp-consent-v1`),
+  3. il browser **non** espone un segnale *Do Not Track* attivo.
+- I componenti che tracciano eventi (es. `TrackListView`, `TrackOpportunityOpen`) inviano solo eventi aggregati e privi di dati personali tramite `window.plausible`.
+- Se vuoi disattivare completamente la telemetria basta omettere le variabili `NEXT_PUBLIC_ANALYTICS_*` e nessuno script verrà caricato.
 
 ## Checklist deploy MVP
 - `NEXT_PUBLIC_FEATURE_CLUBS_READONLY=1` su produzione.

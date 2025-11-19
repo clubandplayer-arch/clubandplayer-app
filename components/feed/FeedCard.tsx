@@ -30,7 +30,15 @@ export default function FeedCard({
       <header className="flex items-center gap-3">
         <div className="h-10 w-10 rounded-full bg-gray-200 overflow-hidden">
           {avatarUrl ? (
-            <Image src={avatarUrl} alt="" width={40} height={40} className="object-cover" />
+            <Image
+              src={avatarUrl}
+              alt=""
+              width={40}
+              height={40}
+              sizes="40px"
+              loading="lazy"
+              className="object-cover"
+            />
           ) : null}
         </div>
         <div className="min-w-0">
