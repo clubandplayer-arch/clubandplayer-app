@@ -1,6 +1,8 @@
-# Smoke test `/feed` (post + media)
+# Smoke test `/feed` (post di testo)
 
-Checklist manuale per verificare la bacheca in modalità autenticata, inclusi gli upload media con Supabase Storage.
+> **Ultima esecuzione:** 09/03/2025 (run `docs/smoke-tests/runs/2025-03-09.md`) – ✅ completata.
+
+Checklist manuale per verificare la bacheca autenticata (solo post di testo, upload media disattivati nella Beta).
 
 ## Prerequisiti
 - Variabili configurate:
@@ -21,13 +23,9 @@ Checklist manuale per verificare la bacheca in modalità autenticata, inclusi gl
    - Se ricevi `insert_failed` o 401, verifica `SUPABASE_SERVICE_ROLE_KEY` e le policy RLS su `posts`.
 4. Aggiorna la pagina: il nuovo post resta visibile e modificabile/eliminabile solo dall'autore.
 
-## Flusso con media (foto/video)
-1. Nel composer seleziona **Foto** o **Video**, carica un file valido e pubblica.
-2. Controlla che l'upload su Storage vada a buon fine e che l'URL pubblico venga restituito (nessun errore `bucket_not_found` o `public_url_unavailable`).
-3. Verifica che il post mostri l'anteprima immagine/video e che l'autore possa eliminarlo.
-4. In caso di errore RLS sull'upload, assicurati che il bucket esista e che l'API abbia accesso service-role.
+## Nota sui media
+Durante la Beta l'upload di foto/video è disabilitato: eventuali controlli in UI devono risultare nascosti e l'endpoint `/api/feed/posts` deve rifiutare payload con `media_url`/`media_type`.
 
 ## Diagnosi rapida
-- `new row violates row-level security policy` su POST: l'API ha fatto fallback al client utente; aggiungi/controlla `SUPABASE_SERVICE_ROLE_KEY` in ambiente server.
-- `bucket_not_found` su upload: crea il bucket `posts` (pubblico) o definisci `NEXT_PUBLIC_POSTS_BUCKET` e riavvia l'API.
+- `new row violates row-level security policy` su POST: l'API ha fatto fallback al client utente; verifica che l'utente autenticato sia proprietario del post.
 - Filtri vuoti: controlla i ruoli in `profiles.account_type`/`profiles.type` e che l'utente abbia un valore coerente (`club`/`athlete`).

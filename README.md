@@ -92,14 +92,15 @@
    - `/feed` → redirect a `/login` per guest o feed pubblico.
    - `/clubs` → tabella read-only con colonna “Nome” basata su `displayLabel` dell'adapter.
    - `/debug/client-error` e `/api/debug/error` → verifiche per Sentry.
-3. Quando abiliti i CRUD su `/clubs` in staging, segui la [checklist di smoke test guest vs admin](docs/smoke-tests/clubs.md) per verificare flag, allowlist e RLS.
-4. Per feed e candidature, usa le checklist manuali dedicate: [smoke test `/feed`](docs/smoke-tests/feed.md) e [smoke test `/applications/received`](docs/smoke-tests/applications.md).
+-3. Quando abiliti i CRUD su `/clubs` in staging, segui la [checklist di smoke test guest vs admin](docs/smoke-tests/clubs.md) per verificare flag, allowlist e RLS.
+-4. Per feed e candidature, usa le checklist manuali dedicate: [smoke test `/feed`](docs/smoke-tests/feed.md) e [smoke test `/applications/received`](docs/smoke-tests/applications.md).
+-5. Ultima esecuzione completa (feed, clubs, applications, full journey): vedi [`docs/smoke-tests/runs/2025-03-09.md`](docs/smoke-tests/runs/2025-03-09.md) e l'artifact testuale (`docs/smoke-tests/artifacts/2025-03-09-e2e.log`). Ripeti la checklist ad ogni release.
 5. Verifica la salute del backend con `curl http://127.0.0.1:3000/api/health` (risposta 200 JSON con info ambiente).
 
 ## Smoke test in CI (GitHub Actions)
 - Il workflow **E2E (non-blocking)** esegue `pnpm test:e2e`, salva log e metadati (`artifacts/smoke/e2e-smoke.log`, `metadata.json`) e li pubblica come artifact `smoke-artifacts` scaricabile da GitHub Actions.
 - Il riepilogo del job include automaticamente le ultime righe del log oltre allo stato registrato in `metadata.json` per diagnosi rapide.
-- Per rendere gli smoke test "quasi-bloccanti" sulle PR, definisci la variabile di repository `SMOKE_ENFORCE=true`. Se i test falliscono e la PR modifica file che combaciano con `app/**` o i pattern configurati in `SMOKE_ENFORCE_PATHS`, il job verrà segnato come failed.
+- Per rendere gli smoke test "quasi-bloccanti" sulle PR, definisci la variabile di repository `SMOKE_ENFORCE=true`. Se i test falliscono e la PR modifica file che combaciano con `app/**` o i pattern configurati in `SMOKE_ENFORCE_PATHS`, il job verrà segnato come failed. I branch `main` e `release/*` li considerano automaticamente obbligatori.
 
 ## Troubleshooting onboarding rapido
 - **Variabili Vercel**: usa `docs/env.sample` come fonte e verifica che `NEXT_PUBLIC_BASE_URL`, Supabase e Sentry coincidano fra `.env.local` e le sezioni Production/Preview di Vercel; gli script `node scripts/check-feed-config.mjs` e `node scripts/check-sentry-config.mjs` evidenziano variabili mancanti.

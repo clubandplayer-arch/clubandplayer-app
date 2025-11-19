@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      SMOKE_ENFORCE: ${{ vars.SMOKE_ENFORCE || 'false' }}
+      SMOKE_ENFORCE: ${{ (github.ref_type == 'branch' && (startsWith(github.ref_name, 'release/') || github.ref_name == 'main')) && 'true' || vars.SMOKE_ENFORCE || 'false' }}
       SMOKE_ENFORCE_PATHS: ${{ vars.SMOKE_ENFORCE_PATHS || 'app/**,app/api/**' }}
     steps:
       - name: Checkout

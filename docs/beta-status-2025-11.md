@@ -18,7 +18,7 @@ Questo documento fotografa l'analisi corrente della codebase e i passi prioritar
 - **Documentazione**: README, roadmap, onboarding e stato Beta sono allineati; la sezione troubleshooting copre Vercel env, callback Supabase, storage e Sentry.
 
 ### Checklist finale per dichiarare la Beta
-1. **Smoke test completi**: eseguire tutte le checklist in `docs/smoke-tests/` (feed, clubs, applications, full journey). Allegare gli artifact corrispondenti alla PR/Deploy e mantenere `SMOKE_ENFORCE=true` per i branch di release.
+1. **Smoke test completi**: ultima esecuzione 09/03/2025 (`docs/smoke-tests/runs/2025-03-09.md`). Allegare gli artifact corrispondenti alla PR/Deploy, ripetere il ciclo a ogni release e mantenere `SMOKE_ENFORCE=true` per i branch di release.
 2. **Allineamento ambienti**: verificare che Vercel (Preview/Production) esponga lo stesso set di variabili di `.env.local` (Resend, Sentry, Supabase, analytics). Usare gli script `scripts/check-*.mjs` per email, Sentry, feed e flag clubs.
 3. **Feature flag**: decidere il rollout combinato di `NEXT_PUBLIC_FEATURE_CLUBS_ADMIN` e `CLUBS_ADMIN_EMAILS`, assicurando almeno un account admin attivo e monitorato. Documentare il piano di inversione flag in caso di problemi.
 4. **Monitoraggio**: confermare che Sentry riceva eventi con `environment`/`release` corretti e che l'analytics privacy-first sia abilitato solo dopo il consenso. Configurare alert minimi per `/api/*` e feed.
