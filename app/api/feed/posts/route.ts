@@ -155,6 +155,29 @@ export async function GET(req: NextRequest) {
   );
 }
 
+function isMissingMediaColumns(err: any) {
+  const msg = err?.message || '';
+  return /column .*media_/i.test(msg);
+}
+
+function isRlsError(err: any) {
+  if (!err) return false;
+  const msg = (err.message || '').toLowerCase();
+  return (
+    err.code === '42501' ||
+    msg.includes('row-level security') ||
+    msg.includes('permission denied') ||
+    msg.includes('new row violates')
+  );
+}
+
+const SELECT_WITH_MEDIA = 'id, author_id, content, created_at, media_url, media_type';
+const SELECT_BASE = 'id, author_id, content, created_at';
+
+type ServerClient = Awaited<ReturnType<typeof getSupabaseServerClient>>;
+type AdminClient = NonNullable<ReturnType<typeof getSupabaseAdminClientOrNull>>;
+type InsertClient = ServerClient | AdminClient;
+
 // POST: inserimento autenticato con rate-limit via cookie
 export async function POST(req: NextRequest) {
   try {
@@ -195,6 +218,7 @@ export async function POST(req: NextRequest) {
     }
 
     const supabase = await getSupabaseServerClient();
+    const admin = getSupabaseAdminClientOrNull();
 
     const { data: auth, error: authErr } = await supabase.auth.getUser();
     if (authErr || !auth?.user) {
@@ -206,18 +230,25 @@ export async function POST(req: NextRequest) {
     if (mediaUrl) insertPayload.media_url = mediaUrl;
     if (mediaType) insertPayload.media_type = mediaType;
 
-    const SELECT_WITH_MEDIA = 'id, author_id, content, created_at, media_url, media_type';
-    const runInsert = (payload: Record<string, any>, select: string) =>
-      supabase.from('posts').insert(payload).select(select).single();
+    const fallbackPayload: Record<string, any> = { content: text || mediaUrl || '', author_id: auth.user.id };
+
+    const runInsert = (client: InsertClient, payload: Record<string, any>, select: string) =>
+      client.from('posts').insert(payload).select(select).single();
 
     let data: any = null;
     let error: any = null;
 
-    ({ data, error } = await runInsert(insertPayload, SELECT_WITH_MEDIA));
+    ({ data, error } = await runInsert(supabase, insertPayload, SELECT_WITH_MEDIA));
 
-    if (error && /column .*media_/i.test(error.message || '')) {
-      const fallbackPayload: Record<string, any> = { content: text || mediaUrl || '', author_id: auth.user.id };
-      ({ data, error } = await runInsert(fallbackPayload, 'id, author_id, content, created_at'));
+    if (error && isMissingMediaColumns(error)) {
+      ({ data, error } = await runInsert(supabase, fallbackPayload, SELECT_BASE));
+    }
+
+    if (error && admin && isRlsError(error)) {
+      ({ data, error } = await runInsert(admin, insertPayload, SELECT_WITH_MEDIA));
+      if (error && isMissingMediaColumns(error)) {
+        ({ data, error } = await runInsert(admin, fallbackPayload, SELECT_BASE));
+      }
     }
 
     if (error) {
