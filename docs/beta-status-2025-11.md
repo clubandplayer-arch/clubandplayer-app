@@ -23,7 +23,7 @@ Questo documento fotografa l'analisi corrente della codebase e i passi prioritar
 3. ✅ **Feature flag**: il rollout combinato di `NEXT_PUBLIC_FEATURE_CLUBS_ADMIN` e `CLUBS_ADMIN_EMAILS` è documentato in [`docs/feature-flags/clubs-admin-rollout.md`](./feature-flags/clubs-admin-rollout.md) con overlap obbligatorio rispetto a `ADMIN_EMAILS`, check script aggiornato e piano di rollback.
 4. ✅ **Monitoraggio**: `scripts/check-monitoring.mjs` verifica DSN/env/release e può inviare un ping `--send-event` a Sentry; il runbook [`docs/monitoring/runbook.md`](./monitoring/runbook.md) documenta anche gli alert minimi (tag `layer=api`, `endpoint=/api/feed/posts*`) e ribadisce che l'analytics Plausible-like si attiva solo dopo il consenso + DNT off.
 5. ✅ **Comunicazione legale**: le pagine `/legal/privacy`, `/legal/terms` e la nuova `/legal/beta` sono state revisionate, collegate dal footer e il testo condivisibile è disponibile in [`docs/legal/beta-invite.md`](./legal/beta-invite.md).
-6. **Supporto/triage**: definire chi gestisce Resend inbox (`BRAND_REPLY_TO`) e predisporre un canale Sentry/Slack per segnalare errori critici durante la beta chiusa.
+6. ✅ **Supporto/triage**: la casella `BRAND_REPLY_TO` (`support@clubandplayer.com`) è presidiata dal team Operazioni e gli errori Sentry vengono inoltrati sul canale Slack `#beta-triage` (vedi [`docs/support/beta-triage.md`](./support/beta-triage.md)).
 
 Quando la checklist sopra è stata completata, aggiornare questo file con la data del via libera e aprire la sezione “Post Beta” per i miglioramenti successivi (es. reintroduzione upload media, nuove analytics, etc.).
 

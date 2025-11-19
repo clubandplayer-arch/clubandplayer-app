@@ -180,9 +180,10 @@ Legenda: ☐ todo · ◐ in corso · ✅ fatto
 
 ## 📌 Note operative
 - **Branch protection**: mantieni “Lint” e “Type check” required; E2E per ora non-bloccanti.
-- **Feature flags** (esempi):  
-  - `NEXT_PUBLIC_FEATURE_CLUBS_ADMIN` — abilita UI admin per /clubs edit  
+- **Feature flags** (esempi):
+  - `NEXT_PUBLIC_FEATURE_CLUBS_ADMIN` — abilita UI admin per /clubs edit
   - `NOOP_EMAILS` — 1/0 per mockare o inviare email reali
 - **Ambienti**: lato server usa `VERCEL_ENV` come fonte verità; lato client variabili `NEXT_PUBLIC_*`.
+- **Supporto/triage Beta**: `BRAND_REPLY_TO` deve puntare all'alias `support@clubandplayer.com` (team Operazioni) e gli alert Sentry devono arrivare su Slack `#beta-triage` come descritto in [`docs/support/beta-triage.md`](docs/support/beta-triage.md).
 
 ---
