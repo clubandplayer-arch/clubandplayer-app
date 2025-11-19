@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
+import { reportApiError } from '@/lib/monitoring/reportApiError';
 
 export const runtime = 'nodejs';
 
@@ -82,6 +83,11 @@ export async function GET(req: NextRequest) {
   }
 
   if (error) {
+    reportApiError({
+      endpoint: '/api/feed/posts',
+      error,
+      context: { stage: 'select', method: 'GET' },
+    });
     return NextResponse.json(
       {
         ok: false,
@@ -204,6 +210,11 @@ export async function POST(req: NextRequest) {
     }
 
     if (error) {
+      reportApiError({
+        endpoint: '/api/feed/posts',
+        error,
+        context: { stage: 'insert', method: 'POST' },
+      });
       return NextResponse.json(
         {
           ok: false,
@@ -229,6 +240,7 @@ export async function POST(req: NextRequest) {
     });
     return res;
   } catch (err: any) {
+    reportApiError({ endpoint: '/api/feed/posts', error: err, context: { method: 'POST', stage: 'handler_catch' } });
     return NextResponse.json({ ok: false, error: 'invalid_request', message: err?.message }, { status: 400 });
   }
 }

@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
+import { reportApiError } from '@/lib/monitoring/reportApiError';
 
 export const runtime = 'nodejs';
 
@@ -33,6 +34,9 @@ export const PATCH = withAuth(async (req: NextRequest, { user, supabase }) => {
     .eq('id', id)
     .maybeSingle();
 
+  if (fetchErr) {
+    reportApiError({ endpoint: '/api/feed/posts/[id]', error: fetchErr, context: { method: 'PATCH', stage: 'select' } });
+  }
   if (fetchErr || !existing) return jsonError('Not found', 404);
   if (existing.author_id !== user.id) return jsonError('Forbidden', 403);
 
@@ -44,6 +48,9 @@ export const PATCH = withAuth(async (req: NextRequest, { user, supabase }) => {
     .select(SELECT_BASE)
     .maybeSingle();
 
+  if (updateError) {
+    reportApiError({ endpoint: '/api/feed/posts/[id]', error: updateError, context: { method: 'PATCH', stage: 'update' } });
+  }
   if (updateError || !updated) return jsonError(updateError?.message || 'Update failed', 400);
   return NextResponse.json({ ok: true, item: normalizeRow(updated) });
 });
@@ -58,10 +65,16 @@ export const DELETE = withAuth(async (req: NextRequest, { user, supabase }) => {
     .eq('id', id)
     .maybeSingle();
 
+  if (fetchErr) {
+    reportApiError({ endpoint: '/api/feed/posts/[id]', error: fetchErr, context: { method: 'DELETE', stage: 'select' } });
+  }
   if (fetchErr || !existing) return jsonError('Not found', 404);
   if (existing.author_id !== user.id) return jsonError('Forbidden', 403);
 
   const { error } = await supabase.from('posts').delete().eq('id', id).eq('author_id', user.id);
-  if (error) return jsonError(error.message, 400);
+  if (error) {
+    reportApiError({ endpoint: '/api/feed/posts/[id]', error, context: { method: 'DELETE', stage: 'delete' } });
+    return jsonError(error.message, 400);
+  }
   return NextResponse.json({ ok: true });
 });

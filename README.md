@@ -68,6 +68,7 @@
 | `node scripts/check-feed-config.mjs` | Verifica che il bucket Storage `posts` e la tabella `posts` siano accessibili con la chiave service-role. |
 | `node scripts/check-email-config.mjs` | Controlla che le variabili Resend siano presenti e che `NOOP_EMAILS` sia disattivato prima di inviare email reali. |
 | `node scripts/check-sentry-config.mjs` | Verifica DSN, environment e release Sentry (server/client) prima di abilitare il monitoraggio. |
+| `node scripts/check-monitoring.mjs [--env-file .env.vercel.production] [--send-event]` | Controlla Sentry (DSN, environment, release) e l'analytics privacy-first; con `--send-event` invia un ping che deve apparire in dashboard con i tag corretti. |
 | `node scripts/check-vercel-env.mjs --local=.env.local --preview=.env.vercel.preview --production=.env.vercel.production` | Confronta `.env.local` con i file generati da `vercel env pull` (Preview/Production) e segnala variabili mancanti per Supabase, Resend, Sentry e analytics. |
 
 ## Struttura repository
@@ -107,7 +108,7 @@
 - **Variabili Vercel**: copia `docs/env.sample` in `.env.local`, poi genera `.env.vercel.preview` / `.env.vercel.production` con `vercel env pull`. Il comando `node scripts/check-vercel-env.mjs --local=.env.local --preview=.env.vercel.preview --production=.env.vercel.production` evidenzia differenze o variabili mancanti per Supabase, Resend, Sentry e analytics.
 - **Auth callback Supabase**: assicurati che in Supabase > Authentication > URL Settings siano presenti sia il dominio production sia `http://127.0.0.1:3000` / `http://localhost:3000`, e che `NEXT_PUBLIC_BASE_URL` punti allo stesso host.
 - **Storage feed**: controlla che il bucket `posts` esista e applichi le policy RLS previste; il comando `node scripts/check-feed-config.mjs` conferma bucket e permessi.
-- **Sentry**: popola `SENTRY_DSN`/`NEXT_PUBLIC_SENTRY_DSN`, imposta `SENTRY_ENVIRONMENT` e lascia che `VERCEL_GIT_COMMIT_SHA` (o `SENTRY_RELEASE`) tagghi la release; verifica con `node scripts/check-sentry-config.mjs` prima del deploy.
+- **Sentry**: popola `SENTRY_DSN`/`NEXT_PUBLIC_SENTRY_DSN`, imposta `SENTRY_ENVIRONMENT` e lascia che `VERCEL_GIT_COMMIT_SHA` (o `SENTRY_RELEASE`) tagghi la release; verifica con `node scripts/check-sentry-config.mjs` e allega una prova con `node scripts/check-monitoring.mjs --send-event` prima del deploy.
 
 > Per maggiori dettagli e altre casistiche consulta [docs/dev-onboarding.md](docs/dev-onboarding.md).
 
@@ -146,5 +147,6 @@
 - `docs/env-sync/2025-03-09.md` — Evidenza dell'ultimo check di allineamento fra `.env.local` e gli ambienti Vercel.
 - `docs/repo-audit-2025-03-09.md` — Audit aggiornato della codebase.
 - `docs/feature-flags/clubs-admin-rollout.md` — Piano di rollout (e rollback) per `NEXT_PUBLIC_FEATURE_CLUBS_ADMIN` e l'allowlist `CLUBS_ADMIN_EMAILS`.
+- `docs/monitoring/runbook.md` — Self-check monitoraggio (Sentry, analytics privacy-first e alert minimi) con riferimento agli artifact dei test.
 
 Per dubbi o onboarding, consulta anche `/app/debug/env` (verifica rapida env) e `scripts/create-admin-user.mjs` per promuovere utenti nel database.

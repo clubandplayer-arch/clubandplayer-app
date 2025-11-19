@@ -28,7 +28,7 @@ Questa guida raccoglie gli step minimi per avviare il progetto in meno di 15 min
   1. Confronta `.env.local` e `docs/env.sample` con le sezioni "Production" / "Preview" di Vercel.
   2. Genera i file `.env.vercel.preview` / `.env.vercel.production` con `vercel env pull` e lancia `node scripts/check-vercel-env.mjs --local=.env.local --preview=.env.vercel.preview --production=.env.vercel.production` per ottenere la lista delle variabili mancanti.
   3. Verifica `NEXT_PUBLIC_BASE_URL` e `NEXT_PUBLIC_SUPABASE_URL` coincidano con l'host effettivo del deploy.
-  4. Esegui `node scripts/check-feed-config.mjs` e `node scripts/check-sentry-config.mjs` per ulteriori variabili mancanti.
+  4. Esegui `node scripts/check-feed-config.mjs`, `node scripts/check-sentry-config.mjs` e `node scripts/check-monitoring.mjs --env-file .env.vercel.production` per ulteriori variabili mancanti.
 - **Fix**: aggiorna le environment su Vercel e riesegui `vercel env pull` se usi i file `.vercel/env.*`.
 
 ### Callback Supabase/Auth rotte su URL errati
@@ -53,7 +53,7 @@ Questa guida raccoglie gli step minimi per avviare il progetto in meno di 15 min
 - **Check**:
   1. Conferma `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` e gli environment `SENTRY_ENVIRONMENT` / `NEXT_PUBLIC_SENTRY_ENVIRONMENT`.
   2. Imposta `SENTRY_RELEASE` / `NEXT_PUBLIC_SENTRY_RELEASE` oppure lascia che Vercel popoli `VERCEL_GIT_COMMIT_SHA` (già gestito dagli helper in `lib/sentry/config.ts`).
-  3. Esegui `node scripts/check-sentry-config.mjs` prima del deploy.
+  3. Esegui `node scripts/check-sentry-config.mjs` prima del deploy e, quando devi allegare una prova del monitoraggio, `node scripts/check-monitoring.mjs --env-file .env.vercel.production --send-event` (vedi `docs/monitoring/runbook.md`).
 - **Fix**: aggiorna le env e rilancia `pnpm run build` localmente per verificare che il bootstrap non lanci warning.
 
 ### Auth callback 500 su `/api/auth/callback`
