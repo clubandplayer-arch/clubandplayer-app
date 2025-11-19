@@ -43,7 +43,7 @@ Questo documento fotografa l'analisi corrente della codebase e i passi prioritar
 4. ✅ **/clubs edit dietro flag admin (PM-04)**: flag `NEXT_PUBLIC_FEATURE_CLUBS_ADMIN` e allowlist `CLUBS_ADMIN_EMAILS` governano UI e API, esponendo i controlli CRUD solo agli utenti autorizzati.
 5. ✅ **Filtri ricerca club (PM-05)**: la UI `/search/club` usa `/api/clubs` con filtri geo e ricerca testuale indicizzata (`pg_trgm`, `idx_clubs_created_at`).
 6. ✅ **Security Supabase (PM-06)**: password policy portata a ≥12 caratteri con numeri/simboli, OTP expiry fissato a 900s e policy RLS su `profiles`/`clubs` riallineate con `WITH CHECK` coerenti.
-7. **CI/CD quasi-bloccante (PM-08)**: pubblicare gli artifact degli smoke test e valutare l'opzione `SMOKE_ENFORCE` per rendere le PR critiche più robuste; considerare reintroduzione Playwright solo se necessario.
+7. ✅ **CI/CD quasi-bloccante (PM-08)**: gli smoke test salvano log/metadata come artifact `smoke-artifacts` e `SMOKE_ENFORCE` può bloccare PR critiche; Playwright resta opzionale.
 8. **Docs & onboarding dev (PM-09)**: mantenere README/roadmap allineati e aggiungere troubleshooting per variabili Vercel, auth callback, storage e Sentry; garantire setup <15 minuti.
 9. **Performance, Legal, Analytics (PM-10/11/12)**: ottimizzare next/image e caching, preparare testi privacy/termini e scegliere una soluzione analytics privacy-first con rispetto DNT.
 

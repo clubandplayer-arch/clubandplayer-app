@@ -39,20 +39,38 @@ jobs:
         shell: bash
         run: |
           set +e
-          pnpm test:e2e 2>&1 | tee e2e-smoke.log
+          mkdir -p artifacts/smoke
+          start_ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          start_epoch=$(date +%s)
+          pnpm test:e2e 2>&1 | tee artifacts/smoke/e2e-smoke.log
           status=${PIPESTATUS[0]}
+          end_epoch=$(date +%s)
+          end_ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          duration=$((end_epoch-start_epoch))
+          cat <<'JSON' > artifacts/smoke/metadata.json
+{
+  "exitCode": STATUS_PLACEHOLDER,
+  "startedAt": "START_PLACEHOLDER",
+  "finishedAt": "END_PLACEHOLDER",
+  "durationSeconds": DURATION_PLACEHOLDER
+}
+JSON
+          sed -i "s/STATUS_PLACEHOLDER/${status}/" artifacts/smoke/metadata.json
+          sed -i "s/START_PLACEHOLDER/${start_ts}/" artifacts/smoke/metadata.json
+          sed -i "s/END_PLACEHOLDER/${end_ts}/" artifacts/smoke/metadata.json
+          sed -i "s/DURATION_PLACEHOLDER/${duration}/" artifacts/smoke/metadata.json
           echo "exit_code=${status}" >> "$GITHUB_OUTPUT"
           if [ "$status" -ne 0 ]; then
             echo "::warning::Smoke tests failed (non-blocking)."
           fi
           exit 0
 
-      - name: Upload smoke log
+      - name: Upload smoke artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-smoke-log
-          path: e2e-smoke.log
+          name: smoke-artifacts
+          path: artifacts/smoke
           if-no-files-found: warn
 
       - name: Append summary
@@ -62,7 +80,7 @@ jobs:
           EXIT_CODE: ${{ steps.smoke.outputs.exit_code }}
         run: |
           exit_code=${EXIT_CODE:-0}
-          if [ -f e2e-smoke.log ]; then
+          if [ -f artifacts/smoke/e2e-smoke.log ]; then
             if [ "$exit_code" -eq 0 ]; then
               echo "✅ Smoke test Node eseguiti con successo." >> "$GITHUB_STEP_SUMMARY"
             else
@@ -73,7 +91,7 @@ jobs:
               echo '<details><summary>Ultime righe log</summary>'
               echo
               echo '```'
-              tail -n 40 e2e-smoke.log || true
+              tail -n 40 artifacts/smoke/e2e-smoke.log || true
               echo '```'
               echo '</details>'
             } >> "$GITHUB_STEP_SUMMARY"

@@ -30,7 +30,7 @@ _Stato al 05/11/2025 — timezone: Europe/Rome_
 - **next/image**
   - Migrazione componenti core; allowlist remote patterns (DiceBear + Supabase) in `next.config.ts`
 - **CI E2E (Node workflow)**
-  - Workflow `.github/workflows/e2e.yml` riallineato al runner Node (`pnpm test:e2e`), con artifact `e2e-smoke-log` e riepilogo log nel job.
+  - Workflow `.github/workflows/e2e.yml` riallineato al runner Node (`pnpm test:e2e`), con artifact `smoke-artifacts` (log + metadata) e riepilogo log nel job.
   - Flag `SMOKE_ENFORCE` (variabile repo GitHub) per rendere i fallimenti bloccanti sulle PR che toccano percorsi critici.
 - **Viewport (pass-3)**
   - Rimosso `metadata.viewport` ovunque; `export const viewport` centralizzato

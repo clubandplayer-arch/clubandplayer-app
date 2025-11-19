@@ -18,7 +18,7 @@ Legenda: ☐ todo · ◐ in corso · ✅ fatto
 | PM-05 | Ricerca/filtri UI **/search/club**                     | ✅    | feature  |
 | PM-06 | **Security** Supabase (policy, OTP, HIBP, RLS)         | ✅    | security |
 | PM-07 | **Sentry tuning** (env/release + regole)               | ✅    | qualità  |
-| PM-08 | **CI/CD**: E2E “quasi-bloccanti” + artifacts           | ☐     | devops   |
+| PM-08 | **CI/CD**: E2E “quasi-bloccanti” + artifacts           | ✅    | devops   |
 | PM-09 | **Docs & Onboarding** dev                              | ☐     | docs     |
 | PM-10 | **Performance**: immagini/storage/caching              | ☐     | perf     |
 | PM-11 | **Legal**: privacy/termini + cookie note               | ☐     | legal    |
@@ -117,11 +117,13 @@ Legenda: ☐ todo · ◐ in corso · ✅ fatto
 ### PM-08 — **CI/CD** (E2E “quasi-bloccanti” + artifacts)
 **Obiettivo:** alzare il segnale CI senza bloccare il flusso, riutilizzando lo smoke test Node o estendendolo.
 **Checklist**
-- ☐ Salva log/trace degli smoke test (`pnpm test:e2e`) come artifact GitHub Actions.
-- ☐ Modalità “quasi-bloccante”: fallire PR che toccano `app/**` o `api/**` se gli smoke falliscono (flag).
-- ☐ (Facoltativo) Reintrodurre Playwright per scenari completi se torna necessario.
+- ✅ Salva log/trace degli smoke test (`pnpm test:e2e`) come artifact GitHub Actions.
+- ✅ Modalità “quasi-bloccante”: fallire PR che toccano `app/**` o `api/**` se gli smoke falliscono (flag `SMOKE_ENFORCE`).
+- ✅ (Facoltativo) Reintrodurre Playwright per scenari completi se torna necessario. _(Nota: valutata, non necessaria ora; documentato come opzione futura.)_
 **Accettazione**
 - Artifact disponibili per ogni run; policy PR configurabile.
+**Stato attuale**
+- Il workflow `E2E (non-blocking)` carica `smoke-artifacts` (log + metadata) e rispetta `SMOKE_ENFORCE`/`SMOKE_ENFORCE_PATHS` per bloccare PR su percorsi critici; Playwright resta opzionale e può essere riattivato più avanti.
 
 ---
 

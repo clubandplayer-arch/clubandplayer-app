@@ -93,9 +93,9 @@
 5. Verifica la salute del backend con `curl http://127.0.0.1:3000/api/health` (risposta 200 JSON con info ambiente).
 
 ## Smoke test in CI (GitHub Actions)
-- Il workflow **E2E (non-blocking)** esegue `pnpm test:e2e` con il Node test runner e pubblica l'output come artifact `e2e-smoke-log`.
-- Il riepilogo del job include automaticamente le ultime righe di log per diagnosi rapide.
-- Per rendere gli smoke test "quasi-bloccanti" sulle PR, definisci la variabile di repository `SMOKE_ENFORCE=true`. Se i test falliscono e la PR modifica file che combaciano con `app/**` (o con i pattern personalizzati nella variabile `SMOKE_ENFORCE_PATHS`), il job fallirà.
+- Il workflow **E2E (non-blocking)** esegue `pnpm test:e2e`, salva log e metadati (`artifacts/smoke/e2e-smoke.log`, `metadata.json`) e li pubblica come artifact `smoke-artifacts` scaricabile da GitHub Actions.
+- Il riepilogo del job include automaticamente le ultime righe del log oltre allo stato registrato in `metadata.json` per diagnosi rapide.
+- Per rendere gli smoke test "quasi-bloccanti" sulle PR, definisci la variabile di repository `SMOKE_ENFORCE=true`. Se i test falliscono e la PR modifica file che combaciano con `app/**` o i pattern configurati in `SMOKE_ENFORCE_PATHS`, il job verrà segnato come failed.
 
 ## Checklist deploy MVP
 - `NEXT_PUBLIC_FEATURE_CLUBS_READONLY=1` su produzione.

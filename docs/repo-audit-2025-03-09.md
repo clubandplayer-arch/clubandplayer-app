@@ -7,7 +7,7 @@ Questa analisi riepiloga lo stato attuale del branch `work`, evidenziando le car
 - Ho rimosso i file temporanei `build.log`, `conflicts.txt` e `struttura.txt`, non funzionali al prodotto.
 - Ho esteso `.gitignore` per evitare che log generati localmente ricompaiano nelle prossime commit.
 - README aggiornato con requisiti, variabili e checklist MVP; roadmap allineata allo stato attuale.
-- Workflow GitHub Actions `E2E (non-blocking)` aggiornato: usa il runner Node, carica l'artifact `e2e-smoke-log` e può diventare bloccante impostando `SMOKE_ENFORCE=true`.
+- Workflow GitHub Actions `E2E (non-blocking)` aggiornato: usa il runner Node, pubblica l'artifact `smoke-artifacts` (log + metadata) e può diventare bloccante impostando `SMOKE_ENFORCE=true`.
 
 ## Stato delle principali directory
 
