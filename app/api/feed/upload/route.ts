@@ -68,7 +68,8 @@ export async function POST(req: NextRequest) {
       return makeError('missing_file', 'Nessun file fornito');
     }
 
-    const hint = typeof form.get('kind') === 'string' ? (form.get('kind') as string) : null;
+    const hintRaw = typeof form.get('kind') === 'string' ? (form.get('kind') as string) : null;
+    const hint = hintRaw ? hintRaw.toLowerCase().trim() : null;
     const mediaKind = inferKind(file.type || '', hint);
     if (!mediaKind) {
       return makeError('unsupported_format', 'Formato non supportato. Usa JPEG/PNG/WebP oppure MP4.');
@@ -78,6 +79,16 @@ export async function POST(req: NextRequest) {
     if (file.size > maxBytes) {
       const scope = mediaKind === 'image' ? 'le immagini' : 'i video';
       return makeError('file_too_large', `Dimensione massima ${humanSize(maxBytes)} per ${scope}.`);
+    }
+
+    const allowedTypes = mediaKind === 'image' ? ALLOWED_IMAGE_TYPES : ALLOWED_VIDEO_TYPES;
+    if (file.type && !allowedTypes.has(file.type)) {
+      const code = mediaKind === 'image' ? 'unsupported_image' : 'unsupported_video';
+      const message =
+        mediaKind === 'image'
+          ? 'Formato immagine non supportato. Usa JPEG/PNG/WebP/GIF.'
+          : 'Formato video non supportato. Usa un file MP4.';
+      return makeError(code, message);
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
@@ -122,8 +133,23 @@ export async function POST(req: NextRequest) {
     }
 
     if (uploadError || !uploadData) {
-      reportApiError({ endpoint: '/api/feed/upload', error: uploadError, context: { stage: 'upload_session' } });
-      return makeError('upload_failed', uploadError?.message || 'Upload non riuscito');
+      console.error('[feed/upload] storage_error', {
+        bucket: BUCKET,
+        kind: mediaKind,
+        fileType: file.type,
+        fileSize: file.size,
+        hint,
+        error: uploadError,
+      });
+      reportApiError({
+        endpoint: '/api/feed/upload',
+        error: uploadError,
+        context: { stage: 'upload_session', kind: mediaKind, mime: file.type, size: file.size },
+      });
+      return makeError(
+        'storage_error',
+        uploadError?.message ? `Supabase storage error: ${uploadError.message}` : 'Upload non riuscito'
+      );
     }
 
     const { data: publicInfo } = supabase.storage.from(BUCKET).getPublicUrl(objectPath);
@@ -134,7 +160,12 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true, url: publicUrl, path: objectPath, mediaType: mediaKind });
   } catch (error: any) {
-    reportApiError({ endpoint: '/api/feed/upload', error, context: { method: 'POST' } });
+    console.error('[feed/upload] unexpected_error', error);
+    reportApiError({
+      endpoint: '/api/feed/upload',
+      error,
+      context: { method: 'POST' },
+    });
     return makeError('upload_failed', error?.message || 'Upload non riuscito');
   }
 }

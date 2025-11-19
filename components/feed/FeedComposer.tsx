@@ -17,6 +17,13 @@ const VIDEO_TYPES = ['video/mp4', 'video/quicktime'];
 
 type MediaType = 'image' | 'video';
 
+class FeedUploadError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'FeedUploadError';
+  }
+}
+
 export default function FeedComposer({ onPosted }: Props) {
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
@@ -85,24 +92,26 @@ export default function FeedComposer({ onPosted }: Props) {
     const form = new FormData();
     form.append('file', mediaFile);
     form.append('kind', mediaType);
+    let res: Response;
     try {
-      const res = await fetch('/api/feed/upload', {
+      res = await fetch('/api/feed/upload', {
         method: 'POST',
         credentials: 'include',
         body: form,
       });
-      const json = await res.json().catch(() => null as any);
-      if (!res.ok || !json?.ok || !json?.url) {
-        const message = json?.message || json?.error || 'Upload media fallito';
-        setMediaErr(message);
-        throw new Error(message);
-      }
-      return { media_url: json.url as string, media_type: (json.mediaType as MediaType) ?? mediaType };
-    } catch (error: any) {
-      const fallback = error?.message || 'Upload media fallito';
+    } catch (networkError: any) {
+      const fallback = networkError?.message || 'Upload media fallito';
       setMediaErr(fallback);
-      throw new Error(fallback);
+      throw new FeedUploadError(fallback);
     }
+
+    const json = await res.json().catch(() => null as any);
+    if (!res.ok || !json?.ok || !json?.url) {
+      const message = json?.message || json?.error || 'Upload media fallito';
+      setMediaErr(message);
+      throw new FeedUploadError(message);
+    }
+    return { media_url: json.url as string, media_type: (json.mediaType as MediaType) ?? mediaType };
   }
 
   async function handlePost() {
@@ -139,6 +148,9 @@ export default function FeedComposer({ onPosted }: Props) {
       setErr(null);
       onPosted?.();
     } catch (e: any) {
+      if (e?.name === 'FeedUploadError') {
+        return;
+      }
       setErr(e?.message ?? 'Errore inatteso');
     } finally {
       setSending(false);
