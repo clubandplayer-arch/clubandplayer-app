@@ -41,11 +41,11 @@ Questa guida raccoglie gli step minimi per avviare il progetto in meno di 15 min
 - **Fix**: aggiorna le URL in Supabase, poi ripeti il login (clear storage/cookie o `pnpm dev --clear-screen`).
 
 ### Storage feed (bucket `posts`) non disponibile
-- **Sintomi**: errori `new row violates row-level security policy` o `bucket not found` quando si pubblicano post (ora solo testuali, ma i check restano utili).
+- **Sintomi**: errori `new row violates row-level security policy`, `upload_failed` o `bucket not found` quando si pubblicano post con foto/video.
 - **Check**:
   1. In Supabase > Storage verifica che esista il bucket `posts` e che le policy consentano `auth.uid() = owner` per insert/select.
   2. Lancia `node scripts/check-feed-config.mjs` per confermare la presenza del bucket e delle policy lato CLI.
-  3. Se in futuro riabiliti media, controlla che i path seguano `posts/<user_id>/...`.
+  3. Verifica che i file caricati seguano `posts/<user_id>/...` e che l'utente autenticato sia lo stesso dell'`author_id` del post.
 - **Fix**: crea/ricrea il bucket e reimporta le policy dal file `supabase/migrations/*feed*.sql`.
 
 ### Sentry (DSN o release mancanti)

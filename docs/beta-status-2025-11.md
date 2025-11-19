@@ -11,7 +11,7 @@ Questo documento fotografa l'analisi corrente della codebase e i passi prioritar
 - Documentazione aggiornata e coerente: README, roadmap operative (`ROADMAP.md`, `ROADMAP-post-MVP.md`) e audit repository già disponibili come base di riferimento.
 
 ### Recap ultimi interventi
-- **Feed**: post di testo, modifica e cancellazione sono ora gestiti interamente con il client di sessione e rispettano le policy RLS. Le tab media sono state dismesse per eliminare i conflitti Storage.
+- **Feed**: il composer supporta nuovamente foto/video caricati sul bucket `posts` con policy RLS rispettate; l'API usa il client di sessione e fa fallback admin solo quando il bucket manca, mantenendo l'editing/cancellazione invariati.
 - **Candidature**: `/club/applicants` legge i dati direttamente con il client autenticato (fallback admin solo se necessario) e le colonne `club_id`/`media` sono consolidate tramite migrazioni Supabase.
 - **Avatar profilo**: l'upload usa helper dedicati con controlli espliciti sulla chiave service-role, rimuovendo gli errori RLS storici.
 - **Pipeline**: gli artifact degli smoke test sono pubblicati a ogni CI run e `SMOKE_ENFORCE` può rendere il check bloccante per percorsi critici.
@@ -36,7 +36,7 @@ Checklist completata il 10/03/2025: vedere la sezione successiva per la data uff
   - Canali legali, supporto e monitoraggio attivati come da runbook aggiornati.
 
 ## Post Beta
-- **Reintroduzione upload media nel feed**: rivalutare policy RLS e UX dopo la Beta, mantenendo fallback admin e strumenti di moderazione.
+- ✅ **Reintroduzione upload media nel feed**: la bacheca accetta nuovamente immagini (8MB) e video MP4 (80MB) caricati nel bucket `posts`, con fallback admin e logging Sentry sugli errori.
 - **Analytics avanzate**: valutare l’invio di eventi aggiuntivi (conversioni candidature, retention) mantenendo l’approccio privacy-first.
 - **Miglioramenti performance**: continuare a ottimizzare caching/lazy loading nelle viste più trafficate (feed, search club) e monitorare Web Vitals reali.
 - **Ampliamento supporto**: formalizzare SLA/turni per `BRAND_REPLY_TO` e canale `#beta-triage` quando il numero di utenti crescerà.

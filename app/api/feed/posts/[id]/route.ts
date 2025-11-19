@@ -18,7 +18,7 @@ function normalizeRow(row: any) {
   };
 }
 
-const SELECT_BASE = 'id, author_id, content, created_at';
+const SELECT_BASE = 'id, author_id, content, created_at, media_url, media_type';
 
 export const PATCH = withAuth(async (req: NextRequest, { user, supabase }) => {
   const id = req.nextUrl.pathname.split('/').pop();

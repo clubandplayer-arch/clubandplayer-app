@@ -1,8 +1,8 @@
-# Smoke test `/feed` (post di testo)
+# Smoke test `/feed` (post e media)
 
 > **Ultima esecuzione:** 10/03/2025 (run `docs/smoke-tests/runs/2025-03-10.md`) – ✅ completata.
 
-Checklist manuale per verificare la bacheca autenticata (solo post di testo, upload media disattivati nella Beta).
+Checklist manuale per verificare la bacheca autenticata con post di testo + immagini/video caricati nel bucket `posts`.
 
 ## Prerequisiti
 - Variabili configurate:
@@ -23,8 +23,16 @@ Checklist manuale per verificare la bacheca autenticata (solo post di testo, upl
    - Se ricevi `insert_failed` o 401, verifica `SUPABASE_SERVICE_ROLE_KEY` e le policy RLS su `posts`.
 4. Aggiorna la pagina: il nuovo post resta visibile e modificabile/eliminabile solo dall'autore.
 
-## Nota sui media
-Durante la Beta l'upload di foto/video è disabilitato: eventuali controlli in UI devono risultare nascosti e l'endpoint `/api/feed/posts` deve rifiutare payload con `media_url`/`media_type`.
+## Allegare immagini/video
+1. Nel composer clicca "Allega foto/video" e scegli un file ammesso:
+   - Immagini: JPEG/PNG/WebP/GIF fino a 8MB.
+   - Video: MP4/QuickTime fino a 80MB.
+2. Pubblica il post con o senza testo.
+   - Atteso: l'upload su `/api/feed/upload` restituisce l'URL pubblico e il post viene creato con `media_url` e `media_type` compilati.
+   - In UI deve comparire l'anteprima immagine o il player video dopo il refresh.
+3. Ripeti con un video per garantire che il bucket `posts` consenta sia immagini sia video.
+
+Se ricevi `new row violates row-level security policy`, verifica le policy di `storage.objects` (bucket `posts`) e che il percorso rispetti lo schema `<auth.uid>/<nome_file>`; gli errori `upload_failed` indicano bucket mancante o chiave admin non configurata.
 
 ## Diagnosi rapida
 - `new row violates row-level security policy` su POST: l'API ha fatto fallback al client utente; verifica che l'utente autenticato sia proprietario del post.

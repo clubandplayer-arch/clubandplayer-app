@@ -161,18 +161,24 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     const rawText = (body?.text ?? body?.content ?? '').toString();
     const text = rawText.trim();
-    const hasMedia = Boolean((body as any)?.media_url || (body as any)?.media_type);
+    const rawMediaUrl = typeof body?.media_url === 'string' ? body.media_url.trim() : '';
+    const rawMediaType = typeof body?.media_type === 'string' ? body.media_type.trim().toLowerCase() : '';
+    const mediaType = rawMediaUrl ? ((rawMediaType === 'video' ? 'video' : 'image') as 'image' | 'video') : null;
+    const mediaUrl = rawMediaUrl || null;
 
-    if (!text) {
-      return NextResponse.json({ ok: false, error: 'empty' }, { status: 400 });
+    if (!text && !rawMediaUrl) {
+      return NextResponse.json(
+        { ok: false, error: 'empty', message: 'Scrivi un testo o allega un media.' },
+        { status: 400 }
+      );
     }
     if (text.length > MAX_CHARS) {
       return NextResponse.json({ ok: false, error: 'too_long', limit: MAX_CHARS }, { status: 400 });
     }
 
-    if (hasMedia) {
+    if (mediaUrl && !/^https?:\/\//i.test(mediaUrl)) {
       return NextResponse.json(
-        { ok: false, error: 'media_not_supported', message: 'Il feed accetta solo post di testo.' },
+        { ok: false, error: 'invalid_media_url', message: 'L\'URL del media non è valido.' },
         { status: 400 }
       );
     }
@@ -195,18 +201,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'not_authenticated' }, { status: 401 });
     }
 
-    const insertPayload: Record<string, any> = { content: text, author_id: auth.user.id };
+    const effectiveText = text || (mediaUrl ? (mediaType === 'video' ? 'Video allegato' : 'Foto allegata') : '');
+    const insertPayload: Record<string, any> = { content: effectiveText, author_id: auth.user.id };
+    if (mediaUrl) insertPayload.media_url = mediaUrl;
+    if (mediaType) insertPayload.media_type = mediaType;
 
+    const SELECT_WITH_MEDIA = 'id, author_id, content, created_at, media_url, media_type';
     const runInsert = (payload: Record<string, any>, select: string) =>
       supabase.from('posts').insert(payload).select(select).single();
 
     let data: any = null;
     let error: any = null;
 
-    ({ data, error } = await runInsert(insertPayload, 'id, author_id, content, created_at'));
+    ({ data, error } = await runInsert(insertPayload, SELECT_WITH_MEDIA));
 
-    if (error && /column .* does not exist/i.test(error.message || '')) {
-      ({ data, error } = await runInsert(insertPayload, 'id, author_id, content, created_at'));
+    if (error && /column .*media_/i.test(error.message || '')) {
+      const fallbackPayload: Record<string, any> = { content: text || mediaUrl || '', author_id: auth.user.id };
+      ({ data, error } = await runInsert(fallbackPayload, 'id, author_id, content, created_at'));
     }
 
     if (error) {
