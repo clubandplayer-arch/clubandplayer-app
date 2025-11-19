@@ -39,13 +39,14 @@ Questo documento fotografa l'analisi corrente della codebase e i passi prioritar
 ## Prossimi passi prioritari verso la Beta
 1. ✅ **Email reali (PM-01)**: configurazione Resend obbligatoria (`RESEND_API_KEY`, `RESEND_FROM`, `BRAND_REPLY_TO`) e NOOP disattivato; gli endpoint `/api/notify-email` e `/api/notifications/send` rifiutano la richiesta se l'env non è completa.
 2. ✅ **Tuning Sentry (PM-07)**: client/server/edge condividono environment (`SENTRY_ENVIRONMENT` / `NEXT_PUBLIC_SENTRY_ENVIRONMENT`) e release (`SENTRY_RELEASE` o `VERCEL_GIT_COMMIT_SHA`) con filtri anti-rumore dedicati.
-3. ✅ **Snellimento bundle /clubs read-only (PM-02)**: i componenti CRUD sono caricati dinamicamente solo quando i flag consentono la modifica, mantenendo invariato il “First Load JS”.
-4. ✅ **/clubs edit dietro flag admin (PM-04)**: flag `NEXT_PUBLIC_FEATURE_CLUBS_ADMIN` e allowlist `CLUBS_ADMIN_EMAILS` governano UI e API, esponendo i controlli CRUD solo agli utenti autorizzati.
-5. ✅ **Filtri ricerca club (PM-05)**: la UI `/search/club` usa `/api/clubs` con filtri geo e ricerca testuale indicizzata (`pg_trgm`, `idx_clubs_created_at`).
-6. ✅ **Security Supabase (PM-06)**: password policy portata a ≥12 caratteri con numeri/simboli, OTP expiry fissato a 900s e policy RLS su `profiles`/`clubs` riallineate con `WITH CHECK` coerenti.
-7. ✅ **CI/CD quasi-bloccante (PM-08)**: gli smoke test salvano log/metadata come artifact `smoke-artifacts` e `SMOKE_ENFORCE` può bloccare PR critiche; Playwright resta opzionale.
-8. ✅ **Docs & onboarding dev (PM-09)**: README e roadmap sono allineati con il setup ≤15 minuti, includono una sezione di troubleshooting e rimandano alla nuova guida [docs/dev-onboarding.md](./dev-onboarding.md) per variabili Vercel, auth callback, storage e Sentry.
-9. ✅ **Performance, Legal, Analytics (PM-10/11/12)**: ottimizzati `next/image` e gli header di caching, aggiornati privacy/termini e sostituita la telemetria con un loader Plausible-like che rispetta DNT e consenso.
+3. ✅ **A11y & UX sweep (PM-03)**: layout con skip link globale, form `/login` etichettati, `/feed` e `/search/club` con annunci `aria-live`, heading coerenti e feedback tastiera-friendly per Composer e moduli di modifica.
+4. ✅ **Snellimento bundle /clubs read-only (PM-02)**: i componenti CRUD sono caricati dinamicamente solo quando i flag consentono la modifica, mantenendo invariato il “First Load JS”.
+5. ✅ **/clubs edit dietro flag admin (PM-04)**: flag `NEXT_PUBLIC_FEATURE_CLUBS_ADMIN` e allowlist `CLUBS_ADMIN_EMAILS` governano UI e API, esponendo i controlli CRUD solo agli utenti autorizzati.
+6. ✅ **Filtri ricerca club (PM-05)**: la UI `/search/club` usa `/api/clubs` con filtri geo e ricerca testuale indicizzata (`pg_trgm`, `idx_clubs_created_at`).
+7. ✅ **Security Supabase (PM-06)**: password policy portata a ≥12 caratteri con numeri/simboli, OTP expiry fissato a 900s e policy RLS su `profiles`/`clubs` riallineate con `WITH CHECK` coerenti.
+8. ✅ **CI/CD quasi-bloccante (PM-08)**: gli smoke test salvano log/metadata come artifact `smoke-artifacts` e `SMOKE_ENFORCE` può bloccare PR critiche; Playwright resta opzionale.
+9. ✅ **Docs & onboarding dev (PM-09)**: README e roadmap sono allineati con il setup ≤15 minuti, includono una sezione di troubleshooting e rimandano alla nuova guida [docs/dev-onboarding.md](./dev-onboarding.md) per variabili Vercel, auth callback, storage e Sentry.
+10. ✅ **Performance, Legal, Analytics (PM-10/11/12)**: ottimizzati `next/image` e gli header di caching, aggiornati privacy/termini e sostituita la telemetria con un loader Plausible-like che rispetta DNT e consenso.
 
 ## Note operative
 - Mantenere la protezione branch con lint/build; gli smoke test possono diventare quasi-bloccanti via `SMOKE_ENFORCE=true` se iniziamo a toccare percorsi critici.

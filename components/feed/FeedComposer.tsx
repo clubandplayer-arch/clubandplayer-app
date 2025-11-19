@@ -6,11 +6,18 @@ type Props = {
   onPosted?: () => void;
 };
 
+const MAX_CHARS = 500;
+
 export default function FeedComposer({ onPosted }: Props) {
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const canSend = text.trim().length > 0 && !sending;
+
+  const textareaId = 'feed-composer-input';
+  const helperId = 'feed-composer-helper';
+  const errorId = err ? 'feed-composer-error' : undefined;
+  const describedBy = [helperId, errorId].filter(Boolean).join(' ') || undefined;
 
   async function handlePost() {
     if (!canSend) return;
@@ -41,16 +48,26 @@ export default function FeedComposer({ onPosted }: Props) {
   }
 
   return (
-    <div className="rounded-2xl border bg-white p-4 shadow-sm">
+    <div className="rounded-2xl border bg-white p-4 shadow-sm" aria-live="polite">
       <div className="mt-4 space-y-3">
+        <label htmlFor={textareaId} className="sr-only">
+          Scrivi un aggiornamento per la community
+        </label>
         <textarea
+          id={textareaId}
           className="w-full resize-y rounded-2xl border px-3 py-3 text-sm outline-none focus:ring"
           rows={3}
           placeholder="Condividi un pensiero…"
           value={text}
           onChange={(e) => setText(e.target.value)}
           disabled={sending}
+          maxLength={MAX_CHARS}
+          aria-describedby={describedBy}
+          aria-invalid={Boolean(err)}
         />
+        <p id={helperId} className="text-xs text-gray-500">
+          {text.trim().length}/{MAX_CHARS} caratteri disponibili
+        </p>
 
         <div className="flex items-center justify-end gap-3 text-sm">
           <button
@@ -74,7 +91,11 @@ export default function FeedComposer({ onPosted }: Props) {
           </button>
         </div>
 
-        {err && <div className="text-xs text-red-600">{err}</div>}
+        {err && (
+          <div id={errorId} className="text-xs text-red-600" role="status">
+            {err}
+          </div>
+        )}
       </div>
     </div>
   );

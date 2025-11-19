@@ -13,7 +13,7 @@ Legenda: ☐ todo · ◐ in corso · ✅ fatto
 |-------|--------------------------------------------------------|-------|----------|
 | PM-01 | Email **reali** (Resend)                               | ✅    | feature  |
 | PM-02 | Snellimento bundle **read-only**                       | ✅    | perf     |
-| PM-03 | **A11y & UX sweep** (pagine principali)                | ☐     | qualità  |
+| PM-03 | **A11y & UX sweep** (pagine principali)                | ✅    | qualità  |
 | PM-04 | **/clubs edit** dietro **flag admin** (riapertura CRUD) | ✅    | feature  |
 | PM-05 | Ricerca/filtri UI **/search/club**                     | ✅    | feature  |
 | PM-06 | **Security** Supabase (policy, OTP, HIBP, RLS)         | ✅    | security |
@@ -51,13 +51,15 @@ Legenda: ☐ todo · ◐ in corso · ✅ fatto
 ---
 
 ### PM-03 — **A11y & UX sweep**
-**Obiettivo:** accessibilità minima WCAG AA su `/login`, `/feed`, `/profile`, `/search/*`.  
+**Obiettivo:** accessibilità minima WCAG AA su `/login`, `/feed`, `/profile`, `/search/*`.
 **Checklist**
-- ☐ Landmark semantici, H1 per pagina, alt text sensati, focus ring visibile.
-- ☐ Contrasto minimo su testi/CTA principali.
-- ☐ Tastiera: tab order corretto, “skip to content”.  
+- ✅ Landmark semantici e skip link globale; ogni pagina target espone un H1, alt text descrittivi e helper per screen reader.
+- ✅ Contrasto minimo su CTA e testi primari grazie ai token tailwind/globals già presenti (verificato con Axe).
+- ✅ Navigazione da tastiera: ordine di tab corretto, `:focus-visible` personalizzato e messaggi `aria-live` per errori/stati.
 **Accettazione**
-- Axe DevTools: zero “critical” sulle pagine target.
+- Axe DevTools: zero “critical” sulle pagine target (feed/login/profile/search).
+**Stato attuale**
+- Layout con skip link e contenitore `#main-content`, form login con label esplicite, `/feed` e `/search/club` con annunci `aria-live` e heading coerenti; `FeedComposer`/`PostItem` ora rispettano i limiti e forniscono feedback comprensibili.
 
 ---
 

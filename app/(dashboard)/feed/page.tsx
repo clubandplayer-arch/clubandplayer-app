@@ -62,6 +62,7 @@ export default function FeedPage() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const headingId = 'feed-heading';
 
   async function reload() {
     setLoading(true);
@@ -103,7 +104,7 @@ export default function FeedPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6">
+    <div className="mx-auto max-w-7xl px-4 py-6" aria-labelledby={headingId}>
       {/* layout a 3 colonne: sx (minicard) / centro (composer + post) / dx (suggerimenti) */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[20%_55%_25%]">
         {/* Colonna sinistra: mini profilo */}
@@ -115,14 +116,30 @@ export default function FeedPage() {
         </aside>
 
         {/* Colonna centrale: composer + feed */}
-        <main className="space-y-4">
+        <main className="space-y-4" aria-labelledby={headingId}>
+          <div>
+            <h1 id={headingId} className="text-3xl font-semibold tracking-tight">
+              Bacheca
+            </h1>
+            <p className="text-sm text-gray-600">
+              Condividi aggiornamenti con club e atleti. Tutti i campi sono accessibili anche da tastiera.
+            </p>
+          </div>
           <FeedComposer onPosted={reload} />
 
-          <div className="space-y-4">
-            {loading && <div className="rounded-2xl border p-4">Caricamento…</div>}
-            {err && <div className="rounded-2xl border p-4 text-red-600">{err}</div>}
+          <div className="space-y-4" aria-live="polite" aria-busy={loading}>
+            {loading && (
+              <div className="rounded-2xl border p-4" role="status">
+                Caricamento…
+              </div>
+            )}
+            {err && (
+              <div className="rounded-2xl border p-4 text-red-600" role="alert">
+                {err}
+              </div>
+            )}
             {!loading && !err && items.length === 0 && (
-              <div className="rounded-2xl border p-4 text-sm text-gray-600">
+              <div className="rounded-2xl border p-4 text-sm text-gray-600" role="status">
                 Nessun post ancora.
               </div>
             )}
@@ -210,6 +227,8 @@ function PostItem({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isOwner = currentUserId != null && post.authorId === currentUserId;
+  const editAreaId = `post-edit-${post.id}`;
+  const errorId = error ? `post-error-${post.id}` : undefined;
 
   useEffect(() => {
     if (!editing) setText(post.content ?? post.text ?? '');
@@ -267,12 +286,18 @@ function PostItem({
       </div>
       {editing ? (
         <div className="mt-2 space-y-2">
+          <label htmlFor={editAreaId} className="sr-only">
+            Modifica il contenuto del post
+          </label>
           <textarea
+            id={editAreaId}
             className="w-full resize-y rounded-lg border px-3 py-2 text-sm"
             value={text}
             onChange={(e) => setText(e.target.value)}
             rows={3}
             disabled={saving}
+            aria-invalid={Boolean(error)}
+            aria-describedby={errorId}
           />
           <div className="flex items-center gap-2">
             <button
@@ -333,7 +358,11 @@ function PostItem({
           </button>
         </div>
       ) : null}
-      {error ? <div className="mt-2 text-xs text-red-600">{error}</div> : null}
+      {error ? (
+        <div id={errorId} className="mt-2 text-xs text-red-600" role="status">
+          {error}
+        </div>
+      ) : null}
     </article>
   );
 }

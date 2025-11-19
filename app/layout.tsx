@@ -88,6 +88,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
 
       <body className="antialiased bg-neutral-50 text-neutral-900 font-sans">
+        <a href="#main-content" className="skip-link">
+          Salta al contenuto principale
+        </a>
         {/* Analytics privacy-first: si attiva solo con consenso e DNT disattivato */}
         <Suspense fallback={null}>
           <PrivacyAnalytics />
@@ -99,7 +102,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </Suspense>
 
         {/* Contenuto pagina */}
-        <Suspense fallback={null}>{children}</Suspense>
+        <div id="main-content" tabIndex={-1}>
+          <Suspense fallback={null}>{children}</Suspense>
+        </div>
 
         {/* Sync sessione client->server (cookie) */}
         <Suspense fallback={null}>

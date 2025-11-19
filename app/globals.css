@@ -28,6 +28,36 @@ html, body {
   /* ⛔️ Non impostiamo il font qui per non sovrascrivere Inter dal layout */
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  top: -48px;
+  left: 16px;
+  z-index: 50;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  background: var(--brand);
+  color: #fff;
+  font-weight: 600;
+  transition: top 0.2s ease;
+}
+
+.skip-link:focus-visible {
+  top: 16px;
+  outline: none;
+}
+
 /* Migliore rendering testo + focus accessibile */
 * { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
 :focus-visible {

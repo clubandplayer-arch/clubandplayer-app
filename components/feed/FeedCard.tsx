@@ -32,7 +32,7 @@ export default function FeedCard({
           {avatarUrl ? (
             <Image
               src={avatarUrl}
-              alt=""
+              alt={`Avatar di ${headerTitle}`}
               width={40}
               height={40}
               sizes="40px"
