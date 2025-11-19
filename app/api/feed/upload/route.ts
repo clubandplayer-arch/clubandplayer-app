@@ -34,9 +34,6 @@ function humanSize(bytes: number) {
   return `${Math.round(bytes / (1024 * 1024))}MB`;
 }
 
-type SessionClient = Awaited<ReturnType<typeof getSupabaseServerClient>>;
-type AdminClient = NonNullable<ReturnType<typeof getSupabaseAdminClientOrNull>>;
-
 export async function POST(req: NextRequest) {
   const supabase = await getSupabaseServerClient();
   try {
@@ -44,6 +41,19 @@ export async function POST(req: NextRequest) {
     if (authErr || !auth?.user) {
       return NextResponse.json({ ok: false, error: 'not_authenticated' }, { status: 401 });
     }
+
+    const admin = getSupabaseAdminClientOrNull();
+    if (!admin) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'service_role_missing',
+          message: 'Configura SUPABASE_SERVICE_ROLE_KEY per caricare media nel feed.',
+        },
+        { status: 500 }
+      );
+    }
+    const adminClient = admin;
 
     const form = await req.formData();
     const file = form.get('file');
@@ -80,39 +90,26 @@ export async function POST(req: NextRequest) {
     let objectPath = `${auth.user.id}/${Date.now()}-${sanitizeFileName(file.name)}`;
     const uploadOpts = { cacheControl: '3600', upsert: false, contentType: file.type || undefined } as const;
 
-    const uploadWithClient = async (client: SessionClient | AdminClient) =>
-      client.storage.from(BUCKET).upload(objectPath, buffer, uploadOpts);
+    await ensureBucket(BUCKET, true).catch(() => null);
 
-    let uploadError: any = null;
-    let uploadData: any = null;
+    async function uploadOnce() {
+      return adminClient.storage.from(BUCKET).upload(objectPath, buffer, uploadOpts);
+    }
 
-    ({ data: uploadData, error: uploadError } = await uploadWithClient(supabase));
+    let { data: uploadData, error: uploadError } = await uploadOnce();
 
     if (uploadError && /The resource already exists/i.test(uploadError.message || '')) {
       objectPath = `${auth.user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${sanitizeFileName(file.name)}`;
-      ({ data: uploadData, error: uploadError } = await uploadWithClient(supabase));
+      ({ data: uploadData, error: uploadError } = await uploadOnce());
     }
 
-    if (uploadError) {
-      const admin = getSupabaseAdminClientOrNull();
-      if (!admin) {
-        reportApiError({ endpoint: '/api/feed/upload', error: uploadError, context: { stage: 'upload_session' } });
-        return NextResponse.json(
-          {
-            ok: false,
-            error: 'upload_failed',
-            message: uploadError.message || 'Upload fallito: bucket non disponibile.',
-          },
-          { status: 400 }
-        );
-      }
-
-      await ensureBucket(BUCKET, true);
-      ({ data: uploadData, error: uploadError } = await uploadWithClient(admin));
+    if (uploadError && /bucket(.+)?not(.+)?found/i.test(uploadError.message || '')) {
+      await ensureBucket(BUCKET, true).catch(() => null);
+      ({ data: uploadData, error: uploadError } = await uploadOnce());
     }
 
     if (uploadError || !uploadData) {
-      reportApiError({ endpoint: '/api/feed/upload', error: uploadError, context: { stage: 'upload_final' } });
+      reportApiError({ endpoint: '/api/feed/upload', error: uploadError, context: { stage: 'upload_admin' } });
       return NextResponse.json(
         {
           ok: false,
@@ -123,8 +120,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { data: publicInfo } = supabase.storage.from(BUCKET).getPublicUrl(objectPath);
+    const { data: publicInfo } = adminClient.storage.from(BUCKET).getPublicUrl(objectPath);
     const publicUrl = publicInfo?.publicUrl;
+    if (!publicUrl) {
+      return NextResponse.json(
+        { ok: false, error: 'public_url_unavailable', message: 'Impossibile generare l\'URL pubblico.' },
+        { status: 400 }
+      );
+    }
 
     return NextResponse.json({ ok: true, url: publicUrl, path: objectPath, mediaType: mediaKind });
   } catch (error: any) {
