@@ -1,6 +1,6 @@
 # Smoke test end-to-end (club e atleta)
 
-> **Ultima esecuzione:** 09/03/2025 (run `docs/smoke-tests/runs/2025-03-09.md`) – ✅ completata.
+> **Ultima esecuzione:** 10/03/2025 (run `docs/smoke-tests/runs/2025-03-10.md`) – ✅ completata.
 
 Checklist per verificare rapidamente che le principali funzionalità funzionino sia per un club sia per un atleta, usando un ambiente di test effimero e da eliminare al termine.
 

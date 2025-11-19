@@ -18,14 +18,28 @@ Questo documento fotografa l'analisi corrente della codebase e i passi prioritar
 - **Documentazione**: README, roadmap, onboarding e stato Beta sono allineati; la sezione troubleshooting copre Vercel env, callback Supabase, storage e Sentry.
 
 ### Checklist finale per dichiarare la Beta
-1. **Smoke test completi**: ultima esecuzione 09/03/2025 (`docs/smoke-tests/runs/2025-03-09.md`). Allegare gli artifact corrispondenti alla PR/Deploy, ripetere il ciclo a ogni release e mantenere `SMOKE_ENFORCE=true` per i branch di release.
+1. ✅ **Smoke test completi**: eseguiti il 10/03/2025 sul build di rilascio (`docs/smoke-tests/runs/2025-03-10.md`, artifact [`docs/smoke-tests/artifacts/2025-03-10-beta-go.log`](./smoke-tests/artifacts/2025-03-10-beta-go.log)). `SMOKE_ENFORCE=true` resta impostato automaticamente per `main` e `release/*` nel workflow “E2E (non-blocking)”.
 2. ✅ **Allineamento ambienti**: Vercel Preview/Production sono stati confrontati con `.env.local` il 09/03/2025 tramite `node scripts/check-vercel-env.mjs --local=.env.local --preview=.env.vercel.preview --production=.env.vercel.production` (vedi [`docs/env-sync/2025-03-09.md`](./env-sync/2025-03-09.md)). Gli script `scripts/check-*` restano disponibili per replicare il controllo (email, Sentry, feed, flag clubs).
 3. ✅ **Feature flag**: il rollout combinato di `NEXT_PUBLIC_FEATURE_CLUBS_ADMIN` e `CLUBS_ADMIN_EMAILS` è documentato in [`docs/feature-flags/clubs-admin-rollout.md`](./feature-flags/clubs-admin-rollout.md) con overlap obbligatorio rispetto a `ADMIN_EMAILS`, check script aggiornato e piano di rollback.
 4. ✅ **Monitoraggio**: `scripts/check-monitoring.mjs` verifica DSN/env/release e può inviare un ping `--send-event` a Sentry; il runbook [`docs/monitoring/runbook.md`](./monitoring/runbook.md) documenta anche gli alert minimi (tag `layer=api`, `endpoint=/api/feed/posts*`) e ribadisce che l'analytics Plausible-like si attiva solo dopo il consenso + DNT off.
 5. ✅ **Comunicazione legale**: le pagine `/legal/privacy`, `/legal/terms` e la nuova `/legal/beta` sono state revisionate, collegate dal footer e il testo condivisibile è disponibile in [`docs/legal/beta-invite.md`](./legal/beta-invite.md).
 6. ✅ **Supporto/triage**: la casella `BRAND_REPLY_TO` (`support@clubandplayer.com`) è presidiata dal team Operazioni e gli errori Sentry vengono inoltrati sul canale Slack `#beta-triage` (vedi [`docs/support/beta-triage.md`](./support/beta-triage.md)).
 
-Quando la checklist sopra è stata completata, aggiornare questo file con la data del via libera e aprire la sezione “Post Beta” per i miglioramenti successivi (es. reintroduzione upload media, nuove analytics, etc.).
+Checklist completata il 10/03/2025: vedere la sezione successiva per la data ufficiale e i miglioramenti “Post Beta”.
+
+## Via libera Beta
+- **Data**: 10 marzo 2025
+- **Commit di riferimento**: 781af2f9a6ab79635b3796cb1466680e6cb8b692 (Vercel preview promossa a produzione)
+- **Note**:
+  - Artifact smoke test allegato (`docs/smoke-tests/artifacts/2025-03-10-beta-go.log`).
+  - `SMOKE_ENFORCE=true` lasciato attivo sui branch di release per mantenere il gate automatico.
+  - Canali legali, supporto e monitoraggio attivati come da runbook aggiornati.
+
+## Post Beta
+- **Reintroduzione upload media nel feed**: rivalutare policy RLS e UX dopo la Beta, mantenendo fallback admin e strumenti di moderazione.
+- **Analytics avanzate**: valutare l’invio di eventi aggiuntivi (conversioni candidature, retention) mantenendo l’approccio privacy-first.
+- **Miglioramenti performance**: continuare a ottimizzare caching/lazy loading nelle viste più trafficate (feed, search club) e monitorare Web Vitals reali.
+- **Ampliamento supporto**: formalizzare SLA/turni per `BRAND_REPLY_TO` e canale `#beta-triage` quando il numero di utenti crescerà.
 
 ## Prossimi passi prioritari verso la Beta
 1. ✅ **Email reali (PM-01)**: configurazione Resend obbligatoria (`RESEND_API_KEY`, `RESEND_FROM`, `BRAND_REPLY_TO`) e NOOP disattivato; gli endpoint `/api/notify-email` e `/api/notifications/send` rifiutano la richiesta se l'env non è completa.

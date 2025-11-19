@@ -96,7 +96,7 @@
    - `/debug/client-error` e `/api/debug/error` → verifiche per Sentry.
 -3. Quando abiliti i CRUD su `/clubs` in staging, segui la [checklist di smoke test guest vs admin](docs/smoke-tests/clubs.md) per verificare flag, allowlist e RLS.
 -4. Per feed e candidature, usa le checklist manuali dedicate: [smoke test `/feed`](docs/smoke-tests/feed.md) e [smoke test `/applications/received`](docs/smoke-tests/applications.md).
--5. Ultima esecuzione completa (feed, clubs, applications, full journey): vedi [`docs/smoke-tests/runs/2025-03-09.md`](docs/smoke-tests/runs/2025-03-09.md) e l'artifact testuale (`docs/smoke-tests/artifacts/2025-03-09-e2e.log`). Ripeti la checklist ad ogni release.
+-5. Ultima esecuzione completa (feed, clubs, applications, full journey): vedi [`docs/smoke-tests/runs/2025-03-10.md`](docs/smoke-tests/runs/2025-03-10.md) e l'artifact testuale (`docs/smoke-tests/artifacts/2025-03-10-beta-go.log`). Ripeti la checklist ad ogni release.
 5. Verifica la salute del backend con `curl http://127.0.0.1:3000/api/health` (risposta 200 JSON con info ambiente).
 
 ## Smoke test in CI (GitHub Actions)

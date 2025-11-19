@@ -1,6 +1,6 @@
 # Smoke test `/feed` (post di testo)
 
-> **Ultima esecuzione:** 09/03/2025 (run `docs/smoke-tests/runs/2025-03-09.md`) – ✅ completata.
+> **Ultima esecuzione:** 10/03/2025 (run `docs/smoke-tests/runs/2025-03-10.md`) – ✅ completata.
 
 Checklist manuale per verificare la bacheca autenticata (solo post di testo, upload media disattivati nella Beta).
 

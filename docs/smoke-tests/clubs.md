@@ -1,6 +1,6 @@
 # Smoke test `/clubs` (guest vs admin)
 
-> **Ultima esecuzione:** 09/03/2025 (run `docs/smoke-tests/runs/2025-03-09.md`) – ✅ completata.
+> **Ultima esecuzione:** 10/03/2025 (run `docs/smoke-tests/runs/2025-03-10.md`) – ✅ completata.
 
 Questa checklist serve a verificare rapidamente che la pagina `/clubs` si comporti correttamente in modalità **guest** (read-only) e **admin** (CRUD abilitato tramite flag/allowlist).
 
