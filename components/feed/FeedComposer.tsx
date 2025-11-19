@@ -81,19 +81,28 @@ export default function FeedComposer({ onPosted }: Props) {
 
   async function uploadMedia(): Promise<{ media_url: string; media_type: MediaType } | null> {
     if (!mediaFile || !mediaType) return null;
+    setMediaErr(null);
     const form = new FormData();
     form.append('file', mediaFile);
     form.append('kind', mediaType);
-    const res = await fetch('/api/feed/upload', {
-      method: 'POST',
-      credentials: 'include',
-      body: form,
-    });
-    const json = await res.json().catch(() => null as any);
-    if (!res.ok || !json?.ok || !json?.url) {
-      throw new Error(json?.message || 'Upload media fallito');
+    try {
+      const res = await fetch('/api/feed/upload', {
+        method: 'POST',
+        credentials: 'include',
+        body: form,
+      });
+      const json = await res.json().catch(() => null as any);
+      if (!res.ok || !json?.ok || !json?.url) {
+        const message = json?.message || json?.error || 'Upload media fallito';
+        setMediaErr(message);
+        throw new Error(message);
+      }
+      return { media_url: json.url as string, media_type: (json.mediaType as MediaType) ?? mediaType };
+    } catch (error: any) {
+      const fallback = error?.message || 'Upload media fallito';
+      setMediaErr(fallback);
+      throw new Error(fallback);
     }
-    return { media_url: json.url as string, media_type: (json.mediaType as MediaType) ?? mediaType };
   }
 
   async function handlePost() {

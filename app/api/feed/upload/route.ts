@@ -34,92 +34,107 @@ function humanSize(bytes: number) {
   return `${Math.round(bytes / (1024 * 1024))}MB`;
 }
 
+function makeError(code: string, message: string, status = 400) {
+  return NextResponse.json({ ok: false, error: code, code, message }, { status });
+}
+
+function isRlsError(err: any) {
+  if (!err) return false;
+  const joined = [err.message, err.details, err.hint]
+    .filter(Boolean)
+    .map((v) => v.toString().toLowerCase())
+    .join(' ');
+  return (
+    err.code === '42501' ||
+    err.code === 'PGRST302' ||
+    joined.includes('row-level security') ||
+    joined.includes('permission denied') ||
+    joined.includes('new row violates')
+  );
+}
+
 export async function POST(req: NextRequest) {
   const supabase = await getSupabaseServerClient();
   const admin = getSupabaseAdminClientOrNull();
   try {
     const { data: auth, error: authErr } = await supabase.auth.getUser();
     if (authErr || !auth?.user) {
-      return NextResponse.json({ ok: false, error: 'not_authenticated' }, { status: 401 });
+      return makeError('not_authenticated', 'Effettua il login per caricare media.', 401);
     }
 
     const form = await req.formData();
     const file = form.get('file');
     if (!(file instanceof File)) {
-      return NextResponse.json({ ok: false, error: 'missing_file', message: 'Nessun file fornito' }, { status: 400 });
+      return makeError('missing_file', 'Nessun file fornito');
     }
 
     const hint = typeof form.get('kind') === 'string' ? (form.get('kind') as string) : null;
     const mediaKind = inferKind(file.type || '', hint);
     if (!mediaKind) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: 'unsupported_format',
-          message: 'Formato non supportato. Usa JPEG/PNG/WebP oppure MP4.',
-        },
-        { status: 400 }
-      );
+      return makeError('unsupported_format', 'Formato non supportato. Usa JPEG/PNG/WebP oppure MP4.');
     }
 
     const maxBytes = mediaKind === 'image' ? MAX_IMAGE_BYTES : MAX_VIDEO_BYTES;
     if (file.size > maxBytes) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: 'file_too_large',
-          message: `Dimensione massima ${humanSize(maxBytes)} per ${mediaKind === 'image' ? 'le immagini' : 'i video'}.`,
-        },
-        { status: 400 }
-      );
+      const scope = mediaKind === 'image' ? 'le immagini' : 'i video';
+      return makeError('file_too_large', `Dimensione massima ${humanSize(maxBytes)} per ${scope}.`);
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
     let objectPath = `${auth.user.id}/${Date.now()}-${sanitizeFileName(file.name)}`;
     const uploadOpts = { cacheControl: '3600', upsert: false, contentType: file.type || undefined } as const;
 
-    async function uploadOnce() {
-      return supabase.storage.from(BUCKET).upload(objectPath, buffer, uploadOpts);
+    const sessionBucket = supabase.storage.from(BUCKET);
+    const adminBucket = admin ? admin.storage.from(BUCKET) : null;
+
+    async function uploadWithSession() {
+      return sessionBucket.upload(objectPath, buffer, uploadOpts);
     }
 
-    let { data: uploadData, error: uploadError } = await uploadOnce();
+    async function uploadWithAdmin() {
+      if (!adminBucket) throw new Error('missing_admin_client');
+      return adminBucket.upload(objectPath, buffer, uploadOpts);
+    }
+
+    let { data: uploadData, error: uploadError } = await uploadWithSession();
 
     if (uploadError && /The resource already exists/i.test(uploadError.message || '')) {
       objectPath = `${auth.user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${sanitizeFileName(file.name)}`;
-      ({ data: uploadData, error: uploadError } = await uploadOnce());
+      ({ data: uploadData, error: uploadError } = await uploadWithSession());
     }
 
     if (uploadError && /bucket(.+)?not(.+)?found/i.test(uploadError.message || '')) {
       if (admin) {
         await ensureBucket(BUCKET, true).catch(() => null);
-        ({ data: uploadData, error: uploadError } = await uploadOnce());
+        ({ data: uploadData, error: uploadError } = await uploadWithSession());
       }
+    }
+
+    if (uploadError && isRlsError(uploadError)) {
+      if (!adminBucket) {
+        return makeError(
+          'rls_blocked',
+          'Permessi insufficienti per scrivere nel bucket posts. Configura la service role o aggiorna le policy.',
+          403
+        );
+      }
+      ({ data: uploadData, error: uploadError } = await uploadWithAdmin());
     }
 
     if (uploadError || !uploadData) {
       reportApiError({ endpoint: '/api/feed/upload', error: uploadError, context: { stage: 'upload_session' } });
-      return NextResponse.json(
-        {
-          ok: false,
-          error: 'upload_failed',
-          message: uploadError?.message || 'Upload non riuscito',
-        },
-        { status: 400 }
-      );
+      return makeError('upload_failed', uploadError?.message || 'Upload non riuscito');
     }
 
     const { data: publicInfo } = supabase.storage.from(BUCKET).getPublicUrl(objectPath);
     const publicUrl = publicInfo?.publicUrl;
     if (!publicUrl) {
-      return NextResponse.json(
-        { ok: false, error: 'public_url_unavailable', message: 'Impossibile generare l\'URL pubblico.' },
-        { status: 400 }
-      );
+      return makeError('public_url_unavailable', "Impossibile generare l'URL pubblico.");
     }
 
     return NextResponse.json({ ok: true, url: publicUrl, path: objectPath, mediaType: mediaKind });
   } catch (error: any) {
     reportApiError({ endpoint: '/api/feed/upload', error, context: { method: 'POST' } });
-    return NextResponse.json({ ok: false, error: 'upload_failed', message: error?.message }, { status: 400 });
+    return makeError('upload_failed', error?.message || 'Upload non riuscito');
   }
 }
