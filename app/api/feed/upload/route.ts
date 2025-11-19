@@ -36,24 +36,12 @@ function humanSize(bytes: number) {
 
 export async function POST(req: NextRequest) {
   const supabase = await getSupabaseServerClient();
+  const admin = getSupabaseAdminClientOrNull();
   try {
     const { data: auth, error: authErr } = await supabase.auth.getUser();
     if (authErr || !auth?.user) {
       return NextResponse.json({ ok: false, error: 'not_authenticated' }, { status: 401 });
     }
-
-    const admin = getSupabaseAdminClientOrNull();
-    if (!admin) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: 'service_role_missing',
-          message: 'Configura SUPABASE_SERVICE_ROLE_KEY per caricare media nel feed.',
-        },
-        { status: 500 }
-      );
-    }
-    const adminClient = admin;
 
     const form = await req.formData();
     const file = form.get('file');
@@ -90,10 +78,8 @@ export async function POST(req: NextRequest) {
     let objectPath = `${auth.user.id}/${Date.now()}-${sanitizeFileName(file.name)}`;
     const uploadOpts = { cacheControl: '3600', upsert: false, contentType: file.type || undefined } as const;
 
-    await ensureBucket(BUCKET, true).catch(() => null);
-
     async function uploadOnce() {
-      return adminClient.storage.from(BUCKET).upload(objectPath, buffer, uploadOpts);
+      return supabase.storage.from(BUCKET).upload(objectPath, buffer, uploadOpts);
     }
 
     let { data: uploadData, error: uploadError } = await uploadOnce();
@@ -104,12 +90,14 @@ export async function POST(req: NextRequest) {
     }
 
     if (uploadError && /bucket(.+)?not(.+)?found/i.test(uploadError.message || '')) {
-      await ensureBucket(BUCKET, true).catch(() => null);
-      ({ data: uploadData, error: uploadError } = await uploadOnce());
+      if (admin) {
+        await ensureBucket(BUCKET, true).catch(() => null);
+        ({ data: uploadData, error: uploadError } = await uploadOnce());
+      }
     }
 
     if (uploadError || !uploadData) {
-      reportApiError({ endpoint: '/api/feed/upload', error: uploadError, context: { stage: 'upload_admin' } });
+      reportApiError({ endpoint: '/api/feed/upload', error: uploadError, context: { stage: 'upload_session' } });
       return NextResponse.json(
         {
           ok: false,
@@ -120,7 +108,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { data: publicInfo } = adminClient.storage.from(BUCKET).getPublicUrl(objectPath);
+    const { data: publicInfo } = supabase.storage.from(BUCKET).getPublicUrl(objectPath);
     const publicUrl = publicInfo?.publicUrl;
     if (!publicUrl) {
       return NextResponse.json(
