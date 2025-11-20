@@ -274,7 +274,7 @@ function MyMediaHub({
   if (!currentUserId) return null;
 
   return (
-    <div className="glass-panel">
+    <div className="glass-panel" id="my-media">
       <div className="flex items-center justify-between px-4 py-3 text-sm font-semibold">
         <span>MyMedia</span>
         <div className="flex gap-2 text-xs">
@@ -299,13 +299,15 @@ function MyMediaHub({
           <MediaPreviewGrid
             emptyLabel="Non hai ancora video"
             items={videos}
-            linkHref="/feed?section=my-videos"
+            linkHref="#my-videos"
+            sectionId="my-videos"
           />
         ) : (
           <MediaPreviewGrid
             emptyLabel="Non hai ancora foto"
             items={photos}
-            linkHref="/feed?section=my-photos"
+            linkHref="#my-photos"
+            sectionId="my-photos"
           />
         )}
       </div>
@@ -317,17 +319,23 @@ function MediaPreviewGrid({
   items,
   emptyLabel,
   linkHref,
+  sectionId,
 }: {
   items: FeedPost[];
   emptyLabel: string;
   linkHref: string;
+  sectionId?: string;
 }) {
   if (!items || items.length === 0) {
-    return <div className="text-xs text-gray-600">{emptyLabel}</div>;
+    return (
+      <div className="text-xs text-gray-600" id={sectionId}>
+        {emptyLabel}
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-2 text-xs text-gray-700">
+    <div className="space-y-2 text-xs text-gray-700" id={sectionId}>
       <div className="grid grid-cols-3 gap-2">
         {items.map((item) => (
           <Link key={item.id} href={linkHref} className="group block overflow-hidden rounded-lg border bg-white/70">
