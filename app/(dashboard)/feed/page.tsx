@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import FeedComposer from '@/components/feed/FeedComposer';
+import TrackRetention from '@/components/analytics/TrackRetention';
 
 // carico le sidebar in modo "sicuro" (se il componente esiste lo usa, altrimenti mostra un box vuoto)
 // N.B. ssr: false evita problemi coi Server Components in prod
@@ -117,6 +118,7 @@ export default function FeedPage() {
 
         {/* Colonna centrale: composer + feed */}
         <main className="space-y-4" aria-labelledby={headingId}>
+          <TrackRetention scope="feed" />
           <div>
             <h1 id={headingId} className="text-3xl font-semibold tracking-tight">
               Bacheca

@@ -174,7 +174,7 @@ Legenda: ☐ todo · ◐ in corso · ✅ fatto
 **Accettazione**
 - Pageviews base su production; nessun alert privacy.
 **Stato attuale**
-- `PrivacyAnalytics` carica lo script solo con consenso esplicito e DNT disattivato, mentre `lib/analytics` e i componenti di tracking inviano eventi aggregati attraverso l’API Plausible-like.
+- `PrivacyAnalytics` carica lo script solo con consenso esplicito e DNT disattivato, mentre `lib/analytics` e i componenti di tracking inviano eventi aggregati attraverso l’API Plausible-like (inclusi conversioni candidature e retention giornaliera con ID troncati).
 
 ---
 

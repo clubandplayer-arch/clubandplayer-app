@@ -119,6 +119,7 @@
   2. l'utente ha accettato tutti i cookie dal banner (`cp-consent-v1`),
   3. il browser **non** espone un segnale *Do Not Track* attivo.
 - I componenti che tracciano eventi (es. `TrackListView`, `TrackOpportunityOpen`) inviano solo eventi aggregati e privi di dati personali tramite `window.plausible`.
+- Eventi aggiuntivi: conversioni candidature (`application_submit`) e retention giornaliera (`retention_daily_active`) sono sanitizzati (nessun dato personale, ID troncati) e rispettano DNT/consenso.
 - Se vuoi disattivare completamente la telemetria basta omettere le variabili `NEXT_PUBLIC_ANALYTICS_*` e nessuno script verrà caricato.
 
 ## Checklist deploy MVP

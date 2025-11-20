@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { trackApplicationConversion } from '@/lib/analytics';
 
 type Props = {
   oppId: string;
@@ -30,6 +31,11 @@ export default function ApplyCTA({ oppId, initialApplied, onApplied, size = 'md'
       // idempotente: ok anche se già candidato (409)
       if (r.ok || r.status === 409) {
         setApplied(true);
+        try {
+          trackApplicationConversion({ opportunityId: oppId, source: 'cta' });
+        } catch {
+          /* no-op */
+        }
         onApplied?.();
       } else {
         const t = await r.text();

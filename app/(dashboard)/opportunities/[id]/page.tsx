@@ -7,7 +7,6 @@ import { opportunityGenderLabel } from '@/lib/opps/gender';
 
 // NEW: analytics
 import TrackOpportunityOpen from '@/components/analytics/TrackOpportunityOpen';
-import { track } from '@/lib/analytics';
 
 type Role = 'athlete' | 'club' | 'guest';
 
@@ -113,7 +112,6 @@ export default function OpportunityDetailPage({ params }: { params: { id: string
             initialApplied={alreadyApplied}
             onApplied={() => {
               setAlreadyApplied(true);
-              track('application_submit', { opportunity_id: opp.id, role });
             }}
           />
         )}
