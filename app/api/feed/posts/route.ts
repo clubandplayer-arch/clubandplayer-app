@@ -35,6 +35,10 @@ function normalizeRow(row: any) {
     media_url: row.media_url ?? null,
     media_type: row.media_type ?? null,
     media_aspect: normalizeAspect(row.media_aspect) ?? aspectFromUrl ?? null,
+    link_url: row.link_url ?? null,
+    link_title: row.link_title ?? null,
+    link_description: row.link_description ?? null,
+    link_image: row.link_image ?? null,
     role: undefined as unknown as 'club' | 'athlete' | undefined,
   };
 }
@@ -65,9 +69,6 @@ export async function GET(req: NextRequest) {
     // se qualcosa fallisce, continuiamo senza ruolo
   }
 
-  const baseSelect = 'id, author_id, content, created_at';
-  const extendedSelect = 'id, author_id, content, created_at, media_url, media_type, media_aspect';
-
   const fetchPosts = async (sel: string) =>
     supabase
       .from('posts')
@@ -78,10 +79,14 @@ export async function GET(req: NextRequest) {
   let data: any[] | null = null;
   let error: any = null;
 
-  ({ data, error } = await fetchPosts(extendedSelect));
+  ({ data, error } = await fetchPosts(SELECT_WITH_LINK));
 
   if (error && /column .* does not exist/i.test(error.message || '')) {
-    ({ data, error } = await fetchPosts(baseSelect));
+    ({ data, error } = await fetchPosts(SELECT_WITH_MEDIA));
+  }
+
+  if (error && /column .* does not exist/i.test(error.message || '')) {
+    ({ data, error } = await fetchPosts(SELECT_BASE));
   }
 
   if (error) {
@@ -162,6 +167,11 @@ function isMissingMediaColumns(err: any) {
   return /column .*media_/i.test(msg);
 }
 
+function isMissingLinkColumns(err: any) {
+  const msg = err?.message || '';
+  return /column .*link_/i.test(msg);
+}
+
 function isRlsError(err: any) {
   if (!err) return false;
   const parts = [err.message, err.details, err.hint]
@@ -178,6 +188,7 @@ function isRlsError(err: any) {
 }
 
 const SELECT_WITH_MEDIA = 'id, author_id, content, created_at, media_url, media_type, media_aspect';
+const SELECT_WITH_LINK = `${SELECT_WITH_MEDIA}, link_url, link_title, link_description, link_image`;
 const SELECT_BASE = 'id, author_id, content, created_at';
 const DEFAULT_POSTS_BUCKET = process.env.NEXT_PUBLIC_POSTS_BUCKET || 'posts';
 
@@ -211,6 +222,17 @@ function inferAspectFromUrl(url?: string | null): '16:9' | '9:16' | null {
     const u = new URL(url);
     const raw = u.searchParams.get('aspect');
     return normalizeAspect(raw);
+  } catch {
+    return null;
+  }
+}
+
+function normalizeLinkUrl(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  try {
+    const u = new URL(raw.trim());
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+    return u.toString();
   } catch {
     return null;
   }
@@ -258,14 +280,29 @@ export async function POST(req: NextRequest) {
         : typeof body?.mediaAspect === 'string'
           ? body.mediaAspect
           : '';
+    const rawLinkUrl =
+      typeof body?.link_url === 'string'
+        ? body.link_url
+        : typeof body?.linkUrl === 'string'
+          ? body.linkUrl
+          : '';
+    const rawLinkTitle = typeof body?.link_title === 'string' ? body.link_title : body?.linkTitle;
+    const rawLinkDescription =
+      typeof body?.link_description === 'string' ? body.link_description : body?.linkDescription;
+    const rawLinkImage = typeof body?.link_image === 'string' ? body.link_image : body?.linkImage;
 
     const normalizedMediaPath = rawMediaPath ? sanitizeStoragePath(rawMediaPath.trim()) : '';
     const mediaBucket = rawMediaBucket?.trim() || DEFAULT_POSTS_BUCKET;
     let mediaUrl = rawMediaUrl || rawMediaUrlCamel || null;
     let mediaType: 'image' | 'video' | null = inferMediaType(rawMediaType, rawMediaMime);
     const mediaAspect = normalizeAspect(rawMediaAspect) || inferAspectFromUrl(mediaUrl);
+    const linkUrl = normalizeLinkUrl(rawLinkUrl);
+    const linkTitle = typeof rawLinkTitle === 'string' ? rawLinkTitle.trim() || null : null;
+    const linkDescription =
+      typeof rawLinkDescription === 'string' ? rawLinkDescription.trim() || null : null;
+    const linkImage = normalizeLinkUrl(rawLinkImage);
 
-    if (!text && !mediaUrl && !normalizedMediaPath) {
+    if (!text && !mediaUrl && !normalizedMediaPath && !linkUrl) {
       return NextResponse.json(
         { ok: false, error: 'empty', message: 'Scrivi un testo o allega un media.' },
         { status: 400 }
@@ -321,13 +358,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'not_authenticated' }, { status: 401 });
     }
 
-    const effectiveText = text || (mediaUrl ? (mediaType === 'video' ? 'Video allegato' : 'Foto allegata') : '');
+    const effectiveText =
+      text ||
+      (mediaUrl
+        ? mediaType === 'video'
+          ? 'Video allegato'
+          : 'Foto allegata'
+        : linkUrl
+          ? linkTitle || linkUrl
+          : '');
     const insertPayload: Record<string, any> = { content: effectiveText, author_id: auth.user.id };
     if (mediaUrl) insertPayload.media_url = mediaUrl;
     if (mediaType) insertPayload.media_type = mediaType;
     if (mediaAspect && mediaType === 'video') insertPayload.media_aspect = mediaAspect;
+    if (linkUrl) insertPayload.link_url = linkUrl;
+    if (linkTitle) insertPayload.link_title = linkTitle;
+    if (linkDescription) insertPayload.link_description = linkDescription;
+    if (linkImage) insertPayload.link_image = linkImage;
 
-    const fallbackPayload: Record<string, any> = { content: text || mediaUrl || '', author_id: auth.user.id };
+    const fallbackPayload: Record<string, any> = { content: text || mediaUrl || linkUrl || '', author_id: auth.user.id };
     if (mediaUrl) fallbackPayload.media_url = mediaUrl;
     if (mediaType) fallbackPayload.media_type = mediaType;
 
@@ -337,14 +386,24 @@ export async function POST(req: NextRequest) {
     let data: any = null;
     let error: any = null;
 
-    ({ data, error } = await runInsert(supabase, insertPayload, SELECT_WITH_MEDIA));
+    ({ data, error } = await runInsert(supabase, insertPayload, SELECT_WITH_LINK));
+
+    if (error && isMissingLinkColumns(error)) {
+      const { link_url: _linkUrl, link_title: _linkTitle, link_description: _linkDescription, link_image: _linkImage, ...rest } = insertPayload;
+      ({ data, error } = await runInsert(supabase, rest, SELECT_WITH_MEDIA));
+    }
 
     if (error && isMissingMediaColumns(error)) {
       ({ data, error } = await runInsert(supabase, fallbackPayload, SELECT_BASE));
     }
 
     if (error && admin && isRlsError(error)) {
-      ({ data, error } = await runInsert(admin, insertPayload, SELECT_WITH_MEDIA));
+      ({ data, error } = await runInsert(admin, insertPayload, SELECT_WITH_LINK));
+      if (error && isMissingLinkColumns(error)) {
+        const { link_url: _linkUrl, link_title: _linkTitle, link_description: _linkDescription, link_image: _linkImage, ...rest } =
+          insertPayload;
+        ({ data, error } = await runInsert(admin, rest, SELECT_WITH_MEDIA));
+      }
       if (error && isMissingMediaColumns(error)) {
         ({ data, error } = await runInsert(admin, fallbackPayload, SELECT_BASE));
       }

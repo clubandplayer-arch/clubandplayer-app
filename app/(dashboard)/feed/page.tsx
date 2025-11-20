@@ -36,6 +36,10 @@ type FeedPost = {
   media_url?: string | null;
   media_type?: 'image' | 'video' | null;
   media_aspect?: '16:9' | '9:16' | null;
+  link_url?: string | null;
+  link_title?: string | null;
+  link_description?: string | null;
+  link_image?: string | null;
 };
 
 async function fetchPosts(signal?: AbortSignal): Promise<FeedPost[]> {
@@ -60,6 +64,10 @@ function normalizePost(p: any): FeedPost {
     media_url: p.media_url ?? null,
     media_type: p.media_type ?? null,
     media_aspect: normalizeAspect(p.media_aspect) ?? aspect ?? null,
+    link_url: p.link_url ?? p.linkUrl ?? firstUrl(p.content ?? p.text ?? null),
+    link_title: p.link_title ?? p.linkTitle ?? null,
+    link_description: p.link_description ?? p.linkDescription ?? null,
+    link_image: p.link_image ?? p.linkImage ?? null,
   };
 }
 
@@ -79,6 +87,20 @@ function aspectFromUrl(url?: string | null): '16:9' | '9:16' | null {
     return normalizeAspect(raw);
   } catch {
     return null;
+  }
+}
+
+function firstUrl(text?: string | null): string | null {
+  if (!text) return null;
+  const match = text.match(/https?:\/\/[^\s]+/i);
+  return match ? match[0] : null;
+}
+
+function domainFromUrl(url: string) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return url;
   }
 }
 
@@ -376,6 +398,38 @@ function MediaPreviewGrid({
   );
 }
 
+function FeedLinkCard({
+  url,
+  title,
+  description,
+  image,
+}: {
+  url: string;
+  title: string | null;
+  description: string | null;
+  image: string | null;
+}) {
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer noopener"
+      className="block overflow-hidden rounded-xl border bg-white/70 shadow-sm transition hover:shadow-md"
+    >
+      <div className="flex gap-3 p-3">
+        {image ? (
+          <img src={image} alt={title || url} className="h-20 w-28 flex-shrink-0 rounded-lg object-cover" />
+        ) : null}
+        <div className="flex-1 space-y-1">
+          <div className="text-xs uppercase text-gray-500">{domainFromUrl(url)}</div>
+          <div className="text-sm font-semibold text-gray-900 line-clamp-2">{title || url}</div>
+          {description ? <div className="text-xs text-gray-600 line-clamp-2">{description}</div> : null}
+        </div>
+      </div>
+    </a>
+  );
+}
+
 function PostItem({
   post,
   currentUserId,
@@ -391,6 +445,10 @@ function PostItem({
   const [text, setText] = useState(post.content ?? post.text ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const linkUrl = post.link_url ?? firstUrl(post.content ?? post.text ?? '');
+  const linkTitle = post.link_title ?? null;
+  const linkDescription = post.link_description ?? null;
+  const linkImage = post.link_image ?? null;
   const isOwner = currentUserId != null && post.authorId === currentUserId;
   const editAreaId = `post-edit-${post.id}`;
   const errorId = error ? `post-error-${post.id}` : undefined;
@@ -492,6 +550,11 @@ function PostItem({
           {post.content || '—'}
         </div>
       )}
+      {linkUrl ? (
+        <div className="mt-3">
+          <FeedLinkCard url={linkUrl} title={linkTitle} description={linkDescription} image={linkImage} />
+        </div>
+      ) : null}
       {post.media_url ? (
         <div
           className={`mt-3 overflow-hidden rounded-xl border bg-neutral-50 ${

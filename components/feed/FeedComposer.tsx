@@ -20,6 +20,13 @@ type VideoAspect = '16:9' | '9:16';
 
 type MediaType = 'image' | 'video';
 
+type LinkPreview = {
+  url: string;
+  title: string | null;
+  description: string | null;
+  image: string | null;
+};
+
 type UploadedMedia = {
   media_url: string | null;
   media_type: MediaType;
@@ -56,13 +63,24 @@ export default function FeedComposer({ onPosted }: Props) {
   const [mediaType, setMediaType] = useState<MediaType | null>(null);
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
   const [videoAspect, setVideoAspect] = useState<VideoAspect>('16:9');
+  const [linkUrl, setLinkUrl] = useState<string | null>(null);
+  const [linkPreview, setLinkPreview] = useState<LinkPreview | null>(null);
+  const [linkErr, setLinkErr] = useState<string | null>(null);
+  const [linkLoading, setLinkLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const linkAbortRef = useRef<AbortController | null>(null);
   const canSend = (text.trim().length > 0 || Boolean(mediaFile)) && !sending;
 
   const textareaId = 'feed-composer-input';
   const helperId = 'feed-composer-helper';
   const errorId = err ? 'feed-composer-error' : undefined;
   const describedBy = [helperId, errorId].filter(Boolean).join(' ') || undefined;
+
+  useEffect(() => {
+    return () => {
+      linkAbortRef.current?.abort();
+    };
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -78,6 +96,70 @@ export default function FeedComposer({ onPosted }: Props) {
     setVideoAspect('16:9');
     setMediaErr(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
+  function resetLink() {
+    linkAbortRef.current?.abort();
+    setLinkUrl(null);
+    setLinkPreview(null);
+    setLinkErr(null);
+    setLinkLoading(false);
+  }
+
+  function findFirstUrl(value: string): string | null {
+    const match = value.match(/https?:\/\/[^\s]+/i);
+    return match ? match[0] : null;
+  }
+
+  async function fetchLinkPreview(url: string) {
+    linkAbortRef.current?.abort();
+    const controller = new AbortController();
+    linkAbortRef.current = controller;
+    setLinkLoading(true);
+    setLinkErr(null);
+    try {
+      const res = await fetch('/api/link-preview', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ url }),
+        signal: controller.signal,
+      });
+      const json = await res.json().catch(() => null);
+      if (controller.signal.aborted) return;
+      if (json?.ok && json?.url) {
+        setLinkPreview({
+          url: json.url,
+          title: json.title ?? null,
+          description: json.description ?? null,
+          image: json.image ?? null,
+        });
+      } else {
+        setLinkPreview(null);
+        setLinkErr(json?.message || 'Anteprima non disponibile');
+      }
+    } catch (error: any) {
+      if (controller.signal.aborted) return;
+      setLinkPreview(null);
+      setLinkErr(error?.message || 'Anteprima non disponibile');
+    } finally {
+      if (!controller.signal.aborted) setLinkLoading(false);
+    }
+  }
+
+  function handleTextChange(value: string) {
+    setText(value);
+    setErr(null);
+    const found = findFirstUrl(value);
+    if (!found) {
+      resetLink();
+      return;
+    }
+    if (found !== linkUrl) {
+      setLinkUrl(found);
+      setLinkPreview(null);
+      setLinkErr(null);
+      void fetchLinkPreview(found);
+    }
   }
 
   function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
@@ -193,6 +275,12 @@ export default function FeedComposer({ onPosted }: Props) {
           payload.media_aspect = videoAspect;
         }
       }
+      if (linkUrl) {
+        payload.link_url = linkUrl;
+        payload.link_title = linkPreview?.title ?? null;
+        payload.link_description = linkPreview?.description ?? null;
+        payload.link_image = linkPreview?.image ?? null;
+      }
 
       const res = await fetch('/api/feed/posts', {
         method: 'POST',
@@ -209,6 +297,7 @@ export default function FeedComposer({ onPosted }: Props) {
       }
       setText('');
       resetMedia();
+      resetLink();
       setErr(null);
       onPosted?.();
     } catch (e: any) {
@@ -233,7 +322,7 @@ export default function FeedComposer({ onPosted }: Props) {
           rows={3}
           placeholder="Condividi un pensiero…"
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => handleTextChange(e.target.value)}
           disabled={sending}
           maxLength={MAX_CHARS}
           aria-describedby={describedBy}
@@ -242,6 +331,15 @@ export default function FeedComposer({ onPosted }: Props) {
         <p id={helperId} className="text-xs text-gray-500">
           {text.trim().length}/{MAX_CHARS} caratteri disponibili
         </p>
+
+        {linkUrl ? (
+          <LinkPreviewCard loading={linkLoading} preview={linkPreview} url={linkUrl} />
+        ) : null}
+        {linkErr ? (
+          <div className="text-xs text-red-600" role="status">
+            {linkErr}
+          </div>
+        ) : null}
 
         <div className="flex flex-wrap items-center gap-3 text-sm">
           <div className="flex flex-1 items-center gap-2 text-xs text-gray-500">
@@ -355,6 +453,56 @@ export default function FeedComposer({ onPosted }: Props) {
         className="hidden"
         onChange={handleFileChange}
       />
+    </div>
+  );
+}
+
+function domainFromUrl(url: string) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+}
+
+function LinkPreviewCard({
+  url,
+  preview,
+  loading,
+}: {
+  url: string;
+  preview: LinkPreview | null;
+  loading: boolean;
+}) {
+  return (
+    <div className="glass-panel border px-4 py-3 text-sm">
+      <div className="flex items-center justify-between">
+        <span className="font-semibold text-gray-800">Anteprima link</span>
+        {loading ? <span className="text-xs text-gray-500">Caricamento…</span> : null}
+      </div>
+      <a
+        href={preview?.url || url}
+        target="_blank"
+        rel="noreferrer noopener"
+        className="mt-2 block rounded-lg border bg-white/60 p-3 hover:border-gray-400"
+      >
+        <div className="flex gap-3">
+          {preview?.image ? (
+            <img
+              src={preview.image}
+              alt={preview.title || preview.url || url}
+              className="h-16 w-24 flex-shrink-0 rounded-md object-cover"
+            />
+          ) : null}
+          <div className="flex-1 space-y-1">
+            <div className="text-xs uppercase text-gray-500">{domainFromUrl(preview?.url || url)}</div>
+            <div className="text-sm font-semibold text-gray-900">{preview?.title || 'Link'}</div>
+            {preview?.description ? (
+              <div className="text-xs text-gray-600 line-clamp-2">{preview.description}</div>
+            ) : null}
+          </div>
+        </div>
+      </a>
     </div>
   );
 }
