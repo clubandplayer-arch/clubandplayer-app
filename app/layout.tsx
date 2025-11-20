@@ -94,7 +94,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
 
-      <body className="antialiased bg-neutral-50 text-neutral-900 font-sans">
+      <body className="antialiased text-neutral-900 font-sans">
         <a href="#main-content" className="skip-link">
           Salta al contenuto principale
         </a>

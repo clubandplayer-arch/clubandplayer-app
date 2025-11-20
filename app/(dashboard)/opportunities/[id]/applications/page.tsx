@@ -106,7 +106,7 @@ export default function OpportunityApplicationsPage({ params }: { params: { id: 
           <table className="w-full text-sm">
             <thead className="bg-gray-50">
               <tr className="text-left border-b">
-                <th className="py-2 px-3">Atleta</th>
+                <th className="py-2 px-3">Player</th>
                 <th className="py-2 px-3">Nota</th>
                 <th className="py-2 px-3">Stato</th>
                 <th className="py-2 px-3">Data</th>
@@ -124,7 +124,7 @@ export default function OpportunityApplicationsPage({ params }: { params: { id: 
                     <div className="text-xs text-gray-500">
                       {[a.athlete?.city, a.athlete?.province, a.athlete?.region]
                         .filter(Boolean)
-                        .join(' · ') || a.athlete?.account_type || 'Atleta'}
+                        .join(' · ') || a.athlete?.account_type || 'Player'}
                     </div>
                   </td>
                   <td className="py-2 px-3">{a.note || '—'}</td>

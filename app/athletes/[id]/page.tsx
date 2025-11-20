@@ -137,7 +137,7 @@ export default function AthletePublicProfilePage() {
 
   const isMe = useMemo(() => !!meId && !!profile && meId === profile.id, [meId, profile])
 
-  const profileName = profile?.display_name || profile?.full_name || 'Atleta'
+  const profileName = profile?.display_name || profile?.full_name || 'Player'
   const profileTagline = useMemo(() => {
     if (!profile) return ''
     const headline = (profile.headline ?? '').trim()

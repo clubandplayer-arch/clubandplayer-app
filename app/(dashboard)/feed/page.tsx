@@ -138,8 +138,8 @@ export default function FeedPage() {
         <main className="space-y-4" aria-labelledby={headingId}>
           <TrackRetention scope="feed" />
           <div>
-            <h1 id={headingId} className="text-3xl font-semibold tracking-tight">
-              Bacheca
+            <h1 id={headingId} className="feed-title text-3xl md:text-4xl">
+              BACHECA
             </h1>
             <p className="text-sm text-gray-600">
               Condividi aggiornamenti con club e atleti. Tutti i campi sono accessibili anche da tastiera.
@@ -149,17 +149,17 @@ export default function FeedPage() {
 
           <div className="space-y-4" aria-live="polite" aria-busy={loading}>
             {loading && (
-              <div className="rounded-2xl border p-4" role="status">
+              <div className="glass-panel p-4" role="status">
                 Caricamento…
               </div>
             )}
             {err && (
-              <div className="rounded-2xl border p-4 text-red-600" role="alert">
+              <div className="glass-panel p-4 text-red-600" role="alert">
                 {err}
               </div>
             )}
             {!loading && !err && items.length === 0 && (
-              <div className="rounded-2xl border p-4 text-sm text-gray-600" role="status">
+              <div className="glass-panel p-4 text-sm text-gray-600" role="status">
                 Nessun post ancora.
               </div>
             )}
@@ -207,9 +207,9 @@ function SidebarCard({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border bg-white">
+    <div className="glass-panel">
       {title ? (
-        <div className="border-b px-4 py-3 text-sm font-semibold">{title}</div>
+        <div className="px-4 py-3 text-sm font-semibold">{title}</div>
       ) : null}
       <div className="px-4 py-3">{children}</div>
     </div>
@@ -218,7 +218,7 @@ function SidebarCard({
 
 function ProfileCardFallback() {
   return (
-    <div className="rounded-2xl border bg-white p-4 shadow-sm">
+    <div className="glass-panel p-4">
       <div className="flex items-start gap-3">
         <div className="h-24 w-[4.8rem] flex-shrink-0 animate-pulse rounded-xl bg-gray-200" />
         <div className="flex-1 space-y-3">
@@ -300,7 +300,7 @@ function PostItem({
   }
 
   return (
-    <article className="rounded-2xl border bg-white p-4">
+    <article className="glass-panel p-4">
       <div className="text-xs text-gray-500">
         {post.createdAt ? new Date(post.createdAt).toLocaleString() : '—'}
       </div>

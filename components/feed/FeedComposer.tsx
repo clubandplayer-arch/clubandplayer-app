@@ -209,7 +209,7 @@ export default function FeedComposer({ onPosted }: Props) {
   }
 
   return (
-    <div className="rounded-2xl border bg-white p-4 shadow-sm" aria-live="polite">
+    <div className="glass-panel p-4" aria-live="polite">
       <div className="mt-4 space-y-3">
         <label htmlFor={textareaId} className="sr-only">
           Scrivi un aggiornamento per la community

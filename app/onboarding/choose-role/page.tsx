@@ -38,7 +38,7 @@ export default function ChooseRolePage() {
     <main className="container mx-auto max-w-3xl px-4 py-10">
       <h1 className="mb-2 text-2xl font-bold">Scegli il tuo ruolo</h1>
       <p className="mb-8 text-neutral-600">
-        Per personalizzare l’esperienza, indica se stai usando Club&Player come <strong>Club</strong> o come <strong>Atleta</strong>.
+        Per personalizzare l’esperienza, indica se stai usando Club&Player come <strong>Club</strong> o come <strong>Player</strong>.
         Potrai cambiarlo in seguito dalle impostazioni.
       </p>
 
@@ -61,21 +61,21 @@ export default function ChooseRolePage() {
           </div>
         </button>
 
-        {/* Card Atleta */}
+        {/* Card Player */}
         <button
           className="group rounded-2xl border p-5 text-left transition hover:shadow-md focus:outline-none focus:ring-2"
           onClick={() => choose('athlete')}
           disabled={!!saving}
         >
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Sono un Atleta</h2>
+            <h2 className="text-lg font-semibold">Sono un Player</h2>
             <span className="rounded-full border px-3 py-1 text-xs">Seleziona</span>
           </div>
           <p className="text-sm text-neutral-600">
             Crea il profilo sportivo, trova opportunità e candidati direttamente.
           </p>
           <div className="mt-4 text-sm text-blue-700">
-            {saving === 'athlete' ? 'Salvataggio…' : 'Continua come Atleta'}
+            {saving === 'athlete' ? 'Salvataggio…' : 'Continua come Player'}
           </div>
         </button>
       </div>

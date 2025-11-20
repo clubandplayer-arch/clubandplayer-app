@@ -90,14 +90,11 @@ export default function SignupPage() {
 
   return (
     <main className="container mx-auto py-10">
-      {/* barra sottile tricolore 🇮🇹 */}
-      <div className="bg-gradient-to-r from-[#009246] via-white to-[#CE2B37] h-1 rounded-full mb-8" />
-
-      <div className="grid gap-10 md:grid-cols-12 items-start">
+      <div className="grid items-start gap-10 md:grid-cols-12">
         {/* HERO TESTO - stile LinkedIn */}
         <section className="md:col-span-7">
           <h1 className="text-3xl sm:text-4xl font-bold leading-tight">
-            Ti diamo il benvenuto nella community sportiva più grande d'Italia.
+            Ti diamo il benvenuto nella più grande community sportiva.
           </h1>
           <br />
           <h2 className="text-1xl sm:text-2xl font-bold leading-tight">
@@ -105,8 +102,8 @@ export default function SignupPage() {
           </h2>
           <br />
           <p className="mt-4 lead max-w-2xl">
-            Connettiti con club e atleti, pubblica opportunità, costruisci la tua carriera.
-            Iscriviti in pochi secondi: scegli se sei un <b>Club</b> o un <b>Atleta</b>.
+            Connettiti con club e player, pubblica opportunità, costruisci la tua carriera.
+            Iscriviti in pochi secondi: scegli se sei un <b>Club</b> o un <b>Player</b>.
           </p>
 
           <ul className="mt-6 space-y-3 text-sm">
@@ -205,7 +202,7 @@ export default function SignupPage() {
                       checked={role === 'athlete'}
                       onChange={() => setRole('athlete')}
                     />
-                    Atleta
+                    Player
                   </label>
                   <label className="flex items-center gap-2 rounded-md border px-3 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-neutral-800 dark:border-neutral-700">
                     <input
