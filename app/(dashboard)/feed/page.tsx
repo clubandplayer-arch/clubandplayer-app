@@ -35,7 +35,7 @@ type FeedPost = {
   authorId?: string | null;
   media_url?: string | null;
   media_type?: 'image' | 'video' | null;
-  media_aspect?: '16-9' | '9-16' | null;
+  media_aspect?: '16:9' | '9:16' | null;
 };
 
 async function fetchPosts(signal?: AbortSignal): Promise<FeedPost[]> {
@@ -59,17 +59,24 @@ function normalizePost(p: any): FeedPost {
     authorId: p.author_id ?? p.authorId ?? null,
     media_url: p.media_url ?? null,
     media_type: p.media_type ?? null,
-    media_aspect: p.media_aspect ?? aspect ?? null,
+    media_aspect: normalizeAspect(p.media_aspect) ?? aspect ?? null,
   };
 }
 
-function aspectFromUrl(url?: string | null): '16-9' | '9-16' | null {
+function normalizeAspect(raw?: string | null): '16:9' | '9:16' | null {
+  if (!raw) return null;
+  const v = raw.trim();
+  if (v === '16:9' || v === '16-9') return '16:9';
+  if (v === '9:16' || v === '9-16') return '9:16';
+  return null;
+}
+
+function aspectFromUrl(url?: string | null): '16:9' | '9:16' | null {
   if (!url) return null;
   try {
     const u = new URL(url);
     const raw = u.searchParams.get('aspect');
-    if (raw === '16-9' || raw === '9-16') return raw;
-    return null;
+    return normalizeAspect(raw);
   } catch {
     return null;
   }
@@ -325,7 +332,15 @@ function MediaPreviewGrid({
         {items.map((item) => (
           <Link key={item.id} href={linkHref} className="group block overflow-hidden rounded-lg border bg-white/70">
             {item.media_type === 'video' ? (
-              <div className={`w-full ${item.media_aspect === '9-16' ? 'aspect-[9/16]' : 'aspect-[16/9]'}`}>
+              <div
+                className={`w-full ${
+                  item.media_aspect === '9:16'
+                    ? 'aspect-[9/16]'
+                    : item.media_aspect === '16:9'
+                      ? 'aspect-[16/9]'
+                      : 'aspect-[16/9]'
+                }`}
+              >
                 <video
                   src={item.media_url ?? undefined}
                   className="h-full w-full object-cover"
@@ -473,7 +488,7 @@ function PostItem({
         <div
           className={`mt-3 overflow-hidden rounded-xl border bg-neutral-50 ${
             post.media_type === 'video'
-              ? post.media_aspect === '9-16'
+              ? post.media_aspect === '9:16'
                 ? 'aspect-[9/16]'
                 : 'aspect-[16/9]'
               : ''

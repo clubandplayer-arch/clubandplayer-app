@@ -34,7 +34,7 @@ function normalizeRow(row: any) {
     author_id: row.author_id ?? null,
     media_url: row.media_url ?? null,
     media_type: row.media_type ?? null,
-    media_aspect: row.media_aspect ?? aspectFromUrl ?? null,
+    media_aspect: normalizeAspect(row.media_aspect) ?? aspectFromUrl ?? null,
     role: undefined as unknown as 'club' | 'athlete' | undefined,
   };
 }
@@ -198,13 +198,19 @@ function inferMediaType(rawType: unknown, rawMime: unknown): 'image' | 'video' |
   return null;
 }
 
-function inferAspectFromUrl(url?: string | null): '16-9' | '9-16' | null {
+function normalizeAspect(raw?: unknown): '16:9' | '9:16' | null {
+  const value = typeof raw === 'string' ? raw.trim() : '';
+  if (value === '16:9' || value === '16-9') return '16:9';
+  if (value === '9:16' || value === '9-16') return '9:16';
+  return null;
+}
+
+function inferAspectFromUrl(url?: string | null): '16:9' | '9:16' | null {
   if (!url) return null;
   try {
     const u = new URL(url);
     const raw = u.searchParams.get('aspect');
-    if (raw === '16-9' || raw === '9-16') return raw;
-    return null;
+    return normalizeAspect(raw);
   } catch {
     return null;
   }
@@ -257,7 +263,7 @@ export async function POST(req: NextRequest) {
     const mediaBucket = rawMediaBucket?.trim() || DEFAULT_POSTS_BUCKET;
     let mediaUrl = rawMediaUrl || rawMediaUrlCamel || null;
     let mediaType: 'image' | 'video' | null = inferMediaType(rawMediaType, rawMediaMime);
-    const mediaAspect = rawMediaAspect === '16-9' || rawMediaAspect === '9-16' ? rawMediaAspect : inferAspectFromUrl(mediaUrl);
+    const mediaAspect = normalizeAspect(rawMediaAspect) || inferAspectFromUrl(mediaUrl);
 
     if (!text && !mediaUrl && !normalizedMediaPath) {
       return NextResponse.json(

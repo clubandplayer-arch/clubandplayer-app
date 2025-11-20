@@ -16,7 +16,7 @@ const ACCEPT = 'image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quickt
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const VIDEO_TYPES = ['video/mp4', 'video/quicktime'];
 
-type VideoAspect = '16-9' | '9-16';
+type VideoAspect = '16:9' | '9:16';
 
 type MediaType = 'image' | 'video';
 
@@ -55,7 +55,7 @@ export default function FeedComposer({ onPosted }: Props) {
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [mediaType, setMediaType] = useState<MediaType | null>(null);
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
-  const [videoAspect, setVideoAspect] = useState<VideoAspect>('16-9');
+  const [videoAspect, setVideoAspect] = useState<VideoAspect>('16:9');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const canSend = (text.trim().length > 0 || Boolean(mediaFile)) && !sending;
 
@@ -75,7 +75,7 @@ export default function FeedComposer({ onPosted }: Props) {
     setMediaPreview(null);
     setMediaFile(null);
     setMediaType(null);
-    setVideoAspect('16-9');
+    setVideoAspect('16:9');
     setMediaErr(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   }
@@ -159,7 +159,7 @@ export default function FeedComposer({ onPosted }: Props) {
     let url = publicInfo?.data?.publicUrl ?? null;
     if (url && mediaType === 'video') {
       const glue = url.includes('?') ? '&' : '?';
-      url = `${url}${glue}aspect=${videoAspect}`;
+      url = `${url}${glue}aspect=${videoAspect.replace(':', '-')}`;
     }
 
     return {
@@ -268,9 +268,9 @@ export default function FeedComposer({ onPosted }: Props) {
                 <input
                   type="radio"
                   name="video-aspect"
-                  value="16-9"
-                  checked={videoAspect === '16-9'}
-                  onChange={() => setVideoAspect('16-9')}
+                  value="16:9"
+                  checked={videoAspect === '16:9'}
+                  onChange={() => setVideoAspect('16:9')}
                   disabled={sending}
                 />
                 <span>Video 16:9</span>
@@ -279,9 +279,9 @@ export default function FeedComposer({ onPosted }: Props) {
                 <input
                   type="radio"
                   name="video-aspect"
-                  value="9-16"
-                  checked={videoAspect === '9-16'}
-                  onChange={() => setVideoAspect('9-16')}
+                  value="9:16"
+                  checked={videoAspect === '9:16'}
+                  onChange={() => setVideoAspect('9:16')}
                   disabled={sending}
                 />
                 <span>Video 9:16</span>
