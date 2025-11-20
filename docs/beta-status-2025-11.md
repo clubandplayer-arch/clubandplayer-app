@@ -39,7 +39,7 @@ Checklist completata il 10/03/2025: vedere la sezione successiva per la data uff
 - ✅ **Reintroduzione upload media nel feed**: la bacheca accetta nuovamente immagini (8MB) e video MP4 (80MB) caricati nel bucket `posts`, con fallback admin e logging Sentry sugli errori.
 - ✅ **Analytics avanzate**: eventi di conversione candidature e retention giornaliera vengono inviati via client Plausible-like, con sanitizzazione dei parametri e rispetto di DNT/consenso.
 - ✅ **Miglioramenti performance**: caching/lazy nelle viste più trafficate (feed, search club) con abort/caching client-side e raccolta Web Vitals reale (CLS/FID/INP/LCP/TTFB) inviata in forma anonima.
-- **Ampliamento supporto**: formalizzare SLA/turni per `BRAND_REPLY_TO` e canale `#beta-triage` quando il numero di utenti crescerà.
+- ✅ **Ampliamento supporto**: SLA 7/7 08:00–20:00 CET con risposta entro 4h, on-call/backup settimanale (Chiara/Luca a rotazione) e regole di escalation/estensione turno al crescere degli utenti (vedi [`docs/support/beta-triage.md`](./support/beta-triage.md)).
 
 ## Prossimi passi prioritari verso la Beta
 1. ✅ **Email reali (PM-01)**: configurazione Resend obbligatoria (`RESEND_API_KEY`, `RESEND_FROM`, `BRAND_REPLY_TO`) e NOOP disattivato; gli endpoint `/api/notify-email` e `/api/notifications/send` rifiutano la richiesta se l'env non è completa.

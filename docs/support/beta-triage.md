@@ -24,4 +24,11 @@ Questa nota descrive chi presidia la casella email configurata tramite `BRAND_RE
 2. Alert Sentry ripetuto (>3 eventi in 10 minuti) → aprire `#incidents` e allertare il PM Beta.
 3. Se il problema impatta i dati personali, coinvolgere subito `privacy@clubandplayer.com` e seguire la procedura DPIA.
 
-> Ultimo aggiornamento: 09/03/2025 — owner: Team Operazioni.
+## SLA e turni post-Beta
+- **Copertura 7/7 in orario lavorativo (08:00–20:00 CET)** con risposta entro 4h alle email `BRAND_REPLY_TO` e presa in carico Sentry in Slack `#beta-triage` entro 30 minuti.
+- **Rotazione settimanale**: lun–dom un referente primario (on-call) e un backup. Rotazione corrente: settimana dispari → Chiara (primaria) / Luca (backup); settimana pari → Luca (primario) / Chiara (backup). Aggiornare il topic del canale `#beta-triage` a ogni cambio.
+- **Fuori orario (20:00–08:00 CET)**: risposta best-effort; solo errori Sentry marcati `fatal` o messaggi con oggetto "INCIDENT" in inbox attivano la procedura di incident con escalation verso `#incidents`.
+- **Ridimensionamento**: al superamento di 500 utenti attivi/settimana, attivare il turno serale (20:00–23:00 CET) dal lunedì al giovedì, coperto dal backup; al superamento di 1.5k utenti/settimana valutare l’estensione a 24/7 o l’esternalizzazione del primo livello.
+- **Metriche e review**: ogni lunedì pubblicare in `#beta-triage` il riepilogo della settimana precedente (numero ticket, tempi di risposta/risoluzione, incident aperti/chiusi) e adeguare la rotazione in base al carico.
+
+> Ultimo aggiornamento: 12/03/2025 — owner: Team Operazioni.
