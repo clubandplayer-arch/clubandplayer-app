@@ -366,30 +366,44 @@ export default function FeedComposer({ onPosted }: Props) {
             )}
           </div>
           {mediaFile && mediaType === 'video' ? (
-            <div className="flex items-center gap-3 text-xs text-gray-700" aria-live="polite">
+            <div
+              className="flex items-center gap-3 text-xs text-gray-700"
+              aria-live="polite"
+              role="radiogroup"
+              aria-label="Formato video"
+            >
               <span className="font-semibold">Formato:</span>
-              <label className="flex items-center gap-1">
-                <input
-                  type="radio"
-                  name="video-aspect"
-                  value="16:9"
-                  checked={videoAspect === '16:9'}
-                  onChange={() => setVideoAspect('16:9')}
-                  disabled={sending}
-                />
-                <span>Video 16:9</span>
-              </label>
-              <label className="flex items-center gap-1">
-                <input
-                  type="radio"
-                  name="video-aspect"
-                  value="9:16"
-                  checked={videoAspect === '9:16'}
-                  onChange={() => setVideoAspect('9:16')}
-                  disabled={sending}
-                />
-                <span>Video 9:16</span>
-              </label>
+              {(
+                [
+                  { value: '16:9' as VideoAspect, label: '16:9', shape: 'h-6 w-10' },
+                  { value: '9:16' as VideoAspect, label: '9:16', shape: 'h-10 w-6' },
+                ] as const
+              ).map((option) => {
+                const isActive = videoAspect === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={isActive}
+                    aria-pressed={isActive}
+                    tabIndex={isActive ? 0 : -1}
+                    disabled={sending}
+                    onClick={() => setVideoAspect(option.value)}
+                    className={`flex items-center gap-2 rounded-lg border px-3 py-2 font-semibold transition focus-visible:outline focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-600 ${
+                      isActive
+                        ? 'border-gray-900 bg-gray-900 text-white shadow-sm'
+                        : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={`flex items-center justify-center rounded-md border border-current bg-black/10 ${option.shape}`}
+                    />
+                    <span>{option.label}</span>
+                  </button>
+                );
+              })}
             </div>
           ) : null}
           <button

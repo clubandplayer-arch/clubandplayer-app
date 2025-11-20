@@ -1,7 +1,5 @@
 @import "tailwindcss";
 
-@import url('https://fonts.googleapis.com/css2?family=Righteous:wght@400&display=swap');
-
 /* === Theme tokens (CSS variables) === */
 :root {
   /* Palette bandiera norvegese */
@@ -94,17 +92,6 @@ html, body {
 
 .glass-panel {
   @apply rounded-2xl bg-white/60 shadow-xl backdrop-blur border border-white/0;
-}
-
-.feed-title {
-  font-family: 'Impact', 'Anton', 'Oswald', 'Arial Black', sans-serif;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
-}
-
-.font-righteous {
-  font-family: 'Righteous', 'Impact', 'Anton', 'Oswald', 'Arial Black', sans-serif;
 }
 
 /* ------------------------------------ */

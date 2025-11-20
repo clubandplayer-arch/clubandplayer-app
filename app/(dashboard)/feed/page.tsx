@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
+import { Righteous } from 'next/font/google';
 import FeedComposer from '@/components/feed/FeedComposer';
 import TrackRetention from '@/components/analytics/TrackRetention';
 
@@ -23,6 +24,11 @@ const WhoToFollow = dynamic(() => import('@/components/feed/WhoToFollow'), {
 const FollowedClubs = dynamic(() => import('@/components/feed/FollowedClubs'), {
   ssr: false,
   loading: () => <SidebarCard title="Club che segui" />,
+});
+
+const righteous = Righteous({
+  subsets: ['latin'],
+  weight: '400',
 });
 
 type FeedPost = {
@@ -184,7 +190,10 @@ export default function FeedPage() {
         <main className="space-y-4" aria-labelledby={headingId}>
           <TrackRetention scope="feed" />
           <div>
-            <h1 id={headingId} className="font-righteous feed-title w-full text-center text-4xl md:text-5xl">
+            <h1
+              id={headingId}
+              className={`${righteous.className} w-full text-center text-4xl uppercase tracking-wide text-[var(--brand)] md:text-5xl lg:text-6xl`}
+            >
               SPORTLIFE
             </h1>
             <p className="text-sm text-gray-600">
@@ -401,9 +410,6 @@ function MediaPreviewGrid({
           </Link>
         ))}
       </div>
-      <Link href={linkHref} className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700">
-        Vedi tutti <span aria-hidden="true">→</span>
-      </Link>
     </div>
   );
 }
