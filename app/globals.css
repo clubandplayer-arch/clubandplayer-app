@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@import url('https://fonts.googleapis.com/css2?family=Righteous:wght@400&display=swap');
+
 /* === Theme tokens (CSS variables) === */
 :root {
   /* Palette bandiera norvegese */
@@ -85,13 +87,13 @@ html, body {
 /* Card                                 */
 /* ------------------------------------ */
 .card {
-  @apply rounded-2xl bg-white/70 shadow-lg backdrop-blur border border-white/0
+  @apply rounded-2xl bg-white/60 shadow-xl backdrop-blur border border-white/0
          dark:border-neutral-800 dark:bg-neutral-900/80;
 }
 .card-hover { @apply transition-shadow hover:shadow-md; }
 
 .glass-panel {
-  @apply rounded-2xl bg-white/70 shadow-lg backdrop-blur border border-white/0;
+  @apply rounded-2xl bg-white/60 shadow-xl backdrop-blur border border-white/0;
 }
 
 .feed-title {
@@ -99,6 +101,10 @@ html, body {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
+.font-righteous {
+  font-family: 'Righteous', 'Impact', 'Anton', 'Oswald', 'Arial Black', sans-serif;
 }
 
 /* ------------------------------------ */

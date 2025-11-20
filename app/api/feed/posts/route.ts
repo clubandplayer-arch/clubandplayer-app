@@ -45,7 +45,11 @@ function normalizeRow(row: any) {
 
 // GET: lettura autenticata, filtra i post per ruolo dell'autore
 export async function GET(req: NextRequest) {
-  const debug = new URL(req.url).searchParams.get('debug') === '1';
+  const searchParams = new URL(req.url).searchParams;
+  const debug = searchParams.get('debug') === '1';
+  const mine = searchParams.get('mine') === '1';
+  const limitRaw = Number(searchParams.get('limit') || '50');
+  const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(Math.round(limitRaw), 1), 200) : 50;
   const supabase = await getSupabaseServerClient();
 
   // determina ruolo dell'utente corrente
@@ -69,12 +73,23 @@ export async function GET(req: NextRequest) {
     // se qualcosa fallisce, continuiamo senza ruolo
   }
 
-  const fetchPosts = async (sel: string) =>
-    supabase
+  if (mine && !currentUserId) {
+    return NextResponse.json({ ok: false, error: 'not_authenticated' }, { status: 401 });
+  }
+
+  const fetchPosts = async (sel: string) => {
+    let query = supabase
       .from('posts')
       .select(sel)
       .order('created_at', { ascending: false })
-      .limit(50);
+      .limit(limit);
+
+    if (mine && currentUserId) {
+      query = query.eq('author_id', currentUserId);
+    }
+
+    return query;
+  };
 
   let data: any[] | null = null;
   let error: any = null;
@@ -107,6 +122,17 @@ export async function GET(req: NextRequest) {
   }
 
   const rows = (data ?? []).map((r) => normalizeRow(r)) || [];
+
+  if (mine) {
+    return NextResponse.json(
+      {
+        ok: true,
+        items: rows,
+        ...(debug ? { _debug: { count: rows.length, mine: true, userId: currentUserId } } : {}),
+      },
+      { status: 200 }
+    );
+  }
 
   if (!currentRole) {
     return NextResponse.json(
@@ -304,7 +330,7 @@ export async function POST(req: NextRequest) {
 
     if (!text && !mediaUrl && !normalizedMediaPath && !linkUrl) {
       return NextResponse.json(
-        { ok: false, error: 'empty', message: 'Scrivi un testo o allega un media.' },
+        { ok: false, error: 'empty', message: 'Scrivi un testo, un link o allega un media.' },
         { status: 400 }
       );
     }
@@ -358,15 +384,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'not_authenticated' }, { status: 401 });
     }
 
-    const effectiveText =
-      text ||
-      (mediaUrl
-        ? mediaType === 'video'
-          ? 'Video allegato'
-          : 'Foto allegata'
-        : linkUrl
-          ? linkTitle || linkUrl
-          : '');
+    const effectiveText = text || '';
     const insertPayload: Record<string, any> = { content: effectiveText, author_id: auth.user.id };
     if (mediaUrl) insertPayload.media_url = mediaUrl;
     if (mediaType) insertPayload.media_type = mediaType;
@@ -376,7 +394,7 @@ export async function POST(req: NextRequest) {
     if (linkDescription) insertPayload.link_description = linkDescription;
     if (linkImage) insertPayload.link_image = linkImage;
 
-    const fallbackPayload: Record<string, any> = { content: text || mediaUrl || linkUrl || '', author_id: auth.user.id };
+    const fallbackPayload: Record<string, any> = { content: text || '', author_id: auth.user.id };
     if (mediaUrl) fallbackPayload.media_url = mediaUrl;
     if (mediaType) fallbackPayload.media_type = mediaType;
 

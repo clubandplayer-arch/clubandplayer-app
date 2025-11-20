@@ -184,8 +184,8 @@ export default function FeedPage() {
         <main className="space-y-4" aria-labelledby={headingId}>
           <TrackRetention scope="feed" />
           <div>
-            <h1 id={headingId} className="feed-title text-3xl md:text-4xl">
-              BACHECA
+            <h1 id={headingId} className="font-righteous feed-title w-full text-center text-4xl md:text-5xl">
+              SPORTLIFE
             </h1>
             <p className="text-sm text-gray-600">
               Condividi aggiornamenti con club e atleti. Tutti i campi sono accessibili anche da tastiera.
@@ -298,7 +298,6 @@ function MyMediaHub({
   return (
     <div className="glass-panel" id="my-media">
       <div className="flex items-center justify-between px-4 py-3 text-sm font-semibold">
-        <span>MyMedia</span>
         <div className="flex gap-2 text-xs">
           <button
             type="button"
@@ -315,20 +314,26 @@ function MyMediaHub({
             MyPhoto
           </button>
         </div>
+        <Link
+          href={tab === 'video' ? '/mymedia#my-videos' : '/mymedia#my-photos'}
+          className="text-xs font-semibold text-blue-700"
+        >
+          Vedi tutti →
+        </Link>
       </div>
       <div className="px-4 pb-4">
         {tab === 'video' ? (
           <MediaPreviewGrid
             emptyLabel="Non hai ancora video"
             items={videos}
-            linkHref="#my-videos"
+            linkHref="/mymedia?type=video"
             sectionId="my-videos"
           />
         ) : (
           <MediaPreviewGrid
             emptyLabel="Non hai ancora foto"
             items={photos}
-            linkHref="#my-photos"
+            linkHref="/mymedia?type=image"
             sectionId="my-photos"
           />
         )}
@@ -356,19 +361,23 @@ function MediaPreviewGrid({
     );
   }
 
+  const thumbs = items.slice(0, 3);
+
   return (
     <div className="space-y-2 text-xs text-gray-700" id={sectionId}>
       <div className="grid grid-cols-3 gap-2">
-        {items.map((item) => (
-          <Link key={item.id} href={linkHref} className="group block overflow-hidden rounded-lg border bg-white/70">
+        {thumbs.map((item) => (
+          <Link
+            key={item.id}
+            href={`${linkHref}#media-${item.id}`}
+            className="group block overflow-hidden rounded-lg bg-white/60 shadow"
+          >
             {item.media_type === 'video' ? (
               <div
-                className={`w-full ${
+                className={`aspect-square w-full bg-black/80 ${
                   item.media_aspect === '9:16'
-                    ? 'aspect-[9/16]'
-                    : item.media_aspect === '16:9'
-                      ? 'aspect-[16/9]'
-                      : 'aspect-[16/9]'
+                    ? 'flex items-center justify-center'
+                    : 'flex items-center justify-center'
                 }`}
               >
                 <video
@@ -380,19 +389,20 @@ function MediaPreviewGrid({
                 />
               </div>
             ) : (
-              <img
-                src={item.media_url ?? ''}
-                alt="Anteprima"
-                className="h-full w-full object-cover"
-                loading="lazy"
-              />
+              <div className="aspect-square w-full overflow-hidden bg-neutral-100">
+                <img
+                  src={item.media_url ?? ''}
+                  alt="Anteprima"
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                />
+              </div>
             )}
           </Link>
         ))}
       </div>
       <Link href={linkHref} className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700">
-        Vedi tutti
-        <span aria-hidden="true">→</span>
+        Vedi tutti <span aria-hidden="true">→</span>
       </Link>
     </div>
   );
@@ -414,7 +424,7 @@ function FeedLinkCard({
       href={url}
       target="_blank"
       rel="noreferrer noopener"
-      className="block overflow-hidden rounded-xl border bg-white/70 shadow-sm transition hover:shadow-md"
+      className="block overflow-hidden rounded-xl bg-white/60 shadow-lg transition hover:shadow-xl"
     >
       <div className="flex gap-3 p-3">
         {image ? (
@@ -459,10 +469,6 @@ function PostItem({
 
   async function saveEdit() {
     const payload = text.trim();
-    if (!payload) {
-      setError('Il testo è obbligatorio');
-      return;
-    }
     setSaving(true);
     setError(null);
     try {
@@ -546,9 +552,11 @@ function PostItem({
           </div>
         </div>
       ) : (
-        <div className="mt-1 whitespace-pre-wrap text-sm">
-          {post.content || '—'}
-        </div>
+        <>
+          {post.content && post.content.trim().length > 0 ? (
+            <div className="mt-1 whitespace-pre-wrap text-sm">{post.content}</div>
+          ) : null}
+        </>
       )}
       {linkUrl ? (
         <div className="mt-3">
@@ -557,7 +565,7 @@ function PostItem({
       ) : null}
       {post.media_url ? (
         <div
-          className={`mt-3 overflow-hidden rounded-xl border bg-neutral-50 ${
+          className={`mt-3 overflow-hidden rounded-xl bg-neutral-50 shadow-inner max-h-[60vh] ${
             post.media_type === 'video'
               ? post.media_aspect === '9:16'
                 ? 'aspect-[9/16]'
@@ -566,7 +574,7 @@ function PostItem({
           }`}
         >
           {post.media_type === 'video' ? (
-            <video src={post.media_url} controls className="h-full w-full object-cover" />
+            <video src={post.media_url} controls className="h-full w-full object-contain" />
           ) : (
             <img src={post.media_url} alt="Allegato" className="max-h-96 w-full object-cover" />
           )}

@@ -69,7 +69,7 @@ export default function FeedComposer({ onPosted }: Props) {
   const [linkLoading, setLinkLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const linkAbortRef = useRef<AbortController | null>(null);
-  const canSend = (text.trim().length > 0 || Boolean(mediaFile)) && !sending;
+  const canSend = (text.trim().length > 0 || Boolean(mediaFile) || Boolean(linkUrl)) && !sending;
 
   const textareaId = 'feed-composer-input';
   const helperId = 'feed-composer-helper';
@@ -264,7 +264,8 @@ export default function FeedComposer({ onPosted }: Props) {
         mediaPayload = await uploadMedia();
       }
 
-      const payload: Record<string, any> = { content: text.trim() };
+      const trimmed = text.trim();
+      const payload: Record<string, any> = { content: trimmed };
       if (mediaPayload) {
         payload.media_url = mediaPayload.media_url;
         payload.media_type = mediaPayload.media_type;
@@ -280,6 +281,11 @@ export default function FeedComposer({ onPosted }: Props) {
         payload.link_title = linkPreview?.title ?? null;
         payload.link_description = linkPreview?.description ?? null;
         payload.link_image = linkPreview?.image ?? null;
+      }
+
+      if (!trimmed && !mediaPayload && !linkUrl) {
+        setErr('Scrivi un testo o allega un media/link.');
+        return;
       }
 
       const res = await fetch('/api/feed/posts', {

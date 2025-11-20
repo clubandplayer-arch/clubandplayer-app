@@ -26,7 +26,6 @@ export const PATCH = withAuth(async (req: NextRequest, { user, supabase }) => {
 
   const body = await req.json().catch(() => ({}));
   const text = typeof body?.content === 'string' ? body.content.trim() : '';
-  if (!text) return jsonError('Content is required', 400);
 
   const { data: existing, error: fetchErr } = await supabase
     .from('posts')
