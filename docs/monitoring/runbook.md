@@ -40,6 +40,15 @@ script Plausible solo se:
 In caso contrario, i log del browser mostreranno messaggi espliciti che è la
 modalità prevista per la Beta.
 
+### Web Vitals reali
+
+`WebVitalsReporter` (montato in `app/layout.tsx`) importa in modo lazy la
+runtime `web-vitals` di Next e invia eventi anonimi (CLS, FID, INP, LCP, TTFB)
+tramite il client Plausible-like. I payload includono solo valore, rating e
+qualche hint di rete (`navigator.connection.effectiveType`). Controlla in
+DevTools che le chiamate all'endpoint Plausible corrispondano agli eventi
+`web_vital_*` quando la policy cookie è accettata.
+
 ## 3. Alert per feed e API
 
 Definisci due regole Issue Alert in Sentry (Project Next.js):

@@ -38,7 +38,7 @@ Checklist completata il 10/03/2025: vedere la sezione successiva per la data uff
 ## Post Beta
 - ✅ **Reintroduzione upload media nel feed**: la bacheca accetta nuovamente immagini (8MB) e video MP4 (80MB) caricati nel bucket `posts`, con fallback admin e logging Sentry sugli errori.
 - ✅ **Analytics avanzate**: eventi di conversione candidature e retention giornaliera vengono inviati via client Plausible-like, con sanitizzazione dei parametri e rispetto di DNT/consenso.
-- **Miglioramenti performance**: continuare a ottimizzare caching/lazy loading nelle viste più trafficate (feed, search club) e monitorare Web Vitals reali.
+- ✅ **Miglioramenti performance**: caching/lazy nelle viste più trafficate (feed, search club) con abort/caching client-side e raccolta Web Vitals reale (CLS/FID/INP/LCP/TTFB) inviata in forma anonima.
 - **Ampliamento supporto**: formalizzare SLA/turni per `BRAND_REPLY_TO` e canale `#beta-triage` quando il numero di utenti crescerà.
 
 ## Prossimi passi prioritari verso la Beta

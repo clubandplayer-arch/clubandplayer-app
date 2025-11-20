@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import FeedComposer from '@/components/feed/FeedComposer';
 import TrackRetention from '@/components/analytics/TrackRetention';
@@ -36,10 +36,11 @@ type FeedPost = {
   media_type?: 'image' | 'video' | null;
 };
 
-async function fetchPosts(): Promise<FeedPost[]> {
+async function fetchPosts(signal?: AbortSignal): Promise<FeedPost[]> {
   const res = await fetch('/api/feed/posts?limit=20', {
     credentials: 'include',
     cache: 'no-store',
+    signal,
   });
   if (!res.ok) return [];
   const j = await res.json().catch(() => ({} as any));
@@ -63,23 +64,40 @@ export default function FeedPage() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const fetchCtrl = useRef<AbortController | null>(null);
   const headingId = 'feed-heading';
 
   async function reload() {
+    if (fetchCtrl.current) fetchCtrl.current.abort();
+    const controller = new AbortController();
+    fetchCtrl.current = controller;
     setLoading(true);
     setErr(null);
     try {
-      const data = await fetchPosts();
+      const data = await fetchPosts(controller.signal);
       setItems(data);
     } catch (e: any) {
+      if (controller.signal.aborted) return;
       setErr(e?.message ?? 'Errore caricamento bacheca');
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   }
 
   useEffect(() => {
-    void reload();
+    const idle =
+      typeof window !== 'undefined' && 'requestIdleCallback' in window
+        ? (window as any).requestIdleCallback
+        : (cb: () => void) => setTimeout(cb, 120);
+    const cancelIdle =
+      typeof window !== 'undefined' && 'cancelIdleCallback' in window
+        ? (window as any).cancelIdleCallback
+        : clearTimeout;
+    const handle = idle(() => void reload());
+    return () => {
+      cancelIdle(handle);
+      fetchCtrl.current?.abort();
+    };
   }, []);
 
   useEffect(() => {

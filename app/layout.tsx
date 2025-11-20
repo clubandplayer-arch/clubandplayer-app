@@ -7,6 +7,7 @@ import HashCleanup from '@/components/auth/HashCleanup';
 import SessionSyncMount from '@/components/auth/SessionSyncMount';
 import CookieConsent from '@/components/misc/CookieConsent';
 import PrivacyAnalytics from '@/components/analytics/PrivacyAnalytics';
+import WebVitalsReporter from '@/components/analytics/WebVitalsReporter';
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://clubandplayer.com';
 const SITE_NAME = 'Club & Player';
@@ -100,6 +101,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Analytics privacy-first: si attiva solo con consenso e DNT disattivato */}
         <Suspense fallback={null}>
           <PrivacyAnalytics />
+        </Suspense>
+
+        {/* Web Vitals reali (solo produzione, privacy-first) */}
+        <Suspense fallback={null}>
+          <WebVitalsReporter />
         </Suspense>
 
         {/* Pulisce hash OAuth e fa redirect sicuro */}

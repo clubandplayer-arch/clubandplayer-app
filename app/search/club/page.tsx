@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'default-no-store';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { ClubsApiResponse, Club } from '@/types/club';
@@ -42,6 +42,10 @@ export default function SearchClubPage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [items, setItems] = useState<Club[]>([]);
   const [meta, setMeta] = useState<Pick<ClubsApiResponse, 'total' | 'pageCount'>>({ total: 0, pageCount: 1 });
+  const cacheRef = useRef<Map<string, { items: Club[]; meta: Pick<ClubsApiResponse, 'total' | 'pageCount'> }>>(
+    new Map()
+  );
+  const inflight = useRef<AbortController | null>(null);
 
   const searchParams = useMemo(() => {
     const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
@@ -53,34 +57,54 @@ export default function SearchClubPage() {
   }, [appliedFilters, page]);
 
   const load = useCallback(async () => {
+    const key = searchParams.toString();
+    const cached = cacheRef.current.get(key);
+    if (cached) {
+      setItems(cached.items);
+      setMeta(cached.meta);
+    }
+
     setLoading(true);
     setMsg(null);
 
+    inflight.current?.abort();
+    const controller = new AbortController();
+    inflight.current = controller;
+
     try {
-      const res = await fetch(`/api/clubs?${searchParams.toString()}`, {
+      const res = await fetch(`/api/clubs?${key}`, {
         cache: 'no-store',
         credentials: 'include',
+        signal: controller.signal,
       });
 
       const json: Partial<ClubsApiResponse> & { error?: string } = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
 
-      setItems(Array.isArray(json.data) ? json.data : []);
-      setMeta({
+      const nextItems = Array.isArray(json.data) ? json.data : [];
+      const nextMeta = {
         total: json.total ?? 0,
         pageCount: json.pageCount ?? 1,
-      });
+      } as Pick<ClubsApiResponse, 'total' | 'pageCount'>;
+
+      cacheRef.current.set(key, { items: nextItems, meta: nextMeta });
+      setItems(nextItems);
+      setMeta(nextMeta);
     } catch (e: any) {
+      if (controller.signal.aborted) return;
       setMsg(e?.message || 'Errore ricerca club');
       setItems([]);
       setMeta({ total: 0, pageCount: 1 });
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   }, [searchParams]);
 
   useEffect(() => {
     void load();
+    return () => {
+      inflight.current?.abort();
+    };
   }, [load]);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
