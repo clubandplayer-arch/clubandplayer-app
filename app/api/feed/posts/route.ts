@@ -21,6 +21,7 @@ function normRole(v: unknown): Role | null {
 }
 
 function normalizeRow(row: any) {
+  const aspectFromUrl = inferAspectFromUrl(row.media_url);
   return {
     id: row.id,
     // legacy
@@ -33,6 +34,7 @@ function normalizeRow(row: any) {
     author_id: row.author_id ?? null,
     media_url: row.media_url ?? null,
     media_type: row.media_type ?? null,
+    media_aspect: row.media_aspect ?? aspectFromUrl ?? null,
     role: undefined as unknown as 'club' | 'athlete' | undefined,
   };
 }
@@ -64,7 +66,7 @@ export async function GET(req: NextRequest) {
   }
 
   const baseSelect = 'id, author_id, content, created_at';
-  const extendedSelect = 'id, author_id, content, created_at, media_url, media_type';
+  const extendedSelect = 'id, author_id, content, created_at, media_url, media_type, media_aspect';
 
   const fetchPosts = async (sel: string) =>
     supabase
@@ -175,7 +177,7 @@ function isRlsError(err: any) {
   );
 }
 
-const SELECT_WITH_MEDIA = 'id, author_id, content, created_at, media_url, media_type';
+const SELECT_WITH_MEDIA = 'id, author_id, content, created_at, media_url, media_type, media_aspect';
 const SELECT_BASE = 'id, author_id, content, created_at';
 const DEFAULT_POSTS_BUCKET = process.env.NEXT_PUBLIC_POSTS_BUCKET || 'posts';
 
@@ -194,6 +196,18 @@ function inferMediaType(rawType: unknown, rawMime: unknown): 'image' | 'video' |
   if (mime.startsWith('video/')) return 'video';
   if (mime.startsWith('image/')) return 'image';
   return null;
+}
+
+function inferAspectFromUrl(url?: string | null): '16-9' | '9-16' | null {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    const raw = u.searchParams.get('aspect');
+    if (raw === '16-9' || raw === '9-16') return raw;
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 type ServerClient = Awaited<ReturnType<typeof getSupabaseServerClient>>;
@@ -232,11 +246,18 @@ export async function POST(req: NextRequest) {
         : typeof body?.mediaMime === 'string'
           ? body.mediaMime
           : '';
+    const rawMediaAspect =
+      typeof body?.media_aspect === 'string'
+        ? body.media_aspect
+        : typeof body?.mediaAspect === 'string'
+          ? body.mediaAspect
+          : '';
 
     const normalizedMediaPath = rawMediaPath ? sanitizeStoragePath(rawMediaPath.trim()) : '';
     const mediaBucket = rawMediaBucket?.trim() || DEFAULT_POSTS_BUCKET;
     let mediaUrl = rawMediaUrl || rawMediaUrlCamel || null;
     let mediaType: 'image' | 'video' | null = inferMediaType(rawMediaType, rawMediaMime);
+    const mediaAspect = rawMediaAspect === '16-9' || rawMediaAspect === '9-16' ? rawMediaAspect : inferAspectFromUrl(mediaUrl);
 
     if (!text && !mediaUrl && !normalizedMediaPath) {
       return NextResponse.json(
@@ -298,8 +319,11 @@ export async function POST(req: NextRequest) {
     const insertPayload: Record<string, any> = { content: effectiveText, author_id: auth.user.id };
     if (mediaUrl) insertPayload.media_url = mediaUrl;
     if (mediaType) insertPayload.media_type = mediaType;
+    if (mediaAspect && mediaType === 'video') insertPayload.media_aspect = mediaAspect;
 
     const fallbackPayload: Record<string, any> = { content: text || mediaUrl || '', author_id: auth.user.id };
+    if (mediaUrl) fallbackPayload.media_url = mediaUrl;
+    if (mediaType) fallbackPayload.media_type = mediaType;
 
     const runInsert = (client: InsertClient, payload: Record<string, any>, select: string) =>
       client.from('posts').insert(payload).select(select).single();

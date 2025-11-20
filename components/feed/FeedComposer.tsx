@@ -16,6 +16,8 @@ const ACCEPT = 'image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quickt
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const VIDEO_TYPES = ['video/mp4', 'video/quicktime'];
 
+type VideoAspect = '16-9' | '9-16';
+
 type MediaType = 'image' | 'video';
 
 type UploadedMedia = {
@@ -24,6 +26,7 @@ type UploadedMedia = {
   media_path: string;
   media_bucket: string;
   media_mime: string | null;
+  media_aspect?: VideoAspect;
 };
 
 const POSTS_BUCKET = process.env.NEXT_PUBLIC_POSTS_BUCKET || 'posts';
@@ -52,6 +55,7 @@ export default function FeedComposer({ onPosted }: Props) {
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [mediaType, setMediaType] = useState<MediaType | null>(null);
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
+  const [videoAspect, setVideoAspect] = useState<VideoAspect>('16-9');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const canSend = (text.trim().length > 0 || Boolean(mediaFile)) && !sending;
 
@@ -71,6 +75,7 @@ export default function FeedComposer({ onPosted }: Props) {
     setMediaPreview(null);
     setMediaFile(null);
     setMediaType(null);
+    setVideoAspect('16-9');
     setMediaErr(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   }
@@ -151,7 +156,11 @@ export default function FeedComposer({ onPosted }: Props) {
     }
 
     const publicInfo = supabase.storage.from(bucket).getPublicUrl(data.path);
-    const url = publicInfo?.data?.publicUrl ?? null;
+    let url = publicInfo?.data?.publicUrl ?? null;
+    if (url && mediaType === 'video') {
+      const glue = url.includes('?') ? '&' : '?';
+      url = `${url}${glue}aspect=${videoAspect}`;
+    }
 
     return {
       media_url: url,
@@ -159,6 +168,7 @@ export default function FeedComposer({ onPosted }: Props) {
       media_path: data.path,
       media_bucket: bucket,
       media_mime: mediaFile.type || null,
+      ...(mediaType === 'video' ? { media_aspect: videoAspect } : {}),
     };
   }
 
@@ -179,6 +189,9 @@ export default function FeedComposer({ onPosted }: Props) {
         payload.media_path = mediaPayload.media_path;
         payload.media_bucket = mediaPayload.media_bucket;
         payload.media_mime = mediaPayload.media_mime;
+        if (mediaPayload.media_type === 'video') {
+          payload.media_aspect = videoAspect;
+        }
       }
 
       const res = await fetch('/api/feed/posts', {
@@ -248,6 +261,33 @@ export default function FeedComposer({ onPosted }: Props) {
               <span>Immagini (max 8MB) o video MP4 (max 80MB)</span>
             )}
           </div>
+          {mediaFile && mediaType === 'video' ? (
+            <div className="flex items-center gap-3 text-xs text-gray-700" aria-live="polite">
+              <span className="font-semibold">Formato:</span>
+              <label className="flex items-center gap-1">
+                <input
+                  type="radio"
+                  name="video-aspect"
+                  value="16-9"
+                  checked={videoAspect === '16-9'}
+                  onChange={() => setVideoAspect('16-9')}
+                  disabled={sending}
+                />
+                <span>Video 16:9</span>
+              </label>
+              <label className="flex items-center gap-1">
+                <input
+                  type="radio"
+                  name="video-aspect"
+                  value="9-16"
+                  checked={videoAspect === '9-16'}
+                  onChange={() => setVideoAspect('9-16')}
+                  disabled={sending}
+                />
+                <span>Video 9:16</span>
+              </label>
+            </div>
+          ) : null}
           <button
             type="button"
             onClick={() => {
