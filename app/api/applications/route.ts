@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
+import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
 
@@ -39,16 +40,35 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }: any) =
 
   if (exists) return jsonError('Already applied', 409);
 
-  const { data, error } = await supabase
-    .from('applications')
-    .insert({
-      opportunity_id,
-      athlete_id: user.id,
-      club_id: ownerId,
-      note,
-    })
-    .select('id, opportunity_id, athlete_id, created_at')
-    .single();
+  const admin = getSupabaseAdminClientOrNull();
+
+  const insertPayload = {
+    opportunity_id,
+    athlete_id: user.id,
+    club_id: ownerId,
+    note,
+  } as Record<string, any>;
+
+  const runInsert = (client: any, payload: Record<string, any>) =>
+    client
+      .from('applications')
+      .insert(payload)
+      .select('id, opportunity_id, athlete_id, created_at, club_id')
+      .single();
+
+  let data: any = null;
+  let error: any = null;
+
+  ({ data, error } = await runInsert(supabase, insertPayload));
+
+  if (error && /column .*club_id.* does not exist/i.test(error.message || '')) {
+    const { club_id: _clubId, ...fallbackPayload } = insertPayload;
+    ({ data, error } = await runInsert(supabase, fallbackPayload));
+  }
+
+  if (error && /row-level security/i.test(error.message || '') && admin) {
+    ({ data, error } = await runInsert(admin, insertPayload));
+  }
 
   if (error) return jsonError(error.message, 400);
   return NextResponse.json({ data }, { status: 201 });

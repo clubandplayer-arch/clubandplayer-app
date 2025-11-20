@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
-import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
+import { reportApiError } from '@/lib/monitoring/reportApiError';
 
 export const runtime = 'nodejs';
 
@@ -18,78 +18,62 @@ function normalizeRow(row: any) {
   };
 }
 
-async function getPostOwner(supabase: any, id: string) {
-  const { data, error } = await supabase.from('posts').select('id, author_id').eq('id', id).maybeSingle();
-  if (error) return { data: null, error };
-  return { data, error: null };
-}
+const SELECT_BASE = 'id, author_id, content, created_at, media_url, media_type';
 
-export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
+export const PATCH = withAuth(async (req: NextRequest, { user, supabase }) => {
   const id = req.nextUrl.pathname.split('/').pop();
   if (!id) return jsonError('Missing id', 400);
 
   const body = await req.json().catch(() => ({}));
   const text = typeof body?.content === 'string' ? body.content.trim() : '';
-  if (!text) return jsonError('Content is required', 400);
 
-  const { data: existing, error: fetchErr } = await getPostOwner(supabase, id);
+  const { data: existing, error: fetchErr } = await supabase
+    .from('posts')
+    .select('id, author_id')
+    .eq('id', id)
+    .maybeSingle();
 
-  if (fetchErr && !existing) {
-    const admin = getSupabaseAdminClientOrNull();
-    if (admin) {
-      const { data: adminRow } = await admin.from('posts').select('id, author_id').eq('id', id).maybeSingle();
-      if (!adminRow) return jsonError('Not found', 404);
-      if (adminRow.author_id !== user.id) return jsonError('Forbidden', 403);
-      const { data: updated, error: adminUpdateErr } = await admin
-        .from('posts')
-        .update({ content: text })
-        .eq('id', id)
-        .select('id, author_id, content, created_at, media_url, media_type')
-        .maybeSingle();
-      if (adminUpdateErr || !updated) return jsonError(adminUpdateErr?.message || 'Update failed', 400);
-      return NextResponse.json({ ok: true, item: normalizeRow(updated) });
-    }
-    return jsonError('Not found', 404);
+  if (fetchErr) {
+    reportApiError({ endpoint: '/api/feed/posts/[id]', error: fetchErr, context: { method: 'PATCH', stage: 'select' } });
   }
-
-  if (!existing) return jsonError('Not found', 404);
+  if (fetchErr || !existing) return jsonError('Not found', 404);
   if (existing.author_id !== user.id) return jsonError('Forbidden', 403);
 
-  const { data, error } = await supabase
+  const { data: updated, error: updateError } = await supabase
     .from('posts')
     .update({ content: text })
     .eq('id', id)
     .eq('author_id', user.id)
-    .select('id, author_id, content, created_at, media_url, media_type')
+    .select(SELECT_BASE)
     .maybeSingle();
 
-  if (error || !data) return jsonError(error?.message || 'Update failed', 400);
-  return NextResponse.json({ ok: true, item: normalizeRow(data) });
+  if (updateError) {
+    reportApiError({ endpoint: '/api/feed/posts/[id]', error: updateError, context: { method: 'PATCH', stage: 'update' } });
+  }
+  if (updateError || !updated) return jsonError(updateError?.message || 'Update failed', 400);
+  return NextResponse.json({ ok: true, item: normalizeRow(updated) });
 });
 
-export const DELETE = withAuth(async (req: NextRequest, { supabase, user }) => {
+export const DELETE = withAuth(async (req: NextRequest, { user, supabase }) => {
   const id = req.nextUrl.pathname.split('/').pop();
   if (!id) return jsonError('Missing id', 400);
 
-  const { data: existing, error: fetchErr } = await getPostOwner(supabase, id);
+  const { data: existing, error: fetchErr } = await supabase
+    .from('posts')
+    .select('id, author_id')
+    .eq('id', id)
+    .maybeSingle();
 
-  if (fetchErr && !existing) {
-    const admin = getSupabaseAdminClientOrNull();
-    if (admin) {
-      const { data: adminRow } = await admin.from('posts').select('id, author_id').eq('id', id).maybeSingle();
-      if (!adminRow) return jsonError('Not found', 404);
-      if (adminRow.author_id !== user.id) return jsonError('Forbidden', 403);
-      const { error: adminErr } = await admin.from('posts').delete().eq('id', id);
-      if (adminErr) return jsonError(adminErr.message, 400);
-      return NextResponse.json({ ok: true });
-    }
-    return jsonError('Not found', 404);
+  if (fetchErr) {
+    reportApiError({ endpoint: '/api/feed/posts/[id]', error: fetchErr, context: { method: 'DELETE', stage: 'select' } });
   }
-
-  if (!existing) return jsonError('Not found', 404);
+  if (fetchErr || !existing) return jsonError('Not found', 404);
   if (existing.author_id !== user.id) return jsonError('Forbidden', 403);
 
   const { error } = await supabase.from('posts').delete().eq('id', id).eq('author_id', user.id);
-  if (error) return jsonError(error.message, 400);
+  if (error) {
+    reportApiError({ endpoint: '/api/feed/posts/[id]', error, context: { method: 'DELETE', stage: 'delete' } });
+    return jsonError(error.message, 400);
+  }
   return NextResponse.json({ ok: true });
 });

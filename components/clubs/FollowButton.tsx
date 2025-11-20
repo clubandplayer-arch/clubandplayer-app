@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 export const LS_FOLLOW_KEY = 'followed_club_ids_v1';
 
@@ -8,6 +9,9 @@ type Props = {
   /** Compat: puoi passare id o clubId */
   id?: string | number;
   clubId?: string | number;
+
+  /** Tipo di target (club o player) */
+  targetType?: 'club' | 'player';
 
   /** Facoltativo: nome visuale, compat sia name che clubName */
   name?: string;
@@ -29,6 +33,7 @@ export default function FollowButton({
   clubId,
   name,
   clubName,
+  targetType = 'club',
   labelFollow = 'Segui',
   labelFollowing = 'Seguito ✓',
   size = 'sm',
@@ -53,14 +58,23 @@ export default function FollowButton({
       ? 'px-3.5 py-2 text-sm'
       : 'px-4 py-2.5 text-base';
 
-  // carica stato iniziale: leggi ids seguiti dall'endpoint toggle (GET) e sincronizza localStorage
+  // carica stato iniziale da Supabase
   useEffect(() => {
     if (!effectiveId) return;
     (async () => {
       try {
-        const r = await fetch('/api/follows/toggle', { credentials: 'include', cache: 'no-store' });
-        const j = await r.json().catch(() => ({}));
-        const ids: string[] = Array.isArray(j?.ids) ? j.ids.map(String) : [];
+        const supabase = supabaseBrowser();
+        const { data: user } = await supabase.auth.getUser();
+        const uid = user?.user?.id;
+        if (!uid) return;
+        const { data, error } = await supabase
+          .from('follows')
+          .select('target_id, target_type')
+          .eq('follower_id', uid)
+          .eq('target_type', targetType)
+          .limit(200);
+        if (error) return;
+        const ids: string[] = Array.isArray(data) ? data.map((d) => String(d.target_id)) : [];
         setFollowing(ids.includes(effectiveId));
         try {
           localStorage.setItem(LS_FOLLOW_KEY, JSON.stringify(ids));
@@ -71,7 +85,7 @@ export default function FollowButton({
         // ignora errori iniziali (rimaniamo su false)
       }
     })();
-  }, [effectiveId]);
+  }, [effectiveId, targetType]);
 
   async function toggle() {
     if (!effectiveId) return;
@@ -79,15 +93,32 @@ export default function FollowButton({
     const prev = following;
     setFollowing(!prev);
     try {
-      const r = await fetch('/api/follows/toggle', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: effectiveId }),
-      });
-      if (!r.ok) throw new Error('toggle failed');
-      const j = await r.json().catch(() => ({}));
-      const ids: string[] = Array.isArray(j?.ids) ? j.ids.map(String) : [];
+      const supabase = supabaseBrowser();
+      const { data: user } = await supabase.auth.getUser();
+      const uid = user?.user?.id;
+      if (!uid) throw new Error('not_authenticated');
+
+      if (prev) {
+        await supabase
+          .from('follows')
+          .delete()
+          .eq('follower_id', uid)
+          .eq('target_id', effectiveId)
+          .eq('target_type', targetType);
+      } else {
+        await supabase.from('follows').upsert({
+          follower_id: uid,
+          target_id: effectiveId,
+          target_type: targetType,
+        });
+      }
+
+      const { data } = await supabase
+        .from('follows')
+        .select('target_id')
+        .eq('follower_id', uid)
+        .eq('target_type', targetType);
+      const ids: string[] = Array.isArray(data) ? data.map((d) => String(d.target_id)) : [];
       setFollowing(ids.includes(effectiveId));
       try {
         localStorage.setItem(LS_FOLLOW_KEY, JSON.stringify(ids));

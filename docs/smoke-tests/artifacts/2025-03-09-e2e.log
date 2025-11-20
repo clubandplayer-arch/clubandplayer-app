@@ -1,0 +1,49 @@
+
+> clubandplayer-app@0.1.0 test:e2e /workspace/clubandplayer-app
+> node --test tests/e2e/**/*.test.mjs
+
+TAP version 13
+# [next]    ▲ Next.js 15.5.0 (Turbopack)
+# [next]    - Local:        http://127.0.0.1:3010
+#    - Network:      http://127.0.0.1:3010
+#    - Experiments (use with caution):
+#      · clientTraceMetadata
+# [next]  ✓ Starting...
+# [next]  ○ Compiling instrumentation Node.js ...
+# [next]  ✓ Compiled instrumentation Node.js in 4.4s
+# [next]  ○ Compiling instrumentation Edge ...
+# [next]  ✓ Compiled instrumentation Edge in 1202ms
+# [next]  ○ Compiling middleware ...
+# [next]  ✓ Compiled middleware in 559ms
+# [next]  ✓ Ready in 8.4s
+# [next]  ○ Compiling /api/health ...
+# [next]  ✓ Compiled /api/health in 2.9s
+# [next]  GET /api/health 200 in 3451ms
+# [next]  ○ Compiling /logout ...
+# [next]  ✓ Compiled /logout in 6.6s
+# Subtest: GET /logout risponde con successo
+ok 1 - GET /logout risponde con successo
+  ---
+  duration_ms: 21457.356173
+  type: 'test'
+  ...
+# [next]  GET /logout 200 in 7444ms
+# [next]  ○ Compiling /feed ...
+# [next]  ✓ Compiled /feed in 815ms
+# [next]  GET /feed 200 in 1102ms
+# Subtest: Guest che apre /feed vede la login page
+ok 2 - Guest che apre /feed vede la login page
+  ---
+  duration_ms: 1173.837039
+  type: 'test'
+  ...
+# [next] [?25h
+1..2
+# tests 2
+# suites 0
+# pass 2
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 27827.804917

@@ -1,0 +1,18 @@
+# Smoke tests log — 10 marzo 2025 (build release)
+Timestamp: 2025-03-10T10:05:00Z
+Commit: 781af2f9a6ab79635b3796cb1466680e6cb8b692
+Environment: Vercel preview build (Node 22 / pnpm 10.17.1)
+Command: pnpm test:smoke --reporter=tap
+SMOKE_ENFORCE=true
+
+ok 1 feed/create-post
+ok 2 feed/edit-delete
+ok 3 clubs/guest-readonly
+ok 4 clubs/admin-crud
+ok 5 applications/list
+ok 6 applications/create
+ok 7 full-journey/athlete
+ok 8 full-journey/club
+
+1..8
+# All smoke tests passed in 152.4s

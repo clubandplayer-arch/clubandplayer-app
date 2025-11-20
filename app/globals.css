@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@import url('https://fonts.googleapis.com/css2?family=Righteous:wght@400&display=swap');
+
 /* === Theme tokens (CSS variables) === */
 :root {
   /* Palette bandiera norvegese */
@@ -23,9 +25,40 @@
 /* Base */
 html, body {
   min-height: 100%;
-  background: var(--bg);
+  background: #51c4f5;
+  background: linear-gradient(90deg, rgba(81, 196, 245, 1) 0%, rgba(242, 195, 138, 1) 49%, rgba(247, 188, 104, 1) 100%);
   color: var(--fg);
   /* ⛔️ Non impostiamo il font qui per non sovrascrivere Inter dal layout */
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  top: -48px;
+  left: 16px;
+  z-index: 50;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  background: var(--brand);
+  color: #fff;
+  font-weight: 600;
+  transition: top 0.2s ease;
+}
+
+.skip-link:focus-visible {
+  top: 16px;
+  outline: none;
 }
 
 /* Migliore rendering testo + focus accessibile */
@@ -54,10 +87,25 @@ html, body {
 /* Card                                 */
 /* ------------------------------------ */
 .card {
-  @apply rounded-2xl border border-neutral-200 bg-white shadow-sm
-         dark:border-neutral-800 dark:bg-neutral-900;
+  @apply rounded-2xl bg-white/60 shadow-xl backdrop-blur border border-white/0
+         dark:border-neutral-800 dark:bg-neutral-900/80;
 }
 .card-hover { @apply transition-shadow hover:shadow-md; }
+
+.glass-panel {
+  @apply rounded-2xl bg-white/60 shadow-xl backdrop-blur border border-white/0;
+}
+
+.feed-title {
+  font-family: 'Impact', 'Anton', 'Oswald', 'Arial Black', sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
+.font-righteous {
+  font-family: 'Righteous', 'Impact', 'Anton', 'Oswald', 'Arial Black', sans-serif;
+}
 
 /* ------------------------------------ */
 /* Badge / Chip                         */

@@ -11,6 +11,7 @@ try {
   supaHost = null;
 }
 
+const ONE_YEAR = 60 * 60 * 24 * 365;
 const nextConfig: NextConfig = {
   reactStrictMode: true,
 
@@ -19,10 +20,28 @@ const nextConfig: NextConfig = {
 
   // ✅ Usa domains (più compatibile) invece di remotePatterns
   images: {
-    domains: [
-      'api.dicebear.com',
-      ...(supaHost ? [supaHost] : []),
-    ],
+    domains: ['api.dicebear.com', ...(supaHost ? [supaHost] : [])],
+    formats: ['image/avif', 'image/webp'],
+    minimumCacheTTL: ONE_YEAR,
+    deviceSizes: [320, 420, 640, 768, 1024, 1280, 1536],
+    imageSizes: [16, 24, 32, 48, 64, 96],
+  },
+
+  async headers() {
+    return [
+      {
+        source: '/_next/image(.*)',
+        headers: [{ key: 'Cache-Control', value: `public, max-age=${ONE_YEAR}, immutable` }],
+      },
+      {
+        source: '/_next/static/(.*)',
+        headers: [{ key: 'Cache-Control', value: `public, max-age=${ONE_YEAR}, immutable` }],
+      },
+      {
+        source: '/:all*(svg|jpg|jpeg|png|gif|webp|avif)',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=604800, immutable' }],
+      },
+    ];
   },
 
   experimental: {},

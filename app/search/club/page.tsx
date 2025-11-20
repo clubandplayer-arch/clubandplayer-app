@@ -1,135 +1,278 @@
-'use client'
+'use client';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'default-no-store';
 
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
+import type { ClubsApiResponse, Club } from '@/types/club';
 
-import { useCallback, useEffect, useState } from 'react'
-import Link from 'next/link'
-import Image from 'next/image'
-import { supabaseBrowser } from '@/lib/supabaseBrowser'
+const PAGE_SIZE = 20;
+type FiltersState = {
+  q: string;
+  city: string;
+  province: string;
+  region: string;
+  country: string;
+};
+const initialFilters: FiltersState = { q: '', city: '', province: '', region: '', country: '' };
+type FilterKey = keyof FiltersState;
 
-type Club = {
-  id: string
-  display_name: string
-  city: string | null
-  bio: string | null
-  logo_url: string | null
-}
+const FILTER_FIELDS: Array<{
+  key: FilterKey;
+  label: string;
+  placeholder: string;
+}> = [
+  { key: 'q', label: 'Cerca per nome', placeholder: 'Es. ASD Carlentini' },
+  { key: 'city', label: 'Città / Comune', placeholder: 'Es. Carlentini' },
+  { key: 'province', label: 'Provincia', placeholder: 'Es. Siracusa' },
+  { key: 'region', label: 'Regione', placeholder: 'Es. Sicilia' },
+  { key: 'country', label: 'Paese', placeholder: 'Es. Italia' },
+];
+
+const formatPlace = (club: Pick<Club, 'city' | 'province' | 'region' | 'country'>) =>
+  [club.city, club.province, club.region, club.country].filter(Boolean).join(', ') || '—';
 
 export default function SearchClubPage() {
-  const supabase = supabaseBrowser()
+  const [filters, setFilters] = useState<FiltersState>(initialFilters);
+  const [appliedFilters, setAppliedFilters] = useState<FiltersState>(initialFilters);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [items, setItems] = useState<Club[]>([]);
+  const [meta, setMeta] = useState<Pick<ClubsApiResponse, 'total' | 'pageCount'>>({ total: 0, pageCount: 1 });
+  const cacheRef = useRef<Map<string, { items: Club[]; meta: Pick<ClubsApiResponse, 'total' | 'pageCount'> }>>(
+    new Map()
+  );
+  const inflight = useRef<AbortController | null>(null);
 
-  const [name, setName] = useState<string>('') // filtro per nome club
-  const [city, setCity] = useState<string>('')
-
-  const [loading, setLoading] = useState<boolean>(false)
-  const [msg, setMsg] = useState<string>('')
-  const [items, setItems] = useState<Club[]>([])
+  const searchParams = useMemo(() => {
+    const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
+    (Object.keys(appliedFilters) as FilterKey[]).forEach((key) => {
+      const value = appliedFilters[key].trim();
+      if (value) params.set(key, value);
+    });
+    return params;
+  }, [appliedFilters, page]);
 
   const load = useCallback(async () => {
-    setLoading(true)
-    setMsg('')
-
-    let q = supabase
-      .from('clubs')
-      .select('id, display_name, city, bio, logo_url')
-      .order('created_at', { ascending: false })
-
-    if (name) q = q.ilike('display_name', `%${name}%`)
-    if (city) q = q.ilike('city', `%${city}%`)
-
-    const { data, error } = await q
-    if (error) {
-      setMsg(`Errore ricerca club: ${error.message}`)
-      setItems([])
-      setLoading(false)
-      return
+    const key = searchParams.toString();
+    const cached = cacheRef.current.get(key);
+    if (cached) {
+      setItems(cached.items);
+      setMeta(cached.meta);
     }
 
-    setItems((data ?? []) as Club[])
-    setLoading(false)
-  }, [supabase, name, city])
+    setLoading(true);
+    setMsg(null);
+
+    inflight.current?.abort();
+    const controller = new AbortController();
+    inflight.current = controller;
+
+    try {
+      const res = await fetch(`/api/clubs?${key}`, {
+        cache: 'no-store',
+        credentials: 'include',
+        signal: controller.signal,
+      });
+
+      const json: Partial<ClubsApiResponse> & { error?: string } = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+
+      const nextItems = Array.isArray(json.data) ? json.data : [];
+      const nextMeta = {
+        total: json.total ?? 0,
+        pageCount: json.pageCount ?? 1,
+      } as Pick<ClubsApiResponse, 'total' | 'pageCount'>;
+
+      cacheRef.current.set(key, { items: nextItems, meta: nextMeta });
+      setItems(nextItems);
+      setMeta(nextMeta);
+    } catch (e: any) {
+      if (controller.signal.aborted) return;
+      setMsg(e?.message || 'Errore ricerca club');
+      setItems([]);
+      setMeta({ total: 0, pageCount: 1 });
+    } finally {
+      if (!controller.signal.aborted) setLoading(false);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
-    void load()
-  }, [load])
+    void load();
+    return () => {
+      inflight.current?.abort();
+    };
+  }, [load]);
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setPage(1);
+    setAppliedFilters(filters);
+  };
 
   const reset = () => {
-    setName('')
-    setCity('')
-    void load()
-  }
+    setFilters(initialFilters);
+    setAppliedFilters(initialFilters);
+    setPage(1);
+  };
+
+  const canGoPrev = page > 1;
+  const canGoNext = page < meta.pageCount;
 
   return (
-    <main style={{maxWidth:1024, margin:'0 auto', padding:24}}>
-      <header style={{display:'flex', gap:12, alignItems:'center', flexWrap:'wrap'}}>
-        <h1 style={{margin:0}}>Cerca club</h1>
-        <div style={{marginLeft:'auto'}}>
-          <Link href="/opportunities">← Torna alle opportunità</Link>
+    <main
+      id="search-club-main"
+      className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-8"
+      aria-labelledby="search-club-heading"
+    >
+      <header className="flex flex-wrap items-start gap-3">
+        <div>
+          <h1 id="search-club-heading" className="text-3xl font-semibold tracking-tight">
+            Cerca club
+          </h1>
+          <p className="text-sm text-gray-600">
+            Filtra i club per nome o zona geografica e apri il profilo per i dettagli.
+          </p>
+        </div>
+        <div className="ml-auto text-sm">
+          <Link href="/opportunities" className="link">
+            ← Torna alle opportunità
+          </Link>
         </div>
       </header>
 
-      <section style={{border:'1px solid #e5e7eb', borderRadius:12, padding:12, marginTop:12}}>
-        <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px,1fr))', gap:12}}>
+      <section className="rounded-2xl border bg-white p-4 shadow-sm" aria-labelledby="filters-heading">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <label style={{display:'block', fontSize:12, opacity:.7}}>Nome club</label>
-            <input
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="Es. ASD Carlentini"
-              style={{width:'100%'}}
-            />
+            <h2 id="filters-heading" className="text-xl font-semibold">
+              Filtra i club
+            </h2>
+            <p id="filters-help" className="text-sm text-gray-500">
+              Tutti i campi sono facoltativi: applica i filtri e la lista si aggiorna in pochi secondi.
+            </p>
           </div>
-          <div>
-            <label style={{display:'block', fontSize:12, opacity:.7}}>Città</label>
-            <input
-              value={city}
-              onChange={e => setCity(e.target.value)}
-              placeholder="Es. Carlentini"
-              style={{width:'100%'}}
-            />
-          </div>
+          <span className="text-xs text-gray-500">API: `/api/clubs` + indici pg_trgm / created_at</span>
         </div>
 
-        <div style={{display:'flex', gap:8, marginTop:12}}>
-          <button onClick={() => void load()} style={{padding:'8px 12px', border:'1px solid #e5e7eb', borderRadius:8, cursor:'pointer'}}>Filtra</button>
-          <button onClick={reset} style={{padding:'8px 12px', border:'1px solid #e5e7eb', borderRadius:8, cursor:'pointer'}}>Reset</button>
-        </div>
+        <form onSubmit={handleSubmit} className="mt-4 space-y-4" aria-describedby="filters-help">
+          <div className="grid gap-4 md:grid-cols-2">
+            {FILTER_FIELDS.map(({ key, label, placeholder }) => {
+              const inputId = `club-filter-${key}`;
+              return (
+                <div key={key} className="space-y-1">
+                  <label htmlFor={inputId} className="text-sm font-medium text-gray-700">
+                    {label}
+                  </label>
+                  <input
+                    id={inputId}
+                    value={filters[key]}
+                    onChange={(e) => setFilters((f) => ({ ...f, [key]: e.target.value }))}
+                    placeholder={placeholder}
+                    className="w-full rounded-lg border px-3 py-2"
+                    type="text"
+                  />
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            <button type="submit" className="btn btn-primary min-w-[140px]">
+              Applica filtri
+            </button>
+            <button type="button" onClick={reset} className="btn btn-outline min-w-[120px]">
+              Reset
+            </button>
+          </div>
+        </form>
       </section>
 
-      {msg && <p style={{color:'#b91c1c', marginTop:12}}>{msg}</p>}
-      {loading && <p style={{marginTop:12}}>Caricamento…</p>}
+      <div className="flex flex-wrap items-center gap-3 text-sm" aria-live="polite">
+        {msg && (
+          <p className="text-red-600" role="alert">
+            {msg}
+          </p>
+        )}
+        {loading && (
+          <p role="status" className="text-gray-600">
+            Caricamento…
+          </p>
+        )}
+        {!loading && !msg && (
+          <p className="text-gray-600">
+            {meta.total} risultati · Pagina {page} di {meta.pageCount}
+          </p>
+        )}
+      </div>
 
-      <section style={{display:'grid', gap:12, marginTop:12}}>
+      <section className="space-y-3" aria-live="polite" aria-busy={loading}>
         {items.length === 0 && !loading && !msg && <p>Nessun club trovato.</p>}
-        {items.map(c => (
-          <div key={c.id} style={{border:'1px solid #e5e7eb', borderRadius:12, padding:16}}>
-            <div style={{display:'flex', gap:12, alignItems:'center', justifyContent:'space-between', flexWrap:'wrap'}}>
-              <div style={{display:'flex', gap:12, alignItems:'center'}}>
+        {items.map((c) => (
+          <article key={c.id} className="rounded-2xl border bg-white p-4 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
                 {c.logo_url ? (
-                  <Image src={c.logo_url} alt={c.display_name} width={56} height={56} style={{borderRadius:8, objectFit:'cover'}} />
+                  <Image
+                    src={c.logo_url}
+                    alt={c.display_name || c.name}
+                    width={56}
+                    height={56}
+                    sizes="56px"
+                    loading="lazy"
+                    className="h-14 w-14 rounded-xl object-cover"
+                  />
                 ) : (
-                  <div style={{width:56, height:56, borderRadius:8, background:'#e5e7eb'}} />
+                  <div className="h-14 w-14 rounded-xl bg-gray-100" aria-hidden="true" />
                 )}
                 <div>
-                  <div style={{fontWeight:600}}>{c.display_name}</div>
-                  <div style={{fontSize:14, opacity:.8}}>{c.city ?? '—'}</div>
+                  <p className="text-base font-semibold">{c.display_name || c.name}</p>
+                  <p className="text-sm text-gray-600">{formatPlace(c)}</p>
                 </div>
               </div>
               <div>
-                <Link href={`/c/${c.id}`}>Vedi profilo club →</Link>
+                <Link href={`/c/${c.id}`} className="btn btn-outline">
+                  Vedi profilo club →
+                </Link>
               </div>
             </div>
-
             {c.bio && (
-              <p style={{margin:'8px 0 0 0', fontSize:14, opacity:.85, whiteSpace:'pre-wrap'}}>
+              <p className="mt-3 text-sm text-gray-700" style={{ whiteSpace: 'pre-wrap' }}>
                 {c.bio}
               </p>
             )}
-          </div>
+          </article>
         ))}
       </section>
+
+      <nav
+        className="flex flex-wrap items-center justify-between gap-3"
+        aria-label="Paginazione risultati"
+      >
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => canGoPrev && setPage((p) => Math.max(1, p - 1))}
+            disabled={!canGoPrev}
+            className="btn btn-outline disabled:opacity-40"
+          >
+            ← Pagina precedente
+          </button>
+          <button
+            type="button"
+            onClick={() => canGoNext && setPage((p) => Math.min(meta.pageCount, p + 1))}
+            disabled={!canGoNext}
+            className="btn btn-outline disabled:opacity-40"
+          >
+            Pagina successiva →
+          </button>
+        </div>
+        <p className="text-xs text-gray-500">
+          I filtri interrogano `/api/clubs` sfruttando gli indici `pg_trgm` e `created_at`.
+        </p>
+      </nav>
     </main>
-  )
+  );
 }

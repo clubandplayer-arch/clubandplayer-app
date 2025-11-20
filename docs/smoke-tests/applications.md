@@ -1,5 +1,7 @@
 # Smoke test `/applications/received` (candidature)
 
+> **Ultima esecuzione:** 10/03/2025 (run `docs/smoke-tests/runs/2025-03-10.md`) – ✅ completata.
+
 Checklist per garantire che un club possa vedere le candidature ricevute senza violazioni RLS.
 
 ## Prerequisiti

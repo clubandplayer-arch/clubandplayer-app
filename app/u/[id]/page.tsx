@@ -135,7 +135,7 @@ export default function PublicAthleteProfile() {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={profile.avatar_url}
-                  alt={profile.display_name ?? profile.full_name ?? 'Atleta'}
+                  alt={profile.display_name ?? profile.full_name ?? 'Player'}
                   width={64}
                   height={64}
                   style={{borderRadius:'50%', objectFit:'cover'}}
@@ -144,7 +144,7 @@ export default function PublicAthleteProfile() {
                 <div style={{width:64, height:64, borderRadius:'50%', background:'#e5e7eb'}} />
               )}
               <div>
-                <h1 style={{margin:0}}>{profile.display_name || profile.full_name || 'Atleta'}</h1>
+                <h1 style={{margin:0}}>{profile.display_name || profile.full_name || 'Player'}</h1>
                 <p style={{margin:'4px 0', opacity:.8}}>{buildTagline(profile)}</p>
                 {buildLocation(profile) && (
                   <p style={{margin:'4px 0', fontSize:13, opacity:.7}}>{buildLocation(profile)}</p>

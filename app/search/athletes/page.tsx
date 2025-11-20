@@ -186,7 +186,7 @@ export default function SearchAthletesPage() {
                       {/* NOME → link al profilo pubblico atleta */}
                       <div style={{ fontWeight: 700, marginBottom: 4 }}>
                         <Link href={`/athletes/${a.id}`}>
-                          {a.full_name ?? 'Atleta'}
+                          {a.full_name ?? 'Player'}
                         </Link>
                       </div>
                       <div style={{ fontSize: 14, opacity: 0.85 }}>

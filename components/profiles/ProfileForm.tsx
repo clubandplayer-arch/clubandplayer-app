@@ -126,7 +126,7 @@ export default function ProfileForm({
         <div>
           <label className="block text-sm font-medium mb-1">Tipo profilo</label>
           <select className="w-full rounded-xl border px-3 py-2" value={type} onChange={(e)=>setType(e.target.value as any)}>
-            <option value="athlete">Atleta</option>
+            <option value="athlete">Player</option>
             <option value="club">Club</option>
           </select>
         </div>

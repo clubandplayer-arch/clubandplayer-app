@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
+import { reportApiError } from '@/lib/monitoring/reportApiError';
 
 export const runtime = 'nodejs';
 
@@ -20,6 +21,7 @@ function normRole(v: unknown): Role | null {
 }
 
 function normalizeRow(row: any) {
+  const aspectFromUrl = inferAspectFromUrl(row.media_url);
   return {
     id: row.id,
     // legacy
@@ -32,13 +34,22 @@ function normalizeRow(row: any) {
     author_id: row.author_id ?? null,
     media_url: row.media_url ?? null,
     media_type: row.media_type ?? null,
+    media_aspect: normalizeAspect(row.media_aspect) ?? aspectFromUrl ?? null,
+    link_url: row.link_url ?? null,
+    link_title: row.link_title ?? null,
+    link_description: row.link_description ?? null,
+    link_image: row.link_image ?? null,
     role: undefined as unknown as 'club' | 'athlete' | undefined,
   };
 }
 
 // GET: lettura autenticata, filtra i post per ruolo dell'autore
 export async function GET(req: NextRequest) {
-  const debug = new URL(req.url).searchParams.get('debug') === '1';
+  const searchParams = new URL(req.url).searchParams;
+  const debug = searchParams.get('debug') === '1';
+  const mine = searchParams.get('mine') === '1';
+  const limitRaw = Number(searchParams.get('limit') || '50');
+  const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(Math.round(limitRaw), 1), 200) : 50;
   const supabase = await getSupabaseServerClient();
 
   // determina ruolo dell'utente corrente
@@ -62,26 +73,43 @@ export async function GET(req: NextRequest) {
     // se qualcosa fallisce, continuiamo senza ruolo
   }
 
-  const baseSelect = 'id, author_id, content, created_at';
-  const extendedSelect = 'id, author_id, content, created_at, media_url, media_type';
+  if (mine && !currentUserId) {
+    return NextResponse.json({ ok: false, error: 'not_authenticated' }, { status: 401 });
+  }
 
-  const fetchPosts = async (sel: string) =>
-    supabase
+  const fetchPosts = async (sel: string) => {
+    let query = supabase
       .from('posts')
       .select(sel)
       .order('created_at', { ascending: false })
-      .limit(50);
+      .limit(limit);
+
+    if (mine && currentUserId) {
+      query = query.eq('author_id', currentUserId);
+    }
+
+    return query;
+  };
 
   let data: any[] | null = null;
   let error: any = null;
 
-  ({ data, error } = await fetchPosts(extendedSelect));
+  ({ data, error } = await fetchPosts(SELECT_WITH_LINK));
 
   if (error && /column .* does not exist/i.test(error.message || '')) {
-    ({ data, error } = await fetchPosts(baseSelect));
+    ({ data, error } = await fetchPosts(SELECT_WITH_MEDIA));
+  }
+
+  if (error && /column .* does not exist/i.test(error.message || '')) {
+    ({ data, error } = await fetchPosts(SELECT_BASE));
   }
 
   if (error) {
+    reportApiError({
+      endpoint: '/api/feed/posts',
+      error,
+      context: { stage: 'select', method: 'GET' },
+    });
     return NextResponse.json(
       {
         ok: false,
@@ -94,6 +122,17 @@ export async function GET(req: NextRequest) {
   }
 
   const rows = (data ?? []).map((r) => normalizeRow(r)) || [];
+
+  if (mine) {
+    return NextResponse.json(
+      {
+        ok: true,
+        items: rows,
+        ...(debug ? { _debug: { count: rows.length, mine: true, userId: currentUserId } } : {}),
+      },
+      { status: 200 }
+    );
+  }
 
   if (!currentRole) {
     return NextResponse.json(
@@ -149,25 +188,182 @@ export async function GET(req: NextRequest) {
   );
 }
 
+function isMissingMediaColumns(err: any) {
+  const msg = err?.message || '';
+  return /column .*media_/i.test(msg);
+}
+
+function isMissingLinkColumns(err: any) {
+  const msg = err?.message || '';
+  return /column .*link_/i.test(msg);
+}
+
+function isRlsError(err: any) {
+  if (!err) return false;
+  const parts = [err.message, err.details, err.hint]
+    .filter(Boolean)
+    .map((v) => v.toString().toLowerCase());
+  const msg = parts.join(' ');
+  return (
+    err.code === '42501' ||
+    err.code === 'PGRST302' ||
+    msg.includes('row-level security') ||
+    msg.includes('permission denied') ||
+    msg.includes('new row violates')
+  );
+}
+
+const SELECT_WITH_MEDIA = 'id, author_id, content, created_at, media_url, media_type, media_aspect';
+const SELECT_WITH_LINK = `${SELECT_WITH_MEDIA}, link_url, link_title, link_description, link_image`;
+const SELECT_BASE = 'id, author_id, content, created_at';
+const DEFAULT_POSTS_BUCKET = process.env.NEXT_PUBLIC_POSTS_BUCKET || 'posts';
+
+function sanitizeStoragePath(path: string) {
+  return path
+    .replace(/\\/g, '/')
+    .replace(/\.\.+/g, '.')
+    .replace(/^\/+/, '')
+    .replace(/\/+/g, '/');
+}
+
+function inferMediaType(rawType: unknown, rawMime: unknown): 'image' | 'video' | null {
+  const normalized = typeof rawType === 'string' ? rawType.trim().toLowerCase() : '';
+  if (normalized === 'image' || normalized === 'video') return normalized;
+  const mime = typeof rawMime === 'string' ? rawMime.toLowerCase() : '';
+  if (mime.startsWith('video/')) return 'video';
+  if (mime.startsWith('image/')) return 'image';
+  return null;
+}
+
+function normalizeAspect(raw?: unknown): '16:9' | '9:16' | null {
+  const value = typeof raw === 'string' ? raw.trim() : '';
+  if (value === '16:9' || value === '16-9') return '16:9';
+  if (value === '9:16' || value === '9-16') return '9:16';
+  return null;
+}
+
+function inferAspectFromUrl(url?: string | null): '16:9' | '9:16' | null {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    const raw = u.searchParams.get('aspect');
+    return normalizeAspect(raw);
+  } catch {
+    return null;
+  }
+}
+
+function normalizeLinkUrl(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  try {
+    const u = new URL(raw.trim());
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+    return u.toString();
+  } catch {
+    return null;
+  }
+}
+
+type ServerClient = Awaited<ReturnType<typeof getSupabaseServerClient>>;
+type AdminClient = NonNullable<ReturnType<typeof getSupabaseAdminClientOrNull>>;
+type InsertClient = ServerClient | AdminClient;
+
 // POST: inserimento autenticato con rate-limit via cookie
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
     const rawText = (body?.text ?? body?.content ?? '').toString();
-    const mediaUrlRaw = (body as any)?.media_url ?? null;
-    const mediaTypeRaw = (body as any)?.media_type ?? null;
     const text = rawText.trim();
-    const mediaUrl = typeof mediaUrlRaw === 'string' && mediaUrlRaw.trim() ? mediaUrlRaw.trim() : null;
-    const mediaType = mediaUrl
-      ? (mediaTypeRaw === 'video' ? 'video' : 'image')
-      : null;
+    const rawMediaUrl = typeof body?.media_url === 'string' ? body.media_url.trim() : '';
+    const rawMediaUrlCamel = typeof body?.mediaUrl === 'string' ? body.mediaUrl.trim() : '';
+    const rawMediaType =
+      typeof body?.media_type === 'string'
+        ? body.media_type
+        : typeof body?.mediaType === 'string'
+          ? body.mediaType
+          : '';
+    const rawMediaPath =
+      typeof body?.media_path === 'string'
+        ? body.media_path
+        : typeof body?.mediaPath === 'string'
+          ? body.mediaPath
+          : '';
+    const rawMediaBucket =
+      typeof body?.media_bucket === 'string'
+        ? body.media_bucket
+        : typeof body?.mediaBucket === 'string'
+          ? body.mediaBucket
+          : '';
+    const rawMediaMime =
+      typeof body?.media_mime === 'string'
+        ? body.media_mime
+        : typeof body?.mediaMime === 'string'
+          ? body.mediaMime
+          : '';
+    const rawMediaAspect =
+      typeof body?.media_aspect === 'string'
+        ? body.media_aspect
+        : typeof body?.mediaAspect === 'string'
+          ? body.mediaAspect
+          : '';
+    const rawLinkUrl =
+      typeof body?.link_url === 'string'
+        ? body.link_url
+        : typeof body?.linkUrl === 'string'
+          ? body.linkUrl
+          : '';
+    const rawLinkTitle = typeof body?.link_title === 'string' ? body.link_title : body?.linkTitle;
+    const rawLinkDescription =
+      typeof body?.link_description === 'string' ? body.link_description : body?.linkDescription;
+    const rawLinkImage = typeof body?.link_image === 'string' ? body.link_image : body?.linkImage;
 
-    if (!text && !mediaUrl) {
-      return NextResponse.json({ ok: false, error: 'empty' }, { status: 400 });
+    const normalizedMediaPath = rawMediaPath ? sanitizeStoragePath(rawMediaPath.trim()) : '';
+    const mediaBucket = rawMediaBucket?.trim() || DEFAULT_POSTS_BUCKET;
+    let mediaUrl = rawMediaUrl || rawMediaUrlCamel || null;
+    let mediaType: 'image' | 'video' | null = inferMediaType(rawMediaType, rawMediaMime);
+    const mediaAspect = normalizeAspect(rawMediaAspect) || inferAspectFromUrl(mediaUrl);
+    const linkUrl = normalizeLinkUrl(rawLinkUrl);
+    const linkTitle = typeof rawLinkTitle === 'string' ? rawLinkTitle.trim() || null : null;
+    const linkDescription =
+      typeof rawLinkDescription === 'string' ? rawLinkDescription.trim() || null : null;
+    const linkImage = normalizeLinkUrl(rawLinkImage);
+
+    if (!text && !mediaUrl && !normalizedMediaPath && !linkUrl) {
+      return NextResponse.json(
+        { ok: false, error: 'empty', message: 'Scrivi un testo, un link o allega un media.' },
+        { status: 400 }
+      );
     }
     if (text.length > MAX_CHARS) {
+      return NextResponse.json({ ok: false, error: 'too_long', limit: MAX_CHARS }, { status: 400 });
+    }
+
+    const supabase = await getSupabaseServerClient();
+    const admin = getSupabaseAdminClientOrNull();
+
+    if (!mediaUrl && normalizedMediaPath) {
+      const { data: publicInfo } = supabase.storage.from(mediaBucket).getPublicUrl(normalizedMediaPath);
+      if (publicInfo?.publicUrl) {
+        mediaUrl = publicInfo.publicUrl;
+      } else {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: 'media_public_url_failed',
+            message: 'Impossibile generare il link pubblico del media.',
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (mediaUrl && !mediaType) {
+      mediaType = inferMediaType(rawMediaType, rawMediaMime) || 'image';
+    }
+
+    if (mediaUrl && !/^https?:\/\//i.test(mediaUrl)) {
       return NextResponse.json(
-        { ok: false, error: 'too_long', limit: MAX_CHARS },
+        { ok: false, error: 'invalid_media_url', message: 'L\'URL del media non è valido.' },
         { status: 400 }
       );
     }
@@ -183,52 +379,66 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const supabase = await getSupabaseServerClient();
-    const admin = getSupabaseAdminClientOrNull();
-    const clientForInsert = admin ?? supabase;
     const { data: auth, error: authErr } = await supabase.auth.getUser();
     if (authErr || !auth?.user) {
       return NextResponse.json({ ok: false, error: 'not_authenticated' }, { status: 401 });
     }
 
-    const insertPayload: Record<string, any> = { content: text, author_id: auth.user.id };
+    const effectiveText = text || '';
+    const insertPayload: Record<string, any> = { content: effectiveText, author_id: auth.user.id };
     if (mediaUrl) insertPayload.media_url = mediaUrl;
     if (mediaType) insertPayload.media_type = mediaType;
+    if (mediaAspect && mediaType === 'video') insertPayload.media_aspect = mediaAspect;
+    if (linkUrl) insertPayload.link_url = linkUrl;
+    if (linkTitle) insertPayload.link_title = linkTitle;
+    if (linkDescription) insertPayload.link_description = linkDescription;
+    if (linkImage) insertPayload.link_image = linkImage;
 
-    const runInsert = (payload: Record<string, any>, select: string) =>
-      clientForInsert.from('posts').insert(payload).select(select).single();
+    const fallbackPayload: Record<string, any> = { content: text || '', author_id: auth.user.id };
+    if (mediaUrl) fallbackPayload.media_url = mediaUrl;
+    if (mediaType) fallbackPayload.media_type = mediaType;
+
+    const runInsert = (client: InsertClient, payload: Record<string, any>, select: string) =>
+      client.from('posts').insert(payload).select(select).single();
 
     let data: any = null;
     let error: any = null;
 
-    ({ data, error } = await runInsert(insertPayload, 'id, author_id, content, created_at, media_url, media_type'));
+    ({ data, error } = await runInsert(supabase, insertPayload, SELECT_WITH_LINK));
 
-    if (error && /column .* does not exist/i.test(error.message || '')) {
-      const fallbackPayload = { content: mediaUrl ? `${text}\n${mediaUrl}` : text, author_id: auth.user.id };
-      ({ data, error } = await runInsert(fallbackPayload, 'id, author_id, content, created_at'));
+    if (error && isMissingLinkColumns(error)) {
+      const { link_url: _linkUrl, link_title: _linkTitle, link_description: _linkDescription, link_image: _linkImage, ...rest } = insertPayload;
+      ({ data, error } = await runInsert(supabase, rest, SELECT_WITH_MEDIA));
     }
 
-    // Fallback amministrativo se le policy RLS bloccano l'inserimento con il token utente
-    if (error && /row-level security/i.test(error.message || '') && !admin) {
-      const adminFallback = getSupabaseAdminClientOrNull();
-      if (adminFallback) {
-        const adminPayload = { ...insertPayload };
-        if (!adminPayload.content && mediaUrl) adminPayload.content = `${text}\n${mediaUrl}`;
-        const { data: adminData, error: adminErr } = await adminFallback
-          .from('posts')
-          .insert(adminPayload)
-          .select('id, author_id, content, created_at, media_url, media_type')
-          .single();
-        if (!adminErr) {
-          data = adminData;
-          error = null;
-        }
+    if (error && isMissingMediaColumns(error)) {
+      ({ data, error } = await runInsert(supabase, fallbackPayload, SELECT_BASE));
+    }
+
+    if (error && admin && isRlsError(error)) {
+      ({ data, error } = await runInsert(admin, insertPayload, SELECT_WITH_LINK));
+      if (error && isMissingLinkColumns(error)) {
+        const { link_url: _linkUrl, link_title: _linkTitle, link_description: _linkDescription, link_image: _linkImage, ...rest } =
+          insertPayload;
+        ({ data, error } = await runInsert(admin, rest, SELECT_WITH_MEDIA));
+      }
+      if (error && isMissingMediaColumns(error)) {
+        ({ data, error } = await runInsert(admin, fallbackPayload, SELECT_BASE));
       }
     }
 
     if (error) {
+      reportApiError({
+        endpoint: '/api/feed/posts',
+        error,
+        context: { stage: 'insert', method: 'POST' },
+      });
       return NextResponse.json(
-        { ok: false, error: 'insert_failed', details: error.message },
+        {
+          ok: false,
+          error: 'insert_failed',
+          message: error.message,
+        },
         { status: 400 }
       );
     }
@@ -240,7 +450,6 @@ export async function POST(req: NextRequest) {
       },
       { status: 201 }
     );
-
     res.cookies.set(LAST_POST_TS_COOKIE, String(now), {
       httpOnly: false,
       path: '/',
@@ -248,7 +457,8 @@ export async function POST(req: NextRequest) {
       maxAge: 60 * 60 * 24 * 30,
     });
     return res;
-  } catch {
-    return NextResponse.json({ ok: false, error: 'invalid_request' }, { status: 400 });
+  } catch (err: any) {
+    reportApiError({ endpoint: '/api/feed/posts', error: err, context: { method: 'POST', stage: 'handler_catch' } });
+    return NextResponse.json({ ok: false, error: 'invalid_request', message: err?.message }, { status: 400 });
   }
 }

@@ -222,7 +222,7 @@ export default function ProfileMiniCard() {
   );
 
   return (
-    <div className="rounded-2xl border p-4 shadow-sm">
+    <div className="glass-panel p-4">
       <div className="flex flex-col items-center gap-3 text-center">
         {p?.avatar_url ? (
           <img

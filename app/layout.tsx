@@ -6,7 +6,8 @@ import { Suspense } from 'react';
 import HashCleanup from '@/components/auth/HashCleanup';
 import SessionSyncMount from '@/components/auth/SessionSyncMount';
 import CookieConsent from '@/components/misc/CookieConsent';
-import PostHogInit from '@/components/analytics/PostHogInit';
+import PrivacyAnalytics from '@/components/analytics/PrivacyAnalytics';
+import WebVitalsReporter from '@/components/analytics/WebVitalsReporter';
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://clubandplayer.com';
 const SITE_NAME = 'Club & Player';
@@ -55,6 +56,12 @@ export const viewport: Viewport = {
   // colorScheme: 'light dark',
 };
 
+const FOOTER_LINKS = [
+  { href: '/legal/privacy', label: 'Privacy' },
+  { href: '/legal/terms', label: 'Termini' },
+  { href: '/legal/beta', label: 'Informativa Beta' },
+];
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   // JSON-LD (Organization)
   const jsonLdOrg = {
@@ -87,10 +94,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
 
-      <body className="antialiased bg-neutral-50 text-neutral-900 font-sans">
-        {/* Init analytics (rispetta consenso, pageview & identify) */}
+      <body className="antialiased text-neutral-900 font-sans">
+        <a href="#main-content" className="skip-link">
+          Salta al contenuto principale
+        </a>
+        {/* Analytics privacy-first: si attiva solo con consenso e DNT disattivato */}
         <Suspense fallback={null}>
-          <PostHogInit />
+          <PrivacyAnalytics />
+        </Suspense>
+
+        {/* Web Vitals reali (solo produzione, privacy-first) */}
+        <Suspense fallback={null}>
+          <WebVitalsReporter />
         </Suspense>
 
         {/* Pulisce hash OAuth e fa redirect sicuro */}
@@ -99,7 +114,24 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </Suspense>
 
         {/* Contenuto pagina */}
-        <Suspense fallback={null}>{children}</Suspense>
+        <div id="main-content" tabIndex={-1}>
+          <Suspense fallback={null}>{children}</Suspense>
+        </div>
+
+        <footer className="border-t border-neutral-200 bg-white/90 py-6 text-sm text-neutral-600">
+          <div className="container mx-auto flex max-w-5xl flex-col gap-2 px-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs uppercase tracking-wide text-neutral-500">
+              © {new Date().getFullYear()} Club &amp; Player
+            </p>
+            <nav className="flex flex-wrap gap-4">
+              {FOOTER_LINKS.map((link) => (
+                <a key={link.href} href={link.href} className="hover:text-neutral-900 underline-offset-2 hover:underline">
+                  {link.label}
+                </a>
+              ))}
+            </nav>
+          </div>
+        </footer>
 
         {/* Sync sessione client->server (cookie) */}
         <Suspense fallback={null}>

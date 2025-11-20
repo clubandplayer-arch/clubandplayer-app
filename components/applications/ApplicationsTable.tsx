@@ -51,7 +51,7 @@ export default function ApplicationsTable({
     () => [
       { key: 'created_at', label: 'Data' },
       { key: 'opportunity_id', label: 'Annuncio' },
-      ...(kind === 'received' ? [{ key: 'athlete_id', label: 'Atleta' }] : []),
+      ...(kind === 'received' ? [{ key: 'athlete_id', label: 'Player' }] : []),
       { key: 'status', label: 'Stato' },
       { key: 'note', label: kind === 'sent' ? 'Nota (mia)' : 'Nota' },
       { key: 'actions', label: 'Azioni' },
@@ -182,7 +182,7 @@ export default function ApplicationsTable({
                   )}
                 </td>
 
-                {/* Atleta solo per ricevute */}
+                {/* Player solo per ricevute */}
                 {kind === 'received' && (
                   <td className="px-3 py-2 min-w-[12rem] align-top">
                     {r.athlete_id ? (
