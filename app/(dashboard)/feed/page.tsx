@@ -293,7 +293,7 @@ function MyMediaHub({
 
   return (
     <div className="glass-panel" id="my-media">
-      <div className="flex items-center justify-between px-4 py-3 text-sm font-semibold">
+      <div className="flex items-center px-4 py-3 text-sm font-semibold">
         <div className="flex gap-2 text-xs">
           <button
             type="button"
@@ -310,7 +310,6 @@ function MyMediaHub({
             MyPhoto
           </button>
         </div>
-        <div className="text-[11px] uppercase tracking-wide text-gray-500">MyMedia</div>
       </div>
       <div className="px-4 pb-4">
         {tab === 'video' ? (

@@ -123,17 +123,11 @@ export default function MyMediaPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 space-y-4">
-      <header className="glass-panel p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold">I tuoi media</h1>
-            <p className="text-sm text-gray-600">Rivedi tutti i video e le foto che hai pubblicato nel feed.</p>
-          </div>
-          <Link href="/feed" className="text-sm font-semibold text-blue-700">
-            Torna al feed →
-          </Link>
-        </div>
-      </header>
+      <div className="flex justify-end">
+        <Link href="/feed" className="text-sm font-semibold text-blue-700">
+          Torna al feed →
+        </Link>
+      </div>
 
       {loading && <div className="glass-panel p-4">Caricamento…</div>}
       {err && <div className="glass-panel p-4 text-red-600">{err}</div>}
