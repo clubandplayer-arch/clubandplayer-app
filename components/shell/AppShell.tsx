@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ReactElement } from 'react';
 import { usePathname } from 'next/navigation';
 import useIsClub from '@/hooks/useIsClub';
+import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 type Role = 'athlete' | 'club' | 'guest';
 
@@ -107,9 +108,11 @@ const navItems: NavItem[] = [
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const supabase = useMemo(() => supabaseBrowser(), []);
 
   const [role, setRole] = useState<Role>('guest');
   const [loadingRole, setLoadingRole] = useState(true);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   // unica fonte affidabile per la CTA
   const { isClub } = useIsClub();
@@ -138,6 +141,32 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const profileHref = role === 'club' ? '/club/profile' : '/profile';
   const isActive = (href: string) => pathname === href || (!!pathname && pathname.startsWith(href + '/'));
 
+  useEffect(() => {
+    const loadUnread = async () => {
+      const { data } = await supabase.auth.getUser();
+      const userId = data?.user?.id;
+      if (!userId) {
+        setUnreadNotifications(0);
+        return;
+      }
+      try {
+        const { count } = await supabase
+          .from('notifications')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', userId)
+          .or('read_at.is.null,read.eq.false');
+        setUnreadNotifications(count || 0);
+      } catch {
+        setUnreadNotifications(0);
+      }
+    };
+
+    void loadUnread();
+    const handler = () => void loadUnread();
+    window.addEventListener('app:notifications-updated', handler);
+    return () => window.removeEventListener('app:notifications-updated', handler);
+  }, [supabase]);
+
   return (
     <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-40 border-b bg-white/80 backdrop-blur">
@@ -158,9 +187,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     aria-label={item.label}
                     aria-current={active ? 'page' : undefined}
                     title={item.label}
-                    className={`flex h-10 w-10 items-center justify-center rounded-xl transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${active ? 'bg-[var(--brand)] text-white shadow-sm' : 'text-neutral-600 hover:bg-neutral-100'}`}
+                    className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${active ? 'bg-[var(--brand)] text-white shadow-sm' : 'text-neutral-600 hover:bg-neutral-100'}`}
                   >
                     <ActiveIcon className="h-5 w-5" />
+                    {item.href === '/notifications' && unreadNotifications > 0 && (
+                      <span className="absolute -right-1 -top-1 min-w-[18px] rounded-full bg-red-500 px-1.5 text-center text-[11px] font-semibold text-white">
+                        {unreadNotifications}
+                      </span>
+                    )}
                     <span className="sr-only">{item.label}</span>
                   </Link>
                 );
