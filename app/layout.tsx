@@ -2,7 +2,7 @@
 import './globals.css';
 import type { Metadata, Viewport } from 'next';
 import { Suspense } from 'react';
-import { Righteous } from 'next/font/google';
+import { Inter, Righteous } from 'next/font/google';
 
 import HashCleanup from '@/components/auth/HashCleanup';
 import SessionSyncMount from '@/components/auth/SessionSyncMount';
@@ -14,6 +14,11 @@ const righteous = Righteous({
   subsets: ['latin'],
   weight: '400',
   variable: '--font-righteous',
+});
+
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
 });
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://clubandplayer.com';
@@ -101,7 +106,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
 
-      <body className={`${righteous.variable} antialiased text-neutral-900 font-sans`}>
+      <body className={`${righteous.variable} ${inter.className} antialiased text-neutral-900`}>
         <a href="#main-content" className="skip-link">
           Salta al contenuto principale
         </a>

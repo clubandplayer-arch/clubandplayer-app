@@ -184,14 +184,9 @@ export default function FeedPage() {
         {/* Colonna centrale: composer + feed */}
         <main className="space-y-4" aria-labelledby={headingId}>
           <TrackRetention scope="feed" />
-          <div className="space-y-1">
-            <h1 id={headingId} className="sr-only">
-              Bacheca feed
-            </h1>
-            <p className="text-sm text-gray-600">
-              Condividi aggiornamenti con club e atleti. Tutti i campi sono accessibili anche da tastiera.
-            </p>
-          </div>
+          <h1 id={headingId} className="sr-only">
+            Bacheca feed
+          </h1>
           <FeedComposer onPosted={reload} />
 
           <div className="space-y-4" aria-live="polite" aria-busy={loading}>
@@ -315,12 +310,7 @@ function MyMediaHub({
             MyPhoto
           </button>
         </div>
-        <Link
-          href={tab === 'video' ? '/mymedia#my-videos' : '/mymedia#my-photos'}
-          className="text-xs font-semibold text-blue-700"
-        >
-          Vedi tutti →
-        </Link>
+        <div className="text-[11px] uppercase tracking-wide text-gray-500">MyMedia</div>
       </div>
       <div className="px-4 pb-4">
         {tab === 'video' ? (
@@ -338,6 +328,12 @@ function MyMediaHub({
             sectionId="my-photos"
           />
         )}
+        <Link
+          href={tab === 'video' ? '/mymedia#my-videos' : '/mymedia#my-photos'}
+          className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-blue-700 hover:underline"
+        >
+          <span>Vedi tutti →</span>
+        </Link>
       </div>
     </div>
   );
