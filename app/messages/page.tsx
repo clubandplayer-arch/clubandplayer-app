@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'default-no-store';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 import type { PublicProfileSummary } from '@/lib/profiles/publicLookup';
 
@@ -55,6 +55,9 @@ export default function MessagesPage() {
   const [messages, setMessages] = useState<MessageRow[]>([]);
   const [profiles, setProfiles] = useState<Record<string, PublicProfileSummary>>({});
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const hasLoadedRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [folder, setFolder] = useState<Folder>('inbox');
@@ -62,14 +65,18 @@ export default function MessagesPage() {
   const [sending, setSending] = useState(false);
   const [composer, setComposer] = useState('');
 
-  const loadMessages = useCallback(async () => {
-    setLoading(true);
+  const loadMessages = useCallback(async (opts?: { manual?: boolean }) => {
+    const manual = Boolean(opts?.manual);
+    const alreadyLoaded = hasLoadedRef.current;
+    setLoading((prev) => prev && !alreadyLoaded);
+    setRefreshing(alreadyLoaded && manual);
     setError(null);
     const { data: userRes, error: authError } = await supabase.auth.getUser();
     if (authError || !userRes?.user) {
       setError('Devi accedere per vedere i messaggi.');
       setUserId(null);
       setLoading(false);
+      setRefreshing(false);
       return;
     }
 
@@ -100,6 +107,7 @@ export default function MessagesPage() {
       if (error) {
         setError(error.message || 'Errore nel caricare i messaggi');
         setLoading(false);
+        setRefreshing(false);
         return;
       }
       rows = (data || []) as MessageRow[];
@@ -134,17 +142,20 @@ export default function MessagesPage() {
 
     setMessages(rows);
     setLoading(false);
+    setRefreshing(false);
+    hasLoadedRef.current = true;
+    setHasLoadedOnce(true);
 
-    if (!selectedConversation && rows.length) {
+    if (rows.length) {
       const first = rows[0];
       const peerId = first.sender_id === me ? first.receiver_id : first.sender_id;
-      setSelectedConversation(first.conversation_id || peerId);
+      setSelectedConversation((prev) => prev ?? first.conversation_id ?? peerId);
     }
 
     if (queryError) {
       console.warn('messages: fallback schema used', queryError);
     }
-  }, [selectedConversation, supabase]);
+  }, [supabase]);
 
   const conversations = useMemo<Conversation[]>(() => {
     if (!userId) return [];
@@ -404,7 +415,7 @@ export default function MessagesPage() {
             </div>
             <button
               type="button"
-              onClick={loadMessages}
+              onClick={() => void loadMessages({ manual: true })}
               className="rounded-md border px-3 py-1.5 text-sm hover:bg-neutral-50"
             >
               Aggiorna
@@ -412,7 +423,8 @@ export default function MessagesPage() {
           </div>
 
           {error && <p className="px-4 py-3 text-sm text-red-600">{error}</p>}
-          {loading && <p className="px-4 py-6 text-sm text-neutral-600">Caricamento in corso…</p>}
+          {loading && !hasLoadedOnce && <p className="px-4 py-6 text-sm text-neutral-600">Caricamento in corso…</p>}
+          {refreshing && hasLoadedOnce && <p className="px-4 py-3 text-sm text-neutral-600">Aggiornamento…</p>}
 
           {!loading && !filteredConversations.length && (
             <div className="px-4 py-8 text-sm text-neutral-600">

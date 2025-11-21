@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 import type { PublicProfileSummary } from '@/lib/profiles/publicLookup';
@@ -37,15 +37,21 @@ export default function FollowingPage() {
   const [follows, setFollows] = useState<FollowRow[]>([]);
   const [profiles, setProfiles] = useState<Record<string, PublicProfileSummary>>({});
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const hasLoadedRef = useRef(false);
 
   const load = useCallback(async () => {
-    setLoading(true);
+    const alreadyLoaded = hasLoadedRef.current;
+    setLoading((prev) => prev && !alreadyLoaded);
+    setRefreshing(alreadyLoaded);
     setError(null);
     const { data: userRes, error: authError } = await supabase.auth.getUser();
     if (authError || !userRes?.user) {
       setError('Devi accedere per vedere i profili che segui.');
       setLoading(false);
+      setRefreshing(false);
       setFollows([]);
       return;
     }
@@ -100,7 +106,10 @@ export default function FollowingPage() {
       setFollows([]);
       setProfiles({});
     } finally {
+      hasLoadedRef.current = true;
+      setHasLoadedOnce(true);
       setLoading(false);
+      setRefreshing(false);
     }
   }, [supabase]);
 
@@ -125,7 +134,8 @@ export default function FollowingPage() {
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
-      {loading && <p className="text-sm text-neutral-600">Caricamento…</p>}
+      {loading && !hasLoadedOnce && <p className="text-sm text-neutral-600">Caricamento…</p>}
+      {refreshing && hasLoadedOnce && <p className="text-sm text-neutral-600">Aggiornamento…</p>}
 
       {!loading && !follows.length && (
         <div className="rounded-xl border border-dashed border-neutral-200 bg-white/70 p-4 text-sm text-neutral-600">

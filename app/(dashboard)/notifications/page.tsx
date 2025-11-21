@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 const kindLabels: Record<string, string> = {
@@ -45,16 +45,22 @@ export default function NotificationsPage() {
   const supabase = supabaseBrowser();
   const [notifications, setNotifications] = useState<NotificationRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const hasLoadedRef = useRef(false);
 
   const load = useCallback(async () => {
-    setLoading(true);
+    const alreadyLoaded = hasLoadedRef.current;
+    setLoading((prev) => prev && !alreadyLoaded);
+    setRefreshing(alreadyLoaded);
     setError(null);
     const { data: userRes, error: authError } = await supabase.auth.getUser();
     if (authError || !userRes?.user) {
       setError('Devi accedere per vedere le notifiche.');
       setNotifications([]);
       setLoading(false);
+      setRefreshing(false);
       return;
     }
 
@@ -71,7 +77,10 @@ export default function NotificationsPage() {
       setError(err?.message || 'Errore nel caricare le notifiche');
       setNotifications([]);
     } finally {
+      hasLoadedRef.current = true;
+      setHasLoadedOnce(true);
       setLoading(false);
+      setRefreshing(false);
     }
   }, [supabase]);
 
@@ -145,7 +154,8 @@ export default function NotificationsPage() {
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
-      {loading && <p className="text-sm text-neutral-600">Caricamento…</p>}
+      {loading && !hasLoadedOnce && <p className="text-sm text-neutral-600">Caricamento…</p>}
+      {refreshing && hasLoadedOnce && <p className="text-sm text-neutral-600">Aggiornamento…</p>}
 
       {!loading && !notifications.length && (
         <div className="rounded-lg border border-dashed border-neutral-200 bg-white/60 p-4 text-sm text-neutral-600">

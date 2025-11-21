@@ -52,25 +52,21 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }: any) =
     note,
   } as Record<string, any>;
 
-  const runInsert = (client: any, payload: Record<string, any>) =>
-    client
-      .from('applications')
-      .insert(payload)
-      .select('id, opportunity_id, athlete_id, created_at, club_id')
-      .single();
+  const runInsert = (client: any, payload: Record<string, any>, select: string) =>
+    client.from('applications').insert(payload).select(select).single();
 
   let data: any = null;
   let error: any = null;
 
-  ({ data, error } = await runInsert(supabase, insertPayload));
+  ({ data, error } = await runInsert(supabase, insertPayload, 'id, opportunity_id, athlete_id, created_at, club_id'));
 
   if (error && missingClubColumn(error.message)) {
     const { club_id: _clubId, ...fallbackPayload } = insertPayload;
-    ({ data, error } = await runInsert(supabase, fallbackPayload));
+    ({ data, error } = await runInsert(supabase, fallbackPayload, 'id, opportunity_id, athlete_id, created_at'));
   }
 
   if (error && /row-level security/i.test(error.message || '') && admin) {
-    ({ data, error } = await runInsert(admin, insertPayload));
+    ({ data, error } = await runInsert(admin, insertPayload, 'id, opportunity_id, athlete_id, created_at, club_id'));
   }
 
   if (error) return jsonError(error.message, 400);
