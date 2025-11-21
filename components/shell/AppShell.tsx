@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import type { ReactElement } from 'react';
 import { usePathname } from 'next/navigation';
 import useIsClub from '@/hooks/useIsClub';
 
@@ -91,7 +92,7 @@ function SearchIcon({ className }: IconProps) {
   );
 }
 
-type NavItem = { label: string; href: string; icon: (props: IconProps) => JSX.Element };
+type NavItem = { label: string; href: string; icon: (props: IconProps) => ReactElement };
 
 const navItems: NavItem[] = [
   { label: 'Feed', href: '/feed', icon: HomeIcon },
