@@ -124,6 +124,52 @@ export default function ApplicationsDashboard() {
     };
   }, [role]);
 
+  useEffect(() => {
+    if (role !== 'club') return;
+    const needsEnrichment = rowsReceived.some((r) => r.athlete_id && !r.athlete);
+    if (!needsEnrichment) return;
+    const ids = Array.from(
+      new Set(rowsReceived.map((r) => r.athlete_id).filter(Boolean) as string[]),
+    );
+    if (!ids.length) return;
+
+    const controller = new AbortController();
+    (async () => {
+      try {
+        const qs = encodeURIComponent(ids.join(','));
+        const res = await fetch(`/api/profiles/public?ids=${qs}`, {
+          cache: 'no-store',
+          credentials: 'include',
+          signal: controller.signal,
+        });
+        const json = await res.json().catch(() => ({ data: [] }));
+        const map: Record<string, any> = {};
+        const list = Array.isArray(json?.data) ? json.data : [];
+        list.forEach((row: any) => {
+          const key = row.id || row.user_id;
+          if (!key) return;
+          map[String(key)] = {
+            ...row,
+            id: row.user_id || row.id,
+            name: row.display_name || row.full_name || row.headline || null,
+          };
+        });
+        setRowsReceived((prev) =>
+          prev.map((r) => {
+            const enriched = map[r.athlete_id ?? ''];
+            return enriched ? { ...r, athlete: enriched } : r;
+          }),
+        );
+      } catch (fetchErr) {
+        if (!(fetchErr as any)?.name?.includes('AbortError')) {
+          // ignora
+        }
+      }
+    })();
+
+    return () => controller.abort();
+  }, [role, rowsReceived]);
+
   const filteredReceived = useMemo(() => {
     return rowsReceived.filter((row) => {
       const okOpp = filterOpp ? row.opportunity_id === filterOpp : true;

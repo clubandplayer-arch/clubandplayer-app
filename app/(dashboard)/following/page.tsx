@@ -45,7 +45,7 @@ export default function FollowingPage() {
   const load = useCallback(async () => {
     const alreadyLoaded = hasLoadedRef.current;
     setLoading((prev) => prev && !alreadyLoaded);
-    setRefreshing(alreadyLoaded);
+    setRefreshing(false);
     setError(null);
     const { data: userRes, error: authError } = await supabase.auth.getUser();
     if (authError || !userRes?.user) {
@@ -135,7 +135,9 @@ export default function FollowingPage() {
 
       {error && <p className="text-sm text-red-600">{error}</p>}
       {loading && !hasLoadedOnce && <p className="text-sm text-neutral-600">Caricamento…</p>}
-      {refreshing && hasLoadedOnce && <p className="text-sm text-neutral-600">Aggiornamento…</p>}
+      {refreshing && hasLoadedOnce && (
+        <p className="text-xs text-neutral-500">Aggiornamento in corso…</p>
+      )}
 
       {!loading && !follows.length && (
         <div className="rounded-xl border border-dashed border-neutral-200 bg-white/70 p-4 text-sm text-neutral-600">

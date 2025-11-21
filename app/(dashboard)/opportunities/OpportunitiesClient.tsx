@@ -22,6 +22,7 @@ export default function OpportunitiesClient() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const [clubNames, setClubNames] = useState<Record<string, string>>({});
 
   const [meId, setMeId] = useState<string | null>(null);
   const [role, setRole] = useState<Role>('guest');            // da /api/auth/whoami
@@ -202,6 +203,51 @@ export default function OpportunitiesClient() {
       return { ...row, owner_id: ownerId, created_by: ownerId } as Opportunity;
     });
   }, [data]);
+
+  useEffect(() => {
+    const ids = Array.from(
+      new Set(
+        items
+          .map((o) => o.created_by || (o as any)?.owner_id)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    );
+
+    if (!ids.length) {
+      setClubNames({});
+      return;
+    }
+
+    const controller = new AbortController();
+
+    (async () => {
+      try {
+        const qs = encodeURIComponent(ids.join(','));
+        const res = await fetch(`/api/profiles/public?ids=${qs}`, {
+          cache: 'no-store',
+          credentials: 'include',
+          signal: controller.signal,
+        });
+        const json = await res.json().catch(() => ({ data: [] }));
+        const map: Record<string, string> = {};
+        const list = Array.isArray(json?.data) ? json.data : [];
+        list.forEach((row: any) => {
+          const name = row.display_name || row.full_name || row.headline || null;
+          const userId = row.user_id || row.id;
+          if (name && userId) {
+            map[String(userId)] = name;
+          }
+        });
+        setClubNames(map);
+      } catch (fetchErr) {
+        if (!(fetchErr as any)?.name?.includes('AbortError')) {
+          setClubNames({});
+        }
+      }
+    })();
+
+    return () => controller.abort();
+  }, [items]);
 
   return (
     <div className="p-4 md:p-6 space-y-4">
@@ -384,6 +430,7 @@ export default function OpportunitiesClient() {
           items={items}
           currentUserId={meId ?? undefined}
           userRole={role}
+          clubNames={clubNames}
           onEdit={(o) => setEditItem(o)}
           onDelete={(o) => handleDelete(o)}
         />

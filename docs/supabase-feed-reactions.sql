@@ -1,0 +1,34 @@
+-- Schema proposto per le reazioni ai post del feed (da eseguire manualmente in Supabase)
+--
+-- Crea la tabella delle reazioni
+-- create table if not exists public.feed_post_reactions (
+--   id uuid primary key default gen_random_uuid(),
+--   post_id uuid not null references public.posts(id) on delete cascade,
+--   user_id uuid not null references auth.users(id) on delete cascade,
+--   reaction_type text not null check (reaction_type in ('goal', 'red_card')),
+--   created_at timestamptz not null default now()
+-- );
+--
+-- Evita reazioni duplicate dello stesso tipo per utente/post
+-- create unique index if not exists feed_post_reactions_unique on public.feed_post_reactions (post_id, user_id, reaction_type);
+-- create index if not exists feed_post_reactions_post_idx on public.feed_post_reactions (post_id);
+-- create index if not exists feed_post_reactions_post_type_idx on public.feed_post_reactions (post_id, reaction_type);
+--
+-- Policy RLS suggerite (abilitare RLS sulla tabella prima di applicarle)
+-- alter table public.feed_post_reactions enable row level security;
+--
+-- -- un utente può vedere solo le proprie reazioni (se si preferisce consentire lettura globale,
+-- -- usare una policy permissiva o una view dedicata per i conteggi)
+-- create policy "reactions_select_own" on public.feed_post_reactions
+--   for select using (auth.role() = 'service_role' or user_id = auth.uid());
+--
+-- -- un utente può inserire una reazione per sé stesso
+-- create policy "reactions_insert_self" on public.feed_post_reactions
+--   for insert with check (user_id = auth.uid());
+--
+-- -- un utente può eliminare solo le proprie reazioni
+-- create policy "reactions_delete_self" on public.feed_post_reactions
+--   for delete using (user_id = auth.uid());
+--
+-- Dopo aver creato la tabella, si consiglia di popolare eventuali conteggi iniziali
+-- o di creare una view per sommare rapidamente le reazioni per post.

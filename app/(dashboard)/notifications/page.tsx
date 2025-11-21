@@ -53,7 +53,7 @@ export default function NotificationsPage() {
   const load = useCallback(async () => {
     const alreadyLoaded = hasLoadedRef.current;
     setLoading((prev) => prev && !alreadyLoaded);
-    setRefreshing(alreadyLoaded);
+    setRefreshing(false);
     setError(null);
     const { data: userRes, error: authError } = await supabase.auth.getUser();
     if (authError || !userRes?.user) {
@@ -155,7 +155,9 @@ export default function NotificationsPage() {
 
       {error && <p className="text-sm text-red-600">{error}</p>}
       {loading && !hasLoadedOnce && <p className="text-sm text-neutral-600">Caricamento…</p>}
-      {refreshing && hasLoadedOnce && <p className="text-sm text-neutral-600">Aggiornamento…</p>}
+      {refreshing && hasLoadedOnce && (
+        <p className="text-xs text-neutral-500">Aggiornamento in corso…</p>
+      )}
 
       {!loading && !notifications.length && (
         <div className="rounded-lg border border-dashed border-neutral-200 bg-white/60 p-4 text-sm text-neutral-600">
