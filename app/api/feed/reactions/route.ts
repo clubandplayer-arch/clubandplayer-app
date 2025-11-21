@@ -27,26 +27,34 @@ export async function GET(req: NextRequest) {
     const { data: userRes } = await supabase.auth.getUser();
     const userId = userRes?.user?.id ?? null;
 
-    const { data: counts, error } = await supabase
+    const { data: rows, error } = await supabase
       .from('feed_post_reactions')
-      .select('post_id, reaction_type, count:count(*)')
-      .in('post_id', ids)
-      .group('post_id, reaction_type');
+      .select('post_id, reaction_type, user_id')
+      .in('post_id', ids);
 
     if (error) throw error;
 
-    let mine: { post_id: string; reaction_type: ReactionType }[] = [];
-    if (userId) {
-      const { data: mineRows, error: mineErr } = await supabase
-        .from('feed_post_reactions')
-        .select('post_id, reaction_type')
-        .eq('user_id', userId)
-        .in('post_id', ids);
-      if (mineErr) throw mineErr;
-      mine = (mineRows || []) as any;
+    const countsMap = new Map<string, { post_id: string; reaction_type: ReactionType; count: number }>();
+    const mine: { post_id: string; reaction_type: ReactionType }[] = [];
+
+    for (const row of rows || []) {
+      const key = `${row.post_id}-${row.reaction_type}`;
+      const current = countsMap.get(key) || {
+        post_id: row.post_id,
+        reaction_type: row.reaction_type as ReactionType,
+        count: 0,
+      };
+      current.count += 1;
+      countsMap.set(key, current);
+
+      if (userId && row.user_id === userId) {
+        mine.push({ post_id: row.post_id, reaction_type: row.reaction_type as ReactionType });
+      }
     }
 
-    return NextResponse.json({ ok: true, counts: counts ?? [], mine });
+    const counts = Array.from(countsMap.values());
+
+    return NextResponse.json({ ok: true, counts, mine });
   } catch (err: any) {
     if (isMissingTable(err)) {
       return NextResponse.json({ ok: true, counts: [], mine: [], missingTable: true });
