@@ -73,16 +73,12 @@ export default function SearchMapClient() {
   });
   const [points, setPoints] = useState<ProfilePoint[]>([]);
   const [loading, setLoading] = useState(false);
+  const [mapError, setMapError] = useState<string | null>(null);
+  const [dataError, setDataError] = useState<string | null>(null);
   const mapRef = useRef<LeafletLib['Map'] | null>(null);
   const markersRef = useRef<LeafletLib['Marker'][]>([]);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const initialCenter = useRef<[number, number] | null>(null);
-
-  const center = useMemo(() => {
-    const lat = ((bounds.north ?? 0) + (bounds.south ?? 0)) / 2 || 41.9;
-    const lng = ((bounds.east ?? 0) + (bounds.west ?? 0)) / 2 || 12.5;
-    return [lat, lng] as [number, number];
-  }, [bounds]);
 
   useEffect(() => {
     let cancelled = false;
@@ -105,7 +101,10 @@ export default function SearchMapClient() {
         });
         mapRef.current = map;
       })
-      .catch(() => {});
+      .catch((error) => {
+        console.error('Leaflet load error', error);
+        if (!cancelled) setMapError('Mappa temporaneamente non disponibile');
+      });
 
     return () => {
       cancelled = true;
@@ -117,8 +116,9 @@ export default function SearchMapClient() {
 
   useEffect(() => {
     let cancelled = false;
-    async function load() {
+    const timer = setTimeout(async () => {
       setLoading(true);
+      setDataError(null);
       try {
         const params = new URLSearchParams();
         params.set('north', String(bounds.north ?? ''));
@@ -132,38 +132,51 @@ export default function SearchMapClient() {
         if (!cancelled && Array.isArray(json?.data)) {
           setPoints(json.data as ProfilePoint[]);
         }
-      } catch {
-        if (!cancelled) setPoints([]);
+        if (!cancelled && !Array.isArray(json?.data)) {
+          setDataError('Risultati non disponibili al momento.');
+          setPoints([]);
+        }
+      } catch (error) {
+        console.error('Search map fetch error', error);
+        if (!cancelled) {
+          setPoints([]);
+          setDataError('Errore nel caricamento dei profili.');
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
-    }
-    load();
+    }, 300);
+
     return () => {
       cancelled = true;
+      clearTimeout(timer);
     };
   }, [bounds, typeFilter]);
 
   useEffect(() => {
-    if (!mapRef.current) return;
-    loadLeaflet().then((L) => {
-      markersRef.current.forEach((m) => m.remove());
-      markersRef.current = [];
-      const visible = points.filter((p) => p.latitude != null && p.longitude != null);
-      visible.forEach((p) => {
-        const marker = L.marker([p.latitude as number, p.longitude as number]);
-        marker.bindPopup(
-          `<div class="space-y-1">
-            <div class="font-semibold">${p.display_name || 'Profilo'}</div>
-            <div class="text-xs text-gray-600">${[p.city, p.province, p.region].filter(Boolean).join(' · ')}</div>
-            <div class="text-xs text-gray-500">${[p.role, p.sport].filter(Boolean).join(' · ')}</div>
-          </div>`
-        );
-        marker.addTo(mapRef.current as any);
-        markersRef.current.push(marker);
+    if (!mapRef.current || mapError) return;
+    loadLeaflet()
+      .then((L) => {
+        markersRef.current.forEach((m) => m.remove());
+        markersRef.current = [];
+        const visible = points.filter((p) => p.latitude != null && p.longitude != null);
+        visible.forEach((p) => {
+          const marker = L.marker([p.latitude as number, p.longitude as number]);
+          marker.bindPopup(
+            `<div class="space-y-1">
+              <div class="font-semibold">${p.display_name || 'Profilo'}</div>
+              <div class="text-xs text-gray-600">${[p.city, p.province, p.region].filter(Boolean).join(' · ')}</div>
+              <div class="text-xs text-gray-500">${[p.role, p.sport].filter(Boolean).join(' · ')}</div>
+            </div>`
+          );
+          marker.addTo(mapRef.current as any);
+          markersRef.current.push(marker);
+        });
+      })
+      .catch((error) => {
+        console.error('Leaflet marker error', error);
       });
-    });
-  }, [points]);
+  }, [mapError, points]);
 
   const visiblePoints = useMemo(() => {
     const { north, south, east, west } = bounds;
@@ -179,12 +192,6 @@ export default function SearchMapClient() {
       return true;
     });
   }, [bounds, points, typeFilter]);
-
-  useEffect(() => {
-    if (mapRef.current) {
-      mapRef.current.setView(center);
-    }
-  }, [center]);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
@@ -223,7 +230,13 @@ export default function SearchMapClient() {
       </aside>
 
       <section className="lg:col-span-6 h-[420px] lg:h-[520px] overflow-hidden rounded-xl border bg-white/80 shadow-sm">
-        <div ref={mapContainerRef} className="h-full w-full" />
+        {mapError ? (
+          <div className="flex h-full w-full items-center justify-center text-sm text-red-600">
+            {mapError}
+          </div>
+        ) : (
+          <div ref={mapContainerRef} className="h-full w-full" />
+        )}
       </section>
 
       <section className="lg:col-span-3 space-y-2 rounded-xl border bg-white/80 p-3 shadow-sm">
@@ -231,6 +244,7 @@ export default function SearchMapClient() {
           <h2 className="heading-h2 text-lg">Risultati</h2>
           {loading && <span className="text-xs text-gray-500">Caricamento…</span>}
         </div>
+        {dataError && <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{dataError}</div>}
         {visiblePoints.length === 0 && (
           <div className="text-sm text-gray-600">Nessun profilo nell’area visibile.</div>
         )}
