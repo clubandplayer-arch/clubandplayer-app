@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
 
     const { error: insErr } = await supabase
       .from('feed_post_reactions')
-      .insert({ post_id: postId, user_id: userRes.user.id, reaction_type });
+      .insert({ post_id: postId, user_id: userRes.user.id, reaction_type: reactionType });
 
     if (insErr) throw insErr;
 
