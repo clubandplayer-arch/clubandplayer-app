@@ -39,6 +39,7 @@ export default function FollowingPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [missingTargetId, setMissingTargetId] = useState(false);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const hasLoadedRef = useRef(false);
 
@@ -53,6 +54,8 @@ export default function FollowingPage() {
       setLoading(false);
       setRefreshing(false);
       setFollows([]);
+      setHasLoadedOnce(true);
+      hasLoadedRef.current = true;
       return;
     }
 
@@ -102,7 +105,14 @@ export default function FollowingPage() {
         setProfiles({});
       }
     } catch (err: any) {
-      setError(err?.message || 'Errore nel caricare i seguiti');
+      const message = err?.message?.toString?.() || '';
+      const missingColumn = /follows\.target_id/.test(message) && /does not exist/i.test(message);
+      setMissingTargetId(missingColumn);
+      setError(
+        missingColumn
+          ? 'Colonna "target_id" mancante su follows. Esegui lo script SQL indicato nelle note del progetto.'
+          : err?.message || 'Errore nel caricare i seguiti',
+      );
       setFollows([]);
       setProfiles({});
     } finally {
@@ -139,9 +149,16 @@ export default function FollowingPage() {
         <p className="text-xs text-neutral-500">Aggiornamento in corso…</p>
       )}
 
-      {!loading && !follows.length && (
+      {!loading && !follows.length && !error && (
         <div className="rounded-xl border border-dashed border-neutral-200 bg-white/70 p-4 text-sm text-neutral-600">
           Non stai seguendo nessun profilo al momento. Visita un club o un player e clicca “Segui”.
+        </div>
+      )}
+
+      {!loading && !follows.length && error && missingTargetId && (
+        <div className="rounded-xl border border-dashed border-neutral-200 bg-white/70 p-4 text-sm text-neutral-600">
+          L’elenco dei seguiti richiede la colonna "target_id" sulla tabella follows. Aggiungila con lo script SQL indicato
+          nelle note del progetto.
         </div>
       )}
 

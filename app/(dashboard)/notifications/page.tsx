@@ -41,12 +41,18 @@ function formatDate(value?: string | null) {
   }
 }
 
+function isMissingKindColumn(err: unknown) {
+  const message = (err as any)?.message?.toString?.() || '';
+  return /notifications\.kind/.test(message) && /does not exist/i.test(message);
+}
+
 export default function NotificationsPage() {
   const supabase = supabaseBrowser();
   const [notifications, setNotifications] = useState<NotificationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [missingKind, setMissingKind] = useState(false);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const hasLoadedRef = useRef(false);
 
@@ -61,6 +67,8 @@ export default function NotificationsPage() {
       setNotifications([]);
       setLoading(false);
       setRefreshing(false);
+      setHasLoadedOnce(true);
+      hasLoadedRef.current = true;
       return;
     }
 
@@ -73,7 +81,9 @@ export default function NotificationsPage() {
         .limit(200);
       if (error) throw error;
       setNotifications((data || []) as NotificationRow[]);
+      setMissingKind(false);
     } catch (err: any) {
+      setMissingKind(isMissingKindColumn(err));
       setError(err?.message || 'Errore nel caricare le notifiche');
       setNotifications([]);
     } finally {
@@ -153,15 +163,27 @@ export default function NotificationsPage() {
         </button>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && (
+        <p className="text-sm text-red-600">
+          {missingKind
+            ? 'Colonna "kind" mancante su notifications. Esegui lo script SQL indicato nelle note del progetto.'
+            : error}
+        </p>
+      )}
       {loading && !hasLoadedOnce && <p className="text-sm text-neutral-600">Caricamento…</p>}
       {refreshing && hasLoadedOnce && (
         <p className="text-xs text-neutral-500">Aggiornamento in corso…</p>
       )}
 
-      {!loading && !notifications.length && (
+      {!loading && !notifications.length && !error && (
         <div className="rounded-lg border border-dashed border-neutral-200 bg-white/60 p-4 text-sm text-neutral-600">
           Nessuna notifica al momento.
+        </div>
+      )}
+
+      {!loading && !notifications.length && error && missingKind && (
+        <div className="rounded-lg border border-dashed border-neutral-200 bg-white/60 p-4 text-sm text-neutral-600">
+          Le notifiche non possono essere caricate finché la colonna "kind" non viene aggiunta in Supabase.
         </div>
       )}
 
