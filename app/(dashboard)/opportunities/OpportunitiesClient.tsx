@@ -43,7 +43,7 @@ export default function OpportunitiesClient() {
     const p = new URLSearchParams();
     for (const k of [
       'q', 'page', 'pageSize', 'sort',
-      'country', 'region', 'province', 'city',
+      'country', 'region', 'province', 'city', 'club',
       'sport', 'role', 'age',
       'owner', 'owner_id', 'created_by',
     ]) {
@@ -206,114 +206,166 @@ export default function OpportunitiesClient() {
   return (
     <div className="p-4 md:p-6 space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Opportunità</h1>
+        <h1 className="heading-h1">Opportunità</h1>
         {/* CTA spostata in topbar (link /opportunities?new=1) */}
       </div>
 
       {/* Barra filtri */}
-      <div className="flex flex-wrap items-center gap-3">
-        <input
-          placeholder="Cerca per titolo/descrizione…"
-          defaultValue={sp.get('q') ?? ''}
-          onChange={(e) => setParam('q', e.currentTarget.value)}
-          className="w-full md:w-80 rounded-xl border px-4 py-2"
-        />
+      <div className="space-y-3 rounded-2xl border p-4 bg-white/70 shadow-sm">
+        <div className="flex flex-wrap items-center gap-3">
+          <input
+            placeholder="Cerca per titolo/descrizione…"
+            defaultValue={sp.get('q') ?? ''}
+            onChange={(e) => setParam('q', e.currentTarget.value)}
+            className="w-full md:w-80 rounded-xl border px-4 py-2"
+          />
 
-        <select value={sp.get('country') ?? ''} onChange={(e) => setParam('country', e.target.value)} className="rounded-xl border px-3 py-2">
-          <option value="">Paese</option>
-          {COUNTRIES.map((c) => (
-            <option key={c.code} value={c.label}>
-              {c.label}
-            </option>
-          ))}
-        </select>
+          <input
+            placeholder="Nome club/squadra"
+            defaultValue={sp.get('club') ?? ''}
+            onBlur={(e) => setParam('club', e.currentTarget.value)}
+            className="w-full md:w-64 rounded-xl border px-3 py-2"
+          />
 
-        {/* Regione/Provincia/Città per Italia */}
-        {selectedCountry === 'Italia' && (
-          <>
-            <select
-              value={selectedRegion}
-              onChange={(e) => { setParam('region', e.target.value); setParam('province', ''); setParam('city', ''); }}
-              className="rounded-xl border px-3 py-2"
-            >
-              <option value="">Regione</option>
-              {italyLocations.regions.map((r: string) => (
-                <option key={r} value={r}>{r}</option>
-              ))}
+          <input
+            placeholder="Ruolo/posizione"
+            defaultValue={sp.get('role') ?? ''}
+            onBlur={(e) => setParam('role', e.currentTarget.value)}
+            className="w-full md:w-56 rounded-xl border px-3 py-2"
+          />
+
+          <select value={sp.get('country') ?? ''} onChange={(e) => setParam('country', e.target.value)} className="rounded-xl border px-3 py-2">
+            <option value="">Paese</option>
+            {COUNTRIES.map((c) => (
+              <option key={c.code} value={c.label}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+
+          {/* Regione/Provincia/Città per Italia */}
+          {selectedCountry === 'Italia' && (
+            <>
+              <select
+                value={selectedRegion}
+                onChange={(e) => { setParam('region', e.target.value); setParam('province', ''); setParam('city', ''); }}
+                className="rounded-xl border px-3 py-2"
+              >
+                <option value="">Regione</option>
+                {italyLocations.regions.map((r: string) => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
+
+              {availableProvinces.length > 0 ? (
+                <select
+                  value={selectedProvince}
+                  onChange={(e) => { setParam('province', e.target.value); setParam('city', ''); }}
+                  className="rounded-xl border px-3 py-2"
+                >
+                  <option value="">Provincia</option>
+                  {availableProvinces.map((p: string) => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  placeholder="Provincia"
+                  defaultValue={selectedProvince}
+                  onBlur={(e) => setParam('province', e.currentTarget.value)}
+                  className="rounded-xl border px-3 py-2"
+                />
+              )}
+
+              {availableCities.length > 0 ? (
+                <select
+                  value={sp.get('city') ?? ''}
+                  onChange={(e) => setParam('city', e.target.value)}
+                  className="rounded-xl border px-3 py-2"
+                >
+                  <option value="">Città</option>
+                  {availableCities.map((c: string) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  placeholder="Città"
+                  defaultValue={sp.get('city') ?? ''}
+                  onBlur={(e) => setParam('city', e.currentTarget.value)}
+                  className="rounded-xl border px-3 py-2"
+                />
+              )}
+            </>
+          )}
+
+          <select value={sp.get('sport') ?? ''} onChange={(e) => setParam('sport', e.target.value)} className="rounded-xl border px-3 py-2">
+            <option value="">Sport</option>
+            {SPORTS.map((s: string) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+
+          <select value={sp.get('age') ?? ''} onChange={(e) => setParam('age', e.target.value)} className="rounded-xl border px-3 py-2">
+            <option value="">Età</option>
+            {AGE_BRACKETS.map((b: string) => (
+              <option key={b} value={b}>
+                {b}
+              </option>
+            ))}
+          </select>
+
+          <div className="ml-auto flex items-center gap-2">
+            <label className="text-sm text-gray-600">Ordina</label>
+            <select value={sp.get('sort') ?? 'recent'} onChange={(e) => setParam('sort', e.target.value)} className="rounded-xl border px-3 py-2">
+              <option value="recent">Più recenti</option>
+              <option value="oldest">Meno recenti</option>
             </select>
+            <button
+              type="button"
+              onClick={() => setParam('sort', (sp.get('sort') ?? 'recent') === 'recent' ? 'oldest' : 'recent')}
+              className="rounded-xl border px-3 py-2 text-sm hover:bg-gray-50"
+            >
+              Inverti ordine
+            </button>
+            <label className="text-sm text-gray-600">Per pagina</label>
+            <select value={sp.get('pageSize') ?? '20'} onChange={(e) => setParam('pageSize', e.target.value)} className="rounded-xl border px-3 py-2">
+              <option value="10">10</option>
+              <option value="20">20</option>
+              <option value="50">50</option>
+            </select>
+          </div>
+        </div>
 
-            {availableProvinces.length > 0 ? (
-              <select
-                value={selectedProvince}
-                onChange={(e) => { setParam('province', e.target.value); setParam('city', ''); }}
-                className="rounded-xl border px-3 py-2"
-              >
-                <option value="">Provincia</option>
-                {availableProvinces.map((p: string) => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
-              </select>
-            ) : (
-              <input
-                placeholder="Provincia"
-                defaultValue={selectedProvince}
-                onBlur={(e) => setParam('province', e.currentTarget.value)}
-                className="rounded-xl border px-3 py-2"
-              />
-            )}
-
-            {availableCities.length > 0 ? (
-              <select
-                value={sp.get('city') ?? ''}
-                onChange={(e) => setParam('city', e.target.value)}
-                className="rounded-xl border px-3 py-2"
-              >
-                <option value="">Città</option>
-                {availableCities.map((c: string) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-            ) : (
-              <input
-                placeholder="Città"
-                defaultValue={sp.get('city') ?? ''}
-                onBlur={(e) => setParam('city', e.currentTarget.value)}
-                className="rounded-xl border px-3 py-2"
-              />
-            )}
-          </>
-        )}
-
-        <select value={sp.get('sport') ?? ''} onChange={(e) => setParam('sport', e.target.value)} className="rounded-xl border px-3 py-2">
-          <option value="">Sport</option>
-          {SPORTS.map((s: string) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
-
-        <select value={sp.get('age') ?? ''} onChange={(e) => setParam('age', e.target.value)} className="rounded-xl border px-3 py-2">
-          <option value="">Età</option>
-          {AGE_BRACKETS.map((b: string) => (
-            <option key={b} value={b}>
-              {b}
-            </option>
-          ))}
-        </select>
-
-        <label className="text-sm text-gray-600 ml-auto">Ordina</label>
-        <select value={sp.get('sort') ?? 'recent'} onChange={(e) => setParam('sort', e.target.value)} className="rounded-xl border px-3 py-2">
-          <option value="recent">Più recenti</option>
-          <option value="oldest">Meno recenti</option>
-        </select>
-
-        <label className="text-sm text-gray-600">Per pagina</label>
-        <select value={sp.get('pageSize') ?? '20'} onChange={(e) => setParam('pageSize', e.target.value)} className="rounded-xl border px-3 py-2">
-          <option value="10">10</option>
-          <option value="20">20</option>
-          <option value="50">50</option>
-        </select>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm text-gray-700">
+          <div className="rounded-xl border bg-gray-50 p-3">
+            <p className="text-xs text-gray-500">Totale risultati</p>
+            <p className="text-2xl font-semibold">{items.length}</p>
+            <p className="text-xs text-gray-500">{data?.total ? `${data.total} in database` : 'Vista corrente'}</p>
+          </div>
+          <div className="rounded-xl border bg-gray-50 p-3">
+            <p className="text-xs text-gray-500">Club unici</p>
+            <p className="text-2xl font-semibold">{new Set(items.map((o) => o.created_by || o.owner_id || o.club_name)).size}</p>
+            <p className="text-xs text-gray-500">in questa vista</p>
+          </div>
+          <div className="rounded-xl border bg-gray-50 p-3">
+            <p className="text-xs text-gray-500">Area prevalente</p>
+            <p className="text-sm font-medium">
+              {(() => {
+                const byRegion = items.reduce((acc, curr) => {
+                  const key = curr.region || curr.country || 'N/D';
+                  acc[key] = (acc[key] || 0) + 1;
+                  return acc;
+                }, {} as Record<string, number>);
+                const top = Object.entries(byRegion).sort((a, b) => b[1] - a[1])[0];
+                return top ? `${top[0]} (${top[1]})` : 'Nessuna area';
+              })()}
+            </p>
+            <p className="text-xs text-gray-500">ordinata per occorrenze</p>
+          </div>
+        </div>
       </div>
 
       {loading && <div className="h-64 w-full rounded-2xl bg-gray-200 animate-pulse" />}

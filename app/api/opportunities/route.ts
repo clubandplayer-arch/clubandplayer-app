@@ -68,6 +68,7 @@ export async function GET(req: NextRequest) {
   const region = (url.searchParams.get('region') || '').trim();
   const province = (url.searchParams.get('province') || '').trim();
   const city = (url.searchParams.get('city') || '').trim();
+  const club = (url.searchParams.get('club') || '').trim();
   const sport = (url.searchParams.get('sport') || '').trim();
   const role = (url.searchParams.get('role') || '').trim();
   const ageB = (url.searchParams.get('age') || '').trim();
@@ -92,6 +93,7 @@ export async function GET(req: NextRequest) {
   if (region && region !== '[object Object]') query = query.eq('region', region);
   if (province && province !== '[object Object]') query = query.eq('province', province);
   if (city && city !== '[object Object]') query = query.eq('city', city);
+  if (club) query = query.ilike('club_name', `%${club}%`);
   if (sport) query = query.eq('sport', sport);
   if (role) query = query.eq('role', role);
   if (ageB) {

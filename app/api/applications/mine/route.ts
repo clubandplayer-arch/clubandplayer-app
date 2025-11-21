@@ -7,7 +7,11 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   const url = new URL(req.url);
   const oppId = (url.searchParams.get('opportunityId') || '').trim();
 
-  let q = supabase.from('applications').select('id, opportunity_id, status').eq('athlete_id', user.id);
+  let q = supabase
+    .from('applications')
+    .select('id, opportunity_id, status, created_at, note')
+    .eq('athlete_id', user.id)
+    .order('created_at', { ascending: false });
   if (oppId) q = q.eq('opportunity_id', oppId);
 
   const { data, error } = await q;
