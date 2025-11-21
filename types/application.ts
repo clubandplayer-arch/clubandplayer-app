@@ -4,6 +4,7 @@ export type Application = {
   id: string;
   opportunity_id: string;
   athlete_id: string;            // <-- rinominato
+  club_id?: string | null;
   note?: string | null;
   status: ApplicationStatus;
   created_at: string;

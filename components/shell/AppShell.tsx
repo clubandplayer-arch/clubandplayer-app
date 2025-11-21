@@ -171,7 +171,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-40 border-b bg-white/80 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4">
-          <Link href="/feed" className="text-lg font-semibold tracking-tight text-[var(--brand)]">
+          <Link
+            href="/feed"
+            className="heading-h2 !mt-0 !mb-0 !text-xl md:!text-2xl lg:!text-3xl font-semibold tracking-tight text-[var(--brand)]"
+          >
             Club&Player
           </Link>
 

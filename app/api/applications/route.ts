@@ -5,6 +5,9 @@ import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
 
+const missingClubColumn = (msg?: string | null) =>
+  !!msg && /club_id/i.test(msg) && (/does not exist/i.test(msg) || /schema cache/i.test(msg));
+
 /** POST /api/applications  Body: { opportunity_id: string, note?: string } */
 export const POST = withAuth(async (req: NextRequest, { supabase, user }: any) => {
   await rateLimit(req as any, { key: 'apps:POST', limit: 30, window: '1m' } as any);
@@ -61,7 +64,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }: any) =
 
   ({ data, error } = await runInsert(supabase, insertPayload));
 
-  if (error && /column .*club_id.* does not exist/i.test(error.message || '')) {
+  if (error && missingClubColumn(error.message)) {
     const { club_id: _clubId, ...fallbackPayload } = insertPayload;
     ({ data, error } = await runInsert(supabase, fallbackPayload));
   }

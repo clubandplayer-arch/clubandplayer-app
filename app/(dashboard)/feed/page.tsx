@@ -184,12 +184,9 @@ export default function FeedPage() {
         {/* Colonna centrale: composer + feed */}
         <main className="space-y-4" aria-labelledby={headingId}>
           <TrackRetention scope="feed" />
-          <div>
-            <h1
-              id={headingId}
-              className="heading-h1 w-full text-[var(--brand)] uppercase tracking-wide text-4xl md:text-5xl lg:text-6xl"
-            >
-              SPORTLIFE
+          <div className="space-y-1">
+            <h1 id={headingId} className="sr-only">
+              Bacheca feed
             </h1>
             <p className="text-sm text-gray-600">
               Condividi aggiornamenti con club e atleti. Tutti i campi sono accessibili anche da tastiera.
