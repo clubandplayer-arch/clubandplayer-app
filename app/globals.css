@@ -124,9 +124,25 @@ html, body {
 /* ------------------------------------ */
 /* Tipografia rapida                    */
 /* ------------------------------------ */
-h1 { @apply text-2xl md:text-3xl font-semibold tracking-tight mt-2 mb-3; }
-h2 { @apply text-xl md:text-2xl font-semibold tracking-tight mt-2 mb-3; }
+h1 {
+  font-family: var(--font-righteous), 'Righteous', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  @apply text-left text-3xl md:text-4xl font-normal tracking-tight mt-2 mb-3;
+}
+h2 {
+  font-family: var(--font-righteous), 'Righteous', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  @apply text-left text-2xl md:text-3xl font-normal tracking-tight mt-2 mb-3;
+}
 h3 { @apply text-lg md:text-xl font-semibold tracking-tight mt-2 mb-2; }
+
+.heading-h1 {
+  font-family: var(--font-righteous), 'Righteous', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  @apply text-left text-3xl md:text-4xl font-normal tracking-tight mt-2 mb-3;
+}
+
+.heading-h2 {
+  font-family: var(--font-righteous), 'Righteous', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  @apply text-left text-2xl md:text-3xl font-normal tracking-tight mt-2 mb-3;
+}
 
 .muted { color: var(--muted); }
 .lead  { @apply text-neutral-600 dark:text-neutral-300; }
