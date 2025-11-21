@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import ProfileMiniCard from '@/components/profiles/ProfileMiniCard';
 import WhoToFollow from '@/components/feed/WhoToFollow';
+import { useExclusiveVideoPlayback } from '@/hooks/useExclusiveVideoPlayback';
 
 type ApiPost = {
   id: string | number;
@@ -188,18 +189,18 @@ export default function FeedClient() {
                   key={post.id}
                   className="rounded-xl border border-neutral-100 bg-neutral-50 px-3 py-2 text-xs text-neutral-800"
                 >
-                  <div className="whitespace-pre-line">
-                    {post.content}
+                <div className="whitespace-pre-line">
+                  {post.content}
+                </div>
+                {post.mediaUrl ? (
+                  <div className="mt-2 overflow-hidden rounded-lg border bg-white">
+                    {post.mediaType === 'video' ? (
+                      <InlineVideoPlayer id={String(post.id)} url={post.mediaUrl} />
+                    ) : (
+                      <img src={post.mediaUrl} alt="Allegato" className="max-h-96 w-full object-cover" />
+                    )}
                   </div>
-                  {post.mediaUrl ? (
-                    <div className="mt-2 overflow-hidden rounded-lg border bg-white">
-                      {post.mediaType === 'video' ? (
-                        <video src={post.mediaUrl} controls className="max-h-96 w-full" />
-                      ) : (
-                        <img src={post.mediaUrl} alt="Allegato" className="max-h-96 w-full object-cover" />
-                      )}
-                    </div>
-                  ) : null}
+                ) : null}
                   <div className="mt-1 text-[9px] text-neutral-400">
                     {new Date(
                       post.createdAt
@@ -259,5 +260,21 @@ export default function FeedClient() {
         <WhoToFollow />
       </aside>
     </div>
+  );
+}
+
+function InlineVideoPlayer({ id, url }: { id: string; url?: string | null }) {
+  const { videoRef, handleEnded, handlePause, handlePlay } = useExclusiveVideoPlayback(id);
+
+  return (
+    <video
+      ref={videoRef}
+      src={url ?? undefined}
+      controls
+      className="max-h-96 w-full"
+      onPlay={handlePlay}
+      onPause={handlePause}
+      onEnded={handleEnded}
+    />
   );
 }

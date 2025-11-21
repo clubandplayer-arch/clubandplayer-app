@@ -7,6 +7,7 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import FeedComposer from '@/components/feed/FeedComposer';
 import TrackRetention from '@/components/analytics/TrackRetention';
+import { useExclusiveVideoPlayback } from '@/hooks/useExclusiveVideoPlayback';
 
 // carico le sidebar in modo "sicuro" (se il componente esiste lo usa, altrimenti mostra un box vuoto)
 // N.B. ssr: false evita problemi coi Server Components in prod
@@ -440,6 +441,22 @@ function FeedLinkCard({
   );
 }
 
+function FeedVideoPlayer({ id, url }: { id: string; url?: string | null }) {
+  const { videoRef, handleEnded, handlePause, handlePlay } = useExclusiveVideoPlayback(id);
+
+  return (
+    <video
+      ref={videoRef}
+      src={url ?? undefined}
+      controls
+      className="h-full w-full object-contain"
+      onPlay={handlePlay}
+      onPause={handlePause}
+      onEnded={handleEnded}
+    />
+  );
+}
+
 function PostItem({
   post,
   currentUserId,
@@ -574,7 +591,7 @@ function PostItem({
           }`}
         >
           {post.media_type === 'video' ? (
-            <video src={post.media_url} controls className="h-full w-full object-contain" />
+            <FeedVideoPlayer id={post.id} url={post.media_url} />
           ) : (
             <img src={post.media_url} alt="Allegato" className="max-h-96 w-full object-cover" />
           )}
