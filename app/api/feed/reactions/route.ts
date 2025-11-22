@@ -56,6 +56,11 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ ok: true, counts, mine });
   } catch (err: any) {
+    console.error('[feed/reactions][GET] failed', {
+      ids,
+      message: err?.message,
+      details: err,
+    });
     if (isMissingTable(err)) {
       return NextResponse.json({ ok: true, counts: [], mine: [], missingTable: true });
     }
@@ -90,6 +95,12 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    console.info('[feed/reactions][POST] incoming', {
+      userId: userRes.user.id,
+      postId,
+      reaction: validReaction,
+    });
+
     const { data: existing, error } = await supabase
       .from('post_reactions')
       .select('id, reaction')
@@ -140,6 +151,13 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true, postId, counts, mine });
   } catch (err: any) {
+    console.error('[feed/reactions][POST] failed', {
+      userId: userRes?.user?.id,
+      postId,
+      reaction: validReaction,
+      message: err?.message,
+      details: err,
+    });
     if (isMissingTable(err)) {
       return jsonError('missing_table_post_reactions', 400);
     }

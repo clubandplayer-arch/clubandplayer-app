@@ -36,10 +36,10 @@ END$$;
 CREATE INDEX IF NOT EXISTS follows_user_target_idx
   ON public.follows (follower_id, target_id);
 
--- 3) Tabella post_reactions per le emoji stile Facebook
 CREATE TABLE IF NOT EXISTS public.post_reactions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  post_id uuid NOT NULL REFERENCES public.feed_posts(id) ON DELETE CASCADE,
+  -- usa la tabella "posts" del feed esistente
+  post_id uuid NOT NULL REFERENCES public.posts(id) ON DELETE CASCADE,
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   reaction text NOT NULL CHECK (reaction IN ('like','love','care','angry')),
   created_at timestamptz DEFAULT now(),
