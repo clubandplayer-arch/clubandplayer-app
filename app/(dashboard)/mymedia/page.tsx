@@ -2,8 +2,9 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import Link from 'next/link';
+import { useExclusiveVideoPlayback } from '@/hooks/useExclusiveVideoPlayback';
 
 const DEFAULT_LIMIT = 100;
 
@@ -85,19 +86,48 @@ export default function MyMediaPage() {
   const videos = useMemo(() => items.filter((i) => i.media_type === 'video' && i.media_url), [items]);
   const photos = useMemo(() => items.filter((i) => i.media_type === 'image' && i.media_url), [items]);
 
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  const closeLightbox = useCallback(() => setLightboxIndex(null), []);
+
+  const showPrev = useCallback(() => {
+    setLightboxIndex((idx) => {
+      if (idx === null) return idx;
+      if (photos.length === 0) return idx;
+      return idx === 0 ? photos.length - 1 : idx - 1;
+    });
+  }, [photos.length]);
+
+  const showNext = useCallback(() => {
+    setLightboxIndex((idx) => {
+      if (idx === null) return idx;
+      if (photos.length === 0) return idx;
+      return idx === photos.length - 1 ? 0 : idx + 1;
+    });
+  }, [photos.length]);
+
+  useEffect(() => {
+    if (lightboxIndex === null) return undefined;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        closeLightbox();
+      } else if (e.key === 'ArrowLeft') {
+        showPrev();
+      } else if (e.key === 'ArrowRight') {
+        showNext();
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [closeLightbox, lightboxIndex, showNext, showPrev]);
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 space-y-4">
-      <header className="glass-panel p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold">I tuoi media</h1>
-            <p className="text-sm text-gray-600">Rivedi tutti i video e le foto che hai pubblicato nel feed.</p>
-          </div>
-          <Link href="/feed" className="text-sm font-semibold text-blue-700">
-            Torna al feed →
-          </Link>
-        </div>
-      </header>
+      <div className="flex justify-end">
+        <Link href="/feed" className="text-sm font-semibold text-blue-700">
+          Torna al feed →
+        </Link>
+      </div>
 
       {loading && <div className="glass-panel p-4">Caricamento…</div>}
       {err && <div className="glass-panel p-4 text-red-600">{err}</div>}
@@ -105,14 +135,39 @@ export default function MyMediaPage() {
       {!loading && !err && (
         <div className="space-y-4">
           <MediaSection id="my-videos" title="MyVideo" items={videos} />
-          <MediaSection id="my-photos" title="MyPhoto" items={photos} />
+          <MediaSection
+            id="my-photos"
+            title="MyPhoto"
+            items={photos}
+            onImageClick={(index) => setLightboxIndex(index)}
+          />
         </div>
       )}
+
+      {lightboxIndex !== null && photos[lightboxIndex] ? (
+        <Lightbox
+          items={photos}
+          index={lightboxIndex}
+          onClose={closeLightbox}
+          onPrev={showPrev}
+          onNext={showNext}
+        />
+      ) : null}
     </div>
   );
 }
 
-function MediaSection({ id, title, items }: { id: string; title: string; items: MediaPost[] }) {
+function MediaSection({
+  id,
+  title,
+  items,
+  onImageClick,
+}: {
+  id: string;
+  title: string;
+  items: MediaPost[];
+  onImageClick?: (index: number, item: MediaPost) => void;
+}) {
   return (
     <section id={id} className="glass-panel p-4 space-y-3">
       <div className="flex items-center justify-between">
@@ -123,12 +178,22 @@ function MediaSection({ id, title, items }: { id: string; title: string; items: 
         <div className="text-sm text-gray-600">Nessun contenuto ancora.</div>
       ) : (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          {items.map((item) => (
+          {items.map((item, index) => (
             <article id={`media-${item.id}`} key={item.id} className="rounded-xl bg-white/60 shadow-inner">
               {item.media_type === 'video' ? (
-                <VideoPlayer url={item.media_url} aspect={item.media_aspect} />
+                <VideoPlayer url={item.media_url} aspect={item.media_aspect} id={item.id} />
               ) : (
-                <img src={item.media_url ?? ''} alt="Anteprima" className="w-full rounded-t-xl object-cover" />
+                <button
+                  type="button"
+                  className="group relative block w-full overflow-hidden rounded-t-xl focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  onClick={() => onImageClick?.(index, item)}
+                >
+                  <img
+                    src={item.media_url ?? ''}
+                    alt="Anteprima"
+                    className="w-full object-cover transition duration-150 group-hover:scale-[1.02]"
+                  />
+                </button>
               )}
               {item.content ? (
                 <p className="px-3 pb-3 pt-2 text-sm text-gray-700 whitespace-pre-wrap">{item.content}</p>
@@ -151,11 +216,96 @@ function MediaSection({ id, title, items }: { id: string; title: string; items: 
   );
 }
 
-function VideoPlayer({ url, aspect }: { url?: string | null; aspect?: '16:9' | '9:16' | null }) {
+function VideoPlayer({
+  url,
+  aspect,
+  id,
+}: {
+  url?: string | null;
+  aspect?: '16:9' | '9:16' | null;
+  id: string;
+}) {
   const aspectClass = aspect === '9:16' ? 'aspect-[9/16]' : 'aspect-[16/9]';
+  const { videoRef, handleEnded, handlePause, handlePlay } = useExclusiveVideoPlayback(id);
   return (
     <div className={`${aspectClass} w-full overflow-hidden rounded-t-xl bg-black/80 max-h-[60vh]`}>
-      <video src={url ?? undefined} controls className="h-full w-full object-contain" />
+      <video
+        ref={videoRef}
+        src={url ?? undefined}
+        controls
+        className="h-full w-full object-contain"
+        onPlay={handlePlay}
+        onPause={handlePause}
+        onEnded={handleEnded}
+      />
+    </div>
+  );
+}
+
+function Lightbox({
+  items,
+  index,
+  onClose,
+  onPrev,
+  onNext,
+}: {
+  items: MediaPost[];
+  index: number;
+  onClose: () => void;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  const item = items[index];
+  if (!item) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur"
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+    >
+      <div
+        className="relative max-h-full max-w-5xl w-full rounded-2xl bg-white/10 p-4 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-3 flex items-center justify-between text-white">
+          <span className="text-sm font-semibold">
+            {index + 1}/{items.length}
+          </span>
+          <button
+            type="button"
+            aria-label="Chiudi"
+            onClick={onClose}
+            className="rounded-full bg-white/20 px-3 py-1 text-sm font-semibold transition hover:bg-white/40"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="relative flex items-center justify-center">
+          <button
+            type="button"
+            onClick={onPrev}
+            className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-white/30 px-3 py-2 text-lg font-bold text-gray-900 shadow hover:bg-white"
+            aria-label="Foto precedente"
+          >
+            ‹
+          </button>
+          <img
+            src={item.media_url ?? ''}
+            alt="Foto"
+            className="max-h-[70vh] max-w-full rounded-xl object-contain shadow-lg"
+          />
+          <button
+            type="button"
+            onClick={onNext}
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white/30 px-3 py-2 text-lg font-bold text-gray-900 shadow hover:bg-white"
+            aria-label="Foto successiva"
+          >
+            ›
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

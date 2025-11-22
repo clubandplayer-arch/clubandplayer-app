@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
+import { resolveCountryName, resolveStateName } from '@/lib/geodata/countryStateCityDataset';
+
 type P = {
   account_type?: 'club' | 'athlete' | null;
 
@@ -43,6 +45,10 @@ type P = {
   interest_region_id?: number | null;
   interest_province_id?: number | null;
   interest_municipality_id?: number | null;
+  interest_country?: string | null;
+  interest_region?: string | null;
+  interest_province?: string | null;
+  interest_city?: string | null;
 
   avatar_url?: string | null;
   links?: {
@@ -59,6 +65,12 @@ const supabase = createSupabaseClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
+
+type InterestGeo = {
+  city: string;
+  region: string;
+  country: string;
+};
 
 /* ---------- helpers bandiera/nome paese ---------- */
 function getRegionCodes(): string[] {
@@ -109,8 +121,7 @@ function countryLabel(value?: string | null): { iso: string | null; label: strin
 
 export default function ProfileMiniCard() {
   const [p, setP] = useState<P | null>(null);
-  const [residenza, setResidenza] = useState<string>('—');
-  const [nascita, setNascita] = useState<string>('—');
+  const [interest, setInterest] = useState<InterestGeo>({ city: '—', region: '', country: '' });
 
   useEffect(() => {
     (async () => {
@@ -120,73 +131,38 @@ export default function ProfileMiniCard() {
         const j = (raw && typeof raw === 'object' && 'data' in raw ? (raw as any).data : raw) || {};
         setP(j || {});
 
-        // Geo
-        if (j?.account_type === 'club') {
-          if (j?.interest_municipality_id || j?.interest_province_id || j?.interest_region_id) {
-            const [mun, prov, reg] = await Promise.all([
-              j?.interest_municipality_id
-                ? supabase.from('municipalities').select('id,name').eq('id', j.interest_municipality_id).maybeSingle()
-                : Promise.resolve({ data: null }),
-              j?.interest_province_id
-                ? supabase.from('provinces').select('id,name').eq('id', j.interest_province_id).maybeSingle()
-                : Promise.resolve({ data: null }),
-              j?.interest_region_id
-                ? supabase.from('regions').select('id,name').eq('id', j.interest_region_id).maybeSingle()
-                : Promise.resolve({ data: null }),
-            ]);
-            const m = (mun as any)?.data as Row | null;
-            const pr = (prov as any)?.data as Row | null;
-            const re = (reg as any)?.data as Row | null;
-            setResidenza([m?.name, pr?.name, re?.name].filter(Boolean).join(', ') || '—');
-          } else {
-            setResidenza((j?.city ?? '').trim() || '—');
-          }
-        } else {
-          // RESIDENZA (id IT -> etichette, altrimenti city testo libero)
-          if (j?.residence_municipality_id || j?.residence_province_id || j?.residence_region_id) {
-            const [mun, prov, reg] = await Promise.all([
-              j?.residence_municipality_id
-                ? supabase.from('municipalities').select('id,name').eq('id', j.residence_municipality_id).maybeSingle()
-                : Promise.resolve({ data: null }),
-              j?.residence_province_id
-                ? supabase.from('provinces').select('id,name').eq('id', j.residence_province_id).maybeSingle()
-                : Promise.resolve({ data: null }),
-              j?.residence_region_id
-                ? supabase.from('regions').select('id,name').eq('id', j.residence_region_id).maybeSingle()
-                : Promise.resolve({ data: null }),
-            ]);
-            const m = (mun as any)?.data as Row | null;
-            const pr = (prov as any)?.data as Row | null;
-            const re = (reg as any)?.data as Row | null;
-            setResidenza([m?.name, pr?.name, re?.name].filter(Boolean).join(', ') || '—');
-          } else {
-            setResidenza((j?.city ?? '').trim() || '—');
-          }
+        const countryCode = (j?.interest_country || j?.country || '').trim() || null;
+        const countryName = resolveCountryName(countryCode) || countryLabel(countryCode).label || '';
 
-          // NASCITA (IT -> id, estero -> city + paese)
-          const bc = (j?.birth_country || '').toUpperCase();
-          if (bc === 'IT' && (j?.birth_municipality_id || j?.birth_province_id || j?.birth_region_id)) {
-            const [mun, prov, reg] = await Promise.all([
-              j?.birth_municipality_id
-                ? supabase.from('municipalities').select('id,name').eq('id', j.birth_municipality_id).maybeSingle()
-                : Promise.resolve({ data: null }),
-              j?.birth_province_id
-                ? supabase.from('provinces').select('id,name').eq('id', j.birth_province_id).maybeSingle()
-                : Promise.resolve({ data: null }),
-              j?.birth_region_id
-                ? supabase.from('regions').select('id,name').eq('id', j.birth_region_id).maybeSingle()
-                : Promise.resolve({ data: null }),
-            ]);
-            const m = (mun as any)?.data as Row | null;
-            const pr = (prov as any)?.data as Row | null;
-            const re = (reg as any)?.data as Row | null;
-            setNascita([m?.name, pr?.name, re?.name].filter(Boolean).join(', ') || '—');
-          } else {
-            const country = countryLabel(j?.birth_country).label;
-            const city = (j?.birth_place || '').trim();
-            setNascita([city, country].filter(Boolean).join(' · ') || country || '—');
-          }
+        let cityName = (j?.interest_city || '').trim();
+        let regionName = (j?.interest_region || j?.interest_province || '').trim();
+
+        if (j?.interest_municipality_id || j?.interest_province_id || j?.interest_region_id) {
+          const [mun, prov, reg] = await Promise.all([
+            j?.interest_municipality_id
+              ? supabase.from('municipalities').select('id,name').eq('id', j.interest_municipality_id).maybeSingle()
+              : Promise.resolve({ data: null }),
+            j?.interest_province_id
+              ? supabase.from('provinces').select('id,name').eq('id', j.interest_province_id).maybeSingle()
+              : Promise.resolve({ data: null }),
+            j?.interest_region_id
+              ? supabase.from('regions').select('id,name').eq('id', j.interest_region_id).maybeSingle()
+              : Promise.resolve({ data: null }),
+          ]);
+
+          const m = (mun as any)?.data as Row | null;
+          const pr = (prov as any)?.data as Row | null;
+          const re = (reg as any)?.data as Row | null;
+
+          cityName = cityName || m?.name || '';
+          regionName = regionName || pr?.name || re?.name || '';
         }
+
+        setInterest({
+          city: cityName || '—',
+          region: resolveStateName(countryCode, regionName),
+          country: countryName || '—',
+        });
       } catch {
         setP({});
       }
@@ -197,6 +173,7 @@ export default function ProfileMiniCard() {
   const year = new Date().getFullYear();
   const age = !isClub && p?.birth_year ? Math.max(0, year - p.birth_year) : null;
   const name = p?.full_name || p?.display_name || (isClub ? 'Il tuo club' : 'Benvenuto!');
+  const interestMeta = [interest.region, interest.country].filter(Boolean).join(' · ');
 
   // nazionalità con bandiera
   const nat = countryLabel(p?.country);
@@ -238,14 +215,11 @@ export default function ProfileMiniCard() {
           <div className="text-base font-semibold break-words">{name}</div>
 
           {/* righe info */}
-          {isClub ? (
-            <div className="text-xs text-gray-600">Città: {residenza}</div>
-          ) : (
-            <>
-              <div className="text-xs text-gray-600">Luogo di residenza: {residenza}</div>
-              <div className="text-xs text-gray-600">Luogo di nascita: {nascita}</div>
-            </>
-          )}
+          <div className="text-xs text-gray-600">
+            <div className="text-[11px] uppercase tracking-wide text-gray-500">Zona di interesse</div>
+            <div className="text-sm text-gray-800">{interest.city || '—'}</div>
+            <div className="text-[11px] text-gray-500">{interestMeta || '—'}</div>
+          </div>
 
           <div className="text-xs text-gray-600 flex items-center justify-center gap-1">
             <span>Nazionalità:</span>
