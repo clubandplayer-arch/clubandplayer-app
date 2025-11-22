@@ -168,7 +168,8 @@ export default function OpportunitiesClient() {
         const rows = Array.isArray((json as any)?.data) ? (json as any).data : [];
         const normalized = rows.map((row: any) => {
           const ownerId = row?.owner_id ?? row?.created_by ?? null;
-          return { ...row, owner_id: ownerId, created_by: ownerId };
+          const clubName = row?.club_name ?? row?.clubName ?? row?.owner_name ?? null;
+          return { ...row, owner_id: ownerId, created_by: ownerId, club_name: clubName, clubName };
         });
         setData({ ...(json as any), data: normalized } as OpportunitiesApiResponse);
       })
