@@ -1,8 +1,14 @@
 -- Migration da eseguire manualmente su Supabase (aggiusta notifiche/seguiti/reazioni)
+-- Usa questa come unica migrazione ufficiale; quella del 20251007 è da considerarsi storica/obsoleta.
 
 -- 1) Colonna kind per le notifiche
 ALTER TABLE public.notifications
   ADD COLUMN IF NOT EXISTS kind text DEFAULT 'system';
+
+-- Backfill opzionale per le notifiche esistenti prive di kind
+UPDATE public.notifications
+SET kind = COALESCE(kind, 'system')
+WHERE kind IS NULL;
 
 -- Indice utile per filtri per utente+tipo
 CREATE INDEX IF NOT EXISTS notifications_user_kind_idx
@@ -67,9 +73,26 @@ BEFORE UPDATE ON public.post_reactions
 FOR EACH ROW
 EXECUTE FUNCTION public.trigger_set_timestamp();
 
--- RLS consigliate (abilitare manualmente se non attive)
--- enable row level security on public.post_reactions;
--- create policy "Allow authenticated read reactions" on public.post_reactions
---   for select using (auth.uid() IS NOT NULL);
--- create policy "Users manage their reactions" on public.post_reactions
---   for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+-- Abilita RLS e policy per consentire solo ai proprietari di gestire le loro reazioni
+ALTER TABLE public.post_reactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.post_reactions FORCE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'post_reactions' AND policyname = 'post_reactions_select_auth'
+  ) THEN
+    CREATE POLICY post_reactions_select_auth ON public.post_reactions
+      FOR SELECT TO authenticated
+      USING (auth.uid() IS NOT NULL);
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'post_reactions' AND policyname = 'post_reactions_manage_own'
+  ) THEN
+    CREATE POLICY post_reactions_manage_own ON public.post_reactions
+      FOR ALL TO authenticated
+      USING (user_id = auth.uid())
+      WITH CHECK (user_id = auth.uid());
+  END IF;
+END$$;

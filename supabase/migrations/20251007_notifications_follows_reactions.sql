@@ -1,5 +1,5 @@
--- Migration manuale da eseguire su Supabase
--- Allinea le tabelle notifications e follows e introduce le reazioni ai post
+-- Migration manuale STORICA (non usare più).
+-- Tenuta solo a scopo di riferimento: usare invece 20251018_fix_notifications_follows_post_reactions.sql.
 
 -- 1) Colonna kind per le notifiche (usata per distinguere follow/dm/new_post...)
 ALTER TABLE public.notifications

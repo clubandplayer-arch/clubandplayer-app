@@ -15,7 +15,7 @@ export type Page = { page: number; limit: number };
 export type OppResult = { items: Opportunity[]; total: number; hasMore: boolean };
 
 const SELECT_FIELDS =
-  'id,title,description,owner_id,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,status,club_name';
+  'id,title,description,owner_id,created_by,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,status,club_name';
 
 function sanitizeLike(value: string) {
   return value.replace(/[%_]/g, (char) => `\\${char}`);
@@ -118,7 +118,38 @@ export const OpportunitiesRepo = {
       throw error;
     }
 
-    const items = (data ?? []).map((row) => normalizeRow(row as Record<string, any>));
+    const rows = (data ?? []) as Array<Record<string, any>>;
+
+    const ownerIds = Array.from(
+      new Set(
+        rows
+          .map((r) => (r.owner_id as string | null) || (r.created_by as string | null))
+          .filter((id): id is string => Boolean(id)),
+      ),
+    );
+
+    let nameMap: Record<string, string> = {};
+    if (ownerIds.length) {
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, user_id, display_name, full_name')
+        .in('id', ownerIds);
+
+      nameMap = (profiles || []).reduce((acc, row) => {
+        const label = row.display_name || row.full_name || null;
+        if (label) {
+          acc[row.id] = label;
+          if (row.user_id) acc[row.user_id] = label;
+        }
+        return acc;
+      }, {} as Record<string, string>);
+    }
+
+    const items = rows.map((row) => {
+      const ownerId = (row.owner_id as string | null) ?? (row.created_by as string | null) ?? null;
+      const clubName = row.club_name ?? (ownerId ? nameMap[ownerId] : null) ?? null;
+      return normalizeRow({ ...row, owner_id: ownerId, created_by: ownerId, club_name: clubName, clubName });
+    });
     const total = typeof count === 'number' ? count : items.length;
     const hasMore = total > offset + items.length;
 
