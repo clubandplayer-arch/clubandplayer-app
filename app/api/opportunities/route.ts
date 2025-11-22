@@ -106,8 +106,40 @@ export async function GET(req: NextRequest) {
   const { data, count, error } = await query;
   if (error) return jsonError(error.message, 400);
 
+  const rows = (data ?? []) as Array<Record<string, any>>;
+  const ownerIds = Array.from(
+    new Set(
+      rows
+        .map((r) => r.created_by || r.owner_id)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  );
+
+  let clubNameMap: Record<string, string> = {};
+  if (ownerIds.length) {
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, user_id, display_name, full_name')
+      .in('id', ownerIds);
+
+    clubNameMap = (profiles || []).reduce((acc, row) => {
+      const name = row.display_name || row.full_name;
+      if (name) {
+        acc[row.id] = name;
+        if (row.user_id) acc[row.user_id] = name;
+      }
+      return acc;
+    }, {} as Record<string, string>);
+  }
+
+  const enriched = rows.map((row) => {
+    const ownerId = row.created_by ?? row.owner_id ?? null;
+    const clubName = row.club_name ?? (ownerId ? clubNameMap[ownerId] : null) ?? null;
+    return { ...row, owner_id: ownerId, created_by: ownerId, club_name: clubName, clubName };
+  });
+
   return NextResponse.json({
-    data: data ?? [],
+    data: enriched,
     q,
     page,
     pageSize,

@@ -45,7 +45,8 @@ function normalizeRow(row: Record<string, any>): Opportunity {
     age_min: row.age_min ?? null,
     age_max: row.age_max ?? null,
     status: row.status ?? null,
-    club_name: row.club_name ?? null,
+    club_name: row.club_name ?? row.clubName ?? null,
+    clubName: row.clubName ?? row.club_name ?? null,
   } as Opportunity;
 }
 

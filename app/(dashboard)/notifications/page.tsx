@@ -166,7 +166,7 @@ export default function NotificationsPage() {
       {error && (
         <p className="text-sm text-red-600">
           {missingKind
-            ? 'Colonna "kind" mancante su notifications. Esegui lo script SQL indicato nelle note del progetto.'
+            ? 'Colonna "kind" mancante su notifications. Esegui il file supabase/migrations/20251007_notifications_follows_reactions.sql su Supabase.'
             : error}
         </p>
       )}
@@ -183,7 +183,7 @@ export default function NotificationsPage() {
 
       {!loading && !notifications.length && error && missingKind && (
         <div className="rounded-lg border border-dashed border-neutral-200 bg-white/60 p-4 text-sm text-neutral-600">
-          Le notifiche non possono essere caricate finché la colonna "kind" non viene aggiunta in Supabase.
+          Le notifiche non possono essere caricate finché la colonna "kind" non viene aggiunta in Supabase (consulta supabase/migrations/20251007_notifications_follows_reactions.sql).
         </div>
       )}
 

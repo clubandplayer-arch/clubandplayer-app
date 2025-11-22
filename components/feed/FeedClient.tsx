@@ -26,14 +26,21 @@ type Post = {
   mediaType?: 'image' | 'video' | null;
 };
 
-type ReactionType = 'goal' | 'red_card';
+type ReactionType = 'like' | 'love' | 'care' | 'angry';
 
 type ReactionState = {
-  goal: number;
-  red_card: number;
-  mineGoal: boolean;
-  mineRed: boolean;
+  counts: Record<ReactionType, number>;
+  mine: ReactionType | null;
 };
+
+const REACTION_EMOJI: Record<ReactionType, string> = {
+  like: '👍',
+  love: '❤️',
+  care: '🤗',
+  angry: '😡',
+};
+
+const REACTION_ORDER: ReactionType[] = ['like', 'love', 'care', 'angry'];
 
 const MAX_CHARS = 500;
 
@@ -52,11 +59,19 @@ function normalizePosts(items?: ApiPost[] | null): Post[] {
 }
 
 const defaultReactionState: ReactionState = {
-  goal: 0,
-  red_card: 0,
-  mineGoal: false,
-  mineRed: false,
+  counts: {
+    like: 0,
+    love: 0,
+    care: 0,
+    angry: 0,
+  },
+  mine: null,
 };
+
+const createDefaultReaction = (): ReactionState => ({
+  counts: { ...defaultReactionState.counts },
+  mine: null,
+});
 
 function resolvableAuthError(err: any) {
   const msg = String(err?.message || '');
@@ -71,6 +86,7 @@ export default function FeedClient() {
   const [error, setError] = useState<string | null>(null);
   const [reactions, setReactions] = useState<Record<string, ReactionState>>({});
   const [reactionError, setReactionError] = useState<string | null>(null);
+  const [pickerFor, setPickerFor] = useState<string | null>(null);
 
   const loadReactions = useCallback(async (postIds: Array<string | number>) => {
     const ids = Array.from(new Set(postIds.map((id) => String(id)).filter(Boolean)));
@@ -94,18 +110,20 @@ export default function FeedClient() {
       const counts = Array.isArray(json.counts) ? json.counts : [];
       counts.forEach((row: any) => {
         const key = String(row.post_id);
-        if (!map[key]) map[key] = { ...defaultReactionState };
+        if (!map[key]) map[key] = createDefaultReaction();
         const value = Number(row.count) || 0;
-        if (row.reaction_type === 'goal') map[key].goal = value;
-        if (row.reaction_type === 'red_card') map[key].red_card = value;
+        if (REACTION_ORDER.includes(row.reaction as ReactionType)) {
+          map[key].counts[row.reaction as ReactionType] = value;
+        }
       });
 
       const mine = Array.isArray(json.mine) ? json.mine : [];
       mine.forEach((row: any) => {
         const key = String(row.post_id);
-        if (!map[key]) map[key] = { ...defaultReactionState };
-        if (row.reaction_type === 'goal') map[key].mineGoal = true;
-        if (row.reaction_type === 'red_card') map[key].mineRed = true;
+        if (!map[key]) map[key] = createDefaultReaction();
+        if (REACTION_ORDER.includes(row.reaction as ReactionType)) {
+          map[key].mine = row.reaction as ReactionType;
+        }
       });
 
       setReactions(map);
@@ -115,18 +133,26 @@ export default function FeedClient() {
     }
   }, []);
 
+  const computeOptimistic = (prev: ReactionState, next: ReactionType | null): ReactionState => {
+    const counts: ReactionState['counts'] = { ...prev.counts };
+    const current = prev.mine;
+
+    if (current && counts[current] > 0) {
+      counts[current] = counts[current] - 1;
+    }
+
+    if (next) {
+      counts[next] = (counts[next] || 0) + 1;
+    }
+
+    return { counts, mine: next };
+  };
+
   async function toggleReaction(postId: string | number, type: ReactionType) {
     const key = String(postId);
-    const prev = reactions[key] ?? { ...defaultReactionState };
-    const active = type === 'goal' ? prev.mineGoal : prev.mineRed;
-    const next: ReactionState = {
-      ...prev,
-      mineGoal: type === 'goal' ? !active : prev.mineGoal,
-      mineRed: type === 'red_card' ? !active : prev.mineRed,
-      goal: type === 'goal' ? Math.max(0, prev.goal + (active ? -1 : 1)) : prev.goal,
-      red_card:
-        type === 'red_card' ? Math.max(0, prev.red_card + (active ? -1 : 1)) : prev.red_card,
-    };
+    const prev = reactions[key] ?? createDefaultReaction();
+    const nextMine = prev.mine === type ? null : type;
+    const next = computeOptimistic(prev, nextMine);
 
     setReactions((curr) => ({ ...curr, [key]: next }));
     setReactionError(null);
@@ -136,19 +162,32 @@ export default function FeedClient() {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ postId: key, reactionType: type }),
+        body: JSON.stringify({ postId: key, reaction: nextMine }),
       });
 
       const json = await res.json().catch(() => ({}));
       if (!res.ok || !json?.ok) {
         throw new Error(json?.error || `HTTP ${res.status}`);
       }
+
+      const counts: ReactionState['counts'] = { ...defaultReactionState.counts };
+      const resCounts = Array.isArray(json.counts) ? json.counts : [];
+      resCounts.forEach((row: any) => {
+        if (REACTION_ORDER.includes(row.reaction as ReactionType)) {
+          counts[row.reaction as ReactionType] = Number(row.count) || 0;
+        }
+      });
+      const mineReaction = REACTION_ORDER.includes(json.mine as ReactionType)
+        ? (json.mine as ReactionType)
+        : null;
+
+      setReactions((curr) => ({ ...curr, [key]: { counts, mine: mineReaction } }));
     } catch (err: any) {
       setReactions((curr) => ({ ...curr, [key]: prev }));
       if (resolvableAuthError(err)) {
         alert('Accedi per reagire ai post.');
-      } else if (String(err?.message || '').includes('missing_table_feed_post_reactions')) {
-        setReactionError('Aggiungi la tabella feed_post_reactions seguendo docs/supabase-feed-reactions.sql.');
+      } else if (String(err?.message || '').includes('missing_table_post_reactions')) {
+        setReactionError('Aggiungi la tabella post_reactions seguendo docs/supabase-feed-reactions.sql.');
       } else {
         setReactionError('Impossibile registrare la reazione, riprova.');
       }
@@ -222,7 +261,7 @@ export default function FeedClient() {
         newPost ? [newPost, ...prev] : prev
       );
       if (newPost) {
-        setReactions((prev) => ({ ...prev, [String(newPost.id)]: { ...defaultReactionState } }));
+      setReactions((prev) => ({ ...prev, [String(newPost.id)]: createDefaultReaction() }));
       }
       setText('');
     } catch (err) {
@@ -319,21 +358,81 @@ export default function FeedClient() {
                   </div>
 
                   {(() => {
-                    const reaction = reactions[String(post.id)] ?? { ...defaultReactionState };
+                    const reaction = reactions[String(post.id)] ?? createDefaultReaction();
+                    const summaryParts = REACTION_ORDER
+                      .filter((key) => (reaction.counts[key] || 0) > 0)
+                      .map((key) => `${REACTION_EMOJI[key]} ${reaction.counts[key]}`);
+                    const total = REACTION_ORDER.reduce((acc, key) => acc + (reaction.counts[key] || 0), 0);
+                    const summaryText = summaryParts.length
+                      ? summaryParts.join(' · ')
+                      : 'Nessuna reazione';
+
+                    const key = String(post.id);
+
                     return (
-                      <div className="mt-2 flex items-center gap-3 text-[11px]">
-                        <ReactionButton
-                          type="goal"
-                          active={reaction.mineGoal}
-                          count={reaction.goal}
-                          onClick={() => toggleReaction(post.id, 'goal')}
-                        />
-                        <ReactionButton
-                          type="red_card"
-                          active={reaction.mineRed}
-                          count={reaction.red_card}
-                          onClick={() => toggleReaction(post.id, 'red_card')}
-                        />
+                      <div className="mt-3 flex flex-col gap-1 text-[11px] text-neutral-700">
+                        <div
+                          className="relative inline-flex w-full max-w-xs items-center gap-2"
+                          onMouseLeave={() => setPickerFor((curr) => (curr === key ? null : curr))}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => toggleReaction(post.id, 'like')}
+                            onMouseEnter={() => setPickerFor(key)}
+                            className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${
+                              reaction.mine
+                                ? 'border-[var(--brand)] bg-[var(--brand)]/10 text-[var(--brand)]'
+                                : 'border-neutral-200 bg-white text-neutral-800 hover:border-neutral-300'
+                            }`}
+                            aria-pressed={reaction.mine === 'like'}
+                          >
+                            <span aria-hidden>{REACTION_EMOJI[reaction.mine ?? 'like']}</span>
+                            <span>{reaction.mine ? 'Hai reagito' : 'Mi piace'}</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            className="rounded-full border border-neutral-200 bg-white px-2 py-1 text-[11px] text-neutral-600 hover:border-neutral-300"
+                            onClick={() => setPickerFor((curr) => (curr === key ? null : key))}
+                            aria-label="Scegli reazione"
+                          >
+                            ⋯
+                          </button>
+
+                          {pickerFor === key && (
+                            <div className="absolute left-0 top-full z-10 mt-1 flex gap-2 rounded-full border border-neutral-200 bg-white px-2 py-1 shadow-lg">
+                              {REACTION_ORDER.map((r) => (
+                                <button
+                                  key={r}
+                                  type="button"
+                                  onClick={() => {
+                                    toggleReaction(post.id, r);
+                                    setPickerFor(null);
+                                  }}
+                                  className={`flex items-center gap-1 rounded-full px-2 py-1 text-[11px] transition ${
+                                    reaction.mine === r
+                                      ? 'bg-[var(--brand)]/10 text-[var(--brand)]'
+                                      : 'hover:bg-neutral-100'
+                                  }`}
+                                >
+                                  <span aria-hidden>{REACTION_EMOJI[r]}</span>
+                                  <span className="capitalize">{r}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="text-[11px] text-neutral-600">
+                          {reaction.mine ? (
+                            <span className="font-semibold text-[var(--brand)]">
+                              Tu
+                              {total > 1 ? ` e altre ${total - 1} persone` : ''} · {summaryText}
+                            </span>
+                          ) : (
+                            summaryText
+                          )}
+                        </div>
                       </div>
                     );
                   })()}
@@ -413,34 +512,4 @@ function InlineVideoPlayer({ id, url }: { id: string; url?: string | null }) {
   );
 }
 
-function ReactionButton({
-  type,
-  active,
-  count,
-  onClick,
-}: {
-  type: ReactionType;
-  active: boolean;
-  count: number;
-  onClick: () => void;
-}) {
-  const isGoal = type === 'goal';
-  const icon = isGoal ? '⚽' : '🟥';
-  const label = isGoal ? 'Ti piace' : 'Non ti piace';
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={`flex items-center gap-1 rounded-full border px-3 py-1 transition ${
-        active
-          ? 'border-[var(--brand)] bg-[var(--brand)]/10 text-[var(--brand)]'
-          : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300'
-      }`}
-    >
-      <span aria-hidden>{icon}</span>
-      <span className="text-[11px] font-semibold">{count}</span>
-      <span className="sr-only">{label}</span>
-    </button>
-  );
-}
+// Nessun componente aggiuntivo in fondo: la UI per le reazioni è inline per mantenere leggerezza

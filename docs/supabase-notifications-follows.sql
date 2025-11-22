@@ -5,6 +5,10 @@
 ALTER TABLE public.notifications
 ADD COLUMN IF NOT EXISTS kind text;
 
+-- Default consigliato per nuove righe
+ALTER TABLE public.notifications
+ALTER COLUMN kind SET DEFAULT 'system';
+
 -- Indice utile per i filtri per tipo di notifica
 CREATE INDEX IF NOT EXISTS notifications_kind_idx
 ON public.notifications (kind);

@@ -4,11 +4,22 @@ import { jsonError } from '@/lib/api/auth';
 
 export const runtime = 'nodejs';
 
-type ReactionType = 'goal' | 'red_card';
+type ReactionType = 'like' | 'love' | 'care' | 'angry';
 
 function isMissingTable(err?: any) {
   const msg = (err?.message || '').toString();
-  return /feed_post_reactions/.test(msg) && /does not exist/i.test(msg);
+  return /post_reactions/.test(msg) && /does not exist/i.test(msg);
+}
+
+function buildCounts(rows: Array<{ post_id: string; reaction: ReactionType; user_id?: string }>) {
+  const countsMap = new Map<string, { post_id: string; reaction: ReactionType; count: number }>();
+  for (const row of rows) {
+    const key = `${row.post_id}-${row.reaction}`;
+    const current = countsMap.get(key) || { post_id: row.post_id, reaction: row.reaction, count: 0 };
+    current.count += 1;
+    countsMap.set(key, current);
+  }
+  return Array.from(countsMap.values());
 }
 
 export async function GET(req: NextRequest) {
@@ -28,31 +39,20 @@ export async function GET(req: NextRequest) {
     const userId = userRes?.user?.id ?? null;
 
     const { data: rows, error } = await supabase
-      .from('feed_post_reactions')
-      .select('post_id, reaction_type, user_id')
+      .from('post_reactions')
+      .select('post_id, reaction, user_id')
       .in('post_id', ids);
 
     if (error) throw error;
 
-    const countsMap = new Map<string, { post_id: string; reaction_type: ReactionType; count: number }>();
-    const mine: { post_id: string; reaction_type: ReactionType }[] = [];
+    const counts = buildCounts((rows || []) as Array<{ post_id: string; reaction: ReactionType; user_id?: string }>);
+    const mine: { post_id: string; reaction: ReactionType }[] = [];
 
     for (const row of rows || []) {
-      const key = `${row.post_id}-${row.reaction_type}`;
-      const current = countsMap.get(key) || {
-        post_id: row.post_id,
-        reaction_type: row.reaction_type as ReactionType,
-        count: 0,
-      };
-      current.count += 1;
-      countsMap.set(key, current);
-
       if (userId && row.user_id === userId) {
-        mine.push({ post_id: row.post_id, reaction_type: row.reaction_type as ReactionType });
+        mine.push({ post_id: row.post_id as string, reaction: row.reaction as ReactionType });
       }
     }
-
-    const counts = Array.from(countsMap.values());
 
     return NextResponse.json({ ok: true, counts, mine });
   } catch (err: any) {
@@ -65,7 +65,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const supabase = await getSupabaseServerClient();
-  let body: { postId?: string; reactionType?: ReactionType } = {};
+  let body: { postId?: string; reaction?: ReactionType | null } = {};
   try {
     body = await req.json();
   } catch {
@@ -73,9 +73,9 @@ export async function POST(req: NextRequest) {
   }
 
   const postId = (body.postId || '').toString();
-  const reactionType = (body.reactionType || '').toString() as ReactionType;
+  const reaction = (body.reaction ?? '').toString() as ReactionType | '';
 
-  if (!postId || (reactionType !== 'goal' && reactionType !== 'red_card')) {
+  if (!postId) {
     return jsonError('Invalid payload', 400);
   }
 
@@ -84,36 +84,64 @@ export async function POST(req: NextRequest) {
     return jsonError('not_authenticated', 401);
   }
 
+  const validReaction = reaction === '' ? null : reaction;
+  if (validReaction && !['like', 'love', 'care', 'angry'].includes(validReaction)) {
+    return jsonError('invalid_reaction', 400);
+  }
+
   try {
     const { data: existing, error } = await supabase
-      .from('feed_post_reactions')
-      .select('id')
+      .from('post_reactions')
+      .select('id, reaction')
       .eq('post_id', postId)
       .eq('user_id', userRes.user.id)
-      .eq('reaction_type', reactionType)
       .maybeSingle();
 
     if (error) throw error;
 
-    if (existing?.id) {
-      const { error: delErr } = await supabase
-        .from('feed_post_reactions')
-        .delete()
-        .eq('id', existing.id);
-      if (delErr) throw delErr;
-      return NextResponse.json({ ok: true, status: 'removed' });
+    if (!validReaction) {
+      if (existing?.id) {
+        const { error: delErr } = await supabase
+          .from('post_reactions')
+          .delete()
+          .eq('id', existing.id);
+        if (delErr) throw delErr;
+      }
+    } else if (existing?.id) {
+      if (existing.reaction === validReaction) {
+        const { error: delErr } = await supabase
+          .from('post_reactions')
+          .delete()
+          .eq('id', existing.id);
+        if (delErr) throw delErr;
+      } else {
+        const { error: upErr } = await supabase
+          .from('post_reactions')
+          .update({ reaction: validReaction })
+          .eq('id', existing.id);
+        if (upErr) throw upErr;
+      }
+    } else {
+      const { error: insErr } = await supabase
+        .from('post_reactions')
+        .insert({ post_id: postId, user_id: userRes.user.id, reaction: validReaction });
+
+      if (insErr) throw insErr;
     }
 
-    const { error: insErr } = await supabase
-      .from('feed_post_reactions')
-      .insert({ post_id: postId, user_id: userRes.user.id, reaction_type: reactionType });
+    const { data: rows, error: summaryErr } = await supabase
+      .from('post_reactions')
+      .select('post_id, reaction, user_id')
+      .eq('post_id', postId);
+    if (summaryErr) throw summaryErr;
 
-    if (insErr) throw insErr;
+    const counts = buildCounts((rows || []) as Array<{ post_id: string; reaction: ReactionType; user_id?: string }>);
+    const mine = (rows || []).find((r) => r.user_id === userRes.user.id)?.reaction ?? null;
 
-    return NextResponse.json({ ok: true, status: 'added' });
+    return NextResponse.json({ ok: true, postId, counts, mine });
   } catch (err: any) {
     if (isMissingTable(err)) {
-      return jsonError('missing_table_feed_post_reactions', 400);
+      return jsonError('missing_table_post_reactions', 400);
     }
     return jsonError(err?.message || 'Errore', 400);
   }

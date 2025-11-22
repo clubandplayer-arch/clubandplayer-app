@@ -66,6 +66,7 @@ export default function OpportunitiesTable({
             const showApply = userRole === 'athlete' && !canEdit;
             const showFollow = userRole === 'athlete' && !!o.created_by;
             const clubLabel =
+              (o as any).clubName ||
               o.club_name ||
               (o.created_by ? clubNames?.[o.created_by] : undefined) ||
               (o.owner_id ? clubNames?.[o.owner_id] : undefined) ||

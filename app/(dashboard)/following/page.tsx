@@ -157,8 +157,8 @@ export default function FollowingPage() {
 
       {!loading && !follows.length && error && missingTargetId && (
         <div className="rounded-xl border border-dashed border-neutral-200 bg-white/70 p-4 text-sm text-neutral-600">
-          L’elenco dei seguiti richiede la colonna "target_id" sulla tabella follows. Aggiungila con lo script SQL indicato
-          nelle note del progetto.
+          L’elenco dei seguiti richiede la colonna "target_id" sulla tabella follows. Aggiungila eseguendo il file
+          supabase/migrations/20251007_notifications_follows_reactions.sql.
         </div>
       )}
 
