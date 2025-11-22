@@ -40,6 +40,7 @@ export default function FollowingPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [missingTargetId, setMissingTargetId] = useState(false);
+  const [missingTargetType, setMissingTargetType] = useState(false);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const hasLoadedRef = useRef(false);
 
@@ -68,6 +69,8 @@ export default function FollowingPage() {
       if (error) throw error;
       const rows = (data || []) as FollowRow[];
       setFollows(rows);
+      setMissingTargetId(false);
+      setMissingTargetType(false);
 
       const ids = rows.map((r) => r.target_id).filter(Boolean);
       if (ids.length) {
@@ -107,10 +110,12 @@ export default function FollowingPage() {
     } catch (err: any) {
       const message = err?.message?.toString?.() || '';
       const missingColumn = /follows\.target_id/.test(message) && /does not exist/i.test(message);
+      const missingType = /follows\.target_type/.test(message) && /does not exist/i.test(message);
       setMissingTargetId(missingColumn);
+      setMissingTargetType(missingType);
       setError(
-        missingColumn
-          ? 'Colonna "target_id" mancante su follows. Esegui lo script SQL indicato nelle note del progetto.'
+        missingColumn || missingType
+          ? 'Colonne "target_id"/"target_type" mancanti su follows. Esegui il file supabase/migrations/20251018_fix_notifications_follows_post_reactions.sql.'
           : err?.message || 'Errore nel caricare i seguiti',
       );
       setFollows([]);
@@ -155,10 +160,9 @@ export default function FollowingPage() {
         </div>
       )}
 
-      {!loading && !follows.length && error && missingTargetId && (
+      {!loading && !follows.length && error && (missingTargetId || missingTargetType) && (
         <div className="rounded-xl border border-dashed border-neutral-200 bg-white/70 p-4 text-sm text-neutral-600">
-          L’elenco dei seguiti richiede la colonna "target_id" sulla tabella follows. Aggiungila eseguendo il file
-          supabase/migrations/20251018_fix_notifications_follows_post_reactions.sql.
+          L’elenco dei seguiti richiede le colonne "target_id" e "target_type" sulla tabella follows. Aggiungile eseguendo il file supabase/migrations/20251018_fix_notifications_follows_post_reactions.sql.
         </div>
       )}
 

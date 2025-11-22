@@ -5,6 +5,10 @@
 ALTER TABLE public.notifications
   ADD COLUMN IF NOT EXISTS kind text DEFAULT 'system';
 
+-- Colonna payload per allegare informazioni contestuali (JSON)
+ALTER TABLE public.notifications
+  ADD COLUMN IF NOT EXISTS payload jsonb;
+
 -- Backfill opzionale per le notifiche esistenti prive di kind
 UPDATE public.notifications
 SET kind = COALESCE(kind, 'system')
@@ -17,6 +21,10 @@ CREATE INDEX IF NOT EXISTS notifications_user_kind_idx
 -- 2) Colonna target_id per i follows (profilo seguito)
 ALTER TABLE public.follows
   ADD COLUMN IF NOT EXISTS target_id uuid;
+
+-- Colonna target_type per indicare se il target è club o player
+ALTER TABLE public.follows
+  ADD COLUMN IF NOT EXISTS target_type text;
 
 -- Backfill opzionale dai campi legacy se presenti
 DO $$
@@ -37,10 +45,30 @@ BEGIN
     SET target_id = COALESCE(target_id, profile_id, target_id)
     WHERE target_id IS NULL;
   END IF;
+  -- Backfill basilare per target_type se ci sono colonne legacy
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'follows' AND column_name = 'club_id'
+  ) THEN
+    UPDATE public.follows
+    SET target_type = COALESCE(target_type, 'club')
+    WHERE target_type IS NULL AND club_id IS NOT NULL;
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'follows' AND column_name = 'profile_id'
+  ) THEN
+    UPDATE public.follows
+    SET target_type = COALESCE(target_type, 'player')
+    WHERE target_type IS NULL AND profile_id IS NOT NULL;
+  END IF;
 END$$;
 
 CREATE INDEX IF NOT EXISTS follows_user_target_idx
   ON public.follows (follower_id, target_id);
+
+CREATE INDEX IF NOT EXISTS follows_user_target_type_idx
+  ON public.follows (follower_id, target_type);
 
 CREATE TABLE IF NOT EXISTS public.post_reactions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

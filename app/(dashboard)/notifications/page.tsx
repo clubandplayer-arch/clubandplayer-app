@@ -46,6 +46,11 @@ function isMissingKindColumn(err: unknown) {
   return /notifications\.kind/.test(message) && /does not exist/i.test(message);
 }
 
+function isMissingPayloadColumn(err: unknown) {
+  const message = (err as any)?.message?.toString?.() || '';
+  return /notifications\.payload/.test(message) && /does not exist/i.test(message);
+}
+
 export default function NotificationsPage() {
   const supabase = supabaseBrowser();
   const [notifications, setNotifications] = useState<NotificationRow[]>([]);
@@ -53,6 +58,7 @@ export default function NotificationsPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [missingKind, setMissingKind] = useState(false);
+  const [missingPayload, setMissingPayload] = useState(false);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const hasLoadedRef = useRef(false);
 
@@ -82,8 +88,10 @@ export default function NotificationsPage() {
       if (error) throw error;
       setNotifications((data || []) as NotificationRow[]);
       setMissingKind(false);
+      setMissingPayload(false);
     } catch (err: any) {
       setMissingKind(isMissingKindColumn(err));
+      setMissingPayload(isMissingPayloadColumn(err));
       setError(err?.message || 'Errore nel caricare le notifiche');
       setNotifications([]);
     } finally {
@@ -165,8 +173,8 @@ export default function NotificationsPage() {
 
       {error && (
         <p className="text-sm text-red-600">
-          {missingKind
-            ? 'Colonna "kind" mancante su notifications. Esegui il file supabase/migrations/20251018_fix_notifications_follows_post_reactions.sql su Supabase.'
+          {missingKind || missingPayload
+            ? 'Colonne mancanti su notifications (kind/payload). Esegui il file supabase/migrations/20251018_fix_notifications_follows_post_reactions.sql su Supabase.'
             : error}
         </p>
       )}
@@ -181,9 +189,9 @@ export default function NotificationsPage() {
         </div>
       )}
 
-      {!loading && !notifications.length && error && missingKind && (
+      {!loading && !notifications.length && error && (missingKind || missingPayload) && (
         <div className="rounded-lg border border-dashed border-neutral-200 bg-white/60 p-4 text-sm text-neutral-600">
-          Le notifiche non possono essere caricate finché la colonna "kind" non viene aggiunta in Supabase (consulta supabase/migrations/20251018_fix_notifications_follows_post_reactions.sql).
+          Le notifiche non possono essere caricate finché le colonne "kind" e "payload" non vengono aggiunte in Supabase (consulta supabase/migrations/20251018_fix_notifications_follows_post_reactions.sql).
         </div>
       )}
 
