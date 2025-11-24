@@ -13,6 +13,44 @@ import SocialLogin from '@/components/auth/SocialLogin';
 
 type Role = 'athlete' | 'club';
 
+const UsersIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    aria-hidden
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    {...props}
+  >
+    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+    <circle cx="9" cy="7" r="4" />
+    <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+  </svg>
+);
+
+const BuildingIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    aria-hidden
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    {...props}
+  >
+    <path d="M4 22h16" />
+    <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18" />
+    <path d="M10 6h4" />
+    <path d="M10 10h4" />
+    <path d="M10 14h4" />
+    <path d="M10 18h4" />
+  </svg>
+);
+
 // env presenti?
 const HAS_ENV = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -130,18 +168,53 @@ export default function SignupPage() {
               </>
             )}
 
-            {err && (
-              <p className="rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700">
-                {err}
-              </p>
-            )}
-            {ok && (
-              <p className="rounded-md border border-green-300 bg-green-50 p-2 text-sm text-green-700">
-                {ok}
-              </p>
-            )}
-
             <form onSubmit={onSubmit} className="space-y-3">
+              {/* Scelta ruolo */}
+              <fieldset className="mt-1">
+                <legend className="label mb-2">Che tipo di account vuoi creare?</legend>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <label
+                    className={`flex items-center gap-2 rounded-lg border px-3 py-3 cursor-pointer transition hover:bg-gray-50 dark:hover:bg-neutral-800 dark:border-neutral-700 ${role === 'athlete' ? 'border-brand-500 ring-2 ring-brand-200 dark:ring-brand-600/60' : ''}`}
+                  >
+                    <input
+                      type="radio"
+                      name="role"
+                      className="accent-brand-600"
+                      checked={role === 'athlete'}
+                      onChange={() => setRole('athlete')}
+                      aria-label="Crea un account Player"
+                    />
+                    <UsersIcon className="h-5 w-5 text-brand-600" aria-hidden />
+                    <span className="font-medium">Player</span>
+                  </label>
+                  <label
+                    className={`flex items-center gap-2 rounded-lg border px-3 py-3 cursor-pointer transition hover:bg-gray-50 dark:hover:bg-neutral-800 dark:border-neutral-700 ${role === 'club' ? 'border-brand-500 ring-2 ring-brand-200 dark:ring-brand-600/60' : ''}`}
+                  >
+                    <input
+                      type="radio"
+                      name="role"
+                      className="accent-brand-600"
+                      checked={role === 'club'}
+                      onChange={() => setRole('club')}
+                      aria-label="Crea un account Club"
+                    />
+                    <BuildingIcon className="h-5 w-5 text-brand-600" aria-hidden />
+                    <span className="font-medium">Club</span>
+                  </label>
+                </div>
+              </fieldset>
+
+              {err && (
+                <p className="rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700">
+                  {err}
+                </p>
+              )}
+              {ok && (
+                <p className="rounded-md border border-green-300 bg-green-50 p-2 text-sm text-green-700">
+                  {ok}
+                </p>
+              )}
+
               <label className="label">
                 Nome (facoltativo)
                 <input
@@ -191,38 +264,16 @@ export default function SignupPage() {
                 />
               </label>
 
-              {/* Scelta ruolo */}
-              <fieldset className="mt-2">
-                <legend className="label mb-1">Che tipo di account vuoi creare?</legend>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <label className="flex items-center gap-2 rounded-md border px-3 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-neutral-800 dark:border-neutral-700">
-                    <input
-                      type="radio"
-                      name="role"
-                      checked={role === 'athlete'}
-                      onChange={() => setRole('athlete')}
-                    />
-                    Player
-                  </label>
-                  <label className="flex items-center gap-2 rounded-md border px-3 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-neutral-800 dark:border-neutral-700">
-                    <input
-                      type="radio"
-                      name="role"
-                      checked={role === 'club'}
-                      onChange={() => setRole('club')}
-                    />
-                    Club
-                  </label>
-                </div>
-              </fieldset>
-
               <button type="submit" disabled={busy} className="btn btn-brand w-full">
                 {busy ? 'Registrazione…' : 'Registrati'}
               </button>
             </form>
 
-            <p className="text-xs text-gray-500">
-              Hai già un account? <a href="/login" className="link">Accedi</a>
+            <p className="mt-6 text-center text-base font-semibold text-gray-700 dark:text-gray-200">
+              Hai già un account?{' '}
+              <a href="/login" className="link text-primary underline font-semibold">
+                Accedi
+              </a>
             </p>
           </div>
         </section>
