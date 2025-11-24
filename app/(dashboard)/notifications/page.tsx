@@ -51,6 +51,11 @@ function isMissingPayloadColumn(err: unknown) {
   return /notifications\.payload/.test(message) && /does not exist/i.test(message);
 }
 
+function isMissingReadAtColumn(err: unknown) {
+  const message = (err as any)?.message?.toString?.() || '';
+  return /notifications\.read_at/.test(message) && /does not exist/i.test(message);
+}
+
 export default function NotificationsPage() {
   const supabase = supabaseBrowser();
   const [notifications, setNotifications] = useState<NotificationRow[]>([]);
@@ -59,6 +64,7 @@ export default function NotificationsPage() {
   const [error, setError] = useState<string | null>(null);
   const [missingKind, setMissingKind] = useState(false);
   const [missingPayload, setMissingPayload] = useState(false);
+  const [missingReadAt, setMissingReadAt] = useState(false);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const hasLoadedRef = useRef(false);
 
@@ -89,9 +95,11 @@ export default function NotificationsPage() {
       setNotifications((data || []) as NotificationRow[]);
       setMissingKind(false);
       setMissingPayload(false);
+      setMissingReadAt(false);
     } catch (err: any) {
       setMissingKind(isMissingKindColumn(err));
       setMissingPayload(isMissingPayloadColumn(err));
+      setMissingReadAt(isMissingReadAtColumn(err));
       setError(err?.message || 'Errore nel caricare le notifiche');
       setNotifications([]);
     } finally {
@@ -173,8 +181,8 @@ export default function NotificationsPage() {
 
       {error && (
         <p className="text-sm text-red-600">
-          {missingKind || missingPayload
-            ? 'Colonne mancanti su notifications (kind/payload). Esegui il file supabase/migrations/20251018_fix_notifications_follows_post_reactions.sql su Supabase.'
+          {missingKind || missingPayload || missingReadAt
+            ? 'Colonne mancanti su notifications (kind/payload/read_at). Esegui il file supabase/migrations/20251018_fix_notifications_follows_post_reactions.sql su Supabase.'
             : error}
         </p>
       )}
@@ -189,9 +197,9 @@ export default function NotificationsPage() {
         </div>
       )}
 
-      {!loading && !notifications.length && error && (missingKind || missingPayload) && (
+      {!loading && !notifications.length && error && (missingKind || missingPayload || missingReadAt) && (
         <div className="rounded-lg border border-dashed border-neutral-200 bg-white/60 p-4 text-sm text-neutral-600">
-          Le notifiche non possono essere caricate finché le colonne "kind" e "payload" non vengono aggiunte in Supabase (consulta supabase/migrations/20251018_fix_notifications_follows_post_reactions.sql).
+          Le notifiche non possono essere caricate finché le colonne "kind", "payload" e "read_at" non vengono aggiunte in Supabase (consulta supabase/migrations/20251018_fix_notifications_follows_post_reactions.sql).
         </div>
       )}
 

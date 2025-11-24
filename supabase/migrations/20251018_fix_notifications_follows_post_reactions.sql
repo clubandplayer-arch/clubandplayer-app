@@ -9,6 +9,10 @@ ALTER TABLE public.notifications
 ALTER TABLE public.notifications
   ADD COLUMN IF NOT EXISTS payload jsonb;
 
+-- Colonna read_at per gestire lo stato di lettura
+ALTER TABLE public.notifications
+  ADD COLUMN IF NOT EXISTS read_at timestamptz;
+
 -- Backfill opzionale per le notifiche esistenti prive di kind
 UPDATE public.notifications
 SET kind = COALESCE(kind, 'system')
@@ -17,6 +21,9 @@ WHERE kind IS NULL;
 -- Indice utile per filtri per utente+tipo
 CREATE INDEX IF NOT EXISTS notifications_user_kind_idx
   ON public.notifications (user_id, kind);
+
+CREATE INDEX IF NOT EXISTS notifications_read_at_idx
+  ON public.notifications (read_at);
 
 -- 2) Colonna target_id per i follows (profilo seguito)
 ALTER TABLE public.follows
