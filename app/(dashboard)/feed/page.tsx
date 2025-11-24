@@ -509,30 +509,24 @@ function MediaPreviewGrid({
           <Link
             key={item.id}
             href={`${linkHref}#media-${item.id}`}
-            className="group block overflow-hidden rounded-lg bg-white/60 shadow"
+            className="group block h-20 overflow-hidden rounded-lg bg-white/60 shadow sm:h-24"
           >
             {item.media_type === 'video' ? (
-              <div
-                className={`aspect-square w-full bg-black/80 ${
-                  item.media_aspect === '9:16'
-                    ? 'flex items-center justify-center'
-                    : 'flex items-center justify-center'
-                }`}
-              >
+              <div className="relative h-full w-full bg-black/80">
                 <video
                   src={item.media_url ?? undefined}
-                  className="h-full w-full object-cover"
+                  className="absolute inset-0 h-full w-full object-cover"
                   muted
                   playsInline
                   controls={false}
                 />
               </div>
             ) : (
-              <div className="aspect-square w-full overflow-hidden bg-neutral-100">
+              <div className="relative h-full w-full overflow-hidden bg-neutral-100">
                 <img
                   src={item.media_url ?? ''}
                   alt="Anteprima"
-                  className="h-full w-full object-cover"
+                  className="absolute inset-0 h-full w-full object-cover"
                   loading="lazy"
                 />
               </div>
