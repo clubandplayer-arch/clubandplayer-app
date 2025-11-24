@@ -16,6 +16,13 @@ export type Profile = {
   region?: string | null;
   province?: string | null;
   city?: string | null;
+  sport?: string | null;
+  club_foundation_year?: number | null;
+  club_league_category?: string | null;
+  club_stadium?: string | null;
+  club_stadium_address?: string | null;
+  club_stadium_lat?: number | null;
+  club_stadium_lng?: number | null;
   links?: ProfileLinks;
   avatar_url?: string | null;
   created_at: string;
