@@ -8,6 +8,8 @@ import dynamic from 'next/dynamic';
 import FeedComposer from '@/components/feed/FeedComposer';
 import TrackRetention from '@/components/analytics/TrackRetention';
 import { useExclusiveVideoPlayback } from '@/hooks/useExclusiveVideoPlayback';
+import { shareOrCopyLink } from '@/lib/share';
+import ShareIcon from '@/components/icons/ShareIcon';
 
 type ReactionType = 'like' | 'love' | 'care' | 'angry';
 
@@ -619,6 +621,20 @@ function PostItem({
   const editAreaId = `post-edit-${post.id}`;
   const errorId = error ? `post-error-${post.id}` : undefined;
 
+  const shareUrl = useMemo(() => {
+    if (typeof window === 'undefined') return '';
+    const origin = window.location.origin;
+    return `${origin}/feed?post=${post.id}`;
+  }, [post.id]);
+
+  const handleShare = useCallback(() => {
+    void shareOrCopyLink({
+      title: 'Post del feed',
+      text: post.content ?? post.text ?? undefined,
+      url: shareUrl,
+    });
+  }, [post.content, post.text, shareUrl]);
+
   useEffect(() => {
     if (!editing) setText(post.content ?? post.text ?? '');
   }, [post, editing]);
@@ -764,6 +780,16 @@ function PostItem({
             aria-label="Scegli reazione"
           >
             ⋯
+          </button>
+
+          <button
+            type="button"
+            onClick={handleShare}
+            className="flex items-center gap-1 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-neutral-800 transition hover:border-neutral-300 hover:bg-neutral-50"
+            aria-label="Condividi questo post"
+          >
+            <ShareIcon className="h-4 w-4" />
+            <span>Condividi</span>
           </button>
 
           {pickerOpen && (

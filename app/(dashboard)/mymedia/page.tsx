@@ -5,6 +5,8 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useExclusiveVideoPlayback } from '@/hooks/useExclusiveVideoPlayback';
+import { shareOrCopyLink } from '@/lib/share';
+import ShareIcon from '@/components/icons/ShareIcon';
 
 const DEFAULT_LIMIT = 100;
 
@@ -59,6 +61,12 @@ async function fetchMyMedia(signal?: AbortSignal): Promise<MediaPost[]> {
   const j = await res.json().catch(() => ({} as any));
   const arr = Array.isArray(j?.items ?? j?.data) ? (j.items ?? j.data) : [];
   return arr.map(normalizePost);
+}
+
+function buildMediaShareUrl(item: MediaPost) {
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  if (item.media_url) return item.media_url;
+  return origin ? `${origin}/mymedia#media-${item.id}` : '';
 }
 
 export default function MyMediaPage() {
@@ -198,23 +206,40 @@ function MediaSection({
                     className="h-full w-full object-cover transition duration-150 group-hover:scale-[1.02]"
                   />
                 </button>
-              )}
-              {item.content ? (
-                <p className="px-3 pb-3 pt-2 text-sm text-gray-700 whitespace-pre-wrap">{item.content}</p>
-              ) : null}
-              {item.link_url ? (
-                <a
-                  href={item.link_url}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="block px-3 pb-3 text-sm font-semibold text-blue-700"
-                >
-                  Apri link esterno →
-                </a>
-              ) : null}
-            </article>
-          ))}
-        </div>
+            )}
+            {item.content ? (
+              <p className="px-3 pb-3 pt-2 text-sm text-gray-700 whitespace-pre-wrap">{item.content}</p>
+            ) : null}
+            {item.link_url ? (
+              <a
+                href={item.link_url}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="block px-3 pb-3 text-sm font-semibold text-blue-700"
+              >
+                Apri link esterno →
+              </a>
+            ) : null}
+            <div className="flex items-center justify-end px-3 pb-3">
+              <button
+                type="button"
+                onClick={() =>
+                  shareOrCopyLink({
+                    title: title,
+                    text: item.content ?? undefined,
+                    url: buildMediaShareUrl(item),
+                  })
+                }
+                className="inline-flex items-center gap-1 rounded-lg border border-neutral-200 bg-white px-3 py-1 text-xs font-semibold text-neutral-800 transition hover:border-neutral-300 hover:bg-neutral-50"
+                aria-label={`Condividi ${item.media_type === 'video' ? 'questo video' : 'questa foto'}`}
+              >
+                <ShareIcon className="h-4 w-4" />
+                <span>Condividi</span>
+              </button>
+            </div>
+          </article>
+        ))}
+      </div>
       )}
     </section>
   );
