@@ -4,10 +4,9 @@ export type SharePayload = {
   url?: string | null;
 };
 
-export interface ShareCapableNavigator extends Navigator {
+type ShareCapableNavigator = Navigator & {
   share?: (data: ShareData) => Promise<void>;
-  clipboard?: Clipboard & { writeText?: (data: string) => Promise<void> };
-}
+};
 
 function getNavigator(): ShareCapableNavigator | null {
   if (typeof navigator === 'undefined') return null;
