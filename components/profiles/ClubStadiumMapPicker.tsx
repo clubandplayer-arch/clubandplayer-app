@@ -11,6 +11,16 @@ type StadiumLocation = {
   lng: number | null;
 };
 
+type GoogleNamespace = {
+  maps?: any;
+};
+
+declare global {
+  interface Window {
+    google?: GoogleNamespace;
+  }
+}
+
 type Props = {
   value: StadiumLocation;
   onChange: (value: StadiumLocation) => void;
