@@ -64,7 +64,7 @@ export default function ProfileHeader({ expectedType }: { expectedType?: Account
     return () => mo.disconnect();
   }, []);
 
-  const label = (type ?? expectedType) === 'club' ? 'CLUB' : 'ATLETA';
+  const label = (type ?? expectedType) === 'club' ? 'CLUB' : 'PLAYER';
 
   // Niente descrizione (paragrafo) per evitare qualsiasi duplicazione visiva
   return (

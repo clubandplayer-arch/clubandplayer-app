@@ -6,6 +6,9 @@ import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
 
+const missingClubColumn = (msg?: string | null) =>
+  !!msg && /club_id/i.test(msg) && (/does not exist/i.test(msg) || /schema cache/i.test(msg));
+
 /** GET /api/applications/received  → candidature per le opportunità create dall’utente corrente */
 export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   try { await rateLimit(req, { key: 'applications:RECEIVED', limit: 120, window: '1m' } as any); }
@@ -73,7 +76,7 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   let e2: any = null;
 
   ({ data: rows, error: e2 } = await runApps(selectFull));
-  if (e2 && /column .*club_id.* does not exist/i.test(e2.message || '')) {
+  if (e2 && missingClubColumn(e2.message)) {
     ({ data: rows, error: e2 } = await runApps(selectNoClub));
   }
   if (e2) return jsonError(e2.message, 400);
@@ -87,7 +90,7 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
 
     if (!adminErr && adminRows?.length) {
       rows = adminRows;
-    } else if (adminErr && /column .*club_id.* does not exist/i.test(adminErr.message || '')) {
+    } else if (adminErr && missingClubColumn(adminErr.message)) {
       const { data: fallbackRows, error: fbErr } = await admin
         .from('applications')
         .select(selectNoClub)

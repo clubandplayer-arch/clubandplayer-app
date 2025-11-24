@@ -2,11 +2,48 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import FeedComposer from '@/components/feed/FeedComposer';
 import TrackRetention from '@/components/analytics/TrackRetention';
+import { useExclusiveVideoPlayback } from '@/hooks/useExclusiveVideoPlayback';
+
+type ReactionType = 'like' | 'love' | 'care' | 'angry';
+
+type ReactionState = {
+  counts: Record<ReactionType, number>;
+  mine: ReactionType | null;
+};
+
+const REACTION_ORDER: ReactionType[] = ['like', 'love', 'care', 'angry'];
+const REACTION_EMOJI: Record<ReactionType, string> = {
+  like: '👍',
+  love: '❤️',
+  care: '🤗',
+  angry: '😡',
+};
+
+const defaultReactionState: ReactionState = {
+  counts: {
+    like: 0,
+    love: 0,
+    care: 0,
+    angry: 0,
+  },
+  mine: null,
+};
+
+function createDefaultReaction(): ReactionState {
+  return { ...defaultReactionState, counts: { ...defaultReactionState.counts } };
+}
+
+function computeOptimistic(prev: ReactionState, nextMine: ReactionType | null): ReactionState {
+  const counts: ReactionState['counts'] = { ...prev.counts };
+  if (prev.mine) counts[prev.mine] = Math.max(0, (counts[prev.mine] || 0) - 1);
+  if (nextMine) counts[nextMine] = (counts[nextMine] || 0) + 1;
+  return { counts, mine: nextMine };
+}
 
 // carico le sidebar in modo "sicuro" (se il componente esiste lo usa, altrimenti mostra un box vuoto)
 // N.B. ssr: false evita problemi coi Server Components in prod
@@ -109,10 +146,106 @@ export default function FeedPage() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [reactions, setReactions] = useState<Record<string, ReactionState>>({});
+  const [reactionError, setReactionError] = useState<string | null>(null);
+  const [pickerFor, setPickerFor] = useState<string | null>(null);
   const fetchCtrl = useRef<AbortController | null>(null);
   const headingId = 'feed-heading';
 
-  async function reload() {
+  const loadReactions = useCallback(async (ids: Array<string | number>) => {
+    if (!ids.length) return;
+    try {
+      const qs = encodeURIComponent(ids.map(String).join(','));
+      const res = await fetch(`/api/feed/reactions?ids=${qs}`, {
+        credentials: 'include',
+        cache: 'no-store',
+      });
+      const json = await res.json().catch(() => ({} as any));
+      if (res.ok && json?.ok) {
+        const counts = Array.isArray(json.counts) ? json.counts : [];
+        const mine = Array.isArray(json.mine) ? json.mine : [];
+        const next: Record<string, ReactionState> = {};
+        ids.forEach((id) => {
+          next[String(id)] = createDefaultReaction();
+        });
+        counts.forEach((row: any) => {
+          const key = String(row.post_id);
+          const reaction = row.reaction as ReactionType;
+          if (!REACTION_ORDER.includes(reaction)) return;
+          const value = Number(row.count) || 0;
+          next[key] = next[key] || createDefaultReaction();
+          next[key].counts[reaction] = value;
+        });
+        mine.forEach((row: any) => {
+          const key = String(row.post_id);
+          const reaction = row.reaction as ReactionType;
+          if (!REACTION_ORDER.includes(reaction)) return;
+          next[key] = next[key] || createDefaultReaction();
+          next[key].mine = reaction;
+        });
+        setReactions((curr) => ({ ...curr, ...next }));
+        setReactionError(null);
+      } else if (json?.missingTable) {
+        setReactionError('Aggiungi la tabella post_reactions seguendo supabase/migrations/20251018_fix_notifications_follows_post_reactions.sql.');
+      } else {
+        setReactionError('Impossibile caricare le reazioni.');
+      }
+    } catch (err) {
+      console.warn('loadReactions failed', err);
+      setReactionError('Impossibile caricare le reazioni.');
+    }
+  }, []);
+
+  const toggleReaction = useCallback(
+    async (postId: string, type: ReactionType) => {
+      const key = String(postId);
+      const prev = reactions[key] ?? createDefaultReaction();
+      const nextMine = prev.mine === type ? null : type;
+      const next = computeOptimistic(prev, nextMine);
+      setReactions((curr) => ({ ...curr, [key]: next }));
+      setReactionError(null);
+
+      try {
+        const res = await fetch('/api/feed/reactions', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ postId: key, reaction: nextMine }),
+        });
+
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || !json?.ok) {
+          throw new Error(json?.error || `HTTP ${res.status}`);
+        }
+
+        const counts: ReactionState['counts'] = { ...defaultReactionState.counts };
+        const rows = Array.isArray(json?.counts) ? json.counts : [];
+        rows.forEach((row: any) => {
+          const reaction = row.reaction as ReactionType;
+          if (!REACTION_ORDER.includes(reaction)) return;
+          counts[reaction] = Number(row.count) || 0;
+        });
+        const mineReaction = REACTION_ORDER.includes(json?.mine as ReactionType)
+          ? (json.mine as ReactionType)
+          : null;
+
+        setReactions((curr) => ({ ...curr, [key]: { counts, mine: mineReaction } }));
+      } catch (error: any) {
+        console.warn('toggleReaction failed', error);
+        setReactions((curr) => ({ ...curr, [key]: prev }));
+        if (String(error?.message || '').includes('missing_table_post_reactions')) {
+          setReactionError('Aggiungi la tabella post_reactions (vedi supabase/migrations/20251018_fix_notifications_follows_post_reactions.sql).');
+        } else if (error?.message === 'not_authenticated') {
+          setReactionError('Accedi per reagire ai post.');
+        } else {
+          setReactionError('Impossibile registrare la reazione, riprova.');
+        }
+      }
+    },
+    [reactions],
+  );
+
+  const reload = useCallback(async () => {
     if (fetchCtrl.current) fetchCtrl.current.abort();
     const controller = new AbortController();
     fetchCtrl.current = controller;
@@ -121,13 +254,14 @@ export default function FeedPage() {
     try {
       const data = await fetchPosts(controller.signal);
       setItems(data);
+      void loadReactions(data.map((p) => p.id));
     } catch (e: any) {
       if (controller.signal.aborted) return;
       setErr(e?.message ?? 'Errore caricamento bacheca');
     } finally {
       if (!controller.signal.aborted) setLoading(false);
     }
-  }
+  }, [loadReactions]);
 
   useEffect(() => {
     const idle =
@@ -143,7 +277,7 @@ export default function FeedPage() {
       cancelIdle(handle);
       fetchCtrl.current?.abort();
     };
-  }, []);
+  }, [reload]);
 
   useEffect(() => {
     async function loadUser() {
@@ -183,14 +317,9 @@ export default function FeedPage() {
         {/* Colonna centrale: composer + feed */}
         <main className="space-y-4" aria-labelledby={headingId}>
           <TrackRetention scope="feed" />
-          <div>
-            <h1 id={headingId} className="font-righteous feed-title w-full text-center text-4xl md:text-5xl">
-              SPORTLIFE
-            </h1>
-            <p className="text-sm text-gray-600">
-              Condividi aggiornamenti con club e atleti. Tutti i campi sono accessibili anche da tastiera.
-            </p>
-          </div>
+          <h1 id={headingId} className="sr-only">
+            Bacheca feed
+          </h1>
           <FeedComposer onPosted={reload} />
 
           <div className="space-y-4" aria-live="polite" aria-busy={loading}>
@@ -218,8 +347,18 @@ export default function FeedPage() {
                   currentUserId={currentUserId}
                   onUpdated={onPostUpdated}
                   onDeleted={onPostDeleted}
+                  reaction={reactions[String(p.id)] ?? createDefaultReaction()}
+                  pickerOpen={pickerFor === String(p.id)}
+                  onOpenPicker={() => setPickerFor(String(p.id))}
+                  onClosePicker={() => setPickerFor((curr) => (curr === String(p.id) ? null : curr))}
+                  onToggleReaction={(type) => toggleReaction(String(p.id), type)}
                 />
               ))}
+            {reactionError && (
+              <div className="text-[11px] text-red-600" role="status">
+                {reactionError}
+              </div>
+            )}
           </div>
         </main>
 
@@ -297,7 +436,7 @@ function MyMediaHub({
 
   return (
     <div className="glass-panel" id="my-media">
-      <div className="flex items-center justify-between px-4 py-3 text-sm font-semibold">
+      <div className="flex items-center px-4 py-3 text-sm font-semibold">
         <div className="flex gap-2 text-xs">
           <button
             type="button"
@@ -314,12 +453,6 @@ function MyMediaHub({
             MyPhoto
           </button>
         </div>
-        <Link
-          href={tab === 'video' ? '/mymedia#my-videos' : '/mymedia#my-photos'}
-          className="text-xs font-semibold text-blue-700"
-        >
-          Vedi tutti →
-        </Link>
       </div>
       <div className="px-4 pb-4">
         {tab === 'video' ? (
@@ -337,6 +470,12 @@ function MyMediaHub({
             sectionId="my-photos"
           />
         )}
+        <Link
+          href={tab === 'video' ? '/mymedia#my-videos' : '/mymedia#my-photos'}
+          className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-blue-700 hover:underline"
+        >
+          <span>Vedi tutti →</span>
+        </Link>
       </div>
     </div>
   );
@@ -401,9 +540,6 @@ function MediaPreviewGrid({
           </Link>
         ))}
       </div>
-      <Link href={linkHref} className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700">
-        Vedi tutti <span aria-hidden="true">→</span>
-      </Link>
     </div>
   );
 }
@@ -440,16 +576,42 @@ function FeedLinkCard({
   );
 }
 
+function FeedVideoPlayer({ id, url }: { id: string; url?: string | null }) {
+  const { videoRef, handleEnded, handlePause, handlePlay } = useExclusiveVideoPlayback(id);
+
+  return (
+    <video
+      ref={videoRef}
+      src={url ?? undefined}
+      controls
+      className="h-full w-full object-contain"
+      onPlay={handlePlay}
+      onPause={handlePause}
+      onEnded={handleEnded}
+    />
+  );
+}
+
 function PostItem({
   post,
   currentUserId,
   onUpdated,
   onDeleted,
+  reaction,
+  pickerOpen,
+  onOpenPicker,
+  onClosePicker,
+  onToggleReaction,
 }: {
   post: FeedPost;
   currentUserId: string | null;
   onUpdated?: (next: FeedPost) => void;
   onDeleted?: (id: string) => void;
+  reaction: ReactionState;
+  pickerOpen: boolean;
+  onOpenPicker: () => void;
+  onClosePicker: () => void;
+  onToggleReaction: (type: ReactionType) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(post.content ?? post.text ?? '');
@@ -574,12 +736,85 @@ function PostItem({
           }`}
         >
           {post.media_type === 'video' ? (
-            <video src={post.media_url} controls className="h-full w-full object-contain" />
+            <FeedVideoPlayer id={post.id} url={post.media_url} />
           ) : (
             <img src={post.media_url} alt="Allegato" className="max-h-96 w-full object-cover" />
           )}
         </div>
       ) : null}
+
+      <div
+        className="mt-3 flex flex-col gap-1 text-[11px] text-neutral-700"
+        onMouseLeave={onClosePicker}
+      >
+        <div className="relative inline-flex w-full max-w-xs items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onToggleReaction('like')}
+            onMouseEnter={onOpenPicker}
+            className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${
+              reaction.mine
+                ? 'border-[var(--brand)] bg-[var(--brand)]/10 text-[var(--brand)]'
+                : 'border-neutral-200 bg-white text-neutral-800 hover:border-neutral-300'
+            }`}
+            aria-pressed={reaction.mine === 'like'}
+          >
+            <span aria-hidden>{REACTION_EMOJI[reaction.mine ?? 'like']}</span>
+            <span>{reaction.mine ? 'Hai reagito' : 'Mi piace'}</span>
+          </button>
+
+          <button
+            type="button"
+            className="rounded-full border border-neutral-200 bg-white px-2 py-1 text-[11px] text-neutral-600 hover:border-neutral-300"
+            onClick={() => (pickerOpen ? onClosePicker() : onOpenPicker())}
+            aria-label="Scegli reazione"
+          >
+            ⋯
+          </button>
+
+          {pickerOpen && (
+            <div className="absolute left-0 top-full z-10 mt-1 flex gap-2 rounded-full border border-neutral-200 bg-white px-2 py-1 shadow-lg">
+              {REACTION_ORDER.map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => {
+                    onToggleReaction(r);
+                    onClosePicker();
+                  }}
+                  className={`flex items-center gap-1 rounded-full px-2 py-1 text-[11px] transition ${
+                    reaction.mine === r ? 'bg-[var(--brand)]/10 text-[var(--brand)]' : 'hover:bg-neutral-100'
+                  }`}
+                >
+                  <span aria-hidden>{REACTION_EMOJI[r]}</span>
+                  <span className="capitalize">{r}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {(() => {
+          const summaryParts = REACTION_ORDER.filter((key) => (reaction.counts[key] || 0) > 0).map(
+            (key) => `${REACTION_EMOJI[key]} ${reaction.counts[key]}`,
+          );
+          const total = REACTION_ORDER.reduce((acc, key) => acc + (reaction.counts[key] || 0), 0);
+          const summaryText = summaryParts.length ? summaryParts.join(' · ') : 'Nessuna reazione';
+
+          return (
+            <div className="text-[11px] text-neutral-600">
+              {reaction.mine ? (
+                <span className="font-semibold text-[var(--brand)]">
+                  Tu
+                  {total > 1 ? ` e altre ${total - 1} persone` : ''} · {summaryText}
+                </span>
+              ) : (
+                summaryText
+              )}
+            </div>
+          );
+        })()}
+      </div>
       {isOwner ? (
         <div className="mt-3 flex items-center gap-2 text-xs">
           {!editing && (

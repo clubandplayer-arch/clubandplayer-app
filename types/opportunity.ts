@@ -71,6 +71,8 @@ export type Opportunity = {
 
   /** Metadati club */
   club_name?: string | null;
+  /** Alias camelCase per nome club */
+  clubName?: string | null;
 };
 
 /** Risposta paginata usata dal client / lista opportunità */
