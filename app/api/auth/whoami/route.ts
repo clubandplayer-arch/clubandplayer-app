@@ -15,6 +15,15 @@ function resolveEnv() {
   return { url, anon };
 }
 
+function resolveEnv() {
+  const url =
+    process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+  const anon =
+    process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
+  if (!url || !anon) throw new Error('Supabase env missing');
+  return { url, anon };
+}
+
 function mergeCookies(from: NextResponse, into: NextResponse) {
   for (const c of from.cookies.getAll()) into.cookies.set(c);
   const set = from.headers.get('set-cookie');
