@@ -1,3 +1,4 @@
+// app/api/opportunities/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
@@ -13,11 +14,16 @@ function clamp(n: number, min: number, max: number) {
 
 function bracketToRange(code?: string): { age_min: number | null; age_max: number | null } {
   switch ((code || '').trim()) {
-    case '17-20': return { age_min: 17, age_max: 20 };
-    case '21-25': return { age_min: 21, age_max: 25 };
-    case '26-30': return { age_min: 26, age_max: 30 };
-    case '31+':   return { age_min: 31, age_max: null };
-    default:      return { age_min: null, age_max: null };
+    case '17-20':
+      return { age_min: 17, age_max: 20 };
+    case '21-25':
+      return { age_min: 21, age_max: 25 };
+    case '26-30':
+      return { age_min: 26, age_max: 30 };
+    case '31+':
+      return { age_min: 31, age_max: null };
+    default:
+      return { age_min: null, age_max: null };
   }
 }
 
@@ -78,15 +84,15 @@ export async function GET(req: NextRequest) {
   let query = supabase
     .from('opportunities')
     .select(
-      'id,title,description,created_by,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name,gender',
-      { count: 'exact' }
+      'id,title,description,created_by,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name,gender,owner_id',
+      { count: 'exact' },
     )
     .order('created_at', { ascending: sort === 'oldest' })
     .range(from, to);
 
   if (q)
     query = query.or(
-      `title.ilike.%${q}%,description.ilike.%${q}%,city.ilike.%${q}%,region.ilike.%${q}%,province.ilike.%${q}%,country.ilike.%${q}%,sport.ilike.%${q}%,role.ilike.%${q}%`
+      `title.ilike.%${q}%,description.ilike.%${q}%,city.ilike.%${q}%,region.ilike.%${q}%,province.ilike.%${q}%,country.ilike.%${q}%,sport.ilike.%${q}%,role.ilike.%${q}%`,
     );
   if (country && country !== '[object Object]') query = query.eq('country', country);
   if (region && region !== '[object Object]') query = query.eq('region', region);
@@ -156,12 +162,16 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     return jsonError('Too Many Requests', 429);
   }
 
-  // ruolo club?
+  // verifica club
   const metaRole = String(user.user_metadata?.role ?? '').toLowerCase();
   let isClub = metaRole === 'club';
   if (!isClub) {
     const tryBy = async (col: 'id' | 'user_id') => {
-      const { data } = await supabase.from('profiles').select('account_type').eq(col, user.id).maybeSingle();
+      const { data } = await supabase
+        .from('profiles')
+        .select('account_type')
+        .eq(col, user.id)
+        .maybeSingle();
       return data?.account_type as string | null | undefined;
     };
     const acct = (await tryBy('id')) ?? (await tryBy('user_id'));
@@ -179,7 +189,10 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   const province = norm((body as any).province);
   const city = norm((body as any).city);
   const sport = norm((body as any).sport);
-  const roleHuman = norm((body as any).role) ?? norm((body as any).roleLabel) ?? norm((body as any).roleValue);
+  const roleHuman =
+    norm((body as any).role) ??
+    norm((body as any).roleLabel) ??
+    norm((body as any).roleValue);
   const club_name = norm((body as any).club_name);
   const { age_min, age_max } = bracketToRange((body as any).age_bracket);
   const genderDb = resolveGender((body as any).gender);
@@ -199,7 +212,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     if (!en) {
       return NextResponse.json(
         { error: 'invalid_required_category', allowed_en: PLAYING_CATEGORY_EN },
-        { status: 400 }
+        { status: 400 },
       );
     }
     required_category = en;
@@ -223,18 +236,24 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     gender: genderDb,
   };
 
-  const { data, error } = await supabase
-    .from('opportunities')
-    .insert(insertPayload)
-    .select('id,title,description,created_by,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name,gender')
-    .single();
+  const runInsert = (payload: Record<string, unknown>) =>
+    supabase
+      .from('opportunities')
+      .insert(payload)
+      .select(
+        'id,title,description,created_by,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name,gender',
+      )
+      .single();
 
-  let result = await insertAndSelect({ ...basePayload, owner_id: user.id });
-  if (result.error && /owner_id/i.test(result.error.message)) {
-    // colonna assente → retry senza owner_id
-    result = await insertAndSelect(basePayload);
+  // primo tentativo con owner_id
+  let { data, error } = await runInsert(basePayload);
+
+  // se lo schema non ha owner_id, riprova senza
+  if (error && /column .*owner_id.* does not exist/i.test(error.message || '')) {
+    const { owner_id, ...fallback } = basePayload;
+    ({ data, error } = await runInsert(fallback));
   }
 
-  if (result.error) return jsonError(result.error.message, 400);
-  return NextResponse.json({ data: result.data }, { status: 201 });
+  if (error) return jsonError(error.message, 400);
+  return NextResponse.json({ data }, { status: 201 });
 });
