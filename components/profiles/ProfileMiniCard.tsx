@@ -18,6 +18,8 @@ type P = {
   city?: string | null;            // residenza libera (estero)
   country?: string | null;         // nazionalità ISO2 o testo
 
+  role?: string | null;
+
   // residenza IT (atleta)
   residence_region_id?: number | null;
   residence_province_id?: number | null;
@@ -173,7 +175,7 @@ export default function ProfileMiniCard() {
   const year = new Date().getFullYear();
   const age = !isClub && p?.birth_year ? Math.max(0, year - p.birth_year) : null;
   const name = p?.full_name || p?.display_name || (isClub ? 'Il tuo club' : 'Benvenuto!');
-  const interestMeta = [interest.region, interest.country].filter(Boolean).join(' · ');
+  const interestLabel = [interest.city, interest.region, interest.country].filter(Boolean).join(', ');
 
   // nazionalità con bandiera
   const nat = countryLabel(p?.country);
@@ -198,10 +200,17 @@ export default function ProfileMiniCard() {
     </a>
   );
 
+  const InfoRow = ({ label, value }: { label: string; value: string | number | null | undefined }) => (
+    <div className="flex items-start gap-2 text-left text-sm leading-tight text-gray-700">
+      <span className="text-gray-500">{label}</span>
+      <span className="font-medium text-gray-900">{value ?? '—'}</span>
+    </div>
+  );
+
   return (
     <div className="glass-panel p-4">
       <div className="flex flex-col items-center gap-3 text-center">
-        <div className="h-24 w-24 rounded-full bg-gray-200 shadow-sm ring-1 ring-gray-200 overflow-hidden md:h-28 md:w-28">
+        <div className="h-24 w-24 overflow-hidden rounded-full bg-gray-200 shadow-sm ring-1 ring-gray-200 md:h-28 md:w-28">
           {p?.avatar_url ? (
             <img
               src={p.avatar_url}
@@ -217,34 +226,41 @@ export default function ProfileMiniCard() {
           <div className="text-base font-semibold break-words">{name}</div>
 
           {/* righe info */}
-          <div className="text-xs text-gray-600">
-            <div className="text-[11px] uppercase tracking-wide text-gray-500">Zona di interesse</div>
-            <div className="text-sm text-gray-800">{interest.city || '—'}</div>
-            <div className="text-[11px] text-gray-500">{interestMeta || '—'}</div>
-          </div>
+          {!isClub && (
+            <div className="text-xs text-gray-600">
+              <div className="text-[11px] uppercase tracking-wide text-gray-500">Zona di interesse</div>
+              <div className="text-sm font-semibold text-gray-800">{interestLabel || '—'}</div>
+            </div>
+          )}
 
-          <div className="text-xs text-gray-600 flex items-center justify-center gap-1">
-            <span>Nazionalità:</span>
-            {flagUrl ? <img src={flagUrl} alt={nat.label} className="inline-block h-3 w-5 rounded-[2px]" /> : null}
-            <span>{nat.label || '—'}</span>
-          </div>
+          {!isClub && (
+            <div className="flex items-center justify-center gap-2 text-xs text-gray-700">
+              <span className="text-gray-500">Nazionalità:</span>
+              {flagUrl ? <img src={flagUrl} alt={nat.label} className="inline-block h-3 w-5 rounded-[2px]" /> : null}
+              <span className="font-medium text-gray-900">{nat.label || '—'}</span>
+            </div>
+          )}
+
+          {isClub && interestLabel ? (
+            <p className="text-sm font-medium text-gray-800">{interestLabel}</p>
+          ) : null}
         </div>
       </div>
 
       {/* Dettagli rapidi */}
       {isClub ? (
-        <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-          <div><span className="text-gray-500">Sport:</span> {p?.sport || '—'}</div>
-          <div><span className="text-gray-500">Categoria:</span> {p?.club_league_category || '—'}</div>
-          <div><span className="text-gray-500">Fondazione:</span> {p?.club_foundation_year ?? '—'}</div>
-          <div><span className="text-gray-500">Stadio:</span> {p?.club_stadium || '—'}</div>
+        <div className="mt-4 space-y-2">
+          <InfoRow label="Sport:" value={p?.sport || '—'} />
+          <InfoRow label="Categoria / campionato:" value={p?.club_league_category || '—'} />
+          <InfoRow label="Stadio / impianto:" value={p?.club_stadium || '—'} />
         </div>
       ) : (
-        <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-          <div><span className="text-gray-500">Età:</span> {age ?? '—'}</div>
-          <div><span className="text-gray-500">Piede:</span> {p?.foot || '—'}</div>
-          <div><span className="text-gray-500">Altezza:</span> {p?.height_cm ? `${p.height_cm} cm` : '—'}</div>
-          <div><span className="text-gray-500">Peso:</span> {p?.weight_kg ? `${p.weight_kg} kg` : '—'}</div>
+        <div className="mt-4 space-y-2">
+          <InfoRow label="Età:" value={age ?? '—'} />
+          <InfoRow label="Ruolo:" value={p?.role || '—'} />
+          <InfoRow label="Piede:" value={p?.foot || '—'} />
+          <InfoRow label="Altezza:" value={p?.height_cm ? `${p.height_cm} cm` : '—'} />
+          <InfoRow label="Peso:" value={p?.weight_kg ? `${p.weight_kg} kg` : '—'} />
         </div>
       )}
 
