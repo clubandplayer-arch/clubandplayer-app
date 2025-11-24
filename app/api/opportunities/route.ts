@@ -250,7 +250,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   // se lo schema non ha owner_id, riprova senza
   if (error && /column .*owner_id.* does not exist/i.test(error.message || '')) {
-    const { owner_id, ...fallback } = basePayload;
+    const { owner_id: _ownerId, ...fallback } = basePayload;
     ({ data, error } = await runInsert(fallback));
   }
 

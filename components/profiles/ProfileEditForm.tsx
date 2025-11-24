@@ -1,4 +1,5 @@
 // components/profiles/ProfileEditForm.tsx
+/* eslint-disable @next/next/no-img-element */
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
@@ -563,10 +564,27 @@ export default function ProfileEditForm() {
 
   return (
     <>
-      {/* Titolo sintetico per la pagina */}
-      <h1 className="mb-1 text-2xl font-bold">{isClub ? 'CLUB' : 'PLAYER'}</h1>
-      <p className="mb-4 text-sm text-gray-500">
-      </p>
+      <div className="w-full rounded-2xl border bg-white p-5 text-center md:p-6">
+        <div className="mx-auto flex w-full max-w-md flex-col items-center gap-4">
+          <div className="h-40 w-40 rounded-full bg-gray-100 shadow-sm ring-1 ring-gray-200 overflow-hidden md:h-48 md:w-48">
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt={fullName || (isClub ? 'Foto club' : 'Foto profilo')}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="h-full w-full bg-gradient-to-br from-gray-100 to-gray-200" />
+            )}
+          </div>
+
+          <div className="space-y-1">
+            <h1 className="text-2xl font-bold">{isClub ? 'CLUB' : 'PLAYER'}</h1>
+            <div className="text-base font-semibold text-gray-900 break-words">{fullName || (isClub ? 'Il tuo club' : 'Il tuo profilo')}</div>
+            {bio ? <p className="text-sm text-gray-600">{bio}</p> : null}
+          </div>
+        </div>
+      </div>
 
       <form onSubmit={onSubmit} className="space-y-6">
         {/* Dati personali / club */}

@@ -201,15 +201,17 @@ export default function ProfileMiniCard() {
   return (
     <div className="glass-panel p-4">
       <div className="flex flex-col items-center gap-3 text-center">
-        {p?.avatar_url ? (
-          <img
-            src={p.avatar_url}
-            alt={name}
-            className="h-56 w-full max-w-[14rem] rounded-2xl object-cover"
-          />
-        ) : (
-          <div className="h-56 w-full max-w-[14rem] rounded-2xl bg-gray-200" />
-        )}
+        <div className="h-24 w-24 rounded-full bg-gray-200 shadow-sm ring-1 ring-gray-200 overflow-hidden md:h-28 md:w-28">
+          {p?.avatar_url ? (
+            <img
+              src={p.avatar_url}
+              alt={name}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="h-full w-full bg-gradient-to-br from-gray-100 to-gray-200" />
+          )}
+        </div>
 
         <div className="w-full space-y-1">
           <div className="text-base font-semibold break-words">{name}</div>
