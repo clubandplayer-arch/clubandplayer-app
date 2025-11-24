@@ -2,6 +2,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
+import { isClubsAdminUser } from '@/lib/api/admin'; // 👈 admin guard
 
 export const runtime = 'nodejs';
 
@@ -25,6 +26,7 @@ export const GET = withAuth(async (req: NextRequest, { supabase }) => {
   return NextResponse.json({ data });
 });
 
+/** PATCH admin-only */
 export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   try {
     await rateLimit(req, { key: 'clubs:PATCH', limit: 40, window: '1m' } as any);
@@ -34,6 +36,10 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   const id = extractId(req);
   if (!id) return jsonError('Missing id', 400);
+
+  // 👇 Admin only
+  const isAdmin = await isClubsAdminUser(supabase, user);
+  if (!isAdmin) return jsonError('forbidden_admin_only', 403);
 
   const body = await req.json().catch(() => ({} as any));
 
@@ -49,8 +55,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   const { data, error } = await supabase
     .from('clubs')
     .update(patch)
-    .eq('id', id)
-    .eq('owner_id', user.id) // solo il proprietario
+    .eq('id', id) // 👈 niente filtro owner: admin può modificare qualsiasi club
     .select('id,name,display_name,city,country,level,logo_url,owner_id,created_at')
     .single();
 
@@ -58,6 +63,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   return NextResponse.json({ data });
 });
 
+/** DELETE admin-only */
 export const DELETE = withAuth(async (req: NextRequest, { supabase, user }) => {
   try {
     await rateLimit(req, { key: 'clubs:DELETE', limit: 40, window: '1m' } as any);
@@ -68,11 +74,11 @@ export const DELETE = withAuth(async (req: NextRequest, { supabase, user }) => {
   const id = extractId(req);
   if (!id) return jsonError('Missing id', 400);
 
-  const { error } = await supabase
-    .from('clubs')
-    .delete()
-    .eq('id', id)
-    .eq('owner_id', user.id);
+  // 👇 Admin only
+  const isAdmin = await isClubsAdminUser(supabase, user);
+  if (!isAdmin) return jsonError('forbidden_admin_only', 403);
+
+  const { error } = await supabase.from('clubs').delete().eq('id', id);
 
   if (error) return jsonError(error.message, 400);
   return NextResponse.json({ ok: true });

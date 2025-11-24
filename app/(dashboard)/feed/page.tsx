@@ -1,100 +1,847 @@
 'use client';
 
-import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import FeedLatest from '@/components/feed/FeedLatest';
-import WhoToFollow from '@/components/feed/WhoToFollow';
-import FeedPosts from '@/components/feed/FeedPosts';
-import ProfileMiniCard from '@/components/profiles/ProfileMiniCard';
+/* eslint-disable @next/next/no-img-element */
 
-type Role = 'club' | 'athlete' | 'guest';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
+import dynamic from 'next/dynamic';
+import FeedComposer from '@/components/feed/FeedComposer';
+import TrackRetention from '@/components/analytics/TrackRetention';
+import { useExclusiveVideoPlayback } from '@/hooks/useExclusiveVideoPlayback';
+
+type ReactionType = 'like' | 'love' | 'care' | 'angry';
+
+type ReactionState = {
+  counts: Record<ReactionType, number>;
+  mine: ReactionType | null;
+};
+
+const REACTION_ORDER: ReactionType[] = ['like', 'love', 'care', 'angry'];
+const REACTION_EMOJI: Record<ReactionType, string> = {
+  like: '👍',
+  love: '❤️',
+  care: '🤗',
+  angry: '😡',
+};
+
+const defaultReactionState: ReactionState = {
+  counts: {
+    like: 0,
+    love: 0,
+    care: 0,
+    angry: 0,
+  },
+  mine: null,
+};
+
+function createDefaultReaction(): ReactionState {
+  return { ...defaultReactionState, counts: { ...defaultReactionState.counts } };
+}
+
+function computeOptimistic(prev: ReactionState, nextMine: ReactionType | null): ReactionState {
+  const counts: ReactionState['counts'] = { ...prev.counts };
+  if (prev.mine) counts[prev.mine] = Math.max(0, (counts[prev.mine] || 0) - 1);
+  if (nextMine) counts[nextMine] = (counts[nextMine] || 0) + 1;
+  return { counts, mine: nextMine };
+}
+
+// carico le sidebar in modo "sicuro" (se il componente esiste lo usa, altrimenti mostra un box vuoto)
+// N.B. ssr: false evita problemi coi Server Components in prod
+const ProfileMiniCard = dynamic(() => import('@/components/profiles/ProfileMiniCard'), {
+  ssr: false,
+  loading: () => <ProfileCardFallback />,
+});
+
+const WhoToFollow = dynamic(() => import('@/components/feed/WhoToFollow'), {
+  ssr: false,
+  loading: () => <SidebarCard title="Chi seguire" />,
+});
+
+const FollowedClubs = dynamic(() => import('@/components/feed/FollowedClubs'), {
+  ssr: false,
+  loading: () => <SidebarCard title="Club che segui" />,
+});
+
+type FeedPost = {
+  id: string;
+  content?: string;
+  text?: string;
+  created_at?: string | null;
+  createdAt?: string | null;
+  author_id?: string | null;
+  authorId?: string | null;
+  media_url?: string | null;
+  media_type?: 'image' | 'video' | null;
+  media_aspect?: '16:9' | '9:16' | null;
+  link_url?: string | null;
+  link_title?: string | null;
+  link_description?: string | null;
+  link_image?: string | null;
+};
+
+async function fetchPosts(signal?: AbortSignal): Promise<FeedPost[]> {
+  const res = await fetch('/api/feed/posts?limit=20', {
+    credentials: 'include',
+    cache: 'no-store',
+    signal,
+  });
+  if (!res.ok) return [];
+  const j = await res.json().catch(() => ({} as any));
+  const arr = Array.isArray(j?.items ?? j?.data) ? (j.items ?? j.data) : [];
+  return arr.map(normalizePost);
+}
+
+function normalizePost(p: any): FeedPost {
+  const aspect = aspectFromUrl(p?.media_url);
+  return {
+    id: p.id,
+    content: p.content ?? p.text ?? '',
+    createdAt: p.created_at ?? p.createdAt ?? null,
+    authorId: p.author_id ?? p.authorId ?? null,
+    media_url: p.media_url ?? null,
+    media_type: p.media_type ?? null,
+    media_aspect: normalizeAspect(p.media_aspect) ?? aspect ?? null,
+    link_url: p.link_url ?? p.linkUrl ?? firstUrl(p.content ?? p.text ?? null),
+    link_title: p.link_title ?? p.linkTitle ?? null,
+    link_description: p.link_description ?? p.linkDescription ?? null,
+    link_image: p.link_image ?? p.linkImage ?? null,
+  };
+}
+
+function normalizeAspect(raw?: string | null): '16:9' | '9:16' | null {
+  if (!raw) return null;
+  const v = raw.trim();
+  if (v === '16:9' || v === '16-9') return '16:9';
+  if (v === '9:16' || v === '9-16') return '9:16';
+  return null;
+}
+
+function aspectFromUrl(url?: string | null): '16:9' | '9:16' | null {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    const raw = u.searchParams.get('aspect');
+    return normalizeAspect(raw);
+  } catch {
+    return null;
+  }
+}
+
+function firstUrl(text?: string | null): string | null {
+  if (!text) return null;
+  const match = text.match(/https?:\/\/[^\s]+/i);
+  return match ? match[0] : null;
+}
+
+function domainFromUrl(url: string) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+}
 
 export default function FeedPage() {
-  const [role, setRole] = useState<Role>('guest');
+  const [items, setItems] = useState<FeedPost[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [reactions, setReactions] = useState<Record<string, ReactionState>>({});
+  const [reactionError, setReactionError] = useState<string | null>(null);
+  const [pickerFor, setPickerFor] = useState<string | null>(null);
+  const fetchCtrl = useRef<AbortController | null>(null);
+  const headingId = 'feed-heading';
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const r = await fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' });
-        const j = await r.json().catch(() => ({}));
-        const raw = (j?.role ?? '').toString().toLowerCase();
-        setRole(raw === 'club' || raw === 'athlete' ? raw : 'guest');
-      } catch {
-        setRole('guest');
+  const loadReactions = useCallback(async (ids: Array<string | number>) => {
+    if (!ids.length) return;
+    try {
+      const qs = encodeURIComponent(ids.map(String).join(','));
+      const res = await fetch(`/api/feed/reactions?ids=${qs}`, {
+        credentials: 'include',
+        cache: 'no-store',
+      });
+      const json = await res.json().catch(() => ({} as any));
+      if (res.ok && json?.ok) {
+        const counts = Array.isArray(json.counts) ? json.counts : [];
+        const mine = Array.isArray(json.mine) ? json.mine : [];
+        const next: Record<string, ReactionState> = {};
+        ids.forEach((id) => {
+          next[String(id)] = createDefaultReaction();
+        });
+        counts.forEach((row: any) => {
+          const key = String(row.post_id);
+          const reaction = row.reaction as ReactionType;
+          if (!REACTION_ORDER.includes(reaction)) return;
+          const value = Number(row.count) || 0;
+          next[key] = next[key] || createDefaultReaction();
+          next[key].counts[reaction] = value;
+        });
+        mine.forEach((row: any) => {
+          const key = String(row.post_id);
+          const reaction = row.reaction as ReactionType;
+          if (!REACTION_ORDER.includes(reaction)) return;
+          next[key] = next[key] || createDefaultReaction();
+          next[key].mine = reaction;
+        });
+        setReactions((curr) => ({ ...curr, ...next }));
+        setReactionError(null);
+      } else if (json?.missingTable) {
+        setReactionError('Aggiungi la tabella post_reactions seguendo supabase/migrations/20251018_fix_notifications_follows_post_reactions.sql.');
+      } else {
+        setReactionError('Impossibile caricare le reazioni.');
       }
-    })();
+    } catch (err) {
+      console.warn('loadReactions failed', err);
+      setReactionError('Impossibile caricare le reazioni.');
+    }
   }, []);
 
-  return (
-    <main className="container mx-auto px-4 py-6">
-      {/* h1 “nascosto” per SEO/accessibilità senza cambiare il layout */}
-      <h1 className="sr-only">Bacheca</h1>
+  const toggleReaction = useCallback(
+    async (postId: string, type: ReactionType) => {
+      const key = String(postId);
+      const prev = reactions[key] ?? createDefaultReaction();
+      const nextMine = prev.mine === type ? null : type;
+      const next = computeOptimistic(prev, nextMine);
+      setReactions((curr) => ({ ...curr, [key]: next }));
+      setReactionError(null);
 
-      {/* Griglia tipo LinkedIn: 3 colonne su lg (3/6/3), singola colonna su mobile */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-        {/* SINISTRA */}
-        <aside className="hidden lg:col-span-3 lg:flex lg:flex-col lg:gap-6">
-          {/* Mini profilo (sostituisce “Benvenuto! / Vai al profilo”) */}
-          <div className="card p-4">
-            <div className="mb-2 text-sm text-neutral-500">Il tuo profilo</div>
+      try {
+        const res = await fetch('/api/feed/reactions', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ postId: key, reaction: nextMine }),
+        });
+
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || !json?.ok) {
+          throw new Error(json?.error || `HTTP ${res.status}`);
+        }
+
+        const counts: ReactionState['counts'] = { ...defaultReactionState.counts };
+        const rows = Array.isArray(json?.counts) ? json.counts : [];
+        rows.forEach((row: any) => {
+          const reaction = row.reaction as ReactionType;
+          if (!REACTION_ORDER.includes(reaction)) return;
+          counts[reaction] = Number(row.count) || 0;
+        });
+        const mineReaction = REACTION_ORDER.includes(json?.mine as ReactionType)
+          ? (json.mine as ReactionType)
+          : null;
+
+        setReactions((curr) => ({ ...curr, [key]: { counts, mine: mineReaction } }));
+      } catch (error: any) {
+        console.warn('toggleReaction failed', error);
+        setReactions((curr) => ({ ...curr, [key]: prev }));
+        if (String(error?.message || '').includes('missing_table_post_reactions')) {
+          setReactionError('Aggiungi la tabella post_reactions (vedi supabase/migrations/20251018_fix_notifications_follows_post_reactions.sql).');
+        } else if (error?.message === 'not_authenticated') {
+          setReactionError('Accedi per reagire ai post.');
+        } else {
+          setReactionError('Impossibile registrare la reazione, riprova.');
+        }
+      }
+    },
+    [reactions],
+  );
+
+  const reload = useCallback(async () => {
+    if (fetchCtrl.current) fetchCtrl.current.abort();
+    const controller = new AbortController();
+    fetchCtrl.current = controller;
+    setLoading(true);
+    setErr(null);
+    try {
+      const data = await fetchPosts(controller.signal);
+      setItems(data);
+      void loadReactions(data.map((p) => p.id));
+    } catch (e: any) {
+      if (controller.signal.aborted) return;
+      setErr(e?.message ?? 'Errore caricamento bacheca');
+    } finally {
+      if (!controller.signal.aborted) setLoading(false);
+    }
+  }, [loadReactions]);
+
+  useEffect(() => {
+    const idle =
+      typeof window !== 'undefined' && 'requestIdleCallback' in window
+        ? (window as any).requestIdleCallback
+        : (cb: () => void) => setTimeout(cb, 120);
+    const cancelIdle =
+      typeof window !== 'undefined' && 'cancelIdleCallback' in window
+        ? (window as any).cancelIdleCallback
+        : clearTimeout;
+    const handle = idle(() => void reload());
+    return () => {
+      cancelIdle(handle);
+      fetchCtrl.current?.abort();
+    };
+  }, [reload]);
+
+  useEffect(() => {
+    async function loadUser() {
+      try {
+        const res = await fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' });
+        const j = await res.json().catch(() => null);
+        const id = j?.user?.id ?? null;
+        setCurrentUserId(id);
+      } catch {
+        setCurrentUserId(null);
+      }
+    }
+    void loadUser();
+  }, []);
+
+  function onPostUpdated(next: FeedPost) {
+    setItems((prev) => prev.map((p) => (p.id === next.id ? { ...p, ...next } : p)));
+  }
+
+  function onPostDeleted(id: string) {
+    setItems((prev) => prev.filter((p) => p.id !== id));
+  }
+
+  return (
+    <div className="mx-auto max-w-7xl px-4 py-6" aria-labelledby={headingId}>
+      {/* layout a 3 colonne: sx (minicard) / centro (composer + post) / dx (suggerimenti) */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[20%_55%_25%]">
+        {/* Colonna sinistra: mini profilo */}
+        <aside className="space-y-4">
+          <div className="space-y-3">
+            {/* Se esiste, il componente reale rimpiazzerà questo blocco via dynamic() */}
             <ProfileMiniCard />
           </div>
-
-          {/* Azioni rapide per club */}
-          {role === 'club' && (
-            <div className="card p-4">
-              <div className="mb-2 text-sm text-neutral-500">Azioni rapide</div>
-              <div className="flex flex-col gap-2">
-                <Link href="/opportunities/new" className="btn btn-outline">
-                  + Pubblica opportunità
-                </Link>
-                <Link href="/club/applicants" className="btn btn-outline">
-                  Vedi candidature
-                </Link>
-              </div>
-            </div>
-          )}
+          <MyMediaHub currentUserId={currentUserId} posts={items} />
         </aside>
 
-        {/* CENTRO */}
-        <section className="lg:col-span-6 flex flex-col gap-6">
-          {/* Composer (placeholder per ora) */}
-          <div className="card p-4">
-            <div className="mb-3 text-sm text-neutral-500">Condividi un aggiornamento</div>
-            <textarea className="textarea" rows={3} placeholder="Scrivi qualcosa…" />
-            <div className="mt-3 flex justify-end">
-              <button className="btn btn-outline text-sm" disabled>
-                Pubblica (coming soon)
-              </button>
-            </div>
+        {/* Colonna centrale: composer + feed */}
+        <main className="space-y-4" aria-labelledby={headingId}>
+          <TrackRetention scope="feed" />
+          <h1 id={headingId} className="sr-only">
+            Bacheca feed
+          </h1>
+          <FeedComposer onPosted={reload} />
+
+          <div className="space-y-4" aria-live="polite" aria-busy={loading}>
+            {loading && (
+              <div className="glass-panel p-4" role="status">
+                Caricamento…
+              </div>
+            )}
+            {err && (
+              <div className="glass-panel p-4 text-red-600" role="alert">
+                {err}
+              </div>
+            )}
+            {!loading && !err && items.length === 0 && (
+              <div className="glass-panel p-4 text-sm text-gray-600" role="status">
+                Nessun post ancora.
+              </div>
+            )}
+            {!loading &&
+              !err &&
+              items.map((p) => (
+                <PostItem
+                  key={p.id}
+                  post={p}
+                  currentUserId={currentUserId}
+                  onUpdated={onPostUpdated}
+                  onDeleted={onPostDeleted}
+                  reaction={reactions[String(p.id)] ?? createDefaultReaction()}
+                  pickerOpen={pickerFor === String(p.id)}
+                  onOpenPicker={() => setPickerFor(String(p.id))}
+                  onClosePicker={() => setPickerFor((curr) => (curr === String(p.id) ? null : curr))}
+                  onToggleReaction={(type) => toggleReaction(String(p.id), type)}
+                />
+              ))}
+            {reactionError && (
+              <div className="text-[11px] text-red-600" role="status">
+                {reactionError}
+              </div>
+            )}
           </div>
+        </main>
 
-          {/* 🔴 DATI REALI: Ultime opportunità */}
-          <FeedLatest />
+        {/* Colonna destra: suggerimenti/annunci/club seguiti */}
+        <aside className="space-y-4">
+          <SidebarCard title="Chi seguire">
+            <WhoToFollow />
+          </SidebarCard>
 
-          {/* 🔴 DATI REALI: Post dal DB */}
-          <div className="card p-4">
-            <div className="mb-3 text-sm font-medium">Aggiornamenti della community</div>
-            <FeedPosts />
-          </div>
-        </section>
+          <SidebarCard title="Club che segui">
+            <FollowedClubs />
+          </SidebarCard>
 
-        {/* DESTRA */}
-        <aside className="hidden xl:col-span-3 xl:flex xl:flex-col xl:gap-6">
-          <div className="card p-4">
-            <h3 className="mb-3 text-sm font-semibold text-neutral-700 dark:text-neutral-200">🔥 Trending</h3>
-            <ul className="space-y-2 text-sm">
-              <li><Link href="/search/athletes?trend=mercato" className="link">Calciomercato Dilettanti</Link></li>
-              <li><Link href="/opportunities?role=goalkeeper&gender=f" className="link">Portieri femminili U21</Link></li>
-              <li><Link href="/feed?tag=preparazione" className="link">Preparazione invernale</Link></li>
-              <li><Link href="/opportunities?league=serie-d&role=winger" className="link">Serie D – Esterni veloci</Link></li>
-            </ul>
-          </div>
-
-          {/* 👥 Suggerimenti dinamici */}
-          <WhoToFollow />
+          <SidebarCard title="In evidenza">
+            {/* Qui in seguito collegheremo le “opportunità più viste” da Supabase */}
+            <div className="text-sm text-gray-600">Prossimamente: opportunità in evidenza</div>
+          </SidebarCard>
         </aside>
       </div>
-    </main>
+    </div>
+  );
+}
+
+/* ====== UI helpers ====== */
+
+function SidebarCard({
+  title,
+  children,
+}: {
+  title?: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="glass-panel">
+      {title ? (
+        <div className="px-4 py-3 text-sm font-semibold">{title}</div>
+      ) : null}
+      <div className="px-4 py-3">{children}</div>
+    </div>
+  );
+}
+
+function ProfileCardFallback() {
+  return (
+    <div className="glass-panel p-4">
+      <div className="flex items-start gap-3">
+        <div className="h-24 w-[4.8rem] flex-shrink-0 animate-pulse rounded-xl bg-gray-200" />
+        <div className="flex-1 space-y-3">
+          <div className="h-4 w-1/2 animate-pulse rounded bg-gray-200" />
+          <div className="h-3 w-3/4 animate-pulse rounded bg-gray-200" />
+          <div className="h-3 w-2/3 animate-pulse rounded bg-gray-200" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MyMediaHub({
+  currentUserId,
+  posts,
+}: {
+  currentUserId: string | null;
+  posts: FeedPost[];
+}) {
+  const [tab, setTab] = useState<'video' | 'image'>('video');
+
+  const { videos, photos } = useMemo(() => {
+    const mine = posts.filter((p) => p.authorId && p.authorId === currentUserId);
+    const vids = mine.filter((p) => p.media_type === 'video' && p.media_url).slice(0, 3);
+    const imgs = mine.filter((p) => p.media_type === 'image' && p.media_url).slice(0, 3);
+    return { videos: vids, photos: imgs };
+  }, [posts, currentUserId]);
+
+  if (!currentUserId) return null;
+
+  return (
+    <div className="glass-panel" id="my-media">
+      <div className="flex items-center px-4 py-3 text-sm font-semibold">
+        <div className="flex gap-2 text-xs">
+          <button
+            type="button"
+            className={`rounded-full px-3 py-1 ${tab === 'video' ? 'bg-gray-900 text-white' : 'bg-white/60'}`}
+            onClick={() => setTab('video')}
+          >
+            MyVideo
+          </button>
+          <button
+            type="button"
+            className={`rounded-full px-3 py-1 ${tab === 'image' ? 'bg-gray-900 text-white' : 'bg-white/60'}`}
+            onClick={() => setTab('image')}
+          >
+            MyPhoto
+          </button>
+        </div>
+      </div>
+      <div className="px-4 pb-4">
+        {tab === 'video' ? (
+          <MediaPreviewGrid
+            emptyLabel="Non hai ancora video"
+            items={videos}
+            linkHref="/mymedia?type=video"
+            sectionId="my-videos"
+          />
+        ) : (
+          <MediaPreviewGrid
+            emptyLabel="Non hai ancora foto"
+            items={photos}
+            linkHref="/mymedia?type=image"
+            sectionId="my-photos"
+          />
+        )}
+        <Link
+          href={tab === 'video' ? '/mymedia#my-videos' : '/mymedia#my-photos'}
+          className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-blue-700 hover:underline"
+        >
+          <span>Vedi tutti →</span>
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function MediaPreviewGrid({
+  items,
+  emptyLabel,
+  linkHref,
+  sectionId,
+}: {
+  items: FeedPost[];
+  emptyLabel: string;
+  linkHref: string;
+  sectionId?: string;
+}) {
+  if (!items || items.length === 0) {
+    return (
+      <div className="text-xs text-gray-600" id={sectionId}>
+        {emptyLabel}
+      </div>
+    );
+  }
+
+  const thumbs = items.slice(0, 3);
+
+  return (
+    <div className="space-y-2 text-xs text-gray-700" id={sectionId}>
+      <div className="grid grid-cols-3 gap-2">
+        {thumbs.map((item) => (
+          <Link
+            key={item.id}
+            href={`${linkHref}#media-${item.id}`}
+            className="group block overflow-hidden rounded-lg bg-white/60 shadow"
+          >
+            {item.media_type === 'video' ? (
+              <div
+                className={`aspect-square w-full bg-black/80 ${
+                  item.media_aspect === '9:16'
+                    ? 'flex items-center justify-center'
+                    : 'flex items-center justify-center'
+                }`}
+              >
+                <video
+                  src={item.media_url ?? undefined}
+                  className="h-full w-full object-cover"
+                  muted
+                  playsInline
+                  controls={false}
+                />
+              </div>
+            ) : (
+              <div className="aspect-square w-full overflow-hidden bg-neutral-100">
+                <img
+                  src={item.media_url ?? ''}
+                  alt="Anteprima"
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                />
+              </div>
+            )}
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function FeedLinkCard({
+  url,
+  title,
+  description,
+  image,
+}: {
+  url: string;
+  title: string | null;
+  description: string | null;
+  image: string | null;
+}) {
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer noopener"
+      className="block overflow-hidden rounded-xl bg-white/60 shadow-lg transition hover:shadow-xl"
+    >
+      <div className="flex gap-3 p-3">
+        {image ? (
+          <img src={image} alt={title || url} className="h-20 w-28 flex-shrink-0 rounded-lg object-cover" />
+        ) : null}
+        <div className="flex-1 space-y-1">
+          <div className="text-xs uppercase text-gray-500">{domainFromUrl(url)}</div>
+          <div className="text-sm font-semibold text-gray-900 line-clamp-2">{title || url}</div>
+          {description ? <div className="text-xs text-gray-600 line-clamp-2">{description}</div> : null}
+        </div>
+      </div>
+    </a>
+  );
+}
+
+function FeedVideoPlayer({ id, url }: { id: string; url?: string | null }) {
+  const { videoRef, handleEnded, handlePause, handlePlay } = useExclusiveVideoPlayback(id);
+
+  return (
+    <video
+      ref={videoRef}
+      src={url ?? undefined}
+      controls
+      className="h-full w-full object-contain"
+      onPlay={handlePlay}
+      onPause={handlePause}
+      onEnded={handleEnded}
+    />
+  );
+}
+
+function PostItem({
+  post,
+  currentUserId,
+  onUpdated,
+  onDeleted,
+  reaction,
+  pickerOpen,
+  onOpenPicker,
+  onClosePicker,
+  onToggleReaction,
+}: {
+  post: FeedPost;
+  currentUserId: string | null;
+  onUpdated?: (next: FeedPost) => void;
+  onDeleted?: (id: string) => void;
+  reaction: ReactionState;
+  pickerOpen: boolean;
+  onOpenPicker: () => void;
+  onClosePicker: () => void;
+  onToggleReaction: (type: ReactionType) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(post.content ?? post.text ?? '');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const linkUrl = post.link_url ?? firstUrl(post.content ?? post.text ?? '');
+  const linkTitle = post.link_title ?? null;
+  const linkDescription = post.link_description ?? null;
+  const linkImage = post.link_image ?? null;
+  const isOwner = currentUserId != null && post.authorId === currentUserId;
+  const editAreaId = `post-edit-${post.id}`;
+  const errorId = error ? `post-error-${post.id}` : undefined;
+
+  useEffect(() => {
+    if (!editing) setText(post.content ?? post.text ?? '');
+  }, [post, editing]);
+
+  async function saveEdit() {
+    const payload = text.trim();
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/feed/posts/${post.id}`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: payload }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json?.item) throw new Error(json?.error || 'Salvataggio fallito');
+      onUpdated?.(normalizePost(json.item));
+      setEditing(false);
+    } catch (e: any) {
+      setError(e?.message || 'Errore');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function deletePost() {
+    if (!confirm('Eliminare il post?')) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/feed/posts/${post.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error || 'Eliminazione fallita');
+      onDeleted?.(post.id);
+    } catch (e: any) {
+      setError(e?.message || 'Errore');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <article className="glass-panel p-4">
+      <div className="text-xs text-gray-500">
+        {post.createdAt ? new Date(post.createdAt).toLocaleString() : '—'}
+      </div>
+      {editing ? (
+        <div className="mt-2 space-y-2">
+          <label htmlFor={editAreaId} className="sr-only">
+            Modifica il contenuto del post
+          </label>
+          <textarea
+            id={editAreaId}
+            className="w-full resize-y rounded-lg border px-3 py-2 text-sm"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            rows={3}
+            disabled={saving}
+            aria-invalid={Boolean(error)}
+            aria-describedby={errorId}
+          />
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={saveEdit}
+              disabled={saving}
+              className="rounded-lg bg-gray-900 px-3 py-1 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              {saving ? 'Salvataggio…' : 'Salva'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEditing(false);
+                setError(null);
+                setText(post.content ?? post.text ?? '');
+              }}
+              className="rounded-lg border px-3 py-1 text-sm hover:bg-gray-50"
+              disabled={saving}
+            >
+              Annulla
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          {post.content && post.content.trim().length > 0 ? (
+            <div className="mt-1 whitespace-pre-wrap text-sm">{post.content}</div>
+          ) : null}
+        </>
+      )}
+      {linkUrl ? (
+        <div className="mt-3">
+          <FeedLinkCard url={linkUrl} title={linkTitle} description={linkDescription} image={linkImage} />
+        </div>
+      ) : null}
+      {post.media_url ? (
+        <div
+          className={`mt-3 overflow-hidden rounded-xl bg-neutral-50 shadow-inner max-h-[60vh] ${
+            post.media_type === 'video'
+              ? post.media_aspect === '9:16'
+                ? 'aspect-[9/16]'
+                : 'aspect-[16/9]'
+              : ''
+          }`}
+        >
+          {post.media_type === 'video' ? (
+            <FeedVideoPlayer id={post.id} url={post.media_url} />
+          ) : (
+            <img src={post.media_url} alt="Allegato" className="max-h-96 w-full object-cover" />
+          )}
+        </div>
+      ) : null}
+
+      <div
+        className="mt-3 flex flex-col gap-1 text-[11px] text-neutral-700"
+        onMouseLeave={onClosePicker}
+      >
+        <div className="relative inline-flex w-full max-w-xs items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onToggleReaction('like')}
+            onMouseEnter={onOpenPicker}
+            className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${
+              reaction.mine
+                ? 'border-[var(--brand)] bg-[var(--brand)]/10 text-[var(--brand)]'
+                : 'border-neutral-200 bg-white text-neutral-800 hover:border-neutral-300'
+            }`}
+            aria-pressed={reaction.mine === 'like'}
+          >
+            <span aria-hidden>{REACTION_EMOJI[reaction.mine ?? 'like']}</span>
+            <span>{reaction.mine ? 'Hai reagito' : 'Mi piace'}</span>
+          </button>
+
+          <button
+            type="button"
+            className="rounded-full border border-neutral-200 bg-white px-2 py-1 text-[11px] text-neutral-600 hover:border-neutral-300"
+            onClick={() => (pickerOpen ? onClosePicker() : onOpenPicker())}
+            aria-label="Scegli reazione"
+          >
+            ⋯
+          </button>
+
+          {pickerOpen && (
+            <div className="absolute left-0 top-full z-10 mt-1 flex gap-2 rounded-full border border-neutral-200 bg-white px-2 py-1 shadow-lg">
+              {REACTION_ORDER.map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => {
+                    onToggleReaction(r);
+                    onClosePicker();
+                  }}
+                  className={`flex items-center gap-1 rounded-full px-2 py-1 text-[11px] transition ${
+                    reaction.mine === r ? 'bg-[var(--brand)]/10 text-[var(--brand)]' : 'hover:bg-neutral-100'
+                  }`}
+                >
+                  <span aria-hidden>{REACTION_EMOJI[r]}</span>
+                  <span className="capitalize">{r}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {(() => {
+          const summaryParts = REACTION_ORDER.filter((key) => (reaction.counts[key] || 0) > 0).map(
+            (key) => `${REACTION_EMOJI[key]} ${reaction.counts[key]}`,
+          );
+          const total = REACTION_ORDER.reduce((acc, key) => acc + (reaction.counts[key] || 0), 0);
+          const summaryText = summaryParts.length ? summaryParts.join(' · ') : 'Nessuna reazione';
+
+          return (
+            <div className="text-[11px] text-neutral-600">
+              {reaction.mine ? (
+                <span className="font-semibold text-[var(--brand)]">
+                  Tu
+                  {total > 1 ? ` e altre ${total - 1} persone` : ''} · {summaryText}
+                </span>
+              ) : (
+                summaryText
+              )}
+            </div>
+          );
+        })()}
+      </div>
+      {isOwner ? (
+        <div className="mt-3 flex items-center gap-2 text-xs">
+          {!editing && (
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="rounded-lg border px-2 py-1 hover:bg-gray-50"
+              disabled={saving}
+            >
+              Modifica
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={deletePost}
+            className="rounded-lg border px-2 py-1 text-red-600 hover:bg-red-50"
+            disabled={saving}
+          >
+            Elimina
+          </button>
+        </div>
+      ) : null}
+      {error ? (
+        <div id={errorId} className="mt-2 text-xs text-red-600" role="status">
+          {error}
+        </div>
+      ) : null}
+    </article>
   );
 }

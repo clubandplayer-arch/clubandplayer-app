@@ -1,18 +1,30 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 import SearchInput from '@/components/controls/SearchInput';
 import ClubsTable from '@/components/clubs/ClubsTable';
 import Pagination from '@/components/pagination/Pagination';
-import Modal from '@/components/ui/Modal';
-import ClubForm from '@/components/clubs/ClubForm';
-
+import { isClubsAdminEnabled, isClubsReadOnly as isReadOnlyFlag } from '@/lib/env/features';
 import type { ClubsApiResponse, Club } from '@/types/club';
 import { mapClubsList } from '@/lib/adapters/clubs';
 
-type Me = { id: string; email?: string } | null;
+type ClubsEditingModalsProps = {
+  openCreate: boolean;
+  onCloseCreate: () => void;
+  editClub: Club | null;
+  onCloseEdit: () => void;
+  onReload: () => void;
+};
+
+const editingEnabledByFlag = !isReadOnlyFlag() && isClubsAdminEnabled();
+const ClubsEditingModals = editingEnabledByFlag
+  ? dynamic<ClubsEditingModalsProps>(() => import('./ClubsEditingModals'))
+  : null;
+
+type Me = { id: string; email?: string; clubsAdmin?: boolean } | null;
 
 interface Props {
   /** Se true, la pagina è in sola lettura: nasconde pulsanti/azioni */
@@ -28,6 +40,7 @@ export default function ClubsClient({ readOnly = false }: Props) {
   const [reloadKey, setReloadKey] = useState(0);
 
   const [me, setMe] = useState<Me>(null);
+  const forcedReadOnly = readOnly || isReadOnlyFlag();
 
   // modali (usate solo se readOnly === false)
   const [openCreate, setOpenCreate] = useState(false);
@@ -51,7 +64,14 @@ export default function ClubsClient({ readOnly = false }: Props) {
     fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' })
       .then((r) => r.json().catch(() => null))
       .then((j) => {
-        if (!cancelled) setMe(j ?? null);
+        if (cancelled) return;
+
+        const user = j?.user;
+        if (user?.id) {
+          setMe({ id: user.id, email: user.email ?? undefined, clubsAdmin: j?.clubsAdmin === true });
+        } else {
+          setMe(null);
+        }
       })
       .catch(() => {
         if (!cancelled) setMe(null);
@@ -75,6 +95,9 @@ export default function ClubsClient({ readOnly = false }: Props) {
       .then(async (r) => {
         const text = await r.text();
         if (!r.ok) {
+          if (r.status === 401) {
+            throw new Error('Accedi per consultare la lista dei club');
+          }
           try {
             const j = JSON.parse(text);
             throw new Error(j.error || `HTTP ${r.status}`);
@@ -108,8 +131,13 @@ export default function ClubsClient({ readOnly = false }: Props) {
     return p;
   }, [sp]);
 
+  const items = useMemo(() => mapClubsList(data?.data), [data]);
+
+  const canEdit = !forcedReadOnly && me?.clubsAdmin === true;
+  const effectiveReadOnly = !canEdit;
+
   async function handleDelete(c: Club) {
-    if (readOnly) return;
+    if (effectiveReadOnly) return;
     if (!confirm(`Eliminare "${c.display_name || c.name}"?`)) return;
     try {
       const res = await fetch(`/api/clubs/${c.id}`, { method: 'DELETE', credentials: 'include' });
@@ -128,13 +156,11 @@ export default function ClubsClient({ readOnly = false }: Props) {
     }
   }
 
-  const items = useMemo(() => mapClubsList(data?.data), [data]);
-
   return (
     <div className="p-4 md:p-6 space-y-4">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">Clubs</h1>
-        {!readOnly && (
+        {!effectiveReadOnly && (
           <button
             onClick={() => setOpenCreate(true)}
             className="px-3 py-2 rounded-lg bg-gray-900 text-white"
@@ -143,6 +169,12 @@ export default function ClubsClient({ readOnly = false }: Props) {
           </button>
         )}
       </div>
+
+      {effectiveReadOnly && (
+        <div className="text-sm text-gray-600 border rounded-lg bg-gray-50 px-3 py-2">
+          Elenco in sola lettura. L'editing è limitato agli admin autorizzati.
+        </div>
+      )}
 
       <div className="flex items-center justify-between gap-3">
         <SearchInput />
@@ -172,44 +204,21 @@ export default function ClubsClient({ readOnly = false }: Props) {
           <ClubsTable
             items={items}
             currentUserId={me?.id}
-            onEdit={readOnly ? undefined : (c) => setEditClub(c)}
-            onDelete={readOnly ? undefined : (c) => handleDelete(c)}
+            onEdit={effectiveReadOnly ? undefined : (c) => setEditClub(c)}
+            onDelete={effectiveReadOnly ? undefined : (c) => handleDelete(c)}
           />
           <Pagination page={data.page} pageCount={data.pageCount} searchParams={spForPagination} />
         </>
       )}
 
-      {/* Modal Crea */}
-      {!readOnly && (
-        <Modal open={openCreate} title="Nuovo club" onClose={() => setOpenCreate(false)}>
-          <ClubForm
-            onCancel={() => setOpenCreate(false)}
-            onSaved={() => {
-              setOpenCreate(false);
-              setReloadKey((k) => k + 1);
-            }}
-          />
-        </Modal>
-      )}
-
-      {/* Modal Edit */}
-      {!readOnly && (
-        <Modal
-          open={!!editClub}
-          title={`Modifica: ${editClub?.display_name || editClub?.name || ''}`}
-          onClose={() => setEditClub(null)}
-        >
-          {editClub && (
-            <ClubForm
-              initial={editClub}
-              onCancel={() => setEditClub(null)}
-              onSaved={() => {
-                setEditClub(null);
-                setReloadKey((k) => k + 1);
-              }}
-            />
-          )}
-        </Modal>
+      {!effectiveReadOnly && ClubsEditingModals && (
+        <ClubsEditingModals
+          openCreate={openCreate}
+          onCloseCreate={() => setOpenCreate(false)}
+          editClub={editClub}
+          onCloseEdit={() => setEditClub(null)}
+          onReload={() => setReloadKey((k) => k + 1)}
+        />
       )}
     </div>
   );

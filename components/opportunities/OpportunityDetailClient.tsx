@@ -5,10 +5,36 @@ import Link from 'next/link';
 import FollowButton from '@/components/clubs/FollowButton';
 import ApplyCell from '@/components/opportunities/ApplyCell';
 import type { Opportunity } from '@/types/opportunity';
+import { opportunityGenderLabel } from '@/lib/opps/gender';
 
 type Role = 'athlete' | 'club' | 'guest';
-
 type ApiOne<T> = { data?: T; [k: string]: any };
+
+/** Estensione locale per tollerare campi legacy snake_case arrivati dall'API */
+type OpportunityWithLegacy = Opportunity & {
+  sport?: string | null;
+
+  ageMin?: number | null;
+  ageMax?: number | null;
+  age_min?: number | null;
+  age_max?: number | null;
+
+  createdAt?: string | null;
+  created_at?: string | null;
+
+  createdBy?: string | null;
+  created_by?: string | null;
+
+  clubName?: string | null;
+  club_name?: string | null;
+
+  city?: string | null;
+  province?: string | null;
+  region?: string | null;
+  country?: string | null;
+
+  gender?: 'uomo' | 'donna' | 'mixed' | 'male' | 'female' | 'maschile' | 'femminile' | null;
+};
 
 function fmtAge(min?: number | null, max?: number | null) {
   if (min == null && max == null) return '—';
@@ -19,7 +45,7 @@ function fmtAge(min?: number | null, max?: number | null) {
 }
 
 export default function OpportunityDetailClient({ id }: { id: string }) {
-  const [opp, setOpp] = useState<Opportunity | null>(null);
+  const [opp, setOpp] = useState<OpportunityWithLegacy | null>(null);
   const [role, setRole] = useState<Role>('guest');
   const [meId, setMeId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -27,65 +53,90 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
 
   // whoami
   useEffect(() => {
-    let c = false;
+    let cancelled = false;
     (async () => {
       try {
         const r = await fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' });
         const j = await r.json().catch(() => ({}));
-        if (c) return;
+        if (cancelled) return;
         const raw = (j?.role ?? '').toString().toLowerCase();
         setRole(raw === 'athlete' || raw === 'club' ? raw : 'guest');
         setMeId(j?.user?.id ?? null);
       } catch {
-        if (!c) { setRole('guest'); setMeId(null); }
+        if (!cancelled) {
+          setRole('guest');
+          setMeId(null);
+        }
       }
     })();
-    return () => { c = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // load opportunity
   useEffect(() => {
-    let c = false;
-    setLoading(true); setErr(null);
+    let cancelled = false;
+    setLoading(true);
+    setErr(null);
     (async () => {
       try {
         const r = await fetch(`/api/opportunities/${id}`, { credentials: 'include', cache: 'no-store' });
         const t = await r.text();
         if (!r.ok) {
           let msg = `HTTP ${r.status}`;
-          try { const j = JSON.parse(t); msg = j.error || j.message || msg; } catch {}
+          try {
+            const j = JSON.parse(t);
+            msg = j.error || j.message || msg;
+          } catch {}
           throw new Error(msg);
         }
-        const j: ApiOne<Opportunity> = t ? JSON.parse(t) : {};
+        const j: ApiOne<OpportunityWithLegacy> = t ? JSON.parse(t) : {};
         const o = (j.data ?? j) as any;
         if (!o?.id) throw new Error('Annuncio non trovato');
-        if (!c) setOpp(o as Opportunity);
+        if (!cancelled) setOpp(o as OpportunityWithLegacy);
       } catch (e: any) {
-        if (!c) setErr(e.message || 'Errore caricamento annuncio');
+        if (!cancelled) setErr(e.message || 'Errore caricamento annuncio');
       } finally {
-        if (!c) setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     })();
-    return () => { c = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
-  const isOwner = useMemo(
-    () => !!meId && !!opp && opp.created_by === meId,
-    [meId, opp]
-  );
+  const isOwner = useMemo(() => {
+    if (!meId || !opp) return false;
+    const createdBy = opp.createdBy ?? opp.created_by ?? null;
+    return Boolean(createdBy && createdBy === meId);
+  }, [meId, opp]);
+
   const showApply = role === 'athlete' && !isOwner;
 
   if (loading) return <div className="p-4">Caricamento…</div>;
   if (err) return <div className="p-4 text-red-700 bg-red-50 border rounded-xl">{err}</div>;
   if (!opp) return <div className="p-4">Annuncio non trovato.</div>;
 
-  const place = [opp.city, opp.province, opp.region, opp.country].filter(Boolean).join(', ');
-  const created = opp.created_at ? new Date(opp.created_at).toLocaleString() : '—';
-  const rawGender = (opp as any)?.gender as 'male' | 'female' | 'mixed' | undefined | null;
-  const gender =
-    rawGender === 'male' ? 'Maschile' :
-    rawGender === 'female' ? 'Femminile' :
-    rawGender === 'mixed' ? 'Misto' : undefined;
+  // Normalizzazioni lato UI (camelCase ➜ legacy fallback)
+  const city = opp.city ?? null;
+  const province = opp.province ?? null;
+  const region = opp.region ?? null;
+  const country = opp.country ?? null;
+  const place = [city, province, region, country].filter(Boolean).join(', ');
+
+  const createdAtStr = (opp.createdAt ?? opp.created_at ?? null) || undefined;
+  const created = createdAtStr ? new Date(createdAtStr).toLocaleString() : '—';
+
+  const sport = opp.sport ?? null;
+  const ageMin = (opp.ageMin ?? opp.age_min) ?? null;
+  const ageMax = (opp.ageMax ?? opp.age_max) ?? null;
+
+  const rawGender = opp.gender ?? null;
+  const gender = opportunityGenderLabel(rawGender) ?? undefined;
+
+  const createdBy = opp.createdBy ?? opp.created_by ?? null;
+  const clubName = opp.clubName ?? opp.club_name ?? undefined;
 
   return (
     <div className="p-4 md:p-6">
@@ -100,11 +151,11 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
           <div className="min-w-0">
             <h1 className="text-xl font-semibold">{opp.title}</h1>
             <div className="mt-1 text-sm text-gray-600 flex flex-wrap items-center gap-2">
-              <span>{opp.sport ?? '—'}</span>
+              <span>{sport ?? '—'}</span>
               <span>•</span>
               <span>{opp.role ?? '—'}</span>
               <span>•</span>
-              <span>Età: {fmtAge(opp.age_min as any, opp.age_max as any)}</span>
+              <span>Età: {fmtAge(ageMin, ageMax)}</span>
               {gender && (
                 <>
                   <span>•</span>
@@ -115,22 +166,16 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
           </div>
 
           <div className="flex items-center gap-2">
-            {showApply && (
-              <ApplyCell opportunityId={opp.id} ownerId={opp.created_by ?? null} />
-            )}
+            {showApply && <ApplyCell opportunityId={opp.id} ownerId={createdBy ?? null} />}
           </div>
         </header>
 
-        <div className="mt-3 text-sm text-gray-700 whitespace-pre-wrap">
-          {opp.description || '—'}
-        </div>
+        <div className="mt-3 text-sm text-gray-700 whitespace-pre-wrap">{opp.description || '—'}</div>
 
         <footer className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-gray-600">
           <div className="flex items-center gap-2">
-            <span className="font-medium">{opp.club_name ?? 'Club'}</span>
-            {opp.created_by && (
-              <FollowButton clubId={opp.created_by} clubName={opp.club_name ?? undefined} size="md" />
-            )}
+            <span className="font-medium">{clubName ?? 'Club'}</span>
+            {createdBy && <FollowButton clubId={createdBy} clubName={clubName} size="md" />}
           </div>
           <div className="flex items-center gap-2">
             {place && <span>{place}</span>}

@@ -1,22 +1,25 @@
-// components/layout/DashboardNav.tsx
 'use client';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-function cx(...cls: Array<string | false | null | undefined>) {
+type Role = 'athlete' | 'club' | null;
+
+function cx(
+  ...cls: Array<string | false | null | undefined>
+) {
   return cls.filter(Boolean).join(' ');
 }
 
 function pill(active: boolean) {
   return cx(
-    'px-3 py-2 rounded-lg border transition-colors',
-    active ? 'bg-gray-900 text-white border-gray-900' : 'bg-white hover:bg-gray-50'
+    'px-3 py-2 rounded-lg border text-xs md:text-sm transition-colors',
+    active
+      ? 'bg-gray-900 text-white border-gray-900'
+      : 'bg-white text-gray-800 hover:bg-gray-50'
   );
 }
-
-type Role = 'athlete' | 'club' | null;
 
 export default function DashboardNav() {
   const pathname = usePathname();
@@ -29,53 +32,80 @@ export default function DashboardNav() {
     let ignore = false;
 
     (async () => {
+      // 1) Ruolo da /api/profiles/me
       try {
-        // 1) Rileva ruolo dal profilo
-        const rProf = await fetch('/api/profiles/me', {
+        const r = await fetch('/api/profiles/me', {
           credentials: 'include',
           cache: 'no-store',
         });
-        const jp = await rProf.json().catch(() => ({}));
-        const t = (jp?.data?.type ?? jp?.data?.profile_type ?? '')
-          .toString()
-          .toLowerCase();
-
-        if (!ignore) {
-          if (t.includes('club')) setRole('club');
-          else if (t.includes('athlete') || t.includes('atlet')) setRole('athlete');
+        if (r.ok) {
+          const j = await r.json().catch(() => ({} as any));
+          const data = j?.data || j?.profile || null;
+          const raw =
+            data?.account_type ??
+            data?.profile_type ??
+            data?.type ??
+            '';
+          const t = String(raw).toLowerCase();
+          if (!ignore) {
+            if (t.includes('club')) setRole('club');
+            else if (t.includes('athlete') || t.includes('atlet'))
+              setRole('athlete');
+          }
         }
       } catch {
-        // ignora
+        // ignore, fallback sotto
       }
 
+      // 2) Fallback da applications
       try {
-        // 2) Conta candidature inviate/ricevute
-        const [rMine, rRec] = await Promise.allSettled([
-          fetch('/api/applications/mine', { credentials: 'include', cache: 'no-store' }),
+        const [mine, rec] = await Promise.allSettled([
+          fetch('/api/applications', {
+            credentials: 'include',
+            cache: 'no-store',
+          }),
           fetch('/api/applications/received', {
             credentials: 'include',
             cache: 'no-store',
           }),
         ]);
 
-        if (!ignore) {
-          if (rMine.status === 'fulfilled') {
-            const jm = await rMine.value.json().catch(() => ({}));
-            const n = Array.isArray(jm?.data) ? jm.data.length : 0;
+        if (
+          mine.status === 'fulfilled' &&
+          mine.value.ok
+        ) {
+          const jm = await mine.value
+            .json()
+            .catch(() => ({} as any));
+          const n = Array.isArray(jm?.data)
+            ? jm.data.length
+            : 0;
+          if (!ignore) {
             setSentCount(n);
-            if (role === null && n > 0) setRole('athlete'); // fallback
-          }
-
-          if (rRec.status === 'fulfilled') {
-            const jr = await rRec.value.json().catch(() => ({}));
-            const n2 = Array.isArray(jr?.data) ? jr.data.length : 0;
-            setReceivedCount(n2);
-            if (role === null && n2 > 0) setRole('club'); // fallback
+            if (!role && n > 0) setRole('athlete');
           }
         }
-      } finally {
-        if (!ignore) setLoaded(true);
+
+        if (
+          rec.status === 'fulfilled' &&
+          rec.value.ok
+        ) {
+          const jr = await rec.value
+            .json()
+            .catch(() => ({} as any));
+          const n = Array.isArray(jr?.data)
+            ? jr.data.length
+            : 0;
+          if (!ignore) {
+            setReceivedCount(n);
+            if (!role && n > 0) setRole('club');
+          }
+        }
+      } catch {
+        // ignore
       }
+
+      if (!ignore) setLoaded(true);
     })();
 
     return () => {
@@ -84,34 +114,71 @@ export default function DashboardNav() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const isAthlete = role === 'athlete';
-  const applicationsHref = isAthlete ? '/applications/sent' : '/applications';
-  const applicationsActive =
-    pathname === applicationsHref ||
-    (isAthlete ? pathname.startsWith('/applications/sent') : pathname === '/applications');
+  const isActive = (href: string) =>
+    pathname === href ||
+    (href !== '/' && pathname.startsWith(href));
+
+  const profileHref =
+    role === 'club' ? '/club/profile' : '/profile';
 
   return (
-    <nav className="flex gap-2 items-center p-3 border-b bg-white sticky top-0 z-10">
-      <Link href="/clubs" className={pill(pathname.startsWith('/clubs'))}>
-        Clubs
-      </Link>
+    <nav className="w-full border-b bg-gray-50">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-3 py-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/feed" className={pill(isActive('/feed'))}>
+            Bacheca
+          </Link>
+          <Link
+            href="/opportunities"
+            className={pill(isActive('/opportunities'))}
+          >
+            Opportunità
+          </Link>
+          <Link
+            href={profileHref}
+            className={pill(
+              isActive('/profile') ||
+                isActive('/club/profile')
+            )}
+          >
+            Profilo
+          </Link>
+          <Link
+            href="/applications/sent"
+            className={pill(
+              isActive('/applications/sent')
+            )}
+          >
+            Candidature inviate
+            {sentCount > 0 && (
+              <span className="ml-1 rounded-full bg-gray-900 px-1.5 text-[10px] text-white">
+                {sentCount}
+              </span>
+            )}
+          </Link>
+          <Link
+            href="/applications"
+            className={pill(isActive('/applications'))}
+          >
+            Candidature ricevute
+            {receivedCount > 0 && (
+              <span className="ml-1 rounded-full bg-gray-900 px-1.5 text-[10px] text-white">
+                {receivedCount}
+              </span>
+            )}
+          </Link>
+        </div>
 
-      <Link href="/opportunities" className={pill(pathname.startsWith('/opportunities'))}>
-        Opportunità
-      </Link>
-
-      <Link href="/profile" className={pill(pathname.startsWith('/profile'))}>
-        Profilo
-      </Link>
-
-      {loaded && (
-        <Link href={applicationsHref} className={pill(applicationsActive)}>
-          {isAthlete ? 'Candidature inviate' : 'Candidature ricevute'}
-          <span className="ml-2 inline-flex items-center justify-center min-w-[1.5rem] h-[1.5rem] text-xs rounded-full border px-1">
-            {isAthlete ? sentCount : receivedCount}
-          </span>
-        </Link>
-      )}
+        <div className="hidden text-[10px] text-gray-500 md:block">
+          {loaded
+            ? role === 'club'
+              ? 'Accesso CLUB'
+              : role === 'athlete'
+              ? 'Accesso ATLETA'
+              : 'Utente non profilato'
+            : 'Caricamento...'}
+        </div>
+      </div>
     </nav>
   );
 }

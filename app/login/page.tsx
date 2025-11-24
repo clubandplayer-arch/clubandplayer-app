@@ -1,6 +1,9 @@
 // app/login/page.tsx
 'use client';
 
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'default-no-store';
+
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import SocialLogin from '@/components/auth/SocialLogin';
@@ -33,6 +36,9 @@ export default function LoginPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [currentEmail, setCurrentEmail] = useState<string | null>(null);
+  const emailId = 'login-email';
+  const passwordId = 'login-password';
+  const errorId = errorMsg ? 'login-error' : undefined;
 
   const BUILD_TAG = 'login-v6 Google+Email cookie-sync + redirect_to';
 
@@ -132,10 +138,15 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-[60vh] flex items-center justify-center p-6">
+    <main
+      className="min-h-[60vh] flex items-center justify-center p-6"
+      aria-labelledby="login-heading"
+    >
       <div className="w-full max-w-sm rounded-2xl border p-6 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold">Login</h1>
+          <h1 id="login-heading" className="text-xl font-semibold">
+            Login
+          </h1>
           <span className="text-[10px] rounded bg-gray-100 px-2 py-0.5 text-gray-600" title={BUILD_TAG}>
             {BUILD_TAG}
           </span>
@@ -167,32 +178,52 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY`}
         )}
 
         {errorMsg && (
-          <p className="rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700">
+          <p id={errorId} className="rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700" role="alert">
             {errorMsg}
           </p>
         )}
 
-        <form onSubmit={signInEmail} className="space-y-3">
-          <input
-            type="email"
-            placeholder="Email"
-            className="w-full rounded-md border px-3 py-2"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            autoComplete="email"
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            className="w-full rounded-md border px-3 py-2"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            autoComplete="current-password"
-          />
+        <form
+          onSubmit={signInEmail}
+          className="space-y-3"
+          aria-describedby={errorId}
+          noValidate
+        >
+          <div className="space-y-1">
+            <label htmlFor={emailId} className="text-sm font-medium text-gray-700">
+              Email
+            </label>
+            <input
+              id={emailId}
+              type="email"
+              placeholder="email@esempio.com"
+              className="w-full rounded-md border px-3 py-2"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoComplete="email"
+              aria-invalid={Boolean(errorMsg)}
+            />
+          </div>
+          <div className="space-y-1">
+            <label htmlFor={passwordId} className="text-sm font-medium text-gray-700">
+              Password
+            </label>
+            <input
+              id={passwordId}
+              type="password"
+              placeholder="••••••••"
+              className="w-full rounded-md border px-3 py-2"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              autoComplete="current-password"
+              aria-invalid={Boolean(errorMsg)}
+            />
+          </div>
           <button
             disabled={loading || !HAS_ENV}
+            type="submit"
             className="w-full rounded-md bg-blue-600 py-2 text-white disabled:opacity-50"
           >
             {loading ? 'Accesso…' : 'Entra'}

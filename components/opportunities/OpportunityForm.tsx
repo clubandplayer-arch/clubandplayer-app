@@ -1,17 +1,64 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+
 import type { Opportunity } from '@/types/opportunity';
 import { AGE_BRACKETS, type AgeBracket, SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
-import { COUNTRIES, ITALY_REGIONS, PROVINCES_BY_REGION, CITIES_BY_PROVINCE } from '@/lib/opps/geo';
+import { COUNTRIES } from '@/lib/opps/geo';
+import {
+  OPPORTUNITY_GENDER_LABELS,
+  normalizeOpportunityGender,
+  type OpportunityGenderCode,
+} from '@/lib/opps/gender';
 
-type Gender = 'male' | 'female' | 'mixed';
+type LocationLevel = 'region' | 'province' | 'municipality';
+type LocationRow = { id: number; name: string };
 
-const GENDERS: Array<{ value: Gender; label: string }> = [
-  { value: 'male', label: 'Maschile' },
-  { value: 'female', label: 'Femminile' },
-  { value: 'mixed', label: 'Misto' },
-];
+const supabase = createSupabaseClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+);
+
+async function fetchLocationChildren(level: LocationLevel, parent: number | null): Promise<LocationRow[]> {
+  try {
+    const { data, error } = await supabase.rpc('location_children', { level, parent });
+    if (!error && Array.isArray(data)) {
+      return (data as LocationRow[]).map((row) => ({ id: Number(row.id), name: row.name }))
+        .sort((a, b) => a.name.localeCompare(b.name, 'it', { sensitivity: 'accent' }));
+    }
+  } catch (err) {
+    console.warn('location_children rpc failed', err);
+  }
+
+  if (level === 'region') {
+    const { data } = await supabase.from('regions').select('id,name').order('name', { ascending: true });
+    return (data ?? []).map((row: any) => ({ id: Number(row.id), name: row.name as string }));
+  }
+
+  if (level === 'province') {
+    if (parent == null) return [];
+    const { data } = await supabase
+      .from('provinces')
+      .select('id,name')
+      .eq('region_id', parent)
+      .order('name', { ascending: true });
+    return (data ?? []).map((row: any) => ({ id: Number(row.id), name: row.name as string }));
+  }
+
+  if (parent == null) return [];
+  const { data } = await supabase
+    .from('municipalities')
+    .select('id,name')
+    .eq('province_id', parent)
+    .order('name', { ascending: true });
+  return (data ?? []).map((row: any) => ({ id: Number(row.id), name: row.name as string }));
+}
+
+const GENDERS = (Object.entries(OPPORTUNITY_GENDER_LABELS) as Array<[
+  OpportunityGenderCode,
+  string,
+]>).map(([value, label]) => ({ value, label }));
 
 function rangeFromBracket(b: AgeBracket | '' | undefined): { age_min: number | null; age_max: number | null } {
   if (!b) return { age_min: null, age_max: null };
@@ -41,7 +88,7 @@ function bracketFromRange(min?: number | null, max?: number | null): AgeBracket 
 
 // Estendiamo il tipo SOLO per il prop initial, senza toccare i tipi globali
 type OpportunityInitial = Partial<Opportunity> & {
-  gender?: Gender | null;
+  gender?: string | null;
 };
 
 export default function OpportunityForm({
@@ -56,25 +103,26 @@ export default function OpportunityForm({
   const [title, setTitle] = useState(initial?.title ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
 
+  const availableCountries = COUNTRIES;
+
   // Località
   const [countryCode, setCountryCode] = useState<string>(
-    COUNTRIES.find((c) => c.label === initial?.country)?.code ?? 'IT'
+    availableCountries.find((c) => c.label === initial?.country)?.code ?? 'IT'
   );
   const [countryFree, setCountryFree] = useState<string>(
-    initial?.country && !COUNTRIES.find((c) => c.label === initial.country) ? initial.country : ''
+    initial?.country && !availableCountries.find((c) => c.label === initial.country) ? initial.country : ''
   );
   const [region, setRegion] = useState<string>(initial?.region ?? '');
   const [province, setProvince] = useState<string>(initial?.province ?? '');
   const [city, setCity] = useState<string>(initial?.city ?? '');
-
-  const provinces: string[] = useMemo(
-    () => (countryCode === 'IT' ? PROVINCES_BY_REGION[region] ?? [] : []),
-    [countryCode, region]
-  );
-  const cities: string[] = useMemo(
-    () => (countryCode === 'IT' ? CITIES_BY_PROVINCE[province] ?? [] : []),
-    [countryCode, province]
-  );
+  const [regions, setRegions] = useState<LocationRow[]>([]);
+  const [regionId, setRegionId] = useState<number | null>(null);
+  const [provinces, setProvinces] = useState<LocationRow[]>([]);
+  const [provinceId, setProvinceId] = useState<number | null>(null);
+  const [cities, setCities] = useState<string[]>([]);
+  const regionsLoadedRef = useRef(false);
+  const provincesLoadedRef = useRef(false);
+  const citiesLoadedRef = useRef(false);
 
   // Sport/ruolo
   const [sport, setSport] = useState<string>(initial?.sport || 'Calcio');
@@ -82,7 +130,9 @@ export default function OpportunityForm({
   const [role, setRole] = useState<string>(initial?.role ?? '');
 
   // Genere (OBBLIGATORIO)
-  const [gender, setGender] = useState<Gender | ''>((initial?.gender as Gender) ?? '');
+  const [gender, setGender] = useState<OpportunityGenderCode | ''>(
+    () => normalizeOpportunityGender(initial?.gender) ?? ''
+  );
 
   // Età (mappa ⇄ age_min/age_max)
   const [ageBracket, setAgeBracket] = useState<AgeBracket | ''>(() =>
@@ -93,9 +143,117 @@ export default function OpportunityForm({
   const [err, setErr] = useState<string | null>(null);
   const isEdit = Boolean(initial?.id);
 
+  useEffect(() => {
+    regionsLoadedRef.current = false;
+    if (countryCode !== 'IT') {
+      setRegions([]);
+      setRegionId(null);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      const rows = await fetchLocationChildren('region', null);
+      if (cancelled) return;
+      setRegions(rows);
+      regionsLoadedRef.current = true;
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [countryCode]);
+
+  useEffect(() => {
+    if (countryCode !== 'IT') {
+      setRegionId(null);
+      return;
+    }
+    if (!regionsLoadedRef.current) return;
+    const match = regions.find((r) => r.name === region);
+    if (!match && region) {
+      setRegion('');
+      setRegionId(null);
+      setProvince('');
+      setProvinceId(null);
+      setCity('');
+      setCities([]);
+      return;
+    }
+    setRegionId(match?.id ?? null);
+  }, [countryCode, region, regions]);
+
+  useEffect(() => {
+    provincesLoadedRef.current = false;
+    if (countryCode !== 'IT' || regionId == null) {
+      setProvinces([]);
+      setProvinceId(null);
+      setCities([]);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      const rows = await fetchLocationChildren('province', regionId);
+      if (cancelled) return;
+      setProvinces(rows);
+      provincesLoadedRef.current = true;
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [countryCode, regionId]);
+
+  useEffect(() => {
+    if (countryCode !== 'IT') {
+      setProvinceId(null);
+      return;
+    }
+    if (!provincesLoadedRef.current) return;
+    const match = provinces.find((p) => p.name === province);
+    if (!match && province) {
+      setProvince('');
+      setProvinceId(null);
+      setCity('');
+      setCities([]);
+      return;
+    }
+    setProvinceId(match?.id ?? null);
+  }, [countryCode, province, provinces]);
+
+  useEffect(() => {
+    citiesLoadedRef.current = false;
+    if (countryCode !== 'IT' || provinceId == null) {
+      setCities([]);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      const rows = await fetchLocationChildren('municipality', provinceId);
+      if (cancelled) return;
+      const names = rows.map((row) => row.name).sort((a, b) => a.localeCompare(b, 'it', { sensitivity: 'accent' }));
+      setCities(names);
+      citiesLoadedRef.current = true;
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [countryCode, provinceId]);
+
+  useEffect(() => {
+    if (countryCode !== 'IT') return;
+    if (!citiesLoadedRef.current) return;
+    if (city && !cities.includes(city)) {
+      setCity('');
+    }
+  }, [countryCode, city, cities]);
+
   function effectiveCountry(): string | null {
     if (countryCode === 'OTHER') return countryFree.trim() || null;
-    const found = COUNTRIES.find((c) => c.code === countryCode);
+    const found = availableCountries.find((c) => c.code === countryCode);
     return found?.label ?? countryCode ?? null;
   }
 
@@ -106,7 +264,8 @@ export default function OpportunityForm({
     const t = title.trim();
     if (!t) return setErr('Titolo obbligatorio');
     if (sport === 'Calcio' && !role) return setErr('Seleziona un ruolo per Calcio');
-    if (!gender) return setErr('Seleziona il genere');
+    const normalizedGender = normalizeOpportunityGender(gender);
+    if (!normalizedGender) return setErr('Seleziona il genere');
 
     const { age_min, age_max } = rangeFromBracket(ageBracket);
 
@@ -121,7 +280,7 @@ export default function OpportunityForm({
         city: (city || '').trim() || null,
         sport,
         role: role || null,
-        gender: gender as Gender,
+        gender: normalizedGender,
         age_bracket: ageBracket || undefined,
         age_min,
         age_max,
@@ -151,17 +310,26 @@ export default function OpportunityForm({
     setCountryFree('');
     if (code !== 'IT') {
       setRegion('');
+      setRegionId(null);
       setProvince('');
+      setProvinceId(null);
       setCity('');
+      setCities([]);
     }
   }
   function onChangeRegion(r: string) {
     setRegion(r);
+    const match = regions.find((row) => row.name === r);
+    setRegionId(match?.id ?? null);
     setProvince('');
+    setProvinceId(null);
     setCity('');
+    setCities([]);
   }
   function onChangeProvince(p: string) {
     setProvince(p);
+    const match = provinces.find((row) => row.name === p);
+    setProvinceId(match?.id ?? null);
     setCity('');
   }
 
@@ -195,7 +363,7 @@ export default function OpportunityForm({
               value={countryCode}
               onChange={(e) => onChangeCountry(e.target.value)}
             >
-              {COUNTRIES.map((c) => (
+              {availableCountries.map((c) => (
                 <option key={c.code} value={c.code}>
                   {c.label}
                 </option>
@@ -220,9 +388,9 @@ export default function OpportunityForm({
                 onChange={(e) => onChangeRegion(e.target.value)}
               >
                 <option value="">—</option>
-                {ITALY_REGIONS.map((r: string) => (
-                  <option key={r} value={r}>
-                    {r}
+                {regions.map((r) => (
+                  <option key={r.id} value={r.name}>
+                    {r.name}
                   </option>
                 ))}
               </select>
@@ -230,7 +398,10 @@ export default function OpportunityForm({
               <input
                 className="w-full rounded-xl border px-3 py-2"
                 value={region ?? ''}
-                onChange={(e) => setRegion(e.target.value)}
+                onChange={(e) => {
+                  setRegion(e.target.value);
+                  setRegionId(null);
+                }}
               />
             )}
           </div>
@@ -244,9 +415,9 @@ export default function OpportunityForm({
                 onChange={(e) => onChangeProvince(e.target.value)}
               >
                 <option value="">—</option>
-                {provinces.map((p: string) => (
-                  <option key={p} value={p}>
-                    {p}
+                {provinces.map((p) => (
+                  <option key={p.id} value={p.name}>
+                    {p.name}
                   </option>
                 ))}
               </select>
@@ -254,7 +425,10 @@ export default function OpportunityForm({
               <input
                 className="w-full rounded-xl border px-3 py-2"
                 value={province ?? ''}
-                onChange={(e) => setProvince(e.target.value)}
+                onChange={(e) => {
+                  setProvince(e.target.value);
+                  setProvinceId(null);
+                }}
               />
             )}
           </div>
@@ -333,7 +507,10 @@ export default function OpportunityForm({
             <select
               className="w-full rounded-xl border px-3 py-2"
               value={gender}
-              onChange={(e) => setGender(e.target.value as Gender)}
+              onChange={(e) => {
+                const next = (e.target.value || '') as OpportunityGenderCode | '';
+                setGender(next);
+              }}
               required
             >
               <option value="">—</option>
@@ -385,3 +562,4 @@ export default function OpportunityForm({
     </form>
   );
 }
+

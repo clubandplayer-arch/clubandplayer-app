@@ -7,6 +7,29 @@ import next from "@next/eslint-plugin-next";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 
+const nodeGlobals = {
+  console: "readonly",
+  process: "readonly",
+  Buffer: "readonly",
+  setTimeout: "readonly",
+  setInterval: "readonly",
+  clearTimeout: "readonly",
+  clearInterval: "readonly",
+  setImmediate: "readonly",
+  clearImmediate: "readonly",
+  global: "readonly",
+  __dirname: "readonly",
+  __filename: "readonly",
+  URL: "readonly",
+  URLSearchParams: "readonly",
+  fetch: "readonly",
+  Request: "readonly",
+  Response: "readonly",
+  Headers: "readonly",
+  FormData: "readonly",
+  AbortController: "readonly",
+};
+
 const tsRecommendedConfigs = tseslint.configs.recommended.map((config) => {
   const withFiles = config.files
     ? config
@@ -84,11 +107,18 @@ export default [
     },
   },
 
-  // ➕ Playwright config: non cercare un project TS (evita il parsing error)
+  // ➕ script Node e test .mjs/.js
   {
-    files: ["playwright.config.ts"],
+    files: ["scripts/**/*.{js,mjs}", "tests/**/*.mjs"],
     languageOptions: {
-      parserOptions: { project: null },
+      sourceType: "module",
+      globals: {
+        ...nodeGlobals,
+        fetch: "readonly",
+        URL: "readonly",
+        AbortController: "readonly",
+      },
     },
   },
+
 ];

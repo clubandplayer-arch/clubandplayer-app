@@ -5,6 +5,8 @@ import ApplyCell from '@/components/opportunities/ApplyCell';
 import FollowButton from '@/components/clubs/FollowButton';
 import type { Opportunity } from '@/types/opportunity';
 
+type Role = 'athlete' | 'club' | 'guest';
+
 function formatBracket(min: number | null | undefined, max: number | null | undefined) {
   if (min == null && max == null) return '—';
   if (min != null && max != null) return `${min}-${max}`;
@@ -13,18 +15,24 @@ function formatBracket(min: number | null | undefined, max: number | null | unde
   return '—';
 }
 
-type Role = 'athlete' | 'club' | 'guest';
+function fmtDate(s?: string | null) {
+  if (!s) return '—';
+  const d = new Date(s);
+  return Number.isNaN(d.valueOf()) ? '—' : d.toLocaleString();
+}
 
 export default function OpportunitiesTable({
   items,
   currentUserId,
   userRole = 'guest',
+  clubNames,
   onEdit,
   onDelete,
 }: {
   items: Opportunity[];
   currentUserId?: string | null;
   userRole?: Role;
+  clubNames?: Record<string, string>;
   onEdit?: (opp: Opportunity) => void;
   onDelete?: (opp: Opportunity) => void;
 }) {
@@ -57,6 +65,12 @@ export default function OpportunitiesTable({
             const place = [o.city, o.province, o.region, o.country].filter(Boolean).join(', ');
             const showApply = userRole === 'athlete' && !canEdit;
             const showFollow = userRole === 'athlete' && !!o.created_by;
+            const clubLabel =
+              (o as any).clubName ||
+              o.club_name ||
+              (o.created_by ? clubNames?.[o.created_by] : undefined) ||
+              (o.owner_id ? clubNames?.[o.owner_id] : undefined) ||
+              '—';
 
             return (
               <tr key={o.id} className="border-t">
@@ -71,17 +85,19 @@ export default function OpportunitiesTable({
                 <td className="px-4 py-2">{formatBracket(o.age_min as any, o.age_max as any)}</td>
                 <td className="px-4 py-2">
                   <div className="flex items-center gap-2">
-                    <span>{o.club_name ?? '—'}</span>
+                    <span>{clubLabel}</span>
                     {showFollow && (
                       <FollowButton
-                        clubId={o.created_by!}
-                        clubName={o.club_name ?? undefined}
+                        clubId={o.created_by as string}
+                        clubName={clubLabel || undefined}
                         size="sm"
                       />
                     )}
                   </div>
                 </td>
-                <td className="px-4 py-2">{new Date(o.created_at).toLocaleString()}</td>
+                <td className="px-4 py-2">
+                  {fmtDate((o as any)?.created_at ?? (o as any)?.createdAt ?? null)}
+                </td>
                 <td className="px-4 py-2">
                   <div className="flex items-center gap-2">
                     {showApply && (

@@ -116,8 +116,7 @@ export default function WhoToFollow() {
 
   if (loading) {
     return (
-      <aside className="rounded-2xl border bg-white/60 p-4 shadow-sm dark:bg-zinc-900/60">
-        <h3 className="mb-3 text-sm font-semibold text-zinc-700 dark:text-zinc-200">Chi seguire</h3>
+      <div className="space-y-3">
         <ul className="space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (
             <li key={i} className="flex items-center gap-3">
@@ -130,24 +129,63 @@ export default function WhoToFollow() {
             </li>
           ))}
         </ul>
-      </aside>
+      </div>
     );
   }
 
-  // Filtriamo i già seguiti per l'empty state "hai già seguito tutti"
-  const visibleItems = items.filter((it) => !following.has(it.id));
+  const followedItems = items.filter((it) => following.has(it.id));
+  const suggestedItems = items.filter((it) => !following.has(it.id));
 
   return (
-    <aside className="rounded-2xl border bg-white/60 p-4 shadow-sm dark:bg-zinc-900/60">
-      <h3 className="mb-3 text-sm font-semibold text-zinc-700 dark:text-zinc-200">
-        {role === 'club' ? 'Atleti suggeriti' : role === 'athlete' ? 'Club da seguire' : 'Chi seguire'}
-      </h3>
+    <div className="space-y-4">
+      {followedItems.length > 0 && (
+        <div className="space-y-2 text-sm">
+          <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+            Profili che segui già
+          </div>
+          <ul className="space-y-2">
+            {followedItems.map((it) => {
+              const isPending = pendingId === it.id;
+              return (
+                <li key={`followed-${it.id}`} className="flex items-center gap-3">
+                  <img
+                    src={
+                      it.avatarUrl ||
+                      `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(it.name)}`
+                    }
+                    alt={it.name}
+                    className="h-9 w-9 rounded-full object-cover ring-1 ring-zinc-200 dark:ring-zinc-800"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-medium">{it.name}</div>
+                    <div className="truncate text-xs text-zinc-500">
+                      @{it.handle}
+                      {it.city ? ` · ${it.city}` : ''}
+                      {it.sport ? ` · ${it.sport}` : ''}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => toggleFollow(it.id)}
+                    disabled={isPending}
+                    aria-busy={isPending}
+                    className="text-xs font-semibold text-zinc-500 underline-offset-2 hover:underline disabled:opacity-60"
+                  >
+                    {isPending ? '...' : 'Smetti di seguire'}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
 
-      {visibleItems.length > 0 ? (
+      {suggestedItems.length > 0 ? (
         <>
           <ul className="space-y-3">
-            {visibleItems.map((it) => {
+            {suggestedItems.map((it) => {
               const isPending = pendingId === it.id;
+              const isFollowing = following.has(it.id);
               return (
                 <li key={it.id} className="flex items-center gap-3">
                   <img
@@ -179,7 +217,7 @@ export default function WhoToFollow() {
                       isPending ? 'opacity-70' : '',
                     ].join(' ')}
                   >
-                    {isPending ? '...' : 'Segui'}
+                    {isPending ? '...' : isFollowing ? 'Segui già' : 'Segui'}
                   </button>
                 </li>
               );
@@ -187,7 +225,7 @@ export default function WhoToFollow() {
           </ul>
 
           {nextCursor && (
-            <div className="mt-4">
+            <div className="pt-2">
               <button
                 type="button"
                 onClick={loadMore}
@@ -219,14 +257,14 @@ export default function WhoToFollow() {
             <div className="mt-2">
               <a
                 href="/search/club"
-                className="text-blue-600 hover:underline dark:text-blue-400"
+                className="text-sm font-medium text-zinc-700 underline underline-offset-4 hover:text-zinc-900 dark:text-zinc-200"
               >
-                Cerca altri profili
+                Cerca manualmente un club
               </a>
             </div>
           )}
         </div>
       )}
-    </aside>
+    </div>
   );
 }

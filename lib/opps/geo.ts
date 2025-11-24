@@ -1,20 +1,6 @@
 // lib/opps/geo.ts
-
-export const COUNTRIES = [
-  { code: 'IT', label: 'Italia' },
-  { code: 'ES', label: 'Spagna' },
-  { code: 'FR', label: 'Francia' },
-  { code: 'DE', label: 'Germania' },
-  { code: 'GB', label: 'Regno Unito' },
-  { code: 'PT', label: 'Portogallo' },
-  { code: 'NL', label: 'Paesi Bassi' },
-  { code: 'BE', label: 'Belgio' },
-  { code: 'CH', label: 'Svizzera' },
-  { code: 'US', label: 'USA' },
-  { code: 'BR', label: 'Brasile' },
-  { code: 'AR', label: 'Argentina' },
-  { code: 'OTHER', label: 'Altro…' },
-];
+export { COUNTRIES } from '@/lib/geo/countries';
+export type { CountryOption } from '@/lib/geo/countries';
 
 // Regioni (testi esattamente come forniti)
 export const ITALY_REGIONS = [
@@ -267,4 +253,16 @@ export const CITIES_BY_PROVINCE: Record<string, string[]> = {
     'Vivaro Romano',
     'Zagarolo',
   ],
+};
+
+export type ItalyLocations = {
+  regions: string[];
+  provincesByRegion: Record<string, string[]>;
+  citiesByProvince: Record<string, string[]>;
+};
+
+export const FALLBACK_ITALY_LOCATIONS: ItalyLocations = {
+  regions: [...ITALY_REGIONS],
+  provincesByRegion: PROVINCES_BY_REGION,
+  citiesByProvince: CITIES_BY_PROVINCE,
 };

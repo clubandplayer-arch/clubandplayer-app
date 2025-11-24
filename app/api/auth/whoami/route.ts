@@ -4,6 +4,16 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { isClubsAdminUser } from '@/lib/api/admin';
+
+function resolveEnv() {
+  const url =
+    process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+  const anon =
+    process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
+  if (!url || !anon) throw new Error('Supabase env missing');
+  return { url, anon };
+}
 
 function resolveEnv() {
   const url =
@@ -95,11 +105,13 @@ export async function GET(req: NextRequest) {
   }
 
   const role: Role = accountType ?? 'guest';
+  const clubsAdmin = await isClubsAdminUser(supabase, user);
 
   const out = NextResponse.json({
     user: { id: user.id, email: user.email ?? undefined },
     role,
     profile: { account_type: accountType, type: legacyType },
+    clubsAdmin,
   });
   mergeCookies(carrier, out);
   return out;

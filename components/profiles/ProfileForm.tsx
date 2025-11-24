@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from 'react';
 import type { Profile } from '@/types/profile';
-import { COUNTRIES, ITALY_REGIONS, PROVINCES_BY_REGION, CITIES_BY_PROVINCE } from '@/lib/opps/geo';
+import { COUNTRIES } from '@/lib/opps/geo';
+import { useItalyLocations } from '@/hooks/useItalyLocations';
 
 export default function ProfileForm({
   initial,
@@ -26,8 +27,15 @@ export default function ProfileForm({
   const [region, setRegion] = useState(initial?.region ?? '');
   const [province, setProvince] = useState(initial?.province ?? '');
   const [city, setCity] = useState(initial?.city ?? '');
-  const provinces = useMemo(() => (countryCode === 'IT' ? PROVINCES_BY_REGION[region] ?? [] : []), [countryCode, region]);
-  const cities    = useMemo(() => (countryCode === 'IT' ? CITIES_BY_PROVINCE[province] ?? [] : []), [countryCode, province]);
+  const { data: italyLocations } = useItalyLocations();
+  const provinces = useMemo(
+    () => (countryCode === 'IT' ? italyLocations.provincesByRegion[region] ?? [] : []),
+    [countryCode, region, italyLocations]
+  );
+  const cities = useMemo(
+    () => (countryCode === 'IT' ? italyLocations.citiesByProvince[province] ?? [] : []),
+    [countryCode, province, italyLocations]
+  );
 
   const [avatarUrl, setAvatarUrl] = useState(initial?.avatar_url ?? '');
   const [links, setLinks] = useState({
@@ -118,7 +126,7 @@ export default function ProfileForm({
         <div>
           <label className="block text-sm font-medium mb-1">Tipo profilo</label>
           <select className="w-full rounded-xl border px-3 py-2" value={type} onChange={(e)=>setType(e.target.value as any)}>
-            <option value="athlete">Atleta</option>
+            <option value="athlete">Player</option>
             <option value="club">Club</option>
           </select>
         </div>
@@ -164,7 +172,7 @@ export default function ProfileForm({
             {countryCode === 'IT' ? (
               <select className="w-full rounded-xl border px-3 py-2" value={region} onChange={(e)=>onChangeRegion(e.target.value)}>
                 <option value="">—</option>
-                {ITALY_REGIONS.map((r: string)=>(
+                {italyLocations.regions.map((r: string)=>(
                   <option key={r} value={r}>{r}</option>
                 ))}
               </select>

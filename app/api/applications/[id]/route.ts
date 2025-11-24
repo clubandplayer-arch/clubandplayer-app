@@ -31,11 +31,22 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   const { data: opp, error: e2 } = await supabase
     .from('opportunities')
-    .select('created_by')
+    .select('owner_id')
     .eq('id', app.opportunity_id)
-    .single();
+    .maybeSingle();
   if (e2) return jsonError(e2.message, 400);
-  if (!opp || opp.created_by !== user.id) return jsonError('Forbidden', 403);
+  let ownerId = (opp as any)?.owner_id ?? null;
+  if ((!opp || !ownerId) && !e2) {
+    const legacy = await supabase
+      .from('opportunities')
+      .select('created_by')
+      .eq('id', app.opportunity_id)
+      .maybeSingle();
+    if (!legacy.error && legacy.data) {
+      ownerId = (legacy.data as any).created_by ?? null;
+    }
+  }
+  if (!ownerId || ownerId !== user.id) return jsonError('Forbidden', 403);
 
   const { data, error } = await supabase
     .from('applications')
@@ -71,11 +82,22 @@ export const DELETE = withAuth(async (req: NextRequest, { supabase, user }) => {
   if (app.athlete_id !== user.id) {
     const { data: opp, error: e2 } = await supabase
       .from('opportunities')
-      .select('created_by')
+      .select('owner_id')
       .eq('id', app.opportunity_id)
-      .single();
+      .maybeSingle();
     if (e2) return jsonError(e2.message, 400);
-    if (!opp || opp.created_by !== user.id) return jsonError('Forbidden', 403);
+    let ownerId = (opp as any)?.owner_id ?? null;
+    if ((!opp || !ownerId) && !e2) {
+      const legacy = await supabase
+        .from('opportunities')
+        .select('created_by')
+        .eq('id', app.opportunity_id)
+        .maybeSingle();
+      if (!legacy.error && legacy.data) {
+        ownerId = (legacy.data as any).created_by ?? null;
+      }
+    }
+    if (!ownerId || ownerId !== user.id) return jsonError('Forbidden', 403);
   }
 
   const { error } = await supabase.from('applications').delete().eq('id', id);

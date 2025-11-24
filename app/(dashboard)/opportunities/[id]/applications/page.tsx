@@ -9,7 +9,18 @@ type Application = {
   status: 'submitted' | 'seen' | 'accepted' | 'rejected';
   created_at: string;
   updated_at: string;
-  athlete?: { id: string; display_name?: string | null; profile_type?: string | null } | null;
+  athlete?: {
+    id: string;
+    display_name?: string | null;
+    full_name?: string | null;
+    headline?: string | null;
+    sport?: string | null;
+    role?: string | null;
+    city?: string | null;
+    province?: string | null;
+    region?: string | null;
+    account_type?: string | null;
+  } | null;
 };
 
 function StatusBadge({ s }: { s: Application['status'] }) {
@@ -35,7 +46,21 @@ export default function OpportunityApplicationsPage({ params }: { params: { id: 
         const r = await fetch(`/api/opportunities/${id}/applications`, { credentials: 'include', cache: 'no-store' });
         const j = await r.json();
         if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
-        if (!cancelled) setApps(j.data || []);
+        if (!cancelled) {
+          const rows = Array.isArray(j.data) ? j.data : [];
+          setApps(
+            rows.map((a: any) => ({
+              ...a,
+              athlete: a.athlete
+                ? {
+                    ...a.athlete,
+                    account_type:
+                      (a.athlete.account_type ?? a.athlete.profile_type ?? a.athlete.type ?? null) || null,
+                  }
+                : null,
+            }))
+          );
+        }
       } catch (e: any) {
         if (!cancelled) setErr(e.message || 'Errore');
       } finally {
@@ -54,7 +79,19 @@ export default function OpportunityApplicationsPage({ params }: { params: { id: 
     });
     const j = await r.json();
     if (!r.ok) { alert(j.error || `HTTP ${r.status}`); return; }
-    setApps(prev => prev.map(a => a.id === appId ? j.data : a));
+    const normalized = j.data
+      ? {
+          ...j.data,
+          athlete: j.data.athlete
+            ? {
+                ...j.data.athlete,
+                account_type:
+                  (j.data.athlete.account_type ?? j.data.athlete.profile_type ?? j.data.athlete.type ?? null) || null,
+              }
+            : null,
+        }
+      : null;
+    setApps(prev => prev.map(a => (a.id === appId && normalized ? normalized : a)));
   }
 
   return (
@@ -69,7 +106,7 @@ export default function OpportunityApplicationsPage({ params }: { params: { id: 
           <table className="w-full text-sm">
             <thead className="bg-gray-50">
               <tr className="text-left border-b">
-                <th className="py-2 px-3">Atleta</th>
+                <th className="py-2 px-3">Player</th>
                 <th className="py-2 px-3">Nota</th>
                 <th className="py-2 px-3">Stato</th>
                 <th className="py-2 px-3">Data</th>
@@ -80,8 +117,15 @@ export default function OpportunityApplicationsPage({ params }: { params: { id: 
               {apps.map(a => (
                 <tr key={a.id} className="border-b">
                   <td className="py-2 px-3">
-                    <div className="font-medium">{a.athlete?.display_name || a.athlete_id}</div>
-                    <div className="text-xs text-gray-500">{a.athlete?.profile_type || 'Atleta'}</div>
+                    <div className="font-medium">{a.athlete?.display_name || a.athlete?.full_name || a.athlete_id}</div>
+                    <div className="text-xs text-gray-600">
+                      {a.athlete?.headline || [a.athlete?.role, a.athlete?.sport].filter(Boolean).join(' · ') || 'Profilo atleta'}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {[a.athlete?.city, a.athlete?.province, a.athlete?.region]
+                        .filter(Boolean)
+                        .join(' · ') || a.athlete?.account_type || 'Player'}
+                    </div>
                   </td>
                   <td className="py-2 px-3">{a.note || '—'}</td>
                   <td className="py-2 px-3"><StatusBadge s={a.status} /></td>

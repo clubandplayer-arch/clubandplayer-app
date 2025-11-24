@@ -1,4 +1,9 @@
 'use client'
+
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'default-no-store';
+
+
 import { useEffect, useMemo, useState } from 'react'   // 👈 aggiunto useMemo
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
@@ -6,10 +11,17 @@ import { supabaseBrowser } from '@/lib/supabaseBrowser'
 
 type Profile = {
   id: string
+  display_name: string | null
   full_name: string | null
+  headline: string | null
+  bio: string | null
   sport: string | null
   role: string | null
+  country: string | null
+  region: string | null
+  province: string | null
   city: string | null
+  avatar_url?: string | null
 }
 
 type ApplicationRow = {
@@ -22,6 +34,22 @@ type ApplicationRow = {
     club_name: string
     city: string
   }
+}
+
+function buildTagline(p: Profile): string {
+  const headline = (p.headline ?? '').trim()
+  if (headline) return headline
+  const role = p.role ?? 'Ruolo n/d'
+  const sport = p.sport ?? 'Sport n/d'
+  const city = p.city ?? 'Città n/d'
+  return `${role} · ${sport} · ${city}`
+}
+
+function buildLocation(p: Profile): string | null {
+  const parts = [p.city, p.province, p.region, p.country]
+    .map((part) => (part ?? '').trim())
+    .filter(Boolean)
+  return parts.length ? parts.join(' · ') : null
 }
 
 export default function PublicAthleteProfile() {
@@ -47,7 +75,9 @@ export default function PublicAthleteProfile() {
       // 1) profilo pubblico (le policy permettono SELECT a tutti)
       const { data: profs, error: perr } = await supabase
         .from('profiles')
-        .select('id, full_name, sport, role, city')
+        .select(
+          'id, display_name, full_name, headline, bio, sport, role, country, region, province, city, avatar_url'
+        )
         .eq('id', athleteId)
         .limit(1)
 
@@ -101,12 +131,24 @@ export default function PublicAthleteProfile() {
         <>
           <header style={{display:'flex', gap:16, alignItems:'center', marginBottom:16, justifyContent:'space-between', flexWrap:'wrap'}}>
             <div style={{display:'flex', gap:16, alignItems:'center'}}>
-              <div style={{width:64, height:64, borderRadius:'50%', background:'#e5e7eb'}} />
+              {profile.avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={profile.avatar_url}
+                  alt={profile.display_name ?? profile.full_name ?? 'Player'}
+                  width={64}
+                  height={64}
+                  style={{borderRadius:'50%', objectFit:'cover'}}
+                />
+              ) : (
+                <div style={{width:64, height:64, borderRadius:'50%', background:'#e5e7eb'}} />
+              )}
               <div>
-                <h1 style={{margin:0}}>{profile.full_name ?? 'Atleta'}</h1>
-                <p style={{margin:'4px 0', opacity:.8}}>
-                  {profile.role ?? 'Ruolo n/d'} · {profile.sport ?? 'Sport n/d'} · {profile.city ?? 'Città n/d'}
-                </p>
+                <h1 style={{margin:0}}>{profile.display_name || profile.full_name || 'Player'}</h1>
+                <p style={{margin:'4px 0', opacity:.8}}>{buildTagline(profile)}</p>
+                {buildLocation(profile) && (
+                  <p style={{margin:'4px 0', fontSize:13, opacity:.7}}>{buildLocation(profile)}</p>
+                )}
                 <p style={{margin:0, fontSize:13, opacity:.7}}>ID: <code>{profile.id}</code></p>
               </div>
             </div>
@@ -121,6 +163,13 @@ export default function PublicAthleteProfile() {
               </Link>
             </div>
           </header>
+
+          <section style={{border:'1px solid #e5e7eb', borderRadius:12, padding:16, marginTop:12}}>
+            <h2 style={{marginTop:0}}>Bio</h2>
+            <p style={{marginTop:8, whiteSpace:'pre-wrap'}}>
+              {profile.bio && profile.bio.trim().length > 0 ? profile.bio : 'Nessuna bio disponibile.'}
+            </p>
+          </section>
 
           <section style={{border:'1px solid #e5e7eb', borderRadius:12, padding:16, marginTop:12}}>
             <h2 style={{marginTop:0}}>Panoramica</h2>

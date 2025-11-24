@@ -67,26 +67,23 @@ export default function FollowedClubs() {
   );
 
   return (
-    <section className="bg-white rounded-xl border p-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">Club seguiti</h3>
-        <label className="flex items-center gap-2 text-xs">
-          <input
-            type="checkbox"
-            className="accent-black"
-            checked={only}
-            onChange={(e) => writeOnlyFollowed(e.target.checked)}
-          />
-          Solo seguiti
-        </label>
-      </div>
+    <div className="space-y-3 text-sm">
+      <label className="flex items-center justify-end gap-2 text-xs text-gray-600">
+        <input
+          type="checkbox"
+          className="accent-black"
+          checked={only}
+          onChange={(e) => writeOnlyFollowed(e.target.checked)}
+        />
+        Solo seguiti
+      </label>
 
       {!entries.length ? (
-        <p className="mt-3 text-xs text-gray-600">Segui un club dalle opportunità per vederlo qui.</p>
+        <p className="text-xs text-gray-600">Segui un club dalle opportunità per vederlo qui.</p>
       ) : (
-        <ul className="mt-3 space-y-2">
+        <ul className="space-y-2">
           {entries.slice(0, 8).map(([id, it]) => (
-            <li key={id} className="flex items-center justify-between text-sm">
+            <li key={id} className="flex items-center justify-between gap-2">
               <span className="truncate">{it.name ?? `Club ${id.slice(0, 6)}`}</span>
               <button
                 type="button"
@@ -104,6 +101,6 @@ export default function FollowedClubs() {
           ))}
         </ul>
       )}
-    </section>
+    </div>
   );
 }

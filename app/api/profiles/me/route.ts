@@ -40,6 +40,7 @@ const FIELDS: Record<string, 'text' | 'number' | 'bool' | 'json'> = {
   // anagrafica comune
   full_name: 'text',
   display_name: 'text',
+  avatar_url: 'text',
   bio: 'text',
   country: 'text', // nazionalità
 

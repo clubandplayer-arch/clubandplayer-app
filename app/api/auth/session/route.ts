@@ -14,9 +14,21 @@ function mergeCookies(from: NextResponse, into: NextResponse) {
 export async function POST(req: NextRequest) {
   const carrier = new NextResponse();
 
+  const supabaseUrl =
+    process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnon =
+    process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseAnon) {
+    return NextResponse.json(
+      { error: 'Missing Supabase configuration' },
+      { status: 500 }
+    );
+  }
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseAnon,
     {
       cookies: {
         get(name: string) {

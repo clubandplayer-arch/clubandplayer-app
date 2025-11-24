@@ -1,53 +1,40 @@
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { jsonError } from '@/lib/api/auth';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+export const runtime = 'nodejs';
 
-export async function GET(req: NextRequest) {
+function getSupabase() {
+  const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+  const anon = process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
+  if (!url || !anon) throw new Error('Supabase env missing');
+  return createClient(url, anon);
+}
+
+export async function GET(_req: NextRequest) {
   try {
-    const url = new URL(req.url);
-    const sport = url.searchParams.get('sport')?.trim() || '';
-    const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10));
-    const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get('limit') || '20', 10)));
-    const from = (page - 1) * limit;
-    const to = from + limit - 1;
-
-    let q = supabase
+    const supabase = getSupabase();
+    const { data, error } = await supabase
       .from('opportunities')
-      .select(
-        'id,title,description,created_by,created_at,country,region,province,city,sport,role,age_min,age_max,club_name',
-        { count: 'exact' }
-      )
-      .order('created_at', { ascending: false })
-      .range(from, to);
+      .select('country,region,province,city,sport,role,required_category,club_name');
 
-    if (sport) q = q.eq('sport', sport);
+    if (error) return jsonError(error.message, 400);
 
-    const { data, error, count } = await q;
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
+    const uniq = (arr: (string | null | undefined)[]) =>
+      Array.from(new Set((arr ?? []).filter(Boolean) as string[])).sort((a, b) => a.localeCompare(b));
 
+    const rows = data ?? [];
     return NextResponse.json({
-      data: data ?? [],
-      page,
-      pageSize: limit,
-      total: count ?? 0,
-      pageCount: Math.max(1, Math.ceil((count ?? 0) / limit)),
-      sort: 'recent',
+      country: uniq(rows.map(r => r.country)),
+      region: uniq(rows.map(r => r.region)),
+      province: uniq(rows.map(r => r.province)),
+      city: uniq(rows.map(r => r.city)),
+      sport: uniq(rows.map(r => r.sport)),
+      role: uniq(rows.map(r => r.role)),
+      required_category: uniq(rows.map(r => (r as any).required_category)),
+      club_name: uniq(rows.map(r => r.club_name)),
     });
   } catch (err: any) {
-    console.error('[GET /api/opportunities/filter] error:', err?.message || err);
-    return NextResponse.json(
-      { error: 'internal_error', message: err?.message || String(err) },
-      { status: 500 }
-    );
+    return jsonError(err?.message || 'Unexpected error', 500);
   }
 }

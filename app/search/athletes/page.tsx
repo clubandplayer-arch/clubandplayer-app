@@ -1,5 +1,10 @@
 'use client'
 
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'default-no-store';
+
+
+
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -181,7 +186,7 @@ export default function SearchAthletesPage() {
                       {/* NOME → link al profilo pubblico atleta */}
                       <div style={{ fontWeight: 700, marginBottom: 4 }}>
                         <Link href={`/athletes/${a.id}`}>
-                          {a.full_name ?? 'Atleta'}
+                          {a.full_name ?? 'Player'}
                         </Link>
                       </div>
                       <div style={{ fontSize: 14, opacity: 0.85 }}>

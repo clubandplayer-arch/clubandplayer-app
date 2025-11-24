@@ -6,7 +6,7 @@ import ProfileEditForm from '@/components/profiles/ProfileEditForm';
 export default function ProfilePage() {
   return (
     <main className="container mx-auto py-6 space-y-6">
-      <ProfileHeader />       {/* titolo dinamico */}
+      <ProfileHeader expectedType="club" />       {/* titolo dinamico */}
       <ProfileEditForm />
     </main>
   );

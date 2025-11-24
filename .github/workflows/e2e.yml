@@ -1,4 +1,5 @@
 name: E2E (non-blocking)
+
 on:
   push:
     branches: [ "**" ]
@@ -6,8 +7,12 @@ on:
 
 jobs:
   e2e:
+    name: Smoke test Next.js (Node)
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      SMOKE_ENFORCE: ${{ (github.ref_type == 'branch' && (startsWith(github.ref_name, 'release/') || github.ref_name == 'main')) && 'true' || vars.SMOKE_ENFORCE || 'false' }}
+      SMOKE_ENFORCE_PATHS: ${{ vars.SMOKE_ENFORCE_PATHS || 'app/**,app/api/**' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -21,15 +26,122 @@ jobs:
       - name: Enable Corepack
         run: corepack enable
 
-      - name: Install deps
-        run: pnpm install --frozen-lockfile
-
-      - name: Install Playwright (with deps)
-        run: pnpm exec playwright install --with-deps
-
-      - name: Run E2E (non-blocking)
-        env:
-          PW_BASE_URL: http://127.0.0.1:3010
+      - name: Install deps (retry)
         run: |
-          # Avvia l'app e lancia i test. Se falliscono, NON bloccare il merge.
-          pnpm run test:e2e || true
+          pnpm install --frozen-lockfile || {
+            echo "Install fallita, ritento tra 5s";
+            sleep 5;
+            pnpm install --frozen-lockfile;
+          }
+
+      - name: Run smoke tests (non-blocking)
+        id: smoke
+        shell: bash
+        run: |
+          set +e
+          mkdir -p artifacts/smoke
+          start_ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          start_epoch=$(date +%s)
+          pnpm test:e2e 2>&1 | tee artifacts/smoke/e2e-smoke.log
+          status=${PIPESTATUS[0]}
+          end_epoch=$(date +%s)
+          end_ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          duration=$((end_epoch-start_epoch))
+          cat <<'JSON' > artifacts/smoke/metadata.json
+{
+  "exitCode": STATUS_PLACEHOLDER,
+  "startedAt": "START_PLACEHOLDER",
+  "finishedAt": "END_PLACEHOLDER",
+  "durationSeconds": DURATION_PLACEHOLDER
+}
+JSON
+          sed -i "s/STATUS_PLACEHOLDER/${status}/" artifacts/smoke/metadata.json
+          sed -i "s/START_PLACEHOLDER/${start_ts}/" artifacts/smoke/metadata.json
+          sed -i "s/END_PLACEHOLDER/${end_ts}/" artifacts/smoke/metadata.json
+          sed -i "s/DURATION_PLACEHOLDER/${duration}/" artifacts/smoke/metadata.json
+          echo "exit_code=${status}" >> "$GITHUB_OUTPUT"
+          if [ "$status" -ne 0 ]; then
+            echo "::warning::Smoke tests failed (non-blocking)."
+          fi
+          exit 0
+
+      - name: Upload smoke artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-artifacts
+          path: artifacts/smoke
+          if-no-files-found: warn
+
+      - name: Append summary
+        if: always()
+        shell: bash
+        env:
+          EXIT_CODE: ${{ steps.smoke.outputs.exit_code }}
+        run: |
+          exit_code=${EXIT_CODE:-0}
+          if [ -f artifacts/smoke/e2e-smoke.log ]; then
+            if [ "$exit_code" -eq 0 ]; then
+              echo "✅ Smoke test Node eseguiti con successo." >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "⚠️ Smoke test Node falliti (workflow non bloccante)." >> "$GITHUB_STEP_SUMMARY"
+            fi
+            {
+              echo
+              echo '<details><summary>Ultime righe log</summary>'
+              echo
+              echo '```'
+              tail -n 40 artifacts/smoke/e2e-smoke.log || true
+              echo '```'
+              echo '</details>'
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "ℹ️ Log smoke test non generato." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Enforce failures on critical paths
+        if: ${{ github.event_name == 'pull_request' }}
+        shell: bash
+        env:
+          EXIT_CODE: ${{ steps.smoke.outputs.exit_code }}
+          ENFORCE: ${{ env.SMOKE_ENFORCE }}
+          ENFORCE_PATHS: ${{ env.SMOKE_ENFORCE_PATHS }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          exit_code=${EXIT_CODE:-0}
+          if [ "${ENFORCE,,}" != "true" ]; then
+            exit 0
+          fi
+
+          if [ "$exit_code" -eq 0 ]; then
+            exit 0
+          fi
+
+          IFS=',' read -ra patterns <<< "$ENFORCE_PATHS"
+
+          git fetch --no-tags --depth=1 origin "$BASE_REF"
+          mapfile -t changed < <(git diff --name-only "origin/$BASE_REF"...HEAD)
+
+          should_fail=0
+          for file in "${changed[@]}"; do
+            for pattern in "${patterns[@]}"; do
+              pattern_trimmed="${pattern## }"
+              pattern_trimmed="${pattern_trimmed%% }"
+              if [ -z "$pattern_trimmed" ]; then
+                continue
+              fi
+              if [[ "$file" == $pattern_trimmed ]]; then
+                echo "::error::Smoke tests falliti e file critico modificato: $file"
+                should_fail=1
+                break
+              fi
+            done
+            if [ $should_fail -eq 1 ]; then
+              break
+            fi
+          done
+
+          if [ $should_fail -eq 1 ]; then
+            exit 1
+          fi
+          exit 0

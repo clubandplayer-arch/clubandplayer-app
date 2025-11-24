@@ -3,10 +3,10 @@
 import { useEffect, useState } from 'react';
 import ApplyCTA from '@/components/opportunities/ApplyCTA';
 import type { Opportunity } from '@/types/opportunity';
+import { opportunityGenderLabel } from '@/lib/opps/gender';
 
 // NEW: analytics
 import TrackOpportunityOpen from '@/components/analytics/TrackOpportunityOpen';
-import { track } from '@/lib/analytics';
 
 type Role = 'athlete' | 'club' | 'guest';
 
@@ -52,7 +52,11 @@ export default function OpportunityDetailPage({ params }: { params: { id: string
           catch { throw new Error(t || `HTTP ${r.status}`); }
         }
         const j = JSON.parse(t);
-        if (!cancelled) setOpp(j?.data ?? j);
+        if (!cancelled) {
+          const raw = j?.data ?? j;
+          const ownerId = raw?.owner_id ?? raw?.created_by ?? null;
+          setOpp(raw ? { ...raw, owner_id: ownerId, created_by: ownerId } : null);
+        }
       } catch (e: any) {
         if (!cancelled) setErr(e.message || 'Errore caricamento');
       } finally {
@@ -85,16 +89,14 @@ export default function OpportunityDetailPage({ params }: { params: { id: string
   if (err || !opp) return <div className="p-6 text-red-600">Errore: {err || 'Dati non trovati'}</div>;
 
   const place = [opp.city, opp.province, opp.region, opp.country].filter(Boolean).join(', ');
-  const genderLabel =
-    (opp as any).gender === 'male' ? 'Maschile' :
-    (opp as any).gender === 'female' ? 'Femminile' :
-    (opp as any).gender === 'mixed' ? 'Misto' : undefined;
+  const genderLabel = opportunityGenderLabel((opp as any).gender) ?? undefined;
   const ageLabel =
     opp.age_min != null && opp.age_max != null ? `${opp.age_min}-${opp.age_max}` :
     opp.age_min != null ? `${opp.age_min}+` :
     opp.age_max != null ? `≤${opp.age_max}` : undefined;
 
-  const isOwner = !!meId && (opp.created_by === meId || (opp as any).owner_id === meId);
+  const ownerId = opp.owner_id ?? opp.created_by ?? null;
+  const isOwner = !!meId && !!ownerId && ownerId === meId;
   const showCTA = role === 'athlete' && !isOwner;
 
   return (
@@ -110,8 +112,6 @@ export default function OpportunityDetailPage({ params }: { params: { id: string
             initialApplied={alreadyApplied}
             onApplied={() => {
               setAlreadyApplied(true);
-              // NEW: traccia invio candidatura
-              track('application_submit', { opportunity_id: opp.id, role });
             }}
           />
         )}

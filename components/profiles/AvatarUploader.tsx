@@ -1,252 +1,494 @@
-/* eslint-disable @next/next/no-img-element */
 'use client';
 
-import { useRef, useState, useCallback } from 'react';
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
-import Cropper, { Area } from 'react-easy-crop';
-
-const supabase = createSupabaseClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
-// Placeholder verticale 4:5 (no asset esterni)
-const PLACEHOLDER =
-  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="256" height="320"><rect width="100%" height="100%" fill="%23e5e7eb"/><circle cx="128" cy="120" r="60" fill="%23cbd5e1"/><rect x="48" y="220" width="160" height="40" rx="20" fill="%23cbd5e1"/></svg>';
+import { useEffect, useRef, useState } from 'react';
+import type { PointerEvent } from 'react';
 
 type Props = {
-  value?: string | null;
-  onChange?: (url: string | null) => void;
+  value: string | null;
+  onChange: (url: string | null) => void;
 };
 
-/** Crea un Blob JPEG ritagliando l'immagine sorgente secondo i pixel dell'area */
-async function getCroppedBlob(imageSrc: string, crop: Area): Promise<Blob> {
-  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-    const i = new Image();
-    i.onload = () => resolve(i);
-    i.onerror = reject;
-    i.src = imageSrc; // data URL (no CORS issue)
-  });
+const TARGET_WIDTH = 400;
+const TARGET_HEIGHT = 500;
+const TARGET_RATIO = TARGET_WIDTH / TARGET_HEIGHT;
+const MAX_ZOOM = 2.5;
 
+type CropState = {
+  zoom: number;
+  offsetX: number;
+  offsetY: number;
+};
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function computeCropParams(
+  image: HTMLImageElement,
+  { zoom, offsetX, offsetY }: CropState
+) {
+  const srcW = image.naturalWidth;
+  const srcH = image.naturalHeight;
+
+  if (!srcW || !srcH) {
+    throw new Error('Dimensioni immagine non valide');
+  }
+
+  const srcRatio = srcW / srcH;
+  const baseWidth = srcRatio > TARGET_RATIO ? srcH * TARGET_RATIO : srcW;
+
+  const effectiveZoom = clamp(zoom, 1, MAX_ZOOM);
+  const cropWidth = baseWidth / effectiveZoom;
+  const cropHeight = cropWidth / TARGET_RATIO;
+
+  const diffX = Math.max(0, srcW - cropWidth);
+  const diffY = Math.max(0, srcH - cropHeight);
+
+  const normX = clamp(offsetX, -1, 1);
+  const normY = clamp(offsetY, -1, 1);
+
+  const originX = diffX * ((normX + 1) / 2);
+  const originY = diffY * ((normY + 1) / 2);
+
+  return { cropWidth, cropHeight, originX, originY };
+}
+
+function renderAvatarPreview(
+  image: HTMLImageElement,
+  crop: CropState
+): string {
+  const { cropWidth, cropHeight, originX, originY } = computeCropParams(image, crop);
   const canvas = document.createElement('canvas');
-  canvas.width = Math.max(1, Math.round(crop.width));
-  canvas.height = Math.max(1, Math.round(crop.height));
-
+  canvas.width = TARGET_WIDTH;
+  canvas.height = TARGET_HEIGHT;
   const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('Canvas non disponibile');
+
+  if (!ctx) {
+    throw new Error('Impossibile inizializzare il canvas');
+  }
 
   ctx.drawImage(
-    img,
-    crop.x, crop.y, crop.width, crop.height, // from source
-    0, 0, canvas.width, canvas.height        // to canvas
+    image,
+    originX,
+    originY,
+    cropWidth,
+    cropHeight,
+    0,
+    0,
+    TARGET_WIDTH,
+    TARGET_HEIGHT
   );
 
-  const blob: Blob = await new Promise((resolve) =>
-    canvas.toBlob((b) => resolve(b as Blob), 'image/jpeg', 0.92)
+  return canvas.toDataURL('image/jpeg', 0.9);
+}
+
+async function createAvatarBlob(
+  image: HTMLImageElement,
+  crop: CropState
+): Promise<Blob> {
+  const { cropWidth, cropHeight, originX, originY } = computeCropParams(image, crop);
+  const canvas = document.createElement('canvas');
+  canvas.width = TARGET_WIDTH;
+  canvas.height = TARGET_HEIGHT;
+  const ctx = canvas.getContext('2d');
+
+  if (!ctx) {
+    throw new Error('Impossibile inizializzare il canvas');
+  }
+
+  ctx.drawImage(
+    image,
+    originX,
+    originY,
+    cropWidth,
+    cropHeight,
+    0,
+    0,
+    TARGET_WIDTH,
+    TARGET_HEIGHT
   );
-  return blob;
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (blob) resolve(blob);
+        else reject(new Error('Impossibile generare il blob'));
+      },
+      'image/jpeg',
+      0.9
+    );
+  });
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') resolve(reader.result);
+      else reject(new Error('Impossibile leggere il file'));
+    };
+    reader.onerror = () => reject(reader.error || new Error('Errore lettura file'));
+    reader.readAsDataURL(file);
+  });
 }
 
 export default function AvatarUploader({ value, onChange }: Props) {
-  // Stato generale
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editorCrop, setEditorCrop] = useState<CropState>({
+    zoom: 1,
+    offsetX: 0,
+    offsetY: 0,
+  });
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-  // Editor di ritaglio
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  const [imageSrc, setImageSrc] = useState<string | null>(null); // dataURL del file scelto
-  const [crop, setCrop] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState<number>(1.2);
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
+  const imageRef = useRef<HTMLImageElement | null>(null);
+  const previewRef = useRef<HTMLDivElement | null>(null);
+  const dragRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    startOffsetX: number;
+    startOffsetY: number;
+    width: number;
+    height: number;
+  } | null>(null);
 
-  const onCropComplete = useCallback((_croppedArea: Area, croppedPixels: Area) => {
-    setCroppedAreaPixels(croppedPixels);
-  }, []);
+  useEffect(() => {
+    if (!editorOpen) return;
+    const image = imageRef.current;
+    if (!image) return;
 
-  function openPicker() {
-    inputRef.current?.click();
+    try {
+      const url = renderAvatarPreview(image, editorCrop);
+      setPreviewUrl(url);
+    } catch (err) {
+      console.error('[AvatarUploader] anteprima fallita', err);
+    }
+  }, [editorOpen, editorCrop]);
+
+  function resetEditor() {
+    setEditorOpen(false);
+    setPreviewUrl(null);
+    setEditorCrop({ zoom: 1, offsetX: 0, offsetY: 0 });
+    imageRef.current = null;
+    dragRef.current = null;
   }
 
-  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileChange(
+    e: React.ChangeEvent<HTMLInputElement>
+  ) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) { setError('Seleziona un\'immagine.'); return; }
-    if (file.size > 10 * 1024 * 1024) { setError('Dimensione massima 10MB.'); return; }
-
     setError(null);
 
-    // Leggi il file come dataURL per il crop client-side
-    const reader = new FileReader();
-    reader.onload = () => {
-      setImageSrc(reader.result as string);
-      setZoom(1.2);
-      setCrop({ x: 0, y: 0 });
-    };
-    reader.onerror = () => setError('Impossibile leggere il file');
-    reader.readAsDataURL(file);
-  }
+    if (file.size > 10 * 1024 * 1024) {
+      setError('File troppo grande (max 10MB).');
+      e.target.value = '';
+      return;
+    }
 
-  async function saveCroppedAndUpload() {
-    if (!imageSrc || !croppedAreaPixels) return;
-    setUploading(true);
-    setError(null);
     try {
-      // 1) genera blob ritagliato JPEG
-      const blob = await getCroppedBlob(imageSrc, croppedAreaPixels);
-      const file = new File([blob], 'avatar.jpg', { type: 'image/jpeg' });
-
-      // 2) user id + ruolo → path coerente con policy (profiles/<uid>/avatar.jpg oppure clubs/<uid>/avatar.jpg)
-      const { data: auth, error: authErr } = await supabase.auth.getUser();
-      if (authErr || !auth?.user) throw new Error('Utente non autenticato');
-      const uid = auth.user.id;
-      const role = auth.user.user_metadata?.role === 'club' ? 'club' : 'athlete';
-
-      const base = role === 'club' ? `clubs/${uid}` : `profiles/${uid}`;
-      const path = `${base}/avatar.jpg`;
-
-      // 3) overwrite a percorso fisso (upsert)
-      const { error: upErr } = await supabase
-        .storage.from('avatars')
-        .upload(path, file, { upsert: true, cacheControl: '3600', contentType: 'image/jpeg' });
-      if (upErr) throw upErr;
-
-      // 4) public URL + bust cache
-      const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path);
-      const url = `${pub.publicUrl}${pub.publicUrl.includes('?') ? '&' : '?'}v=${Date.now()}`;
-
-      // 5) salva su profilo (API esistente: /api/profiles)
-      await fetch('/api/profiles', {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ avatar_url: url }),
+      const dataUrl = await readFileAsDataUrl(file);
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = () => reject(new Error('Impossibile caricare l’immagine'));
+        image.src = dataUrl;
       });
 
-      // 6) aggiorna e chiudi editor
-      onChange?.(url);
-      setImageSrc(null);
+      imageRef.current = img;
+      const initialCrop: CropState = { zoom: 1, offsetX: 0, offsetY: 0 };
+      setEditorCrop(initialCrop);
+
+      try {
+        const preview = renderAvatarPreview(img, initialCrop);
+        setPreviewUrl(preview);
+      } catch (err) {
+        console.error('[AvatarUploader] anteprima fallita', err);
+        setPreviewUrl(null);
+      }
+
+      setEditorOpen(true);
     } catch (err: any) {
-      setError(err?.message || 'Errore upload');
+      console.error('[AvatarUploader] file error', err);
+      setError(
+        typeof err?.message === 'string' && err.message
+          ? err.message
+          : 'Impossibile elaborare il file selezionato.'
+      );
     } finally {
-      setUploading(false);
-      if (inputRef.current) inputRef.current.value = '';
+      e.target.value = '';
     }
   }
 
-  async function removeAvatar() {
-    setUploading(true); setError(null);
+  async function saveAvatar() {
+    const image = imageRef.current;
+    if (!image) {
+      setError('Nessuna immagine da caricare. Seleziona un file.');
+      return;
+    }
+
     try {
-      const { data: auth, error: ue } = await supabase.auth.getUser();
-      if (ue || !auth?.user) throw new Error('Utente non autenticato');
-      const uid = auth.user.id;
-      const role = auth.user.user_metadata?.role === 'club' ? 'club' : 'athlete';
-      const base = role === 'club' ? `clubs/${uid}` : `profiles/${uid}`;
+      setUploading(true);
+      setError(null);
 
-      // Elimina tutti i file avatar.* nella cartella corretta
-      const { data: files } = await supabase.storage.from('avatars').list(base);
-      const toDelete = (files ?? []).filter(f => f.name.startsWith('avatar.')).map(f => `${base}/${f.name}`);
-      if (toDelete.length) await supabase.storage.from('avatars').remove(toDelete);
+      const avatarBlob = await createAvatarBlob(image, editorCrop);
+      const form = new FormData();
+      form.append('file', avatarBlob, 'avatar.jpg');
 
-      await fetch('/api/profiles', {
-        method: 'PATCH',
+      const res = await fetch('/api/profiles/avatar', {
+        method: 'POST',
         credentials: 'include',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ avatar_url: null }),
+        body: form,
       });
 
-      onChange?.(null);
+      const json = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        console.error('[AvatarUploader] upload avatar failed', json);
+        const msg =
+          json?.error ||
+          json?.details ||
+          'Errore durante il caricamento dello storage.';
+        throw new Error(msg);
+      }
+
+      const publicUrl = json?.avatar_url as string | null;
+      if (!publicUrl) throw new Error('URL avatar non disponibile.');
+
+      onChange(publicUrl);
+      resetEditor();
     } catch (err: any) {
-      setError(err?.message || 'Errore rimozione');
+      console.error('[AvatarUploader] error', err);
+      setError(
+        typeof err?.message === 'string' && err.message
+          ? err.message
+          : 'Errore durante il caricamento.'
+      );
     } finally {
       setUploading(false);
+    }
+  }
+
+  function onZoomChange(value: number) {
+    const next = clamp(value, 1, MAX_ZOOM);
+    setEditorCrop((prev) => ({ ...prev, zoom: next }));
+  }
+
+  function onOffsetXChange(value: number) {
+    setEditorCrop((prev) => ({ ...prev, offsetX: clamp(value, -1, 1) }));
+  }
+
+  function onOffsetYChange(value: number) {
+    setEditorCrop((prev) => ({ ...prev, offsetY: clamp(value, -1, 1) }));
+  }
+
+  function handlePreviewPointerDown(
+    e: PointerEvent<HTMLDivElement>
+  ) {
+    if (uploading) return;
+    const rect = previewRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    dragRef.current = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      startOffsetX: editorCrop.offsetX,
+      startOffsetY: editorCrop.offsetY,
+      width: rect.width,
+      height: rect.height,
+    };
+
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+
+  function handlePreviewPointerMove(
+    e: PointerEvent<HTMLDivElement>
+  ) {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== e.pointerId || uploading) return;
+
+    const rect = previewRef.current?.getBoundingClientRect();
+    const width = rect?.width ?? drag.width;
+    const height = rect?.height ?? drag.height;
+    if (!width || !height) return;
+
+    const dx = e.clientX - drag.startX;
+    const dy = e.clientY - drag.startY;
+
+    const deltaX = (dx / width) * 2;
+    const deltaY = (dy / height) * 2;
+
+    setEditorCrop((prev) => ({
+      ...prev,
+      offsetX: clamp(drag.startOffsetX + deltaX, -1, 1),
+      offsetY: clamp(drag.startOffsetY + deltaY, -1, 1),
+    }));
+  }
+
+  function releasePointer(e: PointerEvent<HTMLDivElement>) {
+    if (dragRef.current?.pointerId === e.pointerId) {
+      dragRef.current = null;
+      e.currentTarget.releasePointerCapture(e.pointerId);
     }
   }
 
   return (
-    <div className="flex items-start gap-6">
-      {/* Anteprima grande 4:5 (≈ 256×320) */}
-      <div className="relative w-64 shrink-0" style={{ aspectRatio: '4 / 5' }}>
-        <img
-          src={value || PLACEHOLDER}
-          alt="Avatar"
-          className="absolute inset-0 h-full w-full rounded-2xl object-cover border bg-gray-100"
-        />
-      </div>
-
-      <div className="flex flex-col gap-3 pt-1 min-w-[220px]">
-        <div className="flex flex-wrap gap-2">
-          <button type="button" className="btn btn-outline" onClick={openPicker} disabled={uploading}>
-            Scegli immagine
-          </button>
-          {value && (
-            <button type="button" className="btn" onClick={removeAvatar} disabled={uploading}>
-              Rimuovi
-            </button>
+    <>
+      <div className="flex items-start gap-4">
+        {/* Preview 4:5 coerente con la mini-card */}
+        <div className="flex h-28 w-20 items-center justify-center overflow-hidden rounded-2xl border bg-gray-50">
+          {value ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={value}
+              alt="Avatar"
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="flex flex-col items-center gap-2 text-gray-300">
+              <div className="h-14 w-14 rounded-full bg-gray-200" />
+              <div className="h-2 w-16 rounded-full bg-gray-200" />
+            </div>
           )}
         </div>
-        <p className="text-xs text-gray-500">
-          Ritaglia e ridimensiona per adattare l&apos;immagine allo spazio 4:5. (Max 10MB)
-        </p>
-        {error && <div className="text-xs text-red-600">{error}</div>}
+
+        <div className="space-y-2 text-xs text-gray-600">
+          <label className="inline-flex cursor-pointer items-center gap-2 rounded-md bg-black px-3 py-2 text-xs font-medium text-white hover:bg-gray-900">
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/jpg"
+              className="hidden"
+              onChange={handleFileChange}
+              disabled={uploading || editorOpen}
+            />
+            {uploading ? 'Caricamento...' : 'Carica nuova immagine'}
+          </label>
+          <div>
+            Immagine verticale 4:5 consigliata. Max 10MB.
+            Formati supportati: JPG/PNG.
+          </div>
+          {error && !editorOpen && (
+            <div className="text-[11px] text-red-600">{error}</div>
+          )}
+        </div>
       </div>
 
-      {/* Editor di ritaglio inline (appare dopo scelta file) */}
-      {imageSrc && (
+      {editorOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-xl rounded-2xl bg-white p-4 shadow-xl">
-            <h3 className="mb-3 text-base font-semibold">Ritaglia immagine (4:5)</h3>
-            <div className="relative w-full rounded-xl overflow-hidden" style={{ aspectRatio: '4 / 5' }}>
-              <Cropper
-                image={imageSrc}
-                crop={crop}
-                zoom={zoom}
-                aspect={4 / 5}
-                onCropChange={setCrop}
-                onZoomChange={setZoom}
-                onCropComplete={onCropComplete}
-                restrictPosition={true}
-                zoomWithScroll={true}
-                showGrid={false}
-              />
+          <div className="w-full max-w-xl space-y-6 rounded-2xl bg-white p-6 shadow-xl">
+            <div className="space-y-1">
+              <h2 className="text-lg font-semibold">Regola la foto profilo</h2>
+              <p className="text-sm text-gray-500">
+                Trascina l’immagine oppure usa gli slider per centrarla e ridimensionarla.
+              </p>
             </div>
 
-            <div className="mt-4 flex items-center gap-3">
-              <label className="text-xs text-gray-600">Zoom</label>
-              <input
-                type="range"
-                min={1}
-                max={3}
-                step={0.01}
-                value={zoom}
-                onChange={(e) => setZoom(Number(e.target.value))}
-                className="w-full"
-              />
+            <div
+              ref={previewRef}
+              className="relative mx-auto h-[250px] w-[200px] overflow-hidden rounded-2xl border bg-gray-100"
+              onPointerDown={handlePreviewPointerDown}
+              onPointerMove={handlePreviewPointerMove}
+              onPointerUp={releasePointer}
+              onPointerCancel={releasePointer}
+              onPointerLeave={releasePointer}
+            >
+              {previewUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={previewUrl}
+                  alt="Anteprima avatar"
+                  className="absolute inset-0 h-full w-full select-none object-cover"
+                  draggable={false}
+                />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center text-xs text-gray-500">
+                  Anteprima non disponibile
+                </div>
+              )}
+              {uploading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-white/70 text-sm font-medium text-gray-600">
+                  Salvataggio…
+                </div>
+              )}
             </div>
 
-            <div className="mt-4 flex justify-end gap-2">
+            <div className="space-y-4 text-sm text-gray-600">
+              <label className="block text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Zoom
+                <input
+                  type="range"
+                  min="1"
+                  max={MAX_ZOOM}
+                  step="0.01"
+                  value={editorCrop.zoom}
+                  onChange={(event) => onZoomChange(Number(event.target.value))}
+                  className="mt-2 w-full"
+                  disabled={uploading}
+                />
+              </label>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  Posizione orizzontale
+                  <input
+                    type="range"
+                    min="-1"
+                    max="1"
+                    step="0.02"
+                    value={editorCrop.offsetX}
+                    onChange={(event) => onOffsetXChange(Number(event.target.value))}
+                    className="mt-2 w-full"
+                    disabled={uploading}
+                  />
+                </label>
+                <label className="block text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  Posizione verticale
+                  <input
+                    type="range"
+                    min="-1"
+                    max="1"
+                    step="0.02"
+                    value={editorCrop.offsetY}
+                    onChange={(event) => onOffsetYChange(Number(event.target.value))}
+                    className="mt-2 w-full"
+                    disabled={uploading}
+                  />
+                </label>
+              </div>
+            </div>
+
+            {error && (
+              <div className="rounded-md border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
+                {error}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2">
               <button
                 type="button"
-                className="btn btn-outline"
-                onClick={() => { setImageSrc(null); setError(null); }}
+                className="rounded-md border px-3 py-2 text-sm hover:bg-gray-50"
+                onClick={resetEditor}
                 disabled={uploading}
               >
                 Annulla
               </button>
               <button
                 type="button"
-                className="btn"
-                onClick={saveCroppedAndUpload}
+                className="rounded-md bg-black px-3 py-2 text-sm font-semibold text-white hover:bg-gray-900 disabled:opacity-70"
+                onClick={saveAvatar}
                 disabled={uploading}
               >
-                {uploading ? 'Salvo…' : 'Salva ritaglio'}
+                {uploading ? 'Salvataggio…' : 'Salva ritaglio'}
               </button>
             </div>
           </div>
         </div>
       )}
-
-      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
-    </div>
+    </>
   );
 }
