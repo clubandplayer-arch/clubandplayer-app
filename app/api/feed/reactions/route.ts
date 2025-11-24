@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 import { jsonError } from '@/lib/api/auth';
 
 export const runtime = 'nodejs';
@@ -22,6 +24,15 @@ function buildCounts(rows: Array<{ post_id: string; reaction: ReactionType; user
   return Array.from(countsMap.values());
 }
 
+async function fetchReactionRows(ids: string[], client: SupabaseClient<any, any, any>) {
+  const { data, error } = await client
+    .from('post_reactions')
+    .select('post_id, reaction, user_id')
+    .in('post_id', ids);
+  if (error) throw error;
+  return (data || []) as Array<{ post_id: string; reaction: ReactionType; user_id?: string }>;
+}
+
 export async function GET(req: NextRequest) {
   const supabase = await getSupabaseServerClient();
   const url = new URL(req.url);
@@ -38,17 +49,22 @@ export async function GET(req: NextRequest) {
     const { data: userRes } = await supabase.auth.getUser();
     const userId = userRes?.user?.id ?? null;
 
-    const { data: rows, error } = await supabase
-      .from('post_reactions')
-      .select('post_id, reaction, user_id')
-      .in('post_id', ids);
+    let rows: Array<{ post_id: string; reaction: ReactionType; user_id?: string }> = [];
+    try {
+      rows = await fetchReactionRows(ids, supabase);
+    } catch (clientErr) {
+      const admin = getSupabaseAdminClientOrNull();
+      if (admin) {
+        rows = await fetchReactionRows(ids, admin);
+      } else {
+        throw clientErr;
+      }
+    }
 
-    if (error) throw error;
-
-    const counts = buildCounts((rows || []) as Array<{ post_id: string; reaction: ReactionType; user_id?: string }>);
+    const counts = buildCounts(rows);
     const mine: { post_id: string; reaction: ReactionType }[] = [];
 
-    for (const row of rows || []) {
+    for (const row of rows) {
       if (userId && row.user_id === userId) {
         mine.push({ post_id: row.post_id as string, reaction: row.reaction as ReactionType });
       }
@@ -140,14 +156,20 @@ export async function POST(req: NextRequest) {
       if (insErr) throw insErr;
     }
 
-    const { data: rows, error: summaryErr } = await supabase
-      .from('post_reactions')
-      .select('post_id, reaction, user_id')
-      .eq('post_id', postId);
-    if (summaryErr) throw summaryErr;
+    let rows: Array<{ post_id: string; reaction: ReactionType; user_id?: string }> = [];
+    try {
+      rows = await fetchReactionRows([postId], supabase);
+    } catch (clientErr) {
+      const admin = getSupabaseAdminClientOrNull();
+      if (admin) {
+        rows = await fetchReactionRows([postId], admin);
+      } else {
+        throw clientErr;
+      }
+    }
 
-    const counts = buildCounts((rows || []) as Array<{ post_id: string; reaction: ReactionType; user_id?: string }>);
-    const mine = (rows || []).find((r) => r.user_id === userRes.user.id)?.reaction ?? null;
+    const counts = buildCounts(rows);
+    const mine = rows.find((r) => r.user_id === userRes.user.id)?.reaction ?? null;
 
     return NextResponse.json({ ok: true, postId, counts, mine });
   } catch (err: any) {

@@ -5,6 +5,10 @@
 ALTER TABLE public.notifications
 ADD COLUMN IF NOT EXISTS kind text;
 
+-- Dati extra per collegare la notifica a risorse (post, sender, ecc.)
+ALTER TABLE public.notifications
+ADD COLUMN IF NOT EXISTS payload jsonb;
+
 -- Default consigliato per nuove righe
 ALTER TABLE public.notifications
 ALTER COLUMN kind SET DEFAULT 'system';
@@ -29,3 +33,7 @@ ON public.follows (target_id);
 -- Se il modello prevede anche target_type, assicurati che esista:
 ALTER TABLE public.follows
 ADD COLUMN IF NOT EXISTS target_type text;
+
+-- Indice aggiuntivo per tipo
+CREATE INDEX IF NOT EXISTS follows_target_type_idx
+ON public.follows (target_type);
