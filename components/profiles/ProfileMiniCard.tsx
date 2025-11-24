@@ -29,6 +29,9 @@ type P = {
   club_foundation_year?: number | null;
   club_stadium?: string | null;
   club_league_category?: string | null;
+  club_stadium_lat?: number | null;
+  club_stadium_lng?: number | null;
+  club_stadium_address?: string | null;
 
   // interesse (non mostrato)
   interest_region_id?: number | null;
@@ -176,6 +179,13 @@ export default function ProfileMiniCard() {
   };
 
   const locationLine = [interest.city, interest.region, interest.country].filter(Boolean).join(' · ') || '—';
+  const stadiumLabel = p?.club_stadium || p?.club_stadium_address || '';
+  const stadiumHasCoords = p?.club_stadium_lat != null && p?.club_stadium_lng != null;
+  const mapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  const stadiumEmbedUrl =
+    stadiumHasCoords && mapsKey
+      ? `https://www.google.com/maps/embed/v1/view?key=${mapsKey}&center=${p?.club_stadium_lat},${p?.club_stadium_lng}&zoom=15&maptype=roadmap`
+      : null;
 
   const IconWrap = ({ href, label, children, className = '' }: any) => (
     <a
@@ -225,11 +235,31 @@ export default function ProfileMiniCard() {
       </div>
 
       {isClub ? (
-        <div className="grid grid-cols-2 gap-3 text-sm">
-          <InfoCard label="Sport" value={p?.sport || '—'} />
-          <InfoCard label="Categoria" value={p?.club_league_category || '—'} />
-          <InfoCard label="Location" value={locationLine} />
-          <InfoCard label="Stadio" value={p?.club_stadium || '—'} />
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <InfoCard label="Sport" value={p?.sport || '—'} />
+            <InfoCard label="Categoria" value={p?.club_league_category || '—'} />
+            <InfoCard label="Location" value={locationLine} />
+            <InfoCard label="Stadio" value={stadiumLabel || '—'} />
+          </div>
+
+          {stadiumEmbedUrl ? (
+            <div className="space-y-2">
+              <div className="text-xs uppercase tracking-wide text-gray-500">Mappa impianto</div>
+              <div className="overflow-hidden rounded-xl border border-white/40 bg-white/70">
+                <iframe
+                  title="Mappa impianto"
+                  src={stadiumEmbedUrl}
+                  loading="lazy"
+                  allowFullScreen
+                  className="h-24 w-full"
+                />
+              </div>
+              {stadiumLabel ? <div className="text-xs text-gray-700">{stadiumLabel}</div> : null}
+            </div>
+          ) : stadiumLabel ? (
+            <div className="rounded-xl border border-white/30 bg-white/60 px-3 py-2 text-xs text-gray-700">{stadiumLabel}</div>
+          ) : null}
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-3 text-sm">
