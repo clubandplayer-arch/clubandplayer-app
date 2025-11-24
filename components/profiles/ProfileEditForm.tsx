@@ -233,20 +233,7 @@ export default function ProfileEditForm() {
 
   // Atleta only
   const [birthYear, setBirthYear] = useState<number | ''>('');
-  const [birthPlace, setBirthPlace] = useState('');
-  const [residenceCity, setResidenceCity] = useState('');
   const [clubCity, setClubCity] = useState('');
-
-  // Residenza IT (atleta)
-  const [resRegionId, setResRegionId] = useState<number | null>(null);
-  const [resProvinceId, setResProvinceId] = useState<number | null>(null);
-  const [resMunicipalityId, setResMunicipalityId] = useState<number | null>(null);
-
-  // Nascita (atleta)
-  const [birthCountry, setBirthCountry] = useState('IT');
-  const [birthRegionId, setBirthRegionId] = useState<number | null>(null);
-  const [birthProvinceId, setBirthProvinceId] = useState<number | null>(null);
-  const [birthMunicipalityId, setBirthMunicipalityId] = useState<number | null>(null);
 
   // Zona interesse (comune)
   const [regionId, setRegionId] = useState<number | null>(null);
@@ -340,18 +327,7 @@ export default function ProfileEditForm() {
 
     // atleta
     setBirthYear(p.birth_year ?? '');
-    setBirthPlace(p.birth_place || '');
-    setResidenceCity(p.city || '');
     setClubCity(p.city || '');
-
-    setResRegionId(p.residence_region_id);
-    setResProvinceId(p.residence_province_id);
-    setResMunicipalityId(p.residence_municipality_id);
-
-    setBirthCountry(normalizeCountryCode(p.birth_country) || 'IT');
-    setBirthRegionId(p.birth_region_id);
-    setBirthProvinceId(p.birth_province_id);
-    setBirthMunicipalityId(p.birth_municipality_id);
 
     setRegionId(p.interest_region_id);
     setProvinceId(p.interest_province_id);
@@ -431,6 +407,11 @@ export default function ProfileEditForm() {
   const canSave = useMemo(() => !saving && profile != null, [saving, profile]);
   const currentYear = new Date().getFullYear();
   const normalizedCountry = normalizeCountryCode(country);
+  const selectedMunicipality =
+    isClub && country !== 'IT'
+      ? null
+      : municipalities.find((m) => m.id === municipalityId) || null;
+  const interestCityName = selectedMunicipality?.name ?? '';
 
   function normalizeSocial(kind: keyof Links, value: string): string | null {
     const v = (value || '').trim();
@@ -480,11 +461,6 @@ export default function ProfileEditForm() {
         notify_email_new_message: !!notifyEmail,
       };
 
-      const selectedMunicipality =
-        country === 'IT'
-          ? municipalities.find((m) => m.id === municipalityId)
-          : null;
-
       if (isClub) {
         const clubCityName =
           country === 'IT'
@@ -517,19 +493,7 @@ export default function ProfileEditForm() {
         // PLAYER
         Object.assign(basePayload, {
           birth_year: birthYear === '' ? null : Number(birthYear),
-
-          // residenza
-          residence_region_id: resRegionId,
-          residence_province_id: resProvinceId,
-          residence_municipality_id: resMunicipalityId,
-          city: (residenceCity || '').trim() || null,
-
-          // nascita
-          birth_country: normalizeCountryCode(birthCountry), // <<< ISO2
-          birth_region_id:      birthCountry === 'IT' ? birthRegionId      : null,
-          birth_province_id:    birthCountry === 'IT' ? birthProvinceId    : null,
-          birth_municipality_id:birthCountry === 'IT' ? birthMunicipalityId: null,
-          birth_place:          birthCountry !== 'IT' ? (birthPlace || '').trim() || null : null,
+          city: selectedMunicipality?.name ?? null,
 
           // atleta
           foot: (foot || '').trim() || null,
@@ -541,6 +505,16 @@ export default function ProfileEditForm() {
           club_league_category: null,
           club_foundation_year: null,
           club_stadium: null,
+
+          // campi legacy non usati più
+          residence_region_id: null,
+          residence_province_id: null,
+          residence_municipality_id: null,
+          birth_country: null,
+          birth_region_id: null,
+          birth_province_id: null,
+          birth_municipality_id: null,
+          birth_place: null,
         });
       }
 
@@ -854,13 +828,18 @@ export default function ProfileEditForm() {
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-sm text-gray-600">Città</label>
+                <label className="text-sm text-gray-600">Città (dalla zona di interesse)</label>
                 <input
-                  className="rounded-lg border p-2"
-                  value={residenceCity}
-                  onChange={(e) => setResidenceCity(e.target.value)}
-                  placeholder="Es. Roma"
+                  className="rounded-lg border bg-gray-50 p-2"
+                  value={interestCityName}
+                  placeholder="Seleziona zona di interesse per impostare la città"
+                  disabled
                 />
+                {!interestCityName && (
+                  <span className="text-xs text-gray-500">
+                    Seleziona regione, provincia e città nella sezione "Zona di interesse".
+                  </span>
+                )}
               </div>
 
               <div className="md:col-span-2 flex flex-col gap-1">
