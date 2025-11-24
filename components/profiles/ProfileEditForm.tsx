@@ -1,7 +1,7 @@
 // components/profiles/ProfileEditForm.tsx
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
@@ -198,6 +198,18 @@ const CATEGORIES_BY_SPORT: Record<string, string[]> = {
   ],
 };
 
+function SectionCard({ title, description, children }: { title: string; description?: ReactNode; children: ReactNode }) {
+  return (
+    <section className="glass-panel border border-white/20 p-5 md:p-6 shadow-lg space-y-3">
+      <div>
+        <h2 className="heading-h2 mb-1 text-2xl md:text-3xl">{title}</h2>
+        {description && <p className="text-sm text-gray-600">{description}</p>}
+      </div>
+      {children}
+    </section>
+  );
+}
+
 /* ------------------------------ */
 
 export default function ProfileEditForm() {
@@ -211,6 +223,7 @@ export default function ProfileEditForm() {
   const [error, setError] = useState<string | null>(null);
 
   const isClub = profile?.account_type === 'club';
+  const labelClass = 'text-xs font-semibold uppercase tracking-[0.08em] text-gray-500';
 
   // Anagrafica base
   const [fullName, setFullName] = useState('');
@@ -563,202 +576,218 @@ export default function ProfileEditForm() {
 
   return (
     <>
-      {/* Titolo sintetico per la pagina */}
-      <h1 className="mb-1 text-2xl font-bold">{isClub ? 'CLUB' : 'PLAYER'}</h1>
-      <p className="mb-4 text-sm text-gray-500">
-      </p>
+      <div className="space-y-1">
+        <h1 className="heading-h1 text-3xl md:text-4xl">{isClub ? 'Profilo Club' : 'Profilo Player'}</h1>
+        <p className="text-sm text-gray-600">
+          {isClub
+            ? 'Tutte le informazioni essenziali del club raccolte in un’unica scheda chiara.'
+            : 'Aggiorna i tuoi dati per migliorare il matching con club e opportunità.'}
+        </p>
+      </div>
 
       <form onSubmit={onSubmit} className="space-y-6">
-        {/* Dati personali / club */}
-        <section className="rounded-2xl border p-4 md:p-5">
-          <h2 className="mb-3 text-lg font-semibold">
-            {isClub ? 'Dati club' : 'Dati personali'}
-          </h2>
-
+        <SectionCard
+          title={isClub ? 'Dati club' : 'Dati personali'}
+          description={
+            isClub
+              ? 'Nome, località, sport e dettagli principali del club (usiamo le stesse opzioni della mappa e delle mini-card).'
+              : undefined
+          }
+        >
           {isClub ? (
-            <div className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="flex flex-col gap-2 md:col-span-2">
-                  <label className="text-sm text-gray-600">Foto profilo</label>
-                  <AvatarUploader value={avatarUrl} onChange={setAvatarUrl} />
-                  <div className="flex items-center gap-3 text-xs text-gray-500">
-                    <span>La foto viene mostrata nelle mini-card della bacheca.</span>
-                    {avatarUrl && (
-                      <button
-                        type="button"
-                        onClick={() => setAvatarUrl(null)}
-                        className="font-medium text-red-600 hover:underline"
-                      >
-                        Rimuovi foto
-                      </button>
-                    )}
+            <div className="space-y-6">
+              <div className="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <span className={labelClass}>Foto profilo</span>
+                    <AvatarUploader value={avatarUrl} onChange={setAvatarUrl} />
+                    <div className="flex items-center gap-3 text-xs text-gray-500">
+                      <span>La foto viene mostrata nelle mini-card della bacheca.</span>
+                      {avatarUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setAvatarUrl(null)}
+                          className="font-medium text-red-600 hover:underline"
+                        >
+                          Rimuovi foto
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <span className={labelClass}>Nome del club</span>
+                    <input
+                      className="input"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="Es. ASD Carlentini"
+                    />
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-1 md:col-span-2">
-                  <label className="text-sm text-gray-600">Nome del club</label>
-                  <input
-                    className="rounded-lg border p-2"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Es. ASD Carlentini"
-                  />
+                <div className="space-y-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <span className={labelClass}>Sport del club</span>
+                      <select
+                        className="select"
+                        value={sport}
+                        onChange={(e) => setSport(e.target.value)}
+                      >
+                        {CLUB_SPORT_OPTIONS.map((s) => (
+                          <option key={s} value={s}>
+                            {s}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <span className={labelClass}>Categoria / Campionato</span>
+                      <select
+                        className="select"
+                        value={clubCategory}
+                        onChange={(e) => setClubCategory(e.target.value)}
+                      >
+                        {sportCategories.map((c) => (
+                          <option key={c} value={c}>
+                            {c}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <span className={labelClass}>Anno di fondazione</span>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        className="input"
+                        value={foundationYear}
+                        onChange={(e) =>
+                          setFoundationYear(
+                            e.target.value === '' ? '' : Number(e.target.value)
+                          )
+                        }
+                        min={1850}
+                        max={currentYear}
+                        placeholder="es. 1926"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <span className={labelClass}>Stadio o impianto</span>
+                      <input
+                        className="input"
+                        value={stadium}
+                        onChange={(e) => setStadium(e.target.value)}
+                        placeholder='Es. "Sebastiano Romano"'
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <span className={labelClass}>Biografia del club</span>
+                    <textarea
+                      className="textarea"
+                      rows={4}
+                      value={bio}
+                      onChange={(e) => setBio(e.target.value)}
+                      placeholder="Storia, valori, palmarès…"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-4">
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm text-gray-600">Nazione del club</label>
-                  <select
-                    className="rounded-lg border p-2"
-                    value={country}
-                    onChange={(e) => setCountry(e.target.value)}
-                  >
-                    {COUNTRIES.map((c) => (
-                      <option key={c.code} value={c.code}>
-                        {c.label}
-                      </option>
-                    ))}
-                  </select>
+              <div className="rounded-xl border border-white/30 bg-white/60 p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className={labelClass}>Località</span>
                   {country && (
-                    <span className="text-xs text-gray-500">{countryPreview}</span>
+                    <span className="text-xs text-gray-600">{countryPreview}</span>
                   )}
                 </div>
 
-                {country === 'IT' ? (
-                  <>
-                    <div className="flex flex-col gap-1">
-                      <label className="text-sm text-gray-600">Regione del club</label>
-                      <select
-                        className="rounded-lg border p-2"
-                        value={regionId ?? ''}
-                        onChange={(e) => setRegionId(e.target.value ? Number(e.target.value) : null)}
-                      >
-                        <option value="">— Seleziona regione —</option>
-                        {regions.map((r) => (
-                          <option key={r.id} value={r.id}>
-                            {r.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                      <label className="text-sm text-gray-600">Provincia del club</label>
-                      <select
-                        className="rounded-lg border p-2 disabled:bg-gray-50"
-                        value={provinceId ?? ''}
-                        onChange={(e) => setProvinceId(e.target.value ? Number(e.target.value) : null)}
-                        disabled={!regionId}
-                      >
-                        <option value="">— Seleziona provincia —</option>
-                        {provinces.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                      <label className="text-sm text-gray-600">Città del club</label>
-                      <select
-                        className="rounded-lg border p-2 disabled:bg-gray-50"
-                        value={municipalityId ?? ''}
-                        onChange={(e) => setMunicipalityId(e.target.value ? Number(e.target.value) : null)}
-                        disabled={!provinceId}
-                      >
-                        <option value="">— Seleziona città —</option>
-                        {municipalities.map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </>
-                ) : (
-                  <div className="md:col-span-3 flex flex-col gap-1">
-                    <label className="text-sm text-gray-600">Città del club</label>
-                    <input
-                      className="rounded-lg border p-2"
-                      value={clubCity}
-                      onChange={(e) => setClubCity(e.target.value)}
-                      placeholder="Es. Sydney"
-                    />
+                <div className="grid gap-4 md:grid-cols-4">
+                  <div className="space-y-2">
+                    <span className={labelClass}>Nazione del club</span>
+                    <select
+                      className="select"
+                      value={country}
+                      onChange={(e) => setCountry(e.target.value)}
+                    >
+                      {COUNTRIES.map((c) => (
+                        <option key={c.code} value={c.code}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                )}
-              </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm text-gray-600">Sport del club</label>
-                  <select
-                    className="rounded-lg border p-2"
-                    value={sport}
-                    onChange={(e) => setSport(e.target.value)}
-                  >
-                    {CLUB_SPORT_OPTIONS.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
+                  {country === 'IT' ? (
+                    <>
+                      <div className="space-y-2">
+                        <span className={labelClass}>Regione del club</span>
+                        <select
+                          className="select"
+                          value={regionId ?? ''}
+                          onChange={(e) => setRegionId(e.target.value ? Number(e.target.value) : null)}
+                        >
+                          <option value="">— Seleziona regione —</option>
+                          {regions.map((r) => (
+                            <option key={r.id} value={r.id}>
+                              {r.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <span className={labelClass}>Provincia del club</span>
+                        <select
+                          className="select disabled:bg-gray-50"
+                          value={provinceId ?? ''}
+                          onChange={(e) => setProvinceId(e.target.value ? Number(e.target.value) : null)}
+                          disabled={!regionId}
+                        >
+                          <option value="">— Seleziona provincia —</option>
+                          {provinces.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <span className={labelClass}>Città del club</span>
+                        <select
+                          className="select disabled:bg-gray-50"
+                          value={municipalityId ?? ''}
+                          onChange={(e) => setMunicipalityId(e.target.value ? Number(e.target.value) : null)}
+                          disabled={!provinceId}
+                        >
+                          <option value="">— Seleziona città —</option>
+                          {municipalities.map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="space-y-2 md:col-span-3">
+                      <span className={labelClass}>Città del club</span>
+                      <input
+                        className="input"
+                        value={clubCity}
+                        onChange={(e) => setClubCity(e.target.value)}
+                        placeholder="Es. Sydney"
+                      />
+                    </div>
+                  )}
                 </div>
-
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm text-gray-600">Categoria / Campionato</label>
-                  <select
-                    className="rounded-lg border p-2"
-                    value={clubCategory}
-                    onChange={(e) => setClubCategory(e.target.value)}
-                  >
-                    {sportCategories.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm text-gray-600">Anno di fondazione</label>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    className="rounded-lg border p-2"
-                    value={foundationYear}
-                    onChange={(e) =>
-                      setFoundationYear(
-                        e.target.value === '' ? '' : Number(e.target.value)
-                      )
-                    }
-                    min={1850}
-                    max={currentYear}
-                    placeholder="es. 1926"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm text-gray-600">Stadio o impianto</label>
-                  <input
-                    className="rounded-lg border p-2"
-                    value={stadium}
-                    onChange={(e) => setStadium(e.target.value)}
-                    placeholder='Es. "Sebastiano Romano"'
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-gray-600">Biografia del club</label>
-                <textarea
-                  className="rounded-lg border p-2"
-                  rows={4}
-                  value={bio}
-                  onChange={(e) => setBio(e.target.value)}
-                  placeholder="Storia, valori, palmarès…"
-                />
               </div>
             </div>
           ) : (
@@ -846,23 +875,22 @@ export default function ProfileEditForm() {
               </div>
             </div>
           )}
-        </section>
+        </SectionCard>
 
         {/* Zona di interesse (atleta) */}
         {!isClub && (
-          <section className="rounded-2xl border p-4 md:p-5">
-            <h2 className="mb-3 text-lg font-semibold">Zona di interesse</h2>
+          <SectionCard title="Zona di interesse">
             <div className="grid gap-4 md:grid-cols-4">
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-gray-600">Paese</label>
-                <select className="rounded-lg border p-2" value="IT" disabled>
+              <div className="space-y-1">
+                <span className={labelClass}>Paese</span>
+                <select className="select" value="IT" disabled>
                   <option value="IT">Italia</option>
                 </select>
               </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-gray-600">Regione</label>
+              <div className="space-y-1">
+                <span className={labelClass}>Regione</span>
                 <select
-                  className="rounded-lg border p-2"
+                  className="select"
                   value={regionId ?? ''}
                   onChange={(e) => setRegionId(e.target.value ? Number(e.target.value) : null)}
                 >
@@ -874,10 +902,10 @@ export default function ProfileEditForm() {
                   ))}
                 </select>
               </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-gray-600">Provincia</label>
+              <div className="space-y-1">
+                <span className={labelClass}>Provincia</span>
                 <select
-                  className="rounded-lg border p-2 disabled:bg-gray-50"
+                  className="select disabled:bg-gray-50"
                   value={provinceId ?? ''}
                   onChange={(e) => setProvinceId(e.target.value ? Number(e.target.value) : null)}
                   disabled={!regionId}
@@ -890,10 +918,10 @@ export default function ProfileEditForm() {
                   ))}
                 </select>
               </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-gray-600">Città</label>
+              <div className="space-y-1">
+                <span className={labelClass}>Città</span>
                 <select
-                  className="rounded-lg border p-2 disabled:bg-gray-50"
+                  className="select disabled:bg-gray-50"
                   value={municipalityId ?? ''}
                   onChange={(e) => setMunicipalityId(e.target.value ? Number(e.target.value) : null)}
                   disabled={!provinceId}
@@ -907,18 +935,17 @@ export default function ProfileEditForm() {
                 </select>
               </div>
             </div>
-          </section>
+          </SectionCard>
         )}
 
         {/* Dettagli player */}
         {!isClub && (
-          <section className="rounded-2xl border p-4 md:p-5">
-            <h2 className="mb-3 text-lg font-semibold">Dettagli Player</h2>
+          <SectionCard title="Dettagli Player">
             <div className="grid gap-4 md:grid-cols-3">
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-gray-600">Piede preferito</label>
+              <div className="space-y-1">
+                <span className={labelClass}>Piede preferito</span>
                 <select
-                  className="rounded-lg border p-2"
+                  className="select"
                   value={foot}
                   onChange={(e) => setFoot(e.target.value)}
                 >
@@ -928,12 +955,12 @@ export default function ProfileEditForm() {
                   <option value="Ambidestro">Ambidestro</option>
                 </select>
               </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-gray-600">Altezza (cm)</label>
+              <div className="space-y-1">
+                <span className={labelClass}>Altezza (cm)</span>
                 <input
                   type="number"
                   inputMode="numeric"
-                  className="rounded-lg border p-2"
+                  className="input"
                   value={heightCm}
                   onChange={(e) =>
                     setHeightCm(e.target.value === '' ? '' : Number(e.target.value))
@@ -943,12 +970,12 @@ export default function ProfileEditForm() {
                   placeholder="es. 183"
                 />
               </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-gray-600">Peso (kg)</label>
+              <div className="space-y-1">
+                <span className={labelClass}>Peso (kg)</span>
                 <input
                   type="number"
                   inputMode="numeric"
-                  className="rounded-lg border p-2"
+                  className="input"
                   value={weightKg}
                   onChange={(e) =>
                     setWeightKg(e.target.value === '' ? '' : Number(e.target.value))
@@ -959,58 +986,53 @@ export default function ProfileEditForm() {
                 />
               </div>
             </div>
-          </section>
+          </SectionCard>
         )}
 
         {/* Social */}
-        <section className="rounded-2xl border p-4 md:p-5">
-          <h2 className="mb-3 text-lg font-semibold">Profili social</h2>
-          <p className="mb-3 text-xs text-gray-500">
-            Inserisci URL completi o semplici @handle.
-          </p>
+        <SectionCard title="Profili social" description="Inserisci URL completi o semplici @handle.">
           <div className="grid gap-4 md:grid-cols-2">
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-gray-600">Instagram</label>
+            <div className="space-y-1">
+              <span className={labelClass}>Instagram</span>
               <input
-                className="rounded-lg border p-2"
+                className="input"
                 value={instagram}
                 onChange={(e) => setInstagram(e.target.value)}
                 placeholder="@tuonome oppure https://instagram.com/tuonome"
               />
             </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-gray-600">Facebook</label>
+            <div className="space-y-1">
+              <span className={labelClass}>Facebook</span>
               <input
-                className="rounded-lg border p-2"
+                className="input"
                 value={facebook}
                 onChange={(e) => setFacebook(e.target.value)}
                 placeholder="pagina o profilo"
               />
             </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-gray-600">TikTok</label>
+            <div className="space-y-1">
+              <span className={labelClass}>TikTok</span>
               <input
-                className="rounded-lg border p-2"
+                className="input"
                 value={tiktok}
                 onChange={(e) => setTiktok(e.target.value)}
                 placeholder="@tuonome"
               />
             </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-gray-600">X (Twitter)</label>
+            <div className="space-y-1">
+              <span className={labelClass}>X (Twitter)</span>
               <input
-                className="rounded-lg border p-2"
+                className="input"
                 value={x}
                 onChange={(e) => setX(e.target.value)}
                 placeholder="@tuonome"
               />
             </div>
           </div>
-        </section>
+        </SectionCard>
 
         {/* Notifiche */}
-        <section className="rounded-2xl border p-4 md:p-5">
-          <h2 className="mb-3 text-lg font-semibold">Notifiche</h2>
+        <SectionCard title="Notifiche">
           <label className="flex items-center gap-3">
             <input
               type="checkbox"
@@ -1020,7 +1042,7 @@ export default function ProfileEditForm() {
             />
             <span className="text-sm">Email per nuovi messaggi</span>
           </label>
-        </section>
+        </SectionCard>
 
         <div className="flex items-center gap-3">
           <button

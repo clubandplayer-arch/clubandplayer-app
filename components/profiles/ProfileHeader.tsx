@@ -69,7 +69,7 @@ export default function ProfileHeader({ expectedType }: { expectedType?: Account
   // Niente descrizione (paragrafo) per evitare qualsiasi duplicazione visiva
   return (
     <div id="cp-dyn-profile-header" className="mb-4">
-      <h1 className="text-2xl font-bold">{label}</h1>
+      <h1 className="heading-h1 text-3xl md:text-4xl">{label}</h1>
     </div>
   );
 }
