@@ -504,7 +504,7 @@ function MediaPreviewGrid({
 
   return (
     <div className="space-y-2 text-xs text-gray-700" id={sectionId}>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4">
         {thumbs.map((item) => (
           <Link
             key={item.id}
@@ -513,7 +513,7 @@ function MediaPreviewGrid({
           >
             {item.media_type === 'video' ? (
               <div
-                className={`aspect-square w-full bg-black/80 ${
+                className={`aspect-[4/5] w-full bg-black/80 ${
                   item.media_aspect === '9:16'
                     ? 'flex items-center justify-center'
                     : 'flex items-center justify-center'
@@ -528,7 +528,7 @@ function MediaPreviewGrid({
                 />
               </div>
             ) : (
-              <div className="aspect-square w-full overflow-hidden bg-neutral-100">
+              <div className="aspect-[4/5] w-full overflow-hidden bg-neutral-100">
                 <img
                   src={item.media_url ?? ''}
                   alt="Anteprima"

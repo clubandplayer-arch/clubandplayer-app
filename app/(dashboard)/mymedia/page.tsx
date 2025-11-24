@@ -177,7 +177,7 @@ function MediaSection({
       {items.length === 0 ? (
         <div className="text-sm text-gray-600">Nessun contenuto ancora.</div>
       ) : (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {items.map((item, index) => (
             <article id={`media-${item.id}`} key={item.id} className="rounded-xl bg-white/60 shadow-inner">
               {item.media_type === 'video' ? (
@@ -185,13 +185,13 @@ function MediaSection({
               ) : (
                 <button
                   type="button"
-                  className="group relative block w-full overflow-hidden rounded-t-xl focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  className="group relative block w-full overflow-hidden rounded-t-xl focus:outline-none focus:ring-2 focus:ring-blue-600 aspect-[4/5]"
                   onClick={() => onImageClick?.(index, item)}
                 >
                   <img
                     src={item.media_url ?? ''}
                     alt="Anteprima"
-                    className="w-full object-cover transition duration-150 group-hover:scale-[1.02]"
+                    className="h-full w-full object-cover transition duration-150 group-hover:scale-[1.02]"
                   />
                 </button>
               )}
@@ -228,7 +228,7 @@ function VideoPlayer({
   const aspectClass = aspect === '9:16' ? 'aspect-[9/16]' : 'aspect-[16/9]';
   const { videoRef, handleEnded, handlePause, handlePlay } = useExclusiveVideoPlayback(id);
   return (
-    <div className={`${aspectClass} w-full overflow-hidden rounded-t-xl bg-black/80 max-h-[60vh]`}>
+    <div className={`${aspectClass} w-full overflow-hidden rounded-t-xl bg-black/80 max-h-48 sm:max-h-56`}>
       <video
         ref={videoRef}
         src={url ?? undefined}
