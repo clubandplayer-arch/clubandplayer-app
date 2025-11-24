@@ -15,6 +15,10 @@ type GoogleNamespace = {
   maps?: any;
 };
 
+type MapClickEvent = {
+  latLng: { lat: () => number; lng: () => number } | null;
+};
+
 declare global {
   interface Window {
     google?: GoogleNamespace;
@@ -137,7 +141,7 @@ export default function ClubStadiumMapPicker({ value, onChange }: Props) {
           });
         }
 
-        const clickListener = map.addListener('click', (ev) => {
+        const clickListener = map.addListener('click', (ev: MapClickEvent) => {
           if (cancelled) return;
           if (!ev.latLng) return;
           const lat = ev.latLng.lat();
