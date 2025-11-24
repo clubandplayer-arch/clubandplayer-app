@@ -51,6 +51,9 @@ type Profile = {
   interest_region_id: number | null;
   interest_province_id: number | null;
   interest_municipality_id: number | null;
+  interest_city?: string | null;
+  interest_region?: string | null;
+  interest_province?: string | null;
 
   // atleta
   foot: string | null;
@@ -222,13 +225,7 @@ export default function ProfileEditForm() {
   // Atleta only
   const [birthYear, setBirthYear] = useState<number | ''>('');
   const [birthPlace, setBirthPlace] = useState('');
-  const [residenceCity, setResidenceCity] = useState('');
   const [clubCity, setClubCity] = useState('');
-
-  // Residenza IT (atleta)
-  const [resRegionId, setResRegionId] = useState<number | null>(null);
-  const [resProvinceId, setResProvinceId] = useState<number | null>(null);
-  const [resMunicipalityId, setResMunicipalityId] = useState<number | null>(null);
 
   // Nascita (atleta)
   const [birthCountry, setBirthCountry] = useState('IT');
@@ -303,6 +300,9 @@ export default function ProfileEditForm() {
       interest_region_id: j?.interest_region_id ?? null,
       interest_province_id: j?.interest_province_id ?? null,
       interest_municipality_id: j?.interest_municipality_id ?? null,
+      interest_city: (j as any)?.interest_city ?? null,
+      interest_region: (j as any)?.interest_region ?? null,
+      interest_province: (j as any)?.interest_province ?? null,
 
       foot: j?.foot ?? '',
       height_cm: j?.height_cm ?? null,
@@ -329,12 +329,7 @@ export default function ProfileEditForm() {
     // atleta
     setBirthYear(p.birth_year ?? '');
     setBirthPlace(p.birth_place || '');
-    setResidenceCity(p.city || '');
     setClubCity(p.city || '');
-
-    setResRegionId(p.residence_region_id);
-    setResProvinceId(p.residence_province_id);
-    setResMunicipalityId(p.residence_municipality_id);
 
     setBirthCountry(normalizeCountryCode(p.birth_country) || 'IT');
     setBirthRegionId(p.birth_region_id);
@@ -503,14 +498,15 @@ export default function ProfileEditForm() {
         });
       } else {
         // PLAYER
+        const interestCityName = country === 'IT' ? selectedMunicipality?.name || null : null;
         Object.assign(basePayload, {
           birth_year: birthYear === '' ? null : Number(birthYear),
 
-          // residenza
-          residence_region_id: resRegionId,
-          residence_province_id: resProvinceId,
-          residence_municipality_id: resMunicipalityId,
-          city: (residenceCity || '').trim() || null,
+          // residenza (non più mostrata, uso la zona di interesse come riferimento principale)
+          residence_region_id: null,
+          residence_province_id: null,
+          residence_municipality_id: null,
+          city: interestCityName,
 
           // nascita
           birth_country: normalizeCountryCode(birthCountry), // <<< ISO2
@@ -561,6 +557,17 @@ export default function ProfileEditForm() {
   if (!profile) return null;
 
   const countryPreview = country ? `${flagEmoji(country)} ${countryName(country)}` : '';
+  const selectedInterestCity =
+    municipalities.find((m) => m.id === municipalityId)?.name ||
+    profile?.interest_city ||
+    profile?.city ||
+    '';
+  const selectedInterestRegion =
+    provinces.find((p) => p.id === provinceId)?.name ||
+    regions.find((r) => r.id === regionId)?.name ||
+    profile?.interest_province ||
+    profile?.interest_region ||
+    '';
 
   return (
     <>
@@ -843,13 +850,17 @@ export default function ProfileEditForm() {
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-sm text-gray-600">Città</label>
+                <label className="text-sm text-gray-600">Città (zona di interesse)</label>
                 <input
-                  className="rounded-lg border p-2"
-                  value={residenceCity}
-                  onChange={(e) => setResidenceCity(e.target.value)}
-                  placeholder="Es. Roma"
+                  className="rounded-lg border bg-gray-50 p-2 text-gray-900"
+                  value={selectedInterestCity || '—'}
+                  readOnly
+                  placeholder="Seleziona una città nella zona di interesse"
                 />
+                <p className="text-xs text-gray-500">
+                  Imposta la città nella sezione “Zona di interesse"
+                  {selectedInterestRegion ? ` (${selectedInterestRegion})` : ''}.
+                </p>
               </div>
 
               <div className="md:col-span-2 flex flex-col gap-1">
