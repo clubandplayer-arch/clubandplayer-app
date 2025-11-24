@@ -590,7 +590,7 @@ export default function ProfileEditForm() {
         {/* Dati personali / club */}
         <section className="rounded-2xl border p-4 md:p-5">
           <h2 className="mb-3 text-lg font-semibold">
-            {isClub ? 'Dati club' : 'Dati personali'}
+            {isClub ? 'Modifica dati club' : 'Dati personali'}
           </h2>
 
           {isClub ? (
