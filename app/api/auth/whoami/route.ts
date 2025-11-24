@@ -10,16 +10,9 @@ function resolveEnv() {
   const url =
     process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
   const anon =
-    process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
-  if (!url || !anon) throw new Error('Supabase env missing');
-  return { url, anon };
-}
-
-function resolveEnv() {
-  const url =
-    process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
-  const anon =
-    process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
+    process.env.SUPABASE_ANON_KEY ??
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+    '';
   if (!url || !anon) throw new Error('Supabase env missing');
   return { url, anon };
 }
@@ -31,6 +24,7 @@ function mergeCookies(from: NextResponse, into: NextResponse) {
 }
 
 type Role = 'guest' | 'athlete' | 'club';
+
 function normRole(v: unknown): 'club' | 'athlete' | null {
   const s = (typeof v === 'string' ? v : '').trim().toLowerCase();
   if (s === 'club') return 'club';
@@ -56,10 +50,16 @@ export async function GET(req: NextRequest) {
     },
   });
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) {
-    const out = NextResponse.json({ user: null, role: 'guest' as const, profile: null });
+    const out = NextResponse.json({
+      user: null,
+      role: 'guest' as const,
+      profile: null,
+    });
     mergeCookies(carrier, out);
     return out;
   }
@@ -76,9 +76,10 @@ export async function GET(req: NextRequest) {
       .maybeSingle();
 
     accountType = normRole((prof as any)?.account_type);
-    legacyType = typeof (prof as any)?.type === 'string'
-      ? (prof as any)!.type.trim().toLowerCase()
-      : null;
+    legacyType =
+      typeof (prof as any)?.type === 'string'
+        ? (prof as any)!.type.trim().toLowerCase()
+        : null;
 
     if (!accountType) accountType = normRole(legacyType);
   } catch {
@@ -87,7 +88,9 @@ export async function GET(req: NextRequest) {
 
   // 3) Fallback: metadati auth
   if (!accountType) {
-    const meta = (user.user_metadata?.role ?? '').toString().toLowerCase();
+    const meta = (user.user_metadata?.role ?? '')
+      .toString()
+      .toLowerCase();
     accountType = normRole(meta);
   }
 

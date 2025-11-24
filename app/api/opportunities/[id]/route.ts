@@ -184,8 +184,8 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
     update.required_category = requiredCandidate ?? null;
   }
 
-  // Migrazione soft: se la colonna esiste e manca l'owner, impostalo ora
-  if (hasOwnerColumn && (ownerId == null)) {
+  // Migrazione soft: se manca l’owner, impostalo ora
+  if (ownerId == null) {
     update.owner_id = user.id;
   }
 
