@@ -41,6 +41,9 @@ type P = {
   sport?: string | null;
   club_foundation_year?: number | null;
   club_stadium?: string | null;
+  club_stadium_address?: string | null;
+  club_stadium_lat?: number | null;
+  club_stadium_lng?: number | null;
   club_league_category?: string | null;
 
   // interesse (non mostrato)
@@ -181,6 +184,14 @@ export default function ProfileMiniCard() {
   const nat = countryLabel(p?.country);
   const flagUrl = nat.iso ? `https://flagcdn.com/w20/${nat.iso.toLowerCase()}.png` : null;
 
+  const mapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  const hasStadiumCoords =
+    isClub && p?.club_stadium_lat != null && p?.club_stadium_lng != null;
+  const mapEmbedUrl =
+    hasStadiumCoords && mapsKey
+      ? `https://www.google.com/maps/embed/v1/view?key=${mapsKey}&center=${p?.club_stadium_lat},${p?.club_stadium_lng}&zoom=15&maptype=roadmap`
+      : null;
+
   const socials = {
     instagram: p?.links?.instagram,
     facebook: p?.links?.facebook,
@@ -253,6 +264,7 @@ export default function ProfileMiniCard() {
           <InfoRow label="Sport:" value={p?.sport || '—'} />
           <InfoRow label="Categoria / campionato:" value={p?.club_league_category || '—'} />
           <InfoRow label="Stadio / impianto:" value={p?.club_stadium || '—'} />
+          <InfoRow label="Indirizzo:" value={p?.club_stadium_address || '—'} />
         </div>
       ) : (
         <div className="mt-4 space-y-2">
@@ -265,6 +277,19 @@ export default function ProfileMiniCard() {
       )}
 
       {p?.bio ? <p className="mt-3 line-clamp-3 text-sm text-gray-700">{p.bio}</p> : null}
+
+      {mapEmbedUrl ? (
+        <div className="mt-3 overflow-hidden rounded-lg border border-gray-200">
+          <iframe
+            title={`Mappa stadio ${p?.club_stadium || 'club'}`}
+            aria-label="Mappa stadio"
+            src={mapEmbedUrl}
+            className="h-28 w-full"
+            loading="lazy"
+            allowFullScreen
+          />
+        </div>
+      ) : null}
 
       {(socials.instagram || socials.facebook || socials.tiktok || socials.x) && (
         <div className="mt-3 flex items-center gap-2">

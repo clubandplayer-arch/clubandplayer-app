@@ -21,6 +21,9 @@ type Profile = {
   club_league_category?: string | null;
   club_foundation_year?: number | null;
   club_stadium?: string | null;
+  club_stadium_address?: string | null;
+  club_stadium_lat?: number | null;
+  club_stadium_lng?: number | null;
 };
 
 type LocationRow = { id: number; name: string };
@@ -153,6 +156,12 @@ export default function ClubProfileDetails() {
         <div className="rounded-xl border border-white/30 bg-white/40 p-3 shadow-sm backdrop-blur">
           <dt className="text-xs uppercase tracking-wide text-neutral-500">Stadio / Impianto</dt>
           <dd className="text-base font-semibold text-neutral-900">{profile?.club_stadium || '—'}</dd>
+        </div>
+        <div className="rounded-xl border border-white/30 bg-white/40 p-3 shadow-sm backdrop-blur">
+          <dt className="text-xs uppercase tracking-wide text-neutral-500">Indirizzo impianto</dt>
+          <dd className="text-base font-semibold text-neutral-900">
+            {profile?.club_stadium_address || '—'}
+          </dd>
         </div>
         <div className="sm:col-span-2 rounded-xl border border-white/30 bg-white/40 p-3 shadow-sm backdrop-blur">
           <dt className="text-xs uppercase tracking-wide text-neutral-500">Biografia / Descrizione</dt>

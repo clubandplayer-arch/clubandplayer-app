@@ -91,6 +91,9 @@ const FIELDS: Record<string, 'text' | 'number' | 'bool' | 'json'> = {
   // --------- NUOVI CAMPI CLUB ----------
   club_foundation_year: 'number',
   club_stadium: 'text',
+  club_stadium_address: 'text',
+  club_stadium_lat: 'number',
+  club_stadium_lng: 'number',
   club_league_category: 'text',
   // -------------------------------------
 };

@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 import AvatarUploader from '@/components/profiles/AvatarUploader';
+import ClubStadiumMapPicker from '@/components/profiles/ClubStadiumMapPicker';
 import { SPORTS } from '@/lib/opps/constants';
 import { COUNTRIES } from '@/lib/opps/geo';
 
@@ -64,6 +65,9 @@ type Profile = {
   sport: string | null;
   club_foundation_year: number | null;
   club_stadium: string | null;
+  club_stadium_address: string | null;
+  club_stadium_lat: number | null;
+  club_stadium_lng: number | null;
   club_league_category: string | null;
 
   // social / notifiche
@@ -258,6 +262,9 @@ export default function ProfileEditForm() {
   const [clubCategory, setClubCategory] = useState('Altro');
   const [foundationYear, setFoundationYear] = useState<number | ''>('');
   const [stadium, setStadium] = useState('');
+  const [stadiumAddress, setStadiumAddress] = useState('');
+  const [stadiumLat, setStadiumLat] = useState<number | null>(null);
+  const [stadiumLng, setStadiumLng] = useState<number | null>(null);
 
   // categorie dinamiche per sport
   const sportCategories = CATEGORIES_BY_SPORT[sport] ?? DEFAULT_CLUB_CATEGORIES;
@@ -312,6 +319,9 @@ export default function ProfileEditForm() {
       sport: (j as any)?.sport ?? 'Calcio',
       club_foundation_year: (j as any)?.club_foundation_year ?? null,
       club_stadium: (j as any)?.club_stadium ?? null,
+      club_stadium_address: (j as any)?.club_stadium_address ?? null,
+      club_stadium_lat: (j as any)?.club_stadium_lat ?? null,
+      club_stadium_lng: (j as any)?.club_stadium_lng ?? null,
       club_league_category: (j as any)?.club_league_category ?? null,
 
       links: (j as any)?.links ?? null,
@@ -355,6 +365,9 @@ export default function ProfileEditForm() {
     setClubCategory(p.club_league_category || 'Altro');
     setFoundationYear(p.club_foundation_year ?? '');
     setStadium(p.club_stadium || '');
+    setStadiumAddress(p.club_stadium_address || '');
+    setStadiumLat(p.club_stadium_lat ?? null);
+    setStadiumLng(p.club_stadium_lng ?? null);
   }
 
   // prima load
@@ -479,6 +492,9 @@ export default function ProfileEditForm() {
           club_league_category: (clubCategory || '').trim() || null,
           club_foundation_year: foundationYear === '' ? null : Number(foundationYear),
           club_stadium: (stadium || '').trim() || null,
+          club_stadium_address: (stadiumAddress || '').trim() || null,
+          club_stadium_lat: stadiumLat ?? null,
+          club_stadium_lng: stadiumLng ?? null,
 
           city: clubCityName,
 
@@ -525,6 +541,9 @@ export default function ProfileEditForm() {
           club_league_category: null,
           club_foundation_year: null,
           club_stadium: null,
+          club_stadium_address: null,
+          club_stadium_lat: null,
+          club_stadium_lng: null,
         });
       }
 
@@ -766,12 +785,40 @@ export default function ProfileEditForm() {
 
                 <div className="flex flex-col gap-1">
                   <label className="text-sm text-gray-600">Stadio o impianto</label>
-                  <input
-                    className="rounded-lg border p-2"
-                    value={stadium}
-                    onChange={(e) => setStadium(e.target.value)}
-                    placeholder='Es. "Sebastiano Romano"'
+                  <ClubStadiumMapPicker
+                    value={{ name: stadium, address: stadiumAddress, lat: stadiumLat, lng: stadiumLng }}
+                    onChange={(val) => {
+                      setStadium(val.name || '');
+                      setStadiumAddress(val.address || '');
+                      setStadiumLat(val.lat ?? null);
+                      setStadiumLng(val.lng ?? null);
+                    }}
                   />
+                </div>
+              </div>
+
+              <div className="grid gap-3 rounded-xl bg-gray-50 p-3 text-xs text-gray-700 md:grid-cols-2">
+                <div>
+                  <div className="text-[11px] uppercase tracking-wide text-gray-500">Nome stadio</div>
+                  <div className="font-semibold text-gray-900">{stadium || '—'}</div>
+                </div>
+                <div>
+                  <div className="text-[11px] uppercase tracking-wide text-gray-500">Indirizzo</div>
+                  <div className="font-semibold text-gray-900">{stadiumAddress || '—'}</div>
+                </div>
+                <div>
+                  <div className="text-[11px] uppercase tracking-wide text-gray-500">Coordinate</div>
+                  <div className="font-semibold text-gray-900">
+                    {stadiumLat != null && stadiumLng != null
+                      ? `${stadiumLat.toFixed(5)}, ${stadiumLng.toFixed(5)}`
+                      : '—'}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[11px] text-gray-600">
+                    Usa la ricerca o clicca sulla mappa per posizionare il marker: salveremo nome, indirizzo e
+                    coordinate dello stadio.
+                  </p>
                 </div>
               </div>
 
