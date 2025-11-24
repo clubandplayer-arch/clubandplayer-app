@@ -15,22 +15,11 @@ type P = {
   display_name?: string | null;
   bio?: string | null;
   birth_year?: number | null;
-  city?: string | null;            // residenza libera (estero)
-  country?: string | null;         // nazionalità ISO2 o testo
-
-  // residenza IT (atleta)
-  residence_region_id?: number | null;
-  residence_province_id?: number | null;
-  residence_municipality_id?: number | null;
-
-  // nascita (atleta)
-  birth_country?: string | null;   // ISO2
-  birth_place?: string | null;     // città estera fallback
-  birth_region_id?: number | null;
-  birth_province_id?: number | null;
-  birth_municipality_id?: number | null;
+  city?: string | null;
+  country?: string | null;
 
   // atleta
+  role?: string | null;
   foot?: string | null;
   height_cm?: number | null;
   weight_kg?: number | null;
@@ -40,6 +29,9 @@ type P = {
   club_foundation_year?: number | null;
   club_stadium?: string | null;
   club_league_category?: string | null;
+  club_stadium_lat?: number | null;
+  club_stadium_lng?: number | null;
+  club_stadium_address?: string | null;
 
   // interesse (non mostrato)
   interest_region_id?: number | null;
@@ -121,7 +113,7 @@ function countryLabel(value?: string | null): { iso: string | null; label: strin
 
 export default function ProfileMiniCard() {
   const [p, setP] = useState<P | null>(null);
-  const [interest, setInterest] = useState<InterestGeo>({ city: '—', region: '', country: '' });
+  const [interest, setInterest] = useState<InterestGeo>({ city: '', region: '', country: '' });
 
   useEffect(() => {
     (async () => {
@@ -134,7 +126,7 @@ export default function ProfileMiniCard() {
         const countryCode = (j?.interest_country || j?.country || '').trim() || null;
         const countryName = resolveCountryName(countryCode) || countryLabel(countryCode).label || '';
 
-        let cityName = (j?.interest_city || '').trim();
+        let cityName = (j?.interest_city || j?.city || '').trim();
         let regionName = (j?.interest_region || j?.interest_province || '').trim();
 
         if (j?.interest_municipality_id || j?.interest_province_id || j?.interest_region_id) {
@@ -186,6 +178,15 @@ export default function ProfileMiniCard() {
     x: p?.links?.x,
   };
 
+  const locationLine = [interest.city, interest.region, interest.country].filter(Boolean).join(' · ') || '—';
+  const stadiumLabel = p?.club_stadium || p?.club_stadium_address || '';
+  const stadiumHasCoords = p?.club_stadium_lat != null && p?.club_stadium_lng != null;
+  const mapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  const stadiumEmbedUrl =
+    stadiumHasCoords && mapsKey
+      ? `https://www.google.com/maps/embed/v1/view?key=${mapsKey}&center=${p?.club_stadium_lat},${p?.club_stadium_lng}&zoom=15&maptype=roadmap`
+      : null;
+
   const IconWrap = ({ href, label, children, className = '' }: any) => (
     <a
       href={href}
@@ -198,30 +199,34 @@ export default function ProfileMiniCard() {
     </a>
   );
 
+  const InfoCard = ({ label, value }: { label: string; value: string | number | null }) => (
+    <div className="rounded-xl border border-white/30 bg-white/60 px-3 py-2 text-left shadow-sm backdrop-blur">
+      <div className="text-[11px] uppercase tracking-wide text-gray-500">{label}</div>
+      <div className="text-sm text-gray-900">{value ?? '—'}</div>
+    </div>
+  );
+
   return (
-    <div className="glass-panel p-4">
-      <div className="flex flex-col items-center gap-3 text-center">
+    <div className="glass-panel p-4 space-y-4">
+      <div className="flex gap-3">
         {p?.avatar_url ? (
           <img
             src={p.avatar_url}
             alt={name}
-            className="h-56 w-full max-w-[14rem] rounded-2xl object-cover"
+            className="h-20 w-20 rounded-2xl object-cover"
           />
         ) : (
-          <div className="h-56 w-full max-w-[14rem] rounded-2xl bg-gray-200" />
+          <div className="h-20 w-20 rounded-2xl bg-gray-200" />
         )}
 
-        <div className="w-full space-y-1">
-          <div className="text-base font-semibold break-words">{name}</div>
+        <div className="flex-1 space-y-1">
+          <div className="break-words text-base font-semibold leading-tight">{name}</div>
 
-          {/* righe info */}
-          <div className="text-xs text-gray-600">
-            <div className="text-[11px] uppercase tracking-wide text-gray-500">Zona di interesse</div>
-            <div className="text-sm text-gray-800">{interest.city || '—'}</div>
-            <div className="text-[11px] text-gray-500">{interestMeta || '—'}</div>
-          </div>
+          <div className="text-xs uppercase tracking-wide text-gray-500">Zona di interesse</div>
+          <div className="text-sm text-gray-800">{interest.city || '—'}</div>
+          <div className="text-[11px] text-gray-600">{interestMeta || '—'}</div>
 
-          <div className="text-xs text-gray-600 flex items-center justify-center gap-1">
+          <div className="flex items-center gap-2 text-xs text-gray-700">
             <span>Nazionalità:</span>
             {flagUrl ? <img src={flagUrl} alt={nat.label} className="inline-block h-3 w-5 rounded-[2px]" /> : null}
             <span>{nat.label || '—'}</span>
@@ -229,27 +234,48 @@ export default function ProfileMiniCard() {
         </div>
       </div>
 
-      {/* Dettagli rapidi */}
       {isClub ? (
-        <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-          <div><span className="text-gray-500">Sport:</span> {p?.sport || '—'}</div>
-          <div><span className="text-gray-500">Categoria:</span> {p?.club_league_category || '—'}</div>
-          <div><span className="text-gray-500">Fondazione:</span> {p?.club_foundation_year ?? '—'}</div>
-          <div><span className="text-gray-500">Stadio:</span> {p?.club_stadium || '—'}</div>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <InfoCard label="Sport" value={p?.sport || '—'} />
+            <InfoCard label="Categoria" value={p?.club_league_category || '—'} />
+            <InfoCard label="Location" value={locationLine} />
+            <InfoCard label="Stadio" value={stadiumLabel || '—'} />
+          </div>
+
+          {stadiumEmbedUrl ? (
+            <div className="space-y-2">
+              <div className="text-xs uppercase tracking-wide text-gray-500">Mappa impianto</div>
+              <div className="overflow-hidden rounded-xl border border-white/40 bg-white/70">
+                <iframe
+                  title="Mappa impianto"
+                  src={stadiumEmbedUrl}
+                  loading="lazy"
+                  allowFullScreen
+                  className="h-24 w-full"
+                />
+              </div>
+              {stadiumLabel ? <div className="text-xs text-gray-700">{stadiumLabel}</div> : null}
+            </div>
+          ) : stadiumLabel ? (
+            <div className="rounded-xl border border-white/30 bg-white/60 px-3 py-2 text-xs text-gray-700">{stadiumLabel}</div>
+          ) : null}
         </div>
       ) : (
-        <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-          <div><span className="text-gray-500">Età:</span> {age ?? '—'}</div>
-          <div><span className="text-gray-500">Piede:</span> {p?.foot || '—'}</div>
-          <div><span className="text-gray-500">Altezza:</span> {p?.height_cm ? `${p.height_cm} cm` : '—'}</div>
-          <div><span className="text-gray-500">Peso:</span> {p?.weight_kg ? `${p.weight_kg} kg` : '—'}</div>
+        <div className="grid grid-cols-2 gap-3 text-sm">
+          <InfoCard label="Età" value={age ?? '—'} />
+          <InfoCard label="Ruolo" value={p?.role || '—'} />
+          <InfoCard label="Piede" value={p?.foot || '—'} />
+          <InfoCard label="Altezza" value={p?.height_cm ? `${p.height_cm} cm` : '—'} />
+          <InfoCard label="Peso" value={p?.weight_kg ? `${p.weight_kg} kg` : '—'} />
+          <InfoCard label="Zona di interesse" value={locationLine} />
         </div>
       )}
 
-      {p?.bio ? <p className="mt-3 line-clamp-3 text-sm text-gray-700">{p.bio}</p> : null}
+      {p?.bio ? <p className="text-sm text-gray-700">{p.bio}</p> : null}
 
       {(socials.instagram || socials.facebook || socials.tiktok || socials.x) && (
-        <div className="mt-3 flex items-center gap-2">
+        <div className="flex items-center gap-2">
           {socials.instagram && (
             <IconWrap href={socials.instagram} label="Instagram" className="text-[#E1306C] border-[#E1306C]/30">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3H7zm5 3a5 5 0 1 1 0 10 5 5 0 0 1 0-10zm0 2a3 3 0 1 0 .001 6.001A3 3 0 0 0 12 9zm4.5-3a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3z"/></svg>
@@ -273,7 +299,7 @@ export default function ProfileMiniCard() {
         </div>
       )}
 
-      <div className="mt-4">
+      <div>
         <Link href="/profile" className="inline-block rounded-xl border px-3 py-1.5 text-sm hover:bg-gray-50">
           Modifica profilo
         </Link>

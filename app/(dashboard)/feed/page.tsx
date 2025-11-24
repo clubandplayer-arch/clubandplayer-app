@@ -8,6 +8,8 @@ import dynamic from 'next/dynamic';
 import FeedComposer from '@/components/feed/FeedComposer';
 import TrackRetention from '@/components/analytics/TrackRetention';
 import { useExclusiveVideoPlayback } from '@/hooks/useExclusiveVideoPlayback';
+import ShareButton from '@/components/share/ShareButton';
+import { buildFeedPostShareUrl } from '@/lib/share';
 
 type ReactionType = 'like' | 'love' | 'care' | 'angry';
 
@@ -504,7 +506,7 @@ function MediaPreviewGrid({
 
   return (
     <div className="space-y-2 text-xs text-gray-700" id={sectionId}>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4">
         {thumbs.map((item) => (
           <Link
             key={item.id}
@@ -513,7 +515,7 @@ function MediaPreviewGrid({
           >
             {item.media_type === 'video' ? (
               <div
-                className={`aspect-square w-full bg-black/80 ${
+                className={`aspect-[4/5] w-full bg-black/80 ${
                   item.media_aspect === '9:16'
                     ? 'flex items-center justify-center'
                     : 'flex items-center justify-center'
@@ -528,7 +530,7 @@ function MediaPreviewGrid({
                 />
               </div>
             ) : (
-              <div className="aspect-square w-full overflow-hidden bg-neutral-100">
+              <div className="aspect-[4/5] w-full overflow-hidden bg-neutral-100">
                 <img
                   src={item.media_url ?? ''}
                   alt="Anteprima"
@@ -624,6 +626,9 @@ function PostItem({
   const isOwner = currentUserId != null && post.authorId === currentUserId;
   const editAreaId = `post-edit-${post.id}`;
   const errorId = error ? `post-error-${post.id}` : undefined;
+  const shareUrl = buildFeedPostShareUrl(post.id);
+  const shareSnippet = (post.content ?? post.text ?? '')?.trim();
+  const shareText = shareSnippet ? `${shareSnippet.slice(0, 140)}${shareSnippet.length > 140 ? '…' : ''}` : undefined;
 
   useEffect(() => {
     if (!editing) setText(post.content ?? post.text ?? '');
@@ -747,51 +752,62 @@ function PostItem({
         className="mt-3 flex flex-col gap-1 text-[11px] text-neutral-700"
         onMouseLeave={onClosePicker}
       >
-        <div className="relative inline-flex w-full max-w-xs items-center gap-2">
-          <button
-            type="button"
-            onClick={() => onToggleReaction('like')}
-            onMouseEnter={onOpenPicker}
-            className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${
-              reaction.mine
-                ? 'border-[var(--brand)] bg-[var(--brand)]/10 text-[var(--brand)]'
-                : 'border-neutral-200 bg-white text-neutral-800 hover:border-neutral-300'
-            }`}
-            aria-pressed={reaction.mine === 'like'}
-          >
-            <span aria-hidden>{REACTION_EMOJI[reaction.mine ?? 'like']}</span>
-            <span>{reaction.mine ? 'Hai reagito' : 'Mi piace'}</span>
-          </button>
+        <div className="flex w-full max-w-full items-center gap-2">
+          <div className="relative inline-flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => onToggleReaction('like')}
+              onMouseEnter={onOpenPicker}
+              className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${
+                reaction.mine
+                  ? 'border-[var(--brand)] bg-[var(--brand)]/10 text-[var(--brand)]'
+                  : 'border-neutral-200 bg-white text-neutral-800 hover:border-neutral-300'
+              }`}
+              aria-pressed={reaction.mine === 'like'}
+            >
+              <span aria-hidden>{REACTION_EMOJI[reaction.mine ?? 'like']}</span>
+              <span>{reaction.mine ? 'Hai reagito' : 'Mi piace'}</span>
+            </button>
 
-          <button
-            type="button"
-            className="rounded-full border border-neutral-200 bg-white px-2 py-1 text-[11px] text-neutral-600 hover:border-neutral-300"
-            onClick={() => (pickerOpen ? onClosePicker() : onOpenPicker())}
-            aria-label="Scegli reazione"
-          >
-            ⋯
-          </button>
+            <button
+              type="button"
+              className="rounded-full border border-neutral-200 bg-white px-2 py-1 text-[11px] text-neutral-600 hover:border-neutral-300"
+              onClick={() => (pickerOpen ? onClosePicker() : onOpenPicker())}
+              aria-label="Scegli reazione"
+            >
+              ⋯
+            </button>
 
-          {pickerOpen && (
-            <div className="absolute left-0 top-full z-10 mt-1 flex gap-2 rounded-full border border-neutral-200 bg-white px-2 py-1 shadow-lg">
-              {REACTION_ORDER.map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => {
-                    onToggleReaction(r);
-                    onClosePicker();
-                  }}
-                  className={`flex items-center gap-1 rounded-full px-2 py-1 text-[11px] transition ${
-                    reaction.mine === r ? 'bg-[var(--brand)]/10 text-[var(--brand)]' : 'hover:bg-neutral-100'
-                  }`}
-                >
-                  <span aria-hidden>{REACTION_EMOJI[r]}</span>
-                  <span className="capitalize">{r}</span>
-                </button>
-              ))}
-            </div>
-          )}
+            {pickerOpen && (
+              <div className="absolute left-0 top-full z-10 mt-1 flex gap-2 rounded-full border border-neutral-200 bg-white px-2 py-1 shadow-lg">
+                {REACTION_ORDER.map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => {
+                      onToggleReaction(r);
+                      onClosePicker();
+                    }}
+                    className={`flex items-center gap-1 rounded-full px-2 py-1 text-[11px] transition ${
+                      reaction.mine === r ? 'bg-[var(--brand)]/10 text-[var(--brand)]' : 'hover:bg-neutral-100'
+                    }`}
+                  >
+                    <span aria-hidden>{REACTION_EMOJI[r]}</span>
+                    <span className="capitalize">{r}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <ShareButton
+            url={shareUrl}
+            title="Post su Club&Player"
+            text={shareText ?? undefined}
+            size="sm"
+            ariaLabel="Condividi questo post"
+            className="ml-auto"
+          />
         </div>
 
         {(() => {

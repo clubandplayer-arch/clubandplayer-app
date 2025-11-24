@@ -5,6 +5,8 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useExclusiveVideoPlayback } from '@/hooks/useExclusiveVideoPlayback';
+import ShareButton from '@/components/share/ShareButton';
+import { buildFeedPostShareUrl } from '@/lib/share';
 
 const DEFAULT_LIMIT = 100;
 
@@ -177,39 +179,55 @@ function MediaSection({
       {items.length === 0 ? (
         <div className="text-sm text-gray-600">Nessun contenuto ancora.</div>
       ) : (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          {items.map((item, index) => (
-            <article id={`media-${item.id}`} key={item.id} className="rounded-xl bg-white/60 shadow-inner">
-              {item.media_type === 'video' ? (
-                <VideoPlayer url={item.media_url} aspect={item.media_aspect} id={item.id} />
-              ) : (
-                <button
-                  type="button"
-                  className="group relative block w-full overflow-hidden rounded-t-xl focus:outline-none focus:ring-2 focus:ring-blue-600"
-                  onClick={() => onImageClick?.(index, item)}
-                >
-                  <img
-                    src={item.media_url ?? ''}
-                    alt="Anteprima"
-                    className="w-full object-cover transition duration-150 group-hover:scale-[1.02]"
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {items.map((item, index) => {
+            const shareTarget = item.media_url ?? buildFeedPostShareUrl(item.id);
+            return (
+              <article
+                id={`media-${item.id}`}
+                key={item.id}
+                className="relative overflow-hidden rounded-xl bg-white/60 shadow-inner"
+              >
+                <div className="absolute right-2 top-2 z-10">
+                  <ShareButton
+                    url={shareTarget}
+                    title={item.media_type === 'video' ? 'Video su Club&Player' : 'Foto su Club&Player'}
+                    text={item.content ?? undefined}
+                    size="sm"
+                    ariaLabel={item.media_type === 'video' ? 'Condividi questo video' : 'Condividi questa foto'}
                   />
-                </button>
-              )}
-              {item.content ? (
-                <p className="px-3 pb-3 pt-2 text-sm text-gray-700 whitespace-pre-wrap">{item.content}</p>
-              ) : null}
-              {item.link_url ? (
-                <a
-                  href={item.link_url}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="block px-3 pb-3 text-sm font-semibold text-blue-700"
-                >
-                  Apri link esterno →
-                </a>
-              ) : null}
-            </article>
-          ))}
+                </div>
+                {item.media_type === 'video' ? (
+                  <VideoPlayer url={item.media_url} aspect={item.media_aspect} id={item.id} />
+                ) : (
+                  <button
+                    type="button"
+                    className="group relative block w-full overflow-hidden rounded-t-xl focus:outline-none focus:ring-2 focus:ring-blue-600 aspect-[4/5]"
+                    onClick={() => onImageClick?.(index, item)}
+                  >
+                    <img
+                      src={item.media_url ?? ''}
+                      alt="Anteprima"
+                      className="h-full w-full object-cover transition duration-150 group-hover:scale-[1.02]"
+                    />
+                  </button>
+                )}
+                {item.content ? (
+                  <p className="px-3 pb-3 pt-2 text-sm text-gray-700 whitespace-pre-wrap">{item.content}</p>
+                ) : null}
+                {item.link_url ? (
+                  <a
+                    href={item.link_url}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="block px-3 pb-3 text-sm font-semibold text-blue-700"
+                  >
+                    Apri link esterno →
+                  </a>
+                ) : null}
+              </article>
+            );
+          })}
         </div>
       )}
     </section>
@@ -228,7 +246,7 @@ function VideoPlayer({
   const aspectClass = aspect === '9:16' ? 'aspect-[9/16]' : 'aspect-[16/9]';
   const { videoRef, handleEnded, handlePause, handlePlay } = useExclusiveVideoPlayback(id);
   return (
-    <div className={`${aspectClass} w-full overflow-hidden rounded-t-xl bg-black/80 max-h-[60vh]`}>
+    <div className={`${aspectClass} w-full overflow-hidden rounded-t-xl bg-black/80 max-h-48 sm:max-h-56`}>
       <video
         ref={videoRef}
         src={url ?? undefined}
