@@ -2,13 +2,14 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { useCallback, useEffect, useMemo, useRef, useState, type SVGProps } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import FeedComposer from '@/components/feed/FeedComposer';
 import TrackRetention from '@/components/analytics/TrackRetention';
 import { useExclusiveVideoPlayback } from '@/hooks/useExclusiveVideoPlayback';
 import { shareOrCopyLink } from '@/lib/share';
+import { PostIconDelete, PostIconEdit, PostIconShare } from '@/components/icons/PostActionIcons';
 
 type ReactionType = 'like' | 'love' | 'care' | 'angry';
 
@@ -44,42 +45,6 @@ function computeOptimistic(prev: ReactionState, nextMine: ReactionType | null): 
   if (prev.mine) counts[prev.mine] = Math.max(0, (counts[prev.mine] || 0) - 1);
   if (nextMine) counts[nextMine] = (counts[nextMine] || 0) + 1;
   return { counts, mine: nextMine };
-}
-
-type IconProps = SVGProps<SVGSVGElement>;
-
-function PencilIcon(props: IconProps) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} {...props}>
-      <path d="M12 20h9" strokeLinecap="round" />
-      <path
-        d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4z"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function TrashIcon(props: IconProps) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} {...props}>
-      <path d="M3 6h18" strokeLinecap="round" />
-      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" strokeLinecap="round" />
-      <path d="M10 11v6" strokeLinecap="round" />
-      <path d="M14 11v6" strokeLinecap="round" />
-      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function SendIcon(props: IconProps) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} {...props}>
-      <path d="M22 2 11 13" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="m22 2-7 20-4-9-9-4z" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
 }
 
 // carico le sidebar in modo "sicuro" (se il componente esiste lo usa, altrimenti mostra un box vuoto)
@@ -717,43 +682,43 @@ function PostItem({
 
   return (
     <article className="glass-panel relative p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="text-xs text-gray-500">
-          {post.createdAt ? new Date(post.createdAt).toLocaleString() : '—'}
+        <div className="flex items-start justify-between gap-3">
+          <div className="text-xs text-gray-500">
+            {post.createdAt ? new Date(post.createdAt).toLocaleString() : '—'}
+          </div>
+          <div className="flex items-center gap-1 text-neutral-500">
+            {isOwner ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setEditing(true)}
+                  className="rounded-full p-2 transition hover:bg-neutral-100 hover:text-neutral-900"
+                  aria-label="Modifica questo post"
+                  disabled={saving}
+                >
+                  <PostIconEdit className="h-4 w-4" aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  onClick={deletePost}
+                  className="rounded-full p-2 text-red-500 transition hover:bg-red-50 hover:text-red-600"
+                  aria-label="Elimina questo post"
+                  disabled={saving}
+                >
+                  <PostIconDelete className="h-4 w-4" aria-hidden />
+                </button>
+              </>
+            ) : null}
+            <button
+              type="button"
+              onClick={handleShare}
+              className="rounded-full p-2 transition hover:bg-neutral-100 hover:text-neutral-900"
+              aria-label="Condividi questo post"
+            >
+              <PostIconShare className="h-4 w-4" aria-hidden />
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-1 text-neutral-500">
-          {isOwner ? (
-            <>
-              <button
-                type="button"
-                onClick={() => setEditing(true)}
-                className="rounded-full p-2 transition hover:bg-neutral-100 hover:text-neutral-900"
-                aria-label="Modifica questo post"
-                disabled={saving}
-              >
-                <PencilIcon className="h-4 w-4" aria-hidden />
-              </button>
-              <button
-                type="button"
-                onClick={deletePost}
-                className="rounded-full p-2 text-red-500 transition hover:bg-red-50 hover:text-red-600"
-                aria-label="Elimina questo post"
-                disabled={saving}
-              >
-                <TrashIcon className="h-4 w-4" aria-hidden />
-              </button>
-            </>
-          ) : null}
-          <button
-            type="button"
-            onClick={handleShare}
-            className="rounded-full p-2 transition hover:bg-neutral-100 hover:text-neutral-900"
-            aria-label="Condividi questo post"
-          >
-            <SendIcon className="h-4 w-4" aria-hidden />
-          </button>
-        </div>
-      </div>
       {editing ? (
         <div className="mt-2 space-y-2">
           <label htmlFor={editAreaId} className="sr-only">
