@@ -10,6 +10,7 @@ export type Profile = {
   user_id: string;
   type: 'athlete' | 'club';
   display_name: string;
+  status?: 'pending' | 'active' | 'rejected' | null;
   headline?: string | null;
   bio?: string | null;
   country?: string | null;
@@ -18,6 +19,7 @@ export type Profile = {
   city?: string | null;
   links?: ProfileLinks;
   avatar_url?: string | null;
+  club_motto?: string | null;
   created_at: string;
   updated_at: string;
 };

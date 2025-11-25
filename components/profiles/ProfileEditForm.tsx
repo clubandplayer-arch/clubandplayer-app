@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 import AvatarUploader from '@/components/profiles/AvatarUploader';
+import ClubStadiumMapPicker from '@/components/profiles/ClubStadiumMapPicker';
 import { SPORTS } from '@/lib/opps/constants';
 import { COUNTRIES } from '@/lib/opps/geo';
 
@@ -50,6 +51,9 @@ type Profile = {
   interest_region_id: number | null;
   interest_province_id: number | null;
   interest_municipality_id: number | null;
+  interest_city?: string | null;
+  interest_region?: string | null;
+  interest_province?: string | null;
 
   // atleta
   foot: string | null;
@@ -60,7 +64,11 @@ type Profile = {
   sport: string | null;
   club_foundation_year: number | null;
   club_stadium: string | null;
+  club_stadium_address: string | null;
+  club_stadium_lat: number | null;
+  club_stadium_lng: number | null;
   club_league_category: string | null;
+  club_motto: string | null;
 
   // social / notifiche
   links: Links | null;
@@ -221,13 +229,7 @@ export default function ProfileEditForm() {
   // Atleta only
   const [birthYear, setBirthYear] = useState<number | ''>('');
   const [birthPlace, setBirthPlace] = useState('');
-  const [residenceCity, setResidenceCity] = useState('');
   const [clubCity, setClubCity] = useState('');
-
-  // Residenza IT (atleta)
-  const [resRegionId, setResRegionId] = useState<number | null>(null);
-  const [resProvinceId, setResProvinceId] = useState<number | null>(null);
-  const [resMunicipalityId, setResMunicipalityId] = useState<number | null>(null);
 
   // Nascita (atleta)
   const [birthCountry, setBirthCountry] = useState('IT');
@@ -260,6 +262,10 @@ export default function ProfileEditForm() {
   const [clubCategory, setClubCategory] = useState('Altro');
   const [foundationYear, setFoundationYear] = useState<number | ''>('');
   const [stadium, setStadium] = useState('');
+  const [stadiumAddress, setStadiumAddress] = useState('');
+  const [stadiumLat, setStadiumLat] = useState<number | null>(null);
+  const [stadiumLng, setStadiumLng] = useState<number | null>(null);
+  const [clubMotto, setClubMotto] = useState('');
 
   // categorie dinamiche per sport
   const sportCategories = CATEGORIES_BY_SPORT[sport] ?? DEFAULT_CLUB_CATEGORIES;
@@ -302,6 +308,9 @@ export default function ProfileEditForm() {
       interest_region_id: j?.interest_region_id ?? null,
       interest_province_id: j?.interest_province_id ?? null,
       interest_municipality_id: j?.interest_municipality_id ?? null,
+      interest_city: (j as any)?.interest_city ?? null,
+      interest_region: (j as any)?.interest_region ?? null,
+      interest_province: (j as any)?.interest_province ?? null,
 
       foot: j?.foot ?? '',
       height_cm: j?.height_cm ?? null,
@@ -311,7 +320,11 @@ export default function ProfileEditForm() {
       sport: (j as any)?.sport ?? 'Calcio',
       club_foundation_year: (j as any)?.club_foundation_year ?? null,
       club_stadium: (j as any)?.club_stadium ?? null,
+      club_stadium_address: (j as any)?.club_stadium_address ?? null,
+      club_stadium_lat: (j as any)?.club_stadium_lat ?? null,
+      club_stadium_lng: (j as any)?.club_stadium_lng ?? null,
       club_league_category: (j as any)?.club_league_category ?? null,
+      club_motto: (j as any)?.club_motto ?? null,
 
       links: (j as any)?.links ?? null,
       notify_email_new_message: Boolean(j?.notify_email_new_message ?? true),
@@ -328,12 +341,7 @@ export default function ProfileEditForm() {
     // atleta
     setBirthYear(p.birth_year ?? '');
     setBirthPlace(p.birth_place || '');
-    setResidenceCity(p.city || '');
     setClubCity(p.city || '');
-
-    setResRegionId(p.residence_region_id);
-    setResProvinceId(p.residence_province_id);
-    setResMunicipalityId(p.residence_municipality_id);
 
     setBirthCountry(normalizeCountryCode(p.birth_country) || 'IT');
     setBirthRegionId(p.birth_region_id);
@@ -359,6 +367,10 @@ export default function ProfileEditForm() {
     setClubCategory(p.club_league_category || 'Altro');
     setFoundationYear(p.club_foundation_year ?? '');
     setStadium(p.club_stadium || '');
+    setStadiumAddress(p.club_stadium_address || '');
+    setStadiumLat(p.club_stadium_lat ?? null);
+    setStadiumLng(p.club_stadium_lng ?? null);
+    setClubMotto(p.club_motto || '');
   }
 
   // prima load
@@ -483,6 +495,10 @@ export default function ProfileEditForm() {
           club_league_category: (clubCategory || '').trim() || null,
           club_foundation_year: foundationYear === '' ? null : Number(foundationYear),
           club_stadium: (stadium || '').trim() || null,
+          club_stadium_address: (stadiumAddress || '').trim() || null,
+          club_stadium_lat: stadiumLat ?? null,
+          club_stadium_lng: stadiumLng ?? null,
+          club_motto: (clubMotto || '').trim() || null,
 
           city: clubCityName,
 
@@ -502,14 +518,15 @@ export default function ProfileEditForm() {
         });
       } else {
         // PLAYER
+        const interestCityName = country === 'IT' ? selectedMunicipality?.name || null : null;
         Object.assign(basePayload, {
           birth_year: birthYear === '' ? null : Number(birthYear),
 
-          // residenza
-          residence_region_id: resRegionId,
-          residence_province_id: resProvinceId,
-          residence_municipality_id: resMunicipalityId,
-          city: (residenceCity || '').trim() || null,
+          // residenza (non più mostrata, uso la zona di interesse come riferimento principale)
+          residence_region_id: null,
+          residence_province_id: null,
+          residence_municipality_id: null,
+          city: interestCityName,
 
           // nascita
           birth_country: normalizeCountryCode(birthCountry), // <<< ISO2
@@ -528,6 +545,10 @@ export default function ProfileEditForm() {
           club_league_category: null,
           club_foundation_year: null,
           club_stadium: null,
+          club_stadium_address: null,
+          club_stadium_lat: null,
+          club_stadium_lng: null,
+          club_motto: null,
         });
       }
 
@@ -562,17 +583,11 @@ export default function ProfileEditForm() {
   const countryPreview = country ? `${flagEmoji(country)} ${countryName(country)}` : '';
 
   return (
-    <>
-      {/* Titolo sintetico per la pagina */}
-      <h1 className="mb-1 text-2xl font-bold">{isClub ? 'CLUB' : 'PLAYER'}</h1>
-      <p className="mb-4 text-sm text-gray-500">
-      </p>
-
-      <form onSubmit={onSubmit} className="space-y-6">
+    <form onSubmit={onSubmit} className="space-y-6">
         {/* Dati personali / club */}
         <section className="rounded-2xl border p-4 md:p-5">
           <h2 className="mb-3 text-lg font-semibold">
-            {isClub ? 'Dati club' : 'Dati personali'}
+            {isClub ? 'Modifica dati club' : 'Dati personali'}
           </h2>
 
           {isClub ? (
@@ -690,6 +705,16 @@ export default function ProfileEditForm() {
                 )}
               </div>
 
+              <div className="flex flex-col gap-1">
+                <label className="text-sm text-gray-600">Motto del club</label>
+                <input
+                  className="rounded-lg border p-2"
+                  value={clubMotto}
+                  onChange={(e) => setClubMotto(e.target.value)}
+                  placeholder="Es. Caesarea et inexpugnabilis"
+                />
+              </div>
+
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="flex flex-col gap-1">
                   <label className="text-sm text-gray-600">Sport del club</label>
@@ -707,7 +732,7 @@ export default function ProfileEditForm() {
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-sm text-gray-600">Categoria / Campionato</label>
+                  <label className="text-sm text-gray-600">Categoria</label>
                   <select
                     className="rounded-lg border p-2"
                     value={clubCategory}
@@ -741,12 +766,40 @@ export default function ProfileEditForm() {
 
                 <div className="flex flex-col gap-1">
                   <label className="text-sm text-gray-600">Stadio o impianto</label>
-                  <input
-                    className="rounded-lg border p-2"
-                    value={stadium}
-                    onChange={(e) => setStadium(e.target.value)}
-                    placeholder='Es. "Sebastiano Romano"'
+                  <ClubStadiumMapPicker
+                    value={{ name: stadium, address: stadiumAddress, lat: stadiumLat, lng: stadiumLng }}
+                    onChange={(val) => {
+                      setStadium(val.name || '');
+                      setStadiumAddress(val.address || '');
+                      setStadiumLat(val.lat ?? null);
+                      setStadiumLng(val.lng ?? null);
+                    }}
                   />
+                </div>
+              </div>
+
+              <div className="grid gap-3 rounded-xl bg-gray-50 p-3 text-xs text-gray-700 md:grid-cols-2">
+                <div>
+                  <div className="text-[11px] uppercase tracking-wide text-gray-500">Nome stadio</div>
+                  <div className="font-semibold text-gray-900">{stadium || '—'}</div>
+                </div>
+                <div>
+                  <div className="text-[11px] uppercase tracking-wide text-gray-500">Indirizzo</div>
+                  <div className="font-semibold text-gray-900">{stadiumAddress || '—'}</div>
+                </div>
+                <div>
+                  <div className="text-[11px] uppercase tracking-wide text-gray-500">Coordinate</div>
+                  <div className="font-semibold text-gray-900">
+                    {stadiumLat != null && stadiumLng != null
+                      ? `${stadiumLat.toFixed(5)}, ${stadiumLng.toFixed(5)}`
+                      : '—'}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[11px] text-gray-600">
+                    Usa la ricerca o clicca sulla mappa per posizionare il marker: salveremo nome, indirizzo e
+                    coordinate dello stadio.
+                  </p>
                 </div>
               </div>
 
@@ -824,16 +877,6 @@ export default function ProfileEditForm() {
                 )}
               </div>
 
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-gray-600">Città</label>
-                <input
-                  className="rounded-lg border p-2"
-                  value={residenceCity}
-                  onChange={(e) => setResidenceCity(e.target.value)}
-                  placeholder="Es. Roma"
-                />
-              </div>
-
               <div className="md:col-span-2 flex flex-col gap-1">
                 <label className="text-sm text-gray-600">Biografia</label>
                 <textarea
@@ -843,6 +886,52 @@ export default function ProfileEditForm() {
                   onChange={(e) => setBio(e.target.value)}
                   placeholder="Racconta in breve ruolo, caratteristiche, esperienze…"
                 />
+              </div>
+
+              <div className="md:col-span-2 grid gap-4 md:grid-cols-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm text-gray-600">Piede preferito</label>
+                  <select
+                    className="rounded-lg border p-2"
+                    value={foot}
+                    onChange={(e) => setFoot(e.target.value)}
+                  >
+                    <option value="">— Seleziona —</option>
+                    <option value="Destro">Destro</option>
+                    <option value="Sinistro">Sinistro</option>
+                    <option value="Ambidestro">Ambidestro</option>
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm text-gray-600">Altezza (cm)</label>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    className="rounded-lg border p-2"
+                    value={heightCm}
+                    onChange={(e) =>
+                      setHeightCm(e.target.value === '' ? '' : Number(e.target.value))
+                    }
+                    min={100}
+                    max={230}
+                    placeholder="es. 183"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm text-gray-600">Peso (kg)</label>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    className="rounded-lg border p-2"
+                    value={weightKg}
+                    onChange={(e) =>
+                      setWeightKg(e.target.value === '' ? '' : Number(e.target.value))
+                    }
+                    min={40}
+                    max={150}
+                    placeholder="es. 85"
+                  />
+                </div>
               </div>
             </div>
           )}
@@ -905,58 +994,6 @@ export default function ProfileEditForm() {
                     </option>
                   ))}
                 </select>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* Dettagli player */}
-        {!isClub && (
-          <section className="rounded-2xl border p-4 md:p-5">
-            <h2 className="mb-3 text-lg font-semibold">Dettagli Player</h2>
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-gray-600">Piede preferito</label>
-                <select
-                  className="rounded-lg border p-2"
-                  value={foot}
-                  onChange={(e) => setFoot(e.target.value)}
-                >
-                  <option value="">— Seleziona —</option>
-                  <option value="Destro">Destro</option>
-                  <option value="Sinistro">Sinistro</option>
-                  <option value="Ambidestro">Ambidestro</option>
-                </select>
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-gray-600">Altezza (cm)</label>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  className="rounded-lg border p-2"
-                  value={heightCm}
-                  onChange={(e) =>
-                    setHeightCm(e.target.value === '' ? '' : Number(e.target.value))
-                  }
-                  min={100}
-                  max={230}
-                  placeholder="es. 183"
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-gray-600">Peso (kg)</label>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  className="rounded-lg border p-2"
-                  value={weightKg}
-                  onChange={(e) =>
-                    setWeightKg(e.target.value === '' ? '' : Number(e.target.value))
-                  }
-                  min={40}
-                  max={150}
-                  placeholder="es. 85"
-                />
               </div>
             </div>
           </section>
@@ -1034,6 +1071,5 @@ export default function ProfileEditForm() {
           {error && <span className="text-sm text-red-700">{error}</span>}
         </div>
       </form>
-    </>
   );
 }

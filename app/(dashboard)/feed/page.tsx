@@ -8,6 +8,8 @@ import dynamic from 'next/dynamic';
 import FeedComposer from '@/components/feed/FeedComposer';
 import TrackRetention from '@/components/analytics/TrackRetention';
 import { useExclusiveVideoPlayback } from '@/hooks/useExclusiveVideoPlayback';
+import { shareOrCopyLink } from '@/lib/share';
+import { PostIconDelete, PostIconEdit, PostIconShare } from '@/components/icons/PostActionIcons';
 
 type ReactionType = 'like' | 'love' | 'care' | 'angry';
 
@@ -509,30 +511,24 @@ function MediaPreviewGrid({
           <Link
             key={item.id}
             href={`${linkHref}#media-${item.id}`}
-            className="group block overflow-hidden rounded-lg bg-white/60 shadow"
+            className="group block h-20 overflow-hidden rounded-lg bg-white/60 shadow sm:h-24"
           >
             {item.media_type === 'video' ? (
-              <div
-                className={`aspect-square w-full bg-black/80 ${
-                  item.media_aspect === '9:16'
-                    ? 'flex items-center justify-center'
-                    : 'flex items-center justify-center'
-                }`}
-              >
+              <div className="relative h-full w-full bg-black/80">
                 <video
                   src={item.media_url ?? undefined}
-                  className="h-full w-full object-cover"
+                  className="absolute inset-0 h-full w-full object-cover"
                   muted
                   playsInline
                   controls={false}
                 />
               </div>
             ) : (
-              <div className="aspect-square w-full overflow-hidden bg-neutral-100">
+              <div className="relative h-full w-full overflow-hidden bg-neutral-100">
                 <img
                   src={item.media_url ?? ''}
                   alt="Anteprima"
-                  className="h-full w-full object-cover"
+                  className="absolute inset-0 h-full w-full object-cover"
                   loading="lazy"
                 />
               </div>
@@ -625,6 +621,20 @@ function PostItem({
   const editAreaId = `post-edit-${post.id}`;
   const errorId = error ? `post-error-${post.id}` : undefined;
 
+  const shareUrl = useMemo(() => {
+    if (typeof window === 'undefined') return '';
+    const origin = window.location.origin;
+    return `${origin}/feed?post=${post.id}`;
+  }, [post.id]);
+
+  const handleShare = useCallback(() => {
+    void shareOrCopyLink({
+      title: 'Post del feed',
+      text: post.content ?? post.text ?? undefined,
+      url: shareUrl,
+    });
+  }, [post.content, post.text, shareUrl]);
+
   useEffect(() => {
     if (!editing) setText(post.content ?? post.text ?? '');
   }, [post, editing]);
@@ -652,7 +662,7 @@ function PostItem({
   }
 
   async function deletePost() {
-    if (!confirm('Eliminare il post?')) return;
+    if (!confirm('Sei sicuro di voler eliminare questo post?')) return;
     setSaving(true);
     setError(null);
     try {
@@ -671,10 +681,44 @@ function PostItem({
   }
 
   return (
-    <article className="glass-panel p-4">
-      <div className="text-xs text-gray-500">
-        {post.createdAt ? new Date(post.createdAt).toLocaleString() : '—'}
-      </div>
+    <article className="glass-panel relative p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="text-xs text-gray-500">
+            {post.createdAt ? new Date(post.createdAt).toLocaleString() : '—'}
+          </div>
+          <div className="flex items-center gap-1 text-neutral-500">
+            {isOwner ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setEditing(true)}
+                  className="rounded-full p-2 transition hover:bg-neutral-100 hover:text-neutral-900"
+                  aria-label="Modifica questo post"
+                  disabled={saving}
+                >
+                  <PostIconEdit className="h-4 w-4" aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  onClick={deletePost}
+                  className="rounded-full p-2 text-red-500 transition hover:bg-red-50 hover:text-red-600"
+                  aria-label="Elimina questo post"
+                  disabled={saving}
+                >
+                  <PostIconDelete className="h-4 w-4" aria-hidden />
+                </button>
+              </>
+            ) : null}
+            <button
+              type="button"
+              onClick={handleShare}
+              className="rounded-full p-2 transition hover:bg-neutral-100 hover:text-neutral-900"
+              aria-label="Condividi questo post"
+            >
+              <PostIconShare className="h-4 w-4" aria-hidden />
+            </button>
+          </div>
+        </div>
       {editing ? (
         <div className="mt-2 space-y-2">
           <label htmlFor={editAreaId} className="sr-only">

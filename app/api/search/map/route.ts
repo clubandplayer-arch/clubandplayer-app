@@ -13,6 +13,15 @@ type Bounds = {
   west?: number;
 };
 
+type Filters = {
+  sport?: string | null;
+  clubCategory?: string | null;
+  foot?: string | null;
+  gender?: string | null;
+  ageMin?: number | null;
+  ageMax?: number | null;
+};
+
 function parseBounds(url: URL): Bounds {
   const toNum = (key: string) => {
     const raw = url.searchParams.get(key);
@@ -34,6 +43,30 @@ function clampLimit(value: number | undefined) {
   return Math.min(500, Math.max(10, Math.floor(value)));
 }
 
+function parseFilters(url: URL): Filters {
+  const cleanText = (key: string) => {
+    const raw = url.searchParams.get(key);
+    if (!raw) return null;
+    const trimmed = raw.trim();
+    return trimmed ? trimmed : null;
+  };
+  const toNumber = (key: string) => {
+    const raw = url.searchParams.get(key);
+    if (!raw) return null;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  };
+
+  return {
+    sport: cleanText('sport'),
+    clubCategory: cleanText('club_category'),
+    foot: cleanText('foot'),
+    gender: cleanText('gender'),
+    ageMin: toNumber('age_min'),
+    ageMax: toNumber('age_max'),
+  };
+}
+
 export async function GET(req: NextRequest) {
   try {
     await rateLimit(req, { key: 'search:map', limit: 120, window: '1m' } as any);
@@ -45,20 +78,42 @@ export async function GET(req: NextRequest) {
   const type = (url.searchParams.get('type') || 'all').toLowerCase();
   const bounds = parseBounds(url);
   const limit = clampLimit(Number(url.searchParams.get('limit') || '100'));
+  const filters = parseFilters(url);
+  const currentYear = new Date().getFullYear();
 
   try {
     const supabase = await getSupabaseServerClient();
     const selectBase =
       'id,user_id,display_name,type,country,region,province,city,avatar_url,sport,role,latitude,longitude';
+    const selectExtended = `${selectBase},club_league_category,foot,birth_year,gender`;
 
-    const runQuery = async (select: string, filterByBounds: boolean) => {
+    const missingOptionalCols = /club_league_category|foot|birth_year|gender|latitude|longitude/i;
+
+    const applyFilters = (query: any, allowOptional: boolean) => {
+      if (type === 'club') query = query.eq('type', 'club');
+      if (type === 'player' || type === 'athlete') query = query.eq('type', 'athlete');
+
+      if (filters.sport) query = query.ilike('sport', filters.sport);
+      if (filters.clubCategory && allowOptional) query = query.ilike('club_league_category', filters.clubCategory);
+      if (filters.foot && allowOptional) query = query.ilike('foot', filters.foot);
+      if (filters.gender && allowOptional) query = query.eq('gender', filters.gender);
+
+      if (allowOptional && filters.ageMin != null) {
+        query = query.lte('birth_year', currentYear - filters.ageMin);
+      }
+      if (allowOptional && filters.ageMax != null) {
+        query = query.gte('birth_year', currentYear - filters.ageMax);
+      }
+      return query;
+    };
+
+    const runQuery = async (select: string, filterByBounds: boolean, allowOptional: boolean) => {
       let query = supabase
         .from('profiles')
         .select(select, { count: 'exact' })
         .limit(limit);
 
-      if (type === 'club') query = query.eq('type', 'club');
-      if (type === 'player' || type === 'athlete') query = query.eq('type', 'athlete');
+      query = applyFilters(query, allowOptional);
 
       if (filterByBounds) {
         const { north, south, east, west } = bounds;
@@ -73,12 +128,13 @@ export async function GET(req: NextRequest) {
       return query; // caller executes
     };
 
-    // Primo tentativo con lat/long
-    let { data, error, count } = await (await runQuery(selectBase, true));
+    let { data, error, count } = await (await runQuery(selectExtended, true, true));
 
-    // Se colonne non esistono, riprova senza vincolo geografico
+    if (error && missingOptionalCols.test(error.message || '')) {
+      ({ data, error, count } = await (await runQuery(selectBase, true, false)));
+    }
     if (error && /column .*latitude.* does not exist/i.test(error.message || '')) {
-      ({ data, error, count } = await (await runQuery('id,user_id,display_name,type,country,region,province,city,avatar_url,sport,role', false)));
+      ({ data, error, count } = await (await runQuery(selectBase.replace(',latitude,longitude', ''), false, false)));
     }
 
     if (error) return jsonError(error.message, 400);

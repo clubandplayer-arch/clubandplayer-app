@@ -28,7 +28,7 @@ export default function FeedCard({
   return (
     <article className="bg-white rounded-xl border p-4">
       <header className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-full bg-gray-200 overflow-hidden">
+        <div className="h-10 w-10 rounded-full bg-gray-200 overflow-hidden aspect-square">
           {avatarUrl ? (
             <Image
               src={avatarUrl}
@@ -37,7 +37,7 @@ export default function FeedCard({
               height={40}
               sizes="40px"
               loading="lazy"
-              className="object-cover"
+              className="h-full w-full rounded-full object-cover"
             />
           ) : null}
         </div>

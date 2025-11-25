@@ -31,6 +31,13 @@
 
 > Se qualcosa blocca il setup (variabili Vercel, auth callback, storage o Sentry), consulta [docs/dev-onboarding.md](docs/dev-onboarding.md) per una diagnosi rapida.
 
+## Go live con dominio custom (es. https://www.clubandplayer.com)
+- **Domini Vercel**: aggiungi `www.clubandplayer.com` al progetto Vercel e configura il CNAME nel DNS del dominio. Le preview `*.vercel.app` restano utilizzabili per i test.
+- **Supabase Auth**: imposta in Authentication → URL Settings `Site URL = https://www.clubandplayer.com` e aggiungi `https://www.clubandplayer.com/auth/callback` alle Additional Redirect URLs (mantieni anche `https://*.vercel.app/auth/callback` e `http://localhost:3000/auth/callback` per preview/sviluppo).
+- **Next.js env**: configura su Vercel e in `.env.local` almeno `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` e, se usato, `NEXT_PUBLIC_BASE_URL=https://www.clubandplayer.com`.
+- **Flusso accesso**: login → se manca ruolo si viene indirizzati alla scelta Club/Player → se `status` del profilo è `pending` o `rejected` si viene bloccati su `/blocked`, altrimenti (`active`) si accede a feed e dashboard.
+
+
 ## Variabili d'ambiente
 | Variabile | Scope | Obbligatoria | Descrizione |
 |-----------|-------|--------------|-------------|

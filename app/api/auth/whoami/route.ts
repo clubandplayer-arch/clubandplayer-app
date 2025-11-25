@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
-import { isClubsAdminUser } from '@/lib/api/admin';
+import { isAdminUser, isClubsAdminUser } from '@/lib/api/admin';
 
 function resolveEnv() {
   const url =
@@ -24,12 +24,19 @@ function mergeCookies(from: NextResponse, into: NextResponse) {
 }
 
 type Role = 'guest' | 'athlete' | 'club';
+type ProfileStatus = 'pending' | 'active' | 'rejected';
 
 function normRole(v: unknown): 'club' | 'athlete' | null {
   const s = (typeof v === 'string' ? v : '').trim().toLowerCase();
   if (s === 'club') return 'club';
   if (s === 'athlete') return 'athlete';
   return null;
+}
+
+function normStatus(v: unknown): ProfileStatus {
+  const s = (typeof v === 'string' ? v : '').trim().toLowerCase();
+  if (s === 'active' || s === 'rejected') return s;
+  return 'pending';
 }
 
 export async function GET(req: NextRequest) {
@@ -67,19 +74,24 @@ export async function GET(req: NextRequest) {
   // 1) profiles.account_type (nuovo), 2) profiles.type (legacy)
   let accountType: 'club' | 'athlete' | null = null;
   let legacyType: string | null = null;
+  let status: ProfileStatus = 'pending';
+
+  let profileExists = false;
 
   try {
     const { data: prof } = await supabase
       .from('profiles')
-      .select('account_type,type')
+      .select('account_type,type,status')
       .eq('user_id', user.id)
       .maybeSingle();
 
+    profileExists = !!prof;
     accountType = normRole((prof as any)?.account_type);
     legacyType =
       typeof (prof as any)?.type === 'string'
         ? (prof as any)!.type.trim().toLowerCase()
         : null;
+    status = normStatus((prof as any)?.status);
 
     if (!accountType) accountType = normRole(legacyType);
   } catch {
@@ -107,14 +119,88 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // 5) Auto-attivazione per email pre-approvate e creazione profilo se manca
+  try {
+    if (!status || typeof status !== 'string') status = 'pending';
+
+    // crea il profilo se non esiste
+    if (!profileExists) {
+      const { data: created } = await supabase
+        .from('profiles')
+        .upsert(
+          {
+            user_id: user.id,
+            display_name: user.user_metadata?.full_name || user.email || 'Profilo',
+            account_type: accountType ?? null,
+          },
+          { onConflict: 'user_id' }
+        )
+        .select('account_type,type,status')
+        .maybeSingle();
+
+      if (created) {
+        accountType = normRole((created as any)?.account_type) || accountType;
+        legacyType = (created as any)?.type ?? legacyType;
+        status = normStatus((created as any)?.status);
+        profileExists = true;
+      }
+    }
+
+    if (user.email) {
+      const email = user.email.toLowerCase();
+      const { data: preapproved } = await supabase
+        .from('preapproved_emails')
+        .select('role_hint')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (preapproved && status !== 'active') {
+        const hintedRole = normRole((preapproved as any)?.role_hint);
+        const updates: Record<string, any> = { status: 'active', updated_at: new Date().toISOString() };
+        if (!accountType && hintedRole) updates.account_type = hintedRole;
+
+        const { data: patched } = await supabase
+          .from('profiles')
+          .update(updates)
+          .eq('user_id', user.id)
+          .select('account_type,type,status')
+          .maybeSingle();
+
+        if (patched) {
+          accountType = normRole((patched as any)?.account_type) || accountType;
+          legacyType = (patched as any)?.type ?? legacyType;
+          status = normStatus((patched as any)?.status);
+        } else {
+          status = 'active';
+          if (!accountType && hintedRole) accountType = hintedRole;
+        }
+      }
+    }
+  } catch {
+    // non bloccare whoami
+  }
+
   const role: Role = accountType ?? 'guest';
-  const clubsAdmin = await isClubsAdminUser(supabase, user);
+  const admin = await isAdminUser(supabase, user);
+  const clubsAdmin = admin || (await isClubsAdminUser(supabase, user));
+
+  if (admin) {
+    try {
+      await supabase
+        .from('profiles')
+        .update({ is_admin: true, updated_at: new Date().toISOString() })
+        .eq('user_id', user.id);
+    } catch {
+      // ignora
+    }
+  }
 
   const out = NextResponse.json({
     user: { id: user.id, email: user.email ?? undefined },
     role,
-    profile: { account_type: accountType, type: legacyType },
+    profile: { account_type: accountType, type: legacyType, status },
     clubsAdmin,
+    admin,
   });
   mergeCookies(carrier, out);
   return out;
