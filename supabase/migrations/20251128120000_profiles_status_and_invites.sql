@@ -36,24 +36,23 @@ on public.profiles
 for update
 using (
   user_id = auth.uid()
-  and (
-    status = old.status
-    or (
-      old.status = 'pending'
-      and status = 'active'
-      and exists(
-        select 1 from public.preapproved_emails p
-        where lower(p.email) = lower(coalesce(auth.jwt() ->> 'email', ''))
-      )
-    )
-  )
 )
 with check (
   user_id = auth.uid()
   and (
-    status = old.status
+    status = (
+      select p.status
+      from public.profiles p
+      where p.user_id = auth.uid()
+      limit 1
+    )
     or (
-      old.status = 'pending'
+      (
+        select p.status
+        from public.profiles p
+        where p.user_id = auth.uid()
+        limit 1
+      ) = 'pending'
       and status = 'active'
       and exists(
         select 1 from public.preapproved_emails p
