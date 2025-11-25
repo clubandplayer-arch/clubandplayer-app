@@ -239,17 +239,17 @@ export default function ProfileMiniCard() {
 
           {/* righe info */}
           {!isClub && (
-            <div className="text-xs text-gray-600">
-              <div className="text-[11px] uppercase tracking-wide text-gray-500">Zona di interesse</div>
-              <div className="text-sm font-semibold text-gray-800">{interestLabel || '—'}</div>
-            </div>
-          )}
-
-          {!isClub && (
             <div className="flex items-center justify-center gap-2 text-xs text-gray-700">
               <span className="text-gray-500">Nazionalità:</span>
               {flagUrl ? <img src={flagUrl} alt={nat.label} className="inline-block h-3 w-5 rounded-[2px]" /> : null}
               <span className="font-medium text-gray-900">{nat.label || '—'}</span>
+            </div>
+          )}
+
+          {!isClub && (
+            <div className="text-xs text-gray-600">
+              <div className="text-[11px] uppercase tracking-wide text-gray-500">Zona di interesse</div>
+              <div className="text-sm font-semibold text-gray-800">{interestLabel || '—'}</div>
             </div>
           )}
 

@@ -581,17 +581,6 @@ export default function ProfileEditForm() {
   if (!profile) return null;
 
   const countryPreview = country ? `${flagEmoji(country)} ${countryName(country)}` : '';
-  const selectedInterestCity =
-    municipalities.find((m) => m.id === municipalityId)?.name ||
-    profile?.interest_city ||
-    profile?.city ||
-    '';
-  const selectedInterestRegion =
-    provinces.find((p) => p.id === provinceId)?.name ||
-    regions.find((r) => r.id === regionId)?.name ||
-    profile?.interest_province ||
-    profile?.interest_region ||
-    '';
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
@@ -886,20 +875,6 @@ export default function ProfileEditForm() {
                 {country && (
                   <span className="text-xs text-gray-500">{countryPreview}</span>
                 )}
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-gray-600">Città (zona di interesse)</label>
-                <input
-                  className="rounded-lg border bg-gray-50 p-2 text-gray-900"
-                  value={selectedInterestCity || '—'}
-                  readOnly
-                  placeholder="Seleziona una città nella zona di interesse"
-                />
-                <p className="text-xs text-gray-500">
-                  Imposta la città nella sezione “Zona di interesse"
-                  {selectedInterestRegion ? ` (${selectedInterestRegion})` : ''}.
-                </p>
               </div>
 
               <div className="md:col-span-2 flex flex-col gap-1">
