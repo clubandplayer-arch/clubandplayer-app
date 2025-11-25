@@ -52,8 +52,6 @@ const ClubIcon = () => (
 const HAS_ENV = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
-// domini su cui mostriamo il bottone (prod + local). I preview vercel passano cmq
-const FIXED_ALLOWED = new Set(['https://clubandplayer-app.vercel.app', 'http://localhost:3000']);
 
 export default function SignupPage() {
   const router = useRouter();
@@ -82,11 +80,7 @@ export default function SignupPage() {
 
   // mostra il bottone Google solo quando ha senso
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
-  const oauthReady = useMemo(() => {
-    if (!HAS_ENV || !origin) return false;
-    return FIXED_ALLOWED.has(origin) || hostname.endsWith('.vercel.app');
-  }, [origin, hostname]);
+  const oauthReady = useMemo(() => HAS_ENV && Boolean(origin), [origin]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
