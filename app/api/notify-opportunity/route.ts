@@ -1,5 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { getSupabaseServerClient } from '@/lib/supabase/server'
+import { isClubsAdminUser } from '@/lib/api/admin'
 
 export const runtime = 'nodejs'
 
@@ -35,6 +37,13 @@ export async function OPTIONS() {
 
 export async function POST(req: NextRequest) {
   try {
+    const supabaseServer = await getSupabaseServerClient()
+    const { data: auth } = await supabaseServer.auth.getUser()
+    const user = auth?.user
+    if (!user) {
+      return NextResponse.json({ ok: false, error: 'not_authenticated' }, { status: 401 })
+    }
+
     const { opportunityId } = (await req.json()) as Body
     if (!opportunityId) {
       return NextResponse.json({ ok: false, error: 'bad_request' }, { status: 400 })
@@ -57,6 +66,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'opportunity_not_found' }, { status: 404 })
     }
     const opp = opps[0] as OpportunityRow
+
+    // consenti solo al club owner o ad un admin esplicito
+    const { data: ownerRow } = await supabaseServer
+      .from('opportunities')
+      .select('owner_id, created_by')
+      .eq('id', opportunityId)
+      .maybeSingle()
+
+    const ownerId = (ownerRow as any)?.owner_id ?? (ownerRow as any)?.created_by ?? null
+    const isAdmin = await isClubsAdminUser(supabaseServer as any, user)
+    if (!isAdmin && ownerId !== user.id) {
+      return NextResponse.json({ ok: false, error: 'forbidden' }, { status: 403 })
+    }
 
     const { data: alerts, error: aErr } = await supabase
       .from('alerts')

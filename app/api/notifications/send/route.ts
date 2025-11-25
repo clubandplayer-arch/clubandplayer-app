@@ -1,6 +1,8 @@
 import { NextResponse, NextRequest } from 'next/server'
 import { Resend } from 'resend'
 import { createClient } from '@supabase/supabase-js'
+import { getSupabaseServerClient } from '@/lib/supabase/server'
+import { isClubsAdminUser } from '@/lib/api/admin'
 import { getResendConfig } from '@/lib/server/resendConfig'
 
 export const runtime = 'nodejs'
@@ -29,6 +31,18 @@ export async function OPTIONS() {
 
 export async function POST(req: NextRequest) {
   try {
+    const supabase = await getSupabaseServerClient()
+    const { data: auth } = await supabase.auth.getUser()
+    const user = auth?.user
+    if (!user) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    }
+
+    const isAdmin = await isClubsAdminUser(supabase as any, user)
+    if (!isAdmin) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
     const body = (await req.json()) as SendBody
     if (!body?.subject) {
       return NextResponse.json({ error: 'Missing subject' }, { status: 400 })
