@@ -14,6 +14,7 @@ type Profile = {
   bio?: string | null;
   country?: string | null;
   city?: string | null;
+  club_motto?: string | null;
   interest_region_id?: number | null;
   interest_province_id?: number | null;
   interest_municipality_id?: number | null;
@@ -137,6 +138,9 @@ export default function ClubProfileDetails() {
           <h2 className="heading-h2 mb-1">Dati club</h2>
           <p className="text-lg font-semibold leading-tight text-neutral-900">{displayName}</p>
           {cityLine ? <p className="text-sm text-neutral-600">{cityLine}</p> : null}
+          {profile?.club_motto ? (
+            <p className="text-sm italic text-neutral-700">{profile.club_motto}</p>
+          ) : null}
         </div>
       </header>
 
@@ -146,7 +150,7 @@ export default function ClubProfileDetails() {
           <dd className="text-base font-semibold text-neutral-900">{profile?.sport || '—'}</dd>
         </div>
         <div className="rounded-xl border border-white/30 bg-white/40 p-3 shadow-sm backdrop-blur">
-          <dt className="text-xs uppercase tracking-wide text-neutral-500">Categoria / Campionato</dt>
+          <dt className="text-xs uppercase tracking-wide text-neutral-500">Categoria</dt>
           <dd className="text-base font-semibold text-neutral-900">{profile?.club_league_category || '—'}</dd>
         </div>
         <div className="rounded-xl border border-white/30 bg-white/40 p-3 shadow-sm backdrop-blur">
@@ -154,7 +158,7 @@ export default function ClubProfileDetails() {
           <dd className="text-base font-semibold text-neutral-900">{profile?.club_foundation_year || '—'}</dd>
         </div>
         <div className="rounded-xl border border-white/30 bg-white/40 p-3 shadow-sm backdrop-blur">
-          <dt className="text-xs uppercase tracking-wide text-neutral-500">Stadio / Impianto</dt>
+          <dt className="text-xs uppercase tracking-wide text-neutral-500">Impianto sportivo</dt>
           <dd className="text-base font-semibold text-neutral-900">{profile?.club_stadium || '—'}</dd>
         </div>
         <div className="rounded-xl border border-white/30 bg-white/40 p-3 shadow-sm backdrop-blur">
@@ -164,7 +168,7 @@ export default function ClubProfileDetails() {
           </dd>
         </div>
         <div className="sm:col-span-2 rounded-xl border border-white/30 bg-white/40 p-3 shadow-sm backdrop-blur">
-          <dt className="text-xs uppercase tracking-wide text-neutral-500">Biografia / Descrizione</dt>
+          <dt className="text-xs uppercase tracking-wide text-neutral-500">Biografia</dt>
           <dd className="mt-1 text-sm leading-relaxed text-neutral-800">
             {profile?.bio ? profile.bio : 'Aggiungi una descrizione per raccontare storia e valori del club.'}
           </dd>

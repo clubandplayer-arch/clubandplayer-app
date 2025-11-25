@@ -68,6 +68,7 @@ type Profile = {
   club_stadium_lat: number | null;
   club_stadium_lng: number | null;
   club_league_category: string | null;
+  club_motto: string | null;
 
   // social / notifiche
   links: Links | null;
@@ -264,6 +265,7 @@ export default function ProfileEditForm() {
   const [stadiumAddress, setStadiumAddress] = useState('');
   const [stadiumLat, setStadiumLat] = useState<number | null>(null);
   const [stadiumLng, setStadiumLng] = useState<number | null>(null);
+  const [clubMotto, setClubMotto] = useState('');
 
   // categorie dinamiche per sport
   const sportCategories = CATEGORIES_BY_SPORT[sport] ?? DEFAULT_CLUB_CATEGORIES;
@@ -322,6 +324,7 @@ export default function ProfileEditForm() {
       club_stadium_lat: (j as any)?.club_stadium_lat ?? null,
       club_stadium_lng: (j as any)?.club_stadium_lng ?? null,
       club_league_category: (j as any)?.club_league_category ?? null,
+      club_motto: (j as any)?.club_motto ?? null,
 
       links: (j as any)?.links ?? null,
       notify_email_new_message: Boolean(j?.notify_email_new_message ?? true),
@@ -367,6 +370,7 @@ export default function ProfileEditForm() {
     setStadiumAddress(p.club_stadium_address || '');
     setStadiumLat(p.club_stadium_lat ?? null);
     setStadiumLng(p.club_stadium_lng ?? null);
+    setClubMotto(p.club_motto || '');
   }
 
   // prima load
@@ -494,6 +498,7 @@ export default function ProfileEditForm() {
           club_stadium_address: (stadiumAddress || '').trim() || null,
           club_stadium_lat: stadiumLat ?? null,
           club_stadium_lng: stadiumLng ?? null,
+          club_motto: (clubMotto || '').trim() || null,
 
           city: clubCityName,
 
@@ -543,6 +548,7 @@ export default function ProfileEditForm() {
           club_stadium_address: null,
           club_stadium_lat: null,
           club_stadium_lng: null,
+          club_motto: null,
         });
       }
 
@@ -710,6 +716,16 @@ export default function ProfileEditForm() {
                 )}
               </div>
 
+              <div className="flex flex-col gap-1">
+                <label className="text-sm text-gray-600">Motto del club</label>
+                <input
+                  className="rounded-lg border p-2"
+                  value={clubMotto}
+                  onChange={(e) => setClubMotto(e.target.value)}
+                  placeholder="Es. Caesarea et inexpugnabilis"
+                />
+              </div>
+
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="flex flex-col gap-1">
                   <label className="text-sm text-gray-600">Sport del club</label>
@@ -727,7 +743,7 @@ export default function ProfileEditForm() {
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-sm text-gray-600">Categoria / Campionato</label>
+                  <label className="text-sm text-gray-600">Categoria</label>
                   <select
                     className="rounded-lg border p-2"
                     value={clubCategory}

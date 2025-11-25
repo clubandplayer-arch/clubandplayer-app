@@ -427,7 +427,7 @@ export default function SearchMapClient() {
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-xs text-gray-600">Categoria / campionato</label>
+                <label className="text-xs text-gray-600">Categoria</label>
                 <input
                   value={clubCategory}
                   onChange={(e) => setClubCategory(e.target.value)}

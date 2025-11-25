@@ -45,6 +45,7 @@ type P = {
   club_stadium_lat?: number | null;
   club_stadium_lng?: number | null;
   club_league_category?: string | null;
+  club_motto?: string | null;
 
   // interesse (non mostrato)
   interest_region_id?: number | null;
@@ -255,6 +256,9 @@ export default function ProfileMiniCard() {
           {isClub && interestLabel ? (
             <p className="text-sm font-medium text-gray-800">{interestLabel}</p>
           ) : null}
+          {isClub && p?.club_motto ? (
+            <p className="text-xs italic text-gray-600">{p.club_motto}</p>
+          ) : null}
         </div>
       </div>
 
@@ -272,13 +276,13 @@ export default function ProfileMiniCard() {
             )}
             {p?.club_league_category && (
               <div className="flex flex-col gap-0.5">
-                <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Categoria / campionato</dt>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Categoria</dt>
                 <dd className="font-medium text-gray-900">{p.club_league_category}</dd>
               </div>
             )}
             {p?.club_stadium && (
               <div className="flex flex-col gap-0.5">
-                <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Stadio / impianto</dt>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Impianto sportivo</dt>
                 <dd className="font-medium text-gray-900">{p.club_stadium}</dd>
               </div>
             )}
@@ -292,8 +296,8 @@ export default function ProfileMiniCard() {
 
           {p?.bio ? (
             <div className="rounded-xl bg-white/70 p-3 text-sm text-gray-700 shadow-sm ring-1 ring-gray-100">
-              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Motto / descrizione</div>
-              <p className="mt-1 whitespace-pre-line break-words leading-snug">{p.bio}</p>
+              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Biografia</div>
+              <p className="mt-1 line-clamp-3 whitespace-pre-line break-words leading-snug">{p.bio}</p>
             </div>
           ) : null}
 

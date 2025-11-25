@@ -18,6 +18,7 @@ export type Profile = {
   city?: string | null;
   links?: ProfileLinks;
   avatar_url?: string | null;
+  club_motto?: string | null;
   created_at: string;
   updated_at: string;
 };

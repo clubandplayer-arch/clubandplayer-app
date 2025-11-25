@@ -95,6 +95,7 @@ const FIELDS: Record<string, 'text' | 'number' | 'bool' | 'json'> = {
   club_stadium_lat: 'number',
   club_stadium_lng: 'number',
   club_league_category: 'text',
+  club_motto: 'text',
   // -------------------------------------
 };
 
