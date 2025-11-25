@@ -23,7 +23,7 @@ function mergeCookies(from: NextResponse, into: NextResponse) {
   if (set) into.headers.append('set-cookie', set);
 }
 
-type Role = 'guest' | 'athlete' | 'club';
+type Role = 'guest' | 'athlete' | 'club' | 'admin';
 type ProfileStatus = 'pending' | 'active' | 'rejected';
 
 function normRole(v: unknown): 'club' | 'athlete' | null {
@@ -180,9 +180,10 @@ export async function GET(req: NextRequest) {
     // non bloccare whoami
   }
 
-  const role: Role = accountType ?? 'guest';
   const admin = await isAdminUser(supabase, user);
   const clubsAdmin = admin || (await isClubsAdminUser(supabase, user));
+
+  const role: Role = admin ? 'admin' : accountType ?? 'guest';
 
   if (admin) {
     try {
