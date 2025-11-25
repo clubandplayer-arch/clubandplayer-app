@@ -12,10 +12,6 @@ const SUPA_URL  = process.env.NEXT_PUBLIC_SUPABASE_URL  ?? '';
 const SUPA_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
 const HAS_ENV   = Boolean(SUPA_URL && SUPA_ANON);
 
-const FIXED_ALLOWED = new Set<string>([
-  'https://clubandplayer-app.vercel.app',
-  'http://localhost:3000',
-]);
 
 function sanitizeRedirect(input: string | null, origin: string): string | null {
   if (!input) return null;
@@ -43,20 +39,7 @@ export default function LoginPage() {
   const BUILD_TAG = 'login-v6 Google+Email cookie-sync + redirect_to';
 
   const origin   = typeof window !== 'undefined' ? window.location.origin   : '';
-  const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
-
-  const oauthAllowedHere = useMemo(() => {
-    try {
-      if (!origin) return false;
-      if (FIXED_ALLOWED.has(origin)) return true;
-      if (hostname.endsWith('.vercel.app')) return true;
-      return false;
-    } catch {
-      return false;
-    }
-  }, [origin, hostname]);
-
-  const oauthReady = HAS_ENV && oauthAllowedHere;
+  const oauthReady = useMemo(() => HAS_ENV && Boolean(origin), [origin]);
 
   // Salva l'eventuale ?redirect_to= in sessionStorage per l'uso in /auth/callback
   useEffect(() => {

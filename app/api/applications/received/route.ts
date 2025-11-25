@@ -127,8 +127,14 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
       nameFromParts ||
       null;
 
+    const location = [profile?.city, profile?.province, profile?.region].filter(Boolean).join(' · ');
+    const headline = [profile?.role, profile?.sport].filter(Boolean).join(' · ');
+
     return {
       ...a,
+      player_name: name,
+      player_location: location,
+      player_headline: headline,
       opportunity: oppMap.get(a.opportunity_id) ?? (a as any).opportunity ?? null,
       athlete: profile
         ? {

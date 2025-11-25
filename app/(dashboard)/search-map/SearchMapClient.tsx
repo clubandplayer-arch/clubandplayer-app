@@ -1,7 +1,7 @@
 // app/(dashboard)/search-map/SearchMapClient.tsx
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 
@@ -21,6 +21,10 @@ type ProfilePoint = {
   role?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  foot?: string | null;
+  gender?: string | null;
+  birth_year?: number | null;
+  club_league_category?: string | null;
 };
 
 type Bounds = {
@@ -29,6 +33,8 @@ type Bounds = {
   east?: number;
   west?: number;
 };
+
+type PolygonPoint = [number, number];
 
 const DEFAULT_CENTER: [number, number] = [41.9, 12.5];
 
@@ -58,6 +64,19 @@ function loadLeaflet(): Promise<LeafletLib> {
   });
 }
 
+function pointInPolygon(point: PolygonPoint, polygon: PolygonPoint[]): boolean {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i][1];
+    const yi = polygon[i][0];
+    const xj = polygon[j][1];
+    const yj = polygon[j][0];
+    const intersect = yi > point[0] !== yj > point[0] && point[1] < ((xj - xi) * (point[0] - yi)) / (yj - yi) + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
 function MarkerIcon({ type }: { type?: string | null }) {
   const color = type?.toLowerCase().includes('club') ? 'text-blue-700' : 'text-emerald-700';
   return <span className={`${color} text-lg`}>{type?.toLowerCase().includes('club') ? '🏟️' : '🧑‍💼'}</span>;
@@ -65,40 +84,107 @@ function MarkerIcon({ type }: { type?: string | null }) {
 
 export default function SearchMapClient() {
   const [typeFilter, setTypeFilter] = useState<'all' | 'club' | 'player'>('all');
-  const [bounds, setBounds] = useState<Bounds>({
-    north: 47,
-    south: 36,
-    east: 18,
-    west: 6,
-  });
+  const [searchBounds, setSearchBounds] = useState<Bounds | null>(null);
   const [points, setPoints] = useState<ProfilePoint[]>([]);
   const [loading, setLoading] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
   const [dataError, setDataError] = useState<string | null>(null);
+
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [drawPoints, setDrawPoints] = useState<PolygonPoint[]>([]);
+  const [activeArea, setActiveArea] = useState<PolygonPoint[] | null>(null);
+
+  const [clubSport, setClubSport] = useState('');
+  const [clubCategory, setClubCategory] = useState('');
+  const [playerSport, setPlayerSport] = useState('');
+  const [playerFoot, setPlayerFoot] = useState('');
+  const [playerGender, setPlayerGender] = useState('');
+  const [ageMin, setAgeMin] = useState('');
+  const [ageMax, setAgeMax] = useState('');
+
   const mapRef = useRef<LeafletLib['Map'] | null>(null);
-  const markersRef = useRef<LeafletLib['Marker'][]>([]);
+  const polygonRef = useRef<LeafletLib['Polygon'] | null>(null);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
-  const initialCenter = useRef<[number, number] | null>(null);
+
+  const hasArea = !!searchBounds;
+
+  const clearPolygonLayer = useCallback(() => {
+    if (polygonRef.current) {
+      polygonRef.current.remove();
+      polygonRef.current = null;
+    }
+  }, []);
+
+  const updatePolygonLayer = useCallback(
+    async (pts: PolygonPoint[], fit = false) => {
+      const map = mapRef.current;
+      if (!map) return;
+      const L = await loadLeaflet();
+      clearPolygonLayer();
+      if (!pts.length) return;
+      const poly = L.polygon(pts, { color: '#2563eb', weight: 2, fillOpacity: 0.08, opacity: 0.9 });
+      poly.addTo(map);
+      polygonRef.current = poly;
+      if (fit) {
+        try {
+          map.fitBounds(poly.getBounds(), { padding: [20, 20] });
+        } catch {
+          // ignore
+        }
+      }
+    },
+    [clearPolygonLayer],
+  );
+
+  const commitArea = useCallback(
+    async (pts: PolygonPoint[]) => {
+      if (pts.length < 3) {
+        setDataError('Disegna almeno tre punti per definire un’area.');
+        return;
+      }
+      setActiveArea(pts);
+      const L = await loadLeaflet();
+      const bounds = L.latLngBounds(pts.map(([lat, lng]) => [lat, lng]));
+      setSearchBounds({
+        north: bounds.getNorth(),
+        south: bounds.getSouth(),
+        east: bounds.getEast(),
+        west: bounds.getWest(),
+      });
+      setIsDrawing(false);
+      updatePolygonLayer(pts, true);
+    },
+    [updatePolygonLayer],
+  );
+
+  const startDrawing = useCallback(() => {
+    setDataError(null);
+    setPoints([]);
+    setSearchBounds(null);
+    setActiveArea(null);
+    setDrawPoints([]);
+    clearPolygonLayer();
+    setIsDrawing(true);
+  }, [clearPolygonLayer]);
+
+  const cancelArea = useCallback(() => {
+    setIsDrawing(false);
+    setDrawPoints([]);
+    setActiveArea(null);
+    setSearchBounds(null);
+    setPoints([]);
+    clearPolygonLayer();
+  }, [clearPolygonLayer]);
 
   useEffect(() => {
     let cancelled = false;
     loadLeaflet()
       .then((L) => {
         if (cancelled || !mapContainerRef.current) return;
-        if (!initialCenter.current) initialCenter.current = DEFAULT_CENTER;
-        const map = L.map(mapContainerRef.current).setView(initialCenter.current as [number, number], 6);
+        const map = L.map(mapContainerRef.current).setView(DEFAULT_CENTER, 6);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: '&copy; OpenStreetMap',
         }).addTo(map);
-        map.on('moveend', () => {
-          const b = map.getBounds();
-          setBounds({
-            north: b.getNorth(),
-            south: b.getSouth(),
-            east: b.getEast(),
-            west: b.getWest(),
-          });
-        });
         mapRef.current = map;
       })
       .catch((error) => {
@@ -115,87 +201,194 @@ export default function SearchMapClient() {
   }, []);
 
   useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    let clickHandler: any = null;
+    let dblHandler: any = null;
+
+    loadLeaflet()
+      .then(() => {
+        clickHandler = (ev: any) => {
+          if (!isDrawing) return;
+          const lat = ev?.latlng?.lat;
+          const lng = ev?.latlng?.lng;
+          if (lat == null || lng == null) return;
+          setDrawPoints((prev) => {
+            const next = [...prev, [lat, lng] as PolygonPoint];
+            updatePolygonLayer(next);
+            return next;
+          });
+        };
+
+        dblHandler = () => {
+          setDrawPoints((prev) => {
+            commitArea(prev);
+            return prev;
+          });
+        };
+
+        map.on('click', clickHandler);
+        map.on('dblclick', dblHandler);
+      })
+      .catch(() => {});
+
+    return () => {
+      if (clickHandler) map.off('click', clickHandler);
+      if (dblHandler) map.off('dblclick', dblHandler);
+    };
+  }, [commitArea, isDrawing, updatePolygonLayer]);
+
+  useEffect(() => {
+    if (!isDrawing && activeArea?.length) {
+      updatePolygonLayer(activeArea, false);
+    }
+  }, [activeArea, isDrawing, updatePolygonLayer]);
+
+  useEffect(() => {
+    if (!searchBounds) {
+      setPoints([]);
+      return;
+    }
+
     let cancelled = false;
     const timer = setTimeout(async () => {
       setLoading(true);
       setDataError(null);
+
       try {
         const params = new URLSearchParams();
-        params.set('north', String(bounds.north ?? ''));
-        params.set('south', String(bounds.south ?? ''));
-        params.set('east', String(bounds.east ?? ''));
-        params.set('west', String(bounds.west ?? ''));
+        params.set('limit', '300');
         params.set('type', typeFilter);
+        params.set('north', String(searchBounds.north ?? ''));
+        params.set('south', String(searchBounds.south ?? ''));
+        params.set('east', String(searchBounds.east ?? ''));
+        params.set('west', String(searchBounds.west ?? ''));
+
+        if (typeFilter === 'club') {
+          if (clubSport) params.set('sport', clubSport);
+          if (clubCategory) params.set('club_category', clubCategory);
+        }
+        if (typeFilter === 'player') {
+          if (playerSport) params.set('sport', playerSport);
+          if (playerFoot) params.set('foot', playerFoot);
+          if (playerGender) params.set('gender', playerGender);
+          if (ageMin) params.set('age_min', ageMin);
+          if (ageMax) params.set('age_max', ageMax);
+        }
 
         const res = await fetch(`/api/search/map?${params.toString()}`, { cache: 'no-store' });
-        const json = await res.json().catch(() => ({} as any));
-        if (!cancelled && Array.isArray(json?.data)) {
-          setPoints(json.data as ProfilePoint[]);
+        const text = await res.text();
+        let json: any = null;
+        try {
+          json = JSON.parse(text);
+        } catch {
+          json = text;
         }
-        if (!cancelled && !Array.isArray(json?.data)) {
-          setDataError('Risultati non disponibili al momento.');
-          setPoints([]);
+        if (!res.ok) {
+          throw new Error(json?.error || text || `HTTP ${res.status}`);
         }
-      } catch (error) {
-        console.error('Search map fetch error', error);
+
+        const arr = Array.isArray(json?.data) ? json.data : Array.isArray(json) ? json : [];
+        if (!cancelled) setPoints(arr as ProfilePoint[]);
+      } catch (err: any) {
         if (!cancelled) {
+          setDataError(err?.message || 'Errore nel caricamento dei profili.');
           setPoints([]);
-          setDataError('Errore nel caricamento dei profili.');
         }
       } finally {
         if (!cancelled) setLoading(false);
       }
-    }, 300);
+    }, 400);
 
     return () => {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [bounds, typeFilter]);
+  }, [ageMax, ageMin, clubCategory, clubSport, playerFoot, playerGender, playerSport, searchBounds, typeFilter]);
 
-  useEffect(() => {
-    if (!mapRef.current || mapError) return;
-    loadLeaflet()
-      .then((L) => {
-        markersRef.current.forEach((m) => m.remove());
-        markersRef.current = [];
-        const visible = points.filter((p) => p.latitude != null && p.longitude != null);
-        visible.forEach((p) => {
-          const marker = L.marker([p.latitude as number, p.longitude as number]);
-          marker.bindPopup(
-            `<div class="space-y-1">
-              <div class="font-semibold">${p.display_name || 'Profilo'}</div>
-              <div class="text-xs text-gray-600">${[p.city, p.province, p.region].filter(Boolean).join(' · ')}</div>
-              <div class="text-xs text-gray-500">${[p.role, p.sport].filter(Boolean).join(' · ')}</div>
-            </div>`
-          );
-          marker.addTo(mapRef.current as any);
-          markersRef.current.push(marker);
-        });
-      })
-      .catch((error) => {
-        console.error('Leaflet marker error', error);
-      });
-  }, [mapError, points]);
-
-  const visiblePoints = useMemo(() => {
-    const { north, south, east, west } = bounds;
+  const filteredPoints = useMemo(() => {
     return points.filter((p) => {
-      if (typeFilter === 'club' && (p.type || '').toLowerCase() !== 'club') return false;
-      if (typeFilter === 'player' && (p.type || '').toLowerCase() === 'club') return false;
+      const type = (p.type || '').toLowerCase();
+      if (typeFilter === 'club' && type !== 'club') return false;
+      if (typeFilter === 'player' && type === 'club') return false;
 
-      if (p.latitude == null || p.longitude == null) return true;
-      if (north != null && p.latitude > north) return false;
-      if (south != null && p.latitude < south) return false;
-      if (east != null && p.longitude > east) return false;
-      if (west != null && p.longitude < west) return false;
+      if (typeFilter === 'club') {
+        if (clubSport && (p.sport || '').toLowerCase() !== clubSport.toLowerCase()) return false;
+        if (
+          clubCategory &&
+          (p.club_league_category || '').toLowerCase() !== clubCategory.toLowerCase()
+        )
+          return false;
+      }
+
+      if (typeFilter === 'player') {
+        if (playerSport && (p.sport || '').toLowerCase() !== playerSport.toLowerCase()) return false;
+        if (playerFoot && (p.foot || '').toLowerCase() !== playerFoot.toLowerCase()) return false;
+        if (playerGender && (p.gender || '').toLowerCase() !== playerGender.toLowerCase()) return false;
+        const currentYear = new Date().getFullYear();
+        if (ageMin && p.birth_year) {
+          const age = currentYear - p.birth_year;
+          if (age < Number(ageMin)) return false;
+        }
+        if (ageMax && p.birth_year) {
+          const age = currentYear - p.birth_year;
+          if (age > Number(ageMax)) return false;
+        }
+      }
+
+      if (activeArea && activeArea.length >= 3 && p.latitude != null && p.longitude != null) {
+        if (!pointInPolygon([p.latitude, p.longitude], activeArea)) return false;
+      }
+
       return true;
     });
-  }, [bounds, points, typeFilter]);
+  }, [activeArea, ageMax, ageMin, clubCategory, clubSport, playerFoot, playerGender, playerSport, points, typeFilter]);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-      <aside className="lg:col-span-3 space-y-3">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+      <aside className="space-y-3 lg:col-span-3">
+        <div className="rounded-xl border bg-white/80 p-4 shadow-sm space-y-3">
+          <h2 className="heading-h2 text-lg">Area di ricerca</h2>
+          <p className="text-xs text-gray-600">
+            1) Disegna l’area sulla mappa. 2) Scegli i filtri. 3) Visualizza i risultati.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={startDrawing}
+              className="flex-1 rounded-lg border px-3 py-2 text-sm font-medium hover:bg-gray-50"
+            >
+              Disegna area di ricerca
+            </button>
+            <button
+              type="button"
+              disabled={!drawPoints.length}
+              onClick={() => commitArea(drawPoints)}
+              className="flex-1 rounded-lg border px-3 py-2 text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
+            >
+              Chiudi area e cerca
+            </button>
+            <button
+              type="button"
+              onClick={cancelArea}
+              className="w-full rounded-lg border px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+            >
+              Cancella area
+            </button>
+          </div>
+          {drawPoints.length > 0 && isDrawing && (
+            <p className="text-xs text-amber-700">
+              Doppio click sulla mappa per chiudere il poligono oppure usa “Chiudi area e cerca”.
+            </p>
+          )}
+          {!hasArea && !isDrawing && (
+            <p className="text-xs text-gray-500">Nessuna area selezionata.</p>
+          )}
+          {activeArea && !isDrawing && (
+            <p className="text-xs text-emerald-700">Area impostata: {activeArea.length} punti.</p>
+          )}
+        </div>
+
         <div className="rounded-xl border bg-white/80 p-4 shadow-sm space-y-3">
           <h2 className="heading-h2 text-lg">Filtri</h2>
           <div className="flex gap-2">
@@ -221,35 +414,122 @@ export default function SearchMapClient() {
               Player
             </button>
           </div>
-          <p className="text-xs text-gray-600">Sposta o zoomma la mappa per aggiornare l’elenco.</p>
-          <div className="text-xs text-gray-700">
-            <div>Nord: {bounds.north?.toFixed(2) ?? '—'} · Sud: {bounds.south?.toFixed(2) ?? '—'}</div>
-            <div>Est: {bounds.east?.toFixed(2) ?? '—'} · Ovest: {bounds.west?.toFixed(2) ?? '—'}</div>
-          </div>
+
+          {typeFilter === 'club' && (
+            <div className="space-y-2 text-sm">
+              <div className="space-y-1">
+                <label className="text-xs text-gray-600">Sport</label>
+                <input
+                  value={clubSport}
+                  onChange={(e) => setClubSport(e.target.value)}
+                  className="w-full rounded-lg border px-3 py-2"
+                  placeholder="Calcio, basket…"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-gray-600">Categoria</label>
+                <input
+                  value={clubCategory}
+                  onChange={(e) => setClubCategory(e.target.value)}
+                  className="w-full rounded-lg border px-3 py-2"
+                  placeholder="Eccellenza, Serie C…"
+                />
+              </div>
+            </div>
+          )}
+
+          {typeFilter === 'player' && (
+            <div className="space-y-2 text-sm">
+              <div className="space-y-1">
+                <label className="text-xs text-gray-600">Sport</label>
+                <input
+                  value={playerSport}
+                  onChange={(e) => setPlayerSport(e.target.value)}
+                  className="w-full rounded-lg border px-3 py-2"
+                  placeholder="Calcio, basket…"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-gray-600">Arto dominante</label>
+                <select
+                  value={playerFoot}
+                  onChange={(e) => setPlayerFoot(e.target.value)}
+                  className="w-full rounded-lg border px-3 py-2"
+                >
+                  <option value="">Tutti</option>
+                  <option value="destro">Destro</option>
+                  <option value="sinistro">Sinistro</option>
+                  <option value="ambidestro">Ambidestro</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-gray-600">Sesso</label>
+                <select
+                  value={playerGender}
+                  onChange={(e) => setPlayerGender(e.target.value)}
+                  className="w-full rounded-lg border px-3 py-2"
+                >
+                  <option value="">Tutti</option>
+                  <option value="m">Uomo</option>
+                  <option value="f">Donna</option>
+                  <option value="mixed">Misto</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-xs text-gray-600">Età minima</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={ageMin}
+                    onChange={(e) => setAgeMin(e.target.value)}
+                    className="w-full rounded-lg border px-3 py-2"
+                    placeholder="18"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-gray-600">Età massima</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={ageMax}
+                    onChange={(e) => setAgeMax(e.target.value)}
+                    className="w-full rounded-lg border px-3 py-2"
+                    placeholder="35"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </aside>
 
-      <section className="lg:col-span-6 h-[420px] lg:h-[520px] overflow-hidden rounded-xl border bg-white/80 shadow-sm">
+      <section className="h-[420px] rounded-xl border bg-white/80 shadow-sm lg:col-span-6 lg:h-[520px]">
         {mapError ? (
-          <div className="flex h-full w-full items-center justify-center text-sm text-red-600">
-            {mapError}
-          </div>
+          <div className="flex h-full w-full items-center justify-center text-sm text-red-600">{mapError}</div>
         ) : (
           <div ref={mapContainerRef} className="h-full w-full" />
         )}
       </section>
 
-      <section className="lg:col-span-3 space-y-2 rounded-xl border bg-white/80 p-3 shadow-sm">
+      <section className="space-y-2 rounded-xl border bg-white/80 p-3 shadow-sm lg:col-span-3">
         <div className="flex items-center justify-between">
           <h2 className="heading-h2 text-lg">Risultati</h2>
           {loading && <span className="text-xs text-gray-500">Caricamento…</span>}
         </div>
-        {dataError && <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{dataError}</div>}
-        {visiblePoints.length === 0 && (
-          <div className="text-sm text-gray-600">Nessun profilo nell’area visibile.</div>
+        {dataError && (
+          <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{dataError}</div>
+        )}
+        {!hasArea && !loading && !dataError && (
+          <div className="text-sm text-gray-600">
+            Disegna un’area sulla mappa o sposta la mappa e chiudi il poligono per iniziare la ricerca.
+          </div>
+        )}
+        {hasArea && filteredPoints.length === 0 && !loading && !dataError && (
+          <div className="text-sm text-gray-600">Nessun profilo nell’area selezionata.</div>
         )}
         <div className="grid grid-cols-1 gap-2">
-          {visiblePoints.map((p) => (
+          {filteredPoints.map((p) => (
             <Link
               key={p.id}
               href={(p.type || '').toLowerCase() === 'club' ? `/clubs/${p.id}` : `/athletes/${p.id}`}
@@ -273,5 +553,4 @@ export default function SearchMapClient() {
   );
 }
 
-// Evita warning SSR per Leaflet
 export const DynamicSearchMapClient = dynamic(() => Promise.resolve(SearchMapClient), { ssr: false });

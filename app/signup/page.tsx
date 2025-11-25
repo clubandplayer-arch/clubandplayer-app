@@ -13,12 +13,45 @@ import SocialLogin from '@/components/auth/SocialLogin';
 
 type Role = 'athlete' | 'club';
 
+const PlayerIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    className="h-4 w-4"
+    aria-hidden
+  >
+    <circle cx="7" cy="8" r="3" />
+    <circle cx="17" cy="8" r="3" />
+    <path d="M4 20v-1a4 4 0 0 1 4-4h0" />
+    <path d="M20 20v-1a4 4 0 0 0-4-4h0" />
+    <path d="M9.5 20v-1.5a2.5 2.5 0 0 1 5 0V20" />
+  </svg>
+);
+
+const ClubIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    className="h-4 w-4"
+    aria-hidden
+  >
+    <path d="M4 21h16" />
+    <path d="M6 21V9l6-4 6 4v12" />
+    <path d="M9 21v-5h6v5" />
+    <path d="M9 13h6" />
+  </svg>
+);
+
 // env presenti?
 const HAS_ENV = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
-// domini su cui mostriamo il bottone (prod + local). I preview vercel passano cmq
-const FIXED_ALLOWED = new Set(['https://clubandplayer-app.vercel.app', 'http://localhost:3000']);
 
 export default function SignupPage() {
   const router = useRouter();
@@ -47,11 +80,7 @@ export default function SignupPage() {
 
   // mostra il bottone Google solo quando ha senso
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
-  const oauthReady = useMemo(() => {
-    if (!HAS_ENV || !origin) return false;
-    return FIXED_ALLOWED.has(origin) || hostname.endsWith('.vercel.app');
-  }, [origin, hostname]);
+  const oauthReady = useMemo(() => HAS_ENV && Boolean(origin), [origin]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -130,6 +159,37 @@ export default function SignupPage() {
               </>
             )}
 
+            {/* Scelta ruolo spostata subito dopo il separatore */}
+            <fieldset className="mb-4 rounded-lg border border-gray-200 px-3 py-2 dark:border-neutral-700">
+              <legend className="px-1 text-sm font-semibold text-gray-700 dark:text-gray-200">
+                Che tipo di account vuoi creare?
+              </legend>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <label className="flex items-center gap-2 rounded-md border px-3 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-neutral-800 dark:border-neutral-700">
+                  <input
+                    type="radio"
+                    name="role"
+                    checked={role === 'athlete'}
+                    onChange={() => setRole('athlete')}
+                    className="accent-primary"
+                  />
+                  <PlayerIcon />
+                  <span>Player</span>
+                </label>
+                <label className="flex items-center gap-2 rounded-md border px-3 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-neutral-800 dark:border-neutral-700">
+                  <input
+                    type="radio"
+                    name="role"
+                    checked={role === 'club'}
+                    onChange={() => setRole('club')}
+                    className="accent-primary"
+                  />
+                  <ClubIcon />
+                  <span>Club</span>
+                </label>
+              </div>
+            </fieldset>
+
             {err && (
               <p className="rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700">
                 {err}
@@ -191,38 +251,16 @@ export default function SignupPage() {
                 />
               </label>
 
-              {/* Scelta ruolo */}
-              <fieldset className="mt-2">
-                <legend className="label mb-1">Che tipo di account vuoi creare?</legend>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <label className="flex items-center gap-2 rounded-md border px-3 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-neutral-800 dark:border-neutral-700">
-                    <input
-                      type="radio"
-                      name="role"
-                      checked={role === 'athlete'}
-                      onChange={() => setRole('athlete')}
-                    />
-                    Player
-                  </label>
-                  <label className="flex items-center gap-2 rounded-md border px-3 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-neutral-800 dark:border-neutral-700">
-                    <input
-                      type="radio"
-                      name="role"
-                      checked={role === 'club'}
-                      onChange={() => setRole('club')}
-                    />
-                    Club
-                  </label>
-                </div>
-              </fieldset>
-
               <button type="submit" disabled={busy} className="btn btn-brand w-full">
                 {busy ? 'Registrazione…' : 'Registrati'}
               </button>
             </form>
 
-            <p className="text-xs text-gray-500">
-              Hai già un account? <a href="/login" className="link">Accedi</a>
+            <p className="mt-6 text-center text-base font-semibold text-gray-700 dark:text-gray-200">
+              Hai già un account?{' '}
+              <a href="/login" className="link underline underline-offset-4">
+                Accedi
+              </a>
             </p>
           </div>
         </section>

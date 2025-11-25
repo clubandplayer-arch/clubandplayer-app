@@ -8,10 +8,8 @@ type Props = {
   onChange: (url: string | null) => void;
 };
 
-const TARGET_WIDTH = 400;
-const TARGET_HEIGHT = 500;
-const TARGET_RATIO = TARGET_WIDTH / TARGET_HEIGHT;
-const MAX_ZOOM = 2.5;
+const TARGET_SIZE = 512; // quadrato, visualizzato come cerchio via CSS
+const MAX_ZOOM = 3;
 
 type CropState = {
   zoom: number;
@@ -23,10 +21,7 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
-function computeCropParams(
-  image: HTMLImageElement,
-  { zoom, offsetX, offsetY }: CropState
-) {
+function computeCropParams(image: HTMLImageElement, { zoom, offsetX, offsetY }: CropState) {
   const srcW = image.naturalWidth;
   const srcH = image.naturalHeight;
 
@@ -34,15 +29,12 @@ function computeCropParams(
     throw new Error('Dimensioni immagine non valide');
   }
 
-  const srcRatio = srcW / srcH;
-  const baseWidth = srcRatio > TARGET_RATIO ? srcH * TARGET_RATIO : srcW;
-
+  const base = Math.min(srcW, srcH); // area quadrata di partenza
   const effectiveZoom = clamp(zoom, 1, MAX_ZOOM);
-  const cropWidth = baseWidth / effectiveZoom;
-  const cropHeight = cropWidth / TARGET_RATIO;
+  const cropSize = base / effectiveZoom;
 
-  const diffX = Math.max(0, srcW - cropWidth);
-  const diffY = Math.max(0, srcH - cropHeight);
+  const diffX = Math.max(0, srcW - cropSize);
+  const diffY = Math.max(0, srcH - cropSize);
 
   const normX = clamp(offsetX, -1, 1);
   const normY = clamp(offsetY, -1, 1);
@@ -50,17 +42,17 @@ function computeCropParams(
   const originX = diffX * ((normX + 1) / 2);
   const originY = diffY * ((normY + 1) / 2);
 
-  return { cropWidth, cropHeight, originX, originY };
+  return { cropSize, originX, originY };
 }
 
 function renderAvatarPreview(
   image: HTMLImageElement,
   crop: CropState
 ): string {
-  const { cropWidth, cropHeight, originX, originY } = computeCropParams(image, crop);
+  const { cropSize, originX, originY } = computeCropParams(image, crop);
   const canvas = document.createElement('canvas');
-  canvas.width = TARGET_WIDTH;
-  canvas.height = TARGET_HEIGHT;
+  canvas.width = TARGET_SIZE;
+  canvas.height = TARGET_SIZE;
   const ctx = canvas.getContext('2d');
 
   if (!ctx) {
@@ -71,12 +63,12 @@ function renderAvatarPreview(
     image,
     originX,
     originY,
-    cropWidth,
-    cropHeight,
+    cropSize,
+    cropSize,
     0,
     0,
-    TARGET_WIDTH,
-    TARGET_HEIGHT
+    TARGET_SIZE,
+    TARGET_SIZE
   );
 
   return canvas.toDataURL('image/jpeg', 0.9);
@@ -86,10 +78,10 @@ async function createAvatarBlob(
   image: HTMLImageElement,
   crop: CropState
 ): Promise<Blob> {
-  const { cropWidth, cropHeight, originX, originY } = computeCropParams(image, crop);
+  const { cropSize, originX, originY } = computeCropParams(image, crop);
   const canvas = document.createElement('canvas');
-  canvas.width = TARGET_WIDTH;
-  canvas.height = TARGET_HEIGHT;
+  canvas.width = TARGET_SIZE;
+  canvas.height = TARGET_SIZE;
   const ctx = canvas.getContext('2d');
 
   if (!ctx) {
@@ -100,12 +92,12 @@ async function createAvatarBlob(
     image,
     originX,
     originY,
-    cropWidth,
-    cropHeight,
+    cropSize,
+    cropSize,
     0,
     0,
-    TARGET_WIDTH,
-    TARGET_HEIGHT
+    TARGET_SIZE,
+    TARGET_SIZE
   );
 
   return new Promise((resolve, reject) => {
@@ -278,14 +270,6 @@ export default function AvatarUploader({ value, onChange }: Props) {
     setEditorCrop((prev) => ({ ...prev, zoom: next }));
   }
 
-  function onOffsetXChange(value: number) {
-    setEditorCrop((prev) => ({ ...prev, offsetX: clamp(value, -1, 1) }));
-  }
-
-  function onOffsetYChange(value: number) {
-    setEditorCrop((prev) => ({ ...prev, offsetY: clamp(value, -1, 1) }));
-  }
-
   function handlePreviewPointerDown(
     e: PointerEvent<HTMLDivElement>
   ) {
@@ -340,8 +324,7 @@ export default function AvatarUploader({ value, onChange }: Props) {
   return (
     <>
       <div className="flex items-start gap-4">
-        {/* Preview 4:5 coerente con la mini-card */}
-        <div className="flex h-28 w-20 items-center justify-center overflow-hidden rounded-2xl border bg-gray-50">
+        <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-full border bg-gray-50">
           {value ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -369,7 +352,7 @@ export default function AvatarUploader({ value, onChange }: Props) {
             {uploading ? 'Caricamento...' : 'Carica nuova immagine'}
           </label>
           <div>
-            Immagine verticale 4:5 consigliata. Max 10MB.
+            Immagine consigliata: quadrata, ritaglio circolare. Max 10MB.
             Formati supportati: JPG/PNG.
           </div>
           {error && !editorOpen && (
@@ -384,13 +367,13 @@ export default function AvatarUploader({ value, onChange }: Props) {
             <div className="space-y-1">
               <h2 className="text-lg font-semibold">Regola la foto profilo</h2>
               <p className="text-sm text-gray-500">
-                Trascina l’immagine oppure usa gli slider per centrarla e ridimensionarla.
+                Trascina l’immagine all’interno del cerchio e usa lo slider di zoom per centrarla.
               </p>
             </div>
 
             <div
               ref={previewRef}
-              className="relative mx-auto h-[250px] w-[200px] overflow-hidden rounded-2xl border bg-gray-100"
+              className="relative mx-auto h-72 w-72 overflow-hidden rounded-full border-4 border-white bg-gray-100 shadow-inner"
               onPointerDown={handlePreviewPointerDown}
               onPointerMove={handlePreviewPointerMove}
               onPointerUp={releasePointer}
@@ -415,6 +398,7 @@ export default function AvatarUploader({ value, onChange }: Props) {
                   Salvataggio…
                 </div>
               )}
+              <div className="pointer-events-none absolute inset-0 rounded-full ring-2 ring-white/80" aria-hidden />
             </div>
 
             <div className="space-y-4 text-sm text-gray-600">
@@ -431,35 +415,6 @@ export default function AvatarUploader({ value, onChange }: Props) {
                   disabled={uploading}
                 />
               </label>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="block text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  Posizione orizzontale
-                  <input
-                    type="range"
-                    min="-1"
-                    max="1"
-                    step="0.02"
-                    value={editorCrop.offsetX}
-                    onChange={(event) => onOffsetXChange(Number(event.target.value))}
-                    className="mt-2 w-full"
-                    disabled={uploading}
-                  />
-                </label>
-                <label className="block text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  Posizione verticale
-                  <input
-                    type="range"
-                    min="-1"
-                    max="1"
-                    step="0.02"
-                    value={editorCrop.offsetY}
-                    onChange={(event) => onOffsetYChange(Number(event.target.value))}
-                    className="mt-2 w-full"
-                    disabled={uploading}
-                  />
-                </label>
-              </div>
             </div>
 
             {error && (

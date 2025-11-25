@@ -5,6 +5,8 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useExclusiveVideoPlayback } from '@/hooks/useExclusiveVideoPlayback';
+import { shareOrCopyLink } from '@/lib/share';
+import ShareIcon from '@/components/icons/ShareIcon';
 
 const DEFAULT_LIMIT = 100;
 
@@ -59,6 +61,12 @@ async function fetchMyMedia(signal?: AbortSignal): Promise<MediaPost[]> {
   const j = await res.json().catch(() => ({} as any));
   const arr = Array.isArray(j?.items ?? j?.data) ? (j.items ?? j.data) : [];
   return arr.map(normalizePost);
+}
+
+function buildMediaShareUrl(item: MediaPost) {
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  if (item.media_url) return item.media_url;
+  return origin ? `${origin}/mymedia#media-${item.id}` : '';
 }
 
 export default function MyMediaPage() {
@@ -177,40 +185,61 @@ function MediaSection({
       {items.length === 0 ? (
         <div className="text-sm text-gray-600">Nessun contenuto ancora.</div>
       ) : (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
           {items.map((item, index) => (
-            <article id={`media-${item.id}`} key={item.id} className="rounded-xl bg-white/60 shadow-inner">
+            <article
+              id={`media-${item.id}`}
+              key={item.id}
+              className="relative overflow-hidden rounded-xl bg-white/60 shadow-inner"
+            >
+              <div className="absolute right-2 top-2 z-10 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    shareOrCopyLink({
+                      title: title,
+                      text: item.content ?? undefined,
+                      url: buildMediaShareUrl(item),
+                    })
+                  }
+                  className="inline-flex items-center justify-center rounded-full bg-white/90 p-2 text-neutral-800 shadow hover:bg-white"
+                  aria-label={`Condividi ${item.media_type === 'video' ? 'questo video' : 'questa foto'}`}
+                >
+                  <ShareIcon className="h-4 w-4" />
+                </button>
+              </div>
+
               {item.media_type === 'video' ? (
                 <VideoPlayer url={item.media_url} aspect={item.media_aspect} id={item.id} />
               ) : (
                 <button
                   type="button"
-                  className="group relative block w-full overflow-hidden rounded-t-xl focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  className="group relative block h-48 w-full overflow-hidden rounded-t-xl focus:outline-none focus:ring-2 focus:ring-blue-600 md:h-56"
                   onClick={() => onImageClick?.(index, item)}
                 >
                   <img
                     src={item.media_url ?? ''}
                     alt="Anteprima"
-                    className="w-full object-cover transition duration-150 group-hover:scale-[1.02]"
+                    className="h-full w-full object-cover transition duration-150 group-hover:scale-[1.02]"
                   />
                 </button>
-              )}
-              {item.content ? (
-                <p className="px-3 pb-3 pt-2 text-sm text-gray-700 whitespace-pre-wrap">{item.content}</p>
-              ) : null}
-              {item.link_url ? (
-                <a
-                  href={item.link_url}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="block px-3 pb-3 text-sm font-semibold text-blue-700"
-                >
-                  Apri link esterno →
-                </a>
-              ) : null}
-            </article>
-          ))}
-        </div>
+            )}
+            {item.content ? (
+              <p className="px-3 pb-3 pt-2 text-sm text-gray-700 whitespace-pre-wrap">{item.content}</p>
+            ) : null}
+            {item.link_url ? (
+              <a
+                href={item.link_url}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="block px-3 pb-3 text-sm font-semibold text-blue-700"
+              >
+                Apri link esterno →
+              </a>
+            ) : null}
+          </article>
+        ))}
+      </div>
       )}
     </section>
   );
@@ -228,7 +257,7 @@ function VideoPlayer({
   const aspectClass = aspect === '9:16' ? 'aspect-[9/16]' : 'aspect-[16/9]';
   const { videoRef, handleEnded, handlePause, handlePlay } = useExclusiveVideoPlayback(id);
   return (
-    <div className={`${aspectClass} w-full overflow-hidden rounded-t-xl bg-black/80 max-h-[60vh]`}>
+    <div className={`${aspectClass} w-full overflow-hidden rounded-t-xl bg-black/80 max-h-[34vh] md:max-h-[30vh]`}>
       <video
         ref={videoRef}
         src={url ?? undefined}

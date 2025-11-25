@@ -3,9 +3,10 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactElement } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import useIsClub from '@/hooks/useIsClub';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
+import { NavCloseIcon, NavMenuIcon } from '@/components/icons/NavToggleIcons';
 
 type Role = 'athlete' | 'club' | 'guest';
 
@@ -108,11 +109,13 @@ const navItems: NavItem[] = [
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const supabase = useMemo(() => supabaseBrowser(), []);
 
   const [role, setRole] = useState<Role>('guest');
   const [loadingRole, setLoadingRole] = useState(true);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // unica fonte affidabile per la CTA
   const { isClub } = useIsClub();
@@ -125,8 +128,28 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         const r = await fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' });
         const j = await r.json().catch(() => ({}));
         if (cancelled) return;
-        const raw = (j?.role ?? '').toString().toLowerCase();
-        setRole(raw === 'club' || raw === 'athlete' ? (raw as Role) : 'guest');
+
+        const profile = (j?.profile as any) ?? {};
+        const rawStatus = typeof profile?.status === 'string' ? profile.status.toLowerCase() : null;
+        const rawRole = (j?.role ?? '').toString().toLowerCase();
+        const nextUrl = pathname + (window.location.search || '');
+
+        if (!j?.user?.id) {
+          router.replace(`/login?next=${encodeURIComponent(nextUrl)}`);
+          return;
+        }
+
+        if (!profile?.account_type) {
+          router.replace(`/onboarding/choose-role?next=${encodeURIComponent(nextUrl)}`);
+          return;
+        }
+
+        if (rawStatus && rawStatus !== 'active') {
+          router.replace(`/blocked?status=${encodeURIComponent(rawStatus)}`);
+          return;
+        }
+
+        setRole(rawRole === 'club' || rawRole === 'athlete' ? (rawRole as Role) : 'guest');
       } catch {
         if (!cancelled) setRole('guest');
       } finally {
@@ -136,10 +159,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [pathname, router]);
 
   const profileHref = role === 'club' ? '/club/profile' : '/profile';
   const isActive = (href: string) => pathname === href || (!!pathname && pathname.startsWith(href + '/'));
+
+  useEffect(() => {
+    setIsMenuOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     const loadUnread = async () => {
@@ -178,7 +205,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             Club&Player
           </Link>
 
-          <nav className="flex flex-1 justify-center">
+          <nav className="hidden flex-1 justify-center md:flex">
             <div className="flex items-center gap-1 rounded-full border border-white/40 bg-white/70 px-2 py-1 shadow-sm backdrop-blur">
               {navItems.map((item) => {
                 const ActiveIcon = item.icon;
@@ -205,7 +232,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </nav>
 
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto hidden items-center gap-2 md:flex">
             {/* CTA sempre e solo per club (usiamo useIsClub) */}
             {isClub && (
               <Link href="/opportunities/new" className="rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50">
@@ -226,7 +253,75 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               Logout
             </Link>
           </div>
+
+          <button
+            type="button"
+            className="ml-auto inline-flex items-center justify-center rounded-md border px-3 py-2 text-sm text-neutral-700 transition hover:bg-neutral-100 md:hidden"
+            onClick={() => setIsMenuOpen((v) => !v)}
+            aria-label={isMenuOpen ? 'Chiudi menu di navigazione' : 'Apri menu di navigazione'}
+            aria-expanded={isMenuOpen}
+          >
+            {isMenuOpen ? <NavCloseIcon className="h-5 w-5" aria-hidden /> : <NavMenuIcon className="h-5 w-5" aria-hidden />}
+          </button>
         </div>
+        {isMenuOpen ? (
+          <div className="border-t bg-white/95 shadow-sm backdrop-blur md:hidden">
+            <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3">
+              <div className="flex flex-wrap gap-2">
+                {navItems.map((item) => {
+                  const ActiveIcon = item.icon;
+                  const active = isActive(item.href);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setIsMenuOpen(false)}
+                      className={`flex flex-1 min-w-[140px] items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${active ? 'border-[var(--brand)] bg-[var(--brand)]/10 text-[var(--brand)]' : 'hover:bg-neutral-50'}`}
+                    >
+                      <ActiveIcon className="h-4 w-4" />
+                      <span>{item.label}</span>
+                      {item.href === '/notifications' && unreadNotifications > 0 && (
+                        <span className="ml-auto inline-flex min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-semibold text-white">
+                          {unreadNotifications}
+                        </span>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+
+              <div className="flex flex-col gap-2">
+                {isClub && (
+                  <Link
+                    href="/opportunities/new"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="rounded-md border px-3 py-2 text-sm font-semibold text-[var(--brand)] hover:bg-neutral-50"
+                  >
+                    + Nuova opportunità
+                  </Link>
+                )}
+
+                {!loadingRole && (
+                  <Link
+                    href={profileHref}
+                    onClick={() => setIsMenuOpen(false)}
+                    className={`rounded-md border px-3 py-2 text-sm ${isActive(profileHref) ? 'border-[var(--brand)] bg-[var(--brand)]/10 text-[var(--brand)]' : 'hover:bg-neutral-50'}`}
+                  >
+                    Profilo
+                  </Link>
+                )}
+
+                <Link
+                  href="/logout"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="rounded-md border px-3 py-2 text-sm hover:bg-neutral-50"
+                >
+                  Logout
+                </Link>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </header>
 
       <main className="flex-1">{children}</main>

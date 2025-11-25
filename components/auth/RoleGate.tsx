@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
-type Me = { account_type?: string | null };
+type Me = { account_type?: string | null; status?: string | null };
 
 // Pagine che non devono essere bloccate dal gate (evita loop)
 const EXCLUDE_PREFIXES = [
@@ -11,6 +11,7 @@ const EXCLUDE_PREFIXES = [
   '/login',
   '/logout',
   '/reset-password',
+  '/blocked',
 ];
 
 export default function RoleGate({ children }: { children: React.ReactNode }) {
@@ -29,19 +30,27 @@ export default function RoleGate({ children }: { children: React.ReactNode }) {
         }
 
         // Leggi profilo corrente
-        const r = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
-        if (r.status === 401) {
-          // layout autenticato: in teoria non ci arrivi
-          setReady(true);
+        const r = await fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' });
+        const j = await r.json().catch(() => ({}));
+        const data: Me = (j?.profile as any) ?? {};
+
+        const next = pathname + (search?.toString() ? `?${search.toString()}` : '');
+
+        if (!j?.user?.id) {
+          router.replace(`/login?next=${encodeURIComponent(next)}`);
           return;
         }
-        const j = await r.json().catch(() => ({}));
-        const data: Me = (j && typeof j === 'object' && 'data' in j) ? (j as any).data : j;
 
         // Se manca account_type → vai alla scelta ruolo
         if (!data?.account_type) {
-          const next = pathname + (search?.toString() ? `?${search.toString()}` : '');
           router.replace(`/onboarding/choose-role?next=${encodeURIComponent(next)}`);
+          return;
+        }
+
+        // Se non è attivo → pagina bloccata
+        const status = String(data.status ?? '').toLowerCase();
+        if (status && status !== 'active') {
+          router.replace(`/blocked?status=${encodeURIComponent(status)}`);
           return;
         }
 
