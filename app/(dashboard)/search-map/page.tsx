@@ -9,7 +9,7 @@ export default function SearchMapPage() {
       <div className="space-y-1">
         <h1 className="heading-h1">Ricerca su mappa</h1>
         <p className="text-sm text-neutral-600">
-          Esplora club e player direttamente sulla mappa: muovi l’area visibile per aggiornare i risultati nella lista laterale.
+          Disegna la tua area di ricerca, applica i filtri e scopri club o player solo nella zona che ti interessa.
         </p>
       </div>
       <SearchMapClient />

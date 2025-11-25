@@ -219,7 +219,7 @@ export default function ProfileMiniCard() {
   );
 
   return (
-    <div className="glass-panel p-4">
+    <div className="glass-panel p-4 space-y-4">
       <div className="flex flex-col items-center gap-3 text-center">
         <div className="h-24 w-24 overflow-hidden rounded-full bg-gray-200 shadow-sm ring-1 ring-gray-200 md:h-28 md:w-28">
           {p?.avatar_url ? (
@@ -234,7 +234,7 @@ export default function ProfileMiniCard() {
         </div>
 
         <div className="w-full space-y-1">
-          <div className="text-base font-semibold break-words">{name}</div>
+          <div className="break-words text-base font-semibold">{name}</div>
 
           {/* righe info */}
           {!isClub && (
@@ -258,69 +258,110 @@ export default function ProfileMiniCard() {
         </div>
       </div>
 
-      {/* Dettagli rapidi */}
       {isClub ? (
-        <div className="mt-4 space-y-2">
-          <InfoRow label="Sport:" value={p?.sport || '—'} />
-          <InfoRow label="Categoria / campionato:" value={p?.club_league_category || '—'} />
-          <InfoRow label="Stadio / impianto:" value={p?.club_stadium || '—'} />
-          <InfoRow label="Indirizzo:" value={p?.club_stadium_address || '—'} />
+        <div className="space-y-3">
+          <div className="space-y-1 text-center">
+            <div className="text-xs uppercase tracking-wide text-gray-500">Dettagli club</div>
+          </div>
+          <dl className="space-y-2 rounded-xl bg-white/70 p-3 text-sm text-gray-800 shadow-sm ring-1 ring-gray-100">
+            {p?.sport && (
+              <div className="flex flex-col gap-0.5">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Sport</dt>
+                <dd className="font-medium text-gray-900">{p.sport}</dd>
+              </div>
+            )}
+            {p?.club_league_category && (
+              <div className="flex flex-col gap-0.5">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Categoria / campionato</dt>
+                <dd className="font-medium text-gray-900">{p.club_league_category}</dd>
+              </div>
+            )}
+            {p?.club_stadium && (
+              <div className="flex flex-col gap-0.5">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Stadio / impianto</dt>
+                <dd className="font-medium text-gray-900">{p.club_stadium}</dd>
+              </div>
+            )}
+            {p?.club_stadium_address && (
+              <div className="flex flex-col gap-0.5">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Indirizzo</dt>
+                <dd className="whitespace-pre-line font-medium text-gray-900">{p.club_stadium_address}</dd>
+              </div>
+            )}
+          </dl>
+
+          {p?.bio ? (
+            <div className="rounded-xl bg-white/70 p-3 text-sm text-gray-700 shadow-sm ring-1 ring-gray-100">
+              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Motto / descrizione</div>
+              <p className="mt-1 whitespace-pre-line break-words leading-snug">{p.bio}</p>
+            </div>
+          ) : null}
+
+          {mapEmbedUrl ? (
+            <div className="space-y-2">
+              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Mappa</div>
+              <div className="overflow-hidden rounded-xl border border-gray-200 shadow-sm">
+                <iframe
+                  title={`Mappa stadio ${p?.club_stadium || 'club'}`}
+                  aria-label="Mappa stadio"
+                  src={mapEmbedUrl}
+                  className="h-32 w-full"
+                  loading="lazy"
+                  allowFullScreen
+                />
+              </div>
+            </div>
+          ) : null}
+
+          <div className="pt-1">
+            <Link href="/profile" className="inline-block rounded-xl border px-3 py-1.5 text-sm hover:bg-gray-50">
+              Modifica profilo
+            </Link>
+          </div>
         </div>
       ) : (
-        <div className="mt-4 space-y-2">
+        <div className="space-y-2">
           <InfoRow label="Età:" value={age ?? '—'} />
           <InfoRow label="Ruolo:" value={p?.role || '—'} />
           <InfoRow label="Piede:" value={p?.foot || '—'} />
           <InfoRow label="Altezza:" value={p?.height_cm ? `${p.height_cm} cm` : '—'} />
           <InfoRow label="Peso:" value={p?.weight_kg ? `${p.weight_kg} kg` : '—'} />
+          {p?.bio ? <p className="mt-2 line-clamp-3 text-sm text-gray-700">{p.bio}</p> : null}
+
+          <div className="mt-2">
+            <Link href="/profile" className="inline-block rounded-xl border px-3 py-1.5 text-sm hover:bg-gray-50">
+              Modifica profilo
+            </Link>
+          </div>
         </div>
       )}
 
-      {p?.bio ? <p className="mt-3 line-clamp-3 text-sm text-gray-700">{p.bio}</p> : null}
-
-      {mapEmbedUrl ? (
-        <div className="mt-3 overflow-hidden rounded-lg border border-gray-200">
-          <iframe
-            title={`Mappa stadio ${p?.club_stadium || 'club'}`}
-            aria-label="Mappa stadio"
-            src={mapEmbedUrl}
-            className="h-28 w-full"
-            loading="lazy"
-            allowFullScreen
-          />
-        </div>
-      ) : null}
-
-      {(socials.instagram || socials.facebook || socials.tiktok || socials.x) && (
-        <div className="mt-3 flex items-center gap-2">
-          {socials.instagram && (
-            <IconWrap href={socials.instagram} label="Instagram" className="text-[#E1306C] border-[#E1306C]/30">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3H7zm5 3a5 5 0 1 1 0 10 5 5 0 0 1 0-10zm0 2a3 3 0 1 0 .001 6.001A3 3 0 0 0 12 9zm4.5-3a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3z"/></svg>
-            </IconWrap>
+      {isClub
+        ? null
+        : (socials.instagram || socials.facebook || socials.tiktok || socials.x) && (
+            <div className="mt-3 flex items-center gap-2">
+              {socials.instagram && (
+                <IconWrap href={socials.instagram} label="Instagram" className="border-[#E1306C]/30 text-[#E1306C]">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3H7zm5 3a5 5 0 1 1 0 10 5 5 0 0 1 0-10zm0 2a3 3 0 1 0 .001 6.001A3 3 0 0 0 12 9zm4.5-3a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3z"/></svg>
+                </IconWrap>
+              )}
+              {socials.facebook && (
+                <IconWrap href={socials.facebook} label="Facebook" className="border-[#1877F2]/30 text-[#1877F2]">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12a10 10 0 1 0-11.6 9.9v-7h-2.4V12h2.4V9.8c0-2.4 1.4-3.7 3.6-3.7 1 0 2 .2 2 .2v2.2h-1.1c-1.1 0-1.5.7-1.5 1.5V12h2.6l-.4 2.9h-2.2v7A10 10 0 0 0 22 12z"/></svg>
+                </IconWrap>
+              )}
+              {socials.tiktok && (
+                <IconWrap href={socials.tiktok} label="TikTok" className="border-black/20 text-black">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M16 3c.6 2.2 2.2 4 4.3 4.7V11a8.3 8.3 0 0 1-4.3-1.3v6.1a5.9 5.9 0 1 1-5.9-5.9c.5 0 1 .1 1.5.2v2.7a3.2 3.2 0 1 0 2.2 3V3h2.2z"/></svg>
+                </IconWrap>
+              )}
+              {socials.x && (
+                <IconWrap href={socials.x} label="X" className="border-black/20 text-black">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h4.6l4.1 5.8L16.8 3H21l-7.2 9.1L21.5 21h-4.6l-4.6-6.4L7.2 21H3l7.6-9.6L3 3z"/></svg>
+                </IconWrap>
+              )}
+            </div>
           )}
-          {socials.facebook && (
-            <IconWrap href={socials.facebook} label="Facebook" className="text-[#1877F2] border-[#1877F2]/30">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12a10 10 0 1 0-11.6 9.9v-7h-2.4V12h2.4V9.8c0-2.4 1.4-3.7 3.6-3.7 1 0 2 .2 2 .2v2.2h-1.1c-1.1 0-1.5.7-1.5 1.5V12h2.6l-.4 2.9h-2.2v7A10 10 0 0 0 22 12z"/></svg>
-            </IconWrap>
-          )}
-          {socials.tiktok && (
-            <IconWrap href={socials.tiktok} label="TikTok" className="text-black border-black/20">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M16 3c.6 2.2 2.2 4 4.3 4.7V11a8.3 8.3 0 0 1-4.3-1.3v6.1a5.9 5.9 0 1 1-5.9-5.9c.5 0 1 .1 1.5.2v2.7a3.2 3.2 0 1 0 2.2 3V3h2.2z"/></svg>
-            </IconWrap>
-          )}
-          {socials.x && (
-            <IconWrap href={socials.x} label="X" className="text-black border-black/20">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h4.6l4.1 5.8L16.8 3H21l-7.2 9.1L21.5 21h-4.6l-4.6-6.4L7.2 21H3l7.6-9.6L3 3z"/></svg>
-            </IconWrap>
-          )}
-        </div>
-      )}
-
-      <div className="mt-4">
-        <Link href="/profile" className="inline-block rounded-xl border px-3 py-1.5 text-sm hover:bg-gray-50">
-          Modifica profilo
-        </Link>
-      </div>
     </div>
   );
 }

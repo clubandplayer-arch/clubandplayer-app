@@ -30,6 +30,9 @@ type Row = {
   status?: string | null; // submitted | in_review | accepted | rejected | withdrawn | pending...
   athlete_id?: string | null;
   athlete?: AthleteSummary | null;
+  player_name?: string | null;
+  player_headline?: string | null;
+  player_location?: string | null;
   [k: string]: any;
 };
 
@@ -120,7 +123,7 @@ export default function ApplicationsTable({
 
   if (!rows?.length) {
     return (
-      <div className="border rounded-lg p-10 text-center text-gray-500">
+      <div className="rounded-lg border p-10 text-center text-gray-500">
         {kind === 'sent'
           ? 'Non hai ancora inviato candidature.'
           : 'Nessuna candidatura ricevuta.'}
@@ -128,13 +131,47 @@ export default function ApplicationsTable({
     );
   }
 
-  return (
-    <div className="border rounded-lg bg-white">
+  const renderPlayer = (r: Row) => {
+    const athleteId = r.athlete?.id ?? r.athlete_id;
+    const display =
+      r.athlete?.name ||
+      r.athlete?.display_name ||
+      r.athlete?.full_name ||
+      r.player_name ||
+      (athleteId ? 'Profilo non disponibile' : '—');
+    const headline =
+      r.player_headline ||
+      [r.athlete?.role, r.athlete?.sport].filter(Boolean).join(' · ') ||
+      null;
+    const location =
+      r.player_location ||
+      [r.athlete?.city, r.athlete?.province, r.athlete?.region].filter(Boolean).join(' · ') ||
+      '';
+
+    return athleteId ? (
+      <div className="flex flex-col">
+        <Link className="font-medium text-blue-700 hover:underline" href={`/athletes/${athleteId}`}>
+          {display}
+        </Link>
+        {headline ? <span className="text-xs text-gray-600">{headline}</span> : null}
+        {location ? <span className="text-xs text-gray-500">{location}</span> : null}
+      </div>
+    ) : (
+      <div className="flex flex-col">
+        <span className="font-medium text-gray-800">{display}</span>
+        {headline ? <span className="text-xs text-gray-600">{headline}</span> : null}
+        {location ? <span className="text-xs text-gray-500">{location}</span> : null}
+      </div>
+    );
+  };
+
+  const TableView = (
+    <div className="hidden overflow-x-auto rounded-lg border md:block">
       <table className="w-full text-sm">
         <thead className="bg-gray-50 text-gray-600">
           <tr>
             {headers.map((h) => (
-              <th key={h.key} className="text-left px-3 py-2 align-top">
+              <th key={h.key} className="px-3 py-2 text-left align-top">
                 {h.label}
               </th>
             ))}
@@ -150,14 +187,12 @@ export default function ApplicationsTable({
 
             return (
               <tr key={r.id} className="border-t align-top">
-                {/* Data */}
                 <td className="px-3 py-2 align-top">
                   {r.created_at
                     ? new Date(r.created_at).toLocaleString('it-IT')
                     : '—'}
                 </td>
 
-                {/* Annuncio */}
                 <td className="px-3 py-2 align-top break-words">
                   {r.opportunity_id ? (
                     (() => {
@@ -182,47 +217,10 @@ export default function ApplicationsTable({
                   )}
                 </td>
 
-                {/* Player solo per ricevute */}
                 {kind === 'received' && (
-                  <td className="px-3 py-2 min-w-[12rem] align-top">
-                    {r.athlete_id ? (
-                      <div className="flex flex-col">
-                        {(() => {
-                          const athleteId = r.athlete?.id ?? r.athlete_id;
-                          const display =
-                            r.athlete?.name ||
-                            r.athlete?.display_name ||
-                            r.athlete?.full_name ||
-                            r.athlete_id;
-                          return athleteId ? (
-                            <Link
-                              className="text-blue-700 hover:underline font-medium"
-                              href={`/athletes/${athleteId}`}
-                            >
-                              {display}
-                            </Link>
-                          ) : (
-                            <span className="text-gray-700">{display}</span>
-                          );
-                        })()}
-                        <span className="text-xs text-gray-600">
-                          {[r.athlete?.role, r.athlete?.sport]
-                            .filter(Boolean)
-                            .join(' · ') || '—'}
-                        </span>
-                        <span className="text-xs text-gray-500">
-                          {[r.athlete?.city, r.athlete?.province, r.athlete?.region]
-                            .filter(Boolean)
-                            .join(' · ') || ''}
-                        </span>
-                      </div>
-                    ) : (
-                      '—'
-                    )}
-                  </td>
+                  <td className="min-w-[12rem] px-3 py-2 align-top">{renderPlayer(r)}</td>
                 )}
 
-                {/* Stato */}
                 <td className="px-3 py-2 align-top">
                   <span
                     className={[
@@ -234,26 +232,24 @@ export default function ApplicationsTable({
                   </span>
                 </td>
 
-                {/* Nota */}
-                <td className="px-3 py-2 max-w-[28rem] truncate align-top" title={r.note ?? ''}>
+                <td className="max-w-[28rem] truncate px-3 py-2 align-top" title={r.note ?? ''}>
                   {r.note ?? '—'}
                 </td>
 
-                {/* Azioni */}
                 <td className="px-3 py-2 align-top">
                   {kind === 'received' ? (
                     <div className="flex gap-2">
                       <button
                         disabled={savingId === r.id || sKey === 'accepted'}
                         onClick={() => updateStatus(r.id, 'accepted')}
-                        className="px-2 py-1 border rounded-md hover:bg-gray-50 disabled:opacity-50"
+                        className="rounded-md border px-2 py-1 hover:bg-gray-50 disabled:opacity-50"
                       >
                         Accetta
                       </button>
                       <button
                         disabled={savingId === r.id || sKey === 'rejected'}
                         onClick={() => updateStatus(r.id, 'rejected')}
-                        className="px-2 py-1 border rounded-md hover:bg-gray-50 disabled:opacity-50"
+                        className="rounded-md border px-2 py-1 hover:bg-gray-50 disabled:opacity-50"
                       >
                         Rifiuta
                       </button>
@@ -261,7 +257,7 @@ export default function ApplicationsTable({
                   ) : (
                     <Link
                       href={r.opportunity_id ? `/opportunities/${r.opportunity_id}` : '#'}
-                      className="px-2 py-1 border rounded-md hover:bg-gray-50 inline-block"
+                      className="inline-block rounded-md border px-2 py-1 hover:bg-gray-50"
                     >
                       Apri annuncio
                     </Link>
@@ -272,6 +268,99 @@ export default function ApplicationsTable({
           })}
         </tbody>
       </table>
+    </div>
+  );
+
+  const MobileView = (
+    <div className="grid gap-3 md:hidden">
+      {rows.map((r) => {
+        const sKey = (r.status || 'submitted').toLowerCase();
+        const chipLabel = STATUS_LABEL[sKey] ?? sKey;
+        const chipClass =
+          STATUS_CLASS[sKey] ??
+          'bg-gray-100 text-gray-700';
+
+        return (
+          <div key={r.id} className="rounded-lg border p-3 shadow-sm">
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-1 text-sm">
+                <div className="text-xs text-gray-500">Data</div>
+                <div className="font-medium text-gray-900">
+                  {r.created_at
+                    ? new Date(r.created_at).toLocaleString('it-IT')
+                    : '—'}
+                </div>
+              </div>
+              <span className={`rounded-full px-2 py-0.5 text-xs capitalize ${chipClass}`}>
+                {chipLabel}
+              </span>
+            </div>
+
+            <div className="mt-3 space-y-2 text-sm">
+              <div>
+                <div className="text-xs text-gray-500">Annuncio</div>
+                {r.opportunity_id ? (
+                  <Link
+                    className="font-medium text-blue-700 hover:underline"
+                    href={`/opportunities/${r.opportunity_id}`}
+                  >
+                    {(r.opportunity?.title || '').trim() || 'Apri annuncio'}
+                  </Link>
+                ) : (
+                  <span className="text-gray-700">—</span>
+                )}
+              </div>
+
+              {kind === 'received' && (
+                <div>
+                  <div className="text-xs text-gray-500">Player</div>
+                  {renderPlayer(r)}
+                </div>
+              )}
+
+              <div>
+                <div className="text-xs text-gray-500">Nota</div>
+                <div className="whitespace-pre-line text-gray-800">{r.note ?? '—'}</div>
+              </div>
+            </div>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              {kind === 'received' ? (
+                <>
+                  <button
+                    disabled={savingId === r.id || sKey === 'accepted'}
+                    onClick={() => updateStatus(r.id, 'accepted')}
+                    className="flex-1 rounded-md border px-3 py-1 text-sm hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    Accetta
+                  </button>
+                  <button
+                    disabled={savingId === r.id || sKey === 'rejected'}
+                    onClick={() => updateStatus(r.id, 'rejected')}
+                    className="flex-1 rounded-md border px-3 py-1 text-sm hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    Rifiuta
+                  </button>
+                </>
+              ) : (
+                <Link
+                  href={r.opportunity_id ? `/opportunities/${r.opportunity_id}` : '#'}
+                  className="flex-1 rounded-md border px-3 py-1 text-center text-sm hover:bg-gray-50"
+                >
+                  Apri annuncio
+                </Link>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  return (
+    <div className="space-y-3">
+      {TableView}
+      {MobileView}
     </div>
   );
 }
