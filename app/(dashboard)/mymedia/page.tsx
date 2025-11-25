@@ -190,8 +190,25 @@ function MediaSection({
             <article
               id={`media-${item.id}`}
               key={item.id}
-              className="overflow-hidden rounded-xl bg-white/60 shadow-inner"
+              className="relative overflow-hidden rounded-xl bg-white/60 shadow-inner"
             >
+              <div className="absolute right-2 top-2 z-10 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    shareOrCopyLink({
+                      title: title,
+                      text: item.content ?? undefined,
+                      url: buildMediaShareUrl(item),
+                    })
+                  }
+                  className="inline-flex items-center justify-center rounded-full bg-white/90 p-2 text-neutral-800 shadow hover:bg-white"
+                  aria-label={`Condividi ${item.media_type === 'video' ? 'questo video' : 'questa foto'}`}
+                >
+                  <ShareIcon className="h-4 w-4" />
+                </button>
+              </div>
+
               {item.media_type === 'video' ? (
                 <VideoPlayer url={item.media_url} aspect={item.media_aspect} id={item.id} />
               ) : (
@@ -220,23 +237,6 @@ function MediaSection({
                 Apri link esterno →
               </a>
             ) : null}
-            <div className="flex items-center justify-end px-3 pb-3">
-              <button
-                type="button"
-                onClick={() =>
-                  shareOrCopyLink({
-                    title: title,
-                    text: item.content ?? undefined,
-                    url: buildMediaShareUrl(item),
-                  })
-                }
-                className="inline-flex items-center gap-1 rounded-lg border border-neutral-200 bg-white px-3 py-1 text-xs font-semibold text-neutral-800 transition hover:border-neutral-300 hover:bg-neutral-50"
-                aria-label={`Condividi ${item.media_type === 'video' ? 'questo video' : 'questa foto'}`}
-              >
-                <ShareIcon className="h-4 w-4" />
-                <span>Condividi</span>
-              </button>
-            </div>
           </article>
         ))}
       </div>

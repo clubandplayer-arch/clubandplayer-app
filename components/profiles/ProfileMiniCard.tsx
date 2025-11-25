@@ -221,7 +221,7 @@ export default function ProfileMiniCard() {
   return (
     <div className="glass-panel p-4 space-y-4">
       <div className="flex flex-col items-center gap-3 text-center">
-        <div className="h-24 w-24 overflow-hidden rounded-full bg-gray-200 shadow-sm ring-1 ring-gray-200 md:h-28 md:w-28">
+        <div className="relative w-3/4 max-w-[140px] aspect-square overflow-hidden rounded-full bg-gray-200 shadow-sm ring-1 ring-gray-200 md:w-2/3 md:max-w-[160px]">
           {p?.avatar_url ? (
             <img
               src={p.avatar_url}
@@ -326,7 +326,12 @@ export default function ProfileMiniCard() {
           <InfoRow label="Piede:" value={p?.foot || '—'} />
           <InfoRow label="Altezza:" value={p?.height_cm ? `${p.height_cm} cm` : '—'} />
           <InfoRow label="Peso:" value={p?.weight_kg ? `${p.weight_kg} kg` : '—'} />
-          {p?.bio ? <p className="mt-2 line-clamp-3 text-sm text-gray-700">{p.bio}</p> : null}
+          {p?.bio ? (
+            <div className="mt-3 space-y-1">
+              <div className="text-[11px] uppercase tracking-wide text-gray-500">Biografia</div>
+              <p className="line-clamp-3 text-sm text-gray-700">{p.bio}</p>
+            </div>
+          ) : null}
 
           <div className="mt-2">
             <Link href="/profile" className="inline-block rounded-xl border px-3 py-1.5 text-sm hover:bg-gray-50">

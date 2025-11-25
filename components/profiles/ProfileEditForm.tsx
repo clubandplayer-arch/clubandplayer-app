@@ -1,5 +1,4 @@
 // components/profiles/ProfileEditForm.tsx
-/* eslint-disable @next/next/no-img-element */
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
@@ -589,30 +588,7 @@ export default function ProfileEditForm() {
     '';
 
   return (
-    <>
-      <div className="w-full rounded-2xl border bg-white p-5 text-center md:p-6">
-        <div className="mx-auto flex w-full max-w-md flex-col items-center gap-4">
-          <div className="h-40 w-40 rounded-full bg-gray-100 shadow-sm ring-1 ring-gray-200 overflow-hidden md:h-48 md:w-48">
-            {avatarUrl ? (
-              <img
-                src={avatarUrl}
-                alt={fullName || (isClub ? 'Foto club' : 'Foto profilo')}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <div className="h-full w-full bg-gradient-to-br from-gray-100 to-gray-200" />
-            )}
-          </div>
-
-          <div className="space-y-1">
-            <h1 className="text-2xl font-bold">{isClub ? 'CLUB' : 'PLAYER'}</h1>
-            <div className="text-base font-semibold text-gray-900 break-words">{fullName || (isClub ? 'Il tuo club' : 'Il tuo profilo')}</div>
-            {bio ? <p className="text-sm text-gray-600">{bio}</p> : null}
-          </div>
-        </div>
-      </div>
-
-      <form onSubmit={onSubmit} className="space-y-6">
+    <form onSubmit={onSubmit} className="space-y-6">
         {/* Dati personali / club */}
         <section className="rounded-2xl border p-4 md:p-5">
           <h2 className="mb-3 text-lg font-semibold">
@@ -920,6 +896,52 @@ export default function ProfileEditForm() {
                   placeholder="Racconta in breve ruolo, caratteristiche, esperienze…"
                 />
               </div>
+
+              <div className="md:col-span-2 grid gap-4 md:grid-cols-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm text-gray-600">Piede preferito</label>
+                  <select
+                    className="rounded-lg border p-2"
+                    value={foot}
+                    onChange={(e) => setFoot(e.target.value)}
+                  >
+                    <option value="">— Seleziona —</option>
+                    <option value="Destro">Destro</option>
+                    <option value="Sinistro">Sinistro</option>
+                    <option value="Ambidestro">Ambidestro</option>
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm text-gray-600">Altezza (cm)</label>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    className="rounded-lg border p-2"
+                    value={heightCm}
+                    onChange={(e) =>
+                      setHeightCm(e.target.value === '' ? '' : Number(e.target.value))
+                    }
+                    min={100}
+                    max={230}
+                    placeholder="es. 183"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm text-gray-600">Peso (kg)</label>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    className="rounded-lg border p-2"
+                    value={weightKg}
+                    onChange={(e) =>
+                      setWeightKg(e.target.value === '' ? '' : Number(e.target.value))
+                    }
+                    min={40}
+                    max={150}
+                    placeholder="es. 85"
+                  />
+                </div>
+              </div>
             </div>
           )}
         </section>
@@ -981,58 +1003,6 @@ export default function ProfileEditForm() {
                     </option>
                   ))}
                 </select>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* Dettagli player */}
-        {!isClub && (
-          <section className="rounded-2xl border p-4 md:p-5">
-            <h2 className="mb-3 text-lg font-semibold">Dettagli Player</h2>
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-gray-600">Piede preferito</label>
-                <select
-                  className="rounded-lg border p-2"
-                  value={foot}
-                  onChange={(e) => setFoot(e.target.value)}
-                >
-                  <option value="">— Seleziona —</option>
-                  <option value="Destro">Destro</option>
-                  <option value="Sinistro">Sinistro</option>
-                  <option value="Ambidestro">Ambidestro</option>
-                </select>
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-gray-600">Altezza (cm)</label>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  className="rounded-lg border p-2"
-                  value={heightCm}
-                  onChange={(e) =>
-                    setHeightCm(e.target.value === '' ? '' : Number(e.target.value))
-                  }
-                  min={100}
-                  max={230}
-                  placeholder="es. 183"
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-gray-600">Peso (kg)</label>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  className="rounded-lg border p-2"
-                  value={weightKg}
-                  onChange={(e) =>
-                    setWeightKg(e.target.value === '' ? '' : Number(e.target.value))
-                  }
-                  min={40}
-                  max={150}
-                  placeholder="es. 85"
-                />
               </div>
             </div>
           </section>
@@ -1110,6 +1080,5 @@ export default function ProfileEditForm() {
           {error && <span className="text-sm text-red-700">{error}</span>}
         </div>
       </form>
-    </>
   );
 }
