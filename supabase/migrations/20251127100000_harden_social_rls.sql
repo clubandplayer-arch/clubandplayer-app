@@ -3,35 +3,40 @@
 -- POSTS: keep existing policies but ensure presence (idempotent handled by previous migrations).
 -- No changes required here.
 
--- POST COMMENTS: restrict to authenticated users, owner manage own
-alter table if exists public.post_comments enable row level security;
-alter table if exists public.post_comments force row level security;
+-- post_comments non è sempre presente nei DB remoti; applica le policy solo se esiste
+DO $$
+BEGIN
+  IF to_regclass('public.post_comments') IS NOT NULL THEN
+    alter table if exists public.post_comments enable row level security;
+    alter table if exists public.post_comments force row level security;
 
-drop policy if exists post_comments_select on public.post_comments;
-drop policy if exists post_comments_insert on public.post_comments;
-drop policy if exists post_comments_update on public.post_comments;
-drop policy if exists post_comments_delete on public.post_comments;
+    drop policy if exists post_comments_select on public.post_comments;
+    drop policy if exists post_comments_insert on public.post_comments;
+    drop policy if exists post_comments_update on public.post_comments;
+    drop policy if exists post_comments_delete on public.post_comments;
 
-create policy post_comments_select on public.post_comments
-  for select
-  to authenticated
-  using (auth.uid() is not null);
+    create policy post_comments_select on public.post_comments
+      for select
+      to authenticated
+      using (auth.uid() is not null);
 
-create policy post_comments_insert on public.post_comments
-  for insert
-  to authenticated
-  with check (author_id = auth.uid());
+    create policy post_comments_insert on public.post_comments
+      for insert
+      to authenticated
+      with check (author_id = auth.uid());
 
-create policy post_comments_update on public.post_comments
-  for update
-  to authenticated
-  using (author_id = auth.uid())
-  with check (author_id = auth.uid());
+    create policy post_comments_update on public.post_comments
+      for update
+      to authenticated
+      using (author_id = auth.uid())
+      with check (author_id = auth.uid());
 
-create policy post_comments_delete on public.post_comments
-  for delete
-  to authenticated
-  using (author_id = auth.uid());
+    create policy post_comments_delete on public.post_comments
+      for delete
+      to authenticated
+      using (author_id = auth.uid());
+  END IF;
+END $$;
 
 -- POST REACTIONS: keep stricter manage_own policy but ensure RLS enforced
 alter table if exists public.post_reactions enable row level security;
