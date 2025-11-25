@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactElement } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import useIsClub from '@/hooks/useIsClub';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 import { NavCloseIcon, NavMenuIcon } from '@/components/icons/NavToggleIcons';
@@ -109,6 +109,7 @@ const navItems: NavItem[] = [
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const supabase = useMemo(() => supabaseBrowser(), []);
 
   const [role, setRole] = useState<Role>('guest');
@@ -127,8 +128,28 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         const r = await fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' });
         const j = await r.json().catch(() => ({}));
         if (cancelled) return;
-        const raw = (j?.role ?? '').toString().toLowerCase();
-        setRole(raw === 'club' || raw === 'athlete' ? (raw as Role) : 'guest');
+
+        const profile = (j?.profile as any) ?? {};
+        const rawStatus = typeof profile?.status === 'string' ? profile.status.toLowerCase() : null;
+        const rawRole = (j?.role ?? '').toString().toLowerCase();
+        const nextUrl = pathname + (window.location.search || '');
+
+        if (!j?.user?.id) {
+          router.replace(`/login?next=${encodeURIComponent(nextUrl)}`);
+          return;
+        }
+
+        if (!profile?.account_type) {
+          router.replace(`/onboarding/choose-role?next=${encodeURIComponent(nextUrl)}`);
+          return;
+        }
+
+        if (rawStatus && rawStatus !== 'active') {
+          router.replace(`/blocked?status=${encodeURIComponent(rawStatus)}`);
+          return;
+        }
+
+        setRole(rawRole === 'club' || rawRole === 'athlete' ? (rawRole as Role) : 'guest');
       } catch {
         if (!cancelled) setRole('guest');
       } finally {
@@ -138,7 +159,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [pathname, router]);
 
   const profileHref = role === 'club' ? '/club/profile' : '/profile';
   const isActive = (href: string) => pathname === href || (!!pathname && pathname.startsWith(href + '/'));
