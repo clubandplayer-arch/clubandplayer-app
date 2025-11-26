@@ -6,6 +6,11 @@ import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
 
+type SearchMapRow = {
+  account_type?: string | null;
+  type?: string | null;
+} & Record<string, unknown>;
+
 type Bounds = {
   north?: number;
   south?: number;
@@ -154,13 +159,15 @@ export async function GET(req: NextRequest) {
 
     if (error) return jsonError(error.message, 400);
 
-    const rows = (Array.isArray(data) ? data : []).map((row) => ({
-      ...row,
-      type:
-        typeof row.account_type === 'string' && row.account_type.trim()
-          ? row.account_type
-          : row.type,
-    }));
+    const rows = (Array.isArray(data) ? data : [])
+      .filter((row): row is SearchMapRow => !!row && typeof row === 'object')
+      .map((row) => ({
+        ...row,
+        type:
+          typeof row.account_type === 'string' && row.account_type.trim()
+            ? row.account_type
+            : row.type,
+      }));
 
     return NextResponse.json({ data: rows, total: count ?? rows.length });
   } catch (err: any) {
