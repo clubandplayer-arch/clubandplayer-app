@@ -326,6 +326,7 @@ export default function ProfileMiniCard() {
       ) : (
         <div className="space-y-2">
           <InfoRow label="Età:" value={age ?? '—'} />
+          <InfoRow label="Sport:" value={p?.sport || '—'} />
           <InfoRow label="Ruolo:" value={p?.role || '—'} />
           <InfoRow label="Piede:" value={p?.foot || '—'} />
           <InfoRow label="Altezza:" value={p?.height_cm ? `${p.height_cm} cm` : '—'} />

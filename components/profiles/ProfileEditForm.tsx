@@ -7,7 +7,7 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 import AvatarUploader from '@/components/profiles/AvatarUploader';
 import ClubStadiumMapPicker from '@/components/profiles/ClubStadiumMapPicker';
-import { SPORTS } from '@/lib/opps/constants';
+import { SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
 import { COUNTRIES } from '@/lib/opps/geo';
 
 type LocationLevel = 'region' | 'province' | 'municipality';
@@ -59,9 +59,10 @@ type Profile = {
   foot: string | null;
   height_cm: number | null;
   weight_kg: number | null;
+  sport: string | null;
+  role: string | null;
 
   // club (nuovi)
-  sport: string | null;
   club_foundation_year: number | null;
   club_stadium: string | null;
   club_stadium_address: string | null;
@@ -249,6 +250,8 @@ export default function ProfileEditForm() {
   const [foot, setFoot] = useState('');
   const [heightCm, setHeightCm] = useState<number | ''>('');
   const [weightKg, setWeightKg] = useState<number | ''>('');
+  const [athleteSport, setAthleteSport] = useState('Calcio');
+  const [athleteRole, setAthleteRole] = useState('');
   const [notifyEmail, setNotifyEmail] = useState(true);
 
   // Social
@@ -275,6 +278,17 @@ export default function ProfileEditForm() {
       setClubCategory(sportCategories[0] ?? 'Altro');
     }
   }, [sport, sportCategories, clubCategory]);
+
+  const athleteRoles = useMemo(
+    () => SPORTS_ROLES[athleteSport] ?? SPORTS_ROLES.Calcio ?? [],
+    [athleteSport],
+  );
+
+  useEffect(() => {
+    if (athleteRole && !athleteRoles.includes(athleteRole)) {
+      setAthleteRole('');
+    }
+  }, [athleteRole, athleteRoles]);
 
   async function loadProfile() {
     const r = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
@@ -315,6 +329,7 @@ export default function ProfileEditForm() {
       foot: j?.foot ?? '',
       height_cm: j?.height_cm ?? null,
       weight_kg: j?.weight_kg ?? null,
+      role: (j as any)?.role ?? null,
 
       // club
       sport: (j as any)?.sport ?? 'Calcio',
@@ -355,6 +370,8 @@ export default function ProfileEditForm() {
     setFoot(p.foot || '');
     setHeightCm(p.height_cm ?? '');
     setWeightKg(p.weight_kg ?? '');
+    setAthleteSport(p.sport || 'Calcio');
+    setAthleteRole(p.role || '');
     setNotifyEmail(Boolean(p.notify_email_new_message));
 
     setInstagram(p.links?.instagram || '');
@@ -515,6 +532,7 @@ export default function ProfileEditForm() {
           foot: null,
           height_cm: null,
           weight_kg: null,
+          role: null,
         });
       } else {
         // PLAYER
@@ -539,9 +557,10 @@ export default function ProfileEditForm() {
           foot: (foot || '').trim() || null,
           height_cm: heightCm === '' ? null : Number(heightCm),
           weight_kg: weightKg === '' ? null : Number(weightKg),
+          sport: (athleteSport || '').trim() || null,
+          role: (athleteRole || '').trim() || null,
 
           // pulizia campi club
-          sport: null,
           club_league_category: null,
           club_foundation_year: null,
           club_stadium: null,
@@ -875,6 +894,40 @@ export default function ProfileEditForm() {
                 {country && (
                   <span className="text-xs text-gray-500">{countryPreview}</span>
                 )}
+              </div>
+
+              <div className="md:col-span-2 grid gap-4 md:grid-cols-2">
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm text-gray-600">Sport</label>
+                  <select
+                    className="rounded-lg border p-2"
+                    value={athleteSport}
+                    onChange={(e) => setAthleteSport(e.target.value)}
+                  >
+                    {SPORTS.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm text-gray-600">Ruolo</label>
+                  <select
+                    className="rounded-lg border p-2"
+                    value={athleteRole}
+                    onChange={(e) => setAthleteRole(e.target.value)}
+                  >
+                    <option value="">— Seleziona —</option>
+                    {athleteRoles.map((r) => (
+                      <option key={r} value={r}>
+                        {r}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500">I ruoli mostrati dipendono dallo sport scelto.</p>
+                </div>
               </div>
 
               <div className="md:col-span-2 flex flex-col gap-1">

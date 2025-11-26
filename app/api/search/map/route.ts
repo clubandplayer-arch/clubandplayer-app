@@ -6,6 +6,13 @@ import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
 
+type SearchMapRow = {
+  account_type?: string | null;
+  type?: string | null;
+} & Record<string, unknown>;
+
+type GenericStringError = { error: true };
+
 type Bounds = {
   north?: number;
   south?: number;
@@ -79,67 +86,113 @@ export async function GET(req: NextRequest) {
   const bounds = parseBounds(url);
   const limit = clampLimit(Number(url.searchParams.get('limit') || '100'));
   const filters = parseFilters(url);
+  const requestedUserId = url.searchParams.get('current_user_id');
   const currentYear = new Date().getFullYear();
 
   try {
     const supabase = await getSupabaseServerClient();
-    const selectBase =
-      'id,user_id,display_name,type,country,region,province,city,avatar_url,sport,role,latitude,longitude';
-    const selectExtended = `${selectBase},club_league_category,foot,birth_year,gender`;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    const missingOptionalCols = /club_league_category|foot|birth_year|gender|latitude|longitude/i;
+    const select = [
+      'id',
+      'user_id',
+      'display_name',
+      'account_type',
+      'type',
+      'status',
+      'is_admin',
+      'country',
+      'region',
+      'province',
+      'city',
+      'avatar_url',
+      'sport',
+      'role',
+      'latitude',
+      'longitude',
+      'club_league_category',
+      'foot',
+      'birth_year',
+      'gender',
+    ].join(',');
 
-    const applyFilters = (query: any, allowOptional: boolean) => {
-      if (type === 'club') query = query.eq('type', 'club');
-      if (type === 'player' || type === 'athlete') query = query.eq('type', 'athlete');
+    let query = supabase
+      .from('profiles')
+      .select(select, { count: 'exact' })
+      .limit(limit)
+      .eq('status', 'active')
+      .neq('is_admin', true)
+      .not('latitude', 'is', null)
+      .not('longitude', 'is', null);
 
-      if (filters.sport) query = query.ilike('sport', filters.sport);
-      if (filters.clubCategory && allowOptional) query = query.ilike('club_league_category', filters.clubCategory);
-      if (filters.foot && allowOptional) query = query.ilike('foot', filters.foot);
-      if (filters.gender && allowOptional) query = query.eq('gender', filters.gender);
-
-      if (allowOptional && filters.ageMin != null) {
-        query = query.lte('birth_year', currentYear - filters.ageMin);
-      }
-      if (allowOptional && filters.ageMax != null) {
-        query = query.gte('birth_year', currentYear - filters.ageMax);
-      }
-      return query;
-    };
-
-    const runQuery = async (select: string, filterByBounds: boolean, allowOptional: boolean) => {
-      let query = supabase
-        .from('profiles')
-        .select(select, { count: 'exact' })
-        .limit(limit);
-
-      query = applyFilters(query, allowOptional);
-
-      if (filterByBounds) {
-        const { north, south, east, west } = bounds;
-        if (north != null && south != null) {
-          query = query.gte('latitude', south).lte('latitude', north);
-        }
-        if (east != null && west != null) {
-          query = query.gte('longitude', west).lte('longitude', east);
-        }
-      }
-
-      return query; // caller executes
-    };
-
-    let { data, error, count } = await (await runQuery(selectExtended, true, true));
-
-    if (error && missingOptionalCols.test(error.message || '')) {
-      ({ data, error, count } = await (await runQuery(selectBase, true, false)));
+    if (user?.id) {
+      query = query.neq('user_id', user.id).neq('id', user.id);
     }
-    if (error && /column .*latitude.* does not exist/i.test(error.message || '')) {
-      ({ data, error, count } = await (await runQuery(selectBase.replace(',latitude,longitude', ''), false, false)));
+
+    if (type === 'club') {
+      query = query.or('account_type.eq.club,type.eq.club');
     }
+    if (type === 'player' || type === 'athlete') {
+      query = query.or('account_type.eq.athlete,type.eq.athlete,type.eq.player');
+    }
+
+    if (filters.sport) query = query.ilike('sport', filters.sport);
+    if (filters.clubCategory) query = query.ilike('club_league_category', filters.clubCategory);
+    if (filters.foot) query = query.ilike('foot', filters.foot);
+    if (filters.gender) query = query.eq('gender', filters.gender);
+
+    if (filters.ageMin != null) {
+      query = query.lte('birth_year', currentYear - filters.ageMin);
+    }
+    if (filters.ageMax != null) {
+      query = query.gte('birth_year', currentYear - filters.ageMax);
+    }
+
+    const { north, south, east, west } = bounds;
+    if (north != null && south != null) {
+      query = query.gte('latitude', south).lte('latitude', north);
+    }
+    if (east != null && west != null) {
+      query = query.gte('longitude', west).lte('longitude', east);
+    }
+
+    const { data, error, count } = await query;
 
     if (error) return jsonError(error.message, 400);
 
-    const rows = Array.isArray(data) ? data : [];
+    const rawRows = (Array.isArray(data) ? data : []) as Array<
+      SearchMapRow | GenericStringError
+    >;
+
+    const rows = rawRows
+      .filter(
+        (row): row is SearchMapRow =>
+          !!row && typeof row === 'object' && !('error' in row)
+      )
+      .map((row) => {
+        const rawType =
+          typeof row.account_type === 'string' && row.account_type.trim()
+            ? row.account_type
+            : row.type;
+
+        const normalizedType = (() => {
+          if (typeof rawType !== 'string') return undefined;
+          const t = rawType.trim().toLowerCase();
+          if (t === 'player') return 'athlete';
+          return t;
+        })();
+
+        return { ...row, type: normalizedType } as SearchMapRow;
+      })
+      .filter((row) => {
+        if (!row) return false;
+        if (user?.id && (row.user_id === user.id || row.id === user.id)) return false;
+        if (requestedUserId && (row.user_id === requestedUserId || row.id === requestedUserId)) return false;
+        return true;
+      });
+
     return NextResponse.json({ data: rows, total: count ?? rows.length });
   } catch (err: any) {
     const msg = typeof err?.message === 'string' ? err.message : 'Errore ricerca mappa';
