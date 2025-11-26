@@ -279,7 +279,10 @@ export default function ProfileEditForm() {
     }
   }, [sport, sportCategories, clubCategory]);
 
-  const athleteRoles = useMemo(() => SPORTS_ROLES[athleteSport] ?? [], [athleteSport]);
+  const athleteRoles = useMemo(
+    () => SPORTS_ROLES[athleteSport] ?? SPORTS_ROLES.Calcio ?? [],
+    [athleteSport],
+  );
 
   useEffect(() => {
     if (athleteRole && !athleteRoles.includes(athleteRole)) {

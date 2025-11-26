@@ -294,6 +294,7 @@ export default function SearchMapClient() {
           if (ageMin) params.set('age_min', ageMin);
           if (ageMax) params.set('age_max', ageMax);
         }
+        if (currentUserId) params.set('current_user_id', currentUserId);
 
         const res = await fetch(`/api/search/map?${params.toString()}`, { cache: 'no-store' });
         const text = await res.text();
@@ -323,13 +324,27 @@ export default function SearchMapClient() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [ageMax, ageMin, clubCategory, clubSport, playerFoot, playerGender, playerSport, searchBounds, typeFilter]);
+  }, [
+    ageMax,
+    ageMin,
+    clubCategory,
+    clubSport,
+    currentUserId,
+    playerFoot,
+    playerGender,
+    playerSport,
+    searchBounds,
+    typeFilter,
+  ]);
 
   const filteredPoints = useMemo(() => {
     return points.filter((p) => {
-      const type = (p.type || p.account_type || '').toLowerCase();
-      if (typeFilter === 'club' && type !== 'club') return false;
-      if (typeFilter === 'player' && type !== 'athlete') return false;
+      const type = (p.type || p.account_type || '').trim().toLowerCase();
+      const isClub = type === 'club';
+      const isAthlete = type === 'athlete' || type === 'player';
+
+      if (typeFilter === 'club' && !isClub) return false;
+      if (typeFilter === 'player' && !isAthlete) return false;
 
       if (currentUserId && (p.user_id === currentUserId || p.id === currentUserId)) return false;
 
@@ -379,7 +394,7 @@ export default function SearchMapClient() {
 
   const resolveHref = useCallback(
     (p: ProfilePoint) => {
-      const type = (p.type || p.account_type || '').toLowerCase();
+      const type = (p.type || p.account_type || '').trim().toLowerCase();
       const isSelf = currentUserId && (p.user_id === currentUserId || p.id === currentUserId);
 
       if (type === 'club') {

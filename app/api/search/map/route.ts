@@ -86,6 +86,7 @@ export async function GET(req: NextRequest) {
   const bounds = parseBounds(url);
   const limit = clampLimit(Number(url.searchParams.get('limit') || '100'));
   const filters = parseFilters(url);
+  const requestedUserId = url.searchParams.get('current_user_id');
   const currentYear = new Date().getFullYear();
 
   try {
@@ -134,7 +135,7 @@ export async function GET(req: NextRequest) {
       query = query.or('account_type.eq.club,type.eq.club');
     }
     if (type === 'player' || type === 'athlete') {
-      query = query.or('account_type.eq.athlete,type.eq.athlete');
+      query = query.or('account_type.eq.athlete,type.eq.athlete,type.eq.player');
     }
 
     if (filters.sport) query = query.ilike('sport', filters.sport);
@@ -170,13 +171,27 @@ export async function GET(req: NextRequest) {
         (row): row is SearchMapRow =>
           !!row && typeof row === 'object' && !('error' in row)
       )
-      .map((row) => ({
-        ...row,
-        type:
+      .map((row) => {
+        const rawType =
           typeof row.account_type === 'string' && row.account_type.trim()
             ? row.account_type
-            : row.type,
-      }));
+            : row.type;
+
+        const normalizedType = (() => {
+          if (typeof rawType !== 'string') return undefined;
+          const t = rawType.trim().toLowerCase();
+          if (t === 'player') return 'athlete';
+          return t;
+        })();
+
+        return { ...row, type: normalizedType } as SearchMapRow;
+      })
+      .filter((row) => {
+        if (!row) return false;
+        if (user?.id && (row.user_id === user.id || row.id === user.id)) return false;
+        if (requestedUserId && (row.user_id === requestedUserId || row.id === requestedUserId)) return false;
+        return true;
+      });
 
     return NextResponse.json({ data: rows, total: count ?? rows.length });
   } catch (err: any) {
