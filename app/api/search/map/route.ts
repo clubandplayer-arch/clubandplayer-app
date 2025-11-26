@@ -9,6 +9,7 @@ export const runtime = 'nodejs';
 type SearchMapRow = {
   account_type?: string | null;
   type?: string | null;
+  full_name?: string | null;
 } & Record<string, unknown>;
 
 type GenericStringError = { error: true };
@@ -28,6 +29,11 @@ type Filters = {
   ageMin?: number | null;
   ageMax?: number | null;
 };
+
+function toIlikePattern(value: string) {
+  const escaped = value.replace(/[%_]/g, (match) => `\\${match}`);
+  return `%${escaped}%`;
+}
 
 function parseBounds(url: URL): Bounds {
   const toNum = (key: string) => {
@@ -86,6 +92,8 @@ export async function GET(req: NextRequest) {
   const bounds = parseBounds(url);
   const limit = clampLimit(Number(url.searchParams.get('limit') || '100'));
   const filters = parseFilters(url);
+  const searchQuery = (url.searchParams.get('query') || '').trim();
+  const ilikeQuery = searchQuery ? toIlikePattern(searchQuery) : null;
   const requestedUserId = url.searchParams.get('current_user_id');
   const currentYear = new Date().getFullYear();
 
@@ -99,6 +107,7 @@ export async function GET(req: NextRequest) {
       'id',
       'user_id',
       'display_name',
+      'full_name',
       'account_type',
       'type',
       'status',
@@ -142,6 +151,10 @@ export async function GET(req: NextRequest) {
     if (filters.clubCategory) query = query.ilike('club_league_category', filters.clubCategory);
     if (filters.foot) query = query.ilike('foot', filters.foot);
     if (filters.gender) query = query.eq('gender', filters.gender);
+
+    if (ilikeQuery) {
+      query = query.or(`display_name.ilike.${ilikeQuery},full_name.ilike.${ilikeQuery}`);
+    }
 
     if (filters.ageMin != null) {
       query = query.lte('birth_year', currentYear - filters.ageMin);

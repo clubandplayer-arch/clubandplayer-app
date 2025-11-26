@@ -85,11 +85,15 @@ function HandIcon({ className }: IconProps) {
   );
 }
 
-function SearchIcon({ className }: IconProps) {
+function GlobeIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" role="img" aria-hidden className={className} {...strokeProps}>
-      <circle cx="11" cy="11" r="6" />
-      <path d="m15.5 15.5 3.5 3.5" />
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 3c2.5 2.4 3.75 5.4 3.75 9S14.5 18.6 12 21" />
+      <path d="M12 3c-2.5 2.4-3.75 5.4-3.75 9S9.5 18.6 12 21" />
+      <path d="M3 12h18" />
+      <path d="M5 7.5C7.5 9 10 9.75 12 9.75c2 0 4.5-.75 7-2.25" />
+      <path d="M5 16.5c2.5-1.5 5-2.25 7-2.25s4.5.75 7 2.25" />
     </svg>
   );
 }
@@ -104,7 +108,7 @@ const navItems: NavItem[] = [
   { label: 'Media', href: '/mymedia', icon: MediaIcon },
   { label: 'Opportunità', href: '/opportunities', icon: CheckIcon },
   { label: 'Candidature', href: '/applications', icon: HandIcon },
-  { label: 'Mappa', href: '/search-map', icon: SearchIcon },
+  { label: 'Mappa', href: '/search-map', icon: GlobeIcon },
 ];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
