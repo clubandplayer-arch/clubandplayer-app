@@ -101,12 +101,15 @@ type FeedPost = {
   link_title?: string | null;
   link_description?: string | null;
   link_image?: string | null;
-  kind?: 'post' | 'event';
+  kind?: 'normal' | 'event';
   event_payload?: EventPayload | null;
 };
 
-async function fetchPosts(signal?: AbortSignal): Promise<FeedPost[]> {
-  const res = await fetch('/api/feed/posts?limit=20', {
+async function fetchPosts(signal?: AbortSignal, authorId?: string | null): Promise<FeedPost[]> {
+  const params = new URLSearchParams({ limit: '20' });
+  if (authorId) params.set('authorId', authorId);
+
+  const res = await fetch(`/api/feed/posts?${params.toString()}`, {
     credentials: 'include',
     cache: 'no-store',
     signal,
@@ -131,7 +134,7 @@ function normalizePost(p: any): FeedPost {
     link_title: p.link_title ?? p.linkTitle ?? null,
     link_description: p.link_description ?? p.linkDescription ?? null,
     link_image: p.link_image ?? p.linkImage ?? null,
-    kind: p.kind === 'event' ? 'event' : 'post',
+    kind: p.kind === 'event' ? 'event' : 'normal',
     event_payload: normalizeEventPayload(p.event_payload ?? p.event ?? null),
   };
 }
@@ -307,7 +310,7 @@ export default function FeedPage() {
     setLoading(true);
     setErr(null);
     try {
-      const data = await fetchPosts(controller.signal);
+      const data = await fetchPosts(controller.signal, currentUserId);
       setItems(data);
       void loadReactions(data.map((p) => p.id));
     } catch (e: any) {
@@ -316,7 +319,7 @@ export default function FeedPage() {
     } finally {
       if (!controller.signal.aborted) setLoading(false);
     }
-  }, [loadReactions]);
+  }, [currentUserId, loadReactions]);
 
   useEffect(() => {
     const idle =
@@ -676,7 +679,7 @@ function PostItem({
   onClosePicker: () => void;
   onToggleReaction: (type: ReactionType) => void;
 }) {
-  const isEvent = (post.kind ?? 'post') === 'event';
+  const isEvent = (post.kind ?? 'normal') === 'event';
   const eventDetails = post.event_payload;
   const baseDescription = post.content ?? post.text ?? '';
   const description = isEvent

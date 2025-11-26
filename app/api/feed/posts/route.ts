@@ -12,7 +12,7 @@ const RATE_LIMIT_MS = 5_000;
 const LAST_POST_TS_COOKIE = 'feed_last_post_ts';
 
 type Role = 'club' | 'athlete';
-type PostKind = 'post' | 'event';
+type PostKind = 'normal' | 'event';
 
 function normRole(v: unknown): Role | null {
   const s = typeof v === 'string' ? v.trim().toLowerCase() : '';
@@ -24,7 +24,7 @@ function normRole(v: unknown): Role | null {
 function normKind(raw: unknown): PostKind {
   const s = typeof raw === 'string' ? raw.trim().toLowerCase() : '';
   if (s === 'event') return 'event';
-  return 'post';
+  return 'normal';
 }
 
 type EventPayload = {
@@ -77,7 +77,7 @@ function normalizeRow(row: any) {
     link_title: row.link_title ?? null,
     link_description: row.link_description ?? null,
     link_image: row.link_image ?? null,
-    kind: row.kind ? normKind(row.kind) : 'post',
+    kind: row.kind ? normKind(row.kind) : 'normal',
     event_payload: normalizeEventPayload(row.event_payload) ?? null,
     role: undefined as unknown as 'club' | 'athlete' | undefined,
   };
@@ -88,6 +88,7 @@ export async function GET(req: NextRequest) {
   const searchParams = new URL(req.url).searchParams;
   const debug = searchParams.get('debug') === '1';
   const mine = searchParams.get('mine') === '1';
+  const authorIdFilter = searchParams.get('authorId') ?? searchParams.get('author_id');
   const limitRaw = Number(searchParams.get('limit') || '50');
   const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(Math.round(limitRaw), 1), 200) : 50;
   const supabase = await getSupabaseServerClient();
@@ -126,6 +127,8 @@ export async function GET(req: NextRequest) {
 
     if (mine && currentUserId) {
       query = query.eq('author_id', currentUserId);
+    } else if (authorIdFilter) {
+      query = query.eq('author_id', authorIdFilter);
     }
 
     return query;
@@ -163,12 +166,20 @@ export async function GET(req: NextRequest) {
 
   const rows = (data ?? []).map((r) => normalizeRow(r)) || [];
 
-  if (mine) {
+  if (mine || authorIdFilter) {
     return NextResponse.json(
       {
         ok: true,
         items: rows,
-        ...(debug ? { _debug: { count: rows.length, mine: true, userId: currentUserId } } : {}),
+        ...(debug
+          ? {
+              _debug: {
+                count: rows.length,
+                mine: mine || !!authorIdFilter,
+                userId: currentUserId ?? authorIdFilter,
+              },
+            }
+          : {}),
       },
       { status: 200 }
     );
