@@ -1,4 +1,5 @@
 // lib/api/admin.ts
+import { DEFAULT_ADMIN_EMAILS } from '@/lib/constants/admin';
 import { clubsAdminServerAllowlist, isClubsAdminEnabled } from '@/lib/env/features';
 
 type MaybeUser =
@@ -29,10 +30,13 @@ export function isUserInClubsAdminAllowlist(user: MaybeUser) {
 export async function isAdminUser(supabase: any, user: MaybeUser): Promise<boolean> {
   if (!user?.id) return false;
 
-  const emails = [
-    ...parseList(process.env.ADMIN_EMAILS),
-    ...parseList(process.env.CLUBS_ADMIN_EMAILS),
-  ];
+  const emails = Array.from(
+    new Set([
+      ...DEFAULT_ADMIN_EMAILS,
+      ...parseList(process.env.ADMIN_EMAILS),
+      ...parseList(process.env.CLUBS_ADMIN_EMAILS),
+    ]),
+  );
   const ids = parseList(process.env.ADMIN_USER_IDS);
 
   const email = (user.email ?? '').toLowerCase();
