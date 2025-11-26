@@ -12,12 +12,50 @@ const RATE_LIMIT_MS = 5_000;
 const LAST_POST_TS_COOKIE = 'feed_last_post_ts';
 
 type Role = 'club' | 'athlete';
+type PostKind = 'post' | 'event';
 
 function normRole(v: unknown): Role | null {
   const s = typeof v === 'string' ? v.trim().toLowerCase() : '';
   if (s === 'club') return 'club';
   if (s === 'athlete') return 'athlete';
   return null;
+}
+
+function normKind(raw: unknown): PostKind {
+  const s = typeof raw === 'string' ? raw.trim().toLowerCase() : '';
+  if (s === 'event') return 'event';
+  return 'post';
+}
+
+type EventPayload = {
+  title: string;
+  date: string;
+  description?: string | null;
+  location?: string | null;
+  poster_url?: string | null;
+  poster_path?: string | null;
+  poster_bucket?: string | null;
+};
+
+function normalizeEventPayload(raw: any): EventPayload | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const title = typeof raw.title === 'string' ? raw.title.trim() : '';
+  const date = typeof raw.date === 'string' ? raw.date.trim() : '';
+  if (!title || !date) return null;
+  const location = typeof raw.location === 'string' ? raw.location.trim() || null : null;
+  const description = typeof raw.description === 'string' ? raw.description.trim() || null : null;
+  const posterUrl = typeof raw.poster_url === 'string' ? raw.poster_url.trim() || null : null;
+  const posterPath = typeof raw.poster_path === 'string' ? raw.poster_path.trim() || null : null;
+  const posterBucket = typeof raw.poster_bucket === 'string' ? raw.poster_bucket.trim() || null : null;
+  return {
+    title,
+    date,
+    description,
+    location,
+    poster_url: posterUrl,
+    poster_path: posterPath,
+    poster_bucket: posterBucket,
+  };
 }
 
 function normalizeRow(row: any) {
@@ -39,6 +77,8 @@ function normalizeRow(row: any) {
     link_title: row.link_title ?? null,
     link_description: row.link_description ?? null,
     link_image: row.link_image ?? null,
+    kind: row.kind ? normKind(row.kind) : 'post',
+    event_payload: normalizeEventPayload(row.event_payload) ?? null,
     role: undefined as unknown as 'club' | 'athlete' | undefined,
   };
 }
@@ -213,9 +253,10 @@ function isRlsError(err: any) {
   );
 }
 
-const SELECT_WITH_MEDIA = 'id, author_id, content, created_at, media_url, media_type, media_aspect';
+const SELECT_WITH_MEDIA =
+  'id, author_id, content, created_at, media_url, media_type, media_aspect, kind, event_payload';
 const SELECT_WITH_LINK = `${SELECT_WITH_MEDIA}, link_url, link_title, link_description, link_image`;
-const SELECT_BASE = 'id, author_id, content, created_at';
+const SELECT_BASE = 'id, author_id, content, created_at, kind, event_payload';
 const DEFAULT_POSTS_BUCKET = process.env.NEXT_PUBLIC_POSTS_BUCKET || 'posts';
 
 function sanitizeStoragePath(path: string) {
@@ -274,6 +315,9 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     const rawText = (body?.text ?? body?.content ?? '').toString();
     const text = rawText.trim();
+    const requestedKind = normKind(body?.kind ?? body?.type);
+    const rawEventPayload = body?.event_payload ?? body?.event;
+    const eventPayload = normalizeEventPayload(rawEventPayload);
     const rawMediaUrl = typeof body?.media_url === 'string' ? body.media_url.trim() : '';
     const rawMediaUrlCamel = typeof body?.mediaUrl === 'string' ? body.mediaUrl.trim() : '';
     const rawMediaType =
@@ -327,8 +371,9 @@ export async function POST(req: NextRequest) {
     const linkDescription =
       typeof rawLinkDescription === 'string' ? rawLinkDescription.trim() || null : null;
     const linkImage = normalizeLinkUrl(rawLinkImage);
+    const isEvent = requestedKind === 'event';
 
-    if (!text && !mediaUrl && !normalizedMediaPath && !linkUrl) {
+    if (!isEvent && !text && !mediaUrl && !normalizedMediaPath && !linkUrl) {
       return NextResponse.json(
         { ok: false, error: 'empty', message: 'Scrivi un testo, un link o allega un media.' },
         { status: 400 }
@@ -340,6 +385,44 @@ export async function POST(req: NextRequest) {
 
     const supabase = await getSupabaseServerClient();
     const admin = getSupabaseAdminClientOrNull();
+
+    const { data: auth, error: authErr } = await supabase.auth.getUser();
+    if (authErr || !auth?.user) {
+      return NextResponse.json({ ok: false, error: 'not_authenticated' }, { status: 401 });
+    }
+
+    let actorRole: Role | null = null;
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('account_type, type')
+        .eq('user_id', auth.user.id)
+        .maybeSingle();
+      actorRole =
+        normRole((profile as any)?.account_type) ||
+        normRole((profile as any)?.type) ||
+        normRole(auth.user.user_metadata?.role);
+    } catch {
+      actorRole = null;
+    }
+
+    if (isEvent && actorRole !== 'club') {
+      return NextResponse.json(
+        { ok: false, error: 'forbidden', message: 'Solo i club possono creare eventi.' },
+        { status: 403 }
+      );
+    }
+
+    if (isEvent && !eventPayload) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'invalid_event',
+          message: "Titolo e data dell'evento sono obbligatori.",
+        },
+        { status: 400 }
+      );
+    }
 
     if (!mediaUrl && normalizedMediaPath) {
       const { data: publicInfo } = supabase.storage.from(mediaBucket).getPublicUrl(normalizedMediaPath);
@@ -379,13 +462,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { data: auth, error: authErr } = await supabase.auth.getUser();
-    if (authErr || !auth?.user) {
-      return NextResponse.json({ ok: false, error: 'not_authenticated' }, { status: 401 });
-    }
-
     const effectiveText = text || '';
-    const insertPayload: Record<string, any> = { content: effectiveText, author_id: auth.user.id };
+    const insertPayload: Record<string, any> = {
+      content: effectiveText,
+      author_id: auth.user.id,
+      kind: requestedKind,
+    };
     if (mediaUrl) insertPayload.media_url = mediaUrl;
     if (mediaType) insertPayload.media_type = mediaType;
     if (mediaAspect && mediaType === 'video') insertPayload.media_aspect = mediaAspect;
@@ -393,8 +475,13 @@ export async function POST(req: NextRequest) {
     if (linkTitle) insertPayload.link_title = linkTitle;
     if (linkDescription) insertPayload.link_description = linkDescription;
     if (linkImage) insertPayload.link_image = linkImage;
+    if (eventPayload && isEvent) insertPayload.event_payload = eventPayload;
 
-    const fallbackPayload: Record<string, any> = { content: text || '', author_id: auth.user.id };
+    const fallbackPayload: Record<string, any> = {
+      content: text || '',
+      author_id: auth.user.id,
+      kind: requestedKind,
+    };
     if (mediaUrl) fallbackPayload.media_url = mediaUrl;
     if (mediaType) fallbackPayload.media_type = mediaType;
 

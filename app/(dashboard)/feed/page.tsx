@@ -2,6 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 
+import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
@@ -16,6 +17,16 @@ type ReactionType = 'like' | 'love' | 'care' | 'angry';
 type ReactionState = {
   counts: Record<ReactionType, number>;
   mine: ReactionType | null;
+};
+
+type EventPayload = {
+  title: string;
+  date: string;
+  description?: string | null;
+  location?: string | null;
+  poster_url?: string | null;
+  poster_path?: string | null;
+  poster_bucket?: string | null;
 };
 
 const REACTION_ORDER: ReactionType[] = ['like', 'love', 'care', 'angry'];
@@ -45,6 +56,17 @@ function computeOptimistic(prev: ReactionState, nextMine: ReactionType | null): 
   if (prev.mine) counts[prev.mine] = Math.max(0, (counts[prev.mine] || 0) - 1);
   if (nextMine) counts[nextMine] = (counts[nextMine] || 0) + 1;
   return { counts, mine: nextMine };
+}
+
+function CalendarGlyph(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} {...props}>
+      <rect x="4" y="5" width="16" height="15" rx="2" ry="2" />
+      <path d="M4 10h16" />
+      <path d="M9 3v4" />
+      <path d="M15 3v4" />
+    </svg>
+  );
 }
 
 // carico le sidebar in modo "sicuro" (se il componente esiste lo usa, altrimenti mostra un box vuoto)
@@ -79,6 +101,8 @@ type FeedPost = {
   link_title?: string | null;
   link_description?: string | null;
   link_image?: string | null;
+  kind?: 'post' | 'event';
+  event_payload?: EventPayload | null;
 };
 
 async function fetchPosts(signal?: AbortSignal): Promise<FeedPost[]> {
@@ -107,6 +131,8 @@ function normalizePost(p: any): FeedPost {
     link_title: p.link_title ?? p.linkTitle ?? null,
     link_description: p.link_description ?? p.linkDescription ?? null,
     link_image: p.link_image ?? p.linkImage ?? null,
+    kind: p.kind === 'event' ? 'event' : 'post',
+    event_payload: normalizeEventPayload(p.event_payload ?? p.event ?? null),
   };
 }
 
@@ -133,6 +159,33 @@ function firstUrl(text?: string | null): string | null {
   if (!text) return null;
   const match = text.match(/https?:\/\/[^\s]+/i);
   return match ? match[0] : null;
+}
+
+function normalizeEventPayload(raw: any): EventPayload | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const title = typeof raw.title === 'string' ? raw.title.trim() : '';
+  const date = typeof raw.date === 'string' ? raw.date.trim() : '';
+  if (!title || !date) return null;
+  return {
+    title,
+    date,
+    description: typeof raw.description === 'string' ? raw.description.trim() || null : null,
+    location: typeof raw.location === 'string' ? raw.location.trim() || null : null,
+    poster_url: typeof raw.poster_url === 'string' ? raw.poster_url || null : null,
+    poster_path: typeof raw.poster_path === 'string' ? raw.poster_path || null : null,
+    poster_bucket: typeof raw.poster_bucket === 'string' ? raw.poster_bucket || null : null,
+  };
+}
+
+function formatEventDate(raw: string): string {
+  const value = (raw || '').trim();
+  if (!value) return '';
+  const hasTime = /\d{2}:\d{2}/.test(value);
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  const opts: Intl.DateTimeFormatOptions = { dateStyle: 'long' };
+  if (hasTime) opts.timeStyle = 'short';
+  return new Intl.DateTimeFormat('it-IT', opts).format(date);
 }
 
 function domainFromUrl(url: string) {
@@ -623,11 +676,17 @@ function PostItem({
   onClosePicker: () => void;
   onToggleReaction: (type: ReactionType) => void;
 }) {
+  const isEvent = (post.kind ?? 'post') === 'event';
+  const eventDetails = post.event_payload;
+  const baseDescription = post.content ?? post.text ?? '';
+  const description = isEvent
+    ? baseDescription || eventDetails?.description || ''
+    : baseDescription;
   const [editing, setEditing] = useState(false);
-  const [text, setText] = useState(post.content ?? post.text ?? '');
+  const [text, setText] = useState(description);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const linkUrl = post.link_url ?? firstUrl(post.content ?? post.text ?? '');
+  const linkUrl = post.link_url ?? firstUrl(description);
   const linkTitle = post.link_title ?? null;
   const linkDescription = post.link_description ?? null;
   const linkImage = post.link_image ?? null;
@@ -635,6 +694,9 @@ function PostItem({
   const editAreaId = `post-edit-${post.id}`;
   const errorId = error ? `post-error-${post.id}` : undefined;
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const eventDateLabel = eventDetails?.date ? formatEventDate(eventDetails.date) : null;
+  const mediaLabel = isEvent ? 'Evento' : post.media_type === 'video' ? 'Video' : 'Foto';
+  const mediaAria = isEvent ? "Apri la locandina dell'evento" : 'Apri il media in grande';
 
   const shareUrl = useMemo(() => {
     if (typeof window === 'undefined') return '';
@@ -644,17 +706,17 @@ function PostItem({
 
   const handleShare = useCallback(() => {
     void shareOrCopyLink({
-      title: 'Post del feed',
-      text: post.content ?? post.text ?? undefined,
+      title: isEvent ? 'Evento del club' : 'Post del feed',
+      text: isEvent ? eventDetails?.title ?? description : description || undefined,
       url: shareUrl,
     });
-  }, [post.content, post.text, shareUrl]);
+  }, [description, eventDetails?.title, isEvent, shareUrl]);
 
   const closeLightbox = useCallback(() => setLightboxOpen(false), []);
 
   useEffect(() => {
-    if (!editing) setText(post.content ?? post.text ?? '');
-  }, [post, editing]);
+    if (!editing) setText(description);
+  }, [description, editing, post]);
 
   useEffect(() => {
     if (!lightboxOpen) return;
@@ -716,43 +778,49 @@ function PostItem({
 
   return (
     <article className="glass-panel relative p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="text-xs text-gray-500">
-            {post.createdAt ? new Date(post.createdAt).toLocaleString() : '—'}
-          </div>
-          <div className="flex items-center gap-1 text-neutral-500">
-            {isOwner ? (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setEditing(true)}
-                  className="rounded-full p-2 transition hover:bg-neutral-100 hover:text-neutral-900"
-                  aria-label="Modifica questo post"
-                  disabled={saving}
-                >
-                  <PostIconEdit className="h-4 w-4" aria-hidden />
-                </button>
-                <button
-                  type="button"
-                  onClick={deletePost}
-                  className="rounded-full p-2 text-red-500 transition hover:bg-red-50 hover:text-red-600"
-                  aria-label="Elimina questo post"
-                  disabled={saving}
-                >
-                  <PostIconDelete className="h-4 w-4" aria-hidden />
-                </button>
-              </>
-            ) : null}
-            <button
-              type="button"
-              onClick={handleShare}
-              className="rounded-full p-2 transition hover:bg-neutral-100 hover:text-neutral-900"
-              aria-label="Condividi questo post"
-            >
-              <PostIconShare className="h-4 w-4" aria-hidden />
-            </button>
-          </div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col gap-1 text-xs text-gray-500">
+          <div>{post.createdAt ? new Date(post.createdAt).toLocaleString() : '—'}</div>
+          {isEvent && eventDateLabel ? (
+            <div className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase text-blue-800">
+              <CalendarGlyph className="h-3.5 w-3.5" aria-hidden />
+              <span>{eventDateLabel}</span>
+            </div>
+          ) : null}
         </div>
+        <div className="flex items-center gap-1 text-neutral-500">
+          {isOwner ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="rounded-full p-2 transition hover:bg-neutral-100 hover:text-neutral-900"
+                aria-label="Modifica questo post"
+                disabled={saving}
+              >
+                <PostIconEdit className="h-4 w-4" aria-hidden />
+              </button>
+              <button
+                type="button"
+                onClick={deletePost}
+                className="rounded-full p-2 text-red-500 transition hover:bg-red-50 hover:text-red-600"
+                aria-label="Elimina questo post"
+                disabled={saving}
+              >
+                <PostIconDelete className="h-4 w-4" aria-hidden />
+              </button>
+            </>
+          ) : null}
+          <button
+            type="button"
+            onClick={handleShare}
+            className="rounded-full p-2 transition hover:bg-neutral-100 hover:text-neutral-900"
+            aria-label={isEvent ? 'Condividi questo evento' : 'Condividi questo post'}
+          >
+            <PostIconShare className="h-4 w-4" aria-hidden />
+          </button>
+        </div>
+      </div>
       {editing ? (
         <div className="mt-2 space-y-2">
           <label htmlFor={editAreaId} className="sr-only">
@@ -793,8 +861,33 @@ function PostItem({
         </div>
       ) : (
         <>
-          {post.content && post.content.trim().length > 0 ? (
-            <div className="mt-1 whitespace-pre-wrap text-sm">{post.content}</div>
+          {isEvent && eventDetails ? (
+            <div className="mt-2 space-y-2 rounded-xl border border-blue-200 bg-blue-50/60 p-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="space-y-1">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-white px-2 py-1 text-[11px] font-semibold uppercase text-blue-800 shadow-sm">
+                    <CalendarGlyph className="h-3.5 w-3.5" aria-hidden />
+                    <span>Evento</span>
+                  </div>
+                  <div className="text-base font-semibold text-gray-900">{eventDetails.title}</div>
+                </div>
+                {eventDateLabel ? (
+                  <div className="text-right text-xs font-semibold text-blue-900">{eventDateLabel}</div>
+                ) : null}
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-gray-700">
+                {eventDetails.location ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 shadow-sm">
+                    📍 <span>{eventDetails.location}</span>
+                  </span>
+                ) : null}
+              </div>
+              {description ? (
+                <div className="whitespace-pre-wrap text-sm text-gray-800">{description}</div>
+              ) : null}
+            </div>
+          ) : description ? (
+            <div className="mt-1 whitespace-pre-wrap text-sm">{description}</div>
           ) : null}
         </>
       )}
@@ -809,7 +902,7 @@ function PostItem({
             type="button"
             onClick={() => setLightboxOpen(true)}
             className="group relative w-full max-w-[560px] cursor-zoom-in overflow-hidden rounded-xl border border-neutral-200 bg-neutral-50 shadow-inner focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)]"
-            aria-label="Apri il media in grande"
+            aria-label={mediaAria}
           >
             <div className="relative flex aspect-[4/5] w-full items-center justify-center bg-neutral-900/5">
               {post.media_type === 'video' ? (
@@ -823,7 +916,7 @@ function PostItem({
                 <img src={post.media_url} alt="Allegato" className="h-full w-full object-contain" />
               )}
               <span className="pointer-events-none absolute left-3 top-3 rounded-full bg-black/60 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white">
-                {post.media_type === 'video' ? 'Video' : 'Foto'}
+                {mediaLabel}
               </span>
             </div>
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/15 via-transparent to-transparent opacity-0 transition group-hover:opacity-100" />
