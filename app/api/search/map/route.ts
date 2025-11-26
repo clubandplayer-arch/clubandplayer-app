@@ -129,57 +129,89 @@ export async function GET(req: NextRequest) {
       'gender',
     ].join(',');
 
-    let query = supabase
-      .from('profiles')
-      .select(select, { count: 'exact' })
-      .limit(limit)
-      .eq('status', 'active')
-      .neq('is_admin', true)
-      .not('latitude', 'is', null)
-      .not('longitude', 'is', null);
+    const baseQuery = () =>
+      supabase
+        .from('profiles')
+        .select(select, { count: 'exact' })
+        .limit(limit)
+        .eq('status', 'active')
+        .neq('is_admin', true);
 
-    if (user?.id) {
-      query = query.neq('user_id', user.id).neq('id', user.id);
-    }
+    const applyFilters = (query: ReturnType<typeof baseQuery>) => {
+      let filtered = query;
 
-    if (type === 'club') {
-      query = query.or('account_type.eq.club,type.eq.club');
-    }
-    if (type === 'player' || type === 'athlete') {
-      query = query.or('account_type.eq.athlete,type.eq.athlete,type.eq.player');
-    }
+      if (user?.id) {
+        filtered = filtered.neq('user_id', user.id).neq('id', user.id);
+      }
 
-    if (filters.sport) query = query.ilike('sport', filters.sport);
-    if (filters.clubCategory) query = query.ilike('club_league_category', filters.clubCategory);
-    if (filters.foot) query = query.ilike('foot', filters.foot);
-    if (filters.gender) query = query.eq('gender', filters.gender);
+      if (type === 'club') {
+        filtered = filtered.or('account_type.eq.club,type.eq.club');
+      }
+      if (type === 'player' || type === 'athlete') {
+        filtered = filtered.or('account_type.eq.athlete,type.eq.athlete,type.eq.player');
+      }
 
-    if (ilikeQuery) {
-      query = query.or(`display_name.ilike.${ilikeQuery},full_name.ilike.${ilikeQuery}`);
-    }
+      if (filters.sport) filtered = filtered.ilike('sport', filters.sport);
+      if (filters.clubCategory) filtered = filtered.ilike('club_league_category', filters.clubCategory);
+      if (filters.foot) filtered = filtered.ilike('foot', filters.foot);
+      if (filters.gender) filtered = filtered.eq('gender', filters.gender);
 
-    if (filters.ageMin != null) {
-      query = query.lte('birth_year', currentYear - filters.ageMin);
-    }
-    if (filters.ageMax != null) {
-      query = query.gte('birth_year', currentYear - filters.ageMax);
-    }
+      if (ilikeQuery) {
+        filtered = filtered.or(`display_name.ilike.${ilikeQuery},full_name.ilike.${ilikeQuery}`);
+      }
+
+      if (filters.ageMin != null) {
+        filtered = filtered.lte('birth_year', currentYear - filters.ageMin);
+      }
+      if (filters.ageMax != null) {
+        filtered = filtered.gte('birth_year', currentYear - filters.ageMax);
+      }
+
+      return filtered;
+    };
 
     const { north, south, east, west } = bounds;
-    if (north != null && south != null) {
-      query = query.gte('latitude', south).lte('latitude', north);
-    }
-    if (east != null && west != null) {
-      query = query.gte('longitude', west).lte('longitude', east);
-    }
 
-    const { data, error, count } = await query;
+    const applyBounds = (
+      query: ReturnType<typeof baseQuery>,
+      { withBounds }: { withBounds: boolean }
+    ) => {
+      if (!withBounds) return query;
+      let bounded = query;
+      if (north != null && south != null) {
+        bounded = bounded.gte('latitude', south).lte('latitude', north);
+      }
+      if (east != null && west != null) {
+        bounded = bounded.gte('longitude', west).lte('longitude', east);
+      }
+      return bounded;
+    };
+
+    const runQuery = async ({ withBounds }: { withBounds: boolean }) => {
+      const q = applyBounds(applyFilters(baseQuery()), { withBounds });
+      return q;
+    };
+
+    const firstQuery = await runQuery({ withBounds: true });
+    const { data, error, count } = await firstQuery;
 
     if (error) return jsonError(error.message, 400);
 
-    const rawRows = (Array.isArray(data) ? data : []) as Array<
+    let rawRows = (Array.isArray(data) ? data : []) as Array<
       SearchMapRow | GenericStringError
     >;
+    let total = count ?? rawRows.length;
+    let usedFallback = false;
+
+    if ((!rawRows || rawRows.length === 0) && (north != null || south != null || east != null || west != null)) {
+      const fallbackQuery = await runQuery({ withBounds: false });
+      const fallbackResult = await fallbackQuery;
+      if (!fallbackResult.error && Array.isArray(fallbackResult.data)) {
+        rawRows = fallbackResult.data as Array<SearchMapRow | GenericStringError>;
+        total = fallbackResult.count ?? rawRows.length;
+        usedFallback = true;
+      }
+    }
 
     const rows = rawRows
       .filter(
@@ -227,7 +259,7 @@ export async function GET(req: NextRequest) {
         return true;
       });
 
-    return NextResponse.json({ data: rows, total: count ?? rows.length });
+    return NextResponse.json({ data: rows, total, fallback: usedFallback ? 'no_geocoded_results' : undefined });
   } catch (err: any) {
     const msg = typeof err?.message === 'string' ? err.message : 'Errore ricerca mappa';
     return jsonError(msg, 500);
