@@ -903,28 +903,6 @@ function PostItem({
           );
         })()}
       </div>
-      {isOwner ? (
-        <div className="mt-3 flex items-center gap-2 text-xs">
-          {!editing && (
-            <button
-              type="button"
-              onClick={() => setEditing(true)}
-              className="rounded-lg border px-2 py-1 hover:bg-gray-50"
-              disabled={saving}
-            >
-              Modifica
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={deletePost}
-            className="rounded-lg border px-2 py-1 text-red-600 hover:bg-red-50"
-            disabled={saving}
-          >
-            Elimina
-          </button>
-        </div>
-      ) : null}
       {error ? (
         <div id={errorId} className="mt-2 text-xs text-red-600" role="status">
           {error}
