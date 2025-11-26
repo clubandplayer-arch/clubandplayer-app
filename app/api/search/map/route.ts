@@ -119,8 +119,10 @@ export async function GET(req: NextRequest) {
       'avatar_url',
       'sport',
       'role',
-      'club_stadium_lat:latitude',
-      'club_stadium_lng:longitude',
+      'latitude',
+      'longitude',
+      'club_stadium_lat',
+      'club_stadium_lng',
       'club_league_category',
       'foot',
       'birth_year',
@@ -133,8 +135,8 @@ export async function GET(req: NextRequest) {
       .limit(limit)
       .eq('status', 'active')
       .neq('is_admin', true)
-      .not('club_stadium_lat', 'is', null)
-      .not('club_stadium_lng', 'is', null);
+      .not('latitude', 'is', null)
+      .not('longitude', 'is', null);
 
     if (user?.id) {
       query = query.neq('user_id', user.id).neq('id', user.id);
@@ -165,10 +167,10 @@ export async function GET(req: NextRequest) {
 
     const { north, south, east, west } = bounds;
     if (north != null && south != null) {
-      query = query.gte('club_stadium_lat', south).lte('club_stadium_lat', north);
+      query = query.gte('latitude', south).lte('latitude', north);
     }
     if (east != null && west != null) {
-      query = query.gte('club_stadium_lng', west).lte('club_stadium_lng', east);
+      query = query.gte('longitude', west).lte('longitude', east);
     }
 
     const { data, error, count } = await query;
