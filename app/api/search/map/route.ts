@@ -11,6 +11,8 @@ type SearchMapRow = {
   type?: string | null;
 } & Record<string, unknown>;
 
+type GenericStringError = { error: true };
+
 type Bounds = {
   north?: number;
   south?: number;
@@ -159,8 +161,15 @@ export async function GET(req: NextRequest) {
 
     if (error) return jsonError(error.message, 400);
 
-    const rows = (Array.isArray(data) ? data : [])
-      .filter((row): row is SearchMapRow => !!row && typeof row === 'object')
+    const rawRows = (Array.isArray(data) ? data : []) as Array<
+      SearchMapRow | GenericStringError
+    >;
+
+    const rows = rawRows
+      .filter(
+        (row): row is SearchMapRow =>
+          !!row && typeof row === 'object' && !('error' in row)
+      )
       .map((row) => ({
         ...row,
         type:
