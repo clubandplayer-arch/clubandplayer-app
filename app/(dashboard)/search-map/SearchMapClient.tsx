@@ -1,6 +1,7 @@
 // app/(dashboard)/search-map/SearchMapClient.tsx
 'use client';
 
+import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
@@ -409,6 +410,26 @@ export default function SearchMapClient() {
     return type === 'club' ? `/clubs/${p.id}` : `/athletes/${p.id}`;
   }, []);
 
+  const renderAvatar = (p: ProfilePoint) => {
+    const initial = (p.display_name || p.full_name || 'P').trim()[0]?.toUpperCase();
+
+    return (
+      <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-gray-100 text-sm font-semibold text-gray-700">
+        {p.avatar_url ? (
+          <Image
+            src={p.avatar_url}
+            alt={p.display_name ? `Avatar di ${p.display_name}` : 'Avatar profilo'}
+            width={48}
+            height={48}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <span>{initial || '?'}</span>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-3">
       <div className="rounded-xl border bg-white/80 p-4 shadow-sm space-y-2">
@@ -620,11 +641,15 @@ export default function SearchMapClient() {
               const href = resolvePublicHref(p);
               return (
                 <div key={p.id} className="rounded-lg border px-3 py-2 hover:bg-gray-50">
-                  <div className="flex items-start gap-2">
-                    <MarkerIcon type={p.type || p.account_type} />
-                    <div className="space-y-1">
+                  <div className="flex items-center gap-3">
+                    {renderAvatar(p)}
+                    <div className="flex flex-1 flex-col gap-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <div className="font-semibold leading-tight">{p.display_name || 'Profilo'}</div>
+                        <span className="flex items-center gap-1 text-xs font-medium text-gray-700">
+                          <MarkerIcon type={p.type || p.account_type} />
+                          <span>{(p.type || p.account_type || '').toUpperCase()}</span>
+                        </span>
                         <Link
                           href={href}
                           className="text-xs font-medium underline decoration-blue-600 underline-offset-2 text-blue-700 hover:no-underline"
