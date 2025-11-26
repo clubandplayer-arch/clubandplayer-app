@@ -572,18 +572,32 @@ function FeedLinkCard({
   );
 }
 
-function FeedVideoPlayer({ id, url }: { id: string; url?: string | null }) {
+function FeedVideoPlayer({
+  id,
+  url,
+  showControls = true,
+  className,
+  onClick,
+}: {
+  id: string;
+  url?: string | null;
+  showControls?: boolean;
+  className?: string;
+  onClick?: () => void;
+}) {
   const { videoRef, handleEnded, handlePause, handlePlay } = useExclusiveVideoPlayback(id);
 
   return (
     <video
       ref={videoRef}
       src={url ?? undefined}
-      controls
-      className="h-full w-full object-contain"
+      controls={showControls}
+      className={`h-full w-full object-contain ${className ?? ''}`}
       onPlay={handlePlay}
       onPause={handlePause}
       onEnded={handleEnded}
+      onClick={onClick}
+      playsInline
     />
   );
 }
@@ -620,6 +634,7 @@ function PostItem({
   const isOwner = currentUserId != null && post.authorId === currentUserId;
   const editAreaId = `post-edit-${post.id}`;
   const errorId = error ? `post-error-${post.id}` : undefined;
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   const shareUrl = useMemo(() => {
     if (typeof window === 'undefined') return '';
@@ -635,9 +650,28 @@ function PostItem({
     });
   }, [post.content, post.text, shareUrl]);
 
+  const closeLightbox = useCallback(() => setLightboxOpen(false), []);
+
   useEffect(() => {
     if (!editing) setText(post.content ?? post.text ?? '');
   }, [post, editing]);
+
+  useEffect(() => {
+    if (!lightboxOpen) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeLightbox();
+    };
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', onKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [closeLightbox, lightboxOpen]);
 
   async function saveEdit() {
     const payload = text.trim();
@@ -770,20 +804,30 @@ function PostItem({
         </div>
       ) : null}
       {post.media_url ? (
-        <div
-          className={`mt-3 overflow-hidden rounded-xl bg-neutral-50 shadow-inner max-h-[60vh] ${
-            post.media_type === 'video'
-              ? post.media_aspect === '9:16'
-                ? 'aspect-[9/16]'
-                : 'aspect-[16/9]'
-              : ''
-          }`}
-        >
-          {post.media_type === 'video' ? (
-            <FeedVideoPlayer id={post.id} url={post.media_url} />
-          ) : (
-            <img src={post.media_url} alt="Allegato" className="max-h-96 w-full object-cover" />
-          )}
+        <div className="mt-3 flex w-full justify-center">
+          <button
+            type="button"
+            onClick={() => setLightboxOpen(true)}
+            className="group relative w-full max-w-[560px] cursor-zoom-in overflow-hidden rounded-xl border border-neutral-200 bg-neutral-50 shadow-inner focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)]"
+            aria-label="Apri il media in grande"
+          >
+            <div className="relative flex aspect-[4/5] w-full items-center justify-center bg-neutral-900/5">
+              {post.media_type === 'video' ? (
+                <FeedVideoPlayer
+                  id={`${post.id}-preview`}
+                  url={post.media_url}
+                  showControls={false}
+                  className="bg-black"
+                />
+              ) : (
+                <img src={post.media_url} alt="Allegato" className="h-full w-full object-contain" />
+              )}
+              <span className="pointer-events-none absolute left-3 top-3 rounded-full bg-black/60 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white">
+                {post.media_type === 'video' ? 'Video' : 'Foto'}
+              </span>
+            </div>
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/15 via-transparent to-transparent opacity-0 transition group-hover:opacity-100" />
+          </button>
         </div>
       ) : null}
 
@@ -884,6 +928,47 @@ function PostItem({
       {error ? (
         <div id={errorId} className="mt-2 text-xs text-red-600" role="status">
           {error}
+        </div>
+      ) : null}
+
+      {lightboxOpen && post.media_url ? (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Media a schermo intero"
+        >
+          <div
+            className="absolute inset-0"
+            onClick={closeLightbox}
+            aria-hidden
+            role="presentation"
+          />
+
+          <div className="relative z-10 flex w-full max-w-6xl flex-col items-center gap-3">
+            <button
+              type="button"
+              onClick={closeLightbox}
+              className="self-end rounded-full bg-white/10 px-3 py-1 text-sm font-semibold text-white shadow-lg ring-1 ring-white/30 transition hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            >
+              Chiudi
+            </button>
+            <div className="relative flex max-h-[90vh] w-full items-center justify-center overflow-hidden rounded-2xl bg-neutral-100 p-2 shadow-2xl">
+              {post.media_type === 'video' ? (
+                <FeedVideoPlayer
+                  id={`${post.id}-lightbox`}
+                  url={post.media_url}
+                  className="max-h-[85vh] w-full object-contain bg-black"
+                />
+              ) : (
+                <img
+                  src={post.media_url}
+                  alt="Allegato"
+                  className="max-h-[85vh] w-full object-contain"
+                />
+              )}
+            </div>
+          </div>
         </div>
       ) : null}
     </article>
