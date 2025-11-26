@@ -119,8 +119,8 @@ export async function GET(req: NextRequest) {
       'avatar_url',
       'sport',
       'role',
-      'latitude',
-      'longitude',
+      'club_stadium_lat:latitude',
+      'club_stadium_lng:longitude',
       'club_league_category',
       'foot',
       'birth_year',
@@ -133,8 +133,8 @@ export async function GET(req: NextRequest) {
       .limit(limit)
       .eq('status', 'active')
       .neq('is_admin', true)
-      .not('latitude', 'is', null)
-      .not('longitude', 'is', null);
+      .not('club_stadium_lat', 'is', null)
+      .not('club_stadium_lng', 'is', null);
 
     if (user?.id) {
       query = query.neq('user_id', user.id).neq('id', user.id);
@@ -165,10 +165,10 @@ export async function GET(req: NextRequest) {
 
     const { north, south, east, west } = bounds;
     if (north != null && south != null) {
-      query = query.gte('latitude', south).lte('latitude', north);
+      query = query.gte('club_stadium_lat', south).lte('club_stadium_lat', north);
     }
     if (east != null && west != null) {
-      query = query.gte('longitude', west).lte('longitude', east);
+      query = query.gte('club_stadium_lng', west).lte('club_stadium_lng', east);
     }
 
     const { data, error, count } = await query;
@@ -197,7 +197,26 @@ export async function GET(req: NextRequest) {
           return t;
         })();
 
-        return { ...row, type: normalizedType } as SearchMapRow;
+        const latitude =
+          typeof (row as any)?.latitude === 'number'
+            ? (row as any).latitude
+            : typeof (row as any)?.club_stadium_lat === 'number'
+              ? (row as any).club_stadium_lat
+              : null;
+
+        const longitude =
+          typeof (row as any)?.longitude === 'number'
+            ? (row as any).longitude
+            : typeof (row as any)?.club_stadium_lng === 'number'
+              ? (row as any).club_stadium_lng
+              : null;
+
+        return {
+          ...row,
+          type: normalizedType,
+          latitude,
+          longitude,
+        } as SearchMapRow;
       })
       .filter((row) => {
         if (!row) return false;
