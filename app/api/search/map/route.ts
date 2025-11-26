@@ -11,7 +11,6 @@ type SearchMapRow = {
   type?: string | null;
   full_name?: string | null;
   display_name?: string | null;
-  email?: string | null;
 } & Record<string, unknown>;
 
 type GenericStringError = { error: true };
@@ -108,7 +107,6 @@ export async function GET(req: NextRequest) {
     const select = [
       'id',
       'user_id',
-      'email',
       'display_name',
       'full_name',
       'account_type',

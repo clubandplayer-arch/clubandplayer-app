@@ -11,7 +11,6 @@ type LeafletLib = any;
 type ProfilePoint = {
   id: string;
   user_id?: string | null;
-  email?: string | null;
   display_name?: string | null;
   full_name?: string | null;
   account_type?: string | null;
@@ -412,8 +411,9 @@ export default function SearchMapClient() {
   }, []);
 
   const renderAvatar = (p: ProfilePoint) => {
-    const initial = (p.display_name || p.full_name || p.email || 'P').trim()[0]?.toUpperCase();
-    const alt = p.display_name || p.full_name || p.email || 'Avatar profilo';
+    const display = p.display_name || p.full_name || 'Profilo';
+    const initial = display.trim()[0]?.toUpperCase() || 'P';
+    const alt = display || 'Avatar profilo';
 
     return (
       <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-gray-100 text-sm font-semibold text-gray-700">
@@ -641,7 +641,7 @@ export default function SearchMapClient() {
           <div className="grid grid-cols-1 gap-2">
             {filteredPoints.map((p) => {
               const href = resolvePublicHref(p);
-              const name = p.display_name || p.full_name || p.email || 'Profilo';
+              const name = p.display_name || p.full_name || 'Profilo';
               const rawType = (p.type || p.account_type || '').trim().toLowerCase();
               const typeLabel = rawType === 'club' ? 'CLUB' : 'PLAYER';
               return (
