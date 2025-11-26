@@ -106,7 +106,6 @@ export default function SearchMapClient() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [currentRole, setCurrentRole] = useState<'club' | 'athlete' | null>(null);
 
   const mapRef = useRef<LeafletLib['Map'] | null>(null);
   const polygonRef = useRef<LeafletLib['Polygon'] | null>(null);
@@ -189,7 +188,6 @@ export default function SearchMapClient() {
         const json = await res.json().catch(() => ({}));
         if (res.ok) {
           setCurrentUserId(json?.user?.id ?? null);
-          setCurrentRole((json?.profile?.account_type as any) || null);
         }
       } catch {
         // ignora: la ricerca funziona comunque senza info utente
@@ -406,21 +404,10 @@ export default function SearchMapClient() {
     typeFilter,
   ]);
 
-  const resolveHref = useCallback(
-    (p: ProfilePoint) => {
-      const type = (p.type || p.account_type || '').trim().toLowerCase();
-      const isSelf = currentUserId && (p.user_id === currentUserId || p.id === currentUserId);
-
-      if (type === 'club') {
-        if (isSelf && currentRole === 'club') return '/club/profile';
-        return `/clubs/${p.id}`;
-      }
-
-      if (isSelf) return '/profile';
-      return `/athletes/${p.id}`;
-    },
-    [currentRole, currentUserId],
-  );
+  const resolvePublicHref = useCallback((p: ProfilePoint) => {
+    const type = (p.type || p.account_type || '').trim().toLowerCase();
+    return type === 'club' ? `/clubs/${p.id}` : `/athletes/${p.id}`;
+  }, []);
 
   return (
     <div className="space-y-3">
@@ -629,24 +616,31 @@ export default function SearchMapClient() {
             <div className="text-sm text-gray-600">Nessun profilo nell’area selezionata.</div>
           )}
           <div className="grid grid-cols-1 gap-2">
-            {filteredPoints.map((p) => (
-              <Link
-                key={p.id}
-                href={resolveHref(p)}
-                className="rounded-lg border px-3 py-2 hover:bg-gray-50"
-              >
-                <div className="flex items-start gap-2">
-                  <MarkerIcon type={p.type || p.account_type} />
-                  <div>
-                    <div className="font-semibold leading-tight">{p.display_name || 'Profilo'}</div>
-                    <div className="text-xs text-gray-600">
-                      {[p.city, p.province, p.region, p.country].filter(Boolean).join(' · ') || 'Località non disponibile'}
+            {filteredPoints.map((p) => {
+              const href = resolvePublicHref(p);
+              return (
+                <div key={p.id} className="rounded-lg border px-3 py-2 hover:bg-gray-50">
+                  <div className="flex items-start gap-2">
+                    <MarkerIcon type={p.type || p.account_type} />
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="font-semibold leading-tight">{p.display_name || 'Profilo'}</div>
+                        <Link
+                          href={href}
+                          className="text-xs font-medium underline decoration-blue-600 underline-offset-2 text-blue-700 hover:no-underline"
+                        >
+                          Visita profilo
+                        </Link>
+                      </div>
+                      <div className="text-xs text-gray-600">
+                        {[p.city, p.province, p.region, p.country].filter(Boolean).join(' · ') || 'Località non disponibile'}
+                      </div>
+                      <div className="text-xs text-gray-500">{[p.role, p.sport].filter(Boolean).join(' · ')}</div>
                     </div>
-                    <div className="text-xs text-gray-500">{[p.role, p.sport].filter(Boolean).join(' · ')}</div>
                   </div>
                 </div>
-              </Link>
-            ))}
+              );
+            })}
           </div>
         </section>
       </div>
