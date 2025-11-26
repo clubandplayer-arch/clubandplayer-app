@@ -17,6 +17,8 @@ export type Profile = {
   region?: string | null;
   province?: string | null;
   city?: string | null;
+  sport?: string | null;
+  role?: string | null;
   links?: ProfileLinks;
   avatar_url?: string | null;
   club_motto?: string | null;

@@ -63,6 +63,11 @@
 
 > Suggerimento: usa `.env.local` per lo sviluppo, mentre su Vercel configura gli stessi valori su Production/Preview.
 
+### Admin e allowlist
+- Gli admin generici sono determinati da `ADMIN_EMAILS` e/o `ADMIN_USER_IDS` (CSV). Per i CRUD di `/clubs` serve anche l'allowlist server `CLUBS_ADMIN_EMAILS`, eventualmente affiancata da `NEXT_PUBLIC_CLUBS_ADMIN_EMAILS` solo per diagnostica UI.
+- `clubandplayer@gmail.com` è inclusa di default nell'allowlist; se aggiungi altri indirizzi nelle variabili precedenti, assicurati di mantenere anche questo per consentire l'accesso all'area `/admin` e alle rotte di moderazione.
+- Per promuovere altri utenti nel database puoi usare `scripts/create-admin-user.mjs` (supporta anche la verifica delle variabili). 
+
 ## Script principali
 | Comando | Descrizione |
 |---------|-------------|

@@ -1,4 +1,5 @@
 // lib/env/features.ts
+import { DEFAULT_ADMIN_EMAILS } from '@/lib/constants/admin';
 
 function boolFromEnv(value: string | undefined | null, defaultValue = false) {
   if (value === undefined || value === null || value === '') return defaultValue;
@@ -22,11 +23,11 @@ export function isClubsAdminEnabled() {
 }
 
 export function clubsAdminAllowlist() {
-  const server = listFromEnv(process.env.CLUBS_ADMIN_EMAILS);
+  const server = [...DEFAULT_ADMIN_EMAILS, ...listFromEnv(process.env.CLUBS_ADMIN_EMAILS)];
   const client = listFromEnv(process.env.NEXT_PUBLIC_CLUBS_ADMIN_EMAILS);
   return Array.from(new Set([...server, ...client]));
 }
 
 export function clubsAdminServerAllowlist() {
-  return listFromEnv(process.env.CLUBS_ADMIN_EMAILS);
+  return Array.from(new Set([...DEFAULT_ADMIN_EMAILS, ...listFromEnv(process.env.CLUBS_ADMIN_EMAILS)]));
 }

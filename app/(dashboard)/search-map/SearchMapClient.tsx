@@ -11,6 +11,7 @@ type ProfilePoint = {
   id: string;
   user_id?: string | null;
   display_name?: string | null;
+  account_type?: string | null;
   type?: string | null;
   country?: string | null;
   region?: string | null;
@@ -102,6 +103,9 @@ export default function SearchMapClient() {
   const [ageMin, setAgeMin] = useState('');
   const [ageMax, setAgeMax] = useState('');
 
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentRole, setCurrentRole] = useState<'club' | 'athlete' | null>(null);
+
   const mapRef = useRef<LeafletLib['Map'] | null>(null);
   const polygonRef = useRef<LeafletLib['Polygon'] | null>(null);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
@@ -175,6 +179,21 @@ export default function SearchMapClient() {
     setPoints([]);
     clearPolygonLayer();
   }, [clearPolygonLayer]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/auth/whoami', { cache: 'no-store' });
+        const json = await res.json().catch(() => ({}));
+        if (res.ok) {
+          setCurrentUserId(json?.user?.id ?? null);
+          setCurrentRole((json?.profile?.account_type as any) || null);
+        }
+      } catch {
+        // ignora: la ricerca funziona comunque senza info utente
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -275,6 +294,7 @@ export default function SearchMapClient() {
           if (ageMin) params.set('age_min', ageMin);
           if (ageMax) params.set('age_max', ageMax);
         }
+        if (currentUserId) params.set('current_user_id', currentUserId);
 
         const res = await fetch(`/api/search/map?${params.toString()}`, { cache: 'no-store' });
         const text = await res.text();
@@ -304,13 +324,29 @@ export default function SearchMapClient() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [ageMax, ageMin, clubCategory, clubSport, playerFoot, playerGender, playerSport, searchBounds, typeFilter]);
+  }, [
+    ageMax,
+    ageMin,
+    clubCategory,
+    clubSport,
+    currentUserId,
+    playerFoot,
+    playerGender,
+    playerSport,
+    searchBounds,
+    typeFilter,
+  ]);
 
   const filteredPoints = useMemo(() => {
     return points.filter((p) => {
-      const type = (p.type || '').toLowerCase();
-      if (typeFilter === 'club' && type !== 'club') return false;
-      if (typeFilter === 'player' && type === 'club') return false;
+      const type = (p.type || p.account_type || '').trim().toLowerCase();
+      const isClub = type === 'club';
+      const isAthlete = type === 'athlete' || type === 'player';
+
+      if (typeFilter === 'club' && !isClub) return false;
+      if (typeFilter === 'player' && !isAthlete) return false;
+
+      if (currentUserId && (p.user_id === currentUserId || p.id === currentUserId)) return false;
 
       if (typeFilter === 'club') {
         if (clubSport && (p.sport || '').toLowerCase() !== clubSport.toLowerCase()) return false;
@@ -342,7 +378,35 @@ export default function SearchMapClient() {
 
       return true;
     });
-  }, [activeArea, ageMax, ageMin, clubCategory, clubSport, playerFoot, playerGender, playerSport, points, typeFilter]);
+  }, [
+    activeArea,
+    ageMax,
+    ageMin,
+    clubCategory,
+    clubSport,
+    currentUserId,
+    playerFoot,
+    playerGender,
+    playerSport,
+    points,
+    typeFilter,
+  ]);
+
+  const resolveHref = useCallback(
+    (p: ProfilePoint) => {
+      const type = (p.type || p.account_type || '').trim().toLowerCase();
+      const isSelf = currentUserId && (p.user_id === currentUserId || p.id === currentUserId);
+
+      if (type === 'club') {
+        if (isSelf && currentRole === 'club') return '/club/profile';
+        return `/clubs/${p.id}`;
+      }
+
+      if (isSelf) return '/profile';
+      return `/athletes/${p.id}`;
+    },
+    [currentRole, currentUserId],
+  );
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
@@ -532,11 +596,11 @@ export default function SearchMapClient() {
           {filteredPoints.map((p) => (
             <Link
               key={p.id}
-              href={(p.type || '').toLowerCase() === 'club' ? `/clubs/${p.id}` : `/athletes/${p.id}`}
+              href={resolveHref(p)}
               className="rounded-lg border px-3 py-2 hover:bg-gray-50"
             >
               <div className="flex items-start gap-2">
-                <MarkerIcon type={p.type} />
+                <MarkerIcon type={p.type || p.account_type} />
                 <div>
                   <div className="font-semibold leading-tight">{p.display_name || 'Profilo'}</div>
                   <div className="text-xs text-gray-600">
