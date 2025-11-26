@@ -11,6 +11,7 @@ type LeafletLib = any;
 type ProfilePoint = {
   id: string;
   user_id?: string | null;
+  email?: string | null;
   display_name?: string | null;
   full_name?: string | null;
   account_type?: string | null;
@@ -411,14 +412,15 @@ export default function SearchMapClient() {
   }, []);
 
   const renderAvatar = (p: ProfilePoint) => {
-    const initial = (p.display_name || p.full_name || 'P').trim()[0]?.toUpperCase();
+    const initial = (p.display_name || p.full_name || p.email || 'P').trim()[0]?.toUpperCase();
+    const alt = p.display_name || p.full_name || p.email || 'Avatar profilo';
 
     return (
       <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-gray-100 text-sm font-semibold text-gray-700">
         {p.avatar_url ? (
           <Image
             src={p.avatar_url}
-            alt={p.display_name ? `Avatar di ${p.display_name}` : 'Avatar profilo'}
+            alt={`Avatar di ${alt}`}
             width={48}
             height={48}
             className="h-full w-full object-cover"
@@ -639,16 +641,19 @@ export default function SearchMapClient() {
           <div className="grid grid-cols-1 gap-2">
             {filteredPoints.map((p) => {
               const href = resolvePublicHref(p);
+              const name = p.display_name || p.full_name || p.email || 'Profilo';
+              const rawType = (p.type || p.account_type || '').trim().toLowerCase();
+              const typeLabel = rawType === 'club' ? 'CLUB' : 'PLAYER';
               return (
                 <div key={p.id} className="rounded-lg border px-3 py-2 hover:bg-gray-50">
                   <div className="flex items-center gap-3">
                     {renderAvatar(p)}
                     <div className="flex flex-1 flex-col gap-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <div className="font-semibold leading-tight">{p.display_name || 'Profilo'}</div>
+                        <div className="font-semibold leading-tight">{name}</div>
                         <span className="flex items-center gap-1 text-xs font-medium text-gray-700">
                           <MarkerIcon type={p.type || p.account_type} />
-                          <span>{(p.type || p.account_type || '').toUpperCase()}</span>
+                          <span>{typeLabel}</span>
                         </span>
                         <Link
                           href={href}
