@@ -1,5 +1,8 @@
+"use client";
+
 /* eslint-disable @next/next/no-img-element */
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 export type LightboxItem = {
   url: string;
@@ -20,6 +23,8 @@ export function Lightbox({ items, index, onClose, onPrev, onNext }: Props) {
 
   useEffect(() => {
     if (!item) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onClose();
@@ -30,12 +35,15 @@ export function Lightbox({ items, index, onClose, onPrev, onNext }: Props) {
       }
     };
     window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
+    return () => {
+      window.removeEventListener('keydown', handleKey);
+      document.body.style.overflow = previousOverflow;
+    };
   }, [item, onClose, onNext, onPrev]);
 
-  if (!item) return null;
+  if (!item || typeof document === 'undefined') return null;
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4"
       role="dialog"
@@ -89,6 +97,6 @@ export function Lightbox({ items, index, onClose, onPrev, onNext }: Props) {
         ) : null}
       </div>
     </div>
-  );
+  , document.body);
 }
 

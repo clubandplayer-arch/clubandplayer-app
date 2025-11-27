@@ -699,8 +699,8 @@ function PostItem({
   const errorId = error ? `post-error-${post.id}` : undefined;
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const eventDateLabel = eventDetails?.date ? formatEventDate(eventDetails.date) : null;
-  const mediaLabel = isEvent ? 'Evento' : post.media_type === 'video' ? 'Video' : 'Foto';
   const mediaAria = isEvent ? "Apri la locandina dell'evento" : 'Apri il media in grande';
+  const mediaIcon = isEvent ? '📅' : post.media_type === 'video' ? '▶' : post.media_type === 'image' ? '📷' : null;
 
   const shareUrl = useMemo(() => {
     if (typeof window === 'undefined') return '';
@@ -902,9 +902,12 @@ function PostItem({
               ) : (
                 <img src={post.media_url} alt="Allegato" className="h-full w-full object-contain" />
               )}
-              <span className="pointer-events-none absolute left-3 top-3 rounded-full bg-black/60 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white">
-                {mediaLabel}
-              </span>
+              {mediaIcon ? (
+                <span className="pointer-events-none absolute left-3 top-3 inline-flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white shadow-lg">
+                  <span aria-hidden>{mediaIcon}</span>
+                  <span className="sr-only">{mediaAria}</span>
+                </span>
+              ) : null}
             </div>
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/15 via-transparent to-transparent opacity-0 transition group-hover:opacity-100" />
           </button>
