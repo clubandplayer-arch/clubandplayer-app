@@ -904,16 +904,16 @@ function PostItem({
           <button
             type="button"
             onClick={() => setLightboxOpen(true)}
-            className="group relative w-full max-w-[560px] cursor-zoom-in overflow-hidden rounded-xl border border-neutral-200 bg-neutral-50 shadow-inner focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)]"
+            className="group relative w-full max-w-[520px] cursor-zoom-in overflow-hidden rounded-xl border border-neutral-200 bg-neutral-50 shadow-inner focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)]"
             aria-label={mediaAria}
           >
-            <div className="relative flex aspect-[4/5] w-full items-center justify-center bg-neutral-900/5">
+            <div className="relative flex h-[320px] w-full max-w-[520px] items-center justify-center bg-neutral-900/5 sm:h-[400px] md:h-[460px] lg:h-[520px]">
               {post.media_type === 'video' ? (
                 <FeedVideoPlayer
                   id={`${post.id}-preview`}
                   url={post.media_url}
                   showControls={false}
-                  className="bg-black"
+                  className="h-full w-full object-contain bg-black"
                 />
               ) : (
                 <img src={post.media_url} alt="Allegato" className="h-full w-full object-contain" />
@@ -1007,41 +1007,38 @@ function PostItem({
 
       {lightboxOpen && post.media_url ? (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4"
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4"
           role="dialog"
           aria-modal="true"
           aria-label="Media a schermo intero"
+          onClick={closeLightbox}
         >
-          <div
-            className="absolute inset-0"
+          <button
+            type="button"
             onClick={closeLightbox}
-            aria-hidden
-            role="presentation"
-          />
-
-          <div className="relative z-10 flex w-full max-w-6xl flex-col items-center gap-3">
-            <button
-              type="button"
-              onClick={closeLightbox}
-              className="self-end rounded-full bg-white/10 px-3 py-1 text-sm font-semibold text-white shadow-lg ring-1 ring-white/30 transition hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-            >
-              Chiudi
-            </button>
-            <div className="relative flex max-h-[90vh] w-full items-center justify-center overflow-hidden rounded-2xl bg-neutral-100 p-2 shadow-2xl">
-              {post.media_type === 'video' ? (
-                <FeedVideoPlayer
-                  id={`${post.id}-lightbox`}
-                  url={post.media_url}
-                  className="max-h-[85vh] w-full object-contain bg-black"
-                />
-              ) : (
-                <img
-                  src={post.media_url}
-                  alt="Allegato"
-                  className="max-h-[85vh] w-full object-contain"
-                />
-              )}
-            </div>
+            className="absolute right-6 top-6 z-[71] rounded-full bg-white/10 px-3 py-1 text-sm font-semibold text-white shadow-lg ring-1 ring-white/30 transition hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            aria-label="Chiudi l'anteprima"
+          >
+            Chiudi
+          </button>
+          <div
+            className="relative z-[71] flex max-h-[90vh] max-w-[90vw] items-center justify-center"
+            onClick={(event) => event.stopPropagation()}
+          >
+            {post.media_type === 'video' ? (
+              <FeedVideoPlayer
+                id={`${post.id}-lightbox`}
+                url={post.media_url}
+                showControls
+                className="max-h-[90vh] max-w-[90vw] object-contain bg-black"
+              />
+            ) : (
+              <img
+                src={post.media_url}
+                alt="Allegato"
+                className="max-h-[90vh] max-w-[90vw] object-contain"
+              />
+            )}
           </div>
         </div>
       ) : null}
