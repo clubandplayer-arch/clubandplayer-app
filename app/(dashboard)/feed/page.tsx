@@ -923,15 +923,15 @@ function PostItem({
             type="button"
             onClick={() => onToggleReaction('like')}
             onMouseEnter={onOpenPicker}
-            className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${
+            className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-base transition ${
               reaction.mine
                 ? 'border-[var(--brand)] bg-[var(--brand)]/10 text-[var(--brand)]'
                 : 'border-neutral-200 bg-white text-neutral-800 hover:border-neutral-300'
             }`}
             aria-pressed={reaction.mine === 'like'}
           >
-            <span aria-hidden>{REACTION_EMOJI[reaction.mine ?? 'like']}</span>
-            <span>{reaction.mine ? 'Hai reagito' : 'Mi piace'}</span>
+            <span aria-hidden className="text-xl sm:text-2xl">{REACTION_EMOJI[reaction.mine ?? 'like']}</span>
+            <span className="sr-only">{reaction.mine ? 'Hai reagito' : 'Metti una reazione'}</span>
           </button>
 
           <button
@@ -953,12 +953,12 @@ function PostItem({
                     onToggleReaction(r);
                     onClosePicker();
                   }}
-                  className={`flex items-center gap-1 rounded-full px-2 py-1 text-[11px] transition ${
+                  className={`flex items-center justify-center rounded-full px-2 py-1 text-xl transition ${
                     reaction.mine === r ? 'bg-[var(--brand)]/10 text-[var(--brand)]' : 'hover:bg-neutral-100'
                   }`}
                 >
                   <span aria-hidden>{REACTION_EMOJI[r]}</span>
-                  <span className="capitalize">{r}</span>
+                  <span className="sr-only">{r}</span>
                 </button>
               ))}
             </div>

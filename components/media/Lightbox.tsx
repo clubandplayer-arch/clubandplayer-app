@@ -43,12 +43,18 @@ export function Lightbox({ items, index, onClose, onPrev, onNext }: Props) {
 
   if (!item || typeof document === 'undefined') return null;
 
+  const handleOverlayClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (event.target === event.currentTarget) {
+      onClose();
+    }
+  };
+
   return createPortal(
     <div
       className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4"
       role="dialog"
       aria-modal="true"
-      onClick={onClose}
+      onClick={handleOverlayClick}
     >
       <div
         className="relative flex max-h-[90vh] max-w-[90vw] w-full items-center justify-center"
