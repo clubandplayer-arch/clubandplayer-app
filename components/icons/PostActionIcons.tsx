@@ -1,14 +1,16 @@
-import type { SVGProps } from 'react';
+import type { MaterialIconProps } from './MaterialIcon';
 import { MaterialIcon } from './MaterialIcon';
 
-export function PostIconEdit(props: SVGProps<SVGSVGElement>) {
+type PostActionIconProps = Omit<MaterialIconProps, 'name'>;
+
+export function PostIconEdit(props: PostActionIconProps) {
   return <MaterialIcon name="edit" {...props} />;
 }
 
-export function PostIconDelete(props: SVGProps<SVGSVGElement>) {
+export function PostIconDelete(props: PostActionIconProps) {
   return <MaterialIcon name="delete" {...props} />;
 }
 
-export function PostIconShare(props: SVGProps<SVGSVGElement>) {
+export function PostIconShare(props: PostActionIconProps) {
   return <MaterialIcon name="share" {...props} />;
 }

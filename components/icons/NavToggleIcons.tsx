@@ -1,10 +1,12 @@
-import type { SVGProps } from 'react';
+import type { MaterialIconProps } from './MaterialIcon';
 import { MaterialIcon } from './MaterialIcon';
 
-export function NavMenuIcon(props: SVGProps<SVGSVGElement>) {
+type NavIconProps = Omit<MaterialIconProps, 'name'>;
+
+export function NavMenuIcon(props: NavIconProps) {
   return <MaterialIcon name="menu" {...props} />;
 }
 
-export function NavCloseIcon(props: SVGProps<SVGSVGElement>) {
+export function NavCloseIcon(props: NavIconProps) {
   return <MaterialIcon name="close" {...props} />;
 }

@@ -132,10 +132,12 @@ const paths: Record<MaterialIconName, ReactNode> = {
   ),
 };
 
-type MaterialIconProps = Omit<SVGProps<SVGSVGElement>, 'children'> & {
+type MaterialIconProps = Omit<SVGProps<SVGSVGElement>, 'children' | 'name'> & {
   name: MaterialIconName;
   title?: string;
 };
+
+export type { MaterialIconProps };
 
 export function MaterialIcon({ name, title, className, ...props }: MaterialIconProps) {
   return (
