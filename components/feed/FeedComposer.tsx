@@ -6,6 +6,7 @@ import type React from 'react';
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import Modal from '@/components/ui/Modal';
+import { MaterialIcon } from '@/components/icons/MaterialIcon';
 
 type Props = {
   onPosted?: () => void;
@@ -605,7 +606,7 @@ export default function FeedComposer({ onPosted }: Props) {
               className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-gray-50 disabled:opacity-50"
               disabled={sending}
             >
-              <CalendarGlyph className="h-4 w-4" aria-hidden />
+              <MaterialIcon name="calendar" className="h-4 w-4" fontSize="small" aria-hidden />
               <span>Crea evento</span>
             </button>
           ) : null}
@@ -762,7 +763,7 @@ export default function FeedComposer({ onPosted }: Props) {
                 onClick={() => eventFileInputRef.current?.click()}
                 disabled={eventSending}
               >
-                <CalendarGlyph className="h-4 w-4" aria-hidden />
+                <MaterialIcon name="calendar" className="h-4 w-4" fontSize="small" aria-hidden />
                 <span>Carica locandina</span>
               </button>
             </div>
@@ -820,17 +821,6 @@ function domainFromUrl(url: string) {
   } catch {
     return url;
   }
-}
-
-function CalendarGlyph(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} {...props}>
-      <rect x="4" y="5" width="16" height="15" rx="2" ry="2" />
-      <path d="M4 10h16" />
-      <path d="M9 3v4" />
-      <path d="M15 3v4" />
-    </svg>
-  );
 }
 
 function LinkPreviewCard({
