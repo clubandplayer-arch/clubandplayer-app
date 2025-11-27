@@ -225,6 +225,12 @@ export async function GET(req: NextRequest) {
             ? row.account_type
             : row.type;
 
+        const profileId = typeof (row as any)?.id === 'string' ? (row as any).id : null;
+        const userId =
+          typeof (row as any)?.user_id === 'string'
+            ? (row as any).user_id
+            : profileId;
+
         const normalizedType = (() => {
           if (typeof rawType !== 'string') return undefined;
           const t = rawType.trim().toLowerCase();
@@ -248,6 +254,8 @@ export async function GET(req: NextRequest) {
 
         return {
           ...row,
+          id: profileId,
+          user_id: userId,
           type: normalizedType,
           latitude,
           longitude,

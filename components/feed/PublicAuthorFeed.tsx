@@ -25,15 +25,18 @@ function formatDate(value?: string | null) {
 
 type Props = {
   authorId: string;
+  /** ID alternativi (es. user_id) da provare se il feed è vuoto con l'id principale */
+  fallbackAuthorIds?: string[];
 };
 
-export default function PublicAuthorFeed({ authorId }: Props) {
+export default function PublicAuthorFeed({ authorId, fallbackAuthorIds = [] }: Props) {
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!authorId) return;
+    const idsToTry = [authorId, ...fallbackAuthorIds].map((id) => id?.trim()).filter(Boolean);
+    if (idsToTry.length === 0) return;
 
     const abort = new AbortController();
 
@@ -41,15 +44,30 @@ export default function PublicAuthorFeed({ authorId }: Props) {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`/api/feed/posts?authorId=${encodeURIComponent(authorId)}`, {
-          cache: 'no-store',
-          credentials: 'include',
-          signal: abort.signal,
-        });
-        if (!res.ok) throw new Error('Errore caricamento post');
-        const json = await res.json().catch(() => ({}));
-        const arr = Array.isArray(json?.items ?? json?.data) ? json.items ?? json.data : [];
-        setPosts(arr as FeedPost[]);
+        let loaded: FeedPost[] | null = null;
+        let lastError: string | null = null;
+
+        for (const id of idsToTry) {
+          const res = await fetch(`/api/feed/posts?authorId=${encodeURIComponent(id)}`, {
+            cache: 'no-store',
+            credentials: 'include',
+            signal: abort.signal,
+          });
+          if (!res.ok) {
+            lastError = 'Errore caricamento post';
+            continue;
+          }
+
+          const json = await res.json().catch(() => ({}));
+          const arr = Array.isArray(json?.items ?? json?.data) ? (json.items ?? json.data) : [];
+          if (arr.length > 0) {
+            loaded = arr as FeedPost[];
+            break;
+          }
+        }
+
+        setPosts(loaded ?? []);
+        if (!loaded && lastError) setError(lastError);
       } catch (err: any) {
         if (!abort.signal.aborted) setError(err?.message || 'Errore caricamento bacheca');
       } finally {
@@ -60,7 +78,7 @@ export default function PublicAuthorFeed({ authorId }: Props) {
     void load();
 
     return () => abort.abort();
-  }, [authorId]);
+  }, [authorId, fallbackAuthorIds]);
 
   return (
     <div className="space-y-3">

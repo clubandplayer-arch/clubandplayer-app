@@ -148,7 +148,10 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
           <h2 className="heading-h2 text-xl">Bacheca</h2>
           <span className="text-xs font-semibold text-blue-700">Aggiornamenti del club</span>
         </div>
-        <PublicAuthorFeed authorId={profile.id} />
+        <PublicAuthorFeed
+          authorId={profile.user_id ?? profile.id}
+          fallbackAuthorIds={profile.user_id ? [profile.id] : []}
+        />
       </section>
     </div>
   );

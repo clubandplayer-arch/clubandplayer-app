@@ -14,6 +14,8 @@ import PublicAuthorFeed from '@/components/feed/PublicAuthorFeed'
 
 type Profile = {
   id: string
+  user_id?: string | null
+  profile_id?: string | null
   display_name: string | null
   full_name: string | null
   headline: string | null
@@ -97,7 +99,13 @@ export default function AthletePublicProfilePage() {
         return
       }
 
-      setProfile(fetchedProfile)
+      const normalizedProfile: Profile = {
+        ...fetchedProfile,
+        user_id: fetchedProfile.user_id ?? fetchedProfile.id ?? null,
+        profile_id: fetchedProfile.profile_id ?? athleteId ?? null,
+      }
+
+      setProfile(normalizedProfile)
 
       // 2) (facoltativo) ultime candidature visibili solo all’atleta stesso
       if (userRes?.user?.id === athleteId) {
@@ -137,7 +145,10 @@ export default function AthletePublicProfilePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id])
 
-  const isMe = useMemo(() => !!meId && !!profile && meId === profile.id, [meId, profile])
+  const isMe = useMemo(
+    () => !!meId && !!profile && meId === (profile.user_id ?? profile.id),
+    [meId, profile]
+  )
 
   const profileName = profile?.display_name || profile?.full_name || 'Player'
   const profileTagline = useMemo(() => {
@@ -232,7 +243,10 @@ export default function AthletePublicProfilePage() {
               <h2 className="heading-h2 text-xl">Bacheca</h2>
               <span className="text-xs font-semibold text-blue-700">Aggiornamenti del player</span>
             </div>
-            <PublicAuthorFeed authorId={profile.id} />
+            <PublicAuthorFeed
+              authorId={profile.user_id ?? profile.id}
+              fallbackAuthorIds={profile.profile_id ? [profile.profile_id] : []}
+            />
           </section>
 
           {isMe && (
