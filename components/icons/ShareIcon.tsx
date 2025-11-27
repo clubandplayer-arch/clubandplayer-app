@@ -1,5 +1,7 @@
 import { MaterialIcon } from './MaterialIcon';
 
-export default function ShareIcon(props: Parameters<typeof MaterialIcon>[0]) {
+type ShareIconProps = Omit<Parameters<typeof MaterialIcon>[0], 'name'>;
+
+export default function ShareIcon(props: ShareIconProps) {
   return <MaterialIcon name="share" {...props} />;
 }
