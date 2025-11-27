@@ -119,23 +119,19 @@ export default function SignupPage() {
   };
 
   return (
-    <main className="container mx-auto py-10">
-      <header className="mb-8 flex flex-wrap items-center gap-4 rounded-2xl bg-[var(--brand)] px-4 py-3 text-white shadow-lg">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/95 p-2 shadow-inner">
-          <Image
-            src="/branding/logo-email.png"
-            alt="Club & Player"
-            width={48}
-            height={48}
-            className="h-full w-full object-contain"
-            priority
-          />
-        </div>
-        <div className="flex flex-col">
-          <span className="text-xs font-semibold uppercase tracking-[0.24em] text-white/80">Club & Player</span>
-          <span className="text-lg font-semibold">Crea il tuo account in pochi secondi</span>
-        </div>
-      </header>
+    <main className="container mx-auto px-4 py-10">
+      <div className="mb-10 flex flex-col items-center text-center">
+        <Image
+          src="/Logo C&P.png"
+          alt="Club & Player"
+          width={80}
+          height={80}
+          className="h-auto w-20 md:w-24"
+          priority
+        />
+        <h1 className="mt-3 text-2xl font-bold text-[#00527a]">Club &amp; Player</h1>
+        <p className="mt-2 text-base font-semibold text-gray-700">Crea il tuo account in pochi secondi</p>
+      </div>
       <div className="grid items-start gap-10 md:grid-cols-12">
         {/* HERO TESTO - stile LinkedIn */}
         <section className="md:col-span-7">
