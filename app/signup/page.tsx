@@ -8,6 +8,7 @@ export const fetchCache = 'default-no-store';
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 import SocialLogin from '@/components/auth/SocialLogin';
 
@@ -119,14 +120,30 @@ export default function SignupPage() {
 
   return (
     <main className="container mx-auto py-10">
+      <header className="mb-8 flex flex-wrap items-center gap-4 rounded-2xl bg-[var(--brand)] px-4 py-3 text-white shadow-lg">
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/95 p-2 shadow-inner">
+          <Image
+            src="/branding/logo-email.png"
+            alt="Club & Player"
+            width={48}
+            height={48}
+            className="h-full w-full object-contain"
+            priority
+          />
+        </div>
+        <div className="flex flex-col">
+          <span className="text-xs font-semibold uppercase tracking-[0.24em] text-white/80">Club & Player</span>
+          <span className="text-lg font-semibold">Crea il tuo account in pochi secondi</span>
+        </div>
+      </header>
       <div className="grid items-start gap-10 md:grid-cols-12">
         {/* HERO TESTO - stile LinkedIn */}
         <section className="md:col-span-7">
-          <h1 className="text-3xl sm:text-4xl font-bold leading-tight">
+          <h1 className="text-3xl sm:text-4xl font-bold leading-tight text-[#00527a]">
             Ti diamo il benvenuto nella più grande community sportiva.
           </h1>
           <br />
-          <h2 className="text-1xl sm:text-2xl font-bold leading-tight">
+          <h2 className="text-1xl sm:text-2xl font-bold leading-tight text-[#0b6c9c]">
             <em>entra a far parte di questo nuovo progetto!</em>
           </h2>
           <br />
@@ -144,8 +161,12 @@ export default function SignupPage() {
 
         {/* CARD FORM */}
         <section className="md:col-span-5">
-          <div className="card p-6 space-y-4">
+          <div className="card p-6 space-y-4 border-2 border-[#00527a1a] shadow-2xl">
             <h2 className="sr-only">Crea un account</h2>
+            <div className="flex items-center gap-2 text-sm font-semibold text-[#00527a]">
+              <span className="h-2 w-2 rounded-full bg-[#00527a]" aria-hidden />
+              Accesso sicuro con email o Google
+            </div>
 
             {/* Google first */}
             {oauthReady && (

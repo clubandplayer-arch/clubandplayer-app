@@ -11,6 +11,7 @@ type LeafletLib = any;
 type ProfilePoint = {
   id: string;
   user_id?: string | null;
+  profile_id?: string | null;
   display_name?: string | null;
   full_name?: string | null;
   account_type?: string | null;
@@ -406,7 +407,7 @@ export default function SearchMapClient() {
   ]);
 
   const resolvePublicHref = useCallback((p: ProfilePoint) => {
-    const profileId = (p.id || '').toString();
+    const profileId = (p.profile_id || p.id || '').toString();
     if (!profileId) return '#';
     const type = (p.type || p.account_type || '').trim().toLowerCase();
     return type === 'club' ? `/clubs/${profileId}` : `/athletes/${profileId}`;

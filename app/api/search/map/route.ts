@@ -225,7 +225,13 @@ export async function GET(req: NextRequest) {
             ? row.account_type
             : row.type;
 
-        const profileId = typeof (row as any)?.id === 'string' ? (row as any).id : null;
+        const profileId =
+          typeof (row as any)?.profile_id === 'string'
+            ? (row as any).profile_id
+            : typeof (row as any)?.id === 'string'
+              ? (row as any).id
+              : null;
+
         const userId =
           typeof (row as any)?.user_id === 'string'
             ? (row as any).user_id
@@ -255,6 +261,7 @@ export async function GET(req: NextRequest) {
         return {
           ...row,
           id: profileId,
+          profile_id: profileId,
           user_id: userId,
           type: normalizedType,
           latitude,
@@ -262,7 +269,7 @@ export async function GET(req: NextRequest) {
         } as SearchMapRow;
       })
       .filter((row) => {
-        if (!row) return false;
+        if (!row || !row.id) return false;
         if (user?.id && (row.user_id === user.id || row.id === user.id)) return false;
         if (requestedUserId && (row.user_id === requestedUserId || row.id === requestedUserId)) return false;
         return true;
