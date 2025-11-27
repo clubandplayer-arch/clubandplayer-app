@@ -1,6 +1,7 @@
 // app/(dashboard)/search-map/SearchMapClient.tsx
 'use client';
 
+import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
@@ -11,6 +12,7 @@ type ProfilePoint = {
   id: string;
   user_id?: string | null;
   display_name?: string | null;
+  full_name?: string | null;
   account_type?: string | null;
   type?: string | null;
   country?: string | null;
@@ -102,9 +104,9 @@ export default function SearchMapClient() {
   const [playerGender, setPlayerGender] = useState('');
   const [ageMin, setAgeMin] = useState('');
   const [ageMax, setAgeMax] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [currentRole, setCurrentRole] = useState<'club' | 'athlete' | null>(null);
 
   const mapRef = useRef<LeafletLib['Map'] | null>(null);
   const polygonRef = useRef<LeafletLib['Polygon'] | null>(null);
@@ -187,7 +189,6 @@ export default function SearchMapClient() {
         const json = await res.json().catch(() => ({}));
         if (res.ok) {
           setCurrentUserId(json?.user?.id ?? null);
-          setCurrentRole((json?.profile?.account_type as any) || null);
         }
       } catch {
         // ignora: la ricerca funziona comunque senza info utente
@@ -295,6 +296,8 @@ export default function SearchMapClient() {
           if (ageMax) params.set('age_max', ageMax);
         }
         if (currentUserId) params.set('current_user_id', currentUserId);
+        const trimmedQuery = searchQuery.trim();
+        if (trimmedQuery) params.set('query', trimmedQuery);
 
         const res = await fetch(`/api/search/map?${params.toString()}`, { cache: 'no-store' });
         const text = await res.text();
@@ -333,11 +336,14 @@ export default function SearchMapClient() {
     playerFoot,
     playerGender,
     playerSport,
+    searchQuery,
     searchBounds,
     typeFilter,
   ]);
 
   const filteredPoints = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+
     return points.filter((p) => {
       const type = (p.type || p.account_type || '').trim().toLowerCase();
       const isClub = type === 'club';
@@ -372,6 +378,12 @@ export default function SearchMapClient() {
         }
       }
 
+      if (normalizedQuery) {
+        const name = (p.display_name || '').toLowerCase();
+        const fullName = (p.full_name || '').toLowerCase();
+        if (!name.includes(normalizedQuery) && !fullName.includes(normalizedQuery)) return false;
+      }
+
       if (activeArea && activeArea.length >= 3 && p.latitude != null && p.longitude != null) {
         if (!pointInPolygon([p.latitude, p.longitude], activeArea)) return false;
       }
@@ -389,230 +401,279 @@ export default function SearchMapClient() {
     playerGender,
     playerSport,
     points,
+    searchQuery,
     typeFilter,
   ]);
 
-  const resolveHref = useCallback(
-    (p: ProfilePoint) => {
-      const type = (p.type || p.account_type || '').trim().toLowerCase();
-      const isSelf = currentUserId && (p.user_id === currentUserId || p.id === currentUserId);
+  const resolvePublicHref = useCallback((p: ProfilePoint) => {
+    const type = (p.type || p.account_type || '').trim().toLowerCase();
+    return type === 'club' ? `/clubs/${p.id}` : `/athletes/${p.id}`;
+  }, []);
 
-      if (type === 'club') {
-        if (isSelf && currentRole === 'club') return '/club/profile';
-        return `/clubs/${p.id}`;
-      }
+  const renderAvatar = (p: ProfilePoint) => {
+    const display = p.display_name || p.full_name || 'Profilo';
+    const initial = display.trim()[0]?.toUpperCase() || 'P';
+    const alt = display || 'Avatar profilo';
 
-      if (isSelf) return '/profile';
-      return `/athletes/${p.id}`;
-    },
-    [currentRole, currentUserId],
-  );
+    return (
+      <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-gray-100 text-sm font-semibold text-gray-700">
+        {p.avatar_url ? (
+          <Image
+            src={p.avatar_url}
+            alt={`Avatar di ${alt}`}
+            width={48}
+            height={48}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <span>{initial || '?'}</span>
+        )}
+      </div>
+    );
+  };
 
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-      <aside className="space-y-3 lg:col-span-3">
-        <div className="rounded-xl border bg-white/80 p-4 shadow-sm space-y-3">
-          <h2 className="heading-h2 text-lg">Area di ricerca</h2>
-          <p className="text-xs text-gray-600">
-            1) Disegna l’area sulla mappa. 2) Scegli i filtri. 3) Visualizza i risultati.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={startDrawing}
-              className="flex-1 rounded-lg border px-3 py-2 text-sm font-medium hover:bg-gray-50"
-            >
-              Disegna area di ricerca
-            </button>
-            <button
-              type="button"
-              disabled={!drawPoints.length}
-              onClick={() => commitArea(drawPoints)}
-              className="flex-1 rounded-lg border px-3 py-2 text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
-            >
-              Chiudi area e cerca
-            </button>
-            <button
-              type="button"
-              onClick={cancelArea}
-              className="w-full rounded-lg border px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-            >
-              Cancella area
-            </button>
-          </div>
-          {drawPoints.length > 0 && isDrawing && (
-            <p className="text-xs text-amber-700">
-              Doppio click sulla mappa per chiudere il poligono oppure usa “Chiudi area e cerca”.
+    <div className="space-y-3">
+      <div className="rounded-xl border bg-white/80 p-4 shadow-sm space-y-2">
+        <label
+          htmlFor="search-map-query"
+          className="text-sm font-semibold text-gray-800"
+        >
+          Ricerca testuale
+        </label>
+        <input
+          id="search-map-query"
+          type="search"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Cerca per nome club o player…"
+          className="w-full rounded-lg border px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
+          autoComplete="off"
+        />
+        <p className="text-xs text-gray-600">
+          Il nome filtra i risultati nell’area selezionata senza cambiare i confini disegnati sulla mappa.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+        <aside className="space-y-3 lg:col-span-3">
+          <div className="rounded-xl border bg-white/80 p-4 shadow-sm space-y-3">
+            <h2 className="heading-h2 text-lg">Area di ricerca</h2>
+            <p className="text-xs text-gray-600">
+              1) Disegna l’area sulla mappa. 2) Scegli i filtri. 3) Visualizza i risultati.
             </p>
-          )}
-          {!hasArea && !isDrawing && (
-            <p className="text-xs text-gray-500">Nessuna area selezionata.</p>
-          )}
-          {activeArea && !isDrawing && (
-            <p className="text-xs text-emerald-700">Area impostata: {activeArea.length} punti.</p>
-          )}
-        </div>
-
-        <div className="rounded-xl border bg-white/80 p-4 shadow-sm space-y-3">
-          <h2 className="heading-h2 text-lg">Filtri</h2>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setTypeFilter('all')}
-              className={`flex-1 rounded-lg border px-3 py-2 text-sm ${typeFilter === 'all' ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`}
-            >
-              Tutti
-            </button>
-            <button
-              type="button"
-              onClick={() => setTypeFilter('club')}
-              className={`flex-1 rounded-lg border px-3 py-2 text-sm ${typeFilter === 'club' ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`}
-            >
-              Club
-            </button>
-            <button
-              type="button"
-              onClick={() => setTypeFilter('player')}
-              className={`flex-1 rounded-lg border px-3 py-2 text-sm ${typeFilter === 'player' ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`}
-            >
-              Player
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={startDrawing}
+                className="flex-1 rounded-lg border px-3 py-2 text-sm font-medium hover:bg-gray-50"
+              >
+                Disegna area di ricerca
+              </button>
+              <button
+                type="button"
+                disabled={!drawPoints.length}
+                onClick={() => commitArea(drawPoints)}
+                className="flex-1 rounded-lg border px-3 py-2 text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
+              >
+                Chiudi area e cerca
+              </button>
+              <button
+                type="button"
+                onClick={cancelArea}
+                className="w-full rounded-lg border px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              >
+                Cancella area
+              </button>
+            </div>
+            {drawPoints.length > 0 && isDrawing && (
+              <p className="text-xs text-amber-700">
+                Doppio click sulla mappa per chiudere il poligono oppure usa “Chiudi area e cerca”.
+              </p>
+            )}
+            {!hasArea && !isDrawing && (
+              <p className="text-xs text-gray-500">Nessuna area selezionata.</p>
+            )}
+            {activeArea && !isDrawing && (
+              <p className="text-xs text-emerald-700">Area impostata: {activeArea.length} punti.</p>
+            )}
           </div>
 
-          {typeFilter === 'club' && (
-            <div className="space-y-2 text-sm">
-              <div className="space-y-1">
-                <label className="text-xs text-gray-600">Sport</label>
-                <input
-                  value={clubSport}
-                  onChange={(e) => setClubSport(e.target.value)}
-                  className="w-full rounded-lg border px-3 py-2"
-                  placeholder="Calcio, basket…"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs text-gray-600">Categoria</label>
-                <input
-                  value={clubCategory}
-                  onChange={(e) => setClubCategory(e.target.value)}
-                  className="w-full rounded-lg border px-3 py-2"
-                  placeholder="Eccellenza, Serie C…"
-                />
-              </div>
+          <div className="rounded-xl border bg-white/80 p-4 shadow-sm space-y-3">
+            <h2 className="heading-h2 text-lg">Filtri</h2>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setTypeFilter('all')}
+                className={`flex-1 rounded-lg border px-3 py-2 text-sm ${typeFilter === 'all' ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`}
+              >
+                Tutti
+              </button>
+              <button
+                type="button"
+                onClick={() => setTypeFilter('club')}
+                className={`flex-1 rounded-lg border px-3 py-2 text-sm ${typeFilter === 'club' ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`}
+              >
+                Club
+              </button>
+              <button
+                type="button"
+                onClick={() => setTypeFilter('player')}
+                className={`flex-1 rounded-lg border px-3 py-2 text-sm ${typeFilter === 'player' ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`}
+              >
+                Player
+              </button>
             </div>
-          )}
 
-          {typeFilter === 'player' && (
-            <div className="space-y-2 text-sm">
-              <div className="space-y-1">
-                <label className="text-xs text-gray-600">Sport</label>
-                <input
-                  value={playerSport}
-                  onChange={(e) => setPlayerSport(e.target.value)}
-                  className="w-full rounded-lg border px-3 py-2"
-                  placeholder="Calcio, basket…"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs text-gray-600">Arto dominante</label>
-                <select
-                  value={playerFoot}
-                  onChange={(e) => setPlayerFoot(e.target.value)}
-                  className="w-full rounded-lg border px-3 py-2"
-                >
-                  <option value="">Tutti</option>
-                  <option value="destro">Destro</option>
-                  <option value="sinistro">Sinistro</option>
-                  <option value="ambidestro">Ambidestro</option>
-                </select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs text-gray-600">Sesso</label>
-                <select
-                  value={playerGender}
-                  onChange={(e) => setPlayerGender(e.target.value)}
-                  className="w-full rounded-lg border px-3 py-2"
-                >
-                  <option value="">Tutti</option>
-                  <option value="m">Uomo</option>
-                  <option value="f">Donna</option>
-                  <option value="mixed">Misto</option>
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
+            {typeFilter === 'club' && (
+              <div className="space-y-2 text-sm">
                 <div className="space-y-1">
-                  <label className="text-xs text-gray-600">Età minima</label>
+                  <label className="text-xs text-gray-600">Sport</label>
                   <input
-                    type="number"
-                    min={0}
-                    value={ageMin}
-                    onChange={(e) => setAgeMin(e.target.value)}
+                    value={clubSport}
+                    onChange={(e) => setClubSport(e.target.value)}
                     className="w-full rounded-lg border px-3 py-2"
-                    placeholder="18"
+                    placeholder="Calcio, basket…"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs text-gray-600">Età massima</label>
+                  <label className="text-xs text-gray-600">Categoria</label>
                   <input
-                    type="number"
-                    min={0}
-                    value={ageMax}
-                    onChange={(e) => setAgeMax(e.target.value)}
+                    value={clubCategory}
+                    onChange={(e) => setClubCategory(e.target.value)}
                     className="w-full rounded-lg border px-3 py-2"
-                    placeholder="35"
+                    placeholder="Eccellenza, Serie C…"
                   />
                 </div>
               </div>
-            </div>
-          )}
-        </div>
-      </aside>
+            )}
 
-      <section className="h-[420px] rounded-xl border bg-white/80 shadow-sm lg:col-span-6 lg:h-[520px]">
-        {mapError ? (
-          <div className="flex h-full w-full items-center justify-center text-sm text-red-600">{mapError}</div>
-        ) : (
-          <div ref={mapContainerRef} className="h-full w-full" />
-        )}
-      </section>
-
-      <section className="space-y-2 rounded-xl border bg-white/80 p-3 shadow-sm lg:col-span-3">
-        <div className="flex items-center justify-between">
-          <h2 className="heading-h2 text-lg">Risultati</h2>
-          {loading && <span className="text-xs text-gray-500">Caricamento…</span>}
-        </div>
-        {dataError && (
-          <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{dataError}</div>
-        )}
-        {!hasArea && !loading && !dataError && (
-          <div className="text-sm text-gray-600">
-            Disegna un’area sulla mappa o sposta la mappa e chiudi il poligono per iniziare la ricerca.
-          </div>
-        )}
-        {hasArea && filteredPoints.length === 0 && !loading && !dataError && (
-          <div className="text-sm text-gray-600">Nessun profilo nell’area selezionata.</div>
-        )}
-        <div className="grid grid-cols-1 gap-2">
-          {filteredPoints.map((p) => (
-            <Link
-              key={p.id}
-              href={resolveHref(p)}
-              className="rounded-lg border px-3 py-2 hover:bg-gray-50"
-            >
-              <div className="flex items-start gap-2">
-                <MarkerIcon type={p.type || p.account_type} />
-                <div>
-                  <div className="font-semibold leading-tight">{p.display_name || 'Profilo'}</div>
-                  <div className="text-xs text-gray-600">
-                    {[p.city, p.province, p.region, p.country].filter(Boolean).join(' · ') || 'Località non disponibile'}
+            {typeFilter === 'player' && (
+              <div className="space-y-2 text-sm">
+                <div className="space-y-1">
+                  <label className="text-xs text-gray-600">Sport</label>
+                  <input
+                    value={playerSport}
+                    onChange={(e) => setPlayerSport(e.target.value)}
+                    className="w-full rounded-lg border px-3 py-2"
+                    placeholder="Calcio, basket…"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-gray-600">Arto dominante</label>
+                  <select
+                    value={playerFoot}
+                    onChange={(e) => setPlayerFoot(e.target.value)}
+                    className="w-full rounded-lg border px-3 py-2"
+                  >
+                    <option value="">Tutti</option>
+                    <option value="destro">Destro</option>
+                    <option value="sinistro">Sinistro</option>
+                    <option value="ambidestro">Ambidestro</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-gray-600">Sesso</label>
+                  <select
+                    value={playerGender}
+                    onChange={(e) => setPlayerGender(e.target.value)}
+                    className="w-full rounded-lg border px-3 py-2"
+                  >
+                    <option value="">Tutti</option>
+                    <option value="m">Uomo</option>
+                    <option value="f">Donna</option>
+                    <option value="mixed">Misto</option>
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-xs text-gray-600">Età minima</label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={ageMin}
+                      onChange={(e) => setAgeMin(e.target.value)}
+                      className="w-full rounded-lg border px-3 py-2"
+                      placeholder="18"
+                    />
                   </div>
-                  <div className="text-xs text-gray-500">{[p.role, p.sport].filter(Boolean).join(' · ')}</div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-gray-600">Età massima</label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={ageMax}
+                      onChange={(e) => setAgeMax(e.target.value)}
+                      className="w-full rounded-lg border px-3 py-2"
+                      placeholder="35"
+                    />
+                  </div>
                 </div>
               </div>
-            </Link>
-          ))}
-        </div>
-      </section>
+            )}
+          </div>
+        </aside>
+
+        <section className="h-[420px] rounded-xl border bg-white/80 shadow-sm lg:col-span-6 lg:h-[520px]">
+          {mapError ? (
+            <div className="flex h-full w-full items-center justify-center text-sm text-red-600">{mapError}</div>
+          ) : (
+            <div ref={mapContainerRef} className="h-full w-full" />
+          )}
+        </section>
+
+        <section className="space-y-2 rounded-xl border bg-white/80 p-3 shadow-sm lg:col-span-3">
+          <div className="flex items-center justify-between">
+            <h2 className="heading-h2 text-lg">Risultati</h2>
+            {loading && <span className="text-xs text-gray-500">Caricamento…</span>}
+          </div>
+          {dataError && (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{dataError}</div>
+          )}
+          {!hasArea && !loading && !dataError && (
+            <div className="text-sm text-gray-600">
+              Disegna un’area sulla mappa o sposta la mappa e chiudi il poligono per iniziare la ricerca.
+            </div>
+          )}
+          {hasArea && filteredPoints.length === 0 && !loading && !dataError && (
+            <div className="text-sm text-gray-600">Nessun profilo nell’area selezionata.</div>
+          )}
+          <div className="grid grid-cols-1 gap-2">
+            {filteredPoints.map((p) => {
+              const href = resolvePublicHref(p);
+              const name = p.display_name || p.full_name || 'Profilo';
+              const rawType = (p.type || p.account_type || '').trim().toLowerCase();
+              const typeLabel = rawType === 'club' ? 'CLUB' : 'PLAYER';
+              return (
+                <div key={p.id} className="rounded-lg border px-3 py-2 hover:bg-gray-50">
+                  <div className="flex items-center gap-3">
+                    {renderAvatar(p)}
+                    <div className="flex flex-1 flex-col gap-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="font-semibold leading-tight">{name}</div>
+                        <span className="flex items-center gap-1 text-xs font-medium text-gray-700">
+                          <MarkerIcon type={p.type || p.account_type} />
+                          <span>{typeLabel}</span>
+                        </span>
+                        <Link
+                          href={href}
+                          className="text-xs font-medium underline decoration-blue-600 underline-offset-2 text-blue-700 hover:no-underline"
+                        >
+                          Visita profilo
+                        </Link>
+                      </div>
+                      <div className="text-xs text-gray-600">
+                        {[p.city, p.province, p.region, p.country].filter(Boolean).join(' · ') || 'Località non disponibile'}
+                      </div>
+                      <div className="text-xs text-gray-500">{[p.role, p.sport].filter(Boolean).join(' · ')}</div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

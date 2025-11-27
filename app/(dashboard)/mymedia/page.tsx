@@ -3,6 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
+import { Lightbox, type LightboxItem } from '@/components/media/Lightbox';
 import Link from 'next/link';
 import { useExclusiveVideoPlayback } from '@/hooks/useExclusiveVideoPlayback';
 import { shareOrCopyLink } from '@/lib/share';
@@ -114,20 +115,11 @@ export default function MyMediaPage() {
     });
   }, [photos.length]);
 
-  useEffect(() => {
-    if (lightboxIndex === null) return undefined;
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        closeLightbox();
-      } else if (e.key === 'ArrowLeft') {
-        showPrev();
-      } else if (e.key === 'ArrowRight') {
-        showNext();
-      }
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [closeLightbox, lightboxIndex, showNext, showPrev]);
+  const photoItems: LightboxItem[] = photos.map((item) => ({
+    url: item.media_url ?? '',
+    type: 'image',
+    alt: item.content ?? 'Media',
+  }));
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 space-y-4">
@@ -152,9 +144,9 @@ export default function MyMediaPage() {
         </div>
       )}
 
-      {lightboxIndex !== null && photos[lightboxIndex] ? (
+      {lightboxIndex !== null && photoItems[lightboxIndex] ? (
         <Lightbox
-          items={photos}
+          items={photoItems}
           index={lightboxIndex}
           onClose={closeLightbox}
           onPrev={showPrev}
@@ -267,74 +259,6 @@ function VideoPlayer({
         onPause={handlePause}
         onEnded={handleEnded}
       />
-    </div>
-  );
-}
-
-function Lightbox({
-  items,
-  index,
-  onClose,
-  onPrev,
-  onNext,
-}: {
-  items: MediaPost[];
-  index: number;
-  onClose: () => void;
-  onPrev: () => void;
-  onNext: () => void;
-}) {
-  const item = items[index];
-  if (!item) return null;
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur"
-      role="dialog"
-      aria-modal="true"
-      onClick={onClose}
-    >
-      <div
-        className="relative max-h-full max-w-5xl w-full rounded-2xl bg-white/10 p-4 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-3 flex items-center justify-between text-white">
-          <span className="text-sm font-semibold">
-            {index + 1}/{items.length}
-          </span>
-          <button
-            type="button"
-            aria-label="Chiudi"
-            onClick={onClose}
-            className="rounded-full bg-white/20 px-3 py-1 text-sm font-semibold transition hover:bg-white/40"
-          >
-            ✕
-          </button>
-        </div>
-        <div className="relative flex items-center justify-center">
-          <button
-            type="button"
-            onClick={onPrev}
-            className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-white/30 px-3 py-2 text-lg font-bold text-gray-900 shadow hover:bg-white"
-            aria-label="Foto precedente"
-          >
-            ‹
-          </button>
-          <img
-            src={item.media_url ?? ''}
-            alt="Foto"
-            className="max-h-[70vh] max-w-full rounded-xl object-contain shadow-lg"
-          />
-          <button
-            type="button"
-            onClick={onNext}
-            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white/30 px-3 py-2 text-lg font-bold text-gray-900 shadow hover:bg-white"
-            aria-label="Foto successiva"
-          >
-            ›
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

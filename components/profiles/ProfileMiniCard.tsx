@@ -6,9 +6,13 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
+import FollowButton from '@/components/clubs/FollowButton';
+
 import { resolveCountryName, resolveStateName } from '@/lib/geodata/countryStateCityDataset';
 
 type P = {
+  user_id?: string | null;
+
   account_type?: 'club' | 'athlete' | null;
 
   full_name?: string | null;
@@ -176,6 +180,8 @@ export default function ProfileMiniCard() {
   }, []);
 
   const isClub = p?.account_type === 'club';
+  const targetId = p?.user_id ? String(p.user_id) : '';
+  const followTargetType: 'club' | 'player' = isClub ? 'club' : 'player';
   const year = new Date().getFullYear();
   const age = !isClub && p?.birth_year ? Math.max(0, year - p.birth_year) : null;
   const name = p?.full_name || p?.display_name || (isClub ? 'Il tuo club' : 'Benvenuto!');
@@ -210,13 +216,6 @@ export default function ProfileMiniCard() {
     >
       {children}
     </a>
-  );
-
-  const InfoRow = ({ label, value }: { label: string; value: string | number | null | undefined }) => (
-    <div className="flex items-start gap-2 text-left text-sm leading-tight text-gray-700">
-      <span className="text-gray-500">{label}</span>
-      <span className="font-medium text-gray-900">{value ?? '—'}</span>
-    </div>
   );
 
   return (
@@ -264,8 +263,21 @@ export default function ProfileMiniCard() {
 
       {isClub ? (
         <div className="space-y-3">
+          {targetId ? (
+            <div className="flex justify-center">
+              <FollowButton
+                id={targetId}
+                targetType={followTargetType}
+                labelFollow="Segui"
+                labelFollowing="Seguo"
+                size="md"
+                className="w-full justify-center"
+              />
+            </div>
+          ) : null}
+
           <div className="space-y-1 text-center">
-            <div className="text-xs uppercase tracking-wide text-gray-500">Dettagli club</div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Dettagli club</div>
           </div>
           <dl className="space-y-2 rounded-xl bg-white/70 p-3 text-sm text-gray-800 shadow-sm ring-1 ring-gray-100">
             {p?.sport && (
@@ -324,21 +336,63 @@ export default function ProfileMiniCard() {
           </div>
         </div>
       ) : (
-        <div className="space-y-2">
-          <InfoRow label="Età:" value={age ?? '—'} />
-          <InfoRow label="Sport:" value={p?.sport || '—'} />
-          <InfoRow label="Ruolo:" value={p?.role || '—'} />
-          <InfoRow label="Piede:" value={p?.foot || '—'} />
-          <InfoRow label="Altezza:" value={p?.height_cm ? `${p.height_cm} cm` : '—'} />
-          <InfoRow label="Peso:" value={p?.weight_kg ? `${p.weight_kg} kg` : '—'} />
-          {p?.bio ? (
-            <div className="mt-3 space-y-1">
-              <div className="text-[11px] uppercase tracking-wide text-gray-500">Biografia</div>
-              <p className="line-clamp-3 text-sm text-gray-700">{p.bio}</p>
+        <div className="space-y-3">
+          {targetId ? (
+            <div className="flex justify-center">
+              <FollowButton
+                id={targetId}
+                targetType={followTargetType}
+                labelFollow="Segui"
+                labelFollowing="Seguo"
+                size="md"
+                className="w-full justify-center"
+              />
             </div>
           ) : null}
 
-          <div className="mt-2">
+          <div className="space-y-1 text-center">
+            <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Dettagli player</div>
+          </div>
+
+          <dl className="space-y-2 rounded-xl bg-white/70 p-3 text-sm text-gray-800 shadow-sm ring-1 ring-gray-100">
+            <div className="flex flex-col gap-0.5">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Età</dt>
+              <dd className="font-medium text-gray-900">{age ?? '—'}</dd>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Sport</dt>
+              <dd className="font-medium text-gray-900">{p?.sport || '—'}</dd>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Ruolo</dt>
+              <dd className="font-medium text-gray-900">{p?.role || '—'}</dd>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Città / Paese</dt>
+              <dd className="font-medium text-gray-900">{p?.city || interestLabel || '—'}</dd>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Piede</dt>
+              <dd className="font-medium text-gray-900">{p?.foot || '—'}</dd>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Altezza</dt>
+              <dd className="font-medium text-gray-900">{p?.height_cm ? `${p.height_cm} cm` : '—'}</dd>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Peso</dt>
+              <dd className="font-medium text-gray-900">{p?.weight_kg ? `${p.weight_kg} kg` : '—'}</dd>
+            </div>
+          </dl>
+
+          {p?.bio ? (
+            <div className="rounded-xl bg-white/70 p-3 text-sm text-gray-700 shadow-sm ring-1 ring-gray-100">
+              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Biografia</div>
+              <p className="mt-1 line-clamp-3 whitespace-pre-line break-words leading-snug">{p.bio}</p>
+            </div>
+          ) : null}
+
+          <div className="pt-1">
             <Link href="/profile" className="inline-block rounded-xl border px-3 py-1.5 text-sm hover:bg-gray-50">
               Modifica profilo
             </Link>
