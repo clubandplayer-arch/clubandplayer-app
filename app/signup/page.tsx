@@ -122,11 +122,11 @@ export default function SignupPage() {
     <main className="container mx-auto px-4 py-10">
       <div className="mb-10 flex flex-col items-center text-center">
         <Image
-          src="/Logo C&P.png"
+          src="/logo-cp.svg"
           alt="Club & Player"
-          width={80}
-          height={80}
-          className="h-auto w-20 md:w-24"
+          width={96}
+          height={96}
+          className="h-auto w-24 md:w-28"
           priority
         />
         <h1 className="mt-3 text-2xl font-bold text-[#00527a]">Club &amp; Player</h1>
