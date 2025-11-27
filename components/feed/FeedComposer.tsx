@@ -606,7 +606,7 @@ export default function FeedComposer({ onPosted }: Props) {
               className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-gray-50 disabled:opacity-50"
               disabled={sending}
             >
-              <MaterialIcon name="calendar" className="h-4 w-4" fontSize="small" aria-hidden />
+              <MaterialIcon name="calendar" fontSize={16} aria-hidden />
               <span>Crea evento</span>
             </button>
           ) : null}
@@ -763,7 +763,7 @@ export default function FeedComposer({ onPosted }: Props) {
                 onClick={() => eventFileInputRef.current?.click()}
                 disabled={eventSending}
               >
-                <MaterialIcon name="calendar" className="h-4 w-4" fontSize="small" aria-hidden />
+                <MaterialIcon name="calendar" fontSize={16} aria-hidden />
                 <span>Carica locandina</span>
               </button>
             </div>
