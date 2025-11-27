@@ -118,7 +118,7 @@ export default function MyMediaPage() {
   const photoItems: LightboxItem[] = photos.map((item) => ({
     url: item.media_url ?? '',
     type: 'image',
-    alt: item.caption ?? item.display_name ?? 'Media',
+    alt: item.content ?? 'Media',
   }));
 
   return (
