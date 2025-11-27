@@ -2,13 +2,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 type Role = 'club' | 'athlete' | 'guest';
 
 type Suggestion = {
   id: string;
   name: string;
-  handle: string;
   avatarUrl?: string;
   city?: string;
   sport?: string;
@@ -17,98 +17,53 @@ type Suggestion = {
 
 export default function WhoToFollow() {
   const [role, setRole] = useState<Role>('guest');
+  const [targetType, setTargetType] = useState<Role>('club');
   const [items, setItems] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(true);
-  const [following, setFollowing] = useState<Set<string>>(new Set());
   const [pendingId, setPendingId] = useState<string | null>(null);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
     (async () => {
       try {
-        // 1) Ruolo
-        const r = await fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' });
-        const j = await r.json().catch(() => ({}));
-        const raw = (j?.role ?? '').toString().toLowerCase();
-        const nextRole: Role = raw === 'club' || raw === 'athlete' ? raw : 'guest';
+        const res = await fetch('/api/follows/suggestions', {
+          credentials: 'include',
+          cache: 'no-store',
+        });
+        const data = await res.json().catch(() => ({}));
+        const suggestions = Array.isArray(data?.items) ? (data.items as Suggestion[]) : [];
+        const nextRole: Role =
+          data?.role === 'club' || data?.role === 'athlete' ? data.role : 'guest';
+        const nextTarget: Role =
+          data?.targetType === 'club' || data?.targetType === 'athlete' ? data.targetType : 'club';
         setRole(nextRole);
-
-        // 2) Prima pagina suggerimenti
-        const { items: firstItems, nextCursor: nc } = await fetchSuggestions(nextRole);
-        setItems(firstItems);
-        setNextCursor(nc ?? null);
-
-        // 3) Stato "seguito" (cookie-backed)
-        const g = await fetch('/api/follows/toggle', { credentials: 'include', cache: 'no-store' });
-        const gj = await g.json().catch(() => ({}));
-        const ids: string[] = Array.isArray(gj?.ids) ? gj.ids : [];
-        setFollowing(new Set(ids));
+        setTargetType(nextTarget);
+        setItems(suggestions.slice(0, 3));
       } catch {
         setItems([]);
-        setFollowing(new Set());
-        setNextCursor(null);
       } finally {
         setLoading(false);
       }
     })();
   }, []);
 
-  async function fetchSuggestions(forRole: Role, cursor?: string) {
-    const qs = new URLSearchParams({ for: forRole });
-    if (cursor) qs.set('cursor', cursor);
-    // opzionale: qs.set('limit', '4');
-    const res = await fetch(`/api/follows/suggestions?${qs.toString()}`, {
-      credentials: 'include',
-      cache: 'no-store',
-    });
-    if (!res.ok) return { items: [] as Suggestion[], nextCursor: null as string | null };
-    const data = await res.json().catch(() => ({}));
-    const items = Array.isArray(data?.items) ? (data.items as Suggestion[]) : [];
-    const nextCursor = typeof data?.nextCursor === 'string' ? data.nextCursor : null;
-    return { items, nextCursor };
-  }
-
-  async function loadMore() {
-    if (!nextCursor) return;
-    setLoadingMore(true);
-    try {
-      const { items: more, nextCursor: nc } = await fetchSuggestions(role, nextCursor);
-      // merge dedup per id
-      setItems((prev) => {
-        const byId = new Map(prev.map((x) => [x.id, x]));
-        for (const it of more) if (!byId.has(it.id)) byId.set(it.id, it);
-        return Array.from(byId.values());
-      });
-      setNextCursor(nc);
-    } finally {
-      setLoadingMore(false);
-    }
-  }
-
-  async function toggleFollow(id: string) {
+  async function follow(id: string) {
     setPendingId(id);
-    const wasFollowing = following.has(id);
-    const prev = new Set(following);
-    const next = new Set(following);
-
-    if (wasFollowing) next.delete(id);
-    else next.add(id);
-
-    setFollowing(next);
-
     try {
-      const res = await fetch('/api/follows/toggle', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id }),
+      const supabase = supabaseBrowser();
+      const { data: user } = await supabase.auth.getUser();
+      if (!user?.user?.id) throw new Error('not_authenticated');
+
+      await supabase.from('follows').upsert({
+        follower_id: user.user.id,
+        target_id: id,
+        target_type: targetType === 'club' ? 'club' : 'player',
       });
-      if (!res.ok) throw new Error('toggle failed');
-      const out = await res.json().catch(() => ({}));
-      if (Array.isArray(out?.ids)) setFollowing(new Set(out.ids));
-    } catch {
-      setFollowing(prev); // rollback
+
+      setItems((prev) => prev.filter((p) => p.id !== id));
+    } catch (err: any) {
+      if (String(err?.message || '').includes('not_authenticated')) {
+        alert('Accedi per seguire nuovi profili.');
+      }
     } finally {
       setPendingId(null);
     }
@@ -133,136 +88,56 @@ export default function WhoToFollow() {
     );
   }
 
-  const followedItems = items.filter((it) => following.has(it.id));
-  const suggestedItems = items.filter((it) => !following.has(it.id));
+  const heading = role === 'club' ? 'Player suggeriti' : 'Club suggeriti';
 
   return (
-    <div className="space-y-4">
-      {followedItems.length > 0 && (
-        <div className="space-y-2 text-sm">
-          <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-            Profili che segui già
-          </div>
-          <ul className="space-y-2">
-            {followedItems.map((it) => {
-              const isPending = pendingId === it.id;
-              return (
-                <li key={`followed-${it.id}`} className="flex items-center gap-3">
-                  <img
-                    src={
-                      it.avatarUrl ||
-                      `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(it.name)}`
-                    }
-                    alt={it.name}
-                    className="h-9 w-9 rounded-full object-cover ring-1 ring-zinc-200 dark:ring-zinc-800"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate font-medium">{it.name}</div>
-                    <div className="truncate text-xs text-zinc-500">
-                      @{it.handle}
-                      {it.city ? ` · ${it.city}` : ''}
-                      {it.sport ? ` · ${it.sport}` : ''}
-                    </div>
+    <div className="space-y-3">
+      <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{heading}</div>
+      {items.length > 0 ? (
+        <ul className="space-y-3">
+          {items.map((it) => {
+            const isPending = pendingId === it.id;
+            return (
+              <li key={it.id} className="flex items-center gap-3">
+                <img
+                  src={
+                    it.avatarUrl ||
+                    `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(it.name)}`
+                  }
+                  alt={it.name}
+                  className="h-10 w-10 rounded-full object-cover ring-1 ring-zinc-200 dark:ring-zinc-800"
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium">{it.name}</div>
+                  <div className="truncate text-xs text-zinc-500">
+                    {it.city ? `${it.city}` : ''}
+                    {it.sport ? `${it.city ? ' · ' : ''}${it.sport}` : ''}
+                    {typeof it.followers === 'number' ? ` · ${it.followers} follower` : ''}
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => toggleFollow(it.id)}
-                    disabled={isPending}
-                    aria-busy={isPending}
-                    className="text-xs font-semibold text-zinc-500 underline-offset-2 hover:underline disabled:opacity-60"
-                  >
-                    {isPending ? '...' : 'Smetti di seguire'}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
+                </div>
 
-      {suggestedItems.length > 0 ? (
-        <>
-          <ul className="space-y-3">
-            {suggestedItems.map((it) => {
-              const isPending = pendingId === it.id;
-              const isFollowing = following.has(it.id);
-              return (
-                <li key={it.id} className="flex items-center gap-3">
-                  <img
-                    src={
-                      it.avatarUrl ||
-                      `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(it.name)}`
-                    }
-                    alt={it.name}
-                    className="h-10 w-10 rounded-full object-cover ring-1 ring-zinc-200 dark:ring-zinc-800"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium">{it.name}</div>
-                    <div className="truncate text-xs text-zinc-500">
-                      @{it.handle}
-                      {it.city ? ` · ${it.city}` : ''}
-                      {it.sport ? ` · ${it.sport}` : ''}
-                      {typeof it.followers === 'number' ? ` · ${it.followers} follower` : ''}
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => toggleFollow(it.id)}
-                    disabled={isPending}
-                    aria-busy={isPending}
-                    className={[
-                      'rounded-xl border px-3 py-1.5 text-sm font-semibold transition',
-                      'hover:bg-zinc-50 dark:hover:bg-zinc-800',
-                      isPending ? 'opacity-70' : '',
-                    ].join(' ')}
-                  >
-                    {isPending ? '...' : isFollowing ? 'Segui già' : 'Segui'}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-
-          {nextCursor && (
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={loadMore}
-                disabled={loadingMore}
-                aria-busy={loadingMore}
-                className="w-full rounded-xl border px-3 py-2 text-sm font-semibold hover:bg-zinc-50 disabled:opacity-60 dark:border-zinc-700 dark:hover:bg-zinc-800"
-              >
-                {loadingMore ? 'Carico…' : 'Mostra altri'}
-              </button>
-            </div>
-          )}
-        </>
+                <button
+                  type="button"
+                  onClick={() => follow(it.id)}
+                  disabled={isPending}
+                  aria-busy={isPending}
+                  className={[
+                    'rounded-xl border px-3 py-1.5 text-sm font-semibold transition',
+                    'hover:bg-zinc-50 dark:hover:bg-zinc-800',
+                    isPending ? 'opacity-70' : '',
+                  ].join(' ')}
+                >
+                  {isPending ? '...' : 'Segui'}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
       ) : (
         <div className="rounded-lg border border-dashed p-4 text-center text-sm text-zinc-500 dark:border-zinc-800">
-          Hai già seguito tutti i profili suggeriti.
-          {nextCursor ? (
-            <div className="mt-3">
-              <button
-                type="button"
-                onClick={loadMore}
-                disabled={loadingMore}
-                aria-busy={loadingMore}
-                className="rounded-xl border px-3 py-1.5 text-sm font-semibold hover:bg-zinc-50 disabled:opacity-60 dark:border-zinc-700 dark:hover:bg-zinc-800"
-              >
-                {loadingMore ? 'Carico…' : 'Mostra altri suggerimenti'}
-              </button>
-            </div>
-          ) : (
-            <div className="mt-2">
-              <a
-                href="/search/club"
-                className="text-sm font-medium text-zinc-700 underline underline-offset-4 hover:text-zinc-900 dark:text-zinc-200"
-              >
-                Cerca manualmente un club
-              </a>
-            </div>
-          )}
+          {role === 'club'
+            ? 'Non ci sono ancora player da suggerire nella tua zona.'
+            : 'Non ci sono ancora club da suggerire nella tua zona.'}
         </div>
       )}
     </div>

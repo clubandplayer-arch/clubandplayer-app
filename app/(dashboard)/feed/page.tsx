@@ -87,6 +87,11 @@ const FollowedClubs = dynamic(() => import('@/components/feed/FollowedClubs'), {
   loading: () => <SidebarCard title="Club che segui" />,
 });
 
+const FeedHighlights = dynamic(() => import('@/components/feed/FeedHighlights'), {
+  ssr: false,
+  loading: () => <SidebarCard title="In evidenza" />,
+});
+
 type FeedPost = {
   id: string;
   content?: string;
@@ -423,17 +428,16 @@ export default function FeedPage() {
 
         {/* Colonna destra: suggerimenti/annunci/club seguiti */}
         <aside className="space-y-4">
-          <SidebarCard title="Chi seguire">
+          <SidebarCard>
             <WhoToFollow />
           </SidebarCard>
 
-          <SidebarCard title="Club che segui">
+          <SidebarCard>
             <FollowedClubs />
           </SidebarCard>
 
-          <SidebarCard title="In evidenza">
-            {/* Qui in seguito collegheremo le “opportunità più viste” da Supabase */}
-            <div className="text-sm text-gray-600">Prossimamente: opportunità in evidenza</div>
+          <SidebarCard>
+            <FeedHighlights />
           </SidebarCard>
         </aside>
       </div>

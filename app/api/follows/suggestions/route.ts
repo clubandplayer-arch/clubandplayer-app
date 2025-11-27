@@ -16,111 +16,112 @@ type Suggestion = {
   followers?: number | null;
 };
 
-const FALLBACK_CLUBS: Suggestion[] = [
-  {
-    id: 'club-mock-1',
-    name: 'ASD Club Atlético Carlentini',
-    handle: 'clubatleticocarlentini',
-    city: 'Carlentini (SR)',
-    sport: 'Calcio',
-    followers: 3120,
-  },
-];
-
-const FALLBACK_ATHLETES: Suggestion[] = [
-  {
-    id: 'athlete-mock-1',
-    name: 'Marco Greco',
-    handle: 'marco.greco9',
-    city: 'Catania',
-    sport: 'Calcio (ATT)',
-    followers: 420,
-  },
-];
-
 function clamp(n: number, min: number, max: number) {
   return Math.min(Math.max(n, min), max);
 }
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
-  const forRole = (url.searchParams.get('for') ||
-    'guest') as Role;
-
-  const limit = clamp(
-    Number(url.searchParams.get('limit') || '4') || 4,
-    1,
-    8
-  );
-  const cursor =
-    Number(url.searchParams.get('cursor') || '0') || 0;
+  const limit = clamp(Number(url.searchParams.get('limit') || '3') || 3, 1, 6);
 
   try {
     const supabase = await getSupabaseServerClient();
+    const { data: userRes } = await supabase.auth.getUser();
 
-    // atleta → suggerisci club; club/guest → suggerisci atleti
-    const targetType =
-      forRole === 'club' ? 'athlete' : 'club';
+    if (!userRes?.user) {
+      return NextResponse.json({ items: [], role: 'guest', targetType: 'club' });
+    }
 
-    const { data, error } = await supabase
+    const userId = userRes.user.id;
+
+    const { data: profile } = await supabase
       .from('profiles')
-      .select(
-        'id, account_type, full_name, display_name, city, sport, avatar_url, followers_count'
-      )
-      .eq('account_type', targetType)
-      .order('followers_count', { ascending: false })
-      .range(cursor, cursor + limit - 1);
+      .select('id, account_type, status, country, city')
+      .eq('user_id', userId)
+      .maybeSingle();
 
-    if (!error && data && data.length > 0) {
-      const items: Suggestion[] = data.map((p) => ({
-        id: p.id,
-        name:
-          (p.full_name || p.display_name || '').trim() ||
-          'Profilo',
-        city: p.city || null,
-        sport: p.sport || null,
-        avatar_url: p.avatar_url || null,
-        followers: p.followers_count ?? null,
-      }));
+    const role =
+      (profile?.account_type === 'athlete' || profile?.account_type === 'club'
+        ? profile.account_type
+        : 'guest') || 'guest';
 
-      const nextCursor =
-        data.length === limit
-          ? String(cursor + limit)
-          : null;
+    const targetType: Role = role === 'club' ? 'athlete' : 'club';
+    const viewerCountry = (profile?.country || '').trim();
+    const viewerCity = (profile?.city || '').trim();
 
-      return NextResponse.json({ items, nextCursor });
-    }
+    const { data: existing } = await supabase
+      .from('follows')
+      .select('target_id')
+      .eq('follower_id', userId)
+      .eq('target_type', targetType)
+      .limit(200);
 
-    if (error) {
-      console.warn(
-        '[follows/suggestions] supabase error, fallback',
-        error.message
-      );
-    }
-  } catch (err) {
-    console.error(
-      '[follows/suggestions] fatal supabase error, fallback',
-      err
+    const alreadyFollowing = new Set(
+      (existing || [])
+        .map((row) => (row as any)?.target_id)
+        .filter(Boolean)
+        .map((id) => id.toString()),
     );
+
+    const baseSelect =
+      'id, account_type, full_name, display_name, city, country, sport, avatar_url, followers_count, status';
+
+    async function runQuery(filters: Array<(q: any) => any>) {
+      let query = supabase
+        .from('profiles')
+        .select(baseSelect)
+        .eq('account_type', targetType)
+        .eq('status', 'active')
+        .neq('id', profile?.id ?? '');
+
+      filters.forEach((fn) => {
+        query = fn(query);
+      });
+
+      if (alreadyFollowing.size) {
+        query = query.not('id', 'in', `(${Array.from(alreadyFollowing).join(',')})`);
+      }
+
+      query = query.order('followers_count', { ascending: false }).limit(limit);
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    }
+
+    let rows: any[] = [];
+
+    if (viewerCountry && viewerCity) {
+      rows = await runQuery([
+        (q) => q.eq('country', viewerCountry).eq('city', viewerCity),
+      ]);
+    }
+
+    if (!rows.length && viewerCountry) {
+      rows = await runQuery([(q) => q.eq('country', viewerCountry)]);
+    }
+
+    if (!rows.length) {
+      rows = await runQuery([]);
+    }
+
+    const items: Suggestion[] = rows.map((p) => ({
+      id: p.id,
+      name: (p.full_name || p.display_name || 'Profilo').toString(),
+      city: p.city || null,
+      sport: p.sport || null,
+      avatar_url: p.avatar_url || null,
+      followers: p.followers_count ?? null,
+    }));
+
+    return NextResponse.json({
+      items,
+      nextCursor: null,
+      role,
+      targetType,
+    });
+  } catch (err) {
+    console.error('[follows/suggestions] error', err);
+    return NextResponse.json({ items: [], role: 'guest', targetType: 'club' });
   }
-
-  // Fallback mock
-  const source =
-    forRole === 'club'
-      ? FALLBACK_ATHLETES
-      : FALLBACK_CLUBS;
-
-  const sorted = [...source].sort(
-    (a, b) => (b.followers || 0) - (a.followers || 0)
-  );
-  const slice = sorted.slice(
-    cursor,
-    cursor + limit
-  );
-  const nextCursor =
-    cursor + limit < sorted.length
-      ? String(cursor + limit)
-      : null;
-
-  return NextResponse.json({ items: slice, nextCursor });
 }
