@@ -2,6 +2,9 @@
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 
+import FollowButton from '@/components/clubs/FollowButton';
+import PublicAuthorFeed from '@/components/feed/PublicAuthorFeed';
+
 import { resolveCountryName, resolveStateName } from '@/lib/geodata/countryStateCityDataset';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
@@ -81,7 +84,7 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
   const place = locationLabel(profile);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 p-4 md:p-6">
+    <div className="mx-auto max-w-5xl space-y-6 p-4 md:p-6">
       <section className="rounded-2xl border bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
           <div className="h-28 w-28 overflow-hidden rounded-full bg-neutral-100 ring-1 ring-neutral-200 md:h-32 md:w-32">
@@ -95,10 +98,20 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
               />
             ) : null}
           </div>
-          <div className="space-y-1">
-            <h1 className="heading-h1 text-2xl md:text-3xl">{name}</h1>
-            {place ? <p className="text-sm text-neutral-600">{place}</p> : null}
-            {profile.club_motto ? <p className="text-sm italic text-neutral-700">{profile.club_motto}</p> : null}
+          <div className="flex flex-1 flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div className="space-y-1">
+              <h1 className="heading-h1 text-2xl md:text-3xl">{name}</h1>
+              {place ? <p className="text-sm text-neutral-600">{place}</p> : null}
+              {profile.club_motto ? <p className="text-sm italic text-neutral-700">{profile.club_motto}</p> : null}
+            </div>
+            <FollowButton
+              id={profile.id}
+              targetType="club"
+              name={name}
+              labelFollow="Segui"
+              labelFollowing="Seguo"
+              size="md"
+            />
           </div>
         </div>
 
@@ -128,6 +141,14 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
             <p className="mt-1 text-sm leading-relaxed text-neutral-800 whitespace-pre-line">{profile.bio}</p>
           </div>
         ) : null}
+      </section>
+
+      <section className="space-y-3 rounded-2xl border bg-white p-5 shadow-sm">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="heading-h2 text-xl">Bacheca</h2>
+          <span className="text-xs font-semibold text-blue-700">Aggiornamenti del club</span>
+        </div>
+        <PublicAuthorFeed authorId={profile.id} />
       </section>
     </div>
   );

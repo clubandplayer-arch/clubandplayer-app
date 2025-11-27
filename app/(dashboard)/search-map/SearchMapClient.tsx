@@ -406,8 +406,9 @@ export default function SearchMapClient() {
   ]);
 
   const resolvePublicHref = useCallback((p: ProfilePoint) => {
+    const profileId = p.id || p.user_id || '';
     const type = (p.type || p.account_type || '').trim().toLowerCase();
-    return type === 'club' ? `/clubs/${p.id}` : `/athletes/${p.id}`;
+    return type === 'club' ? `/clubs/${profileId}` : `/athletes/${profileId}`;
   }, []);
 
   const renderAvatar = (p: ProfilePoint) => {
