@@ -1,4 +1,4 @@
-import type { JSX, SVGProps } from 'react';
+import type { ReactNode, SVGProps } from 'react';
 
 export type MaterialIconName =
   | 'home'
@@ -18,7 +18,7 @@ export type MaterialIconName =
   | 'photo'
   | 'video';
 
-const paths: Record<MaterialIconName, JSX.Element> = {
+const paths: Record<MaterialIconName, ReactNode> = {
   home: <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />, // material home
   mail: (
     <>
@@ -132,7 +132,12 @@ const paths: Record<MaterialIconName, JSX.Element> = {
   ),
 };
 
-export function MaterialIcon({ name, title, className, ...props }: { name: MaterialIconName } & SVGProps<SVGSVGElement>) {
+type MaterialIconProps = Omit<SVGProps<SVGSVGElement>, 'children'> & {
+  name: MaterialIconName;
+  title?: string;
+};
+
+export function MaterialIcon({ name, title, className, ...props }: MaterialIconProps) {
   return (
     <svg
       viewBox="0 0 24 24"
