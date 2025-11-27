@@ -11,6 +11,7 @@ import TrackRetention from '@/components/analytics/TrackRetention';
 import { useExclusiveVideoPlayback } from '@/hooks/useExclusiveVideoPlayback';
 import { shareOrCopyLink } from '@/lib/share';
 import { PostIconDelete, PostIconEdit, PostIconShare } from '@/components/icons/PostActionIcons';
+import { Lightbox, type LightboxItem } from '@/components/media/Lightbox';
 
 type ReactionType = 'like' | 'love' | 'care' | 'angry';
 
@@ -696,7 +697,7 @@ function PostItem({
   const isOwner = currentUserId != null && post.authorId === currentUserId;
   const editAreaId = `post-edit-${post.id}`;
   const errorId = error ? `post-error-${post.id}` : undefined;
-  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const eventDateLabel = eventDetails?.date ? formatEventDate(eventDetails.date) : null;
   const mediaLabel = isEvent ? 'Evento' : post.media_type === 'video' ? 'Video' : 'Foto';
   const mediaAria = isEvent ? "Apri la locandina dell'evento" : 'Apri il media in grande';
@@ -715,28 +716,11 @@ function PostItem({
     });
   }, [description, eventDetails?.title, isEvent, shareUrl]);
 
-  const closeLightbox = useCallback(() => setLightboxOpen(false), []);
+  const closeLightbox = useCallback(() => setLightboxIndex(null), []);
 
   useEffect(() => {
     if (!editing) setText(description);
   }, [description, editing, post]);
-
-  useEffect(() => {
-    if (!lightboxOpen) return;
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') closeLightbox();
-    };
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    document.addEventListener('keydown', onKeyDown);
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      document.removeEventListener('keydown', onKeyDown);
-    };
-  }, [closeLightbox, lightboxOpen]);
 
   async function saveEdit() {
     const payload = text.trim();
@@ -903,7 +887,7 @@ function PostItem({
         <div className="mt-3 flex w-full justify-center">
           <button
             type="button"
-            onClick={() => setLightboxOpen(true)}
+            onClick={() => setLightboxIndex(0)}
             className="group relative w-full max-w-[520px] cursor-zoom-in overflow-hidden rounded-xl border border-neutral-200 bg-neutral-50 shadow-inner focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)]"
             aria-label={mediaAria}
           >
@@ -1005,42 +989,16 @@ function PostItem({
         </div>
       ) : null}
 
-      {lightboxOpen && post.media_url ? (
-        <div
-          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Media a schermo intero"
-          onClick={closeLightbox}
-        >
-          <button
-            type="button"
-            onClick={closeLightbox}
-            className="absolute right-6 top-6 z-[71] rounded-full bg-white/10 px-3 py-1 text-sm font-semibold text-white shadow-lg ring-1 ring-white/30 transition hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-            aria-label="Chiudi l'anteprima"
-          >
-            Chiudi
-          </button>
-          <div
-            className="relative z-[71] flex max-h-[90vh] max-w-[90vw] items-center justify-center"
-            onClick={(event) => event.stopPropagation()}
-          >
-            {post.media_type === 'video' ? (
-              <FeedVideoPlayer
-                id={`${post.id}-lightbox`}
-                url={post.media_url}
-                showControls
-                className="max-h-[90vh] max-w-[90vw] object-contain bg-black"
-              />
-            ) : (
-              <img
-                src={post.media_url}
-                alt="Allegato"
-                className="max-h-[90vh] max-w-[90vw] object-contain"
-              />
-            )}
-          </div>
-        </div>
+      {lightboxIndex !== null && post.media_url ? (
+        <Lightbox
+          items={[{
+            url: post.media_url,
+            type: post.media_type === 'video' ? 'video' : 'image',
+            alt: isEvent ? eventDetails?.title ?? 'Evento' : 'Media del post',
+          } satisfies LightboxItem]}
+          index={lightboxIndex}
+          onClose={closeLightbox}
+        />
       ) : null}
     </article>
   );
