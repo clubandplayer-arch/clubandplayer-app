@@ -43,10 +43,8 @@ export function Lightbox({ items, index, onClose, onPrev, onNext }: Props) {
 
   if (!item || typeof document === 'undefined') return null;
 
-  const handleOverlayClick = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (event.target === event.currentTarget) {
-      onClose();
-    }
+  const handleOverlayClick = () => {
+    onClose();
   };
 
   return createPortal(
@@ -57,7 +55,7 @@ export function Lightbox({ items, index, onClose, onPrev, onNext }: Props) {
       onClick={handleOverlayClick}
     >
       <div
-        className="relative flex max-h-[90vh] max-w-[90vw] w-full items-center justify-center"
+        className="relative flex max-h-[90vh] max-w-[90vw] items-center justify-center"
         onClick={(event) => event.stopPropagation()}
       >
         <button
