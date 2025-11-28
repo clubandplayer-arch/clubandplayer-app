@@ -94,21 +94,11 @@ export async function GET(req: NextRequest) {
   const supabase = await getSupabaseServerClient();
 
   // determina ruolo dell'utente corrente
-  let currentRole: Role | null = null;
   let currentUserId: string | null = null;
   try {
     const { data, error } = await supabase.auth.getUser();
     if (!error && data?.user) {
       currentUserId = data.user.id;
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('account_type,type')
-        .eq('user_id', data.user.id)
-        .maybeSingle();
-      currentRole =
-        normRole((profile as any)?.account_type) ||
-        normRole((profile as any)?.type) ||
-        normRole(data.user.user_metadata?.role);
     }
   } catch {
     // se qualcosa fallisce, continuiamo senza ruolo
@@ -118,6 +108,33 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: 'not_authenticated' }, { status: 401 });
   }
 
+  const followerIds: string[] = [];
+
+  if (!authorIdFilter && !mine && currentUserId) {
+    const { data: followRows, error: followError } = await supabase
+      .from('follows')
+      .select('target_id')
+      .eq('follower_id', currentUserId)
+      .limit(500);
+
+    if (!followError && Array.isArray(followRows)) {
+      followRows.forEach((row) => {
+        const id = (row as any)?.target_id ? String((row as any).target_id) : null;
+        if (id) followerIds.push(id);
+      });
+    }
+  }
+
+  const allowedAuthors: string[] | null = (() => {
+    if (authorIdFilter) return [authorIdFilter];
+    if (mine && currentUserId) return [currentUserId];
+    if (!authorIdFilter && !mine && currentUserId) {
+      const uniq = Array.from(new Set([currentUserId, ...followerIds].filter(Boolean)));
+      return uniq.length ? uniq : null;
+    }
+    return null;
+  })();
+
   const fetchPosts = async (sel: string) => {
     let query = supabase
       .from('posts')
@@ -125,10 +142,8 @@ export async function GET(req: NextRequest) {
       .order('created_at', { ascending: false })
       .limit(limit);
 
-    if (mine && currentUserId) {
-      query = query.eq('author_id', currentUserId);
-    } else if (authorIdFilter) {
-      query = query.eq('author_id', authorIdFilter);
+    if (allowedAuthors?.length) {
+      query = query.in('author_id', allowedAuthors);
     }
 
     return query;
@@ -185,55 +200,11 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  if (!currentRole) {
-    return NextResponse.json(
-      { ok: true, items: rows },
-      { status: 200 }
-    );
-  }
-
-  const authorIds = Array.from(
-    new Set(rows.map((r) => r.author_id || r.authorId).filter(Boolean))
-  ) as string[];
-
-  let profiles: any[] = [];
-  if (authorIds.length > 0) {
-    const selectCols = 'user_id,id,account_type,type';
-    const { data: profs, error: profErr } = await supabase
-      .from('profiles')
-      .select(selectCols)
-      .in('user_id', authorIds);
-    if (!profErr && Array.isArray(profs)) {
-      profiles = profs;
-    } else {
-      const admin = getSupabaseAdminClientOrNull();
-      if (admin) {
-        const { data: adminProfs } = await admin
-          .from('profiles')
-          .select(selectCols)
-          .in('user_id', authorIds);
-        if (Array.isArray(adminProfs)) profiles = adminProfs;
-      }
-    }
-  }
-
-  const map = new Map<string, Role>();
-  for (const p of profiles) {
-    const key = (p?.user_id ?? p?.id ?? '').toString();
-    const role = normRole(p?.account_type) || normRole(p?.type);
-    if (key && role) map.set(key, role);
-  }
-
-  const filtered = rows.filter((r) => {
-    const role = map.get((r.author_id || r.authorId || '').toString());
-    return role ? role === currentRole : false;
-  });
-
   return NextResponse.json(
     {
       ok: true,
-      items: filtered,
-      ...(debug ? { _debug: { count: filtered.length, role: currentRole, userId: currentUserId } } : {}),
+      items: rows,
+      ...(debug ? { _debug: { count: rows.length, userId: currentUserId, allowedAuthors } } : {}),
     },
     { status: 200 }
   );

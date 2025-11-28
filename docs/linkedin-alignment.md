@@ -121,7 +121,7 @@ Ogni step può essere sviluppato in PR dedicate per evitare regressioni e manten
 - [x] 2.3 Condivisione (share)
 - [x] 2.4 Media e lightbox
 - [x] 2.5 Colonna destra: “Chi seguire” / “Club/Player che segui” / “In evidenza”
-- [ ] 2.6 Ordinamento feed
+ - [x] 2.6 Ordinamento feed
 
 ### Job 3 — Network (pagina dedicata)
 - [ ] 3.1 Route /network
