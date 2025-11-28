@@ -109,9 +109,9 @@ Ogni step può essere sviluppato in PR dedicate per evitare regressioni e manten
 
 ### Job 1 — Profili (Player & Club) + routing ricerca → profili
 - [x] 1.1 Player: header completo stile profilo LinkedIn
-- [ ] 1.2 Player: sezioni Esperienze / Statistiche / Media / Open to opportunities
+- [x] 1.2 Player: sezioni Esperienze / Statistiche / Media / Open to opportunities
 - [x] 1.3 Club: header e sezioni About / Dati club
-- [ ] 1.4 Club: widget "Opportunità aperte"
+- [x] 1.4 Club: widget "Opportunità aperte"
 - [x] 1.5 Routing da /search-map → profili
 - [ ] 1.6 QA finale Job 1
 

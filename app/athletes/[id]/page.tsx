@@ -5,6 +5,12 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
 import AthleteProfileHeader from '@/components/athletes/AthleteProfileHeader';
+import AthleteExperiencesSection from '@/components/athletes/AthleteExperiencesSection';
+import AthleteMediaHighlightsSection, {
+  type AthleteMediaItem,
+} from '@/components/athletes/AthleteMediaHighlightsSection';
+import AthleteOpenToOpportunitiesPanel from '@/components/athletes/AthleteOpenToOpportunitiesPanel';
+import AthleteStatsSection from '@/components/athletes/AthleteStatsSection';
 import PublicAuthorFeed from '@/components/feed/PublicAuthorFeed';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
@@ -24,6 +30,12 @@ type AthleteProfileRow = {
   avatar_url: string | null;
   account_type: string | null;
   status: string | null;
+  matches_played: number | null;
+  goals_scored: number | null;
+  assists: number | null;
+  open_to_opportunities: boolean | null;
+  preferred_roles: string | null;
+  preferred_locations: string | null;
 };
 
 type GenericStringError = { message: string };
@@ -46,6 +58,18 @@ type ApplicationRow = {
   };
 };
 
+type AthleteExperienceRow = {
+  id: string;
+  club_name: string | null;
+  sport: string | null;
+  role: string | null;
+  category: string | null;
+  start_year: number | null;
+  end_year: number | null;
+  is_current: boolean | null;
+  description: string | null;
+};
+
 export default function AthletePublicProfilePage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -54,6 +78,8 @@ export default function AthletePublicProfilePage() {
   const [meId, setMeId] = useState<string | null>(null);
   const [profile, setProfile] = useState<AthleteProfileRow | null>(null);
   const [apps, setApps] = useState<ApplicationRow[]>([]);
+  const [experiences, setExperiences] = useState<AthleteExperienceRow[]>([]);
+  const [media, setMedia] = useState<AthleteMediaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState<string>('');
 
@@ -91,6 +117,12 @@ export default function AthletePublicProfilePage() {
             'avatar_url',
             'account_type',
             'status',
+            'matches_played',
+            'goals_scored',
+            'assists',
+            'open_to_opportunities',
+            'preferred_roles',
+            'preferred_locations',
           ].join(','),
         )
         .eq('id', athleteId)
@@ -125,6 +157,43 @@ export default function AthletePublicProfilePage() {
       };
 
       setProfile(normalizedProfile);
+
+      const [expRes, mediaRes] = await Promise.all([
+        supabase
+          .from('athlete_experiences')
+          .select(
+            [
+              'id',
+              'club_name',
+              'sport',
+              'role',
+              'category',
+              'start_year',
+              'end_year',
+              'is_current',
+              'description',
+            ].join(','),
+          )
+          .eq('profile_id', normalizedProfile.id)
+          .order('is_current', { ascending: false })
+          .order('start_year', { ascending: false })
+          .order('end_year', { ascending: false }),
+        supabase
+          .from('posts')
+          .select('id, media_url, media_type, created_at')
+          .not('media_url', 'is', null)
+          .in(
+            'author_id',
+            normalizedProfile.user_id && normalizedProfile.user_id !== normalizedProfile.id
+              ? [normalizedProfile.id, normalizedProfile.user_id]
+              : [normalizedProfile.id],
+          )
+          .order('created_at', { ascending: false })
+          .limit(6),
+      ]);
+
+      setExperiences((expRes.data as AthleteExperienceRow[]) ?? []);
+      setMedia((mediaRes.data as AthleteMediaItem[])?.slice(0, 3) ?? []);
 
       if (currentUserId && (currentUserId === normalizedProfile.user_id || currentUserId === normalizedProfile.id)) {
         const { data: appsData } = await supabase
@@ -181,6 +250,22 @@ export default function AthletePublicProfilePage() {
       {!loading && !msg && profile && (
         <>
           <AthleteProfileHeader profile={profile} isMe={isMe} />
+
+          <AthleteOpenToOpportunitiesPanel
+            openTo={profile.open_to_opportunities}
+            preferredLocations={profile.preferred_locations}
+            preferredRoles={profile.preferred_roles}
+          />
+
+          <AthleteExperiencesSection experiences={experiences} />
+
+          <AthleteStatsSection
+            matches={profile.matches_played}
+            goals={profile.goals_scored}
+            assists={profile.assists}
+          />
+
+          <AthleteMediaHighlightsSection items={media} />
 
           <section className="rounded-2xl border bg-white p-5 shadow-sm">
             <h2 className="heading-h2 text-xl">Bio</h2>

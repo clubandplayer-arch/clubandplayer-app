@@ -2,6 +2,7 @@
 import { notFound } from 'next/navigation';
 
 import ClubProfileHeader from '@/components/clubs/ClubProfileHeader';
+import ClubOpenOpportunitiesWidget from '@/components/clubs/ClubOpenOpportunitiesWidget';
 import PublicAuthorFeed from '@/components/feed/PublicAuthorFeed';
 
 import { resolveCountryName, resolveStateName } from '@/lib/geodata/countryStateCityDataset';
@@ -37,6 +38,16 @@ type ClubProfileState = ClubProfileRow | GenericStringError | null;
 function isClubProfileRow(row: ClubProfileState): row is ClubProfileRow {
   return !!row && typeof row === 'object' && 'account_type' in row;
 }
+
+type ClubOpportunityRow = {
+  id: string;
+  title: string | null;
+  city: string | null;
+  province: string | null;
+  region: string | null;
+  country: string | null;
+  created_at: string | null;
+};
 
 async function loadClubProfile(id: string): Promise<ClubProfileRow | null> {
   const supabase = await getSupabaseServerClient();
@@ -85,6 +96,46 @@ async function loadClubProfile(id: string): Promise<ClubProfileRow | null> {
   };
 }
 
+async function loadClubOpportunities(id: string): Promise<ClubOpportunityRow[]> {
+  const supabase = await getSupabaseServerClient();
+
+  const ownerCandidates = [id];
+
+  const { data: profileRow } = await supabase
+    .from('profiles')
+    .select('user_id')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (profileRow?.user_id && !ownerCandidates.includes(profileRow.user_id)) {
+    ownerCandidates.push(profileRow.user_id);
+  }
+
+  const { data } = await supabase
+    .from('opportunities')
+    .select('id, title, city, province, region, country, created_at, status, owner_id, club_id')
+    .in('owner_id', ownerCandidates)
+    .order('created_at', { ascending: false })
+    .limit(5);
+
+  const filtered = (data ?? []).filter((opp) => {
+    const status = (opp as any).status ?? 'open';
+    const clubId = (opp as any).club_id ?? null;
+    const ownerId = (opp as any).owner_id ?? null;
+    return status === 'open' && (!clubId || ownerCandidates.includes(clubId) || clubId === id) && ownerCandidates.includes(ownerId);
+  });
+
+  return filtered.map((opp) => ({
+    id: opp.id,
+    title: opp.title ?? null,
+    city: (opp as any).city ?? null,
+    province: (opp as any).province ?? null,
+    region: (opp as any).region ?? null,
+    country: (opp as any).country ?? null,
+    created_at: (opp as any).created_at ?? null,
+  }));
+}
+
 function locationLabel(row: ClubProfileRow): string {
   const state = resolveStateName(row.country || null, row.region || row.province || '');
   return [row.city, row.province, state, resolveCountryName(row.country || undefined)]
@@ -97,6 +148,7 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
   if (!profile) return notFound();
 
   const aboutText = profile.bio || 'Nessuna descrizione disponibile.';
+  const opportunities = await loadClubOpportunities(profile.id);
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-4 md:p-6">
@@ -135,6 +187,8 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
           </dl>
         </div>
       </section>
+
+      <ClubOpenOpportunitiesWidget items={opportunities} />
 
       <section className="space-y-3 rounded-2xl border bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between gap-3">

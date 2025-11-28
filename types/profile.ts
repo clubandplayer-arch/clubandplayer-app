@@ -19,6 +19,12 @@ export type Profile = {
   city?: string | null;
   sport?: string | null;
   role?: string | null;
+  matches_played?: number | null;
+  goals_scored?: number | null;
+  assists?: number | null;
+  open_to_opportunities?: boolean | null;
+  preferred_roles?: string | null;
+  preferred_locations?: string | null;
   links?: ProfileLinks;
   avatar_url?: string | null;
   club_motto?: string | null;
