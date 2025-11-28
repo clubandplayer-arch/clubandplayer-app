@@ -137,5 +137,5 @@ Ogni step può essere sviluppato in PR dedicate per evitare regressioni e manten
 ### Job 5 — Messaggi & notifiche (schema base)
 - [x] 5.1 Schema conversations/messages
 - [x] 5.2 UI base Messaging
-- [ ] 5.3 Notifiche
-- [ ] 5.4 Trigger eventi principali
+- [x] 5.3 Notifiche
+- [x] 5.4 Trigger eventi principali
