@@ -85,7 +85,11 @@ export async function POST(req: NextRequest) {
     .maybeSingle();
 
   if (error || !data) {
+    const code = (error as any)?.code as string | undefined;
     console.error('post_comments insert error', error);
+    if (code === '42501' || code === '42P01') {
+      return NextResponse.json({ ok: false, error: 'comments_not_ready' }, { status: 200 });
+    }
     return NextResponse.json({ ok: false, error: 'db_error' }, { status: 200 });
   }
 

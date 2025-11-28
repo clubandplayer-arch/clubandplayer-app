@@ -115,6 +115,8 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
       const msg = String(e?.message || 'Errore');
       if (msg.includes('not_authenticated')) {
         setError('Accedi per inserire un commento.');
+      } else if (msg === 'comments_not_ready') {
+        setError('Commenti non configurati, contatta l’amministratore.');
       } else if (msg === 'db_error') {
         setError('Impossibile pubblicare il commento, riprova.');
       } else {
