@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import useIsClub from '@/hooks/useIsClub';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
+import { ToastProvider } from '@/components/common/ToastProvider';
 import { NavCloseIcon, NavMenuIcon } from '@/components/icons/NavToggleIcons';
 import { MaterialIcon, type MaterialIconName } from '@/components/icons/MaterialIcon';
 
@@ -112,7 +113,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [supabase]);
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <ToastProvider>
+      <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-40 border-b bg-white/80 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4">
           <Link
@@ -241,5 +243,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       <main className="flex-1">{children}</main>
     </div>
+    </ToastProvider>
   );
 }
