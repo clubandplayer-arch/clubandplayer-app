@@ -129,8 +129,8 @@ Ogni step può essere sviluppato in PR dedicate per evitare regressioni e manten
 - [x] 3.3 Pulsanti Segui/Seguo coerenti
 
 ### Job 4 — Opportunità (lista, dettaglio, widget nei profili)
-- [ ] 4.1 Pagina lista `/opportunities`
-- [ ] 4.2 Scheda dettaglio opportunità
+- [x] 4.1 Pagina lista `/opportunities`
+- [x] 4.2 Scheda dettaglio opportunità
 - [ ] 4.3 Collegamento con profili Club
 - [ ] 4.4 Collegamento con colonna destra “In evidenza”
 

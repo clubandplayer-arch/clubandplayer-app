@@ -1,131 +1,173 @@
-'use client';
+import Link from 'next/link';
+import Image from 'next/image';
 
-import { useEffect, useState } from 'react';
-import ApplyCTA from '@/components/opportunities/ApplyCTA';
-import type { Opportunity } from '@/types/opportunity';
+import OpportunityActions from '@/components/opportunities/OpportunityActions';
+import FollowButton from '@/components/common/FollowButton';
+import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { opportunityGenderLabel } from '@/lib/opps/gender';
 
-// NEW: analytics
-import TrackOpportunityOpen from '@/components/analytics/TrackOpportunityOpen';
+function formatDateHuman(date: string | null | undefined) {
+  if (!date) return '—';
+  const d = new Date(date);
+  if (Number.isNaN(d.valueOf())) return '—';
+  return d.toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric' });
+}
 
-type Role = 'athlete' | 'club' | 'guest';
+function formatAge(min?: number | null, max?: number | null) {
+  if (min == null && max == null) return '—';
+  if (min != null && max != null) return `${min}-${max}`;
+  if (min != null) return `${min}+`;
+  if (max != null) return `≤${max}`;
+  return '—';
+}
 
-export default function OpportunityDetailPage({ params }: { params: { id: string } }) {
-  const id = params.id;
+export default async function OpportunityDetailPage({ params }: { params: { id: string } }) {
+  const supabase = await getSupabaseServerClient();
+  const { data: authUser } = await supabase.auth.getUser();
 
-  const [opp, setOpp] = useState<Opportunity | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState<string | null>(null);
+  const { data: opp, error } = await supabase
+    .from('opportunities')
+    .select(
+      'id,title,description,sport,role,country,region,province,city,created_at,status,owner_id,created_by,club_name,required_category,age_min,age_max,gender',
+    )
+    .eq('id', params.id)
+    .maybeSingle();
 
-  const [meId, setMeId] = useState<string | null>(null);
-  const [role, setRole] = useState<Role>('guest');
-  const [alreadyApplied, setAlreadyApplied] = useState(false);
+  if (error || !opp) {
+    return (
+      <div className="p-6">
+        <Link href="/opportunities" className="text-blue-700 hover:underline">
+          ← Torna alle opportunità
+        </Link>
+        <div className="mt-4 rounded-2xl border bg-red-50 p-4 text-red-700">
+          Opportunità non trovata.
+        </div>
+      </div>
+    );
+  }
 
-  // Chi sono?
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const r = await fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' });
-        const j = await r.json().catch(() => ({}));
-        if (cancelled) return;
-        setMeId(j?.user?.id ?? null);
-        const raw = (j?.role ?? '').toString().toLowerCase();
-        setRole(raw === 'athlete' || raw === 'club' ? (raw as Role) : 'guest');
-      } catch {
-        if (!cancelled) setRole('guest');
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
+  const ownerId = (opp as any).owner_id ?? (opp as any).created_by ?? null;
 
-  // Dati opportunità
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true); setErr(null);
-    (async () => {
-      try {
-        const r = await fetch(`/api/opportunities/${id}`, { credentials: 'include', cache: 'no-store' });
-        const t = await r.text();
-        if (!r.ok) {
-          try { const j = JSON.parse(t); throw new Error(j.error || `HTTP ${r.status}`); }
-          catch { throw new Error(t || `HTTP ${r.status}`); }
-        }
-        const j = JSON.parse(t);
-        if (!cancelled) {
-          const raw = j?.data ?? j;
-          const ownerId = raw?.owner_id ?? raw?.created_by ?? null;
-          setOpp(raw ? { ...raw, owner_id: ownerId, created_by: ownerId } : null);
-        }
-      } catch (e: any) {
-        if (!cancelled) setErr(e.message || 'Errore caricamento');
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [id]);
+  const { data: clubProfile } = ownerId
+    ? await supabase
+        .from('profiles')
+        .select('id,user_id,display_name,full_name,avatar_url,city,country,profile_type,account_type')
+        .or(`id.eq.${ownerId},user_id.eq.${ownerId}`)
+        .maybeSingle()
+    : { data: null };
 
-  // Ho già candidato?
-  useEffect(() => {
-    if (role !== 'athlete') return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const r = await fetch('/api/applications/mine', { credentials: 'include', cache: 'no-store' });
-        const j = await r.json().catch(() => ({}));
-        if (!cancelled) {
-          const has = !!(j?.data ?? []).find((a: any) => a?.opportunity_id === id);
-          setAlreadyApplied(has);
-        }
-      } catch {
-        /* noop */
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [role, id]);
-
-  if (loading) return <div className="p-6">Caricamento…</div>;
-  if (err || !opp) return <div className="p-6 text-red-600">Errore: {err || 'Dati non trovati'}</div>;
+  const clubName =
+    opp.club_name ??
+    clubProfile?.display_name ??
+    clubProfile?.full_name ??
+    undefined;
 
   const place = [opp.city, opp.province, opp.region, opp.country].filter(Boolean).join(', ');
   const genderLabel = opportunityGenderLabel((opp as any).gender) ?? undefined;
-  const ageLabel =
-    opp.age_min != null && opp.age_max != null ? `${opp.age_min}-${opp.age_max}` :
-    opp.age_min != null ? `${opp.age_min}+` :
-    opp.age_max != null ? `≤${opp.age_max}` : undefined;
-
-  const ownerId = opp.owner_id ?? opp.created_by ?? null;
-  const isOwner = !!meId && !!ownerId && ownerId === meId;
-  const showCTA = role === 'athlete' && !isOwner;
+  const ageLabel = formatAge((opp as any).age_min, (opp as any).age_max);
+  const published = formatDateHuman((opp as any).created_at);
+  const isOwner = !!authUser?.user && !!ownerId && authUser.user.id === ownerId;
 
   return (
     <div className="p-4 md:p-6 space-y-4">
-      {/* NEW: traccia apertura dettaglio */}
-      <TrackOpportunityOpen id={id} />
+      <Link href="/opportunities" className="text-sm text-blue-700 hover:underline">
+        ← Torna alla lista
+      </Link>
 
-      <header className="flex items-start justify-between gap-3">
-        <h1 className="text-2xl md:text-3xl font-semibold">{opp.title}</h1>
-        {showCTA && (
-          <ApplyCTA
-            oppId={opp.id}
-            initialApplied={alreadyApplied}
-            onApplied={() => {
-              setAlreadyApplied(true);
-            }}
-          />
-        )}
-      </header>
+      <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+        <section className="space-y-4">
+          <header className="rounded-2xl border bg-white/80 p-4 shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-wide text-gray-500">
+                  {opp.status && <span className="rounded-full border px-2 py-1">{opp.status}</span>}
+                  <span>Pubblicata il {published}</span>
+                </div>
+                <h1 className="text-2xl md:text-3xl font-semibold leading-tight">{opp.title}</h1>
+                <div className="flex flex-wrap items-center gap-2 text-sm text-gray-700">
+                  {opp.sport && <span className="rounded-full bg-gray-100 px-3 py-1">{opp.sport}</span>}
+                  {opp.role && <span className="rounded-full bg-gray-100 px-3 py-1">{opp.role}</span>}
+                  <span className="rounded-full bg-gray-100 px-3 py-1">Età: {ageLabel}</span>
+                  {genderLabel && <span className="rounded-full bg-gray-100 px-3 py-1">{genderLabel}</span>}
+                  {place && <span className="rounded-full bg-gray-100 px-3 py-1">📍 {place}</span>}
+                </div>
+              </div>
 
-      <div className="text-sm text-gray-600 flex flex-wrap gap-x-3 gap-y-1">
-        {opp.sport && <span>{opp.sport}</span>}
-        {opp.role && <span>{opp.role}</span>}
-        {genderLabel && <span>{genderLabel}</span>}
-        {ageLabel && <span>Età: {ageLabel}</span>}
-        {place && <span>📍 {place}</span>}
+              <OpportunityActions opportunityId={opp.id} ownerId={ownerId} showApply={!isOwner} />
+            </div>
+          </header>
+
+          <section className="rounded-2xl border bg-white/80 p-4 shadow-sm space-y-3">
+            <h2 className="text-lg font-semibold">Descrizione</h2>
+            <p className="whitespace-pre-wrap text-gray-800">{opp.description || 'Nessuna descrizione fornita.'}</p>
+          </section>
+
+          <section className="rounded-2xl border bg-white/80 p-4 shadow-sm space-y-3">
+            <h3 className="text-lg font-semibold">Requisiti e preferenze</h3>
+            <ul className="list-disc space-y-1 pl-5 text-sm text-gray-800">
+              <li>Sport e ruolo richiesti: {opp.sport || '—'} • {opp.role || '—'}</li>
+              <li>Età target: {ageLabel}</li>
+              <li>{place ? `Località: ${place}` : 'Località non specificata'}</li>
+              <li>
+                Categoria richiesta: {(opp as any).required_category ?? '—'}{genderLabel ? ` • ${genderLabel}` : ''}
+              </li>
+            </ul>
+          </section>
+        </section>
+
+        <aside className="space-y-4">
+          <div className="rounded-2xl border bg-white/80 p-4 shadow-sm space-y-3">
+            <h3 className="text-lg font-semibold">Club</h3>
+            <div className="flex items-center gap-3">
+              {clubProfile?.avatar_url ? (
+                <Image
+                  src={clubProfile.avatar_url}
+                  alt={clubName ?? 'Club'}
+                  width={56}
+                  height={56}
+                  className="h-14 w-14 rounded-full border object-cover"
+                />
+              ) : (
+                <div className="flex h-14 w-14 items-center justify-center rounded-full border bg-gray-100 text-lg font-semibold">
+                  {(clubName || 'C')[0]}
+                </div>
+              )}
+              <div className="min-w-0">
+                <Link href={ownerId ? `/clubs/${ownerId}` : '#'} className="font-semibold hover:underline">
+                  {clubName ?? 'Club'}
+                </Link>
+                <p className="text-sm text-gray-600">{clubProfile?.city || clubProfile?.country || 'Località n/d'}</p>
+              </div>
+            </div>
+
+            {ownerId && (
+              <FollowButton
+                targetId={ownerId}
+                targetType="club"
+                targetName={clubName || undefined}
+                size="md"
+                className="w-full justify-center"
+              />
+            )}
+
+            {ownerId && (
+              <Link
+                href={`/clubs/${ownerId}`}
+                className="block rounded-xl border px-4 py-2 text-center text-sm font-semibold text-blue-700 hover:bg-blue-50"
+              >
+                Visita profilo
+              </Link>
+            )}
+          </div>
+
+          <div className="rounded-2xl border bg-white/80 p-4 shadow-sm text-sm text-gray-700 space-y-2">
+            <h4 className="text-base font-semibold">Dettagli annuncio</h4>
+            <p><span className="font-medium">Stato:</span> {opp.status ?? '—'}</p>
+            <p><span className="font-medium">Pubblicata:</span> {published}</p>
+            <p><span className="font-medium">ID:</span> {opp.id}</p>
+          </div>
+        </aside>
       </div>
-
-      {opp.description && <p className="text-gray-800">{opp.description}</p>}
     </div>
   );
 }
