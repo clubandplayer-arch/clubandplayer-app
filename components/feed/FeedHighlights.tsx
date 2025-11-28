@@ -49,8 +49,9 @@ export default function FeedHighlights() {
 
   const emptyCopy =
     role === 'club'
-      ? 'Non hai ancora creato opportunità. Crea la tua prima opportunità per vederla qui.'
-      : 'Non ci sono ancora opportunità in evidenza nella tua zona.';
+      ? 'Non hai ancora creato opportunità.'
+      : 'Non ci sono opportunità in evidenza nella tua zona.';
+  const subtitle = role === 'club' ? 'Le tue ultime opportunità' : 'Opportunità vicino a te';
 
   if (loading) {
     return (
@@ -68,6 +69,7 @@ export default function FeedHighlights() {
   return (
     <div className="space-y-3">
       <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">In evidenza</div>
+      <div className="text-xs text-zinc-500">{subtitle}</div>
       {error ? (
         <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
       ) : items.length > 0 ? (

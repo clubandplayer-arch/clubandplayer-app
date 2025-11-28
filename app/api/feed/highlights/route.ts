@@ -21,7 +21,7 @@ export async function GET() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, account_type, status, country, city')
+    .select('id, account_type, status, country, city, interest_country, interest_city')
     .eq('user_id', userId)
     .maybeSingle();
 
@@ -31,8 +31,8 @@ export async function GET() {
       : 'guest') || 'guest';
 
   const profileId = profile?.id ?? null;
-  const country = (profile?.country || '').trim();
-  const city = (profile?.city || '').trim();
+  const country = (profile?.interest_country || profile?.country || '').trim();
+  const city = (profile?.interest_city || profile?.city || '').trim();
 
   const baseSelect =
     'id,title,description,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name,gender,owner_id,created_by,status';

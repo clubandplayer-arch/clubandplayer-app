@@ -24,14 +24,15 @@ export async function GET() {
       ? profile.account_type
       : 'guest') || 'guest';
 
-  const targetType = role === 'club' ? 'athlete' : 'club';
+  const targetProfileType = role === 'club' ? 'athlete' : 'club';
+  const followTargetTypes = targetProfileType === 'athlete' ? ['player', 'athlete'] : ['club'];
 
   const { data: follows, error: followsError } = await supabase
     .from('follows')
-    .select('target_id')
+    .select('target_id, target_type')
     .eq('follower_id', userId)
-    .eq('target_type', targetType)
-    .limit(20);
+    .in('target_type', followTargetTypes)
+    .limit(50);
 
   if (followsError) {
     return NextResponse.json({ items: [], role, profileId: profile?.id ?? null, error: followsError.message });
@@ -50,7 +51,8 @@ export async function GET() {
     .from('profiles')
     .select('id, display_name, full_name, city, sport, avatar_url, account_type, status')
     .in('id', ids)
-    .eq('status', 'active');
+    .eq('status', 'active')
+    .eq('account_type', targetProfileType);
 
   if (profilesError) {
     return NextResponse.json({ items: [], role, profileId: profile?.id ?? null, error: profilesError.message });
@@ -62,7 +64,7 @@ export async function GET() {
     city: p.city || null,
     sport: p.sport || null,
     avatarUrl: p.avatar_url || null,
-    accountType: p.account_type || targetType,
+    accountType: p.account_type || targetProfileType,
   }));
 
   return NextResponse.json({ items, role, profileId: profile?.id ?? null });

@@ -1,7 +1,9 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentProfileContext';
 
 type Role = 'club' | 'athlete' | 'guest';
 
@@ -18,7 +20,17 @@ function targetHref(item: FollowedItem) {
   return item.accountType === 'club' ? `/clubs/${item.id}` : `/athletes/${item.id}`;
 }
 
+function subtitle(item: FollowedItem, viewerRole: ProfileRole) {
+  const location = item.city || '';
+  const sport = item.sport || '';
+  if (viewerRole === 'club') {
+    return [sport, location].filter(Boolean).join(' · ');
+  }
+  return [location, sport].filter(Boolean).join(' · ');
+}
+
 export default function FollowedClubs() {
+  const { role: contextRole } = useCurrentProfileContext();
   const [role, setRole] = useState<Role>('guest');
   const [items, setItems] = useState<FollowedItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,7 +44,7 @@ export default function FollowedClubs() {
         const res = await fetch('/api/follows/list', { credentials: 'include', cache: 'no-store' });
         const data = await res.json().catch(() => ({}));
         const nextRole: Role =
-          data?.role === 'club' || data?.role === 'athlete' ? data.role : 'guest';
+          data?.role === 'club' || data?.role === 'athlete' ? data.role : contextRole;
         const rows: FollowedItem[] = Array.isArray(data?.items)
           ? (data.items as FollowedItem[])
           : [];
@@ -44,9 +56,13 @@ export default function FollowedClubs() {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [contextRole]);
 
   const heading = role === 'club' ? 'Player che segui' : 'Club che segui';
+  const emptyCopy =
+    role === 'club'
+      ? 'Inizia a seguire player per vederli qui.'
+      : 'Inizia a seguire club per vederli qui.';
 
   if (loading) {
     return (
@@ -85,26 +101,22 @@ export default function FollowedClubs() {
                 className="h-9 w-9 rounded-full object-cover ring-1 ring-zinc-200 dark:ring-zinc-800"
               />
               <div className="min-w-0 flex-1">
-                <a
-                  href={targetHref(item)}
-                  className="truncate text-sm font-semibold text-zinc-900 hover:text-zinc-700 dark:text-zinc-100 dark:hover:text-zinc-300"
-                >
+                <div className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                   {item.name}
-                </a>
-                <div className="truncate text-xs text-zinc-500">
-                  {item.city || ''}
-                  {item.sport ? `${item.city ? ' · ' : ''}${item.sport}` : ''}
                 </div>
+                <div className="truncate text-xs text-zinc-500">{subtitle(item, role)}</div>
+                <Link
+                  href={targetHref(item)}
+                  className="mt-1 inline-flex text-xs font-semibold text-blue-600 underline-offset-2 hover:underline"
+                >
+                  Visita profilo
+                </Link>
               </div>
             </li>
           ))}
         </ul>
       ) : (
-        <div className="rounded-lg border border-dashed p-4 text-sm text-zinc-600 dark:border-zinc-800">
-          {role === 'club'
-            ? 'Inizia a seguire player per vederli qui.'
-            : 'Inizia a seguire club per vederli qui.'}
-        </div>
+        <div className="rounded-lg border border-dashed p-4 text-sm text-zinc-600 dark:border-zinc-800">{emptyCopy}</div>
       )}
     </div>
   );
