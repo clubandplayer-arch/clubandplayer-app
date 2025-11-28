@@ -55,8 +55,8 @@ export default function OpportunitiesTable({
   return (
     <div className="space-y-4">
       {items.map((o) => {
-        const ownerId = o.created_by ?? o.owner_id ?? null;
-        const canEdit = !!currentUserId && ownerId === currentUserId;
+        const ownerId = (o as any).club_id ?? o.created_by ?? o.owner_id ?? null;
+        const canEdit = !!currentUserId && (ownerId === currentUserId || o.created_by === currentUserId || o.owner_id === currentUserId);
         const place = [o.city, o.province, o.region, o.country].filter(Boolean).join(', ');
         const showApply = userRole === 'athlete' && !canEdit;
         const showFollow = userRole === 'athlete' && !!ownerId;

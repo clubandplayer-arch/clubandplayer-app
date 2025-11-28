@@ -12,6 +12,12 @@ type HighlightItem = Opportunity & {
   club_name?: string | null;
 };
 
+type HighlightsResponse = {
+  items: HighlightItem[];
+  role: Role;
+  viewAllHref?: string;
+};
+
 function formatDate(raw?: string | null) {
   if (!raw) return '';
   const date = new Date(raw);
@@ -22,6 +28,7 @@ function formatDate(raw?: string | null) {
 export default function FeedHighlights() {
   const [role, setRole] = useState<Role>('guest');
   const [items, setItems] = useState<HighlightItem[]>([]);
+  const [viewAllHref, setViewAllHref] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,7 +38,7 @@ export default function FeedHighlights() {
       setError(null);
       try {
         const res = await fetch('/api/feed/highlights', { credentials: 'include', cache: 'no-store' });
-        const data = await res.json().catch(() => ({}));
+        const data: Partial<HighlightsResponse> = await res.json().catch(() => ({} as HighlightsResponse));
         const nextRole: Role =
           data?.role === 'club' || data?.role === 'athlete' ? data.role : 'guest';
         const rows: HighlightItem[] = Array.isArray(data?.items)
@@ -39,6 +46,7 @@ export default function FeedHighlights() {
           : [];
         setRole(nextRole);
         setItems(rows);
+        setViewAllHref(data?.viewAllHref || null);
       } catch (err: any) {
         setError(err?.message || 'Errore nel recupero delle opportunità');
       } finally {
@@ -94,6 +102,17 @@ export default function FeedHighlights() {
         </ul>
       ) : (
         <div className="rounded-lg border border-dashed p-4 text-sm text-zinc-600 dark:border-zinc-800">{emptyCopy}</div>
+      )}
+
+      {(items.length > 0 || viewAllHref) && (
+        <div className="pt-1 text-right">
+          <Link
+            href={viewAllHref || '/opportunities'}
+            className="text-xs font-semibold text-blue-700 underline-offset-4 hover:underline"
+          >
+            {role === 'club' ? 'Gestisci / vedi tutte le opportunità' : 'Vedi tutte le opportunità'}
+          </Link>
+        </div>
       )}
     </div>
   );

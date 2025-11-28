@@ -45,6 +45,7 @@ export default function OpportunitiesClient() {
     for (const k of [
       'q', 'page', 'pageSize', 'sort',
       'country', 'region', 'province', 'city', 'club',
+      'clubId', 'club_id',
       'sport', 'role', 'age',
       'owner', 'owner_id', 'created_by',
     ]) {
@@ -114,6 +115,7 @@ export default function OpportunitiesClient() {
   }, [meId, role]);
 
   const isClub = role === 'club' || profileType.startsWith('club');
+  const activeClubFilter = sp.get('clubId') ?? sp.get('club_id');
 
   // 3) Apertura robusta della modale da ?new=1 e pulizia URL
   useEffect(() => {
@@ -205,11 +207,23 @@ export default function OpportunitiesClient() {
     });
   }, [data]);
 
+  const activeClubName = useMemo(() => {
+    if (!activeClubFilter) return null;
+    if (clubNames[activeClubFilter]) return clubNames[activeClubFilter];
+    const found = items.find(
+      (o) =>
+        (o as any)?.club_id === activeClubFilter ||
+        o.created_by === activeClubFilter ||
+        (o as any)?.owner_id === activeClubFilter,
+    );
+    return (found as any)?.club_name || (found as any)?.clubName || null;
+  }, [activeClubFilter, clubNames, items]);
+
   useEffect(() => {
     const ids = Array.from(
       new Set(
         items
-          .map((o) => o.created_by || (o as any)?.owner_id)
+          .flatMap((o) => [o.created_by, (o as any)?.owner_id, (o as any)?.club_id])
           .filter((id): id is string => Boolean(id)),
       ),
     );
@@ -385,6 +399,27 @@ export default function OpportunitiesClient() {
             </select>
           </div>
         </div>
+
+        {activeClubFilter && (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-dashed bg-blue-50 px-3 py-2 text-sm text-blue-900">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-white px-2 py-1 text-xs font-semibold text-blue-800">Filtro club</span>
+              <span>
+                Filtrate per: <strong>{activeClubName || activeClubFilter}</strong>
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setParam('clubId', '');
+                setParam('club_id', '');
+              }}
+              className="text-xs font-semibold text-blue-700 underline-offset-4 hover:underline"
+            >
+              Rimuovi filtro
+            </button>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm text-gray-700">
           <div className="rounded-xl border bg-gray-50 p-3">

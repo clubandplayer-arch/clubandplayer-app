@@ -47,6 +47,8 @@ type ClubOpportunityRow = {
   region: string | null;
   country: string | null;
   created_at: string | null;
+  status?: string | null;
+  club_id?: string | null;
 };
 
 async function loadClubProfile(id: string): Promise<ClubProfileRow | null> {
@@ -99,30 +101,16 @@ async function loadClubProfile(id: string): Promise<ClubProfileRow | null> {
 async function loadClubOpportunities(id: string): Promise<ClubOpportunityRow[]> {
   const supabase = await getSupabaseServerClient();
 
-  const ownerCandidates = [id];
-
-  const { data: profileRow } = await supabase
-    .from('profiles')
-    .select('user_id')
-    .eq('id', id)
-    .maybeSingle();
-
-  if (profileRow?.user_id && !ownerCandidates.includes(profileRow.user_id)) {
-    ownerCandidates.push(profileRow.user_id);
-  }
-
   const { data } = await supabase
     .from('opportunities')
     .select('id, title, city, province, region, country, created_at, status, owner_id, club_id')
-    .in('owner_id', ownerCandidates)
+    .or(`club_id.eq.${id},owner_id.eq.${id},created_by.eq.${id}`)
     .order('created_at', { ascending: false })
     .limit(5);
 
   const filtered = (data ?? []).filter((opp) => {
     const status = (opp as any).status ?? 'open';
-    const clubId = (opp as any).club_id ?? null;
-    const ownerId = (opp as any).owner_id ?? null;
-    return status === 'open' && (!clubId || ownerCandidates.includes(clubId) || clubId === id) && ownerCandidates.includes(ownerId);
+    return status === 'open' || status === null;
   });
 
   return filtered.map((opp) => ({
@@ -133,6 +121,8 @@ async function loadClubOpportunities(id: string): Promise<ClubOpportunityRow[]> 
     region: (opp as any).region ?? null,
     country: (opp as any).country ?? null,
     created_at: (opp as any).created_at ?? null,
+    status: (opp as any).status ?? null,
+    club_id: (opp as any).club_id ?? null,
   }));
 }
 
@@ -188,7 +178,11 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
         </div>
       </section>
 
-      <ClubOpenOpportunitiesWidget items={opportunities} />
+      <ClubOpenOpportunitiesWidget
+        items={opportunities}
+        clubId={profile.id}
+        clubName={profile.display_name || profile.full_name}
+      />
 
       <section className="space-y-3 rounded-2xl border bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between gap-3">

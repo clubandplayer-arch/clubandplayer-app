@@ -74,6 +74,7 @@ export async function GET(req: NextRequest) {
   const province = (url.searchParams.get('province') || '').trim();
   const city = (url.searchParams.get('city') || '').trim();
   const club = (url.searchParams.get('club') || '').trim();
+  const clubId = (url.searchParams.get('clubId') || url.searchParams.get('club_id') || '').trim();
   const sport = (url.searchParams.get('sport') || '').trim();
   const role = (url.searchParams.get('role') || '').trim();
   const ageB = (url.searchParams.get('age') || '').trim();
@@ -84,7 +85,7 @@ export async function GET(req: NextRequest) {
   let query = supabase
     .from('opportunities')
     .select(
-      'id,title,description,created_by,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name,gender,owner_id',
+      'id,title,description,created_by,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name,gender,owner_id,club_id,status',
       { count: 'exact' },
     )
     .order('created_at', { ascending: sort === 'oldest' })
@@ -98,6 +99,7 @@ export async function GET(req: NextRequest) {
   if (region && region !== '[object Object]') query = query.eq('region', region);
   if (province && province !== '[object Object]') query = query.eq('province', province);
   if (city && city !== '[object Object]') query = query.eq('city', city);
+  if (clubId) query = query.or(`club_id.eq.${clubId},owner_id.eq.${clubId},created_by.eq.${clubId}`);
   if (club) query = query.ilike('club_name', `%${club}%`);
   if (sport) query = query.eq('sport', sport);
   if (role) query = query.eq('role', role);
@@ -115,7 +117,7 @@ export async function GET(req: NextRequest) {
   const ownerIds = Array.from(
     new Set(
       rows
-        .map((r) => r.created_by || r.owner_id)
+        .flatMap((r) => [r.created_by, r.owner_id, (r as any).club_id])
         .filter((id): id is string => Boolean(id)),
     ),
   );
@@ -139,8 +141,9 @@ export async function GET(req: NextRequest) {
 
   const enriched = rows.map((row) => {
     const ownerId = row.created_by ?? row.owner_id ?? null;
-    const clubName = row.club_name ?? (ownerId ? clubNameMap[ownerId] : null) ?? null;
-    return { ...row, owner_id: ownerId, created_by: ownerId, club_name: clubName, clubName };
+    const clubIdValue = row.club_id ?? ownerId;
+    const clubName = row.club_name ?? (clubIdValue ? clubNameMap[clubIdValue] : ownerId ? clubNameMap[ownerId] : null) ?? null;
+    return { ...row, owner_id: ownerId, created_by: ownerId, club_id: row.club_id ?? ownerId ?? null, club_name: clubName, clubName };
   });
 
   return NextResponse.json({

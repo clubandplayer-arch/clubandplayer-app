@@ -131,8 +131,8 @@ Ogni step può essere sviluppato in PR dedicate per evitare regressioni e manten
 ### Job 4 — Opportunità (lista, dettaglio, widget nei profili)
 - [x] 4.1 Pagina lista `/opportunities`
 - [x] 4.2 Scheda dettaglio opportunità
-- [ ] 4.3 Collegamento con profili Club
-- [ ] 4.4 Collegamento con colonna destra “In evidenza”
+- [x] 4.3 Collegamento con profili Club
+- [x] 4.4 Collegamento con colonna destra “In evidenza”
 
 ### Job 5 — Messaggi & notifiche (schema base)
 - [ ] 5.1 Schema conversations/messages
