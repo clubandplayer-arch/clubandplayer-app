@@ -53,7 +53,7 @@ export async function GET() {
   const city = (profile?.interest_city || profile?.city || '').trim();
 
   const baseSelect =
-    'id,title,description,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name,gender,owner_id,created_by,status';
+    'id,title,description,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name,gender,club_id,owner_id,created_by,status';
 
   if (role === 'club') {
     const visibilityFilter = [
