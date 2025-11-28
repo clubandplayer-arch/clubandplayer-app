@@ -135,7 +135,7 @@ Ogni step può essere sviluppato in PR dedicate per evitare regressioni e manten
 - [x] 4.4 Collegamento con colonna destra “In evidenza”
 
 ### Job 5 — Messaggi & notifiche (schema base)
-- [ ] 5.1 Schema conversations/messages
-- [ ] 5.2 UI base Messaging
+- [x] 5.1 Schema conversations/messages
+- [x] 5.2 UI base Messaging
 - [ ] 5.3 Notifiche
 - [ ] 5.4 Trigger eventi principali

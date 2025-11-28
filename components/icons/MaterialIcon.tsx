@@ -17,7 +17,9 @@ export type MaterialIconName =
   | 'share'
   | 'calendar'
   | 'photo'
-  | 'video';
+  | 'video'
+  | 'refresh'
+  | 'send';
 
 const glyphs: Record<MaterialIconName, string> = {
   home: 'home',
@@ -37,6 +39,8 @@ const glyphs: Record<MaterialIconName, string> = {
   calendar: 'calendar_month',
   photo: 'photo_library',
   video: 'videocam',
+  refresh: 'refresh',
+  send: 'send',
 };
 
 type MaterialIconFontSize = 'inherit' | 'small' | 'medium' | 'large';
