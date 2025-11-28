@@ -4,8 +4,7 @@ import type React from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CommentsSection } from '@/components/feed/CommentsSection';
 import { PostIconDelete, PostIconEdit, PostIconShare } from '@/components/icons/PostActionIcons';
-import { Lightbox, type LightboxItem } from '@/components/media/Lightbox';
-import { useExclusiveVideoPlayback } from '@/hooks/useExclusiveVideoPlayback';
+import { PostMedia } from '@/components/feed/PostMedia';
 import { getPostPermalink, shareOrCopyLink } from '@/lib/share';
 import {
   REACTION_EMOJI,
@@ -51,42 +50,6 @@ function FeedLinkCard({
   );
 }
 
-function FeedVideoPlayer({
-  id,
-  url,
-  showControls = true,
-  className,
-  onClick,
-}: {
-  id: string;
-  url?: string | null;
-  showControls?: boolean;
-  className?: string;
-  onClick?: () => void;
-}) {
-  const { videoRef, handleEnded, handlePause, handlePlay } = useExclusiveVideoPlayback(id);
-
-  return (
-    <video
-      ref={videoRef}
-      src={url ?? undefined}
-      controls={showControls}
-      className={`h-full w-full object-contain ${className ?? ''}`}
-      onPlay={handlePlay}
-      onPause={handlePause}
-      onEnded={handleEnded}
-      onClick={onClick}
-      playsInline
-    />
-  );
-}
-
-function aspectClasses(aspect: '16:9' | '9:16' | null) {
-  if (aspect === '9:16') return 'aspect-[9/16]';
-  if (aspect === '16:9') return 'aspect-video';
-  return 'aspect-video md:aspect-[4/3]';
-}
-
 export type PostCardProps = {
   post: FeedPost;
   currentUserId: string | null;
@@ -129,10 +92,7 @@ export function PostCard({
   const isOwner = currentUserId != null && post.authorId === currentUserId;
   const editAreaId = `post-edit-${post.id}`;
   const errorId = error ? `post-error-${post.id}` : undefined;
-  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const eventDateLabel = eventDetails?.date ? formatEventDate(eventDetails.date) : null;
-  const mediaAria = isEvent ? "Apri la locandina dell'evento" : 'Apri il media in grande';
-  const mediaIcon = isEvent ? '📅' : post.media_type === 'video' ? '▶' : post.media_type === 'image' ? '📷' : null;
   const [commentSignal, setCommentSignal] = useState(0);
 
   const shareUrl = useMemo(() => {
@@ -149,8 +109,6 @@ export function PostCard({
       copiedMessage: 'Link del post copiato negli appunti',
     });
   }, [description, eventDetails?.title, isEvent, shareUrl]);
-
-  const closeLightbox = useCallback(() => setLightboxIndex(null), []);
 
   const reactionSummaryParts = REACTION_ORDER.filter((key) => (reaction.counts[key] || 0) > 0).map(
     (key) => `${REACTION_EMOJI[key]} ${reaction.counts[key]}`,
@@ -294,31 +252,13 @@ export function PostCard({
         <div className="mt-2 space-y-3 text-sm text-gray-900">
           {description ? <p className="whitespace-pre-wrap">{description}</p> : null}
 
-          {post.media_url ? (
-            <div className={`group relative overflow-hidden rounded-xl ${aspectClasses(post.media_aspect ?? null)}`}>
-              {post.media_type === 'video' ? (
-                <FeedVideoPlayer id={post.id} url={post.media_url ?? undefined} showControls className="h-full w-full bg-black" />
-              ) : (
-                <button type="button" className="relative h-full w-full" onClick={() => setLightboxIndex(0)}>
-                  <span className="sr-only">{mediaAria}</span>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={post.media_url ?? ''}
-                    alt={mediaAria}
-                    className="h-full w-full object-cover"
-                    loading="lazy"
-                  />
-                  <span className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/15 via-transparent to-transparent opacity-0 transition group-hover:opacity-100" />
-                </button>
-              )}
-              {mediaIcon ? (
-                <div className="pointer-events-none absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-white/85 px-2 py-1 text-[11px] font-semibold text-neutral-800 shadow">
-                  <span aria-hidden>{mediaIcon}</span>
-                  <span className="sr-only">{mediaAria}</span>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
+          <PostMedia
+            postId={post.id}
+            mediaUrl={post.media_url}
+            mediaType={post.media_type}
+            aspect={post.media_aspect ?? null}
+            alt={isEvent ? eventDetails?.title ?? "Locandina dell'evento" : 'Media del post'}
+          />
 
           {linkUrl ? <FeedLinkCard url={linkUrl} title={linkTitle} description={linkDescription} image={linkImage} /> : null}
 
@@ -426,19 +366,6 @@ export function PostCard({
         </div>
       ) : null}
 
-      {lightboxIndex !== null && post.media_url ? (
-        <Lightbox
-          items={[
-            {
-              url: post.media_url,
-              type: post.media_type === 'video' ? 'video' : 'image',
-              alt: isEvent ? eventDetails?.title ?? 'Evento' : 'Media del post',
-            } satisfies LightboxItem,
-          ]}
-          index={lightboxIndex}
-          onClose={closeLightbox}
-        />
-      ) : null}
     </article>
   );
 }

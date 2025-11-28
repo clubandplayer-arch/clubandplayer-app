@@ -3,8 +3,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CommentsSection } from '@/components/feed/CommentsSection';
+import { PostMedia } from '@/components/feed/PostMedia';
 import { getPostPermalink, shareOrCopyLink } from '@/lib/share';
-import { useExclusiveVideoPlayback } from '@/hooks/useExclusiveVideoPlayback';
 
 const REACTION_ORDER = ['like', 'love', 'care', 'angry'] as const;
 type ReactionType = (typeof REACTION_ORDER)[number];
@@ -263,7 +263,6 @@ function PublicPostCard({
   onCommentCountChange,
 }: PublicPostCardProps) {
   const [commentSignal, setCommentSignal] = useState(0);
-  const video = useExclusiveVideoPlayback(post.id);
   const createdAt = post.created_at || post.createdAt;
   const reactionSummaryParts = REACTION_ORDER.filter((key) => (reaction.counts[key] || 0) > 0).map(
     (key) => `${REACTION_EMOJI[key]} ${reaction.counts[key]}`,
@@ -289,22 +288,13 @@ function PublicPostCard({
     <article className="space-y-2 rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
       <div className="text-xs text-neutral-500">{formatDate(createdAt)}</div>
       {post.content ? <p className="whitespace-pre-wrap text-sm text-neutral-800">{post.content}</p> : null}
-      {post.media_url && post.media_type === 'image' ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={post.media_url} alt="Media del post" className="max-h-[320px] w-full rounded-lg object-cover" />
-      ) : null}
-      {post.media_url && post.media_type === 'video' ? (
-        <video
-          ref={video.videoRef}
-          src={post.media_url}
-          className="w-full rounded-lg"
-          controls
-          preload="metadata"
-          onPlay={video.handlePlay}
-          onPause={video.handlePause}
-          onEnded={video.handleEnded}
-        />
-      ) : null}
+      <PostMedia
+        postId={post.id}
+        mediaUrl={post.media_url}
+        mediaType={post.media_type}
+        aspect={post.media_type === 'video' ? '16:9' : null}
+        alt={post.content || 'Media del post'}
+      />
       {post.link_url ? (
         <a
           href={post.link_url}
