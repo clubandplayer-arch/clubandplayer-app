@@ -8,6 +8,7 @@ export type MaterialIconName =
   | 'media'
   | 'opportunities'
   | 'applications'
+  | 'network'
   | 'globe'
   | 'menu'
   | 'close'
@@ -16,7 +17,9 @@ export type MaterialIconName =
   | 'share'
   | 'calendar'
   | 'photo'
-  | 'video';
+  | 'video'
+  | 'refresh'
+  | 'send';
 
 const glyphs: Record<MaterialIconName, string> = {
   home: 'home',
@@ -26,6 +29,7 @@ const glyphs: Record<MaterialIconName, string> = {
   media: 'collections',
   opportunities: 'work',
   applications: 'article',
+  network: 'diversity_3',
   globe: 'language',
   menu: 'menu',
   close: 'close',
@@ -35,6 +39,8 @@ const glyphs: Record<MaterialIconName, string> = {
   calendar: 'calendar_month',
   photo: 'photo_library',
   video: 'videocam',
+  refresh: 'refresh',
+  send: 'send',
 };
 
 type MaterialIconFontSize = 'inherit' | 'small' | 'medium' | 'large';

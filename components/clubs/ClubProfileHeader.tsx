@@ -53,9 +53,9 @@ export default function ClubProfileHeader({ profile }: { profile: ClubProfile })
 
           <div className="flex items-start justify-end">
             <FollowButton
-              id={profile.id}
+              targetId={profile.id}
               targetType="club"
-              name={name}
+              targetName={name}
               labelFollow="Segui"
               labelFollowing="Seguo"
               size="md"

@@ -77,9 +77,9 @@ export default function AthleteProfileHeader({
           {!isMe && (
             <div className="flex items-start justify-end">
               <FollowButton
-                id={profile.id}
-                targetType="player"
-                name={name}
+                targetId={profile.id}
+                targetType="athlete"
+                targetName={name}
                 labelFollow="Segui"
                 labelFollowing="Seguo"
                 size="md"

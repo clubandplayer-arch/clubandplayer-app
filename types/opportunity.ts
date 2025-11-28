@@ -73,6 +73,9 @@ export type Opportunity = {
   club_name?: string | null;
   /** Alias camelCase per nome club */
   clubName?: string | null;
+
+  /** ID del club associato (se presente a schema) */
+  club_id?: string | null;
 };
 
 /** Risposta paginata usata dal client / lista opportunità */

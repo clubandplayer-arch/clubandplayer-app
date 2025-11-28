@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { supabaseBrowser } from '@/lib/supabaseBrowser';
+import FollowButton from '@/components/common/FollowButton';
 import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentProfileContext';
 
 type Suggestion = {
@@ -34,9 +34,8 @@ export default function WhoToFollow() {
   const [targetType, setTargetType] = useState<TargetProfileType>('club');
   const [items, setItems] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(true);
-  const [pendingId, setPendingId] = useState<string | null>(null);
 
-  const followTargetType = useMemo(() => (targetType === 'club' ? 'club' : 'player'), [targetType]);
+  const followTargetType = useMemo(() => (targetType === 'club' ? 'club' : 'athlete'), [targetType]);
 
   useEffect(() => {
     (async () => {
@@ -67,29 +66,6 @@ export default function WhoToFollow() {
     })();
   }, [contextRole]);
 
-  async function follow(id: string) {
-    setPendingId(id);
-    try {
-      const supabase = supabaseBrowser();
-      const { data: user } = await supabase.auth.getUser();
-      if (!user?.user?.id) throw new Error('not_authenticated');
-
-      await supabase.from('follows').upsert({
-        follower_id: user.user.id,
-        target_id: id,
-        target_type: followTargetType,
-      });
-
-      setItems((prev) => prev.filter((p) => p.id !== id));
-    } catch (err: any) {
-      if (String(err?.message || '').includes('not_authenticated')) {
-        alert('Accedi per seguire nuovi profili.');
-      }
-    } finally {
-      setPendingId(null);
-    }
-  }
-
   if (loading) {
     return (
       <div className="space-y-3">
@@ -119,42 +95,36 @@ export default function WhoToFollow() {
       <div className="text-xs text-zinc-500">{subtitle}</div>
       {items.length > 0 ? (
         <ul className="space-y-3">
-          {items.map((it) => {
-            const isPending = pendingId === it.id;
-            return (
-              <li key={it.id} className="flex items-center gap-3">
-                <img
-                  src={
-                    it.avatar_url ||
-                    `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(it.name)}`
-                  }
-                  alt={it.name}
-                  className="h-10 w-10 rounded-full object-cover ring-1 ring-zinc-200 dark:ring-zinc-800"
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-medium">{it.name}</div>
-                  <div className="truncate text-xs text-zinc-500">
-                    {detailLine(it, role) || '—'}
-                    {typeof it.followers === 'number' ? ` · ${it.followers} follower` : ''}
-                  </div>
+          {items.map((it) => (
+            <li key={it.id} className="flex items-center gap-3">
+              <img
+                src={
+                  it.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(it.name)}`
+                }
+                alt={it.name}
+                className="h-10 w-10 rounded-full object-cover ring-1 ring-zinc-200 dark:ring-zinc-800"
+              />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-medium">{it.name}</div>
+                <div className="truncate text-xs text-zinc-500">
+                  {detailLine(it, role) || '—'}
+                  {typeof it.followers === 'number' ? ` · ${it.followers} follower` : ''}
                 </div>
+              </div>
 
-                <button
-                  type="button"
-                  onClick={() => follow(it.id)}
-                  disabled={isPending}
-                  aria-busy={isPending}
-                  className={[
-                    'rounded-xl border px-3 py-1.5 text-sm font-semibold transition',
-                    'hover:bg-zinc-50 dark:hover:bg-zinc-800',
-                    isPending ? 'opacity-70' : '',
-                  ].join(' ')}
-                >
-                  {isPending ? '...' : 'Segui'}
-                </button>
-              </li>
-            );
-          })}
+              <FollowButton
+                targetId={it.id}
+                targetType={followTargetType}
+                initialIsFollowing={false}
+                size="sm"
+                onChange={(next) => {
+                  if (next) {
+                    setItems((prev) => prev.filter((p) => p.id !== it.id));
+                  }
+                }}
+              />
+            </li>
+          ))}
         </ul>
       ) : (
         <div className="rounded-lg border border-dashed p-4 text-center text-sm text-zinc-500 dark:border-zinc-800">

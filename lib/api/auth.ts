@@ -43,7 +43,10 @@ export async function requireAuth(_req: NextRequest): Promise<
 export function withAuth(
   handler: (req: NextRequest, ctx: AuthContext) => Promise<Response> | Response
 ) {
-  return async (req: NextRequest) => {
+  return async (
+    req: NextRequest,
+    _context?: { params?: Promise<Record<string, string>> | Record<string, string> }
+  ) => {
     const r = await requireAuth(req);
     if ('res' in r) return r.res;
     return handler(req, r.ctx);

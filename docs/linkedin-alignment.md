@@ -124,18 +124,18 @@ Ogni step può essere sviluppato in PR dedicate per evitare regressioni e manten
  - [x] 2.6 Ordinamento feed
 
 ### Job 3 — Network (pagina dedicata)
-- [ ] 3.1 Route /network
-- [ ] 3.2 Tab suggeriti / segui / seguaci
-- [ ] 3.3 Pulsanti Segui/Seguo coerenti
+- [x] 3.1 Route /network
+- [x] 3.2 Tab suggeriti / segui / seguaci
+- [x] 3.3 Pulsanti Segui/Seguo coerenti
 
 ### Job 4 — Opportunità (lista, dettaglio, widget nei profili)
-- [ ] 4.1 Pagina lista `/opportunities`
-- [ ] 4.2 Scheda dettaglio opportunità
-- [ ] 4.3 Collegamento con profili Club
-- [ ] 4.4 Collegamento con colonna destra “In evidenza”
+- [x] 4.1 Pagina lista `/opportunities`
+- [x] 4.2 Scheda dettaglio opportunità
+- [x] 4.3 Collegamento con profili Club
+- [x] 4.4 Collegamento con colonna destra “In evidenza”
 
 ### Job 5 — Messaggi & notifiche (schema base)
-- [ ] 5.1 Schema conversations/messages
-- [ ] 5.2 UI base Messaging
-- [ ] 5.3 Notifiche
-- [ ] 5.4 Trigger eventi principali
+- [x] 5.1 Schema conversations/messages
+- [x] 5.2 UI base Messaging
+- [x] 5.3 Notifiche
+- [x] 5.4 Trigger eventi principali

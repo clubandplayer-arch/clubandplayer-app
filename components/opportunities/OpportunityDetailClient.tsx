@@ -175,7 +175,9 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
         <footer className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-gray-600">
           <div className="flex items-center gap-2">
             <span className="font-medium">{clubName ?? 'Club'}</span>
-            {createdBy && <FollowButton clubId={createdBy} clubName={clubName} size="md" />}
+            {createdBy && (
+              <FollowButton targetId={createdBy} targetType="club" targetName={clubName} size="md" />
+            )}
           </div>
           <div className="flex items-center gap-2">
             {place && <span>{place}</span>}

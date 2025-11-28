@@ -261,18 +261,18 @@ export default function ProfileMiniCard() {
         </div>
       </div>
 
-      {isClub ? (
-        <div className="space-y-3">
-          {targetId ? (
-            <div className="flex justify-center">
-              <FollowButton
-                id={targetId}
-                targetType={followTargetType}
-                labelFollow="Segui"
-                labelFollowing="Seguo"
-                size="md"
-                className="w-full justify-center"
-              />
+          {isClub ? (
+            <div className="space-y-3">
+              {targetId ? (
+                <div className="flex justify-center">
+                  <FollowButton
+                    targetId={targetId}
+                    targetType={followTargetType}
+                    labelFollow="Segui"
+                    labelFollowing="Seguo"
+                    size="md"
+                    className="w-full justify-center"
+                  />
             </div>
           ) : null}
 
@@ -340,7 +340,7 @@ export default function ProfileMiniCard() {
           {targetId ? (
             <div className="flex justify-center">
               <FollowButton
-                id={targetId}
+                targetId={targetId}
                 targetType={followTargetType}
                 labelFollow="Segui"
                 labelFollowing="Seguo"

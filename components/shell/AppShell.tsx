@@ -1,12 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import useIsClub from '@/hooks/useIsClub';
-import { supabaseBrowser } from '@/lib/supabaseBrowser';
+import { ToastProvider } from '@/components/common/ToastProvider';
 import { NavCloseIcon, NavMenuIcon } from '@/components/icons/NavToggleIcons';
 import { MaterialIcon, type MaterialIconName } from '@/components/icons/MaterialIcon';
+import NotificationsDropdown from '@/components/notifications/NotificationsDropdown';
 
 type Role = 'athlete' | 'club' | 'guest';
 
@@ -14,6 +15,7 @@ type NavItem = { label: string; href: string; icon: MaterialIconName };
 
 const navItems: NavItem[] = [
   { label: 'Feed', href: '/feed', icon: 'home' },
+  { label: 'Rete', href: '/network', icon: 'network' },
   { label: 'Messaggi', href: '/messages', icon: 'mail' },
   { label: 'Notifiche', href: '/notifications', icon: 'notifications' },
   { label: 'Following', href: '/following', icon: 'following' },
@@ -26,8 +28,6 @@ const navItems: NavItem[] = [
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const supabase = useMemo(() => supabaseBrowser(), []);
-
   const [role, setRole] = useState<Role>('guest');
   const [loadingRole, setLoadingRole] = useState(true);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
@@ -85,33 +85,30 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [pathname]);
 
   useEffect(() => {
+    let cancelled = false;
     const loadUnread = async () => {
-      const { data } = await supabase.auth.getUser();
-      const userId = data?.user?.id;
-      if (!userId) {
-        setUnreadNotifications(0);
-        return;
-      }
       try {
-        const { count } = await supabase
-          .from('notifications')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', userId)
-          .or('read_at.is.null,read.eq.false');
-        setUnreadNotifications(count || 0);
+        const res = await fetch('/api/notifications/unread-count', { cache: 'no-store' });
+        const json = await res.json().catch(() => ({}));
+        if (cancelled) return;
+        setUnreadNotifications(Number(json?.count) || 0);
       } catch {
-        setUnreadNotifications(0);
+        if (!cancelled) setUnreadNotifications(0);
       }
     };
 
     void loadUnread();
     const handler = () => void loadUnread();
     window.addEventListener('app:notifications-updated', handler);
-    return () => window.removeEventListener('app:notifications-updated', handler);
-  }, [supabase]);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('app:notifications-updated', handler);
+    };
+  }, []);
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <ToastProvider>
+      <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-40 border-b bg-white/80 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4">
           <Link
@@ -125,6 +122,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <div className="flex items-center gap-1 rounded-full border border-white/40 bg-white/70 px-2 py-1 shadow-sm backdrop-blur">
               {navItems.map((item) => {
                 const active = isActive(item.href);
+                if (item.href === '/notifications') {
+                  return (
+                    <div key={item.href} className="flex h-10 w-10 items-center justify-center">
+                      <NotificationsDropdown
+                        unreadCount={unreadNotifications}
+                        onUnreadChange={(v) => setUnreadNotifications(Math.max(0, v))}
+                      />
+                    </div>
+                  );
+                }
+
                 return (
                   <Link
                     key={item.href}
@@ -135,11 +143,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${active ? 'bg-[var(--brand)] text-white shadow-sm' : 'text-neutral-600 hover:bg-neutral-100'}`}
                   >
                     <MaterialIcon name={item.icon} fontSize="small" />
-                    {item.href === '/notifications' && unreadNotifications > 0 && (
-                      <span className="absolute -right-1 -top-1 min-w-[18px] rounded-full bg-red-500 px-1.5 text-center text-[11px] font-semibold text-white">
-                        {unreadNotifications}
-                      </span>
-                    )}
                     <span className="sr-only">{item.label}</span>
                   </Link>
                 );
@@ -240,5 +243,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       <main className="flex-1">{children}</main>
     </div>
+    </ToastProvider>
   );
 }
