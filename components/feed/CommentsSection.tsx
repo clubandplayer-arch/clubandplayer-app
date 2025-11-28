@@ -36,6 +36,8 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
   const [newBody, setNewBody] = useState('');
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const [count, setCount] = useState(initialCount);
+  const lastExpandRef = useRef<number | null>(null);
+  const loadedRef = useRef(false);
 
   useEffect(() => {
     setCount(initialCount);
@@ -45,7 +47,7 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
   const remaining = Math.max(0, count - preview.length);
 
   const ensureLoaded = useCallback(async () => {
-    if (comments.length > 0 || loading) return;
+    if (loadedRef.current || loading) return;
     setLoading(true);
     setError(null);
     try {
@@ -57,12 +59,13 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
       if (!res.ok || !json?.ok) throw new Error(json?.error || 'Errore caricamento commenti');
       const items = Array.isArray(json.comments) ? json.comments : [];
       setComments(items);
+      loadedRef.current = true;
     } catch (e: any) {
       setError(e?.message || 'Errore commenti');
     } finally {
       setLoading(false);
     }
-  }, [comments.length, loading, postId]);
+  }, [loading, postId]);
 
   const openComments = useCallback(() => {
     setExpanded(true);
@@ -71,8 +74,11 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
   }, [ensureLoaded]);
 
   useEffect(() => {
-    if (typeof expandSignal === 'number') {
-      openComments();
+    if (typeof expandSignal === 'number' && expandSignal !== lastExpandRef.current) {
+      lastExpandRef.current = expandSignal;
+      if (expandSignal > 0) {
+        openComments();
+      }
     }
   }, [expandSignal, openComments]);
 
