@@ -88,8 +88,9 @@ export default function OpportunitiesTable({
                     <span>{clubLabel}</span>
                     {showFollow && (
                       <FollowButton
-                        clubId={o.created_by as string}
-                        clubName={clubLabel || undefined}
+                        targetId={o.created_by as string}
+                        targetType="club"
+                        targetName={clubLabel || undefined}
                         size="sm"
                       />
                     )}

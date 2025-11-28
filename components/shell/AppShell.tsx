@@ -14,6 +14,7 @@ type NavItem = { label: string; href: string; icon: MaterialIconName };
 
 const navItems: NavItem[] = [
   { label: 'Feed', href: '/feed', icon: 'home' },
+  { label: 'Rete', href: '/network', icon: 'network' },
   { label: 'Messaggi', href: '/messages', icon: 'mail' },
   { label: 'Notifiche', href: '/notifications', icon: 'notifications' },
   { label: 'Following', href: '/following', icon: 'following' },

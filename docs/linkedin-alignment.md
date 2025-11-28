@@ -124,9 +124,9 @@ Ogni step può essere sviluppato in PR dedicate per evitare regressioni e manten
  - [x] 2.6 Ordinamento feed
 
 ### Job 3 — Network (pagina dedicata)
-- [ ] 3.1 Route /network
-- [ ] 3.2 Tab suggeriti / segui / seguaci
-- [ ] 3.3 Pulsanti Segui/Seguo coerenti
+- [x] 3.1 Route /network
+- [x] 3.2 Tab suggeriti / segui / seguaci
+- [x] 3.3 Pulsanti Segui/Seguo coerenti
 
 ### Job 4 — Opportunità (lista, dettaglio, widget nei profili)
 - [ ] 4.1 Pagina lista `/opportunities`

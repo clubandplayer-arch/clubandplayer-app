@@ -24,15 +24,11 @@ export async function GET() {
       ? profile.account_type
       : 'guest') || 'guest';
 
-  const targetProfileType = role === 'club' ? 'athlete' : 'club';
-  const followTargetTypes = targetProfileType === 'athlete' ? ['player', 'athlete'] : ['club'];
-
   const { data: follows, error: followsError } = await supabase
     .from('follows')
     .select('target_id, target_type')
     .eq('follower_id', userId)
-    .in('target_type', followTargetTypes)
-    .limit(50);
+    .limit(400);
 
   if (followsError) {
     return NextResponse.json({ items: [], role, profileId: profile?.id ?? null, error: followsError.message });
@@ -49,23 +45,41 @@ export async function GET() {
 
   const { data: profiles, error: profilesError } = await supabase
     .from('profiles')
-    .select('id, display_name, full_name, city, sport, avatar_url, account_type, status')
+    .select('id, display_name, full_name, city, country, sport, role, avatar_url, account_type, status')
     .in('id', ids)
-    .eq('status', 'active')
-    .eq('account_type', targetProfileType);
+    .eq('status', 'active');
 
   if (profilesError) {
     return NextResponse.json({ items: [], role, profileId: profile?.id ?? null, error: profilesError.message });
   }
 
-  const items = (profiles || []).map((p) => ({
-    id: p.id,
-    name: (p.display_name || p.full_name || 'Profilo').toString(),
-    city: p.city || null,
-    sport: p.sport || null,
-    avatarUrl: p.avatar_url || null,
-    accountType: p.account_type || targetProfileType,
-  }));
+  const profilesMap = new Map(
+    (profiles || []).map((p) => [p.id?.toString(), p]),
+  );
+
+  const items = (follows || [])
+    .map((row) => {
+      const key = row?.target_id ? row.target_id.toString() : '';
+      if (!key) return null;
+      const profile = profilesMap.get(key);
+      if (!profile) return null;
+
+      const accountType = profile.account_type === 'club' ? 'club' : 'athlete';
+
+      return {
+        id: profile.id,
+        name: (profile.display_name || profile.full_name || 'Profilo').toString(),
+        city: profile.city || null,
+        country: profile.country || null,
+        sport: profile.sport || null,
+        role: profile.role || null,
+        avatarUrl: profile.avatar_url || null,
+        accountType,
+        targetType: row.target_type || accountType,
+        isFollowing: true,
+      } as const;
+    })
+    .filter(Boolean);
 
   return NextResponse.json({ items, role, profileId: profile?.id ?? null });
 }

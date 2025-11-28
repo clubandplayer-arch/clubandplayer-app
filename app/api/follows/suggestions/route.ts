@@ -23,7 +23,8 @@ function clamp(n: number, min: number, max: number) {
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
-  const limit = clamp(Number(url.searchParams.get('limit') || '3') || 3, 1, 6);
+  const rawLimit = Number(url.searchParams.get('limit'));
+  const limit = clamp(Number.isFinite(rawLimit) ? rawLimit : 3, 1, 20);
 
   try {
     const supabase = await getSupabaseServerClient();

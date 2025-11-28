@@ -86,7 +86,7 @@ export default function ClubPage({ params }: { params: { id: string } }) {
             <div className="text-xs text-gray-600">{place}</div>
           </div>
         </div>
-        <FollowButton clubId={club.id} clubName={club.name} size="md" />
+        <FollowButton targetId={club.id} targetType="club" targetName={club.name} size="md" />
       </header>
 
       {/* Bio */}
