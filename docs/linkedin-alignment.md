@@ -104,3 +104,38 @@ Questo documento raccoglie una revisione complessiva dell'app con la lente "Link
 5. **Messaging & Notifiche**: schema, API, UI base con badge.
 
 Ogni step può essere sviluppato in PR dedicate per evitare regressioni e mantenere la coerenza con il modello LinkedIn.
+
+## Checklist dei job (stato)
+
+### Job 1 — Profili (Player & Club) + routing ricerca → profili
+- [ ] 1.1 Player: header completo stile profilo LinkedIn
+- [ ] 1.2 Player: sezioni Esperienze / Statistiche / Media / Open to opportunities
+- [ ] 1.3 Club: header e sezioni About / Dati club
+- [ ] 1.4 Club: widget "Opportunità aperte"
+- [ ] 1.5 Routing da /search-map → profili
+- [ ] 1.6 QA finale Job 1
+
+### Job 2 — Feed home + UX post + colonna destra
+- [ ] 2.1 Post: barra azioni stile LinkedIn
+- [ ] 2.2 Commenti: sezione espandibile
+- [ ] 2.3 Condivisione (share)
+- [ ] 2.4 Media e lightbox
+- [ ] 2.5 Colonna destra: “Chi seguire” / “Club/Player che segui” / “In evidenza”
+- [ ] 2.6 Ordinamento feed
+
+### Job 3 — Network (pagina dedicata)
+- [ ] 3.1 Route /network
+- [ ] 3.2 Tab suggeriti / segui / seguaci
+- [ ] 3.3 Pulsanti Segui/Seguo coerenti
+
+### Job 4 — Opportunità (lista, dettaglio, widget nei profili)
+- [ ] 4.1 Pagina lista `/opportunities`
+- [ ] 4.2 Scheda dettaglio opportunità
+- [ ] 4.3 Collegamento con profili Club
+- [ ] 4.4 Collegamento con colonna destra “In evidenza”
+
+### Job 5 — Messaggi & notifiche (schema base)
+- [ ] 5.1 Schema conversations/messages
+- [ ] 5.2 UI base Messaging
+- [ ] 5.3 Notifiche
+- [ ] 5.4 Trigger eventi principali
