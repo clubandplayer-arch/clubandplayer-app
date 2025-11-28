@@ -2,7 +2,13 @@
 
 import React, { createContext, useCallback, useContext } from "react";
 
-type ToastVariant = "default" | "success" | "error" | "info" | "warning";
+type ToastVariant =
+  | "default"
+  | "success"
+  | "error"
+  | "info"
+  | "warning"
+  | "destructive";
 
 type BaseOptions = {
   title?: string;
@@ -81,7 +87,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       }
 
       const prefix =
-        variant === "error"
+        variant === "error" || variant === "destructive"
           ? "[toast:error]"
           : variant === "success"
           ? "[toast:success]"
