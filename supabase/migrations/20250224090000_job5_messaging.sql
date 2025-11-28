@@ -9,15 +9,17 @@ begin
     where proname = 'set_current_timestamp_updated_at'
       and pg_function_is_visible(oid)
   ) then
-    create or replace function public.set_current_timestamp_updated_at()
-    returns trigger
-    language plpgsql
-    as $$
-    begin
-      new.updated_at = now();
-      return new;
-    end;
-    $$;
+    execute $func$
+      create or replace function public.set_current_timestamp_updated_at()
+      returns trigger
+      language plpgsql
+      as $body$
+      begin
+        new.updated_at = now();
+        return new;
+      end;
+      $body$;
+    $func$;
   end if;
 end
 $$;
