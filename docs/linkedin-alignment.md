@@ -113,7 +113,7 @@ Ogni step può essere sviluppato in PR dedicate per evitare regressioni e manten
 - [x] 1.3 Club: header e sezioni About / Dati club
 - [x] 1.4 Club: widget "Opportunità aperte"
 - [x] 1.5 Routing da /search-map → profili
-- [ ] 1.6 QA finale Job 1
+- [x] 1.6 QA finale Job 1
 
 ### Job 2 — Feed home + UX post + colonna destra
 - [x] 2.1 Post: barra azioni stile LinkedIn
@@ -139,3 +139,22 @@ Ogni step può essere sviluppato in PR dedicate per evitare regressioni e manten
 - [x] 5.2 UI base Messaging
 - [x] 5.3 Notifiche
 - [x] 5.4 Trigger eventi principali
+
+## QA finale LinkedIn-style (Job 1.6)
+
+**Perimetro testato (produzione, branch main → Vercel)**
+- Profili Player/Club e routing da /search-map e da lista network/opportunità → pagine profilo.
+- Feed e singole card post con reazioni, commenti, share/copia link e lightbox media.
+- Network: tab Suggeriti/Segui/Seguaci con follow/unfollow e link visita profilo.
+- Opportunità: lista con filtri, dettaglio con CTA, widget opportunità aperte nei profili Club e colonna destra.
+- Messaggi: lista conversazioni, apertura thread, invio nuovo messaggio con aggiornamento immediato.
+- Notifiche: badge e dropdown navbar, pagina /notifications con filtro non letti e routing contestuale.
+
+**Esito QA**
+- Nessun errore bloccante rilevato nei flussi sopra (render, navigazione, API e lightbox stabili).
+- Reazioni, commenti e follow propagano correttamente lo stato; pulsanti CTA opportunità e messaggistica non generano errori.
+
+**Backlog (migliorie non bloccanti)**
+- Raffinare testi/placeholder per sezioni statistiche con dati mancanti.
+- Ampliare suggerimenti lato Network con criteri aggiuntivi (es. sport/ruolo) e paging server-side.
+- Migliorare badge notifiche con polling/real-time per ambienti a traffico alto.
