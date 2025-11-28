@@ -182,6 +182,18 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   }
   if (!isClub) return jsonError('forbidden_not_club', 403);
 
+  const { data: profileByUser } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  const { data: profileById } = profileByUser
+    ? { data: null }
+    : await supabase.from('profiles').select('id').eq('id', user.id).maybeSingle();
+
+  const clubId = profileByUser?.id ?? profileById?.id ?? user.id;
+
   const body = await req.json().catch(() => ({}));
   const title = norm((body as any).title);
   if (!title) return jsonError('Title is required', 400);
@@ -226,6 +238,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     description,
     owner_id: user.id,
     created_by: user.id,
+    club_id: clubId,
     country,
     region,
     province,
@@ -244,7 +257,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
       .from('opportunities')
       .insert(payload)
       .select(
-        'id,title,description,created_by,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name,gender',
+        'id,title,description,created_by,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name,gender,club_id',
       )
       .single();
 
