@@ -116,8 +116,8 @@ Ogni step può essere sviluppato in PR dedicate per evitare regressioni e manten
 - [ ] 1.6 QA finale Job 1
 
 ### Job 2 — Feed home + UX post + colonna destra
-- [ ] 2.1 Post: barra azioni stile LinkedIn
-- [ ] 2.2 Commenti: sezione espandibile
+- [x] 2.1 Post: barra azioni stile LinkedIn
+- [x] 2.2 Commenti: sezione espandibile
 - [ ] 2.3 Condivisione (share)
 - [ ] 2.4 Media e lightbox
 - [x] 2.5 Colonna destra: “Chi seguire” / “Club/Player che segui” / “In evidenza”

@@ -12,6 +12,7 @@ import { useExclusiveVideoPlayback } from '@/hooks/useExclusiveVideoPlayback';
 import { shareOrCopyLink } from '@/lib/share';
 import { PostIconDelete, PostIconEdit, PostIconShare } from '@/components/icons/PostActionIcons';
 import { Lightbox, type LightboxItem } from '@/components/media/Lightbox';
+import { CommentsSection } from '@/components/feed/CommentsSection';
 
 type ReactionType = 'like' | 'love' | 'care' | 'angry';
 
@@ -212,6 +213,7 @@ export default function FeedPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [reactions, setReactions] = useState<Record<string, ReactionState>>({});
   const [reactionError, setReactionError] = useState<string | null>(null);
+  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
   const [pickerFor, setPickerFor] = useState<string | null>(null);
   const fetchCtrl = useRef<AbortController | null>(null);
   const headingId = 'feed-heading';
@@ -257,6 +259,29 @@ export default function FeedPage() {
     } catch (err) {
       console.warn('loadReactions failed', err);
       setReactionError('Impossibile caricare le reazioni.');
+    }
+  }, []);
+
+  const loadCommentCounts = useCallback(async (ids: Array<string | number>) => {
+    const list = Array.from(new Set(ids.map(String).filter(Boolean)));
+    if (!list.length) return;
+
+    try {
+      const qs = encodeURIComponent(list.join(','));
+      const res = await fetch(`/api/feed/comments/counts?ids=${qs}`, {
+        cache: 'no-store',
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json?.ok) throw new Error(json?.error || 'comment_error');
+      const rows = Array.isArray(json.counts) ? json.counts : [];
+      const map: Record<string, number> = {};
+      rows.forEach((row: any) => {
+        const key = String(row.post_id);
+        map[key] = Number(row.count) || 0;
+      });
+      setCommentCounts((curr) => ({ ...curr, ...map }));
+    } catch (err) {
+      console.warn('loadCommentCounts failed', err);
     }
   }, []);
 
@@ -319,13 +344,14 @@ export default function FeedPage() {
       const data = await fetchPosts(controller.signal, currentUserId);
       setItems(data);
       void loadReactions(data.map((p) => p.id));
+      void loadCommentCounts(data.map((p) => p.id));
     } catch (e: any) {
       if (controller.signal.aborted) return;
       setErr(e?.message ?? 'Errore caricamento bacheca');
     } finally {
       if (!controller.signal.aborted) setLoading(false);
     }
-  }, [currentUserId, loadReactions]);
+  }, [currentUserId, loadCommentCounts, loadReactions]);
 
   useEffect(() => {
     const idle =
@@ -412,10 +438,14 @@ export default function FeedPage() {
                   onUpdated={onPostUpdated}
                   onDeleted={onPostDeleted}
                   reaction={reactions[String(p.id)] ?? createDefaultReaction()}
+                  commentCount={commentCounts[String(p.id)] ?? 0}
                   pickerOpen={pickerFor === String(p.id)}
                   onOpenPicker={() => setPickerFor(String(p.id))}
                   onClosePicker={() => setPickerFor((curr) => (curr === String(p.id) ? null : curr))}
                   onToggleReaction={(type) => toggleReaction(String(p.id), type)}
+                  onCommentCountChange={(next) =>
+                    setCommentCounts((curr) => ({ ...curr, [String(p.id)]: next }))
+                  }
                 />
               ))}
             {reactionError && (
@@ -669,20 +699,24 @@ function PostItem({
   onUpdated,
   onDeleted,
   reaction,
+  commentCount,
   pickerOpen,
   onOpenPicker,
   onClosePicker,
   onToggleReaction,
+  onCommentCountChange,
 }: {
   post: FeedPost;
   currentUserId: string | null;
   onUpdated?: (next: FeedPost) => void;
   onDeleted?: (id: string) => void;
   reaction: ReactionState;
+  commentCount: number;
   pickerOpen: boolean;
   onOpenPicker: () => void;
   onClosePicker: () => void;
   onToggleReaction: (type: ReactionType) => void;
+  onCommentCountChange?: (next: number) => void;
 }) {
   const isEvent = (post.kind ?? 'normal') === 'event';
   const eventDetails = post.event_payload;
@@ -705,6 +739,7 @@ function PostItem({
   const eventDateLabel = eventDetails?.date ? formatEventDate(eventDetails.date) : null;
   const mediaAria = isEvent ? "Apri la locandina dell'evento" : 'Apri il media in grande';
   const mediaIcon = isEvent ? '📅' : post.media_type === 'video' ? '▶' : post.media_type === 'image' ? '📷' : null;
+  const [commentSignal, setCommentSignal] = useState(0);
 
   const shareUrl = useMemo(() => {
     if (typeof window === 'undefined') return '';
@@ -721,6 +756,12 @@ function PostItem({
   }, [description, eventDetails?.title, isEvent, shareUrl]);
 
   const closeLightbox = useCallback(() => setLightboxIndex(null), []);
+
+  const reactionSummaryParts = REACTION_ORDER.filter((key) => (reaction.counts[key] || 0) > 0).map(
+    (key) => `${REACTION_EMOJI[key]} ${reaction.counts[key]}`,
+  );
+  const totalReactions = REACTION_ORDER.reduce((acc, key) => acc + (reaction.counts[key] || 0), 0);
+  const reactionSummaryText = reactionSummaryParts.length ? reactionSummaryParts.join(' · ') : 'Nessuna reazione';
 
   useEffect(() => {
     if (!editing) setText(description);
@@ -918,24 +959,36 @@ function PostItem({
         </div>
       ) : null}
 
+      <div className="mt-3 flex items-center justify-between text-xs text-neutral-600">
+        <div>
+          {reaction.mine ? (
+            <span className="font-semibold text-[var(--brand)]">
+              Tu{totalReactions > 1 ? ` e altre ${totalReactions - 1} persone` : ''}
+            </span>
+          ) : null}{' '}
+          {reactionSummaryText}
+        </div>
+        <div>{commentCount > 0 ? `${commentCount} commenti` : 'Nessun commento'}</div>
+      </div>
+
       <div
-        className="mt-3 flex flex-col gap-1 text-[11px] text-neutral-700"
+        className="mt-2 flex flex-wrap items-center gap-2 border-t border-neutral-200 pt-2 text-sm font-semibold text-neutral-700"
         onMouseLeave={onClosePicker}
       >
-        <div className="relative inline-flex w-full max-w-xs items-center gap-2">
+        <div className="relative inline-flex items-center gap-2">
           <button
             type="button"
             onClick={() => onToggleReaction('like')}
             onMouseEnter={onOpenPicker}
-            className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-base transition ${
+            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 transition ${
               reaction.mine
                 ? 'border-[var(--brand)] bg-[var(--brand)]/10 text-[var(--brand)]'
                 : 'border-neutral-200 bg-white text-neutral-800 hover:border-neutral-300'
             }`}
             aria-pressed={reaction.mine === 'like'}
           >
-            <span aria-hidden className="text-xl sm:text-2xl">{REACTION_EMOJI[reaction.mine ?? 'like']}</span>
-            <span className="sr-only">{reaction.mine ? 'Hai reagito' : 'Metti una reazione'}</span>
+            <span aria-hidden className="text-xl">{REACTION_EMOJI[reaction.mine ?? 'like']}</span>
+            <span>Reagisci</span>
           </button>
 
           <button
@@ -969,27 +1022,31 @@ function PostItem({
           )}
         </div>
 
-        {(() => {
-          const summaryParts = REACTION_ORDER.filter((key) => (reaction.counts[key] || 0) > 0).map(
-            (key) => `${REACTION_EMOJI[key]} ${reaction.counts[key]}`,
-          );
-          const total = REACTION_ORDER.reduce((acc, key) => acc + (reaction.counts[key] || 0), 0);
-          const summaryText = summaryParts.length ? summaryParts.join(' · ') : 'Nessuna reazione';
+        <button
+          type="button"
+          className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-neutral-800 transition hover:border-neutral-300"
+          onClick={() => setCommentSignal((v) => v + 1)}
+        >
+          <span aria-hidden>💬</span>
+          <span>Commenta</span>
+        </button>
 
-          return (
-            <div className="text-[11px] text-neutral-600">
-              {reaction.mine ? (
-                <span className="font-semibold text-[var(--brand)]">
-                  Tu
-                  {total > 1 ? ` e altre ${total - 1} persone` : ''} · {summaryText}
-                </span>
-              ) : (
-                summaryText
-              )}
-            </div>
-          );
-        })()}
+        <button
+          type="button"
+          className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-neutral-800 transition hover:border-neutral-300"
+          onClick={handleShare}
+        >
+          <span aria-hidden>🔗</span>
+          <span>Condividi</span>
+        </button>
       </div>
+
+      <CommentsSection
+        postId={String(post.id)}
+        initialCount={commentCount}
+        expandSignal={commentSignal}
+        onCountChange={onCommentCountChange}
+      />
       {error ? (
         <div id={errorId} className="mt-2 text-xs text-red-600" role="status">
           {error}
