@@ -70,6 +70,13 @@ type AthleteExperienceRow = {
   description: string | null;
 };
 
+function isAthleteExperienceRows(data: unknown): data is AthleteExperienceRow[] {
+  return (
+    Array.isArray(data) &&
+    data.every((item) => item && typeof item === 'object' && 'id' in item && 'club_name' in item)
+  );
+}
+
 export default function AthletePublicProfilePage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -192,7 +199,8 @@ export default function AthletePublicProfilePage() {
           .limit(6),
       ]);
 
-      setExperiences((expRes.data as AthleteExperienceRow[]) ?? []);
+      const experienceRows = isAthleteExperienceRows(expRes.data) ? expRes.data : [];
+      setExperiences(experienceRows);
       setMedia((mediaRes.data as AthleteMediaItem[])?.slice(0, 3) ?? []);
 
       if (currentUserId && (currentUserId === normalizedProfile.user_id || currentUserId === normalizedProfile.id)) {
