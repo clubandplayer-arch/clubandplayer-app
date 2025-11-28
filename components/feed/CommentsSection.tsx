@@ -62,7 +62,13 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
       loadedRef.current = true;
     } catch (e: any) {
       const msg = String(e?.message || 'Errore commenti');
-      setError(msg === 'db_error' ? 'Impossibile caricare i commenti, riprova.' : msg);
+      if (msg === 'db_error') {
+        setError('Impossibile caricare i commenti, riprova.');
+      } else if (msg === 'comments_not_ready') {
+        setError('Commenti non configurati, applicare la migrazione post_comments su Supabase.');
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }

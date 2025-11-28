@@ -31,8 +31,8 @@ export async function GET(req: NextRequest) {
   if (error) {
     console.error('post_comments select error', error);
     const code = (error as any)?.code as string | undefined;
-    if (code === '42501' || code === '42P01') {
-      return NextResponse.json({ ok: true, comments: [] }, { status: 200 });
+    if (code === '42501' || code === '42P01' || code === 'PGRST204') {
+      return NextResponse.json({ ok: false, error: 'comments_not_ready' }, { status: 200 });
     }
     return NextResponse.json({ ok: false, error: 'db_error' }, { status: 200 });
   }
