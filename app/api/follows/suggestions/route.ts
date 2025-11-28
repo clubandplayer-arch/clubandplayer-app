@@ -9,9 +9,10 @@ type Role = 'athlete' | 'club' | 'guest';
 type Suggestion = {
   id: string;
   name: string;
-  handle?: string | null;
   city?: string | null;
+  country?: string | null;
   sport?: string | null;
+  role?: string | null;
   avatar_url?: string | null;
   followers?: number | null;
 };
@@ -36,7 +37,7 @@ export async function GET(req: NextRequest) {
 
     const { data: profile } = await supabase
       .from('profiles')
-      .select('id, account_type, status, country, city')
+      .select('id, account_type, status, country, city, interest_country, interest_city')
       .eq('user_id', userId)
       .maybeSingle();
 
@@ -45,15 +46,16 @@ export async function GET(req: NextRequest) {
         ? profile.account_type
         : 'guest') || 'guest';
 
-    const targetType: Role = role === 'club' ? 'athlete' : 'club';
-    const viewerCountry = (profile?.country || '').trim();
-    const viewerCity = (profile?.city || '').trim();
+    const targetProfileType: Role = role === 'club' ? 'athlete' : 'club';
+    const followTargetTypes = targetProfileType === 'athlete' ? ['player', 'athlete'] : ['club'];
+    const viewerCountry = (profile?.interest_country || profile?.country || '').trim();
+    const viewerCity = (profile?.interest_city || profile?.city || '').trim();
 
     const { data: existing } = await supabase
       .from('follows')
-      .select('target_id')
+      .select('target_id, target_type')
       .eq('follower_id', userId)
-      .eq('target_type', targetType)
+      .in('target_type', followTargetTypes)
       .limit(200);
 
     const alreadyFollowing = new Set(
@@ -64,13 +66,13 @@ export async function GET(req: NextRequest) {
     );
 
     const baseSelect =
-      'id, account_type, full_name, display_name, city, country, sport, avatar_url, followers_count, status';
+      'id, account_type, full_name, display_name, role, city, country, sport, avatar_url, followers_count, status';
 
     async function runQuery(filters: Array<(q: any) => any>) {
       let query = supabase
         .from('profiles')
         .select(baseSelect)
-        .eq('account_type', targetType)
+        .eq('account_type', targetProfileType)
         .eq('status', 'active')
         .neq('id', profile?.id ?? '');
 
@@ -109,6 +111,8 @@ export async function GET(req: NextRequest) {
       id: p.id,
       name: (p.full_name || p.display_name || 'Profilo').toString(),
       city: p.city || null,
+      country: p.country || null,
+      role: p.role || null,
       sport: p.sport || null,
       avatar_url: p.avatar_url || null,
       followers: p.followers_count ?? null,
@@ -118,7 +122,7 @@ export async function GET(req: NextRequest) {
       items,
       nextCursor: null,
       role,
-      targetType,
+      targetType: targetProfileType,
     });
   } catch (err) {
     console.error('[follows/suggestions] error', err);
