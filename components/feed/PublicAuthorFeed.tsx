@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CommentsSection } from '@/components/feed/CommentsSection';
-import { shareOrCopyLink } from '@/lib/share';
+import { getPostPermalink, shareOrCopyLink } from '@/lib/share';
 import { useExclusiveVideoPlayback } from '@/hooks/useExclusiveVideoPlayback';
 
 const REACTION_ORDER = ['like', 'love', 'care', 'angry'] as const;
@@ -273,11 +273,16 @@ function PublicPostCard({
 
   const shareUrl = useMemo(() => {
     if (typeof window === 'undefined') return '';
-    return `${window.location.origin}/feed?post=${post.id}`;
+    return getPostPermalink(window.location.origin, String(post.id));
   }, [post.id]);
 
   const handleShare = useCallback(() => {
-    void shareOrCopyLink({ title: 'Post', text: post.content || undefined, url: shareUrl });
+    void shareOrCopyLink({
+      title: 'Post',
+      text: post.content || undefined,
+      url: shareUrl,
+      copiedMessage: 'Link del post copiato negli appunti',
+    });
   }, [post.content, shareUrl]);
 
   return (

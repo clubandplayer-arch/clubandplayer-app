@@ -1,0 +1,455 @@
+'use client';
+
+import type React from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { CommentsSection } from '@/components/feed/CommentsSection';
+import { PostIconDelete, PostIconEdit, PostIconShare } from '@/components/icons/PostActionIcons';
+import { Lightbox, type LightboxItem } from '@/components/media/Lightbox';
+import { useExclusiveVideoPlayback } from '@/hooks/useExclusiveVideoPlayback';
+import { getPostPermalink, shareOrCopyLink } from '@/lib/share';
+import {
+  REACTION_EMOJI,
+  REACTION_ORDER,
+  type ReactionType,
+  type ReactionState,
+  type FeedPost,
+  formatEventDate,
+  firstUrl,
+  domainFromUrl,
+} from './postShared';
+
+function FeedLinkCard({
+  url,
+  title,
+  description,
+  image,
+}: {
+  url: string;
+  title: string | null;
+  description: string | null;
+  image: string | null;
+}) {
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer noopener"
+      className="block overflow-hidden rounded-xl bg-white/60 shadow-lg transition hover:shadow-xl"
+    >
+      <div className="flex gap-3 p-3">
+        {image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={image} alt={title || url} className="h-20 w-28 flex-shrink-0 rounded-lg object-cover" />
+        ) : null}
+        <div className="flex-1 space-y-1">
+          <div className="text-xs uppercase text-gray-500">{domainFromUrl(url)}</div>
+          <div className="text-sm font-semibold text-gray-900 line-clamp-2">{title || url}</div>
+          {description ? <div className="text-xs text-gray-600 line-clamp-2">{description}</div> : null}
+        </div>
+      </div>
+    </a>
+  );
+}
+
+function FeedVideoPlayer({
+  id,
+  url,
+  showControls = true,
+  className,
+  onClick,
+}: {
+  id: string;
+  url?: string | null;
+  showControls?: boolean;
+  className?: string;
+  onClick?: () => void;
+}) {
+  const { videoRef, handleEnded, handlePause, handlePlay } = useExclusiveVideoPlayback(id);
+
+  return (
+    <video
+      ref={videoRef}
+      src={url ?? undefined}
+      controls={showControls}
+      className={`h-full w-full object-contain ${className ?? ''}`}
+      onPlay={handlePlay}
+      onPause={handlePause}
+      onEnded={handleEnded}
+      onClick={onClick}
+      playsInline
+    />
+  );
+}
+
+function aspectClasses(aspect: '16:9' | '9:16' | null) {
+  if (aspect === '9:16') return 'aspect-[9/16]';
+  if (aspect === '16:9') return 'aspect-video';
+  return 'aspect-video md:aspect-[4/3]';
+}
+
+export type PostCardProps = {
+  post: FeedPost;
+  currentUserId: string | null;
+  reaction: ReactionState;
+  commentCount: number;
+  pickerOpen: boolean;
+  onOpenPicker: () => void;
+  onClosePicker: () => void;
+  onToggleReaction: (type: ReactionType) => void;
+  onCommentCountChange?: (next: number) => void;
+  onUpdated?: (next: FeedPost) => void;
+  onDeleted?: (id: string) => void;
+};
+
+export function PostCard({
+  post,
+  currentUserId,
+  onUpdated,
+  onDeleted,
+  reaction,
+  commentCount,
+  pickerOpen,
+  onOpenPicker,
+  onClosePicker,
+  onToggleReaction,
+  onCommentCountChange,
+}: PostCardProps) {
+  const isEvent = (post.kind ?? 'normal') === 'event';
+  const eventDetails = post.event_payload;
+  const baseDescription = post.content ?? post.text ?? '';
+  const description = isEvent ? baseDescription || eventDetails?.description || '' : baseDescription;
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(description);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const linkUrl = post.link_url ?? firstUrl(description);
+  const linkTitle = post.link_title ?? null;
+  const linkDescription = post.link_description ?? null;
+  const linkImage = post.link_image ?? null;
+  const isOwner = currentUserId != null && post.authorId === currentUserId;
+  const editAreaId = `post-edit-${post.id}`;
+  const errorId = error ? `post-error-${post.id}` : undefined;
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const eventDateLabel = eventDetails?.date ? formatEventDate(eventDetails.date) : null;
+  const mediaAria = isEvent ? "Apri la locandina dell'evento" : 'Apri il media in grande';
+  const mediaIcon = isEvent ? '📅' : post.media_type === 'video' ? '▶' : post.media_type === 'image' ? '📷' : null;
+  const [commentSignal, setCommentSignal] = useState(0);
+
+  const shareUrl = useMemo(() => {
+    if (typeof window === 'undefined') return '';
+    const origin = window.location.origin;
+    return getPostPermalink(origin, String(post.id));
+  }, [post.id]);
+
+  const handleShare = useCallback(() => {
+    void shareOrCopyLink({
+      title: isEvent ? 'Evento del club' : 'Post del feed',
+      text: isEvent ? eventDetails?.title ?? description : description || undefined,
+      url: shareUrl,
+      copiedMessage: 'Link del post copiato negli appunti',
+    });
+  }, [description, eventDetails?.title, isEvent, shareUrl]);
+
+  const closeLightbox = useCallback(() => setLightboxIndex(null), []);
+
+  const reactionSummaryParts = REACTION_ORDER.filter((key) => (reaction.counts[key] || 0) > 0).map(
+    (key) => `${REACTION_EMOJI[key]} ${reaction.counts[key]}`,
+  );
+  const totalReactions = REACTION_ORDER.reduce((acc, key) => acc + (reaction.counts[key] || 0), 0);
+  const reactionSummaryText = reactionSummaryParts.length ? reactionSummaryParts.join(' · ') : 'Nessuna reazione';
+
+  useEffect(() => {
+    if (!editing) setText(description);
+  }, [description, editing, post]);
+
+  async function saveEdit() {
+    const payload = text.trim();
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/feed/posts/${post.id}`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: payload }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json?.item) throw new Error(json?.error || 'Salvataggio fallito');
+      onUpdated?.({ ...post, ...json.item });
+      setEditing(false);
+    } catch (e: any) {
+      setError(e?.message || 'Errore');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function deletePost() {
+    if (!confirm('Sei sicuro di voler eliminare questo post?')) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/feed/posts/${post.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error || 'Eliminazione fallita');
+      onDeleted?.(post.id);
+    } catch (e: any) {
+      setError(e?.message || 'Errore');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <article className="glass-panel relative p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col gap-1 text-xs text-gray-500">
+          <div>{post.createdAt ? new Date(post.createdAt).toLocaleString() : '—'}</div>
+          {isEvent && eventDateLabel ? (
+            <div className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase text-blue-800">
+              <CalendarGlyph className="h-3.5 w-3.5" aria-hidden />
+              <span>{eventDateLabel}</span>
+            </div>
+          ) : null}
+        </div>
+        <div className="flex items-center gap-1 text-neutral-500">
+          {isOwner ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="rounded-full p-2 transition hover:bg-neutral-100 hover:text-neutral-900"
+                aria-label="Modifica questo post"
+                disabled={saving}
+              >
+                <PostIconEdit className="h-4 w-4" aria-hidden />
+              </button>
+              <button
+                type="button"
+                onClick={deletePost}
+                className="rounded-full p-2 text-red-500 transition hover:bg-red-50 hover:text-red-600"
+                aria-label="Elimina questo post"
+                disabled={saving}
+              >
+                <PostIconDelete className="h-4 w-4" aria-hidden />
+              </button>
+            </>
+          ) : null}
+          <button
+            type="button"
+            onClick={handleShare}
+            className="rounded-full p-2 transition hover:bg-neutral-100 hover:text-neutral-900"
+            aria-label={isEvent ? 'Condividi questo evento' : 'Condividi questo post'}
+          >
+            <PostIconShare className="h-4 w-4" aria-hidden />
+          </button>
+        </div>
+      </div>
+      {editing ? (
+        <div className="mt-2 space-y-2">
+          <label htmlFor={editAreaId} className="sr-only">
+            Modifica il contenuto del post
+          </label>
+          <textarea
+            id={editAreaId}
+            className="w-full resize-y rounded-lg border px-3 py-2 text-sm"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            rows={3}
+            disabled={saving}
+            aria-invalid={Boolean(error)}
+            aria-describedby={errorId}
+          />
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={saveEdit}
+              disabled={saving}
+              className="rounded-lg bg-gray-900 px-3 py-1 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              {saving ? 'Salvataggio…' : 'Salva'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEditing(false);
+                setText(description);
+              }}
+              disabled={saving}
+              className="rounded-lg px-3 py-1 text-sm font-semibold text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+            >
+              Annulla
+            </button>
+          </div>
+          {error ? (
+            <div id={errorId} className="text-xs text-red-600" role="status">
+              {error}
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <div className="mt-2 space-y-3 text-sm text-gray-900">
+          {description ? <p className="whitespace-pre-wrap">{description}</p> : null}
+
+          {post.media_url ? (
+            <div className={`group relative overflow-hidden rounded-xl ${aspectClasses(post.media_aspect ?? null)}`}>
+              {post.media_type === 'video' ? (
+                <FeedVideoPlayer id={post.id} url={post.media_url ?? undefined} showControls className="h-full w-full bg-black" />
+              ) : (
+                <button type="button" className="relative h-full w-full" onClick={() => setLightboxIndex(0)}>
+                  <span className="sr-only">{mediaAria}</span>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={post.media_url ?? ''}
+                    alt={mediaAria}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                  />
+                  <span className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/15 via-transparent to-transparent opacity-0 transition group-hover:opacity-100" />
+                </button>
+              )}
+              {mediaIcon ? (
+                <div className="pointer-events-none absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-white/85 px-2 py-1 text-[11px] font-semibold text-neutral-800 shadow">
+                  <span aria-hidden>{mediaIcon}</span>
+                  <span className="sr-only">{mediaAria}</span>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {linkUrl ? <FeedLinkCard url={linkUrl} title={linkTitle} description={linkDescription} image={linkImage} /> : null}
+
+          {isEvent && eventDetails?.location ? (
+            <div className="rounded-lg bg-blue-50 p-3 text-sm text-blue-900">
+              <div className="font-semibold">{eventDetails.title}</div>
+              <div>{eventDetails.location}</div>
+              {eventDateLabel ? <div className="text-xs text-blue-800">{eventDateLabel}</div> : null}
+            </div>
+          ) : null}
+        </div>
+      )}
+
+      <div className="mt-3 flex items-center justify-between text-xs text-neutral-600">
+        <div>
+          {reaction.mine ? (
+            <span className="font-semibold text-[var(--brand)]">
+              Tu{totalReactions > 1 ? ` e altre ${totalReactions - 1} persone` : ''}
+            </span>
+          ) : null}{' '}
+          {reactionSummaryText}
+        </div>
+        <div>{commentCount > 0 ? `${commentCount} commenti` : 'Nessun commento'}</div>
+      </div>
+
+      <div
+        className="mt-2 flex flex-wrap items-center gap-2 border-t border-neutral-200 pt-2 text-sm font-semibold text-neutral-700"
+        onMouseLeave={onClosePicker}
+      >
+        <div className="relative inline-flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onToggleReaction('like')}
+            onMouseEnter={onOpenPicker}
+            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 transition ${
+              reaction.mine
+                ? 'border-[var(--brand)] bg-[var(--brand)]/10 text-[var(--brand)]'
+                : 'border-neutral-200 bg-white text-neutral-800 hover:border-neutral-300'
+            }`}
+            aria-pressed={reaction.mine === 'like'}
+          >
+            <span aria-hidden className="text-xl">{REACTION_EMOJI[reaction.mine ?? 'like']}</span>
+            <span>Reagisci</span>
+          </button>
+
+          <button
+            type="button"
+            className="rounded-full border border-neutral-200 bg-white px-2 py-1 text-[11px] text-neutral-600 hover:border-neutral-300"
+            onClick={() => (pickerOpen ? onClosePicker() : onOpenPicker())}
+            aria-label="Scegli reazione"
+          >
+            ⋯
+          </button>
+
+          {pickerOpen && (
+            <div className="absolute left-0 top-full z-10 mt-1 flex gap-2 rounded-full border border-neutral-200 bg-white px-2 py-1 shadow-lg">
+              {REACTION_ORDER.map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => {
+                    onToggleReaction(r);
+                    onClosePicker();
+                  }}
+                  className={`flex items-center justify-center rounded-full px-2 py-1 text-xl transition ${
+                    reaction.mine === r ? 'bg-[var(--brand)]/10 text-[var(--brand)]' : 'hover:bg-neutral-100'
+                  }`}
+                >
+                  <span aria-hidden>{REACTION_EMOJI[r]}</span>
+                  <span className="sr-only">{r}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <button
+          type="button"
+          className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-neutral-800 transition hover:border-neutral-300"
+          onClick={() => setCommentSignal((v) => v + 1)}
+        >
+          <span aria-hidden>💬</span>
+          <span>Commenta</span>
+        </button>
+
+        <button
+          type="button"
+          className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-neutral-800 transition hover:border-neutral-300"
+          onClick={handleShare}
+        >
+          <span aria-hidden>🔗</span>
+          <span>Condividi</span>
+        </button>
+      </div>
+
+      <CommentsSection
+        postId={String(post.id)}
+        initialCount={commentCount}
+        expandSignal={commentSignal}
+        onCountChange={onCommentCountChange}
+      />
+      {error ? (
+        <div id={errorId} className="mt-2 text-xs text-red-600" role="status">
+          {error}
+        </div>
+      ) : null}
+
+      {lightboxIndex !== null && post.media_url ? (
+        <Lightbox
+          items={[
+            {
+              url: post.media_url,
+              type: post.media_type === 'video' ? 'video' : 'image',
+              alt: isEvent ? eventDetails?.title ?? 'Evento' : 'Media del post',
+            } satisfies LightboxItem,
+          ]}
+          index={lightboxIndex}
+          onClose={closeLightbox}
+        />
+      ) : null}
+    </article>
+  );
+}
+
+function CalendarGlyph(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+      <line x1="16" y1="2" x2="16" y2="6" />
+      <line x1="8" y1="2" x2="8" y2="6" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+    </svg>
+  );
+}

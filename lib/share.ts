@@ -2,7 +2,13 @@ export type SharePayload = {
   title?: string;
   text?: string;
   url?: string;
+  copiedMessage?: string;
 };
+
+export function getPostPermalink(origin: string, postId: string) {
+  const base = origin.endsWith('/') ? origin.slice(0, -1) : origin;
+  return `${base}/posts/${postId}`;
+}
 
 export type ShareCapableNavigator = Navigator & {
   share?: (data: ShareData) => Promise<void>;
@@ -45,7 +51,7 @@ export async function shareOrCopyLink(payload: SharePayload): Promise<ShareResul
         document.execCommand('copy');
         document.body.removeChild(tmp);
       }
-      window.alert('Link copiato negli appunti');
+      window.alert(payload.copiedMessage || 'Link copiato negli appunti');
       return 'copied';
     } catch {
       window.alert('Impossibile condividere');
