@@ -8,7 +8,7 @@ import AthleteProfileHeader from '@/components/athletes/AthleteProfileHeader';
 import PublicAuthorFeed from '@/components/feed/PublicAuthorFeed';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
-type Profile = {
+type AthleteProfileRow = {
   id: string;
   user_id: string | null;
   display_name: string | null;
@@ -22,9 +22,17 @@ type Profile = {
   province: string | null;
   city: string | null;
   avatar_url: string | null;
-  account_type?: string | null;
-  status?: string | null;
+  account_type: string | null;
+  status: string | null;
 };
+
+type GenericStringError = { message: string };
+
+type AthleteProfileState = AthleteProfileRow | GenericStringError | null;
+
+function isAthleteProfileRow(row: AthleteProfileState): row is AthleteProfileRow {
+  return !!row && typeof row === 'object' && 'account_type' in row;
+}
 
 type ApplicationRow = {
   id: string;
@@ -44,7 +52,7 @@ export default function AthletePublicProfilePage() {
   const supabase = useMemo(() => supabaseBrowser(), []);
 
   const [meId, setMeId] = useState<string | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [profile, setProfile] = useState<AthleteProfileRow | null>(null);
   const [apps, setApps] = useState<ApplicationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState<string>('');
@@ -96,22 +104,24 @@ export default function AthletePublicProfilePage() {
         return;
       }
 
-      if (!profileRow) {
-        setMsg('Profilo non trovato.');
+      const profileState = (profileRow ?? null) as AthleteProfileState;
+
+      if (!isAthleteProfileRow(profileState)) {
+        setMsg(profileState?.message || 'Profilo non trovato.');
         setLoading(false);
         return;
       }
 
-      const accountType = (profileRow.account_type || '').toLowerCase();
+      const accountType = (profileState.account_type || '').toLowerCase();
       if (accountType !== 'athlete') {
         setMsg('Profilo non trovato.');
         setLoading(false);
         return;
       }
 
-      const normalizedProfile: Profile = {
-        ...profileRow,
-        user_id: profileRow.user_id ?? null,
+      const normalizedProfile: AthleteProfileRow = {
+        ...profileState,
+        user_id: profileState.user_id ?? null,
       };
 
       setProfile(normalizedProfile);
