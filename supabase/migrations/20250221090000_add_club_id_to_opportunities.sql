@@ -8,10 +8,19 @@ update public.opportunities
   where club_id is null;
 
 -- Foreign key to profiles (club) with defensive IF NOT EXISTS guards
-alter table public.opportunities
-  add constraint if not exists opportunities_club_id_fkey
-  foreign key (club_id) references public.profiles(id)
-  on delete set null;
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'opportunities_club_id_fkey'
+  ) then
+    alter table public.opportunities
+      add constraint opportunities_club_id_fkey
+      foreign key (club_id) references public.profiles(id)
+      on delete set null;
+  end if;
+end $$;
 
 -- Index to speed up queries filtered by club
 create index if not exists opportunities_club_id_idx
