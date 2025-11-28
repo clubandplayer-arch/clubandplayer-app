@@ -1,105 +1,110 @@
+/* eslint-disable @next/next/no-img-element */
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { LS_FOLLOW_KEY } from '@/components/clubs/FollowButton';
+import { useEffect, useState } from 'react';
 
-type FollowMap = Record<string, { name?: string; followedAt: number }>;
-export const LS_SHOW_ONLY_FOLLOWED = 'cp_followed_only_v1';
+type Role = 'club' | 'athlete' | 'guest';
 
-function safeWindow() {
-  return typeof window !== 'undefined';
-}
+type FollowedItem = {
+  id: string;
+  name: string;
+  city: string | null;
+  sport: string | null;
+  avatarUrl?: string | null;
+  accountType: 'club' | 'athlete';
+};
 
-function readFollowed(): FollowMap {
-  if (!safeWindow()) return {};
-  try {
-    const raw = localStorage.getItem(LS_FOLLOW_KEY);
-    if (!raw) return {};
-    const obj = JSON.parse(raw);
-    return obj && typeof obj === 'object' ? obj : {};
-  } catch { return {}; }
-}
-
-function writeFollowed(data: FollowMap) {
-  if (!safeWindow()) return;
-  localStorage.setItem(LS_FOLLOW_KEY, JSON.stringify(data));
-  window.dispatchEvent(new CustomEvent('cp:followed-clubs-changed'));
-}
-
-function readOnlyFollowed(): boolean {
-  if (!safeWindow()) return false;
-  return localStorage.getItem(LS_SHOW_ONLY_FOLLOWED) === '1';
-}
-function writeOnlyFollowed(v: boolean) {
-  if (!safeWindow()) return;
-  localStorage.setItem(LS_SHOW_ONLY_FOLLOWED, v ? '1' : '0');
-  window.dispatchEvent(new CustomEvent('cp:followed-filter-changed'));
+function targetHref(item: FollowedItem) {
+  return item.accountType === 'club' ? `/clubs/${item.id}` : `/athletes/${item.id}`;
 }
 
 export default function FollowedClubs() {
-  const [map, setMap] = useState<FollowMap>({});
-  const [only, setOnly] = useState(false);
+  const [role, setRole] = useState<Role>('guest');
+  const [items, setItems] = useState<FollowedItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setMap(readFollowed());
-    setOnly(readOnlyFollowed());
-
-    const onFollow = () => setMap(readFollowed());
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === LS_FOLLOW_KEY) setMap(readFollowed());
-      if (e.key === LS_SHOW_ONLY_FOLLOWED) setOnly(readOnlyFollowed());
-    };
-    const onOnly = () => setOnly(readOnlyFollowed());
-
-    window.addEventListener('cp:followed-clubs-changed', onFollow as any);
-    window.addEventListener('cp:followed-filter-changed', onOnly as any);
-    window.addEventListener('storage', onStorage);
-    return () => {
-      window.removeEventListener('cp:followed-clubs-changed', onFollow as any);
-      window.removeEventListener('cp:followed-filter-changed', onOnly as any);
-      window.removeEventListener('storage', onStorage);
-    };
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch('/api/follows/list', { credentials: 'include', cache: 'no-store' });
+        const data = await res.json().catch(() => ({}));
+        const nextRole: Role =
+          data?.role === 'club' || data?.role === 'athlete' ? data.role : 'guest';
+        const rows: FollowedItem[] = Array.isArray(data?.items)
+          ? (data.items as FollowedItem[])
+          : [];
+        setRole(nextRole);
+        setItems(rows);
+      } catch (err: any) {
+        setError(err?.message || 'Errore nel recupero dei profili seguiti');
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, []);
 
-  const entries = useMemo(
-    () => Object.entries(map).sort((a, b) => (b[1]?.followedAt || 0) - (a[1]?.followedAt || 0)),
-    [map]
-  );
+  const heading = role === 'club' ? 'Player che segui' : 'Club che segui';
 
-  return (
-    <div className="space-y-3 text-sm">
-      <label className="flex items-center justify-end gap-2 text-xs text-gray-600">
-        <input
-          type="checkbox"
-          className="accent-black"
-          checked={only}
-          onChange={(e) => writeOnlyFollowed(e.target.checked)}
-        />
-        Solo seguiti
-      </label>
-
-      {!entries.length ? (
-        <p className="text-xs text-gray-600">Segui un club dalle opportunità per vederlo qui.</p>
-      ) : (
+  if (loading) {
+    return (
+      <div className="space-y-3">
+        <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{heading}</div>
         <ul className="space-y-2">
-          {entries.slice(0, 8).map(([id, it]) => (
-            <li key={id} className="flex items-center justify-between gap-2">
-              <span className="truncate">{it.name ?? `Club ${id.slice(0, 6)}`}</span>
-              <button
-                type="button"
-                onClick={() => {
-                  const next = { ...map };
-                  delete next[id];
-                  writeFollowed(next);
-                }}
-                className="text-xs px-2 py-1 rounded border hover:bg-gray-50"
-                title="Smetti di seguire"
-              >
-                Rimuovi
-              </button>
+          {Array.from({ length: 3 }).map((_, i) => (
+            <li key={i} className="flex items-center gap-3">
+              <div className="h-9 w-9 animate-pulse rounded-full bg-zinc-200 dark:bg-zinc-800" />
+              <div className="flex-1 space-y-2">
+                <div className="h-3 w-1/2 animate-pulse rounded bg-zinc-200 dark:bg-zinc-800" />
+                <div className="h-3 w-1/3 animate-pulse rounded bg-zinc-200 dark:bg-zinc-800" />
+              </div>
             </li>
           ))}
         </ul>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{heading}</div>
+      {error ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
+      ) : items.length > 0 ? (
+        <ul className="space-y-2">
+          {items.slice(0, 5).map((item) => (
+            <li key={item.id} className="flex items-center gap-3">
+              <img
+                src={
+                  item.avatarUrl ||
+                  `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(item.name)}`
+                }
+                alt={item.name}
+                className="h-9 w-9 rounded-full object-cover ring-1 ring-zinc-200 dark:ring-zinc-800"
+              />
+              <div className="min-w-0 flex-1">
+                <a
+                  href={targetHref(item)}
+                  className="truncate text-sm font-semibold text-zinc-900 hover:text-zinc-700 dark:text-zinc-100 dark:hover:text-zinc-300"
+                >
+                  {item.name}
+                </a>
+                <div className="truncate text-xs text-zinc-500">
+                  {item.city || ''}
+                  {item.sport ? `${item.city ? ' · ' : ''}${item.sport}` : ''}
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div className="rounded-lg border border-dashed p-4 text-sm text-zinc-600 dark:border-zinc-800">
+          {role === 'club'
+            ? 'Inizia a seguire player per vederli qui.'
+            : 'Inizia a seguire club per vederli qui.'}
+        </div>
       )}
     </div>
   );

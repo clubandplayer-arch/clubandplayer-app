@@ -134,7 +134,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     title={item.label}
                     className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${active ? 'bg-[var(--brand)] text-white shadow-sm' : 'text-neutral-600 hover:bg-neutral-100'}`}
                   >
-                    <MaterialIcon name={item.icon} className="h-5 w-5" />
+                    <MaterialIcon name={item.icon} fontSize="small" />
                     {item.href === '/notifications' && unreadNotifications > 0 && (
                       <span className="absolute -right-1 -top-1 min-w-[18px] rounded-full bg-red-500 px-1.5 text-center text-[11px] font-semibold text-white">
                         {unreadNotifications}
@@ -176,7 +176,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             aria-label={isMenuOpen ? 'Chiudi menu di navigazione' : 'Apri menu di navigazione'}
             aria-expanded={isMenuOpen}
           >
-            {isMenuOpen ? <NavCloseIcon className="h-5 w-5" aria-hidden /> : <NavMenuIcon className="h-5 w-5" aria-hidden />}
+            {isMenuOpen ? <NavCloseIcon fontSize="small" aria-hidden /> : <NavMenuIcon fontSize="small" aria-hidden />}
           </button>
         </div>
         {isMenuOpen ? (
@@ -192,7 +192,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                         onClick={() => setIsMenuOpen(false)}
                         className={`flex flex-1 min-w-[140px] items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${active ? 'border-[var(--brand)] bg-[var(--brand)]/10 text-[var(--brand)]' : 'hover:bg-neutral-50'}`}
                       >
-                        <MaterialIcon name={item.icon} className="h-4 w-4" />
+                        <MaterialIcon name={item.icon} fontSize={16} />
                         <span>{item.label}</span>
                         {item.href === '/notifications' && unreadNotifications > 0 && (
                           <span className="ml-auto inline-flex min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-semibold text-white">

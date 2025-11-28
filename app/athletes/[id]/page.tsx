@@ -9,9 +9,13 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
+import FollowButton from '@/components/clubs/FollowButton'
+import PublicAuthorFeed from '@/components/feed/PublicAuthorFeed'
 
 type Profile = {
   id: string
+  user_id?: string | null
+  profile_id?: string | null
   display_name: string | null
   full_name: string | null
   headline: string | null
@@ -95,7 +99,13 @@ export default function AthletePublicProfilePage() {
         return
       }
 
-      setProfile(fetchedProfile)
+      const normalizedProfile: Profile = {
+        ...fetchedProfile,
+        user_id: fetchedProfile.user_id ?? fetchedProfile.id ?? null,
+        profile_id: fetchedProfile.profile_id ?? athleteId ?? null,
+      }
+
+      setProfile(normalizedProfile)
 
       // 2) (facoltativo) ultime candidature visibili solo all’atleta stesso
       if (userRes?.user?.id === athleteId) {
@@ -135,7 +145,10 @@ export default function AthletePublicProfilePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id])
 
-  const isMe = useMemo(() => !!meId && !!profile && meId === profile.id, [meId, profile])
+  const isMe = useMemo(
+    () => !!meId && !!profile && meId === (profile.user_id ?? profile.id),
+    [meId, profile]
+  )
 
   const profileName = profile?.display_name || profile?.full_name || 'Player'
   const profileTagline = useMemo(() => {
@@ -157,80 +170,99 @@ export default function AthletePublicProfilePage() {
   }, [profile])
 
   return (
-    <main style={{maxWidth:960, margin:'0 auto', padding:24}}>
+    <main className="mx-auto max-w-5xl space-y-6 px-4 py-6">
       {loading && <p>Caricamento…</p>}
       {!loading && !!msg && <p style={{color:'#b91c1c'}}>{msg}</p>}
       {!loading && !msg && profile && (
         <>
-          {/* Header profilo */}
-          <header style={{display:'flex', gap:16, alignItems:'center', marginBottom:16}}>
-            {profile.avatar_url ? (
-              // immagine profilo se presente
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={profile.avatar_url}
-                alt={profileName}
-                width={80}
-                height={80}
-                style={{borderRadius:'50%', objectFit:'cover'}}
-              />
-            ) : (
-              <div style={{width:80, height:80, borderRadius:'50%', background:'#e5e7eb'}} />
-            )}
-            <div>
-              <h1 style={{margin:0}}>{profileName}</h1>
-              <p style={{margin:'4px 0', opacity:.8}}>{profileTagline}</p>
-              {profileLocation && (
-                <p style={{margin:'2px 0', fontSize:13, opacity:.7}}>{profileLocation}</p>
+          <header className="rounded-2xl border bg-white p-5 shadow-sm">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
+              {profile.avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={profile.avatar_url}
+                  alt={profileName}
+                  width={96}
+                  height={96}
+                  className="h-24 w-24 rounded-full object-cover ring-1 ring-neutral-200"
+                />
+              ) : (
+                <div className="h-24 w-24 rounded-full bg-neutral-200 ring-1 ring-neutral-200" />
               )}
-              <div style={{display:'flex', gap:12, alignItems:'center'}}>
-                <span style={{fontSize:12, opacity:.7}}>ID: <code>{profile.id}</code></span>
-                {/* Messaggia: apre thread con l’atleta */}
-                <Link href={`/messages/${profile.id}`} style={{fontSize:14}}>
-                  Messaggia →
-                </Link>
-                {isMe && (
-                  <Link href="/settings" style={{fontSize:14}}>
-                    Modifica profilo →
-                  </Link>
+              <div className="flex flex-1 flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div className="space-y-1">
+                  <h1 className="heading-h1 text-2xl md:text-3xl">{profileName}</h1>
+                  <p className="text-sm text-neutral-600">{profileTagline}</p>
+                  {profileLocation && (
+                    <p className="text-xs text-neutral-500">{profileLocation}</p>
+                  )}
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-neutral-500">
+                    <span>ID: <code>{profile.id}</code></span>
+                    <Link href={`/messages/${profile.id}`} className="font-semibold text-blue-700 underline-offset-4 hover:underline">
+                      Messaggia →
+                    </Link>
+                    {isMe && (
+                      <Link href="/settings" className="font-semibold text-blue-700 underline-offset-4 hover:underline">
+                        Modifica profilo →
+                      </Link>
+                    )}
+                  </div>
+                </div>
+                {!isMe && (
+                  <FollowButton
+                    id={profile.id}
+                    targetType="player"
+                    name={profileName}
+                    labelFollow="Segui"
+                    labelFollowing="Seguo"
+                    size="md"
+                  />
                 )}
               </div>
             </div>
           </header>
 
-          {/* Bio */}
-          <section style={{border:'1px solid #e5e7eb', borderRadius:12, padding:16, marginTop:12}}>
-            <h2 style={{marginTop:0}}>Bio</h2>
-            <p style={{marginTop:8, whiteSpace:'pre-wrap'}}>
+          <section className="rounded-2xl border bg-white p-5 shadow-sm">
+            <h2 className="heading-h2 text-xl">Bio</h2>
+            <p className="mt-2 whitespace-pre-wrap text-sm text-neutral-800">
               {profile.bio && profile.bio.trim().length > 0 ? profile.bio : 'Nessuna bio disponibile.'}
             </p>
           </section>
 
-          {/* Panoramica */}
-          <section style={{border:'1px solid #e5e7eb', borderRadius:12, padding:16, marginTop:12}}>
-            <h2 style={{marginTop:0}}>Panoramica</h2>
-            <ul style={{marginTop:8, lineHeight:1.8}}>
+          <section className="rounded-2xl border bg-white p-5 shadow-sm">
+            <h2 className="heading-h2 text-xl">Panoramica</h2>
+            <ul className="mt-3 space-y-1 text-sm text-neutral-800">
               <li><b>Sport:</b> {profile.sport ?? '—'}</li>
               <li><b>Ruolo:</b> {profile.role ?? '—'}</li>
               <li><b>Città:</b> {profileLocation || '—'}</li>
             </ul>
           </section>
 
-          {/* Ultime candidature (solo l’atleta vede le proprie) */}
+          <section className="space-y-3 rounded-2xl border bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="heading-h2 text-xl">Bacheca</h2>
+              <span className="text-xs font-semibold text-blue-700">Aggiornamenti del player</span>
+            </div>
+            <PublicAuthorFeed
+              authorId={profile.user_id ?? profile.id}
+              fallbackAuthorIds={profile.profile_id ? [profile.profile_id] : []}
+            />
+          </section>
+
           {isMe && (
-            <section style={{border:'1px solid #e5e7eb', borderRadius:12, padding:16, marginTop:12}}>
-              <h2 style={{marginTop:0}}>Le mie ultime candidature</h2>
+            <section className="rounded-2xl border bg-white p-5 shadow-sm">
+              <h2 className="heading-h2 text-xl">Le mie ultime candidature</h2>
               {apps.length === 0 ? (
-                <p>Nessuna candidatura recente.</p>
+                <p className="text-sm text-neutral-700">Nessuna candidatura recente.</p>
               ) : (
-                <ul style={{display:'grid', gap:12, marginTop:8}}>
+                <ul className="mt-3 grid gap-3">
                   {apps.map(a => (
-                    <li key={a.id} style={{border:'1px solid #e5e7eb', borderRadius:12, padding:12}}>
-                      <div style={{fontWeight:600}}>{a.opportunity?.title ?? 'Annuncio'}</div>
-                      <div style={{fontSize:14, opacity:.8}}>
+                    <li key={a.id} className="rounded-xl border border-neutral-200 p-3">
+                      <div className="font-semibold">{a.opportunity?.title ?? 'Annuncio'}</div>
+                      <div className="text-sm text-neutral-600">
                         {a.opportunity?.club_name ?? '—'} — {a.opportunity?.city ?? '—'}
                       </div>
-                      <div style={{fontSize:12, opacity:.7}}>
+                      <div className="text-[12px] text-neutral-500">
                         Stato: {a.status} · {new Date(a.created_at).toLocaleString()}
                       </div>
                     </li>
@@ -240,10 +272,9 @@ export default function AthletePublicProfilePage() {
             </section>
           )}
 
-          {/* Azioni */}
-          <div style={{display:'flex', gap:12, marginTop:16, flexWrap:'wrap'}}>
-            <Link href="/opportunities">← Torna alle opportunità</Link>
-            <Link href="/favorites">I miei preferiti</Link>
+          <div className="flex flex-wrap gap-3 text-sm">
+            <Link href="/opportunities" className="text-blue-700 underline-offset-4 hover:underline">← Torna alle opportunità</Link>
+            <Link href="/favorites" className="text-blue-700 underline-offset-4 hover:underline">I miei preferiti</Link>
           </div>
         </>
       )}

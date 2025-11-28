@@ -118,34 +118,42 @@ export default function SignupPage() {
   };
 
   return (
-    <main className="container mx-auto py-10">
-      <div className="grid items-start gap-10 md:grid-cols-12">
-        {/* HERO TESTO - stile LinkedIn */}
-        <section className="md:col-span-7">
-          <h1 className="text-3xl sm:text-4xl font-bold leading-tight">
-            Ti diamo il benvenuto nella più grande community sportiva.
-          </h1>
-          <br />
-          <h2 className="text-1xl sm:text-2xl font-bold leading-tight">
-            <em>entra a far parte di questo nuovo progetto!</em>
-          </h2>
-          <br />
-          <p className="mt-4 lead max-w-2xl">
-            Connettiti con club e player, pubblica opportunità, costruisci la tua carriera.
-            Iscriviti in pochi secondi: scegli se sei un <b>Club</b> o un <b>Player</b>.
-          </p>
+    <main className="container mx-auto px-4 py-12">
+      <div className="mx-auto max-w-6xl">
+        <h1 className="text-left text-4xl font-extrabold leading-tight text-[#00527a] sm:text-5xl">
+          Club &amp; Player
+        </h1>
+        <div className="mt-6 grid items-start gap-10 md:grid-cols-12">
+          {/* HERO TESTO - stile LinkedIn */}
+          <section className="md:col-span-7 md:mt-2">
+            <h2 className="text-3xl font-bold leading-tight text-[#00527a] sm:text-4xl">
+              Ti diamo il benvenuto nella più grande community sportiva.
+            </h2>
+            <br />
+            <h3 className="text-xl font-bold leading-tight text-[#0b6c9c] sm:text-2xl">
+              <em>entra a far parte di questo nuovo progetto!</em>
+            </h3>
+            <br />
+            <p className="mt-2 lead max-w-2xl">
+              Connettiti con club e player, pubblica opportunità, costruisci la tua carriera. Iscriviti in pochi
+              secondi: scegli se sei un <b>Club</b> o un <b>Player</b>.
+            </p>
 
-          <ul className="mt-6 space-y-3 text-sm">
-            <li>• Scopri e pubblica <b>opportunità</b> reali</li>
-            <li>• Crea un <b>profilo</b> chiaro e aggiornato</li>
-            <li>• Ricevi <b>candidature</b> e messaggi in app</li>
-          </ul>
-        </section>
+            <ul className="mt-6 space-y-3 text-sm">
+              <li>• Scopri e pubblica <b>opportunità</b> reali</li>
+              <li>• Crea un <b>profilo</b> chiaro e aggiornato</li>
+              <li>• Ricevi <b>candidature</b> e messaggi in app</li>
+            </ul>
+          </section>
 
-        {/* CARD FORM */}
-        <section className="md:col-span-5">
-          <div className="card p-6 space-y-4">
+          {/* CARD FORM */}
+          <section className="md:col-span-5">
+          <div className="card p-6 space-y-4 border-2 border-[#00527a1a] shadow-2xl">
             <h2 className="sr-only">Crea un account</h2>
+            <div className="flex items-center gap-2 text-sm font-semibold text-[#00527a]">
+              <span className="h-2 w-2 rounded-full bg-[#00527a]" aria-hidden />
+              Accesso sicuro con email o Google
+            </div>
 
             {/* Google first */}
             {oauthReady && (
@@ -265,6 +273,7 @@ export default function SignupPage() {
           </div>
         </section>
       </div>
-    </main>
+    </div>
+  </main>
   );
 }

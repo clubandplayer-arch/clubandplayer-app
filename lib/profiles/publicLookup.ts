@@ -48,7 +48,7 @@ type FetchOptions = {
 
 function normalizeRow(row: Record<string, any>): PublicProfileSummary | null {
   const profileId = row.id ? String(row.id) : null;
-  const userId = row.user_id ? String(row.user_id) : profileId;
+  const userId = row.user_id ? String(row.user_id) : null;
   if (!profileId && !userId) return null;
 
   const first = typeof row.first_name === 'string' ? row.first_name.trim() : '';
@@ -61,9 +61,10 @@ function normalizeRow(row: Record<string, any>): PublicProfileSummary | null {
     null;
 
   return {
-    id: userId ?? profileId ?? '',
+    // Conserviamo l'id del profilo come identificativo principale
+    id: profileId ?? userId ?? '',
     profile_id: profileId,
-    user_id: userId,
+    user_id: userId ?? profileId,
     first_name: first || null,
     last_name: last || null,
     display_name: displayName,
