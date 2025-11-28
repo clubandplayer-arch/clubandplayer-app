@@ -49,14 +49,14 @@ export const PATCH = withAuth(async (req, { supabase, user }) => {
 
     const updateBuilder = supabase
       .from('notifications')
-      .update({ read_at: new Date().toISOString(), read: true })
+      .update({ read_at: new Date().toISOString(), read: true }, { count: 'exact', returning: 'minimal' })
       .eq('user_id', user.id);
 
     const { error, count } = markAll
-      ? await updateBuilder.select('id', { count: 'exact', head: true })
+      ? await updateBuilder
       : ids.length
-      ? await updateBuilder.in('id', ids).select('id', { count: 'exact', head: true })
-      : { error: null, count: 0 } as any;
+      ? await updateBuilder.in('id', ids)
+      : { error: null, count: 0 } as const;
 
     if (error) return jsonError(error.message, 400);
 
