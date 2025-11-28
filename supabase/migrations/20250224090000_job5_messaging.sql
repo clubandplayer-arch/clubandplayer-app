@@ -1,5 +1,27 @@
 begin;
 
+-- Funzione helper per updated_at (idempotente)
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_proc
+    where proname = 'set_current_timestamp_updated_at'
+      and pg_function_is_visible(oid)
+  ) then
+    create or replace function public.set_current_timestamp_updated_at()
+    returns trigger
+    language plpgsql
+    as $$
+    begin
+      new.updated_at = now();
+      return new;
+    end;
+    $$;
+  end if;
+end
+$$;
+
 -- Tabelle base (idempotenti)
 create table if not exists public.conversations (
   id uuid primary key default gen_random_uuid(),
