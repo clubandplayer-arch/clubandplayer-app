@@ -7,11 +7,12 @@ import PublicAuthorFeed from '@/components/feed/PublicAuthorFeed';
 import { resolveCountryName, resolveStateName } from '@/lib/geodata/countryStateCityDataset';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
-type ClubProfile = {
+type ClubProfileRow = {
   id: string;
   user_id: string | null;
   display_name: string | null;
   full_name: string | null;
+  headline: string | null;
   bio: string | null;
   country: string | null;
   region: string | null;
@@ -24,18 +25,27 @@ type ClubProfile = {
   club_stadium: string | null;
   club_stadium_address: string | null;
   club_motto: string | null;
-  status?: string | null;
-  account_type?: string | null;
-  type?: string | null;
+  status: string | null;
+  account_type: string | null;
+  type: string | null;
 };
 
-async function loadClubProfile(id: string): Promise<ClubProfile | null> {
+type GenericStringError = { message: string };
+
+type ClubProfileState = ClubProfileRow | GenericStringError | null;
+
+function isClubProfileRow(row: ClubProfileState): row is ClubProfileRow {
+  return !!row && typeof row === 'object' && 'account_type' in row;
+}
+
+async function loadClubProfile(id: string): Promise<ClubProfileRow | null> {
   const supabase = await getSupabaseServerClient();
   const select = [
     'id',
     'user_id',
     'display_name',
     'full_name',
+    'headline',
     'bio',
     'country',
     'region',
@@ -62,15 +72,20 @@ async function loadClubProfile(id: string): Promise<ClubProfile | null> {
     .maybeSingle();
 
   if (error) return null;
-  if (!row) return null;
 
-  const accountType = (row.account_type || row.type || '').toLowerCase();
+  const profileState = (row ?? null) as ClubProfileState;
+  if (!isClubProfileRow(profileState)) return null;
+
+  const accountType = (profileState.account_type || profileState.type || '').toLowerCase();
   if (accountType !== 'club') return null;
 
-  return row as ClubProfile;
+  return {
+    ...profileState,
+    user_id: profileState.user_id ?? null,
+  };
 }
 
-function locationLabel(row: ClubProfile): string {
+function locationLabel(row: ClubProfileRow): string {
   const state = resolveStateName(row.country || null, row.region || row.province || '');
   return [row.city, row.province, state, resolveCountryName(row.country || undefined)]
     .filter(Boolean)
