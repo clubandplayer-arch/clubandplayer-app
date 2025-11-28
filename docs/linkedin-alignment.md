@@ -108,11 +108,11 @@ Ogni step può essere sviluppato in PR dedicate per evitare regressioni e manten
 ## Checklist dei job (stato)
 
 ### Job 1 — Profili (Player & Club) + routing ricerca → profili
-- [ ] 1.1 Player: header completo stile profilo LinkedIn
+- [x] 1.1 Player: header completo stile profilo LinkedIn
 - [ ] 1.2 Player: sezioni Esperienze / Statistiche / Media / Open to opportunities
-- [ ] 1.3 Club: header e sezioni About / Dati club
+- [x] 1.3 Club: header e sezioni About / Dati club
 - [ ] 1.4 Club: widget "Opportunità aperte"
-- [ ] 1.5 Routing da /search-map → profili
+- [x] 1.5 Routing da /search-map → profili
 - [ ] 1.6 QA finale Job 1
 
 ### Job 2 — Feed home + UX post + colonna destra

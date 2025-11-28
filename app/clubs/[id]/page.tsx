@@ -1,8 +1,7 @@
 // app/clubs/[id]/page.tsx
-import Image from 'next/image';
 import { notFound } from 'next/navigation';
 
-import FollowButton from '@/components/clubs/FollowButton';
+import ClubProfileHeader from '@/components/clubs/ClubProfileHeader';
 import PublicAuthorFeed from '@/components/feed/PublicAuthorFeed';
 
 import { resolveCountryName, resolveStateName } from '@/lib/geodata/countryStateCityDataset';
@@ -54,19 +53,21 @@ async function loadClubProfile(id: string): Promise<ClubProfile | null> {
     'type',
   ].join(',');
 
-  const { data: byId } = await supabase.from('profiles').select(select).eq('id', id).maybeSingle();
-  const { data: byUser } = byId
-    ? { data: null }
-    : await supabase.from('profiles').select(select).eq('user_id', id).maybeSingle();
+  const { data: row, error } = await supabase
+    .from('profiles')
+    .select(select)
+    .eq('id', id)
+    .eq('status', 'active')
+    .or('account_type.eq.club,type.eq.club')
+    .maybeSingle();
 
-  const row = (byId || byUser) as ClubProfile | null;
+  if (error) return null;
   if (!row) return null;
 
   const accountType = (row.account_type || row.type || '').toLowerCase();
   if (accountType !== 'club') return null;
-  if ((row.status ?? 'active') !== 'active') return null;
 
-  return row;
+  return row as ClubProfile;
 }
 
 function locationLabel(row: ClubProfile): string {
@@ -80,67 +81,44 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
   const profile = await loadClubProfile(params.id);
   if (!profile) return notFound();
 
-  const name = profile.display_name || profile.full_name || 'Club';
-  const place = locationLabel(profile);
+  const aboutText = profile.bio || 'Nessuna descrizione disponibile.';
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-4 md:p-6">
-      <section className="rounded-2xl border bg-white p-5 shadow-sm">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
-          <div className="h-28 w-28 overflow-hidden rounded-full bg-neutral-100 ring-1 ring-neutral-200 md:h-32 md:w-32">
-            {profile.avatar_url ? (
-              <Image
-                src={profile.avatar_url}
-                alt={name}
-                width={128}
-                height={128}
-                className="h-full w-full object-cover"
-              />
-            ) : null}
-          </div>
-          <div className="flex flex-1 flex-col gap-2 md:flex-row md:items-center md:justify-between">
+      <ClubProfileHeader profile={profile} />
+
+      <section className="grid gap-4 lg:grid-cols-3">
+        <div className="rounded-2xl border bg-white p-5 shadow-sm lg:col-span-2">
+          <h2 className="heading-h2 text-xl">About</h2>
+          <p className="mt-2 whitespace-pre-wrap text-sm text-neutral-800">{aboutText}</p>
+        </div>
+
+        <div className="rounded-2xl border bg-white p-5 shadow-sm">
+          <h2 className="heading-h2 text-xl">Dati club</h2>
+          <dl className="mt-3 space-y-3 text-sm text-neutral-800">
             <div className="space-y-1">
-              <h1 className="heading-h1 text-2xl md:text-3xl">{name}</h1>
-              {place ? <p className="text-sm text-neutral-600">{place}</p> : null}
-              {profile.club_motto ? <p className="text-sm italic text-neutral-700">{profile.club_motto}</p> : null}
+              <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Tipologia / Categoria</dt>
+              <dd className="text-base font-semibold text-neutral-900">{profile.club_league_category || '—'}</dd>
             </div>
-            <FollowButton
-              id={profile.id}
-              targetType="club"
-              name={name}
-              labelFollow="Segui"
-              labelFollowing="Seguo"
-              size="md"
-            />
-          </div>
+            <div className="space-y-1">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Sport principale</dt>
+              <dd className="text-base font-semibold text-neutral-900">{profile.sport || '—'}</dd>
+            </div>
+            <div className="space-y-1">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Impianto sportivo</dt>
+              <dd className="text-base font-semibold text-neutral-900">{profile.club_stadium || '—'}</dd>
+              <dd className="text-xs text-neutral-600">{profile.club_stadium_address || '—'}</dd>
+            </div>
+            <div className="space-y-1">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Sede</dt>
+              <dd className="text-base font-semibold text-neutral-900">{locationLabel(profile) || '—'}</dd>
+            </div>
+            <div className="space-y-1">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Contatti</dt>
+              <dd className="text-base font-semibold text-neutral-900">—</dd>
+            </div>
+          </dl>
         </div>
-
-        <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
-            <div className="text-xs uppercase tracking-wide text-neutral-500">Sport</div>
-            <div className="text-base font-semibold text-neutral-900">{profile.sport || '—'}</div>
-          </div>
-          <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
-            <div className="text-xs uppercase tracking-wide text-neutral-500">Categoria</div>
-            <div className="text-base font-semibold text-neutral-900">{profile.club_league_category || '—'}</div>
-          </div>
-          <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
-            <div className="text-xs uppercase tracking-wide text-neutral-500">Anno di fondazione</div>
-            <div className="text-base font-semibold text-neutral-900">{profile.club_foundation_year || '—'}</div>
-          </div>
-          <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
-            <div className="text-xs uppercase tracking-wide text-neutral-500">Impianto</div>
-            <div className="text-base font-semibold text-neutral-900">{profile.club_stadium || '—'}</div>
-            <div className="text-xs text-neutral-600">{profile.club_stadium_address || ''}</div>
-          </div>
-        </div>
-
-        {profile.bio ? (
-          <div className="mt-6 rounded-xl border border-neutral-200 bg-neutral-50 p-4">
-            <div className="text-xs uppercase tracking-wide text-neutral-500">Biografia</div>
-            <p className="mt-1 text-sm leading-relaxed text-neutral-800 whitespace-pre-line">{profile.bio}</p>
-          </div>
-        ) : null}
       </section>
 
       <section className="space-y-3 rounded-2xl border bg-white p-5 shadow-sm">
@@ -149,8 +127,8 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
           <span className="text-xs font-semibold text-blue-700">Aggiornamenti del club</span>
         </div>
         <PublicAuthorFeed
-          authorId={profile.user_id ?? profile.id}
-          fallbackAuthorIds={profile.user_id ? [profile.id] : []}
+          authorId={profile.id}
+          fallbackAuthorIds={profile.user_id ? [profile.user_id] : []}
         />
       </section>
     </div>

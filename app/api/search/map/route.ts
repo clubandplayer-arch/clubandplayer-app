@@ -226,21 +226,22 @@ export async function GET(req: NextRequest) {
             : row.type;
 
         const profileId =
-          typeof (row as any)?.profile_id === 'string'
-            ? (row as any).profile_id
-            : typeof (row as any)?.id === 'string'
-              ? (row as any).id
+          typeof (row as any)?.id === 'string'
+            ? (row as any).id
+            : typeof (row as any)?.profile_id === 'string'
+              ? (row as any).profile_id
               : null;
 
         const userId =
           typeof (row as any)?.user_id === 'string'
             ? (row as any).user_id
-            : profileId;
+            : null;
 
         const normalizedType = (() => {
           if (typeof rawType !== 'string') return undefined;
           const t = rawType.trim().toLowerCase();
           if (t === 'player') return 'athlete';
+          if (t === 'club' || t === 'athlete') return t;
           return t;
         })();
 
@@ -264,6 +265,7 @@ export async function GET(req: NextRequest) {
           profile_id: profileId,
           user_id: userId,
           type: normalizedType,
+          account_type: normalizedType ?? (row as any)?.account_type ?? null,
           latitude,
           longitude,
         } as SearchMapRow;

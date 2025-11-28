@@ -1,226 +1,176 @@
-'use client'
+'use client';
 
-export const dynamic = 'force-dynamic';
-export const fetchCache = 'default-no-store';
+import Link from 'next/link';
+import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
 
-
-import React from 'react'
-import Link from 'next/link'
-import { useParams, useRouter } from 'next/navigation'
-import { useEffect, useMemo, useState } from 'react'
-import { supabaseBrowser } from '@/lib/supabaseBrowser'
-import FollowButton from '@/components/clubs/FollowButton'
-import PublicAuthorFeed from '@/components/feed/PublicAuthorFeed'
+import AthleteProfileHeader from '@/components/athletes/AthleteProfileHeader';
+import PublicAuthorFeed from '@/components/feed/PublicAuthorFeed';
+import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 type Profile = {
-  id: string
-  user_id?: string | null
-  profile_id?: string | null
-  display_name: string | null
-  full_name: string | null
-  headline: string | null
-  bio: string | null
-  sport: string | null
-  role: string | null
-  country: string | null
-  region: string | null
-  province: string | null
-  city: string | null
-  avatar_url?: string | null
-}
+  id: string;
+  user_id: string | null;
+  display_name: string | null;
+  full_name: string | null;
+  headline: string | null;
+  bio: string | null;
+  sport: string | null;
+  role: string | null;
+  country: string | null;
+  region: string | null;
+  province: string | null;
+  city: string | null;
+  avatar_url: string | null;
+  account_type?: string | null;
+  status?: string | null;
+};
 
 type ApplicationRow = {
-  id: string
-  created_at: string
-  status: string
-  opportunity_id: string
+  id: string;
+  created_at: string;
+  status: string;
+  opportunity_id: string;
   opportunity?: {
-    title: string
-    club_name: string
-    city: string
-  }
-}
+    title: string;
+    club_name: string;
+    city: string;
+  };
+};
 
 export default function AthletePublicProfilePage() {
-  const params = useParams<{ id: string }>()
-  const router = useRouter()
-  const supabase = useMemo(() => supabaseBrowser(), [])
+  const params = useParams<{ id: string }>();
+  const router = useRouter();
+  const supabase = useMemo(() => supabaseBrowser(), []);
 
-  const [meId, setMeId] = useState<string | null>(null)
-  const [profile, setProfile] = useState<Profile | null>(null)
-  const [apps, setApps] = useState<ApplicationRow[]>([])
-  const [loading, setLoading] = useState(true)
-  const [msg, setMsg] = useState<string>('')
+  const [meId, setMeId] = useState<string | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [apps, setApps] = useState<ApplicationRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [msg, setMsg] = useState<string>('');
 
   useEffect(() => {
     const load = async () => {
-      setLoading(true)
-      setMsg('')
+      setLoading(true);
+      setMsg('');
 
-      // id dell'URL
-      const athleteId = params.id
-      if (!athleteId) { router.replace('/'); return }
-
-      // prendo anche il mio id, per capire se sto guardando me stesso
-      const { data: userRes } = await supabase.auth.getUser()
-      setMeId(userRes?.user?.id ?? null)
-
-      // 1) profilo pubblico
-      const profileRes = await fetch(
-        `/api/profiles/public?ids=${encodeURIComponent(athleteId)}`,
-        { cache: 'no-store' }
-      )
-      let fetchedProfile: Profile | null = null
-
-      if (profileRes.ok) {
-        const json = await profileRes.json().catch(() => ({}))
-        const first = Array.isArray(json?.data) ? json.data[0] : null
-        fetchedProfile = (first ?? null) as Profile | null
+      const athleteId = params.id;
+      if (!athleteId) {
+        router.replace('/');
+        return;
       }
 
-      // Fallback: prova l'endpoint autenticato che usa il client admin se necessario
-      if (!fetchedProfile) {
-        const res = await fetch(`/api/profiles/${athleteId}`, {
-          cache: 'no-store',
-          credentials: 'include',
-        })
-        if (res.ok) {
-          const json = await res.json().catch(() => ({}))
-          fetchedProfile = (json?.data ?? null) as Profile | null
-        }
+      const { data: userRes } = await supabase.auth.getUser();
+      const currentUserId = userRes?.user?.id ?? null;
+      setMeId(currentUserId);
+
+      const { data: profileRow, error } = await supabase
+        .from('profiles')
+        .select(
+          [
+            'id',
+            'user_id',
+            'display_name',
+            'full_name',
+            'headline',
+            'bio',
+            'sport',
+            'role',
+            'country',
+            'region',
+            'province',
+            'city',
+            'avatar_url',
+            'account_type',
+            'status',
+          ].join(','),
+        )
+        .eq('id', athleteId)
+        .eq('status', 'active')
+        .or('account_type.eq.athlete,type.eq.athlete')
+        .maybeSingle();
+
+      if (error) {
+        setMsg(error.message || 'Profilo non trovato.');
+        setLoading(false);
+        return;
       }
 
-      if (!fetchedProfile) {
-        const txt = profileRes.ok
-          ? ''
-          : await profileRes.text().catch(() => '')
-        setMsg(txt ? `Profilo non trovato: ${txt}` : 'Profilo non trovato.')
-        setLoading(false)
-        return
+      if (!profileRow) {
+        setMsg('Profilo non trovato.');
+        setLoading(false);
+        return;
+      }
+
+      const accountType = (profileRow.account_type || '').toLowerCase();
+      if (accountType !== 'athlete') {
+        setMsg('Profilo non trovato.');
+        setLoading(false);
+        return;
       }
 
       const normalizedProfile: Profile = {
-        ...fetchedProfile,
-        user_id: fetchedProfile.user_id ?? fetchedProfile.id ?? null,
-        profile_id: fetchedProfile.profile_id ?? athleteId ?? null,
-      }
+        ...profileRow,
+        user_id: profileRow.user_id ?? null,
+      };
 
-      setProfile(normalizedProfile)
+      setProfile(normalizedProfile);
 
-      // 2) (facoltativo) ultime candidature visibili solo all’atleta stesso
-      if (userRes?.user?.id === athleteId) {
+      if (currentUserId && (currentUserId === normalizedProfile.user_id || currentUserId === normalizedProfile.id)) {
         const { data: appsData } = await supabase
           .from('applications')
           .select('id, created_at, status, opportunity_id')
-          .eq('athlete_id', athleteId)
+          .eq('athlete_id', normalizedProfile.id)
           .order('created_at', { ascending: false })
-          .limit(5)
+          .limit(5);
 
-        const appsTyped = (appsData ?? []) as ApplicationRow[]
+        const appsTyped = (appsData ?? []) as ApplicationRow[];
 
         if (appsTyped.length > 0) {
-          const oppIds = Array.from(new Set(appsTyped.map(a => a.opportunity_id)))
+          const oppIds = Array.from(new Set(appsTyped.map((a) => a.opportunity_id)));
           const { data: opps } = await supabase
             .from('opportunities')
             .select('id, title, club_name, city')
-            .in('id', oppIds)
-
-          const byId = Object.fromEntries((opps ?? []).map(o => [o.id, o]))
-          const merged = appsTyped.map(a => ({
-            ...a,
-            opportunity: byId[a.opportunity_id as keyof typeof byId]
-          }))
-          setApps(merged)
+            .in('id', oppIds);
+          const oppMap = new Map<string, ApplicationRow['opportunity']>();
+          (opps ?? []).forEach((o) => oppMap.set(o.id, { ...o }));
+          setApps(
+            appsTyped.map((a) => ({
+              ...a,
+              opportunity: oppMap.get(a.opportunity_id) ?? a.opportunity,
+            })),
+          );
         } else {
-          setApps([])
+          setApps([]);
         }
       } else {
-        setApps([]) // per i visitatori non mostriamo candidature
+        setApps([]);
       }
 
-      setLoading(false)
-    }
+      setLoading(false);
+    };
 
-    load()
+    void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.id])
+  }, [params.id]);
 
-  const isMe = useMemo(
-    () => !!meId && !!profile && meId === (profile.user_id ?? profile.id),
-    [meId, profile]
-  )
-
-  const profileName = profile?.display_name || profile?.full_name || 'Player'
-  const profileTagline = useMemo(() => {
-    if (!profile) return ''
-    const headline = (profile.headline ?? '').trim()
-    if (headline) return headline
-    const role = profile.role ?? 'Ruolo n/d'
-    const sport = profile.sport ?? 'Sport n/d'
-    const city = profile.city ?? 'Città n/d'
-    return `${role} · ${sport} · ${city}`
-  }, [profile])
+  const isMe = useMemo(() => !!meId && !!profile && (meId === profile.user_id || meId === profile.id), [meId, profile]);
 
   const profileLocation = useMemo(() => {
-    if (!profile) return ''
+    if (!profile) return '';
     const parts = [profile.city, profile.province, profile.region, profile.country]
       .map((part) => (part ?? '').trim())
-      .filter(Boolean)
-    return parts.join(' · ')
-  }, [profile])
+      .filter(Boolean);
+    return parts.join(' · ');
+  }, [profile]);
 
   return (
     <main className="mx-auto max-w-5xl space-y-6 px-4 py-6">
       {loading && <p>Caricamento…</p>}
-      {!loading && !!msg && <p style={{color:'#b91c1c'}}>{msg}</p>}
+      {!loading && !!msg && <p style={{ color: '#b91c1c' }}>{msg}</p>}
       {!loading && !msg && profile && (
         <>
-          <header className="rounded-2xl border bg-white p-5 shadow-sm">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
-              {profile.avatar_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={profile.avatar_url}
-                  alt={profileName}
-                  width={96}
-                  height={96}
-                  className="h-24 w-24 rounded-full object-cover ring-1 ring-neutral-200"
-                />
-              ) : (
-                <div className="h-24 w-24 rounded-full bg-neutral-200 ring-1 ring-neutral-200" />
-              )}
-              <div className="flex flex-1 flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div className="space-y-1">
-                  <h1 className="heading-h1 text-2xl md:text-3xl">{profileName}</h1>
-                  <p className="text-sm text-neutral-600">{profileTagline}</p>
-                  {profileLocation && (
-                    <p className="text-xs text-neutral-500">{profileLocation}</p>
-                  )}
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-neutral-500">
-                    <span>ID: <code>{profile.id}</code></span>
-                    <Link href={`/messages/${profile.id}`} className="font-semibold text-blue-700 underline-offset-4 hover:underline">
-                      Messaggia →
-                    </Link>
-                    {isMe && (
-                      <Link href="/settings" className="font-semibold text-blue-700 underline-offset-4 hover:underline">
-                        Modifica profilo →
-                      </Link>
-                    )}
-                  </div>
-                </div>
-                {!isMe && (
-                  <FollowButton
-                    id={profile.id}
-                    targetType="player"
-                    name={profileName}
-                    labelFollow="Segui"
-                    labelFollowing="Seguo"
-                    size="md"
-                  />
-                )}
-              </div>
-            </div>
-          </header>
+          <AthleteProfileHeader profile={profile} isMe={isMe} />
 
           <section className="rounded-2xl border bg-white p-5 shadow-sm">
             <h2 className="heading-h2 text-xl">Bio</h2>
@@ -232,9 +182,15 @@ export default function AthletePublicProfilePage() {
           <section className="rounded-2xl border bg-white p-5 shadow-sm">
             <h2 className="heading-h2 text-xl">Panoramica</h2>
             <ul className="mt-3 space-y-1 text-sm text-neutral-800">
-              <li><b>Sport:</b> {profile.sport ?? '—'}</li>
-              <li><b>Ruolo:</b> {profile.role ?? '—'}</li>
-              <li><b>Città:</b> {profileLocation || '—'}</li>
+              <li>
+                <b>Sport:</b> {profile.sport ?? '—'}
+              </li>
+              <li>
+                <b>Ruolo:</b> {profile.role ?? '—'}
+              </li>
+              <li>
+                <b>Città:</b> {profileLocation || '—'}
+              </li>
             </ul>
           </section>
 
@@ -243,10 +199,7 @@ export default function AthletePublicProfilePage() {
               <h2 className="heading-h2 text-xl">Bacheca</h2>
               <span className="text-xs font-semibold text-blue-700">Aggiornamenti del player</span>
             </div>
-            <PublicAuthorFeed
-              authorId={profile.user_id ?? profile.id}
-              fallbackAuthorIds={profile.profile_id ? [profile.profile_id] : []}
-            />
+            <PublicAuthorFeed authorId={profile.id} fallbackAuthorIds={profile.user_id ? [profile.user_id] : []} />
           </section>
 
           {isMe && (
@@ -256,7 +209,7 @@ export default function AthletePublicProfilePage() {
                 <p className="text-sm text-neutral-700">Nessuna candidatura recente.</p>
               ) : (
                 <ul className="mt-3 grid gap-3">
-                  {apps.map(a => (
+                  {apps.map((a) => (
                     <li key={a.id} className="rounded-xl border border-neutral-200 p-3">
                       <div className="font-semibold">{a.opportunity?.title ?? 'Annuncio'}</div>
                       <div className="text-sm text-neutral-600">
@@ -273,11 +226,15 @@ export default function AthletePublicProfilePage() {
           )}
 
           <div className="flex flex-wrap gap-3 text-sm">
-            <Link href="/opportunities" className="text-blue-700 underline-offset-4 hover:underline">← Torna alle opportunità</Link>
-            <Link href="/favorites" className="text-blue-700 underline-offset-4 hover:underline">I miei preferiti</Link>
+            <Link href="/opportunities" className="text-blue-700 underline-offset-4 hover:underline">
+              ← Torna alle opportunità
+            </Link>
+            <Link href="/favorites" className="text-blue-700 underline-offset-4 hover:underline">
+              I miei preferiti
+            </Link>
           </div>
         </>
       )}
     </main>
-  )
+  );
 }
