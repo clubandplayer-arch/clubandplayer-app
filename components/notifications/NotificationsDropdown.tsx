@@ -7,7 +7,7 @@ import NotificationItem from './NotificationItem';
 import type { NotificationWithActor } from '@/types/notifications';
 import { useToast } from '@/components/common/ToastProvider';
 
-function useOutsideClick(ref: React.RefObject<HTMLDivElement>, onClose: () => void) {
+function useOutsideClick(ref: React.RefObject<HTMLDivElement | null>, onClose: () => void) {
   useEffect(() => {
     function handle(event: MouseEvent) {
       if (ref.current && !ref.current.contains(event.target as Node)) {
