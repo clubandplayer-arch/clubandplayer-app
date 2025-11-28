@@ -61,7 +61,8 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
       setComments(items);
       loadedRef.current = true;
     } catch (e: any) {
-      setError(e?.message || 'Errore commenti');
+      const msg = String(e?.message || 'Errore commenti');
+      setError(msg === 'db_error' ? 'Impossibile caricare i commenti, riprova.' : msg);
     } finally {
       setLoading(false);
     }
@@ -114,6 +115,8 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
       const msg = String(e?.message || 'Errore');
       if (msg.includes('not_authenticated')) {
         setError('Accedi per inserire un commento.');
+      } else if (msg === 'db_error') {
+        setError('Impossibile pubblicare il commento, riprova.');
       } else {
         setError(msg);
       }

@@ -29,6 +29,11 @@ export async function GET(req: NextRequest) {
     .limit(Number.isFinite(limit) ? Math.max(1, Math.min(100, limit)) : 30);
 
   if (error) {
+    console.error('post_comments select error', error);
+    const code = (error as any)?.code as string | undefined;
+    if (code === '42501' || code === '42P01') {
+      return NextResponse.json({ ok: true, comments: [] }, { status: 200 });
+    }
     return NextResponse.json({ ok: false, error: 'db_error' }, { status: 200 });
   }
 
@@ -80,6 +85,7 @@ export async function POST(req: NextRequest) {
     .maybeSingle();
 
   if (error || !data) {
+    console.error('post_comments insert error', error);
     return NextResponse.json({ ok: false, error: 'db_error' }, { status: 200 });
   }
 
