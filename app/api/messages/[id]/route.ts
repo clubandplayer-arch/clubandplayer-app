@@ -97,15 +97,17 @@ async function handlePost(
   return NextResponse.json({ ok: true });
 }
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await requireAuth(req);
   if ('res' in auth) return auth.res;
-  return handleGet(params.id, auth.ctx.supabase, auth.ctx.user.id);
+  const { id } = await context.params;
+  return handleGet(id, auth.ctx.supabase, auth.ctx.user.id);
 }
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await requireAuth(req);
   if ('res' in auth) return auth.res;
+  const { id } = await context.params;
   const payload = (await req.json().catch(() => ({}))) as Record<string, unknown>;
-  return handlePost(params.id, auth.ctx.supabase, auth.ctx.user.id, payload);
+  return handlePost(id, auth.ctx.supabase, auth.ctx.user.id, payload);
 }
