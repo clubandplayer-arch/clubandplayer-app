@@ -95,6 +95,7 @@ export async function GET(req: NextRequest) {
 
   // determina ruolo dell'utente corrente
   let currentUserId: string | null = null;
+  let currentProfileId: string | null = null;
   try {
     const { data, error } = await supabase.auth.getUser();
     if (!error && data?.user) {
@@ -104,17 +105,29 @@ export async function GET(req: NextRequest) {
     // se qualcosa fallisce, continuiamo senza ruolo
   }
 
-  if (mine && !currentUserId) {
+  if (currentUserId) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id, status')
+      .eq('user_id', currentUserId)
+      .maybeSingle();
+
+    if (profile?.id && profile.status === 'active') {
+      currentProfileId = profile.id;
+    }
+  }
+
+  if (mine && !currentProfileId) {
     return NextResponse.json({ ok: false, error: 'not_authenticated' }, { status: 401 });
   }
 
   const followerIds: string[] = [];
 
-  if (!authorIdFilter && !mine && currentUserId) {
+  if (!authorIdFilter && !mine && currentProfileId) {
     const { data: followRows, error: followError } = await supabase
       .from('follows')
       .select('target_id')
-      .eq('follower_id', currentUserId)
+      .in('follower_id', [currentProfileId, currentUserId].filter(Boolean) as string[])
       .limit(500);
 
     if (!followError && Array.isArray(followRows)) {
@@ -127,9 +140,9 @@ export async function GET(req: NextRequest) {
 
   const allowedAuthors: string[] | null = (() => {
     if (authorIdFilter) return [authorIdFilter];
-    if (mine && currentUserId) return [currentUserId];
-    if (!authorIdFilter && !mine && currentUserId) {
-      const uniq = Array.from(new Set([currentUserId, ...followerIds].filter(Boolean)));
+    if (mine && currentProfileId) return [currentProfileId];
+    if (!authorIdFilter && !mine && currentProfileId) {
+      const uniq = Array.from(new Set([currentProfileId, ...followerIds].filter(Boolean)));
       return uniq.length ? uniq : null;
     }
     return null;
@@ -192,6 +205,7 @@ export async function GET(req: NextRequest) {
                 count: rows.length,
                 mine: mine || !!authorIdFilter,
                 userId: currentUserId ?? authorIdFilter,
+                profileId: currentProfileId ?? null,
               },
             }
           : {}),

@@ -60,11 +60,37 @@ export default function FollowingPage() {
       return;
     }
 
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, status')
+      .eq('user_id', userRes.user.id)
+      .maybeSingle();
+
+    if (profileError) {
+      setError('Errore nel recupero del profilo corrente.');
+      setLoading(false);
+      setRefreshing(false);
+      setFollows([]);
+      setHasLoadedOnce(true);
+      hasLoadedRef.current = true;
+      return;
+    }
+
+    if (!profile?.id || profile.status !== 'active') {
+      setError('Completa e attiva il tuo profilo per seguire altri utenti.');
+      setLoading(false);
+      setRefreshing(false);
+      setFollows([]);
+      setHasLoadedOnce(true);
+      hasLoadedRef.current = true;
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('follows')
         .select('target_id, target_type, created_at')
-        .eq('follower_id', userRes.user.id)
+        .in('follower_id', [profile.id, userRes.user.id])
         .limit(400);
       if (error) throw error;
       const rows = (data || []) as FollowRow[];
@@ -132,12 +158,14 @@ export default function FollowingPage() {
     void load();
   }, [load]);
 
+  const isPlayerType = (type?: string | null) => (type || '').toLowerCase() === 'player' || type === 'athlete';
+
   const clubFollows = useMemo(
-    () => follows.filter((f) => f.target_type !== 'player'),
+    () => follows.filter((f) => !isPlayerType(f.target_type)),
     [follows],
   );
   const playerFollows = useMemo(
-    () => follows.filter((f) => f.target_type === 'player'),
+    () => follows.filter((f) => isPlayerType(f.target_type)),
     [follows],
   );
 

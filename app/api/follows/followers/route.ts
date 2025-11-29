@@ -25,12 +25,10 @@ export async function GET() {
     return NextResponse.json({ items: [], role: 'guest', profileId: null });
   }
 
-  const userId = userRes.user.id;
-
   const { data: profile } = await supabase
     .from('profiles')
     .select('id, account_type, status')
-    .eq('user_id', userId)
+    .eq('user_id', userRes.user.id)
     .maybeSingle();
 
   if (!profile?.id || profile.status !== 'active') {
@@ -58,7 +56,7 @@ export async function GET() {
   const { data: followingRows } = await supabase
     .from('follows')
     .select('target_id')
-    .eq('follower_id', userId)
+    .in('follower_id', [profileId, userRes.user.id])
     .limit(400);
 
   const followingSet = new Set(
@@ -75,7 +73,7 @@ export async function GET() {
   const { data: followerProfiles, error: profileError } = await supabase
     .from('profiles')
     .select('id, user_id, display_name, full_name, city, country, sport, role, avatar_url, account_type, status')
-    .in('user_id', followerIds)
+    .or(`id.in.(${followerIds.join(',')}),user_id.in.(${followerIds.join(',')})`)
     .eq('status', 'active');
 
   if (profileError) {

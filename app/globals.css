@@ -45,6 +45,12 @@ html, body {
   background: linear-gradient(90deg, rgba(81, 196, 245, 1) 0%, rgba(242, 195, 138, 1) 49%, rgba(247, 188, 104, 1) 100%);
   color: var(--fg);
   /* ⛔️ Non impostiamo il font qui per non sovrascrivere Inter dal layout */
+  overflow-x: hidden;
+}
+
+img, video, svg {
+  max-width: 100%;
+  height: auto;
 }
 
 .sr-only {
@@ -86,6 +92,10 @@ html, body {
 
 /* Container comoda per le pagine */
 .container { @apply mx-auto px-4 sm:px-6 lg:px-8; }
+
+.page-shell { @apply mx-auto w-full max-w-6xl px-4 pb-6 pt-4 sm:px-5 md:px-6; }
+
+.stacked-grid { @apply grid grid-cols-1 gap-4; }
 
 /* ------------------------------------ */
 /* Bottoni riutilizzabili               */

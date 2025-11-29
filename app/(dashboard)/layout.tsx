@@ -1,11 +1,6 @@
 import type { ReactNode } from 'react';
-import AppShell from '@/components/shell/AppShell';
-import RoleGate from '@/components/auth/RoleGate';
+import AppPageLayout from '@/components/shell/AppPageLayout';
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
-  return (
-    <RoleGate>
-      <AppShell>{children}</AppShell>
-    </RoleGate>
-  );
+  return <AppPageLayout>{children}</AppPageLayout>;
 }

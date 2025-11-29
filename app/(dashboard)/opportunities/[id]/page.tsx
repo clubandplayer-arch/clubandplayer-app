@@ -72,12 +72,12 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
   const allClubOpportunitiesHref = clubId ? `/opportunities?clubId=${clubId}` : null;
 
   return (
-    <div className="p-4 md:p-6 space-y-4">
+    <div className="page-shell space-y-4">
       <Link href="/opportunities" className="text-sm text-blue-700 hover:underline">
         ← Torna alla lista
       </Link>
 
-      <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] lg:items-start">
         <section className="space-y-4">
           <header className="rounded-2xl border bg-white/80 p-4 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-4">

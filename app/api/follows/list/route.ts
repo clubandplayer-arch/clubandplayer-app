@@ -11,27 +11,30 @@ export async function GET() {
     return NextResponse.json({ items: [], role: 'guest', profileId: null });
   }
 
-  const userId = userRes.user.id;
-
   const { data: profile } = await supabase
     .from('profiles')
     .select('id, account_type, status')
-    .eq('user_id', userId)
+    .eq('user_id', userRes.user.id)
     .maybeSingle();
 
+  const profileId = profile?.id ?? null;
   const role =
     (profile?.account_type === 'athlete' || profile?.account_type === 'club'
       ? profile.account_type
       : 'guest') || 'guest';
 
+  if (!profileId || profile?.status !== 'active') {
+    return NextResponse.json({ items: [], role, profileId });
+  }
+
   const { data: follows, error: followsError } = await supabase
     .from('follows')
     .select('target_id, target_type')
-    .eq('follower_id', userId)
+    .in('follower_id', [profileId, userRes.user.id])
     .limit(400);
 
   if (followsError) {
-    return NextResponse.json({ items: [], role, profileId: profile?.id ?? null, error: followsError.message });
+    return NextResponse.json({ items: [], role, profileId, error: followsError.message });
   }
 
   const ids = (follows || [])
@@ -40,7 +43,7 @@ export async function GET() {
     .map((id) => id.toString());
 
   if (!ids.length) {
-    return NextResponse.json({ items: [], role, profileId: profile?.id ?? null });
+    return NextResponse.json({ items: [], role, profileId });
   }
 
   const { data: profiles, error: profilesError } = await supabase
@@ -50,7 +53,7 @@ export async function GET() {
     .eq('status', 'active');
 
   if (profilesError) {
-    return NextResponse.json({ items: [], role, profileId: profile?.id ?? null, error: profilesError.message });
+    return NextResponse.json({ items: [], role, profileId, error: profilesError.message });
   }
 
   const profilesMap = new Map(
@@ -81,5 +84,5 @@ export async function GET() {
     })
     .filter(Boolean);
 
-  return NextResponse.json({ items, role, profileId: profile?.id ?? null });
+  return NextResponse.json({ items, role, profileId });
 }

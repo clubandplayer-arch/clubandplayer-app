@@ -265,7 +265,7 @@ export default function OpportunitiesClient() {
   }, [items]);
 
   return (
-    <div className="p-4 md:p-6 space-y-4">
+    <div className="page-shell space-y-4">
       <div className="flex items-center justify-between gap-3">
         <h1 className="heading-h1">Opportunità</h1>
         {/* CTA spostata in topbar (link /opportunities?new=1) */}

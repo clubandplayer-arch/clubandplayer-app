@@ -132,13 +132,11 @@ export default function ApplicationsTable({
   }
 
   const renderPlayer = (r: Row) => {
+    const hasProfile = !!r.athlete;
     const athleteId = r.athlete?.id ?? r.athlete_id;
-    const display =
-      r.athlete?.name ||
-      r.athlete?.display_name ||
-      r.athlete?.full_name ||
-      r.player_name ||
-      (athleteId ? 'Profilo non disponibile' : '—');
+    const display = hasProfile
+      ? r.athlete?.name || r.athlete?.display_name || r.athlete?.full_name || 'Giocatore'
+      : r.player_name || (athleteId ? 'Profilo non disponibile' : '—');
     const headline =
       r.player_headline ||
       [r.athlete?.role, r.athlete?.sport].filter(Boolean).join(' · ') ||

@@ -34,12 +34,10 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ items: [], role: 'guest', targetType: 'club' });
     }
 
-    const userId = userRes.user.id;
-
     const { data: profile } = await supabase
       .from('profiles')
       .select('id, account_type, status, country, city, interest_country, interest_city')
-      .eq('user_id', userId)
+      .eq('user_id', userRes.user.id)
       .maybeSingle();
 
     const role =
@@ -47,15 +45,20 @@ export async function GET(req: NextRequest) {
         ? profile.account_type
         : 'guest') || 'guest';
 
+    if (!profile?.id || profile.status !== 'active') {
+      return NextResponse.json({ items: [], role, targetType: 'club' });
+    }
+
+    const profileId = profile.id;
+
     const targetProfileType: Role = role === 'club' ? 'athlete' : 'club';
     const followTargetTypes = targetProfileType === 'athlete' ? ['player', 'athlete'] : ['club'];
     const viewerCountry = (profile?.interest_country || profile?.country || '').trim();
-    const viewerCity = (profile?.interest_city || profile?.city || '').trim();
 
     const { data: existing } = await supabase
       .from('follows')
       .select('target_id, target_type')
-      .eq('follower_id', userId)
+      .eq('follower_id', profileId)
       .in('target_type', followTargetTypes)
       .limit(200);
 
@@ -82,7 +85,10 @@ export async function GET(req: NextRequest) {
       });
 
       if (alreadyFollowing.size) {
-        query = query.not('id', 'in', `(${Array.from(alreadyFollowing).join(',')})`);
+        const values = Array.from(alreadyFollowing)
+          .map((id) => `'${id}'`)
+          .join(',');
+        query = query.not('id', 'in', `(${values})`);
       }
 
       query = query.order('followers_count', { ascending: false }).limit(limit);
@@ -92,21 +98,9 @@ export async function GET(req: NextRequest) {
       return data || [];
     }
 
-    let rows: any[] = [];
-
-    if (viewerCountry && viewerCity) {
-      rows = await runQuery([
-        (q) => q.eq('country', viewerCountry).eq('city', viewerCity),
-      ]);
-    }
-
-    if (!rows.length && viewerCountry) {
-      rows = await runQuery([(q) => q.eq('country', viewerCountry)]);
-    }
-
-    if (!rows.length) {
-      rows = await runQuery([]);
-    }
+    const rows: any[] = await runQuery(
+      viewerCountry ? [(q) => q.eq('country', viewerCountry)] : [],
+    );
 
     const items: Suggestion[] = rows.map((p) => ({
       id: p.id,

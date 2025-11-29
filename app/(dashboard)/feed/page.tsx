@@ -242,11 +242,11 @@ export default function FeedPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6" aria-labelledby={headingId}>
+    <div className="page-shell" aria-labelledby={headingId}>
       {/* layout a 3 colonne: sx (minicard) / centro (composer + post) / dx (suggerimenti) */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[20%_55%_25%]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.4fr)_minmax(0,0.9fr)] lg:items-start">
         {/* Colonna sinistra: mini profilo */}
-        <aside className="space-y-4">
+        <aside className="min-w-0 space-y-4">
           <div className="space-y-3">
             {/* Se esiste, il componente reale rimpiazzerà questo blocco via dynamic() */}
             <ProfileMiniCard />
@@ -255,7 +255,7 @@ export default function FeedPage() {
         </aside>
 
         {/* Colonna centrale: composer + feed */}
-        <main className="space-y-4" aria-labelledby={headingId}>
+        <main className="min-w-0 space-y-4" aria-labelledby={headingId}>
           <TrackRetention scope="feed" />
           <h1 id={headingId} className="sr-only">
             Bacheca feed
@@ -307,7 +307,7 @@ export default function FeedPage() {
         </main>
 
         {/* Colonna destra: suggerimenti/annunci/club seguiti */}
-        <aside className="space-y-4">
+        <aside className="min-w-0 space-y-4">
           <SidebarCard>
             <WhoToFollow />
           </SidebarCard>
