@@ -14,7 +14,7 @@ export default function NewOpportunityPage() {
 
   if (!isClub) {
     return (
-      <div className="max-w-2xl mx-auto rounded-xl border p-4 bg-yellow-50 text-yellow-900">
+      <div className="page-shell max-w-2xl rounded-xl border bg-yellow-50 p-4 text-yellow-900">
         Devi essere un <b>Club</b> per creare un’opportunità.
         <div className="mt-2">
           <a href="/profile" className="underline">Apri il profilo</a> e imposta il tipo account su <b>Club</b>.
@@ -24,7 +24,7 @@ export default function NewOpportunityPage() {
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-3xl mx-auto">
+    <div className="page-shell max-w-3xl">
       <h1 className="text-2xl font-semibold mb-4">Nuova opportunità</h1>
       <OpportunityForm
         onCancel={() => router.push('/opportunities')}

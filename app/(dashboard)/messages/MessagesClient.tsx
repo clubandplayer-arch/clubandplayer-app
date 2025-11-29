@@ -249,8 +249,8 @@ export default function MessagesClient() {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[360px_1fr]">
-      <section className="rounded-2xl border border-neutral-200 bg-white/90 p-4 shadow-sm">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(260px,340px)_minmax(0,1fr)] lg:items-start">
+      <section className="min-w-0 rounded-2xl border border-neutral-200 bg-white/90 p-4 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
           <div>
             <div className="text-xs uppercase tracking-wide text-neutral-500">Messaggi</div>
@@ -295,7 +295,7 @@ export default function MessagesClient() {
         )}
       </section>
 
-      <section className="flex min-h-[420px] flex-col rounded-2xl border border-neutral-200 bg-white/90 p-4 shadow-sm">
+      <section className="flex min-h-[420px] min-w-0 flex-col rounded-2xl border border-neutral-200 bg-white/90 p-4 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
           <PeerBadge peer={currentPeer || null} />
           {currentPeer?.id && (
