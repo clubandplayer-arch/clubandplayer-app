@@ -161,6 +161,11 @@ export default function AthletePublicProfilePage() {
       const normalizedProfile: AthleteProfileRow = {
         ...profileState,
         user_id: profileState.user_id ?? null,
+        matches_played: profileState.matches_played ?? null,
+        goals_scored: profileState.goals_scored ?? null,
+        assists: profileState.assists ?? null,
+        preferred_roles: profileState.preferred_roles ?? null,
+        preferred_locations: profileState.preferred_locations ?? null,
       };
 
       setProfile(normalizedProfile);
