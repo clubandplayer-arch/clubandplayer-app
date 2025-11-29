@@ -34,18 +34,22 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ items: [], role: 'guest', targetType: 'club' });
     }
 
-    const userId = userRes.user.id;
-
     const { data: profile } = await supabase
       .from('profiles')
       .select('id, account_type, status, country, city, interest_country, interest_city')
-      .eq('user_id', userId)
+      .eq('user_id', userRes.user.id)
       .maybeSingle();
 
     const role =
       (profile?.account_type === 'athlete' || profile?.account_type === 'club'
         ? profile.account_type
         : 'guest') || 'guest';
+
+    if (!profile?.id || profile.status !== 'active') {
+      return NextResponse.json({ items: [], role, targetType: 'club' });
+    }
+
+    const profileId = profile.id;
 
     const targetProfileType: Role = role === 'club' ? 'athlete' : 'club';
     const followTargetTypes = targetProfileType === 'athlete' ? ['player', 'athlete'] : ['club'];
@@ -55,7 +59,7 @@ export async function GET(req: NextRequest) {
     const { data: existing } = await supabase
       .from('follows')
       .select('target_id, target_type')
-      .eq('follower_id', userId)
+      .in('follower_id', [profileId, userRes.user.id])
       .in('target_type', followTargetTypes)
       .limit(200);
 
