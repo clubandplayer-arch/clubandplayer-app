@@ -4,13 +4,13 @@ import { jsonError } from '@/lib/api/auth';
 
 export const runtime = 'nodejs';
 
-// Restituisce solo gli ID dei profili seguiti dall'utente corrente
+// Restituisce lo stato dei follow (chi segui e chi ti segue)
 export async function GET(_req: NextRequest) {
   const supabase = await getSupabaseServerClient();
   const { data: userRes } = await supabase.auth.getUser();
 
   if (!userRes?.user) {
-    return NextResponse.json({ data: [] });
+    return NextResponse.json({ ok: false, error: 'not_authenticated', profileId: null, followingIds: [], followerIds: [] });
   }
 
   const { data: profile, error: profileError } = await supabase
@@ -25,7 +25,7 @@ export async function GET(_req: NextRequest) {
   }
 
   if (!profile?.id || profile.status !== 'active') {
-    return NextResponse.json({ data: [] });
+    return NextResponse.json({ ok: false, error: 'inactive_profile', profileId: profile?.id ?? null, followingIds: [], followerIds: [] });
   }
 
   const { data: follows, error } = await supabase
@@ -34,14 +34,29 @@ export async function GET(_req: NextRequest) {
     .eq('follower_id', profile.id)
     .limit(400);
 
-  if (error) {
-    console.error('[api/follows] errore lettura follows', error);
+  const { data: followers, error: followerErr } = await supabase
+    .from('follows')
+    .select('follower_id')
+    .eq('target_id', profile.id)
+    .limit(400);
+
+  if (error || followerErr) {
+    console.error('[api/follows] errore lettura follows', error || followerErr);
     return jsonError('Errore nel recupero dei follow', 400);
   }
 
   const ids = (follows || [])
     .map((row) => row?.target_id)
     .filter(Boolean) as string[];
+  const followerIds = (followers || [])
+    .map((row) => row?.follower_id)
+    .filter(Boolean) as string[];
 
-  return NextResponse.json({ data: ids });
+  return NextResponse.json({
+    ok: true,
+    profileId: profile.id,
+    followingIds: ids,
+    followerIds,
+    data: ids,
+  });
 }

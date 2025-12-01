@@ -47,46 +47,17 @@ async function currentState(
   followerId: string,
   targetId: string,
 ) {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('follows')
     .select('id')
     .eq('follower_id', followerId)
     .eq('target_id', targetId)
     .maybeSingle();
+  if (error) throw error;
   return Boolean(data?.id);
 }
 
-export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
-  const url = new URL(req.url);
-  const targetId = url.searchParams.get('targetId')?.trim();
-  const typeParam = normalizeType(url.searchParams.get('targetType'));
-
-  if (!targetId) return jsonError('targetId mancante', 400);
-
-  try {
-    const profile = await getActiveProfile(supabase, user.id);
-    if (!profile) return jsonError('Profilo non attivo', 403);
-
-    const target = await resolveTargetProfile(supabase, targetId);
-    if (!target?.id) return jsonError('Profilo target non trovato', 404);
-
-    const normalizedType: TargetType =
-      typeParam || (target.account_type === 'club' ? 'club' : 'player');
-
-    const following = await currentState(supabase, profile.id, target.id);
-
-    return NextResponse.json({
-      ok: true,
-      followerId: profile.id,
-      targetId: target.id,
-      targetType: normalizedType,
-      following,
-    });
-  } catch (err: any) {
-    console.error('[follows/toggle][GET] errore', err);
-    return jsonError(err?.message || 'Errore inatteso', 500);
-  }
-});
+export const GET = async () => NextResponse.json({ ok: false, error: 'Metodo non supportato' }, { status: 405 });
 
 export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   const body = (await req.json().catch(() => ({}))) as {
@@ -111,21 +82,23 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
       requestedType || (target.account_type === 'club' ? 'club' : 'player');
 
     const isFollowing = await currentState(supabase, profile.id, target.id);
-    const shouldFollow = action === 'follow' ? true : action === 'unfollow' ? false : !isFollowing;
+    const nextShouldFollow = action === 'follow' ? true : action === 'unfollow' ? false : !isFollowing;
 
-    if (shouldFollow && !isFollowing) {
-      const { error: insertError } = await supabase.from('follows').upsert(
-        {
-          follower_id: profile.id,
-          target_id: target.id,
-          target_type: targetType,
-        },
-        { onConflict: 'follower_id,target_id' },
-      );
+    if (nextShouldFollow && !isFollowing) {
+      const { error: insertError } = await supabase
+        .from('follows')
+        .upsert(
+          {
+            follower_id: profile.id,
+            target_id: target.id,
+            target_type: targetType,
+          },
+          { onConflict: 'follower_id,target_id' },
+        );
       if (insertError) throw insertError;
     }
 
-    if (!shouldFollow && isFollowing) {
+    if (!nextShouldFollow && isFollowing) {
       const { error: deleteError } = await supabase
         .from('follows')
         .delete()
@@ -136,13 +109,18 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
 
     return NextResponse.json({
       ok: true,
+      isFollowing: nextShouldFollow,
       followerId: profile.id,
       targetId: target.id,
       targetType,
-      following: shouldFollow,
     });
-  } catch (err: any) {
-    console.error('[follows/toggle][POST] errore', err);
-    return jsonError(err?.message || 'Errore inatteso', 500);
+  } catch (error: any) {
+    console.error('API /follows/toggle error', {
+      followerId: user.id,
+      targetId,
+      targetType: requestedType,
+      error,
+    });
+    return jsonError(error?.message || 'Errore inatteso', 500);
   }
 });

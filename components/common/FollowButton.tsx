@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useFollowState } from '@/hooks/useFollowState';
 import { useToast } from './ToastProvider';
 
 export type FollowButtonProps = {
@@ -33,47 +34,16 @@ export default function FollowButton({
   onChange,
 }: FollowButtonProps) {
   const toast = useToast();
+  const { following, loading: followLoading, markFollowing } = useFollowState();
   const normalizedType = useMemo(() => normalizeType(targetType), [targetType]);
-  const [isFollowing, setIsFollowing] = useState(initialIsFollowing ?? false);
+  const derivedInitial = initialIsFollowing ?? following.has(targetId);
+  const [isFollowing, setIsFollowing] = useState(derivedInitial);
   const [pending, setPending] = useState(false);
-  const [ready, setReady] = useState(initialIsFollowing !== undefined);
+  const ready = !!targetId && (!followLoading || initialIsFollowing !== undefined);
 
   useEffect(() => {
-    setIsFollowing(initialIsFollowing ?? false);
-    setReady(initialIsFollowing !== undefined);
-  }, [initialIsFollowing, targetId]);
-
-  useEffect(() => {
-    if (!targetId || initialIsFollowing !== undefined) return;
-
-    let cancelled = false;
-    setReady(false);
-
-    (async () => {
-      try {
-        const res = await fetch(
-          `/api/follows/toggle?targetId=${encodeURIComponent(targetId)}&targetType=${normalizedType}`,
-          { cache: 'no-store', credentials: 'include' },
-        );
-        const data = await res.json().catch(() => ({}));
-        if (cancelled) return;
-        if (!res.ok) {
-          throw new Error(data?.error || 'Impossibile leggere lo stato del follow');
-        }
-        setIsFollowing(Boolean(data?.following));
-      } catch (err: any) {
-        if (!cancelled) {
-          console.error('[FollowButton] stato non disponibile', err);
-        }
-      } finally {
-        if (!cancelled) setReady(true);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [initialIsFollowing, normalizedType, targetId]);
+    setIsFollowing(derivedInitial);
+  }, [derivedInitial, targetId]);
 
   async function handleToggle() {
     if (!targetId || pending) return;
@@ -94,8 +64,9 @@ export default function FollowButton({
       if (!res.ok || !data?.ok) {
         throw new Error(data?.error || 'Operazione non riuscita');
       }
-      const next = Boolean(data.following);
+      const next = Boolean(data.isFollowing);
       setIsFollowing(next);
+      markFollowing(targetId, next);
       onChange?.(next);
       toast?.success?.(next ? 'Ora segui questo profilo' : 'Hai smesso di seguire');
     } catch (err: any) {

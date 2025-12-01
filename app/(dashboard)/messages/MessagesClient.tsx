@@ -142,10 +142,9 @@ export default function MessagesClient({
   const [me, setMe] = useState<ProfileSummary | null>(null);
   const [peer, setPeer] = useState<ProfileSummary | null>(null);
   const [draft, setDraft] = useState('');
-  const [targetProfile, setTargetProfile] = useState('');
-  const [initialMessage, setInitialMessage] = useState('');
   const [reloading, setReloading] = useState(0);
   const [pendingTarget, setPendingTarget] = useState(initialTargetProfileId ?? '');
+  const [sending, setSending] = useState(false);
   const initialConversationRef = useRef(initialConversationId?.trim() || '');
   const initialTargetRef = useRef(initialTargetProfileId?.trim() || '');
   const appliedInitialRef = useRef(false);
@@ -244,7 +243,8 @@ export default function MessagesClient({
   }, [selectedId, reloading, show]);
 
   async function handleSend() {
-    if (!draft.trim() || !selectedId) return;
+    if (!draft.trim() || !selectedId || sending) return;
+    setSending(true);
     try {
       const res = await fetch(`/api/messages/${selectedId}`, {
         method: 'POST',
@@ -252,33 +252,29 @@ export default function MessagesClient({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ body: draft }),
       });
-      if (!res.ok) {
-        const t = await res.text();
-        throw new Error(t || 'Errore invio messaggio');
+      const payload = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      if (!res.ok || payload?.ok === false) {
+        throw new Error(payload?.error || 'Errore invio messaggio');
       }
       setDraft('');
       setReloading((v) => v + 1);
     } catch (e: any) {
       show(e.message || 'Errore invio', { variant: 'error' });
+    } finally {
+      setSending(false);
     }
   }
 
-  async function handleStartConversation(targetOverride?: string, options?: { silent?: boolean }) {
-    const targetId = (targetOverride ?? targetProfile).trim();
-    const message = targetOverride ? '' : initialMessage.trim();
+  async function handleStartConversation(targetId: string, options?: { silent?: boolean }) {
+    const cleanTarget = (targetId || '').trim();
 
-    if (!targetId) {
-      if (!options?.silent) {
-        show('Inserisci un profilo destinatario', { variant: 'warning' });
-      }
-      return;
-    }
+    if (!cleanTarget) return;
     try {
       const res = await fetch('/api/messages', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetProfileId: targetId, message }),
+        body: JSON.stringify({ targetProfileId: cleanTarget, message: '' }),
       });
       const text = await res.text();
       if (!res.ok) {
@@ -291,8 +287,6 @@ export default function MessagesClient({
       }
       const j = JSON.parse(text) as any;
       const newId = j?.data?.conversationId as string;
-      setTargetProfile('');
-      setInitialMessage('');
       setSelectedId(newId || selectedId);
       setPendingTarget('');
       setReloading((v) => v + 1);
@@ -320,31 +314,8 @@ export default function MessagesClient({
             onClick={() => setReloading((v) => v + 1)}
             className="inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-sm text-neutral-700 transition hover:bg-neutral-50"
           >
-            <MaterialIcon name="refresh" fontSize="small" />
-            Aggiorna
-          </button>
-        </div>
-        <div className="mb-4 space-y-2 rounded-xl bg-neutral-50 p-3">
-          <div className="text-sm font-semibold text-neutral-800">Nuova conversazione</div>
-          <input
-            value={targetProfile}
-            onChange={(e) => setTargetProfile(e.target.value)}
-            placeholder="ID profilo destinatario"
-            className="w-full rounded-lg border px-3 py-2 text-sm focus:border-[var(--brand)] focus:outline-none"
-          />
-          <textarea
-            value={initialMessage}
-            onChange={(e) => setInitialMessage(e.target.value)}
-            placeholder="Messaggio iniziale (opzionale)"
-            className="w-full rounded-lg border px-3 py-2 text-sm focus:border-[var(--brand)] focus:outline-none"
-            rows={3}
-          />
-          <button
-            type="button"
-            onClick={() => handleStartConversation()}
-            className="inline-flex items-center justify-center rounded-lg bg-[var(--brand)] px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--brand)]/90"
-          >
-            Avvia
+          <MaterialIcon name="refresh" fontSize="small" />
+          Aggiorna
           </button>
         </div>
         {loadingList ? (
@@ -368,7 +339,7 @@ export default function MessagesClient({
         </div>
         {!selectedId ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-600">
-            <div>Seleziona una conversazione o avviane una nuova.</div>
+            <div>Seleziona una conversazione o apri un profilo per avviarne una nuova.</div>
             {pendingTarget ? <div className="text-xs text-neutral-500">Preparazione conversazione…</div> : null}
           </div>
         ) : (
@@ -408,11 +379,11 @@ export default function MessagesClient({
                 <button
                   type="button"
                   onClick={handleSend}
-                  disabled={!draft.trim() || !selectedId}
+                  disabled={!draft.trim() || !selectedId || sending}
                   className="inline-flex items-center gap-1 rounded-lg bg-[var(--brand)] px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--brand)]/90 disabled:cursor-not-allowed disabled:bg-neutral-300"
                 >
                   <MaterialIcon name="send" fontSize="small" />
-                  Invia
+                  {sending ? 'Invio…' : 'Invia'}
                 </button>
               </div>
             </div>
