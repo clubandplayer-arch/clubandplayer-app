@@ -477,7 +477,6 @@ export default function OpportunitiesClient() {
             <p className="text-xs text-gray-500">ordinata per occorrenze</p>
           </div>
         </div>
-      </div>
 
       {loading && <div className="h-64 w-full rounded-2xl bg-gray-200 animate-pulse" />}
 
