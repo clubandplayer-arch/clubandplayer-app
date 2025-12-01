@@ -41,7 +41,7 @@ export async function GET() {
   const { data: followerRows, error: followerError } = await supabase
     .from('follows')
     .select('follower_id, target_id')
-    .eq('target_id', profileId)
+    .eq('target_id', userRes.user.id)
     .limit(400);
 
   if (followerError) {
@@ -56,7 +56,7 @@ export async function GET() {
   const { data: followingRows } = await supabase
     .from('follows')
     .select('target_id')
-    .in('follower_id', [profileId, userRes.user.id])
+    .eq('follower_id', userRes.user.id)
     .limit(400);
 
   const followingSet = new Set(
@@ -73,7 +73,7 @@ export async function GET() {
   const { data: followerProfiles, error: profileError } = await supabase
     .from('profiles')
     .select('id, user_id, display_name, full_name, city, country, sport, role, avatar_url, account_type, status')
-    .or(`id.in.(${followerIds.join(',')}),user_id.in.(${followerIds.join(',')})`)
+    .in('user_id', followerIds)
     .eq('status', 'active');
 
   if (profileError) {
@@ -89,7 +89,7 @@ export async function GET() {
     role: p.role || null,
     avatarUrl: p.avatar_url || null,
     accountType: p.account_type === 'club' ? 'club' : 'athlete',
-    isFollowing: followingSet.has(p.id?.toString() || ''),
+    isFollowing: followingSet.has(p.user_id?.toString() || ''),
   }));
 
   return NextResponse.json({ items, role, profileId });

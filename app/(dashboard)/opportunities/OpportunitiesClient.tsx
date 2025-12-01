@@ -272,30 +272,36 @@ export default function OpportunitiesClient() {
       </div>
 
       {/* Barra filtri */}
-      <div className="space-y-3 rounded-2xl border p-4 bg-white/70 shadow-sm">
-        <div className="flex flex-wrap items-center gap-3">
+      <div className="space-y-4 rounded-2xl border p-4 bg-white/70 shadow-sm">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <input
             placeholder="Cerca per titolo/descrizione…"
             defaultValue={sp.get('q') ?? ''}
             onChange={(e) => setParam('q', e.currentTarget.value)}
-            className="w-full md:w-80 rounded-xl border px-4 py-2"
+            className="w-full rounded-xl border px-4 py-2"
           />
 
           <input
             placeholder="Nome club/squadra"
             defaultValue={sp.get('club') ?? ''}
             onBlur={(e) => setParam('club', e.currentTarget.value)}
-            className="w-full md:w-64 rounded-xl border px-3 py-2"
+            className="w-full rounded-xl border px-3 py-2"
           />
 
           <input
             placeholder="Ruolo/posizione"
             defaultValue={sp.get('role') ?? ''}
             onBlur={(e) => setParam('role', e.currentTarget.value)}
-            className="w-full md:w-56 rounded-xl border px-3 py-2"
+            className="w-full rounded-xl border px-3 py-2"
           />
+        </div>
 
-          <select value={sp.get('country') ?? ''} onChange={(e) => setParam('country', e.target.value)} className="rounded-xl border px-3 py-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <select
+            value={sp.get('country') ?? ''}
+            onChange={(e) => setParam('country', e.target.value)}
+            className="w-full rounded-xl border px-3 py-2"
+          >
             <option value="">Paese</option>
             {COUNTRIES.map((c) => (
               <option key={c.code} value={c.label}>
@@ -310,7 +316,7 @@ export default function OpportunitiesClient() {
               <select
                 value={selectedRegion}
                 onChange={(e) => { setParam('region', e.target.value); setParam('province', ''); setParam('city', ''); }}
-                className="rounded-xl border px-3 py-2"
+                className="w-full rounded-xl border px-3 py-2"
               >
                 <option value="">Regione</option>
                 {italyLocations.regions.map((r: string) => (
@@ -322,7 +328,7 @@ export default function OpportunitiesClient() {
                 <select
                   value={selectedProvince}
                   onChange={(e) => { setParam('province', e.target.value); setParam('city', ''); }}
-                  className="rounded-xl border px-3 py-2"
+                  className="w-full rounded-xl border px-3 py-2"
                 >
                   <option value="">Provincia</option>
                   {availableProvinces.map((p: string) => (
@@ -334,7 +340,7 @@ export default function OpportunitiesClient() {
                   placeholder="Provincia"
                   defaultValue={selectedProvince}
                   onBlur={(e) => setParam('province', e.currentTarget.value)}
-                  className="rounded-xl border px-3 py-2"
+                  className="w-full rounded-xl border px-3 py-2"
                 />
               )}
 
@@ -342,7 +348,7 @@ export default function OpportunitiesClient() {
                 <select
                   value={sp.get('city') ?? ''}
                   onChange={(e) => setParam('city', e.target.value)}
-                  className="rounded-xl border px-3 py-2"
+                  className="w-full rounded-xl border px-3 py-2"
                 >
                   <option value="">Città</option>
                   {availableCities.map((c: string) => (
@@ -354,13 +360,19 @@ export default function OpportunitiesClient() {
                   placeholder="Città"
                   defaultValue={sp.get('city') ?? ''}
                   onBlur={(e) => setParam('city', e.currentTarget.value)}
-                  className="rounded-xl border px-3 py-2"
+                  className="w-full rounded-xl border px-3 py-2"
                 />
               )}
             </>
           )}
+        </div>
 
-          <select value={sp.get('sport') ?? ''} onChange={(e) => setParam('sport', e.target.value)} className="rounded-xl border px-3 py-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <select
+            value={sp.get('sport') ?? ''}
+            onChange={(e) => setParam('sport', e.target.value)}
+            className="w-full rounded-xl border px-3 py-2"
+          >
             <option value="">Sport</option>
             {SPORTS.map((s: string) => (
               <option key={s} value={s}>
@@ -369,7 +381,11 @@ export default function OpportunitiesClient() {
             ))}
           </select>
 
-          <select value={sp.get('age') ?? ''} onChange={(e) => setParam('age', e.target.value)} className="rounded-xl border px-3 py-2">
+          <select
+            value={sp.get('age') ?? ''}
+            onChange={(e) => setParam('age', e.target.value)}
+            className="w-full rounded-xl border px-3 py-2"
+          >
             <option value="">Età</option>
             {AGE_BRACKETS.map((b: string) => (
               <option key={b} value={b}>
@@ -377,28 +393,41 @@ export default function OpportunitiesClient() {
               </option>
             ))}
           </select>
+        </div>
 
-          <div className="ml-auto flex items-center gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="flex w-full items-center gap-2 sm:w-auto">
             <label className="text-sm text-gray-600">Ordina</label>
-            <select value={sp.get('sort') ?? 'recent'} onChange={(e) => setParam('sort', e.target.value)} className="rounded-xl border px-3 py-2">
+            <select
+              value={sp.get('sort') ?? 'recent'}
+              onChange={(e) => setParam('sort', e.target.value)}
+              className="w-full rounded-xl border px-3 py-2 sm:w-44"
+            >
               <option value="recent">Più recenti</option>
               <option value="oldest">Meno recenti</option>
             </select>
-            <button
-              type="button"
-              onClick={() => setParam('sort', (sp.get('sort') ?? 'recent') === 'recent' ? 'oldest' : 'recent')}
-              className="rounded-xl border px-3 py-2 text-sm hover:bg-gray-50"
-            >
-              Inverti ordine
-            </button>
+          </div>
+          <button
+            type="button"
+            onClick={() => setParam('sort', (sp.get('sort') ?? 'recent') === 'recent' ? 'oldest' : 'recent')}
+            className="w-full rounded-xl border px-3 py-2 text-sm hover:bg-gray-50 sm:w-auto"
+          >
+            Inverti ordine
+          </button>
+          <div className="flex w-full items-center gap-2 sm:w-auto">
             <label className="text-sm text-gray-600">Per pagina</label>
-            <select value={sp.get('pageSize') ?? '20'} onChange={(e) => setParam('pageSize', e.target.value)} className="rounded-xl border px-3 py-2">
+            <select
+              value={sp.get('pageSize') ?? '20'}
+              onChange={(e) => setParam('pageSize', e.target.value)}
+              className="w-full rounded-xl border px-3 py-2 sm:w-24"
+            >
               <option value="10">10</option>
               <option value="20">20</option>
               <option value="50">50</option>
             </select>
           </div>
         </div>
+      </div>
 
         {activeClubFilter && (
           <div className="flex items-center justify-between gap-3 rounded-xl border border-dashed bg-blue-50 px-3 py-2 text-sm text-blue-900">
@@ -448,7 +477,6 @@ export default function OpportunitiesClient() {
             <p className="text-xs text-gray-500">ordinata per occorrenze</p>
           </div>
         </div>
-      </div>
 
       {loading && <div className="h-64 w-full rounded-2xl bg-gray-200 animate-pulse" />}
 

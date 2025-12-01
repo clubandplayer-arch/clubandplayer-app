@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
     const { data: existing } = await supabase
       .from('follows')
       .select('target_id, target_type')
-      .eq('follower_id', profileId)
+      .eq('follower_id', userRes.user.id)
       .in('target_type', followTargetTypes)
       .limit(200);
 
@@ -88,7 +88,7 @@ export async function GET(req: NextRequest) {
         const values = Array.from(alreadyFollowing)
           .map((id) => `'${id}'`)
           .join(',');
-        query = query.not('id', 'in', `(${values})`);
+        query = query.not('user_id', 'in', `(${values})`);
       }
 
       query = query.order('followers_count', { ascending: false }).limit(limit);

@@ -15,10 +15,6 @@ export type FollowButtonProps = {
   onChange?: (next: boolean) => void;
 };
 
-function normalizeTargetType(targetType: FollowButtonProps['targetType']) {
-  return targetType === 'club' ? 'club' : 'athlete';
-}
-
 export default function FollowButton({
   targetId,
   targetType,
@@ -32,16 +28,24 @@ export default function FollowButton({
 }: FollowButtonProps) {
   const [isFollowing, setIsFollowing] = useState(initialIsFollowing ?? false);
   const [pending, setPending] = useState(false);
-  const [profileId, setProfileId] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [targetUserId, setTargetUserId] = useState<string | null>(null);
 
-  const normalizedTargetType = useMemo(() => normalizeTargetType(targetType), [targetType]);
+  const normalizedTargetType = useMemo(() => (targetType === 'club' ? 'club' : 'player'), [targetType]);
+  const targetTypeMatches = useMemo(
+    () => (normalizedTargetType === 'player' ? ['player', 'athlete'] : ['club']),
+    [normalizedTargetType],
+  );
 
   useEffect(() => {
     setIsFollowing(initialIsFollowing ?? false);
   }, [initialIsFollowing, targetId]);
 
   useEffect(() => {
-    if (!targetId) return;
+    if (!targetId) {
+      setCurrentUserId(null);
+      return;
+    }
 
     let cancelled = false;
 
@@ -52,19 +56,8 @@ export default function FollowButton({
         const uid = user?.user?.id;
         if (!uid) return;
 
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('user_id', uid)
-          .maybeSingle();
-
-        if (profileError) {
-          console.error('[FollowButton] errore profilo corrente', profileError);
-          return;
-        }
-
         if (cancelled) return;
-        setProfileId(profile?.id ?? null);
+        setCurrentUserId(uid);
       } catch (err) {
         console.error('[FollowButton] errore recupero profilo', err);
       }
@@ -76,7 +69,55 @@ export default function FollowButton({
   }, [targetId]);
 
   useEffect(() => {
-    if (!targetId || initialIsFollowing !== undefined || !profileId) return;
+    if (!targetId) {
+      setTargetUserId(null);
+      return;
+    }
+
+    let cancelled = false;
+    const supabase = supabaseBrowser();
+
+    (async () => {
+      try {
+        const { data: profileById } = await supabase
+          .from('profiles')
+          .select('id, user_id')
+          .eq('id', targetId)
+          .maybeSingle();
+
+        if (cancelled) return;
+        if (profileById?.id) {
+          setTargetUserId(profileById.user_id ?? profileById.id);
+          return;
+        }
+
+        const { data: profileByUser } = await supabase
+          .from('profiles')
+          .select('id, user_id')
+          .eq('user_id', targetId)
+          .maybeSingle();
+
+        if (cancelled) return;
+        if (profileByUser?.id && profileByUser.user_id) {
+          setTargetUserId(profileByUser.user_id);
+        } else {
+          setTargetUserId(targetId);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error('[FollowButton] errore risoluzione target follow', err);
+          setTargetUserId(targetId);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [targetId]);
+
+  useEffect(() => {
+    if (!targetUserId || initialIsFollowing !== undefined || !currentUserId) return;
 
     let cancelled = false;
     (async () => {
@@ -86,9 +127,9 @@ export default function FollowButton({
         const { data } = await supabase
           .from('follows')
           .select('id')
-          .eq('follower_id', profileId)
-          .eq('target_id', targetId)
-          .in('target_type', [normalizedTargetType, 'player'])
+          .eq('follower_id', currentUserId)
+          .eq('target_id', targetUserId)
+          .in('target_type', targetTypeMatches)
           .maybeSingle();
 
         if (!cancelled) {
@@ -102,10 +143,10 @@ export default function FollowButton({
     return () => {
       cancelled = true;
     };
-  }, [targetId, normalizedTargetType, initialIsFollowing, profileId]);
+  }, [targetUserId, targetTypeMatches, initialIsFollowing, currentUserId]);
 
   async function handleToggle() {
-    if (!targetId || pending) return;
+    if (!targetUserId || pending) return;
     setPending(true);
     const prev = isFollowing;
     setIsFollowing(!prev);
@@ -116,31 +157,15 @@ export default function FollowButton({
       const uid = user?.user?.id;
       if (!uid) throw new Error('not_authenticated');
 
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('user_id', uid)
-        .maybeSingle();
-
-      if (profileError) {
-        console.error('[FollowButton] errore recupero profilo corrente', profileError);
-        throw profileError;
-      }
-
-      const currentProfileId = profile?.id;
-      if (!currentProfileId) {
-        throw new Error('missing_profile');
-      }
-
-      setProfileId(currentProfileId);
+      setCurrentUserId(uid);
 
       if (prev) {
         const { error: deleteError } = await supabase
           .from('follows')
           .delete()
-          .eq('follower_id', currentProfileId)
-          .eq('target_id', targetId)
-          .in('target_type', [normalizedTargetType, 'player']);
+          .eq('follower_id', uid)
+          .eq('target_id', targetUserId)
+          .in('target_type', targetTypeMatches);
 
         if (deleteError) {
           console.error('[FollowButton] errore unfollow', deleteError);
@@ -148,8 +173,8 @@ export default function FollowButton({
         }
       } else {
         const { error: insertError } = await supabase.from('follows').upsert({
-          follower_id: currentProfileId,
-          target_id: targetId,
+          follower_id: uid,
+          target_id: targetUserId,
           target_type: normalizedTargetType,
         });
 
@@ -164,8 +189,6 @@ export default function FollowButton({
       const message = err?.message || '';
       if (message.includes('not_authenticated')) {
         alert('Accedi per gestire i profili che segui.');
-      } else if (message.includes('missing_profile')) {
-        alert('Completa il tuo profilo per seguire altri utenti.');
       }
       console.error('[FollowButton] toggle fallito', err);
       setIsFollowing(prev);

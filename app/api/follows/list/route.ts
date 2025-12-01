@@ -30,26 +30,26 @@ export async function GET() {
   const { data: follows, error: followsError } = await supabase
     .from('follows')
     .select('target_id, target_type')
-    .in('follower_id', [profileId, userRes.user.id])
+    .eq('follower_id', userRes.user.id)
     .limit(400);
 
   if (followsError) {
     return NextResponse.json({ items: [], role, profileId, error: followsError.message });
   }
 
-  const ids = (follows || [])
+  const targetUserIds = (follows || [])
     .map((row) => (row as any)?.target_id)
     .filter(Boolean)
     .map((id) => id.toString());
 
-  if (!ids.length) {
+  if (!targetUserIds.length) {
     return NextResponse.json({ items: [], role, profileId });
   }
 
   const { data: profiles, error: profilesError } = await supabase
     .from('profiles')
-    .select('id, display_name, full_name, city, country, sport, role, avatar_url, account_type, status')
-    .in('id', ids)
+    .select('id, user_id, display_name, full_name, city, country, sport, role, avatar_url, account_type, status')
+    .in('user_id', targetUserIds)
     .eq('status', 'active');
 
   if (profilesError) {
@@ -57,7 +57,7 @@ export async function GET() {
   }
 
   const profilesMap = new Map(
-    (profiles || []).map((p) => [p.id?.toString(), p]),
+    (profiles || []).map((p) => [(p.user_id || p.id)?.toString(), p]),
   );
 
   const items = (follows || [])
