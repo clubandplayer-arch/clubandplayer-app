@@ -226,11 +226,11 @@ export default function ApplicationsDashboard() {
       )}
 
       {role !== 'guest' && (
-        <div className="flex flex-wrap items-center gap-3 rounded-xl border bg-white/80 p-3">
+        <div className="flex flex-col gap-3 rounded-xl border bg-white/80 p-3 sm:flex-row sm:flex-wrap sm:items-center">
           <select
             value={filterOpp}
             onChange={(e) => setFilterOpp(e.target.value)}
-            className="rounded-lg border px-3 py-2"
+            className="w-full rounded-lg border px-3 py-2 sm:w-64"
           >
             <option value="">Tutte le opportunità</option>
             {opportunityOptions.map(([id, title]) => (
@@ -243,7 +243,7 @@ export default function ApplicationsDashboard() {
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="rounded-lg border px-3 py-2"
+            className="w-full rounded-lg border px-3 py-2 sm:w-56"
           >
             <option value="">Tutti gli stati</option>
             {statusOptions.map((s) => (
@@ -253,7 +253,7 @@ export default function ApplicationsDashboard() {
             ))}
           </select>
 
-          <div className="ml-auto text-xs text-gray-600">
+          <div className="text-xs text-gray-600 sm:ml-auto sm:text-right">
             {role === 'club' ? 'Vista Club · candidature ricevute' : 'Vista Player · candidature inviate'}
           </div>
         </div>
