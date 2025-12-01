@@ -3,6 +3,7 @@
 import Image from 'next/image';
 
 import FollowButton from '@/components/clubs/FollowButton';
+import { useFollowState } from '@/hooks/useFollowState';
 
 type ClubProfile = {
   id: string;
@@ -24,6 +25,8 @@ function formatLocation(profile: ClubProfile) {
 export default function ClubProfileHeader({ profile }: { profile: ClubProfile }) {
   const name = profile.display_name || profile.full_name || 'Club';
   const location = formatLocation(profile);
+  const { following } = useFollowState();
+  const initialIsFollowing = following.has(profile.id);
 
   return (
     <header className="rounded-2xl border bg-white p-5 shadow-sm">
@@ -56,6 +59,7 @@ export default function ClubProfileHeader({ profile }: { profile: ClubProfile })
               targetId={profile.id}
               targetType="club"
               targetName={name}
+              initialIsFollowing={initialIsFollowing}
               labelFollow="Segui"
               labelFollowing="Seguo"
               size="md"

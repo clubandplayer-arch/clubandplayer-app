@@ -6,6 +6,7 @@ import FollowButton from '@/components/clubs/FollowButton';
 import ApplyCell from '@/components/opportunities/ApplyCell';
 import type { Opportunity } from '@/types/opportunity';
 import { opportunityGenderLabel } from '@/lib/opps/gender';
+import { useFollowState } from '@/hooks/useFollowState';
 
 type Role = 'athlete' | 'club' | 'guest';
 type ApiOne<T> = { data?: T; [k: string]: any };
@@ -50,6 +51,7 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
   const [meId, setMeId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const { following } = useFollowState();
 
   // whoami
   useEffect(() => {
@@ -112,6 +114,12 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
     return Boolean(createdBy && createdBy === meId);
   }, [meId, opp]);
 
+  const initialIsFollowing = useMemo(() => {
+    const clubProfileId = opp?.club_id ?? opp?.createdBy ?? opp?.created_by ?? null;
+    if (!clubProfileId) return false;
+    return following.has(clubProfileId);
+  }, [following, opp]);
+
   const showApply = role === 'athlete' && !isOwner;
 
   if (loading) return <div className="p-4">Caricamento…</div>;
@@ -137,6 +145,7 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
 
   const createdBy = opp.createdBy ?? opp.created_by ?? null;
   const clubName = opp.clubName ?? opp.club_name ?? undefined;
+  const clubProfileId = opp.club_id ?? createdBy ?? null;
 
   return (
     <div className="p-4 md:p-6">
@@ -173,12 +182,18 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
         <div className="mt-3 text-sm text-gray-700 whitespace-pre-wrap">{opp.description || '—'}</div>
 
         <footer className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-gray-600">
-          <div className="flex items-center gap-2">
-            <span className="font-medium">{clubName ?? 'Club'}</span>
-            {createdBy && (
-              <FollowButton targetId={createdBy} targetType="club" targetName={clubName} size="md" />
-            )}
-          </div>
+            <div className="flex items-center gap-2">
+              <span className="font-medium">{clubName ?? 'Club'}</span>
+              {clubProfileId && (
+                <FollowButton
+                  targetId={clubProfileId}
+                  targetType="club"
+                  targetName={clubName}
+                  size="md"
+                  initialIsFollowing={initialIsFollowing}
+                />
+              )}
+            </div>
           <div className="flex items-center gap-2">
             {place && <span>{place}</span>}
             <span>•</span>

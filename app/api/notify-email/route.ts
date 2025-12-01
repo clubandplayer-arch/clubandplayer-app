@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
 
     const subject = 'Nuovo messaggio su Club&Player'
     const preview = text.length > 120 ? text.slice(0, 120) + '…' : text
-    const chatUrl = `${process.env.NEXT_PUBLIC_BASE_URL ?? ''}/messages/${senderId}`
+    const chatUrl = `${process.env.NEXT_PUBLIC_BASE_URL ?? ''}/messages?to=${senderId}`
 
     const resendConfig = getResendConfig()
     if (!resendConfig.ok) {

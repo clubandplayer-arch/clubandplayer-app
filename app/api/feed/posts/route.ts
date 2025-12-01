@@ -121,20 +121,20 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: 'not_authenticated' }, { status: 401 });
   }
 
-  const followerIds: string[] = [];
+  const followedAuthorProfileIds: string[] = [];
 
   if (!authorIdFilter && !mine && currentProfileId) {
     const { data: followRows, error: followError } = await supabase
       .from('follows')
       .select('target_id')
-      .in('follower_id', [currentProfileId, currentUserId].filter(Boolean) as string[])
+      .eq('follower_id', currentProfileId)
       .limit(500);
 
-    if (!followError && Array.isArray(followRows)) {
-      followRows.forEach((row) => {
-        const id = (row as any)?.target_id ? String((row as any).target_id) : null;
-        if (id) followerIds.push(id);
-      });
+    if (!followError && Array.isArray(followRows) && followRows.length) {
+      followRows
+        .map((row) => ((row as any)?.target_id ? String((row as any).target_id) : null))
+        .filter(Boolean)
+        .forEach((pid) => followedAuthorProfileIds.push(pid as string));
     }
   }
 
@@ -142,7 +142,9 @@ export async function GET(req: NextRequest) {
     if (authorIdFilter) return [authorIdFilter];
     if (mine && currentProfileId) return [currentProfileId];
     if (!authorIdFilter && !mine && currentProfileId) {
-      const uniq = Array.from(new Set([currentProfileId, ...followerIds].filter(Boolean)));
+      const uniq = Array.from(
+        new Set([currentProfileId, ...followedAuthorProfileIds].filter(Boolean)),
+      );
       return uniq.length ? uniq : null;
     }
     return null;

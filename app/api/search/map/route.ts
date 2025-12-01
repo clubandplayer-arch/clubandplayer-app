@@ -158,7 +158,18 @@ export async function GET(req: NextRequest) {
       if (filters.gender) filtered = filtered.eq('gender', filters.gender);
 
       if (ilikeQuery) {
-        filtered = filtered.or(`display_name.ilike.${ilikeQuery},full_name.ilike.${ilikeQuery}`);
+        filtered = filtered.or(
+          [
+            `display_name.ilike.${ilikeQuery}`,
+            `full_name.ilike.${ilikeQuery}`,
+            `city.ilike.${ilikeQuery}`,
+            `province.ilike.${ilikeQuery}`,
+            `region.ilike.${ilikeQuery}`,
+            `country.ilike.${ilikeQuery}`,
+            `sport.ilike.${ilikeQuery}`,
+            `role.ilike.${ilikeQuery}`,
+          ].join(','),
+        );
       }
 
       if (filters.ageMin != null) {

@@ -6,6 +6,7 @@ import ApplyCell from '@/components/opportunities/ApplyCell';
 import FollowButton from '@/components/common/FollowButton';
 import { useToast } from '@/components/common/ToastProvider';
 import type { Opportunity } from '@/types/opportunity';
+import { useFollowState } from '@/hooks/useFollowState';
 
 type Role = 'athlete' | 'club' | 'guest';
 
@@ -41,6 +42,7 @@ export default function OpportunitiesTable({
 }) {
   const toast = useToast();
   const [saving, setSaving] = useState<string | null>(null);
+  const { following } = useFollowState();
 
   const ownerNameMap = useMemo(() => clubNames ?? {}, [clubNames]);
 
@@ -56,15 +58,17 @@ export default function OpportunitiesTable({
     <div className="space-y-4">
       {items.map((o) => {
         const ownerId = (o as any).club_id ?? o.created_by ?? o.owner_id ?? null;
+        const profileOwnerId = (o as any).club_id ?? ownerId;
         const canEdit = !!currentUserId && (ownerId === currentUserId || o.created_by === currentUserId || o.owner_id === currentUserId);
         const place = [o.city, o.province, o.region, o.country].filter(Boolean).join(', ');
         const showApply = userRole === 'athlete' && !canEdit;
-        const showFollow = userRole === 'athlete' && !!ownerId;
+        const showFollow = userRole === 'athlete' && !!profileOwnerId;
         const clubLabel =
           (o as any).clubName ||
           o.club_name ||
           (ownerId ? ownerNameMap[ownerId] : undefined) ||
           '—';
+        const initialIsFollowing = profileOwnerId ? following.has(profileOwnerId) : false;
 
         return (
           <article key={o.id} className="rounded-2xl border bg-white/80 shadow-sm p-4 md:p-5">
@@ -92,8 +96,8 @@ export default function OpportunitiesTable({
 
                 <div className="flex flex-wrap items-center gap-3 text-sm">
                   <span className="font-medium text-gray-900">
-                    {ownerId ? (
-                      <Link href={`/clubs/${ownerId}`} className="hover:underline">
+                    {profileOwnerId ? (
+                      <Link href={`/clubs/${profileOwnerId}`} className="hover:underline">
                         {clubLabel}
                       </Link>
                     ) : (
@@ -102,18 +106,19 @@ export default function OpportunitiesTable({
                   </span>
                   {showFollow && (
                     <FollowButton
-                      targetId={ownerId as string}
+                      targetId={profileOwnerId as string}
                       targetType="club"
                       targetName={clubLabel || undefined}
                       size="sm"
+                      initialIsFollowing={initialIsFollowing}
                     />
                   )}
                   <span className="text-gray-500">•</span>
                   <Link href={`/opportunities/${o.id}`} className="text-blue-700 hover:underline">
                     Dettagli annuncio
                   </Link>
-                  {ownerId && (
-                    <Link href={`/clubs/${ownerId}`} className="text-blue-700 hover:underline">
+                  {profileOwnerId && (
+                    <Link href={`/clubs/${profileOwnerId}`} className="text-blue-700 hover:underline">
                       Visita profilo club
                     </Link>
                   )}

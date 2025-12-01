@@ -90,7 +90,7 @@ export default function FollowingPage() {
       const { data, error } = await supabase
         .from('follows')
         .select('target_id, target_type, created_at')
-        .in('follower_id', [profile.id, userRes.user.id])
+        .eq('follower_id', profile.id)
         .limit(400);
       if (error) throw error;
       const rows = (data || []) as FollowRow[];
@@ -98,16 +98,17 @@ export default function FollowingPage() {
       setMissingTargetId(false);
       setMissingTargetType(false);
 
-      const ids = rows.map((r) => r.target_id).filter(Boolean);
-      if (ids.length) {
+      const targetProfileIds = rows.map((r) => r.target_id).filter(Boolean);
+      if (targetProfileIds.length) {
         const { data: profilesData } = await supabase
           .from('profiles')
           .select(
             'id, user_id, display_name, full_name, headline, city, sport, role, avatar_url, account_type',
           )
-          .in('id', ids);
+          .in('id', targetProfileIds);
         const map: Record<string, PublicProfileSummary> = {};
         (profilesData || []).forEach((row: any) => {
+          const key = row.user_id || row.id;
           const summary: PublicProfileSummary = {
             id: row.id,
             profile_id: row.id,
@@ -127,7 +128,7 @@ export default function FollowingPage() {
             region: null,
             province: null,
           };
-          map[row.id] = summary;
+          map[key] = summary;
         });
         setProfiles(map);
       } else {
@@ -141,7 +142,7 @@ export default function FollowingPage() {
       setMissingTargetType(missingType);
       setError(
         missingColumn || missingType
-          ? 'Colonne "target_id"/"target_type" mancanti su follows. Esegui il file supabase/migrations/20251018_fix_notifications_follows_post_reactions.sql.'
+          ? 'Colonne "target_id"/"target_type" mancanti su follows. Esegui il file supabase/migrations/20251219120000_rebuild_follows_with_profiles.sql.'
           : err?.message || 'Errore nel caricare i seguiti',
       );
       setFollows([]);
@@ -190,7 +191,7 @@ export default function FollowingPage() {
 
       {!loading && !follows.length && error && (missingTargetId || missingTargetType) && (
         <div className="rounded-xl border border-dashed border-neutral-200 bg-white/70 p-4 text-sm text-neutral-600">
-          L’elenco dei seguiti richiede le colonne "target_id" e "target_type" sulla tabella follows. Aggiungile eseguendo il file supabase/migrations/20251018_fix_notifications_follows_post_reactions.sql.
+          L’elenco dei seguiti richiede le colonne "target_id" e "target_type" sulla tabella follows. Aggiungile eseguendo il file supabase/migrations/20251219120000_rebuild_follows_with_profiles.sql.
         </div>
       )}
 

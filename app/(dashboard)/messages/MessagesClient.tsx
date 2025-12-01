@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import type {
   ConversationDetailResponse,
@@ -126,24 +126,41 @@ function MessageBubble({
   );
 }
 
-export default function MessagesClient() {
+export default function MessagesClient({
+  initialConversationId,
+  initialTargetProfileId,
+}: {
+  initialConversationId?: string | null;
+  initialTargetProfileId?: string | null;
+}) {
   const { show } = useToast();
   const [loadingList, setLoadingList] = useState(true);
   const [loadingThread, setLoadingThread] = useState(false);
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(initialConversationId ?? null);
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [me, setMe] = useState<ProfileSummary | null>(null);
   const [peer, setPeer] = useState<ProfileSummary | null>(null);
   const [draft, setDraft] = useState('');
-  const [targetProfile, setTargetProfile] = useState('');
-  const [initialMessage, setInitialMessage] = useState('');
   const [reloading, setReloading] = useState(0);
+  const [pendingTarget, setPendingTarget] = useState(initialTargetProfileId ?? '');
+  const [sending, setSending] = useState(false);
+  const initialConversationRef = useRef(initialConversationId?.trim() || '');
+  const initialTargetRef = useRef(initialTargetProfileId?.trim() || '');
+  const appliedInitialRef = useRef(false);
 
   const currentPeer = useMemo(
     () => peer ?? conversations.find((c) => c.id === selectedId)?.peer ?? null,
     [peer, conversations, selectedId]
   );
+
+  useEffect(() => {
+    initialConversationRef.current = initialConversationId?.trim() || '';
+    initialTargetRef.current = initialTargetProfileId?.trim() || '';
+    appliedInitialRef.current = false;
+    setPendingTarget(initialTargetProfileId ?? '');
+    setSelectedId(initialConversationId ?? null);
+  }, [initialConversationId, initialTargetProfileId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -158,7 +175,26 @@ export default function MessagesClient() {
         if (cancelled) return;
         setConversations(Array.isArray(json.data) ? json.data : []);
         setMe(json.me || null);
-        if (!selectedId && (json.data?.length ?? 0) > 0) setSelectedId(json.data[0].id);
+        if (!appliedInitialRef.current) {
+          appliedInitialRef.current = true;
+          const conversationFromParams = initialConversationRef.current;
+          const targetFromParams = initialTargetRef.current;
+
+          if (conversationFromParams) {
+            setSelectedId(conversationFromParams);
+          } else if (targetFromParams) {
+            const existing = (json.data ?? []).find((c) => c.peer?.id === targetFromParams);
+            if (existing) {
+              setSelectedId(existing.id);
+            } else {
+              setPendingTarget(targetFromParams);
+            }
+          } else if (!selectedId && (json.data?.length ?? 0) > 0) {
+            setSelectedId(json.data[0].id);
+          }
+        } else if (!selectedId && (json.data?.length ?? 0) > 0) {
+          setSelectedId(json.data[0].id);
+        }
       })
       .catch((e) => !cancelled && show(e.message || 'Errore nel caricamento', { variant: 'error' }))
       .finally(() => !cancelled && setLoadingList(false));
@@ -167,6 +203,45 @@ export default function MessagesClient() {
       cancelled = true;
     };
   }, [reloading, selectedId, show]);
+
+  const handleStartConversation = useCallback(
+    async (targetId: string, options?: { silent?: boolean }) => {
+      const cleanTarget = (targetId || '').trim();
+
+      if (!cleanTarget) return;
+      try {
+        console.log('[messages] start conversation', { target: cleanTarget });
+        const res = await fetch(`/api/messages/start?to=${encodeURIComponent(cleanTarget)}`, {
+          method: 'GET',
+          credentials: 'include',
+        });
+        const text = await res.text();
+        const j = JSON.parse(text || '{}') as any;
+        if (!res.ok || j?.ok === false) {
+          throw new Error(j?.error || text || 'Errore creazione conversazione');
+        }
+        const newId = j?.conversationId || j?.data?.conversationId;
+        setSelectedId(newId || selectedId);
+        setPendingTarget('');
+        setReloading((v) => v + 1);
+        if (!options?.silent) show('Conversazione aggiornata', { variant: 'success' });
+        console.log('[messages] start success', { conversationId: newId });
+      } catch (e: any) {
+        setPendingTarget('');
+        if (!options?.silent) {
+          show(e.message || 'Errore', { variant: 'error' });
+        } else {
+          console.error('Errore creazione conversazione', e);
+        }
+      }
+    },
+    [selectedId, show],
+  );
+
+  useEffect(() => {
+    if (!pendingTarget || loadingList || selectedId) return;
+    handleStartConversation(pendingTarget, { silent: true });
+  }, [pendingTarget, loadingList, selectedId, handleStartConversation]);
 
   useEffect(() => {
     if (!selectedId) {
@@ -187,7 +262,13 @@ export default function MessagesClient() {
         setMessages(Array.isArray(json.messages) ? json.messages : []);
         setPeer(json.peer ?? null);
       })
-      .catch((e) => !cancelled && show(e.message || 'Errore nel thread', { variant: 'error' }))
+      .catch((e) => {
+        if (cancelled) return;
+        show(e.message || 'Errore nel thread', { variant: 'error' });
+        setSelectedId(null);
+        setMessages([]);
+        setPeer(null);
+      })
       .finally(() => !cancelled && setLoadingThread(false));
 
     return () => {
@@ -196,55 +277,41 @@ export default function MessagesClient() {
   }, [selectedId, reloading, show]);
 
   async function handleSend() {
-    if (!draft.trim() || !selectedId) return;
+    if (!draft.trim() || !selectedId || sending) return;
+    setSending(true);
     try {
+      console.log('[messages] send click', { conversationId: selectedId, bodyLength: draft.length });
       const res = await fetch(`/api/messages/${selectedId}`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ body: draft }),
       });
-      if (!res.ok) {
-        const t = await res.text();
-        throw new Error(t || 'Errore invio messaggio');
+      const payload = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      if (!res.ok || payload?.ok === false) {
+        throw new Error(payload?.error || 'Errore invio messaggio');
       }
+
+      const inserted = (payload as any).message as MessageItem | undefined;
       setDraft('');
-      setReloading((v) => v + 1);
+      setMessages((prev) => (inserted ? [...prev, inserted] : prev));
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === selectedId
+            ? {
+                ...c,
+                last_message_preview: inserted?.body ?? c.last_message_preview ?? draft,
+                last_message_at: inserted?.created_at ?? c.last_message_at ?? new Date().toISOString(),
+              }
+            : c
+        )
+      );
+      if (!inserted) setReloading((v) => v + 1);
+      console.log('[messages] send success', { conversationId: selectedId, inserted: Boolean(inserted) });
     } catch (e: any) {
       show(e.message || 'Errore invio', { variant: 'error' });
-    }
-  }
-
-  async function handleStartConversation() {
-    if (!targetProfile.trim()) {
-      show('Inserisci un profilo destinatario', { variant: 'warning' });
-      return;
-    }
-    try {
-      const res = await fetch('/api/messages', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetProfileId: targetProfile.trim(), message: initialMessage.trim() }),
-      });
-      const text = await res.text();
-      if (!res.ok) {
-        try {
-          const j = JSON.parse(text);
-          throw new Error(j.error || text || 'Errore creazione conversazione');
-        } catch {
-          throw new Error(text || 'Errore creazione conversazione');
-        }
-      }
-      const j = JSON.parse(text) as any;
-      const newId = j?.data?.conversationId as string;
-      setTargetProfile('');
-      setInitialMessage('');
-      setSelectedId(newId || selectedId);
-      setReloading((v) => v + 1);
-      show('Conversazione aggiornata', { variant: 'success' });
-    } catch (e: any) {
-      show(e.message || 'Errore', { variant: 'error' });
+    } finally {
+      setSending(false);
     }
   }
 
@@ -261,31 +328,8 @@ export default function MessagesClient() {
             onClick={() => setReloading((v) => v + 1)}
             className="inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-sm text-neutral-700 transition hover:bg-neutral-50"
           >
-            <MaterialIcon name="refresh" fontSize="small" />
-            Aggiorna
-          </button>
-        </div>
-        <div className="mb-4 space-y-2 rounded-xl bg-neutral-50 p-3">
-          <div className="text-sm font-semibold text-neutral-800">Nuova conversazione</div>
-          <input
-            value={targetProfile}
-            onChange={(e) => setTargetProfile(e.target.value)}
-            placeholder="ID profilo destinatario"
-            className="w-full rounded-lg border px-3 py-2 text-sm focus:border-[var(--brand)] focus:outline-none"
-          />
-          <textarea
-            value={initialMessage}
-            onChange={(e) => setInitialMessage(e.target.value)}
-            placeholder="Messaggio iniziale (opzionale)"
-            className="w-full rounded-lg border px-3 py-2 text-sm focus:border-[var(--brand)] focus:outline-none"
-            rows={3}
-          />
-          <button
-            type="button"
-            onClick={handleStartConversation}
-            className="inline-flex items-center justify-center rounded-lg bg-[var(--brand)] px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--brand)]/90"
-          >
-            Avvia
+          <MaterialIcon name="refresh" fontSize="small" />
+          Aggiorna
           </button>
         </div>
         {loadingList ? (
@@ -307,50 +351,58 @@ export default function MessagesClient() {
             </Link>
           )}
         </div>
-
-        <div className="flex-1 space-y-3 overflow-y-auto rounded-xl bg-neutral-50 p-3">
-          {loadingThread && <div className="text-sm text-neutral-500">Caricamento thread…</div>}
-          {!loadingThread && messages.length === 0 && (
-            <div className="text-sm text-neutral-500">Nessun messaggio in questa conversazione.</div>
-          )}
-          {!loadingThread &&
-            messages.map((m) => (
-              <MessageBubble
-                key={m.id}
-                message={m}
-                isMine={!!me && !!m.sender_profile_id && m.sender_profile_id === me.id}
-                author={
-                  m.sender_profile_id === me?.id
-                    ? me
-                    : currentPeer?.id === m.sender_profile_id
-                    ? currentPeer
-                    : currentPeer
-                }
-              />
-            ))}
-        </div>
-
-        <div className="mt-4 space-y-2 rounded-xl border border-neutral-200 p-3">
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            rows={3}
-            placeholder="Scrivi un messaggio"
-            className="w-full rounded-lg border px-3 py-2 text-sm focus:border-[var(--brand)] focus:outline-none"
-          />
-          <div className="flex items-center justify-between text-sm text-neutral-500">
-            <span>Invia ai tuoi contatti. Altre funzioni arriveranno a breve.</span>
-            <button
-              type="button"
-              onClick={handleSend}
-              disabled={!draft.trim() || !selectedId}
-              className="inline-flex items-center gap-1 rounded-lg bg-[var(--brand)] px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--brand)]/90 disabled:cursor-not-allowed disabled:bg-neutral-300"
-            >
-              <MaterialIcon name="send" fontSize="small" />
-              Invia
-            </button>
+        {!selectedId ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-600">
+            <div>Seleziona una conversazione o apri un profilo per avviarne una nuova.</div>
+            {pendingTarget ? <div className="text-xs text-neutral-500">Preparazione conversazione…</div> : null}
           </div>
-        </div>
+        ) : (
+          <>
+            <div className="flex-1 space-y-3 overflow-y-auto rounded-xl bg-neutral-50 p-3">
+              {loadingThread && <div className="text-sm text-neutral-500">Caricamento thread…</div>}
+              {!loadingThread && messages.length === 0 && (
+                <div className="text-sm text-neutral-500">Nessun messaggio in questa conversazione.</div>
+              )}
+              {!loadingThread &&
+                messages.map((m) => (
+                  <MessageBubble
+                    key={m.id}
+                    message={m}
+                    isMine={!!me && !!m.sender_profile_id && m.sender_profile_id === me.id}
+                    author={
+                      m.sender_profile_id === me?.id
+                        ? me
+                        : currentPeer?.id === m.sender_profile_id
+                        ? currentPeer
+                        : currentPeer
+                    }
+                  />
+                ))}
+            </div>
+
+            <div className="mt-4 space-y-2 rounded-xl border border-neutral-200 p-3">
+              <textarea
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                rows={3}
+                placeholder="Scrivi un messaggio"
+                className="w-full rounded-lg border px-3 py-2 text-sm focus:border-[var(--brand)] focus:outline-none"
+              />
+              <div className="flex items-center justify-between text-sm text-neutral-500">
+                <span>Invia ai tuoi contatti. Altre funzioni arriveranno a breve.</span>
+                <button
+                  type="button"
+                  onClick={handleSend}
+                  disabled={!draft.trim() || !selectedId || sending}
+                  className="inline-flex items-center gap-1 rounded-lg bg-[var(--brand)] px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--brand)]/90 disabled:cursor-not-allowed disabled:bg-neutral-300"
+                >
+                  <MaterialIcon name="send" fontSize="small" />
+                  {sending ? 'Invio…' : 'Invia'}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
       </section>
     </div>
   );

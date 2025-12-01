@@ -156,7 +156,7 @@ export default function PublicAthleteProfile() {
             {/* Azioni: Messaggia → */}
             <div style={{display:'flex', gap:8, alignItems:'center'}}>
               <Link
-                href={`/messages/${params.id}`}
+                href={`/messages?to=${params.id}`}
                 style={{padding:'8px 12px', border:'1px solid #e5e7eb', borderRadius:8}}
               >
                 Messaggia →

@@ -59,7 +59,7 @@ export default function NotificationItem({ notification, onClick, compact }: Pro
   const hrefFromPayload = () => {
     const payload = notification.payload || {};
     if (notification.kind === 'new_message' && typeof payload.conversation_id === 'string') {
-      return `/messages?conversation=${payload.conversation_id}`;
+      return `/messages?conversationId=${payload.conversation_id}`;
     }
     if (notification.kind === 'new_follower' && typeof payload.follower_profile_id === 'string') {
       return `/profiles/${payload.follower_profile_id}`;

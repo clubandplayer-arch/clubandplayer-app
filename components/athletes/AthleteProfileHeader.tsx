@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 import FollowButton from '@/components/clubs/FollowButton';
+import { useFollowState } from '@/hooks/useFollowState';
 
 type AthleteProfile = {
   id: string;
@@ -31,6 +32,8 @@ export default function AthleteProfileHeader({
   isMe: boolean;
 }) {
   const name = resolveName(profile);
+  const { following } = useFollowState();
+  const initialIsFollowing = following.has(profile.id);
 
   const subtitle = (() => {
     const parts = [profile.role, profile.sport].filter(Boolean);
@@ -68,7 +71,7 @@ export default function AthleteProfileHeader({
             {location ? <p className="text-xs text-neutral-500">{location}</p> : <p className="text-xs text-neutral-400">Località —</p>}
             <div className="flex flex-wrap items-center gap-3 text-xs text-neutral-500">
               <span>ID profilo: <code>{profile.id}</code></span>
-              <Link href={`/messages/${profile.id}`} className="font-semibold text-blue-700 underline-offset-4 hover:underline">
+              <Link href={`/messages?to=${profile.id}`} className="font-semibold text-blue-700 underline-offset-4 hover:underline">
                 Messaggia →
               </Link>
             </div>
@@ -80,6 +83,7 @@ export default function AthleteProfileHeader({
                 targetId={profile.id}
                 targetType="athlete"
                 targetName={name}
+                initialIsFollowing={initialIsFollowing}
                 labelFollow="Segui"
                 labelFollowing="Seguo"
                 size="md"

@@ -61,7 +61,7 @@ async function handleGet(conversationId: string, supabase: Awaited<ReturnType<ty
 
   if (msgErr) return jsonError(msgErr.message, 400);
 
-  return NextResponse.json({ conversation: { ...conversation, peer }, peer, me, messages: messages ?? [] });
+  return NextResponse.json({ ok: true, conversation: { ...conversation, peer }, peer, me, messages: messages ?? [] });
 }
 
 async function handlePost(
@@ -85,16 +85,35 @@ async function handlePost(
   if (error) return jsonError(error.message, 400);
   if (!conversation?.id) return jsonError('Conversazione non trovata', 404);
 
-  const { error: msgErr } = await supabase.from('messages').insert({
-    conversation_id: conversationId,
-    sender_id: me.user_id ?? userId,
-    sender_profile_id: me.id,
-    body: text,
-  });
+  const { data: inserted, error: msgErr } = await supabase
+    .from('messages')
+    .insert({
+      conversation_id: conversationId,
+      sender_id: me.user_id ?? userId,
+      sender_profile_id: me.id,
+      body: text,
+    })
+    .select('id, conversation_id, sender_profile_id, sender_id, body, created_at')
+    .maybeSingle();
 
-  if (msgErr) return jsonError(msgErr.message, 400);
+  if (msgErr) {
+    console.error('API /messages/:id insert error', { conversationId, sender: me.id, error: msgErr });
+    return jsonError(msgErr.message, 400);
+  }
 
-  return NextResponse.json({ ok: true });
+  const lastPreview = text.slice(0, 200);
+  const lastAt = inserted?.created_at || new Date().toISOString();
+
+  const { error: convUpdateErr } = await supabase
+    .from('conversations')
+    .update({ last_message_at: lastAt, last_message_preview: lastPreview })
+    .eq('id', conversationId);
+
+  if (convUpdateErr) {
+    console.error('API /messages/:id conversation update error', { conversationId, error: convUpdateErr });
+  }
+
+  return NextResponse.json({ ok: true, message: inserted ?? null });
 }
 
 export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
