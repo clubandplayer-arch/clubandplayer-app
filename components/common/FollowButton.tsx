@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
+import { useToast } from './ToastProvider';
 
 export type FollowButtonProps = {
   targetId: string;
@@ -26,10 +27,11 @@ export default function FollowButton({
   labelFollowing = 'Seguo',
   onChange,
 }: FollowButtonProps) {
+  const toast = useToast();
   const [isFollowing, setIsFollowing] = useState(initialIsFollowing ?? false);
   const [pending, setPending] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [targetUserId, setTargetUserId] = useState<string | null>(null);
+  const [targetUserId, setTargetUserId] = useState<string | null>(targetId || null);
 
   const normalizedTargetType = useMemo(() => (targetType === 'club' ? 'club' : 'player'), [targetType]);
   const targetTypeMatches = useMemo(
@@ -74,6 +76,8 @@ export default function FollowButton({
       return;
     }
 
+    setTargetUserId(targetId);
+
     let cancelled = false;
     const supabase = supabaseBrowser();
 
@@ -100,13 +104,10 @@ export default function FollowButton({
         if (cancelled) return;
         if (profileByUser?.id && profileByUser.user_id) {
           setTargetUserId(profileByUser.user_id);
-        } else {
-          setTargetUserId(targetId);
         }
       } catch (err) {
         if (!cancelled) {
           console.error('[FollowButton] errore risoluzione target follow', err);
-          setTargetUserId(targetId);
         }
       }
     })();
@@ -146,7 +147,12 @@ export default function FollowButton({
   }, [targetUserId, targetTypeMatches, initialIsFollowing, currentUserId]);
 
   async function handleToggle() {
-    if (!targetUserId || pending) return;
+    console.log('FollowButton click', { targetId, targetUserId, targetType, normalizedTargetType, isFollowing });
+    if (!targetUserId || pending) {
+      console.warn('[FollowButton] click ignorato: targetUserId/pending mancante', { targetId, targetUserId, pending });
+      toast?.error?.('Azione non disponibile al momento. Riprova.');
+      return;
+    }
     setPending(true);
     const prev = isFollowing;
     setIsFollowing(!prev);
@@ -185,6 +191,8 @@ export default function FollowButton({
       }
 
       onChange?.(!prev);
+      toast?.success?.(prev ? 'Hai smesso di seguire' : 'Ora segui questo profilo');
+      console.log('[FollowButton] stato follow aggiornato', { following: !prev, targetUserId, targetType: normalizedTargetType });
     } catch (err: any) {
       const message = err?.message || '';
       if (message.includes('not_authenticated')) {
@@ -192,6 +200,7 @@ export default function FollowButton({
       }
       console.error('[FollowButton] toggle fallito', err);
       setIsFollowing(prev);
+      toast?.error?.('Operazione non riuscita. Riprova.');
     } finally {
       setPending(false);
     }

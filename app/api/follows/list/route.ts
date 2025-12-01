@@ -34,6 +34,7 @@ export async function GET() {
     .limit(400);
 
   if (followsError) {
+    console.error('[api/follows/list] errore lettura follows', followsError);
     return NextResponse.json({ items: [], role, profileId, error: followsError.message });
   }
 
@@ -53,6 +54,7 @@ export async function GET() {
     .eq('status', 'active');
 
   if (profilesError) {
+    console.error('[api/follows/list] errore profili target', profilesError);
     return NextResponse.json({ items: [], role, profileId, error: profilesError.message });
   }
 

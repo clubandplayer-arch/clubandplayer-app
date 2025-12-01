@@ -45,6 +45,7 @@ export async function GET() {
     .limit(400);
 
   if (followerError) {
+    console.error('[api/follows/followers] errore elenco follower', followerError);
     return NextResponse.json({ items: [], role, profileId, error: followerError.message });
   }
 
@@ -77,6 +78,7 @@ export async function GET() {
     .eq('status', 'active');
 
   if (profileError) {
+    console.error('[api/follows/followers] errore profili follower', profileError);
     return NextResponse.json({ items: [], role, profileId, error: profileError.message });
   }
 
