@@ -68,7 +68,7 @@ export default function AthleteProfileHeader({
             {location ? <p className="text-xs text-neutral-500">{location}</p> : <p className="text-xs text-neutral-400">Località —</p>}
             <div className="flex flex-wrap items-center gap-3 text-xs text-neutral-500">
               <span>ID profilo: <code>{profile.id}</code></span>
-              <Link href={`/messages/${profile.id}`} className="font-semibold text-blue-700 underline-offset-4 hover:underline">
+              <Link href={`/messages?to=${profile.id}`} className="font-semibold text-blue-700 underline-offset-4 hover:underline">
                 Messaggia →
               </Link>
             </div>

@@ -7,6 +7,7 @@ type Row = {
   id: string
   sender_id: string
   receiver_id: string
+  conversation_id?: string
   text: string
   created_at: string
 }
@@ -32,15 +33,18 @@ export default function RealtimeMessagesClient() {
 
           // Se arriva a me e non sono già su quella chat, mostra toast
           if (row.receiver_id === me) {
-            const current = window.location.pathname
-            const isOnThread =
-              current.startsWith(`/messages/${row.sender_id}`) ||
-              current.startsWith(`/messages/${row.receiver_id}`)
+            const currentUrl = new URL(window.location.href)
+            const currentConversation = currentUrl.searchParams.get('conversationId')
+            const isOnThread = !!row.conversation_id && currentConversation === row.conversation_id
+            const href = row.conversation_id
+              ? `/messages?conversationId=${row.conversation_id}`
+              : `/messages?to=${row.sender_id}`
+
             if (!isOnThread) {
               const evt = new CustomEvent('app:toast', { detail: {
                 id: `toast-${row.id}`,
                 text: `Nuovo messaggio`,
-                href: `/messages/${row.sender_id}`,
+                href,
               }})
               window.dispatchEvent(evt)
             }

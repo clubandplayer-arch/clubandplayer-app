@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import type {
   ConversationDetailResponse,
@@ -126,12 +126,18 @@ function MessageBubble({
   );
 }
 
-export default function MessagesClient() {
+export default function MessagesClient({
+  initialConversationId,
+  initialTargetProfileId,
+}: {
+  initialConversationId?: string | null;
+  initialTargetProfileId?: string | null;
+}) {
   const { show } = useToast();
   const [loadingList, setLoadingList] = useState(true);
   const [loadingThread, setLoadingThread] = useState(false);
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(initialConversationId ?? null);
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [me, setMe] = useState<ProfileSummary | null>(null);
   const [peer, setPeer] = useState<ProfileSummary | null>(null);
@@ -139,11 +145,23 @@ export default function MessagesClient() {
   const [targetProfile, setTargetProfile] = useState('');
   const [initialMessage, setInitialMessage] = useState('');
   const [reloading, setReloading] = useState(0);
+  const [pendingTarget, setPendingTarget] = useState(initialTargetProfileId ?? '');
+  const initialConversationRef = useRef(initialConversationId?.trim() || '');
+  const initialTargetRef = useRef(initialTargetProfileId?.trim() || '');
+  const appliedInitialRef = useRef(false);
 
   const currentPeer = useMemo(
     () => peer ?? conversations.find((c) => c.id === selectedId)?.peer ?? null,
     [peer, conversations, selectedId]
   );
+
+  useEffect(() => {
+    initialConversationRef.current = initialConversationId?.trim() || '';
+    initialTargetRef.current = initialTargetProfileId?.trim() || '';
+    appliedInitialRef.current = false;
+    setPendingTarget(initialTargetProfileId ?? '');
+    setSelectedId(initialConversationId ?? null);
+  }, [initialConversationId, initialTargetProfileId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -158,7 +176,26 @@ export default function MessagesClient() {
         if (cancelled) return;
         setConversations(Array.isArray(json.data) ? json.data : []);
         setMe(json.me || null);
-        if (!selectedId && (json.data?.length ?? 0) > 0) setSelectedId(json.data[0].id);
+        if (!appliedInitialRef.current) {
+          appliedInitialRef.current = true;
+          const conversationFromParams = initialConversationRef.current;
+          const targetFromParams = initialTargetRef.current;
+
+          if (conversationFromParams) {
+            setSelectedId(conversationFromParams);
+          } else if (targetFromParams) {
+            const existing = (json.data ?? []).find((c) => c.peer?.id === targetFromParams);
+            if (existing) {
+              setSelectedId(existing.id);
+            } else {
+              setPendingTarget(targetFromParams);
+            }
+          } else if (!selectedId && (json.data?.length ?? 0) > 0) {
+            setSelectedId(json.data[0].id);
+          }
+        } else if (!selectedId && (json.data?.length ?? 0) > 0) {
+          setSelectedId(json.data[0].id);
+        }
       })
       .catch((e) => !cancelled && show(e.message || 'Errore nel caricamento', { variant: 'error' }))
       .finally(() => !cancelled && setLoadingList(false));
@@ -167,6 +204,11 @@ export default function MessagesClient() {
       cancelled = true;
     };
   }, [reloading, selectedId, show]);
+
+  useEffect(() => {
+    if (!pendingTarget || loadingList || selectedId) return;
+    handleStartConversation(pendingTarget, { silent: true });
+  }, [pendingTarget, loadingList, selectedId]);
 
   useEffect(() => {
     if (!selectedId) {
@@ -187,7 +229,13 @@ export default function MessagesClient() {
         setMessages(Array.isArray(json.messages) ? json.messages : []);
         setPeer(json.peer ?? null);
       })
-      .catch((e) => !cancelled && show(e.message || 'Errore nel thread', { variant: 'error' }))
+      .catch((e) => {
+        if (cancelled) return;
+        show(e.message || 'Errore nel thread', { variant: 'error' });
+        setSelectedId(null);
+        setMessages([]);
+        setPeer(null);
+      })
       .finally(() => !cancelled && setLoadingThread(false));
 
     return () => {
@@ -215,9 +263,14 @@ export default function MessagesClient() {
     }
   }
 
-  async function handleStartConversation() {
-    if (!targetProfile.trim()) {
-      show('Inserisci un profilo destinatario', { variant: 'warning' });
+  async function handleStartConversation(targetOverride?: string, options?: { silent?: boolean }) {
+    const targetId = (targetOverride ?? targetProfile).trim();
+    const message = targetOverride ? '' : initialMessage.trim();
+
+    if (!targetId) {
+      if (!options?.silent) {
+        show('Inserisci un profilo destinatario', { variant: 'warning' });
+      }
       return;
     }
     try {
@@ -225,7 +278,7 @@ export default function MessagesClient() {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetProfileId: targetProfile.trim(), message: initialMessage.trim() }),
+        body: JSON.stringify({ targetProfileId: targetId, message }),
       });
       const text = await res.text();
       if (!res.ok) {
@@ -241,10 +294,16 @@ export default function MessagesClient() {
       setTargetProfile('');
       setInitialMessage('');
       setSelectedId(newId || selectedId);
+      setPendingTarget('');
       setReloading((v) => v + 1);
-      show('Conversazione aggiornata', { variant: 'success' });
+      if (!options?.silent) show('Conversazione aggiornata', { variant: 'success' });
     } catch (e: any) {
-      show(e.message || 'Errore', { variant: 'error' });
+      setPendingTarget('');
+      if (!options?.silent) {
+        show(e.message || 'Errore', { variant: 'error' });
+      } else {
+        console.error('Errore creazione conversazione', e);
+      }
     }
   }
 
@@ -282,7 +341,7 @@ export default function MessagesClient() {
           />
           <button
             type="button"
-            onClick={handleStartConversation}
+            onClick={() => handleStartConversation()}
             className="inline-flex items-center justify-center rounded-lg bg-[var(--brand)] px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--brand)]/90"
           >
             Avvia
@@ -307,50 +366,58 @@ export default function MessagesClient() {
             </Link>
           )}
         </div>
-
-        <div className="flex-1 space-y-3 overflow-y-auto rounded-xl bg-neutral-50 p-3">
-          {loadingThread && <div className="text-sm text-neutral-500">Caricamento thread…</div>}
-          {!loadingThread && messages.length === 0 && (
-            <div className="text-sm text-neutral-500">Nessun messaggio in questa conversazione.</div>
-          )}
-          {!loadingThread &&
-            messages.map((m) => (
-              <MessageBubble
-                key={m.id}
-                message={m}
-                isMine={!!me && !!m.sender_profile_id && m.sender_profile_id === me.id}
-                author={
-                  m.sender_profile_id === me?.id
-                    ? me
-                    : currentPeer?.id === m.sender_profile_id
-                    ? currentPeer
-                    : currentPeer
-                }
-              />
-            ))}
-        </div>
-
-        <div className="mt-4 space-y-2 rounded-xl border border-neutral-200 p-3">
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            rows={3}
-            placeholder="Scrivi un messaggio"
-            className="w-full rounded-lg border px-3 py-2 text-sm focus:border-[var(--brand)] focus:outline-none"
-          />
-          <div className="flex items-center justify-between text-sm text-neutral-500">
-            <span>Invia ai tuoi contatti. Altre funzioni arriveranno a breve.</span>
-            <button
-              type="button"
-              onClick={handleSend}
-              disabled={!draft.trim() || !selectedId}
-              className="inline-flex items-center gap-1 rounded-lg bg-[var(--brand)] px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--brand)]/90 disabled:cursor-not-allowed disabled:bg-neutral-300"
-            >
-              <MaterialIcon name="send" fontSize="small" />
-              Invia
-            </button>
+        {!selectedId ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-600">
+            <div>Seleziona una conversazione o avviane una nuova.</div>
+            {pendingTarget ? <div className="text-xs text-neutral-500">Preparazione conversazione…</div> : null}
           </div>
-        </div>
+        ) : (
+          <>
+            <div className="flex-1 space-y-3 overflow-y-auto rounded-xl bg-neutral-50 p-3">
+              {loadingThread && <div className="text-sm text-neutral-500">Caricamento thread…</div>}
+              {!loadingThread && messages.length === 0 && (
+                <div className="text-sm text-neutral-500">Nessun messaggio in questa conversazione.</div>
+              )}
+              {!loadingThread &&
+                messages.map((m) => (
+                  <MessageBubble
+                    key={m.id}
+                    message={m}
+                    isMine={!!me && !!m.sender_profile_id && m.sender_profile_id === me.id}
+                    author={
+                      m.sender_profile_id === me?.id
+                        ? me
+                        : currentPeer?.id === m.sender_profile_id
+                        ? currentPeer
+                        : currentPeer
+                    }
+                  />
+                ))}
+            </div>
+
+            <div className="mt-4 space-y-2 rounded-xl border border-neutral-200 p-3">
+              <textarea
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                rows={3}
+                placeholder="Scrivi un messaggio"
+                className="w-full rounded-lg border px-3 py-2 text-sm focus:border-[var(--brand)] focus:outline-none"
+              />
+              <div className="flex items-center justify-between text-sm text-neutral-500">
+                <span>Invia ai tuoi contatti. Altre funzioni arriveranno a breve.</span>
+                <button
+                  type="button"
+                  onClick={handleSend}
+                  disabled={!draft.trim() || !selectedId}
+                  className="inline-flex items-center gap-1 rounded-lg bg-[var(--brand)] px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--brand)]/90 disabled:cursor-not-allowed disabled:bg-neutral-300"
+                >
+                  <MaterialIcon name="send" fontSize="small" />
+                  Invia
+                </button>
+              </div>
+            </div>
+          </>
+        )}
       </section>
     </div>
   );

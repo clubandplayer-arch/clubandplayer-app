@@ -197,10 +197,10 @@ export default function SearchAthletesPage() {
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      {/* Bottone Messaggia */}
-                      <Link
-                        href={`/messages/${a.id}`}
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        {/* Bottone Messaggia */}
+                        <Link
+                        href={`/messages?to=${a.id}`}
                         style={{
                           padding: '8px 12px',
                           border: '1px solid #e5e7eb',
