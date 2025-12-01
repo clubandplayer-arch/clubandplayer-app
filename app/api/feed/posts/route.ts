@@ -123,31 +123,18 @@ export async function GET(req: NextRequest) {
 
   const followedAuthorProfileIds: string[] = [];
 
-  if (!authorIdFilter && !mine && currentProfileId && currentUserId) {
+  if (!authorIdFilter && !mine && currentProfileId) {
     const { data: followRows, error: followError } = await supabase
       .from('follows')
       .select('target_id')
-      .eq('follower_id', currentUserId)
+      .eq('follower_id', currentProfileId)
       .limit(500);
 
     if (!followError && Array.isArray(followRows) && followRows.length) {
-      const targetUserIds = followRows
+      followRows
         .map((row) => ((row as any)?.target_id ? String((row as any).target_id) : null))
-        .filter(Boolean) as string[];
-
-      if (targetUserIds.length) {
-        const { data: targetProfiles } = await supabase
-          .from('profiles')
-          .select('id, user_id')
-          .in('user_id', targetUserIds);
-
-        if (Array.isArray(targetProfiles)) {
-          targetProfiles.forEach((p) => {
-            const pid = p?.id ? String(p.id) : null;
-            if (pid) followedAuthorProfileIds.push(pid);
-          });
-        }
-      }
+        .filter(Boolean)
+        .forEach((pid) => followedAuthorProfileIds.push(pid as string));
     }
   }
 

@@ -17,6 +17,10 @@ type FollowerItem = {
   isFollowing: boolean;
 };
 
+function normalizeAccountType(raw?: string | null): 'club' | 'athlete' {
+  return raw === 'club' ? 'club' : 'athlete';
+}
+
 export async function GET() {
   const supabase = await getSupabaseServerClient();
   const { data: userRes } = await supabase.auth.getUser();
@@ -25,23 +29,30 @@ export async function GET() {
     return NextResponse.json({ items: [], role: 'guest', profileId: null });
   }
 
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('id, account_type, status')
     .eq('user_id', userRes.user.id)
     .maybeSingle();
 
-  if (!profile?.id || profile.status !== 'active') {
-    return NextResponse.json({ items: [], role: profile?.account_type ?? 'guest', profileId: profile?.id ?? null });
+  const role: Role =
+    profile?.account_type === 'club' || profile?.account_type === 'athlete'
+      ? profile.account_type
+      : 'guest';
+
+  if (profileError || !profile?.id || profile.status !== 'active') {
+    if (profileError) {
+      console.error('[api/follows/followers] errore profilo', profileError);
+    }
+    return NextResponse.json({ items: [], role, profileId: profile?.id ?? null });
   }
 
   const profileId = profile.id;
-  const role: Role = profile.account_type === 'club' || profile.account_type === 'athlete' ? profile.account_type : 'guest';
 
   const { data: followerRows, error: followerError } = await supabase
     .from('follows')
-    .select('follower_id, target_id')
-    .eq('target_id', userRes.user.id)
+    .select('follower_id')
+    .eq('target_id', profileId)
     .limit(400);
 
   if (followerError) {
@@ -51,13 +62,12 @@ export async function GET() {
 
   const followerIds = (followerRows || [])
     .map((row) => row?.follower_id)
-    .filter(Boolean)
-    .map((id) => id.toString());
+    .filter(Boolean) as string[];
 
   const { data: followingRows } = await supabase
     .from('follows')
     .select('target_id')
-    .eq('follower_id', userRes.user.id)
+    .eq('follower_id', profileId)
     .limit(400);
 
   const followingSet = new Set(
@@ -71,15 +81,15 @@ export async function GET() {
     return NextResponse.json({ items: [], role, profileId });
   }
 
-  const { data: followerProfiles, error: profileError } = await supabase
+  const { data: followerProfiles, error: profileError2 } = await supabase
     .from('profiles')
-    .select('id, user_id, display_name, full_name, city, country, sport, role, avatar_url, account_type, status')
-    .in('user_id', followerIds)
+    .select('id, display_name, full_name, city, country, sport, role, avatar_url, account_type, status')
+    .in('id', followerIds)
     .eq('status', 'active');
 
-  if (profileError) {
-    console.error('[api/follows/followers] errore profili follower', profileError);
-    return NextResponse.json({ items: [], role, profileId, error: profileError.message });
+  if (profileError2) {
+    console.error('[api/follows/followers] errore profili follower', profileError2);
+    return NextResponse.json({ items: [], role, profileId, error: profileError2.message });
   }
 
   const items: FollowerItem[] = (followerProfiles || []).map((p) => ({
@@ -90,8 +100,8 @@ export async function GET() {
     sport: p.sport || null,
     role: p.role || null,
     avatarUrl: p.avatar_url || null,
-    accountType: p.account_type === 'club' ? 'club' : 'athlete',
-    isFollowing: followingSet.has(p.user_id?.toString() || ''),
+    accountType: normalizeAccountType(p.account_type),
+    isFollowing: followingSet.has(p.id?.toString() || ''),
   }));
 
   return NextResponse.json({ items, role, profileId });

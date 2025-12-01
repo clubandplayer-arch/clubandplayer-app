@@ -1,61 +1,148 @@
-import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { NextResponse, type NextRequest } from 'next/server';
+import { withAuth, jsonError } from '@/lib/api/auth';
 
-export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
-const COOKIE_KEY = 'followed_ids';
-const MAX_AGE_SECONDS = 60 * 60 * 24 * 365; // 1 anno
+const VALID_TYPES = ['club', 'player'] as const;
+type TargetType = (typeof VALID_TYPES)[number];
+type Action = 'follow' | 'unfollow' | 'auto';
 
-async function readFollowedIds(): Promise<string[]> {
+function normalizeType(raw?: string | null): TargetType | null {
+  const val = (raw || '').toLowerCase();
+  if (val === 'club') return 'club';
+  if (val === 'athlete' || val === 'player') return 'player';
+  return null;
+}
+
+async function getActiveProfile(
+  supabase: Awaited<ReturnType<typeof import('@/lib/supabase/server').getSupabaseServerClient>>,
+  userId: string,
+) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, account_type, status')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data?.id || data.status !== 'active') return null;
+  return data;
+}
+
+async function resolveTargetProfile(
+  supabase: Awaited<ReturnType<typeof import('@/lib/supabase/server').getSupabaseServerClient>>,
+  targetId: string,
+) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, account_type, status')
+    .or(`id.eq.${targetId},user_id.eq.${targetId}`)
+    .eq('status', 'active')
+    .maybeSingle();
+  if (error) throw error;
+  return data ?? null;
+}
+
+async function currentState(
+  supabase: Awaited<ReturnType<typeof import('@/lib/supabase/server').getSupabaseServerClient>>,
+  followerId: string,
+  targetId: string,
+) {
+  const { data } = await supabase
+    .from('follows')
+    .select('id')
+    .eq('follower_id', followerId)
+    .eq('target_id', targetId)
+    .maybeSingle();
+  return Boolean(data?.id);
+}
+
+export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
+  const url = new URL(req.url);
+  const targetId = url.searchParams.get('targetId')?.trim();
+  const typeParam = normalizeType(url.searchParams.get('targetType'));
+
+  if (!targetId) return jsonError('targetId mancante', 400);
+
   try {
-    const store = await cookies(); // 👈 in questo progetto è Promise<ReadonlyRequestCookies>
-    const v = store.get(COOKIE_KEY)?.value ?? '[]';
-    const parsed = JSON.parse(v);
-    return Array.isArray(parsed) ? parsed.filter((x) => typeof x === 'string') : [];
-  } catch {
-    return [];
+    const profile = await getActiveProfile(supabase, user.id);
+    if (!profile) return jsonError('Profilo non attivo', 403);
+
+    const target = await resolveTargetProfile(supabase, targetId);
+    if (!target?.id) return jsonError('Profilo target non trovato', 404);
+
+    const normalizedType: TargetType =
+      typeParam || (target.account_type === 'club' ? 'club' : 'player');
+
+    const following = await currentState(supabase, profile.id, target.id);
+
+    return NextResponse.json({
+      ok: true,
+      followerId: profile.id,
+      targetId: target.id,
+      targetType: normalizedType,
+      following,
+    });
+  } catch (err: any) {
+    console.error('[follows/toggle][GET] errore', err);
+    return jsonError(err?.message || 'Errore inatteso', 500);
   }
-}
+});
 
-async function writeFollowedIds(ids: string[]): Promise<void> {
-  const store = await cookies(); // 👈 serve await anche qui
-  store.set(COOKIE_KEY, JSON.stringify(ids), {
-    path: '/',
-    httpOnly: false,     // lato client leggibile (stub)
-    sameSite: 'lax',
-    maxAge: MAX_AGE_SECONDS,
-  });
-}
+export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
+  const body = (await req.json().catch(() => ({}))) as {
+    targetId?: string;
+    targetType?: string;
+    action?: Action;
+  };
+  const targetId = (body?.targetId || '').trim();
+  const requestedType = normalizeType(body?.targetType);
+  const action: Action = body?.action === 'follow' || body?.action === 'unfollow' ? body.action : 'auto';
 
-export async function GET() {
-  const ids = await readFollowedIds();
-  return NextResponse.json({ ids });
-}
+  if (!targetId) return jsonError('targetId mancante', 400);
 
-export async function POST(req: Request) {
   try {
-    const body = await req.json().catch(() => ({}));
-    const id = (body?.id ?? '').toString().trim();
-    if (!id) {
-      return NextResponse.json({ ok: false, error: 'Missing id' }, { status: 400 });
+    const profile = await getActiveProfile(supabase, user.id);
+    if (!profile) return jsonError('Profilo non attivo', 403);
+
+    const target = await resolveTargetProfile(supabase, targetId);
+    if (!target?.id) return jsonError('Profilo target non trovato', 404);
+
+    const targetType: TargetType =
+      requestedType || (target.account_type === 'club' ? 'club' : 'player');
+
+    const isFollowing = await currentState(supabase, profile.id, target.id);
+    const shouldFollow = action === 'follow' ? true : action === 'unfollow' ? false : !isFollowing;
+
+    if (shouldFollow && !isFollowing) {
+      const { error: insertError } = await supabase.from('follows').upsert(
+        {
+          follower_id: profile.id,
+          target_id: target.id,
+          target_type: targetType,
+        },
+        { onConflict: 'follower_id,target_id' },
+      );
+      if (insertError) throw insertError;
     }
 
-    const current = new Set(await readFollowedIds());
-    let following = false;
-
-    if (current.has(id)) {
-      current.delete(id);
-      following = false;
-    } else {
-      current.add(id);
-      following = true;
+    if (!shouldFollow && isFollowing) {
+      const { error: deleteError } = await supabase
+        .from('follows')
+        .delete()
+        .eq('follower_id', profile.id)
+        .eq('target_id', target.id);
+      if (deleteError) throw deleteError;
     }
 
-    const updated = Array.from(current);
-    await writeFollowedIds(updated);
-
-    return NextResponse.json({ ok: true, following, ids: updated });
-  } catch {
-    return NextResponse.json({ ok: false, error: 'Unexpected error' }, { status: 500 });
+    return NextResponse.json({
+      ok: true,
+      followerId: profile.id,
+      targetId: target.id,
+      targetType,
+      following: shouldFollow,
+    });
+  } catch (err: any) {
+    console.error('[follows/toggle][POST] errore', err);
+    return jsonError(err?.message || 'Errore inatteso', 500);
   }
-}
+});

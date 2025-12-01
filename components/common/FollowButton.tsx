@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { supabaseBrowser } from '@/lib/supabaseBrowser';
 import { useToast } from './ToastProvider';
 
 export type FollowButtonProps = {
@@ -16,6 +15,12 @@ export type FollowButtonProps = {
   onChange?: (next: boolean) => void;
 };
 
+type NormalizedType = 'club' | 'player';
+
+function normalizeType(raw: FollowButtonProps['targetType']): NormalizedType {
+  return raw === 'club' ? 'club' : 'player';
+}
+
 export default function FollowButton({
   targetId,
   targetType,
@@ -28,179 +33,79 @@ export default function FollowButton({
   onChange,
 }: FollowButtonProps) {
   const toast = useToast();
+  const normalizedType = useMemo(() => normalizeType(targetType), [targetType]);
   const [isFollowing, setIsFollowing] = useState(initialIsFollowing ?? false);
   const [pending, setPending] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [targetUserId, setTargetUserId] = useState<string | null>(targetId || null);
-
-  const normalizedTargetType = useMemo(() => (targetType === 'club' ? 'club' : 'player'), [targetType]);
-  const targetTypeMatches = useMemo(
-    () => (normalizedTargetType === 'player' ? ['player', 'athlete'] : ['club']),
-    [normalizedTargetType],
-  );
+  const [ready, setReady] = useState(initialIsFollowing !== undefined);
 
   useEffect(() => {
     setIsFollowing(initialIsFollowing ?? false);
+    setReady(initialIsFollowing !== undefined);
   }, [initialIsFollowing, targetId]);
 
   useEffect(() => {
-    if (!targetId) {
-      setCurrentUserId(null);
-      return;
-    }
+    if (!targetId || initialIsFollowing !== undefined) return;
 
     let cancelled = false;
+    setReady(false);
 
     (async () => {
       try {
-        const supabase = supabaseBrowser();
-        const { data: user } = await supabase.auth.getUser();
-        const uid = user?.user?.id;
-        if (!uid) return;
-
+        const res = await fetch(
+          `/api/follows/toggle?targetId=${encodeURIComponent(targetId)}&targetType=${normalizedType}`,
+          { cache: 'no-store', credentials: 'include' },
+        );
+        const data = await res.json().catch(() => ({}));
         if (cancelled) return;
-        setCurrentUserId(uid);
-      } catch (err) {
-        console.error('[FollowButton] errore recupero profilo', err);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [targetId]);
-
-  useEffect(() => {
-    if (!targetId) {
-      setTargetUserId(null);
-      return;
-    }
-
-    setTargetUserId(targetId);
-
-    let cancelled = false;
-    const supabase = supabaseBrowser();
-
-    (async () => {
-      try {
-        const { data: profileById } = await supabase
-          .from('profiles')
-          .select('id, user_id')
-          .eq('id', targetId)
-          .maybeSingle();
-
-        if (cancelled) return;
-        if (profileById?.id) {
-          setTargetUserId(profileById.user_id ?? profileById.id);
-          return;
+        if (!res.ok) {
+          throw new Error(data?.error || 'Impossibile leggere lo stato del follow');
         }
-
-        const { data: profileByUser } = await supabase
-          .from('profiles')
-          .select('id, user_id')
-          .eq('user_id', targetId)
-          .maybeSingle();
-
-        if (cancelled) return;
-        if (profileByUser?.id && profileByUser.user_id) {
-          setTargetUserId(profileByUser.user_id);
-        }
-      } catch (err) {
+        setIsFollowing(Boolean(data?.following));
+      } catch (err: any) {
         if (!cancelled) {
-          console.error('[FollowButton] errore risoluzione target follow', err);
+          console.error('[FollowButton] stato non disponibile', err);
         }
+      } finally {
+        if (!cancelled) setReady(true);
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [targetId]);
-
-  useEffect(() => {
-    if (!targetUserId || initialIsFollowing !== undefined || !currentUserId) return;
-
-    let cancelled = false;
-    (async () => {
-      try {
-        const supabase = supabaseBrowser();
-
-        const { data } = await supabase
-          .from('follows')
-          .select('id')
-          .eq('follower_id', currentUserId)
-          .eq('target_id', targetUserId)
-          .in('target_type', targetTypeMatches)
-          .maybeSingle();
-
-        if (!cancelled) {
-          setIsFollowing(!!data);
-        }
-      } catch {
-        // ignore
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [targetUserId, targetTypeMatches, initialIsFollowing, currentUserId]);
+  }, [initialIsFollowing, normalizedType, targetId]);
 
   async function handleToggle() {
-    console.log('FollowButton click', { targetId, targetUserId, targetType, normalizedTargetType, isFollowing });
-    if (!targetUserId || pending) {
-      console.warn('[FollowButton] click ignorato: targetUserId/pending mancante', { targetId, targetUserId, pending });
-      toast?.error?.('Azione non disponibile al momento. Riprova.');
-      return;
-    }
+    if (!targetId || pending) return;
+
+    const previous = isFollowing;
+    const desired = !previous;
     setPending(true);
-    const prev = isFollowing;
-    setIsFollowing(!prev);
+    setIsFollowing(desired);
 
     try {
-      const supabase = supabaseBrowser();
-      const { data: user } = await supabase.auth.getUser();
-      const uid = user?.user?.id;
-      if (!uid) throw new Error('not_authenticated');
-
-      setCurrentUserId(uid);
-
-      if (prev) {
-        const { error: deleteError } = await supabase
-          .from('follows')
-          .delete()
-          .eq('follower_id', uid)
-          .eq('target_id', targetUserId)
-          .in('target_type', targetTypeMatches);
-
-        if (deleteError) {
-          console.error('[FollowButton] errore unfollow', deleteError);
-          throw deleteError;
-        }
-      } else {
-        const { error: insertError } = await supabase.from('follows').upsert({
-          follower_id: uid,
-          target_id: targetUserId,
-          target_type: normalizedTargetType,
-        });
-
-        if (insertError) {
-          console.error('[FollowButton] errore follow', insertError);
-          throw insertError;
-        }
+      const res = await fetch('/api/follows/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ targetId, targetType: normalizedType, action: desired ? 'follow' : 'unfollow' }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok) {
+        throw new Error(data?.error || 'Operazione non riuscita');
       }
-
-      onChange?.(!prev);
-      toast?.success?.(prev ? 'Hai smesso di seguire' : 'Ora segui questo profilo');
-      console.log('[FollowButton] stato follow aggiornato', { following: !prev, targetUserId, targetType: normalizedTargetType });
+      const next = Boolean(data.following);
+      setIsFollowing(next);
+      onChange?.(next);
+      toast?.success?.(next ? 'Ora segui questo profilo' : 'Hai smesso di seguire');
     } catch (err: any) {
-      const message = err?.message || '';
-      if (message.includes('not_authenticated')) {
-        alert('Accedi per gestire i profili che segui.');
-      }
       console.error('[FollowButton] toggle fallito', err);
-      setIsFollowing(prev);
-      toast?.error?.('Operazione non riuscita. Riprova.');
+      setIsFollowing(previous);
+      const msg = err?.message || 'Operazione non riuscita. Riprova.';
+      toast?.error?.(msg);
+      if (/not active|unauthorized|profilo non attivo/i.test(msg)) {
+        alert('Accedi con un profilo attivo per gestire i follow.');
+      }
     } finally {
       setPending(false);
     }
@@ -212,7 +117,7 @@ export default function FollowButton({
     <button
       type="button"
       onClick={handleToggle}
-      disabled={pending || !targetId}
+      disabled={pending || !targetId || !ready}
       aria-busy={pending}
       aria-pressed={isFollowing}
       className={[
