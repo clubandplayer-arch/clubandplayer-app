@@ -75,6 +75,7 @@ ALTER TABLE public.follows
 
 ALTER TABLE public.follows DROP CONSTRAINT IF EXISTS follows_follower_id_target_id_target_type_key;
 ALTER TABLE public.follows DROP CONSTRAINT IF EXISTS follows_follower_id_target_id_key;
+ALTER TABLE public.follows DROP CONSTRAINT IF EXISTS follows_follower_target_unique;
 ALTER TABLE public.follows
   ADD CONSTRAINT follows_follower_target_unique UNIQUE (follower_id, target_id);
 
