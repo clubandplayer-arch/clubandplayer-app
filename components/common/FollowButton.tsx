@@ -15,10 +15,6 @@ export type FollowButtonProps = {
   onChange?: (next: boolean) => void;
 };
 
-function normalizeTargetType(targetType: FollowButtonProps['targetType']) {
-  return targetType === 'club' ? 'club' : 'athlete';
-}
-
 export default function FollowButton({
   targetId,
   targetType,
@@ -33,8 +29,13 @@ export default function FollowButton({
   const [isFollowing, setIsFollowing] = useState(initialIsFollowing ?? false);
   const [pending, setPending] = useState(false);
   const [profileId, setProfileId] = useState<string | null>(null);
+  const [resolvedTargetId, setResolvedTargetId] = useState<string | null>(targetId || null);
 
-  const normalizedTargetType = useMemo(() => normalizeTargetType(targetType), [targetType]);
+  const normalizedTargetType = useMemo(() => (targetType === 'club' ? 'club' : 'player'), [targetType]);
+  const targetTypeMatches = useMemo(
+    () => (normalizedTargetType === 'player' ? ['player', 'athlete'] : ['club']),
+    [normalizedTargetType],
+  );
 
   useEffect(() => {
     setIsFollowing(initialIsFollowing ?? false);
@@ -76,7 +77,51 @@ export default function FollowButton({
   }, [targetId]);
 
   useEffect(() => {
-    if (!targetId || initialIsFollowing !== undefined || !profileId) return;
+    if (!targetId) {
+      setResolvedTargetId(null);
+      return;
+    }
+
+    let cancelled = false;
+    const supabase = supabaseBrowser();
+
+    (async () => {
+      try {
+        const { data: profileById } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', targetId)
+          .maybeSingle();
+
+        if (cancelled) return;
+        if (profileById?.id) {
+          setResolvedTargetId(profileById.id);
+          return;
+        }
+
+        const { data: profileByUser } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('user_id', targetId)
+          .maybeSingle();
+
+        if (cancelled) return;
+        setResolvedTargetId(profileByUser?.id ?? targetId);
+      } catch (err) {
+        if (!cancelled) {
+          console.error('[FollowButton] errore risoluzione target follow', err);
+          setResolvedTargetId(targetId);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [targetId]);
+
+  useEffect(() => {
+    if (!resolvedTargetId || initialIsFollowing !== undefined || !profileId) return;
 
     let cancelled = false;
     (async () => {
@@ -87,8 +132,8 @@ export default function FollowButton({
           .from('follows')
           .select('id')
           .eq('follower_id', profileId)
-          .eq('target_id', targetId)
-          .in('target_type', [normalizedTargetType, 'player'])
+          .eq('target_id', resolvedTargetId)
+          .in('target_type', targetTypeMatches)
           .maybeSingle();
 
         if (!cancelled) {
@@ -102,10 +147,10 @@ export default function FollowButton({
     return () => {
       cancelled = true;
     };
-  }, [targetId, normalizedTargetType, initialIsFollowing, profileId]);
+  }, [resolvedTargetId, targetTypeMatches, initialIsFollowing, profileId]);
 
   async function handleToggle() {
-    if (!targetId || pending) return;
+    if (!resolvedTargetId || pending) return;
     setPending(true);
     const prev = isFollowing;
     setIsFollowing(!prev);
@@ -139,8 +184,8 @@ export default function FollowButton({
           .from('follows')
           .delete()
           .eq('follower_id', currentProfileId)
-          .eq('target_id', targetId)
-          .in('target_type', [normalizedTargetType, 'player']);
+          .eq('target_id', resolvedTargetId)
+          .in('target_type', targetTypeMatches);
 
         if (deleteError) {
           console.error('[FollowButton] errore unfollow', deleteError);
@@ -149,7 +194,7 @@ export default function FollowButton({
       } else {
         const { error: insertError } = await supabase.from('follows').upsert({
           follower_id: currentProfileId,
-          target_id: targetId,
+          target_id: resolvedTargetId,
           target_type: normalizedTargetType,
         });
 
