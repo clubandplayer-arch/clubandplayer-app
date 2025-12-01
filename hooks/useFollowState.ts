@@ -100,10 +100,9 @@ export function useFollowState() {
   useEffect(() => {
     const handler = () => setState(snapshot());
     listeners.add(handler);
-    if (!hasLoaded && !sharedState.loading) {
+    handler();
+    if (!hasLoaded || sharedState.loading) {
       void loadState();
-    } else {
-      handler();
     }
     return () => {
       listeners.delete(handler);

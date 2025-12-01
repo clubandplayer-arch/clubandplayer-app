@@ -3,14 +3,12 @@ import { withAuth, jsonError } from '@/lib/api/auth';
 
 export const runtime = 'nodejs';
 
-const VALID_TYPES = ['club', 'player'] as const;
-type TargetType = (typeof VALID_TYPES)[number];
-type Action = 'follow' | 'unfollow' | 'auto';
+type TargetType = 'club' | 'player';
 
 function normalizeType(raw?: string | null): TargetType | null {
   const val = (raw || '').toLowerCase();
   if (val === 'club') return 'club';
-  if (val === 'athlete' || val === 'player') return 'player';
+  if (val === 'player' || val === 'athlete') return 'player';
   return null;
 }
 
@@ -28,99 +26,70 @@ async function getActiveProfile(
   return data;
 }
 
-async function resolveTargetProfile(
+async function getTargetProfile(
   supabase: Awaited<ReturnType<typeof import('@/lib/supabase/server').getSupabaseServerClient>>,
-  targetId: string,
+  rawTargetId: string,
 ) {
   const { data, error } = await supabase
     .from('profiles')
     .select('id, account_type, status')
-    .or(`id.eq.${targetId},user_id.eq.${targetId}`)
-    .eq('status', 'active')
+    .or(`id.eq.${rawTargetId},user_id.eq.${rawTargetId}`)
     .maybeSingle();
   if (error) throw error;
-  return data ?? null;
-}
-
-async function currentState(
-  supabase: Awaited<ReturnType<typeof import('@/lib/supabase/server').getSupabaseServerClient>>,
-  followerId: string,
-  targetId: string,
-) {
-  const { data, error } = await supabase
-    .from('follows')
-    .select('id')
-    .eq('follower_id', followerId)
-    .eq('target_id', targetId)
-    .maybeSingle();
-  if (error) throw error;
-  return Boolean(data?.id);
+  if (!data?.id || data.status !== 'active') return null;
+  return data;
 }
 
 export const GET = async () => NextResponse.json({ ok: false, error: 'Metodo non supportato' }, { status: 405 });
 
 export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
-  const body = (await req.json().catch(() => ({}))) as {
-    targetId?: string;
-    targetType?: string;
-    action?: Action;
-  };
+  const body = (await req.json().catch(() => ({}))) as { targetId?: string; targetType?: string };
   const targetId = (body?.targetId || '').trim();
-  const requestedType = normalizeType(body?.targetType);
-  const action: Action = body?.action === 'follow' || body?.action === 'unfollow' ? body.action : 'auto';
+  const targetType = normalizeType(body?.targetType);
 
   if (!targetId) return jsonError('targetId mancante', 400);
+  if (!targetType) return jsonError('targetType non valido', 400);
 
   try {
     const profile = await getActiveProfile(supabase, user.id);
-    if (!profile) return jsonError('Profilo non attivo', 403);
+    if (!profile) return jsonError('no_profile', 403);
 
-    const target = await resolveTargetProfile(supabase, targetId);
-    if (!target?.id) return jsonError('Profilo target non trovato', 404);
+    const targetProfile = await getTargetProfile(supabase, targetId);
+    if (!targetProfile) return jsonError('target_not_found', 404);
 
-    const targetType: TargetType =
-      requestedType || (target.account_type === 'club' ? 'club' : 'player');
+    const { data: existing, error: checkError } = await supabase
+      .from('follows')
+      .select('id')
+      .eq('follower_id', profile.id)
+      .eq('target_id', targetProfile.id)
+      .maybeSingle();
+    if (checkError) throw checkError;
 
-    const isFollowing = await currentState(supabase, profile.id, target.id);
-    const nextShouldFollow = action === 'follow' ? true : action === 'unfollow' ? false : !isFollowing;
-
-    if (nextShouldFollow && !isFollowing) {
-      const { error: insertError } = await supabase
-        .from('follows')
-        .upsert(
-          {
-            follower_id: profile.id,
-            target_id: target.id,
-            target_type: targetType,
-          },
-          { onConflict: 'follower_id,target_id' },
-        );
-      if (insertError) throw insertError;
-    }
-
-    if (!nextShouldFollow && isFollowing) {
+    if (existing?.id) {
       const { error: deleteError } = await supabase
         .from('follows')
         .delete()
-        .eq('follower_id', profile.id)
-        .eq('target_id', target.id);
+        .eq('id', existing.id);
       if (deleteError) throw deleteError;
+
+      return NextResponse.json({ ok: true, isFollowing: false, targetId: targetProfile.id });
     }
 
-    return NextResponse.json({
-      ok: true,
-      isFollowing: nextShouldFollow,
-      followerId: profile.id,
-      targetId: target.id,
-      targetType,
+    const { error: insertError } = await supabase.from('follows').insert({
+      follower_id: profile.id,
+      target_id: targetProfile.id,
+      target_type: targetType,
     });
+    if (insertError) throw insertError;
+
+    return NextResponse.json({ ok: true, isFollowing: true, targetId: targetProfile.id });
   } catch (error: any) {
     console.error('API /follows/toggle error', {
       followerId: user.id,
       targetId,
-      targetType: requestedType,
+      targetType,
       error,
     });
-    return jsonError(error?.message || 'Errore inatteso', 500);
+    return jsonError('db_error', 500);
   }
 });

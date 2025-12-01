@@ -6,6 +6,7 @@ import FollowButton from '@/components/clubs/FollowButton';
 import ApplyCell from '@/components/opportunities/ApplyCell';
 import type { Opportunity } from '@/types/opportunity';
 import { opportunityGenderLabel } from '@/lib/opps/gender';
+import { useFollowState } from '@/hooks/useFollowState';
 
 type Role = 'athlete' | 'club' | 'guest';
 type ApiOne<T> = { data?: T; [k: string]: any };
@@ -137,6 +138,9 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
 
   const createdBy = opp.createdBy ?? opp.created_by ?? null;
   const clubName = opp.clubName ?? opp.club_name ?? undefined;
+  const clubProfileId = opp.club_id ?? createdBy ?? null;
+  const { following } = useFollowState();
+  const initialIsFollowing = clubProfileId ? following.has(clubProfileId) : false;
 
   return (
     <div className="p-4 md:p-6">
@@ -173,12 +177,18 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
         <div className="mt-3 text-sm text-gray-700 whitespace-pre-wrap">{opp.description || '—'}</div>
 
         <footer className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-gray-600">
-          <div className="flex items-center gap-2">
-            <span className="font-medium">{clubName ?? 'Club'}</span>
-            {createdBy && (
-              <FollowButton targetId={createdBy} targetType="club" targetName={clubName} size="md" />
-            )}
-          </div>
+            <div className="flex items-center gap-2">
+              <span className="font-medium">{clubName ?? 'Club'}</span>
+              {clubProfileId && (
+                <FollowButton
+                  targetId={clubProfileId}
+                  targetType="club"
+                  targetName={clubName}
+                  size="md"
+                  initialIsFollowing={initialIsFollowing}
+                />
+              )}
+            </div>
           <div className="flex items-center gap-2">
             {place && <span>{place}</span>}
             <span>•</span>

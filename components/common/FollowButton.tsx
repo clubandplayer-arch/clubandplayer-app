@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useFollowState } from '@/hooks/useFollowState';
 import { useToast } from './ToastProvider';
+import { useFollowState } from '@/hooks/useFollowState';
 
 export type FollowButtonProps = {
   targetId: string;
@@ -34,49 +34,46 @@ export default function FollowButton({
   onChange,
 }: FollowButtonProps) {
   const toast = useToast();
-  const { following, loading: followLoading, markFollowing } = useFollowState();
+  const { markFollowing } = useFollowState();
   const normalizedType = useMemo(() => normalizeType(targetType), [targetType]);
-  const derivedInitial = initialIsFollowing ?? following.has(targetId);
-  const [isFollowing, setIsFollowing] = useState(derivedInitial);
+  const [isFollowing, setIsFollowing] = useState(Boolean(initialIsFollowing));
   const [pending, setPending] = useState(false);
-  const ready = !!targetId && (!followLoading || initialIsFollowing !== undefined);
 
   useEffect(() => {
-    setIsFollowing(derivedInitial);
-  }, [derivedInitial, targetId]);
+    setIsFollowing(Boolean(initialIsFollowing));
+  }, [initialIsFollowing, targetId]);
 
   async function handleToggle() {
     if (!targetId || pending) return;
-
-    const previous = isFollowing;
-    const desired = !previous;
     setPending(true);
-    setIsFollowing(desired);
 
     try {
       const res = await fetch('/api/follows/toggle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ targetId, targetType: normalizedType, action: desired ? 'follow' : 'unfollow' }),
+        body: JSON.stringify({ targetId, targetType: normalizedType }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.ok) {
         throw new Error(data?.error || 'Operazione non riuscita');
       }
+
       const next = Boolean(data.isFollowing);
+      const resolvedTargetId = typeof data?.targetId === 'string' ? data.targetId : targetId;
       setIsFollowing(next);
-      markFollowing(targetId, next);
+      markFollowing?.(resolvedTargetId, next);
       onChange?.(next);
-      toast?.success?.(next ? 'Ora segui questo profilo' : 'Hai smesso di seguire');
+      toast?.success(
+        next
+          ? 'Ora stai seguendo il profilo'
+          : 'Hai smesso di seguire il profilo',
+      );
     } catch (err: any) {
       console.error('[FollowButton] toggle fallito', err);
-      setIsFollowing(previous);
-      const msg = err?.message || 'Operazione non riuscita. Riprova.';
-      toast?.error?.(msg);
-      if (/not active|unauthorized|profilo non attivo/i.test(msg)) {
-        alert('Accedi con un profilo attivo per gestire i follow.');
-      }
+      toast?.error(
+        err?.message || 'Impossibile aggiornare il follow. Riprova più tardi.',
+      );
     } finally {
       setPending(false);
     }
@@ -88,7 +85,7 @@ export default function FollowButton({
     <button
       type="button"
       onClick={handleToggle}
-      disabled={pending || !targetId || !ready}
+      disabled={pending || !targetId}
       aria-busy={pending}
       aria-pressed={isFollowing}
       className={[

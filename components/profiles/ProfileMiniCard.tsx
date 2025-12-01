@@ -7,10 +7,12 @@ import { useEffect, useState } from 'react';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 import FollowButton from '@/components/clubs/FollowButton';
+import { useFollowState } from '@/hooks/useFollowState';
 
 import { resolveCountryName, resolveStateName } from '@/lib/geodata/countryStateCityDataset';
 
 type P = {
+  id?: string | null;
   user_id?: string | null;
 
   account_type?: 'club' | 'athlete' | null;
@@ -132,6 +134,7 @@ function countryLabel(value?: string | null): { iso: string | null; label: strin
 export default function ProfileMiniCard() {
   const [p, setP] = useState<P | null>(null);
   const [interest, setInterest] = useState<InterestGeo>({ city: '—', region: '', country: '' });
+  const { following } = useFollowState();
 
   useEffect(() => {
     (async () => {
@@ -180,7 +183,7 @@ export default function ProfileMiniCard() {
   }, []);
 
   const isClub = p?.account_type === 'club';
-  const targetId = p?.user_id ? String(p.user_id) : '';
+  const targetId = p?.id ? String(p.id) : p?.user_id ? String(p.user_id) : '';
   const followTargetType: 'club' | 'player' = isClub ? 'club' : 'player';
   const year = new Date().getFullYear();
   const age = !isClub && p?.birth_year ? Math.max(0, year - p.birth_year) : null;
@@ -272,6 +275,7 @@ export default function ProfileMiniCard() {
                     labelFollowing="Seguo"
                     size="md"
                     className="w-full justify-center"
+                    initialIsFollowing={targetId ? following.has(targetId) : false}
                   />
             </div>
           ) : null}
@@ -346,6 +350,7 @@ export default function ProfileMiniCard() {
                 labelFollowing="Seguo"
                 size="md"
                 className="w-full justify-center"
+                initialIsFollowing={targetId ? following.has(targetId) : false}
               />
             </div>
           ) : null}
