@@ -51,6 +51,7 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
   const [meId, setMeId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const { following } = useFollowState();
 
   // whoami
   useEffect(() => {
@@ -113,6 +114,12 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
     return Boolean(createdBy && createdBy === meId);
   }, [meId, opp]);
 
+  const initialIsFollowing = useMemo(() => {
+    const clubProfileId = opp?.club_id ?? opp?.createdBy ?? opp?.created_by ?? null;
+    if (!clubProfileId) return false;
+    return following.has(clubProfileId);
+  }, [following, opp]);
+
   const showApply = role === 'athlete' && !isOwner;
 
   if (loading) return <div className="p-4">Caricamento…</div>;
@@ -139,8 +146,6 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
   const createdBy = opp.createdBy ?? opp.created_by ?? null;
   const clubName = opp.clubName ?? opp.club_name ?? undefined;
   const clubProfileId = opp.club_id ?? createdBy ?? null;
-  const { following } = useFollowState();
-  const initialIsFollowing = clubProfileId ? following.has(clubProfileId) : false;
 
   return (
     <div className="p-4 md:p-6">

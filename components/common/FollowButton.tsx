@@ -48,6 +48,7 @@ export default function FollowButton({
     setPending(true);
 
     try {
+      console.log('[follow] click', { targetId, targetType: normalizedType, isFollowing });
       const res = await fetch('/api/follows/toggle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -61,6 +62,7 @@ export default function FollowButton({
 
       const next = Boolean(data.isFollowing);
       const resolvedTargetId = typeof data?.targetId === 'string' ? data.targetId : targetId;
+      console.log('[follow] toggle success', { targetId: resolvedTargetId, next });
       setIsFollowing(next);
       markFollowing?.(resolvedTargetId, next);
       onChange?.(next);

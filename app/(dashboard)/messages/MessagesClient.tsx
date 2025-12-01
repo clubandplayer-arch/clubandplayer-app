@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import type {
   ConversationDetailResponse,
@@ -204,10 +204,44 @@ export default function MessagesClient({
     };
   }, [reloading, selectedId, show]);
 
+  const handleStartConversation = useCallback(
+    async (targetId: string, options?: { silent?: boolean }) => {
+      const cleanTarget = (targetId || '').trim();
+
+      if (!cleanTarget) return;
+      try {
+        console.log('[messages] start conversation', { target: cleanTarget });
+        const res = await fetch(`/api/messages/start?to=${encodeURIComponent(cleanTarget)}`, {
+          method: 'GET',
+          credentials: 'include',
+        });
+        const text = await res.text();
+        const j = JSON.parse(text || '{}') as any;
+        if (!res.ok || j?.ok === false) {
+          throw new Error(j?.error || text || 'Errore creazione conversazione');
+        }
+        const newId = j?.conversationId || j?.data?.conversationId;
+        setSelectedId(newId || selectedId);
+        setPendingTarget('');
+        setReloading((v) => v + 1);
+        if (!options?.silent) show('Conversazione aggiornata', { variant: 'success' });
+        console.log('[messages] start success', { conversationId: newId });
+      } catch (e: any) {
+        setPendingTarget('');
+        if (!options?.silent) {
+          show(e.message || 'Errore', { variant: 'error' });
+        } else {
+          console.error('Errore creazione conversazione', e);
+        }
+      }
+    },
+    [selectedId, show],
+  );
+
   useEffect(() => {
     if (!pendingTarget || loadingList || selectedId) return;
     handleStartConversation(pendingTarget, { silent: true });
-  }, [pendingTarget, loadingList, selectedId]);
+  }, [pendingTarget, loadingList, selectedId, handleStartConversation]);
 
   useEffect(() => {
     if (!selectedId) {
@@ -246,6 +280,7 @@ export default function MessagesClient({
     if (!draft.trim() || !selectedId || sending) return;
     setSending(true);
     try {
+      console.log('[messages] send click', { conversationId: selectedId, bodyLength: draft.length });
       const res = await fetch(`/api/messages/${selectedId}`, {
         method: 'POST',
         credentials: 'include',
@@ -272,46 +307,11 @@ export default function MessagesClient({
         )
       );
       if (!inserted) setReloading((v) => v + 1);
+      console.log('[messages] send success', { conversationId: selectedId, inserted: Boolean(inserted) });
     } catch (e: any) {
       show(e.message || 'Errore invio', { variant: 'error' });
     } finally {
       setSending(false);
-    }
-  }
-
-  async function handleStartConversation(targetId: string, options?: { silent?: boolean }) {
-    const cleanTarget = (targetId || '').trim();
-
-    if (!cleanTarget) return;
-    try {
-      const res = await fetch('/api/messages', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetProfileId: cleanTarget, message: '' }),
-      });
-      const text = await res.text();
-      if (!res.ok) {
-        try {
-          const j = JSON.parse(text);
-          throw new Error(j.error || text || 'Errore creazione conversazione');
-        } catch {
-          throw new Error(text || 'Errore creazione conversazione');
-        }
-      }
-      const j = JSON.parse(text) as any;
-      const newId = j?.data?.conversationId as string;
-      setSelectedId(newId || selectedId);
-      setPendingTarget('');
-      setReloading((v) => v + 1);
-      if (!options?.silent) show('Conversazione aggiornata', { variant: 'success' });
-    } catch (e: any) {
-      setPendingTarget('');
-      if (!options?.silent) {
-        show(e.message || 'Errore', { variant: 'error' });
-      } else {
-        console.error('Errore creazione conversazione', e);
-      }
     }
   }
 

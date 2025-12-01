@@ -275,6 +275,12 @@ export default function SearchMapClient() {
     const timer = setTimeout(async () => {
       setLoading(true);
       setDataError(null);
+      console.log('[search-map] fetch start', {
+        bounds: searchBounds,
+        query: searchQuery,
+        type: typeFilter,
+        filters: { clubSport, clubCategory, playerSport, playerFoot, playerGender, ageMin, ageMax },
+      });
 
       try {
         const params = new URLSearchParams();
@@ -313,7 +319,10 @@ export default function SearchMapClient() {
         }
 
         const arr = Array.isArray(json?.data) ? json.data : Array.isArray(json) ? json : [];
-        if (!cancelled) setPoints(arr as ProfilePoint[]);
+        if (!cancelled) {
+          console.log('[search-map] fetch success', { count: arr.length });
+          setPoints(arr as ProfilePoint[]);
+        }
       } catch (err: any) {
         if (!cancelled) {
           setDataError(err?.message || 'Errore nel caricamento dei profili.');
@@ -382,7 +391,23 @@ export default function SearchMapClient() {
       if (normalizedQuery) {
         const name = (p.display_name || '').toLowerCase();
         const fullName = (p.full_name || '').toLowerCase();
-        if (!name.includes(normalizedQuery) && !fullName.includes(normalizedQuery)) return false;
+        const city = (p.city || '').toLowerCase();
+        const province = (p.province || '').toLowerCase();
+        const region = (p.region || '').toLowerCase();
+        const country = (p.country || '').toLowerCase();
+        const sport = (p.sport || '').toLowerCase();
+        const role = (p.role || '').toLowerCase();
+        if (
+          !name.includes(normalizedQuery) &&
+          !fullName.includes(normalizedQuery) &&
+          !city.includes(normalizedQuery) &&
+          !province.includes(normalizedQuery) &&
+          !region.includes(normalizedQuery) &&
+          !country.includes(normalizedQuery) &&
+          !sport.includes(normalizedQuery) &&
+          !role.includes(normalizedQuery)
+        )
+          return false;
       }
 
       if (activeArea && activeArea.length >= 3 && p.latitude != null && p.longitude != null) {
