@@ -6,30 +6,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 
-type LeafletLib = any;
+import { SearchMapProfile, searchProfilesOnMap } from '@/lib/services/search';
 
-type ProfilePoint = {
-  id: string;
-  user_id?: string | null;
-  profile_id?: string | null;
-  display_name?: string | null;
-  full_name?: string | null;
-  account_type?: string | null;
-  type?: string | null;
-  country?: string | null;
-  region?: string | null;
-  province?: string | null;
-  city?: string | null;
-  avatar_url?: string | null;
-  sport?: string | null;
-  role?: string | null;
-  latitude?: number | null;
-  longitude?: number | null;
-  foot?: string | null;
-  gender?: string | null;
-  birth_year?: number | null;
-  club_league_category?: string | null;
-};
+type LeafletLib = any;
 
 type Bounds = {
   north?: number;
@@ -89,7 +68,7 @@ function MarkerIcon({ type }: { type?: string | null }) {
 export default function SearchMapClient() {
   const [typeFilter, setTypeFilter] = useState<'all' | 'club' | 'player'>('all');
   const [searchBounds, setSearchBounds] = useState<Bounds | null>(null);
-  const [points, setPoints] = useState<ProfilePoint[]>([]);
+  const [points, setPoints] = useState<SearchMapProfile[]>([]);
   const [loading, setLoading] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
   const [dataError, setDataError] = useState<string | null>(null);
@@ -275,56 +254,46 @@ export default function SearchMapClient() {
     const timer = setTimeout(async () => {
       setLoading(true);
       setDataError(null);
-      console.log('[search-map] fetch start', {
+
+      const ageMinNumber = ageMin ? Number(ageMin) : null;
+      const ageMaxNumber = ageMax ? Number(ageMax) : null;
+      const filters = {
+        sport: typeFilter === 'club' ? clubSport || null : playerSport || null,
+        clubCategory: typeFilter === 'club' ? clubCategory || null : null,
+        foot: typeFilter === 'player' ? playerFoot || null : null,
+        gender: typeFilter === 'player' ? playerGender || null : null,
+        ageMin: typeFilter === 'player' && !Number.isNaN(ageMinNumber) ? ageMinNumber : null,
+        ageMax: typeFilter === 'player' && !Number.isNaN(ageMaxNumber) ? ageMaxNumber : null,
+      };
+
+      console.log('[search-map] calling search service', {
         bounds: searchBounds,
         query: searchQuery,
         type: typeFilter,
-        filters: { clubSport, clubCategory, playerSport, playerFoot, playerGender, ageMin, ageMax },
+        filters,
       });
 
       try {
-        const params = new URLSearchParams();
-        params.set('limit', '300');
-        params.set('type', typeFilter);
-        params.set('north', String(searchBounds.north ?? ''));
-        params.set('south', String(searchBounds.south ?? ''));
-        params.set('east', String(searchBounds.east ?? ''));
-        params.set('west', String(searchBounds.west ?? ''));
+        const response = await searchProfilesOnMap({
+          bounds: searchBounds,
+          query: searchQuery,
+          type: typeFilter,
+          limit: 300,
+          filters,
+          currentUserId,
+        });
 
-        if (typeFilter === 'club') {
-          if (clubSport) params.set('sport', clubSport);
-          if (clubCategory) params.set('club_category', clubCategory);
-        }
-        if (typeFilter === 'player') {
-          if (playerSport) params.set('sport', playerSport);
-          if (playerFoot) params.set('foot', playerFoot);
-          if (playerGender) params.set('gender', playerGender);
-          if (ageMin) params.set('age_min', ageMin);
-          if (ageMax) params.set('age_max', ageMax);
-        }
-        if (currentUserId) params.set('current_user_id', currentUserId);
-        const trimmedQuery = searchQuery.trim();
-        if (trimmedQuery) params.set('query', trimmedQuery);
-
-        const res = await fetch(`/api/search/map?${params.toString()}`, { cache: 'no-store' });
-        const text = await res.text();
-        let json: any = null;
-        try {
-          json = JSON.parse(text);
-        } catch {
-          json = text;
-        }
-        if (!res.ok) {
-          throw new Error(json?.error || text || `HTTP ${res.status}`);
-        }
-
-        const arr = Array.isArray(json?.data) ? json.data : Array.isArray(json) ? json : [];
         if (!cancelled) {
-          console.log('[search-map] fetch success', { count: arr.length });
-          setPoints(arr as ProfilePoint[]);
+          console.log('[search-map] service success', {
+            count: response.data.length,
+            total: response.total,
+            fallback: response.fallback,
+          });
+          setPoints(response.data);
         }
       } catch (err: any) {
         if (!cancelled) {
+          console.error('[search-map] service error', err);
           setDataError(err?.message || 'Errore nel caricamento dei profili.');
           setPoints([]);
         }
@@ -431,14 +400,14 @@ export default function SearchMapClient() {
     typeFilter,
   ]);
 
-  const resolvePublicHref = useCallback((p: ProfilePoint) => {
+  const resolvePublicHref = useCallback((p: SearchMapProfile) => {
     const profileId = (p.profile_id || p.id || '').toString();
     if (!profileId) return '#';
     const type = (p.type || p.account_type || '').trim().toLowerCase();
     return type === 'club' ? `/clubs/${profileId}` : `/athletes/${profileId}`;
   }, []);
 
-  const renderAvatar = (p: ProfilePoint) => {
+  const renderAvatar = (p: SearchMapProfile) => {
     const display = p.display_name || p.full_name || 'Profilo';
     const initial = display.trim()[0]?.toUpperCase() || 'P';
     const alt = display || 'Avatar profilo';
