@@ -40,7 +40,10 @@ export const GET = withAuth(async (_req, { supabase, user }) => {
       .order('last_message_at', { ascending: false, nullsFirst: true })
       .order('created_at', { ascending: false });
 
-    if (error) return jsonError(error.message, 400);
+    if (error) {
+      console.error('API /messages list error', { user: me.id, error });
+      return jsonError(error.message, 400);
+    }
 
     const ids = new Set<string>();
     (data ?? []).forEach((row) => {
@@ -64,6 +67,7 @@ export const GET = withAuth(async (_req, { supabase, user }) => {
 
     return NextResponse.json({ data: conversations, me });
   } catch (e: any) {
+    console.error('API /messages list unexpected', e);
     return jsonError(e.message || 'Errore inatteso', 400);
   }
 });
@@ -102,25 +106,17 @@ export const POST = withAuth(async (req, { supabase, user }) => {
       const { data: inserted, error: insertErr } = await supabase
         .from('conversations')
         .insert({
-          created_by: me.id,
           participant_a: me.id,
           participant_b: target.id,
         })
         .select('id')
         .maybeSingle();
 
-      if (insertErr) return jsonError(insertErr.message, 400);
+      if (insertErr) {
+        console.error('API /messages start conversation insert error', { user: me.id, target: target.id, error: insertErr });
+        return jsonError(insertErr.message, 400);
+      }
       conversationId = inserted?.id as string;
-
-      await supabase
-        .from('conversation_participants')
-        .upsert(
-          [
-            { conversation_id: conversationId, user_id: user.id, profile_id: me.id },
-            target.user_id ? { conversation_id: conversationId, user_id: target.user_id, profile_id: target.id } : null,
-          ].filter(Boolean) as any[],
-          { onConflict: 'conversation_id,user_id' }
-        );
     }
 
     if (initialMessage) {
@@ -130,11 +126,21 @@ export const POST = withAuth(async (req, { supabase, user }) => {
         sender_profile_id: me.id,
         body: initialMessage,
       });
-      if (msgErr) return jsonError(msgErr.message, 400);
+      if (msgErr) {
+        console.error('API /messages initial message error', { conversationId, sender: me.id, error: msgErr });
+        return jsonError(msgErr.message, 400);
+      }
+
+      const preview = initialMessage.slice(0, 200);
+      await supabase
+        .from('conversations')
+        .update({ last_message_at: new Date().toISOString(), last_message_preview: preview })
+        .eq('id', conversationId);
     }
 
     return NextResponse.json({ data: { conversationId } });
   } catch (e: any) {
+    console.error('API /messages start unexpected', e);
     return jsonError(e.message || 'Errore inatteso', 400);
   }
 });

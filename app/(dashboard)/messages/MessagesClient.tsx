@@ -256,8 +256,22 @@ export default function MessagesClient({
       if (!res.ok || payload?.ok === false) {
         throw new Error(payload?.error || 'Errore invio messaggio');
       }
+
+      const inserted = (payload as any).message as MessageItem | undefined;
       setDraft('');
-      setReloading((v) => v + 1);
+      setMessages((prev) => (inserted ? [...prev, inserted] : prev));
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === selectedId
+            ? {
+                ...c,
+                last_message_preview: inserted?.body ?? c.last_message_preview ?? draft,
+                last_message_at: inserted?.created_at ?? c.last_message_at ?? new Date().toISOString(),
+              }
+            : c
+        )
+      );
+      if (!inserted) setReloading((v) => v + 1);
     } catch (e: any) {
       show(e.message || 'Errore invio', { variant: 'error' });
     } finally {

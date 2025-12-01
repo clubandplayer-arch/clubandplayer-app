@@ -93,7 +93,7 @@ async function handlePost(
       sender_profile_id: me.id,
       body: text,
     })
-    .select('id, created_at')
+    .select('id, conversation_id, sender_profile_id, sender_id, body, created_at')
     .maybeSingle();
 
   if (msgErr) {
@@ -113,7 +113,7 @@ async function handlePost(
     console.error('API /messages/:id conversation update error', { conversationId, error: convUpdateErr });
   }
 
-  return NextResponse.json({ ok: true, messageId: inserted?.id ?? null });
+  return NextResponse.json({ ok: true, message: inserted ?? null });
 }
 
 export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
