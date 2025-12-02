@@ -3,6 +3,7 @@
 
 import { useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useMessaging } from '@/components/messaging/MessagingProvider';
 import { useToast } from '@/components/common/ToastProvider';
 import type { ConversationPreview, MessageItem } from '@/lib/services/messaging';
@@ -86,6 +87,7 @@ export default function MessagesClient({
   initialConversationId?: string | null;
   initialTargetProfileId?: string | null;
 }) {
+  const router = useRouter();
   const { show } = useToast();
   const {
     conversations,
@@ -118,10 +120,14 @@ export default function MessagesClient({
       try {
         if (initialConversationId) {
           await selectConversation(initialConversationId);
+          router.replace(`/messages?conversation=${initialConversationId}`);
           return;
         }
         if (initialTargetProfileId) {
-          await openConversationWithProfile(initialTargetProfileId);
+          const createdId = await openConversationWithProfile(initialTargetProfileId);
+          if (createdId) {
+            router.replace(`/messages?conversation=${createdId}`);
+          }
           return;
         }
       } catch (error: any) {
@@ -140,6 +146,7 @@ export default function MessagesClient({
     initialConversationId,
     initialTargetProfileId,
     openConversationWithProfile,
+    router,
     selectConversation,
     show,
   ]);
@@ -149,6 +156,12 @@ export default function MessagesClient({
       void selectConversation(conversations[0].id);
     }
   }, [activeConversationId, conversations, selectConversation]);
+
+  useEffect(() => {
+    if (activeConversationId) {
+      router.replace(`/messages?conversation=${activeConversationId}`);
+    }
+  }, [activeConversationId, router]);
 
   const handleSelect = (id: string) => {
     void selectConversation(id);

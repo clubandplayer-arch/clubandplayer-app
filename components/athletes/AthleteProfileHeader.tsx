@@ -42,19 +42,33 @@ export default function AthleteProfileHeader({
     .filter(Boolean)
     .join(' · ');
 
+  const initials = (() => {
+    const parts = name
+      .split(/\s+/)
+      .map((p) => p.trim())
+      .filter(Boolean);
+    if (parts.length === 0) return 'PL';
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+  })();
+
   return (
     <header className="rounded-2xl border bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:gap-6">
-        <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-full bg-neutral-100 ring-1 ring-neutral-200 md:h-32 md:w-32">
+        <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-full bg-neutral-50 ring-1 ring-neutral-200 shadow-sm md:h-32 md:w-32">
           {profile.avatar_url ? (
             <Image
               src={profile.avatar_url}
               alt={name}
               fill
               sizes="128px"
-              className="object-cover"
+              className="rounded-full object-cover"
             />
-          ) : null}
+          ) : (
+            <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-neutral-50 to-neutral-200 text-xl font-semibold text-neutral-600">
+              {initials}
+            </div>
+          )}
         </div>
 
         <div className="flex flex-1 flex-col gap-4 md:flex-row md:items-start md:justify-between">

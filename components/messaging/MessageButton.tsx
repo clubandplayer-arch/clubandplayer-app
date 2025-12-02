@@ -24,10 +24,8 @@ export function MessageButton({ targetProfileId, label = 'Messaggia', className 
     try {
       console.log('[messaging-button] open conversation click', { target });
       const conversationId = await openConversationWithProfile(target);
-      const url = conversationId
-        ? `/messages?conversation=${conversationId}`
-        : `/messages?to=${target}`;
-      router.push(url);
+      if (!conversationId) throw new Error('Impossibile aprire la conversazione');
+      router.push(`/messages?conversation=${conversationId}`);
     } catch (error: any) {
       console.error('[messaging-button] open conversation error', { target, error });
       show(error?.message || 'Errore apertura conversazione', { variant: 'error' });
