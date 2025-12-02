@@ -21,9 +21,29 @@ using (
   )
 );
 
-create policy "dm_read_state_upsert_own"
+create policy "dm_read_state_insert_own"
 on public.direct_message_read_state
-for insert, update
+for insert
+with check (
+  exists (
+    select 1
+    from public.profiles p
+    where p.id = owner_profile_id
+      and p.user_id = auth.uid()
+  )
+);
+
+create policy "dm_read_state_update_own"
+on public.direct_message_read_state
+for update
+using (
+  exists (
+    select 1
+    from public.profiles p
+    where p.id = owner_profile_id
+      and p.user_id = auth.uid()
+  )
+)
 with check (
   exists (
     select 1
