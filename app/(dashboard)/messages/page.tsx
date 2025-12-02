@@ -1,30 +1,17 @@
-import MessagesClient from './MessagesClient';
-
 export const metadata = {
   title: 'Messaggi',
 };
 
-type SearchParams = {
-  conversationId?: string;
-  conversation?: string;
-  to?: string;
-};
-
-export default function MessagesPage({ searchParams }: { searchParams?: SearchParams }) {
-  const conversationId =
-    typeof searchParams?.conversationId === 'string'
-      ? searchParams.conversationId
-      : typeof searchParams?.conversation === 'string'
-      ? searchParams.conversation
-      : null;
-  const targetProfileId = typeof searchParams?.to === 'string' ? searchParams.to : null;
-
+export default function MessagesLanding() {
   return (
     <div className="page-shell">
-      <MessagesClient
-        initialConversationId={conversationId}
-        initialTargetProfileId={targetProfileId}
-      />
+      <div className="rounded-xl border bg-white p-6 shadow-sm">
+        <h1 className="text-xl font-semibold text-neutral-900">Messaggi diretti</h1>
+        <p className="mt-2 text-sm text-neutral-600">
+          Apri un profilo e clicca “Messaggia” per iniziare una chat 1-a-1. Questo spazio mostrerà
+          la conversazione su <code>/messages/&lt;profileId&gt;</code>.
+        </p>
+      </div>
     </div>
   );
 }

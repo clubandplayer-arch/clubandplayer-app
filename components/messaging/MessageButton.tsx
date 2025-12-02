@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useMessaging } from '@/components/messaging/MessagingProvider';
 import { useToast } from '@/components/common/ToastProvider';
 
 type Props = {
@@ -14,7 +13,6 @@ type Props = {
 export function MessageButton({ targetProfileId, label = 'Messaggia', className }: Props) {
   const router = useRouter();
   const { show } = useToast();
-  const { openConversationWithProfile } = useMessaging();
   const [loading, setLoading] = useState(false);
 
   const handleClick = async () => {
@@ -22,11 +20,10 @@ export function MessageButton({ targetProfileId, label = 'Messaggia', className 
     if (!target || loading) return;
     setLoading(true);
     try {
-      const conversationId = await openConversationWithProfile(target);
-      router.push(`/messages?conversation=${conversationId}`);
+      router.push(`/messages/${target}`);
     } catch (error: any) {
-      console.error('[messaging-button] open conversation error', { target, error });
-      show(error?.message || 'Errore apertura conversazione', { variant: 'error' });
+      console.error('[messaging-button] navigation error', { target, error });
+      show(error?.message || 'Errore apertura chat', { variant: 'error' });
     } finally {
       setLoading(false);
     }
@@ -36,7 +33,7 @@ export function MessageButton({ targetProfileId, label = 'Messaggia', className 
     <button
       type="button"
       onClick={handleClick}
-      disabled={loading}
+      disabled={loading || !targetProfileId}
       className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold text-neutral-800 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-60 ${className || ''}`}
     >
       {loading ? 'Attendi…' : label}
