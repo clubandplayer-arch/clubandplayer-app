@@ -4,164 +4,95 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useState,
-  type ReactNode,
 } from 'react';
-import { fetchFollowState, toggleFollow as toggleFollowService } from '@/lib/services/follow';
+import { fetchFollowState, toggleFollow } from '@/lib/services/follow';
 
-export type FollowTargetType = 'club' | 'athlete' | 'player';
-
-type FollowContextValue = {
-  profileId: string | null;
-  following: Set<string>;
-  followers: Set<string>;
-  loading: boolean;
-  error: string | null;
-  isFollowing: (targetId?: string | null) => boolean;
-  isPending: (targetId?: string | null) => boolean;
-  toggleFollow: (targetId: string, targetType: FollowTargetType) => Promise<boolean>;
-  refresh: () => Promise<void>;
+export type FollowContextValue = {
+  isFollowing: (targetProfileId: string) => boolean;
+  toggleFollow: (targetProfileId: string) => Promise<void>;
+  ensureState: (targetProfileIds: string[]) => Promise<void>;
+  pending: Set<string>;
 };
 
 const FollowContext = createContext<FollowContextValue | undefined>(undefined);
 
-function normalizeTargetType(targetType: FollowTargetType): 'club' | 'player' {
-  return targetType === 'club' ? 'club' : 'player';
-}
+export function FollowProvider({ children }: { children: React.ReactNode }) {
+  const [followed, setFollowed] = useState<Set<string>>(new Set());
+  const [pending, setPending] = useState<Set<string>>(new Set());
 
-export function FollowProvider({ children }: { children: ReactNode }) {
-  const [profileId, setProfileId] = useState<string | null>(null);
-  const [following, setFollowing] = useState<Set<string>>(new Set());
-  const [followers, setFollowers] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-  const [pendingTargets, setPendingTargets] = useState<Set<string>>(new Set());
+  const isFollowing = useCallback(
+    (targetProfileId: string) => followed.has(targetProfileId),
+    [followed]
+  );
 
-  const loadState = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const ensureState = useCallback(async (targetProfileIds: string[]) => {
+    const unknown = targetProfileIds.filter((id) => !followed.has(id));
+    if (!unknown.length) return;
     try {
-      console.log('[follow-provider] loading follow state');
-      const state = await fetchFollowState();
-      setProfileId(state.profileId ?? null);
-      setFollowing(new Set((state.followingIds ?? []).filter(Boolean)));
-      setFollowers(new Set((state.followerIds ?? []).filter(Boolean)));
-      console.log('[follow-provider] state loaded', {
-        profileId: state.profileId,
-        followingCount: state.followingIds?.length ?? 0,
-        followerCount: state.followerIds?.length ?? 0,
+      const state = await fetchFollowState(unknown);
+      setFollowed((prev) => {
+        const next = new Set(prev);
+        Object.entries(state).forEach(([id, value]) => {
+          if (value) next.add(id);
+          else next.delete(id);
+        });
+        return next;
       });
-    } catch (err: any) {
-      console.error('[follow-provider] load error', err);
-      setError(err?.message || 'Impossibile caricare i follow');
+    } catch (error) {
+      console.error('[follow-provider] ensure state error', error);
+    }
+  }, [followed]);
+
+  const toggle = useCallback(async (targetProfileId: string) => {
+    const target = (targetProfileId || '').trim();
+    if (!target) return;
+    setPending((prev) => new Set(prev).add(target));
+    setFollowed((prev) => {
+      const next = new Set(prev);
+      if (next.has(target)) next.delete(target);
+      else next.add(target);
+      return next;
+    });
+    try {
+      const res = await toggleFollow(target);
+      setFollowed((prev) => {
+        const next = new Set(prev);
+        if (res.isFollowing) next.add(target);
+        else next.delete(target);
+        return next;
+      });
+    } catch (error) {
+      console.error('[follow-provider] toggle error', error);
+      setFollowed((prev) => {
+        const next = new Set(prev);
+        if (next.has(target)) next.delete(target);
+        else next.add(target);
+        return next;
+      });
+      throw error;
     } finally {
-      setLoading(false);
+      setPending((prev) => {
+        const next = new Set(prev);
+        next.delete(target);
+        return next;
+      });
     }
   }, []);
 
-  useEffect(() => {
-    void loadState();
-  }, [loadState]);
-
-  const isFollowing = useCallback(
-    (targetId?: string | null) => (targetId ? following.has(targetId) : false),
-    [following],
-  );
-
-  const isPending = useCallback(
-    (targetId?: string | null) => (targetId ? pendingTargets.has(targetId) : false),
-    [pendingTargets],
-  );
-
-  const toggleFollow = useCallback(
-    async (targetId: string, targetType: FollowTargetType) => {
-      if (!targetId) return false;
-      const normalizedType = normalizeTargetType(targetType);
-      console.log('[follow-provider] toggle start', { targetId, targetType: normalizedType });
-
-      setPendingTargets((prev) => {
-        const next = new Set(prev);
-        next.add(targetId);
-        return next;
-      });
-
-      let previousFollowing = false;
-      setFollowing((prev) => {
-        previousFollowing = prev.has(targetId);
-        const next = new Set(prev);
-        if (previousFollowing) {
-          next.delete(targetId);
-        } else {
-          next.add(targetId);
-        }
-        return next;
-      });
-
-      try {
-        const res = await toggleFollowService(targetId, normalizedType);
-        const resolvedTargetId = res.targetId || targetId;
-        const final = Boolean(res.isFollowing);
-        console.log('[follow-provider] toggle success', { targetId: resolvedTargetId, isFollowing: final });
-
-        setFollowing((prev) => {
-          const next = new Set(prev);
-          if (final) {
-            next.add(resolvedTargetId);
-          } else {
-            next.delete(resolvedTargetId);
-          }
-          return next;
-        });
-
-        return final;
-      } catch (err: any) {
-        console.error('[follow-provider] toggle error', err);
-        setError(err?.message || 'Impossibile aggiornare il follow');
-        setFollowing((prev) => {
-          const next = new Set(prev);
-          if (previousFollowing) {
-            next.add(targetId);
-          } else {
-            next.delete(targetId);
-          }
-          return next;
-        });
-        throw err;
-      } finally {
-        setPendingTargets((prev) => {
-          const next = new Set(prev);
-          next.delete(targetId);
-          return next;
-        });
-      }
-    },
-    [],
-  );
-
-  const value = useMemo<FollowContextValue>(
-    () => ({
-      profileId,
-      following,
-      followers,
-      loading,
-      error,
-      isFollowing,
-      isPending,
-      toggleFollow,
-      refresh: loadState,
-    }),
-    [profileId, following, followers, loading, error, isFollowing, isPending, toggleFollow, loadState],
-  );
+  const value = useMemo<FollowContextValue>(() => ({
+    isFollowing,
+    toggleFollow: toggle,
+    ensureState,
+    pending,
+  }), [ensureState, isFollowing, pending, toggle]);
 
   return <FollowContext.Provider value={value}>{children}</FollowContext.Provider>;
 }
 
 export function useFollow(): FollowContextValue {
   const ctx = useContext(FollowContext);
-  if (!ctx) {
-    throw new Error('useFollow deve essere usato dentro un FollowProvider');
-  }
+  if (!ctx) throw new Error('useFollow deve essere usato dentro FollowProvider');
   return ctx;
 }

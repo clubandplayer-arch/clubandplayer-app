@@ -61,10 +61,8 @@ function AccountBadge({ type }: { type: AccountType }) {
 
 function ProfileCard({
   profile,
-  onFollowChange,
 }: {
   profile: NetworkProfile;
-  onFollowChange?: (next: boolean) => void;
 }) {
   return (
     <div className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white/80 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900/60">
@@ -88,11 +86,8 @@ function ProfileCard({
       </div>
       <div className="flex flex-col items-end gap-2">
         <FollowButton
-          targetId={profile.id}
-          targetType={profile.accountType}
-          targetName={profile.name}
+          targetProfileId={profile.id}
           size="md"
-          onChange={onFollowChange}
         />
         <Link
           href={profileHref(profile.id, profile.accountType)}
@@ -274,11 +269,6 @@ export default function NetworkPage() {
                 <ProfileCard
                   key={profile.id}
                   profile={profile}
-                  onFollowChange={(next) => {
-                    if (next) {
-                      setSuggestions((prev) => prev.filter((p) => p.id !== profile.id));
-                    }
-                  }}
                 />
               ))}
             </div>
@@ -315,11 +305,6 @@ export default function NetworkPage() {
                 <ProfileCard
                   key={profile.id}
                   profile={profile}
-                  onFollowChange={(next) => {
-                    if (!next) {
-                      setFollowing((prev) => prev.filter((p) => p.id !== profile.id));
-                    }
-                  }}
                 />
               ))}
             </div>
@@ -339,11 +324,6 @@ export default function NetworkPage() {
                 <ProfileCard
                   key={profile.id}
                   profile={profile}
-                  onFollowChange={(next) =>
-                    setFollowers((prev) =>
-                      prev.map((p) => (p.id === profile.id ? { ...p, isFollowing: next } : p)),
-                    )
-                  }
                 />
               ))}
             </div>

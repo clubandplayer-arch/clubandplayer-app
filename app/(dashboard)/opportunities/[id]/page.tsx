@@ -145,9 +145,7 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
 
             {clubProfileId && (
               <FollowButton
-                targetId={clubProfileId}
-                targetType="club"
-                targetName={clubName || undefined}
+                targetProfileId={clubProfileId}
                 size="md"
                 className="w-full justify-center"
               />

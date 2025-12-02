@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import FollowButton from '@/components/common/FollowButton';
 import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentProfileContext';
 
@@ -16,8 +16,6 @@ type Suggestion = {
   followers?: number | null;
 };
 
-type TargetProfileType = 'club' | 'athlete';
-
 function detailLine(suggestion: Suggestion, viewerRole: ProfileRole) {
   const location = [suggestion.city, suggestion.country].filter(Boolean).join(', ');
   const sportRole = [suggestion.role, suggestion.sport].filter(Boolean).join(' · ');
@@ -31,11 +29,8 @@ function detailLine(suggestion: Suggestion, viewerRole: ProfileRole) {
 export default function WhoToFollow() {
   const { role: contextRole } = useCurrentProfileContext();
   const [role, setRole] = useState<ProfileRole>('guest');
-  const [targetType, setTargetType] = useState<TargetProfileType>('club');
   const [items, setItems] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const followTargetType = useMemo(() => (targetType === 'club' ? 'club' : 'athlete'), [targetType]);
 
   useEffect(() => {
     (async () => {
@@ -48,14 +43,7 @@ export default function WhoToFollow() {
         const suggestions = Array.isArray(data?.items) ? (data.items as Suggestion[]) : [];
         const nextRole: ProfileRole =
           data?.role === 'club' || data?.role === 'athlete' ? data.role : contextRole;
-        const nextTarget: TargetProfileType =
-          data?.targetType === 'athlete' || data?.targetType === 'club'
-            ? data.targetType
-            : nextRole === 'club'
-            ? 'athlete'
-            : 'club';
         setRole(nextRole || 'guest');
-        setTargetType(nextTarget);
         setItems(suggestions.slice(0, 3));
       } catch {
         setItems([]);
@@ -113,14 +101,8 @@ export default function WhoToFollow() {
               </div>
 
               <FollowButton
-                targetId={it.id}
-                targetType={followTargetType}
+                targetProfileId={it.id}
                 size="sm"
-                onChange={(next) => {
-                  if (next) {
-                    setItems((prev) => prev.filter((p) => p.id !== it.id));
-                  }
-                }}
               />
             </li>
           ))}

@@ -1,63 +1,56 @@
-export type FollowStateResponse = {
-  ok: boolean;
-  profileId: string | null;
-  followingIds: string[];
-  followerIds: string[];
-  error?: string;
-};
+'use client';
 
-export type ToggleFollowResponse = {
-  ok: boolean;
-  isFollowing: boolean;
-  targetId?: string;
-  error?: string;
-};
+export type FollowStateResponse = Record<string, boolean>;
 
-type TargetType = 'club' | 'player' | 'athlete';
-
-function normalizeTargetType(targetType: TargetType): 'club' | 'player' {
-  if (targetType === 'club') return 'club';
-  return 'player';
-}
-
-export async function fetchFollowState(): Promise<FollowStateResponse> {
-  console.log('[follow-service] fetching follow state');
-  const res = await fetch('/api/follows', { cache: 'no-store' });
-  const json = await res.json().catch(() => ({ ok: false, error: 'invalid_json' }));
-
-  if (!res.ok) {
-    console.error('[follow-service] fetchFollowState failed', { status: res.status, body: json });
-    throw new Error(typeof json?.error === 'string' ? json.error : 'follow_state_error');
+async function parseJson(res: Response) {
+  const text = await res.text();
+  try {
+    return text ? JSON.parse(text) : {};
+  } catch {
+    return {};
   }
-
-  console.log('[follow-service] fetchFollowState success', {
-    profileId: json?.profileId,
-    followingCount: Array.isArray(json?.followingIds) ? json.followingIds.length : 0,
-    followerCount: Array.isArray(json?.followerIds) ? json.followerIds.length : 0,
-  });
-
-  return json as FollowStateResponse;
 }
 
-export async function toggleFollow(targetId: string, targetType: TargetType): Promise<ToggleFollowResponse> {
-  const normalizedType = normalizeTargetType(targetType);
-  console.log('[follow-service] toggle start', { targetId, targetType: normalizedType });
+export async function toggleFollow(targetProfileId: string): Promise<{ isFollowing: boolean; targetProfileId: string }> {
+  const target = (targetProfileId || '').trim();
+  if (!target) throw new Error('targetProfileId mancante');
 
   const res = await fetch('/api/follows/toggle', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ targetId, targetType: normalizedType }),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ targetProfileId: target }),
   });
 
-  const json = await res.json().catch(() => ({ ok: false, error: 'invalid_json' }));
-
-  if (!res.ok || !json?.ok) {
-    console.error('[follow-service] toggle error', { status: res.status, body: json });
-    throw new Error(typeof json?.error === 'string' ? json.error : 'toggle_follow_error');
+  const json = await parseJson(res);
+  if (!res.ok) {
+    console.error('[follow-service] toggle error', json);
+    throw new Error(json?.error || 'Errore toggle follow');
   }
 
-  console.log('[follow-service] toggle success', { targetId: json?.targetId ?? targetId, isFollowing: json?.isFollowing });
-  return json as ToggleFollowResponse;
+  return {
+    isFollowing: Boolean((json as any)?.isFollowing),
+    targetProfileId: target,
+  };
+}
+
+export async function fetchFollowState(targetProfileIds: string[]): Promise<FollowStateResponse> {
+  const clean = Array.from(new Set(targetProfileIds.map((id) => id.trim()).filter(Boolean)));
+  if (!clean.length) return {};
+
+  const params = new URLSearchParams();
+  clean.forEach((id) => params.append('targets', id));
+
+  const res = await fetch(`/api/follows/state?${params.toString()}`, { cache: 'no-store' });
+  const json = await parseJson(res);
+  if (!res.ok) {
+    console.error('[follow-service] state error', json);
+    throw new Error(json?.error || 'Errore lettura stato follow');
+  }
+
+  const state: FollowStateResponse = {};
+  const payload = (json as any)?.state || {};
+  clean.forEach((id) => {
+    state[id] = Boolean(payload[id]);
+  });
+  return state;
 }

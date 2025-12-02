@@ -86,9 +86,7 @@ export default function ClubPage({ params }: { params: { id: string } }) {
           </div>
         </div>
         <FollowButton
-          targetId={club.id}
-          targetType="club"
-          targetName={club.name}
+          targetProfileId={club.id}
           size="md"
         />
       </header>

@@ -101,14 +101,12 @@ export default function OpportunitiesTable({
                       clubLabel
                     )}
                   </span>
-                  {showFollow && (
-                    <FollowButton
-                      targetId={profileOwnerId as string}
-                      targetType="club"
-                      targetName={clubLabel || undefined}
-                      size="sm"
-                    />
-                  )}
+                {showFollow && (
+                  <FollowButton
+                    targetProfileId={profileOwnerId as string}
+                    size="sm"
+                  />
+                )}
                   <span className="text-gray-500">•</span>
                   <Link href={`/opportunities/${o.id}`} className="text-blue-700 hover:underline">
                     Dettagli annuncio

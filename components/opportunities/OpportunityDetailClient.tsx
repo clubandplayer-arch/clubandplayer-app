@@ -178,9 +178,7 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
               <span className="font-medium">{clubName ?? 'Club'}</span>
               {clubProfileId && (
                 <FollowButton
-                  targetId={clubProfileId}
-                  targetType="club"
-                  targetName={clubName}
+                  targetProfileId={clubProfileId}
                   size="md"
                 />
               )}

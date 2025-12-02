@@ -59,9 +59,7 @@ export default function ClubProfileHeader({ profile }: { profile: ClubProfile })
               className="border-neutral-200 bg-white hover:bg-neutral-50"
             />
             <FollowButton
-              targetId={profile.id}
-              targetType="club"
-              targetName={name}
+              targetProfileId={profile.id}
               labelFollow="Segui"
               labelFollowing="Seguo"
               size="md"

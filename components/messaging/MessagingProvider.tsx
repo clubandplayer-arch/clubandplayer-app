@@ -8,290 +8,168 @@ import {
   useMemo,
   useState,
 } from 'react';
-
 import {
-  fetchConversationDetail,
-  fetchConversations,
-  openConversation,
-  sendMessage as sendMessageRequest,
-} from '@/lib/services/messaging';
-import {
-  ConversationDetailResponse,
-  ConversationSummary,
+  ConversationPreview,
   MessageItem,
-  ProfileSummary,
-} from '@/types/messaging';
+  fetchConversations,
+  fetchMessages,
+  sendMessage as apiSendMessage,
+  startConversation,
+} from '@/lib/services/messaging';
 
-type MessagesMap = Record<string, MessageItem[]>;
-
-type MessagingContextValue = {
-  conversations: ConversationSummary[];
+export type MessagingContextValue = {
+  conversations: ConversationPreview[];
+  currentProfileId: string | null;
   activeConversationId: string | null;
-  messagesByConversation: MessagesMap;
-  draftsByConversation: Record<string, string>;
-  me: ProfileSummary | null;
+  messages: Record<string, MessageItem[]>;
+  drafts: Record<string, string>;
   loadingList: boolean;
   loadingThread: boolean;
-  isSending: (conversationId: string) => boolean;
-  refreshConversations: () => Promise<void>;
-  selectConversation: (conversationId: string | null) => Promise<void>;
-  openConversationWithProfile: (targetProfileId: string, opts?: { activate?: boolean }) => Promise<string | null>;
+  isSending: boolean;
+  refresh: () => Promise<void>;
+  openConversationWithProfile: (targetProfileId: string) => Promise<string | null>;
+  selectConversation: (conversationId: string) => Promise<void>;
   sendMessage: (conversationId: string, content: string) => Promise<MessageItem | null>;
-  setDraftForConversation: (conversationId: string, value: string) => void;
-  clearDraftForConversation: (conversationId: string) => void;
-  getDraftForConversation: (conversationId: string | null) => string;
+  setDraft: (conversationId: string, value: string) => void;
 };
 
 const MessagingContext = createContext<MessagingContextValue | undefined>(undefined);
 
-function upsertConversation(
-  list: ConversationSummary[],
-  incoming: ConversationSummary | null | undefined
-): ConversationSummary[] {
-  if (!incoming?.id) return list;
-  const exists = list.findIndex((c) => c.id === incoming.id);
-  if (exists === -1) return [...list, incoming];
-  const next = [...list];
-  next[exists] = { ...next[exists], ...incoming };
-  return next;
-}
-
 export function MessagingProvider({ children }: { children: React.ReactNode }) {
-  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
-  const [messagesByConversation, setMessagesByConversation] = useState<MessagesMap>({});
-  const [draftsByConversation, setDraftsByConversation] = useState<Record<string, string>>({});
-  const [me, setMe] = useState<ProfileSummary | null>(null);
+  const [conversations, setConversations] = useState<ConversationPreview[]>([]);
+  const [currentProfileId, setCurrentProfileId] = useState<string | null>(null);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Record<string, MessageItem[]>>({});
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [loadingList, setLoadingList] = useState(false);
   const [loadingThread, setLoadingThread] = useState(false);
-  const [pendingSend, setPendingSend] = useState<Set<string>>(new Set());
+  const [sending, setSending] = useState(false);
 
-  const isSending = useCallback(
-    (conversationId: string) => pendingSend.has(conversationId),
-    [pendingSend]
-  );
-
-  const refreshConversations = useCallback(async () => {
+  const refresh = useCallback(async () => {
     setLoadingList(true);
     try {
-      console.log('[messaging-provider] refresh conversations');
-      const json = await fetchConversations();
-      setConversations(Array.isArray(json.data) ? json.data : []);
-      setMe(json.me ?? null);
+      const res = await fetchConversations();
+      setConversations(res.conversations || []);
+      setCurrentProfileId(res.currentProfileId || null);
     } catch (error) {
-      console.error('[messaging-provider] refresh conversations error', error);
+      console.error('[messaging-provider] refresh error', error);
     } finally {
       setLoadingList(false);
     }
   }, []);
 
-  const applyThread = useCallback((conversationId: string, messages: MessageItem[]) => {
-    setMessagesByConversation((prev) => {
-      const existing = prev[conversationId] ?? [];
-
-      const merged = [...existing, ...(messages ?? [])].reduce<MessageItem[]>((acc, item) => {
-        if (!item?.id) return acc;
-        const existsIdx = acc.findIndex((m) => m.id === item.id);
-        if (existsIdx >= 0) {
-          const next = [...acc];
-          next[existsIdx] = { ...acc[existsIdx], ...item };
-          return next;
-        }
-        return [...acc, item];
-      }, []);
-
-      merged.sort((a, b) => {
-        const aDate = new Date(a.created_at ?? 0).getTime();
-        const bDate = new Date(b.created_at ?? 0).getTime();
-        return aDate - bDate;
-      });
-
-      console.log('[messaging-load] apply thread', {
-        conversationId,
-        incoming: messages?.length ?? 0,
-        existing: existing.length,
-        merged: merged.length,
-      });
-
-      return { ...prev, [conversationId]: merged };
-    });
-  }, []);
-
-  const hydrateFromDetail = useCallback(
-    (detail: ConversationDetailResponse) => {
-      setMe(detail.me ?? null);
-      setConversations((prev) => upsertConversation(prev, detail.conversation));
-      applyThread(detail.conversation.id, detail.messages ?? []);
-      return detail.conversation.id;
-    },
-    [applyThread]
-  );
-
-  const setDraftForConversation = useCallback((conversationId: string, value: string) => {
-    if (!conversationId) return;
-    setDraftsByConversation((prev) => ({ ...prev, [conversationId]: value }));
-  }, []);
-
-  const clearDraftForConversation = useCallback((conversationId: string) => {
-    if (!conversationId) return;
-    setDraftsByConversation((prev) => {
-      const next = { ...prev };
-      delete next[conversationId];
-      return next;
-    });
-  }, []);
-
-  const getDraftForConversation = useCallback(
-    (conversationId: string | null) => {
-      if (!conversationId) return '';
-      return draftsByConversation[conversationId] ?? '';
-    },
-    [draftsByConversation]
-  );
-
-  const selectConversation = useCallback(
-    async (conversationId: string | null) => {
-      setActiveConversationId(conversationId);
-      if (!conversationId) return;
-      setLoadingThread(true);
-      try {
-        console.log('[messaging-load] load conversation', { conversationId });
-        const detail = await fetchConversationDetail(conversationId);
-        console.log('[messaging-load] detail received', {
-          conversationId,
-          messages: detail?.messages?.length ?? 0,
-        });
-        hydrateFromDetail(detail);
-      } catch (error) {
-        console.error('[messaging-provider] load conversation error', { conversationId, error });
-        setMessagesByConversation((prev) => ({ ...prev, [conversationId]: [] }));
-      } finally {
-        setLoadingThread(false);
-      }
-    },
-    [hydrateFromDetail]
-  );
-
-  const openConversationWithProfile = useCallback(
-    async (targetProfileId: string, opts?: { activate?: boolean }) => {
-      const target = (targetProfileId || '').trim();
-      if (!target) return null;
-      console.log('[messaging-provider] open conversation with profile', { target });
-      setLoadingThread(true);
-      try {
-        const detail = await openConversation(target);
-        const conversationId = hydrateFromDetail(detail);
-        if (opts?.activate !== false) setActiveConversationId(conversationId);
-        return conversationId;
-      } catch (error) {
-        console.error('[messaging-provider] open conversation error', { target, error });
-        throw error;
-      } finally {
-        setLoadingThread(false);
-      }
-    },
-    [hydrateFromDetail]
-  );
-
-  const sendMessage = useCallback(
-    async (conversationId: string, content: string) => {
-      const cleanContent = (content || '').trim();
-      if (!conversationId || !cleanContent) return null;
-      console.log('[messaging-send] send message', {
-        conversationId,
-        contentLength: cleanContent.length,
-      });
-
-      const optimistic: MessageItem = {
-        id: `temp-${Date.now()}`,
-        conversation_id: conversationId,
-        body: cleanContent,
-        sender_id: null,
-        sender_profile_id: me?.id ?? null,
-        created_at: new Date().toISOString(),
-      };
-
-      setPendingSend((prev) => new Set(prev).add(conversationId));
-      setMessagesByConversation((prev) => ({
-        ...prev,
-        [conversationId]: [...(prev[conversationId] ?? []), optimistic],
-      }));
-
-      try {
-        const saved = await sendMessageRequest(conversationId, cleanContent);
-        applyThread(conversationId, [saved]);
-        setConversations((prev) =>
-          prev.map((c) =>
-            c.id === conversationId
-              ? {
-                  ...c,
-                  last_message_preview: saved.body,
-                  last_message_at: saved.created_at,
-                }
-              : c
-          )
-        );
-        clearDraftForConversation(conversationId);
-        console.log('[messaging-send] send success', {
-          conversationId,
-          messageId: saved.id,
-        });
-        return saved;
-      } catch (error) {
-        console.error('[messaging-provider] send message error', { conversationId, error });
-        setMessagesByConversation((prev) => ({
-          ...prev,
-          [conversationId]: (prev[conversationId] ?? []).filter((m) => m.id !== optimistic.id),
-        }));
-        throw error;
-      } finally {
-        setPendingSend((prev) => {
-          const next = new Set(prev);
-          next.delete(conversationId);
-          return next;
-        });
-      }
-    },
-    [applyThread, clearDraftForConversation, me]
-  );
-
   useEffect(() => {
-    void refreshConversations();
-  }, [refreshConversations]);
+    void refresh();
+  }, [refresh]);
+
+  const setDraft = useCallback((conversationId: string, value: string) => {
+    if (!conversationId) return;
+    setDrafts((prev) => ({ ...prev, [conversationId]: value }));
+  }, []);
+
+  const selectConversation = useCallback(async (conversationId: string) => {
+    if (!conversationId) return;
+    setActiveConversationId(conversationId);
+    setLoadingThread(true);
+    try {
+      const items = await fetchMessages(conversationId);
+      setMessages((prev) => ({ ...prev, [conversationId]: items }));
+    } catch (error) {
+      console.error('[messaging-provider] load messages error', error);
+      setMessages((prev) => ({ ...prev, [conversationId]: [] }));
+    } finally {
+      setLoadingThread(false);
+    }
+  }, []);
+
+  const openConversationWithProfile = useCallback(async (targetProfileId: string) => {
+    const target = (targetProfileId || '').trim();
+    if (!target) return null;
+    setLoadingThread(true);
+    try {
+      const res = await startConversation(target);
+      if (!res.conversationId) throw new Error('conversationId mancante');
+      setCurrentProfileId(res.currentProfileId || null);
+      if (res.peer) {
+        setConversations((prev) => {
+          const existing = prev.find((c) => c.id === res.conversationId);
+          if (existing) return prev;
+          return [
+            {
+              id: res.conversationId,
+              peer: res.peer,
+              last_message_at: null,
+              last_message_preview: null,
+            },
+            ...prev,
+          ];
+        });
+      }
+      setActiveConversationId(res.conversationId);
+      return res.conversationId;
+    } catch (error) {
+      console.error('[messaging-provider] open conversation error', error);
+      throw error;
+    } finally {
+      setLoadingThread(false);
+    }
+  }, []);
+
+  const sendMessage = useCallback(async (conversationId: string, content: string) => {
+    const clean = (content || '').trim();
+    if (!conversationId || !clean) return null;
+    setSending(true);
+    const optimistic: MessageItem = {
+      id: `temp-${Date.now()}`,
+      conversation_id: conversationId,
+      sender_profile_id: currentProfileId || '',
+      content: clean,
+      created_at: new Date().toISOString(),
+    };
+    setMessages((prev) => ({
+      ...prev,
+      [conversationId]: [...(prev[conversationId] ?? []), optimistic],
+    }));
+    setDrafts((prev) => ({ ...prev, [conversationId]: '' }));
+    try {
+      const saved = await apiSendMessage(conversationId, clean);
+      setMessages((prev) => ({
+        ...prev,
+        [conversationId]: [...(prev[conversationId] ?? []).filter((m) => !m.id.startsWith('temp-')), saved],
+      }));
+      setConversations((prev) => prev.map((c) =>
+        c.id === conversationId
+          ? { ...c, last_message_at: saved.created_at, last_message_preview: saved.content }
+          : c
+      ));
+      return saved;
+    } catch (error) {
+      console.error('[messaging-provider] send error', error);
+      setMessages((prev) => ({
+        ...prev,
+        [conversationId]: (prev[conversationId] ?? []).filter((m) => !m.id.startsWith('temp-')),
+      }));
+      throw error;
+    } finally {
+      setSending(false);
+    }
+  }, [currentProfileId]);
 
   const value = useMemo<MessagingContextValue>(() => ({
     conversations,
+    currentProfileId,
     activeConversationId,
-    messagesByConversation,
-    draftsByConversation,
-    me,
+    messages,
+    drafts,
     loadingList,
     loadingThread,
-    isSending,
-    refreshConversations,
-    selectConversation,
+    isSending: sending,
+    refresh,
     openConversationWithProfile,
-    sendMessage,
-    setDraftForConversation,
-    clearDraftForConversation,
-    getDraftForConversation,
-  }), [
-    conversations,
-    activeConversationId,
-    messagesByConversation,
-    draftsByConversation,
-    me,
-    loadingList,
-    loadingThread,
-    isSending,
-    refreshConversations,
     selectConversation,
-    openConversationWithProfile,
     sendMessage,
-    setDraftForConversation,
-    clearDraftForConversation,
-    getDraftForConversation,
-  ]);
+    setDraft,
+  }), [activeConversationId, conversations, currentProfileId, drafts, loadingList, loadingThread, messages, openConversationWithProfile, refresh, selectConversation, sendMessage, sending, setDraft]);
 
   return <MessagingContext.Provider value={value}>{children}</MessagingContext.Provider>;
 }

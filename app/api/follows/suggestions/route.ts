@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
     const { data: userRes } = await supabase.auth.getUser();
 
     if (!userRes?.user) {
-      return NextResponse.json({ items: [], role: 'guest', targetType: 'club' });
+      return NextResponse.json({ items: [], role: 'guest' });
     }
 
     const { data: profile } = await supabase
@@ -46,20 +46,18 @@ export async function GET(req: NextRequest) {
         : 'guest') || 'guest';
 
     if (!profile?.id || profile.status !== 'active') {
-      return NextResponse.json({ items: [], role, targetType: 'club' });
+      return NextResponse.json({ items: [], role });
     }
 
     const profileId = profile.id;
 
     const targetProfileType: Role = role === 'club' ? 'athlete' : 'club';
-    const followTargetTypes = targetProfileType === 'athlete' ? ['player', 'athlete'] : ['club'];
     const viewerCountry = (profile?.interest_country || profile?.country || '').trim();
 
     const { data: existing } = await supabase
       .from('follows')
-      .select('target_profile_id, target_type')
+      .select('target_profile_id')
       .eq('follower_profile_id', profileId)
-      .in('target_type', followTargetTypes)
       .limit(200);
 
     const alreadyFollowing = new Set(
@@ -117,10 +115,9 @@ export async function GET(req: NextRequest) {
       items,
       nextCursor: null,
       role,
-      targetType: targetProfileType,
     });
   } catch (err) {
     console.error('[follows/suggestions] error', err);
-    return NextResponse.json({ items: [], role: 'guest', targetType: 'club' });
+    return NextResponse.json({ items: [], role: 'guest' });
   }
 }

@@ -1,83 +1,60 @@
 'use client';
 
-import { useMemo } from 'react';
-import { useToast } from './ToastProvider';
+import { useEffect, useMemo, useState } from 'react';
 import { useFollow } from '@/components/follow/FollowProvider';
 
 export type FollowButtonProps = {
-  targetId: string;
-  targetType: 'club' | 'athlete' | 'player';
-  targetName?: string;
-  size?: 'sm' | 'md';
-  className?: string;
+  targetProfileId: string;
   labelFollow?: string;
   labelFollowing?: string;
-  onChange?: (next: boolean) => void;
+  size?: 'sm' | 'md';
+  className?: string;
 };
 
-type NormalizedType = 'club' | 'player';
-
-function normalizeType(raw: FollowButtonProps['targetType']): NormalizedType {
-  return raw === 'club' ? 'club' : 'player';
-}
-
 export default function FollowButton({
-  targetId,
-  targetType,
-  targetName,
-  size = 'sm',
-  className,
+  targetProfileId,
   labelFollow = 'Segui',
   labelFollowing = 'Seguo',
-  onChange,
+  size = 'md',
+  className,
 }: FollowButtonProps) {
-  const toast = useToast();
-  const { isFollowing, toggleFollow, isPending } = useFollow();
-  const normalizedType = useMemo(() => normalizeType(targetType), [targetType]);
+  const { isFollowing, toggleFollow, ensureState, pending } = useFollow();
+  const [initialized, setInitialized] = useState(false);
 
-  async function handleToggle() {
-    if (!targetId || isPending(targetId)) return;
+  const cleanId = useMemo(() => (targetProfileId || '').trim(), [targetProfileId]);
+  const following = cleanId ? isFollowing(cleanId) : false;
+  const loading = cleanId ? pending.has(cleanId) : false;
 
+  useEffect(() => {
+    if (!cleanId || initialized) return;
+    void ensureState([cleanId]);
+    setInitialized(true);
+  }, [cleanId, ensureState, initialized]);
+
+  const label = following ? labelFollowing : labelFollow;
+  const padding = size === 'sm' ? 'px-2 py-1 text-sm' : 'px-3 py-1.5 text-sm';
+
+  const handleClick = async () => {
+    if (!cleanId || loading) return;
     try {
-      console.log('[follow] click', { targetId, targetType: normalizedType, isFollowing: isFollowing(targetId) });
-      const next = await toggleFollow(targetId, normalizedType);
-      onChange?.(next);
-      toast?.success(
-        next
-          ? 'Ora stai seguendo il profilo'
-          : 'Hai smesso di seguire il profilo',
-      );
-    } catch (err: any) {
-      console.error('[FollowButton] toggle fallito', err);
-      toast?.error(
-        err?.message || 'Impossibile aggiornare il follow. Riprova più tardi.',
-      );
+      await toggleFollow(cleanId);
+    } catch (error) {
+      console.error('[FollowButton] errore toggle', error);
     }
-  }
-
-  const sizeCls = size === 'md' ? 'px-3.5 py-2 text-sm' : 'px-3 py-1.5 text-sm';
-  const following = isFollowing(targetId);
-  const pending = isPending(targetId);
+  };
 
   return (
     <button
       type="button"
-      onClick={handleToggle}
-      disabled={pending || !targetId}
-      aria-busy={pending}
-      aria-pressed={following}
-      className={[
-        'inline-flex items-center justify-center rounded-xl border font-semibold transition',
-        'hover:bg-neutral-50 disabled:opacity-60 dark:border-neutral-700 dark:hover:bg-neutral-800',
-        following ? 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900' : '',
-        sizeCls,
-        className || '',
-      ]
-        .join(' ')
-        .trim()}
+      onClick={handleClick}
+      disabled={!cleanId || loading}
+      className={`inline-flex items-center gap-2 rounded-md border transition ${
+        following
+          ? 'border-[var(--brand)] bg-[var(--brand)]/10 text-[var(--brand)]'
+          : 'border-neutral-300 bg-white text-neutral-800 hover:bg-neutral-50'
+      } ${padding} ${className || ''}`}
     >
-      {pending ? '...' : following ? labelFollowing : labelFollow}
-      {targetName ? <span className="sr-only"> {targetName}</span> : null}
+      {loading ? '...' : label}
     </button>
   );
 }
