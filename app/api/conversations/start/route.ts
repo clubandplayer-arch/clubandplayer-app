@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { getActiveProfile, getProfileById } from '@/lib/api/profile';
@@ -31,13 +32,10 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     let activeConversationId = conversationId;
 
     if (!conversationId) {
-      const { data: created, error: createError } = await supabase
-        .from('conversations')
-        .insert({})
-        .select('id')
-        .maybeSingle();
+      const freshId = randomUUID();
+      const { error: createError } = await supabase.from('conversations').insert({ id: freshId });
       if (createError) throw createError;
-      activeConversationId = created?.id as string;
+      activeConversationId = freshId;
     }
 
     // Garantisce la presenza dei partecipanti rispettando le policy RLS (prima l'utente corrente, poi il peer)

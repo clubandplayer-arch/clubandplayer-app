@@ -24,12 +24,12 @@ export function MessageButton({ targetProfileId, label = 'Messaggia', className 
     try {
       console.log('[messaging-button] open conversation click', { target });
       const conversationId = await openConversationWithProfile(target);
-      if (conversationId) {
-        router.push(`/messages?conversationId=${conversationId}`);
-      }
+      const url = conversationId ? `/messages?conversationId=${conversationId}` : `/messages?to=${target}`;
+      router.push(url);
     } catch (error: any) {
       console.error('[messaging-button] open conversation error', { target, error });
       show(error?.message || 'Errore apertura conversazione', { variant: 'error' });
+      router.push(`/messages?to=${target}`);
     } finally {
       setLoading(false);
     }

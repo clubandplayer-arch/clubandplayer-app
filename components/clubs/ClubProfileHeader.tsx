@@ -29,7 +29,7 @@ export default function ClubProfileHeader({ profile }: { profile: ClubProfile })
   return (
     <header className="rounded-2xl border bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:gap-6">
-        <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-2xl bg-neutral-100 ring-1 ring-neutral-200 md:h-32 md:w-32">
+        <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-2xl bg-transparent ring-1 ring-neutral-200 md:h-32 md:w-32">
           {profile.avatar_url ? (
             <Image
               src={profile.avatar_url}
