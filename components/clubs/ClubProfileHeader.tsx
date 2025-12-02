@@ -3,6 +3,7 @@
 import Image from 'next/image';
 
 import FollowButton from '@/components/clubs/FollowButton';
+import { MessageButton } from '@/components/messaging/MessageButton';
 
 type ClubProfile = {
   id: string;
@@ -51,7 +52,12 @@ export default function ClubProfileHeader({ profile }: { profile: ClubProfile })
             {location ? <p className="text-xs text-neutral-500">{location}</p> : <p className="text-xs text-neutral-400">Località —</p>}
           </div>
 
-          <div className="flex items-start justify-end">
+          <div className="flex items-start justify-end gap-2">
+            <MessageButton
+              targetProfileId={profile.id}
+              label="Messaggia"
+              className="border-neutral-200 bg-white hover:bg-neutral-50"
+            />
             <FollowButton
               targetId={profile.id}
               targetType="club"

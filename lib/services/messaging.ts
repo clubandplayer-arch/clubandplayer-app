@@ -1,4 +1,8 @@
-import { ConversationDetailResponse, MessageItem } from '@/types/messaging';
+import {
+  ConversationDetailResponse,
+  ConversationsApiResponse,
+  MessageItem,
+} from '@/types/messaging';
 
 type StartConversationResponse = {
   ok: boolean;
@@ -22,6 +26,23 @@ async function fetchConversationDetail(conversationId: string): Promise<Conversa
   });
 
   return json as ConversationDetailResponse;
+}
+
+export async function fetchConversations(): Promise<ConversationsApiResponse> {
+  console.log('[messaging-service] fetch conversations start');
+  const res = await fetch('/api/messages', { cache: 'no-store', credentials: 'include' });
+  const json = await res.json().catch(() => ({ data: [], me: null }));
+
+  if (!res.ok || !json?.data) {
+    console.error('[messaging-service] fetch conversations error', { status: res.status, body: json });
+    throw new Error(typeof json?.error === 'string' ? json.error : 'conversations_fetch_error');
+  }
+
+  console.log('[messaging-service] fetch conversations success', {
+    count: Array.isArray(json.data) ? json.data.length : 0,
+  });
+
+  return json as ConversationsApiResponse;
 }
 
 export async function openConversation(targetProfileId: string): Promise<ConversationDetailResponse> {

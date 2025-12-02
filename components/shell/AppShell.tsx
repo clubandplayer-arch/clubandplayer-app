@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import useIsClub from '@/hooks/useIsClub';
 import { ToastProvider } from '@/components/common/ToastProvider';
 import { FollowProvider } from '@/components/follow/FollowProvider';
+import { MessagingProvider } from '@/components/messaging/MessagingProvider';
 import { NavCloseIcon, NavMenuIcon } from '@/components/icons/NavToggleIcons';
 import { MaterialIcon, type MaterialIconName } from '@/components/icons/MaterialIcon';
 import NotificationsDropdown from '@/components/notifications/NotificationsDropdown';
@@ -110,7 +111,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <ToastProvider>
       <FollowProvider>
-        <div className="min-h-screen flex flex-col">
+        <MessagingProvider>
+          <div className="min-h-screen flex flex-col">
           <header className="sticky top-0 z-40 border-b bg-white/80 backdrop-blur">
             <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4">
               <Link
@@ -244,7 +246,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </header>
 
           <main className="flex-1">{children}</main>
-        </div>
+          </div>
+        </MessagingProvider>
       </FollowProvider>
     </ToastProvider>
   );

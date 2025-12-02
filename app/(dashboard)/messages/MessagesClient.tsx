@@ -2,15 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import type {
-  ConversationDetailResponse,
-  ConversationSummary,
-  ConversationsApiResponse,
-  MessageItem,
-  ProfileSummary,
-} from '@/types/messaging';
+import type { ConversationSummary, MessageItem, ProfileSummary } from '@/types/messaging';
 import { MaterialIcon } from '@/components/icons/MaterialIcon';
 import { useToast } from '@/components/common/ToastProvider';
+import { useMessaging } from '@/components/messaging/MessagingProvider';
 
 function formatDate(value?: string | null) {
   if (!value) return '';
@@ -134,186 +129,76 @@ export default function MessagesClient({
   initialTargetProfileId?: string | null;
 }) {
   const { show } = useToast();
-  const [loadingList, setLoadingList] = useState(true);
-  const [loadingThread, setLoadingThread] = useState(false);
-  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(initialConversationId ?? null);
-  const [messages, setMessages] = useState<MessageItem[]>([]);
-  const [me, setMe] = useState<ProfileSummary | null>(null);
-  const [peer, setPeer] = useState<ProfileSummary | null>(null);
+  const {
+    conversations,
+    activeConversationId,
+    messagesByConversation,
+    me,
+    loadingList,
+    loadingThread,
+    isSending,
+    refreshConversations,
+    selectConversation,
+    openConversationWithProfile,
+    sendMessage,
+  } = useMessaging();
+
   const [draft, setDraft] = useState('');
-  const [reloading, setReloading] = useState(0);
-  const [pendingTarget, setPendingTarget] = useState(initialTargetProfileId ?? '');
-  const [sending, setSending] = useState(false);
-  const initialConversationRef = useRef(initialConversationId?.trim() || '');
-  const initialTargetRef = useRef(initialTargetProfileId?.trim() || '');
   const appliedInitialRef = useRef(false);
 
   const currentPeer = useMemo(
-    () => peer ?? conversations.find((c) => c.id === selectedId)?.peer ?? null,
-    [peer, conversations, selectedId]
+    () => conversations.find((c) => c.id === activeConversationId)?.peer ?? null,
+    [conversations, activeConversationId]
   );
 
-  useEffect(() => {
-    initialConversationRef.current = initialConversationId?.trim() || '';
-    initialTargetRef.current = initialTargetProfileId?.trim() || '';
-    appliedInitialRef.current = false;
-    setPendingTarget(initialTargetProfileId ?? '');
-    setSelectedId(initialConversationId ?? null);
-  }, [initialConversationId, initialTargetProfileId]);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoadingList(true);
-    fetch('/api/messages', { credentials: 'include', cache: 'no-store' })
-      .then(async (r) => {
-        const payload = (await r.json().catch(() => ({}))) as Partial<ConversationsApiResponse> & { error?: string };
-        if (!r.ok) throw new Error(payload?.error || 'Errore nel caricamento');
-        return payload as ConversationsApiResponse;
-      })
-      .then((json) => {
-        if (cancelled) return;
-        setConversations(Array.isArray(json.data) ? json.data : []);
-        setMe(json.me || null);
-        if (!appliedInitialRef.current) {
-          appliedInitialRef.current = true;
-          const conversationFromParams = initialConversationRef.current;
-          const targetFromParams = initialTargetRef.current;
-
-          if (conversationFromParams) {
-            setSelectedId(conversationFromParams);
-          } else if (targetFromParams) {
-            const existing = (json.data ?? []).find((c) => c.peer?.id === targetFromParams);
-            if (existing) {
-              setSelectedId(existing.id);
-            } else {
-              setPendingTarget(targetFromParams);
-            }
-          } else if (!selectedId && (json.data?.length ?? 0) > 0) {
-            setSelectedId(json.data[0].id);
-          }
-        } else if (!selectedId && (json.data?.length ?? 0) > 0) {
-          setSelectedId(json.data[0].id);
-        }
-      })
-      .catch((e) => !cancelled && show(e.message || 'Errore nel caricamento', { variant: 'error' }))
-      .finally(() => !cancelled && setLoadingList(false));
-
-    return () => {
-      cancelled = true;
-    };
-  }, [reloading, selectedId, show]);
-
-  const handleStartConversation = useCallback(
-    async (targetId: string, options?: { silent?: boolean }) => {
-      const cleanTarget = (targetId || '').trim();
-
-      if (!cleanTarget) return;
-      try {
-        console.log('[messages] start conversation', { target: cleanTarget });
-        const res = await fetch(`/api/messages/start?to=${encodeURIComponent(cleanTarget)}`, {
-          method: 'GET',
-          credentials: 'include',
-        });
-        const text = await res.text();
-        const j = JSON.parse(text || '{}') as any;
-        if (!res.ok || j?.ok === false) {
-          throw new Error(j?.error || text || 'Errore creazione conversazione');
-        }
-        const newId = j?.conversationId || j?.data?.conversationId;
-        setSelectedId(newId || selectedId);
-        setPendingTarget('');
-        setReloading((v) => v + 1);
-        if (!options?.silent) show('Conversazione aggiornata', { variant: 'success' });
-        console.log('[messages] start success', { conversationId: newId });
-      } catch (e: any) {
-        setPendingTarget('');
-        if (!options?.silent) {
-          show(e.message || 'Errore', { variant: 'error' });
-        } else {
-          console.error('Errore creazione conversazione', e);
-        }
-      }
-    },
-    [selectedId, show],
+  const messages = useMemo(
+    () => (activeConversationId ? messagesByConversation[activeConversationId] ?? [] : []),
+    [messagesByConversation, activeConversationId]
   );
 
-  useEffect(() => {
-    if (!pendingTarget || loadingList || selectedId) return;
-    handleStartConversation(pendingTarget, { silent: true });
-  }, [pendingTarget, loadingList, selectedId, handleStartConversation]);
+  const sending = activeConversationId ? isSending(activeConversationId) : false;
 
   useEffect(() => {
-    if (!selectedId) {
-      setMessages([]);
-      setPeer(null);
+    if (appliedInitialRef.current) return;
+    appliedInitialRef.current = true;
+
+    if (initialConversationId) {
+      void selectConversation(initialConversationId);
       return;
     }
-    let cancelled = false;
-    setLoadingThread(true);
-    fetch(`/api/messages/${selectedId}`, { credentials: 'include', cache: 'no-store' })
-      .then(async (r) => {
-        const payload = (await r.json().catch(() => ({}))) as Partial<ConversationDetailResponse> & { error?: string };
-        if (!r.ok) throw new Error(payload?.error || 'Errore nel thread');
-        return payload as ConversationDetailResponse;
-      })
-      .then((json) => {
-        if (cancelled) return;
-        setMessages(Array.isArray(json.messages) ? json.messages : []);
-        setPeer(json.peer ?? null);
-      })
-      .catch((e) => {
-        if (cancelled) return;
-        show(e.message || 'Errore nel thread', { variant: 'error' });
-        setSelectedId(null);
-        setMessages([]);
-        setPeer(null);
-      })
-      .finally(() => !cancelled && setLoadingThread(false));
 
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedId, reloading, show]);
-
-  async function handleSend() {
-    if (!draft.trim() || !selectedId || sending) return;
-    setSending(true);
-    try {
-      console.log('[messages] send click', { conversationId: selectedId, bodyLength: draft.length });
-      const res = await fetch(`/api/messages/${selectedId}`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ body: draft }),
-      });
-      const payload = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
-      if (!res.ok || payload?.ok === false) {
-        throw new Error(payload?.error || 'Errore invio messaggio');
-      }
-
-      const inserted = (payload as any).message as MessageItem | undefined;
-      setDraft('');
-      setMessages((prev) => (inserted ? [...prev, inserted] : prev));
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === selectedId
-            ? {
-                ...c,
-                last_message_preview: inserted?.body ?? c.last_message_preview ?? draft,
-                last_message_at: inserted?.created_at ?? c.last_message_at ?? new Date().toISOString(),
-              }
-            : c
-        )
-      );
-      if (!inserted) setReloading((v) => v + 1);
-      console.log('[messages] send success', { conversationId: selectedId, inserted: Boolean(inserted) });
-    } catch (e: any) {
-      show(e.message || 'Errore invio', { variant: 'error' });
-    } finally {
-      setSending(false);
+    if (initialTargetProfileId) {
+      void openConversationWithProfile(initialTargetProfileId);
+      return;
     }
-  }
+  }, [initialConversationId, initialTargetProfileId, openConversationWithProfile, selectConversation]);
+
+  useEffect(() => {
+    if (!activeConversationId && conversations.length > 0) {
+      void selectConversation(conversations[0].id);
+    }
+  }, [activeConversationId, conversations, selectConversation]);
+
+  const handleSelect = useCallback(
+    (id: string) => {
+      void selectConversation(id);
+    },
+    [selectConversation]
+  );
+
+  const handleSend = useCallback(async () => {
+    if (!draft.trim() || !activeConversationId || sending) return;
+    try {
+      await sendMessage(activeConversationId, draft);
+      setDraft('');
+    } catch (e: any) {
+      show(e?.message || 'Errore invio', { variant: 'error' });
+    }
+  }, [activeConversationId, draft, sending, sendMessage, show]);
+
+  const handleRefresh = useCallback(() => {
+    void refreshConversations();
+  }, [refreshConversations]);
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(260px,340px)_minmax(0,1fr)] lg:items-start">
@@ -325,7 +210,7 @@ export default function MessagesClient({
           </div>
           <button
             type="button"
-            onClick={() => setReloading((v) => v + 1)}
+            onClick={handleRefresh}
             className="inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-sm text-neutral-700 transition hover:bg-neutral-50"
           >
           <MaterialIcon name="refresh" fontSize="small" />
@@ -335,7 +220,7 @@ export default function MessagesClient({
         {loadingList ? (
           <div className="text-sm text-neutral-500">Caricamento…</div>
         ) : (
-          <ConversationList items={conversations} activeId={selectedId} onSelect={setSelectedId} />
+          <ConversationList items={conversations} activeId={activeConversationId} onSelect={handleSelect} />
         )}
       </section>
 
@@ -351,10 +236,9 @@ export default function MessagesClient({
             </Link>
           )}
         </div>
-        {!selectedId ? (
+        {!activeConversationId ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-600">
             <div>Seleziona una conversazione o apri un profilo per avviarne una nuova.</div>
-            {pendingTarget ? <div className="text-xs text-neutral-500">Preparazione conversazione…</div> : null}
           </div>
         ) : (
           <>
@@ -393,7 +277,7 @@ export default function MessagesClient({
                 <button
                   type="button"
                   onClick={handleSend}
-                  disabled={!draft.trim() || !selectedId || sending}
+                  disabled={!draft.trim() || !activeConversationId || sending}
                   className="inline-flex items-center gap-1 rounded-lg bg-[var(--brand)] px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--brand)]/90 disabled:cursor-not-allowed disabled:bg-neutral-300"
                 >
                   <MaterialIcon name="send" fontSize="small" />

@@ -1,9 +1,8 @@
 'use client';
 
 import Image from 'next/image';
-import Link from 'next/link';
-
 import FollowButton from '@/components/clubs/FollowButton';
+import { MessageButton } from '@/components/messaging/MessageButton';
 
 type AthleteProfile = {
   id: string;
@@ -68,9 +67,11 @@ export default function AthleteProfileHeader({
             {location ? <p className="text-xs text-neutral-500">{location}</p> : <p className="text-xs text-neutral-400">Località —</p>}
             <div className="flex flex-wrap items-center gap-3 text-xs text-neutral-500">
               <span>ID profilo: <code>{profile.id}</code></span>
-              <Link href={`/messages?to=${profile.id}`} className="font-semibold text-blue-700 underline-offset-4 hover:underline">
-                Messaggia →
-              </Link>
+              <MessageButton
+                targetProfileId={profile.id}
+                label="Messaggia →"
+                className="border-neutral-200 bg-white text-blue-700 hover:bg-neutral-50"
+              />
             </div>
           </div>
 
