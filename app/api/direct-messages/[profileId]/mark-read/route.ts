@@ -4,6 +4,12 @@ import { getActiveProfile, getProfileById } from '@/lib/api/profile';
 
 export const runtime = 'nodejs';
 
+function isMissingReadStateTable(error: any) {
+  return typeof error?.message === 'string'
+    ? error.message.includes('direct_message_read_state') || error.message.includes('relation "direct_message_read_state"')
+    : error?.code === '42P01';
+}
+
 function extractProfileId(routeContext?: { params?: Promise<Record<string, string>> | Record<string, string> }) {
   const raw = (routeContext?.params as any)?.profileId;
   if (typeof raw === 'string') return raw;
@@ -36,9 +42,15 @@ export const POST = withAuth(async (_req: NextRequest, { supabase, user }, route
       .select('id')
       .maybeSingle();
 
-    if (error) throw error;
+    if (error) {
+      if (isMissingReadStateTable(error)) {
+        console.warn('[api/direct-messages/mark-read POST] missing table direct_message_read_state, skipping');
+        return NextResponse.json({ ok: true, warning: 'read_state_table_missing' });
+      }
+      throw error;
+    }
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, warning: null });
   } catch (error: any) {
     console.error('[api/direct-messages/mark-read POST] errore', { error, targetProfileId: otherId });
     return jsonError('server_error', 500);

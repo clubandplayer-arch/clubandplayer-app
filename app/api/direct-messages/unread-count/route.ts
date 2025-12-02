@@ -4,6 +4,12 @@ import { getActiveProfile } from '@/lib/api/profile';
 
 export const runtime = 'nodejs';
 
+function isMissingReadStateTable(error: any) {
+  return typeof error?.message === 'string'
+    ? error.message.includes('direct_message_read_state') || error.message.includes('relation "direct_message_read_state"')
+    : error?.code === '42P01';
+}
+
 export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
   try {
     const me = await getActiveProfile(supabase, user.id);
@@ -17,12 +23,21 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
 
     if (incomingError) throw incomingError;
 
-    const { data: readStates, error: readError } = await supabase
+    let readStates: { other_profile_id: string | null; last_read_at: string | null }[] = [];
+    const { data: fetchedReadStates, error: readError } = await supabase
       .from('direct_message_read_state')
       .select('other_profile_id, last_read_at')
       .eq('owner_profile_id', me.id);
 
-    if (readError) throw readError;
+    if (readError) {
+      if (isMissingReadStateTable(readError)) {
+        console.warn('[api/direct-messages/unread-count GET] missing table direct_message_read_state, returning 0');
+      } else {
+        throw readError;
+      }
+    } else {
+      readStates = fetchedReadStates ?? [];
+    }
 
     const readMap = new Map<string, string>();
     for (const row of readStates ?? []) {
