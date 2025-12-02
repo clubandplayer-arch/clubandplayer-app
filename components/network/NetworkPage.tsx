@@ -42,7 +42,11 @@ function avatarSrc(name: string, url?: string | null) {
 }
 
 function profileHref(id: string, type: AccountType) {
-  return type === 'club' ? `/clubs/${id}` : `/athletes/${id}`;
+  return type === 'club' ? `/c/${id}` : `/u/${id}`;
+}
+
+function mapAccountType(value: string | null | undefined): AccountType {
+  return value === 'club' ? 'club' : 'athlete';
 }
 
 function subtitle(profile: NetworkProfile) {
@@ -133,12 +137,11 @@ export default function NetworkPage() {
     try {
       const res = await fetch('/api/follows/suggestions?limit=20', { credentials: 'include', cache: 'no-store' });
       const data = (await res.json().catch(() => ({}))) as ApiResponse;
-      const targetType = data?.targetType === 'athlete' ? 'athlete' : 'club';
       const items: NetworkProfile[] = Array.isArray(data?.items)
         ? data.items.map((p: any) => ({
             id: p.id,
-            name: p.name ?? 'Profilo',
-            accountType: targetType,
+            name: p.name ?? p.display_name ?? 'Profilo',
+            accountType: mapAccountType(p.account_type),
             city: p.city ?? null,
             country: p.country ?? null,
             sport: p.sport ?? null,
@@ -165,13 +168,13 @@ export default function NetworkPage() {
       const items: NetworkProfile[] = Array.isArray(data?.items)
         ? data.items.map((p: any) => ({
             id: p.id,
-            name: p.name ?? 'Profilo',
-            accountType: p.accountType === 'club' ? 'club' : 'athlete',
+            name: p.name ?? p.display_name ?? 'Profilo',
+            accountType: mapAccountType(p.account_type),
             city: p.city ?? null,
             country: p.country ?? null,
             sport: p.sport ?? null,
             role: p.role ?? null,
-            avatarUrl: p.avatarUrl ?? null,
+            avatarUrl: p.avatar_url ?? null,
             isFollowing: true,
           }))
         : [];
@@ -193,13 +196,13 @@ export default function NetworkPage() {
       const items: NetworkProfile[] = Array.isArray(data?.items)
         ? data.items.map((p: any) => ({
             id: p.id,
-            name: p.name ?? 'Profilo',
-            accountType: p.accountType === 'club' ? 'club' : 'athlete',
+            name: p.name ?? p.display_name ?? 'Profilo',
+            accountType: mapAccountType(p.account_type),
             city: p.city ?? null,
             country: p.country ?? null,
             sport: p.sport ?? null,
             role: p.role ?? null,
-            avatarUrl: p.avatarUrl ?? null,
+            avatarUrl: p.avatar_url ?? null,
             isFollowing: Boolean(p.isFollowing),
           }))
         : [];

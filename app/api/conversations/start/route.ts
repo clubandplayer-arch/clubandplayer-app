@@ -38,14 +38,19 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
         .maybeSingle();
       if (createError) throw createError;
       activeConversationId = created?.id as string;
+    }
 
-      // Inserisci i partecipanti (prima l'utente corrente, poi il target)
-      const inserts = [myProfile.id, targetProfile.id].map((pid) => ({
-        conversation_id: activeConversationId,
-        profile_id: pid,
-      }));
-      const { error: partError } = await supabase.from('conversation_participants').upsert(inserts);
-      if (partError) throw partError;
+    // Garantisce la presenza dei partecipanti rispettando le policy RLS (prima l'utente corrente, poi il peer)
+    if (activeConversationId) {
+      const { error: ensureMeError } = await supabase
+        .from('conversation_participants')
+        .upsert({ conversation_id: activeConversationId, profile_id: myProfile.id });
+      if (ensureMeError) throw ensureMeError;
+
+      const { error: ensurePeerError } = await supabase
+        .from('conversation_participants')
+        .upsert({ conversation_id: activeConversationId, profile_id: targetProfile.id });
+      if (ensurePeerError) throw ensurePeerError;
     }
 
     return NextResponse.json({

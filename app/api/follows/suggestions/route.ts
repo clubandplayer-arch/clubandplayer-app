@@ -15,6 +15,7 @@ type Suggestion = {
   role?: string | null;
   avatar_url?: string | null;
   followers?: number | null;
+  account_type?: string | null;
 };
 
 function clamp(n: number, min: number, max: number) {
@@ -109,7 +110,8 @@ export async function GET(req: NextRequest) {
       sport: p.sport || null,
       avatar_url: p.avatar_url || null,
       followers: p.followers_count ?? null,
-    }));
+      account_type: p.account_type || targetProfileType,
+    } as any));
 
     return NextResponse.json({
       items,
