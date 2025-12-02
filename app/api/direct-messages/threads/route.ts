@@ -21,34 +21,74 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
 
     if (error) throw error;
 
-    const threads: Array<{
-      otherProfileId: string;
-      otherName: string;
-      otherAvatarUrl: string | null;
-      lastMessage: string;
-      lastMessageAt: string;
-    }> = [];
-    const seen = new Set<string>();
+    const { data: readStates, error: readError } = await supabase
+      .from('direct_message_read_state')
+      .select('other_profile_id, last_read_at')
+      .eq('owner_profile_id', me.id);
+
+    if (readError) throw readError;
+
+    const readMap = new Map<string, string>();
+    for (const row of readStates ?? []) {
+      if (row.other_profile_id) {
+        readMap.set(row.other_profile_id as string, row.last_read_at as string);
+      }
+    }
+
+    const threadsMap = new Map<
+      string,
+      {
+        otherProfileId: string;
+        otherName: string;
+        otherAvatarUrl: string | null;
+        lastMessage: string;
+        lastMessageAt: string;
+        lastIncomingAt: string | null;
+      }
+    >();
 
     for (const row of data ?? []) {
       const senderId = row.sender_profile_id as string;
       const recipientId = row.recipient_profile_id as string;
       const otherId = senderId === me.id ? recipientId : senderId;
 
-      if (!otherId || seen.has(otherId)) continue;
+      if (!otherId) continue;
 
       const otherProfile = senderId === me.id ? (row as any).recipient : (row as any).sender;
       if (!otherProfile?.id || otherProfile.status !== 'active') continue;
 
-      threads.push({
-        otherProfileId: otherProfile.id,
-        otherName: otherProfile.display_name || 'Profilo',
-        otherAvatarUrl: otherProfile.avatar_url || null,
-        lastMessage: row.content as string,
-        lastMessageAt: row.created_at as string,
-      });
-      seen.add(otherId);
+      if (!threadsMap.has(otherId)) {
+        threadsMap.set(otherId, {
+          otherProfileId: otherProfile.id,
+          otherName: otherProfile.display_name || 'Profilo',
+          otherAvatarUrl: otherProfile.avatar_url || null,
+          lastMessage: row.content as string,
+          lastMessageAt: row.created_at as string,
+          lastIncomingAt: row.recipient_profile_id === me.id ? (row.created_at as string) : null,
+        });
+        continue;
+      }
+
+      const thread = threadsMap.get(otherId)!;
+      if (!thread.lastIncomingAt && row.recipient_profile_id === me.id) {
+        thread.lastIncomingAt = row.created_at as string;
+      }
     }
+
+    const threads = Array.from(threadsMap.values()).map((thread) => {
+      const lastRead = thread.otherProfileId ? readMap.get(thread.otherProfileId) : undefined;
+      const hasUnread =
+        !!thread.lastIncomingAt && (!lastRead || new Date(thread.lastIncomingAt).getTime() > new Date(lastRead).getTime());
+
+      return {
+        otherProfileId: thread.otherProfileId,
+        otherName: thread.otherName,
+        otherAvatarUrl: thread.otherAvatarUrl,
+        lastMessage: thread.lastMessage,
+        lastMessageAt: thread.lastMessageAt,
+        hasUnread,
+      };
+    });
 
     return NextResponse.json({ threads });
   } catch (error: any) {

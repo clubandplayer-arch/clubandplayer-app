@@ -94,6 +94,28 @@ export function DirectMessageThread({ targetProfileId, targetDisplayName, target
     };
   }, [show, targetProfileId]);
 
+  useEffect(() => {
+    if (loading || error) return;
+    let cancelled = false;
+
+    const markRead = async () => {
+      try {
+        await fetch(`/api/direct-messages/${targetProfileId}/mark-read`, { method: 'POST' });
+        if (!cancelled) {
+          window.dispatchEvent(new Event('app:direct-messages-updated'));
+        }
+      } catch (err) {
+        console.error('Errore mark-read', err);
+      }
+    };
+
+    void markRead();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [error, loading, targetProfileId, thread.length]);
+
   const handleSend = async () => {
     const trimmed = content.trim();
     if (!trimmed || sending) return;
@@ -128,7 +150,7 @@ export function DirectMessageThread({ targetProfileId, targetDisplayName, target
         <Avatar name={headerName} avatarUrl={targetAvatarUrl} />
         <div>
           <div className="text-lg font-semibold text-neutral-900">{headerName}</div>
-          <div className="text-sm text-neutral-500">Chat privata 1-a-1</div>
+          <div className="text-sm text-neutral-500">Messaggi diretti</div>
         </div>
       </div>
 
@@ -172,7 +194,7 @@ export function DirectMessageThread({ targetProfileId, targetDisplayName, target
             type="button"
             onClick={handleSend}
             disabled={!content.trim() || sending}
-            className="rounded-md bg-[var(--brand)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--brand-dark)] hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-md bg-[var(--brand)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--brand-dark)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-not-allowed disabled:opacity-60"
           >
             {sending ? 'Invio…' : 'Invia'}
           </button>

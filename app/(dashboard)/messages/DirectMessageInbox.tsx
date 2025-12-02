@@ -11,6 +11,7 @@ type Thread = {
   otherAvatarUrl: string | null;
   lastMessage: string;
   lastMessageAt: string;
+  hasUnread?: boolean;
 };
 
 function formatDate(value: string) {
@@ -99,10 +100,17 @@ export function DirectMessageInbox() {
             >
               <Avatar name={thread.otherName} avatarUrl={thread.otherAvatarUrl} />
               <div className="flex-1">
-                <div className="text-sm font-semibold text-neutral-900">{thread.otherName}</div>
-                <div className="line-clamp-2 text-sm text-neutral-600">{thread.lastMessage}</div>
+                <div className={`text-sm font-semibold ${thread.hasUnread ? 'text-[var(--brand)]' : 'text-neutral-900'}`}>
+                  {thread.otherName}
+                </div>
+                <div className={`line-clamp-2 text-sm ${thread.hasUnread ? 'text-neutral-800' : 'text-neutral-600'}`}>
+                  {thread.lastMessage}
+                </div>
               </div>
               <div className="text-xs text-neutral-500">{formatDate(thread.lastMessageAt)}</div>
+              {thread.hasUnread && (
+                <span className="ml-2 inline-flex h-2 w-2 rounded-full bg-[var(--brand)]" aria-hidden="true" />
+              )}
             </Link>
           ))}
       </div>
