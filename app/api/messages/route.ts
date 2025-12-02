@@ -12,6 +12,11 @@ type ProfileRow = {
   user_id?: string | null;
 };
 
+type ParticipantRow = {
+  user_id: string;
+  profile_id?: string | null;
+};
+
 export const runtime = 'nodejs';
 
 async function loadProfile(
@@ -27,6 +32,34 @@ async function loadProfile(
   if (error) throw new Error(error.message);
   if (!data?.id) throw new Error('Profilo non trovato');
   return data;
+}
+
+async function ensureParticipants(
+  supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>,
+  conversationId: string,
+  participants: ParticipantRow[]
+) {
+  const rows = participants
+    .filter((p) => p.user_id)
+    .map((p) => ({
+      conversation_id: conversationId,
+      user_id: p.user_id,
+      profile_id: p.profile_id ?? null,
+    }));
+
+  if (!rows.length) return;
+
+  const { error } = await supabase
+    .from('conversation_participants')
+    .upsert(rows, { onConflict: 'conversation_id,user_id' });
+
+  if (error) {
+    console.error('[api-messages-start] upsert participants error', {
+      conversationId,
+      error,
+    });
+    throw new Error(error.message);
+  }
 }
 
 export const GET = withAuth(async (_req, { supabase, user }) => {
@@ -117,6 +150,21 @@ export const POST = withAuth(async (req, { supabase, user }) => {
         return jsonError(insertErr.message, 400);
       }
       conversationId = inserted?.id as string;
+    }
+
+    try {
+      await ensureParticipants(supabase, conversationId, [
+        { user_id: user.id, profile_id: me.id },
+        ...(target.user_id ? [{ user_id: target.user_id, profile_id: target.id }] : []),
+      ]);
+    } catch (participantErr: any) {
+      console.error('[api-messages-start] ensure participants failed', {
+        conversationId,
+        userId: user.id,
+        target: target.id,
+        error: participantErr,
+      });
+      return jsonError('Impossibile registrare i partecipanti', 400);
     }
 
     if (initialMessage) {

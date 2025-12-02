@@ -12,6 +12,11 @@ type ProfileRow = {
   user_id?: string | null;
 };
 
+type ParticipantRow = {
+  user_id: string;
+  profile_id?: string | null;
+};
+
 export const runtime = 'nodejs';
 
 async function loadProfile(
@@ -29,8 +34,47 @@ async function loadProfile(
   return data;
 }
 
+async function ensureParticipants(
+  supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>,
+  conversationId: string,
+  participants: ParticipantRow[]
+) {
+  const rows = participants
+    .filter((p) => p.user_id)
+    .map((p) => ({
+      conversation_id: conversationId,
+      user_id: p.user_id,
+      profile_id: p.profile_id ?? null,
+    }));
+
+  if (!rows.length) return;
+
+  const { error } = await supabase
+    .from('conversation_participants')
+    .upsert(rows, { onConflict: 'conversation_id,user_id' });
+
+  if (error) {
+    console.error('[api-messages-send] upsert participants error', {
+      conversationId,
+      error,
+    });
+    throw new Error(error.message);
+  }
+}
+
 async function handleGet(conversationId: string, supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>, userId: string) {
   const me = await loadProfile(supabase, userId);
+  try {
+    await ensureParticipants(supabase, conversationId, [{ user_id: userId, profile_id: me.id }]);
+  } catch (participantErr: any) {
+    console.error('[api-messages-load] ensure participants failed', {
+      conversationId,
+      userId,
+      profileId: me.id,
+      error: participantErr,
+    });
+    return jsonError('Accesso alla conversazione non disponibile', 400);
+  }
 
   const { data: conversation, error } = await supabase
     .from('conversations')
@@ -79,6 +123,24 @@ async function handlePost(
 
   const me = await loadProfile(supabase, userId);
 
+  console.log('[api-messages-send] incoming', {
+    conversationId,
+    senderUserId: userId,
+    senderProfileId: me.id,
+    bodyLength: text.length,
+  });
+
+  try {
+    await ensureParticipants(supabase, conversationId, [{ user_id: userId, profile_id: me.id }]);
+  } catch (participantErr: any) {
+    console.error('[api-messages-send] ensure participants failed', {
+      conversationId,
+      senderProfileId: me.id,
+      error: participantErr,
+    });
+    return jsonError('Impossibile registrare i partecipanti', 400);
+  }
+
   const { data: conversation, error } = await supabase
     .from('conversations')
     .select('id, participant_a, participant_b')
@@ -101,9 +163,18 @@ async function handlePost(
     .maybeSingle();
 
   if (msgErr) {
-    console.error('API /messages/:id insert error', { conversationId, sender: me.id, error: msgErr });
+    console.error('[api-messages-send] insert error', {
+      conversationId,
+      sender: me.id,
+      error: msgErr,
+    });
     return jsonError(msgErr.message, 400);
   }
+
+  console.log('[api-messages-send] insert success', {
+    conversationId,
+    messageId: inserted?.id,
+  });
 
   const lastPreview = text.slice(0, 200);
   const lastAt = inserted?.created_at || new Date().toISOString();
