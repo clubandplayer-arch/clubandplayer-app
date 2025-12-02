@@ -113,15 +113,36 @@ export default function MessagesClient({
   );
 
   useEffect(() => {
-    if (initialConversationId) {
-      void selectConversation(initialConversationId);
-      return;
-    }
-    if (initialTargetProfileId) {
-      void openConversationWithProfile(initialTargetProfileId);
-      return;
-    }
-  }, [initialConversationId, initialTargetProfileId, openConversationWithProfile, selectConversation]);
+    let cancelled = false;
+    const init = async () => {
+      try {
+        if (initialConversationId) {
+          await selectConversation(initialConversationId);
+          return;
+        }
+        if (initialTargetProfileId) {
+          await openConversationWithProfile(initialTargetProfileId);
+          return;
+        }
+      } catch (error: any) {
+        if (!cancelled) {
+          console.error('[messages] apertura iniziale fallita', error);
+          show(error?.message || 'Errore apertura conversazione', { variant: 'error' });
+        }
+      }
+    };
+
+    void init();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    initialConversationId,
+    initialTargetProfileId,
+    openConversationWithProfile,
+    selectConversation,
+    show,
+  ]);
 
   useEffect(() => {
     if (!activeConversationId && conversations.length > 0) {
