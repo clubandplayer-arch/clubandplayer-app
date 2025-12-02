@@ -46,9 +46,15 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
       }
     }
 
+    console.info('[api/direct-messages/unread-count GET]', {
+      profile: me.id,
+      unreadThreads,
+    });
+
     return NextResponse.json({ unreadThreads });
   } catch (error: any) {
     console.error('[api/direct-messages/unread-count GET] errore', { error });
-    return jsonError('server_error', 500);
+    const message = typeof error?.message === 'string' ? error.message : 'server_error';
+    return jsonError(message, 500);
   }
 });

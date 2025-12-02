@@ -9,17 +9,45 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
     const me = await getActiveProfile(supabase, user.id);
     if (!me) return jsonError('profilo non trovato', 403);
 
-    const { data, error } = await supabase
+    const { data: messages, error: messagesError } = await supabase
       .from('direct_messages')
-      .select(
-        `id, sender_profile_id, recipient_profile_id, content, created_at,
-         sender:sender_profile_id ( id, display_name, avatar_url, account_type, status ),
-         recipient:recipient_profile_id ( id, display_name, avatar_url, account_type, status )`
-      )
+      .select('sender_profile_id, recipient_profile_id, content, created_at')
       .or(`sender_profile_id.eq.${me.id},recipient_profile_id.eq.${me.id}`)
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
+    if (messagesError) throw messagesError;
+
+    const otherIds = new Set<string>();
+    for (const row of messages ?? []) {
+      const senderId = row.sender_profile_id as string | null;
+      const recipientId = row.recipient_profile_id as string | null;
+      const otherId = senderId === me.id ? recipientId : senderId;
+      if (otherId) otherIds.add(otherId);
+    }
+
+    const otherProfiles = new Map<
+      string,
+      { id: string; display_name: string | null; avatar_url: string | null; status: string | null }
+    >();
+
+    if (otherIds.size > 0) {
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, display_name, avatar_url, status')
+        .in('id', Array.from(otherIds));
+
+      if (profilesError) throw profilesError;
+      for (const p of profiles ?? []) {
+        if (p.id) {
+          otherProfiles.set(p.id as string, {
+            id: p.id as string,
+            display_name: (p as any).display_name ?? null,
+            avatar_url: (p as any).avatar_url ?? null,
+            status: (p as any).status ?? null,
+          });
+        }
+      }
+    }
 
     const { data: readStates, error: readError } = await supabase
       .from('direct_message_read_state')
@@ -47,31 +75,33 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
       }
     >();
 
-    for (const row of data ?? []) {
+    for (const row of messages ?? []) {
       const senderId = row.sender_profile_id as string;
       const recipientId = row.recipient_profile_id as string;
       const otherId = senderId === me.id ? recipientId : senderId;
-
       if (!otherId) continue;
 
-      const otherProfile = senderId === me.id ? (row as any).recipient : (row as any).sender;
-      if (!otherProfile?.id || otherProfile.status !== 'active') continue;
+      const profile = otherProfiles.get(otherId);
+      if (!profile || profile.status !== 'active') continue;
 
       if (!threadsMap.has(otherId)) {
         threadsMap.set(otherId, {
-          otherProfileId: otherProfile.id,
-          otherName: otherProfile.display_name || 'Profilo',
-          otherAvatarUrl: otherProfile.avatar_url || null,
+          otherProfileId: profile.id,
+          otherName: profile.display_name || 'Profilo',
+          otherAvatarUrl: profile.avatar_url || null,
           lastMessage: row.content as string,
           lastMessageAt: row.created_at as string,
           lastIncomingAt: row.recipient_profile_id === me.id ? (row.created_at as string) : null,
         });
-        continue;
-      }
-
-      const thread = threadsMap.get(otherId)!;
-      if (!thread.lastIncomingAt && row.recipient_profile_id === me.id) {
-        thread.lastIncomingAt = row.created_at as string;
+      } else {
+        const thread = threadsMap.get(otherId)!;
+        if (row.recipient_profile_id === me.id) {
+          const currentIncoming = thread.lastIncomingAt ? new Date(thread.lastIncomingAt).getTime() : 0;
+          const candidate = new Date(row.created_at as string).getTime();
+          if (candidate > currentIncoming) {
+            thread.lastIncomingAt = row.created_at as string;
+          }
+        }
       }
     }
 
@@ -90,9 +120,16 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
       };
     });
 
+    console.info('[api/direct-messages/threads GET]', {
+      profile: me.id,
+      messageCount: messages?.length ?? 0,
+      threadCount: threads.length,
+    });
+
     return NextResponse.json({ threads });
   } catch (error: any) {
     console.error('[api/direct-messages/threads GET] errore', { error });
-    return jsonError('server_error', 500);
+    const message = typeof error?.message === 'string' ? error.message : 'server_error';
+    return jsonError(message, 500);
   }
 });
