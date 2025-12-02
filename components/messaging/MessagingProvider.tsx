@@ -27,8 +27,8 @@ export type MessagingContextValue = {
   loadingThread: boolean;
   isSending: boolean;
   refresh: () => Promise<void>;
-  openConversationWithProfile: (targetProfileId: string) => Promise<string | null>;
-  selectConversation: (conversationId: string) => Promise<void>;
+  openConversationWithProfile: (targetProfileId: string) => Promise<string>;
+  loadConversation: (conversationId: string) => Promise<void>;
   sendMessage: (conversationId: string, content: string) => Promise<MessageItem | null>;
   setDraft: (conversationId: string, value: string) => void;
 };
@@ -72,7 +72,7 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
     setDrafts((prev) => ({ ...prev, [conversationId]: value }));
   }, []);
 
-  const selectConversation = useCallback(async (conversationId: string) => {
+  const loadConversation = useCallback(async (conversationId: string) => {
     const id = (conversationId || '').trim();
     if (!id) return;
     setActiveConversationId(id);
@@ -80,9 +80,35 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
     try {
       const items = await fetchMessages(id);
       setMessages((prev) => ({ ...prev, [id]: mapMessages(items) }));
+      setConversations((prev) => {
+        const existing = prev.find((c) => c.id === id);
+        const last = items?.[items.length - 1];
+        if (existing) {
+          if (!last) return prev;
+          return prev.map((c) =>
+            c.id === id
+              ? {
+                  ...c,
+                  last_message_at: last.created_at ?? c.last_message_at ?? null,
+                  last_message_preview: last.content ?? c.last_message_preview ?? null,
+                }
+              : c,
+          );
+        }
+        return [
+          ...prev,
+          {
+            id,
+            peer: null,
+            last_message_at: last?.created_at ?? null,
+            last_message_preview: last?.content ?? null,
+          },
+        ];
+      });
     } catch (error) {
       console.error('[messaging-provider] load messages error', error);
       setMessages((prev) => ({ ...prev, [id]: [] }));
+      throw error;
     } finally {
       setLoadingThread(false);
     }
@@ -91,19 +117,20 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
   const openConversationWithProfile = useCallback(
     async (targetProfileId: string) => {
       const target = (targetProfileId || '').trim();
-      if (!target) return null;
+      if (!target) throw new Error('targetProfileId mancante');
       setLoadingThread(true);
       try {
         const res = await startConversation(target);
         if (!res.conversationId) throw new Error('conversationId mancante');
         setCurrentProfileId(res.currentProfileId || null);
-
+        await refresh();
         setConversations((prev) => {
           const exists = prev.some((c) => c.id === res.conversationId);
-          if (exists && res.peer) {
-            return prev.map((c) => (c.id === res.conversationId ? { ...c, peer: res.peer } : c));
+          if (exists) {
+            return prev.map((c) =>
+              c.id === res.conversationId && res.peer ? { ...c, peer: res.peer } : c,
+            );
           }
-          if (exists) return prev;
           return [
             {
               id: res.conversationId,
@@ -116,8 +143,7 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
         });
 
         setMessages((prev) => ({ ...prev, [res.conversationId]: prev[res.conversationId] ?? [] }));
-        setActiveConversationId(res.conversationId);
-        await selectConversation(res.conversationId);
+        await loadConversation(res.conversationId);
         return res.conversationId;
       } catch (error) {
         console.error('[messaging-provider] open conversation error', error);
@@ -126,7 +152,7 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
         setLoadingThread(false);
       }
     },
-    [selectConversation],
+    [loadConversation, refresh],
   );
 
   const sendMessage = useCallback(
@@ -189,7 +215,7 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
       isSending: sending,
       refresh,
       openConversationWithProfile,
-      selectConversation,
+      loadConversation,
       sendMessage,
       setDraft,
     }),
@@ -203,7 +229,7 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
       messages,
       openConversationWithProfile,
       refresh,
-      selectConversation,
+      loadConversation,
       sendMessage,
       sending,
       setDraft,

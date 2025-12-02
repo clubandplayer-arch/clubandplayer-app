@@ -1,8 +1,9 @@
 'use client';
 /* eslint-disable @next/next/no-img-element */
 
-import { useEffect, useMemo } from 'react';
-import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { useMessaging } from '@/components/messaging/MessagingProvider';
 import { useToast } from '@/components/common/ToastProvider';
 import type { ConversationPreview, MessageItem } from '@/lib/services/messaging';
@@ -21,13 +22,22 @@ function formatDate(value?: string | null) {
   }
 }
 
-function avatarSrc(name?: string | null, url?: string | null) {
-  if (url) return url;
-  const seed = encodeURIComponent(name || 'Profilo');
-  return `https://api.dicebear.com/7.x/initials/svg?seed=${seed}`;
+function Avatar({ peer }: { peer: ConversationPreview['peer'] }) {
+  const src = peer?.avatar_url ||
+    `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(peer?.display_name || 'Profilo')}`;
+
+  return (
+    <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-neutral-100 ring-1 ring-neutral-200">
+      {peer?.avatar_url ? (
+        <Image src={src} alt={peer.display_name || 'Profilo'} width={48} height={48} className="h-12 w-12 object-cover" />
+      ) : (
+        <img src={src} alt={peer?.display_name || 'Profilo'} className="h-12 w-12 object-cover" />
+      )}
+    </div>
+  );
 }
 
-function ConversationItem({
+function ConversationRow({
   item,
   active,
   onSelect,
@@ -36,24 +46,20 @@ function ConversationItem({
   active: boolean;
   onSelect: (id: string) => void;
 }) {
-  const peer = item.peer;
+  const peerName = item.peer?.display_name || 'Profilo';
   return (
     <button
       type="button"
       onClick={() => onSelect(item.id)}
       className={`w-full rounded-lg border p-3 text-left transition ${
-        active ? 'border-[var(--brand)] bg-[var(--brand)]/10 shadow-sm' : 'border-neutral-200 hover:border-[var(--brand)] hover:bg-[var(--brand)]/5'
+        active ? 'border-[var(--brand)] bg-[var(--brand)]/10 shadow-sm' : 'border-neutral-200 hover:border-[var(--brand)]'
       }`}
     >
       <div className="flex items-center gap-3">
-        <img
-          src={avatarSrc(peer?.display_name, peer?.avatar_url)}
-          alt={peer?.display_name || 'Profilo'}
-          className="h-10 w-10 rounded-full border object-cover"
-        />
+        <Avatar peer={item.peer} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
-            <div className="truncate font-semibold">{peer?.display_name || 'Profilo'}</div>
+            <div className="truncate font-semibold">{peerName}</div>
             <div className="text-xs text-neutral-500">{formatDate(item.last_message_at)}</div>
           </div>
           <div className="truncate text-sm text-neutral-600">{item.last_message_preview || 'Nessun messaggio'}</div>
@@ -86,7 +92,9 @@ export default function MessagesClient({
   initialConversationId?: string | null;
   initialTargetProfileId?: string | null;
 }) {
+  const router = useRouter();
   const { show } = useToast();
+  const [booting, setBooting] = useState(true);
   const {
     conversations,
     currentProfileId,
@@ -97,31 +105,41 @@ export default function MessagesClient({
     loadingThread,
     isSending,
     refresh,
-    selectConversation,
     openConversationWithProfile,
+    loadConversation,
     sendMessage,
     setDraft,
   } = useMessaging();
 
   const thread = useMemo(
     () => (activeConversationId ? messages[activeConversationId] ?? [] : []),
-    [messages, activeConversationId]
+    [messages, activeConversationId],
   );
   const draft = useMemo(
     () => (activeConversationId ? drafts[activeConversationId] ?? '' : ''),
-    [activeConversationId, drafts]
+    [activeConversationId, drafts],
+  );
+  const activeConversation = useMemo(
+    () => conversations.find((c) => c.id === activeConversationId) || null,
+    [conversations, activeConversationId],
   );
 
   useEffect(() => {
     let cancelled = false;
-    const init = async () => {
+    const bootstrap = async () => {
       try {
+        await refresh();
         if (initialConversationId) {
-          await selectConversation(initialConversationId);
+          await loadConversation(initialConversationId);
+          router.replace(`/messages?conversation=${initialConversationId}`);
           return;
         }
         if (initialTargetProfileId) {
-          await openConversationWithProfile(initialTargetProfileId);
+          const createdId = await openConversationWithProfile(initialTargetProfileId);
+          if (createdId) {
+            await loadConversation(createdId);
+            router.replace(`/messages?conversation=${createdId}`);
+          }
           return;
         }
       } catch (error: any) {
@@ -129,29 +147,39 @@ export default function MessagesClient({
           console.error('[messages] apertura iniziale fallita', error);
           show(error?.message || 'Errore apertura conversazione', { variant: 'error' });
         }
+      } finally {
+        if (!cancelled) setBooting(false);
       }
     };
 
-    void init();
+    void bootstrap();
     return () => {
       cancelled = true;
     };
   }, [
     initialConversationId,
     initialTargetProfileId,
+    loadConversation,
     openConversationWithProfile,
-    selectConversation,
+    refresh,
+    router,
     show,
   ]);
 
   useEffect(() => {
-    if (!activeConversationId && conversations.length > 0) {
-      void selectConversation(conversations[0].id);
+    if (!booting && !activeConversationId && conversations.length > 0) {
+      void loadConversation(conversations[0].id);
     }
-  }, [activeConversationId, conversations, selectConversation]);
+  }, [booting, activeConversationId, conversations, loadConversation]);
+
+  useEffect(() => {
+    if (activeConversationId) {
+      router.replace(`/messages?conversation=${activeConversationId}`);
+    }
+  }, [activeConversationId, router]);
 
   const handleSelect = (id: string) => {
-    void selectConversation(id);
+    void loadConversation(id);
   };
 
   const handleSend = async () => {
@@ -170,10 +198,13 @@ export default function MessagesClient({
   };
 
   return (
-    <div className="grid gap-6 md:grid-cols-[340px,1fr]">
-      <aside className="space-y-3">
+    <div className="grid gap-6 lg:grid-cols-[340px,1fr]">
+      <aside className="space-y-3 rounded-xl border bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between">
-          <h1 className="text-lg font-semibold text-neutral-900">Conversazioni</h1>
+          <div>
+            <h1 className="text-lg font-semibold text-neutral-900">Le tue conversazioni</h1>
+            <p className="text-sm text-neutral-500">Seleziona una chat per continuare a parlare.</p>
+          </div>
           <button
             type="button"
             onClick={() => refresh()}
@@ -182,35 +213,38 @@ export default function MessagesClient({
             Aggiorna
           </button>
         </div>
-        {loadingList ? <div className="text-sm text-neutral-500">Caricamento…</div> : null}
+        {loadingList && <div className="text-sm text-neutral-500">Caricamento conversazioni…</div>}
         <div className="space-y-2">
           {conversations.map((conv) => (
-            <ConversationItem
+            <ConversationRow
               key={conv.id}
               item={conv}
               active={conv.id === activeConversationId}
               onSelect={handleSelect}
             />
           ))}
-          {conversations.length === 0 && !loadingList && (
+          {!loadingList && conversations.length === 0 && !booting && (
             <div className="rounded-lg border border-dashed p-4 text-sm text-neutral-600">
-              Nessuna conversazione. Aprine una da un profilo.
+              Non hai ancora alcuna conversazione.
             </div>
           )}
         </div>
       </aside>
 
-      <section className="flex flex-col gap-4 rounded-xl border bg-white p-4 shadow-sm">
+      <section className="flex min-h-[480px] flex-col gap-4 rounded-xl border bg-white p-4 shadow-sm">
         {loadingThread && <div className="text-sm text-neutral-500">Caricamento thread…</div>}
-        {activeConversationId ? (
+        {activeConversationId && activeConversation ? (
           <>
-            <div className="flex items-center justify-between border-b pb-2">
-              <div className="font-semibold text-neutral-900">Thread</div>
-              <Link href="/network" className="text-sm text-[var(--brand)] hover:underline">
-                Vai alla rete
-              </Link>
+            <div className="flex items-center gap-3 border-b pb-3">
+              <Avatar peer={activeConversation.peer} />
+              <div>
+                <div className="font-semibold text-neutral-900">
+                  {activeConversation.peer?.display_name || 'Conversazione'}
+                </div>
+                <div className="text-sm text-neutral-500">Chat privata</div>
+              </div>
             </div>
-            <div className="flex flex-1 flex-col gap-3 overflow-y-auto border-b pb-3">
+            <div className="flex flex-1 flex-col gap-3 overflow-y-auto">
               {thread.map((msg) => (
                 <MessageBubble key={msg.id} message={msg} me={currentProfileId} />
               ))}
@@ -220,7 +254,7 @@ export default function MessagesClient({
                 </div>
               )}
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 border-t pt-2">
               <textarea
                 value={draft}
                 onChange={(e) => handleDraftChange(e.target.value)}
@@ -241,7 +275,7 @@ export default function MessagesClient({
           </>
         ) : (
           <div className="flex flex-1 items-center justify-center text-sm text-neutral-600">
-            Seleziona o apri una conversazione.
+            {booting ? 'Preparazione conversazione…' : 'Seleziona o apri una conversazione.'}
           </div>
         )}
       </section>
