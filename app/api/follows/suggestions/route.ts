@@ -57,14 +57,14 @@ export async function GET(req: NextRequest) {
 
     const { data: existing } = await supabase
       .from('follows')
-      .select('target_id, target_type')
-      .eq('follower_id', profileId)
+      .select('target_profile_id, target_type')
+      .eq('follower_profile_id', profileId)
       .in('target_type', followTargetTypes)
       .limit(200);
 
     const alreadyFollowing = new Set(
       (existing || [])
-        .map((row) => (row as any)?.target_id)
+        .map((row) => (row as any)?.target_profile_id)
         .filter(Boolean)
         .map((id) => id.toString()),
     );

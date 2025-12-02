@@ -60,8 +60,8 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     const { data: existing, error: checkError } = await supabase
       .from('follows')
       .select('id')
-      .eq('follower_id', profile.id)
-      .eq('target_id', targetProfile.id)
+      .eq('follower_profile_id', profile.id)
+      .eq('target_profile_id', targetProfile.id)
       .maybeSingle();
     if (checkError) throw checkError;
 
@@ -76,8 +76,8 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     }
 
     const { error: insertError } = await supabase.from('follows').insert({
-      follower_id: profile.id,
-      target_id: targetProfile.id,
+      follower_profile_id: profile.id,
+      target_profile_id: targetProfile.id,
       target_type: targetType,
     });
     if (insertError) throw insertError;

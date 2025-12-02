@@ -30,14 +30,14 @@ export async function GET(_req: NextRequest) {
 
   const { data: follows, error } = await supabase
     .from('follows')
-    .select('target_id')
-    .eq('follower_id', profile.id)
+    .select('target_profile_id')
+    .eq('follower_profile_id', profile.id)
     .limit(400);
 
   const { data: followers, error: followerErr } = await supabase
     .from('follows')
-    .select('follower_id')
-    .eq('target_id', profile.id)
+    .select('follower_profile_id')
+    .eq('target_profile_id', profile.id)
     .limit(400);
 
   if (error || followerErr) {
@@ -46,10 +46,10 @@ export async function GET(_req: NextRequest) {
   }
 
   const ids = (follows || [])
-    .map((row) => row?.target_id)
+    .map((row) => (row as any)?.target_profile_id)
     .filter(Boolean) as string[];
   const followerIds = (followers || [])
-    .map((row) => row?.follower_id)
+    .map((row) => (row as any)?.follower_profile_id)
     .filter(Boolean) as string[];
 
   return NextResponse.json({

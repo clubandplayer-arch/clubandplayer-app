@@ -49,8 +49,8 @@ export async function GET() {
 
   const { data: follows, error: followsError } = await supabase
     .from('follows')
-    .select('target_id, target_type, created_at')
-    .eq('follower_id', profile.id)
+    .select('target_profile_id, target_type, created_at')
+    .eq('follower_profile_id', profile.id)
     .limit(400);
 
   if (followsError) {
@@ -59,7 +59,7 @@ export async function GET() {
   }
 
   const targetIds = (follows || [])
-    .map((row) => row?.target_id)
+    .map((row) => (row as any)?.target_profile_id)
     .filter(Boolean) as string[];
 
   if (!targetIds.length) {
@@ -83,7 +83,7 @@ export async function GET() {
 
   const items: Item[] = (follows || [])
     .map((row) => {
-      const pid = row?.target_id;
+      const pid = (row as any)?.target_profile_id;
       if (!pid) return null;
       const p = profileMap.get(pid);
       if (!p) return null;
