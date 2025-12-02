@@ -27,8 +27,8 @@ export type MessagingContextValue = {
   loadingThread: boolean;
   isSending: boolean;
   refresh: () => Promise<void>;
-  openConversationWithProfile: (targetProfileId: string) => Promise<string | null>;
-  selectConversation: (conversationId: string) => Promise<void>;
+  openConversationWithProfile: (targetProfileId: string) => Promise<string>;
+  loadConversation: (conversationId: string) => Promise<void>;
   sendMessage: (conversationId: string, content: string) => Promise<MessageItem | null>;
   setDraft: (conversationId: string, value: string) => void;
 };
@@ -72,7 +72,7 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
     setDrafts((prev) => ({ ...prev, [conversationId]: value }));
   }, []);
 
-  const selectConversation = useCallback(async (conversationId: string) => {
+  const loadConversation = useCallback(async (conversationId: string) => {
     const id = (conversationId || '').trim();
     if (!id) return;
     setActiveConversationId(id);
@@ -83,6 +83,7 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('[messaging-provider] load messages error', error);
       setMessages((prev) => ({ ...prev, [id]: [] }));
+      throw error;
     } finally {
       setLoadingThread(false);
     }
@@ -91,7 +92,7 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
   const openConversationWithProfile = useCallback(
     async (targetProfileId: string) => {
       const target = (targetProfileId || '').trim();
-      if (!target) return null;
+      if (!target) throw new Error('targetProfileId mancante');
       setLoadingThread(true);
       try {
         const res = await startConversation(target);
@@ -116,8 +117,7 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
         });
 
         setMessages((prev) => ({ ...prev, [res.conversationId]: prev[res.conversationId] ?? [] }));
-        setActiveConversationId(res.conversationId);
-        await selectConversation(res.conversationId);
+        await loadConversation(res.conversationId);
         return res.conversationId;
       } catch (error) {
         console.error('[messaging-provider] open conversation error', error);
@@ -126,7 +126,7 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
         setLoadingThread(false);
       }
     },
-    [selectConversation],
+    [loadConversation],
   );
 
   const sendMessage = useCallback(
@@ -189,7 +189,7 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
       isSending: sending,
       refresh,
       openConversationWithProfile,
-      selectConversation,
+      loadConversation,
       sendMessage,
       setDraft,
     }),
@@ -203,7 +203,7 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
       messages,
       openConversationWithProfile,
       refresh,
-      selectConversation,
+      loadConversation,
       sendMessage,
       sending,
       setDraft,

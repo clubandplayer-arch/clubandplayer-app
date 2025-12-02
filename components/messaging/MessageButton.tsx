@@ -22,14 +22,11 @@ export function MessageButton({ targetProfileId, label = 'Messaggia', className 
     if (!target || loading) return;
     setLoading(true);
     try {
-      console.log('[messaging-button] open conversation click', { target });
       const conversationId = await openConversationWithProfile(target);
-      if (!conversationId) throw new Error('Impossibile aprire la conversazione');
       router.push(`/messages?conversation=${conversationId}`);
     } catch (error: any) {
       console.error('[messaging-button] open conversation error', { target, error });
       show(error?.message || 'Errore apertura conversazione', { variant: 'error' });
-      router.push(`/messages?to=${target}`);
     } finally {
       setLoading(false);
     }
