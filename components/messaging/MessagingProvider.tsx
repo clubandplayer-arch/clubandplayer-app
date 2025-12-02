@@ -80,6 +80,31 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
     try {
       const items = await fetchMessages(id);
       setMessages((prev) => ({ ...prev, [id]: mapMessages(items) }));
+      setConversations((prev) => {
+        const existing = prev.find((c) => c.id === id);
+        const last = items?.[items.length - 1];
+        if (existing) {
+          if (!last) return prev;
+          return prev.map((c) =>
+            c.id === id
+              ? {
+                  ...c,
+                  last_message_at: last.created_at ?? c.last_message_at ?? null,
+                  last_message_preview: last.content ?? c.last_message_preview ?? null,
+                }
+              : c,
+          );
+        }
+        return [
+          ...prev,
+          {
+            id,
+            peer: null,
+            last_message_at: last?.created_at ?? null,
+            last_message_preview: last?.content ?? null,
+          },
+        ];
+      });
     } catch (error) {
       console.error('[messaging-provider] load messages error', error);
       setMessages((prev) => ({ ...prev, [id]: [] }));
@@ -98,13 +123,14 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
         const res = await startConversation(target);
         if (!res.conversationId) throw new Error('conversationId mancante');
         setCurrentProfileId(res.currentProfileId || null);
-
+        await refresh();
         setConversations((prev) => {
           const exists = prev.some((c) => c.id === res.conversationId);
-          if (exists && res.peer) {
-            return prev.map((c) => (c.id === res.conversationId ? { ...c, peer: res.peer } : c));
+          if (exists) {
+            return prev.map((c) =>
+              c.id === res.conversationId && res.peer ? { ...c, peer: res.peer } : c,
+            );
           }
-          if (exists) return prev;
           return [
             {
               id: res.conversationId,
@@ -126,7 +152,7 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
         setLoadingThread(false);
       }
     },
-    [loadConversation],
+    [loadConversation, refresh],
   );
 
   const sendMessage = useCallback(

@@ -128,6 +128,7 @@ export default function MessagesClient({
     let cancelled = false;
     const bootstrap = async () => {
       try {
+        await refresh();
         if (initialConversationId) {
           await loadConversation(initialConversationId);
           router.replace(`/messages?conversation=${initialConversationId}`);
@@ -155,7 +156,15 @@ export default function MessagesClient({
     return () => {
       cancelled = true;
     };
-  }, [initialConversationId, initialTargetProfileId, loadConversation, openConversationWithProfile, router, show]);
+  }, [
+    initialConversationId,
+    initialTargetProfileId,
+    loadConversation,
+    openConversationWithProfile,
+    refresh,
+    router,
+    show,
+  ]);
 
   useEffect(() => {
     if (!booting && !activeConversationId && conversations.length > 0) {
