@@ -28,6 +28,7 @@ type MessagingContextValue = {
   conversations: ConversationSummary[];
   activeConversationId: string | null;
   messagesByConversation: MessagesMap;
+  draftsByConversation: Record<string, string>;
   me: ProfileSummary | null;
   loadingList: boolean;
   loadingThread: boolean;
@@ -36,6 +37,9 @@ type MessagingContextValue = {
   selectConversation: (conversationId: string | null) => Promise<void>;
   openConversationWithProfile: (targetProfileId: string, opts?: { activate?: boolean }) => Promise<string | null>;
   sendMessage: (conversationId: string, content: string) => Promise<MessageItem | null>;
+  setDraftForConversation: (conversationId: string, value: string) => void;
+  clearDraftForConversation: (conversationId: string) => void;
+  getDraftForConversation: (conversationId: string | null) => string;
 };
 
 const MessagingContext = createContext<MessagingContextValue | undefined>(undefined);
@@ -55,6 +59,7 @@ function upsertConversation(
 export function MessagingProvider({ children }: { children: React.ReactNode }) {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [messagesByConversation, setMessagesByConversation] = useState<MessagesMap>({});
+  const [draftsByConversation, setDraftsByConversation] = useState<Record<string, string>>({});
   const [me, setMe] = useState<ProfileSummary | null>(null);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [loadingList, setLoadingList] = useState(false);
@@ -81,7 +86,35 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const applyThread = useCallback((conversationId: string, messages: MessageItem[]) => {
-    setMessagesByConversation((prev) => ({ ...prev, [conversationId]: messages }));
+    setMessagesByConversation((prev) => {
+      const existing = prev[conversationId] ?? [];
+
+      const merged = [...existing, ...(messages ?? [])].reduce<MessageItem[]>((acc, item) => {
+        if (!item?.id) return acc;
+        const existsIdx = acc.findIndex((m) => m.id === item.id);
+        if (existsIdx >= 0) {
+          const next = [...acc];
+          next[existsIdx] = { ...acc[existsIdx], ...item };
+          return next;
+        }
+        return [...acc, item];
+      }, []);
+
+      merged.sort((a, b) => {
+        const aDate = new Date(a.created_at ?? 0).getTime();
+        const bDate = new Date(b.created_at ?? 0).getTime();
+        return aDate - bDate;
+      });
+
+      console.log('[messaging-load] apply thread', {
+        conversationId,
+        incoming: messages?.length ?? 0,
+        existing: existing.length,
+        merged: merged.length,
+      });
+
+      return { ...prev, [conversationId]: merged };
+    });
   }, []);
 
   const hydrateFromDetail = useCallback(
@@ -94,14 +127,40 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
     [applyThread]
   );
 
+  const setDraftForConversation = useCallback((conversationId: string, value: string) => {
+    if (!conversationId) return;
+    setDraftsByConversation((prev) => ({ ...prev, [conversationId]: value }));
+  }, []);
+
+  const clearDraftForConversation = useCallback((conversationId: string) => {
+    if (!conversationId) return;
+    setDraftsByConversation((prev) => {
+      const next = { ...prev };
+      delete next[conversationId];
+      return next;
+    });
+  }, []);
+
+  const getDraftForConversation = useCallback(
+    (conversationId: string | null) => {
+      if (!conversationId) return '';
+      return draftsByConversation[conversationId] ?? '';
+    },
+    [draftsByConversation]
+  );
+
   const selectConversation = useCallback(
     async (conversationId: string | null) => {
       setActiveConversationId(conversationId);
       if (!conversationId) return;
       setLoadingThread(true);
       try {
-        console.log('[messaging-provider] load conversation', { conversationId });
+        console.log('[messaging-load] load conversation', { conversationId });
         const detail = await fetchConversationDetail(conversationId);
+        console.log('[messaging-load] detail received', {
+          conversationId,
+          messages: detail?.messages?.length ?? 0,
+        });
         hydrateFromDetail(detail);
       } catch (error) {
         console.error('[messaging-provider] load conversation error', { conversationId, error });
@@ -138,7 +197,7 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
     async (conversationId: string, content: string) => {
       const cleanContent = (content || '').trim();
       if (!conversationId || !cleanContent) return null;
-      console.log('[messaging-provider] send message', {
+      console.log('[messaging-send] send message', {
         conversationId,
         contentLength: cleanContent.length,
       });
@@ -160,12 +219,7 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
 
       try {
         const saved = await sendMessageRequest(conversationId, cleanContent);
-        setMessagesByConversation((prev) => ({
-          ...prev,
-          [conversationId]: (prev[conversationId] ?? []).map((m) =>
-            m.id === optimistic.id ? saved : m
-          ),
-        }));
+        applyThread(conversationId, [saved]);
         setConversations((prev) =>
           prev.map((c) =>
             c.id === conversationId
@@ -177,6 +231,11 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
               : c
           )
         );
+        clearDraftForConversation(conversationId);
+        console.log('[messaging-send] send success', {
+          conversationId,
+          messageId: saved.id,
+        });
         return saved;
       } catch (error) {
         console.error('[messaging-provider] send message error', { conversationId, error });
@@ -193,7 +252,7 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
         });
       }
     },
-    [me]
+    [applyThread, clearDraftForConversation, me]
   );
 
   useEffect(() => {
@@ -204,6 +263,7 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
     conversations,
     activeConversationId,
     messagesByConversation,
+    draftsByConversation,
     me,
     loadingList,
     loadingThread,
@@ -212,10 +272,14 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
     selectConversation,
     openConversationWithProfile,
     sendMessage,
+    setDraftForConversation,
+    clearDraftForConversation,
+    getDraftForConversation,
   }), [
     conversations,
     activeConversationId,
     messagesByConversation,
+    draftsByConversation,
     me,
     loadingList,
     loadingThread,
@@ -224,6 +288,9 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
     selectConversation,
     openConversationWithProfile,
     sendMessage,
+    setDraftForConversation,
+    clearDraftForConversation,
+    getDraftForConversation,
   ]);
 
   return <MessagingContext.Provider value={value}>{children}</MessagingContext.Provider>;

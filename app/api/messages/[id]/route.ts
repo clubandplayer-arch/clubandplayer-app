@@ -56,10 +56,14 @@ async function handleGet(conversationId: string, supabase: Awaited<ReturnType<ty
     .from('messages')
     .select('id, conversation_id, sender_id, sender_profile_id, body, created_at')
     .eq('conversation_id', conversationId)
-    .order('created_at', { ascending: true })
-    .limit(200);
+    .order('created_at', { ascending: true });
 
   if (msgErr) return jsonError(msgErr.message, 400);
+
+  console.log('[messaging-api] load conversation', {
+    conversationId,
+    messages: messages?.length ?? 0,
+  });
 
   return NextResponse.json({ ok: true, conversation: { ...conversation, peer }, peer, me, messages: messages ?? [] });
 }

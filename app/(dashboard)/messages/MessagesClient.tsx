@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import type { ConversationSummary, MessageItem, ProfileSummary } from '@/types/messaging';
 import { MaterialIcon } from '@/components/icons/MaterialIcon';
@@ -141,9 +141,11 @@ export default function MessagesClient({
     selectConversation,
     openConversationWithProfile,
     sendMessage,
+    getDraftForConversation,
+    setDraftForConversation,
+    clearDraftForConversation,
   } = useMessaging();
 
-  const [draft, setDraft] = useState('');
   const appliedInitialRef = useRef(false);
 
   const currentPeer = useMemo(
@@ -154,6 +156,11 @@ export default function MessagesClient({
   const messages = useMemo(
     () => (activeConversationId ? messagesByConversation[activeConversationId] ?? [] : []),
     [messagesByConversation, activeConversationId]
+  );
+
+  const draft = useMemo(
+    () => getDraftForConversation(activeConversationId),
+    [activeConversationId, getDraftForConversation]
   );
 
   const sending = activeConversationId ? isSending(activeConversationId) : false;
@@ -190,11 +197,19 @@ export default function MessagesClient({
     if (!draft.trim() || !activeConversationId || sending) return;
     try {
       await sendMessage(activeConversationId, draft);
-      setDraft('');
+      clearDraftForConversation(activeConversationId);
     } catch (e: any) {
       show(e?.message || 'Errore invio', { variant: 'error' });
     }
-  }, [activeConversationId, draft, sending, sendMessage, show]);
+  }, [activeConversationId, clearDraftForConversation, draft, sending, sendMessage, show]);
+
+  const handleDraftChange = useCallback(
+    (value: string) => {
+      if (!activeConversationId) return;
+      setDraftForConversation(activeConversationId, value);
+    },
+    [activeConversationId, setDraftForConversation]
+  );
 
   const handleRefresh = useCallback(() => {
     void refreshConversations();
@@ -267,7 +282,7 @@ export default function MessagesClient({
             <div className="mt-4 space-y-2 rounded-xl border border-neutral-200 p-3">
               <textarea
                 value={draft}
-                onChange={(e) => setDraft(e.target.value)}
+                onChange={(e) => handleDraftChange(e.target.value)}
                 rows={3}
                 placeholder="Scrivi un messaggio"
                 className="w-full rounded-lg border px-3 py-2 text-sm focus:border-[var(--brand)] focus:outline-none"
