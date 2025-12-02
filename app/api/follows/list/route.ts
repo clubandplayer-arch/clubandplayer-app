@@ -1,106 +1,43 @@
-import { NextResponse } from 'next/server';
-import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { NextResponse, type NextRequest } from 'next/server';
+import { withAuth, jsonError } from '@/lib/api/auth';
+import { getActiveProfile } from '@/lib/api/profile';
 
 export const runtime = 'nodejs';
 
-type Role = 'athlete' | 'club' | 'guest';
+export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
+  try {
+    const me = await getActiveProfile(supabase, user.id);
+    if (!me) return jsonError('profilo non trovato', 403);
 
-type Item = {
-  id: string;
-  name: string;
-  city: string | null;
-  country: string | null;
-  sport: string | null;
-  role: string | null;
-  avatarUrl: string | null;
-  accountType: 'club' | 'athlete';
-  targetType: 'club' | 'player';
-};
+    const { data: rows, error } = await supabase
+      .from('follows')
+      .select('target_profile_id')
+      .eq('follower_profile_id', me.id);
+    if (error) throw error;
 
-function accountTypeFromProfile(raw?: string | null): 'club' | 'athlete' {
-  return raw === 'club' ? 'club' : 'athlete';
-}
+    const targetIds = (rows || []).map((r) => (r as any)?.target_profile_id).filter(Boolean);
+    if (!targetIds.length) return NextResponse.json({ items: [] });
 
-export async function GET() {
-  const supabase = await getSupabaseServerClient();
-  const { data: userRes } = await supabase.auth.getUser();
+    const { data: profiles, error: profError } = await supabase
+      .from('profiles')
+      .select('id, display_name, account_type, avatar_url, city, country, sport, role')
+      .in('id', targetIds);
+    if (profError) throw profError;
 
-  if (!userRes?.user) {
-    return NextResponse.json({ items: [], role: 'guest', profileId: null });
+    const items = (profiles || []).map((p) => ({
+      id: p.id,
+      name: p.display_name || 'Profilo',
+      account_type: p.account_type,
+      city: p.city,
+      country: p.country,
+      sport: p.sport,
+      role: p.role,
+      avatar_url: p.avatar_url,
+    }));
+
+    return NextResponse.json({ items });
+  } catch (error: any) {
+    console.error('[api/follows/list] errore', { error });
+    return jsonError('server_error', 500);
   }
-
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('id, account_type, status')
-    .eq('user_id', userRes.user.id)
-    .maybeSingle();
-
-  const role: Role =
-    profile?.account_type === 'club' || profile?.account_type === 'athlete'
-      ? profile.account_type
-      : 'guest';
-
-  if (profileError || !profile?.id || profile.status !== 'active') {
-    if (profileError) {
-      console.error('[api/follows/list] errore profilo', profileError);
-    }
-    return NextResponse.json({ items: [], role, profileId: profile?.id ?? null });
-  }
-
-  const { data: follows, error: followsError } = await supabase
-    .from('follows')
-    .select('target_id, target_type, created_at')
-    .eq('follower_id', profile.id)
-    .limit(400);
-
-  if (followsError) {
-    console.error('[api/follows/list] errore lettura follows', followsError);
-    return NextResponse.json({ items: [], role, profileId: profile.id, error: followsError.message });
-  }
-
-  const targetIds = (follows || [])
-    .map((row) => row?.target_id)
-    .filter(Boolean) as string[];
-
-  if (!targetIds.length) {
-    return NextResponse.json({ items: [], role, profileId: profile.id });
-  }
-
-  const { data: profiles, error: profilesError } = await supabase
-    .from('profiles')
-    .select('id, display_name, full_name, city, country, sport, role, avatar_url, account_type, status')
-    .in('id', targetIds)
-    .eq('status', 'active');
-
-  if (profilesError) {
-    console.error('[api/follows/list] errore profili target', profilesError);
-    return NextResponse.json({ items: [], role, profileId: profile.id, error: profilesError.message });
-  }
-
-  const profileMap = new Map(
-    (profiles || []).map((p) => [p.id, p]),
-  );
-
-  const items: Item[] = (follows || [])
-    .map((row) => {
-      const pid = row?.target_id;
-      if (!pid) return null;
-      const p = profileMap.get(pid);
-      if (!p) return null;
-      const accountType = accountTypeFromProfile(p.account_type);
-      return {
-        id: p.id,
-        name: (p.display_name || p.full_name || 'Profilo').toString(),
-        city: p.city || null,
-        country: p.country || null,
-        sport: p.sport || null,
-        role: p.role || null,
-        avatarUrl: p.avatar_url || null,
-        accountType,
-        targetType: row?.target_type === 'club' ? 'club' : 'player',
-      } as Item;
-    })
-    .filter(Boolean) as Item[];
-
-  return NextResponse.json({ items, role, profileId: profile.id });
-}
+});

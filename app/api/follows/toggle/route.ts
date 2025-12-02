@@ -1,95 +1,46 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
+import { getActiveProfile, getProfileById } from '@/lib/api/profile';
 
 export const runtime = 'nodejs';
 
-type TargetType = 'club' | 'player';
-
-function normalizeType(raw?: string | null): TargetType | null {
-  const val = (raw || '').toLowerCase();
-  if (val === 'club') return 'club';
-  if (val === 'player' || val === 'athlete') return 'player';
-  return null;
-}
-
-async function getActiveProfile(
-  supabase: Awaited<ReturnType<typeof import('@/lib/supabase/server').getSupabaseServerClient>>,
-  userId: string,
-) {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('id, account_type, status')
-    .eq('user_id', userId)
-    .maybeSingle();
-  if (error) throw error;
-  if (!data?.id || data.status !== 'active') return null;
-  return data;
-}
-
-async function getTargetProfile(
-  supabase: Awaited<ReturnType<typeof import('@/lib/supabase/server').getSupabaseServerClient>>,
-  rawTargetId: string,
-) {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('id, account_type, status')
-    .or(`id.eq.${rawTargetId},user_id.eq.${rawTargetId}`)
-    .maybeSingle();
-  if (error) throw error;
-  if (!data?.id || data.status !== 'active') return null;
-  return data;
-}
-
-export const GET = async () => NextResponse.json({ ok: false, error: 'Metodo non supportato' }, { status: 405 });
-
 export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
-  const body = (await req.json().catch(() => ({}))) as { targetId?: string; targetType?: string };
-  const targetId = (body?.targetId || '').trim();
-  const targetType = normalizeType(body?.targetType);
-
-  if (!targetId) return jsonError('targetId mancante', 400);
-  if (!targetType) return jsonError('targetType non valido', 400);
+  const body = (await req.json().catch(() => ({}))) as { targetProfileId?: string };
+  const targetProfileId = (body?.targetProfileId || '').trim();
+  if (!targetProfileId) return jsonError('targetProfileId mancante', 400);
 
   try {
-    const profile = await getActiveProfile(supabase, user.id);
-    if (!profile) return jsonError('no_profile', 403);
+    const me = await getActiveProfile(supabase, user.id);
+    if (!me) return jsonError('profilo non trovato', 403);
 
-    const targetProfile = await getTargetProfile(supabase, targetId);
-    if (!targetProfile) return jsonError('target_not_found', 404);
+    const target = await getProfileById(supabase, targetProfileId);
+    if (!target) return jsonError('profilo target non trovato', 404);
 
-    const { data: existing, error: checkError } = await supabase
+    const { data: existing, error: findError } = await supabase
       .from('follows')
       .select('id')
-      .eq('follower_id', profile.id)
-      .eq('target_id', targetProfile.id)
+      .eq('follower_profile_id', me.id)
+      .eq('target_profile_id', target.id)
       .maybeSingle();
-    if (checkError) throw checkError;
+    if (findError) throw findError;
 
     if (existing?.id) {
-      const { error: deleteError } = await supabase
-        .from('follows')
-        .delete()
-        .eq('id', existing.id);
-      if (deleteError) throw deleteError;
-
-      return NextResponse.json({ ok: true, isFollowing: false, targetId: targetProfile.id });
+      const { error: delError } = await supabase.from('follows').delete().eq('id', existing.id);
+      if (delError) throw delError;
+      return NextResponse.json({ ok: true, isFollowing: false, targetProfileId: target.id });
     }
 
     const { error: insertError } = await supabase.from('follows').insert({
-      follower_id: profile.id,
-      target_id: targetProfile.id,
-      target_type: targetType,
+      follower_profile_id: me.id,
+      target_profile_id: target.id,
     });
     if (insertError) throw insertError;
 
-    return NextResponse.json({ ok: true, isFollowing: true, targetId: targetProfile.id });
+    return NextResponse.json({ ok: true, isFollowing: true, targetProfileId: target.id });
   } catch (error: any) {
-    console.error('API /follows/toggle error', {
-      followerId: user.id,
-      targetId,
-      targetType,
-      error,
-    });
-    return jsonError('db_error', 500);
+    console.error('[api/follows/toggle] errore', { error, targetProfileId });
+    return jsonError('server_error', 500);
   }
 });
+
+export const GET = async () => NextResponse.json({ error: 'Metodo non supportato' }, { status: 405 });

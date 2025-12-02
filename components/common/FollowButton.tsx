@@ -1,107 +1,60 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useToast } from './ToastProvider';
-import { useFollowState } from '@/hooks/useFollowState';
+import { useFollow } from '@/components/follow/FollowProvider';
 
 export type FollowButtonProps = {
-  targetId: string;
-  targetType: 'club' | 'athlete' | 'player';
-  initialIsFollowing?: boolean;
-  targetName?: string;
-  size?: 'sm' | 'md';
-  className?: string;
+  targetProfileId: string;
   labelFollow?: string;
   labelFollowing?: string;
-  onChange?: (next: boolean) => void;
+  size?: 'sm' | 'md';
+  className?: string;
 };
 
-type NormalizedType = 'club' | 'player';
-
-function normalizeType(raw: FollowButtonProps['targetType']): NormalizedType {
-  return raw === 'club' ? 'club' : 'player';
-}
-
 export default function FollowButton({
-  targetId,
-  targetType,
-  initialIsFollowing,
-  targetName,
-  size = 'sm',
-  className,
+  targetProfileId,
   labelFollow = 'Segui',
   labelFollowing = 'Seguo',
-  onChange,
+  size = 'md',
+  className,
 }: FollowButtonProps) {
-  const toast = useToast();
-  const { markFollowing } = useFollowState();
-  const normalizedType = useMemo(() => normalizeType(targetType), [targetType]);
-  const [isFollowing, setIsFollowing] = useState(Boolean(initialIsFollowing));
-  const [pending, setPending] = useState(false);
+  const { isFollowing, toggleFollow, ensureState, pending } = useFollow();
+  const [initialized, setInitialized] = useState(false);
+
+  const cleanId = useMemo(() => (targetProfileId || '').trim(), [targetProfileId]);
+  const following = cleanId ? isFollowing(cleanId) : false;
+  const loading = cleanId ? pending.has(cleanId) : false;
 
   useEffect(() => {
-    setIsFollowing(Boolean(initialIsFollowing));
-  }, [initialIsFollowing, targetId]);
+    if (!cleanId || initialized) return;
+    void ensureState([cleanId]);
+    setInitialized(true);
+  }, [cleanId, ensureState, initialized]);
 
-  async function handleToggle() {
-    if (!targetId || pending) return;
-    setPending(true);
+  const label = following ? labelFollowing : labelFollow;
+  const padding = size === 'sm' ? 'px-2 py-1 text-sm' : 'px-3 py-1.5 text-sm';
 
+  const handleClick = async () => {
+    if (!cleanId || loading) return;
     try {
-      console.log('[follow] click', { targetId, targetType: normalizedType, isFollowing });
-      const res = await fetch('/api/follows/toggle', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ targetId, targetType: normalizedType }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data?.ok) {
-        throw new Error(data?.error || 'Operazione non riuscita');
-      }
-
-      const next = Boolean(data.isFollowing);
-      const resolvedTargetId = typeof data?.targetId === 'string' ? data.targetId : targetId;
-      console.log('[follow] toggle success', { targetId: resolvedTargetId, next });
-      setIsFollowing(next);
-      markFollowing?.(resolvedTargetId, next);
-      onChange?.(next);
-      toast?.success(
-        next
-          ? 'Ora stai seguendo il profilo'
-          : 'Hai smesso di seguire il profilo',
-      );
-    } catch (err: any) {
-      console.error('[FollowButton] toggle fallito', err);
-      toast?.error(
-        err?.message || 'Impossibile aggiornare il follow. Riprova più tardi.',
-      );
-    } finally {
-      setPending(false);
+      await toggleFollow(cleanId);
+    } catch (error) {
+      console.error('[FollowButton] errore toggle', error);
     }
-  }
-
-  const sizeCls = size === 'md' ? 'px-3.5 py-2 text-sm' : 'px-3 py-1.5 text-sm';
+  };
 
   return (
     <button
       type="button"
-      onClick={handleToggle}
-      disabled={pending || !targetId}
-      aria-busy={pending}
-      aria-pressed={isFollowing}
-      className={[
-        'inline-flex items-center justify-center rounded-xl border font-semibold transition',
-        'hover:bg-neutral-50 disabled:opacity-60 dark:border-neutral-700 dark:hover:bg-neutral-800',
-        isFollowing ? 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900' : '',
-        sizeCls,
-        className || '',
-      ]
-        .join(' ')
-        .trim()}
+      onClick={handleClick}
+      disabled={!cleanId || loading}
+      className={`inline-flex items-center gap-2 rounded-md border transition ${
+        following
+          ? 'border-[var(--brand)] bg-[var(--brand)]/10 text-[var(--brand)]'
+          : 'border-neutral-300 bg-white text-neutral-800 hover:bg-neutral-50'
+      } ${padding} ${className || ''}`}
     >
-      {pending ? '...' : isFollowing ? labelFollowing : labelFollow}
-      {targetName ? <span className="sr-only"> {targetName}</span> : null}
+      {loading ? '...' : label}
     </button>
   );
 }

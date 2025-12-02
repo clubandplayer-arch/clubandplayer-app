@@ -6,7 +6,6 @@ import ApplyCell from '@/components/opportunities/ApplyCell';
 import FollowButton from '@/components/common/FollowButton';
 import { useToast } from '@/components/common/ToastProvider';
 import type { Opportunity } from '@/types/opportunity';
-import { useFollowState } from '@/hooks/useFollowState';
 
 type Role = 'athlete' | 'club' | 'guest';
 
@@ -42,7 +41,6 @@ export default function OpportunitiesTable({
 }) {
   const toast = useToast();
   const [saving, setSaving] = useState<string | null>(null);
-  const { following } = useFollowState();
 
   const ownerNameMap = useMemo(() => clubNames ?? {}, [clubNames]);
 
@@ -68,7 +66,6 @@ export default function OpportunitiesTable({
           o.club_name ||
           (ownerId ? ownerNameMap[ownerId] : undefined) ||
           '—';
-        const initialIsFollowing = profileOwnerId ? following.has(profileOwnerId) : false;
 
         return (
           <article key={o.id} className="rounded-2xl border bg-white/80 shadow-sm p-4 md:p-5">
@@ -104,15 +101,12 @@ export default function OpportunitiesTable({
                       clubLabel
                     )}
                   </span>
-                  {showFollow && (
-                    <FollowButton
-                      targetId={profileOwnerId as string}
-                      targetType="club"
-                      targetName={clubLabel || undefined}
-                      size="sm"
-                      initialIsFollowing={initialIsFollowing}
-                    />
-                  )}
+                {showFollow && (
+                  <FollowButton
+                    targetProfileId={profileOwnerId as string}
+                    size="sm"
+                  />
+                )}
                   <span className="text-gray-500">•</span>
                   <Link href={`/opportunities/${o.id}`} className="text-blue-700 hover:underline">
                     Dettagli annuncio

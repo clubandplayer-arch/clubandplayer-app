@@ -5,8 +5,6 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentProfileContext';
 
-type Role = 'club' | 'athlete' | 'guest';
-
 type FollowedItem = {
   id: string;
   name: string;
@@ -31,7 +29,7 @@ function subtitle(item: FollowedItem, viewerRole: ProfileRole) {
 
 export default function FollowedClubs() {
   const { role: contextRole } = useCurrentProfileContext();
-  const [role, setRole] = useState<Role>('guest');
+  const [role, setRole] = useState<ProfileRole>('guest');
   const [items, setItems] = useState<FollowedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -43,10 +41,17 @@ export default function FollowedClubs() {
       try {
         const res = await fetch('/api/follows/list', { credentials: 'include', cache: 'no-store' });
         const data = await res.json().catch(() => ({}));
-        const nextRole: Role =
+        const nextRole: ProfileRole =
           data?.role === 'club' || data?.role === 'athlete' ? data.role : contextRole;
         const rows: FollowedItem[] = Array.isArray(data?.items)
-          ? (data.items as FollowedItem[])
+          ? (data.items as any[]).map((item) => ({
+              id: item.id,
+              name: item.name ?? item.display_name ?? 'Profilo',
+              city: item.city ?? item.country ?? null,
+              sport: item.sport ?? null,
+              avatarUrl: item.avatar_url ?? item.avatarUrl ?? null,
+              accountType: item.account_type === 'club' ? 'club' : 'athlete',
+            }))
           : [];
         setRole(nextRole);
         setItems(rows);
@@ -58,11 +63,8 @@ export default function FollowedClubs() {
     })();
   }, [contextRole]);
 
-  const heading = role === 'club' ? 'Player che segui' : 'Club che segui';
-  const emptyCopy =
-    role === 'club'
-      ? 'Inizia a seguire player per vederli qui.'
-      : 'Inizia a seguire club per vederli qui.';
+  const heading = 'Profili che segui';
+  const emptyCopy = 'Inizia a seguire profili per vederli qui.';
 
   if (loading) {
     return (
@@ -101,8 +103,13 @@ export default function FollowedClubs() {
                 className="h-9 w-9 rounded-full object-cover ring-1 ring-zinc-200 dark:ring-zinc-800"
               />
               <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                  {item.name}
+                <div className="flex items-center gap-2">
+                  <div className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                    {item.name}
+                  </div>
+                  <span className="rounded-full border border-zinc-200 bg-zinc-100 px-2 py-[1px] text-[10px] font-semibold uppercase tracking-wide text-zinc-700">
+                    {item.accountType === 'club' ? 'Club' : 'Player'}
+                  </span>
                 </div>
                 <div className="truncate text-xs text-zinc-500">{subtitle(item, role)}</div>
                 <Link

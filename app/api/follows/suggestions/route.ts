@@ -15,6 +15,7 @@ type Suggestion = {
   role?: string | null;
   avatar_url?: string | null;
   followers?: number | null;
+  account_type?: string | null;
 };
 
 function clamp(n: number, min: number, max: number) {
@@ -31,7 +32,7 @@ export async function GET(req: NextRequest) {
     const { data: userRes } = await supabase.auth.getUser();
 
     if (!userRes?.user) {
-      return NextResponse.json({ items: [], role: 'guest', targetType: 'club' });
+      return NextResponse.json({ items: [], role: 'guest' });
     }
 
     const { data: profile } = await supabase
@@ -46,25 +47,23 @@ export async function GET(req: NextRequest) {
         : 'guest') || 'guest';
 
     if (!profile?.id || profile.status !== 'active') {
-      return NextResponse.json({ items: [], role, targetType: 'club' });
+      return NextResponse.json({ items: [], role });
     }
 
     const profileId = profile.id;
 
     const targetProfileType: Role = role === 'club' ? 'athlete' : 'club';
-    const followTargetTypes = targetProfileType === 'athlete' ? ['player', 'athlete'] : ['club'];
     const viewerCountry = (profile?.interest_country || profile?.country || '').trim();
 
     const { data: existing } = await supabase
       .from('follows')
-      .select('target_id, target_type')
-      .eq('follower_id', profileId)
-      .in('target_type', followTargetTypes)
+      .select('target_profile_id')
+      .eq('follower_profile_id', profileId)
       .limit(200);
 
     const alreadyFollowing = new Set(
       (existing || [])
-        .map((row) => (row as any)?.target_id)
+        .map((row) => (row as any)?.target_profile_id)
         .filter(Boolean)
         .map((id) => id.toString()),
     );
@@ -111,16 +110,16 @@ export async function GET(req: NextRequest) {
       sport: p.sport || null,
       avatar_url: p.avatar_url || null,
       followers: p.followers_count ?? null,
-    }));
+      account_type: p.account_type || targetProfileType,
+    } as any));
 
     return NextResponse.json({
       items,
       nextCursor: null,
       role,
-      targetType: targetProfileType,
     });
   } catch (err) {
     console.error('[follows/suggestions] error', err);
-    return NextResponse.json({ items: [], role: 'guest', targetType: 'club' });
+    return NextResponse.json({ items: [], role: 'guest' });
   }
 }

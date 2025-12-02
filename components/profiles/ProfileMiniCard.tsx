@@ -7,7 +7,6 @@ import { useEffect, useState } from 'react';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 import FollowButton from '@/components/clubs/FollowButton';
-import { useFollowState } from '@/hooks/useFollowState';
 
 import { resolveCountryName, resolveStateName } from '@/lib/geodata/countryStateCityDataset';
 
@@ -134,7 +133,6 @@ function countryLabel(value?: string | null): { iso: string | null; label: strin
 export default function ProfileMiniCard() {
   const [p, setP] = useState<P | null>(null);
   const [interest, setInterest] = useState<InterestGeo>({ city: '—', region: '', country: '' });
-  const { following } = useFollowState();
 
   useEffect(() => {
     (async () => {
@@ -184,7 +182,6 @@ export default function ProfileMiniCard() {
 
   const isClub = p?.account_type === 'club';
   const targetId = p?.id ? String(p.id) : p?.user_id ? String(p.user_id) : '';
-  const followTargetType: 'club' | 'player' = isClub ? 'club' : 'player';
   const year = new Date().getFullYear();
   const age = !isClub && p?.birth_year ? Math.max(0, year - p.birth_year) : null;
   const name = p?.full_name || p?.display_name || (isClub ? 'Il tuo club' : 'Benvenuto!');
@@ -269,13 +266,11 @@ export default function ProfileMiniCard() {
               {targetId ? (
                 <div className="flex justify-center">
                   <FollowButton
-                    targetId={targetId}
-                    targetType={followTargetType}
+                    targetProfileId={targetId}
                     labelFollow="Segui"
                     labelFollowing="Seguo"
                     size="md"
                     className="w-full justify-center"
-                    initialIsFollowing={targetId ? following.has(targetId) : false}
                   />
             </div>
           ) : null}
@@ -344,13 +339,11 @@ export default function ProfileMiniCard() {
           {targetId ? (
             <div className="flex justify-center">
               <FollowButton
-                targetId={targetId}
-                targetType={followTargetType}
+                targetProfileId={targetId}
                 labelFollow="Segui"
                 labelFollowing="Seguo"
                 size="md"
                 className="w-full justify-center"
-                initialIsFollowing={targetId ? following.has(targetId) : false}
               />
             </div>
           ) : null}

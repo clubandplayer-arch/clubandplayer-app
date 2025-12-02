@@ -41,14 +41,18 @@ export async function requireAuth(_req: NextRequest): Promise<
 
 /** Wrapper comodo per i route handlers protetti */
 export function withAuth(
-  handler: (req: NextRequest, ctx: AuthContext) => Promise<Response> | Response
+  handler: (
+    req: NextRequest,
+    ctx: AuthContext,
+    routeContext?: { params?: Promise<Record<string, string>> | Record<string, string> }
+  ) => Promise<Response> | Response
 ) {
   return async (
     req: NextRequest,
-    _context?: { params?: Promise<Record<string, string>> | Record<string, string> }
+    routeContext?: { params?: Promise<Record<string, string>> | Record<string, string> }
   ) => {
     const r = await requireAuth(req);
     if ('res' in r) return r.res;
-    return handler(req, r.ctx);
+    return handler(req, r.ctx, routeContext);
   };
 }

@@ -64,25 +64,6 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
     undefined;
   const clubProfileId = clubProfile?.id ?? clubId;
 
-  let initialIsFollowing = false;
-  if (authUser?.user && clubProfileId) {
-    const { data: meProfile } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('user_id', authUser.user.id)
-      .maybeSingle();
-
-    if (meProfile?.id) {
-      const { data: followRow } = await supabase
-        .from('follows')
-        .select('id')
-        .eq('follower_id', meProfile.id)
-        .eq('target_id', clubProfileId)
-        .maybeSingle();
-      initialIsFollowing = Boolean(followRow?.id);
-    }
-  }
-
   const place = [opp.city, opp.province, opp.region, opp.country].filter(Boolean).join(', ');
   const genderLabel = opportunityGenderLabel((opp as any).gender) ?? undefined;
   const ageLabel = formatAge((opp as any).age_min, (opp as any).age_max);
@@ -164,12 +145,9 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
 
             {clubProfileId && (
               <FollowButton
-                targetId={clubProfileId}
-                targetType="club"
-                targetName={clubName || undefined}
+                targetProfileId={clubProfileId}
                 size="md"
                 className="w-full justify-center"
-                initialIsFollowing={initialIsFollowing}
               />
             )}
 

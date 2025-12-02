@@ -42,7 +42,11 @@ function avatarSrc(name: string, url?: string | null) {
 }
 
 function profileHref(id: string, type: AccountType) {
-  return type === 'club' ? `/clubs/${id}` : `/athletes/${id}`;
+  return type === 'club' ? `/c/${id}` : `/u/${id}`;
+}
+
+function mapAccountType(value: string | null | undefined): AccountType {
+  return value === 'club' ? 'club' : 'athlete';
 }
 
 function subtitle(profile: NetworkProfile) {
@@ -61,10 +65,8 @@ function AccountBadge({ type }: { type: AccountType }) {
 
 function ProfileCard({
   profile,
-  onFollowChange,
 }: {
   profile: NetworkProfile;
-  onFollowChange?: (next: boolean) => void;
 }) {
   return (
     <div className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white/80 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900/60">
@@ -88,12 +90,8 @@ function ProfileCard({
       </div>
       <div className="flex flex-col items-end gap-2">
         <FollowButton
-          targetId={profile.id}
-          targetType={profile.accountType}
-          initialIsFollowing={profile.isFollowing}
-          targetName={profile.name}
+          targetProfileId={profile.id}
           size="md"
-          onChange={onFollowChange}
         />
         <Link
           href={profileHref(profile.id, profile.accountType)}
@@ -139,12 +137,11 @@ export default function NetworkPage() {
     try {
       const res = await fetch('/api/follows/suggestions?limit=20', { credentials: 'include', cache: 'no-store' });
       const data = (await res.json().catch(() => ({}))) as ApiResponse;
-      const targetType = data?.targetType === 'athlete' ? 'athlete' : 'club';
       const items: NetworkProfile[] = Array.isArray(data?.items)
         ? data.items.map((p: any) => ({
             id: p.id,
-            name: p.name ?? 'Profilo',
-            accountType: targetType,
+            name: p.name ?? p.display_name ?? 'Profilo',
+            accountType: mapAccountType(p.account_type),
             city: p.city ?? null,
             country: p.country ?? null,
             sport: p.sport ?? null,
@@ -171,13 +168,13 @@ export default function NetworkPage() {
       const items: NetworkProfile[] = Array.isArray(data?.items)
         ? data.items.map((p: any) => ({
             id: p.id,
-            name: p.name ?? 'Profilo',
-            accountType: p.accountType === 'club' ? 'club' : 'athlete',
+            name: p.name ?? p.display_name ?? 'Profilo',
+            accountType: mapAccountType(p.account_type),
             city: p.city ?? null,
             country: p.country ?? null,
             sport: p.sport ?? null,
             role: p.role ?? null,
-            avatarUrl: p.avatarUrl ?? null,
+            avatarUrl: p.avatar_url ?? null,
             isFollowing: true,
           }))
         : [];
@@ -199,13 +196,13 @@ export default function NetworkPage() {
       const items: NetworkProfile[] = Array.isArray(data?.items)
         ? data.items.map((p: any) => ({
             id: p.id,
-            name: p.name ?? 'Profilo',
-            accountType: p.accountType === 'club' ? 'club' : 'athlete',
+            name: p.name ?? p.display_name ?? 'Profilo',
+            accountType: mapAccountType(p.account_type),
             city: p.city ?? null,
             country: p.country ?? null,
             sport: p.sport ?? null,
             role: p.role ?? null,
-            avatarUrl: p.avatarUrl ?? null,
+            avatarUrl: p.avatar_url ?? null,
             isFollowing: Boolean(p.isFollowing),
           }))
         : [];
@@ -275,11 +272,6 @@ export default function NetworkPage() {
                 <ProfileCard
                   key={profile.id}
                   profile={profile}
-                  onFollowChange={(next) => {
-                    if (next) {
-                      setSuggestions((prev) => prev.filter((p) => p.id !== profile.id));
-                    }
-                  }}
                 />
               ))}
             </div>
@@ -316,11 +308,6 @@ export default function NetworkPage() {
                 <ProfileCard
                   key={profile.id}
                   profile={profile}
-                  onFollowChange={(next) => {
-                    if (!next) {
-                      setFollowing((prev) => prev.filter((p) => p.id !== profile.id));
-                    }
-                  }}
                 />
               ))}
             </div>
@@ -340,11 +327,6 @@ export default function NetworkPage() {
                 <ProfileCard
                   key={profile.id}
                   profile={profile}
-                  onFollowChange={(next) =>
-                    setFollowers((prev) =>
-                      prev.map((p) => (p.id === profile.id ? { ...p, isFollowing: next } : p)),
-                    )
-                  }
                 />
               ))}
             </div>
