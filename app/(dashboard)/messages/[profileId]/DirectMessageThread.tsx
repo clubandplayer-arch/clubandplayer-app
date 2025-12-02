@@ -63,6 +63,7 @@ export function DirectMessageThread({ targetProfileId, targetDisplayName, target
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const thread = useMemo(() => messages || [], [messages]);
 
   useEffect(() => {
     let cancelled = false;
@@ -142,7 +143,6 @@ export function DirectMessageThread({ targetProfileId, targetDisplayName, target
   };
 
   const headerName = targetDisplayName || 'Profilo';
-  const thread = useMemo(() => messages || [], [messages]);
 
   return (
     <div className="space-y-4 rounded-xl border bg-white p-4 shadow-sm">
