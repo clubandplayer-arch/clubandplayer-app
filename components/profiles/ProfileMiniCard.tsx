@@ -7,7 +7,6 @@ import { useEffect, useState } from 'react';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 import FollowButton from '@/components/clubs/FollowButton';
-import { useFollowState } from '@/hooks/useFollowState';
 
 import { resolveCountryName, resolveStateName } from '@/lib/geodata/countryStateCityDataset';
 
@@ -134,7 +133,6 @@ function countryLabel(value?: string | null): { iso: string | null; label: strin
 export default function ProfileMiniCard() {
   const [p, setP] = useState<P | null>(null);
   const [interest, setInterest] = useState<InterestGeo>({ city: '—', region: '', country: '' });
-  const { following } = useFollowState();
 
   useEffect(() => {
     (async () => {
@@ -275,7 +273,6 @@ export default function ProfileMiniCard() {
                     labelFollowing="Seguo"
                     size="md"
                     className="w-full justify-center"
-                    initialIsFollowing={targetId ? following.has(targetId) : false}
                   />
             </div>
           ) : null}
@@ -350,7 +347,6 @@ export default function ProfileMiniCard() {
                 labelFollowing="Seguo"
                 size="md"
                 className="w-full justify-center"
-                initialIsFollowing={targetId ? following.has(targetId) : false}
               />
             </div>
           ) : null}

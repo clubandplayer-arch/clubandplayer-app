@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react';
 import FollowButton from '@/components/clubs/FollowButton';
 import OpportunityCard from '@/components/opportunities/OpportunityCard';
 import type { Opportunity } from '@/types/opportunity';
-import { useFollowState } from '@/hooks/useFollowState';
 
 type Club = {
   id: string;
@@ -23,7 +22,6 @@ export default function ClubPage({ params }: { params: { id: string } }) {
   const [opps, setOpps] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
-  const { following } = useFollowState();
 
   useEffect(() => {
     let cancelled = false;
@@ -71,8 +69,6 @@ export default function ClubPage({ params }: { params: { id: string } }) {
   if (loading) return <div className="p-4 md:p-6">Caricamento…</div>;
   if (err) return <div className="p-4 md:p-6 text-red-700 bg-red-50 border rounded-xl">{err}</div>;
   if (!club) return <div className="p-4 md:p-6">Club non trovato.</div>;
-  const initialIsFollowing = following.has(club.id);
-
   return (
     <div className="p-4 md:p-6 space-y-6">
       {/* Header */}
@@ -94,7 +90,6 @@ export default function ClubPage({ params }: { params: { id: string } }) {
           targetType="club"
           targetName={club.name}
           size="md"
-          initialIsFollowing={initialIsFollowing}
         />
       </header>
 

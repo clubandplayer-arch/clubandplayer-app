@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import useIsClub from '@/hooks/useIsClub';
 import { ToastProvider } from '@/components/common/ToastProvider';
+import { FollowProvider } from '@/components/follow/FollowProvider';
 import { NavCloseIcon, NavMenuIcon } from '@/components/icons/NavToggleIcons';
 import { MaterialIcon, type MaterialIconName } from '@/components/icons/MaterialIcon';
 import NotificationsDropdown from '@/components/notifications/NotificationsDropdown';
@@ -108,11 +109,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <ToastProvider>
-      <div className="min-h-screen flex flex-col">
-      <header className="sticky top-0 z-40 border-b bg-white/80 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4">
-          <Link
-            href="/feed"
+      <FollowProvider>
+        <div className="min-h-screen flex flex-col">
+          <header className="sticky top-0 z-40 border-b bg-white/80 backdrop-blur">
+            <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4">
+              <Link
+                href="/feed"
             className="heading-h2 !mt-0 !mb-0 !text-xl md:!text-2xl lg:!text-3xl font-semibold tracking-tight text-[var(--brand)]"
           >
             Club&Player
@@ -239,10 +241,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         ) : null}
-      </header>
+          </header>
 
-      <main className="flex-1">{children}</main>
-    </div>
+          <main className="flex-1">{children}</main>
+        </div>
+      </FollowProvider>
     </ToastProvider>
   );
 }

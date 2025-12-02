@@ -6,7 +6,6 @@ import FollowButton from '@/components/clubs/FollowButton';
 import ApplyCell from '@/components/opportunities/ApplyCell';
 import type { Opportunity } from '@/types/opportunity';
 import { opportunityGenderLabel } from '@/lib/opps/gender';
-import { useFollowState } from '@/hooks/useFollowState';
 
 type Role = 'athlete' | 'club' | 'guest';
 type ApiOne<T> = { data?: T; [k: string]: any };
@@ -51,7 +50,6 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
   const [meId, setMeId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const { following } = useFollowState();
 
   // whoami
   useEffect(() => {
@@ -113,12 +111,6 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
     const createdBy = opp.createdBy ?? opp.created_by ?? null;
     return Boolean(createdBy && createdBy === meId);
   }, [meId, opp]);
-
-  const initialIsFollowing = useMemo(() => {
-    const clubProfileId = opp?.club_id ?? opp?.createdBy ?? opp?.created_by ?? null;
-    if (!clubProfileId) return false;
-    return following.has(clubProfileId);
-  }, [following, opp]);
 
   const showApply = role === 'athlete' && !isOwner;
 
@@ -190,7 +182,6 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
                   targetType="club"
                   targetName={clubName}
                   size="md"
-                  initialIsFollowing={initialIsFollowing}
                 />
               )}
             </div>

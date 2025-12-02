@@ -4,7 +4,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import FollowButton from '@/components/common/FollowButton';
 import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentProfileContext';
-import { useFollowState } from '@/hooks/useFollowState';
 
 type Suggestion = {
   id: string;
@@ -35,7 +34,6 @@ export default function WhoToFollow() {
   const [targetType, setTargetType] = useState<TargetProfileType>('club');
   const [items, setItems] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(true);
-  const { following } = useFollowState();
 
   const followTargetType = useMemo(() => (targetType === 'club' ? 'club' : 'athlete'), [targetType]);
 
@@ -117,7 +115,6 @@ export default function WhoToFollow() {
               <FollowButton
                 targetId={it.id}
                 targetType={followTargetType}
-                initialIsFollowing={following.has(it.id)}
                 size="sm"
                 onChange={(next) => {
                   if (next) {

@@ -90,7 +90,6 @@ function ProfileCard({
         <FollowButton
           targetId={profile.id}
           targetType={profile.accountType}
-          initialIsFollowing={profile.isFollowing}
           targetName={profile.name}
           size="md"
           onChange={onFollowChange}
