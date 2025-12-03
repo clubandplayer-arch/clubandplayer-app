@@ -55,6 +55,7 @@ export function DirectMessageInbox() {
       } catch (err: any) {
         if (cancelled) return;
         const message = err?.message || 'Errore caricamento conversazioni';
+        console.error('[direct-messages] inbox load failed', { error: err });
         setError(message);
         show(message, { variant: 'error' });
       } finally {
@@ -72,7 +73,7 @@ export function DirectMessageInbox() {
     try {
       await openDirectConversation(targetProfileId, { router, source: 'messages-inbox' });
     } catch (error: any) {
-      console.error('[messages inbox] navigation error', { targetProfileId, error });
+      console.error('[direct-messages] inbox navigation failed', { targetProfileId, error });
       show(error?.message || 'Errore apertura chat', { variant: 'error' });
     }
   };

@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs';
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { getActiveProfile, getProfileById } from '@/lib/api/profile';
@@ -24,10 +25,29 @@ export const POST = withAuth(async (_req: NextRequest, { supabase, user }, route
 
   try {
     const me = await getActiveProfile(supabase, user.id);
-    if (!me) return jsonError('profilo non trovato', 403);
+    if (!me) {
+      console.warn('[direct-messages] POST /api/direct-messages/:profileId/mark-read missing profile', {
+        userId: user.id,
+        targetProfileId: otherId,
+      });
+      return jsonError('profilo non trovato', 403);
+    }
+
+    console.log('[direct-messages] POST /api/direct-messages/:profileId/mark-read', {
+      userId: user.id,
+      profileId: me.id,
+      targetProfileId: otherId,
+    });
 
     const peer = await getProfileById(supabase, otherId);
-    if (!peer) return jsonError('profilo target non trovato', 404);
+    if (!peer) {
+      console.warn('[direct-messages] POST /api/direct-messages/:profileId/mark-read target not found', {
+        userId: user.id,
+        profileId: me.id,
+        targetProfileId: otherId,
+      });
+      return jsonError('profilo target non trovato', 404);
+    }
 
     const { error } = await supabase
       .from('direct_message_read_state')
@@ -44,7 +64,7 @@ export const POST = withAuth(async (_req: NextRequest, { supabase, user }, route
 
     if (error) {
       if (isMissingReadStateTable(error)) {
-        console.warn('[api/direct-messages/mark-read POST] missing table direct_message_read_state, skipping');
+        console.warn('[direct-messages] POST /api/direct-messages/:profileId/mark-read missing table direct_message_read_state, skipping');
         return NextResponse.json({ ok: true, warning: 'read_state_table_missing' });
       }
       throw error;
@@ -52,7 +72,12 @@ export const POST = withAuth(async (_req: NextRequest, { supabase, user }, route
 
     return NextResponse.json({ ok: true, warning: null });
   } catch (error: any) {
-    console.error('[api/direct-messages/mark-read POST] errore', { error, targetProfileId: otherId });
+    console.error('[direct-messages] POST /api/direct-messages/:profileId/mark-read unexpected error', {
+      error,
+      targetProfileId: otherId,
+      userId: user.id,
+    });
+    Sentry.captureException(error);
     return jsonError('server_error', 500);
   }
 });

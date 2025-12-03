@@ -76,6 +76,7 @@ export function DirectMessageThread({ targetProfileId, targetDisplayName, target
       } catch (err: any) {
         if (cancelled) return;
         const message = err?.message || 'Errore caricamento messaggi';
+        console.error('[direct-messages] thread load failed', { error: err, targetProfileId });
         setError(message);
         show(message, { variant: 'error' });
       } finally {
@@ -98,7 +99,7 @@ export function DirectMessageThread({ targetProfileId, targetDisplayName, target
         await markDirectThreadRead(targetProfileId);
         if (!cancelled) window.dispatchEvent(new Event('app:direct-messages-updated'));
       } catch (err) {
-        console.error('Errore mark-read', err);
+        console.error('[direct-messages] mark read failed', { error: err, targetProfileId });
       }
     };
 
@@ -119,6 +120,7 @@ export function DirectMessageThread({ targetProfileId, targetDisplayName, target
       setContent('');
     } catch (err: any) {
       const message = err?.message || 'Errore invio messaggio';
+      console.error('[direct-messages] send message failed', { error: err, targetProfileId });
       show(message, { variant: 'error' });
     } finally {
       setSending(false);

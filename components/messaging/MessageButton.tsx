@@ -23,7 +23,7 @@ export function MessageButton({ targetProfileId, label = 'Messaggia', className 
     try {
       await openDirectConversation(target, { router, source: 'message-button' });
     } catch (error: any) {
-      console.error('[messaging-button] navigation error', { target, error });
+      console.error('[direct-messages] message-button navigation failed', { target, error });
       show(error?.message || 'Errore apertura chat', { variant: 'error' });
     } finally {
       setLoading(false);

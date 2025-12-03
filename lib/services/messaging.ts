@@ -55,30 +55,40 @@ export function buildDirectConversationUrl(targetProfileId: string) {
 }
 
 export async function getDirectInbox(): Promise<DirectThreadSummary[]> {
-  const res = await fetch('/api/direct-messages/threads', { cache: 'no-store' });
-  const { json, rawText } = await parseResponse(res);
-  if (!res.ok) {
-    console.error('[messaging-service] inbox error', { status: res.status, body: json });
-    throw new Error((json as any)?.error || rawText || 'Errore caricamento conversazioni');
+  try {
+    const res = await fetch('/api/direct-messages/threads', { cache: 'no-store' });
+    const { json, rawText } = await parseResponse(res);
+    if (!res.ok) {
+      console.error('[direct-messages] getDirectInbox failed', { status: res.status, body: json });
+      throw new Error((json as any)?.error || rawText || 'Errore nel caricamento delle conversazioni');
+    }
+    const threads = Array.isArray((json as any)?.threads) ? (json as any).threads : [];
+    return threads as DirectThreadSummary[];
+  } catch (error: any) {
+    console.error('[direct-messages] getDirectInbox failed', { error });
+    throw new Error(error?.message || 'Errore nel caricamento delle conversazioni');
   }
-  const threads = Array.isArray((json as any)?.threads) ? (json as any).threads : [];
-  return threads as DirectThreadSummary[];
 }
 
 export async function getDirectThread(targetProfileId: string): Promise<DirectMessageThread> {
   const target = ensureTargetProfileId(targetProfileId);
-  const res = await fetch(`/api/direct-messages/${target}`, { cache: 'no-store' });
-  const { json, rawText } = await parseResponse(res);
-  if (!res.ok) {
-    console.error('[messaging-service] thread error', { status: res.status, body: json, target });
-    throw new Error((json as any)?.error || rawText || 'Errore caricamento messaggi');
-  }
+  try {
+    const res = await fetch(`/api/direct-messages/${target}`, { cache: 'no-store' });
+    const { json, rawText } = await parseResponse(res);
+    if (!res.ok) {
+      console.error('[direct-messages] getDirectThread failed', { status: res.status, body: json, target });
+      throw new Error((json as any)?.error || rawText || 'Errore nel caricamento dei messaggi');
+    }
 
-  return {
-    messages: Array.isArray((json as any)?.messages) ? (json as any).messages : [],
-    currentProfileId: typeof (json as any)?.currentProfileId === 'string' ? (json as any).currentProfileId : null,
-    peer: (json as any)?.peer ?? null,
-  } satisfies DirectMessageThread;
+    return {
+      messages: Array.isArray((json as any)?.messages) ? (json as any).messages : [],
+      currentProfileId: typeof (json as any)?.currentProfileId === 'string' ? (json as any).currentProfileId : null,
+      peer: (json as any)?.peer ?? null,
+    } satisfies DirectMessageThread;
+  } catch (error: any) {
+    console.error('[direct-messages] getDirectThread failed', { error, target });
+    throw new Error(error?.message || 'Errore nel caricamento dei messaggi');
+  }
 }
 
 export async function sendDirectMessage(
@@ -89,38 +99,53 @@ export async function sendDirectMessage(
   const text = (payload?.text || '').trim();
   if (!text) throw new Error('contenuto mancante');
 
-  const res = await fetch(`/api/direct-messages/${target}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content: text }),
-  });
-  const { json, rawText } = await parseResponse(res);
-  if (!res.ok) {
-    console.error('[messaging-service] send error', { status: res.status, body: json, target });
-    throw new Error((json as any)?.error || rawText || 'Errore invio messaggio');
-  }
+  try {
+    const res = await fetch(`/api/direct-messages/${target}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: text }),
+    });
+    const { json, rawText } = await parseResponse(res);
+    if (!res.ok) {
+      console.error('[direct-messages] sendDirectMessage failed', { status: res.status, body: json, target });
+      throw new Error((json as any)?.error || rawText || 'Non è stato possibile inviare il messaggio');
+    }
 
-  return ((json as any)?.message || null) as DirectMessage;
+    return ((json as any)?.message || null) as DirectMessage;
+  } catch (error: any) {
+    console.error('[direct-messages] sendDirectMessage failed', { error, target });
+    throw new Error(error?.message || 'Non è stato possibile inviare il messaggio');
+  }
 }
 
 export async function markDirectThreadRead(targetProfileId: string): Promise<void> {
   const target = ensureTargetProfileId(targetProfileId);
-  const res = await fetch(`/api/direct-messages/${target}/mark-read`, { method: 'POST' });
-  if (!res.ok) {
-    const { json, rawText } = await parseResponse(res);
-    console.error('[messaging-service] mark-read error', { status: res.status, body: json, target });
-    throw new Error((json as any)?.error || rawText || 'Errore aggiornamento lettura');
+  try {
+    const res = await fetch(`/api/direct-messages/${target}/mark-read`, { method: 'POST' });
+    if (!res.ok) {
+      const { json, rawText } = await parseResponse(res);
+      console.error('[direct-messages] markDirectThreadRead failed', { status: res.status, body: json, target });
+      throw new Error((json as any)?.error || rawText || 'Errore nell’aggiornamento di lettura');
+    }
+  } catch (error: any) {
+    console.error('[direct-messages] markDirectThreadRead failed', { error, target });
+    throw new Error(error?.message || 'Errore nell’aggiornamento di lettura');
   }
 }
 
 export async function getUnreadConversationsCount(): Promise<number> {
-  const res = await fetch('/api/direct-messages/unread-count', { cache: 'no-store' });
-  const { json, rawText } = await parseResponse(res);
-  if (!res.ok) {
-    console.error('[messaging-service] unread-count error', { status: res.status, body: json });
-    throw new Error((json as any)?.error || rawText || 'Errore lettura non letti');
+  try {
+    const res = await fetch('/api/direct-messages/unread-count', { cache: 'no-store' });
+    const { json, rawText } = await parseResponse(res);
+    if (!res.ok) {
+      console.error('[direct-messages] getUnreadConversationsCount failed', { status: res.status, body: json });
+      throw new Error((json as any)?.error || rawText || 'Errore nel conteggio dei non letti');
+    }
+    return Number((json as any)?.unreadThreads) || 0;
+  } catch (error: any) {
+    console.error('[direct-messages] getUnreadConversationsCount failed', { error });
+    throw new Error(error?.message || 'Errore nel conteggio dei non letti');
   }
-  return Number((json as any)?.unreadThreads) || 0;
 }
 
 export async function openDirectConversation(
@@ -129,7 +154,7 @@ export async function openDirectConversation(
 ): Promise<string | void> {
   const target = ensureTargetProfileId(targetProfileId);
   const url = buildDirectConversationUrl(target);
-  console.info('[messaging-service] openDirectConversation', { target, source: opts?.source });
+  console.log('[direct-messages] openDirectConversation', { target, source: opts?.source });
 
   if (opts?.router) {
     opts.router.push(url);

@@ -15,7 +15,8 @@ export function useUnreadDirectThreads(pollIntervalMs = 30000) {
       try {
         const unread = await getUnreadConversationsCount();
         if (!cancelledRef.current) setCount(unread);
-      } catch {
+      } catch (error) {
+        console.error('[direct-messages] unread-count poll failed', { error });
         if (!cancelledRef.current) setCount(0);
       } finally {
         if (!cancelledRef.current && pollIntervalMs > 0) {
