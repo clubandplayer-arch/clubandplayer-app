@@ -25,11 +25,11 @@ export function PostMedia({ postId, mediaUrl, mediaType, aspect, alt }: Props) {
   const { videoRef, handleEnded, handlePause, handlePlay } = useExclusiveVideoPlayback(postId);
 
   const items = useMemo<LightboxItem[]>(() => {
-    if (!mediaUrl || !mediaType) return [];
+    if (!mediaUrl || !mediaType || mediaType === 'video') return [];
     return [
       {
         url: mediaUrl,
-        type: mediaType === 'video' ? 'video' : 'image',
+        type: 'image',
         alt: alt || undefined,
       },
     ];
@@ -39,30 +39,29 @@ export function PostMedia({ postId, mediaUrl, mediaType, aspect, alt }: Props) {
 
   const aspectClass = frameAspect(mediaType, aspect);
 
+  const containerClasses = [
+    'relative flex items-center justify-center bg-black/5',
+    aspectClass,
+    mediaType === 'video' ? 'max-h-[420px]' : null,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
     <div className="mt-3 flex w-full justify-center">
       <div className="w-full max-w-2xl overflow-hidden rounded-2xl bg-neutral-100 shadow-inner">
-        <div className={`relative ${aspectClass} flex items-center justify-center bg-black/5`}>
+        <div className={containerClasses}>
           {mediaType === 'video' ? (
-            <>
-              <video
-                ref={videoRef}
-                src={mediaUrl ?? undefined}
-                controls
-                className="h-full w-full object-contain bg-black"
-                onPlay={handlePlay}
-                onPause={handlePause}
-                onEnded={handleEnded}
-                playsInline
-              />
-              <button
-                type="button"
-                onClick={() => setLightboxIndex(0)}
-                className="absolute bottom-3 right-3 rounded-full bg-black/70 px-3 py-1 text-xs font-semibold text-white shadow-lg transition hover:bg-black/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-              >
-                Apri in grande
-              </button>
-            </>
+            <video
+              ref={videoRef}
+              src={mediaUrl ?? undefined}
+              controls
+              className="h-full w-full max-h-[420px] object-contain bg-black"
+              onPlay={handlePlay}
+              onPause={handlePause}
+              onEnded={handleEnded}
+              playsInline
+            />
           ) : (
             <button type="button" className="h-full w-full" onClick={() => setLightboxIndex(0)}>
               <span className="sr-only">{aria}</span>

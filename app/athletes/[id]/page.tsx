@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
-import AthleteProfileHeader from '@/components/athletes/AthleteProfileHeader';
 import AthleteExperiencesSection from '@/components/athletes/AthleteExperiencesSection';
 import AthleteMediaHighlightsSection, {
   type AthleteMediaItem,
@@ -12,6 +11,7 @@ import AthleteMediaHighlightsSection, {
 import AthleteOpenToOpportunitiesPanel from '@/components/athletes/AthleteOpenToOpportunitiesPanel';
 import AthleteStatsSection from '@/components/athletes/AthleteStatsSection';
 import PublicAuthorFeed from '@/components/feed/PublicAuthorFeed';
+import ProfileHeader from '@/components/profiles/ProfileHeader';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 type AthleteProfileRow = {
@@ -256,13 +256,34 @@ export default function AthletePublicProfilePage() {
     return parts.join(' · ');
   }, [profile]);
 
+  const headerDisplayName = useMemo(() => {
+    if (!profile) return 'Player';
+    return profile.display_name || profile.full_name || 'Player';
+  }, [profile]);
+
+  const headerSubtitle = useMemo(() => {
+    if (!profile) return '';
+    const parts = [profile.role, profile.sport].filter(Boolean);
+    return parts.join(' · ') || '—';
+  }, [profile]);
+
   return (
     <main className="mx-auto max-w-5xl space-y-6 px-4 py-6">
       {loading && <p>Caricamento…</p>}
       {!loading && !!msg && <p style={{ color: '#b91c1c' }}>{msg}</p>}
       {!loading && !msg && profile && (
         <>
-          <AthleteProfileHeader profile={profile} isMe={isMe} />
+          <ProfileHeader
+            profileId={profile.id}
+            displayName={headerDisplayName}
+            accountType="athlete"
+            avatarUrl={profile.avatar_url}
+            subtitle={headerSubtitle}
+            locationLabel={profileLocation}
+            showMessageButton
+            showFollowButton={!isMe}
+            messageLabel="Messaggia"
+          />
 
           <AthleteOpenToOpportunitiesPanel
             openTo={profile.open_to_opportunities}

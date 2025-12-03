@@ -1,11 +1,12 @@
 // app/clubs/[id]/page.tsx
 import { notFound } from 'next/navigation';
 
-import ClubProfileHeader from '@/components/clubs/ClubProfileHeader';
+import ProfileHeader from '@/components/profiles/ProfileHeader';
 import ClubOpenOpportunitiesWidget from '@/components/clubs/ClubOpenOpportunitiesWidget';
 import PublicAuthorFeed from '@/components/feed/PublicAuthorFeed';
 
 import { resolveCountryName, resolveStateName } from '@/lib/geodata/countryStateCityDataset';
+import { getLatestOpenOpportunitiesByClub } from '@/lib/data/opportunities';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 type ClubProfileRow = {
@@ -98,34 +99,6 @@ async function loadClubProfile(id: string): Promise<ClubProfileRow | null> {
   };
 }
 
-async function loadClubOpportunities(id: string): Promise<ClubOpportunityRow[]> {
-  const supabase = await getSupabaseServerClient();
-
-  const { data } = await supabase
-    .from('opportunities')
-    .select('id, title, city, province, region, country, created_at, status, owner_id, club_id')
-    .or(`club_id.eq.${id},owner_id.eq.${id},created_by.eq.${id}`)
-    .order('created_at', { ascending: false })
-    .limit(5);
-
-  const filtered = (data ?? []).filter((opp) => {
-    const status = (opp as any).status ?? 'open';
-    return status === 'open' || status === null;
-  });
-
-  return filtered.map((opp) => ({
-    id: opp.id,
-    title: opp.title ?? null,
-    city: (opp as any).city ?? null,
-    province: (opp as any).province ?? null,
-    region: (opp as any).region ?? null,
-    country: (opp as any).country ?? null,
-    created_at: (opp as any).created_at ?? null,
-    status: (opp as any).status ?? null,
-    club_id: (opp as any).club_id ?? null,
-  }));
-}
-
 function locationLabel(row: ClubProfileRow): string {
   const state = resolveStateName(row.country || null, row.region || row.province || '');
   return [row.city, row.province, state, resolveCountryName(row.country || undefined)]
@@ -137,12 +110,42 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
   const profile = await loadClubProfile(params.id);
   if (!profile) return notFound();
 
+  const supabase = await getSupabaseServerClient();
+  const { data: auth } = await supabase.auth.getUser();
+  const meId = auth?.user?.id ?? null;
+  const isMe = !!meId && (meId === profile.id || meId === profile.user_id);
+
   const aboutText = profile.bio || 'Nessuna descrizione disponibile.';
-  const opportunities = await loadClubOpportunities(profile.id);
+  const opportunities: ClubOpportunityRow[] = (
+    await getLatestOpenOpportunitiesByClub(profile.id, 3)
+  ).map((opp) => ({
+    id: opp.id,
+    title: opp.title ?? null,
+    city: opp.city ?? null,
+    province: opp.province ?? null,
+    region: opp.region ?? null,
+    country: opp.country ?? null,
+    created_at: opp.created_at ?? null,
+    status: opp.status ?? null,
+    club_id: (opp as any).club_id ?? null,
+  }));
+
+  const displayName = profile.display_name || profile.full_name || 'Club';
+  const subtitle = [profile.club_league_category, profile.sport].filter(Boolean).join(' · ') || '—';
+  const location = locationLabel(profile) || undefined;
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-4 md:p-6">
-      <ClubProfileHeader profile={profile} />
+      <ProfileHeader
+        profileId={profile.id}
+        displayName={displayName}
+        accountType="club"
+        avatarUrl={profile.avatar_url}
+        subtitle={subtitle}
+        locationLabel={location}
+        showMessageButton
+        showFollowButton={!isMe}
+      />
 
       <section className="grid gap-4 lg:grid-cols-3">
         <div className="rounded-2xl border bg-white p-5 shadow-sm lg:col-span-2">

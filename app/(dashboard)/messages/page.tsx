@@ -1,30 +1,15 @@
-import MessagesClient from './MessagesClient';
+import { DirectMessageInbox } from './DirectMessageInbox';
 
 export const metadata = {
   title: 'Messaggi',
 };
 
-type SearchParams = {
-  conversationId?: string;
-  conversation?: string;
-  to?: string;
-};
+export const dynamic = 'force-dynamic';
 
-export default function MessagesPage({ searchParams }: { searchParams?: SearchParams }) {
-  const conversationId =
-    typeof searchParams?.conversationId === 'string'
-      ? searchParams.conversationId
-      : typeof searchParams?.conversation === 'string'
-      ? searchParams.conversation
-      : null;
-  const targetProfileId = typeof searchParams?.to === 'string' ? searchParams.to : null;
-
+export default function MessagesLanding() {
   return (
     <div className="page-shell">
-      <MessagesClient
-        initialConversationId={conversationId}
-        initialTargetProfileId={targetProfileId}
-      />
+      <DirectMessageInbox />
     </div>
   );
 }

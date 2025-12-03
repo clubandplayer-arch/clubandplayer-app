@@ -6,10 +6,10 @@ import { usePathname, useRouter } from 'next/navigation';
 import useIsClub from '@/hooks/useIsClub';
 import { ToastProvider } from '@/components/common/ToastProvider';
 import { FollowProvider } from '@/components/follow/FollowProvider';
-import { MessagingProvider } from '@/components/messaging/MessagingProvider';
 import { NavCloseIcon, NavMenuIcon } from '@/components/icons/NavToggleIcons';
 import { MaterialIcon, type MaterialIconName } from '@/components/icons/MaterialIcon';
 import NotificationsDropdown from '@/components/notifications/NotificationsDropdown';
+import { useUnreadDirectThreads } from '@/hooks/useUnreadDirectThreads';
 
 type Role = 'athlete' | 'club' | 'guest';
 
@@ -33,6 +33,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<Role>('guest');
   const [loadingRole, setLoadingRole] = useState(true);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const unreadDirectThreads = useUnreadDirectThreads();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // unica fonte affidabile per la CTA
@@ -111,8 +112,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <ToastProvider>
       <FollowProvider>
-        <MessagingProvider>
-          <div className="min-h-screen flex flex-col">
+        <div className="min-h-screen flex flex-col">
           <header className="sticky top-0 z-40 border-b bg-white/80 backdrop-blur">
             <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4">
               <Link
@@ -148,6 +148,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   >
                     <MaterialIcon name={item.icon} fontSize="small" />
                     <span className="sr-only">{item.label}</span>
+                    {item.href === '/messages' && unreadDirectThreads > 0 && (
+                      <span className="absolute -right-1 -top-1 inline-flex min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-semibold text-white">
+                        {unreadDirectThreads > 9 ? '9+' : unreadDirectThreads}
+                      </span>
+                    )}
                   </Link>
                 );
               })}
@@ -190,26 +195,31 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <div className="border-t bg-white/95 shadow-sm backdrop-blur md:hidden">
             <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3">
                 <div className="flex flex-wrap gap-2">
-                  {navItems.map((item) => {
-                    const active = isActive(item.href);
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        onClick={() => setIsMenuOpen(false)}
-                        className={`flex flex-1 min-w-[140px] items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${active ? 'border-[var(--brand)] bg-[var(--brand)]/10 text-[var(--brand)]' : 'hover:bg-neutral-50'}`}
-                      >
-                        <MaterialIcon name={item.icon} fontSize={16} />
-                        <span>{item.label}</span>
-                        {item.href === '/notifications' && unreadNotifications > 0 && (
-                          <span className="ml-auto inline-flex min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-semibold text-white">
-                            {unreadNotifications}
-                          </span>
-                        )}
-                      </Link>
-                    );
-                  })}
-                </div>
+                    {navItems.map((item) => {
+                      const active = isActive(item.href);
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          onClick={() => setIsMenuOpen(false)}
+                          className={`flex flex-1 min-w-[140px] items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${active ? 'border-[var(--brand)] bg-[var(--brand)]/10 text-[var(--brand)]' : 'hover:bg-neutral-50'}`}
+                        >
+                          <MaterialIcon name={item.icon} fontSize={16} />
+                          <span>{item.label}</span>
+                          {item.href === '/notifications' && unreadNotifications > 0 && (
+                            <span className="ml-auto inline-flex min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-semibold text-white">
+                              {unreadNotifications}
+                            </span>
+                          )}
+                          {item.href === '/messages' && unreadDirectThreads > 0 && (
+                            <span className="ml-auto inline-flex min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-semibold text-white">
+                              {unreadDirectThreads > 9 ? '9+' : unreadDirectThreads}
+                            </span>
+                          )}
+                        </Link>
+                      );
+                    })}
+                  </div>
 
               <div className="flex flex-col gap-2">
                 {isClub && (
@@ -246,8 +256,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </header>
 
           <main className="flex-1">{children}</main>
-          </div>
-        </MessagingProvider>
+        </div>
       </FollowProvider>
     </ToastProvider>
   );

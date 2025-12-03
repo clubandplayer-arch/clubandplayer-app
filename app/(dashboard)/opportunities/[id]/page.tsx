@@ -143,7 +143,7 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
                 </div>
               </div>
 
-            {clubProfileId && (
+            {clubProfileId && !isOwner && (
               <FollowButton
                 targetProfileId={clubProfileId}
                 size="md"

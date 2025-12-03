@@ -15,7 +15,7 @@ import {
   fetchMessages,
   sendMessage as apiSendMessage,
   startConversation,
-} from '@/lib/services/messaging';
+} from '@/legacy/messaging/messaging.service';
 
 export type MessagingContextValue = {
   conversations: ConversationPreview[];

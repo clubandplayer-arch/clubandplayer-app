@@ -4,9 +4,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useMessaging } from '@/components/messaging/MessagingProvider';
+import { useMessaging } from '@/legacy/messaging/MessagingProvider';
 import { useToast } from '@/components/common/ToastProvider';
-import type { ConversationPreview, MessageItem } from '@/lib/services/messaging';
+import type { ConversationPreview, MessageItem } from '@/legacy/messaging/messaging.service';
 
 function formatDate(value?: string | null) {
   if (!value) return '';

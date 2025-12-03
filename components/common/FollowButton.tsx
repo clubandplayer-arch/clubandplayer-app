@@ -18,30 +18,36 @@ export default function FollowButton({
   size = 'md',
   className,
 }: FollowButtonProps) {
-  const { isFollowing, toggleFollow, ensureState, pending } = useFollow();
+  const { isFollowing, toggleFollow, ensureState, pending, currentProfileId } = useFollow();
   const [initialized, setInitialized] = useState(false);
 
   const cleanId = useMemo(() => (targetProfileId || '').trim(), [targetProfileId]);
+  const isSelf = useMemo(() => !!currentProfileId && !!cleanId && currentProfileId === cleanId, [
+    cleanId,
+    currentProfileId,
+  ]);
   const following = cleanId ? isFollowing(cleanId) : false;
   const loading = cleanId ? pending.has(cleanId) : false;
 
   useEffect(() => {
-    if (!cleanId || initialized) return;
+    if (!cleanId || initialized || isSelf) return;
     void ensureState([cleanId]);
     setInitialized(true);
-  }, [cleanId, ensureState, initialized]);
+  }, [cleanId, ensureState, initialized, isSelf]);
 
   const label = following ? labelFollowing : labelFollow;
   const padding = size === 'sm' ? 'px-2 py-1 text-sm' : 'px-3 py-1.5 text-sm';
 
   const handleClick = async () => {
-    if (!cleanId || loading) return;
+    if (!cleanId || loading || isSelf) return;
     try {
       await toggleFollow(cleanId);
     } catch (error) {
       console.error('[FollowButton] errore toggle', error);
     }
   };
+
+  if (!cleanId || isSelf) return null;
 
   return (
     <button
