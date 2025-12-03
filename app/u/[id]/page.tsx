@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from 'react'   // 👈 aggiunto useMemo
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
+import ProfileHeader from '@/components/profiles/ProfileHeader'
 
 type Profile = {
   id: string
@@ -41,8 +42,7 @@ function buildTagline(p: Profile): string {
   if (headline) return headline
   const role = p.role ?? 'Ruolo n/d'
   const sport = p.sport ?? 'Sport n/d'
-  const city = p.city ?? 'Città n/d'
-  return `${role} · ${sport} · ${city}`
+  return `${role} · ${sport}`
 }
 
 function buildLocation(p: Profile): string | null {
@@ -129,40 +129,17 @@ export default function PublicAthleteProfile() {
       {!loading && !!msg && <p style={{color:'#b91c1c'}}>{msg}</p>}
       {!loading && !msg && profile && (
         <>
-          <header style={{display:'flex', gap:16, alignItems:'center', marginBottom:16, justifyContent:'space-between', flexWrap:'wrap'}}>
-            <div style={{display:'flex', gap:16, alignItems:'center'}}>
-              {profile.avatar_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={profile.avatar_url}
-                  alt={profile.display_name ?? profile.full_name ?? 'Player'}
-                  width={64}
-                  height={64}
-                  style={{borderRadius:'50%', objectFit:'cover'}}
-                />
-              ) : (
-                <div style={{width:64, height:64, borderRadius:'50%', background:'#e5e7eb'}} />
-              )}
-              <div>
-                <h1 style={{margin:0}}>{profile.display_name || profile.full_name || 'Player'}</h1>
-                <p style={{margin:'4px 0', opacity:.8}}>{buildTagline(profile)}</p>
-                {buildLocation(profile) && (
-                  <p style={{margin:'4px 0', fontSize:13, opacity:.7}}>{buildLocation(profile)}</p>
-                )}
-                <p style={{margin:0, fontSize:13, opacity:.7}}>ID: <code>{profile.id}</code></p>
-              </div>
-            </div>
-
-            {/* Azioni: Messaggia → */}
-            <div style={{display:'flex', gap:8, alignItems:'center'}}>
-              <Link
-                href={`/messages?to=${params.id}`}
-                style={{padding:'8px 12px', border:'1px solid #e5e7eb', borderRadius:8}}
-              >
-                Messaggia →
-              </Link>
-            </div>
-          </header>
+          <ProfileHeader
+            profileId={profile.id}
+            displayName={profile.display_name || profile.full_name || 'Player'}
+            accountType="athlete"
+            avatarUrl={profile.avatar_url}
+            subtitle={buildTagline(profile)}
+            locationLabel={buildLocation(profile)}
+            showMessageButton
+            showFollowButton
+            messageLabel="Messaggia"
+          />
 
           <section style={{border:'1px solid #e5e7eb', borderRadius:12, padding:16, marginTop:12}}>
             <h2 style={{marginTop:0}}>Bio</h2>

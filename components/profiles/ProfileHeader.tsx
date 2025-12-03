@@ -1,75 +1,100 @@
-// components/profiles/ProfileHeader.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
+import Image from 'next/image';
 
-type AccountType = 'club' | 'athlete' | null;
+import FollowButton from '@/components/clubs/FollowButton';
+import { MessageButton } from '@/components/messaging/MessageButton';
 
-export default function ProfileHeader({ expectedType }: { expectedType?: AccountType }) {
-  const [type, setType] = useState<AccountType>(expectedType ?? null);
+type AccountType = 'club' | 'athlete' | 'player';
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const r = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
-        const raw = await r.json().catch(() => ({}));
-        const j = raw && typeof raw === 'object' && 'data' in raw ? (raw as any).data : raw;
-        setType((j?.account_type ?? null) as AccountType);
-      } catch {
-        setType(null);
-      }
-    })();
-  }, []);
+type ProfileHeaderProps = {
+  profileId: string;
+  displayName: string;
+  accountType: AccountType;
+  avatarUrl?: string | null;
+  subtitle?: string | null;
+  locationLabel?: string | null;
+  showMessageButton?: boolean;
+  showFollowButton?: boolean;
+  messageLabel?: string;
+};
 
-  // Nasconde header/descrizioni legacy e qualunque H1 "di troppo"
-  function hideLegacy() {
-    try {
-      const WRAP = document.getElementById('cp-dyn-profile-header');
+function initialsFromName(name: string, accountType: AccountType) {
+  const safeName = (name || '').trim();
+  if (!safeName) return accountType === 'club' ? 'CL' : 'PL';
+  const parts = safeName
+    .split(/\s+/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+}
 
-      document.querySelectorAll('h1').forEach((el) => {
-        if (WRAP && WRAP.contains(el)) return; // non toccare il nostro
-        const txt = (el.textContent || '').trim().toLowerCase();
-        if (
-          txt.startsWith('il mio profilo') ||
-          txt === 'atleta' ||
-          txt === 'club'
-        ) {
-          (el as HTMLElement).style.display = 'none';
-          // se dopo c’è il paragrafo “Aggiorna i tuoi dati…”, nascondilo
-          const sib = el.nextElementSibling as HTMLElement | null;
-          if (
-            sib &&
-            sib.tagName.toLowerCase() === 'p' &&
-            /aggiorna i tuoi dati per migliorare il matching/i.test(sib.textContent || '')
-          ) {
-            sib.style.display = 'none';
-          }
-        }
-      });
+export default function ProfileHeader({
+  profileId,
+  displayName,
+  accountType,
+  avatarUrl,
+  subtitle,
+  locationLabel,
+  showMessageButton = true,
+  showFollowButton = true,
+  messageLabel = 'Messaggia',
+}: ProfileHeaderProps) {
+  const name = displayName || (accountType === 'club' ? 'Club' : 'Player');
+  const initials = initialsFromName(name, accountType);
+  const subtitleText = subtitle?.trim();
+  const locationText = locationLabel?.trim();
 
-      // nascondi ogni paragrafo duplicato con quel testo (ovunque) tranne dentro il nostro wrapper
-      document.querySelectorAll('p').forEach((p) => {
-        if (WRAP && WRAP.contains(p)) return;
-        if (/aggiorna i tuoi dati per migliorare il matching/i.test(p.textContent || '')) {
-          (p as HTMLElement).style.display = 'none';
-        }
-      });
-    } catch {}
-  }
-
-  useEffect(() => {
-    hideLegacy();
-    const mo = new MutationObserver(() => hideLegacy());
-    mo.observe(document.body, { childList: true, subtree: true });
-    return () => mo.disconnect();
-  }, []);
-
-  const label = (type ?? expectedType) === 'club' ? 'CLUB' : 'PLAYER';
-
-  // Niente descrizione (paragrafo) per evitare qualsiasi duplicazione visiva
   return (
-    <div id="cp-dyn-profile-header" className="mb-4">
-      <h1 className="text-2xl font-bold">{label}</h1>
-    </div>
+    <header className="rounded-2xl border bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:gap-6">
+        <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-full bg-transparent ring-1 ring-white/60 shadow-sm md:h-32 md:w-32">
+          {avatarUrl ? (
+            <Image src={avatarUrl} alt={name} fill sizes="128px" className="rounded-full object-cover" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-neutral-50 to-neutral-200 text-xl font-semibold text-neutral-600">
+              {initials}
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-1 flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div className="space-y-2">
+            <div className="flex flex-col gap-1">
+              <h1 className="text-2xl font-semibold leading-tight text-neutral-900 md:text-3xl">{name}</h1>
+              {subtitleText ? (
+                <p className="text-sm font-medium text-neutral-700 md:text-base">{subtitleText}</p>
+              ) : null}
+            </div>
+            {locationText ? (
+              <p className="text-xs text-neutral-500">{locationText}</p>
+            ) : (
+              <p className="text-xs text-neutral-400">Località —</p>
+            )}
+          </div>
+
+          {(showMessageButton || showFollowButton) && (
+            <div className="flex items-start justify-end gap-2">
+              {showMessageButton ? (
+                <MessageButton
+                  targetProfileId={profileId}
+                  label={messageLabel}
+                  className="border-neutral-200 bg-white hover:bg-neutral-50"
+                />
+              ) : null}
+              {showFollowButton ? (
+                <FollowButton
+                  targetProfileId={profileId}
+                  labelFollow="Segui"
+                  labelFollowing="Seguo"
+                  size="md"
+                />
+              ) : null}
+            </div>
+          )}
+        </div>
+      </div>
+    </header>
   );
 }

@@ -1,7 +1,7 @@
 // app/clubs/[id]/page.tsx
 import { notFound } from 'next/navigation';
 
-import ClubProfileHeader from '@/components/clubs/ClubProfileHeader';
+import ProfileHeader from '@/components/profiles/ProfileHeader';
 import ClubOpenOpportunitiesWidget from '@/components/clubs/ClubOpenOpportunitiesWidget';
 import PublicAuthorFeed from '@/components/feed/PublicAuthorFeed';
 
@@ -140,9 +140,22 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
   const aboutText = profile.bio || 'Nessuna descrizione disponibile.';
   const opportunities = await loadClubOpportunities(profile.id);
 
+  const displayName = profile.display_name || profile.full_name || 'Club';
+  const subtitle = [profile.club_league_category, profile.sport].filter(Boolean).join(' · ') || '—';
+  const location = locationLabel(profile) || undefined;
+
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-4 md:p-6">
-      <ClubProfileHeader profile={profile} />
+      <ProfileHeader
+        profileId={profile.id}
+        displayName={displayName}
+        accountType="club"
+        avatarUrl={profile.avatar_url}
+        subtitle={subtitle}
+        locationLabel={location}
+        showMessageButton
+        showFollowButton
+      />
 
       <section className="grid gap-4 lg:grid-cols-3">
         <div className="rounded-2xl border bg-white p-5 shadow-sm lg:col-span-2">
