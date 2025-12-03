@@ -182,6 +182,8 @@ export default function ProfileMiniCard() {
 
   const isClub = p?.account_type === 'club';
   const targetId = p?.id ? String(p.id) : p?.user_id ? String(p.user_id) : '';
+  const isSelf =
+    !!targetId && ((!!p?.id && targetId === String(p.id)) || (!!p?.user_id && targetId === String(p.user_id)));
   const year = new Date().getFullYear();
   const age = !isClub && p?.birth_year ? Math.max(0, year - p.birth_year) : null;
   const name = p?.full_name || p?.display_name || (isClub ? 'Il tuo club' : 'Benvenuto!');
@@ -263,7 +265,7 @@ export default function ProfileMiniCard() {
 
           {isClub ? (
             <div className="space-y-3">
-              {targetId ? (
+              {targetId && !isSelf ? (
                 <div className="flex justify-center">
                   <FollowButton
                     targetProfileId={targetId}
@@ -336,7 +338,7 @@ export default function ProfileMiniCard() {
         </div>
       ) : (
         <div className="space-y-3">
-          {targetId ? (
+          {targetId && !isSelf ? (
             <div className="flex justify-center">
               <FollowButton
                 targetProfileId={targetId}

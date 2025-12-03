@@ -181,11 +181,12 @@ export async function getLatestOpenOpportunitiesByClub(
     }
 
     const filtered = (data ?? []).filter((row) => {
-      const status = (row as any).status ?? 'open';
-      return status === 'open' || status === 'published' || status == null;
+      const statusRaw = (row as any).status as string | null | undefined;
+      const status = statusRaw ? statusRaw.toLowerCase() : null;
+      return status === null || status === 'open' || status === 'published';
     });
 
-    return filtered
+    const normalized = filtered
       .sort((a, b) => {
         const da = new Date((a as any).created_at ?? 0).getTime();
         const db = new Date((b as any).created_at ?? 0).getTime();
@@ -199,6 +200,14 @@ export async function getLatestOpenOpportunitiesByClub(
           club_name: row.club_name ?? null,
         }),
       );
+
+    console.log('[getLatestOpenOpportunitiesByClub]', {
+      clubProfileId,
+      count: normalized.length,
+      ids: normalized.map((r) => r.id),
+    });
+
+    return normalized;
   } catch (error) {
     console.error('getLatestOpenOpportunitiesByClub unexpected error', error);
     return [];

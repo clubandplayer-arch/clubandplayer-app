@@ -110,6 +110,11 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
   const profile = await loadClubProfile(params.id);
   if (!profile) return notFound();
 
+  const supabase = await getSupabaseServerClient();
+  const { data: auth } = await supabase.auth.getUser();
+  const meId = auth?.user?.id ?? null;
+  const isMe = !!meId && (meId === profile.id || meId === profile.user_id);
+
   const aboutText = profile.bio || 'Nessuna descrizione disponibile.';
   const opportunities: ClubOpportunityRow[] = (
     await getLatestOpenOpportunitiesByClub(profile.id, 3)
@@ -139,7 +144,7 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
         subtitle={subtitle}
         locationLabel={location}
         showMessageButton
-        showFollowButton
+        showFollowButton={!isMe}
       />
 
       <section className="grid gap-4 lg:grid-cols-3">

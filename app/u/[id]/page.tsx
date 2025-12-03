@@ -12,6 +12,7 @@ import ProfileHeader from '@/components/profiles/ProfileHeader'
 
 type Profile = {
   id: string
+  user_id?: string | null
   display_name: string | null
   full_name: string | null
   headline: string | null
@@ -61,6 +62,7 @@ export default function PublicAthleteProfile() {
   const [apps, setApps] = useState<ApplicationRow[]>([])
   const [loading, setLoading] = useState(true)
   const [msg, setMsg] = useState<string>('')
+  const [meId, setMeId] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false  // 👈 flag di cancellazione
@@ -72,11 +74,14 @@ export default function PublicAthleteProfile() {
       const athleteId = params.id
       if (!athleteId) { router.replace('/'); return }
 
+      const auth = await supabase.auth.getUser()
+      setMeId(auth?.data?.user?.id ?? null)
+
       // 1) profilo pubblico (le policy permettono SELECT a tutti)
       const { data: profs, error: perr } = await supabase
         .from('profiles')
         .select(
-          'id, display_name, full_name, headline, bio, sport, role, country, region, province, city, avatar_url'
+          'id, user_id, display_name, full_name, headline, bio, sport, role, country, region, province, city, avatar_url'
         )
         .eq('id', athleteId)
         .limit(1)
@@ -137,7 +142,7 @@ export default function PublicAthleteProfile() {
             subtitle={buildTagline(profile)}
             locationLabel={buildLocation(profile)}
             showMessageButton
-            showFollowButton
+            showFollowButton={!(meId && (meId === profile.id || meId === profile.user_id))}
             messageLabel="Messaggia"
           />
 

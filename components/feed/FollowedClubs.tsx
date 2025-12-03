@@ -28,7 +28,7 @@ function subtitle(item: FollowedItem, viewerRole: ProfileRole) {
 }
 
 export default function FollowedClubs() {
-  const { role: contextRole } = useCurrentProfileContext();
+  const { role: contextRole, profile } = useCurrentProfileContext();
   const [role, setRole] = useState<ProfileRole>('guest');
   const [items, setItems] = useState<FollowedItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,14 +44,19 @@ export default function FollowedClubs() {
         const nextRole: ProfileRole =
           data?.role === 'club' || data?.role === 'athlete' ? data.role : contextRole;
         const rows: FollowedItem[] = Array.isArray(data?.items)
-          ? (data.items as any[]).map((item) => ({
-              id: item.id,
-              name: item.name ?? item.display_name ?? 'Profilo',
-              city: item.city ?? item.country ?? null,
-              sport: item.sport ?? null,
-              avatarUrl: item.avatar_url ?? item.avatarUrl ?? null,
-              accountType: item.account_type === 'club' ? 'club' : 'athlete',
-            }))
+          ? (data.items as any[])
+              .map((item) => {
+                const accountType: 'club' | 'athlete' = item.account_type === 'club' ? 'club' : 'athlete';
+                return {
+                  id: item.id,
+                  name: item.name ?? item.display_name ?? 'Profilo',
+                  city: item.city ?? item.country ?? null,
+                  sport: item.sport ?? null,
+                  avatarUrl: item.avatar_url ?? item.avatarUrl ?? null,
+                  accountType,
+                };
+              })
+              .filter((item) => !profile?.id || item.id !== profile.id)
           : [];
         setRole(nextRole);
         setItems(rows);
@@ -61,7 +66,7 @@ export default function FollowedClubs() {
         setLoading(false);
       }
     })();
-  }, [contextRole]);
+  }, [contextRole, profile?.id]);
 
   const heading = 'Profili che segui';
   const emptyCopy = 'Inizia a seguire profili per vederli qui.';

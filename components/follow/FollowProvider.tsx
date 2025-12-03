@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from 'react';
@@ -14,6 +15,7 @@ export type FollowContextValue = {
   toggleFollow: (targetProfileId: string) => Promise<void>;
   ensureState: (targetProfileIds: string[]) => Promise<void>;
   pending: Set<string>;
+  currentProfileId: string | null;
 };
 
 const FollowContext = createContext<FollowContextValue | undefined>(undefined);
@@ -21,6 +23,7 @@ const FollowContext = createContext<FollowContextValue | undefined>(undefined);
 export function FollowProvider({ children }: { children: React.ReactNode }) {
   const [followed, setFollowed] = useState<Set<string>>(new Set());
   const [pending, setPending] = useState<Set<string>>(new Set());
+  const [currentProfileId, setCurrentProfileId] = useState<string | null>(null);
 
   const isFollowing = useCallback(
     (targetProfileId: string) => followed.has(targetProfileId),
@@ -81,12 +84,31 @@ export function FollowProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const res = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
+        const json = await res.json().catch(() => ({}));
+        if (!active) return;
+        const meId = (json as any)?.data?.id as string | null | undefined;
+        setCurrentProfileId(meId ?? null);
+      } catch {
+        if (active) setCurrentProfileId(null);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const value = useMemo<FollowContextValue>(() => ({
     isFollowing,
     toggleFollow: toggle,
     ensureState,
     pending,
-  }), [ensureState, isFollowing, pending, toggle]);
+    currentProfileId,
+  }), [ensureState, isFollowing, pending, toggle, currentProfileId]);
 
   return <FollowContext.Provider value={value}>{children}</FollowContext.Provider>;
 }

@@ -16,6 +16,10 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     const target = await getProfileById(supabase, targetProfileId);
     if (!target) return jsonError('profilo target non trovato', 404);
 
+    if (me.id === target.id) {
+      return NextResponse.json({ ok: true, isFollowing: false, self: true, targetProfileId: target.id });
+    }
+
     const { data: existing, error: findError } = await supabase
       .from('follows')
       .select('id')

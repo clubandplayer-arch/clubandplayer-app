@@ -12,7 +12,8 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
     const { data: rows, error } = await supabase
       .from('follows')
       .select('target_profile_id')
-      .eq('follower_profile_id', me.id);
+      .eq('follower_profile_id', me.id)
+      .neq('target_profile_id', me.id);
     if (error) throw error;
 
     const targetIds = (rows || []).map((r) => (r as any)?.target_profile_id).filter(Boolean);
