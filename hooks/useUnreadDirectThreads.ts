@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { getUnreadConversationsCount } from '@/lib/services/messaging';
 
 export function useUnreadDirectThreads(pollIntervalMs = 30000) {
   const [count, setCount] = useState(0);
@@ -12,11 +13,8 @@ export function useUnreadDirectThreads(pollIntervalMs = 30000) {
 
     const load = async () => {
       try {
-        const res = await fetch('/api/direct-messages/unread-count', { cache: 'no-store' });
-        const json = await res.json().catch(() => ({}));
-        if (!cancelledRef.current) {
-          setCount(Number(json?.unreadThreads) || 0);
-        }
+        const unread = await getUnreadConversationsCount();
+        if (!cancelledRef.current) setCount(unread);
       } catch {
         if (!cancelledRef.current) setCount(0);
       } finally {

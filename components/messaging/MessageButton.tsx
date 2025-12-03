@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/common/ToastProvider';
+import { openDirectConversation } from '@/lib/services/messaging';
 
 type Props = {
   targetProfileId: string;
@@ -20,7 +21,7 @@ export function MessageButton({ targetProfileId, label = 'Messaggia', className 
     if (!target || loading) return;
     setLoading(true);
     try {
-      router.push(`/messages/${target}`);
+      await openDirectConversation(target, { router, source: 'message-button' });
     } catch (error: any) {
       console.error('[messaging-button] navigation error', { target, error });
       show(error?.message || 'Errore apertura chat', { variant: 'error' });
