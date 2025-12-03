@@ -7,6 +7,9 @@
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint . --max-warnings=0",
+    "typecheck": "tsc --noEmit --pretty false --project tsconfig.json",
+    "dev:check": "pnpm lint && pnpm typecheck",
+    "ci:check": "pnpm lint && pnpm typecheck && pnpm run build",
     "test:e2e": "node --test tests/e2e/**/*.test.mjs"
   },
   "dependencies": {

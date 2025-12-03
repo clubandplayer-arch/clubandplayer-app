@@ -11,7 +11,7 @@ Questa verifica confronta lo stato attuale del codice con il "Core rewrite plan 
 | Messaging flow (JOB 4) | Quasi completo | Direct_messages è l’unico flusso attivo; lo stack legacy è stato dismesso e ora esiste un service unico con `openDirectConversation`. Il logging strutturato è stato aggiunto (JOB 4.3). |
 | Search-map | Completato | La ricerca ufficiale è la mappa con service condiviso; gli URL legacy `/search/*` reindirizzano a `/search-map` e non eseguono più query separate. |
 | Logging | Quasi completo (messaggistica) | Le rotte direct-messages applicano logging strutturato con tag `[direct-messages]` e invio a Sentry sugli errori inattesi; restano da coprire gli altri domini (search-map/follow). |
-| Test | Parziale | In package.json sono definiti solo `lint`, `build` e un test e2e; eseguiamo manualmente lint/tsc/build ma non c’è uno script dedicato di typecheck in CI. |
+| Test | Completo | Scripts standard: `pnpm lint`, `pnpm typecheck`, `pnpm run build` (raccomandato `pnpm ci:check` per sequenza completa). I workflow GitHub Actions Lint/Type check/CI usano questi comandi; il build può fallire solo in ambienti senza accesso ai Google Fonts. |
 
 ## Messaging (JOB 4)
 - **Modello dati effettivo**: la UI predefinita usa `direct_messages` con lettura/scrittura e stato di lettura; l’endpoint `/api/direct-messages/threads` ricostruisce i thread 1-1 per il profilo attivo.【F:app/api/direct-messages/threads/route.ts†L13-L149】 Lo stack legacy `conversations` + `messages` è stato dismesso: le rotte `/api/conversations/*` restituiscono 410 e la pagina legacy reindirizza alla nuova inbox.【F:app/api/conversations/route.ts†L1-L15】【F:app/api/conversations/start/route.ts†L1-L15】【F:app/(dashboard)/messages/legacy/page.tsx†L1-L15】
@@ -29,9 +29,12 @@ Questa verifica confronta lo stato attuale del codice con il "Core rewrite plan 
 - Gli URL legacy `/search`, `/search/club` e `/search/athletes` sono ora redirect server-side verso `/search-map`, così qualsiasi link o bookmark precedente porta all’esperienza nuova senza eseguire query Supabase dedicate.【F:app/search/page.tsx†L1-L8】【F:app/search/club/page.tsx†L1-L8】【F:app/search/athletes/page.tsx†L1-L8】
 - Le voci di navigazione e i link “trending” puntano alla nuova ricerca su mappa; il service ufficiale resta `lib/services/search.ts` con `searchProfilesOnMap`.【F:components/Navbar.tsx†L68-L80】【F:components/layout/MarketingNavbar.tsx†L3-L10】【F:components/feed/TrendingTopics.tsx†L5-L22】【F:lib/services/search.ts†L1-L73】
 
+## Pipeline di test
+- **Comandi ufficiali**: `pnpm lint`, `pnpm typecheck`, `pnpm run build`; per eseguire l’intero smoke: `pnpm ci:check` (lint + typecheck + build).
+- **Workflow GitHub Actions**: i job “Lint” e “Type check” eseguono rispettivamente `pnpm lint` e `pnpm typecheck`; il job “CI” esegue `pnpm ci:check` con installazione pnpm in cache.【F:.github/workflows/lint.yml†L1-L29】【F:.github/workflows/typecheck.yml†L1-L29】【F:.github/workflows/ci.yml†L1-L30】
+
 ## Micro-job proposti
-1. **JOB L1 – Pipeline di test e typecheck**
-   - Obiettivo: aggiungere uno script `pnpm typecheck` (tsc --noEmit) e includerlo nella CI insieme a `pnpm lint` e `pnpm run build`, documentando i comandi ufficiali di smoke test.
+1. **JOB L1 – Pipeline di test e typecheck (COMPLETATO)**
+   - Obiettivo: introdurre `pnpm typecheck`, `pnpm ci:check` e allineare la CI; documentazione aggiornata con la pipeline ufficiale.
    - File principali: `package.json`, configurazione CI.
-   - Rischi/impatti: possibili nuove failure su codebase non allineata ai tipi; tempi build leggermente maggiori.
-   - Test manuali: esecuzione locale di lint, typecheck, build.
+   - Test manuali: lint, typecheck, build (con nota sui Google Fonts in ambienti senza rete).
