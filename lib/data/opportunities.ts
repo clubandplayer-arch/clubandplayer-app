@@ -203,8 +203,7 @@ export async function getLatestOpenOpportunitiesByClub(
 
     console.log('[getLatestOpenOpportunitiesByClub]', {
       clubProfileId,
-      count: normalized.length,
-      ids: normalized.map((r) => r.id),
+      rows: normalized.map((r) => ({ id: r.id, title: r.title, status: r.status })),
     });
 
     return normalized;
