@@ -182,8 +182,20 @@ export async function getLatestOpenOpportunitiesByClub(
 
     const filtered = (data ?? []).filter((row) => {
       const statusRaw = (row as any).status as string | null | undefined;
-      const status = statusRaw ? statusRaw.toLowerCase() : null;
-      return status === null || status === 'open' || status === 'published';
+      const status = statusRaw ? statusRaw.toLowerCase().trim() : null;
+      const closedStates = [
+        'closed',
+        'archived',
+        'draft',
+        'cancelled',
+        'canceled',
+        'annullata',
+        'annullato',
+      ];
+
+      if (!status) return true;
+
+      return !closedStates.includes(status);
     });
 
     const normalized = filtered

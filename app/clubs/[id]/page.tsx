@@ -116,8 +116,10 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
   const isMe = !!meId && (meId === profile.id || meId === profile.user_id);
 
   const aboutText = profile.bio || 'Nessuna descrizione disponibile.';
+  const clubProfileId = profile.id;
+
   const opportunities: ClubOpportunityRow[] = (
-    await getLatestOpenOpportunitiesByClub(profile.id, 3)
+    await getLatestOpenOpportunitiesByClub(clubProfileId, 3)
   ).map((opp) => ({
     id: opp.id,
     title: opp.title ?? null,
@@ -183,7 +185,7 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
 
       <ClubOpenOpportunitiesWidget
         items={opportunities}
-        clubId={profile.id}
+        clubId={clubProfileId}
         clubName={profile.display_name || profile.full_name}
       />
 
