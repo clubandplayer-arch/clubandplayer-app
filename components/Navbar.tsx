@@ -70,8 +70,8 @@ export default function Navbar() {
             <div className="ml-4 hidden md:flex items-center gap-1">
               <Link href="/" className={linkClass('/')}>Home</Link>
               <Link href="/opportunities" className={linkClass('/opportunities')}>Opportunità</Link>
-              <Link href="/search/athletes" className={linkClass('/search/athletes')}>Atleti</Link>
-              <Link href="/search/club" className={linkClass('/search/club')}>Club</Link>
+              <Link href="/search-map?type=player" className={linkClass('/search-map')}>Atleti</Link>
+              <Link href="/search-map?type=club" className={linkClass('/search-map')}>Club</Link>
               <Link href="/favorites" className={linkClass('/favorites')}>Preferiti</Link>
               {isAdmin && (
                 <Link href="/admin/reports" className={linkClass('/admin/reports')}>Moderazione</Link>

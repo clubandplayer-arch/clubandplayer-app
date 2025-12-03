@@ -16,7 +16,7 @@ Checklist per verificare rapidamente che le principali funzionalità funzionino 
 1. **Registrazione e profilo**: crea un account atleta, completa il profilo (bio, sport, ruolo). Salva e ricarica la pagina: i dati devono persistere.
 2. **Media profilo**: carica una foto profilo (video opzionale solo se riabilitato nel progetto di test); verifica che la nuova immagine sia visibile dopo il refresh.
 3. **Feed**: pubblica un post test con immagine (8MB max) e, se possibile, un secondo con video MP4. Atteso: upload riuscito, visualizzazione dell'anteprima e assenza di `insert_failed`/`upload_failed`.
-4. **Ricerca club**: vai su `/search/club`, filtra per città/regione/Paese e cerca per nome. Atteso: paginazione corretta e nessun errore API.
+4. **Ricerca club**: vai su `/search-map`, disegna un’area e applica filtri club/sport: i risultati devono popolarsi senza errori API.
 5. **Candidatura**: dalla lista opportunità, apri un'opportunità e invia una candidatura. Atteso: conferma di invio e visibilità in "Le mie candidature".
 
 ## Percorso club
@@ -24,7 +24,7 @@ Checklist per verificare rapidamente che le principali funzionalità funzionino 
 2. **Feed**: pubblica almeno un post con media (immagine o video) oltre a uno di testo; verifica che resti visibile agli altri utenti con corretta ownership RLS.
 3. **Opportunità**: crea un'opportunità, verifica che appaia nella lista pubblica e che le candidature arrivino sul pannello club senza errori RLS.
 4. **Candidature ricevute**: apri `/applications/received` e controlla che la tabella mostri le candidature con i dettagli corretti; nessun 401/403/500.
-5. **Ricerca club**: ricerca il proprio club su `/search/club` per verificare che location e display name siano indicizzati e che i filtri geo rispondano.
+5. **Ricerca club**: ricerca il proprio club su `/search-map` (area + query testuale) per verificare che location e display name siano indicizzati e che i filtri rispondano.
 
 ## Controlli trasversali
 - **Sicurezza**: verifica che le API protette (CRUD club, opportunità, candidature) rispondano 401/403 se richiamate da utente non autorizzato.

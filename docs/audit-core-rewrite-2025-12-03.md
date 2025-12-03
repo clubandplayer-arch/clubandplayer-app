@@ -9,7 +9,7 @@ Questa verifica confronta lo stato attuale del codice con il "Core rewrite plan 
 | Service layer | Quasi completo | Esistono service condivisi per search-map, follow e messaggistica (wrapper client unico). Restano da allineare eventuali chiamate residue/edge-case non ancora migrate. |
 | Follow flow | Quasi completato | FollowProvider è montato nello shell e il FollowButton unico delega allo stesso contesto; restano fetch ad hoc solo per liste/suggerimenti. |
 | Messaging flow (JOB 4) | Quasi completo | Direct_messages è l’unico flusso attivo; lo stack legacy è stato dismesso e ora esiste un service unico con `openDirectConversation`. Il logging strutturato è stato aggiunto (JOB 4.3). |
-| Search-map | Parziale | Il client usa un service centralizzato, ma le pagine legacy `/search/*` con query dirette Supabase sono ancora presenti. |
+| Search-map | Completato | La ricerca ufficiale è la mappa con service condiviso; gli URL legacy `/search/*` reindirizzano a `/search-map` e non eseguono più query separate. |
 | Logging | Quasi completo (messaggistica) | Le rotte direct-messages applicano logging strutturato con tag `[direct-messages]` e invio a Sentry sugli errori inattesi; restano da coprire gli altri domini (search-map/follow). |
 | Test | Parziale | In package.json sono definiti solo `lint`, `build` e un test e2e; eseguiamo manualmente lint/tsc/build ma non c’è uno script dedicato di typecheck in CI. |
 
@@ -25,19 +25,12 @@ Questa verifica confronta lo stato attuale del codice con il "Core rewrite plan 
 - La pagina legacy `app/(dashboard)/messages/legacy` esegue un redirect immediato alla nuova inbox, preservando l’eventuale parametro `to` per aprire il profilo target.【F:app/(dashboard)/messages/legacy/page.tsx†L1-L15】
 - I componenti e i servizi legacy (`MessagesClient`, `legacy/messaging/*`) sono stati rimossi per evitare dipendenze dallo stack deprecato.
 
+## Aggiornamento JOB S1 – bonifica search legacy
+- Gli URL legacy `/search`, `/search/club` e `/search/athletes` sono ora redirect server-side verso `/search-map`, così qualsiasi link o bookmark precedente porta all’esperienza nuova senza eseguire query Supabase dedicate.【F:app/search/page.tsx†L1-L8】【F:app/search/club/page.tsx†L1-L8】【F:app/search/athletes/page.tsx†L1-L8】
+- Le voci di navigazione e i link “trending” puntano alla nuova ricerca su mappa; il service ufficiale resta `lib/services/search.ts` con `searchProfilesOnMap`.【F:components/Navbar.tsx†L68-L80】【F:components/layout/MarketingNavbar.tsx†L3-L10】【F:components/feed/TrendingTopics.tsx†L5-L22】【F:lib/services/search.ts†L1-L73】
+
 ## Micro-job proposti
-1. **JOB 4.3 – Uniformare logging messaging (COMPLETATO)**
-   - Obiettivo: introdurre log strutturati con tag `[direct-messages]` e, dove presente, invio a Sentry sugli endpoint direct-messages e sul service client.
-   - Stato: completato con logging coerente su API `/api/direct-messages/*` e service `lib/services/messaging.ts`; gli errori inattesi vengono tracciati su Sentry.
-   - Test manuali: invio/ricezione messaggi e verifica di log coerenti in console/server.
-
-2. **JOB S1 – Bonifica search legacy**
-   - Obiettivo: riallineare o archiviare `app/search/*`, instradando la ricerca verso il service `searchProfilesOnMap` (o equivalenti) per evitare doppie logiche.
-   - File principali: `app/search/athletes/page.tsx`, `app/search/club/page.tsx`, `app/(dashboard)/search-map/*`, `lib/services/search.ts`.
-   - Rischi/impatti: eventuali utenti/bookmark sulle pagine legacy; differenze di filtro da riconciliare.
-   - Test manuali: ricerca su mappa con bbox+filtri e ricerca testuale legacy verificando risultati coerenti o redirect previsto.
-
-3. **JOB L1 – Pipeline di test e typecheck**
+1. **JOB L1 – Pipeline di test e typecheck**
    - Obiettivo: aggiungere uno script `pnpm typecheck` (tsc --noEmit) e includerlo nella CI insieme a `pnpm lint` e `pnpm run build`, documentando i comandi ufficiali di smoke test.
    - File principali: `package.json`, configurazione CI.
    - Rischi/impatti: possibili nuove failure su codebase non allineata ai tipi; tempi build leggermente maggiori.
