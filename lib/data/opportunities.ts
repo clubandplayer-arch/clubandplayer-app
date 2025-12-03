@@ -157,4 +157,52 @@ export const OpportunitiesRepo = {
   },
 };
 
+export async function getLatestOpenOpportunitiesByClub(
+  clubProfileId: string,
+  limit = 3,
+): Promise<Opportunity[]> {
+  try {
+    const supabase = await getSupabaseServerClient();
+    const safeLimit = Number.isFinite(limit) && limit > 0 ? Math.min(Math.floor(limit), 20) : 3;
+    const fetchLimit = Math.min(Math.max(safeLimit * 2, safeLimit + 2), 60);
+
+    const { data, error } = await supabase
+      .from('opportunities')
+      .select(
+        'id,title,city,province,region,country,created_at,status,club_id,owner_id,created_by,club_name',
+      )
+      .or(`club_id.eq.${clubProfileId},owner_id.eq.${clubProfileId},created_by.eq.${clubProfileId}`)
+      .order('created_at', { ascending: false })
+      .limit(fetchLimit);
+
+    if (error) {
+      console.error('getLatestOpenOpportunitiesByClub error', error);
+      return [];
+    }
+
+    const filtered = (data ?? []).filter((row) => {
+      const status = (row as any).status ?? 'open';
+      return status === 'open' || status === 'published' || status == null;
+    });
+
+    return filtered
+      .sort((a, b) => {
+        const da = new Date((a as any).created_at ?? 0).getTime();
+        const db = new Date((b as any).created_at ?? 0).getTime();
+        return db - da;
+      })
+      .slice(0, safeLimit)
+      .map((row) =>
+        normalizeRow({
+          ...row,
+          owner_id: row.owner_id ?? row.created_by ?? row.club_id ?? null,
+          club_name: row.club_name ?? null,
+        }),
+      );
+  } catch (error) {
+    console.error('getLatestOpenOpportunitiesByClub unexpected error', error);
+    return [];
+  }
+}
+
 export type { Opportunity };
