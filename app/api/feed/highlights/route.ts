@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getLatestOpenOpportunitiesByClub } from '@/lib/data/opportunities';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
@@ -39,7 +40,7 @@ export async function GET() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, account_type, status, country, city, interest_country, interest_city')
+    .select('id, account_type, status, country, city, interest_country, interest_city, display_name, full_name')
     .eq('user_id', userId)
     .maybeSingle();
 
@@ -49,6 +50,7 @@ export async function GET() {
       : 'guest') || 'guest';
 
   const profileId = profile?.id ?? null;
+  const profileName = profile?.display_name || profile?.full_name || null;
   const country = (profile?.interest_country || profile?.country || '').trim();
   const city = (profile?.interest_city || profile?.city || '').trim();
 
@@ -56,32 +58,10 @@ export async function GET() {
     'id,title,description,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name,gender,club_id,owner_id,created_by,status';
 
   if (role === 'club') {
-    const visibilityFilter = [
-      `and(status.eq.open,club_id.eq.${profileId})`,
-      `and(status.is.null,club_id.eq.${profileId})`,
-      `and(status.eq.open,owner_id.eq.${profileId})`,
-      `and(status.is.null,owner_id.eq.${profileId})`,
-      `and(status.eq.open,created_by.eq.${profileId})`,
-      `and(status.is.null,created_by.eq.${profileId})`,
-    ].join(',');
-
-    const { data, error } = await supabase
-      .from('opportunities')
-      .select(baseSelect)
-      .or(visibilityFilter)
-      .order('created_at', { ascending: false })
-      .limit(5);
-
-    if (error) {
-      return NextResponse.json({ items: [], role, profileId, error: error.message });
-    }
-
-    const ids = (data || []).flatMap((row) => [row.club_id, row.owner_id]).filter(Boolean) as string[];
-    const map = await hydrateClubNames(Array.from(new Set(ids)), supabase);
-
-    const items = (data || []).map((row) => ({
+    const latest = await getLatestOpenOpportunitiesByClub(profileId, 3);
+    const items = latest.map((row) => ({
       ...row,
-      club_name: row.club_name || (row.club_id ? map[row.club_id] : null) || (row.owner_id ? map[row.owner_id] : null) || null,
+      club_name: row.club_name || row.clubName || profileName,
     }));
 
     const viewAllHref = profileId ? `/opportunities?clubId=${profileId}` : '/opportunities';
