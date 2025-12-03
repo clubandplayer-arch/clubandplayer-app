@@ -1,30 +1,18 @@
-import MessagesClient from './MessagesClient';
+import { redirect } from 'next/navigation';
 
 export const metadata = {
-  title: 'Messaggi',
+  title: 'Messaggi (legacy)',
 };
 
 type SearchParams = {
-  conversationId?: string;
-  conversation?: string;
   to?: string;
 };
 
-export default function MessagesPage({ searchParams }: { searchParams?: SearchParams }) {
-  const conversationId =
-    typeof searchParams?.conversationId === 'string'
-      ? searchParams.conversationId
-      : typeof searchParams?.conversation === 'string'
-      ? searchParams.conversation
-      : null;
+export default function LegacyMessagesRedirect({ searchParams }: { searchParams?: SearchParams }) {
   const targetProfileId = typeof searchParams?.to === 'string' ? searchParams.to : null;
+  if (targetProfileId) {
+    redirect(`/messages/${targetProfileId}`);
+  }
 
-  return (
-    <div className="page-shell">
-      <MessagesClient
-        initialConversationId={conversationId}
-        initialTargetProfileId={targetProfileId}
-      />
-    </div>
-  );
+  redirect('/messages');
 }
