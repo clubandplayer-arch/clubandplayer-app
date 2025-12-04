@@ -28,6 +28,8 @@ const navItems: NavItem[] = [
   { label: 'Mappa', href: '/search-map', icon: 'globe' },
 ];
 
+const desktopNavItems = navItems.filter((item) => item.href !== '/messages');
+
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -125,7 +127,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
           <nav className="hidden flex-1 justify-center md:flex">
             <div className="flex items-center gap-1 rounded-full border border-white/40 bg-white/70 px-2 py-1 shadow-sm backdrop-blur">
-              {navItems.map((item) => {
+              {desktopNavItems.map((item) => {
                 const active = isActive(item.href);
                 if (item.href === '/notifications') {
                   return (
