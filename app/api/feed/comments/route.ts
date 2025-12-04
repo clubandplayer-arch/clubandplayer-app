@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { badRequest, internalError, ok, unauthorized } from '@/lib/api/responses';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { CreateCommentSchema, type CreateCommentInput } from '@/lib/validation/feed';
 
@@ -18,7 +19,7 @@ export async function GET(req: NextRequest) {
   const limit = Number(search.get('limit') || '30');
 
   if (!postId) {
-    return NextResponse.json({ ok: false, error: 'missing_post' }, { status: 400 });
+    return badRequest('Post mancante', { error: 'missing_post' });
   }
 
   const supabase = await getSupabaseServerClient();
@@ -68,22 +69,14 @@ export async function POST(req: NextRequest) {
   const supabase = await getSupabaseServerClient();
   const { data: auth, error: authErr } = await supabase.auth.getUser();
   if (authErr || !auth?.user) {
-    return NextResponse.json({ ok: false, error: 'not_authenticated' }, { status: 401 });
+    return unauthorized('Utente non autenticato');
   }
 
   const bodyJson = await req.json().catch(() => ({}));
   const parsed = CreateCommentSchema.safeParse(bodyJson);
   if (!parsed.success) {
     console.warn('[api/feed/comments][POST] invalid payload', parsed.error.flatten());
-    return NextResponse.json(
-      {
-        ok: false,
-        code: 'BAD_REQUEST',
-        message: 'Payload non valido',
-        details: parsed.error.flatten(),
-      },
-      { status: 400 },
-    );
+    return badRequest('Payload non valido', parsed.error.flatten());
   }
 
   const payload: CreateCommentInput = parsed.data;
@@ -102,7 +95,7 @@ export async function POST(req: NextRequest) {
     if (code === '42501' || code === '42P01') {
       return NextResponse.json({ ok: false, error: 'comments_not_ready' }, { status: 200 });
     }
-    return NextResponse.json({ ok: false, error: 'db_error' }, { status: 200 });
+    return internalError(error, 'Errore nel salvataggio del commento');
   }
 
   const { data: profile } = await supabase
@@ -111,9 +104,8 @@ export async function POST(req: NextRequest) {
     .eq('user_id', auth.user.id)
     .maybeSingle();
 
-  return NextResponse.json(
+  return ok(
     {
-      ok: true,
       comment: {
         ...data,
         author: profile ?? null,

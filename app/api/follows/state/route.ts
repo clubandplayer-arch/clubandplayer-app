@@ -1,5 +1,6 @@
-import { NextResponse, type NextRequest } from 'next/server';
-import { withAuth, jsonError } from '@/lib/api/auth';
+import type { NextRequest } from 'next/server';
+import { badRequest, forbidden, internalError, ok } from '@/lib/api/responses';
+import { withAuth } from '@/lib/api/auth';
 import { getActiveProfile } from '@/lib/api/profile';
 
 export const runtime = 'nodejs';
@@ -7,11 +8,11 @@ export const runtime = 'nodejs';
 export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   const url = new URL(req.url);
   const targets = url.searchParams.getAll('targets').map((t) => t.trim()).filter(Boolean);
-  if (!targets.length) return jsonError('targets mancanti', 400);
+  if (!targets.length) return badRequest('targets mancanti');
 
   try {
     const me = await getActiveProfile(supabase, user.id);
-    if (!me) return jsonError('profilo non trovato', 403);
+    if (!me) return forbidden('Profilo non trovato');
 
     const cleanTargets = targets.filter((t) => t !== me.id);
 
@@ -31,9 +32,9 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
       }
     });
 
-    return NextResponse.json({ state });
+    return ok({ state });
   } catch (error: any) {
     console.error('[api/follows/state] errore', { error });
-    return jsonError('server_error', 500);
+    return internalError(error);
   }
 });

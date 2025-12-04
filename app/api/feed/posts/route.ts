@@ -1,6 +1,7 @@
 // app/api/feed/posts/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
+import { badRequest, forbidden, internalError, ok, tooManyRequests, unauthorized } from '@/lib/api/responses';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 import { reportApiError } from '@/lib/monitoring/reportApiError';
@@ -119,7 +120,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (mine && !currentProfileId) {
-    return NextResponse.json({ ok: false, error: 'not_authenticated' }, { status: 401 });
+    return unauthorized('Utente non autenticato per filtrare i propri post');
   }
 
   const followedAuthorProfileIds: string[] = [];
@@ -317,15 +318,7 @@ export async function POST(req: NextRequest) {
     const parsedBody = CreatePostSchema.safeParse(await req.json().catch(() => ({})));
     if (!parsedBody.success) {
       console.warn('[api/feed/posts][POST] invalid payload', parsedBody.error.flatten());
-      return NextResponse.json(
-        {
-          ok: false,
-          code: 'BAD_REQUEST',
-          message: 'Payload non valido',
-          details: parsedBody.error.flatten(),
-        },
-        { status: 400 },
-      );
+      return badRequest('Payload non valido', parsedBody.error.flatten());
     }
 
     const body: CreatePostInput = parsedBody.data;
@@ -390,13 +383,10 @@ export async function POST(req: NextRequest) {
     const isEvent = requestedKind === 'event';
 
     if (!isEvent && !text && !mediaUrl && !normalizedMediaPath && !linkUrl) {
-      return NextResponse.json(
-        { ok: false, error: 'empty', message: 'Scrivi un testo, un link o allega un media.' },
-        { status: 400 }
-      );
+      return badRequest('Scrivi un testo, un link o allega un media.', { error: 'empty' });
     }
     if (text.length > MAX_CHARS) {
-      return NextResponse.json({ ok: false, error: 'too_long', limit: MAX_CHARS }, { status: 400 });
+      return badRequest('Contenuto troppo lungo', { error: 'too_long', limit: MAX_CHARS });
     }
 
     const supabase = await getSupabaseServerClient();
@@ -404,7 +394,7 @@ export async function POST(req: NextRequest) {
 
     const { data: auth, error: authErr } = await supabase.auth.getUser();
     if (authErr || !auth?.user) {
-      return NextResponse.json({ ok: false, error: 'not_authenticated' }, { status: 401 });
+      return unauthorized('Utente non autenticato');
     }
 
     let actorRole: Role | null = null;
@@ -423,21 +413,11 @@ export async function POST(req: NextRequest) {
     }
 
     if (isEvent && actorRole !== 'club') {
-      return NextResponse.json(
-        { ok: false, error: 'forbidden', message: 'Solo i club possono creare eventi.' },
-        { status: 403 }
-      );
+      return forbidden('Solo i club possono creare eventi.');
     }
 
     if (isEvent && !eventPayload) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: 'invalid_event',
-          message: "Titolo e data dell'evento sono obbligatori.",
-        },
-        { status: 400 }
-      );
+      return badRequest("Titolo e data dell'evento sono obbligatori.", { error: 'invalid_event' });
     }
 
     if (!mediaUrl && normalizedMediaPath) {
@@ -445,14 +425,9 @@ export async function POST(req: NextRequest) {
       if (publicInfo?.publicUrl) {
         mediaUrl = publicInfo.publicUrl;
       } else {
-        return NextResponse.json(
-          {
-            ok: false,
-            error: 'media_public_url_failed',
-            message: 'Impossibile generare il link pubblico del media.',
-          },
-          { status: 400 }
-        );
+        return badRequest('Impossibile generare il link pubblico del media.', {
+          error: 'media_public_url_failed',
+        });
       }
     }
 
@@ -461,10 +436,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (mediaUrl && !/^https?:\/\//i.test(mediaUrl)) {
-      return NextResponse.json(
-        { ok: false, error: 'invalid_media_url', message: 'L\'URL del media non è valido.' },
-        { status: 400 }
-      );
+      return badRequest("L'URL del media non è valido.", { error: 'invalid_media_url' });
     }
 
     const jar = await cookies();
@@ -472,10 +444,10 @@ export async function POST(req: NextRequest) {
     const lastTs = lastTsRaw ? Number(lastTsRaw) : 0;
     const now = Date.now();
     if (lastTs && now - lastTs < RATE_LIMIT_MS) {
-      return NextResponse.json(
-        { ok: false, error: 'rate_limited', retryInMs: RATE_LIMIT_MS - (now - lastTs) },
-        { status: 429 }
-      );
+      return tooManyRequests('Rate limit attivo', {
+        error: 'rate_limited',
+        retryInMs: RATE_LIMIT_MS - (now - lastTs),
+      });
     }
 
     const effectiveText = text || '';
@@ -536,23 +508,13 @@ export async function POST(req: NextRequest) {
         error,
         context: { stage: 'insert', method: 'POST' },
       });
-      return NextResponse.json(
-        {
-          ok: false,
-          error: 'insert_failed',
-          message: error.message,
-        },
-        { status: 400 }
-      );
+      return badRequest('Inserimento del post non riuscito', {
+        error: 'insert_failed',
+        message: error.message,
+      });
     }
 
-    const res = NextResponse.json(
-      {
-        ok: true,
-        item: normalizeRow(data),
-      },
-      { status: 201 }
-    );
+    const res = ok({ item: normalizeRow(data) }, { status: 201 });
     res.cookies.set(LAST_POST_TS_COOKIE, String(now), {
       httpOnly: false,
       path: '/',
@@ -562,6 +524,6 @@ export async function POST(req: NextRequest) {
     return res;
   } catch (err: any) {
     reportApiError({ endpoint: '/api/feed/posts', error: err, context: { method: 'POST', stage: 'handler_catch' } });
-    return NextResponse.json({ ok: false, error: 'invalid_request', message: err?.message }, { status: 400 });
+    return internalError(err);
   }
 }

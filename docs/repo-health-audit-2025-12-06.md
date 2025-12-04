@@ -35,3 +35,7 @@ Il codice risulta coerente con l’assetto post-core rewrite: service layer cond
 ## Aggiornamento 2025-12-07 – TECH-02 (validazione API feed/follow)
 - Implementati schemi Zod per le API feed e follow in `lib/validation/feed.ts` e `lib/validation/follow.ts`.
 - Le rotte `/api/feed/posts`, `/api/feed/comments`, `/api/feed/reactions` e `/api/follows/toggle` validano ora i payload con risposta 400 uniforme `{ ok: false, code: 'BAD_REQUEST', message, details }` in caso di input non valido.
+
+## Aggiornamento 2025-12-08 – TECH-05 (error handling coerente)
+- Introdotto helper comune per le risposte API (`lib/api/responses.ts`) con codici standardizzati: `BAD_REQUEST`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `TOO_MANY_REQUESTS`, `INTERNAL_ERROR` e risposta `ok: true` sui successi dove compatibile.
+- Applicato il formato uniforme a feed (`/api/feed/posts`, `/api/feed/comments`, `/api/feed/reactions`), follow (`/api/follows/toggle`), search map (`/api/search/map`) e messaging (`/api/direct-messages/*`).

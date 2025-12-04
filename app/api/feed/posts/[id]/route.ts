@@ -1,5 +1,6 @@
-import { NextResponse, type NextRequest } from 'next/server';
-import { withAuth, jsonError } from '@/lib/api/auth';
+import type { NextRequest } from 'next/server';
+import { badRequest, forbidden, internalError, notFound, ok } from '@/lib/api/responses';
+import { withAuth } from '@/lib/api/auth';
 import { reportApiError } from '@/lib/monitoring/reportApiError';
 
 export const runtime = 'nodejs';
@@ -22,7 +23,7 @@ const SELECT_BASE = 'id, author_id, content, created_at, media_url, media_type';
 
 export const PATCH = withAuth(async (req: NextRequest, { user, supabase }) => {
   const id = req.nextUrl.pathname.split('/').pop();
-  if (!id) return jsonError('Missing id', 400);
+  if (!id) return badRequest('Missing id');
 
   const body = await req.json().catch(() => ({}));
   const text = typeof body?.content === 'string' ? body.content.trim() : '';
@@ -36,8 +37,8 @@ export const PATCH = withAuth(async (req: NextRequest, { user, supabase }) => {
   if (fetchErr) {
     reportApiError({ endpoint: '/api/feed/posts/[id]', error: fetchErr, context: { method: 'PATCH', stage: 'select' } });
   }
-  if (fetchErr || !existing) return jsonError('Not found', 404);
-  if (existing.author_id !== user.id) return jsonError('Forbidden', 403);
+  if (fetchErr || !existing) return notFound('Not found');
+  if (existing.author_id !== user.id) return forbidden('Forbidden');
 
   const { data: updated, error: updateError } = await supabase
     .from('posts')
@@ -50,13 +51,13 @@ export const PATCH = withAuth(async (req: NextRequest, { user, supabase }) => {
   if (updateError) {
     reportApiError({ endpoint: '/api/feed/posts/[id]', error: updateError, context: { method: 'PATCH', stage: 'update' } });
   }
-  if (updateError || !updated) return jsonError(updateError?.message || 'Update failed', 400);
-  return NextResponse.json({ ok: true, item: normalizeRow(updated) });
+  if (updateError || !updated) return badRequest(updateError?.message || 'Update failed');
+  return ok({ item: normalizeRow(updated) });
 });
 
 export const DELETE = withAuth(async (req: NextRequest, { user, supabase }) => {
   const id = req.nextUrl.pathname.split('/').pop();
-  if (!id) return jsonError('Missing id', 400);
+  if (!id) return badRequest('Missing id');
 
   const { data: existing, error: fetchErr } = await supabase
     .from('posts')
@@ -67,13 +68,13 @@ export const DELETE = withAuth(async (req: NextRequest, { user, supabase }) => {
   if (fetchErr) {
     reportApiError({ endpoint: '/api/feed/posts/[id]', error: fetchErr, context: { method: 'DELETE', stage: 'select' } });
   }
-  if (fetchErr || !existing) return jsonError('Not found', 404);
-  if (existing.author_id !== user.id) return jsonError('Forbidden', 403);
+  if (fetchErr || !existing) return notFound('Not found');
+  if (existing.author_id !== user.id) return forbidden('Forbidden');
 
   const { error } = await supabase.from('posts').delete().eq('id', id).eq('author_id', user.id);
   if (error) {
     reportApiError({ endpoint: '/api/feed/posts/[id]', error, context: { method: 'DELETE', stage: 'delete' } });
-    return jsonError(error.message, 400);
+    return internalError(error, error.message);
   }
-  return NextResponse.json({ ok: true });
+  return ok({});
 });
