@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import { useToast } from '@/components/common/ToastProvider';
 import {
@@ -71,8 +71,15 @@ export function DirectMessageThread({
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const thread = useMemo(() => messages || [], [messages]);
   const isDock = layout === 'dock';
+
+  const scrollMessagesToBottom = () => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -120,6 +127,10 @@ export function DirectMessageThread({
       cancelled = true;
     };
   }, [error, loading, targetProfileId, thread.length]);
+
+  useEffect(() => {
+    scrollMessagesToBottom();
+  }, [targetProfileId, thread.length]);
 
   const handleSend = async () => {
     const trimmed = content.trim();
@@ -170,6 +181,7 @@ export function DirectMessageThread({
       </div>
 
       <div
+        ref={messagesContainerRef}
         className={`min-h-0 space-y-3 overflow-y-auto bg-neutral-50 p-3 ${
           isDock ? 'flex-1' : 'min-h-[320px] rounded-lg'
         }`}
