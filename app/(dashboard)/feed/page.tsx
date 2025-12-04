@@ -245,9 +245,11 @@ export default function FeedPage() {
 
   return (
     <div className="page-shell" aria-labelledby={headingId}>
-      <div className="mx-auto w-full max-w-7xl px-4 lg:px-6">
+      <div className="mx-auto w-full max-w-[1440px] px-4 lg:px-6">
         {/* layout a 3 colonne: sx (minicard) / centro (composer + post) / dx (suggerimenti) */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,260px)_minmax(0,2fr)_minmax(0,320px)] lg:items-start">
+        <div
+          className="grid grid-cols-1 gap-4 lg:gap-6 lg:grid-cols-[280px_minmax(0,2.2fr)_minmax(0,1.2fr)] xl:grid-cols-[300px_minmax(0,2.5fr)_minmax(0,1.3fr)] lg:items-start"
+        >
           {/* Colonna sinistra: mini profilo */}
           <aside className="min-w-0 space-y-4">
             <div className="space-y-3">
