@@ -1,9 +1,11 @@
 // app/api/feed/posts/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
+import { badRequest, forbidden, internalError, ok, tooManyRequests, unauthorized } from '@/lib/api/responses';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 import { reportApiError } from '@/lib/monitoring/reportApiError';
+import { CreatePostSchema, type CreatePostInput } from '@/lib/validation/feed';
 
 export const runtime = 'nodejs';
 
@@ -58,8 +60,11 @@ function normalizeEventPayload(raw: any): EventPayload | null {
   };
 }
 
-function normalizeRow(row: any) {
+function normalizeRow(row: any, quotedMap?: Map<string, any>, depth = 0): any {
   const aspectFromUrl = inferAspectFromUrl(row.media_url);
+  const quotedRaw: any = row.quoted_post_id ? quotedMap?.get(row.quoted_post_id) : null;
+  const quotedPost = quotedRaw && depth < 1 ? normalizeRow(quotedRaw, quotedMap, depth + 1) : null;
+
   return {
     id: row.id,
     // legacy
@@ -80,6 +85,8 @@ function normalizeRow(row: any) {
     kind: row.kind ? normKind(row.kind) : 'normal',
     event_payload: normalizeEventPayload(row.event_payload) ?? null,
     role: undefined as unknown as 'club' | 'athlete' | undefined,
+    quoted_post_id: row.quoted_post_id ?? null,
+    quoted_post: quotedPost,
   };
 }
 
@@ -118,7 +125,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (mine && !currentProfileId) {
-    return NextResponse.json({ ok: false, error: 'not_authenticated' }, { status: 401 });
+    return unauthorized('Utente non autenticato per filtrare i propri post');
   }
 
   const followedAuthorProfileIds: string[] = [];
@@ -197,7 +204,28 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const rows = (data ?? []).map((r) => normalizeRow(r)) || [];
+  let quotedMap: Map<string, any> | null = null;
+
+  const quotedIds = Array.from(
+    new Set(
+      (Array.isArray(data) ? data : [])
+        .map((r) => r?.quoted_post_id)
+        .filter((v) => typeof v === 'string' && v.trim().length > 0),
+    ),
+  );
+
+  if (quotedIds.length) {
+    const { data: quotedRows, error: quotedError } = await supabase
+      .from('posts')
+      .select(SELECT_QUOTED)
+      .in('id', quotedIds);
+
+    if (!quotedError && Array.isArray(quotedRows)) {
+      quotedMap = new Map(quotedRows.map((row) => [row.id, row]));
+    }
+  }
+
+  const rows = (data ?? []).map((r) => normalizeRow(r, quotedMap ?? undefined)) || [];
 
   if (mine || authorIdFilter) {
     return NextResponse.json(
@@ -255,9 +283,11 @@ function isRlsError(err: any) {
 }
 
 const SELECT_WITH_MEDIA =
-  'id, author_id, content, created_at, media_url, media_type, media_aspect, kind, event_payload';
+  'id, author_id, content, created_at, media_url, media_type, media_aspect, kind, event_payload, quoted_post_id';
 const SELECT_WITH_LINK = `${SELECT_WITH_MEDIA}, link_url, link_title, link_description, link_image`;
-const SELECT_BASE = 'id, author_id, content, created_at, kind, event_payload';
+const SELECT_BASE = 'id, author_id, content, created_at, kind, event_payload, quoted_post_id';
+const SELECT_QUOTED =
+  'id, author_id, content, created_at, media_url, media_type, media_aspect, kind, event_payload, link_url, link_title, link_description, link_image, quoted_post_id';
 const DEFAULT_POSTS_BUCKET = process.env.NEXT_PUBLIC_POSTS_BUCKET || 'posts';
 
 function sanitizeStoragePath(path: string) {
@@ -313,7 +343,13 @@ type InsertClient = ServerClient | AdminClient;
 // POST: inserimento autenticato con rate-limit via cookie
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json().catch(() => ({}));
+    const parsedBody = CreatePostSchema.safeParse(await req.json().catch(() => ({})));
+    if (!parsedBody.success) {
+      console.warn('[api/feed/posts][POST] invalid payload', parsedBody.error.flatten());
+      return badRequest('Payload non valido', parsedBody.error.flatten());
+    }
+
+    const body: CreatePostInput = parsedBody.data;
     const rawText = (body?.text ?? body?.content ?? '').toString();
     const text = rawText.trim();
     const requestedKind = normKind(body?.kind ?? body?.type);
@@ -372,16 +408,14 @@ export async function POST(req: NextRequest) {
     const linkDescription =
       typeof rawLinkDescription === 'string' ? rawLinkDescription.trim() || null : null;
     const linkImage = normalizeLinkUrl(rawLinkImage);
+    const quotedPostId = (body.quoted_post_id ?? body.quotedPostId ?? null) || null;
     const isEvent = requestedKind === 'event';
 
-    if (!isEvent && !text && !mediaUrl && !normalizedMediaPath && !linkUrl) {
-      return NextResponse.json(
-        { ok: false, error: 'empty', message: 'Scrivi un testo, un link o allega un media.' },
-        { status: 400 }
-      );
+    if (!isEvent && !text && !mediaUrl && !normalizedMediaPath && !linkUrl && !quotedPostId) {
+      return badRequest('Scrivi un testo, un link o allega un media.', { error: 'empty' });
     }
     if (text.length > MAX_CHARS) {
-      return NextResponse.json({ ok: false, error: 'too_long', limit: MAX_CHARS }, { status: 400 });
+      return badRequest('Contenuto troppo lungo', { error: 'too_long', limit: MAX_CHARS });
     }
 
     const supabase = await getSupabaseServerClient();
@@ -389,7 +423,7 @@ export async function POST(req: NextRequest) {
 
     const { data: auth, error: authErr } = await supabase.auth.getUser();
     if (authErr || !auth?.user) {
-      return NextResponse.json({ ok: false, error: 'not_authenticated' }, { status: 401 });
+      return unauthorized('Utente non autenticato');
     }
 
     let actorRole: Role | null = null;
@@ -408,21 +442,27 @@ export async function POST(req: NextRequest) {
     }
 
     if (isEvent && actorRole !== 'club') {
-      return NextResponse.json(
-        { ok: false, error: 'forbidden', message: 'Solo i club possono creare eventi.' },
-        { status: 403 }
-      );
+      return forbidden('Solo i club possono creare eventi.');
     }
 
     if (isEvent && !eventPayload) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: 'invalid_event',
-          message: "Titolo e data dell'evento sono obbligatori.",
-        },
-        { status: 400 }
-      );
+      return badRequest("Titolo e data dell'evento sono obbligatori.", { error: 'invalid_event' });
+    }
+
+    let quotedRootId: string | null = null;
+
+    if (quotedPostId) {
+      const { data: quoted, error: quotedError } = await supabase
+        .from('posts')
+        .select('id, quoted_post_id')
+        .eq('id', quotedPostId)
+        .maybeSingle();
+
+      if (quotedError || !quoted) {
+        return badRequest('Post originale non trovato o non accessibile', { error: 'quoted_not_found' });
+      }
+
+      quotedRootId = quoted.quoted_post_id ?? quoted.id;
     }
 
     if (!mediaUrl && normalizedMediaPath) {
@@ -430,14 +470,9 @@ export async function POST(req: NextRequest) {
       if (publicInfo?.publicUrl) {
         mediaUrl = publicInfo.publicUrl;
       } else {
-        return NextResponse.json(
-          {
-            ok: false,
-            error: 'media_public_url_failed',
-            message: 'Impossibile generare il link pubblico del media.',
-          },
-          { status: 400 }
-        );
+        return badRequest('Impossibile generare il link pubblico del media.', {
+          error: 'media_public_url_failed',
+        });
       }
     }
 
@@ -446,10 +481,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (mediaUrl && !/^https?:\/\//i.test(mediaUrl)) {
-      return NextResponse.json(
-        { ok: false, error: 'invalid_media_url', message: 'L\'URL del media non è valido.' },
-        { status: 400 }
-      );
+      return badRequest("L'URL del media non è valido.", { error: 'invalid_media_url' });
     }
 
     const jar = await cookies();
@@ -457,10 +489,10 @@ export async function POST(req: NextRequest) {
     const lastTs = lastTsRaw ? Number(lastTsRaw) : 0;
     const now = Date.now();
     if (lastTs && now - lastTs < RATE_LIMIT_MS) {
-      return NextResponse.json(
-        { ok: false, error: 'rate_limited', retryInMs: RATE_LIMIT_MS - (now - lastTs) },
-        { status: 429 }
-      );
+      return tooManyRequests('Rate limit attivo', {
+        error: 'rate_limited',
+        retryInMs: RATE_LIMIT_MS - (now - lastTs),
+      });
     }
 
     const effectiveText = text || '';
@@ -483,6 +515,10 @@ export async function POST(req: NextRequest) {
       author_id: auth.user.id,
       kind: requestedKind,
     };
+    if (quotedRootId) {
+      insertPayload.quoted_post_id = quotedRootId;
+      fallbackPayload.quoted_post_id = quotedRootId;
+    }
     if (mediaUrl) fallbackPayload.media_url = mediaUrl;
     if (mediaType) fallbackPayload.media_type = mediaType;
 
@@ -521,23 +557,13 @@ export async function POST(req: NextRequest) {
         error,
         context: { stage: 'insert', method: 'POST' },
       });
-      return NextResponse.json(
-        {
-          ok: false,
-          error: 'insert_failed',
-          message: error.message,
-        },
-        { status: 400 }
-      );
+      return badRequest('Inserimento del post non riuscito', {
+        error: 'insert_failed',
+        message: error.message,
+      });
     }
 
-    const res = NextResponse.json(
-      {
-        ok: true,
-        item: normalizeRow(data),
-      },
-      { status: 201 }
-    );
+    const res = ok({ item: normalizeRow(data) }, { status: 201 });
     res.cookies.set(LAST_POST_TS_COOKIE, String(now), {
       httpOnly: false,
       path: '/',
@@ -547,6 +573,6 @@ export async function POST(req: NextRequest) {
     return res;
   } catch (err: any) {
     reportApiError({ endpoint: '/api/feed/posts', error: err, context: { method: 'POST', stage: 'handler_catch' } });
-    return NextResponse.json({ ok: false, error: 'invalid_request', message: err?.message }, { status: 400 });
+    return internalError(err);
   }
 }

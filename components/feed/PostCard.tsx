@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CommentsSection } from '@/components/feed/CommentsSection';
 import { PostIconDelete, PostIconEdit, PostIconShare } from '@/components/icons/PostActionIcons';
 import { PostMedia } from '@/components/feed/PostMedia';
+import { QuotedPostCard } from '@/components/feed/QuotedPostCard';
 import { getPostPermalink, shareOrCopyLink } from '@/lib/share';
 import {
   REACTION_EMOJI,
@@ -62,6 +63,7 @@ export type PostCardProps = {
   onCommentCountChange?: (next: number) => void;
   onUpdated?: (next: FeedPost) => void;
   onDeleted?: (id: string) => void;
+  onQuote?: (post: FeedPost) => void;
 };
 
 export function PostCard({
@@ -76,6 +78,7 @@ export function PostCard({
   onClosePicker,
   onToggleReaction,
   onCommentCountChange,
+  onQuote,
 }: PostCardProps) {
   const isEvent = (post.kind ?? 'normal') === 'event';
   const eventDetails = post.event_payload;
@@ -115,6 +118,14 @@ export function PostCard({
   );
   const totalReactions = REACTION_ORDER.reduce((acc, key) => acc + (reaction.counts[key] || 0), 0);
   const reactionSummaryText = reactionSummaryParts.length ? reactionSummaryParts.join(' · ') : 'Nessuna reazione';
+
+  const handleQuote = useCallback(() => {
+    if (onQuote) {
+      onQuote(post);
+    } else {
+      handleShare();
+    }
+  }, [handleShare, onQuote, post]);
 
   useEffect(() => {
     if (!editing) setText(description);
@@ -252,6 +263,13 @@ export function PostCard({
         <div className="mt-2 space-y-3 text-sm text-gray-900">
           {description ? <p className="whitespace-pre-wrap">{description}</p> : null}
 
+          {post.quoted_post_id ? (
+            <QuotedPostCard
+              post={post.quoted_post}
+              missingText="Questo post non è più disponibile"
+            />
+          ) : null}
+
           <PostMedia
             postId={post.id}
             mediaUrl={post.media_url}
@@ -347,10 +365,10 @@ export function PostCard({
         <button
           type="button"
           className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-neutral-800 transition hover:border-neutral-300"
-          onClick={handleShare}
+          onClick={handleQuote}
         >
           <span aria-hidden>🔗</span>
-          <span>Condividi</span>
+          <span>Condividi con commento</span>
         </button>
       </div>
 

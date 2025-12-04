@@ -1,8 +1,9 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { badRequest, internalError, ok, unauthorized } from '@/lib/api/responses';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
-import { jsonError } from '@/lib/api/auth';
+import { CreateReactionSchema, type CreateReactionInput } from '@/lib/validation/feed';
 
 export const runtime = 'nodejs';
 
@@ -70,7 +71,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ ok: true, counts, mine });
+    return ok({ counts, mine });
   } catch (err: any) {
     console.error('[feed/reactions][GET] failed', {
       ids,
@@ -80,35 +81,28 @@ export async function GET(req: NextRequest) {
     if (isMissingTable(err)) {
       return NextResponse.json({ ok: true, counts: [], mine: [], missingTable: true });
     }
-    return NextResponse.json({ ok: false, error: err?.message || 'Errore' }, { status: 400 });
+    return internalError(err);
   }
 }
 
 export async function POST(req: NextRequest) {
   const supabase = await getSupabaseServerClient();
-  let body: { postId?: string; reaction?: ReactionType | null } = {};
-  try {
-    body = await req.json();
-  } catch {
-    /* noop */
+  const parsedBody = CreateReactionSchema.safeParse(await req.json().catch(() => ({})));
+  if (!parsedBody.success) {
+    console.warn('[feed/reactions][POST] invalid payload', parsedBody.error.flatten());
+    return badRequest('Payload non valido', parsedBody.error.flatten());
   }
 
-  const postId = (body.postId || '').toString();
-  const reaction = (body.reaction ?? '').toString() as ReactionType | '';
-
-  if (!postId) {
-    return jsonError('Invalid payload', 400);
-  }
+  const body: CreateReactionInput = parsedBody.data;
+  const postId = body.postId;
+  const reaction = (body.reaction ?? '') as ReactionType | '';
 
   const { data: userRes, error: authError } = await supabase.auth.getUser();
   if (authError || !userRes?.user) {
-    return jsonError('not_authenticated', 401);
+    return unauthorized('Utente non autenticato');
   }
 
   const validReaction = reaction === '' ? null : reaction;
-  if (validReaction && !['like', 'love', 'care', 'angry'].includes(validReaction)) {
-    return jsonError('invalid_reaction', 400);
-  }
 
   try {
     console.info('[feed/reactions][POST] incoming', {
@@ -171,7 +165,7 @@ export async function POST(req: NextRequest) {
     const counts = buildCounts(rows);
     const mine = rows.find((r) => r.user_id === userRes.user.id)?.reaction ?? null;
 
-    return NextResponse.json({ ok: true, postId, counts, mine });
+    return ok({ postId, counts, mine });
   } catch (err: any) {
     console.error('[feed/reactions][POST] failed', {
       userId: userRes?.user?.id,
@@ -181,8 +175,8 @@ export async function POST(req: NextRequest) {
       details: err,
     });
     if (isMissingTable(err)) {
-      return jsonError('missing_table_post_reactions', 400);
+      return badRequest('Tabella post_reactions mancante', { error: 'missing_table_post_reactions' });
     }
-    return jsonError(err?.message || 'Errore', 400);
+    return internalError(err);
   }
 }

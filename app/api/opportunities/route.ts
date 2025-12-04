@@ -78,7 +78,8 @@ export async function GET(req: NextRequest) {
   const sport = (url.searchParams.get('sport') || '').trim();
   const role = (url.searchParams.get('role') || '').trim();
   const ageB = (url.searchParams.get('age') || '').trim();
-
+  const category = (url.searchParams.get('category') || url.searchParams.get('required_category') || '').trim();
+  
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
@@ -103,6 +104,7 @@ export async function GET(req: NextRequest) {
   if (club) query = query.ilike('club_name', `%${club}%`);
   if (sport) query = query.eq('sport', sport);
   if (role) query = query.eq('role', role);
+  if (category) query = query.eq('required_category', normalizeToEN(category) ?? category);
   if (ageB) {
     const { age_min, age_max } = bracketToRange(ageB);
     if (age_min != null) query = query.gte('age_min', age_min);

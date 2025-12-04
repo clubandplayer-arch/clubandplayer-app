@@ -11,6 +11,7 @@ import { MaterialIcon, type MaterialIconName } from '@/components/icons/Material
 import NotificationsDropdown from '@/components/notifications/NotificationsDropdown';
 import { useUnreadDirectThreads } from '@/hooks/useUnreadDirectThreads';
 import { MessagingDock } from '@/components/messaging/MessagingDock';
+import { useNotificationsBadge } from '@/hooks/useNotificationsBadge';
 
 type Role = 'athlete' | 'club' | 'guest';
 
@@ -35,8 +36,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [role, setRole] = useState<Role>('guest');
   const [loadingRole, setLoadingRole] = useState(true);
-  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const unreadDirectThreads = useUnreadDirectThreads();
+  const { unreadCount: unreadNotifications, setUnreadCount: setUnreadNotifications } = useNotificationsBadge();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // unica fonte affidabile per la CTA
@@ -89,28 +90,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setIsMenuOpen(false);
   }, [pathname]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const loadUnread = async () => {
-      try {
-        const res = await fetch('/api/notifications/unread-count', { cache: 'no-store' });
-        const json = await res.json().catch(() => ({}));
-        if (cancelled) return;
-        setUnreadNotifications(Number(json?.count) || 0);
-      } catch {
-        if (!cancelled) setUnreadNotifications(0);
-      }
-    };
-
-    void loadUnread();
-    const handler = () => void loadUnread();
-    window.addEventListener('app:notifications-updated', handler);
-    return () => {
-      cancelled = true;
-      window.removeEventListener('app:notifications-updated', handler);
-    };
-  }, []);
 
   return (
     <ToastProvider>

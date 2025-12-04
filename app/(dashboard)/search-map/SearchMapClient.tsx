@@ -1,12 +1,11 @@
 // app/(dashboard)/search-map/SearchMapClient.tsx
 'use client';
 
-import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
-import Link from 'next/link';
 
 import { SearchMapProfile, searchProfilesOnMap } from '@/lib/services/search';
+import SearchResultsList from '@/components/search/SearchResultsList';
 
 type LeafletLib = any;
 
@@ -60,11 +59,6 @@ function pointInPolygon(point: PolygonPoint, polygon: PolygonPoint[]): boolean {
   return inside;
 }
 
-function MarkerIcon({ type }: { type?: string | null }) {
-  const color = type?.toLowerCase().includes('club') ? 'text-blue-700' : 'text-emerald-700';
-  return <span className={`${color} text-lg`}>{type?.toLowerCase().includes('club') ? '🏟️' : '🧑‍💼'}</span>;
-}
-
 export default function SearchMapClient() {
   const [typeFilter, setTypeFilter] = useState<'all' | 'club' | 'player'>('all');
   const [searchBounds, setSearchBounds] = useState<Bounds | null>(null);
@@ -85,6 +79,8 @@ export default function SearchMapClient() {
   const [ageMin, setAgeMin] = useState('');
   const [ageMax, setAgeMax] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
@@ -247,6 +243,7 @@ export default function SearchMapClient() {
   useEffect(() => {
     if (!searchBounds) {
       setPoints([]);
+      setSelectedProfileId(null);
       return;
     }
 
@@ -400,42 +397,36 @@ export default function SearchMapClient() {
     typeFilter,
   ]);
 
-  const resolvePublicHref = useCallback((p: SearchMapProfile) => {
-    const profileId = (p.profile_id || p.id || '').toString();
-    if (!profileId) return '#';
-    const type = (p.type || p.account_type || '').trim().toLowerCase();
-    return type === 'club' ? `/clubs/${profileId}` : `/athletes/${profileId}`;
+  useEffect(() => {
+    if (selectedProfileId && !filteredPoints.find((p) => (p.profile_id || p.id || '').toString() === selectedProfileId)) {
+      setSelectedProfileId(null);
+    }
+  }, [filteredPoints, selectedProfileId]);
+
+  const focusOnProfile = useCallback(async (profile: SearchMapProfile) => {
+    const map = mapRef.current;
+    if (!map || profile.latitude == null || profile.longitude == null) return;
+
+    try {
+      map.flyTo([profile.latitude, profile.longitude], Math.max(map.getZoom(), 10), { duration: 0.6 });
+    } catch (error) {
+      console.error('[search-map] focus error', error);
+    }
   }, []);
 
-  const renderAvatar = (p: SearchMapProfile) => {
-    const display = p.display_name || p.full_name || 'Profilo';
-    const initial = display.trim()[0]?.toUpperCase() || 'P';
-    const alt = display || 'Avatar profilo';
-
-    return (
-      <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-gray-100 text-sm font-semibold text-gray-700">
-        {p.avatar_url ? (
-          <Image
-            src={p.avatar_url}
-            alt={`Avatar di ${alt}`}
-            width={48}
-            height={48}
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <span>{initial || '?'}</span>
-        )}
-      </div>
-    );
-  };
+  const handleSelectFromList = useCallback(
+    (profile: SearchMapProfile) => {
+      const profileId = (profile.profile_id || profile.id || '').toString();
+      setSelectedProfileId(profileId || null);
+      void focusOnProfile(profile);
+    },
+    [focusOnProfile],
+  );
 
   return (
     <div className="space-y-3">
-      <div className="rounded-xl border bg-white/80 p-4 shadow-sm space-y-2">
-        <label
-          htmlFor="search-map-query"
-          className="text-sm font-semibold text-gray-800"
-        >
+      <div className="space-y-2 rounded-xl border bg-white/80 p-4 shadow-sm">
+        <label htmlFor="search-map-query" className="text-sm font-semibold text-gray-800">
           Ricerca testuale
         </label>
         <input
@@ -452,9 +443,9 @@ export default function SearchMapClient() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-        <aside className="space-y-3 lg:col-span-3">
-          <div className="rounded-xl border bg-white/80 p-4 shadow-sm space-y-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+        <div className="space-y-3">
+          <div className="space-y-3 rounded-xl border bg-white/80 p-4 shadow-sm">
             <h2 className="heading-h2 text-lg">Area di ricerca</h2>
             <p className="text-xs text-gray-600">
               1) Disegna l’area sulla mappa. 2) Scegli i filtri. 3) Visualizza i risultati.
@@ -488,15 +479,23 @@ export default function SearchMapClient() {
                 Doppio click sulla mappa per chiudere il poligono oppure usa “Chiudi area e cerca”.
               </p>
             )}
-            {!hasArea && !isDrawing && (
-              <p className="text-xs text-gray-500">Nessuna area selezionata.</p>
-            )}
+            {!hasArea && !isDrawing && <p className="text-xs text-gray-500">Nessuna area selezionata.</p>}
             {activeArea && !isDrawing && (
               <p className="text-xs text-emerald-700">Area impostata: {activeArea.length} punti.</p>
             )}
           </div>
 
-          <div className="rounded-xl border bg-white/80 p-4 shadow-sm space-y-3">
+          <section className="h-[420px] rounded-xl border bg-white/80 shadow-sm lg:h-[640px]">
+            {mapError ? (
+              <div className="flex h-full w-full items-center justify-center text-sm text-red-600">{mapError}</div>
+            ) : (
+              <div ref={mapContainerRef} className="h-full w-full" />
+            )}
+          </section>
+        </div>
+
+        <div className="space-y-3">
+          <div className="space-y-3 rounded-xl border bg-white/80 p-4 shadow-sm">
             <h2 className="heading-h2 text-lg">Filtri</h2>
             <div className="flex gap-2">
               <button
@@ -609,67 +608,16 @@ export default function SearchMapClient() {
               </div>
             )}
           </div>
-        </aside>
 
-        <section className="h-[420px] rounded-xl border bg-white/80 shadow-sm lg:col-span-6 lg:h-[520px]">
-          {mapError ? (
-            <div className="flex h-full w-full items-center justify-center text-sm text-red-600">{mapError}</div>
-          ) : (
-            <div ref={mapContainerRef} className="h-full w-full" />
-          )}
-        </section>
-
-        <section className="space-y-2 rounded-xl border bg-white/80 p-3 shadow-sm lg:col-span-3">
-          <div className="flex items-center justify-between">
-            <h2 className="heading-h2 text-lg">Risultati</h2>
-            {loading && <span className="text-xs text-gray-500">Caricamento…</span>}
-          </div>
-          {dataError && (
-            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{dataError}</div>
-          )}
-          {!hasArea && !loading && !dataError && (
-            <div className="text-sm text-gray-600">
-              Disegna un’area sulla mappa o sposta la mappa e chiudi il poligono per iniziare la ricerca.
-            </div>
-          )}
-          {hasArea && filteredPoints.length === 0 && !loading && !dataError && (
-            <div className="text-sm text-gray-600">Nessun profilo nell’area selezionata.</div>
-          )}
-          <div className="grid grid-cols-1 gap-2">
-            {filteredPoints.map((p) => {
-              const href = resolvePublicHref(p);
-              const name = p.display_name || p.full_name || 'Profilo';
-              const rawType = (p.type || p.account_type || '').trim().toLowerCase();
-              const typeLabel = rawType === 'club' ? 'CLUB' : 'PLAYER';
-              return (
-                <div key={p.id} className="rounded-lg border px-3 py-2 hover:bg-gray-50">
-                  <div className="flex items-center gap-3">
-                    {renderAvatar(p)}
-                    <div className="flex flex-1 flex-col gap-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <div className="font-semibold leading-tight">{name}</div>
-                        <span className="flex items-center gap-1 text-xs font-medium text-gray-700">
-                          <MarkerIcon type={p.type || p.account_type} />
-                          <span>{typeLabel}</span>
-                        </span>
-                        <Link
-                          href={href}
-                          className="text-xs font-medium underline decoration-blue-600 underline-offset-2 text-blue-700 hover:no-underline"
-                        >
-                          Visita profilo
-                        </Link>
-                      </div>
-                      <div className="text-xs text-gray-600">
-                        {[p.city, p.province, p.region, p.country].filter(Boolean).join(' · ') || 'Località non disponibile'}
-                      </div>
-                      <div className="text-xs text-gray-500">{[p.role, p.sport].filter(Boolean).join(' · ')}</div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
+          <SearchResultsList
+            results={filteredPoints}
+            loading={loading}
+            hasArea={hasArea}
+            error={dataError}
+            selectedId={selectedProfileId}
+            onSelect={handleSelectFromList}
+          />
+        </div>
       </div>
     </div>
   );

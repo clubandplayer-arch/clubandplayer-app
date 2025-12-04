@@ -32,6 +32,8 @@ export type FeedPost = {
   link_image?: string | null;
   kind?: 'normal' | 'event';
   event_payload?: EventPayload | null;
+  quoted_post_id?: string | null;
+  quoted_post?: FeedPost | null;
 };
 
 export const REACTION_ORDER: ReactionType[] = ['like', 'love', 'care', 'angry'];
@@ -119,8 +121,9 @@ export function domainFromUrl(url: string) {
   }
 }
 
-export function normalizePost(p: any): FeedPost {
+export function normalizePost(p: any, depth = 0): FeedPost {
   const aspect = aspectFromUrl(p?.media_url);
+  const quoted = depth === 0 && p?.quoted_post ? normalizePost(p.quoted_post, depth + 1) : null;
   return {
     id: p.id,
     content: p.content ?? p.text ?? '',
@@ -135,5 +138,7 @@ export function normalizePost(p: any): FeedPost {
     link_image: p.link_image ?? p.linkImage ?? null,
     kind: p.kind === 'event' ? 'event' : 'normal',
     event_payload: normalizeEventPayload(p.event_payload ?? p.event ?? null),
+    quoted_post_id: p.quoted_post_id ?? p.quotedPostId ?? null,
+    quoted_post: quoted,
   };
 }

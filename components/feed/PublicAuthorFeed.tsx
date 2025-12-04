@@ -4,6 +4,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CommentsSection } from '@/components/feed/CommentsSection';
 import { PostMedia } from '@/components/feed/PostMedia';
+import { QuotedPostCard } from '@/components/feed/QuotedPostCard';
+import { normalizePost, type FeedPost } from '@/components/feed/postShared';
 import { getPostPermalink, shareOrCopyLink } from '@/lib/share';
 
 const REACTION_ORDER = ['like', 'love', 'care', 'angry'] as const;
@@ -36,16 +38,6 @@ function computeOptimistic(prev: ReactionState, nextMine: ReactionType | null): 
   if (nextMine) counts[nextMine] = (counts[nextMine] || 0) + 1;
   return { counts, mine: nextMine };
 }
-
-type FeedPost = {
-  id: string;
-  content?: string | null;
-  created_at?: string | null;
-  createdAt?: string | null;
-  media_url?: string | null;
-  media_type?: 'image' | 'video' | null;
-  link_url?: string | null;
-};
 
 function formatDate(value?: string | null) {
   if (!value) return '';
@@ -152,7 +144,7 @@ export default function PublicAuthorFeed({ authorId, fallbackAuthorIds = [] }: P
           const json = await res.json().catch(() => ({}));
           const arr = Array.isArray(json?.items ?? json?.data) ? (json.items ?? json.data) : [];
           if (arr.length > 0) {
-            loaded = arr as FeedPost[];
+            loaded = arr.map((p: any) => normalizePost(p));
             break;
           }
         }
@@ -288,6 +280,10 @@ function PublicPostCard({
     <article className="space-y-2 rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
       <div className="text-xs text-neutral-500">{formatDate(createdAt)}</div>
       {post.content ? <p className="whitespace-pre-wrap text-sm text-neutral-800">{post.content}</p> : null}
+
+      {post.quoted_post_id ? (
+        <QuotedPostCard post={post.quoted_post} missingText="Questo post non è più disponibile" />
+      ) : null}
       <PostMedia
         postId={post.id}
         mediaUrl={post.media_url}

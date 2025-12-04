@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { badRequest, ok } from '@/lib/api/responses';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
-import { jsonError } from '@/lib/api/auth';
 
 export const runtime = 'nodejs';
 
@@ -21,7 +21,7 @@ export async function GET(_req: NextRequest) {
 
   if (profileError) {
     console.error('[api/follows] errore profilo', profileError);
-    return jsonError('Errore profilo', 400);
+    return badRequest('Errore profilo');
   }
 
   if (!profile?.id || profile.status !== 'active') {
@@ -42,7 +42,7 @@ export async function GET(_req: NextRequest) {
 
   if (error || followerErr) {
     console.error('[api/follows] errore lettura follows', error || followerErr);
-    return jsonError('Errore nel recupero dei follow', 400);
+    return badRequest('Errore nel recupero dei follow');
   }
 
   const ids = (follows || [])
@@ -52,8 +52,7 @@ export async function GET(_req: NextRequest) {
     .map((row) => (row as any)?.follower_profile_id)
     .filter(Boolean) as string[];
 
-  return NextResponse.json({
-    ok: true,
+  return ok({
     profileId: profile.id,
     followingIds: ids,
     followerIds,

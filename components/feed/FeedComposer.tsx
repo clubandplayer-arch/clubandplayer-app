@@ -7,9 +7,13 @@ import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import Modal from '@/components/ui/Modal';
 import { MaterialIcon } from '@/components/icons/MaterialIcon';
+import { QuotedPostCard } from '@/components/feed/QuotedPostCard';
+import type { FeedPost } from '@/components/feed/postShared';
 
 type Props = {
   onPosted?: () => void;
+  quotedPost?: FeedPost | null;
+  onClearQuote?: () => void;
 };
 
 const MAX_CHARS = 500;
@@ -57,7 +61,7 @@ class FeedUploadError extends Error {
   }
 }
 
-export default function FeedComposer({ onPosted }: Props) {
+export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Props) {
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -83,7 +87,8 @@ export default function FeedComposer({ onPosted }: Props) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const eventFileInputRef = useRef<HTMLInputElement | null>(null);
   const linkAbortRef = useRef<AbortController | null>(null);
-  const canSend = (text.trim().length > 0 || Boolean(mediaFile) || Boolean(linkUrl)) && !sending;
+  const canSend =
+    (text.trim().length > 0 || Boolean(mediaFile) || Boolean(linkUrl) || Boolean(quotedPost)) && !sending;
   const isClub = accountType === 'club';
 
   const textareaId = 'feed-composer-input';
@@ -408,8 +413,11 @@ export default function FeedComposer({ onPosted }: Props) {
         payload.link_description = linkPreview?.description ?? null;
         payload.link_image = linkPreview?.image ?? null;
       }
+      if (quotedPost) {
+        payload.quotedPostId = quotedPost.id;
+      }
 
-      if (!trimmed && !mediaPayload && !linkUrl) {
+      if (!trimmed && !mediaPayload && !linkUrl && !quotedPost) {
         setErr('Scrivi un testo o allega un media/link.');
         return;
       }
@@ -431,6 +439,7 @@ export default function FeedComposer({ onPosted }: Props) {
       resetMedia();
       resetLink();
       setErr(null);
+      onClearQuote?.();
       onPosted?.();
     } catch (e: any) {
       if (e?.name === 'FeedUploadError') {
@@ -537,6 +546,16 @@ export default function FeedComposer({ onPosted }: Props) {
           </div>
         ) : null}
 
+        {quotedPost ? (
+          <div className="mt-3">
+            <QuotedPostCard
+              post={quotedPost}
+              onRemove={onClearQuote}
+              missingText="Il post originale non è disponibile"
+            />
+          </div>
+        ) : null}
+
         <div className="flex flex-wrap items-center gap-3 text-sm">
           <div className="flex flex-1 items-center gap-2 text-xs text-gray-500">
             <button
@@ -616,6 +635,7 @@ export default function FeedComposer({ onPosted }: Props) {
               setText('');
               setErr(null);
               resetMedia();
+              onClearQuote?.();
             }}
             disabled={sending}
             className="rounded-lg border px-4 py-2 hover:bg-gray-50 disabled:opacity-50"
