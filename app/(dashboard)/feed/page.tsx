@@ -243,83 +243,85 @@ export default function FeedPage() {
 
   return (
     <div className="page-shell" aria-labelledby={headingId}>
-      {/* layout a 3 colonne: sx (minicard) / centro (composer + post) / dx (suggerimenti) */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.4fr)_minmax(0,0.9fr)] lg:items-start">
-        {/* Colonna sinistra: mini profilo */}
-        <aside className="min-w-0 space-y-4">
-          <div className="space-y-3">
-            {/* Se esiste, il componente reale rimpiazzerà questo blocco via dynamic() */}
-            <ProfileMiniCard />
-          </div>
-          <MyMediaHub currentUserId={currentUserId} posts={items} />
-        </aside>
+      <div className="mx-auto w-full max-w-7xl px-4 lg:px-6">
+        {/* layout a 3 colonne: sx (minicard) / centro (composer + post) / dx (suggerimenti) */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,260px)_minmax(0,2fr)_minmax(0,320px)] lg:items-start">
+          {/* Colonna sinistra: mini profilo */}
+          <aside className="min-w-0 space-y-4">
+            <div className="space-y-3">
+              {/* Se esiste, il componente reale rimpiazzerà questo blocco via dynamic() */}
+              <ProfileMiniCard />
+            </div>
+            <MyMediaHub currentUserId={currentUserId} posts={items} />
+          </aside>
 
-        {/* Colonna centrale: composer + feed */}
-        <main className="min-w-0 space-y-4" aria-labelledby={headingId}>
-          <TrackRetention scope="feed" />
-          <h1 id={headingId} className="sr-only">
-            Bacheca feed
-          </h1>
-          <FeedComposer onPosted={reload} />
+          {/* Colonna centrale: composer + feed */}
+          <main className="min-w-0 space-y-4" aria-labelledby={headingId}>
+            <TrackRetention scope="feed" />
+            <h1 id={headingId} className="sr-only">
+              Bacheca feed
+            </h1>
+            <FeedComposer onPosted={reload} />
 
-          <div className="space-y-4" aria-live="polite" aria-busy={loading}>
-            {loading && (
-              <div className="glass-panel p-4" role="status">
-                Caricamento…
-              </div>
-            )}
-            {err && (
-              <div className="glass-panel p-4 text-red-600" role="alert">
-                {err}
-              </div>
-            )}
-            {!loading && !err && items.length === 0 && (
-              <div className="glass-panel p-4 text-sm text-gray-600" role="status">
-                Nessun post ancora.
-              </div>
-            )}
-            {!loading &&
-              !err &&
-              items.map((p) => (
-                <PostCard
-                  key={p.id}
-                  post={p}
-                  currentUserId={currentUserId}
-                  onUpdated={onPostUpdated}
-                  onDeleted={onPostDeleted}
-                  reaction={reactions[String(p.id)] ?? createDefaultReaction()}
-                  commentCount={commentCounts[String(p.id)] ?? 0}
-                  pickerOpen={pickerFor === String(p.id)}
-                  onOpenPicker={() => setPickerFor(String(p.id))}
-                  onClosePicker={() => setPickerFor((curr) => (curr === String(p.id) ? null : curr))}
-                  onToggleReaction={(type) => toggleReaction(String(p.id), type)}
-                  onCommentCountChange={(next) =>
-                    setCommentCounts((curr) => ({ ...curr, [String(p.id)]: next }))
-                  }
-                />
-              ))}
-            {reactionError && (
-              <div className="text-[11px] text-red-600" role="status">
-                {reactionError}
-              </div>
-            )}
-          </div>
-        </main>
+            <div className="space-y-4" aria-live="polite" aria-busy={loading}>
+              {loading && (
+                <div className="glass-panel p-4" role="status">
+                  Caricamento…
+                </div>
+              )}
+              {err && (
+                <div className="glass-panel p-4 text-red-600" role="alert">
+                  {err}
+                </div>
+              )}
+              {!loading && !err && items.length === 0 && (
+                <div className="glass-panel p-4 text-sm text-gray-600" role="status">
+                  Nessun post ancora.
+                </div>
+              )}
+              {!loading &&
+                !err &&
+                items.map((p) => (
+                  <PostCard
+                    key={p.id}
+                    post={p}
+                    currentUserId={currentUserId}
+                    onUpdated={onPostUpdated}
+                    onDeleted={onPostDeleted}
+                    reaction={reactions[String(p.id)] ?? createDefaultReaction()}
+                    commentCount={commentCounts[String(p.id)] ?? 0}
+                    pickerOpen={pickerFor === String(p.id)}
+                    onOpenPicker={() => setPickerFor(String(p.id))}
+                    onClosePicker={() => setPickerFor((curr) => (curr === String(p.id) ? null : curr))}
+                    onToggleReaction={(type) => toggleReaction(String(p.id), type)}
+                    onCommentCountChange={(next) =>
+                      setCommentCounts((curr) => ({ ...curr, [String(p.id)]: next }))
+                    }
+                  />
+                ))}
+              {reactionError && (
+                <div className="text-[11px] text-red-600" role="status">
+                  {reactionError}
+                </div>
+              )}
+            </div>
+          </main>
 
-        {/* Colonna destra: suggerimenti/annunci/club seguiti */}
-        <aside className="min-w-0 space-y-4">
-          <SidebarCard>
-            <WhoToFollow />
-          </SidebarCard>
+          {/* Colonna destra: suggerimenti/annunci/club seguiti */}
+          <aside className="min-w-0 space-y-4">
+            <SidebarCard>
+              <WhoToFollow />
+            </SidebarCard>
 
-          <SidebarCard>
-            <FollowedClubs />
-          </SidebarCard>
+            <SidebarCard>
+              <FollowedClubs />
+            </SidebarCard>
 
-          <SidebarCard>
-            <FeedHighlights />
-          </SidebarCard>
-        </aside>
+            <SidebarCard>
+              <FeedHighlights />
+            </SidebarCard>
+          </aside>
+        </div>
       </div>
     </div>
   );
