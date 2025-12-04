@@ -257,6 +257,7 @@ export default function FeedPage() {
               <ProfileMiniCard />
             </div>
             <MyMediaHub currentUserId={currentUserId} posts={items} />
+            <VerticalAdBanner className="hidden border border-blue-900/30 md:block" />
           </aside>
 
           {/* Colonna centrale: composer + feed */}
@@ -287,7 +288,7 @@ export default function FeedPage() {
                 !err &&
                 items.map((p, index) => (
                   <Fragment key={p.id}>
-                    {index > 0 && index % 4 === 0 ? (
+                    {index > 0 && index % 2 === 0 ? (
                       <HorizontalAdBanner className="border border-amber-200/70" />
                     ) : null}
                     <PostCard
