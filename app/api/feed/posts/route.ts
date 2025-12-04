@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 import { reportApiError } from '@/lib/monitoring/reportApiError';
+import { CreatePostSchema, type CreatePostInput } from '@/lib/validation/feed';
 
 export const runtime = 'nodejs';
 
@@ -313,7 +314,21 @@ type InsertClient = ServerClient | AdminClient;
 // POST: inserimento autenticato con rate-limit via cookie
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json().catch(() => ({}));
+    const parsedBody = CreatePostSchema.safeParse(await req.json().catch(() => ({})));
+    if (!parsedBody.success) {
+      console.warn('[api/feed/posts][POST] invalid payload', parsedBody.error.flatten());
+      return NextResponse.json(
+        {
+          ok: false,
+          code: 'BAD_REQUEST',
+          message: 'Payload non valido',
+          details: parsedBody.error.flatten(),
+        },
+        { status: 400 },
+      );
+    }
+
+    const body: CreatePostInput = parsedBody.data;
     const rawText = (body?.text ?? body?.content ?? '').toString();
     const text = rawText.trim();
     const requestedKind = normKind(body?.kind ?? body?.type);

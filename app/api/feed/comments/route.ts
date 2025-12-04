@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { CreateCommentSchema, type CreateCommentInput } from '@/lib/validation/feed';
 
 export const runtime = 'nodejs';
 
@@ -71,12 +72,23 @@ export async function POST(req: NextRequest) {
   }
 
   const bodyJson = await req.json().catch(() => ({}));
-  const postId = typeof bodyJson?.postId === 'string' ? bodyJson.postId.trim() : '';
-  const body = sanitizeBody(bodyJson?.body);
-
-  if (!postId || !body) {
-    return NextResponse.json({ ok: false, error: 'invalid_payload' }, { status: 400 });
+  const parsed = CreateCommentSchema.safeParse(bodyJson);
+  if (!parsed.success) {
+    console.warn('[api/feed/comments][POST] invalid payload', parsed.error.flatten());
+    return NextResponse.json(
+      {
+        ok: false,
+        code: 'BAD_REQUEST',
+        message: 'Payload non valido',
+        details: parsed.error.flatten(),
+      },
+      { status: 400 },
+    );
   }
+
+  const payload: CreateCommentInput = parsed.data;
+  const postId = payload.postId;
+  const body = sanitizeBody(payload.body);
 
   const { data, error } = await supabase
     .from('post_comments')

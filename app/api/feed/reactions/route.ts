@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 import { jsonError } from '@/lib/api/auth';
+import { CreateReactionSchema, type CreateReactionInput } from '@/lib/validation/feed';
 
 export const runtime = 'nodejs';
 
@@ -86,19 +87,23 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const supabase = await getSupabaseServerClient();
-  let body: { postId?: string; reaction?: ReactionType | null } = {};
-  try {
-    body = await req.json();
-  } catch {
-    /* noop */
+  const parsedBody = CreateReactionSchema.safeParse(await req.json().catch(() => ({})));
+  if (!parsedBody.success) {
+    console.warn('[feed/reactions][POST] invalid payload', parsedBody.error.flatten());
+    return NextResponse.json(
+      {
+        ok: false,
+        code: 'BAD_REQUEST',
+        message: 'Payload non valido',
+        details: parsedBody.error.flatten(),
+      },
+      { status: 400 },
+    );
   }
 
-  const postId = (body.postId || '').toString();
-  const reaction = (body.reaction ?? '').toString() as ReactionType | '';
-
-  if (!postId) {
-    return jsonError('Invalid payload', 400);
-  }
+  const body: CreateReactionInput = parsedBody.data;
+  const postId = body.postId;
+  const reaction = (body.reaction ?? '') as ReactionType | '';
 
   const { data: userRes, error: authError } = await supabase.auth.getUser();
   if (authError || !userRes?.user) {
@@ -106,9 +111,6 @@ export async function POST(req: NextRequest) {
   }
 
   const validReaction = reaction === '' ? null : reaction;
-  if (validReaction && !['like', 'love', 'care', 'angry'].includes(validReaction)) {
-    return jsonError('invalid_reaction', 400);
-  }
 
   try {
     console.info('[feed/reactions][POST] incoming', {

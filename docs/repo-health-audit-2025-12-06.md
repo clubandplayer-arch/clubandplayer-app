@@ -31,3 +31,7 @@ Il codice risulta coerente con l’assetto post-core rewrite: service layer cond
 - L’endpoint ora richiede un header `X-Webhook-Secret` valorizzato con `WEBHOOK_SYNC_SECRET` configurato nell’ambiente runtime.
 - In caso di secret mancante o errato, la rotta risponde con 401 (o 500 se l’ambiente non definisce la variabile) e logga l’evento respinto con path e IP (`x-forwarded-for`).
 - Il payload atteso non è cambiato; per integrazioni esterne basta aggiungere l’header condiviso.
+
+## Aggiornamento 2025-12-07 – TECH-02 (validazione API feed/follow)
+- Implementati schemi Zod per le API feed e follow in `lib/validation/feed.ts` e `lib/validation/follow.ts`.
+- Le rotte `/api/feed/posts`, `/api/feed/comments`, `/api/feed/reactions` e `/api/follows/toggle` validano ora i payload con risposta 400 uniforme `{ ok: false, code: 'BAD_REQUEST', message, details }` in caso di input non valido.

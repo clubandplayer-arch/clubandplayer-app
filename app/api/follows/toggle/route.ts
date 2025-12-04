@@ -1,14 +1,28 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { getActiveProfile, getProfileById } from '@/lib/api/profile';
+import { ToggleFollowSchema, type ToggleFollowInput } from '@/lib/validation/follow';
 
 export const runtime = 'nodejs';
 
 export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
-  const body = (await req.json().catch(() => ({}))) as { targetProfileId?: string };
-  const targetProfileId = (body?.targetProfileId || '').trim();
-  if (!targetProfileId) return jsonError('targetProfileId mancante', 400);
+  const parsedBody = ToggleFollowSchema.safeParse(await req.json().catch(() => ({})));
+  if (!parsedBody.success) {
+    console.warn('[api/follows/toggle][POST] invalid payload', parsedBody.error.flatten());
+    return NextResponse.json(
+      {
+        ok: false,
+        code: 'BAD_REQUEST',
+        message: 'Payload non valido',
+        details: parsedBody.error.flatten(),
+      },
+      { status: 400 },
+    );
+  }
 
+  const body: ToggleFollowInput = parsedBody.data;
+  const targetProfileId = body.targetProfileId;
+  
   try {
     const me = await getActiveProfile(supabase, user.id);
     if (!me) return jsonError('profilo non trovato', 403);
