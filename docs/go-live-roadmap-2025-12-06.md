@@ -34,11 +34,10 @@ Questi job derivano da `linkedin-gap-analysis-2025-12-06.md`. Sono ordinati per 
 - Obiettivo: aggiungere una sezione “Competenze” ai profili (player e club) con piccole pillole e endorsement (es. “Velocità”, “Leadership”, “Settore giovanile”).
 - Aumenta il valore informativo dei profili in ottica scouting.
 
-### JOBS-01 – Filtri avanzati opportunità + suggerimenti *(priorità: media)*
+### JOBS-01 – Filtri avanzati opportunità + suggerimenti *(completato, ex priorità: media)*
 
-- Obiettivo: potenziare `/opportunities` con:
-  - filtri extra (ruolo, categoria, età, paese),
-  - una sezione “Opportunità per te” basata sul profilo (zona geografica + sport).
+- Stato: implementati filtri avanzati (ruolo, categoria/livello, sport, località, stato) e la sezione “Opportunità per te”
+  basata su sport/area del profilo.
 - Avvicina la sezione opportunità a “LinkedIn Jobs”.
 
 > NOTIF-01 e SEARCH-01 risultano già completati.

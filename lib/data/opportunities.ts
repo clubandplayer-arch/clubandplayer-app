@@ -5,6 +5,12 @@ export type OppFilters = {
   q?: string;
   role?: string;
   country?: string;
+  region?: string;
+  province?: string;
+  sport?: string;
+  required_category?: string;
+  clubId?: string;
+  club?: string;
   status?: string;
   city?: string;
   from?: string;
@@ -85,6 +91,36 @@ export const OpportunitiesRepo = {
     const role = filters.role?.trim();
     if (role) {
       query = query.eq('role', role);
+    }
+
+    const sport = filters.sport?.trim();
+    if (sport) {
+      query = query.eq('sport', sport);
+    }
+
+    const region = filters.region?.trim();
+    if (region) {
+      query = query.eq('region', region);
+    }
+
+    const province = filters.province?.trim();
+    if (province) {
+      query = query.eq('province', province);
+    }
+
+    const requiredCategory = filters.required_category?.trim();
+    if (requiredCategory) {
+      query = query.eq('required_category', requiredCategory);
+    }
+
+    const clubId = filters.clubId?.trim();
+    if (clubId) {
+      query = query.or(`club_id.eq.${clubId},owner_id.eq.${clubId},created_by.eq.${clubId}`);
+    }
+
+    const clubName = filters.club?.trim();
+    if (clubName) {
+      query = query.ilike('club_name', `%${sanitizeLike(clubName)}%`);
     }
 
     const country = filters.country?.trim();
