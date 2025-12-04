@@ -170,7 +170,7 @@ export function DirectMessageThread({
       </div>
 
       <div
-        className={`space-y-3 overflow-y-auto bg-neutral-50 p-3 ${
+        className={`min-h-0 space-y-3 overflow-y-auto bg-neutral-50 p-3 ${
           isDock ? 'flex-1' : 'min-h-[320px] rounded-lg'
         }`}
       >
@@ -205,6 +205,18 @@ export function DirectMessageThread({
         <textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
+          onKeyDown={(event) => {
+            if (
+              event.key === 'Enter' &&
+              !event.shiftKey &&
+              !event.altKey &&
+              !event.metaKey &&
+              !event.ctrlKey
+            ) {
+              event.preventDefault();
+              void handleSend();
+            }
+          }}
           className="h-28 w-full resize-none rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
           placeholder="Scrivi un messaggio"
         />

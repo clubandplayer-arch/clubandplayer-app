@@ -72,14 +72,16 @@ export function MessagingDock() {
       )}
 
       {dockState === 'thread' && activeThread && (
-        <div className="fixed bottom-0 right-[360px] z-40 hidden w-full max-w-[520px] md:block md:right-[380px] lg:right-[400px]">
+        <div
+          className="fixed bottom-0 right-[360px] z-40 hidden flex h-[60vh] w-full max-w-[520px] flex-col overflow-hidden md:block md:right-[380px] md:max-h-[65vh] lg:right-[400px]"
+        >
           <DirectMessageThread
             targetProfileId={activeThread.otherProfileId}
             targetDisplayName={activeThread.otherName}
             targetAvatarUrl={activeThread.otherAvatarUrl}
             layout="dock"
             onClose={handleCloseThread}
-            className="h-[72vh]"
+            className="h-full max-h-full"
           />
         </div>
       )}
