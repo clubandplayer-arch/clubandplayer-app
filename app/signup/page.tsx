@@ -118,7 +118,7 @@ export default function SignupPage() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-[#e9f4ff] via-white to-[#ffe9d6]">
+    <main className="min-h-screen bg-clubplayer-gradient">
       <div className="mx-auto flex w-full max-w-[1440px] flex-col items-start gap-10 px-6 py-12 lg:flex-row lg:items-center lg:gap-14 lg:px-10 lg:py-16">
         <section className="flex-1 space-y-6 text-left lg:max-w-2xl">
           <h1 className="text-4xl font-extrabold leading-tight text-[#00527a] sm:text-5xl lg:text-[44px]">

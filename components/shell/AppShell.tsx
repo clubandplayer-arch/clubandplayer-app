@@ -115,7 +115,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <ToastProvider>
       <FollowProvider>
-        <div className="min-h-screen flex flex-col">
+        <div className="min-h-screen flex flex-col bg-clubplayer-gradient">
           <header className="sticky top-0 z-40 border-b bg-white/80 backdrop-blur">
             <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4">
               <Link

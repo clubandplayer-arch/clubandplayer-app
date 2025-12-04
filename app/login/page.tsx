@@ -122,7 +122,7 @@ export default function LoginPage() {
 
   return (
     <main
-      className="min-h-[60vh] flex items-center justify-center p-6"
+      className="min-h-screen bg-clubplayer-gradient flex items-center justify-center p-6"
       aria-labelledby="login-heading"
     >
       <div className="w-full max-w-sm rounded-2xl border p-6 shadow-sm space-y-4">

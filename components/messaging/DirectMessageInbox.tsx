@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/common/ToastProvider';
 import {
   getDirectInbox,
+  markDirectThreadRead,
   openDirectConversation,
   type DirectThreadSummary,
 } from '@/lib/services/messaging';
@@ -77,12 +78,31 @@ export function DirectMessageInbox({ onSelectThread, hideHeader, className }: Pr
   }, [show]);
 
   const handleOpen = async (thread: DirectThreadSummary) => {
+    const markAsRead = async () => {
+      try {
+        await markDirectThreadRead(thread.otherProfileId);
+        setThreads((prev) =>
+          prev.map((t) =>
+            t.otherProfileId === thread.otherProfileId ? { ...t, hasUnread: false } : t,
+          ),
+        );
+        window.dispatchEvent(new Event('app:direct-messages-updated'));
+      } catch (error) {
+        console.error('[direct-messages] mark read failed', {
+          targetProfileId: thread.otherProfileId,
+          error,
+        });
+      }
+    };
+
     if (onSelectThread) {
-      onSelectThread(thread);
+      onSelectThread({ ...thread, hasUnread: false });
+      void markAsRead();
       return;
     }
 
     try {
+      void markAsRead();
       await openDirectConversation(thread.otherProfileId, { router, source: 'messages-inbox' });
     } catch (error: any) {
       console.error('[direct-messages] inbox navigation failed', { targetProfileId: thread.otherProfileId, error });
