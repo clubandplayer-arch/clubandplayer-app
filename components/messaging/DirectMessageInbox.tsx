@@ -6,9 +6,16 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/common/ToastProvider';
 import {
   getDirectInbox,
+  markDirectThreadRead,
   openDirectConversation,
   type DirectThreadSummary,
 } from '@/lib/services/messaging';
+
+type Props = {
+  onSelectThread?: (thread: DirectThreadSummary) => void;
+  hideHeader?: boolean;
+  className?: string;
+};
 
 function formatDate(value: string) {
   try {
@@ -37,12 +44,13 @@ function Avatar({ name, avatarUrl }: { name: string; avatarUrl: string | null })
   );
 }
 
-export function DirectMessageInbox() {
+export function DirectMessageInbox({ onSelectThread, hideHeader, className }: Props) {
   const router = useRouter();
   const { show } = useToast();
   const [threads, setThreads] = useState<DirectThreadSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const containerClass = ['rounded-xl border bg-white p-6 shadow-sm', className].filter(Boolean).join(' ');
 
   useEffect(() => {
     let cancelled = false;
@@ -69,21 +77,49 @@ export function DirectMessageInbox() {
     };
   }, [show]);
 
-  const handleOpen = async (targetProfileId: string) => {
+  const handleOpen = async (thread: DirectThreadSummary) => {
+    const markAsRead = async () => {
+      try {
+        await markDirectThreadRead(thread.otherProfileId);
+        setThreads((prev) =>
+          prev.map((t) =>
+            t.otherProfileId === thread.otherProfileId ? { ...t, hasUnread: false } : t,
+          ),
+        );
+        window.dispatchEvent(new Event('app:direct-messages-updated'));
+      } catch (error) {
+        console.error('[direct-messages] mark read failed', {
+          targetProfileId: thread.otherProfileId,
+          error,
+        });
+      }
+    };
+
+    if (onSelectThread) {
+      onSelectThread({ ...thread, hasUnread: false });
+      void markAsRead();
+      return;
+    }
+
     try {
-      await openDirectConversation(targetProfileId, { router, source: 'messages-inbox' });
+      void markAsRead();
+      await openDirectConversation(thread.otherProfileId, { router, source: 'messages-inbox' });
     } catch (error: any) {
-      console.error('[direct-messages] inbox navigation failed', { targetProfileId, error });
+      console.error('[direct-messages] inbox navigation failed', { targetProfileId: thread.otherProfileId, error });
       show(error?.message || 'Errore apertura chat', { variant: 'error' });
     }
   };
 
   return (
-    <div className="rounded-xl border bg-white p-6 shadow-sm">
-      <h1 className="text-xl font-semibold text-neutral-900">Messaggi diretti</h1>
-      <p className="mt-2 text-sm text-neutral-600">Scegli con chi continuare la conversazione 1-a-1.</p>
+    <div className={containerClass}>
+      {!hideHeader && (
+        <>
+          <h1 className="text-xl font-semibold text-neutral-900">Messaggi diretti</h1>
+          <p className="mt-2 text-sm text-neutral-600">Scegli con chi continuare la conversazione 1-a-1.</p>
+        </>
+      )}
 
-      <div className="mt-4 space-y-3">
+      <div className={`${hideHeader ? 'mt-0' : 'mt-4'} space-y-3`}>
         {loading && <div className="text-sm text-neutral-600">Caricamento conversazioni…</div>}
         {!loading && error && (
           <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
@@ -98,7 +134,7 @@ export function DirectMessageInbox() {
             <button
               key={thread.otherProfileId}
               type="button"
-              onClick={() => void handleOpen(thread.otherProfileId)}
+              onClick={() => void handleOpen(thread)}
               className="flex w-full items-center gap-3 rounded-lg border border-transparent p-3 text-left transition hover:border-[var(--brand)] hover:bg-neutral-50"
             >
               <Avatar name={thread.otherName} avatarUrl={thread.otherAvatarUrl} />

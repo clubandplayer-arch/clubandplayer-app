@@ -118,37 +118,34 @@ export default function SignupPage() {
   };
 
   return (
-    <main className="container mx-auto px-4 py-12">
-      <div className="mx-auto max-w-6xl">
-        <h1 className="text-left text-4xl font-extrabold leading-tight text-[#00527a] sm:text-5xl">
-          Club &amp; Player
-        </h1>
-        <div className="mt-6 grid items-start gap-10 md:grid-cols-12">
-          {/* HERO TESTO - stile LinkedIn */}
-          <section className="md:col-span-7 md:mt-2">
+    <main className="min-h-screen bg-clubplayer-gradient">
+      <div className="mx-auto flex w-full max-w-[1440px] flex-col items-start gap-10 px-6 py-12 lg:flex-row lg:items-center lg:gap-14 lg:px-10 lg:py-16">
+        <section className="flex-1 space-y-6 text-left lg:max-w-2xl">
+          <h1 className="text-4xl font-extrabold leading-tight text-[#00527a] sm:text-5xl lg:text-[44px]">
+            Club &amp; Player
+          </h1>
+          <div className="space-y-4">
             <h2 className="text-3xl font-bold leading-tight text-[#00527a] sm:text-4xl">
               Ti diamo il benvenuto nella più grande community sportiva.
             </h2>
-            <br />
             <h3 className="text-xl font-bold leading-tight text-[#0b6c9c] sm:text-2xl">
               <em>entra a far parte di questo nuovo progetto!</em>
             </h3>
-            <br />
-            <p className="mt-2 lead max-w-2xl">
+            <p className="text-lg leading-relaxed text-slate-800">
               Connettiti con club e player, pubblica opportunità, costruisci la tua carriera. Iscriviti in pochi
               secondi: scegli se sei un <b>Club</b> o un <b>Player</b>.
             </p>
-
-            <ul className="mt-6 space-y-3 text-sm">
+            <ul className="mt-4 space-y-3 text-base text-slate-800">
               <li>• Scopri e pubblica <b>opportunità</b> reali</li>
               <li>• Crea un <b>profilo</b> chiaro e aggiornato</li>
               <li>• Ricevi <b>candidature</b> e messaggi in app</li>
             </ul>
-          </section>
+          </div>
+        </section>
 
-          {/* CARD FORM */}
-          <section className="md:col-span-5">
-          <div className="card p-6 space-y-4 border-2 border-[#00527a1a] shadow-2xl">
+        {/* CARD FORM */}
+        <section className="w-full max-w-lg flex-shrink-0">
+          <div className="space-y-4 rounded-3xl border border-[#00527a1a] bg-white/90 p-8 shadow-xl backdrop-blur">
             <h2 className="sr-only">Crea un account</h2>
             <div className="flex items-center gap-2 text-sm font-semibold text-[#00527a]">
               <span className="h-2 w-2 rounded-full bg-[#00527a]" aria-hidden />
@@ -173,7 +170,7 @@ export default function SignupPage() {
                 Che tipo di account vuoi creare?
               </legend>
               <div className="grid grid-cols-2 gap-2 text-sm">
-                <label className="flex items-center gap-2 rounded-md border px-3 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-neutral-800 dark:border-neutral-700">
+                <label className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 hover:bg-gray-50 dark:border-neutral-700 dark:hover:bg-neutral-800">
                   <input
                     type="radio"
                     name="role"
@@ -184,7 +181,7 @@ export default function SignupPage() {
                   <PlayerIcon />
                   <span>Player</span>
                 </label>
-                <label className="flex items-center gap-2 rounded-md border px-3 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-neutral-800 dark:border-neutral-700">
+                <label className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 hover:bg-gray-50 dark:border-neutral-700 dark:hover:bg-neutral-800">
                   <input
                     type="radio"
                     name="role"
@@ -273,7 +270,6 @@ export default function SignupPage() {
           </div>
         </section>
       </div>
-    </div>
-  </main>
+    </main>
   );
 }

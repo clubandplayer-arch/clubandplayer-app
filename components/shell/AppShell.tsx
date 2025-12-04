@@ -10,6 +10,7 @@ import { NavCloseIcon, NavMenuIcon } from '@/components/icons/NavToggleIcons';
 import { MaterialIcon, type MaterialIconName } from '@/components/icons/MaterialIcon';
 import NotificationsDropdown from '@/components/notifications/NotificationsDropdown';
 import { useUnreadDirectThreads } from '@/hooks/useUnreadDirectThreads';
+import { MessagingDock } from '@/components/messaging/MessagingDock';
 
 type Role = 'athlete' | 'club' | 'guest';
 
@@ -26,6 +27,8 @@ const navItems: NavItem[] = [
   { label: 'Candidature', href: '/applications', icon: 'applications' },
   { label: 'Mappa', href: '/search-map', icon: 'globe' },
 ];
+
+const desktopNavItems = navItems.filter((item) => item.href !== '/messages');
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -112,7 +115,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <ToastProvider>
       <FollowProvider>
-        <div className="min-h-screen flex flex-col">
+        <div className="min-h-screen flex flex-col bg-clubplayer-gradient">
           <header className="sticky top-0 z-40 border-b bg-white/80 backdrop-blur">
             <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4">
               <Link
@@ -124,7 +127,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
           <nav className="hidden flex-1 justify-center md:flex">
             <div className="flex items-center gap-1 rounded-full border border-white/40 bg-white/70 px-2 py-1 shadow-sm backdrop-blur">
-              {navItems.map((item) => {
+              {desktopNavItems.map((item) => {
                 const active = isActive(item.href);
                 if (item.href === '/notifications') {
                   return (
@@ -256,6 +259,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </header>
 
           <main className="flex-1">{children}</main>
+
+          <MessagingDock />
         </div>
       </FollowProvider>
     </ToastProvider>

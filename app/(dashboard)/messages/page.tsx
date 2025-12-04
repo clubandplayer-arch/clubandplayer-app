@@ -1,4 +1,4 @@
-import { DirectMessageInbox } from './DirectMessageInbox';
+import { DirectMessageInbox } from '@/components/messaging/DirectMessageInbox';
 
 export const metadata = {
   title: 'Messaggi',

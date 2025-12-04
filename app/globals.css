@@ -39,10 +39,17 @@
 }
 
 /* Base */
+:root {
+  --clubplayer-gradient: linear-gradient(135deg, #e9f4ff 0%, #ffffff 46%, #ffe3c1 100%);
+}
+
+.bg-clubplayer-gradient {
+  background: var(--clubplayer-gradient);
+}
+
 html, body {
   min-height: 100%;
-  background: #51c4f5;
-  background: linear-gradient(90deg, rgba(81, 196, 245, 1) 0%, rgba(242, 195, 138, 1) 49%, rgba(247, 188, 104, 1) 100%);
+  background: var(--clubplayer-gradient);
   color: var(--fg);
   /* ⛔️ Non impostiamo il font qui per non sovrascrivere Inter dal layout */
   overflow-x: hidden;

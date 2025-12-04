@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import { useToast } from '@/components/common/ToastProvider';
 import {
@@ -14,6 +14,9 @@ type Props = {
   targetProfileId: string;
   targetDisplayName: string;
   targetAvatarUrl: string | null;
+  layout?: 'card' | 'dock';
+  onClose?: () => void;
+  className?: string;
 };
 
 function formatDate(value: string) {
@@ -53,7 +56,14 @@ function Avatar({ name, avatarUrl }: { name: string; avatarUrl: string | null })
   );
 }
 
-export function DirectMessageThread({ targetProfileId, targetDisplayName, targetAvatarUrl }: Props) {
+export function DirectMessageThread({
+  targetProfileId,
+  targetDisplayName,
+  targetAvatarUrl,
+  layout = 'card',
+  onClose,
+  className,
+}: Props) {
   const { show } = useToast();
   const [messages, setMessages] = useState<DirectMessage[]>([]);
   const [currentProfileId, setCurrentProfileId] = useState<string | null>(null);
@@ -61,7 +71,15 @@ export function DirectMessageThread({ targetProfileId, targetDisplayName, target
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const thread = useMemo(() => messages || [], [messages]);
+  const isDock = layout === 'dock';
+
+  const scrollMessagesToBottom = () => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -110,6 +128,10 @@ export function DirectMessageThread({ targetProfileId, targetDisplayName, target
     };
   }, [error, loading, targetProfileId, thread.length]);
 
+  useEffect(() => {
+    scrollMessagesToBottom();
+  }, [targetProfileId, thread.length]);
+
   const handleSend = async () => {
     const trimmed = content.trim();
     if (!trimmed || sending) return;
@@ -130,16 +152,40 @@ export function DirectMessageThread({ targetProfileId, targetDisplayName, target
   const headerName = targetDisplayName || 'Profilo';
 
   return (
-    <div className="space-y-4 rounded-xl border bg-white p-4 shadow-sm">
-      <div className="flex items-center gap-3 border-b pb-3">
+    <div
+      className={[
+        isDock
+          ? 'flex h-full flex-col rounded-t-2xl border bg-white shadow-2xl'
+          : 'space-y-4 rounded-xl border bg-white p-4 shadow-sm',
+        className,
+      ]
+        .filter(Boolean)
+        .join(' ')}
+    >
+      <div className={`flex items-center gap-3 border-b ${isDock ? 'px-4 py-3' : 'pb-3'}`}>
         <Avatar name={headerName} avatarUrl={targetAvatarUrl} />
-        <div>
+        <div className="flex-1">
           <div className="text-lg font-semibold text-neutral-900">{headerName}</div>
           <div className="text-sm text-neutral-500">Messaggi diretti</div>
         </div>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-neutral-600 transition hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+            aria-label="Chiudi conversazione"
+          >
+            ×
+          </button>
+        )}
       </div>
 
-      <div className="min-h-[320px] space-y-3 overflow-y-auto rounded-lg bg-neutral-50 p-3">
+      <div
+        ref={messagesContainerRef}
+        className={`min-h-0 space-y-3 overflow-y-auto bg-neutral-50 p-3 ${
+          isDock ? 'flex-1' : 'min-h-[320px] rounded-lg'
+        }`}
+      >
         {loading && <div className="text-sm text-neutral-600">Caricamento conversazione…</div>}
         {!loading && error && (
           <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
@@ -167,10 +213,22 @@ export function DirectMessageThread({ targetProfileId, targetDisplayName, target
           })}
       </div>
 
-      <div className="space-y-2 border-t pt-2">
+      <div className={`space-y-2 border-t pt-2 ${isDock ? 'px-4 pb-4' : ''}`}>
         <textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
+          onKeyDown={(event) => {
+            if (
+              event.key === 'Enter' &&
+              !event.shiftKey &&
+              !event.altKey &&
+              !event.metaKey &&
+              !event.ctrlKey
+            ) {
+              event.preventDefault();
+              void handleSend();
+            }
+          }}
           className="h-28 w-full resize-none rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
           placeholder="Scrivi un messaggio"
         />

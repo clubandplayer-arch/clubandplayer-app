@@ -2,12 +2,14 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import FeedComposer from '@/components/feed/FeedComposer';
 import TrackRetention from '@/components/analytics/TrackRetention';
 import { PostCard } from '@/components/feed/PostCard';
+import { HorizontalAdBanner } from '@/components/ads/HorizontalAdBanner';
+import { VerticalAdBanner } from '@/components/ads/VerticalAdBanner';
 import {
   computeOptimistic,
   createDefaultReaction,
@@ -242,9 +244,14 @@ export default function FeedPage() {
   }
 
   return (
-    <div className="page-shell" aria-labelledby={headingId}>
+    <div
+      className="mx-auto w-full max-w-[1440px] px-4 pb-6 pt-4 sm:px-5 md:px-6 lg:px-6"
+      aria-labelledby={headingId}
+    >
       {/* layout a 3 colonne: sx (minicard) / centro (composer + post) / dx (suggerimenti) */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.4fr)_minmax(0,0.9fr)] lg:items-start">
+      <div
+        className="grid grid-cols-1 gap-4 lg:gap-6 lg:grid-cols-[280px_minmax(0,2.2fr)_minmax(0,1.2fr)] xl:grid-cols-[300px_minmax(0,2.5fr)_minmax(0,1.3fr)] lg:items-start"
+      >
         {/* Colonna sinistra: mini profilo */}
         <aside className="min-w-0 space-y-4">
           <div className="space-y-3">
@@ -252,6 +259,7 @@ export default function FeedPage() {
             <ProfileMiniCard />
           </div>
           <MyMediaHub currentUserId={currentUserId} posts={items} />
+          <VerticalAdBanner className="hidden border border-blue-900/30 md:block" />
         </aside>
 
         {/* Colonna centrale: composer + feed */}
@@ -280,23 +288,27 @@ export default function FeedPage() {
             )}
             {!loading &&
               !err &&
-              items.map((p) => (
-                <PostCard
-                  key={p.id}
-                  post={p}
-                  currentUserId={currentUserId}
-                  onUpdated={onPostUpdated}
-                  onDeleted={onPostDeleted}
-                  reaction={reactions[String(p.id)] ?? createDefaultReaction()}
-                  commentCount={commentCounts[String(p.id)] ?? 0}
-                  pickerOpen={pickerFor === String(p.id)}
-                  onOpenPicker={() => setPickerFor(String(p.id))}
-                  onClosePicker={() => setPickerFor((curr) => (curr === String(p.id) ? null : curr))}
-                  onToggleReaction={(type) => toggleReaction(String(p.id), type)}
-                  onCommentCountChange={(next) =>
-                    setCommentCounts((curr) => ({ ...curr, [String(p.id)]: next }))
-                  }
-                />
+              items.map((p, index) => (
+                <Fragment key={p.id}>
+                  {index > 0 && index % 2 === 0 ? (
+                    <HorizontalAdBanner className="border border-amber-200/70" />
+                  ) : null}
+                  <PostCard
+                    post={p}
+                    currentUserId={currentUserId}
+                    onUpdated={onPostUpdated}
+                    onDeleted={onPostDeleted}
+                    reaction={reactions[String(p.id)] ?? createDefaultReaction()}
+                    commentCount={commentCounts[String(p.id)] ?? 0}
+                    pickerOpen={pickerFor === String(p.id)}
+                    onOpenPicker={() => setPickerFor(String(p.id))}
+                    onClosePicker={() => setPickerFor((curr) => (curr === String(p.id) ? null : curr))}
+                    onToggleReaction={(type) => toggleReaction(String(p.id), type)}
+                    onCommentCountChange={(next) =>
+                      setCommentCounts((curr) => ({ ...curr, [String(p.id)]: next }))
+                    }
+                  />
+                </Fragment>
               ))}
             {reactionError && (
               <div className="text-[11px] text-red-600" role="status">
@@ -319,6 +331,10 @@ export default function FeedPage() {
           <SidebarCard>
             <FeedHighlights />
           </SidebarCard>
+
+          <VerticalAdBanner className="border border-blue-900/30" />
+
+          <VerticalAdBanner className="border border-blue-900/30" />
         </aside>
       </div>
     </div>
