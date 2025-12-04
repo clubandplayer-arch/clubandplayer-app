@@ -10,6 +10,7 @@ import { NavCloseIcon, NavMenuIcon } from '@/components/icons/NavToggleIcons';
 import { MaterialIcon, type MaterialIconName } from '@/components/icons/MaterialIcon';
 import NotificationsDropdown from '@/components/notifications/NotificationsDropdown';
 import { useUnreadDirectThreads } from '@/hooks/useUnreadDirectThreads';
+import ChatFloatingButton from '@/components/messaging/ChatFloatingButton';
 
 type Role = 'athlete' | 'club' | 'guest';
 
@@ -256,6 +257,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </header>
 
           <main className="flex-1">{children}</main>
+
+          <ChatFloatingButton />
         </div>
       </FollowProvider>
     </ToastProvider>
