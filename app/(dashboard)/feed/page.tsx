@@ -2,12 +2,14 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import FeedComposer from '@/components/feed/FeedComposer';
 import TrackRetention from '@/components/analytics/TrackRetention';
 import { PostCard } from '@/components/feed/PostCard';
+import { HorizontalAdBanner } from '@/components/ads/HorizontalAdBanner';
+import { VerticalAdBanner } from '@/components/ads/VerticalAdBanner';
 import {
   computeOptimistic,
   createDefaultReaction,
@@ -281,23 +283,27 @@ export default function FeedPage() {
               )}
               {!loading &&
                 !err &&
-                items.map((p) => (
-                  <PostCard
-                    key={p.id}
-                    post={p}
-                    currentUserId={currentUserId}
-                    onUpdated={onPostUpdated}
-                    onDeleted={onPostDeleted}
-                    reaction={reactions[String(p.id)] ?? createDefaultReaction()}
-                    commentCount={commentCounts[String(p.id)] ?? 0}
-                    pickerOpen={pickerFor === String(p.id)}
-                    onOpenPicker={() => setPickerFor(String(p.id))}
-                    onClosePicker={() => setPickerFor((curr) => (curr === String(p.id) ? null : curr))}
-                    onToggleReaction={(type) => toggleReaction(String(p.id), type)}
-                    onCommentCountChange={(next) =>
-                      setCommentCounts((curr) => ({ ...curr, [String(p.id)]: next }))
-                    }
-                  />
+                items.map((p, index) => (
+                  <Fragment key={p.id}>
+                    {index > 0 && index % 4 === 0 ? (
+                      <HorizontalAdBanner className="border border-amber-200/70" />
+                    ) : null}
+                    <PostCard
+                      post={p}
+                      currentUserId={currentUserId}
+                      onUpdated={onPostUpdated}
+                      onDeleted={onPostDeleted}
+                      reaction={reactions[String(p.id)] ?? createDefaultReaction()}
+                      commentCount={commentCounts[String(p.id)] ?? 0}
+                      pickerOpen={pickerFor === String(p.id)}
+                      onOpenPicker={() => setPickerFor(String(p.id))}
+                      onClosePicker={() => setPickerFor((curr) => (curr === String(p.id) ? null : curr))}
+                      onToggleReaction={(type) => toggleReaction(String(p.id), type)}
+                      onCommentCountChange={(next) =>
+                        setCommentCounts((curr) => ({ ...curr, [String(p.id)]: next }))
+                      }
+                    />
+                  </Fragment>
                 ))}
               {reactionError && (
                 <div className="text-[11px] text-red-600" role="status">
@@ -320,6 +326,10 @@ export default function FeedPage() {
             <SidebarCard>
               <FeedHighlights />
             </SidebarCard>
+
+            <VerticalAdBanner className="border border-blue-900/30" />
+
+            <VerticalAdBanner className="border border-blue-900/30" />
           </aside>
         </div>
       </div>
