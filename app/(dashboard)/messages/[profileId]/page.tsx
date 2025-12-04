@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { DirectMessageThread } from './DirectMessageThread';
+import { DirectMessageThread } from '@/components/messaging/DirectMessageThread';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { getProfileById } from '@/lib/api/profile';
 

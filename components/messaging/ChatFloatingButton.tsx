@@ -4,11 +4,19 @@ import { useRouter } from 'next/navigation';
 import { MaterialIcon } from '@/components/icons/MaterialIcon';
 import { useUnreadDirectThreads } from '@/hooks/useUnreadDirectThreads';
 
-export default function ChatFloatingButton() {
+type Props = {
+  onClick?: () => void;
+};
+
+export default function ChatFloatingButton({ onClick }: Props) {
   const router = useRouter();
   const unreadDirectThreads = useUnreadDirectThreads();
 
   const handleClick = () => {
+    if (onClick) {
+      onClick();
+      return;
+    }
     router.push('/messages');
   };
 
