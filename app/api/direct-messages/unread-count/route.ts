@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs';
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { getActiveProfile } from '@/lib/api/profile';
@@ -13,7 +14,12 @@ function isMissingReadStateTable(error: any) {
 export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
   try {
     const me = await getActiveProfile(supabase, user.id);
-    if (!me) return jsonError('profilo non trovato', 403);
+    if (!me) {
+      console.warn('[direct-messages] GET /api/direct-messages/unread-count missing profile', { userId: user.id });
+      return jsonError('profilo non trovato', 403);
+    }
+
+    console.log('[direct-messages] GET /api/direct-messages/unread-count', { userId: user.id, profileId: me.id });
 
     const { data: incoming, error: incomingError } = await supabase
       .from('direct_messages')
@@ -31,7 +37,7 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
 
     if (readError) {
       if (isMissingReadStateTable(readError)) {
-        console.warn('[api/direct-messages/unread-count GET] missing table direct_message_read_state, returning 0');
+        console.warn('[direct-messages] GET /api/direct-messages/unread-count missing table direct_message_read_state, returning 0');
       } else {
         throw readError;
       }
@@ -61,14 +67,15 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
       }
     }
 
-    console.info('[api/direct-messages/unread-count GET]', {
+    console.info('[direct-messages] GET /api/direct-messages/unread-count summary', {
       profile: me.id,
       unreadThreads,
     });
 
     return NextResponse.json({ unreadThreads });
   } catch (error: any) {
-    console.error('[api/direct-messages/unread-count GET] errore', { error });
+    console.error('[direct-messages] GET /api/direct-messages/unread-count unexpected error', { error, userId: user.id });
+    Sentry.captureException(error);
     const message = typeof error?.message === 'string' ? error.message : 'server_error';
     return jsonError(message, 500);
   }

@@ -82,7 +82,7 @@ export default function FeedHighlights() {
         <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
       ) : items.length > 0 ? (
         <ul className="space-y-3">
-          {items.slice(0, 5).map((opp) => (
+          {items.slice(0, 3).map((opp) => (
             <li key={opp.id} className="rounded-xl border border-zinc-200 bg-white/70 p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/40">
               <Link
                 href={`/opportunities/${opp.id}`}

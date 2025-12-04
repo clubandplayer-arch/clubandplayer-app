@@ -3,14 +3,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import { useToast } from '@/components/common/ToastProvider';
-
-type DirectMessage = {
-  id: string;
-  sender_profile_id: string;
-  recipient_profile_id: string;
-  content: string;
-  created_at: string;
-};
+import {
+  getDirectThread,
+  markDirectThreadRead,
+  sendDirectMessage,
+  type DirectMessage,
+} from '@/lib/services/messaging';
 
 type Props = {
   targetProfileId: string;
@@ -71,17 +69,14 @@ export function DirectMessageThread({ targetProfileId, targetDisplayName, target
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`/api/direct-messages/${targetProfileId}`, { cache: 'no-store' });
-        const json = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          throw new Error((json as any)?.error || 'Errore caricamento messaggi');
-        }
+        const threadData = await getDirectThread(targetProfileId);
         if (cancelled) return;
-        setMessages(Array.isArray((json as any)?.messages) ? (json as any).messages : []);
-        setCurrentProfileId((json as any)?.currentProfileId ?? null);
+        setMessages(threadData.messages || []);
+        setCurrentProfileId(threadData.currentProfileId ?? null);
       } catch (err: any) {
         if (cancelled) return;
         const message = err?.message || 'Errore caricamento messaggi';
+        console.error('[direct-messages] thread load failed', { error: err, targetProfileId });
         setError(message);
         show(message, { variant: 'error' });
       } finally {
@@ -101,12 +96,10 @@ export function DirectMessageThread({ targetProfileId, targetDisplayName, target
 
     const markRead = async () => {
       try {
-        await fetch(`/api/direct-messages/${targetProfileId}/mark-read`, { method: 'POST' });
-        if (!cancelled) {
-          window.dispatchEvent(new Event('app:direct-messages-updated'));
-        }
+        await markDirectThreadRead(targetProfileId);
+        if (!cancelled) window.dispatchEvent(new Event('app:direct-messages-updated'));
       } catch (err) {
-        console.error('Errore mark-read', err);
+        console.error('[direct-messages] mark read failed', { error: err, targetProfileId });
       }
     };
 
@@ -122,20 +115,12 @@ export function DirectMessageThread({ targetProfileId, targetDisplayName, target
     if (!trimmed || sending) return;
     setSending(true);
     try {
-      const res = await fetch(`/api/direct-messages/${targetProfileId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: trimmed }),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error((json as any)?.error || 'Errore invio messaggio');
-      }
-      const newMessage = (json as any)?.message as DirectMessage;
-      setMessages((prev) => [...prev, newMessage]);
+      const newMessage = await sendDirectMessage(targetProfileId, { text: trimmed });
+      setMessages((prev) => [...prev, newMessage].filter(Boolean));
       setContent('');
     } catch (err: any) {
       const message = err?.message || 'Errore invio messaggio';
+      console.error('[direct-messages] send message failed', { error: err, targetProfileId });
       show(message, { variant: 'error' });
     } finally {
       setSending(false);

@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs';
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { getActiveProfile, getProfileById } from '@/lib/api/profile';
@@ -18,10 +19,26 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }, routeC
 
   try {
     const me = await getActiveProfile(supabase, user.id);
-    if (!me) return jsonError('profilo non trovato', 403);
+    if (!me) {
+      console.warn('[direct-messages] GET /api/direct-messages/:profileId missing profile', { userId: user.id, targetProfileId });
+      return jsonError('profilo non trovato', 403);
+    }
+
+    console.log('[direct-messages] GET /api/direct-messages/:profileId', {
+      userId: user.id,
+      profileId: me.id,
+      targetProfileId: otherId,
+    });
 
     const peer = await getProfileById(supabase, otherId);
-    if (!peer) return jsonError('profilo target non trovato', 404);
+    if (!peer) {
+      console.warn('[direct-messages] GET /api/direct-messages/:profileId target not found', {
+        userId: user.id,
+        profileId: me.id,
+        targetProfileId: otherId,
+      });
+      return jsonError('profilo target non trovato', 404);
+    }
 
     const { data: rows, error } = await supabase
       .from('direct_messages')
@@ -44,7 +61,12 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }, routeC
       currentProfileId: me.id,
     });
   } catch (error: any) {
-    console.error('[api/direct-messages/:profileId GET] errore', { error, targetProfileId: otherId });
+    console.error('[direct-messages] GET /api/direct-messages/:profileId unexpected error', {
+      error,
+      targetProfileId: otherId,
+      userId: user.id,
+    });
+    Sentry.captureException(error);
     return jsonError('server_error', 500);
   }
 });
@@ -56,14 +78,38 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }, routeC
 
   const body = (await req.json().catch(() => ({}))) as { content?: string };
   const content = (body?.content || '').trim();
-  if (!content) return jsonError('contenuto mancante', 400);
+  if (!content) {
+    console.warn('[direct-messages] POST /api/direct-messages/:profileId validation error', {
+      userId: user.id,
+      targetProfileId: otherId,
+      reason: 'contenuto mancante',
+    });
+    return jsonError('contenuto mancante', 400);
+  }
 
   try {
     const me = await getActiveProfile(supabase, user.id);
-    if (!me) return jsonError('profilo non trovato', 403);
+    if (!me) {
+      console.warn('[direct-messages] POST /api/direct-messages/:profileId missing profile', { userId: user.id });
+      return jsonError('profilo non trovato', 403);
+    }
+
+    console.log('[direct-messages] POST /api/direct-messages/:profileId', {
+      userId: user.id,
+      profileId: me.id,
+      targetProfileId: otherId,
+      messageLength: content.length,
+    });
 
     const peer = await getProfileById(supabase, otherId);
-    if (!peer) return jsonError('profilo target non trovato', 404);
+    if (!peer) {
+      console.warn('[direct-messages] POST /api/direct-messages/:profileId target not found', {
+        userId: user.id,
+        profileId: me.id,
+        targetProfileId: otherId,
+      });
+      return jsonError('profilo target non trovato', 404);
+    }
 
     const { data: inserted, error } = await supabase
       .from('direct_messages')
@@ -79,7 +125,12 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }, routeC
 
     return NextResponse.json({ message: inserted });
   } catch (error: any) {
-    console.error('[api/direct-messages/:profileId POST] errore', { error, targetProfileId: otherId });
+    console.error('[direct-messages] POST /api/direct-messages/:profileId unexpected error', {
+      error,
+      targetProfileId: otherId,
+      userId: user.id,
+    });
+    Sentry.captureException(error);
     return jsonError('server_error', 500);
   }
 });

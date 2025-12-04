@@ -64,6 +64,15 @@ export default function OpportunitiesClient() {
     router.replace(qs ? `/opportunities?${qs}` : '/opportunities');
   }
 
+  function clearClubFilter() {
+    const p = new URLSearchParams(sp.toString());
+    p.delete('clubId');
+    p.delete('club_id');
+    p.set('page', '1');
+    const qs = p.toString();
+    router.replace(qs ? `/opportunities?${qs}` : '/opportunities');
+  }
+
   // 1) Chi sono? (id + role se disponibile)
   useEffect(() => {
     let cancelled = false;
@@ -439,10 +448,7 @@ export default function OpportunitiesClient() {
             </div>
             <button
               type="button"
-              onClick={() => {
-                setParam('clubId', '');
-                setParam('club_id', '');
-              }}
+              onClick={clearClubFilter}
               className="text-xs font-semibold text-blue-700 underline-offset-4 hover:underline"
             >
               Rimuovi filtro

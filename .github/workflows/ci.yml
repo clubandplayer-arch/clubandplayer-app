@@ -3,11 +3,24 @@ on:
   pull_request:
     branches: [ main ]
 jobs:
-  lint:
+  ci:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "lint ok"
-  typecheck:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "typecheck ok"
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run full check (lint + typecheck + build)
+        run: pnpm ci:check

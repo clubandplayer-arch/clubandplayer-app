@@ -456,7 +456,7 @@ export default function FeedClient() {
           <ul className="space-y-2 text-xs">
             <li>
               <Link
-                href="/search/athletes?trend=mercato"
+                href="/search-map"
                 className="text-blue-600 hover:underline"
               >
                 Calciomercato dilettanti

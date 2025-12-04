@@ -4,8 +4,8 @@ const NAV_LINKS = [
   { href: '/signup', label: 'Registrati' },
   { href: '/login', label: 'Accedi' },
   { href: '/feed', label: 'Feed' },
-  { href: '/search/club', label: 'Club' },
-  { href: '/search/athletes', label: 'Atleti' },
+  { href: '/search-map?type=club', label: 'Club' },
+  { href: '/search-map?type=player', label: 'Atleti' },
 ];
 
 export default function MarketingNavbar() {

@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs';
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { getActiveProfile } from '@/lib/api/profile';
@@ -13,7 +14,12 @@ function isMissingReadStateTable(error: any) {
 export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
   try {
     const me = await getActiveProfile(supabase, user.id);
-    if (!me) return jsonError('profilo non trovato', 403);
+    if (!me) {
+      console.warn('[direct-messages] GET /api/direct-messages/threads missing profile', { userId: user.id });
+      return jsonError('profilo non trovato', 403);
+    }
+
+    console.log('[direct-messages] GET /api/direct-messages/threads', { userId: user.id, profileId: me.id });
 
     const { data: messages, error: messagesError } = await supabase
       .from('direct_messages')
@@ -63,7 +69,7 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
 
     if (readError) {
       if (isMissingReadStateTable(readError)) {
-        console.warn('[api/direct-messages/threads GET] missing table direct_message_read_state, treating all as read');
+        console.warn('[direct-messages] GET /api/direct-messages/threads missing table direct_message_read_state, treating all as read');
       } else {
         throw readError;
       }
@@ -135,7 +141,7 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
       };
     });
 
-    console.info('[api/direct-messages/threads GET]', {
+    console.info('[direct-messages] GET /api/direct-messages/threads summary', {
       profile: me.id,
       messageCount: messages?.length ?? 0,
       threadCount: threads.length,
@@ -143,7 +149,8 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
 
     return NextResponse.json({ threads });
   } catch (error: any) {
-    console.error('[api/direct-messages/threads GET] errore', { error });
+    console.error('[direct-messages] GET /api/direct-messages/threads unexpected error', { error, userId: user.id });
+    Sentry.captureException(error);
     const message = typeof error?.message === 'string' ? error.message : 'server_error';
     return jsonError(message, 500);
   }

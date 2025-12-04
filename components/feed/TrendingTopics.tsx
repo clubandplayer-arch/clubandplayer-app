@@ -2,7 +2,7 @@
 // Server component semplice (niente stato)
 export default function TrendingTopics() {
   const topics = [
-    { label: "Calciomercato Dilettanti", href: "/search/athletes?trend=mercato" },
+    { label: "Calciomercato Dilettanti", href: "/search-map" },
     { label: "Portieri femminili U21", href: "/opportunities?role=goalkeeper&gender=f" },
     { label: "Preparazione invernale", href: "/feed?tag=preparazione" },
     { label: "Serie D – Esterni veloci", href: "/opportunities?league=serie-d&role=winger" },
