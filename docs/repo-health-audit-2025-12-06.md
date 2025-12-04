@@ -26,3 +26,8 @@ Il codice risulta coerente con l’assetto post-core rewrite: service layer cond
 - **TECH-03 – Hooks/feed service unificati**: Estrarre un hook (es. `useFeedData`) e un service client per post/reazioni/commenti riusabili in `app/(dashboard)/feed/page.tsx`, con caching e abort gestito centralmente. Rischio: medio.
 - **TECH-04 – Paginazione/virtualizzazione feed**: Aggiungere “load more” o infinite scroll e virtualizzazione lista post per ridurre lavoro del main thread. Rischio: medio-basso.
 - **TECH-05 – Error handling coerente**: Uniformare le risposte errore (status != 200 quando fallisce il DB) e instradare gli errori a Sentry nei principali handler (feed, follows, search). Rischio: basso.
+
+## Appendice – Sicurezza webhook `/api/webhooks/sync`
+- L’endpoint ora richiede un header `X-Webhook-Secret` valorizzato con `WEBHOOK_SYNC_SECRET` configurato nell’ambiente runtime.
+- In caso di secret mancante o errato, la rotta risponde con 401 (o 500 se l’ambiente non definisce la variabile) e logga l’evento respinto con path e IP (`x-forwarded-for`).
+- Il payload atteso non è cambiato; per integrazioni esterne basta aggiungere l’header condiviso.
