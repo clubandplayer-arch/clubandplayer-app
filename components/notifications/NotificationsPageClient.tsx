@@ -33,11 +33,11 @@ export default function NotificationsPageClient() {
 
   const markAllRead = async () => {
     try {
-      await fetch('/api/notifications', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ markAll: true }),
-      });
+      const res = await fetch('/api/notifications/mark-all-read', { method: 'POST' });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json?.error || 'Errore nel marcare le notifiche come lette');
+      }
       window.dispatchEvent(new Event('app:notifications-updated'));
       setItems((prev) => prev.map((n) => ({ ...n, read: true, read_at: n.read_at ?? new Date().toISOString() })));
     } catch (e: any) {

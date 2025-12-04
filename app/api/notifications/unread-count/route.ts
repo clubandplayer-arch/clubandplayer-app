@@ -11,10 +11,10 @@ export const GET = withAuth(async (_req, { supabase, user }) => {
       .eq('user_id', user.id)
       .or('read_at.is.null,read.eq.false');
 
-    if (error) return jsonError(error.message, 400);
+    if (error) return jsonError(error.message, 500);
 
     return NextResponse.json({ count: count || 0 });
   } catch (e: any) {
-    return jsonError(e?.message || 'Errore inatteso', 400);
+    return jsonError(e?.message || 'Errore inatteso', 500);
   }
 });

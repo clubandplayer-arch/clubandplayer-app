@@ -45,11 +45,11 @@ export default function NotificationsDropdown({ unreadCount, onUnreadChange }: P
         if (!res.ok) throw new Error(json?.error || 'Errore nel caricamento');
         setItems(json?.data ?? []);
         if (unreadCount > 0) {
-          await fetch('/api/notifications', {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ markAll: true }),
-          });
+          const markRes = await fetch('/api/notifications/mark-all-read', { method: 'POST' });
+          if (!markRes.ok) {
+            const errJson = await markRes.json().catch(() => ({}));
+            throw new Error(errJson?.error || 'Impossibile segnare le notifiche');
+          }
           onUnreadChange(0);
           window.dispatchEvent(new Event('app:notifications-updated'));
         }
