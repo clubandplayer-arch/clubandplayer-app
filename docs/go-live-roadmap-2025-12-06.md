@@ -9,6 +9,7 @@ Le attività critiche per la messa in produzione iniziale sono state completate:
 - [x] TECH-01 – Protezione webhook `/api/webhooks/sync` con secret
 - [x] NOTIF-01 – Badge notifiche in navbar + segna tutte come lette
 - [x] SEARCH-01 – Layout mappa + lista risultati in `/search-map`
+- [x] FEED-01 – Reshare / quote dei post
 - [x] Dock messaggistica stile LinkedIn + service unificato
 - [x] Layout wide 3 colonne (feed) + banner ADV
 - [x] Tema gradiente condiviso tra dashboard, login e signup
@@ -21,14 +22,6 @@ Da qui in avanti le attività sono **post-Go Live**: non bloccano il lancio ma a
 ## 1. Funzionalità “tipo LinkedIn” ancora aperte
 
 Questi job derivano da `linkedin-gap-analysis-2025-12-06.md`. Sono ordinati per area e priorità, ma tutti NON bloccano il Go Live.
-
-### FEED-01 – Reshare / quote dei post *(priorità: alta, post-Go Live)*
-
-- Obiettivo: permettere a club/player di ricondividere un post (tipo “condividi con commento”), con:
-  - link al post originale,
-  - contatore delle ricondivisioni,
-  - card annidata nella UI.
-- Beneficio: aumenta la circolazione dei contenuti e avvicina l’esperienza al feed di LinkedIn.
 
 ### FEED-02 – Vista “Seguiti” nel feed *(priorità: media)*
 

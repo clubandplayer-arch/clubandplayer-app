@@ -38,6 +38,8 @@ export const CreatePostSchema = z
     linkDescription: z.string().trim().optional(),
     link_image: z.string().trim().optional(),
     linkImage: z.string().trim().optional(),
+    quoted_post_id: z.string().uuid().optional().nullable(),
+    quotedPostId: z.string().uuid().optional().nullable(),
   })
   .passthrough();
 

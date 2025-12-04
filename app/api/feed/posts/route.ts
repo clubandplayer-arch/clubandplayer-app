@@ -60,8 +60,11 @@ function normalizeEventPayload(raw: any): EventPayload | null {
   };
 }
 
-function normalizeRow(row: any) {
+function normalizeRow(row: any, quotedMap?: Map<string, any>, depth = 0): any {
   const aspectFromUrl = inferAspectFromUrl(row.media_url);
+  const quotedRaw: any = row.quoted_post_id ? quotedMap?.get(row.quoted_post_id) : null;
+  const quotedPost = quotedRaw && depth < 1 ? normalizeRow(quotedRaw, quotedMap, depth + 1) : null;
+
   return {
     id: row.id,
     // legacy
@@ -82,6 +85,8 @@ function normalizeRow(row: any) {
     kind: row.kind ? normKind(row.kind) : 'normal',
     event_payload: normalizeEventPayload(row.event_payload) ?? null,
     role: undefined as unknown as 'club' | 'athlete' | undefined,
+    quoted_post_id: row.quoted_post_id ?? null,
+    quoted_post: quotedPost,
   };
 }
 
@@ -199,7 +204,28 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const rows = (data ?? []).map((r) => normalizeRow(r)) || [];
+  let quotedMap: Map<string, any> | null = null;
+
+  const quotedIds = Array.from(
+    new Set(
+      (Array.isArray(data) ? data : [])
+        .map((r) => r?.quoted_post_id)
+        .filter((v) => typeof v === 'string' && v.trim().length > 0),
+    ),
+  );
+
+  if (quotedIds.length) {
+    const { data: quotedRows, error: quotedError } = await supabase
+      .from('posts')
+      .select(SELECT_QUOTED)
+      .in('id', quotedIds);
+
+    if (!quotedError && Array.isArray(quotedRows)) {
+      quotedMap = new Map(quotedRows.map((row) => [row.id, row]));
+    }
+  }
+
+  const rows = (data ?? []).map((r) => normalizeRow(r, quotedMap ?? undefined)) || [];
 
   if (mine || authorIdFilter) {
     return NextResponse.json(
@@ -257,9 +283,11 @@ function isRlsError(err: any) {
 }
 
 const SELECT_WITH_MEDIA =
-  'id, author_id, content, created_at, media_url, media_type, media_aspect, kind, event_payload';
+  'id, author_id, content, created_at, media_url, media_type, media_aspect, kind, event_payload, quoted_post_id';
 const SELECT_WITH_LINK = `${SELECT_WITH_MEDIA}, link_url, link_title, link_description, link_image`;
-const SELECT_BASE = 'id, author_id, content, created_at, kind, event_payload';
+const SELECT_BASE = 'id, author_id, content, created_at, kind, event_payload, quoted_post_id';
+const SELECT_QUOTED =
+  'id, author_id, content, created_at, media_url, media_type, media_aspect, kind, event_payload, link_url, link_title, link_description, link_image, quoted_post_id';
 const DEFAULT_POSTS_BUCKET = process.env.NEXT_PUBLIC_POSTS_BUCKET || 'posts';
 
 function sanitizeStoragePath(path: string) {
@@ -380,9 +408,10 @@ export async function POST(req: NextRequest) {
     const linkDescription =
       typeof rawLinkDescription === 'string' ? rawLinkDescription.trim() || null : null;
     const linkImage = normalizeLinkUrl(rawLinkImage);
+    const quotedPostId = (body.quoted_post_id ?? body.quotedPostId ?? null) || null;
     const isEvent = requestedKind === 'event';
 
-    if (!isEvent && !text && !mediaUrl && !normalizedMediaPath && !linkUrl) {
+    if (!isEvent && !text && !mediaUrl && !normalizedMediaPath && !linkUrl && !quotedPostId) {
       return badRequest('Scrivi un testo, un link o allega un media.', { error: 'empty' });
     }
     if (text.length > MAX_CHARS) {
@@ -418,6 +447,22 @@ export async function POST(req: NextRequest) {
 
     if (isEvent && !eventPayload) {
       return badRequest("Titolo e data dell'evento sono obbligatori.", { error: 'invalid_event' });
+    }
+
+    let quotedRootId: string | null = null;
+
+    if (quotedPostId) {
+      const { data: quoted, error: quotedError } = await supabase
+        .from('posts')
+        .select('id, quoted_post_id')
+        .eq('id', quotedPostId)
+        .maybeSingle();
+
+      if (quotedError || !quoted) {
+        return badRequest('Post originale non trovato o non accessibile', { error: 'quoted_not_found' });
+      }
+
+      quotedRootId = quoted.quoted_post_id ?? quoted.id;
     }
 
     if (!mediaUrl && normalizedMediaPath) {
@@ -470,6 +515,10 @@ export async function POST(req: NextRequest) {
       author_id: auth.user.id,
       kind: requestedKind,
     };
+    if (quotedRootId) {
+      insertPayload.quoted_post_id = quotedRootId;
+      fallbackPayload.quoted_post_id = quotedRootId;
+    }
     if (mediaUrl) fallbackPayload.media_url = mediaUrl;
     if (mediaType) fallbackPayload.media_type = mediaType;
 

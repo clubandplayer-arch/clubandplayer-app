@@ -16,10 +16,11 @@ function normalizeRow(row: any) {
     author_id: row.author_id ?? null,
     media_url: row.media_url ?? null,
     media_type: row.media_type ?? null,
+    quoted_post_id: row.quoted_post_id ?? null,
   };
 }
 
-const SELECT_BASE = 'id, author_id, content, created_at, media_url, media_type';
+const SELECT_BASE = 'id, author_id, content, created_at, media_url, media_type, quoted_post_id';
 
 export const PATCH = withAuth(async (req: NextRequest, { user, supabase }) => {
   const id = req.nextUrl.pathname.split('/').pop();

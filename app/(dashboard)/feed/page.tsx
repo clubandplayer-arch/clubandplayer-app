@@ -67,6 +67,7 @@ export default function FeedPage() {
   const [reactionError, setReactionError] = useState<string | null>(null);
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
   const [pickerFor, setPickerFor] = useState<string | null>(null);
+  const [quoteTarget, setQuoteTarget] = useState<FeedPost | null>(null);
   const fetchCtrl = useRef<AbortController | null>(null);
   const headingId = 'feed-heading';
 
@@ -268,7 +269,7 @@ export default function FeedPage() {
           <h1 id={headingId} className="sr-only">
             Bacheca feed
           </h1>
-          <FeedComposer onPosted={reload} />
+          <FeedComposer onPosted={reload} quotedPost={quoteTarget} onClearQuote={() => setQuoteTarget(null)} />
 
           <div className="space-y-4" aria-live="polite" aria-busy={loading}>
             {loading && (
@@ -307,6 +308,7 @@ export default function FeedPage() {
                     onCommentCountChange={(next) =>
                       setCommentCounts((curr) => ({ ...curr, [String(p.id)]: next }))
                     }
+                    onQuote={() => setQuoteTarget(p)}
                   />
                 </Fragment>
               ))}
