@@ -49,24 +49,33 @@ export function PostMedia({ postId, mediaUrl, mediaType, aspect, alt }: Props) {
 
   return (
     <div className="mt-3 flex w-full justify-center px-1">
-      <div className="mx-auto w-full max-w-2xl overflow-hidden rounded-2xl bg-neutral-100 shadow-inner">
+      <div className="mx-auto flex w-full max-w-2xl justify-center overflow-hidden rounded-2xl bg-neutral-100 shadow-inner">
         <div className={containerClasses}>
           {mediaType === 'video' ? (
             <video
               ref={videoRef}
               src={mediaUrl ?? undefined}
               controls
-              className="h-full w-full max-h-[420px] object-contain bg-black"
+              className="mx-auto h-full max-h-[420px] w-auto max-w-full object-contain bg-black"
               onPlay={handlePlay}
               onPause={handlePause}
               onEnded={handleEnded}
               playsInline
             />
           ) : (
-            <button type="button" className="h-full w-full" onClick={() => setLightboxIndex(0)}>
+            <button
+              type="button"
+              className="flex h-full w-full items-center justify-center"
+              onClick={() => setLightboxIndex(0)}
+            >
               <span className="sr-only">{aria}</span>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={mediaUrl} alt={aria} className="h-full w-full object-contain" loading="lazy" />
+              <img
+                src={mediaUrl}
+                alt={aria}
+                className="mx-auto block h-full max-h-[420px] w-auto max-w-full object-contain"
+                loading="lazy"
+              />
             </button>
           )}
         </div>
