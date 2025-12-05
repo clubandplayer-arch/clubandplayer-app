@@ -1,18 +1,20 @@
 import type { NextRequest } from 'next/server';
-import { badRequest, forbidden, internalError, ok } from '@/lib/api/responses';
 import { withAuth } from '@/lib/api/auth';
+import { notAuthorized, successResponse, unknownError, validationError } from '@/lib/api/feedFollowResponses';
 import { getActiveProfile } from '@/lib/api/profile';
+import { FollowStateQuerySchema, type FollowStateQueryInput } from '@/lib/validation/follow';
 
 export const runtime = 'nodejs';
 
 export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   const url = new URL(req.url);
-  const targets = url.searchParams.getAll('targets').map((t) => t.trim()).filter(Boolean);
-  if (!targets.length) return badRequest('targets mancanti');
+  const parsed = FollowStateQuerySchema.safeParse({ targets: url.searchParams.getAll('targets') });
+  if (!parsed.success) return validationError('Parametri non validi', parsed.error.flatten());
+  const { targets }: FollowStateQueryInput = parsed.data;
 
   try {
     const me = await getActiveProfile(supabase, user.id);
-    if (!me) return forbidden('Profilo non trovato');
+    if (!me) return notAuthorized('Profilo non trovato');
 
     const cleanTargets = targets.filter((t) => t !== me.id);
 
@@ -32,9 +34,9 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
       }
     });
 
-    return ok({ state });
+    return successResponse({ state });
   } catch (error: any) {
     console.error('[api/follows/state] errore', { error });
-    return internalError(error);
+    return unknownError({ endpoint: '/api/follows/state', error, context: { userId: user.id, targets } });
   }
 });

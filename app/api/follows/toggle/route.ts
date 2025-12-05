@@ -1,6 +1,12 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { badRequest, forbidden, internalError, notFound, ok } from '@/lib/api/responses';
 import { withAuth } from '@/lib/api/auth';
+import {
+  notAuthorized,
+  notFoundError,
+  successResponse,
+  unknownError,
+  validationError,
+} from '@/lib/api/feedFollowResponses';
 import { getActiveProfile, getProfileById } from '@/lib/api/profile';
 import { ToggleFollowSchema, type ToggleFollowInput } from '@/lib/validation/follow';
 
@@ -10,7 +16,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   const parsedBody = ToggleFollowSchema.safeParse(await req.json().catch(() => ({})));
   if (!parsedBody.success) {
     console.warn('[api/follows/toggle][POST] invalid payload', parsedBody.error.flatten());
-    return badRequest('Payload non valido', parsedBody.error.flatten());
+    return validationError('Payload non valido', parsedBody.error.flatten());
   }
 
   const body: ToggleFollowInput = parsedBody.data;
@@ -18,13 +24,13 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   
   try {
     const me = await getActiveProfile(supabase, user.id);
-    if (!me) return forbidden('Profilo non trovato');
+    if (!me) return notAuthorized('Profilo non trovato');
 
     const target = await getProfileById(supabase, targetProfileId);
-    if (!target) return notFound('Profilo target non trovato');
+    if (!target) return notFoundError('Profilo target non trovato');
 
     if (me.id === target.id) {
-      return ok({ isFollowing: false, self: true, targetProfileId: target.id });
+      return successResponse({ isFollowing: false, self: true, targetProfileId: target.id });
     }
 
     const { data: existing, error: findError } = await supabase
@@ -38,7 +44,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     if (existing?.id) {
       const { error: delError } = await supabase.from('follows').delete().eq('id', existing.id);
       if (delError) throw delError;
-      return ok({ isFollowing: false, targetProfileId: target.id });
+      return successResponse({ isFollowing: false, targetProfileId: target.id });
     }
 
     const { error: insertError } = await supabase.from('follows').insert({
@@ -47,10 +53,10 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     });
     if (insertError) throw insertError;
 
-    return ok({ isFollowing: true, targetProfileId: target.id });
+    return successResponse({ isFollowing: true, targetProfileId: target.id });
   } catch (error: any) {
     console.error('[api/follows/toggle] errore', { error, targetProfileId });
-    return internalError(error);
+    return unknownError({ endpoint: '/api/follows/toggle', error, context: { targetProfileId } });
   }
 });
 

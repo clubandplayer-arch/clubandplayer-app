@@ -1,18 +1,22 @@
-import { NextResponse, type NextRequest } from 'next/server';
+import { type NextRequest } from 'next/server';
+import { dbError, successResponse, validationError } from '@/lib/api/feedFollowResponses';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { CommentCountsQuerySchema, type CommentCountsQueryInput } from '@/lib/validation/feed';
 
 export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest) {
   const search = new URL(req.url).searchParams;
-  const idsParam = search.get('ids') || '';
-  const ids = idsParam
-    .split(',')
-    .map((id) => id.trim())
-    .filter(Boolean);
+  const parsed = CommentCountsQuerySchema.safeParse(Object.fromEntries(search.entries()));
+
+  if (!parsed.success) {
+    return validationError('Parametri non validi', parsed.error.flatten());
+  }
+
+  const { ids }: CommentCountsQueryInput = parsed.data;
 
   if (!ids.length) {
-    return NextResponse.json({ ok: true, counts: [] }, { status: 200 });
+    return successResponse({ counts: [] });
   }
 
   const supabase = await getSupabaseServerClient();
@@ -22,7 +26,7 @@ export async function GET(req: NextRequest) {
     .in('post_id', ids);
 
   if (error) {
-    return NextResponse.json({ ok: false, error: 'db_error' }, { status: 200 });
+    return dbError('Errore nel recupero dei conteggi', { message: error?.message });
   }
 
   const countsMap: Record<string, number> = {};
@@ -33,5 +37,5 @@ export async function GET(req: NextRequest) {
 
   const counts = ids.map((id) => ({ post_id: id, count: countsMap[id] ?? 0 }));
 
-  return NextResponse.json({ ok: true, counts }, { status: 200 });
+  return successResponse({ counts });
 }

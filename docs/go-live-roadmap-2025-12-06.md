@@ -48,7 +48,7 @@ Questi job derivano da `linkedin-gap-analysis-2025-12-06.md`. Sono ordinati per 
 
 Questi job derivano da `repo-health-audit-2025-12-06.md` (sezione TECH-XX).
 
-### [ ] TECH-02 – Validazione schema API feed/follow *(priorità: alta, ma compatibile con Go Live)*
+### [x] TECH-02 – Validazione schema API feed/follow *(priorità: alta, ma compatibile con Go Live)*
 
 - Rischio: molte API usano validazione manuale dei payload.
 - Obiettivo:
@@ -93,7 +93,7 @@ Questi job derivano da `repo-health-audit-2025-12-06.md` (sezione TECH-XX).
 ## 3. Ordine suggerito dei prossimi sprint post-Go Live
 
 1. **Hardening tecnico**
-   - TECH-02 (validazione schema API feed/follow)
+   - TECH-02 (validazione schema API feed/follow) – completato
    - TECH-05 (error handling coerente)
 2. **Valore visibile al’utente**
    - FEED-01 (reshare/quote post) **oppure** JOBS-01 (filtri opportunità), in base alla direzione di prodotto.

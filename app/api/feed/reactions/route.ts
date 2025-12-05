@@ -1,9 +1,20 @@
-import { NextResponse, type NextRequest } from 'next/server';
+import { type NextRequest } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { badRequest, internalError, ok, unauthorized } from '@/lib/api/responses';
+import {
+  dbError,
+  notAuthenticated,
+  successResponse,
+  unknownError,
+  validationError,
+} from '@/lib/api/feedFollowResponses';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
-import { CreateReactionSchema, type CreateReactionInput } from '@/lib/validation/feed';
+import {
+  CreateReactionSchema,
+  ReactionCountsQuerySchema,
+  type CreateReactionInput,
+  type ReactionCountsQueryInput,
+} from '@/lib/validation/feed';
 
 export const runtime = 'nodejs';
 
@@ -37,13 +48,15 @@ async function fetchReactionRows(ids: string[], client: SupabaseClient<any, any,
 export async function GET(req: NextRequest) {
   const supabase = await getSupabaseServerClient();
   const url = new URL(req.url);
-  const idsParam = (url.searchParams.get('ids') || '').trim();
-  const ids = idsParam
-    ? Array.from(new Set(idsParam.split(',').map((v) => v.trim()).filter(Boolean)))
-    : [];
+  const parsed = ReactionCountsQuerySchema.safeParse(Object.fromEntries(url.searchParams.entries()));
+  if (!parsed.success) {
+    return validationError('Parametri non validi', parsed.error.flatten());
+  }
+
+  const { ids }: ReactionCountsQueryInput = parsed.data;
 
   if (!ids.length) {
-    return NextResponse.json({ ok: true, counts: [], mine: [] });
+    return successResponse({ counts: [], mine: [] });
   }
 
   try {
@@ -71,7 +84,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    return ok({ counts, mine });
+    return successResponse({ counts, mine });
   } catch (err: any) {
     console.error('[feed/reactions][GET] failed', {
       ids,
@@ -79,9 +92,9 @@ export async function GET(req: NextRequest) {
       details: err,
     });
     if (isMissingTable(err)) {
-      return NextResponse.json({ ok: true, counts: [], mine: [], missingTable: true });
+      return successResponse({ counts: [], mine: [], missingTable: true });
     }
-    return internalError(err);
+    return unknownError({ endpoint: '/api/feed/reactions', error: err, context: { method: 'GET', ids } });
   }
 }
 
@@ -90,7 +103,7 @@ export async function POST(req: NextRequest) {
   const parsedBody = CreateReactionSchema.safeParse(await req.json().catch(() => ({})));
   if (!parsedBody.success) {
     console.warn('[feed/reactions][POST] invalid payload', parsedBody.error.flatten());
-    return badRequest('Payload non valido', parsedBody.error.flatten());
+    return validationError('Payload non valido', parsedBody.error.flatten());
   }
 
   const body: CreateReactionInput = parsedBody.data;
@@ -99,7 +112,7 @@ export async function POST(req: NextRequest) {
 
   const { data: userRes, error: authError } = await supabase.auth.getUser();
   if (authError || !userRes?.user) {
-    return unauthorized('Utente non autenticato');
+    return notAuthenticated('Utente non autenticato');
   }
 
   const validReaction = reaction === '' ? null : reaction;
@@ -165,7 +178,7 @@ export async function POST(req: NextRequest) {
     const counts = buildCounts(rows);
     const mine = rows.find((r) => r.user_id === userRes.user.id)?.reaction ?? null;
 
-    return ok({ postId, counts, mine });
+    return successResponse({ postId, counts, mine });
   } catch (err: any) {
     console.error('[feed/reactions][POST] failed', {
       userId: userRes?.user?.id,
@@ -175,8 +188,8 @@ export async function POST(req: NextRequest) {
       details: err,
     });
     if (isMissingTable(err)) {
-      return badRequest('Tabella post_reactions mancante', { error: 'missing_table_post_reactions' });
+      return dbError('Tabella post_reactions mancante', { error: 'missing_table_post_reactions' });
     }
-    return internalError(err);
+    return unknownError({ endpoint: '/api/feed/reactions', error: err, context: { method: 'POST', postId } });
   }
 }

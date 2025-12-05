@@ -1,11 +1,20 @@
 // app/api/feed/posts/route.ts
-import { NextResponse, type NextRequest } from 'next/server';
+import { type NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
-import { badRequest, forbidden, internalError, ok, tooManyRequests, unauthorized } from '@/lib/api/responses';
+import {
+  dbError,
+  notAuthenticated,
+  notAuthorized,
+  notFoundError,
+  rateLimited,
+  successResponse,
+  unknownError,
+  validationError,
+} from '@/lib/api/feedFollowResponses';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 import { reportApiError } from '@/lib/monitoring/reportApiError';
-import { CreatePostSchema, type CreatePostInput } from '@/lib/validation/feed';
+import { CreatePostSchema, FeedPostsQuerySchema, type CreatePostInput, type FeedPostsQueryInput } from '@/lib/validation/feed';
 
 export const runtime = 'nodejs';
 
@@ -96,15 +105,13 @@ function normalizeRow(row: any, quotedMap?: Map<string, any>, depth = 0): any {
 // GET: lettura autenticata, filtra i post per ruolo dell'autore
 export async function GET(req: NextRequest) {
   const searchParams = new URL(req.url).searchParams;
-  const debug = searchParams.get('debug') === '1';
-  const mine = searchParams.get('mine') === '1';
-  const authorIdFilter = searchParams.get('authorId') ?? searchParams.get('author_id');
-  const limitRaw = Number(searchParams.get('limit') || '50');
-  const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(Math.round(limitRaw), 1), 200) : 50;
-  const pageRaw = Number(searchParams.get('page') || '0');
-  const page = Number.isFinite(pageRaw) ? Math.max(Math.round(pageRaw), 0) : 0;
-  const scopeParam = (searchParams.get('scope') || 'all').toLowerCase();
-  const scope: 'all' | 'following' = scopeParam === 'following' ? 'following' : 'all';
+  const parsedQuery = FeedPostsQuerySchema.safeParse(Object.fromEntries(searchParams.entries()));
+
+  if (!parsedQuery.success) {
+    return validationError('Parametri non validi', parsedQuery.error.flatten());
+  }
+
+  const { debug, mine, authorId: authorIdFilter, limit, page, scope }: FeedPostsQueryInput = parsedQuery.data;
   const from = page * limit;
   const to = from + limit - 1;
   const supabase = await getSupabaseServerClient();
@@ -134,7 +141,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (mine && !currentProfileId) {
-    return unauthorized('Utente non autenticato per filtrare i propri post');
+    return notAuthenticated('Utente non autenticato per filtrare i propri post');
   }
 
   const followedAuthorProfileIds: string[] = [];
@@ -168,30 +175,20 @@ export async function GET(req: NextRequest) {
       allowedAuthors = [currentProfileId];
     } else {
       if (!currentProfileId) {
-        return NextResponse.json(
-          {
-            ok: true,
-            items: [],
-            nextPage: null,
-            ...(debug
-              ? { _debug: { scope, count: 0, userId: currentUserId, profileId: currentProfileId } }
-              : {}),
-          },
-          { status: 200 },
-        );
+        return successResponse({
+          items: [],
+          nextPage: null,
+          ...(debug ? { _debug: { scope, count: 0, userId: currentUserId, profileId: currentProfileId } } : {}),
+        });
       }
 
       const uniq = Array.from(new Set(followedAuthorProfileIds.filter(Boolean)));
       if (!uniq.length) {
-        return NextResponse.json(
-          {
-            ok: true,
-            items: [],
-            nextPage: null,
-            ...(debug ? { _debug: { scope, count: 0, userId: currentUserId, profileId: currentProfileId } } : {}),
-          },
-          { status: 200 },
-        );
+        return successResponse({
+          items: [],
+          nextPage: null,
+          ...(debug ? { _debug: { scope, count: 0, userId: currentUserId, profileId: currentProfileId } } : {}),
+        });
       }
 
       allowedAuthors = uniq;
@@ -243,15 +240,7 @@ export async function GET(req: NextRequest) {
       error,
       context: { stage: 'select', method: 'GET' },
     });
-    return NextResponse.json(
-      {
-        ok: false,
-        items: [],
-        error: 'db_error',
-        ...(debug ? { _debug: { message: error.message, details: error.details } } : {}),
-      },
-      { status: 200 }
-    );
+    return dbError('Errore nel recupero dei post', debug ? { message: error.message, details: error.details } : undefined);
   }
 
   let quotedMap: Map<string, any> | null = null;
@@ -278,35 +267,27 @@ export async function GET(req: NextRequest) {
   const rows = (data ?? []).map((r) => normalizeRow(r, quotedMap ?? undefined)) || [];
 
   if (mine || authorIdFilter) {
-    return NextResponse.json(
-      {
-        ok: true,
-        items: rows,
-        nextPage: rows.length === limit ? page + 1 : null,
-        ...(debug
-          ? {
-              _debug: {
-                count: rows.length,
-                mine: mine || !!authorIdFilter,
-                userId: currentUserId ?? authorIdFilter,
-                profileId: currentProfileId ?? null,
-              },
-            }
-          : {}),
-      },
-      { status: 200 }
-    );
-  }
-
-  return NextResponse.json(
-    {
-      ok: true,
+    return successResponse({
       items: rows,
       nextPage: rows.length === limit ? page + 1 : null,
-      ...(debug ? { _debug: { count: rows.length, userId: currentUserId, allowedAuthors } } : {}),
-    },
-    { status: 200 }
-  );
+      ...(debug
+        ? {
+            _debug: {
+              count: rows.length,
+              mine: mine || !!authorIdFilter,
+              userId: currentUserId ?? authorIdFilter,
+              profileId: currentProfileId ?? null,
+            },
+          }
+        : {}),
+    });
+  }
+
+  return successResponse({
+    items: rows,
+    nextPage: rows.length === limit ? page + 1 : null,
+    ...(debug ? { _debug: { count: rows.length, userId: currentUserId, allowedAuthors } } : {}),
+  });
 }
 
 function isMissingMediaColumns(err: any) {
@@ -412,7 +393,7 @@ export async function POST(req: NextRequest) {
     const parsedBody = CreatePostSchema.safeParse(await req.json().catch(() => ({})));
     if (!parsedBody.success) {
       console.warn('[api/feed/posts][POST] invalid payload', parsedBody.error.flatten());
-      return badRequest('Payload non valido', parsedBody.error.flatten());
+      return validationError('Payload non valido', parsedBody.error.flatten());
     }
 
     const body: CreatePostInput = parsedBody.data;
@@ -479,10 +460,10 @@ export async function POST(req: NextRequest) {
     const isEvent = requestedKind === 'event';
 
     if (!isEvent && !text && !mediaUrl && !normalizedMediaPath && !linkUrl && !quotedPostId) {
-      return badRequest('Scrivi un testo, un link o allega un media.', { error: 'empty' });
+      return validationError('Scrivi un testo, un link o allega un media.', { error: 'empty' });
     }
     if (text.length > MAX_CHARS) {
-      return badRequest('Contenuto troppo lungo', { error: 'too_long', limit: MAX_CHARS });
+      return validationError('Contenuto troppo lungo', { error: 'too_long', limit: MAX_CHARS });
     }
 
     const supabase = await getSupabaseServerClient();
@@ -490,7 +471,7 @@ export async function POST(req: NextRequest) {
 
     const { data: auth, error: authErr } = await supabase.auth.getUser();
     if (authErr || !auth?.user) {
-      return unauthorized('Utente non autenticato');
+      return notAuthenticated('Utente non autenticato');
     }
 
     let actorRole: Role | null = null;
@@ -509,11 +490,11 @@ export async function POST(req: NextRequest) {
     }
 
     if (isEvent && actorRole !== 'club') {
-      return forbidden('Solo i club possono creare eventi.');
+      return notAuthorized('Solo i club possono creare eventi.');
     }
 
     if (isEvent && !eventPayload) {
-      return badRequest("Titolo e data dell'evento sono obbligatori.", { error: 'invalid_event' });
+      return validationError("Titolo e data dell'evento sono obbligatori.", { error: 'invalid_event' });
     }
 
     let quotedRootId: string | null = null;
@@ -526,7 +507,7 @@ export async function POST(req: NextRequest) {
         .maybeSingle();
 
       if (quotedError || !quoted) {
-        return badRequest('Post originale non trovato o non accessibile', { error: 'quoted_not_found' });
+        return notFoundError('Post originale non trovato o non accessibile');
       }
 
       quotedRootId = quoted.quoted_post_id ?? quoted.id;
@@ -537,7 +518,7 @@ export async function POST(req: NextRequest) {
       if (publicInfo?.publicUrl) {
         mediaUrl = publicInfo.publicUrl;
       } else {
-        return badRequest('Impossibile generare il link pubblico del media.', {
+        return dbError('Impossibile generare il link pubblico del media.', {
           error: 'media_public_url_failed',
         });
       }
@@ -548,7 +529,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (mediaUrl && !/^https?:\/\//i.test(mediaUrl)) {
-      return badRequest("L'URL del media non è valido.", { error: 'invalid_media_url' });
+      return validationError("L'URL del media non è valido.", { error: 'invalid_media_url' });
     }
 
     const jar = await cookies();
@@ -556,7 +537,7 @@ export async function POST(req: NextRequest) {
     const lastTs = lastTsRaw ? Number(lastTsRaw) : 0;
     const now = Date.now();
     if (lastTs && now - lastTs < RATE_LIMIT_MS) {
-      return tooManyRequests('Rate limit attivo', {
+      return rateLimited('Rate limit attivo', {
         error: 'rate_limited',
         retryInMs: RATE_LIMIT_MS - (now - lastTs),
       });
@@ -629,9 +610,12 @@ export async function POST(req: NextRequest) {
         error,
         context: { stage: 'insert', method: 'POST' },
       });
+      if (isRlsError(error)) {
+        return rlsDenied('Permessi insufficienti per creare il post');
+      }
       const detail = error?.details || error?.hint || '';
       const message = detail ? `${error.message}: ${detail}` : error.message;
-      return badRequest('Inserimento del post non riuscito', {
+      return dbError('Inserimento del post non riuscito', {
         error: 'insert_failed',
         message,
         code: error?.code,
@@ -640,7 +624,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const res = ok({ item: normalizeRow(data) }, { status: 201 });
+    const res = successResponse({ item: normalizeRow(data) }, { status: 201 });
     res.cookies.set(LAST_POST_TS_COOKIE, String(now), {
       httpOnly: false,
       path: '/',
@@ -649,7 +633,10 @@ export async function POST(req: NextRequest) {
     });
     return res;
   } catch (err: any) {
-    reportApiError({ endpoint: '/api/feed/posts', error: err, context: { method: 'POST', stage: 'handler_catch' } });
-    return internalError(err);
+    return unknownError({
+      endpoint: '/api/feed/posts',
+      error: err,
+      context: { method: 'POST', stage: 'handler_catch' },
+    });
   }
 }

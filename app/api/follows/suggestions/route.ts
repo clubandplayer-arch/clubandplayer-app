@@ -1,6 +1,8 @@
 // app/api/follows/suggestions/route.ts
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest } from 'next/server';
+import { successResponse, unknownError, validationError } from '@/lib/api/feedFollowResponses';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { FollowSuggestionsQuerySchema, type FollowSuggestionsQueryInput } from '@/lib/validation/follow';
 
 export const runtime = 'nodejs';
 
@@ -18,21 +20,20 @@ type Suggestion = {
   account_type?: string | null;
 };
 
-function clamp(n: number, min: number, max: number) {
-  return Math.min(Math.max(n, min), max);
-}
-
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
-  const rawLimit = Number(url.searchParams.get('limit'));
-  const limit = clamp(Number.isFinite(rawLimit) ? rawLimit : 3, 1, 20);
+  const parsed = FollowSuggestionsQuerySchema.safeParse(Object.fromEntries(url.searchParams.entries()));
+  if (!parsed.success) {
+    return validationError('Parametri non validi', parsed.error.flatten());
+  }
+  const { limit }: FollowSuggestionsQueryInput = parsed.data;
 
   try {
     const supabase = await getSupabaseServerClient();
     const { data: userRes } = await supabase.auth.getUser();
 
     if (!userRes?.user) {
-      return NextResponse.json({ items: [], role: 'guest' });
+      return successResponse({ items: [], role: 'guest' });
     }
 
     const { data: profile } = await supabase
@@ -47,7 +48,7 @@ export async function GET(req: NextRequest) {
         : 'guest') || 'guest';
 
     if (!profile?.id || profile.status !== 'active') {
-      return NextResponse.json({ items: [], role });
+      return successResponse({ items: [], role });
     }
 
     const profileId = profile.id;
@@ -113,13 +114,13 @@ export async function GET(req: NextRequest) {
       account_type: p.account_type || targetProfileType,
     } as any));
 
-    return NextResponse.json({
+    return successResponse({
       items,
       nextCursor: null,
       role,
     });
   } catch (err) {
     console.error('[follows/suggestions] error', err);
-    return NextResponse.json({ items: [], role: 'guest' });
+    return unknownError({ endpoint: '/api/follows/suggestions', error: err, context: { stage: 'handler' } });
   }
 }
