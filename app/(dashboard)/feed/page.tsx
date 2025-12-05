@@ -14,7 +14,6 @@ import {
   computeOptimistic,
   createDefaultReaction,
   defaultReactionState,
-  normalizePost,
   REACTION_ORDER,
   type FeedPost,
   type ReactionState,
