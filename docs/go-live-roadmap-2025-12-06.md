@@ -23,18 +23,18 @@ Da qui in avanti le attività sono **post-Go Live**: non bloccano il lancio ma a
 
 Questi job derivano da `linkedin-gap-analysis-2025-12-06.md`. Sono ordinati per area e priorità, ma tutti NON bloccano il Go Live.
 
-### FEED-02 – Vista “Seguiti” nel feed *(priorità: media)*
+### [x] FEED-02 – Vista “Seguiti” nel feed *(priorità: media)*
 
 - Obiettivo: aggiungere un toggle o filtro “Tutti” / “Solo profili che segui” nel feed.
 - Usa le relazioni `follows` già esistenti; non richiede nuove tabelle.
 - Utile quando il feed diventerà più popolato.
 
-### PROFILE-01 – Competenze / endorsement *(priorità: media)*
+### [ ] PROFILE-01 – Competenze / endorsement *(priorità: media)*
 
 - Obiettivo: aggiungere una sezione “Competenze” ai profili (player e club) con piccole pillole e endorsement (es. “Velocità”, “Leadership”, “Settore giovanile”).
 - Aumenta il valore informativo dei profili in ottica scouting.
 
-### JOBS-01 – Filtri avanzati opportunità + suggerimenti *(completato, ex priorità: media)*
+### [x] JOBS-01 – Filtri avanzati opportunità + suggerimenti *(completato, ex priorità: media)*
 
 - Stato: implementati filtri avanzati (ruolo, categoria/livello, sport, località, stato) e la sezione “Opportunità per te”
   basata su sport/area del profilo.
@@ -48,7 +48,7 @@ Questi job derivano da `linkedin-gap-analysis-2025-12-06.md`. Sono ordinati per 
 
 Questi job derivano da `repo-health-audit-2025-12-06.md` (sezione TECH-XX).
 
-### TECH-02 – Validazione schema API feed/follow *(priorità: alta, ma compatibile con Go Live)*
+### [ ] TECH-02 – Validazione schema API feed/follow *(priorità: alta, ma compatibile con Go Live)*
 
 - Rischio: molte API usano validazione manuale dei payload.
 - Obiettivo:
@@ -58,7 +58,7 @@ Questi job derivano da `repo-health-audit-2025-12-06.md` (sezione TECH-XX).
   - uniformare forme di errore (`code`, `message`) e log (Sentry).
 - Beneficio: meno bug e input “sporchi” in produzione, errori più chiari.
 
-### TECH-03 – Hook/service feed unificati *(priorità: media)*
+### [x] TECH-03 – Hook/service feed unificati *(priorità: media)*
 
 - Rischio: la pagina feed fa più fetch/stati locali separati, con potenziale complessità.
 - Obiettivo:
@@ -67,15 +67,16 @@ Questi job derivano da `repo-health-audit-2025-12-06.md` (sezione TECH-XX).
     - esponga un’unica API al componente UI.
 - Beneficio: codice più leggibile e facile da estendere.
 
-### TECH-04 – Paginazione / virtualizzazione feed *(priorità: media-bassa ma strategica)*
+### [~] TECH-04 – Paginazione / virtualizzazione feed *(priorità: media-bassa ma strategica)*
 
 - Rischio: feed con molti post renderizzati tutti insieme → pesantezza su device lenti.
 - Obiettivo:
   - introdurre una paginazione (“Carica altri”) o infinite scroll con limite (10–20 post per pagina),
   - valutare in futuro virtualizzazione per liste molto lunghe.
 - Beneficio: migliore performance e UX su mobile.
+> Mancano ancora: eventuale virtualizzazione/lazy rendering per liste molto lunghe.
 
-### TECH-05 – Error handling coerente sulle API principali *(priorità: media)*
+### [ ] TECH-05 – Error handling coerente sulle API principali *(priorità: media)*
 
 - Rischio: formati di errore non uniformi tra API (feed, follow, messaging, opportunità).
 - Obiettivo:
