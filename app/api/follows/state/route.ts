@@ -10,7 +10,7 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   const url = new URL(req.url);
   const parsed = FollowStateQuerySchema.safeParse({ targets: url.searchParams.getAll('targets') });
   if (!parsed.success) return validationError('Parametri non validi', parsed.error.flatten());
-  const { targets }: FollowStateQueryInput = parsed.data;
+  const targets: FollowStateQueryInput['targets'] = parsed.data.targets;
 
   try {
     const me = await getActiveProfile(supabase, user.id);
