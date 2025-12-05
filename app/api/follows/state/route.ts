@@ -1,4 +1,5 @@
 import type { NextRequest } from 'next/server';
+import { z } from 'zod';
 import { withAuth } from '@/lib/api/auth';
 import {
   notAuthorized,
@@ -8,7 +9,7 @@ import {
   validationError,
 } from '@/lib/api/feedFollowResponses';
 import { getActiveProfile } from '@/lib/api/profile';
-import { FollowStateQuerySchema, type FollowStateQueryInput } from '@/lib/validation/follow';
+import { FollowStateQuerySchema } from '@/lib/validation/follow';
 
 export const runtime = 'nodejs';
 
@@ -21,15 +22,18 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   try {
     const url = new URL(req.url);
 
-    const parsed = FollowStateQuerySchema.safeParse({
-      targets: url.searchParams.getAll('targets'),
-    });
-
-    if (!parsed.success) {
-      return validationError('Parametri non validi', parsed.error.flatten());
+    let targets: string[];
+    try {
+      const result = FollowStateQuerySchema.parse({
+        targets: url.searchParams.getAll('targets'),
+      });
+      targets = result.targets;
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return validationError('Parametri non validi', error.flatten());
+      }
+      throw error;
     }
-
-    const targets = parsed.data.targets;
 
     const cleanTargets = targets.filter((t) => t !== me.id);
 
