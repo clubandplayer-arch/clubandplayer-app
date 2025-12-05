@@ -21,7 +21,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [role, setRole] = useState<Role>('guest');
-  const [loadingRole, setLoadingRole] = useState(true);
+  const [_loadingRole, setLoadingRole] = useState(true);
   const unreadDirectThreads = useUnreadDirectThreads();
   const { unreadCount: unreadNotifications, setUnreadCount: setUnreadNotifications } = useNotificationsBadge();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
