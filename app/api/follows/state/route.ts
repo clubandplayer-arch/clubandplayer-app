@@ -9,7 +9,7 @@ import {
   validationError,
 } from '@/lib/api/feedFollowResponses';
 import { getActiveProfile } from '@/lib/api/profile';
-import { FollowStateQuerySchema } from '@/lib/validation/follow';
+import { FollowStateQuerySchema, type FollowStateQueryInput } from '@/lib/validation/follow';
 
 export const runtime = 'nodejs';
 
@@ -22,12 +22,12 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   try {
     const url = new URL(req.url);
 
-    let targets: string[];
+    let targets: FollowStateQueryInput['targets'];
     try {
-      const result = FollowStateQuerySchema.parse({
+      const parsed: FollowStateQueryInput = FollowStateQuerySchema.parse({
         targets: url.searchParams.getAll('targets'),
       });
-      targets = result.targets;
+      targets = parsed.targets;
     } catch (error) {
       if (error instanceof z.ZodError) {
         return validationError('Parametri non validi', error.flatten());

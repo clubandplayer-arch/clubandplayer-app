@@ -17,13 +17,7 @@ export const ToggleFollowSchema = z
   .passthrough();
 
 export const FollowStateQuerySchema = z.object({
-  targets: z
-    .preprocess((v) => {
-      if (Array.isArray(v)) return v;
-      if (typeof v === 'string') return [v];
-      return [];
-    }, z.array(z.string().trim().min(1)))
-    .min(1, 'targets mancanti'),
+  targets: z.array(z.string().trim().min(1)).min(1, 'targets mancanti'),
 });
 
 export const FollowSuggestionsQuerySchema = z.object({
