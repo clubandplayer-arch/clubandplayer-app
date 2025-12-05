@@ -15,6 +15,7 @@ const LAST_POST_TS_COOKIE = 'feed_last_post_ts';
 
 type Role = 'club' | 'athlete';
 type PostKind = 'normal' | 'event';
+type DbPostKind = 'post' | 'event';
 
 function normRole(v: unknown): Role | null {
   const s = typeof v === 'string' ? v.trim().toLowerCase() : '';
@@ -402,6 +403,7 @@ export async function POST(req: NextRequest) {
     const rawText = (body?.text ?? body?.content ?? '').toString();
     const text = rawText.trim();
     const requestedKind = normKind(body?.kind ?? body?.type);
+    const dbKind: DbPostKind = requestedKind === 'event' ? 'event' : 'post';
     const rawEventPayload = body?.event_payload ?? body?.event;
     const eventPayload = normalizeEventPayload(rawEventPayload);
     const rawMediaUrl = typeof body?.media_url === 'string' ? body.media_url.trim() : '';
@@ -548,7 +550,7 @@ export async function POST(req: NextRequest) {
     const insertPayload: Record<string, any> = {
       content: effectiveText,
       author_id: auth.user.id,
-      kind: requestedKind,
+      kind: dbKind,
     };
     if (mediaUrl) insertPayload.media_url = mediaUrl;
     if (mediaType) insertPayload.media_type = mediaType;
@@ -562,7 +564,7 @@ export async function POST(req: NextRequest) {
     const fallbackPayload: Record<string, any> = {
       content: text || '',
       author_id: auth.user.id,
-      kind: requestedKind,
+      kind: dbKind,
     };
     if (quotedRootId) {
       insertPayload.quoted_post_id = quotedRootId;
@@ -606,9 +608,11 @@ export async function POST(req: NextRequest) {
         error,
         context: { stage: 'insert', method: 'POST' },
       });
+      const detail = error?.details || error?.hint || '';
+      const message = detail ? `${error.message}: ${detail}` : error.message;
       return badRequest('Inserimento del post non riuscito', {
         error: 'insert_failed',
-        message: error.message,
+        message,
       });
     }
 
