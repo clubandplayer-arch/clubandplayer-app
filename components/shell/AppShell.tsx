@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import useIsClub from '@/hooks/useIsClub';
 import { ToastProvider } from '@/components/common/ToastProvider';
@@ -16,20 +16,6 @@ import { useNotificationsBadge } from '@/hooks/useNotificationsBadge';
 type Role = 'athlete' | 'club' | 'guest';
 
 type NavItem = { label: string; href: string; icon: MaterialIconName };
-
-const navItems: NavItem[] = [
-  { label: 'Feed', href: '/feed', icon: 'home' },
-  { label: 'Rete', href: '/network', icon: 'network' },
-  { label: 'Messaggi', href: '/messages', icon: 'mail' },
-  { label: 'Notifiche', href: '/notifications', icon: 'notifications' },
-  { label: 'Following', href: '/following', icon: 'following' },
-  { label: 'Media', href: '/mymedia', icon: 'media' },
-  { label: 'Opportunità', href: '/opportunities', icon: 'opportunities' },
-  { label: 'Candidature', href: '/applications', icon: 'applications' },
-  { label: 'Mappa', href: '/search-map', icon: 'globe' },
-];
-
-const desktopNavItems = navItems.filter((item) => item.href !== '/messages');
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -85,6 +71,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [pathname, router]);
 
   const profileHref = role === 'club' ? '/club/profile' : '/profile';
+
+  const navItems = useMemo<NavItem[]>(
+    () => [
+      { label: 'Feed', href: '/feed', icon: 'home' },
+      { label: 'Cerca', href: '/search-map', icon: 'globe' },
+      { label: 'Opportunità', href: '/opportunities', icon: 'opportunities' },
+      { label: 'Messaggi', href: '/messages', icon: 'mail' },
+      { label: 'Notifiche', href: '/notifications', icon: 'notifications' },
+      { label: 'Profilo', href: profileHref, icon: 'person' },
+    ],
+    [profileHref],
+  );
+
   const isActive = (href: string) => pathname === href || (!!pathname && pathname.startsWith(href + '/'));
 
   useEffect(() => {
@@ -106,7 +105,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
           <nav className="hidden flex-1 justify-center md:flex">
             <div className="flex items-center gap-1 rounded-full border border-white/40 bg-white/70 px-2 py-1 shadow-sm backdrop-blur">
-              {desktopNavItems.map((item) => {
+              {navItems.map((item) => {
                 const active = isActive(item.href);
                 if (item.href === '/notifications') {
                   return (
@@ -114,6 +113,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                       <NotificationsDropdown
                         unreadCount={unreadNotifications}
                         onUnreadChange={(v) => setUnreadNotifications(Math.max(0, v))}
+                        active={active}
                       />
                     </div>
                   );
@@ -146,15 +146,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             {isClub && (
               <Link href="/opportunities/new" className="rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50">
                 + Nuova opportunità
-              </Link>
-            )}
-
-            {!loadingRole && (
-              <Link
-                href={profileHref}
-                className={`rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50 ${isActive(profileHref) ? 'bg-gray-50' : ''}`}
-              >
-                Profilo
               </Link>
             )}
 
@@ -211,16 +202,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     className="rounded-md border px-3 py-2 text-sm font-semibold text-[var(--brand)] hover:bg-neutral-50"
                   >
                     + Nuova opportunità
-                  </Link>
-                )}
-
-                {!loadingRole && (
-                  <Link
-                    href={profileHref}
-                    onClick={() => setIsMenuOpen(false)}
-                    className={`rounded-md border px-3 py-2 text-sm ${isActive(profileHref) ? 'border-[var(--brand)] bg-[var(--brand)]/10 text-[var(--brand)]' : 'hover:bg-neutral-50'}`}
-                  >
-                    Profilo
                   </Link>
                 )}
 

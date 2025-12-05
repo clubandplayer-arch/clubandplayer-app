@@ -22,9 +22,10 @@ function useOutsideClick(ref: React.RefObject<HTMLDivElement | null>, onClose: (
 type Props = {
   unreadCount: number;
   onUnreadChange: (next: number) => void;
+  active?: boolean;
 };
 
-export default function NotificationsDropdown({ unreadCount, onUnreadChange }: Props) {
+export default function NotificationsDropdown({ unreadCount, onUnreadChange, active }: Props) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<NotificationWithActor[]>([]);
@@ -74,7 +75,9 @@ export default function NotificationsDropdown({ unreadCount, onUnreadChange }: P
     <div className="relative" ref={containerRef}>
       <button
         type="button"
-        className="relative flex h-10 w-10 items-center justify-center rounded-xl text-neutral-600 transition hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+        className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
+          active ? 'bg-[var(--brand)] text-white shadow-sm' : 'text-neutral-600 hover:bg-neutral-100'
+        }`}
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-label="Notifiche"

@@ -9,6 +9,7 @@ export type MaterialIconName =
   | 'opportunities'
   | 'applications'
   | 'network'
+  | 'person'
   | 'globe'
   | 'menu'
   | 'close'
@@ -30,6 +31,7 @@ const glyphs: Record<MaterialIconName, string> = {
   opportunities: 'work',
   applications: 'article',
   network: 'diversity_3',
+  person: 'person',
   globe: 'language',
   menu: 'menu',
   close: 'close',
