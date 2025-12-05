@@ -29,7 +29,7 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
       return validationError('Parametri non validi', parsed.error.flatten());
     }
 
-    const { targets }: FollowStateQueryInput = parsed.data;
+    const targets = parsed.data.targets;
 
     const cleanTargets = targets.filter((t) => t !== me.id);
 
