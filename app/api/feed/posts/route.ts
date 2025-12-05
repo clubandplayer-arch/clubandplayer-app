@@ -334,6 +334,20 @@ function isRlsError(err: any) {
   );
 }
 
+function isKindConstraintError(err: any) {
+  if (!err) return false;
+  const parts = [err.message, err.details, err.hint]
+    .filter(Boolean)
+    .map((v) => v.toString().toLowerCase());
+  const msg = parts.join(' ');
+  return (
+    msg.includes('posts_kind_check') ||
+    msg.includes('invalid input value') ||
+    msg.includes('kind in (') ||
+    msg.includes('kind')
+  );
+}
+
 const SELECT_WITH_MEDIA =
   'id, author_id, content, created_at, media_url, media_type, media_aspect, kind, event_payload, quoted_post_id';
 const SELECT_WITH_LINK = `${SELECT_WITH_MEDIA}, link_url, link_title, link_description, link_image`;
@@ -575,36 +589,41 @@ export async function POST(req: NextRequest) {
     if (mediaUrl) fallbackPayload.media_url = mediaUrl;
     if (mediaType) fallbackPayload.media_type = mediaType;
 
+    const legacyInsertPayload: Record<string, any> = { ...insertPayload, kind: 'post' };
+    const legacyFallbackPayload: Record<string, any> = { ...fallbackPayload, kind: 'post' };
+
     const runInsert = (client: InsertClient, payload: Record<string, any>, select: string) =>
       client.from('posts').insert(payload).select(select).single();
 
-    let data: any = null;
-    let error: any = null;
-
-    ({ data, error } = await runInsert(supabase, insertPayload, SELECT_WITH_LINK));
-
-    if (error && isMissingLinkColumns(error)) {
-      const { link_url: _linkUrl, link_title: _linkTitle, link_description: _linkDescription, link_image: _linkImage, ...rest } = insertPayload;
-      ({ data, error } = await runInsert(supabase, rest, SELECT_WITH_MEDIA));
-    }
-
-    if (error && isMissingMediaColumns(error)) {
-      ({ data, error } = await runInsert(supabase, fallbackPayload, SELECT_BASE));
-    }
-
-    if (error && admin && isRlsError(error)) {
-      ({ data, error } = await runInsert(admin, insertPayload, SELECT_WITH_LINK));
+    const performInsert = async (client: InsertClient, payload: Record<string, any>, fallback: Record<string, any>) => {
+      let data: any = null;
+      let error: any = null;
+      ({ data, error } = await runInsert(client, payload, SELECT_WITH_LINK));
       if (error && isMissingLinkColumns(error)) {
         const { link_url: _linkUrl, link_title: _linkTitle, link_description: _linkDescription, link_image: _linkImage, ...rest } =
-          insertPayload;
-        ({ data, error } = await runInsert(admin, rest, SELECT_WITH_MEDIA));
+          payload;
+        ({ data, error } = await runInsert(client, rest, SELECT_WITH_MEDIA));
       }
       if (error && isMissingMediaColumns(error)) {
-        ({ data, error } = await runInsert(admin, fallbackPayload, SELECT_BASE));
+        ({ data, error } = await runInsert(client, fallback, SELECT_BASE));
       }
+      return { data, error };
+    };
+
+    let { data, error } = await performInsert(supabase, insertPayload, fallbackPayload);
+
+    if (error && admin && isRlsError(error)) {
+      ({ data, error } = await performInsert(admin, insertPayload, fallbackPayload));
     }
 
+    if (error && dbKind === 'normal' && isKindConstraintError(error)) {
+      ({ data, error } = await performInsert(supabase, legacyInsertPayload, legacyFallbackPayload));
+      if (error && admin && isRlsError(error)) {
+        ({ data, error } = await performInsert(admin, legacyInsertPayload, legacyFallbackPayload));
+      }
+    }
     if (error) {
+      console.error('createPost failed', { error, payload: insertPayload });
       reportApiError({
         endpoint: '/api/feed/posts',
         error,
@@ -615,6 +634,9 @@ export async function POST(req: NextRequest) {
       return badRequest('Inserimento del post non riuscito', {
         error: 'insert_failed',
         message,
+        code: error?.code,
+        details: error?.details,
+        hint: error?.hint,
       });
     }
 
