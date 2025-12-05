@@ -47,12 +47,15 @@ const FeedHighlights = dynamic(() => import('@/components/feed/FeedHighlights'),
 
 const PAGE_SIZE = 10;
 
+type FeedScope = 'all' | 'following';
+
 async function fetchPosts(
   signal?: AbortSignal,
   authorId?: string | null,
   page = 0,
+  scope: FeedScope = 'all',
 ): Promise<{ items: FeedPost[]; nextPage: number | null }> {
-  const params = new URLSearchParams({ limit: String(PAGE_SIZE), page: String(page) });
+  const params = new URLSearchParams({ limit: String(PAGE_SIZE), page: String(page), scope });
   if (authorId) params.set('authorId', authorId);
 
   const res = await fetch(`/api/feed/posts?${params.toString()}`, {
@@ -82,6 +85,7 @@ export default function FeedPage() {
   const [quoteTarget, setQuoteTarget] = useState<FeedPost | null>(null);
   const [nextPage, setNextPage] = useState<number | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [scope, setScope] = useState<FeedScope>('all');
   const fetchCtrl = useRef<AbortController | null>(null);
   const headingId = 'feed-heading';
 
@@ -201,10 +205,16 @@ export default function FeedPage() {
     [reactions],
   );
 
-  const reload = useCallback(async () => {
+  const reload = useCallback(async (opts?: { reset?: boolean }) => {
     if (fetchCtrl.current) fetchCtrl.current.abort();
     const controller = new AbortController();
     fetchCtrl.current = controller;
+    const shouldReset = opts?.reset ?? false;
+    if (shouldReset) {
+      setItems([]);
+      setReactions({});
+      setCommentCounts({});
+    }
     setLoading(true);
     setErr(null);
     setNextPage(null);
@@ -213,6 +223,7 @@ export default function FeedPage() {
         controller.signal,
         currentUserId,
         0,
+        scope,
       );
       setItems(data);
       setNextPage(apiNextPage);
@@ -224,7 +235,7 @@ export default function FeedPage() {
     } finally {
       if (!controller.signal.aborted) setLoading(false);
     }
-  }, [currentUserId, loadCommentCounts, loadReactions]);
+  }, [currentUserId, loadCommentCounts, loadReactions, scope]);
 
   const loadMore = useCallback(async () => {
     if (loadingMore || nextPage === null) return;
@@ -234,6 +245,7 @@ export default function FeedPage() {
         undefined,
         currentUserId,
         nextPage,
+        scope,
       );
       setItems((curr) => {
         const seen = new Set(curr.map((p) => String(p.id)));
@@ -248,7 +260,7 @@ export default function FeedPage() {
     } finally {
       setLoadingMore(false);
     }
-  }, [currentUserId, loadCommentCounts, loadReactions, loadingMore, nextPage]);
+  }, [currentUserId, loadCommentCounts, loadReactions, loadingMore, nextPage, scope]);
 
   useEffect(() => {
     const idle =
@@ -259,7 +271,7 @@ export default function FeedPage() {
       typeof window !== 'undefined' && 'cancelIdleCallback' in window
         ? (window as any).cancelIdleCallback
         : clearTimeout;
-    const handle = idle(() => void reload());
+    const handle = idle(() => void reload({ reset: true }));
     return () => {
       cancelIdle(handle);
       fetchCtrl.current?.abort();
@@ -282,6 +294,14 @@ export default function FeedPage() {
     }
     void loadUser();
   }, []);
+
+  const handleScopeChange = useCallback(
+    (next: FeedScope) => {
+      if (next === scope) return;
+      setScope(next);
+    },
+    [scope],
+  );
 
   function onPostUpdated(next: FeedPost) {
     setItems((prev) => prev.map((p) => (p.id === next.id ? { ...p, ...next } : p)));
@@ -317,6 +337,32 @@ export default function FeedPage() {
             Bacheca feed
           </h1>
           <FirstStepsCard profile={profile} />
+
+          <div className="glass-panel flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm font-semibold text-neutral-700">
+            <div className="text-xs font-medium uppercase tracking-wide text-neutral-500">Visibilità</div>
+            <div
+              className="flex items-center gap-1 rounded-full border border-neutral-200 bg-white p-1 shadow-sm"
+              role="group"
+              aria-label="Filtra feed"
+            >
+              <button
+                type="button"
+                className={`rounded-full px-3 py-1 text-xs font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-blue-500 ${scope === 'all' ? 'bg-neutral-900 text-white shadow-sm' : 'bg-white text-neutral-700 hover:bg-neutral-100'}`}
+                onClick={() => handleScopeChange('all')}
+                aria-pressed={scope === 'all'}
+              >
+                Tutti
+              </button>
+              <button
+                type="button"
+                className={`rounded-full px-3 py-1 text-xs font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-blue-500 ${scope === 'following' ? 'bg-neutral-900 text-white shadow-sm' : 'bg-white text-neutral-700 hover:bg-neutral-100'}`}
+                onClick={() => handleScopeChange('following')}
+                aria-pressed={scope === 'following'}
+              >
+                Seguiti
+              </button>
+            </div>
+          </div>
           <FeedComposer onPosted={reload} quotedPost={quoteTarget} onClearQuote={() => setQuoteTarget(null)} />
 
           <div className="space-y-4" aria-live="polite" aria-busy={loading}>
@@ -332,7 +378,7 @@ export default function FeedPage() {
             )}
             {!loading && !err && items.length === 0 && (
               <div className="glass-panel p-4 text-sm text-gray-600" role="status">
-                Nessun post ancora.
+                {scope === 'following' ? 'Non segui ancora nessun profilo.' : 'Nessun post ancora.'}
               </div>
             )}
             {!loading &&

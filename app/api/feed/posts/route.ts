@@ -100,6 +100,8 @@ export async function GET(req: NextRequest) {
   const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(Math.round(limitRaw), 1), 200) : 50;
   const pageRaw = Number(searchParams.get('page') || '0');
   const page = Number.isFinite(pageRaw) ? Math.max(Math.round(pageRaw), 0) : 0;
+  const scopeParam = (searchParams.get('scope') || 'all').toLowerCase();
+  const scope: 'all' | 'following' = scopeParam === 'following' ? 'following' : 'all';
   const from = page * limit;
   const to = from + limit - 1;
   const supabase = await getSupabaseServerClient();
@@ -134,7 +136,9 @@ export async function GET(req: NextRequest) {
 
   const followedAuthorProfileIds: string[] = [];
 
-  if (!authorIdFilter && !mine && currentProfileId) {
+  const shouldLoadFollows = Boolean(currentProfileId && (scope === 'following' || (!authorIdFilter && !mine)));
+
+  if (shouldLoadFollows) {
     const { data: followRows, error: followError } = await supabase
       .from('follows')
       .select('target_profile_id')
@@ -152,17 +156,56 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const allowedAuthors: string[] | null = (() => {
-    if (authorIdFilter) return [authorIdFilter];
-    if (mine && currentProfileId) return [currentProfileId];
-    if (!authorIdFilter && !mine && currentProfileId) {
-      const uniq = Array.from(
-        new Set([currentProfileId, ...followedAuthorProfileIds].filter(Boolean)),
-      );
-      return uniq.length ? uniq : null;
+  let allowedAuthors: string[] | null = null;
+
+  if (scope === 'following') {
+    if (authorIdFilter) {
+      allowedAuthors = [authorIdFilter];
+    } else if (mine && currentProfileId) {
+      allowedAuthors = [currentProfileId];
+    } else {
+      if (!currentProfileId) {
+        return NextResponse.json(
+          {
+            ok: true,
+            items: [],
+            nextPage: null,
+            ...(debug
+              ? { _debug: { scope, count: 0, userId: currentUserId, profileId: currentProfileId } }
+              : {}),
+          },
+          { status: 200 },
+        );
+      }
+
+      const uniq = Array.from(new Set(followedAuthorProfileIds.filter(Boolean)));
+      if (!uniq.length) {
+        return NextResponse.json(
+          {
+            ok: true,
+            items: [],
+            nextPage: null,
+            ...(debug ? { _debug: { scope, count: 0, userId: currentUserId, profileId: currentProfileId } } : {}),
+          },
+          { status: 200 },
+        );
+      }
+
+      allowedAuthors = uniq;
     }
-    return null;
-  })();
+  } else {
+    allowedAuthors = (() => {
+      if (authorIdFilter) return [authorIdFilter];
+      if (mine && currentProfileId) return [currentProfileId];
+      if (!authorIdFilter && !mine && currentProfileId) {
+        const uniq = Array.from(
+          new Set([currentProfileId, ...followedAuthorProfileIds].filter(Boolean)),
+        );
+        return uniq.length ? uniq : null;
+      }
+      return null;
+    })();
+  }
 
   const fetchPosts = async (sel: string) => {
     let query = supabase
