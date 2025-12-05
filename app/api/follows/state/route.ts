@@ -2,7 +2,7 @@ import type { NextRequest } from 'next/server';
 import { withAuth } from '@/lib/api/auth';
 import { notAuthorized, successResponse, unknownError, validationError } from '@/lib/api/feedFollowResponses';
 import { getActiveProfile } from '@/lib/api/profile';
-import { FollowStateQuerySchema, type FollowStateQueryInput } from '@/lib/validation/follow';
+import { FollowStateQuerySchema } from '@/lib/validation/follow';
 
 export const runtime = 'nodejs';
 
@@ -10,7 +10,8 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   const url = new URL(req.url);
   const parsed = FollowStateQuerySchema.safeParse({ targets: url.searchParams.getAll('targets') });
   if (!parsed.success) return validationError('Parametri non validi', parsed.error.flatten());
-  const targets: FollowStateQueryInput['targets'] = parsed.data.targets;
+
+  const { targets } = parsed.data;
 
   try {
     const me = await getActiveProfile(supabase, user.id);
