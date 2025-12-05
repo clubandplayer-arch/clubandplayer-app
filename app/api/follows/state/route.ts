@@ -7,6 +7,9 @@ import { FollowStateQuerySchema } from '@/lib/validation/follow';
 export const runtime = 'nodejs';
 
 export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
+  const me = await getActiveProfile(supabase, user.id);
+  if (!me) return notAuthorized('Profilo non trovato');
+
   const url = new URL(req.url);
   const parsed = FollowStateQuerySchema.safeParse({ targets: url.searchParams.getAll('targets') });
   if (!parsed.success) return validationError('Parametri non validi', parsed.error.flatten());
@@ -14,9 +17,6 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   const { targets } = parsed.data;
 
   try {
-    const me = await getActiveProfile(supabase, user.id);
-    if (!me) return notAuthorized('Profilo non trovato');
-
     const cleanTargets = targets.filter((t) => t !== me.id);
 
     const { data, error } = await supabase
