@@ -20,6 +20,8 @@ import {
   type ReactionState,
   type ReactionType,
 } from '@/components/feed/postShared';
+import FirstStepsCard from '@/components/onboarding/FirstStepsCard';
+import type { Profile } from '@/types/profile';
 
 // carico le sidebar in modo "sicuro" (se il componente esiste lo usa, altrimenti mostra un box vuoto)
 // N.B. ssr: false evita problemi coi Server Components in prod
@@ -63,6 +65,7 @@ export default function FeedPage() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [reactions, setReactions] = useState<Record<string, ReactionState>>({});
   const [reactionError, setReactionError] = useState<string | null>(null);
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
@@ -228,9 +231,12 @@ export default function FeedPage() {
         const res = await fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' });
         const j = await res.json().catch(() => null);
         const id = j?.user?.id ?? null;
+        const rawProfile = j?.profile ?? null;
         setCurrentUserId(id);
+        setProfile(rawProfile ?? null);
       } catch {
         setCurrentUserId(null);
+        setProfile(null);
       }
     }
     void loadUser();
@@ -269,6 +275,7 @@ export default function FeedPage() {
           <h1 id={headingId} className="sr-only">
             Bacheca feed
           </h1>
+          <FirstStepsCard profile={profile} />
           <FeedComposer onPosted={reload} quotedPost={quoteTarget} onClearQuote={() => setQuoteTarget(null)} />
 
           <div className="space-y-4" aria-live="polite" aria-busy={loading}>
