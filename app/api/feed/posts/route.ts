@@ -98,6 +98,10 @@ export async function GET(req: NextRequest) {
   const authorIdFilter = searchParams.get('authorId') ?? searchParams.get('author_id');
   const limitRaw = Number(searchParams.get('limit') || '50');
   const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(Math.round(limitRaw), 1), 200) : 50;
+  const pageRaw = Number(searchParams.get('page') || '0');
+  const page = Number.isFinite(pageRaw) ? Math.max(Math.round(pageRaw), 0) : 0;
+  const from = page * limit;
+  const to = from + limit - 1;
   const supabase = await getSupabaseServerClient();
 
   // determina ruolo dell'utente corrente
@@ -165,7 +169,7 @@ export async function GET(req: NextRequest) {
       .from('posts')
       .select(sel)
       .order('created_at', { ascending: false })
-      .limit(limit);
+      .range(from, to);
 
     if (allowedAuthors?.length) {
       query = query.in('author_id', allowedAuthors);
@@ -232,6 +236,7 @@ export async function GET(req: NextRequest) {
       {
         ok: true,
         items: rows,
+        nextPage: rows.length === limit ? page + 1 : null,
         ...(debug
           ? {
               _debug: {
@@ -251,6 +256,7 @@ export async function GET(req: NextRequest) {
     {
       ok: true,
       items: rows,
+      nextPage: rows.length === limit ? page + 1 : null,
       ...(debug ? { _debug: { count: rows.length, userId: currentUserId, allowedAuthors } } : {}),
     },
     { status: 200 }

@@ -45,8 +45,14 @@ const FeedHighlights = dynamic(() => import('@/components/feed/FeedHighlights'),
   loading: () => <SidebarCard title="In evidenza" />,
 });
 
-async function fetchPosts(signal?: AbortSignal, authorId?: string | null): Promise<FeedPost[]> {
-  const params = new URLSearchParams({ limit: '20' });
+const PAGE_SIZE = 10;
+
+async function fetchPosts(
+  signal?: AbortSignal,
+  authorId?: string | null,
+  page = 0,
+): Promise<{ items: FeedPost[]; nextPage: number | null }> {
+  const params = new URLSearchParams({ limit: String(PAGE_SIZE), page: String(page) });
   if (authorId) params.set('authorId', authorId);
 
   const res = await fetch(`/api/feed/posts?${params.toString()}`, {
@@ -54,10 +60,13 @@ async function fetchPosts(signal?: AbortSignal, authorId?: string | null): Promi
     cache: 'no-store',
     signal,
   });
-  if (!res.ok) return [];
+  if (!res.ok) return { items: [], nextPage: null };
   const j = await res.json().catch(() => ({} as any));
   const arr = Array.isArray(j?.items ?? j?.data) ? (j.items ?? j.data) : [];
-  return arr.map(normalizePost);
+  const normalized = arr.map(normalizePost);
+  const nextFromApi = typeof j?.nextPage === 'number' ? j.nextPage : null;
+  const fallbackNext = normalized.length >= PAGE_SIZE ? page + 1 : null;
+  return { items: normalized, nextPage: nextFromApi ?? fallbackNext };
 }
 
 export default function FeedPage() {
@@ -71,6 +80,8 @@ export default function FeedPage() {
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
   const [pickerFor, setPickerFor] = useState<string | null>(null);
   const [quoteTarget, setQuoteTarget] = useState<FeedPost | null>(null);
+  const [nextPage, setNextPage] = useState<number | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
   const fetchCtrl = useRef<AbortController | null>(null);
   const headingId = 'feed-heading';
 
@@ -196,9 +207,15 @@ export default function FeedPage() {
     fetchCtrl.current = controller;
     setLoading(true);
     setErr(null);
+    setNextPage(null);
     try {
-      const data = await fetchPosts(controller.signal, currentUserId);
+      const { items: data, nextPage: apiNextPage } = await fetchPosts(
+        controller.signal,
+        currentUserId,
+        0,
+      );
       setItems(data);
+      setNextPage(apiNextPage);
       void loadReactions(data.map((p) => p.id));
       void loadCommentCounts(data.map((p) => p.id));
     } catch (e: any) {
@@ -208,6 +225,30 @@ export default function FeedPage() {
       if (!controller.signal.aborted) setLoading(false);
     }
   }, [currentUserId, loadCommentCounts, loadReactions]);
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore || nextPage === null) return;
+    setLoadingMore(true);
+    try {
+      const { items: data, nextPage: apiNextPage } = await fetchPosts(
+        undefined,
+        currentUserId,
+        nextPage,
+      );
+      setItems((curr) => {
+        const seen = new Set(curr.map((p) => String(p.id)));
+        const fresh = data.filter((p) => !seen.has(String(p.id)));
+        return [...curr, ...fresh];
+      });
+      setNextPage(apiNextPage);
+      void loadReactions(data.map((p) => p.id));
+      void loadCommentCounts(data.map((p) => p.id));
+    } catch (e: any) {
+      setErr(e?.message ?? 'Errore caricamento bacheca');
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [currentUserId, loadCommentCounts, loadReactions, loadingMore, nextPage]);
 
   useEffect(() => {
     const idle =
@@ -319,6 +360,22 @@ export default function FeedPage() {
                   />
                 </Fragment>
               ))}
+            {!loading && !err && items.length > 0 && (
+              <div className="flex justify-center">
+                {nextPage !== null ? (
+                  <button
+                    type="button"
+                    onClick={loadMore}
+                    disabled={loadingMore}
+                    className="rounded-full border border-neutral-200 bg-white px-4 py-2 text-sm font-semibold text-neutral-700 shadow-sm transition hover:border-neutral-300 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {loadingMore ? 'Caricamento…' : 'Carica altri'}
+                  </button>
+                ) : (
+                  <div className="text-center text-xs text-neutral-500">Hai visto tutti i post</div>
+                )}
+              </div>
+            )}
             {reactionError && (
               <div className="text-[11px] text-red-600" role="status">
                 {reactionError}
