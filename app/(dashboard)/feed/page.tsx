@@ -20,6 +20,7 @@ import {
   type ReactionType,
 } from '@/components/feed/postShared';
 import FirstStepsCard from '@/components/onboarding/FirstStepsCard';
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import useFeed, { type FeedScope } from '@/hooks/useFeed';
 import type { Profile } from '@/types/profile';
 
@@ -54,6 +55,7 @@ export default function FeedPage() {
   const [pickerFor, setPickerFor] = useState<string | null>(null);
   const [quoteTarget, setQuoteTarget] = useState<FeedPost | null>(null);
   const seenPostIds = useRef<Set<string>>(new Set());
+  const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
   const headingId = 'feed-heading';
 
   const {
@@ -71,6 +73,13 @@ export default function FeedPage() {
   } = useFeed({ authorId: currentUserId });
   const posts = feedPosts;
   const errorMessage = error?.message ?? null;
+
+  useInfiniteScroll(loadMoreSentinelRef, {
+    enabled: !isInitialLoading && !errorMessage,
+    hasNextPage,
+    isLoading: isLoadingMore,
+    onLoadMore: loadMore,
+  });
 
   const handleRefresh = useCallback(async () => {
     setReactions({});
@@ -342,6 +351,7 @@ export default function FeedPage() {
                   />
                 </Fragment>
               ))}
+            <div ref={loadMoreSentinelRef} aria-hidden className="h-1" />
             {!isInitialLoading && !errorMessage && posts.length > 0 && (
               <div className="flex justify-center">
                 {hasNextPage ? (
