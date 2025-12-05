@@ -36,7 +36,7 @@ export function useInfiniteScroll<T extends HTMLElement>(
     if (!enabled || !hasNextPage) return;
     const target = sentinelRef.current;
     if (!target) return;
-    if (typeof IntersectionObserver === 'undefined') return;
+    if (typeof window === 'undefined' || !('IntersectionObserver' in window)) return;
 
     const observer = new IntersectionObserver(
       (entries) => {

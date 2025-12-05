@@ -75,7 +75,7 @@ export default function FeedPage() {
   const errorMessage = error?.message ?? null;
 
   useInfiniteScroll(loadMoreSentinelRef, {
-    enabled: !isInitialLoading && !errorMessage,
+    enabled: !isInitialLoading && !errorMessage && posts.length > 0 && hasNextPage,
     hasNextPage,
     isLoading: isLoadingMore,
     onLoadMore: loadMore,
