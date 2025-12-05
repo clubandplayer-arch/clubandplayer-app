@@ -29,6 +29,7 @@ type Profile = {
   avatar_url: string | null;
   bio: string | null;
   country: string | null; // ISO2 o testo
+  skills: { name: string; endorsements_count: number }[];
 
   // atleta
   birth_year: number | null;
@@ -168,6 +169,9 @@ function normalizeCountryCode(v?: string | null) {
 const DEFAULT_CLUB_CATEGORIES: string[] = ['Altro'];
 const CLUB_SPORT_OPTIONS = Array.from(new Set([...SPORTS, 'Pallavolo']));
 
+const MAX_SKILLS = 10;
+const MAX_SKILL_LENGTH = 40;
+
 const CATEGORIES_BY_SPORT: Record<string, string[]> = {
   Calcio: [
     'Serie D',
@@ -254,6 +258,11 @@ export default function ProfileEditForm() {
   const [athleteRole, setAthleteRole] = useState('');
   const [notifyEmail, setNotifyEmail] = useState(true);
 
+  // Competenze
+  const [skills, setSkills] = useState<{ name: string; endorsements_count: number }[]>([]);
+  const [skillInput, setSkillInput] = useState('');
+  const [skillsError, setSkillsError] = useState<string | null>(null);
+
   // Social
   const [instagram, setInstagram] = useState('');
   const [facebook, setFacebook]   = useState('');
@@ -290,6 +299,42 @@ export default function ProfileEditForm() {
     }
   }, [athleteRole, athleteRoles]);
 
+  function normalizeSkills(raw: any): { name: string; endorsements_count: number }[] {
+    if (!Array.isArray(raw)) return [];
+    const seen = new Set<string>();
+    const out: { name: string; endorsements_count: number }[] = [];
+    for (const item of raw) {
+      if (out.length >= MAX_SKILLS) break;
+      if (!item || typeof item !== 'object') continue;
+      const name = typeof (item as any).name === 'string' ? (item as any).name.trim() : '';
+      if (!name) continue;
+      const trimmed = name.slice(0, MAX_SKILL_LENGTH);
+      const key = trimmed.toLowerCase();
+      if (seen.has(key)) continue;
+      const endorsements = Number((item as any).endorsements_count ?? (item as any).endorsementsCount ?? 0);
+      const safeCount = Number.isFinite(endorsements) && endorsements > 0 ? Math.floor(endorsements) : 0;
+      seen.add(key);
+      out.push({ name: trimmed, endorsements_count: safeCount });
+    }
+    return out;
+  }
+
+  function onAddSkill() {
+    const name = skillInput.trim();
+    if (!name) { setSkillsError('Inserisci un nome per la competenza'); return; }
+    if (name.length > MAX_SKILL_LENGTH) { setSkillsError(`Max ${MAX_SKILL_LENGTH} caratteri`); return; }
+    if (skills.length >= MAX_SKILLS) { setSkillsError(`Puoi aggiungere al massimo ${MAX_SKILLS} competenze`); return; }
+    const key = name.toLowerCase();
+    if (skills.some((s) => s.name.toLowerCase() === key)) { setSkillsError('Competenza già presente'); return; }
+    setSkillsError(null);
+    setSkills((prev) => [...prev, { name, endorsements_count: 0 }]);
+    setSkillInput('');
+  }
+
+  function onRemoveSkill(name: string) {
+    setSkills((prev) => prev.filter((s) => s.name !== name));
+  }
+
   async function loadProfile() {
     const r = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
     if (!r.ok) throw new Error('Impossibile leggere il profilo');
@@ -303,6 +348,7 @@ export default function ProfileEditForm() {
       avatar_url: (j as any)?.avatar_url ?? null,
       bio: (j as any)?.bio ?? null,
       country: (j as any)?.country ?? 'IT',
+      skills: normalizeSkills((j as any)?.skills || []),
 
       // atleta
       birth_year: (j as any)?.birth_year ?? null,
@@ -378,6 +424,9 @@ export default function ProfileEditForm() {
     setFacebook(p.links?.facebook || '');
     setTiktok(p.links?.tiktok || '');
     setX(p.links?.x || '');
+    setSkills(p.skills || []);
+    setSkillInput('');
+    setSkillsError(null);
 
     // club
     setSport(p.sport || 'Calcio');
@@ -493,6 +542,10 @@ export default function ProfileEditForm() {
 
         // social & notifiche
         links,
+        skills: skills.map((s) => ({
+          name: s.name,
+          endorsements_count: Number.isFinite(s.endorsements_count) ? Math.max(0, Math.floor(s.endorsements_count)) : 0,
+        })),
         notify_email_new_message: !!notifyEmail,
       };
 
@@ -988,6 +1041,64 @@ export default function ProfileEditForm() {
               </div>
             </div>
           )}
+        </section>
+
+        {/* Competenze */}
+        <section className="rounded-2xl border p-4 md:p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="mb-1 text-lg font-semibold">Competenze</h2>
+              <p className="text-sm text-gray-600">
+                Aggiungi fino a {MAX_SKILLS} competenze: verranno mostrate sul profilo pubblico con il contatore di
+                endorsement.
+              </p>
+            </div>
+            <span className="text-xs text-gray-500 whitespace-nowrap">{skills.length}/{MAX_SKILLS}</span>
+          </div>
+
+          <div className="mt-3 flex flex-col gap-2 md:flex-row md:items-center">
+            <input
+              className="flex-1 rounded-lg border p-2"
+              value={skillInput}
+              maxLength={MAX_SKILL_LENGTH}
+              onChange={(e) => { setSkillInput(e.target.value); setSkillsError(null); }}
+              placeholder="Es. Dribbling, Leadership, Scouting"
+            />
+            <button
+              type="button"
+              onClick={onAddSkill}
+              disabled={skills.length >= MAX_SKILLS || !skillInput.trim()}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-60"
+            >
+              Aggiungi
+            </button>
+          </div>
+          {skillsError && <p className="mt-1 text-xs text-red-600">{skillsError}</p>}
+
+          <div className="mt-3 flex flex-wrap gap-2">
+            {skills.length === 0 ? (
+              <p className="text-sm text-gray-500">Nessuna competenza inserita.</p>
+            ) : (
+              skills.map((skill) => (
+                <span
+                  key={skill.name}
+                  className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm bg-slate-50"
+                >
+                  <span>{skill.name}</span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-800">
+                    {skill.endorsements_count}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onRemoveSkill(skill.name)}
+                    className="text-xs text-red-600 hover:underline"
+                  >
+                    ✕
+                  </button>
+                </span>
+              ))
+            )}
+          </div>
         </section>
 
         {/* Zona di interesse (atleta) */}

@@ -19,6 +19,7 @@ export type PublicProfileSummary = {
   city: string | null;
   avatar_url: string | null;
   account_type: string | null;
+  skills?: { name: string; endorsements_count: number }[] | null;
 };
 
 const SELECT_FIELDS = [
@@ -38,6 +39,7 @@ const SELECT_FIELDS = [
   'city',
   'avatar_url',
   'account_type',
+  'skills',
 ].join(',');
 
 type GenericClient = SupabaseClient<any, any, any>;
@@ -50,6 +52,20 @@ function normalizeRow(row: Record<string, any>): PublicProfileSummary | null {
   const profileId = row.id ? String(row.id) : null;
   const userId = row.user_id ? String(row.user_id) : null;
   if (!profileId && !userId) return null;
+
+  const skills: { name: string; endorsements_count: number }[] | null = Array.isArray(row.skills)
+    ? (row.skills as any[])
+        .slice(0, 10)
+        .map((item) => {
+          if (!item || typeof item !== 'object') return null;
+          const name = typeof (item as any).name === 'string' ? (item as any).name.trim() : '';
+          if (!name) return null;
+          const endorsements = Number((item as any).endorsements_count ?? (item as any).endorsementsCount ?? 0);
+          const safeCount = Number.isFinite(endorsements) && endorsements > 0 ? Math.floor(endorsements) : 0;
+          return { name: name.slice(0, 40), endorsements_count: safeCount };
+        })
+        .filter(Boolean) as { name: string; endorsements_count: number }[]
+    : null;
 
   const first = typeof row.first_name === 'string' ? row.first_name.trim() : '';
   const last = typeof row.last_name === 'string' ? row.last_name.trim() : '';
@@ -79,6 +95,7 @@ function normalizeRow(row: Record<string, any>): PublicProfileSummary | null {
     city: typeof row.city === 'string' ? row.city : null,
     avatar_url: typeof row.avatar_url === 'string' ? row.avatar_url : null,
     account_type: typeof row.account_type === 'string' ? row.account_type : null,
+    skills,
   };
 }
 
