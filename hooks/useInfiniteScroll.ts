@@ -11,7 +11,7 @@ export type UseInfiniteScrollOptions = {
 };
 
 export function useInfiniteScroll<T extends HTMLElement>(
-  sentinelRef: React.RefObject<T>,
+  sentinelRef: React.RefObject<T | null>,
   {
     enabled,
     hasNextPage,
