@@ -9,13 +9,16 @@ Job: ONB-01 – Onboarding “primi passi” in dashboard.
 - Il branch è tecnicamente sano: la logica è locale alla dashboard e non tocca build/config.
 
 ## Errore osservato su Vercel
-Durante il deploy, Vercel fallisce prima di installare le dipendenze perché non riesce a scaricare **pnpm@10.17.1** dal registry npm:
+Durante l'install iniziale, Vercel fallisce prima di installare le dipendenze perché non riesce a scaricare **pnpm@10.17.1**
+dal registry npm:
 
 ```
 ERR_PNPM_FETCH_500 GET https://registry.npmjs.org/pnpm: Internal Server Error - 500
 ```
 
-Si tratta di un errore esterno (registry npm/connessione) che avviene mentre Vercel esegue `pnpm install --frozen-lockfile` per bootstrap del package manager.
+Il log mostra che l'errore avviene durante `pnpm install --frozen-lockfile`, mentre il runner tenta di installare `pnpm@10.17.1`
+come tool di sistema (es. `/vercel/.local/share/pnpm/.tools/pnpm/10.17.1_tmp_*`). È una condizione esterna (registry npm /
+connessione) e non dipende dal contenuto del branch.
 
 ## Cosa fare
 - Non servono cambi nel codice o nei workflow per questo ramo.
