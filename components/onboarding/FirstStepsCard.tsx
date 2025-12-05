@@ -2,30 +2,35 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { MaterialIcon } from '@/components/icons/MaterialIcon';
+import { MaterialIcon, type MaterialIconName } from '@/components/icons/MaterialIcon';
 import type { Profile } from '@/types/profile';
 import { isProfileComplete } from '@/lib/profile/completion';
 
-const steps = [
+const steps: Array<{
+  title: string;
+  description: string;
+  href: string;
+  icon: MaterialIconName;
+}> = [
   {
     title: 'Completa il tuo profilo',
     description: 'Aggiungi dettagli come sport, ruolo e bio per farti conoscere.',
     href: '/profile',
-    icon: 'badge',
+    icon: 'edit',
   },
   {
     title: 'Cerca club/player da seguire',
     description: 'Trova realtà interessanti vicino a te e segui i loro aggiornamenti.',
     href: '/search-map',
-    icon: 'travel_explore',
+    icon: 'network',
   },
   {
     title: 'Guarda le opportunità per te',
     description: 'Scopri annunci e candidature adatte al tuo profilo.',
     href: '/opportunities',
-    icon: 'bolt',
+    icon: 'opportunities',
   },
-] as const;
+];
 
 export function FirstStepsCard({ profile }: { profile?: Profile | null }) {
   const [hidden, setHidden] = useState(false);
