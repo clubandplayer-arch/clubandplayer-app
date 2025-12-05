@@ -7,6 +7,7 @@ import {
   notAuthorized,
   notFoundError,
   rateLimited,
+  rlsDenied,
   successResponse,
   unknownError,
   validationError,
