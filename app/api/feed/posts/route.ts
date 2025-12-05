@@ -15,7 +15,7 @@ const LAST_POST_TS_COOKIE = 'feed_last_post_ts';
 
 type Role = 'club' | 'athlete';
 type PostKind = 'normal' | 'event';
-type DbPostKind = 'post' | 'event';
+type DbPostKind = 'normal' | 'event';
 
 function normRole(v: unknown): Role | null {
   const s = typeof v === 'string' ? v.trim().toLowerCase() : '';
@@ -27,6 +27,8 @@ function normRole(v: unknown): Role | null {
 function normKind(raw: unknown): PostKind {
   const s = typeof raw === 'string' ? raw.trim().toLowerCase() : '';
   if (s === 'event') return 'event';
+  if (s === 'normal') return 'normal';
+  if (s === 'post') return 'normal';
   return 'normal';
 }
 
@@ -403,7 +405,7 @@ export async function POST(req: NextRequest) {
     const rawText = (body?.text ?? body?.content ?? '').toString();
     const text = rawText.trim();
     const requestedKind = normKind(body?.kind ?? body?.type);
-    const dbKind: DbPostKind = requestedKind === 'event' ? 'event' : 'post';
+    const dbKind: DbPostKind = requestedKind === 'event' ? 'event' : 'normal';
     const rawEventPayload = body?.event_payload ?? body?.event;
     const eventPayload = normalizeEventPayload(rawEventPayload);
     const rawMediaUrl = typeof body?.media_url === 'string' ? body.media_url.trim() : '';
