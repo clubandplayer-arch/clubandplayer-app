@@ -24,6 +24,7 @@ type Profile = {
   province: string | null
   city: string | null
   avatar_url?: string | null
+  skills?: { name: string; endorsements_count?: number }[] | null
 }
 
 type ApplicationRow = {
@@ -64,6 +65,25 @@ export default function PublicAthleteProfile() {
   const [msg, setMsg] = useState<string>('')
   const [meId, setMeId] = useState<string | null>(null)
 
+  const isOwner = useMemo(() => {
+    if (!profile || !meId) return false
+    return meId === profile.id || meId === profile.user_id
+  }, [meId, profile])
+
+  const skills = useMemo(() => {
+    if (!profile || !Array.isArray(profile.skills)) return [] as { name: string; endorsements_count: number }[]
+    return (profile.skills as any[])
+      .map((s) => {
+        if (!s || typeof s !== 'object') return null
+        const name = typeof (s as any).name === 'string' ? (s as any).name.trim() : ''
+        if (!name) return null
+        const endorsements = Number((s as any).endorsements_count ?? (s as any).endorsementsCount ?? 0)
+        const safeCount = Number.isFinite(endorsements) && endorsements > 0 ? Math.floor(endorsements) : 0
+        return { name: name.slice(0, 40), endorsements_count: safeCount }
+      })
+      .filter(Boolean) as { name: string; endorsements_count: number }[]
+  }, [profile])
+
   useEffect(() => {
     let cancelled = false  // 👈 flag di cancellazione
 
@@ -81,7 +101,7 @@ export default function PublicAthleteProfile() {
       const { data: profs, error: perr } = await supabase
         .from('profiles')
         .select(
-          'id, user_id, display_name, full_name, headline, bio, sport, role, country, region, province, city, avatar_url'
+          'id, user_id, display_name, full_name, headline, bio, sport, role, country, region, province, city, avatar_url, skills'
         )
         .eq('id', athleteId)
         .limit(1)
@@ -161,6 +181,53 @@ export default function PublicAthleteProfile() {
               <li><b>Città:</b> {profile.city ?? '—'}</li>
             </ul>
           </section>
+
+          {skills.length > 0 ? (
+            <section style={{border:'1px solid #e5e7eb', borderRadius:12, padding:16, marginTop:12}}>
+              <h2 style={{marginTop:0}}>Competenze</h2>
+              <div style={{display:'flex', flexWrap:'wrap', gap:8, marginTop:8}}>
+                {skills.map((skill) => (
+                  <span
+                    key={skill.name}
+                    style={{
+                      display:'inline-flex',
+                      alignItems:'center',
+                      gap:6,
+                      border:'1px solid #e5e7eb',
+                      borderRadius:9999,
+                      padding:'6px 10px',
+                      fontSize:14,
+                      background:'#f8fafc',
+                    }}
+                  >
+                    <span>{skill.name}</span>
+                    <span style={{
+                      display:'inline-flex',
+                      alignItems:'center',
+                      gap:4,
+                      padding:'2px 6px',
+                      borderRadius:9999,
+                      background:'#e0f2fe',
+                      color:'#0369a1',
+                      fontSize:12,
+                      fontWeight:600,
+                    }}>
+                      {skill.endorsements_count}
+                    </span>
+                  </span>
+                ))}
+              </div>
+            </section>
+          ) : (
+            isOwner && (
+              <section style={{border:'1px solid #e5e7eb', borderRadius:12, padding:16, marginTop:12}}>
+                <h2 style={{marginTop:0}}>Competenze</h2>
+                <p style={{marginTop:8, fontSize:14, color:'#475569'}}>
+                  Aggiungi le tue competenze dal pannello "Modifica profilo" per mostrarle qui.
+                </p>
+              </section>
+            )
+          )}
 
           <section style={{border:'1px solid #e5e7eb', borderRadius:12, padding:16, marginTop:12}}>
             <h2 style={{marginTop:0}}>Ultime candidature</h2>

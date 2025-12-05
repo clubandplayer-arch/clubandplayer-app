@@ -24,6 +24,35 @@ function norm(v: unknown): string | null {
   return String(v).trim() || null;
 }
 
+const MAX_SKILLS = 10;
+const MAX_SKILL_LENGTH = 40;
+
+function normalizeSkills(raw: unknown) {
+  if (raw === undefined) return undefined;
+  if (raw === null) return null;
+
+  let arr: unknown[] | null = null;
+  if (Array.isArray(raw)) arr = raw;
+  if (!arr && typeof raw === 'string') {
+    try { const parsed = JSON.parse(raw); if (Array.isArray(parsed)) arr = parsed; } catch {}
+  }
+  if (!arr) return null;
+
+  const skills: { name: string; endorsements_count: number }[] = [];
+  for (const item of arr) {
+    if (skills.length >= MAX_SKILLS) break;
+    if (!item || typeof item !== 'object') continue;
+    const name = norm((item as any).name);
+    if (!name) continue;
+    const trimmed = name.slice(0, MAX_SKILL_LENGTH);
+    const countRaw = Number((item as any).endorsements_count ?? (item as any).endorsementsCount ?? 0);
+    const endorsements_count = Number.isFinite(countRaw) && countRaw > 0 ? Math.floor(countRaw) : 0;
+    skills.push({ name: trimmed, endorsements_count });
+  }
+
+  return skills;
+}
+
 /** POST /api/profiles  (upsert del profilo dell’utente loggato) */
 export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   try { await rateLimit(req, { key: 'profiles:POST', limit: 20, window: '1m' } as any); }
@@ -61,6 +90,12 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     payload.links = Object.keys(l).length ? l : null;
   } else {
     payload.links = null;
+  }
+
+  const skillsRaw = normalizeSkills((body as any).skills);
+  if (skillsRaw !== undefined) {
+    if (skillsRaw === null) return jsonError('Formato competenze non valido', 400);
+    payload.skills = skillsRaw;
   }
 
   const { data, error } = await supabase

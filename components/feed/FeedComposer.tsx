@@ -431,8 +431,8 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
 
       const json = await res.json().catch(() => null as any);
       if (!res.ok || !json?.ok) {
-        const msg =
-          json?.message || json?.error || 'Impossibile pubblicare il post: riprova più tardi.';
+        const detail = json?.details?.message || json?.message || json?.error;
+        const msg = detail || 'Impossibile pubblicare il post: riprova più tardi.';
         throw new Error(msg);
       }
       setText('');
@@ -498,7 +498,8 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
 
       const json = await res.json().catch(() => null as any);
       if (!res.ok || !json?.ok) {
-        const msg = json?.message || json?.error || 'Impossibile creare l\'evento.';
+        const detail = json?.details?.message || json?.message || json?.error;
+        const msg = detail || 'Impossibile creare l\'evento.';
         throw new Error(msg);
       }
 

@@ -15,6 +15,7 @@ const LAST_POST_TS_COOKIE = 'feed_last_post_ts';
 
 type Role = 'club' | 'athlete';
 type PostKind = 'normal' | 'event';
+type DbPostKind = 'normal' | 'event';
 
 function normRole(v: unknown): Role | null {
   const s = typeof v === 'string' ? v.trim().toLowerCase() : '';
@@ -26,6 +27,8 @@ function normRole(v: unknown): Role | null {
 function normKind(raw: unknown): PostKind {
   const s = typeof raw === 'string' ? raw.trim().toLowerCase() : '';
   if (s === 'event') return 'event';
+  if (s === 'normal') return 'normal';
+  if (s === 'post') return 'normal';
   return 'normal';
 }
 
@@ -100,6 +103,8 @@ export async function GET(req: NextRequest) {
   const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(Math.round(limitRaw), 1), 200) : 50;
   const pageRaw = Number(searchParams.get('page') || '0');
   const page = Number.isFinite(pageRaw) ? Math.max(Math.round(pageRaw), 0) : 0;
+  const scopeParam = (searchParams.get('scope') || 'all').toLowerCase();
+  const scope: 'all' | 'following' = scopeParam === 'following' ? 'following' : 'all';
   const from = page * limit;
   const to = from + limit - 1;
   const supabase = await getSupabaseServerClient();
@@ -134,7 +139,9 @@ export async function GET(req: NextRequest) {
 
   const followedAuthorProfileIds: string[] = [];
 
-  if (!authorIdFilter && !mine && currentProfileId) {
+  const shouldLoadFollows = Boolean(currentProfileId && (scope === 'following' || (!authorIdFilter && !mine)));
+
+  if (shouldLoadFollows) {
     const { data: followRows, error: followError } = await supabase
       .from('follows')
       .select('target_profile_id')
@@ -152,17 +159,56 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const allowedAuthors: string[] | null = (() => {
-    if (authorIdFilter) return [authorIdFilter];
-    if (mine && currentProfileId) return [currentProfileId];
-    if (!authorIdFilter && !mine && currentProfileId) {
-      const uniq = Array.from(
-        new Set([currentProfileId, ...followedAuthorProfileIds].filter(Boolean)),
-      );
-      return uniq.length ? uniq : null;
+  let allowedAuthors: string[] | null = null;
+
+  if (scope === 'following') {
+    if (authorIdFilter) {
+      allowedAuthors = [authorIdFilter];
+    } else if (mine && currentProfileId) {
+      allowedAuthors = [currentProfileId];
+    } else {
+      if (!currentProfileId) {
+        return NextResponse.json(
+          {
+            ok: true,
+            items: [],
+            nextPage: null,
+            ...(debug
+              ? { _debug: { scope, count: 0, userId: currentUserId, profileId: currentProfileId } }
+              : {}),
+          },
+          { status: 200 },
+        );
+      }
+
+      const uniq = Array.from(new Set(followedAuthorProfileIds.filter(Boolean)));
+      if (!uniq.length) {
+        return NextResponse.json(
+          {
+            ok: true,
+            items: [],
+            nextPage: null,
+            ...(debug ? { _debug: { scope, count: 0, userId: currentUserId, profileId: currentProfileId } } : {}),
+          },
+          { status: 200 },
+        );
+      }
+
+      allowedAuthors = uniq;
     }
-    return null;
-  })();
+  } else {
+    allowedAuthors = (() => {
+      if (authorIdFilter) return [authorIdFilter];
+      if (mine && currentProfileId) return [currentProfileId];
+      if (!authorIdFilter && !mine && currentProfileId) {
+        const uniq = Array.from(
+          new Set([currentProfileId, ...followedAuthorProfileIds].filter(Boolean)),
+        );
+        return uniq.length ? uniq : null;
+      }
+      return null;
+    })();
+  }
 
   const fetchPosts = async (sel: string) => {
     let query = supabase
@@ -288,6 +334,20 @@ function isRlsError(err: any) {
   );
 }
 
+function isKindConstraintError(err: any) {
+  if (!err) return false;
+  const parts = [err.message, err.details, err.hint]
+    .filter(Boolean)
+    .map((v) => v.toString().toLowerCase());
+  const msg = parts.join(' ');
+  return (
+    msg.includes('posts_kind_check') ||
+    msg.includes('invalid input value') ||
+    msg.includes('kind in (') ||
+    msg.includes('kind')
+  );
+}
+
 const SELECT_WITH_MEDIA =
   'id, author_id, content, created_at, media_url, media_type, media_aspect, kind, event_payload, quoted_post_id';
 const SELECT_WITH_LINK = `${SELECT_WITH_MEDIA}, link_url, link_title, link_description, link_image`;
@@ -359,6 +419,7 @@ export async function POST(req: NextRequest) {
     const rawText = (body?.text ?? body?.content ?? '').toString();
     const text = rawText.trim();
     const requestedKind = normKind(body?.kind ?? body?.type);
+    const dbKind: DbPostKind = requestedKind === 'event' ? 'event' : 'normal';
     const rawEventPayload = body?.event_payload ?? body?.event;
     const eventPayload = normalizeEventPayload(rawEventPayload);
     const rawMediaUrl = typeof body?.media_url === 'string' ? body.media_url.trim() : '';
@@ -505,7 +566,7 @@ export async function POST(req: NextRequest) {
     const insertPayload: Record<string, any> = {
       content: effectiveText,
       author_id: auth.user.id,
-      kind: requestedKind,
+      kind: dbKind,
     };
     if (mediaUrl) insertPayload.media_url = mediaUrl;
     if (mediaType) insertPayload.media_type = mediaType;
@@ -519,7 +580,7 @@ export async function POST(req: NextRequest) {
     const fallbackPayload: Record<string, any> = {
       content: text || '',
       author_id: auth.user.id,
-      kind: requestedKind,
+      kind: dbKind,
     };
     if (quotedRootId) {
       insertPayload.quoted_post_id = quotedRootId;
@@ -528,44 +589,54 @@ export async function POST(req: NextRequest) {
     if (mediaUrl) fallbackPayload.media_url = mediaUrl;
     if (mediaType) fallbackPayload.media_type = mediaType;
 
+    const legacyInsertPayload: Record<string, any> = { ...insertPayload, kind: 'post' };
+    const legacyFallbackPayload: Record<string, any> = { ...fallbackPayload, kind: 'post' };
+
     const runInsert = (client: InsertClient, payload: Record<string, any>, select: string) =>
       client.from('posts').insert(payload).select(select).single();
 
-    let data: any = null;
-    let error: any = null;
-
-    ({ data, error } = await runInsert(supabase, insertPayload, SELECT_WITH_LINK));
-
-    if (error && isMissingLinkColumns(error)) {
-      const { link_url: _linkUrl, link_title: _linkTitle, link_description: _linkDescription, link_image: _linkImage, ...rest } = insertPayload;
-      ({ data, error } = await runInsert(supabase, rest, SELECT_WITH_MEDIA));
-    }
-
-    if (error && isMissingMediaColumns(error)) {
-      ({ data, error } = await runInsert(supabase, fallbackPayload, SELECT_BASE));
-    }
-
-    if (error && admin && isRlsError(error)) {
-      ({ data, error } = await runInsert(admin, insertPayload, SELECT_WITH_LINK));
+    const performInsert = async (client: InsertClient, payload: Record<string, any>, fallback: Record<string, any>) => {
+      let data: any = null;
+      let error: any = null;
+      ({ data, error } = await runInsert(client, payload, SELECT_WITH_LINK));
       if (error && isMissingLinkColumns(error)) {
         const { link_url: _linkUrl, link_title: _linkTitle, link_description: _linkDescription, link_image: _linkImage, ...rest } =
-          insertPayload;
-        ({ data, error } = await runInsert(admin, rest, SELECT_WITH_MEDIA));
+          payload;
+        ({ data, error } = await runInsert(client, rest, SELECT_WITH_MEDIA));
       }
       if (error && isMissingMediaColumns(error)) {
-        ({ data, error } = await runInsert(admin, fallbackPayload, SELECT_BASE));
+        ({ data, error } = await runInsert(client, fallback, SELECT_BASE));
       }
+      return { data, error };
+    };
+
+    let { data, error } = await performInsert(supabase, insertPayload, fallbackPayload);
+
+    if (error && admin && isRlsError(error)) {
+      ({ data, error } = await performInsert(admin, insertPayload, fallbackPayload));
     }
 
+    if (error && dbKind === 'normal' && isKindConstraintError(error)) {
+      ({ data, error } = await performInsert(supabase, legacyInsertPayload, legacyFallbackPayload));
+      if (error && admin && isRlsError(error)) {
+        ({ data, error } = await performInsert(admin, legacyInsertPayload, legacyFallbackPayload));
+      }
+    }
     if (error) {
+      console.error('createPost failed', { error, payload: insertPayload });
       reportApiError({
         endpoint: '/api/feed/posts',
         error,
         context: { stage: 'insert', method: 'POST' },
       });
+      const detail = error?.details || error?.hint || '';
+      const message = detail ? `${error.message}: ${detail}` : error.message;
       return badRequest('Inserimento del post non riuscito', {
         error: 'insert_failed',
-        message: error.message,
+        message,
+        code: error?.code,
+        details: error?.details,
+        hint: error?.hint,
       });
     }
 

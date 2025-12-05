@@ -6,6 +6,11 @@ export type ProfileLinks = {
   linkedin?: string | null;
 } | null;
 
+export type ProfileSkill = {
+  name: string;
+  endorsementsCount: number;
+};
+
 export type Profile = {
   user_id: string;
   type: 'athlete' | 'club';
@@ -26,6 +31,7 @@ export type Profile = {
   preferred_roles?: string | null;
   preferred_locations?: string | null;
   links?: ProfileLinks;
+  skills?: ProfileSkill[] | null;
   avatar_url?: string | null;
   club_motto?: string | null;
   created_at: string;
