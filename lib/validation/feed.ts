@@ -79,11 +79,11 @@ export const PatchPostSchema = z
     content: z.string().trim().max(500).optional(),
     text: z.string().trim().max(500).optional(),
   })
+  .passthrough()
   .refine((value) => Boolean((value.content || value.text)?.trim()), {
     message: 'Testo obbligatorio',
     path: ['content'],
-  })
-  .passthrough();
+  });
 
 export const CreateReactionSchema = z
   .object({
