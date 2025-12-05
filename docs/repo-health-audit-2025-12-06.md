@@ -39,3 +39,6 @@ Il codice risulta coerente con l’assetto post-core rewrite: service layer cond
 ## Aggiornamento 2025-12-08 – TECH-05 (error handling coerente)
 - Introdotto helper comune per le risposte API (`lib/api/responses.ts`) con codici standardizzati: `BAD_REQUEST`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `TOO_MANY_REQUESTS`, `INTERNAL_ERROR` e risposta `ok: true` sui successi dove compatibile.
 - Applicato il formato uniforme a feed (`/api/feed/posts`, `/api/feed/comments`, `/api/feed/reactions`), follow (`/api/follows/toggle`), search map (`/api/search/map`) e messaging (`/api/direct-messages/*`).
+
+## Aggiornamento 2025-12-10 – Sicurezza Next.js
+- Aggiornato Next.js dalla versione 15.5.0 alla 15.5.2 (più `eslint-config-next` allineato) per chiudere la vulnerabilità segnalata da Vercel nel banner "Learn more".
