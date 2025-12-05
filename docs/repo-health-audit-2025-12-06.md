@@ -39,3 +39,14 @@ Il codice risulta coerente con l’assetto post-core rewrite: service layer cond
 ## Aggiornamento 2025-12-08 – TECH-05 (error handling coerente)
 - Introdotto helper comune per le risposte API (`lib/api/responses.ts`) con codici standardizzati: `BAD_REQUEST`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `TOO_MANY_REQUESTS`, `INTERNAL_ERROR` e risposta `ok: true` sui successi dove compatibile.
 - Applicato il formato uniforme a feed (`/api/feed/posts`, `/api/feed/comments`, `/api/feed/reactions`), follow (`/api/follows/toggle`), search map (`/api/search/map`) e messaging (`/api/direct-messages/*`).
+
+## Aggiornamento 2025-12-10 – Sicurezza Next.js
+- Aggiornato Next.js dalla versione 15.5.0 alla 15.5.2 (più `eslint-config-next` allineato) per chiudere la vulnerabilità segnalata da Vercel nel banner "Learn more".
+
+## Nota operativa – rigenerare `pnpm-lock.yaml` in ambiente con rete aperta
+- `package.json` resta configurato con `next` `15.5.2` ed `eslint-config-next` `15.5.2`; `pnpm-lock.yaml` va rigenerato fuori dal sandbox (il proxy qui restituisce 403).
+- Passi suggeriti (da eseguire in locale o in un runner CI con accesso al registry):
+  1. `git checkout codex/update-next.js-to-patched-version && git pull`.
+  2. `pnpm install --lockfile-only` (oppure `pnpm install --no-frozen-lockfile`).
+  3. `pnpm lint && pnpm typecheck` come sanity check rapido.
+  4. `git add pnpm-lock.yaml && git commit -m "chore: update pnpm-lock after Next 15.5.2 upgrade" && git push`.
