@@ -8,7 +8,7 @@ import {
   validationError,
 } from '@/lib/api/feedFollowResponses';
 import { getActiveProfile } from '@/lib/api/profile';
-import { FollowStateQuerySchema } from '@/lib/validation/follow';
+import { FollowStateQuerySchema, type FollowStateQueryInput } from '@/lib/validation/follow';
 
 export const runtime = 'nodejs';
 
@@ -29,7 +29,7 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
       return validationError('Parametri non validi', parsed.error.flatten());
     }
 
-    const { targets } = parsed.data;
+    const { targets }: FollowStateQueryInput = parsed.data;
 
     const cleanTargets = targets.filter((t) => t !== me.id);
 
