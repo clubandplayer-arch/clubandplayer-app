@@ -1,40 +1,58 @@
-// hooks/useInfiniteScroll.ts
-"use client";
+import { useEffect, useRef } from 'react';
+import type React from 'react';
 
-import { useEffect, useRef } from "react";
-
-type Options = {
+export type UseInfiniteScrollOptions = {
+  enabled: boolean;
+  hasNextPage: boolean;
+  isLoading: boolean;
+  onLoadMore: () => void | Promise<void>;
   rootMargin?: string;
-  threshold?: number;
-  disabled?: boolean;
-  onIntersect: () => void;
+  threshold?: number | number[];
 };
 
-export function useInfiniteScroll<T extends HTMLElement>({
-  rootMargin = "400px",
-  threshold = 0,
-  disabled = false,
-  onIntersect,
-}: Options) {
-  const ref = useRef<T | null>(null);
+export function useInfiniteScroll<T extends HTMLElement>(
+  sentinelRef: React.RefObject<T | null>,
+  {
+    enabled,
+    hasNextPage,
+    isLoading,
+    onLoadMore,
+    rootMargin = '800px 0px 200px 0px',
+    threshold = 0,
+  }: UseInfiniteScrollOptions,
+): void {
+  const loadingRef = useRef(isLoading);
+  const loadMoreRef = useRef(onLoadMore);
 
   useEffect(() => {
-    if (disabled) return;
-    const el = ref.current;
-    if (!el) return;
+    loadingRef.current = isLoading;
+  }, [isLoading]);
+
+  useEffect(() => {
+    loadMoreRef.current = onLoadMore;
+  }, [onLoadMore]);
+
+  useEffect(() => {
+    if (!enabled || !hasNextPage) return;
+    const target = sentinelRef.current;
+    if (!target) return;
+    if (typeof window === 'undefined' || !('IntersectionObserver' in window)) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting) onIntersect();
+          if (entry.isIntersecting && !loadingRef.current) {
+            loadMoreRef.current?.();
+          }
         });
       },
-      { root: null, rootMargin, threshold }
+      { root: null, rootMargin, threshold },
     );
 
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [rootMargin, threshold, disabled, onIntersect]);
+    observer.observe(target);
 
-  return ref;
+    return () => observer.disconnect();
+  }, [enabled, hasNextPage, rootMargin, sentinelRef, threshold]);
 }
+
+export default useInfiniteScroll;

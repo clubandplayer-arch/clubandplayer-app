@@ -1,7 +1,19 @@
-import { NextResponse, type NextRequest } from 'next/server';
-import { badRequest, internalError, ok, unauthorized } from '@/lib/api/responses';
+import { type NextRequest } from 'next/server';
+import {
+  dbError,
+  notAuthenticated,
+  notReady,
+  successResponse,
+  unknownError,
+  validationError,
+} from '@/lib/api/feedFollowResponses';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
-import { CreateCommentSchema, type CreateCommentInput } from '@/lib/validation/feed';
+import {
+  CommentsQuerySchema,
+  CreateCommentSchema,
+  type CommentsQueryInput,
+  type CreateCommentInput,
+} from '@/lib/validation/feed';
 
 export const runtime = 'nodejs';
 
@@ -15,12 +27,13 @@ function sanitizeBody(raw: unknown) {
 
 export async function GET(req: NextRequest) {
   const search = new URL(req.url).searchParams;
-  const postId = search.get('postId')?.trim();
-  const limit = Number(search.get('limit') || '30');
+  const parsed = CommentsQuerySchema.safeParse(Object.fromEntries(search.entries()));
 
-  if (!postId) {
-    return badRequest('Post mancante', { error: 'missing_post' });
+  if (!parsed.success) {
+    return validationError('Parametri non validi', parsed.error.flatten());
   }
+
+  const { postId, limit }: CommentsQueryInput = parsed.data;
 
   const supabase = await getSupabaseServerClient();
   const { data, error } = await supabase
@@ -31,12 +44,15 @@ export async function GET(req: NextRequest) {
     .limit(Number.isFinite(limit) ? Math.max(1, Math.min(100, limit)) : 30);
 
   if (error) {
-    console.error('post_comments select error', error);
     const code = (error as any)?.code as string | undefined;
     if (code === '42501' || code === '42P01' || code === 'PGRST204') {
-      return NextResponse.json({ ok: false, error: 'comments_not_ready' }, { status: 200 });
+      return notReady('Commenti non pronti');
     }
-    return NextResponse.json({ ok: false, error: 'db_error' }, { status: 200 });
+    return unknownError({
+      endpoint: '/api/feed/comments',
+      error,
+      context: { method: 'GET', stage: 'select', postId },
+    });
   }
 
   const authorIds = Array.from(new Set((data ?? []).map((c) => c.author_id))).filter(Boolean) as string[];
@@ -62,21 +78,21 @@ export async function GET(req: NextRequest) {
     author: authors[c.author_id || ''] ?? null,
   }));
 
-  return NextResponse.json({ ok: true, comments }, { status: 200 });
+  return successResponse({ comments });
 }
 
 export async function POST(req: NextRequest) {
   const supabase = await getSupabaseServerClient();
   const { data: auth, error: authErr } = await supabase.auth.getUser();
   if (authErr || !auth?.user) {
-    return unauthorized('Utente non autenticato');
+    return notAuthenticated('Utente non autenticato');
   }
 
   const bodyJson = await req.json().catch(() => ({}));
   const parsed = CreateCommentSchema.safeParse(bodyJson);
   if (!parsed.success) {
     console.warn('[api/feed/comments][POST] invalid payload', parsed.error.flatten());
-    return badRequest('Payload non valido', parsed.error.flatten());
+    return validationError('Payload non valido', parsed.error.flatten());
   }
 
   const payload: CreateCommentInput = parsed.data;
@@ -91,11 +107,10 @@ export async function POST(req: NextRequest) {
 
   if (error || !data) {
     const code = (error as any)?.code as string | undefined;
-    console.error('post_comments insert error', error);
     if (code === '42501' || code === '42P01') {
-      return NextResponse.json({ ok: false, error: 'comments_not_ready' }, { status: 200 });
+      return notReady('Commenti non pronti');
     }
-    return internalError(error, 'Errore nel salvataggio del commento');
+    return dbError('Errore nel salvataggio del commento', { message: error?.message });
   }
 
   const { data: profile } = await supabase
@@ -104,13 +119,10 @@ export async function POST(req: NextRequest) {
     .eq('user_id', auth.user.id)
     .maybeSingle();
 
-  return ok(
-    {
-      comment: {
-        ...data,
-        author: profile ?? null,
-      },
+  return successResponse({
+    comment: {
+      ...data,
+      author: profile ?? null,
     },
-    { status: 200 },
-  );
+  });
 }

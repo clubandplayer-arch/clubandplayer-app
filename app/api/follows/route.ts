@@ -1,5 +1,5 @@
-import { NextResponse, type NextRequest } from 'next/server';
-import { badRequest, ok } from '@/lib/api/responses';
+import { type NextRequest } from 'next/server';
+import { notAuthenticated, notAuthorized, successResponse, unknownError } from '@/lib/api/feedFollowResponses';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
@@ -10,7 +10,7 @@ export async function GET(_req: NextRequest) {
   const { data: userRes } = await supabase.auth.getUser();
 
   if (!userRes?.user) {
-    return NextResponse.json({ ok: false, error: 'not_authenticated', profileId: null, followingIds: [], followerIds: [] });
+    return notAuthenticated('Utente non autenticato');
   }
 
   const { data: profile, error: profileError } = await supabase
@@ -21,11 +21,11 @@ export async function GET(_req: NextRequest) {
 
   if (profileError) {
     console.error('[api/follows] errore profilo', profileError);
-    return badRequest('Errore profilo');
+    return unknownError({ endpoint: '/api/follows', error: profileError, context: { stage: 'profile', userId: userRes.user.id } });
   }
 
   if (!profile?.id || profile.status !== 'active') {
-    return NextResponse.json({ ok: false, error: 'inactive_profile', profileId: profile?.id ?? null, followingIds: [], followerIds: [] });
+    return notAuthorized('Profilo non attivo');
   }
 
   const { data: follows, error } = await supabase
@@ -42,7 +42,7 @@ export async function GET(_req: NextRequest) {
 
   if (error || followerErr) {
     console.error('[api/follows] errore lettura follows', error || followerErr);
-    return badRequest('Errore nel recupero dei follow');
+    return unknownError({ endpoint: '/api/follows', error: error || followerErr, context: { stage: 'select', profileId: profile.id } });
   }
 
   const ids = (follows || [])
@@ -52,7 +52,7 @@ export async function GET(_req: NextRequest) {
     .map((row) => (row as any)?.follower_profile_id)
     .filter(Boolean) as string[];
 
-  return ok({
+  return successResponse({
     profileId: profile.id,
     followingIds: ids,
     followerIds,

@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server';
-import { forbidden, internalError, ok } from '@/lib/api/responses';
 import { withAuth } from '@/lib/api/auth';
+import { notAuthorized, successResponse, unknownError } from '@/lib/api/feedFollowResponses';
 import { getActiveProfile } from '@/lib/api/profile';
 
 export const runtime = 'nodejs';
@@ -8,7 +8,7 @@ export const runtime = 'nodejs';
 export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
   try {
     const me = await getActiveProfile(supabase, user.id);
-    if (!me) return forbidden('Profilo non trovato');
+    if (!me) return notAuthorized('Profilo non trovato');
 
     const { data: rows, error } = await supabase
       .from('follows')
@@ -18,7 +18,7 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
     if (error) throw error;
 
     const targetIds = (rows || []).map((r) => (r as any)?.target_profile_id).filter(Boolean);
-    if (!targetIds.length) return ok({ items: [] });
+    if (!targetIds.length) return successResponse({ items: [] });
 
     const { data: profiles, error: profError } = await supabase
       .from('profiles')
@@ -37,9 +37,9 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
       avatar_url: p.avatar_url,
     }));
 
-    return ok({ items });
+    return successResponse({ items });
   } catch (error: any) {
     console.error('[api/follows/list] errore', { error });
-    return internalError(error);
+    return unknownError({ endpoint: '/api/follows/list', error, context: { userId: user.id } });
   }
 });
