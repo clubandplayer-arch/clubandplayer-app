@@ -6,7 +6,7 @@ import {
   unknownError,
   validationError,
 } from '@/lib/api/feedFollowResponses';
-import { buildCountsMap, normalizeProfileSkills, normalizeSkillName } from '@/lib/profiles/skills';
+import { normalizeProfileSkills, normalizeSkillName } from '@/lib/profiles/skills';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
@@ -73,17 +73,15 @@ export async function POST(
       if (deleteError) return unknownError({ endpoint: 'endorseSkill', error: deleteError });
     }
 
-    const { data: countRows, error: countError } = await supabase
+    const { count, error: countError } = await supabase
       .from('profile_skill_endorsements')
-      .select('skill_name, endorsements_count:count(*)')
+      .select('*', { count: 'exact', head: true })
       .eq('profile_id', profileId)
-      .eq('skill_name', targetSkill.name)
-      .group('skill_name');
+      .eq('skill_name', targetSkill.name);
 
     if (countError) return unknownError({ endpoint: 'endorseSkill', error: countError });
 
-    const countMap = buildCountsMap(countRows ?? []);
-    const endorsementsCount = countMap.get(targetSkill.name.toLowerCase()) ?? 0;
+    const endorsementsCount = count ?? 0;
 
     return successResponse({
       skillName: targetSkill.name,
