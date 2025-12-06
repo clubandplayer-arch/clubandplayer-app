@@ -9,7 +9,7 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
 import ProfileHeader from '@/components/profiles/ProfileHeader'
-import { buildCountsMap, buildEndorsedSet, normalizeProfileSkills } from '@/lib/profiles/skills'
+import { buildEndorsedSet, normalizeProfileSkills, normalizeSkillName } from '@/lib/profiles/skills'
 import { ProfileSkill } from '@/types/profile'
 
 type Profile = {
@@ -142,15 +142,26 @@ export default function PublicAthleteProfile() {
 
       const normalizedSkills = normalizeProfileSkills(Array.isArray((p as any)?.skills) ? (p as any).skills : [])
 
-      const { data: countsRows } = await supabase
+      const { data: endorsementRows, error: endorsementError } = await supabase
         .from('profile_skill_endorsements')
-        .select('skill_name, endorsements_count:count(*)')
+        .select('skill_name')
         .eq('profile_id', athleteId)
-        .group('skill_name')
+
+      if (endorsementError) {
+        setMsg(`Errore endorsement: ${endorsementError.message}`)
+        setLoading(false)
+        return
+      }
 
       if (cancelled) return
 
-      const countsMap = buildCountsMap(countsRows ?? [])
+      const countsMap = new Map<string, number>()
+      for (const row of endorsementRows ?? []) {
+        const name = normalizeSkillName(row.skill_name)
+        if (!name) continue
+        const key = name.toLowerCase()
+        countsMap.set(key, (countsMap.get(key) ?? 0) + 1)
+      }
 
       let endorsedSet = new Set<string>()
       if (auth?.data?.user?.id) {
