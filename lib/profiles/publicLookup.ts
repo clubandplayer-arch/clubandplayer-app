@@ -1,5 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
+import { buildEndorsedSet, normalizeProfileSkills, normalizeSkillName } from '@/lib/profiles/skills';
+import { ProfileSkill } from '@/types/profile';
 
 export type PublicProfileSummary = {
   id: string;
@@ -19,7 +21,7 @@ export type PublicProfileSummary = {
   city: string | null;
   avatar_url: string | null;
   account_type: string | null;
-  skills?: { name: string; endorsements_count: number }[] | null;
+  skills?: ProfileSkill[] | null;
 };
 
 const SELECT_FIELDS = [
@@ -46,26 +48,82 @@ type GenericClient = SupabaseClient<any, any, any>;
 
 type FetchOptions = {
   fallbackToAdmin?: boolean;
+  viewerId?: string | null;
 };
+
+async function enrichSkills(
+  map: Map<string, PublicProfileSummary>,
+  client: GenericClient | null,
+  viewerId?: string | null,
+) {
+  if (!client || !map.size) return;
+  const ids = Array.from(map.values()).map((p) => p.id).filter(Boolean);
+  if (!ids.length) return;
+
+  const { data: countsRows, error: countsError } = await client
+    .from('profile_skill_endorsements')
+    .select('profile_id, skill_name, endorsements_count:count(*)')
+    .in('profile_id', ids)
+    .group('profile_id, skill_name');
+
+  if (countsError && process.env.NODE_ENV !== 'production') {
+    console.warn('[profiles] endorsement counts failed', countsError);
+  }
+
+  const countsByProfile = new Map<string, Map<string, number>>();
+  for (const row of countsRows ?? []) {
+    const profileId = String((row as any).profile_id ?? '');
+    if (!profileId) continue;
+    const mapForProfile = countsByProfile.get(profileId) ?? new Map<string, number>();
+    const name = normalizeSkillName((row as any).skill_name);
+    if (!name) continue;
+    const countRaw = Number((row as any).endorsements_count ?? 0);
+    const count = Number.isFinite(countRaw) && countRaw > 0 ? Math.floor(countRaw) : 0;
+    mapForProfile.set(name.toLowerCase(), count);
+    countsByProfile.set(profileId, mapForProfile);
+  }
+
+  let endorsedByMeByProfile = new Map<string, Set<string>>();
+  if (viewerId) {
+    const { data: endorsedRows, error: endorsedError } = await client
+      .from('profile_skill_endorsements')
+      .select('profile_id, skill_name')
+      .eq('endorser_profile_id', viewerId)
+      .in('profile_id', ids);
+
+    if (endorsedError && process.env.NODE_ENV !== 'production') {
+      console.warn('[profiles] endorsedByMe query failed', endorsedError);
+    }
+
+    endorsedByMeByProfile = new Map<string, Set<string>>();
+    for (const row of endorsedRows ?? []) {
+      const profileId = String((row as any).profile_id ?? '');
+      if (!profileId) continue;
+      const current = endorsedByMeByProfile.get(profileId) ?? new Set<string>();
+      const set = buildEndorsedSet([row]);
+      set.forEach((skill) => current.add(skill));
+      endorsedByMeByProfile.set(profileId, current);
+    }
+  }
+
+  for (const profile of map.values()) {
+    if (!Array.isArray(profile.skills)) continue;
+    const counts = countsByProfile.get(profile.id) ?? new Map<string, number>();
+    const endorsedSet = endorsedByMeByProfile.get(profile.id) ?? new Set<string>();
+    profile.skills = profile.skills.map((skill) => ({
+      ...skill,
+      endorsementsCount: counts.get(skill.name.toLowerCase()) ?? 0,
+      endorsedByMe: endorsedSet.has(skill.name.toLowerCase()),
+    }));
+  }
+}
 
 function normalizeRow(row: Record<string, any>): PublicProfileSummary | null {
   const profileId = row.id ? String(row.id) : null;
   const userId = row.user_id ? String(row.user_id) : null;
   if (!profileId && !userId) return null;
 
-  const skills: { name: string; endorsements_count: number }[] | null = Array.isArray(row.skills)
-    ? (row.skills as any[])
-        .slice(0, 10)
-        .map((item) => {
-          if (!item || typeof item !== 'object') return null;
-          const name = typeof (item as any).name === 'string' ? (item as any).name.trim() : '';
-          if (!name) return null;
-          const endorsements = Number((item as any).endorsements_count ?? (item as any).endorsementsCount ?? 0);
-          const safeCount = Number.isFinite(endorsements) && endorsements > 0 ? Math.floor(endorsements) : 0;
-          return { name: name.slice(0, 40), endorsements_count: safeCount };
-        })
-        .filter(Boolean) as { name: string; endorsements_count: number }[]
-    : null;
+  const skills: ProfileSkill[] | null = Array.isArray(row.skills) ? normalizeProfileSkills(row.skills) : null;
 
   const first = typeof row.first_name === 'string' ? row.first_name.trim() : '';
   const last = typeof row.last_name === 'string' ? row.last_name.trim() : '';
@@ -184,6 +242,8 @@ export async function getPublicProfilesMap(
     }
     if (!missing.size) break;
   }
+
+  await enrichSkills(result, supabase, options.viewerId);
 
   return result;
 }

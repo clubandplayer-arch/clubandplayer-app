@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
+import { MAX_SKILLS, parseSkillsInput } from '@/lib/profiles/skills';
 
 export const runtime = 'nodejs';
 
@@ -18,9 +19,6 @@ function toNumberOrNull(v: unknown) {
 function toBool(v: unknown) {
   return !!v;
 }
-const MAX_SKILLS = 10;
-const MAX_SKILL_LENGTH = 40;
-
 function toJsonOrNull(v: unknown) {
   if (v === null || v === undefined) return null;
   if (typeof v === 'string') {
@@ -36,48 +34,6 @@ function toJsonOrNull(v: unknown) {
     return v as Record<string, unknown>;
   }
   return null;
-}
-
-type SkillRow = { name: string; endorsements_count: number };
-
-function normalizeSkillName(v: unknown): string | null {
-  if (v === null || v === undefined) return null;
-  const name = String(v).trim();
-  if (!name) return null;
-  if (name.length > MAX_SKILL_LENGTH) return name.slice(0, MAX_SKILL_LENGTH);
-  return name;
-}
-
-function parseSkills(raw: unknown): SkillRow[] | null | undefined {
-  if (raw === undefined) return undefined;
-  if (raw === null) return null;
-
-  let arr: unknown[] | null = null;
-  if (Array.isArray(raw)) arr = raw;
-  if (!arr && typeof raw === 'string') {
-    try {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) arr = parsed as unknown[];
-    } catch {
-      arr = null;
-    }
-  }
-  if (!arr) return null;
-
-  const skills: SkillRow[] = [];
-  for (const item of arr) {
-    if (skills.length >= MAX_SKILLS) break;
-    if (!item || typeof item !== 'object') continue;
-    const name = normalizeSkillName((item as any).name);
-    if (!name) continue;
-    const endorsementsCount = Number((item as any).endorsements_count ?? (item as any).endorsementsCount ?? 0);
-    const safeCount = Number.isFinite(endorsementsCount) && endorsementsCount > 0
-      ? Math.floor(endorsementsCount)
-      : 0;
-    skills.push({ name, endorsements_count: safeCount });
-  }
-
-  return skills.slice(0, MAX_SKILLS);
 }
 
 /** campi ammessi in PATCH */
@@ -179,7 +135,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
     const val = body[key];
     if (key === 'skills') {
       if (Array.isArray(val) && val.length > MAX_SKILLS) return jsonError('Massimo 10 competenze', 400);
-      const parsed = parseSkills(val);
+      const parsed = parseSkillsInput(val);
       if (parsed === undefined) continue;
       updates.skills = parsed;
       continue;

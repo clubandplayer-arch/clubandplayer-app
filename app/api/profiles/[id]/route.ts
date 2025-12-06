@@ -16,7 +16,7 @@ export const GET = withAuth(async (req: NextRequest, { supabase }) => {
   if (!id) return jsonError('Missing id', 400);
 
   try {
-    const profile = await getPublicProfile(id, supabase, { fallbackToAdmin: true });
+    const profile = await getPublicProfile(id, supabase, { fallbackToAdmin: true, viewerId: user.id });
     if (!profile) return jsonError('Not found', 404);
     return NextResponse.json({ data: profile });
   } catch (error: any) {

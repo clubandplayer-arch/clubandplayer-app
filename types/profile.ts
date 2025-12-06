@@ -8,7 +8,8 @@ export type ProfileLinks = {
 
 export type ProfileSkill = {
   name: string;
-  endorsements_count: number;
+  endorsementsCount: number;
+  endorsedByMe: boolean;
 };
 
 export type Profile = {
