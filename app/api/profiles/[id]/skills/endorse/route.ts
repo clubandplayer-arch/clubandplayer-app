@@ -13,15 +13,17 @@ export const runtime = 'nodejs';
 
 type Action = 'endorse' | 'remove';
 
-type RouteParams = { params: { id?: string } };
+export async function POST(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> },
+) {
+  const { id: profileId } = await context.params;
 
-export async function POST(req: NextRequest, { params }: RouteParams) {
   const supabase = await getSupabaseServerClient();
   const { data: auth } = await supabase.auth.getUser();
   const user = auth?.user;
   if (!user) return notAuthenticated();
 
-  const profileId = params?.id;
   if (!profileId) return validationError('Id profilo mancante');
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
