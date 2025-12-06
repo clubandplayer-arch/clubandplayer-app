@@ -29,10 +29,11 @@ Questi job derivano da `linkedin-gap-analysis-2025-12-06.md`. Sono ordinati per 
 - Usa le relazioni `follows` già esistenti; non richiede nuove tabelle.
 - Utile quando il feed diventerà più popolato.
 
-### [ ] PROFILE-01 – Competenze / endorsement *(priorità: media)*
+### [~] PROFILE-01 – Competenze / endorsement *(priorità: media)*
 
 - Obiettivo: aggiungere una sezione “Competenze” ai profili (player e club) con piccole pillole e endorsement (es. “Velocità”, “Leadership”, “Settore giovanile”).
 - Aumenta il valore informativo dei profili in ottica scouting.
+- Stato: colonna `skills` presente via migrazione e form di modifica profilo funzionante; manca ancora la parte “endorsement attivi”.
 
 ### [x] JOBS-01 – Filtri avanzati opportunità + suggerimenti *(completato, ex priorità: media)*
 
