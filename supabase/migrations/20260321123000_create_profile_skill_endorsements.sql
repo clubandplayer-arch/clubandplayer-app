@@ -19,19 +19,52 @@ create index if not exists profile_skill_endorsements_skill_idx
 alter table public.profile_skill_endorsements enable row level security;
 
 -- Lettura aperta (conteggi pubblici)
-create policy if not exists "Anyone can read skill endorsements"
-  on public.profile_skill_endorsements
-  for select
-  using ( true );
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'profile_skill_endorsements'
+      and policyname = 'Anyone can read skill endorsements'
+  ) then
+    create policy "Anyone can read skill endorsements"
+      on public.profile_skill_endorsements
+      for select
+      using ( true );
+  end if;
+end $$;
 
 -- Inserimento consentito solo all'endorser stesso
-create policy if not exists "Endorser can insert their own endorsements"
-  on public.profile_skill_endorsements
-  for insert
-  with check ( auth.uid() = endorser_profile_id );
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'profile_skill_endorsements'
+      and policyname = 'Endorser can insert their own endorsements'
+  ) then
+    create policy "Endorser can insert their own endorsements"
+      on public.profile_skill_endorsements
+      for insert
+      with check ( auth.uid() = endorser_profile_id );
+  end if;
+end $$;
 
 -- Cancellazione consentita solo all'endorser stesso
-create policy if not exists "Endorser can delete their own endorsements"
-  on public.profile_skill_endorsements
-  for delete
-  using ( auth.uid() = endorser_profile_id );
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'profile_skill_endorsements'
+      and policyname = 'Endorser can delete their own endorsements'
+  ) then
+    create policy "Endorser can delete their own endorsements"
+      on public.profile_skill_endorsements
+      for delete
+      using ( auth.uid() = endorser_profile_id );
+  end if;
+end $$;
