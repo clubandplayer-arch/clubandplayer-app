@@ -9,6 +9,8 @@ import AvatarUploader from '@/components/profiles/AvatarUploader';
 import ClubStadiumMapPicker from '@/components/profiles/ClubStadiumMapPicker';
 import { SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
 import { COUNTRIES } from '@/lib/opps/geo';
+import { MAX_SKILLS, MAX_SKILL_LENGTH, normalizeProfileSkills, toDbSkills } from '@/lib/profiles/skills';
+import { ProfileSkill } from '@/types/profile';
 
 type LocationLevel = 'region' | 'province' | 'municipality';
 type LocationRow   = { id: number; name: string };
@@ -29,7 +31,7 @@ type Profile = {
   avatar_url: string | null;
   bio: string | null;
   country: string | null; // ISO2 o testo
-  skills: { name: string; endorsements_count: number }[];
+  skills: ProfileSkill[];
 
   // atleta
   birth_year: number | null;
@@ -169,9 +171,6 @@ function normalizeCountryCode(v?: string | null) {
 const DEFAULT_CLUB_CATEGORIES: string[] = ['Altro'];
 const CLUB_SPORT_OPTIONS = Array.from(new Set([...SPORTS, 'Pallavolo']));
 
-const MAX_SKILLS = 10;
-const MAX_SKILL_LENGTH = 40;
-
 const CATEGORIES_BY_SPORT: Record<string, string[]> = {
   Calcio: [
     'Serie D',
@@ -259,7 +258,7 @@ export default function ProfileEditForm() {
   const [notifyEmail, setNotifyEmail] = useState(true);
 
   // Competenze
-  const [skills, setSkills] = useState<{ name: string; endorsements_count: number }[]>([]);
+  const [skills, setSkills] = useState<ProfileSkill[]>([]);
   const [skillInput, setSkillInput] = useState('');
   const [skillsError, setSkillsError] = useState<string | null>(null);
 
@@ -299,24 +298,17 @@ export default function ProfileEditForm() {
     }
   }, [athleteRole, athleteRoles]);
 
-  function normalizeSkills(raw: any): { name: string; endorsements_count: number }[] {
-    if (!Array.isArray(raw)) return [];
+  function normalizeSkills(raw: any): ProfileSkill[] {
+    const normalized = normalizeProfileSkills(Array.isArray(raw) ? raw : []);
     const seen = new Set<string>();
-    const out: { name: string; endorsements_count: number }[] = [];
-    for (const item of raw) {
-      if (out.length >= MAX_SKILLS) break;
-      if (!item || typeof item !== 'object') continue;
-      const name = typeof (item as any).name === 'string' ? (item as any).name.trim() : '';
-      if (!name) continue;
-      const trimmed = name.slice(0, MAX_SKILL_LENGTH);
-      const key = trimmed.toLowerCase();
+    const unique: ProfileSkill[] = [];
+    for (const skill of normalized) {
+      const key = skill.name.toLowerCase();
       if (seen.has(key)) continue;
-      const endorsements = Number((item as any).endorsements_count ?? (item as any).endorsementsCount ?? 0);
-      const safeCount = Number.isFinite(endorsements) && endorsements > 0 ? Math.floor(endorsements) : 0;
       seen.add(key);
-      out.push({ name: trimmed, endorsements_count: safeCount });
+      unique.push({ ...skill, endorsedByMe: false });
     }
-    return out;
+    return unique;
   }
 
   function onAddSkill() {
@@ -327,7 +319,7 @@ export default function ProfileEditForm() {
     const key = name.toLowerCase();
     if (skills.some((s) => s.name.toLowerCase() === key)) { setSkillsError('Competenza già presente'); return; }
     setSkillsError(null);
-    setSkills((prev) => [...prev, { name, endorsements_count: 0 }]);
+    setSkills((prev) => [...prev, { name, endorsementsCount: 0, endorsedByMe: false }]);
     setSkillInput('');
   }
 
@@ -542,10 +534,7 @@ export default function ProfileEditForm() {
 
         // social & notifiche
         links,
-        skills: skills.map((s) => ({
-          name: s.name,
-          endorsements_count: Number.isFinite(s.endorsements_count) ? Math.max(0, Math.floor(s.endorsements_count)) : 0,
-        })),
+        skills: toDbSkills(skills),
         notify_email_new_message: !!notifyEmail,
       };
 
@@ -1086,7 +1075,7 @@ export default function ProfileEditForm() {
                 >
                   <span>{skill.name}</span>
                   <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-800">
-                    {skill.endorsements_count}
+                    {skill.endorsementsCount}
                   </span>
                   <button
                     type="button"
