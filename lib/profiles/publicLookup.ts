@@ -60,26 +60,24 @@ async function enrichSkills(
   const ids = Array.from(map.values()).map((p) => p.id).filter(Boolean);
   if (!ids.length) return;
 
-  const { data: countsRows, error: countsError } = await client
+  const { data: endorsementRows, error: countsError } = await client
     .from('profile_skill_endorsements')
-    .select('profile_id, skill_name, endorsements_count:count(*)')
-    .in('profile_id', ids)
-    .group('profile_id, skill_name');
+    .select('profile_id, skill_name')
+    .in('profile_id', ids);
 
   if (countsError && process.env.NODE_ENV !== 'production') {
     console.warn('[profiles] endorsement counts failed', countsError);
   }
 
   const countsByProfile = new Map<string, Map<string, number>>();
-  for (const row of countsRows ?? []) {
+  for (const row of endorsementRows ?? []) {
     const profileId = String((row as any).profile_id ?? '');
-    if (!profileId) continue;
+    const normalizedName = normalizeSkillName((row as any).skill_name);
+    if (!profileId || !normalizedName) continue;
+
     const mapForProfile = countsByProfile.get(profileId) ?? new Map<string, number>();
-    const name = normalizeSkillName((row as any).skill_name);
-    if (!name) continue;
-    const countRaw = Number((row as any).endorsements_count ?? 0);
-    const count = Number.isFinite(countRaw) && countRaw > 0 ? Math.floor(countRaw) : 0;
-    mapForProfile.set(name.toLowerCase(), count);
+    const key = normalizedName.toLowerCase();
+    mapForProfile.set(key, (mapForProfile.get(key) ?? 0) + 1);
     countsByProfile.set(profileId, mapForProfile);
   }
 
