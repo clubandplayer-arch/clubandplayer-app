@@ -331,15 +331,17 @@ function VideoPlayer({
   aspect?: '16:9' | '9:16' | null;
   id: string;
 }) {
-  const aspectClass = aspect === '9:16' ? 'aspect-[9/16]' : 'aspect-[16/9]';
+  const aspectClass = aspect === '9:16' ? 'aspect-[9/16]' : 'aspect-video';
   const { videoRef, handleEnded, handlePause, handlePlay } = useExclusiveVideoPlayback(id);
+
   return (
-    <div className={`${aspectClass} w-full overflow-hidden rounded-t-xl bg-black/80 max-h-[34vh] md:max-h-[30vh]`}>
+    <div className={`${aspectClass} relative w-full overflow-hidden rounded-t-xl bg-black`}>
       <video
         ref={videoRef}
         src={url ?? undefined}
         controls
-        className="h-full w-full object-contain"
+        playsInline
+        className="absolute inset-0 h-full w-full object-contain"
         onPlay={handlePlay}
         onPause={handlePause}
         onEnded={handleEnded}
