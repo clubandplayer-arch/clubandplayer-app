@@ -2,11 +2,14 @@ import { z } from 'zod';
 
 const booleanFromParam = z
   .preprocess((v) => {
-    if (typeof v !== 'string') return v;
+    if (v === undefined || v === null) return undefined;
+    if (typeof v === 'boolean') return v;
+    if (typeof v !== 'string') return undefined;
     const val = v.trim().toLowerCase();
+    if (!val) return undefined;
     if (['1', 'true', 'yes', 'on'].includes(val)) return true;
     if (['0', 'false', 'no', 'off'].includes(val)) return false;
-    return v;
+    return undefined;
   }, z.boolean())
   .optional();
 

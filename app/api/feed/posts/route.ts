@@ -271,14 +271,17 @@ export async function GET(req: NextRequest) {
 
   const rows = (data ?? []).map((r) => normalizeRow(r, quotedMap ?? undefined)) || [];
 
-  if (mine) {
-    console.info('[feed/posts] mine query', {
-      rawMine,
-      mine,
-      count: rows.length,
-      profileId: currentProfileId,
-    });
-  }
+  console.info('[feed/posts][GET]', {
+    rawMine,
+    mine,
+    scope,
+    page,
+    limit,
+    authorId: authorIdFilter ?? null,
+    postsFound: rows.length,
+    profileId: currentProfileId,
+    userId: currentUserId,
+  });
 
   if (mine || authorIdFilter) {
     return successResponse({
