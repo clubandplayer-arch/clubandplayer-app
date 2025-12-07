@@ -4,7 +4,9 @@ const booleanFromParam = z
   .preprocess((v) => {
     if (typeof v !== 'string') return v;
     const val = v.trim().toLowerCase();
-    return ['1', 'true', 'yes', 'on'].includes(val);
+    if (['1', 'true', 'yes', 'on'].includes(val)) return true;
+    if (['0', 'false', 'no', 'off'].includes(val)) return false;
+    return v;
   }, z.boolean())
   .optional();
 

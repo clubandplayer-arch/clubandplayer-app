@@ -106,7 +106,11 @@ function normalizeRow(row: any, quotedMap?: Map<string, any>, depth = 0): any {
 // GET: lettura autenticata, filtra i post per ruolo dell'autore
 export async function GET(req: NextRequest) {
   const searchParams = new URL(req.url).searchParams;
-  const parsedQuery = FeedPostsQuerySchema.safeParse(Object.fromEntries(searchParams.entries()));
+  const rawMine = searchParams.get('mine');
+  const parsedQuery = FeedPostsQuerySchema.safeParse({
+    ...Object.fromEntries(searchParams.entries()),
+    mine: rawMine,
+  });
 
   if (!parsedQuery.success) {
     return validationError('Parametri non validi', parsedQuery.error.flatten());
@@ -266,6 +270,15 @@ export async function GET(req: NextRequest) {
   }
 
   const rows = (data ?? []).map((r) => normalizeRow(r, quotedMap ?? undefined)) || [];
+
+  if (mine) {
+    console.info('[feed/posts] mine query', {
+      rawMine,
+      mine,
+      count: rows.length,
+      profileId: currentProfileId,
+    });
+  }
 
   if (mine || authorIdFilter) {
     return successResponse({

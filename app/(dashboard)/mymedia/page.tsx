@@ -84,7 +84,7 @@ function normalizePost(p: any): MediaPost {
 }
 
 async function fetchMyMedia(signal?: AbortSignal): Promise<MediaPost[]> {
-  const res = await fetch(`/api/feed/posts?mine=1&limit=${DEFAULT_LIMIT}`, {
+  const res = await fetch(`/api/feed/posts?mine=true&limit=${DEFAULT_LIMIT}`, {
     credentials: 'include',
     cache: 'no-store',
     signal,
@@ -96,6 +96,14 @@ async function fetchMyMedia(signal?: AbortSignal): Promise<MediaPost[]> {
   }
   const j = await res.json().catch(() => ({} as any));
   const arr = Array.isArray(j?.items ?? j?.data) ? (j.items ?? j.data) : [];
+  console.info('[mymedia] response', {
+    status: res.status,
+    ok: res.ok,
+    apiOk: j?.ok ?? null,
+    code: j?.code ?? null,
+    message: j?.message ?? null,
+    itemsLength: arr.length,
+  });
   console.info('[mymedia] total posts fetched', arr.length);
   return arr.map(normalizePost);
 }
