@@ -5,21 +5,49 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { Lightbox, type LightboxItem } from '@/components/media/Lightbox';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useExclusiveVideoPlayback } from '@/hooks/useExclusiveVideoPlayback';
 import { shareOrCopyLink } from '@/lib/share';
 import ShareIcon from '@/components/icons/ShareIcon';
 
 const DEFAULT_LIMIT = 100;
 
+type MediaType = 'image' | 'video' | null;
+
 type MediaPost = {
   id: string;
   created_at?: string | null;
   media_url?: string | null;
-  media_type?: 'image' | 'video' | null;
+  media_type?: MediaType;
   media_aspect?: '16:9' | '9:16' | null;
   content?: string | null;
   link_url?: string | null;
 };
+
+type MediaSectionConfig = {
+  id: string;
+  title: string;
+  items: MediaPost[];
+  onImageClick?: (index: number, item: MediaPost) => void;
+};
+
+function normalizeMediaType(raw?: string | null): MediaType {
+  if (!raw) return null;
+  const value = raw.trim().toLowerCase();
+  if (value === 'image' || value === 'photo') return 'image';
+  if (value === 'video') return 'video';
+  if (value.startsWith('image/')) return 'image';
+  if (value.startsWith('video/')) return 'video';
+  return null;
+}
+
+function inferMediaTypeFromUrl(url?: string | null): MediaType {
+  if (!url) return null;
+  const lower = url.toLowerCase();
+  if (/\.(mp4|mov|avi|mkv)(\?|$)/.test(lower)) return 'video';
+  if (/\.(png|jpe?g|gif|webp|avif)(\?|$)/.test(lower)) return 'image';
+  return null;
+}
 
 function normalizeAspect(raw?: string | null): '16:9' | '9:16' | null {
   if (!raw) return null;
@@ -41,11 +69,14 @@ function aspectFromUrl(url?: string | null): '16:9' | '9:16' | null {
 }
 
 function normalizePost(p: any): MediaPost {
+  const mediaType =
+    normalizeMediaType(p.media_type ?? p.mediaType ?? p.media_mime ?? p.mediaMime ?? null) ??
+    inferMediaTypeFromUrl(p.media_url);
   return {
     id: p.id,
     created_at: p.created_at ?? p.createdAt ?? null,
     media_url: p.media_url ?? null,
-    media_type: p.media_type ?? null,
+    media_type: mediaType,
     media_aspect: normalizeAspect(p.media_aspect) ?? aspectFromUrl(p.media_url) ?? null,
     content: p.content ?? p.text ?? null,
     link_url: p.link_url ?? null,
@@ -65,9 +96,11 @@ async function fetchMyMedia(signal?: AbortSignal): Promise<MediaPost[]> {
 }
 
 function buildMediaShareUrl(item: MediaPost) {
+  const typeParam = item.media_type === 'video' ? 'video' : 'photo';
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   if (item.media_url) return item.media_url;
-  return origin ? `${origin}/mymedia#media-${item.id}` : '';
+  const search = origin ? `?type=${typeParam}` : '';
+  return origin ? `${origin}/mymedia${search}#media-${item.id}` : '';
 }
 
 export default function MyMediaPage() {
@@ -92,12 +125,21 @@ export default function MyMediaPage() {
     return () => ctrl.abort();
   }, []);
 
-  const videos = useMemo(() => items.filter((i) => i.media_type === 'video' && i.media_url), [items]);
-  const photos = useMemo(() => items.filter((i) => i.media_type === 'image' && i.media_url), [items]);
+  const videos = useMemo(
+    () => items.filter((i) => i.media_type === 'video' && i.media_url),
+    [items],
+  );
+  const photos = useMemo(
+    () => items.filter((i) => i.media_type === 'image' && i.media_url),
+    [items],
+  );
 
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const searchParams = useSearchParams();
 
   const closeLightbox = useCallback(() => setLightboxIndex(null), []);
+
+  const handlePhotoClick = useCallback((index: number) => setLightboxIndex(index), []);
 
   const showPrev = useCallback(() => {
     setLightboxIndex((idx) => {
@@ -121,6 +163,22 @@ export default function MyMediaPage() {
     alt: item.content ?? 'Media',
   }));
 
+  const selectedType: 'photo' | 'video' = useMemo(() => {
+    const raw = searchParams?.get('type');
+    return raw === 'video' ? 'video' : 'photo';
+  }, [searchParams]);
+
+  const sections: MediaSectionConfig[] = useMemo(
+    () => [
+      { id: 'my-videos', title: 'MyVideo', items: videos },
+      { id: 'my-photos', title: 'MyPhoto', items: photos, onImageClick: handlePhotoClick },
+    ],
+    [videos, photos, handlePhotoClick],
+  );
+
+  const orderedSections =
+    selectedType === 'photo' ? [sections[1], sections[0]] : sections;
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 space-y-4">
       <div className="flex justify-end">
@@ -134,13 +192,9 @@ export default function MyMediaPage() {
 
       {!loading && !err && (
         <div className="space-y-4">
-          <MediaSection id="my-videos" title="MyVideo" items={videos} />
-          <MediaSection
-            id="my-photos"
-            title="MyPhoto"
-            items={photos}
-            onImageClick={(index) => setLightboxIndex(index)}
-          />
+          {orderedSections.map((section) => (
+            <MediaSection key={section.id} {...section} />
+          ))}
         </div>
       )}
 
@@ -215,23 +269,24 @@ function MediaSection({
                     className="h-full w-full object-cover transition duration-150 group-hover:scale-[1.02]"
                   />
                 </button>
-            )}
-            {item.content ? (
-              <p className="px-3 pb-3 pt-2 text-sm text-gray-700 whitespace-pre-wrap">{item.content}</p>
-            ) : null}
-            {item.link_url ? (
-              <a
-                href={item.link_url}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="block px-3 pb-3 text-sm font-semibold text-blue-700"
-              >
-                Apri link esterno →
-              </a>
-            ) : null}
-          </article>
-        ))}
-      </div>
+              )}
+
+              {item.content ? (
+                <p className="px-3 pb-3 pt-2 text-sm text-gray-700 whitespace-pre-wrap">{item.content}</p>
+              ) : null}
+              {item.link_url ? (
+                <a
+                  href={item.link_url}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="block px-3 pb-3 text-sm font-semibold text-blue-700"
+                >
+                  Apri link esterno →
+                </a>
+              ) : null}
+            </article>
+          ))}
+        </div>
       )}
     </section>
   );
