@@ -136,7 +136,7 @@ export async function GET(req: NextRequest) {
   if (currentUserId) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('id, status')
+      .select('id, user_id, status')
       .eq('user_id', currentUserId)
       .maybeSingle();
 
@@ -150,6 +150,7 @@ export async function GET(req: NextRequest) {
   }
 
   const followedAuthorProfileIds: string[] = [];
+  const followedAuthorUserIds: string[] = [];
 
   const shouldLoadFollows = Boolean(currentProfileId && (scope === 'following' || (!authorIdFilter && !mine)));
 
@@ -169,6 +170,23 @@ export async function GET(req: NextRequest) {
         .filter(Boolean)
         .forEach((pid) => followedAuthorProfileIds.push(pid as string));
     }
+
+    if (followedAuthorProfileIds.length) {
+      const { data: followedProfiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, user_id')
+        .in('id', followedAuthorProfileIds);
+
+      if (!profilesError && Array.isArray(followedProfiles)) {
+        followedProfiles
+          .map((row) => ({
+            profileId: (row as any)?.id as string | null,
+            userId: (row as any)?.user_id as string | null,
+          }))
+          .filter((r) => r.userId)
+          .forEach((r) => followedAuthorUserIds.push(r.userId as string));
+      }
+    }
   }
 
   let allowedAuthors: string[] | null = null;
@@ -176,10 +194,10 @@ export async function GET(req: NextRequest) {
   if (scope === 'following') {
     if (authorIdFilter) {
       allowedAuthors = [authorIdFilter];
-    } else if (mine && currentProfileId) {
-      allowedAuthors = [currentProfileId];
+    } else if (mine && currentUserId) {
+      allowedAuthors = [currentUserId];
     } else {
-      if (!currentProfileId) {
+      if (!currentUserId) {
         return successResponse({
           items: [],
           nextPage: null,
@@ -187,7 +205,7 @@ export async function GET(req: NextRequest) {
         });
       }
 
-      const uniq = Array.from(new Set(followedAuthorProfileIds.filter(Boolean)));
+      const uniq = Array.from(new Set(followedAuthorUserIds.filter(Boolean)));
       if (!uniq.length) {
         return successResponse({
           items: [],
@@ -201,10 +219,10 @@ export async function GET(req: NextRequest) {
   } else {
     allowedAuthors = (() => {
       if (authorIdFilter) return [authorIdFilter];
-      if (mine && currentProfileId) return [currentProfileId];
-      if (!authorIdFilter && !mine && currentProfileId) {
+      if (mine && currentUserId) return [currentUserId];
+      if (!authorIdFilter && !mine && currentUserId) {
         const uniq = Array.from(
-          new Set([currentProfileId, ...followedAuthorProfileIds].filter(Boolean)),
+          new Set([currentUserId, ...followedAuthorUserIds].filter(Boolean)),
         );
         return uniq.length ? uniq : null;
       }
@@ -407,9 +425,13 @@ type InsertClient = ServerClient | AdminClient;
 // POST: inserimento autenticato con rate-limit via cookie
 export async function POST(req: NextRequest) {
   try {
-    const parsedBody = CreatePostSchema.safeParse(await req.json().catch(() => ({})));
+    const incomingBody = await req.json().catch(() => ({}));
+    console.log('[feed] POST /api/feed/posts incoming body', incomingBody);
+
+    const parsedBody = CreatePostSchema.safeParse(incomingBody);
     if (!parsedBody.success) {
       console.warn('[api/feed/posts][POST] invalid payload', parsedBody.error.flatten());
+      console.log('[feed] POST /api/feed/posts parsed', parsedBody.success, parsedBody.error.flatten());
       return validationError('Payload non valido', parsedBody.error.flatten());
     }
 
@@ -608,6 +630,7 @@ export async function POST(req: NextRequest) {
       return { data, error };
     };
 
+    console.log('[feed] inserting post payload', insertPayload);
     let { data, error } = await performInsert(supabase, insertPayload, fallbackPayload);
 
     if (error && admin && isRlsError(error)) {
@@ -620,6 +643,7 @@ export async function POST(req: NextRequest) {
         ({ data, error } = await performInsert(admin, legacyInsertPayload, legacyFallbackPayload));
       }
     }
+    console.log('[feed] insert result', { data, error });
     if (error) {
       console.error('createPost failed', { error, payload: insertPayload });
       reportApiError({
