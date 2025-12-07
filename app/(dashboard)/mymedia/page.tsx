@@ -89,10 +89,29 @@ async function fetchMyMedia(signal?: AbortSignal): Promise<MediaPost[]> {
     cache: 'no-store',
     signal,
   });
-  if (!res.ok) return [];
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    console.error('[mymedia] fetch failed', res.status, body);
+    throw new Error('Impossibile caricare i tuoi media');
+  }
   const j = await res.json().catch(() => ({} as any));
   const arr = Array.isArray(j?.items ?? j?.data) ? (j.items ?? j.data) : [];
+  console.info('[mymedia] total posts fetched', arr.length);
   return arr.map(normalizePost);
+}
+
+function resolveMediaType(post: MediaPost): MediaType {
+  return normalizeMediaType(post.media_type) ?? inferMediaTypeFromUrl(post.media_url);
+}
+
+function isPhotoPost(post: MediaPost): boolean {
+  if (!post.media_url) return false;
+  return resolveMediaType(post) === 'image';
+}
+
+function isVideoPost(post: MediaPost): boolean {
+  if (!post.media_url) return false;
+  return resolveMediaType(post) === 'video';
 }
 
 function buildMediaShareUrl(item: MediaPost) {
@@ -125,14 +144,17 @@ export default function MyMediaPage() {
     return () => ctrl.abort();
   }, []);
 
-  const videos = useMemo(
-    () => items.filter((i) => i.media_type === 'video' && i.media_url),
-    [items],
-  );
-  const photos = useMemo(
-    () => items.filter((i) => i.media_type === 'image' && i.media_url),
-    [items],
-  );
+  const videos = useMemo(() => items.filter(isVideoPost), [items]);
+  const photos = useMemo(() => items.filter(isPhotoPost), [items]);
+
+  useEffect(() => {
+    if (loading) return;
+    console.info('[mymedia] totals', {
+      posts: items.length,
+      photos: photos.length,
+      videos: videos.length,
+    });
+  }, [items.length, photos.length, videos.length, loading]);
 
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const searchParams = useSearchParams();
