@@ -215,16 +215,15 @@ export default function MyMediaPage() {
       <div className="w-full max-w-5xl px-4 md:px-6 lg:px-8 py-8 space-y-8">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="space-y-2">
-            <h1 className="text-2xl font-semibold">La tua libreria media</h1>
-            <p className="text-sm text-muted-foreground">
+            <h1 className="text-2xl font-semibold text-cp-brand">La tua libreria media</h1>
+            <p className="text-sm text-cp-brand-soft">
               Rivedi e condividi i tuoi video e le tue foto pubblicati nel feed.
             </p>
           </div>
           <Link
             href="/feed"
-            className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold text-blue-700 transition hover:bg-blue-50"
+            className="inline-flex items-center gap-2 rounded-full border border-cp-brand-soft px-3 py-1.5 text-sm font-semibold text-cp-brand transition hover:bg-blue-50"
           >
-            <MaterialIcon name="home" className="text-base" />
             Torna al feed
           </Link>
         </div>
@@ -274,11 +273,11 @@ function MediaSection({
         <div className="flex items-center gap-2">
           <MaterialIcon name={iconName} className="text-lg" />
           <h2 className="text-xl font-semibold">{title}</h2>
-          <span className="text-sm text-muted-foreground">{items.length} elementi</span>
+          <span className="text-sm text-cp-brand-soft">{items.length} elementi</span>
         </div>
         <Link
           href={`/mymedia?type=${isVideoSection ? 'video' : 'photo'}#${id}`}
-          className="text-xs font-semibold text-blue-700 underline-offset-2 hover:underline"
+          className="text-xs font-semibold text-cp-brand underline-offset-2 hover:underline"
         >
           Condividi sezione
         </Link>
@@ -292,7 +291,7 @@ function MediaSection({
               <article
                 id={`media-${item.id}`}
                 key={item.id}
-                className="group relative overflow-hidden rounded-xl border bg-background shadow-sm transition-transform transition-shadow hover:scale-[1.01] hover:shadow-md"
+                className="group relative overflow-hidden rounded-xl border border-cp-brand-soft bg-background shadow-sm transition-transform transition-shadow hover:scale-[1.01] hover:shadow-md"
               >
                 <div className="absolute right-2 top-2 z-10 flex items-center gap-2">
                   <button
@@ -316,7 +315,7 @@ function MediaSection({
                 ) : (
                   <button
                     type="button"
-                    className="group relative block w-full overflow-hidden focus:outline-none focus:ring-2 focus:ring-blue-600"
+                    className="group relative block w-full overflow-hidden focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
                     onClick={() => onImageClick?.(index, item)}
                   >
                     <div className="aspect-square w-full bg-black/5">
@@ -332,16 +331,16 @@ function MediaSection({
                 {item.content ? (
                   <p className="px-3 pb-3 pt-2 text-sm text-gray-700 whitespace-pre-wrap">{item.content}</p>
                 ) : null}
-                {item.link_url ? (
-                  <a
-                    href={item.link_url}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    className="block px-3 pb-3 text-sm font-semibold text-blue-700"
-                  >
-                    Apri link esterno →
-                  </a>
-                ) : null}
+                  {item.link_url ? (
+                    <a
+                      href={item.link_url}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="block px-3 pb-3 text-sm font-semibold text-cp-brand"
+                    >
+                      Apri link esterno →
+                    </a>
+                  ) : null}
               </article>
             ))}
           </div>
