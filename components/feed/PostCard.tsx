@@ -3,10 +3,11 @@
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CommentsSection } from '@/components/feed/CommentsSection';
-import { PostIconDelete, PostIconEdit, PostIconShare } from '@/components/icons/PostActionIcons';
+import { PostIconDelete, PostIconEdit } from '@/components/icons/PostActionIcons';
 import { PostMedia } from '@/components/feed/PostMedia';
 import { QuotedPostCard } from '@/components/feed/QuotedPostCard';
 import { getPostPermalink, shareOrCopyLink } from '@/lib/share';
+import { ShareButton } from '@/components/media/ShareButton';
 import {
   REACTION_EMOJI,
   REACTION_ORDER,
@@ -207,14 +208,6 @@ export function PostCard({
               </button>
             </>
           ) : null}
-          <button
-            type="button"
-            onClick={handleShare}
-            className="rounded-full p-2 transition hover:bg-neutral-100 hover:text-neutral-900"
-            aria-label={isEvent ? 'Condividi questo evento' : 'Condividi questo post'}
-          >
-            <PostIconShare className="h-4 w-4" aria-hidden />
-          </button>
         </div>
       </div>
       {editing ? (
@@ -261,7 +254,14 @@ export function PostCard({
         </div>
       ) : (
         <div className="mt-2 space-y-3 text-sm text-gray-900">
-          {description ? <p className="whitespace-pre-wrap">{description}</p> : null}
+          <div className="flex items-start justify-between gap-2">
+            {description ? <p className="flex-1 whitespace-pre-wrap">{description}</p> : <span className="flex-1" />}
+            <ShareButton
+              onClick={handleShare}
+              ariaLabel={isEvent ? 'Condividi questo evento' : 'Condividi questo post'}
+              className="shrink-0"
+            />
+          </div>
 
           {post.quoted_post_id ? (
             <QuotedPostCard

@@ -8,12 +8,15 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useExclusiveVideoPlayback } from '@/hooks/useExclusiveVideoPlayback';
 import { shareOrCopyLink } from '@/lib/share';
-import ShareIcon from '@/components/icons/ShareIcon';
+import { ShareButton } from '@/components/media/ShareButton';
+import { ShareSectionButton } from '@/components/media/ShareSectionButton';
+import { MediaEmptyState } from '@/components/media/MediaEmptyState';
 import { MaterialIcon } from '@/components/icons/MaterialIcon';
 
 const DEFAULT_LIMIT = 100;
 
 type MediaType = 'image' | 'video' | null;
+type MediaTab = 'video' | 'photo';
 
 type MediaPost = {
   id: string;
@@ -23,13 +26,6 @@ type MediaPost = {
   media_aspect?: '16:9' | '9:16' | null;
   content?: string | null;
   link_url?: string | null;
-};
-
-type MediaSectionConfig = {
-  id: string;
-  title: string;
-  items: MediaPost[];
-  onImageClick?: (index: number, item: MediaPost) => void;
 };
 
 function normalizeMediaType(raw?: string | null): MediaType {
@@ -168,6 +164,11 @@ export default function MyMediaPage() {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const searchParams = useSearchParams();
 
+  const activeTab: MediaTab = useMemo(() => {
+    const type = searchParams?.get('type');
+    return type === 'photo' ? 'photo' : 'video';
+  }, [searchParams]);
+
   const closeLightbox = useCallback(() => setLightboxIndex(null), []);
 
   const handlePhotoClick = useCallback((index: number) => setLightboxIndex(index), []);
@@ -194,22 +195,6 @@ export default function MyMediaPage() {
     alt: item.content ?? 'Media',
   }));
 
-  const selectedType: 'photo' | 'video' = useMemo(() => {
-    const raw = searchParams?.get('type');
-    return raw === 'video' ? 'video' : 'photo';
-  }, [searchParams]);
-
-  const sections: MediaSectionConfig[] = useMemo(
-    () => [
-      { id: 'my-videos', title: 'MyVideo', items: videos },
-      { id: 'my-photos', title: 'MyPhoto', items: photos, onImageClick: handlePhotoClick },
-    ],
-    [videos, photos, handlePhotoClick],
-  );
-
-  const orderedSections =
-    selectedType === 'photo' ? [sections[1], sections[0]] : sections;
-
   return (
     <div className="w-full flex justify-center">
       <div className="w-full max-w-5xl px-4 md:px-6 lg:px-8 py-8 space-y-8">
@@ -228,14 +213,22 @@ export default function MyMediaPage() {
           </Link>
         </div>
 
+        <div className="mt-4 mb-6 flex items-center gap-4 border-b border-border">
+          <TabLink label="Video" isActive={activeTab === 'video'} href="/mymedia?type=video#my-videos" />
+          <TabLink label="Foto" isActive={activeTab === 'photo'} href="/mymedia?type=photo#my-photos" />
+        </div>
+
         {loading && <div className="glass-panel p-4">Caricamento…</div>}
         {err && <div className="glass-panel p-4 text-red-600">{err}</div>}
 
         {!loading && !err && (
           <div className="space-y-8">
-            {orderedSections.map((section) => (
-              <MediaSection key={section.id} {...section} />
-            ))}
+            {activeTab === 'video' ? (
+              <MediaSection id="my-videos" title="MyVideo" items={videos} tab="video" />
+            ) : null}
+            {activeTab === 'photo' ? (
+              <MediaSection id="my-photos" title="MyPhoto" items={photos} tab="photo" onImageClick={handlePhotoClick} />
+            ) : null}
           </div>
         )}
 
@@ -253,18 +246,35 @@ export default function MyMediaPage() {
   );
 }
 
+function TabLink({ label, isActive, href }: { label: string; isActive: boolean; href: string }) {
+  return (
+    <Link
+      href={href}
+      className={`border-b-2 pb-2 text-sm transition-colors ${
+        isActive
+          ? 'border-cp-brand font-medium text-cp-brand'
+          : 'border-transparent text-muted-foreground hover:text-foreground'
+      }`}
+    >
+      {label}
+    </Link>
+  );
+}
+
 function MediaSection({
   id,
   title,
   items,
+  tab,
   onImageClick,
 }: {
   id: string;
   title: string;
   items: MediaPost[];
+  tab: MediaTab;
   onImageClick?: (index: number, item: MediaPost) => void;
 }) {
-  const isVideoSection = title === 'MyVideo';
+  const isVideoSection = tab === 'video';
   const iconName = isVideoSection ? 'video' : 'photo';
 
   return (
@@ -275,16 +285,11 @@ function MediaSection({
           <h2 className="text-xl font-semibold">{title}</h2>
           <span className="text-sm text-cp-brand-soft">{items.length} elementi</span>
         </div>
-        <Link
-          href={`/mymedia?type=${isVideoSection ? 'video' : 'photo'}#${id}`}
-          className="text-xs font-semibold text-cp-brand underline-offset-2 hover:underline"
-        >
-          Condividi sezione
-        </Link>
+        <ShareSectionButton activeTab={tab} />
       </div>
       <div className="glass-panel p-4 rounded-xl shadow-sm">
         {items.length === 0 ? (
-          <div className="text-sm text-gray-600">Nessun contenuto ancora.</div>
+          <MediaEmptyState kind={tab} />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {items.map((item, index) => (
@@ -293,23 +298,6 @@ function MediaSection({
                 key={item.id}
                 className="group relative flex h-full flex-col overflow-hidden rounded-xl border border-cp-brand-soft bg-background shadow-sm transition-transform transition-shadow hover:scale-[1.01] hover:shadow-md"
               >
-                <div className="absolute right-2 top-2 z-10 flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      shareOrCopyLink({
-                        title: title,
-                        text: item.content ?? undefined,
-                        url: buildMediaShareUrl(item),
-                      })
-                    }
-                    className="inline-flex items-center justify-center rounded-full bg-white/90 p-2 text-neutral-800 shadow hover:bg-white"
-                    aria-label={`Condividi ${item.media_type === 'video' ? 'questo video' : 'questa foto'}`}
-                  >
-                    <ShareIcon className="h-4 w-4" />
-                  </button>
-                </div>
-
                 <div className="flex h-full flex-col">
                   <div className="overflow-hidden rounded-b-none">
                     {item.media_type === 'video' ? (
@@ -336,16 +324,29 @@ function MediaSection({
                     )}
                   </div>
 
-                  <div className="min-h-[2.5rem] px-3 pb-3 pt-2">
-                    <p className="text-sm font-medium text-foreground whitespace-pre-wrap line-clamp-2">
-                      {item.content || ''}
-                    </p>
+                  <div className="space-y-2 px-3 pb-3 pt-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="flex-1 whitespace-pre-wrap text-sm font-medium text-foreground line-clamp-2">
+                        {item.content || ''}
+                      </p>
+                      <ShareButton
+                        onClick={() =>
+                          shareOrCopyLink({
+                            title: title,
+                            text: item.content ?? undefined,
+                            url: buildMediaShareUrl(item),
+                          })
+                        }
+                        ariaLabel={`Condividi ${item.media_type === 'video' ? 'questo video' : 'questa foto'}`}
+                        className="shrink-0"
+                      />
+                    </div>
                     {item.link_url ? (
                       <a
                         href={item.link_url}
                         target="_blank"
                         rel="noreferrer noopener"
-                        className="mt-1 block text-sm font-semibold text-cp-brand"
+                        className="block text-sm font-semibold text-cp-brand"
                       >
                         Apri link esterno →
                       </a>

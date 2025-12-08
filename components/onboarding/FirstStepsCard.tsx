@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { MaterialIcon, type MaterialIconName } from '@/components/icons/MaterialIcon';
 import type { Profile } from '@/types/profile';
 import { isProfileComplete } from '@/lib/profile/completion';
@@ -34,8 +34,32 @@ const steps: Array<{
 
 export function FirstStepsCard({ profile }: { profile?: Profile | null }) {
   const [hidden, setHidden] = useState(false);
+  const [dismissCount, setDismissCount] = useState(() => Number(profile?.onboarding_dismiss_count) || 0);
 
-  if (hidden || isProfileComplete(profile)) return null;
+  useEffect(() => {
+    setDismissCount(Number(profile?.onboarding_dismiss_count) || 0);
+    setHidden(false);
+  }, [profile]);
+
+  const reachedLimit = useMemo(() => dismissCount >= 3, [dismissCount]);
+
+  async function handleDismiss() {
+    setHidden(true);
+    try {
+      const res = await fetch('/api/onboarding/dismiss', { method: 'POST', credentials: 'include' });
+      const json = await res.json().catch(() => null);
+
+      if (res.ok && json?.ok) {
+        setDismissCount(Math.min(3, Number(json.onboardingDismissCount) || dismissCount + 1));
+      } else {
+        setDismissCount((prev) => Math.min(3, prev + 1));
+      }
+    } catch {
+      setDismissCount((prev) => Math.min(3, prev + 1));
+    }
+  }
+
+  if (hidden || isProfileComplete(profile) || reachedLimit) return null;
 
   return (
     <div className="rounded-3xl bg-surface p-5 shadow-md sm:p-6">
@@ -46,7 +70,7 @@ export function FirstStepsCard({ profile }: { profile?: Profile | null }) {
         </div>
         <button
           type="button"
-          onClick={() => setHidden(true)}
+          onClick={handleDismiss}
           className="text-xs font-semibold text-neutral-500 transition hover:text-neutral-700"
         >
           Nascondi per ora

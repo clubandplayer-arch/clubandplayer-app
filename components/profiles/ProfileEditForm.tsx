@@ -31,6 +31,8 @@ type Profile = {
   avatar_url: string | null;
   bio: string | null;
   country: string | null; // ISO2 o testo
+  region?: string | null;
+  province?: string | null;
   skills: ProfileSkill[];
 
   // atleta
@@ -91,6 +93,37 @@ function pickData<T = any>(raw: any): T {
 }
 const sortByName = (arr: LocationRow[]) =>
   [...arr].sort((a, b) => a.name.localeCompare(b.name, 'it', { sensitivity: 'accent' }));
+const normalizeLocation = (value?: string | null) =>
+  (value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/gi, ' ')
+    .trim()
+    .toLowerCase();
+const resolveLocationId = (options: LocationRow[], target?: string | null) => {
+  const normalizedTarget = normalizeLocation(target);
+  if (!normalizedTarget) return null;
+
+  const direct = options.find((opt) => normalizeLocation(opt.name) === normalizedTarget);
+  if (direct) return direct.id;
+
+  const partial = options.find((opt) => {
+    const normalizedOpt = normalizeLocation(opt.name);
+    return normalizedOpt && (normalizedOpt.startsWith(normalizedTarget) || normalizedTarget.startsWith(normalizedOpt));
+  });
+
+  return partial?.id ?? null;
+};
+
+const findMatchingLocationId = (options: LocationRow[], target?: string | number | null) => {
+  if (target == null) return null;
+  const asString = typeof target === 'number' ? String(target) : target;
+
+  const byId = options.find((opt) => String(opt.id) === asString);
+  if (byId) return byId.id;
+
+  return resolveLocationId(options, asString);
+};
 
 async function rpcChildren(level: LocationLevel, parent: number | null) {
   try {
@@ -248,6 +281,9 @@ export default function ProfileEditForm() {
   const [regions, setRegions] = useState<LocationRow[]>([]);
   const [provinces, setProvinces] = useState<LocationRow[]>([]);
   const [municipalities, setMunicipalities] = useState<LocationRow[]>([]);
+  const [regionNameFallback, setRegionNameFallback] = useState<string | null>(null);
+  const [provinceNameFallback, setProvinceNameFallback] = useState<string | null>(null);
+  const [cityNameFallback, setCityNameFallback] = useState<string | null>(null);
 
   // Atleta + notifiche
   const [foot, setFoot] = useState('');
@@ -340,6 +376,8 @@ export default function ProfileEditForm() {
       avatar_url: (j as any)?.avatar_url ?? null,
       bio: (j as any)?.bio ?? null,
       country: (j as any)?.country ?? 'IT',
+      region: (j as any)?.region ?? null,
+      province: (j as any)?.province ?? null,
       skills: normalizeSkills((j as any)?.skills || []),
 
       // atleta
@@ -383,6 +421,21 @@ export default function ProfileEditForm() {
       notify_email_new_message: Boolean(j?.notify_email_new_message ?? true),
     };
 
+    if (process.env.NODE_ENV !== 'production') {
+      console.debug('[ProfileEditForm] profile location', {
+        country: p.country,
+        region: p.region,
+        province: p.province,
+        city: p.city,
+        interest_region: p.interest_region,
+        interest_province: p.interest_province,
+        interest_city: p.interest_city,
+        interest_region_id: p.interest_region_id,
+        interest_province_id: p.interest_province_id,
+        interest_municipality_id: p.interest_municipality_id,
+      });
+    }
+
     setProfile(p);
 
     // init form fields (normalizzo a ISO2 per sicurezza)
@@ -404,6 +457,10 @@ export default function ProfileEditForm() {
     setRegionId(p.interest_region_id);
     setProvinceId(p.interest_province_id);
     setMunicipalityId(p.interest_municipality_id);
+
+    setRegionNameFallback(p.interest_region || p.region || null);
+    setProvinceNameFallback(p.interest_province || p.province || null);
+    setCityNameFallback(p.interest_city || p.city || null);
 
     setFoot(p.foot || '');
     setHeightCm(p.height_cm ?? '');
@@ -471,6 +528,158 @@ export default function ProfileEditForm() {
       setMunicipalityId((prev) => (ms.some((m) => m.id === prev) ? prev : null));
     })();
   }, [provinceId]);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'production') {
+      if (provinces.length) {
+        console.debug('[ProfileEditForm] province options', provinces.slice(0, 5));
+      }
+      if (municipalities.length) {
+        console.debug('[ProfileEditForm] city options', municipalities.slice(0, 5));
+      }
+    }
+  }, [provinces, municipalities]);
+
+  useEffect(() => {
+    if (regionId == null && regions.length && regionNameFallback) {
+      const match = resolveLocationId(regions, regionNameFallback);
+      if (match) setRegionId(match);
+    }
+  }, [regionId, regions, regionNameFallback]);
+
+  useEffect(() => {
+    if (provinceId == null && provinces.length && provinceNameFallback) {
+      const match = resolveLocationId(provinces, provinceNameFallback);
+      if (match) setProvinceId(match);
+    }
+  }, [provinceId, provinces, provinceNameFallback]);
+
+  // Allinea i select provincia/città del club ai valori salvati (stesso pattern di country/region)
+  useEffect(() => {
+    if (!profile || profile.account_type !== 'club') return;
+    if (normalizeCountryCode(country) !== 'IT') return;
+
+    if (process.env.NODE_ENV !== 'production') {
+      console.debug('[ClubProfileEdit] profile location', {
+        country: profile.country,
+        region: profile.region,
+        province: profile.province,
+        city: profile.city,
+      });
+      if (provinces.length) {
+        console.debug('[ClubProfileEdit] provinceOptions', provinces.slice(0, 3));
+      }
+      if (municipalities.length) {
+        console.debug('[ClubProfileEdit] cityOptions', municipalities.slice(0, 3));
+      }
+    }
+
+    const resolvedRegionId =
+      regionId ?? findMatchingLocationId(regions, profile.region ?? regionNameFallback);
+    if (resolvedRegionId && regionId !== resolvedRegionId) {
+      setRegionId(resolvedRegionId);
+      return; // attendo che le province vengano caricate con la regione corretta
+    }
+
+    if (!provinces.length || regionId == null) return;
+
+    const resolvedProvinceId = findMatchingLocationId(
+      provinces,
+      profile.province ?? provinceNameFallback,
+    );
+
+    if (resolvedProvinceId && provinceId !== resolvedProvinceId) {
+      setProvinceId(resolvedProvinceId);
+      return; // attendo che le città vengano caricate
+    }
+
+    if (!municipalities.length || provinceId == null) return;
+
+    const resolvedCityId = findMatchingLocationId(
+      municipalities,
+      profile.city ?? cityNameFallback,
+    );
+
+    if (resolvedCityId && municipalityId !== resolvedCityId) {
+      setMunicipalityId(resolvedCityId);
+    }
+  }, [
+    profile,
+    country,
+    regionId,
+    regions,
+    provinces,
+    municipalities,
+    provinceId,
+    municipalityId,
+    regionNameFallback,
+    provinceNameFallback,
+    cityNameFallback,
+  ]);
+
+  // Allinea i select della zona di interesse (player) ai valori salvati
+  useEffect(() => {
+    if (!profile || profile.account_type === 'club') return;
+    if (normalizeCountryCode(country) !== 'IT') return;
+
+    if (process.env.NODE_ENV !== 'production') {
+      console.debug('[PlayerInterest] profile location', {
+        interest_region: profile.interest_region,
+        interest_province: profile.interest_province,
+        interest_city: profile.interest_city,
+        interest_region_id: profile.interest_region_id,
+        interest_province_id: profile.interest_province_id,
+        interest_municipality_id: profile.interest_municipality_id,
+      });
+    }
+
+    const resolvedRegionId =
+      regionId ?? findMatchingLocationId(regions, profile.interest_region_id ?? profile.interest_region ?? regionNameFallback);
+    if (resolvedRegionId && regionId !== resolvedRegionId) {
+      setRegionId(resolvedRegionId);
+      return;
+    }
+
+    if (!provinces.length || regionId == null) return;
+
+    const resolvedProvinceId = findMatchingLocationId(
+      provinces,
+      profile.interest_province_id ?? profile.interest_province ?? provinceNameFallback,
+    );
+    if (resolvedProvinceId && provinceId !== resolvedProvinceId) {
+      setProvinceId(resolvedProvinceId);
+      return;
+    }
+
+    if (!municipalities.length || provinceId == null) return;
+
+    const resolvedCityId = findMatchingLocationId(
+      municipalities,
+      profile.interest_municipality_id ?? profile.interest_city ?? cityNameFallback,
+    );
+    if (resolvedCityId && municipalityId !== resolvedCityId) {
+      setMunicipalityId(resolvedCityId);
+    }
+  }, [
+    profile,
+    country,
+    regionId,
+    regions,
+    provinces,
+    municipalities,
+    provinceId,
+    municipalityId,
+    regionNameFallback,
+    provinceNameFallback,
+    cityNameFallback,
+  ]);
+
+  useEffect(() => {
+    if (municipalityId == null && municipalities.length && cityNameFallback) {
+      const match = resolveLocationId(municipalities, cityNameFallback);
+      if (match) setMunicipalityId(match);
+    }
+  }, [municipalityId, municipalities, cityNameFallback]);
 
   useEffect(() => {
     if (isClub && country !== 'IT') {
@@ -1032,63 +1241,64 @@ export default function ProfileEditForm() {
           )}
         </section>
 
-        {/* Competenze */}
-        <section className="rounded-2xl border p-4 md:p-5">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h2 className="mb-1 text-lg font-semibold">Competenze</h2>
-              <p className="text-sm text-gray-600">
-                Aggiungi fino a {MAX_SKILLS} competenze: verranno mostrate sul profilo pubblico con il contatore di
-                endorsement.
-              </p>
+        {!isClub && (
+          <section className="rounded-2xl border p-4 md:p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="mb-1 text-lg font-semibold">Competenze</h2>
+                <p className="text-sm text-gray-600">
+                  Aggiungi fino a {MAX_SKILLS} competenze: verranno mostrate sul profilo pubblico con il contatore di
+                  endorsement.
+                </p>
+              </div>
+              <span className="text-xs text-gray-500 whitespace-nowrap">{skills.length}/{MAX_SKILLS}</span>
             </div>
-            <span className="text-xs text-gray-500 whitespace-nowrap">{skills.length}/{MAX_SKILLS}</span>
-          </div>
 
-          <div className="mt-3 flex flex-col gap-2 md:flex-row md:items-center">
-            <input
-              className="flex-1 rounded-lg border p-2"
-              value={skillInput}
-              maxLength={MAX_SKILL_LENGTH}
-              onChange={(e) => { setSkillInput(e.target.value); setSkillsError(null); }}
-              placeholder="Es. Dribbling, Leadership, Scouting"
-            />
-            <button
-              type="button"
-              onClick={onAddSkill}
-              disabled={skills.length >= MAX_SKILLS || !skillInput.trim()}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-60"
-            >
-              Aggiungi
-            </button>
-          </div>
-          {skillsError && <p className="mt-1 text-xs text-red-600">{skillsError}</p>}
+            <div className="mt-3 flex flex-col gap-2 md:flex-row md:items-center">
+              <input
+                className="flex-1 rounded-lg border p-2"
+                value={skillInput}
+                maxLength={MAX_SKILL_LENGTH}
+                onChange={(e) => { setSkillInput(e.target.value); setSkillsError(null); }}
+                placeholder="Es. Dribbling, Leadership, Scouting"
+              />
+              <button
+                type="button"
+                onClick={onAddSkill}
+                disabled={skills.length >= MAX_SKILLS || !skillInput.trim()}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-60"
+              >
+                Aggiungi
+              </button>
+            </div>
+            {skillsError && <p className="mt-1 text-xs text-red-600">{skillsError}</p>}
 
-          <div className="mt-3 flex flex-wrap gap-2">
-            {skills.length === 0 ? (
-              <p className="text-sm text-gray-500">Nessuna competenza inserita.</p>
-            ) : (
-              skills.map((skill) => (
-                <span
-                  key={skill.name}
-                  className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm bg-slate-50"
-                >
-                  <span>{skill.name}</span>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-800">
-                    {skill.endorsementsCount}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => onRemoveSkill(skill.name)}
-                    className="text-xs text-red-600 hover:underline"
+            <div className="mt-3 flex flex-wrap gap-2">
+              {skills.length === 0 ? (
+                <p className="text-sm text-gray-500">Nessuna competenza inserita.</p>
+              ) : (
+                skills.map((skill) => (
+                  <span
+                    key={skill.name}
+                    className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm bg-slate-50"
                   >
-                    ✕
-                  </button>
-                </span>
-              ))
-            )}
-          </div>
-        </section>
+                    <span>{skill.name}</span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-800">
+                      {skill.endorsementsCount}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => onRemoveSkill(skill.name)}
+                      className="text-xs text-red-600 hover:underline"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                ))
+              )}
+            </div>
+          </section>
+        )}
 
         {/* Zona di interesse (atleta) */}
         {!isClub && (

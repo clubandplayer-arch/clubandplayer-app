@@ -93,8 +93,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <ToastProvider>
       <FollowProvider>
-        <div className="min-h-screen flex flex-col bg-clubplayer-gradient">
-          <header className="sticky top-0 z-40 border-b bg-white/80 backdrop-blur">
+        <div className="min-h-screen bg-clubplayer-gradient">
+          <header className="fixed inset-x-0 top-0 z-40 border-b bg-white/90 backdrop-blur">
             <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4">
               <Link
                 href="/feed"
@@ -218,9 +218,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         ) : null}
           </header>
 
-          <main className="flex-1">{children}</main>
+          <div className="flex min-h-screen flex-col pt-16">
+            <main className="flex-1">{children}</main>
 
-          <MessagingDock />
+            <MessagingDock />
+          </div>
         </div>
       </FollowProvider>
     </ToastProvider>

@@ -362,7 +362,7 @@ export default function AvatarUploader({ value, onChange }: Props) {
       </div>
 
       {editorOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4 pt-10">
           <div className="w-full max-w-xl space-y-6 rounded-2xl bg-white p-6 shadow-xl">
             <div className="space-y-1">
               <h2 className="text-lg font-semibold">Regola la foto profilo</h2>

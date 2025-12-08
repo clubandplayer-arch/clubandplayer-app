@@ -58,7 +58,7 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="bg-gray-800">
+    <nav className="sticky top-0 z-40 bg-gray-800">
       <div className="mx-auto max-w-7xl px-4">
         <div className="flex h-16 items-center justify-between">
           {/* Left */}

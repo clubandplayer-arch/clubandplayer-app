@@ -218,7 +218,21 @@ export default function FeedPage() {
         const id = j?.user?.id ?? null;
         const rawProfile = j?.profile ?? null;
         setCurrentUserId(id);
-        setProfile(rawProfile ?? null);
+        let nextProfile = rawProfile ?? null;
+
+        if (id) {
+          try {
+            const profileRes = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
+            const profileJson = await profileRes.json().catch(() => null);
+            if (profileRes.ok && profileJson?.data) {
+              nextProfile = profileJson.data as Profile;
+            }
+          } catch {
+            // ignora eventuali errori del profilo dettagliato
+          }
+        }
+
+        setProfile(nextProfile);
       } catch {
         setCurrentUserId(null);
         setProfile(null);
