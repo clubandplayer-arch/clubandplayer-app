@@ -10,7 +10,7 @@ const NAV_LINKS = [
 
 export default function MarketingNavbar() {
   return (
-    <header className="border-b border-neutral-200 bg-white/80 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-neutral-200 bg-white/80 backdrop-blur">
       <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-4">
         <Link
           href="/signup"

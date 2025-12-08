@@ -366,6 +366,8 @@ export default function ProfileEditForm() {
       avatar_url: (j as any)?.avatar_url ?? null,
       bio: (j as any)?.bio ?? null,
       country: (j as any)?.country ?? 'IT',
+      region: (j as any)?.region ?? null,
+      province: (j as any)?.province ?? null,
       skills: normalizeSkills((j as any)?.skills || []),
 
       // atleta
@@ -408,6 +410,21 @@ export default function ProfileEditForm() {
       links: (j as any)?.links ?? null,
       notify_email_new_message: Boolean(j?.notify_email_new_message ?? true),
     };
+
+    if (process.env.NODE_ENV !== 'production') {
+      console.debug('[ProfileEditForm] profile location', {
+        country: p.country,
+        region: p.region,
+        province: p.province,
+        city: p.city,
+        interest_region: p.interest_region,
+        interest_province: p.interest_province,
+        interest_city: p.interest_city,
+        interest_region_id: p.interest_region_id,
+        interest_province_id: p.interest_province_id,
+        interest_municipality_id: p.interest_municipality_id,
+      });
+    }
 
     setProfile(p);
 
@@ -501,6 +518,17 @@ export default function ProfileEditForm() {
       setMunicipalityId((prev) => (ms.some((m) => m.id === prev) ? prev : null));
     })();
   }, [provinceId]);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'production') {
+      if (provinces.length) {
+        console.debug('[ProfileEditForm] province options', provinces.slice(0, 5));
+      }
+      if (municipalities.length) {
+        console.debug('[ProfileEditForm] city options', municipalities.slice(0, 5));
+      }
+    }
+  }, [provinces, municipalities]);
 
   useEffect(() => {
     if (regionId == null && regions.length && regionNameFallback) {
