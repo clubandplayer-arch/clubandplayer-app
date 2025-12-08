@@ -496,6 +496,45 @@ export default function ProfileEditForm() {
     }
   }, [provinceId, provinces, provinceNameFallback]);
 
+  // Pre-popola provincia e città per i profili club quando i dati sono già salvati
+  useEffect(() => {
+    if (!profile || profile.account_type !== 'club') return;
+    if (normalizeCountryCode(country) !== 'IT') return;
+    if (!provinces.length) return;
+
+    const savedProvinceId = profile.interest_province_id;
+    const savedProvinceName = profile.interest_province || profile.province || provinceNameFallback;
+    const resolvedProvinceId =
+      (savedProvinceId && provinces.some((p) => p.id === savedProvinceId))
+        ? savedProvinceId
+        : savedProvinceName
+          ? provinces.find((p) => normalizeName(p.name) === normalizeName(savedProvinceName))?.id ?? null
+          : null;
+
+    if (resolvedProvinceId && provinceId !== resolvedProvinceId) {
+      setProvinceId(resolvedProvinceId);
+    }
+  }, [profile, country, provinces, provinceId, provinceNameFallback]);
+
+  useEffect(() => {
+    if (!profile || profile.account_type !== 'club') return;
+    if (normalizeCountryCode(country) !== 'IT') return;
+    if (!municipalities.length) return;
+
+    const savedMunicipalityId = profile.interest_municipality_id;
+    const savedCityName = profile.interest_city || profile.city || cityNameFallback;
+    const resolvedMunicipalityId =
+      (savedMunicipalityId && municipalities.some((m) => m.id === savedMunicipalityId))
+        ? savedMunicipalityId
+        : savedCityName
+          ? municipalities.find((m) => normalizeName(m.name) === normalizeName(savedCityName))?.id ?? null
+          : null;
+
+    if (resolvedMunicipalityId && municipalityId !== resolvedMunicipalityId) {
+      setMunicipalityId(resolvedMunicipalityId);
+    }
+  }, [profile, country, municipalities, municipalityId, cityNameFallback]);
+
   useEffect(() => {
     if (municipalityId == null && municipalities.length && cityNameFallback) {
       const match = municipalities.find((m) => normalizeName(m.name) === normalizeName(cityNameFallback));
