@@ -115,6 +115,16 @@ const resolveLocationId = (options: LocationRow[], target?: string | null) => {
   return partial?.id ?? null;
 };
 
+const findMatchingLocationId = (options: LocationRow[], target?: string | number | null) => {
+  if (target == null) return null;
+  const asString = typeof target === 'number' ? String(target) : target;
+
+  const byId = options.find((opt) => String(opt.id) === asString);
+  if (byId) return byId.id;
+
+  return resolveLocationId(options, asString);
+};
+
 async function rpcChildren(level: LocationLevel, parent: number | null) {
   try {
     const { data, error } = await supabase.rpc('location_children', { level, parent });
@@ -578,6 +588,61 @@ export default function ProfileEditForm() {
       setMunicipalityId(resolvedMunicipalityId);
     }
   }, [profile, country, municipalities, municipalityId, cityNameFallback]);
+
+  // Allinea i select provincia/città del club ai valori salvati (stesso pattern di country/region)
+  useEffect(() => {
+    if (!profile || profile.account_type !== 'club') return;
+    if (normalizeCountryCode(country) !== 'IT') return;
+
+    if (process.env.NODE_ENV !== 'production') {
+      console.debug('[ClubProfileEdit] profile location', {
+        country: profile.country,
+        region: profile.region,
+        province: profile.province,
+        city: profile.city,
+      });
+      if (provinces.length) {
+        console.debug('[ClubProfileEdit] provinceOptions', provinces.slice(0, 3));
+      }
+      if (municipalities.length) {
+        console.debug('[ClubProfileEdit] cityOptions', municipalities.slice(0, 3));
+      }
+    }
+
+    if (regionId == null && regions.length) {
+      const resolvedRegionId = findMatchingLocationId(regions, profile.region ?? regionNameFallback);
+      if (resolvedRegionId) {
+        setRegionId(resolvedRegionId);
+        return;
+      }
+    }
+
+    if (!provinces.length || regionId == null) return;
+
+    const resolvedProvinceId = findMatchingLocationId(provinces, profile.province ?? provinceNameFallback);
+    if (resolvedProvinceId && provinceId !== resolvedProvinceId) {
+      setProvinceId(resolvedProvinceId);
+    }
+
+    if (!municipalities.length || provinceId == null) return;
+
+    const resolvedCityId = findMatchingLocationId(municipalities, profile.city ?? cityNameFallback);
+    if (resolvedCityId && municipalityId !== resolvedCityId) {
+      setMunicipalityId(resolvedCityId);
+    }
+  }, [
+    profile,
+    country,
+    regionId,
+    regions,
+    provinces,
+    municipalities,
+    provinceId,
+    municipalityId,
+    regionNameFallback,
+    provinceNameFallback,
+    cityNameFallback,
+  ]);
 
   useEffect(() => {
     if (municipalityId == null && municipalities.length && cityNameFallback) {
