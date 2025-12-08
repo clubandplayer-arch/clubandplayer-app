@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useExclusiveVideoPlayback } from '@/hooks/useExclusiveVideoPlayback';
 import { shareOrCopyLink } from '@/lib/share';
-import ShareIcon from '@/components/icons/ShareIcon';
+import { ShareButton } from '@/components/media/ShareButton';
 import { MaterialIcon } from '@/components/icons/MaterialIcon';
 
 const DEFAULT_LIMIT = 100;
@@ -297,23 +297,6 @@ function MediaSection({
                 key={item.id}
                 className="group relative flex h-full flex-col overflow-hidden rounded-xl border border-cp-brand-soft bg-background shadow-sm transition-transform transition-shadow hover:scale-[1.01] hover:shadow-md"
               >
-                <div className="absolute right-2 top-2 z-10 flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      shareOrCopyLink({
-                        title: title,
-                        text: item.content ?? undefined,
-                        url: buildMediaShareUrl(item),
-                      })
-                    }
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-cp-border-soft bg-white/95 text-cp-brand shadow-sm transition hover:bg-white hover:shadow-md"
-                    aria-label={`Condividi ${item.media_type === 'video' ? 'questo video' : 'questa foto'}`}
-                  >
-                    <ShareIcon className="h-4 w-4" />
-                  </button>
-                </div>
-
                 <div className="flex h-full flex-col">
                   <div className="overflow-hidden rounded-b-none">
                     {item.media_type === 'video' ? (
@@ -340,16 +323,29 @@ function MediaSection({
                     )}
                   </div>
 
-                  <div className="min-h-[2.5rem] px-3 pb-3 pt-2">
-                    <p className="text-sm font-medium text-foreground whitespace-pre-wrap line-clamp-2">
-                      {item.content || ''}
-                    </p>
+                  <div className="space-y-2 px-3 pb-3 pt-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="flex-1 whitespace-pre-wrap text-sm font-medium text-foreground line-clamp-2">
+                        {item.content || ''}
+                      </p>
+                      <ShareButton
+                        onClick={() =>
+                          shareOrCopyLink({
+                            title: title,
+                            text: item.content ?? undefined,
+                            url: buildMediaShareUrl(item),
+                          })
+                        }
+                        ariaLabel={`Condividi ${item.media_type === 'video' ? 'questo video' : 'questa foto'}`}
+                        className="shrink-0"
+                      />
+                    </div>
                     {item.link_url ? (
                       <a
                         href={item.link_url}
                         target="_blank"
                         rel="noreferrer noopener"
-                        className="mt-1 block text-sm font-semibold text-cp-brand"
+                        className="block text-sm font-semibold text-cp-brand"
                       >
                         Apri link esterno →
                       </a>
