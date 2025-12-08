@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
+import { parseSkillsInput } from '@/lib/profiles/skills';
 
 export const runtime = 'nodejs';
 
@@ -22,35 +23,6 @@ function norm(v: unknown): string | null {
     return out ? out : null;
   }
   return String(v).trim() || null;
-}
-
-const MAX_SKILLS = 10;
-const MAX_SKILL_LENGTH = 40;
-
-function normalizeSkills(raw: unknown) {
-  if (raw === undefined) return undefined;
-  if (raw === null) return null;
-
-  let arr: unknown[] | null = null;
-  if (Array.isArray(raw)) arr = raw;
-  if (!arr && typeof raw === 'string') {
-    try { const parsed = JSON.parse(raw); if (Array.isArray(parsed)) arr = parsed; } catch {}
-  }
-  if (!arr) return null;
-
-  const skills: { name: string; endorsements_count: number }[] = [];
-  for (const item of arr) {
-    if (skills.length >= MAX_SKILLS) break;
-    if (!item || typeof item !== 'object') continue;
-    const name = norm((item as any).name);
-    if (!name) continue;
-    const trimmed = name.slice(0, MAX_SKILL_LENGTH);
-    const countRaw = Number((item as any).endorsements_count ?? (item as any).endorsementsCount ?? 0);
-    const endorsements_count = Number.isFinite(countRaw) && countRaw > 0 ? Math.floor(countRaw) : 0;
-    skills.push({ name: trimmed, endorsements_count });
-  }
-
-  return skills;
 }
 
 /** POST /api/profiles  (upsert del profilo dell’utente loggato) */
@@ -92,7 +64,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     payload.links = null;
   }
 
-  const skillsRaw = normalizeSkills((body as any).skills);
+  const skillsRaw = parseSkillsInput((body as any).skills);
   if (skillsRaw !== undefined) {
     if (skillsRaw === null) return jsonError('Formato competenze non valido', 400);
     payload.skills = skillsRaw;

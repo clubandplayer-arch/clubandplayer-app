@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
-import { withAuth, jsonError } from '@/lib/api/auth';
+import { withAuth } from '@/lib/api/auth';
+import { dbError, successResponse, unknownError } from '@/lib/api/standardResponses';
 import type { NotificationWithActor } from '@/types/notifications';
 
 export const runtime = 'nodejs';
@@ -18,7 +18,7 @@ export const GET = withAuth(async (req, { supabase, user }) => {
       .limit(limit);
 
     const { data, error } = unreadOnly ? await base.is('read_at', null) : await base;
-    if (error) return jsonError(error.message, 400);
+    if (error) return dbError(error.message);
 
     const actorIds = Array.from(new Set((data ?? []).map((n) => n.actor_profile_id).filter(Boolean))) as string[];
     const { data: actors } = actorIds.length
@@ -35,9 +35,9 @@ export const GET = withAuth(async (req, { supabase, user }) => {
       actor: row.actor_profile_id ? actorMap[row.actor_profile_id] ?? null : null,
     }));
 
-    return NextResponse.json({ data: items });
+    return successResponse({ data: items });
   } catch (e: any) {
-    return jsonError(e?.message || 'Errore inatteso', 400);
+    return unknownError({ endpoint: 'notifications/list', error: e, message: e?.message || 'Errore inatteso' });
   }
 });
 
@@ -58,10 +58,10 @@ export const PATCH = withAuth(async (req, { supabase, user }) => {
       ? await updateBuilder.in('id', ids)
       : { error: null, count: 0 } as const;
 
-    if (error) return jsonError(error.message, 400);
+    if (error) return dbError(error.message);
 
-    return NextResponse.json({ updated: count || 0 });
+    return successResponse({ updated: count || 0 });
   } catch (e: any) {
-    return jsonError(e?.message || 'Errore inatteso', 400);
+    return unknownError({ endpoint: 'notifications/update', error: e, message: e?.message || 'Errore inatteso' });
   }
 });

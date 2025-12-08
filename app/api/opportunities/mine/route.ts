@@ -1,10 +1,10 @@
-import { NextResponse } from 'next/server';
+import { dbError, notAuthenticated, successResponse } from '@/lib/api/standardResponses';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export async function GET() {
   const supabase = await getSupabaseServerClient();
   const { data: u } = await supabase.auth.getUser();
-  if (!u?.user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  if (!u?.user) return notAuthenticated('Profilo non autenticato');
   const uid = u.user.id;
 
   // 1) Annunci del proprietario
@@ -14,8 +14,8 @@ export async function GET() {
     .eq('owner_id', uid)
     .order('created_at', { ascending: false });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-  if (!opps || opps.length === 0) return NextResponse.json({ data: [] });
+  if (error) return dbError(error.message);
+  if (!opps || opps.length === 0) return successResponse({ data: [] });
 
   // 2) Candidature per quegli annunci
   const ids = opps.map((o) => o.id);
@@ -24,7 +24,7 @@ export async function GET() {
     .select('id, opportunity_id, status')
     .in('opportunity_id', ids);
 
-  if (e2) return NextResponse.json({ error: e2.message }, { status: 400 });
+  if (e2) return dbError(e2.message);
 
   // 3) Aggrego i conteggi
   type C = { total: number; submitted: number; accepted: number; rejected: number };
@@ -49,5 +49,5 @@ export async function GET() {
     applications_count: counts.get(o.id) ?? { ...zero },
   }));
 
-  return NextResponse.json({ data });
+  return successResponse({ data });
 }

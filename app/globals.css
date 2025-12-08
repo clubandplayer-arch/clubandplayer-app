@@ -21,7 +21,9 @@
 /* === Theme tokens (CSS variables) === */
 :root {
   /* Palette bandiera norvegese */
-  --brand:  #00527a; /* navy blue brand */
+  --brand:  #00527a; /* navy blue brand (logo) */
+  --brand-soft: #3ba3d4; /* variante più chiara per testi secondari/bordi */
+  --brand-border: rgba(0, 82, 122, 0.18); /* bordo soft coerente con il brand */
   --accent: #EF2B2D; /* red */
 
   /* Neutri */
@@ -120,13 +122,15 @@ img, video, svg {
 /* Card                                 */
 /* ------------------------------------ */
 .card {
-  @apply rounded-2xl bg-white/60 shadow-xl backdrop-blur border border-white/0
+  @apply rounded-2xl bg-white/60 shadow-xl backdrop-blur border
          dark:border-neutral-800 dark:bg-neutral-900/80;
+  border-color: var(--brand-border);
 }
 .card-hover { @apply transition-shadow hover:shadow-md; }
 
 .glass-panel {
-  @apply rounded-2xl bg-white/60 shadow-xl backdrop-blur border border-white/0;
+  @apply rounded-2xl bg-white/60 shadow-xl backdrop-blur border;
+  border-color: var(--brand-border);
 }
 
 /* ------------------------------------ */
@@ -162,25 +166,35 @@ img, video, svg {
 h1 {
   font-family: var(--font-righteous), 'Righteous', system-ui, -apple-system, 'Segoe UI', sans-serif;
   @apply text-left text-3xl md:text-4xl font-normal tracking-tight mt-2 mb-3;
+  color: var(--brand);
 }
 h2 {
   font-family: var(--font-righteous), 'Righteous', system-ui, -apple-system, 'Segoe UI', sans-serif;
   @apply text-left text-2xl md:text-3xl font-normal tracking-tight mt-2 mb-3;
+  color: var(--brand);
 }
 h3 { @apply text-lg md:text-xl font-semibold tracking-tight mt-2 mb-2; }
 
 .heading-h1 {
   font-family: var(--font-righteous), 'Righteous', system-ui, -apple-system, 'Segoe UI', sans-serif;
   @apply text-left text-3xl md:text-4xl font-normal tracking-tight mt-2 mb-3;
+  color: var(--brand);
 }
 
 .heading-h2 {
   font-family: var(--font-righteous), 'Righteous', system-ui, -apple-system, 'Segoe UI', sans-serif;
   @apply text-left text-2xl md:text-3xl font-normal tracking-tight mt-2 mb-3;
+  color: var(--brand);
 }
 
 .muted { color: var(--muted); }
 .lead  { @apply text-neutral-600 dark:text-neutral-300; }
+
+@layer utilities {
+  .text-cp-brand { color: var(--brand); }
+  .text-cp-brand-soft { color: var(--brand-soft); }
+  .border-cp-brand-soft { border-color: var(--brand-border); }
+}
 
 /* Link evidenziati */
 .link { @apply underline underline-offset-2 hover:opacity-90; text-decoration-color: var(--brand); }

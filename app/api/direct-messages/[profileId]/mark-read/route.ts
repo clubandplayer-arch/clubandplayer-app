@@ -1,6 +1,13 @@
 import * as Sentry from '@sentry/nextjs';
 import type { NextRequest } from 'next/server';
-import { badRequest, forbidden, internalError, notFound, ok } from '@/lib/api/responses';
+import {
+  dbError,
+  invalidPayload,
+  notAuthenticated,
+  notFoundResponse,
+  successResponse,
+  unknownError,
+} from '@/lib/api/standardResponses';
 import { withAuth } from '@/lib/api/auth';
 import { getActiveProfile, getProfileById } from '@/lib/api/profile';
 
@@ -22,7 +29,7 @@ function extractProfileId(routeContext?: { params?: Promise<Record<string, strin
 export const POST = withAuth(async (_req: NextRequest, { supabase, user }, routeContext) => {
   const targetProfileId = extractProfileId(routeContext);
   const otherId = typeof targetProfileId === 'string' ? targetProfileId.trim() : '';
-  if (!otherId) return badRequest('profileId mancante');
+  if (!otherId) return invalidPayload('profileId mancante');
 
   try {
     const me = await getActiveProfile(supabase, user.id);
@@ -31,7 +38,7 @@ export const POST = withAuth(async (_req: NextRequest, { supabase, user }, route
         userId: user.id,
         targetProfileId: otherId,
       });
-      return forbidden('Profilo non trovato');
+      return notAuthenticated('Profilo non trovato');
     }
 
     console.log('[direct-messages] POST /api/direct-messages/:profileId/mark-read', {
@@ -47,7 +54,7 @@ export const POST = withAuth(async (_req: NextRequest, { supabase, user }, route
         profileId: me.id,
         targetProfileId: otherId,
       });
-      return notFound('Profilo target non trovato');
+      return notFoundResponse('Profilo target non trovato');
     }
 
     const { error } = await supabase
@@ -66,12 +73,12 @@ export const POST = withAuth(async (_req: NextRequest, { supabase, user }, route
     if (error) {
       if (isMissingReadStateTable(error)) {
         console.warn('[direct-messages] POST /api/direct-messages/:profileId/mark-read missing table direct_message_read_state, skipping');
-        return ok({ warning: 'read_state_table_missing' });
+        return successResponse({ warning: 'read_state_table_missing' });
       }
       throw error;
     }
 
-    return ok({ warning: null });
+    return successResponse({ warning: null });
   } catch (error: any) {
     console.error('[direct-messages] POST /api/direct-messages/:profileId/mark-read unexpected error', {
       error,
@@ -79,6 +86,9 @@ export const POST = withAuth(async (_req: NextRequest, { supabase, user }, route
       userId: user.id,
     });
     Sentry.captureException(error);
-    return internalError(error);
+    if (typeof error?.message === 'string') {
+      return dbError(error.message);
+    }
+    return unknownError({ endpoint: 'direct-messages/mark-read', error });
   }
 });

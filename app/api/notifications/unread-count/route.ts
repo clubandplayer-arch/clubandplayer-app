@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
-import { withAuth, jsonError } from '@/lib/api/auth';
+import { withAuth } from '@/lib/api/auth';
+import { dbError, successResponse, unknownError } from '@/lib/api/standardResponses';
 
 export const runtime = 'nodejs';
 
@@ -11,10 +11,10 @@ export const GET = withAuth(async (_req, { supabase, user }) => {
       .eq('user_id', user.id)
       .or('read_at.is.null,read.eq.false');
 
-    if (error) return jsonError(error.message, 500);
+    if (error) return dbError(error.message);
 
-    return NextResponse.json({ count: count || 0 });
+    return successResponse({ count: count || 0 });
   } catch (e: any) {
-    return jsonError(e?.message || 'Errore inatteso', 500);
+    return unknownError({ endpoint: 'notifications/unread-count', error: e, message: e?.message || 'Errore inatteso' });
   }
 });

@@ -9,6 +9,8 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
 import ProfileHeader from '@/components/profiles/ProfileHeader'
+import { buildEndorsedSet, normalizeProfileSkills, normalizeSkillName } from '@/lib/profiles/skills'
+import { ProfileSkill } from '@/types/profile'
 
 type Profile = {
   id: string
@@ -24,7 +26,7 @@ type Profile = {
   province: string | null
   city: string | null
   avatar_url?: string | null
-  skills?: { name: string; endorsements_count?: number }[] | null
+  skills?: ProfileSkill[] | null
 }
 
 type ApplicationRow = {
@@ -60,29 +62,54 @@ export default function PublicAthleteProfile() {
   const supabase = useMemo(() => supabaseBrowser(), [])  // 👈 MEMOIZZA il client
 
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [skills, setSkills] = useState<ProfileSkill[]>([])
   const [apps, setApps] = useState<ApplicationRow[]>([])
   const [loading, setLoading] = useState(true)
   const [msg, setMsg] = useState<string>('')
   const [meId, setMeId] = useState<string | null>(null)
+  const [endorsingSkill, setEndorsingSkill] = useState<string | null>(null)
 
   const isOwner = useMemo(() => {
     if (!profile || !meId) return false
     return meId === profile.id || meId === profile.user_id
   }, [meId, profile])
 
-  const skills = useMemo(() => {
-    if (!profile || !Array.isArray(profile.skills)) return [] as { name: string; endorsements_count: number }[]
-    return (profile.skills as any[])
-      .map((s) => {
-        if (!s || typeof s !== 'object') return null
-        const name = typeof (s as any).name === 'string' ? (s as any).name.trim() : ''
-        if (!name) return null
-        const endorsements = Number((s as any).endorsements_count ?? (s as any).endorsementsCount ?? 0)
-        const safeCount = Number.isFinite(endorsements) && endorsements > 0 ? Math.floor(endorsements) : 0
-        return { name: name.slice(0, 40), endorsements_count: safeCount }
+  async function toggleEndorse(skill: ProfileSkill) {
+    if (!profile) return
+    if (!meId) { setMsg('Devi accedere per endorsare una competenza.'); return }
+    if (isOwner) { setMsg('Non puoi endorsare il tuo profilo.'); return }
+
+    const action = skill.endorsedByMe ? 'remove' : 'endorse'
+    setEndorsingSkill(skill.name)
+
+    try {
+      const res = await fetch(`/api/profiles/${profile.id}/skills/endorse`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ skillName: skill.name, action }),
       })
-      .filter(Boolean) as { name: string; endorsements_count: number }[]
-  }, [profile])
+
+      const json = await res.json().catch(() => null)
+      if (!res.ok || !json?.ok) {
+        setMsg(json?.message || 'Errore durante l\'endorsement')
+        return
+      }
+
+      const newCount = typeof json.endorsementsCount === 'number' ? json.endorsementsCount : undefined
+      setSkills((prev) => prev.map((s) => {
+        if (s.name !== skill.name) return s
+        const delta = action === 'endorse' ? 1 : -1
+        const fallback = Math.max(0, (s.endorsementsCount ?? 0) + delta)
+        return {
+          ...s,
+          endorsedByMe: action === 'endorse',
+          endorsementsCount: newCount ?? fallback,
+        }
+      }))
+    } finally {
+      setEndorsingSkill(null)
+    }
+  }
 
   useEffect(() => {
     let cancelled = false  // 👈 flag di cancellazione
@@ -112,6 +139,50 @@ export default function PublicAthleteProfile() {
 
       const p = profs[0] as Profile
       setProfile(p)
+
+      const normalizedSkills = normalizeProfileSkills(Array.isArray((p as any)?.skills) ? (p as any).skills : [])
+
+      const { data: endorsementRows, error: endorsementError } = await supabase
+        .from('profile_skill_endorsements')
+        .select('skill_name')
+        .eq('profile_id', athleteId)
+
+      if (endorsementError) {
+        setMsg(`Errore endorsement: ${endorsementError.message}`)
+        setLoading(false)
+        return
+      }
+
+      if (cancelled) return
+
+      const countsMap = new Map<string, number>()
+      for (const row of endorsementRows ?? []) {
+        const name = normalizeSkillName(row.skill_name)
+        if (!name) continue
+        const key = name.toLowerCase()
+        countsMap.set(key, (countsMap.get(key) ?? 0) + 1)
+      }
+
+      let endorsedSet = new Set<string>()
+      if (auth?.data?.user?.id) {
+        const { data: mine } = await supabase
+          .from('profile_skill_endorsements')
+          .select('skill_name')
+          .eq('endorser_profile_id', auth.data.user.id)
+          .eq('profile_id', athleteId)
+
+        if (cancelled) return
+
+        endorsedSet = buildEndorsedSet(mine ?? [])
+      }
+
+      const mergedSkills: ProfileSkill[] = normalizedSkills.map((skill) => ({
+        ...skill,
+        endorsementsCount: countsMap.get(skill.name.toLowerCase()) ?? 0,
+        endorsedByMe: endorsedSet.has(skill.name.toLowerCase()),
+      }))
+
+      setSkills(mergedSkills)
 
       // 2) ultime candidature (facoltativo, massimo 5)
       const { data: appsData } = await supabase
@@ -182,44 +253,66 @@ export default function PublicAthleteProfile() {
             </ul>
           </section>
 
-          {skills.length > 0 ? (
-            <section style={{border:'1px solid #e5e7eb', borderRadius:12, padding:16, marginTop:12}}>
-              <h2 style={{marginTop:0}}>Competenze</h2>
-              <div style={{display:'flex', flexWrap:'wrap', gap:8, marginTop:8}}>
-                {skills.map((skill) => (
-                  <span
-                    key={skill.name}
-                    style={{
-                      display:'inline-flex',
-                      alignItems:'center',
-                      gap:6,
-                      border:'1px solid #e5e7eb',
-                      borderRadius:9999,
-                      padding:'6px 10px',
-                      fontSize:14,
-                      background:'#f8fafc',
-                    }}
-                  >
-                    <span>{skill.name}</span>
+        {skills.length > 0 ? (
+          <section style={{border:'1px solid #e5e7eb', borderRadius:12, padding:16, marginTop:12}}>
+            <h2 style={{marginTop:0}}>Competenze</h2>
+            <div style={{display:'flex', flexDirection:'column', gap:8, marginTop:8}}>
+              {skills.map((skill) => (
+                <div
+                  key={skill.name}
+                  style={{
+                    display:'flex',
+                    alignItems:'center',
+                    justifyContent:'space-between',
+                    gap:12,
+                    border:'1px solid #e5e7eb',
+                    borderRadius:12,
+                    padding:'8px 10px',
+                    background:'#f8fafc',
+                  }}
+                >
+                  <div style={{display:'flex', alignItems:'center', gap:8}}>
+                    <span style={{fontWeight:600}}>{skill.name}</span>
                     <span style={{
                       display:'inline-flex',
                       alignItems:'center',
                       gap:4,
-                      padding:'2px 6px',
+                      padding:'2px 8px',
                       borderRadius:9999,
                       background:'#e0f2fe',
                       color:'#0369a1',
                       fontSize:12,
                       fontWeight:600,
                     }}>
-                      {skill.endorsements_count}
+                      {skill.endorsementsCount}
                     </span>
-                  </span>
-                ))}
-              </div>
-            </section>
-          ) : (
-            isOwner && (
+                  </div>
+                  {!isOwner && (
+                    <button
+                      type="button"
+                      onClick={() => toggleEndorse(skill)}
+                      disabled={endorsingSkill === skill.name || !meId}
+                      style={{
+                        border:'1px solid',
+                        borderColor: skill.endorsedByMe ? '#0ea5e9' : '#cbd5e1',
+                        background: skill.endorsedByMe ? '#0ea5e9' : '#fff',
+                        color: skill.endorsedByMe ? '#fff' : '#0f172a',
+                        borderRadius:9999,
+                        padding:'6px 12px',
+                        fontSize:13,
+                        cursor: endorsingSkill === skill.name || !meId ? 'not-allowed' : 'pointer',
+                        opacity: endorsingSkill === skill.name || (!meId && !skill.endorsedByMe) ? 0.7 : 1,
+                      }}
+                    >
+                      {skill.endorsedByMe ? 'Rimuovi endorsement' : (meId ? 'Endorsa' : 'Accedi per endorsare')}
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : (
+          isOwner && (
               <section style={{border:'1px solid #e5e7eb', borderRadius:12, padding:16, marginTop:12}}>
                 <h2 style={{marginTop:0}}>Competenze</h2>
                 <p style={{marginTop:8, fontSize:14, color:'#475569'}}>

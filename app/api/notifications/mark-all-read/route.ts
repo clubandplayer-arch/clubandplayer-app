@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
-import { jsonError, withAuth } from '@/lib/api/auth';
+import { withAuth } from '@/lib/api/auth';
+import { dbError, successResponse, unknownError } from '@/lib/api/standardResponses';
 
 export const runtime = 'nodejs';
 
@@ -11,10 +11,10 @@ export const POST = withAuth(async (_req, { supabase, user }) => {
       .eq('user_id', user.id)
       .is('read_at', null);
 
-    if (error) return jsonError(error.message, 500);
+    if (error) return dbError(error.message);
 
-    return NextResponse.json({ success: true, updated: count || 0 });
+    return successResponse({ success: true, updated: count || 0 });
   } catch (e: any) {
-    return jsonError(e?.message || 'Errore inatteso', 500);
+    return unknownError({ endpoint: 'notifications/mark-all-read', error: e, message: e?.message || 'Errore inatteso' });
   }
 });

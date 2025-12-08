@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { jsonError } from '@/lib/api/auth';
+import { dbError, successResponse, unknownError } from '@/lib/api/standardResponses';
 
 export const runtime = 'nodejs';
 
@@ -18,23 +18,23 @@ export async function GET(_req: NextRequest) {
       .from('opportunities')
       .select('country,region,province,city,sport,role,required_category,club_name');
 
-    if (error) return jsonError(error.message, 400);
+    if (error) return dbError(error.message);
 
     const uniq = (arr: (string | null | undefined)[]) =>
       Array.from(new Set((arr ?? []).filter(Boolean) as string[])).sort((a, b) => a.localeCompare(b));
 
     const rows = data ?? [];
-    return NextResponse.json({
-      country: uniq(rows.map(r => r.country)),
-      region: uniq(rows.map(r => r.region)),
-      province: uniq(rows.map(r => r.province)),
-      city: uniq(rows.map(r => r.city)),
-      sport: uniq(rows.map(r => r.sport)),
-      role: uniq(rows.map(r => r.role)),
-      required_category: uniq(rows.map(r => (r as any).required_category)),
-      club_name: uniq(rows.map(r => r.club_name)),
+    return successResponse({
+      country: uniq(rows.map((r) => r.country)),
+      region: uniq(rows.map((r) => r.region)),
+      province: uniq(rows.map((r) => r.province)),
+      city: uniq(rows.map((r) => r.city)),
+      sport: uniq(rows.map((r) => r.sport)),
+      role: uniq(rows.map((r) => r.role)),
+      required_category: uniq(rows.map((r: any) => r.required_category)),
+      club_name: uniq(rows.map((r) => r.club_name)),
     });
   } catch (err: any) {
-    return jsonError(err?.message || 'Unexpected error', 500);
+    return unknownError({ endpoint: 'opportunities/filter', error: err });
   }
 }
