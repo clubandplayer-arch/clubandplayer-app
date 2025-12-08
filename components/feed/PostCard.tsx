@@ -210,7 +210,7 @@ export function PostCard({
           <button
             type="button"
             onClick={handleShare}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-background/90 text-cp-brand shadow-sm transition hover:bg-background hover:shadow-md"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-cp-border-soft bg-white/95 text-cp-brand shadow-sm transition hover:bg-white hover:shadow-md"
             aria-label={isEvent ? 'Condividi questo evento' : 'Condividi questo post'}
           >
             <PostIconShare className="h-4 w-4" aria-hidden />

@@ -307,7 +307,7 @@ function MediaSection({
                         url: buildMediaShareUrl(item),
                       })
                     }
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-background/90 text-cp-brand shadow-sm transition hover:bg-background hover:shadow-md"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-cp-border-soft bg-white/95 text-cp-brand shadow-sm transition hover:bg-white hover:shadow-md"
                     aria-label={`Condividi ${item.media_type === 'video' ? 'questo video' : 'questa foto'}`}
                   >
                     <ShareIcon className="h-4 w-4" />
