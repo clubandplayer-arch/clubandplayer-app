@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { shareOrCopyLink } from '@/lib/share';
 
 type MediaTab = 'video' | 'photo';
 
@@ -12,17 +13,28 @@ export function ShareSectionButton({ activeTab }: ShareSectionButtonProps) {
   const [copied, setCopied] = useState(false);
 
   const shareUrl = useMemo(() => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const suffix = activeTab === 'photo' ? 'photo#my-photos' : 'video#my-videos';
-    return origin ? `${origin}/mymedia?type=${suffix}` : '';
+    if (typeof window === 'undefined') return '';
+
+    const url = new URL('/mymedia', window.location.origin);
+    const suffix = activeTab === 'photo' ? 'photo' : 'video';
+    url.searchParams.set('type', suffix);
+    url.hash = suffix === 'photo' ? 'my-photos' : 'my-videos';
+
+    return url.toString();
   }, [activeTab]);
 
   async function handleClick() {
     if (!shareUrl) return;
     try {
-      await navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      const result = await shareOrCopyLink({
+        url: shareUrl,
+        copiedMessage: 'Link della sezione copiato negli appunti',
+      });
+
+      if (result === 'shared' || result === 'copied') {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }
     } catch (error) {
       console.error('[mymedia] clipboard error', error);
     }
