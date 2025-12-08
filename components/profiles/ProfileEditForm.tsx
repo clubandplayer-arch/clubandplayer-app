@@ -93,7 +93,27 @@ function pickData<T = any>(raw: any): T {
 }
 const sortByName = (arr: LocationRow[]) =>
   [...arr].sort((a, b) => a.name.localeCompare(b.name, 'it', { sensitivity: 'accent' }));
-const normalizeName = (value?: string | null) => (value || '').trim().toLowerCase();
+const normalizeLocation = (value?: string | null) =>
+  (value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/gi, ' ')
+    .trim()
+    .toLowerCase();
+const resolveLocationId = (options: LocationRow[], target?: string | null) => {
+  const normalizedTarget = normalizeLocation(target);
+  if (!normalizedTarget) return null;
+
+  const direct = options.find((opt) => normalizeLocation(opt.name) === normalizedTarget);
+  if (direct) return direct.id;
+
+  const partial = options.find((opt) => {
+    const normalizedOpt = normalizeLocation(opt.name);
+    return normalizedOpt && (normalizedOpt.startsWith(normalizedTarget) || normalizedTarget.startsWith(normalizedOpt));
+  });
+
+  return partial?.id ?? null;
+};
 
 async function rpcChildren(level: LocationLevel, parent: number | null) {
   try {
@@ -484,15 +504,15 @@ export default function ProfileEditForm() {
 
   useEffect(() => {
     if (regionId == null && regions.length && regionNameFallback) {
-      const match = regions.find((r) => normalizeName(r.name) === normalizeName(regionNameFallback));
-      if (match) setRegionId(match.id);
+      const match = resolveLocationId(regions, regionNameFallback);
+      if (match) setRegionId(match);
     }
   }, [regionId, regions, regionNameFallback]);
 
   useEffect(() => {
     if (provinceId == null && provinces.length && provinceNameFallback) {
-      const match = provinces.find((p) => normalizeName(p.name) === normalizeName(provinceNameFallback));
-      if (match) setProvinceId(match.id);
+      const match = resolveLocationId(provinces, provinceNameFallback);
+      if (match) setProvinceId(match);
     }
   }, [provinceId, provinces, provinceNameFallback]);
 
@@ -507,9 +527,7 @@ export default function ProfileEditForm() {
     const resolvedProvinceId =
       (savedProvinceId && provinces.some((p) => p.id === savedProvinceId))
         ? savedProvinceId
-        : savedProvinceName
-          ? provinces.find((p) => normalizeName(p.name) === normalizeName(savedProvinceName))?.id ?? null
-          : null;
+        : resolveLocationId(provinces, savedProvinceName);
 
     if (resolvedProvinceId && provinceId !== resolvedProvinceId) {
       setProvinceId(resolvedProvinceId);
@@ -526,9 +544,7 @@ export default function ProfileEditForm() {
     const resolvedMunicipalityId =
       (savedMunicipalityId && municipalities.some((m) => m.id === savedMunicipalityId))
         ? savedMunicipalityId
-        : savedCityName
-          ? municipalities.find((m) => normalizeName(m.name) === normalizeName(savedCityName))?.id ?? null
-          : null;
+        : resolveLocationId(municipalities, savedCityName);
 
     if (resolvedMunicipalityId && municipalityId !== resolvedMunicipalityId) {
       setMunicipalityId(resolvedMunicipalityId);
@@ -537,8 +553,8 @@ export default function ProfileEditForm() {
 
   useEffect(() => {
     if (municipalityId == null && municipalities.length && cityNameFallback) {
-      const match = municipalities.find((m) => normalizeName(m.name) === normalizeName(cityNameFallback));
-      if (match) setMunicipalityId(match.id);
+      const match = resolveLocationId(municipalities, cityNameFallback);
+      if (match) setMunicipalityId(match);
     }
   }, [municipalityId, municipalities, cityNameFallback]);
 
