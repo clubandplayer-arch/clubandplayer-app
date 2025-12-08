@@ -14,6 +14,7 @@ import { MaterialIcon } from '@/components/icons/MaterialIcon';
 const DEFAULT_LIMIT = 100;
 
 type MediaType = 'image' | 'video' | null;
+type MediaTab = 'video' | 'photo';
 
 type MediaPost = {
   id: string;
@@ -23,13 +24,6 @@ type MediaPost = {
   media_aspect?: '16:9' | '9:16' | null;
   content?: string | null;
   link_url?: string | null;
-};
-
-type MediaSectionConfig = {
-  id: string;
-  title: string;
-  items: MediaPost[];
-  onImageClick?: (index: number, item: MediaPost) => void;
 };
 
 function normalizeMediaType(raw?: string | null): MediaType {
@@ -168,6 +162,11 @@ export default function MyMediaPage() {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const searchParams = useSearchParams();
 
+  const activeTab: MediaTab = useMemo(() => {
+    const type = searchParams?.get('type');
+    return type === 'photo' ? 'photo' : 'video';
+  }, [searchParams]);
+
   const closeLightbox = useCallback(() => setLightboxIndex(null), []);
 
   const handlePhotoClick = useCallback((index: number) => setLightboxIndex(index), []);
@@ -194,22 +193,6 @@ export default function MyMediaPage() {
     alt: item.content ?? 'Media',
   }));
 
-  const selectedType: 'photo' | 'video' = useMemo(() => {
-    const raw = searchParams?.get('type');
-    return raw === 'video' ? 'video' : 'photo';
-  }, [searchParams]);
-
-  const sections: MediaSectionConfig[] = useMemo(
-    () => [
-      { id: 'my-videos', title: 'MyVideo', items: videos },
-      { id: 'my-photos', title: 'MyPhoto', items: photos, onImageClick: handlePhotoClick },
-    ],
-    [videos, photos, handlePhotoClick],
-  );
-
-  const orderedSections =
-    selectedType === 'photo' ? [sections[1], sections[0]] : sections;
-
   return (
     <div className="w-full flex justify-center">
       <div className="w-full max-w-5xl px-4 md:px-6 lg:px-8 py-8 space-y-8">
@@ -228,14 +211,20 @@ export default function MyMediaPage() {
           </Link>
         </div>
 
+        <div className="mt-4 mb-6 flex items-center gap-4 border-b border-border">
+          <TabLink label="Video" isActive={activeTab === 'video'} href="/mymedia?type=video#my-videos" />
+          <TabLink label="Foto" isActive={activeTab === 'photo'} href="/mymedia?type=photo#my-photos" />
+        </div>
+
         {loading && <div className="glass-panel p-4">Caricamento…</div>}
         {err && <div className="glass-panel p-4 text-red-600">{err}</div>}
 
         {!loading && !err && (
           <div className="space-y-8">
-            {orderedSections.map((section) => (
-              <MediaSection key={section.id} {...section} />
-            ))}
+            {activeTab === 'video' ? <MediaSection id="my-videos" title="MyVideo" items={videos} /> : null}
+            {activeTab === 'photo' ? (
+              <MediaSection id="my-photos" title="MyPhoto" items={photos} onImageClick={handlePhotoClick} />
+            ) : null}
           </div>
         )}
 
@@ -250,6 +239,21 @@ export default function MyMediaPage() {
         ) : null}
       </div>
     </div>
+  );
+}
+
+function TabLink({ label, isActive, href }: { label: string; isActive: boolean; href: string }) {
+  return (
+    <Link
+      href={href}
+      className={`border-b-2 pb-2 text-sm transition-colors ${
+        isActive
+          ? 'border-cp-brand font-medium text-cp-brand'
+          : 'border-transparent text-muted-foreground hover:text-foreground'
+      }`}
+    >
+      {label}
+    </Link>
   );
 }
 
