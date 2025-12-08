@@ -1,6 +1,6 @@
 import * as Sentry from '@sentry/nextjs';
 import type { NextRequest } from 'next/server';
-import { forbidden, internalError, ok } from '@/lib/api/responses';
+import { dbError, notAuthenticated, successResponse, unknownError } from '@/lib/api/standardResponses';
 import { withAuth } from '@/lib/api/auth';
 import { getActiveProfile } from '@/lib/api/profile';
 
@@ -17,7 +17,7 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
     const me = await getActiveProfile(supabase, user.id);
     if (!me) {
       console.warn('[direct-messages] GET /api/direct-messages/threads missing profile', { userId: user.id });
-      return forbidden('Profilo non trovato');
+      return notAuthenticated('Profilo non trovato');
     }
 
     console.log('[direct-messages] GET /api/direct-messages/threads', { userId: user.id, profileId: me.id });
@@ -148,11 +148,13 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
       threadCount: threads.length,
     });
 
-    return ok({ threads });
+    return successResponse({ threads });
   } catch (error: any) {
     console.error('[direct-messages] GET /api/direct-messages/threads unexpected error', { error, userId: user.id });
     Sentry.captureException(error);
-    const message = typeof error?.message === 'string' ? error.message : 'server_error';
-    return internalError(error, message);
+    if (typeof error?.message === 'string') {
+      return dbError(error.message);
+    }
+    return unknownError({ endpoint: 'direct-messages/threads', error });
   }
 });

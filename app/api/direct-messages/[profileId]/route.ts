@@ -1,6 +1,13 @@
 import * as Sentry from '@sentry/nextjs';
 import type { NextRequest } from 'next/server';
-import { badRequest, forbidden, internalError, notFound, ok } from '@/lib/api/responses';
+import {
+  dbError,
+  invalidPayload,
+  notAuthenticated,
+  notFoundResponse,
+  successResponse,
+  unknownError,
+} from '@/lib/api/standardResponses';
 import { withAuth } from '@/lib/api/auth';
 import { getActiveProfile, getProfileById } from '@/lib/api/profile';
 
@@ -16,13 +23,13 @@ function extractProfileId(routeContext?: { params?: Promise<Record<string, strin
 export const GET = withAuth(async (_req: NextRequest, { supabase, user }, routeContext) => {
   const targetProfileId = extractProfileId(routeContext);
   const otherId = typeof targetProfileId === 'string' ? targetProfileId.trim() : '';
-  if (!otherId) return badRequest('profileId mancante');
+  if (!otherId) return invalidPayload('profileId mancante');
 
   try {
     const me = await getActiveProfile(supabase, user.id);
     if (!me) {
       console.warn('[direct-messages] GET /api/direct-messages/:profileId missing profile', { userId: user.id, targetProfileId });
-      return forbidden('Profilo non trovato');
+      return notAuthenticated('Profilo non trovato');
     }
 
     console.log('[direct-messages] GET /api/direct-messages/:profileId', {
@@ -38,7 +45,7 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }, routeC
         profileId: me.id,
         targetProfileId: otherId,
       });
-      return notFound('Profilo target non trovato');
+      return notFoundResponse('Profilo target non trovato');
     }
 
     const { data: rows, error } = await supabase
@@ -51,7 +58,7 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }, routeC
 
     if (error) throw error;
 
-    return ok({
+    return successResponse({
       messages: rows || [],
       peer: {
         id: peer.id,
@@ -68,14 +75,17 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }, routeC
       userId: user.id,
     });
     Sentry.captureException(error);
-    return internalError(error);
+    if (typeof error?.message === 'string') {
+      return dbError(error.message);
+    }
+    return unknownError({ endpoint: 'direct-messages/profileId', error });
   }
 });
 
 export const POST = withAuth(async (req: NextRequest, { supabase, user }, routeContext) => {
   const targetProfileId = extractProfileId(routeContext);
   const otherId = typeof targetProfileId === 'string' ? targetProfileId.trim() : '';
-  if (!otherId) return badRequest('profileId mancante');
+  if (!otherId) return invalidPayload('profileId mancante');
 
   const body = (await req.json().catch(() => ({}))) as { content?: string };
   const content = (body?.content || '').trim();
@@ -85,14 +95,14 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }, routeC
       targetProfileId: otherId,
       reason: 'contenuto mancante',
     });
-    return badRequest('contenuto mancante');
+    return invalidPayload('contenuto mancante');
   }
 
   try {
     const me = await getActiveProfile(supabase, user.id);
     if (!me) {
       console.warn('[direct-messages] POST /api/direct-messages/:profileId missing profile', { userId: user.id });
-      return forbidden('Profilo non trovato');
+      return notAuthenticated('Profilo non trovato');
     }
 
     console.log('[direct-messages] POST /api/direct-messages/:profileId', {
@@ -109,7 +119,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }, routeC
         profileId: me.id,
         targetProfileId: otherId,
       });
-      return notFound('Profilo target non trovato');
+      return notFoundResponse('Profilo target non trovato');
     }
 
     const { data: inserted, error } = await supabase
@@ -124,7 +134,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }, routeC
 
     if (error) throw error;
 
-    return ok({ message: inserted });
+    return successResponse({ message: inserted });
   } catch (error: any) {
     console.error('[direct-messages] POST /api/direct-messages/:profileId unexpected error', {
       error,
@@ -132,6 +142,9 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }, routeC
       userId: user.id,
     });
     Sentry.captureException(error);
-    return internalError(error);
+    if (typeof error?.message === 'string') {
+      return dbError(error.message);
+    }
+    return unknownError({ endpoint: 'direct-messages/profileId', error });
   }
 });

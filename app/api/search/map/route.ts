@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server';
 
-import { badRequest, internalError, ok, tooManyRequests } from '@/lib/api/responses';
+import { dbError, rateLimited, successResponse, unknownError } from '@/lib/api/standardResponses';
 import { rateLimit } from '@/lib/api/rateLimit';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
@@ -85,7 +85,7 @@ export async function GET(req: NextRequest) {
   try {
     await rateLimit(req, { key: 'search:map', limit: 120, window: '1m' } as any);
   } catch {
-    return tooManyRequests('Too Many Requests');
+    return rateLimited('Too Many Requests');
   }
 
   const url = new URL(req.url);
@@ -207,7 +207,7 @@ export async function GET(req: NextRequest) {
     const firstQuery = await runQuery({ withBounds: true });
     const { data, error, count } = await firstQuery;
 
-    if (error) return badRequest(error.message);
+    if (error) return dbError(error.message);
 
     let rawRows = (Array.isArray(data) ? data : []) as Array<
       SearchMapRow | GenericStringError
@@ -288,8 +288,8 @@ export async function GET(req: NextRequest) {
         return true;
       });
 
-    return ok({ data: rows, total, fallback: usedFallback ? 'no_geocoded_results' : undefined });
+    return successResponse({ data: rows, total, fallback: usedFallback ? 'no_geocoded_results' : undefined });
   } catch (err: any) {
-    return internalError(err, 'Errore ricerca mappa');
+    return unknownError({ endpoint: 'search/map', error: err, message: 'Errore ricerca mappa' });
   }
 }

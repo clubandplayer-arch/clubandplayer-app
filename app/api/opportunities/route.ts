@@ -1,10 +1,11 @@
 // app/api/opportunities/route.ts
-import { NextResponse, type NextRequest } from 'next/server';
-import { withAuth, jsonError } from '@/lib/api/auth';
+import type { NextRequest } from 'next/server';
+import { withAuth } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { normalizeToEN, PLAYING_CATEGORY_EN } from '@/lib/enums';
 import { normalizeOpportunityGender, toOpportunityDbValue } from '@/lib/opps/gender';
+import { dbError, invalidPayload, notAuthorized, rateLimited, successResponse } from '@/lib/api/standardResponses';
 
 export const runtime = 'nodejs';
 
@@ -58,7 +59,7 @@ export async function GET(req: NextRequest) {
   try {
     await rateLimit(req, { key: 'opps:GET', limit: 60, window: '1m' } as any);
   } catch {
-    return jsonError('Too Many Requests', 429);
+    return rateLimited('Too Many Requests');
   }
 
   const supabase = await getSupabaseServerClient();
@@ -113,7 +114,7 @@ export async function GET(req: NextRequest) {
   }
 
   const { data, count, error } = await query;
-  if (error) return jsonError(error.message, 400);
+  if (error) return dbError(error.message);
 
   const rows = (data ?? []) as Array<Record<string, any>>;
   const ownerIds = Array.from(
@@ -148,7 +149,7 @@ export async function GET(req: NextRequest) {
     return { ...row, owner_id: ownerId, created_by: ownerId, club_id: row.club_id ?? ownerId ?? null, club_name: clubName, clubName };
   });
 
-  return NextResponse.json({
+  return successResponse({
     data: enriched,
     q,
     page,
@@ -164,7 +165,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   try {
     await rateLimit(req, { key: 'opps:POST', limit: 20, window: '1m' } as any);
   } catch {
-    return jsonError('Too Many Requests', 429);
+    return rateLimited('Too Many Requests');
   }
 
   // verifica club
@@ -182,7 +183,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     const acct = (await tryBy('id')) ?? (await tryBy('user_id'));
     isClub = String(acct ?? '').toLowerCase() === 'club';
   }
-  if (!isClub) return jsonError('forbidden_not_club', 403);
+  if (!isClub) return notAuthorized('forbidden_not_club');
 
   const { data: profileByUser } = await supabase
     .from('profiles')
@@ -198,7 +199,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   const body = await req.json().catch(() => ({}));
   const title = norm((body as any).title);
-  if (!title) return jsonError('Title is required', 400);
+  if (!title) return invalidPayload('Title is required');
 
   const description = norm((body as any).description);
   const country = norm((body as any).country);
@@ -213,7 +214,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   const club_name = norm((body as any).club_name);
   const { age_min, age_max } = bracketToRange((body as any).age_bracket);
   const genderDb = resolveGender((body as any).gender);
-  if (!genderDb) return jsonError('invalid_gender', 400);
+  if (!genderDb) return invalidPayload('invalid_gender');
 
   // required_category → EN (solo Calcio)
   let required_category: string | null = null;
@@ -227,10 +228,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
 
     const en = candidate ? normalizeToEN(candidate) : null;
     if (!en) {
-      return NextResponse.json(
-        { error: 'invalid_required_category', allowed_en: PLAYING_CATEGORY_EN },
-        { status: 400 },
-      );
+      return invalidPayload('invalid_required_category', { allowed_en: PLAYING_CATEGORY_EN });
     }
     required_category = en;
   }
@@ -272,6 +270,6 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     ({ data, error } = await runInsert(fallback));
   }
 
-  if (error) return jsonError(error.message, 400);
-  return NextResponse.json({ data }, { status: 201 });
+  if (error) return dbError(error.message);
+  return successResponse({ data }, { status: 201 });
 });

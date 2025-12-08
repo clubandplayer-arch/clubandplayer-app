@@ -1,5 +1,5 @@
 import { withAuth } from '@/lib/api/auth';
-import { badRequest, internalError, ok } from '@/lib/api/responses';
+import { dbError, invalidPayload, successResponse, unknownError } from '@/lib/api/standardResponses';
 import { getRecommendedOpportunitiesForProfile } from '@/lib/opps/recommendations';
 
 export const runtime = 'nodejs';
@@ -16,15 +16,18 @@ export const GET = withAuth(async (req, { supabase, user }) => {
       .maybeSingle();
 
     const profileId = profile?.id ?? user.id;
-    if (!profileId) return badRequest('Profilo non trovato');
+    if (!profileId) return invalidPayload('Profilo non trovato');
 
     const recommendations = await getRecommendedOpportunitiesForProfile(profileId, {
       limit: rawLimit,
       supabase,
     });
 
-    return ok({ data: recommendations });
+    return successResponse({ data: recommendations });
   } catch (error) {
-    return internalError(error, 'Errore nel calcolo delle opportunità suggerite');
+    if (error instanceof Error) {
+      return dbError(error.message);
+    }
+    return unknownError({ endpoint: 'opportunities/recommended', error });
   }
 });
