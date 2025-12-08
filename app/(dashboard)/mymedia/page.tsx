@@ -9,6 +9,7 @@ import { useSearchParams } from 'next/navigation';
 import { useExclusiveVideoPlayback } from '@/hooks/useExclusiveVideoPlayback';
 import { shareOrCopyLink } from '@/lib/share';
 import ShareIcon from '@/components/icons/ShareIcon';
+import { MaterialIcon } from '@/components/icons/MaterialIcon';
 
 const DEFAULT_LIMIT = 100;
 
@@ -210,33 +211,45 @@ export default function MyMediaPage() {
     selectedType === 'photo' ? [sections[1], sections[0]] : sections;
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6 space-y-4">
-      <div className="flex justify-end">
-        <Link href="/feed" className="text-sm font-semibold text-blue-700">
-          Torna al feed →
-        </Link>
-      </div>
-
-      {loading && <div className="glass-panel p-4">Caricamento…</div>}
-      {err && <div className="glass-panel p-4 text-red-600">{err}</div>}
-
-      {!loading && !err && (
-        <div className="space-y-4">
-          {orderedSections.map((section) => (
-            <MediaSection key={section.id} {...section} />
-          ))}
+    <div className="w-full flex justify-center">
+      <div className="w-full max-w-5xl px-4 md:px-6 lg:px-8 py-8 space-y-8">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="space-y-2">
+            <h1 className="text-2xl font-semibold">La tua libreria media</h1>
+            <p className="text-sm text-muted-foreground">
+              Rivedi e condividi i tuoi video e le tue foto pubblicati nel feed.
+            </p>
+          </div>
+          <Link
+            href="/feed"
+            className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold text-blue-700 transition hover:bg-blue-50"
+          >
+            <MaterialIcon name="home" className="text-base" />
+            Torna al feed
+          </Link>
         </div>
-      )}
 
-      {lightboxIndex !== null && photoItems[lightboxIndex] ? (
-        <Lightbox
-          items={photoItems}
-          index={lightboxIndex}
-          onClose={closeLightbox}
-          onPrev={showPrev}
-          onNext={showNext}
-        />
-      ) : null}
+        {loading && <div className="glass-panel p-4">Caricamento…</div>}
+        {err && <div className="glass-panel p-4 text-red-600">{err}</div>}
+
+        {!loading && !err && (
+          <div className="space-y-8">
+            {orderedSections.map((section) => (
+              <MediaSection key={section.id} {...section} />
+            ))}
+          </div>
+        )}
+
+        {lightboxIndex !== null && photoItems[lightboxIndex] ? (
+          <Lightbox
+            items={photoItems}
+            index={lightboxIndex}
+            onClose={closeLightbox}
+            onPrev={showPrev}
+            onNext={showNext}
+          />
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -252,72 +265,88 @@ function MediaSection({
   items: MediaPost[];
   onImageClick?: (index: number, item: MediaPost) => void;
 }) {
+  const isVideoSection = title === 'MyVideo';
+  const iconName = isVideoSection ? 'video' : 'photo';
+
   return (
-    <section id={id} className="glass-panel p-4 space-y-3">
+    <section id={id} className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">{title}</h2>
-        <span className="text-xs text-gray-500">{items.length} elementi</span>
-      </div>
-      {items.length === 0 ? (
-        <div className="text-sm text-gray-600">Nessun contenuto ancora.</div>
-      ) : (
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-          {items.map((item, index) => (
-            <article
-              id={`media-${item.id}`}
-              key={item.id}
-              className="relative overflow-hidden rounded-xl bg-white/60 shadow-inner"
-            >
-              <div className="absolute right-2 top-2 z-10 flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() =>
-                    shareOrCopyLink({
-                      title: title,
-                      text: item.content ?? undefined,
-                      url: buildMediaShareUrl(item),
-                    })
-                  }
-                  className="inline-flex items-center justify-center rounded-full bg-white/90 p-2 text-neutral-800 shadow hover:bg-white"
-                  aria-label={`Condividi ${item.media_type === 'video' ? 'questo video' : 'questa foto'}`}
-                >
-                  <ShareIcon className="h-4 w-4" />
-                </button>
-              </div>
-
-              {item.media_type === 'video' ? (
-                <VideoPlayer url={item.media_url} aspect={item.media_aspect} id={item.id} />
-              ) : (
-                <button
-                  type="button"
-                  className="group relative block h-48 w-full overflow-hidden rounded-t-xl focus:outline-none focus:ring-2 focus:ring-blue-600 md:h-56"
-                  onClick={() => onImageClick?.(index, item)}
-                >
-                  <img
-                    src={item.media_url ?? ''}
-                    alt="Anteprima"
-                    className="h-full w-full object-cover transition duration-150 group-hover:scale-[1.02]"
-                  />
-                </button>
-              )}
-
-              {item.content ? (
-                <p className="px-3 pb-3 pt-2 text-sm text-gray-700 whitespace-pre-wrap">{item.content}</p>
-              ) : null}
-              {item.link_url ? (
-                <a
-                  href={item.link_url}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="block px-3 pb-3 text-sm font-semibold text-blue-700"
-                >
-                  Apri link esterno →
-                </a>
-              ) : null}
-            </article>
-          ))}
+        <div className="flex items-center gap-2">
+          <MaterialIcon name={iconName} className="text-lg" />
+          <h2 className="text-xl font-semibold">{title}</h2>
+          <span className="text-sm text-muted-foreground">{items.length} elementi</span>
         </div>
-      )}
+        <Link
+          href={`/mymedia?type=${isVideoSection ? 'video' : 'photo'}#${id}`}
+          className="text-xs font-semibold text-blue-700 underline-offset-2 hover:underline"
+        >
+          Condividi sezione
+        </Link>
+      </div>
+      <div className="glass-panel p-4 rounded-xl shadow-sm">
+        {items.length === 0 ? (
+          <div className="text-sm text-gray-600">Nessun contenuto ancora.</div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {items.map((item, index) => (
+              <article
+                id={`media-${item.id}`}
+                key={item.id}
+                className="group relative overflow-hidden rounded-xl border bg-background shadow-sm transition-transform transition-shadow hover:scale-[1.01] hover:shadow-md"
+              >
+                <div className="absolute right-2 top-2 z-10 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      shareOrCopyLink({
+                        title: title,
+                        text: item.content ?? undefined,
+                        url: buildMediaShareUrl(item),
+                      })
+                    }
+                    className="inline-flex items-center justify-center rounded-full bg-white/90 p-2 text-neutral-800 shadow hover:bg-white"
+                    aria-label={`Condividi ${item.media_type === 'video' ? 'questo video' : 'questa foto'}`}
+                  >
+                    <ShareIcon className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {item.media_type === 'video' ? (
+                  <VideoPlayer url={item.media_url} aspect={item.media_aspect} id={item.id} title={item.content ?? undefined} />
+                ) : (
+                  <button
+                    type="button"
+                    className="group relative block w-full overflow-hidden focus:outline-none focus:ring-2 focus:ring-blue-600"
+                    onClick={() => onImageClick?.(index, item)}
+                  >
+                    <div className="aspect-square w-full bg-black/5">
+                      <img
+                        src={item.media_url ?? ''}
+                        alt="Anteprima"
+                        className="h-full w-full object-cover transition duration-150 group-hover:scale-[1.02]"
+                      />
+                    </div>
+                  </button>
+                )}
+
+                {item.content ? (
+                  <p className="px-3 pb-3 pt-2 text-sm text-gray-700 whitespace-pre-wrap">{item.content}</p>
+                ) : null}
+                {item.link_url ? (
+                  <a
+                    href={item.link_url}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="block px-3 pb-3 text-sm font-semibold text-blue-700"
+                  >
+                    Apri link esterno →
+                  </a>
+                ) : null}
+              </article>
+            ))}
+          </div>
+        )}
+      </div>
     </section>
   );
 }
@@ -326,16 +355,18 @@ function VideoPlayer({
   url,
   aspect,
   id,
+  title,
 }: {
   url?: string | null;
   aspect?: '16:9' | '9:16' | null;
   id: string;
+  title?: string;
 }) {
   const aspectClass = aspect === '9:16' ? 'aspect-[9/16]' : 'aspect-video';
   const { videoRef, handleEnded, handlePause, handlePlay } = useExclusiveVideoPlayback(id);
 
   return (
-    <div className={`${aspectClass} relative w-full overflow-hidden rounded-t-xl bg-black`}>
+    <div className={`${aspectClass} relative w-full overflow-hidden bg-black`}>
       <video
         ref={videoRef}
         src={url ?? undefined}
@@ -345,7 +376,13 @@ function VideoPlayer({
         onPlay={handlePlay}
         onPause={handlePause}
         onEnded={handleEnded}
+        title={title}
       />
+      {title ? (
+        <div className="absolute inset-x-0 bottom-0 flex items-center justify-between px-2 pb-1 pt-4 text-xs text-white bg-gradient-to-t from-black/60 to-transparent">
+          <span className="truncate pr-2">{title}</span>
+        </div>
+      ) : null}
     </div>
   );
 }
