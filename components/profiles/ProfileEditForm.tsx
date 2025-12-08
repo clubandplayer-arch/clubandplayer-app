@@ -31,6 +31,8 @@ type Profile = {
   avatar_url: string | null;
   bio: string | null;
   country: string | null; // ISO2 o testo
+  region?: string | null;
+  province?: string | null;
   skills: ProfileSkill[];
 
   // atleta
@@ -91,6 +93,7 @@ function pickData<T = any>(raw: any): T {
 }
 const sortByName = (arr: LocationRow[]) =>
   [...arr].sort((a, b) => a.name.localeCompare(b.name, 'it', { sensitivity: 'accent' }));
+const normalizeName = (value?: string | null) => (value || '').trim().toLowerCase();
 
 async function rpcChildren(level: LocationLevel, parent: number | null) {
   try {
@@ -248,6 +251,9 @@ export default function ProfileEditForm() {
   const [regions, setRegions] = useState<LocationRow[]>([]);
   const [provinces, setProvinces] = useState<LocationRow[]>([]);
   const [municipalities, setMunicipalities] = useState<LocationRow[]>([]);
+  const [regionNameFallback, setRegionNameFallback] = useState<string | null>(null);
+  const [provinceNameFallback, setProvinceNameFallback] = useState<string | null>(null);
+  const [cityNameFallback, setCityNameFallback] = useState<string | null>(null);
 
   // Atleta + notifiche
   const [foot, setFoot] = useState('');
@@ -405,6 +411,10 @@ export default function ProfileEditForm() {
     setProvinceId(p.interest_province_id);
     setMunicipalityId(p.interest_municipality_id);
 
+    setRegionNameFallback(p.interest_region || p.region || null);
+    setProvinceNameFallback(p.interest_province || p.province || null);
+    setCityNameFallback(p.interest_city || p.city || null);
+
     setFoot(p.foot || '');
     setHeightCm(p.height_cm ?? '');
     setWeightKg(p.weight_kg ?? '');
@@ -471,6 +481,27 @@ export default function ProfileEditForm() {
       setMunicipalityId((prev) => (ms.some((m) => m.id === prev) ? prev : null));
     })();
   }, [provinceId]);
+
+  useEffect(() => {
+    if (regionId == null && regions.length && regionNameFallback) {
+      const match = regions.find((r) => normalizeName(r.name) === normalizeName(regionNameFallback));
+      if (match) setRegionId(match.id);
+    }
+  }, [regionId, regions, regionNameFallback]);
+
+  useEffect(() => {
+    if (provinceId == null && provinces.length && provinceNameFallback) {
+      const match = provinces.find((p) => normalizeName(p.name) === normalizeName(provinceNameFallback));
+      if (match) setProvinceId(match.id);
+    }
+  }, [provinceId, provinces, provinceNameFallback]);
+
+  useEffect(() => {
+    if (municipalityId == null && municipalities.length && cityNameFallback) {
+      const match = municipalities.find((m) => normalizeName(m.name) === normalizeName(cityNameFallback));
+      if (match) setMunicipalityId(match.id);
+    }
+  }, [municipalityId, municipalities, cityNameFallback]);
 
   useEffect(() => {
     if (isClub && country !== 'IT') {
@@ -1032,63 +1063,64 @@ export default function ProfileEditForm() {
           )}
         </section>
 
-        {/* Competenze */}
-        <section className="rounded-2xl border p-4 md:p-5">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h2 className="mb-1 text-lg font-semibold">Competenze</h2>
-              <p className="text-sm text-gray-600">
-                Aggiungi fino a {MAX_SKILLS} competenze: verranno mostrate sul profilo pubblico con il contatore di
-                endorsement.
-              </p>
+        {!isClub && (
+          <section className="rounded-2xl border p-4 md:p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="mb-1 text-lg font-semibold">Competenze</h2>
+                <p className="text-sm text-gray-600">
+                  Aggiungi fino a {MAX_SKILLS} competenze: verranno mostrate sul profilo pubblico con il contatore di
+                  endorsement.
+                </p>
+              </div>
+              <span className="text-xs text-gray-500 whitespace-nowrap">{skills.length}/{MAX_SKILLS}</span>
             </div>
-            <span className="text-xs text-gray-500 whitespace-nowrap">{skills.length}/{MAX_SKILLS}</span>
-          </div>
 
-          <div className="mt-3 flex flex-col gap-2 md:flex-row md:items-center">
-            <input
-              className="flex-1 rounded-lg border p-2"
-              value={skillInput}
-              maxLength={MAX_SKILL_LENGTH}
-              onChange={(e) => { setSkillInput(e.target.value); setSkillsError(null); }}
-              placeholder="Es. Dribbling, Leadership, Scouting"
-            />
-            <button
-              type="button"
-              onClick={onAddSkill}
-              disabled={skills.length >= MAX_SKILLS || !skillInput.trim()}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-60"
-            >
-              Aggiungi
-            </button>
-          </div>
-          {skillsError && <p className="mt-1 text-xs text-red-600">{skillsError}</p>}
+            <div className="mt-3 flex flex-col gap-2 md:flex-row md:items-center">
+              <input
+                className="flex-1 rounded-lg border p-2"
+                value={skillInput}
+                maxLength={MAX_SKILL_LENGTH}
+                onChange={(e) => { setSkillInput(e.target.value); setSkillsError(null); }}
+                placeholder="Es. Dribbling, Leadership, Scouting"
+              />
+              <button
+                type="button"
+                onClick={onAddSkill}
+                disabled={skills.length >= MAX_SKILLS || !skillInput.trim()}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-60"
+              >
+                Aggiungi
+              </button>
+            </div>
+            {skillsError && <p className="mt-1 text-xs text-red-600">{skillsError}</p>}
 
-          <div className="mt-3 flex flex-wrap gap-2">
-            {skills.length === 0 ? (
-              <p className="text-sm text-gray-500">Nessuna competenza inserita.</p>
-            ) : (
-              skills.map((skill) => (
-                <span
-                  key={skill.name}
-                  className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm bg-slate-50"
-                >
-                  <span>{skill.name}</span>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-800">
-                    {skill.endorsementsCount}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => onRemoveSkill(skill.name)}
-                    className="text-xs text-red-600 hover:underline"
+            <div className="mt-3 flex flex-wrap gap-2">
+              {skills.length === 0 ? (
+                <p className="text-sm text-gray-500">Nessuna competenza inserita.</p>
+              ) : (
+                skills.map((skill) => (
+                  <span
+                    key={skill.name}
+                    className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm bg-slate-50"
                   >
-                    ✕
-                  </button>
-                </span>
-              ))
-            )}
-          </div>
-        </section>
+                    <span>{skill.name}</span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-800">
+                      {skill.endorsementsCount}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => onRemoveSkill(skill.name)}
+                      className="text-xs text-red-600 hover:underline"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                ))
+              )}
+            </div>
+          </section>
+        )}
 
         {/* Zona di interesse (atleta) */}
         {!isClub && (

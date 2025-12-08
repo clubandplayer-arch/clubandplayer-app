@@ -27,6 +27,8 @@ type Profile = {
   city: string | null
   avatar_url?: string | null
   skills?: ProfileSkill[] | null
+  account_type?: string | null
+  type?: string | null
 }
 
 type ApplicationRow = {
@@ -68,6 +70,11 @@ export default function PublicAthleteProfile() {
   const [msg, setMsg] = useState<string>('')
   const [meId, setMeId] = useState<string | null>(null)
   const [endorsingSkill, setEndorsingSkill] = useState<string | null>(null)
+
+  const isClubProfile = useMemo(() => {
+    const kind = (profile?.account_type || profile?.type || '').toString().toLowerCase()
+    return kind === 'club'
+  }, [profile])
 
   const isOwner = useMemo(() => {
     if (!profile || !meId) return false
@@ -128,7 +135,7 @@ export default function PublicAthleteProfile() {
       const { data: profs, error: perr } = await supabase
         .from('profiles')
         .select(
-          'id, user_id, display_name, full_name, headline, bio, sport, role, country, region, province, city, avatar_url, skills'
+          'id, user_id, display_name, full_name, headline, bio, sport, role, country, region, province, city, avatar_url, skills, account_type, type'
         )
         .eq('id', athleteId)
         .limit(1)
@@ -253,66 +260,67 @@ export default function PublicAthleteProfile() {
             </ul>
           </section>
 
-        {skills.length > 0 ? (
-          <section style={{border:'1px solid #e5e7eb', borderRadius:12, padding:16, marginTop:12}}>
-            <h2 style={{marginTop:0}}>Competenze</h2>
-            <div style={{display:'flex', flexDirection:'column', gap:8, marginTop:8}}>
-              {skills.map((skill) => (
-                <div
-                  key={skill.name}
-                  style={{
-                    display:'flex',
-                    alignItems:'center',
-                    justifyContent:'space-between',
-                    gap:12,
-                    border:'1px solid #e5e7eb',
-                    borderRadius:12,
-                    padding:'8px 10px',
-                    background:'#f8fafc',
-                  }}
-                >
-                  <div style={{display:'flex', alignItems:'center', gap:8}}>
-                    <span style={{fontWeight:600}}>{skill.name}</span>
-                    <span style={{
-                      display:'inline-flex',
+        {!isClubProfile && (
+          skills.length > 0 ? (
+            <section style={{border:'1px solid #e5e7eb', borderRadius:12, padding:16, marginTop:12}}>
+              <h2 style={{marginTop:0}}>Competenze</h2>
+              <div style={{display:'flex', flexDirection:'column', gap:8, marginTop:8}}>
+                {skills.map((skill) => (
+                  <div
+                    key={skill.name}
+                    style={{
+                      display:'flex',
                       alignItems:'center',
-                      gap:4,
-                      padding:'2px 8px',
-                      borderRadius:9999,
-                      background:'#e0f2fe',
-                      color:'#0369a1',
-                      fontSize:12,
-                      fontWeight:600,
-                    }}>
-                      {skill.endorsementsCount}
-                    </span>
-                  </div>
-                  {!isOwner && (
-                    <button
-                      type="button"
-                      onClick={() => toggleEndorse(skill)}
-                      disabled={endorsingSkill === skill.name || !meId}
-                      style={{
-                        border:'1px solid',
-                        borderColor: skill.endorsedByMe ? '#0ea5e9' : '#cbd5e1',
-                        background: skill.endorsedByMe ? '#0ea5e9' : '#fff',
-                        color: skill.endorsedByMe ? '#fff' : '#0f172a',
+                      justifyContent:'space-between',
+                      gap:12,
+                      border:'1px solid #e5e7eb',
+                      borderRadius:12,
+                      padding:'8px 10px',
+                      background:'#f8fafc',
+                    }}
+                  >
+                    <div style={{display:'flex', alignItems:'center', gap:8}}>
+                      <span style={{fontWeight:600}}>{skill.name}</span>
+                      <span style={{
+                        display:'inline-flex',
+                        alignItems:'center',
+                        gap:4,
+                        padding:'2px 8px',
                         borderRadius:9999,
-                        padding:'6px 12px',
-                        fontSize:13,
-                        cursor: endorsingSkill === skill.name || !meId ? 'not-allowed' : 'pointer',
-                        opacity: endorsingSkill === skill.name || (!meId && !skill.endorsedByMe) ? 0.7 : 1,
-                      }}
-                    >
-                      {skill.endorsedByMe ? 'Rimuovi endorsement' : (meId ? 'Endorsa' : 'Accedi per endorsare')}
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : (
-          isOwner && (
+                        background:'#e0f2fe',
+                        color:'#0369a1',
+                        fontSize:12,
+                        fontWeight:600,
+                      }}>
+                        {skill.endorsementsCount}
+                      </span>
+                    </div>
+                    {!isOwner && (
+                      <button
+                        type="button"
+                        onClick={() => toggleEndorse(skill)}
+                        disabled={endorsingSkill === skill.name || !meId}
+                        style={{
+                          border:'1px solid',
+                          borderColor: skill.endorsedByMe ? '#0ea5e9' : '#cbd5e1',
+                          background: skill.endorsedByMe ? '#0ea5e9' : '#fff',
+                          color: skill.endorsedByMe ? '#fff' : '#0f172a',
+                          borderRadius:9999,
+                          padding:'6px 12px',
+                          fontSize:13,
+                          cursor: endorsingSkill === skill.name || !meId ? 'not-allowed' : 'pointer',
+                          opacity: endorsingSkill === skill.name || (!meId && !skill.endorsedByMe) ? 0.7 : 1,
+                        }}
+                      >
+                        {skill.endorsedByMe ? 'Rimuovi endorsement' : (meId ? 'Endorsa' : 'Accedi per endorsare')}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : (
+            isOwner && (
               <section style={{border:'1px solid #e5e7eb', borderRadius:12, padding:16, marginTop:12}}>
                 <h2 style={{marginTop:0}}>Competenze</h2>
                 <p style={{marginTop:8, fontSize:14, color:'#475569'}}>
@@ -320,7 +328,8 @@ export default function PublicAthleteProfile() {
                 </p>
               </section>
             )
-          )}
+          )
+        )}
 
           <section style={{border:'1px solid #e5e7eb', borderRadius:12, padding:16, marginTop:12}}>
             <h2 style={{marginTop:0}}>Ultime candidature</h2>
