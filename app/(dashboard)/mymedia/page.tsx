@@ -291,7 +291,7 @@ function MediaSection({
               <article
                 id={`media-${item.id}`}
                 key={item.id}
-                className="group relative overflow-hidden rounded-xl border border-cp-brand-soft bg-background shadow-sm transition-transform transition-shadow hover:scale-[1.01] hover:shadow-md"
+                className="group relative flex h-full flex-col overflow-hidden rounded-xl border border-cp-brand-soft bg-background shadow-sm transition-transform transition-shadow hover:scale-[1.01] hover:shadow-md"
               >
                 <div className="absolute right-2 top-2 z-10 flex items-center gap-2">
                   <button
@@ -310,37 +310,48 @@ function MediaSection({
                   </button>
                 </div>
 
-                {item.media_type === 'video' ? (
-                  <VideoPlayer url={item.media_url} aspect={item.media_aspect} id={item.id} title={item.content ?? undefined} />
-                ) : (
-                  <button
-                    type="button"
-                    className="group relative block w-full overflow-hidden focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
-                    onClick={() => onImageClick?.(index, item)}
-                  >
-                    <div className="aspect-square w-full bg-black/5">
-                      <img
-                        src={item.media_url ?? ''}
-                        alt="Anteprima"
-                        className="h-full w-full object-cover transition duration-150 group-hover:scale-[1.02]"
+                <div className="flex h-full flex-col">
+                  <div className="overflow-hidden rounded-b-none">
+                    {item.media_type === 'video' ? (
+                      <VideoPlayer
+                        url={item.media_url}
+                        aspect={item.media_aspect}
+                        id={item.id}
+                        title={item.content ?? undefined}
                       />
-                    </div>
-                  </button>
-                )}
+                    ) : (
+                      <button
+                        type="button"
+                        className="group relative block w-full overflow-hidden focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
+                        onClick={() => onImageClick?.(index, item)}
+                      >
+                        <div className="relative w-full aspect-[4/5] bg-black/5">
+                          <img
+                            src={item.media_url ?? ''}
+                            alt="Anteprima"
+                            className="absolute inset-0 h-full w-full object-contain transition duration-150 group-hover:scale-[1.02]"
+                          />
+                        </div>
+                      </button>
+                    )}
+                  </div>
 
-                {item.content ? (
-                  <p className="px-3 pb-3 pt-2 text-sm text-gray-700 whitespace-pre-wrap">{item.content}</p>
-                ) : null}
-                  {item.link_url ? (
-                    <a
-                      href={item.link_url}
-                      target="_blank"
-                      rel="noreferrer noopener"
-                      className="block px-3 pb-3 text-sm font-semibold text-cp-brand"
-                    >
-                      Apri link esterno →
-                    </a>
-                  ) : null}
+                  <div className="min-h-[2.5rem] px-3 pb-3 pt-2">
+                    <p className="text-sm font-medium text-foreground whitespace-pre-wrap line-clamp-2">
+                      {item.content || ''}
+                    </p>
+                    {item.link_url ? (
+                      <a
+                        href={item.link_url}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        className="mt-1 block text-sm font-semibold text-cp-brand"
+                      >
+                        Apri link esterno →
+                      </a>
+                    ) : null}
+                  </div>
+                </div>
               </article>
             ))}
           </div>
