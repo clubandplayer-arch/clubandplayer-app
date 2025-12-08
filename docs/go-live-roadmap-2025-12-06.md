@@ -29,11 +29,9 @@ Questi job derivano da `linkedin-gap-analysis-2025-12-06.md`. Sono ordinati per 
 - Usa le relazioni `follows` già esistenti; non richiede nuove tabelle.
 - Utile quando il feed diventerà più popolato.
 
-### [x] PROFILE-01 – Competenze / endorsement *(priorità: media)*
+### [x] PROFILE-01 – Competenze / endorsement *(completato)*
 
-- Obiettivo: aggiungere una sezione “Competenze” ai profili (player e club) con piccole pillole e endorsement (es. “Velocità”, “Leadership”, “Settore giovanile”).
-- Aumenta il valore informativo dei profili in ottica scouting.
-- Stato: completato con tabella `profile_skill_endorsements`, API endorse/remove, conteggi in lettura e UI con pulsante e contatori.
+> Skills su `profiles`, tabella `profile_skill_endorsements`, endpoint `/api/profiles/[id]/skills/endorse` e UI profilo con contatori reali (`ProfileSkill = { name, endorsementsCount, endorsedByMe }`).
 
 ### [x] JOBS-01 – Filtri avanzati opportunità + suggerimenti *(completato, ex priorità: media)*
 
@@ -49,15 +47,9 @@ Questi job derivano da `linkedin-gap-analysis-2025-12-06.md`. Sono ordinati per 
 
 Questi job derivano da `repo-health-audit-2025-12-06.md` (sezione TECH-XX).
 
-### [x] TECH-02 – Validazione schema API feed/follow *(priorità: alta, ma compatibile con Go Live)*
+### [x] TECH-02 – Validazione schema API feed/follow *(completato)*
 
-- Rischio: molte API usano validazione manuale dei payload.
-- Obiettivo:
-  - introdurre uno schema coerente (es. Zod) per:
-    - `/api/feed/*` (creazione post, reazioni),
-    - `/api/follows/toggle` e altre rotte follow,
-  - uniformare forme di errore (`code`, `message`) e log (Sentry).
-- Beneficio: meno bug e input “sporchi” in produzione, errori più chiari.
+> Zod per payload/query di feed/follow con gestione errori RLS/DB già in produzione.
 
 ### [x] TECH-03 – Hook/service feed unificati *(priorità: media)*
 
@@ -68,26 +60,13 @@ Questi job derivano da `repo-health-audit-2025-12-06.md` (sezione TECH-XX).
     - esponga un’unica API al componente UI.
 - Beneficio: codice più leggibile e facile da estendere.
 
-### [~] TECH-04 – Paginazione / virtualizzazione feed *(priorità: media-bassa ma strategica)*
+### [~] TECH-04 – Paginazione / virtualizzazione feed *(parziale)*
 
-- Rischio: feed con molti post renderizzati tutti insieme → pesantezza su device lenti.
-- Obiettivo:
-  - introdurre una paginazione (“Carica altri”) o infinite scroll con limite (10–20 post per pagina),
-  - valutare in futuro virtualizzazione per liste molto lunghe.
-- Beneficio: migliore performance e UX su mobile.
-> Mancano ancora: eventuale virtualizzazione/lazy rendering per liste molto lunghe.
+> Paginazione + infinite scroll completati; virtualizzazione avanzata del feed rimandata al post-GoLive.
 
-### [ ] TECH-05 – Error handling coerente sulle API principali *(priorità: media)*
+### [~] TECH-05 – Error handling coerente sulle API principali *(parziale)*
 
-- Rischio: formati di errore non uniformi tra API (feed, follow, messaging, opportunità).
-- Obiettivo:
-  - definire un formato standard (es. `{ ok: boolean, code, message }`),
-  - applicarlo almeno a:
-    - feed,
-    - follow,
-    - search,
-    - messaging,
-  - loggare sempre gli errori 500 in Sentry.
+> Fase 1: `standardResponses` usato per messaggistica, notifiche, opportunità (public/POST/mine/filter/recommended) e search-map; feed/follow da allineare in una fase 2 post-GoLive.
 
 ---
 
