@@ -9,6 +9,8 @@ import { useSearchParams } from 'next/navigation';
 import { useExclusiveVideoPlayback } from '@/hooks/useExclusiveVideoPlayback';
 import { shareOrCopyLink } from '@/lib/share';
 import { ShareButton } from '@/components/media/ShareButton';
+import { ShareSectionButton } from '@/components/media/ShareSectionButton';
+import { MediaEmptyState } from '@/components/media/MediaEmptyState';
 import { MaterialIcon } from '@/components/icons/MaterialIcon';
 
 const DEFAULT_LIMIT = 100;
@@ -221,9 +223,11 @@ export default function MyMediaPage() {
 
         {!loading && !err && (
           <div className="space-y-8">
-            {activeTab === 'video' ? <MediaSection id="my-videos" title="MyVideo" items={videos} /> : null}
+            {activeTab === 'video' ? (
+              <MediaSection id="my-videos" title="MyVideo" items={videos} tab="video" />
+            ) : null}
             {activeTab === 'photo' ? (
-              <MediaSection id="my-photos" title="MyPhoto" items={photos} onImageClick={handlePhotoClick} />
+              <MediaSection id="my-photos" title="MyPhoto" items={photos} tab="photo" onImageClick={handlePhotoClick} />
             ) : null}
           </div>
         )}
@@ -261,14 +265,16 @@ function MediaSection({
   id,
   title,
   items,
+  tab,
   onImageClick,
 }: {
   id: string;
   title: string;
   items: MediaPost[];
+  tab: MediaTab;
   onImageClick?: (index: number, item: MediaPost) => void;
 }) {
-  const isVideoSection = title === 'MyVideo';
+  const isVideoSection = tab === 'video';
   const iconName = isVideoSection ? 'video' : 'photo';
 
   return (
@@ -279,16 +285,11 @@ function MediaSection({
           <h2 className="text-xl font-semibold">{title}</h2>
           <span className="text-sm text-cp-brand-soft">{items.length} elementi</span>
         </div>
-        <Link
-          href={`/mymedia?type=${isVideoSection ? 'video' : 'photo'}#${id}`}
-          className="text-xs font-semibold text-cp-brand underline-offset-2 hover:underline"
-        >
-          Condividi sezione
-        </Link>
+        <ShareSectionButton activeTab={tab} />
       </div>
       <div className="glass-panel p-4 rounded-xl shadow-sm">
         {items.length === 0 ? (
-          <div className="text-sm text-gray-600">Nessun contenuto ancora.</div>
+          <MediaEmptyState kind={tab} />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {items.map((item, index) => (
