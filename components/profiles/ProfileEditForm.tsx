@@ -554,41 +554,6 @@ export default function ProfileEditForm() {
     }
   }, [provinceId, provinces, provinceNameFallback]);
 
-  // Pre-popola provincia e città per i profili club quando i dati sono già salvati
-  useEffect(() => {
-    if (!profile || profile.account_type !== 'club') return;
-    if (normalizeCountryCode(country) !== 'IT') return;
-    if (!provinces.length) return;
-
-    const savedProvinceId = profile.interest_province_id;
-    const savedProvinceName = profile.interest_province || profile.province || provinceNameFallback;
-    const resolvedProvinceId =
-      (savedProvinceId && provinces.some((p) => p.id === savedProvinceId))
-        ? savedProvinceId
-        : resolveLocationId(provinces, savedProvinceName);
-
-    if (resolvedProvinceId && provinceId !== resolvedProvinceId) {
-      setProvinceId(resolvedProvinceId);
-    }
-  }, [profile, country, provinces, provinceId, provinceNameFallback]);
-
-  useEffect(() => {
-    if (!profile || profile.account_type !== 'club') return;
-    if (normalizeCountryCode(country) !== 'IT') return;
-    if (!municipalities.length) return;
-
-    const savedMunicipalityId = profile.interest_municipality_id;
-    const savedCityName = profile.interest_city || profile.city || cityNameFallback;
-    const resolvedMunicipalityId =
-      (savedMunicipalityId && municipalities.some((m) => m.id === savedMunicipalityId))
-        ? savedMunicipalityId
-        : resolveLocationId(municipalities, savedCityName);
-
-    if (resolvedMunicipalityId && municipalityId !== resolvedMunicipalityId) {
-      setMunicipalityId(resolvedMunicipalityId);
-    }
-  }, [profile, country, municipalities, municipalityId, cityNameFallback]);
-
   // Allinea i select provincia/città del club ai valori salvati (stesso pattern di country/region)
   useEffect(() => {
     if (!profile || profile.account_type !== 'club') return;
@@ -609,24 +574,89 @@ export default function ProfileEditForm() {
       }
     }
 
-    if (regionId == null && regions.length) {
-      const resolvedRegionId = findMatchingLocationId(regions, profile.region ?? regionNameFallback);
-      if (resolvedRegionId) {
-        setRegionId(resolvedRegionId);
-        return;
-      }
+    const resolvedRegionId =
+      regionId ?? findMatchingLocationId(regions, profile.region ?? regionNameFallback);
+    if (resolvedRegionId && regionId !== resolvedRegionId) {
+      setRegionId(resolvedRegionId);
+      return; // attendo che le province vengano caricate con la regione corretta
     }
 
     if (!provinces.length || regionId == null) return;
 
-    const resolvedProvinceId = findMatchingLocationId(provinces, profile.province ?? provinceNameFallback);
+    const resolvedProvinceId = findMatchingLocationId(
+      provinces,
+      profile.province ?? provinceNameFallback,
+    );
+
     if (resolvedProvinceId && provinceId !== resolvedProvinceId) {
       setProvinceId(resolvedProvinceId);
+      return; // attendo che le città vengano caricate
     }
 
     if (!municipalities.length || provinceId == null) return;
 
-    const resolvedCityId = findMatchingLocationId(municipalities, profile.city ?? cityNameFallback);
+    const resolvedCityId = findMatchingLocationId(
+      municipalities,
+      profile.city ?? cityNameFallback,
+    );
+
+    if (resolvedCityId && municipalityId !== resolvedCityId) {
+      setMunicipalityId(resolvedCityId);
+    }
+  }, [
+    profile,
+    country,
+    regionId,
+    regions,
+    provinces,
+    municipalities,
+    provinceId,
+    municipalityId,
+    regionNameFallback,
+    provinceNameFallback,
+    cityNameFallback,
+  ]);
+
+  // Allinea i select della zona di interesse (player) ai valori salvati
+  useEffect(() => {
+    if (!profile || profile.account_type === 'club') return;
+    if (normalizeCountryCode(country) !== 'IT') return;
+
+    if (process.env.NODE_ENV !== 'production') {
+      console.debug('[PlayerInterest] profile location', {
+        interest_region: profile.interest_region,
+        interest_province: profile.interest_province,
+        interest_city: profile.interest_city,
+        interest_region_id: profile.interest_region_id,
+        interest_province_id: profile.interest_province_id,
+        interest_municipality_id: profile.interest_municipality_id,
+      });
+    }
+
+    const resolvedRegionId =
+      regionId ?? findMatchingLocationId(regions, profile.interest_region_id ?? profile.interest_region ?? regionNameFallback);
+    if (resolvedRegionId && regionId !== resolvedRegionId) {
+      setRegionId(resolvedRegionId);
+      return;
+    }
+
+    if (!provinces.length || regionId == null) return;
+
+    const resolvedProvinceId = findMatchingLocationId(
+      provinces,
+      profile.interest_province_id ?? profile.interest_province ?? provinceNameFallback,
+    );
+    if (resolvedProvinceId && provinceId !== resolvedProvinceId) {
+      setProvinceId(resolvedProvinceId);
+      return;
+    }
+
+    if (!municipalities.length || provinceId == null) return;
+
+    const resolvedCityId = findMatchingLocationId(
+      municipalities,
+      profile.interest_municipality_id ?? profile.interest_city ?? cityNameFallback,
+    );
     if (resolvedCityId && municipalityId !== resolvedCityId) {
       setMunicipalityId(resolvedCityId);
     }
