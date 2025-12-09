@@ -1,5 +1,5 @@
 import { type NextRequest } from 'next/server';
-import { notAuthenticated, notAuthorized, successResponse, unknownError } from '@/lib/api/feedFollowResponses';
+import { notAuthenticated, notAuthorized, successResponse, unknownError } from '@/lib/api/feedFollowStandardWrapper';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';

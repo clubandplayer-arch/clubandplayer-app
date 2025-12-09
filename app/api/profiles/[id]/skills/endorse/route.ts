@@ -5,7 +5,7 @@ import {
   successResponse,
   unknownError,
   validationError,
-} from '@/lib/api/feedFollowResponses';
+} from '@/lib/api/feedFollowStandardWrapper';
 import { normalizeProfileSkills, normalizeSkillName } from '@/lib/profiles/skills';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 

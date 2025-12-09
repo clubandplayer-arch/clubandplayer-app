@@ -6,7 +6,7 @@ import {
   successResponse,
   unknownError,
   validationError,
-} from '@/lib/api/feedFollowResponses';
+} from '@/lib/api/feedFollowStandardWrapper';
 import { getActiveProfile, getProfileById } from '@/lib/api/profile';
 import { ToggleFollowSchema, type ToggleFollowInput } from '@/lib/validation/follow';
 

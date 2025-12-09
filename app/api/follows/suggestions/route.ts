@@ -1,6 +1,6 @@
 // app/api/follows/suggestions/route.ts
 import { type NextRequest } from 'next/server';
-import { successResponse, unknownError, validationError } from '@/lib/api/feedFollowResponses';
+import { successResponse, unknownError, validationError } from '@/lib/api/feedFollowStandardWrapper';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { FollowSuggestionsQuerySchema, type FollowSuggestionsQueryInput } from '@/lib/validation/follow';
 

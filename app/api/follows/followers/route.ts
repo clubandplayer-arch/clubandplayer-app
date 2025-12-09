@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { withAuth } from '@/lib/api/auth';
-import { notAuthorized, successResponse, unknownError } from '@/lib/api/feedFollowResponses';
+import { notAuthorized, successResponse, unknownError } from '@/lib/api/feedFollowStandardWrapper';
 import { getActiveProfile } from '@/lib/api/profile';
 
 export const runtime = 'nodejs';

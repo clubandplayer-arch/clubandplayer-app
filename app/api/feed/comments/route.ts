@@ -6,7 +6,7 @@ import {
   successResponse,
   unknownError,
   validationError,
-} from '@/lib/api/feedFollowResponses';
+} from '@/lib/api/feedFollowStandardWrapper';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import {
   CommentsQuerySchema,
