@@ -104,6 +104,7 @@ Questa roadmap è pensata come guida post-Go Live: il progetto è considerabile 
 - [x] UX-MEDIA-01 – Rifiniture MyMedia (header, tab Video/Foto, card media, empty state, microcopy share) – SOLO UI, nessun cambiamento a feed/API.
 - [x] UX-PROFILE-UI-01 – Badge Club/Player e rifinitura Competenze (view+edit) – SOLO UI.
 - [x] UX-ONBOARDING-01 – Alleggerimento e chiarificazione del box onboarding in /feed (SOLO UI, logica dismiss invariata).
+- [x] UX-FEED-POST-01 – Rifiniture visuali card post in /feed (solo UI, nessun cambiamento a API/feed/useFeed).
 
 ### Fase 2 – feed & follow (post-Go Live)
 - Vedi `docs/tech-phase2-feed-and-follow-2026-01-15.md` per:
