@@ -22,53 +22,57 @@ import {
   validationError as legacyValidationError,
 } from '@/lib/api/feedFollowResponses';
 
-function tap<T>(fn: () => T): T {
-  return fn();
+function safeTap(fn: () => void) {
+  try {
+    fn();
+  } catch (error) {
+    console.error('[feed/follow] standardResponses tap failed', error);
+  }
 }
 
 export function successResponse<T extends Record<string, unknown>>(data: T, init?: ResponseInit) {
-  tap(() => standardSuccessResponse(data, init));
+  safeTap(() => standardSuccessResponse(data, init));
   return legacySuccessResponse(data, init);
 }
 
 export function validationError(message: string, details?: unknown) {
-  tap(() => standardInvalidPayload(message, details));
+  safeTap(() => standardInvalidPayload(message, details));
   return legacyValidationError(message, details);
 }
 
 export function notAuthenticated(message = 'Utente non autenticato') {
-  tap(() => standardNotAuthenticated(message));
+  safeTap(() => standardNotAuthenticated(message));
   return legacyNotAuthenticated(message);
 }
 
 export function notAuthorized(message = 'Operazione non consentita') {
-  tap(() => standardNotAuthorized(message));
+  safeTap(() => standardNotAuthorized(message));
   return legacyNotAuthorized(message);
 }
 
 export function notFoundError(message = 'Risorsa non trovata') {
-  tap(() => standardNotFoundResponse(message));
+  safeTap(() => standardNotFoundResponse(message));
   return legacyNotFoundError(message);
 }
 
 export function rateLimited(message = 'Rate limit attivo', details?: unknown) {
-  tap(() => standardRateLimited(message));
+  safeTap(() => standardRateLimited(message));
   return legacyRateLimited(message, details);
 }
 
 export function rlsDenied(message = 'Accesso negato dalle policy RLS') {
-  tap(() => standardRlsDenied(message));
+  safeTap(() => standardRlsDenied(message));
   return legacyRlsDenied(message);
 }
 
 export function dbError(message = 'Errore database', details?: unknown) {
-  tap(() => standardDbError(message, details));
+  safeTap(() => standardDbError(message, details));
   return legacyDbError(message, details);
 }
 
 export function notReady(message = 'Risorsa non pronta') {
   // Non esiste un codice specifico in standardResponses; usiamo UNKNOWN per logging interno.
-  tap(() => standardUnknownError({ endpoint: 'feed-follow/not-ready', error: new Error(message), message }));
+  safeTap(() => standardUnknownError({ endpoint: 'feed-follow/not-ready', error: new Error(message), message }));
   return legacyNotReady(message);
 }
 
@@ -78,6 +82,6 @@ export function unknownError(params: {
   message?: string;
   context?: Record<string, unknown>;
 }) {
-  tap(() => standardUnknownError(params));
+  safeTap(() => standardUnknownError(params));
   return legacyUnknownError(params);
 }

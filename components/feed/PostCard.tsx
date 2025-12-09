@@ -234,6 +234,12 @@ export function PostCard({
               </button>
             </>
           ) : null}
+
+          <ShareButton
+            onClick={handleShare}
+            ariaLabel={isEvent ? 'Condividi questo evento' : 'Condividi questo post'}
+            className="rounded-full p-2 text-sky-600 transition hover:bg-sky-50 hover:text-sky-700"
+          />
         </div>
       </div>
       {editing ? (
@@ -280,18 +286,9 @@ export function PostCard({
         </div>
       ) : (
         <div className="mt-3 space-y-4 text-base leading-relaxed text-gray-900">
-          <div className="flex items-start justify-between gap-3">
-            {description ? (
-              <p className="flex-1 whitespace-pre-wrap text-[15px] leading-relaxed text-slate-900 line-clamp-6">{description}</p>
-            ) : (
-              <span className="flex-1" />
-            )}
-            <ShareButton
-              onClick={handleShare}
-              ariaLabel={isEvent ? 'Condividi questo evento' : 'Condividi questo post'}
-              className="shrink-0 text-sky-600 hover:text-sky-700"
-            />
-          </div>
+          {description ? (
+            <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-slate-900 line-clamp-6">{description}</p>
+          ) : null}
 
           {post.quoted_post_id ? (
             <QuotedPostCard
