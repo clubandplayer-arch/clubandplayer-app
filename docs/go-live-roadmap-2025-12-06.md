@@ -62,11 +62,26 @@ Questi job derivano da `repo-health-audit-2025-12-06.md` (sezione TECH-XX).
 
 ### [~] TECH-04 – Paginazione / virtualizzazione feed *(parziale)*
 
-> Paginazione + infinite scroll completati; virtualizzazione avanzata del feed rimandata al post-GoLive.
+> **Stato attuale**
+> - L’endpoint `/api/feed/posts` espone un parametro `limit` (default 10, hard cap 50) ma non implementa ancora pagina/cursor: la risposta torna sempre con `nextPage: null` e non usa un offset/cursor server-side.
+> - L’hook `useFeed()` implementa l’infinite scroll lato client usando page/limit e un sentinel, ma calcola `nextPage` in locale e può finire per ricaricare più volte la stessa prima pagina.
+> - La pagina `/feed` rende tutti i post in una lista `.map` senza virtualizzazione: all’aumentare dei post il DOM cresce linearmente.
+>
+> **Post-Go Live (fase 2)**
+> - Introdurre una vera paginazione backend (cursor o offset) per `/api/feed/posts` con un campo `nextCursor` esplicito, da usare in `useFeed()` al posto del fallback attuale.
+> - Valutare e implementare una lista virtualizzata (es. `react-virtuoso` o simile) da attivare oltre una certa soglia di post (es. 100+), per mantenere il feed reattivo anche con molti elementi.
+> - Rivedere i limiti e la sanitizzazione dei parametri di pagina per evitare richieste troppo “pesanti”.
 
 ### [~] TECH-05 – Error handling coerente sulle API principali *(parziale)*
 
-> Fase 1: `standardResponses` usato per messaggistica, notifiche, opportunità (public/POST/mine/filter/recommended) e search-map; feed/follow da allineare in una fase 2 post-GoLive.
+> **Stato attuale**
+> - Le API di messaggistica (`/api/direct-messages/*`), notifiche (`/api/notifications/*`), opportunità (`/api/opportunities/*`) e search-map (`/api/search/map`) utilizzano già l’helper condiviso `standardResponses`, con shape uniforme `{ ok, data|error, message }` e codici HTTP coerenti (4xx/5xx) per errori di payload, auth e DB.
+> - Le API di feed (`/api/feed/posts`, reazioni, commenti) e follow (`/api/follows*`) usano invece un helper dedicato (`feedFollowResponses`) con shape e naming diversi; alcune risposte non espongono errori dettagliati o eventuali metadati (es. cursor).
+>
+> **Post-Go Live (fase 2)**
+> - Progettare una migrazione graduale di feed e follow verso `standardResponses`, mantenendo la compatibilità con il frontend esistente (es. introducendo un sottoschema `data.feed` / `data.follow` invece di cambiare brutalmente le shape).
+> - Allineare codici HTTP e messaggi di errore alle convenzioni già adottate in messaging/notifications/opportunities/search-map.
+> - Aggiungere, dove mancano, informazioni strutturate sugli errori (es. tipo `invalidPayload`, `notAuthenticated`, `forbidden`) per semplificare la gestione lato client.
 
 ---
 
@@ -74,12 +89,12 @@ Questi job derivano da `repo-health-audit-2025-12-06.md` (sezione TECH-XX).
 
 1. **Hardening tecnico**
    - TECH-02 (validazione schema API feed/follow) – completato
-   - TECH-05 (error handling coerente)
+   - TECH-05 (allineare feed/follow a `standardResponses`)
 2. **Valore visibile al’utente**
    - FEED-01 (reshare/quote post) **oppure** JOBS-01 (filtri opportunità), in base alla direzione di prodotto.
 3. **Scalabilità e manutenzione**
    - TECH-03 (hook/service feed),
-   - TECH-04 (paginazione/virtualizzazione feed),
+   - TECH-04 (cursor + virtualizzazione feed),
    - FEED-02, PROFILE-01 quando il traffico e le esigenze dei club lo suggeriranno.
 
 Questa roadmap è pensata come guida post-Go Live: il progetto è considerabile al 100% “pronto” per lanciare, ma ha una coda chiara di miglioramenti da pianificare negli sprint successivi.
