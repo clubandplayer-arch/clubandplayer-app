@@ -212,7 +212,7 @@ export function PostCard({
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-1 text-neutral-500">
+        <div className="flex items-center gap-1 text-slate-700">
           {isOwner ? (
             <>
               <button
@@ -227,7 +227,7 @@ export function PostCard({
               <button
                 type="button"
                 onClick={deletePost}
-                className="rounded-full p-2 text-red-500 transition hover:bg-red-50 hover:text-red-600"
+                className="rounded-full p-2 transition hover:bg-neutral-100 hover:text-neutral-900"
                 aria-label="Elimina questo post"
                 disabled={saving}
               >
@@ -240,7 +240,7 @@ export function PostCard({
             type="button"
             onClick={handleShare}
             aria-label={isEvent ? 'Condividi questo evento' : 'Condividi questo post'}
-            className="rounded-full p-2 text-sky-600 transition hover:bg-sky-50 hover:text-sky-700"
+            className="rounded-full p-2 transition hover:bg-neutral-100 hover:text-neutral-900"
           >
             <PostIconShare className={actionIconClass} aria-hidden />
           </button>
