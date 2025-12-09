@@ -7,7 +7,7 @@ import {
   successResponse,
   unknownError,
   validationError,
-} from '@/lib/api/feedFollowResponses';
+} from '@/lib/api/feedFollowStandardWrapper';
 import { reportApiError } from '@/lib/monitoring/reportApiError';
 import { PatchPostSchema } from '@/lib/validation/feed';
 

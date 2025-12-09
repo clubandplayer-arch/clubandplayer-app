@@ -7,7 +7,7 @@ import {
   successResponse,
   unknownError,
   validationError,
-} from '@/lib/api/feedFollowResponses';
+} from '@/lib/api/feedFollowStandardWrapper';
 import { getActiveProfile } from '@/lib/api/profile';
 import { FollowStateQuerySchema, type FollowStateQueryInput } from '@/lib/validation/follow';
 

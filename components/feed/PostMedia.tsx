@@ -48,9 +48,9 @@ export function PostMedia({ postId, mediaUrl, mediaType, aspect, alt }: Props) {
     .join(' ');
 
   return (
-    <div className="mt-3 flex w-full justify-center px-1">
-      <div className="mx-auto flex w-full max-w-2xl justify-center overflow-hidden rounded-2xl bg-neutral-100 shadow-inner">
-        <div className={containerClasses}>
+    <div className="mt-4 flex w-full justify-center px-1 md:px-2">
+      <div className="mx-auto flex w-full max-w-2xl justify-center overflow-hidden rounded-xl bg-neutral-50 shadow-sm ring-1 ring-slate-100">
+        <div className={`${containerClasses} overflow-hidden rounded-xl`}>
           {mediaType === 'video' ? (
             <video
               ref={videoRef}

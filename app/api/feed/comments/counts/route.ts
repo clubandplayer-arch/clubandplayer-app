@@ -1,5 +1,5 @@
 import { type NextRequest } from 'next/server';
-import { dbError, successResponse, validationError } from '@/lib/api/feedFollowResponses';
+import { dbError, successResponse, validationError } from '@/lib/api/feedFollowStandardWrapper';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { CommentCountsQuerySchema, type CommentCountsQueryInput } from '@/lib/validation/feed';
 

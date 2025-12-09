@@ -1,13 +1,13 @@
 'use client';
 
+import Image from 'next/image';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CommentsSection } from '@/components/feed/CommentsSection';
-import { PostIconDelete, PostIconEdit } from '@/components/icons/PostActionIcons';
+import { PostIconDelete, PostIconEdit, PostIconShare } from '@/components/icons/PostActionIcons';
 import { PostMedia } from '@/components/feed/PostMedia';
 import { QuotedPostCard } from '@/components/feed/QuotedPostCard';
 import { getPostPermalink, shareOrCopyLink } from '@/lib/share';
-import { ShareButton } from '@/components/media/ShareButton';
 import {
   REACTION_EMOJI,
   REACTION_ORDER,
@@ -35,7 +35,7 @@ function FeedLinkCard({
       href={url}
       target="_blank"
       rel="noreferrer noopener"
-      className="block overflow-hidden rounded-xl bg-white/60 shadow-lg transition hover:shadow-xl"
+      className="block overflow-hidden rounded-xl border border-slate-100 bg-slate-50 shadow-sm transition hover:shadow-md"
     >
       <div className="flex gap-3 p-3">
         {image ? (
@@ -85,6 +85,13 @@ export function PostCard({
   const eventDetails = post.event_payload;
   const baseDescription = post.content ?? post.text ?? '';
   const description = isEvent ? baseDescription || eventDetails?.description || '' : baseDescription;
+  const authorLabel =
+    (post as any).author_display_name ??
+    (post as any).author_full_name ??
+    (post as any).author_name ??
+    (post as any).author ??
+    null;
+  const avatarUrl = (post as any).author_avatar_url ?? null;
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(description);
   const [saving, setSaving] = useState(false);
@@ -119,6 +126,8 @@ export function PostCard({
   );
   const totalReactions = REACTION_ORDER.reduce((acc, key) => acc + (reaction.counts[key] || 0), 0);
   const reactionSummaryText = reactionSummaryParts.length ? reactionSummaryParts.join(' · ') : 'Nessuna reazione';
+
+  const actionIconClass = 'text-[18px] leading-none align-middle';
 
   const handleQuote = useCallback(() => {
     if (onQuote) {
@@ -174,18 +183,36 @@ export function PostCard({
   }
 
   return (
-    <article className="glass-panel relative p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex flex-col gap-1 text-xs text-gray-500">
-          <div>{post.createdAt ? new Date(post.createdAt).toLocaleString() : '—'}</div>
-          {isEvent && eventDateLabel ? (
-            <div className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase text-blue-800">
-              <CalendarGlyph className="h-3.5 w-3.5" aria-hidden />
-              <span>{eventDateLabel}</span>
+    <article className="relative mb-4 overflow-hidden rounded-xl border border-slate-100 bg-white p-4 shadow-sm transition-shadow hover:shadow-md md:p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-sm font-semibold text-slate-600">
+            {avatarUrl ? (
+              <Image
+                src={avatarUrl}
+                alt={authorLabel || 'Avatar'}
+                width={44}
+                height={44}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <span aria-hidden>{authorLabel ? authorLabel.charAt(0) : '✦'}</span>
+            )}
+          </div>
+          <div className="space-y-0.5">
+            <div className="text-sm font-semibold text-slate-900">{authorLabel || 'Post'}</div>
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              <span>{post.createdAt ? new Date(post.createdAt).toLocaleString() : '—'}</span>
+              {isEvent && eventDateLabel ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold uppercase text-blue-800">
+                  <CalendarGlyph className="h-3.5 w-3.5" aria-hidden />
+                  <span>{eventDateLabel}</span>
+                </span>
+              ) : null}
             </div>
-          ) : null}
+          </div>
         </div>
-        <div className="flex items-center gap-1 text-neutral-500">
+        <div className="flex items-center gap-1 text-slate-700">
           {isOwner ? (
             <>
               <button
@@ -195,19 +222,28 @@ export function PostCard({
                 aria-label="Modifica questo post"
                 disabled={saving}
               >
-                <PostIconEdit className="h-4 w-4" aria-hidden />
+                <PostIconEdit className={actionIconClass} aria-hidden />
               </button>
               <button
                 type="button"
                 onClick={deletePost}
-                className="rounded-full p-2 text-red-500 transition hover:bg-red-50 hover:text-red-600"
+                className="rounded-full p-2 transition hover:bg-neutral-100 hover:text-neutral-900"
                 aria-label="Elimina questo post"
                 disabled={saving}
               >
-                <PostIconDelete className="h-4 w-4" aria-hidden />
+                <PostIconDelete className={actionIconClass} aria-hidden />
               </button>
             </>
           ) : null}
+
+          <button
+            type="button"
+            onClick={handleShare}
+            aria-label={isEvent ? 'Condividi questo evento' : 'Condividi questo post'}
+            className="rounded-full p-2 transition hover:bg-neutral-100 hover:text-neutral-900"
+          >
+            <PostIconShare className={actionIconClass} aria-hidden />
+          </button>
         </div>
       </div>
       {editing ? (
@@ -253,15 +289,10 @@ export function PostCard({
           ) : null}
         </div>
       ) : (
-        <div className="mt-2 space-y-3 text-sm text-gray-900">
-          <div className="flex items-start justify-between gap-2">
-            {description ? <p className="flex-1 whitespace-pre-wrap">{description}</p> : <span className="flex-1" />}
-            <ShareButton
-              onClick={handleShare}
-              ariaLabel={isEvent ? 'Condividi questo evento' : 'Condividi questo post'}
-              className="shrink-0"
-            />
-          </div>
+        <div className="mt-3 space-y-4 text-base leading-relaxed text-gray-900">
+          {description ? (
+            <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-slate-900 line-clamp-6">{description}</p>
+          ) : null}
 
           {post.quoted_post_id ? (
             <QuotedPostCard
@@ -290,7 +321,7 @@ export function PostCard({
         </div>
       )}
 
-      <div className="mt-3 flex items-center justify-between text-xs text-neutral-600">
+      <div className="mt-4 flex items-center justify-between text-xs text-neutral-600">
         <div>
           {reaction.mine ? (
             <span className="font-semibold text-[var(--brand)]">
@@ -303,7 +334,7 @@ export function PostCard({
       </div>
 
       <div
-        className="mt-2 flex flex-wrap items-center gap-2 border-t border-neutral-200 pt-2 text-sm font-semibold text-neutral-700"
+        className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 text-sm font-semibold text-neutral-700"
         onMouseLeave={onClosePicker}
       >
         <div className="relative inline-flex items-center gap-2">
@@ -311,10 +342,10 @@ export function PostCard({
             type="button"
             onClick={() => onToggleReaction('like')}
             onMouseEnter={onOpenPicker}
-            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 transition ${
+            className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 transition ${
               reaction.mine
-                ? 'border-[var(--brand)] bg-[var(--brand)]/10 text-[var(--brand)]'
-                : 'border-neutral-200 bg-white text-neutral-800 hover:border-neutral-300'
+                ? 'bg-[var(--brand)]/10 text-[var(--brand)] shadow-inner'
+                : 'bg-slate-50 text-neutral-800 hover:bg-slate-100'
             }`}
             aria-pressed={reaction.mine === 'like'}
           >
@@ -324,7 +355,7 @@ export function PostCard({
 
           <button
             type="button"
-            className="rounded-full border border-neutral-200 bg-white px-2 py-1 text-[11px] text-neutral-600 hover:border-neutral-300"
+            className="rounded-full bg-slate-50 px-2 py-1 text-[11px] text-neutral-600 shadow-inner transition hover:bg-slate-100"
             onClick={() => (pickerOpen ? onClosePicker() : onOpenPicker())}
             aria-label="Scegli reazione"
           >
@@ -332,7 +363,7 @@ export function PostCard({
           </button>
 
           {pickerOpen && (
-            <div className="absolute left-0 top-full z-10 mt-1 flex gap-2 rounded-full border border-neutral-200 bg-white px-2 py-1 shadow-lg">
+            <div className="absolute left-0 top-full z-10 mt-1 flex gap-2 rounded-full border border-slate-100 bg-white px-2 py-1 shadow-lg">
               {REACTION_ORDER.map((r) => (
                 <button
                   key={r}
@@ -355,7 +386,7 @@ export function PostCard({
 
         <button
           type="button"
-          className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-neutral-800 transition hover:border-neutral-300"
+          className="inline-flex items-center gap-2 rounded-full bg-slate-50 px-3 py-1.5 text-neutral-800 transition hover:bg-slate-100"
           onClick={() => setCommentSignal((v) => v + 1)}
         >
           <span aria-hidden>💬</span>
@@ -364,7 +395,7 @@ export function PostCard({
 
         <button
           type="button"
-          className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-neutral-800 transition hover:border-neutral-300"
+          className="inline-flex items-center gap-2 rounded-full bg-slate-50 px-3 py-1.5 text-neutral-800 transition hover:bg-slate-100"
           onClick={handleQuote}
         >
           <span aria-hidden>🔗</span>
