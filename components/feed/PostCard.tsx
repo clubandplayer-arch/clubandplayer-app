@@ -4,11 +4,10 @@ import Image from 'next/image';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CommentsSection } from '@/components/feed/CommentsSection';
-import { PostIconDelete, PostIconEdit } from '@/components/icons/PostActionIcons';
+import { PostIconDelete, PostIconEdit, PostIconShare } from '@/components/icons/PostActionIcons';
 import { PostMedia } from '@/components/feed/PostMedia';
 import { QuotedPostCard } from '@/components/feed/QuotedPostCard';
 import { getPostPermalink, shareOrCopyLink } from '@/lib/share';
-import { ShareButton } from '@/components/media/ShareButton';
 import {
   REACTION_EMOJI,
   REACTION_ORDER,
@@ -235,11 +234,14 @@ export function PostCard({
             </>
           ) : null}
 
-          <ShareButton
+          <button
+            type="button"
             onClick={handleShare}
-            ariaLabel={isEvent ? 'Condividi questo evento' : 'Condividi questo post'}
+            aria-label={isEvent ? 'Condividi questo evento' : 'Condividi questo post'}
             className="rounded-full p-2 text-sky-600 transition hover:bg-sky-50 hover:text-sky-700"
-          />
+          >
+            <PostIconShare className="h-4 w-4" aria-hidden />
+          </button>
         </div>
       </div>
       {editing ? (
