@@ -2,11 +2,10 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { Lightbox, type LightboxItem } from '@/components/media/Lightbox';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useExclusiveVideoPlayback } from '@/hooks/useExclusiveVideoPlayback';
 import { shareOrCopyLink } from '@/lib/share';
 import { ShareButton } from '@/components/media/ShareButton';
 import { ShareSectionButton } from '@/components/media/ShareSectionButton';
@@ -168,6 +167,8 @@ export default function MyMediaPage() {
   }, [items.length, photos.length, videos.length, loading]);
 
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [activeVideo, setActiveVideo] = useState<MediaPost | null>(null);
+  const [returnFocusEl, setReturnFocusEl] = useState<HTMLElement | null>(null);
   const searchParams = useSearchParams();
 
   const activeTab: MediaTab = useMemo(() => {
@@ -177,7 +178,20 @@ export default function MyMediaPage() {
 
   const closeLightbox = useCallback(() => setLightboxIndex(null), []);
 
+  const closeVideoViewer = useCallback(() => {
+    setActiveVideo(null);
+    if (returnFocusEl) {
+      returnFocusEl.focus({ preventScroll: true });
+      setReturnFocusEl(null);
+    }
+  }, [returnFocusEl]);
+
   const handlePhotoClick = useCallback((index: number) => setLightboxIndex(index), []);
+
+  const handleVideoClick = useCallback((item: MediaPost, trigger?: HTMLElement) => {
+    setReturnFocusEl(trigger ?? null);
+    setActiveVideo(item);
+  }, []);
 
   const showPrev = useCallback(() => {
     setLightboxIndex((idx) => {
@@ -231,7 +245,7 @@ export default function MyMediaPage() {
         {!loading && !err && (
           <div className="space-y-8">
             {activeTab === 'video' ? (
-              <MediaSection id="my-videos" title="MyVideo" items={videos} tab="video" />
+              <MediaSection id="my-videos" title="MyVideo" items={videos} tab="video" onVideoClick={handleVideoClick} />
             ) : null}
             {activeTab === 'photo' ? (
               <MediaSection id="my-photos" title="MyPhoto" items={photos} tab="photo" onImageClick={handlePhotoClick} />
@@ -248,6 +262,8 @@ export default function MyMediaPage() {
             onNext={showNext}
           />
         ) : null}
+
+        {activeVideo ? <FullscreenVideoViewer item={activeVideo} onClose={closeVideoViewer} /> : null}
       </div>
     </div>
   );
@@ -274,12 +290,14 @@ function MediaSection({
   items,
   tab,
   onImageClick,
+  onVideoClick,
 }: {
   id: string;
   title: string;
   items: MediaPost[];
   tab: MediaTab;
   onImageClick?: (index: number, item: MediaPost) => void;
+  onVideoClick?: (item: MediaPost, trigger?: HTMLElement) => void;
 }) {
   const isVideoSection = tab === 'video';
   const iconName = isVideoSection ? 'video' : 'photo';
@@ -313,12 +331,14 @@ function MediaSection({
                 >
                   <div className="relative overflow-hidden bg-muted">
                     {isVideo ? (
-                      <VideoPlayer
-                        url={item.media_url}
-                        aspect={item.media_aspect}
-                        id={item.id}
-                        title={item.content ?? undefined}
-                      />
+                      <button
+                        type="button"
+                        className="group relative block w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-cp-brand/70 focus-visible:ring-offset-2"
+                        onClick={(e) => onVideoClick?.(item, e.currentTarget)}
+                        aria-label="Riproduci video"
+                      >
+                        <VideoPlayer url={item.media_url} aspect={item.media_aspect} title={item.content ?? undefined} />
+                      </button>
                     ) : (
                       <button
                         type="button"
@@ -393,34 +413,91 @@ function MediaSection({
 function VideoPlayer({
   url,
   aspect,
-  id,
   title,
 }: {
   url?: string | null;
   aspect?: '16:9' | '9:16' | null;
-  id: string;
   title?: string;
 }) {
   const aspectClass = aspect === '9:16' ? 'aspect-[9/16]' : 'aspect-video';
-  const { videoRef, handleEnded, handlePause, handlePlay } = useExclusiveVideoPlayback(id);
 
   return (
     <div className={`${aspectClass} relative w-full overflow-hidden bg-black`}>
       <video
-        ref={videoRef}
         src={url ?? undefined}
-        controls
+        muted
         playsInline
         className="absolute inset-0 h-full w-full object-cover"
-        onPlay={handlePlay}
-        onPause={handlePause}
-        onEnded={handleEnded}
         title={title}
       />
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/25 to-transparent opacity-0 transition duration-200 group-hover:opacity-100" />
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-between px-3 pb-2 pt-6 text-xs text-white">
-        <div className="flex flex-col gap-1">
-          {title ? <span className="max-w-[240px] truncate font-semibold leading-tight">{title}</span> : null}
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/25 to-transparent opacity-0 transition duration-200 group-hover:opacity-90" />
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+        <div className="rounded-full bg-black/50 p-3 text-white shadow-lg transition duration-200 group-hover:bg-black/70">
+          <MaterialIcon name="video" className="text-3xl" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FullscreenVideoViewer({ item, onClose }: { item: MediaPost; onClose: () => void }) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const aspectClass = item.media_aspect === '9:16' ? 'aspect-[9/16]' : 'aspect-video';
+
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (video) {
+      video.play().catch(() => null);
+    }
+    closeButtonRef.current?.focus({ preventScroll: true });
+    return () => {
+      if (video) {
+        video.pause();
+      }
+    };
+  }, []);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+      role="dialog"
+      aria-label={item.content ?? 'Riproduzione video'}
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-5xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          ref={closeButtonRef}
+          type="button"
+          onClick={onClose}
+          className="absolute -top-10 right-0 flex items-center gap-2 rounded-full bg-white/90 px-3 py-2 text-sm font-medium text-foreground shadow-md transition hover:bg-white"
+        >
+          <MaterialIcon name="close" className="text-lg" />
+          Chiudi
+        </button>
+        <div className={`relative ${aspectClass} w-full overflow-hidden rounded-2xl bg-black shadow-2xl`}>
+          <video
+            ref={videoRef}
+            src={item.media_url ?? undefined}
+            autoPlay
+            controls
+            playsInline
+            className="absolute inset-0 h-full w-full object-contain"
+          />
         </div>
       </div>
     </div>
