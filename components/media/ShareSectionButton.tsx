@@ -44,9 +44,13 @@ export function ShareSectionButton({ activeTab }: ShareSectionButtonProps) {
     <button
       type="button"
       onClick={handleClick}
-      className="text-xs font-semibold text-cp-brand underline-offset-2 transition hover:underline"
+      className="inline-flex items-center gap-2 rounded-full border border-cp-brand/50 px-3 py-1.5 text-xs font-semibold text-cp-brand transition hover:-translate-y-[1px] hover:bg-cp-brand hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cp-brand/70 focus-visible:ring-offset-2"
     >
-      {copied ? 'Link copiato!' : 'Condividi sezione'}
+      {copied
+        ? 'Link copiato!'
+        : activeTab === 'photo'
+          ? 'Condividi queste foto'
+          : 'Condividi questi video'}
     </button>
   );
 }

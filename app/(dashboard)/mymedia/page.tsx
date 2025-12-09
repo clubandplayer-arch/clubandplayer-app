@@ -65,6 +65,13 @@ function aspectFromUrl(url?: string | null): '16:9' | '9:16' | null {
   }
 }
 
+function formatPublishedDate(value?: string | null): string {
+  if (!value) return 'Data non disponibile';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return 'Data non disponibile';
+  return new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: 'short', year: 'numeric' }).format(parsed);
+}
+
 function normalizePost(p: any): MediaPost {
   const mediaType =
     normalizeMediaType(p.media_type ?? p.mediaType ?? p.media_mime ?? p.mediaMime ?? null) ??
@@ -196,24 +203,25 @@ export default function MyMediaPage() {
   }));
 
   return (
-    <div className="w-full flex justify-center">
-      <div className="w-full max-w-5xl px-4 md:px-6 lg:px-8 py-8 space-y-8">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div className="space-y-2">
-            <h1 className="text-2xl font-semibold text-cp-brand">La tua libreria media</h1>
-            <p className="text-sm text-cp-brand-soft">
-              Rivedi e condividi i tuoi video e le tue foto pubblicati nel feed.
+    <div className="flex w-full justify-center">
+      <div className="w-full max-w-5xl space-y-8 px-4 py-8 md:px-6 lg:px-8">
+        <div className="flex flex-wrap items-start justify-between gap-4 rounded-2xl bg-gradient-to-r from-blue-50 via-white to-blue-50/60 px-4 py-4 shadow-sm ring-1 ring-inset ring-cp-brand/10 md:px-6">
+          <div className="space-y-1">
+            <p className="text-xs font-semibold uppercase tracking-wider text-cp-brand">MyMedia</p>
+            <h1 className="text-3xl font-semibold text-cp-brand">La tua libreria media</h1>
+            <p className="max-w-2xl text-sm text-cp-brand-soft">
+              Gestisci in un unico posto tutti i video e le foto che hai condiviso su Club&Player.
             </p>
           </div>
           <Link
             href="/feed"
-            className="inline-flex items-center gap-2 rounded-full border border-cp-brand-soft px-3 py-1.5 text-sm font-semibold text-cp-brand transition hover:bg-blue-50"
+            className="inline-flex items-center gap-2 rounded-full border border-cp-brand/30 px-4 py-2 text-sm font-semibold text-cp-brand transition hover:-translate-y-[1px] hover:bg-white hover:shadow-sm"
           >
             Torna al feed
           </Link>
         </div>
 
-        <div className="mt-4 mb-6 flex items-center gap-4 border-b border-border">
+        <div className="mt-2 flex items-center gap-4 overflow-x-auto border-b border-border pb-1 text-sm font-medium">
           <TabLink label="Video" isActive={activeTab === 'video'} href="/mymedia?type=video#my-videos" />
           <TabLink label="Foto" isActive={activeTab === 'photo'} href="/mymedia?type=photo#my-photos" />
         </div>
@@ -250,10 +258,10 @@ function TabLink({ label, isActive, href }: { label: string; isActive: boolean; 
   return (
     <Link
       href={href}
-      className={`border-b-2 pb-2 text-sm transition-colors ${
+      className={`relative whitespace-nowrap pb-2 transition ${
         isActive
-          ? 'border-cp-brand font-medium text-cp-brand'
-          : 'border-transparent text-muted-foreground hover:text-foreground'
+          ? 'font-semibold text-cp-brand after:absolute after:-bottom-[1px] after:left-0 after:h-[2px] after:w-full after:rounded-full after:bg-cp-brand'
+          : 'text-muted-foreground hover:text-foreground'
       }`}
     >
       {label}
@@ -282,25 +290,30 @@ function MediaSection({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <MaterialIcon name={iconName} className="text-lg" />
-          <h2 className="text-xl font-semibold">{title}</h2>
-          <span className="text-sm text-cp-brand-soft">{items.length} elementi</span>
+          <div className="flex flex-col">
+            <h2 className="text-xl font-semibold text-foreground">{title}</h2>
+            <span className="text-xs text-muted-foreground">{items.length} elementi</span>
+          </div>
         </div>
         <ShareSectionButton activeTab={tab} />
       </div>
-      <div className="glass-panel p-4 rounded-xl shadow-sm">
+      <div className="rounded-2xl border border-border bg-white/60 p-4 shadow-sm backdrop-blur">
         {items.length === 0 ? (
           <MediaEmptyState kind={tab} />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {items.map((item, index) => (
-              <article
-                id={`media-${item.id}`}
-                key={item.id}
-                className="group relative flex h-full flex-col overflow-hidden rounded-xl border border-cp-brand-soft bg-background shadow-sm transition-transform transition-shadow hover:scale-[1.01] hover:shadow-md"
-              >
-                <div className="flex h-full flex-col">
-                  <div className="overflow-hidden rounded-b-none">
-                    {item.media_type === 'video' ? (
+            {items.map((item, index) => {
+              const formattedDate = formatPublishedDate(item.created_at);
+              const isVideo = item.media_type === 'video';
+
+              return (
+                <article
+                  id={`media-${item.id}`}
+                  key={item.id}
+                  className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-cp-brand/20 bg-white shadow-sm transition duration-150 hover:-translate-y-[1px] hover:border-cp-brand/50 hover:shadow-md"
+                >
+                  <div className="relative overflow-hidden bg-muted">
+                    {isVideo ? (
                       <VideoPlayer
                         url={item.media_url}
                         aspect={item.media_aspect}
@@ -310,26 +323,54 @@ function MediaSection({
                     ) : (
                       <button
                         type="button"
-                        className="group relative block w-full overflow-hidden focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
+                        className="relative block w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-cp-brand/70 focus-visible:ring-offset-2"
                         onClick={() => onImageClick?.(index, item)}
                       >
-                        <div className="relative w-full aspect-[4/5] bg-black/5">
+                        <div className="relative aspect-video w-full overflow-hidden">
                           <img
                             src={item.media_url ?? ''}
-                            alt="Anteprima"
-                            className="absolute inset-0 h-full w-full object-contain transition duration-150 group-hover:scale-[1.02]"
+                            alt={item.content ?? 'Anteprima'}
+                            className="absolute inset-0 h-full w-full object-cover transition duration-200 group-hover:scale-[1.02]"
                           />
+                          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent opacity-0 transition duration-200 group-hover:opacity-100">
+                            <div className="absolute bottom-0 left-0 right-0 flex flex-col gap-1 px-3 pb-3 text-white">
+                              <span className="text-[11px] font-semibold uppercase tracking-wide text-white/80">Foto</span>
+                              <p className="text-sm font-semibold leading-tight line-clamp-2">{item.content || 'La tua foto'}</p>
+                            </div>
+                          </div>
                         </div>
                       </button>
                     )}
                   </div>
 
-                  <div className="space-y-2 px-3 pb-3 pt-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="flex-1 whitespace-pre-wrap text-sm font-medium text-foreground line-clamp-2">
-                        {item.content || ''}
-                      </p>
-                      <ShareButton
+                  <div className="flex flex-1 flex-col justify-between">
+                    <div className="space-y-2 px-4 pb-3 pt-3">
+                      <div className="flex items-start gap-2">
+                        <div className="flex-1 space-y-1">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-cp-brand/70">
+                            {isVideo ? 'Video' : 'Foto'}
+                          </p>
+                          <p className="whitespace-pre-wrap text-sm font-medium text-foreground line-clamp-2">
+                            {item.content || 'Contenuto senza titolo'}
+                          </p>
+                        </div>
+                      </div>
+                      {item.link_url ? (
+                        <a
+                          href={item.link_url}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          className="inline-flex items-center gap-1 text-sm font-semibold text-cp-brand underline-offset-2 hover:underline"
+                        >
+                          Apri link esterno →
+                        </a>
+                      ) : null}
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3 border-t border-border px-4 py-3 text-sm text-muted-foreground">
+                      <span className="text-xs font-medium text-foreground/70">Pubblicato il {formattedDate}</span>
+                      <button
+                        type="button"
                         onClick={() =>
                           shareOrCopyLink({
                             title: title,
@@ -337,24 +378,17 @@ function MediaSection({
                             url: buildMediaShareUrl(item),
                           })
                         }
-                        ariaLabel={`Condividi ${item.media_type === 'video' ? 'questo video' : 'questa foto'}`}
-                        className="shrink-0"
-                      />
-                    </div>
-                    {item.link_url ? (
-                      <a
-                        href={item.link_url}
-                        target="_blank"
-                        rel="noreferrer noopener"
-                        className="block text-sm font-semibold text-cp-brand"
+                        className="inline-flex items-center gap-2 rounded-full border border-cp-brand/70 px-3 py-1 text-xs font-semibold text-cp-brand transition hover:bg-cp-brand hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cp-brand/70 focus-visible:ring-offset-2"
+                        aria-label={`Condividi ${item.media_type === 'video' ? 'questo video' : 'questa foto'}`}
                       >
-                        Apri link esterno →
-                      </a>
-                    ) : null}
+                        <ShareButton className="text-current" ariaLabel={`Condividi ${item.media_type === 'video' ? 'questo video' : 'questa foto'}`} />
+                        <span>Condividi</span>
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </article>
-            ))}
+                </article>
+              );
+            })}
           </div>
         )}
       </div>
@@ -383,17 +417,19 @@ function VideoPlayer({
         src={url ?? undefined}
         controls
         playsInline
-        className="absolute inset-0 h-full w-full object-contain"
+        className="absolute inset-0 h-full w-full object-cover"
         onPlay={handlePlay}
         onPause={handlePause}
         onEnded={handleEnded}
         title={title}
       />
-      {title ? (
-        <div className="absolute inset-x-0 bottom-0 flex items-center justify-between px-2 pb-1 pt-4 text-xs text-white bg-gradient-to-t from-black/60 to-transparent">
-          <span className="truncate pr-2">{title}</span>
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/25 to-transparent opacity-0 transition duration-200 group-hover:opacity-100" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-between px-3 pb-2 pt-6 text-xs text-white">
+        <div className="flex flex-col gap-1">
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-white/80">Video</span>
+          {title ? <span className="max-w-[240px] truncate font-semibold leading-tight">{title}</span> : null}
         </div>
-      ) : null}
+      </div>
     </div>
   );
 }

@@ -83,3 +83,11 @@ Questi job derivano da `repo-health-audit-2025-12-06.md` (sezione TECH-XX).
    - FEED-02, PROFILE-01 quando il traffico e le esigenze dei club lo suggeriranno.
 
 Questa roadmap è pensata come guida post-Go Live: il progetto è considerabile al 100% “pronto” per lanciare, ma ha una coda chiara di miglioramenti da pianificare negli sprint successivi.
+
+---
+
+## 4. UX e rifiniture dashboard
+
+- [x] UX-MEDIA-01 – Rifiniture MyMedia (header, tab Video/Foto, card media, empty state, microcopy share) – SOLO UI, nessun cambiamento a feed/API.
+- [ ] UX-PROFILE-UI-01 – Rifinitura visuale profilo club/player (badge tipo profilo, spacing competenze) – SOLO UI.
+- [ ] UX-ONBOARDING-01 – Alleggerimento box onboarding in /feed (layout + microcopy, senza toccare dismiss logic).
