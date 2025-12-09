@@ -227,7 +227,7 @@ export default function PublicAthleteProfile() {
   }, [params.id, router, supabase])     // ok mantenere supabase: ora è stabile grazie a useMemo
 
   return (
-    <main style={{maxWidth:760, margin:'0 auto', padding:24}}>
+    <main className="mx-auto max-w-4xl px-6 py-6">
       {loading && <p>Caricamento…</p>}
       {!loading && !!msg && <p style={{color:'#b91c1c'}}>{msg}</p>}
       {!loading && !msg && profile && (
@@ -244,16 +244,16 @@ export default function PublicAthleteProfile() {
             messageLabel="Messaggia"
           />
 
-          <section style={{border:'1px solid #e5e7eb', borderRadius:12, padding:16, marginTop:12}}>
-            <h2 style={{marginTop:0}}>Bio</h2>
-            <p style={{marginTop:8, whiteSpace:'pre-wrap'}}>
+          <section className="mt-4 rounded-2xl border bg-white p-5 shadow-sm">
+            <h2 className="text-lg font-semibold text-neutral-900">Bio</h2>
+            <p className="mt-2 whitespace-pre-wrap text-sm text-neutral-800">
               {profile.bio && profile.bio.trim().length > 0 ? profile.bio : 'Nessuna bio disponibile.'}
             </p>
           </section>
 
-          <section style={{border:'1px solid #e5e7eb', borderRadius:12, padding:16, marginTop:12}}>
-            <h2 style={{marginTop:0}}>Panoramica</h2>
-            <ul style={{marginTop:8}}>
+          <section className="mt-4 rounded-2xl border bg-white p-5 shadow-sm">
+            <h2 className="text-lg font-semibold text-neutral-900">Panoramica</h2>
+            <ul className="mt-3 space-y-2 text-sm text-neutral-800">
               <li><b>Sport:</b> {profile.sport ?? '—'}</li>
               <li><b>Ruolo:</b> {profile.role ?? '—'}</li>
               <li><b>Città:</b> {profile.city ?? '—'}</li>
@@ -261,37 +261,18 @@ export default function PublicAthleteProfile() {
           </section>
 
         {!isClubProfile && (
-          skills.length > 0 ? (
-            <section style={{border:'1px solid #e5e7eb', borderRadius:12, padding:16, marginTop:12}}>
-              <h2 style={{marginTop:0}}>Competenze</h2>
-              <div style={{display:'flex', flexDirection:'column', gap:8, marginTop:8}}>
+          <section className="mt-4 rounded-2xl border bg-white p-5 shadow-sm">
+            <h2 className="text-lg font-semibold text-neutral-900">Competenze</h2>
+            {skills.length > 0 ? (
+              <div className="mt-3 flex flex-col gap-3">
                 {skills.map((skill) => (
                   <div
                     key={skill.name}
-                    style={{
-                      display:'flex',
-                      alignItems:'center',
-                      justifyContent:'space-between',
-                      gap:12,
-                      border:'1px solid #e5e7eb',
-                      borderRadius:12,
-                      padding:'8px 10px',
-                      background:'#f8fafc',
-                    }}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3"
                   >
-                    <div style={{display:'flex', alignItems:'center', gap:8}}>
-                      <span style={{fontWeight:600}}>{skill.name}</span>
-                      <span style={{
-                        display:'inline-flex',
-                        alignItems:'center',
-                        gap:4,
-                        padding:'2px 8px',
-                        borderRadius:9999,
-                        background:'#e0f2fe',
-                        color:'#0369a1',
-                        fontSize:12,
-                        fontWeight:600,
-                      }}>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-semibold text-neutral-900">{skill.name}</span>
+                      <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-800">
                         {skill.endorsementsCount}
                       </span>
                     </div>
@@ -300,35 +281,29 @@ export default function PublicAthleteProfile() {
                         type="button"
                         onClick={() => toggleEndorse(skill)}
                         disabled={endorsingSkill === skill.name || !meId}
-                        style={{
-                          border:'1px solid',
-                          borderColor: skill.endorsedByMe ? '#0ea5e9' : '#cbd5e1',
-                          background: skill.endorsedByMe ? '#0ea5e9' : '#fff',
-                          color: skill.endorsedByMe ? '#fff' : '#0f172a',
-                          borderRadius:9999,
-                          padding:'6px 12px',
-                          fontSize:13,
-                          cursor: endorsingSkill === skill.name || !meId ? 'not-allowed' : 'pointer',
-                          opacity: endorsingSkill === skill.name || (!meId && !skill.endorsedByMe) ? 0.7 : 1,
-                        }}
+                        className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                          skill.endorsedByMe
+                            ? 'border-blue-600 bg-blue-600 text-white'
+                            : 'border-slate-300 bg-white text-slate-900 hover:border-slate-400'
+                        } ${endorsingSkill === skill.name || (!meId && !skill.endorsedByMe) ? 'opacity-70' : ''}`}
                       >
-                        {skill.endorsedByMe ? 'Rimuovi endorsement' : (meId ? 'Endorsa' : 'Accedi per endorsare')}
+                        {skill.endorsedByMe ? 'Rimuovi endorsement' : meId ? 'Endorsa' : 'Accedi per endorsare'}
                       </button>
                     )}
                   </div>
                 ))}
               </div>
-            </section>
-          ) : (
-            isOwner && (
-              <section style={{border:'1px solid #e5e7eb', borderRadius:12, padding:16, marginTop:12}}>
-                <h2 style={{marginTop:0}}>Competenze</h2>
-                <p style={{marginTop:8, fontSize:14, color:'#475569'}}>
-                  Aggiungi le tue competenze dal pannello "Modifica profilo" per mostrarle qui.
+            ) : (
+              <div className="mt-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-neutral-700">
+                <p className="font-semibold">Ancora nessuna competenza</p>
+                <p className="mt-1 text-neutral-600">
+                  {isOwner
+                    ? 'Aggiungi le competenze dal pannello "Modifica profilo" per aiutare i club a trovarti più facilmente.'
+                    : 'Questo player non ha ancora inserito competenze.'}
                 </p>
-              </section>
-            )
-          )
+              </div>
+            )}
+          </section>
         )}
 
           <section style={{border:'1px solid #e5e7eb', borderRadius:12, padding:16, marginTop:12}}>
