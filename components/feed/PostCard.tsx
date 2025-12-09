@@ -127,6 +127,8 @@ export function PostCard({
   const totalReactions = REACTION_ORDER.reduce((acc, key) => acc + (reaction.counts[key] || 0), 0);
   const reactionSummaryText = reactionSummaryParts.length ? reactionSummaryParts.join(' · ') : 'Nessuna reazione';
 
+  const actionIconClass = 'text-[18px] leading-none align-middle';
+
   const handleQuote = useCallback(() => {
     if (onQuote) {
       onQuote(post);
@@ -220,7 +222,7 @@ export function PostCard({
                 aria-label="Modifica questo post"
                 disabled={saving}
               >
-                <PostIconEdit className="h-4 w-4" aria-hidden />
+                <PostIconEdit className={actionIconClass} aria-hidden />
               </button>
               <button
                 type="button"
@@ -229,7 +231,7 @@ export function PostCard({
                 aria-label="Elimina questo post"
                 disabled={saving}
               >
-                <PostIconDelete className="h-4 w-4" aria-hidden />
+                <PostIconDelete className={actionIconClass} aria-hidden />
               </button>
             </>
           ) : null}
@@ -240,7 +242,7 @@ export function PostCard({
             aria-label={isEvent ? 'Condividi questo evento' : 'Condividi questo post'}
             className="rounded-full p-2 text-sky-600 transition hover:bg-sky-50 hover:text-sky-700"
           >
-            <PostIconShare className="h-4 w-4" aria-hidden />
+            <PostIconShare className={actionIconClass} aria-hidden />
           </button>
         </div>
       </div>
