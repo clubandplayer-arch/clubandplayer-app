@@ -443,7 +443,6 @@ function VideoPlayer({
 function FullscreenVideoViewer({ item, onClose }: { item: MediaPost; onClose: () => void }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
-  const aspectClass = item.media_aspect === '9:16' ? 'aspect-[9/16]' : 'aspect-video';
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
@@ -477,7 +476,7 @@ function FullscreenVideoViewer({ item, onClose }: { item: MediaPost; onClose: ()
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-5xl"
+        className="relative flex w-full max-w-5xl items-center justify-center"
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -489,14 +488,14 @@ function FullscreenVideoViewer({ item, onClose }: { item: MediaPost; onClose: ()
           <MaterialIcon name="close" className="text-lg" />
           Chiudi
         </button>
-        <div className={`relative ${aspectClass} w-full overflow-hidden rounded-2xl bg-black shadow-2xl`}>
+        <div className="flex max-h-[90vh] max-w-[90vw] items-center justify-center overflow-hidden rounded-2xl bg-black shadow-2xl">
           <video
             ref={videoRef}
             src={item.media_url ?? undefined}
             autoPlay
             controls
             playsInline
-            className="absolute inset-0 h-full w-full object-contain"
+            className="h-auto w-auto max-h-[90vh] max-w-[90vw] object-contain"
           />
         </div>
       </div>
