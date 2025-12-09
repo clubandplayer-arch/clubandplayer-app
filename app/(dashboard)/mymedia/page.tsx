@@ -13,6 +13,12 @@ import { ShareSectionButton } from '@/components/media/ShareSectionButton';
 import { MediaEmptyState } from '@/components/media/MediaEmptyState';
 import { MaterialIcon } from '@/components/icons/MaterialIcon';
 
+const shortDateFormatter = new Intl.DateTimeFormat('it-IT', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+});
+
 const DEFAULT_LIMIT = 100;
 
 type MediaType = 'image' | 'video' | null;
@@ -214,7 +220,7 @@ export default function MyMediaPage() {
           </Link>
         </div>
 
-        <div className="mt-2 flex items-center gap-4 overflow-x-auto pb-1 text-sm font-medium">
+        <div className="mt-2 flex items-center gap-4 overflow-x-auto pb-1 text-base font-medium">
           <TabLink label="Video" isActive={activeTab === 'video'} href="/mymedia?type=video#my-videos" />
           <TabLink label="Foto" isActive={activeTab === 'photo'} href="/mymedia?type=photo#my-photos" />
         </div>
@@ -251,7 +257,7 @@ function TabLink({ label, isActive, href }: { label: string; isActive: boolean; 
   return (
     <Link
       href={href}
-      className={`relative whitespace-nowrap pb-2 transition ${
+      className={`relative whitespace-nowrap pb-2 text-base transition ${
         isActive
           ? 'font-semibold text-cp-brand after:absolute after:-bottom-[1px] after:left-0 after:h-[2px] after:w-full after:rounded-full after:bg-cp-brand'
           : 'text-muted-foreground hover:text-foreground'
@@ -297,6 +303,7 @@ function MediaSection({
           <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {items.map((item, index) => {
               const isVideo = item.media_type === 'video';
+              const formattedDate = item.created_at ? shortDateFormatter.format(new Date(item.created_at)) : null;
 
               return (
                 <article
@@ -355,7 +362,8 @@ function MediaSection({
                       ) : null}
                     </div>
 
-                    <div className="flex items-center justify-end gap-3 px-4 pb-4 text-sm text-muted-foreground">
+                    <div className="flex items-center justify-between gap-3 px-4 pb-4 text-sm text-muted-foreground">
+                      {formattedDate ? <span className="text-xs text-muted-foreground">{formattedDate}</span> : <span />}
                       <button
                         type="button"
                         onClick={() =>
@@ -365,7 +373,7 @@ function MediaSection({
                             url: buildMediaShareUrl(item),
                           })
                         }
-                        className="inline-flex items-center justify-center rounded-full border border-cp-brand/70 p-2 text-cp-brand transition hover:bg-cp-brand hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cp-brand/70 focus-visible:ring-offset-2"
+                        className="inline-flex items-center justify-center p-2 text-cp-brand transition hover:text-cp-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cp-brand/70 focus-visible:ring-offset-2"
                         aria-label="Condividi"
                       >
                         <ShareButton className="text-current" ariaLabel={`Condividi ${item.media_type === 'video' ? 'questo video' : 'questa foto'}`} />
