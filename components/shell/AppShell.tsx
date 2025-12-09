@@ -70,7 +70,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [pathname, router]);
 
-  const profileHref = role === 'club' ? '/club/profile' : '/profile';
+  const profileHref = role === 'club' ? '/club/profile' : '/player/profile';
 
   const navItems = useMemo<NavItem[]>(
     () => [

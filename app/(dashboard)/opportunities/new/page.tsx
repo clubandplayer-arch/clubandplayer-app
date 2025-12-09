@@ -17,7 +17,7 @@ export default function NewOpportunityPage() {
       <div className="page-shell max-w-2xl rounded-xl border bg-yellow-50 p-4 text-yellow-900">
         Devi essere un <b>Club</b> per creare un’opportunità.
         <div className="mt-2">
-          <a href="/profile" className="underline">Apri il profilo</a> e imposta il tipo account su <b>Club</b>.
+          <a href="/player/profile" className="underline">Apri il profilo</a> e imposta il tipo account su <b>Club</b>.
         </div>
       </div>
     );

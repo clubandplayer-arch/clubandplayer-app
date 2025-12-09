@@ -15,7 +15,7 @@ const steps: Array<{
   {
     title: 'Completa il tuo profilo',
     description: 'Aggiungi dettagli come sport, ruolo e bio per farti conoscere.',
-    href: '/profile',
+    href: '/player/profile',
     icon: 'edit',
   },
   {
