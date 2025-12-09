@@ -1042,7 +1042,7 @@ export default function ProfileEditForm() {
 
         {!isClub && (
           <section className="rounded-2xl border p-4 md:p-5">
-            <h2 className="mb-3 text-lg font-semibold">Dove ti trovi</h2>
+            <h2 className="mb-3 text-lg font-semibold">Nazionalità</h2>
             <div className="grid gap-4 md:grid-cols-4">
               <div className="flex flex-col gap-1">
                 <label className="text-sm text-gray-600">Paese</label>
@@ -1058,27 +1058,6 @@ export default function ProfileEditForm() {
                   ))}
                 </select>
               </div>
-
-              {residenceCountry === 'IT' ? (
-                <LocationFields
-                  supabase={supabase}
-                  country={residenceCountry}
-                  value={residenceLocation}
-                  fallback={residenceFallback}
-                  onChange={setResidenceLocation}
-                  labels={{ region: 'Regione', province: 'Provincia', city: 'Città' }}
-                />
-              ) : (
-                <div className="md:col-span-3 flex flex-col gap-1">
-                  <label className="text-sm text-gray-600">Città</label>
-                  <input
-                    className="rounded-lg border p-2"
-                    value={residenceCity}
-                    onChange={(e) => setResidenceCity(e.target.value)}
-                    placeholder="Es. Sydney"
-                  />
-                </div>
-              )}
             </div>
           </section>
         )}
