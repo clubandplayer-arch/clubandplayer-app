@@ -108,7 +108,7 @@ export function FirstStepsCard({ profile }: { profile?: Profile | null }) {
             <div>
               <Link
                 href={step.href}
-                className="inline-flex w-fit items-center gap-1 rounded-full bg-[var(--brand)] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[var(--brand-dark)]"
+                className="inline-flex w-fit items-center gap-1 rounded-full border border-[var(--brand)] bg-white px-3 py-1.5 text-xs font-semibold text-[var(--brand)] shadow-[0_1px_0_rgba(0,0,0,0.04)] transition hover:bg-[var(--brand)] hover:text-white hover:shadow-md"
               >
                 Vai
                 <span aria-hidden>→</span>
