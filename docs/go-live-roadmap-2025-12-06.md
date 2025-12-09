@@ -88,14 +88,12 @@ Questi job derivano da `repo-health-audit-2025-12-06.md` (sezione TECH-XX).
 ## 3. Ordine suggerito dei prossimi sprint post-Go Live
 
 1. **Hardening tecnico**
-   - TECH-02 (validazione schema API feed/follow) – completato
-   - TECH-05 (allineare feed/follow a `standardResponses`)
-2. **Valore visibile al’utente**
-   - FEED-01 (reshare/quote post) **oppure** JOBS-01 (filtri opportunità), in base alla direzione di prodotto.
-3. **Scalabilità e manutenzione**
-   - TECH-03 (hook/service feed),
-   - TECH-04 (cursor + virtualizzazione feed),
-   - FEED-02, PROFILE-01 quando il traffico e le esigenze dei club lo suggeriranno.
+   - TECH-05 – Allineare feed/follow a `standardResponses` (fase 2 post-Go Live).
+2. **Scalabilità e manutenzione**
+   - TECH-03 – Rifinitura hook/service feed (eventuale maintenance).
+   - TECH-04 – Cursor + virtualizzazione feed.
+3. **Nuove funzionalità**
+   - Da definire in base al comportamento reale degli utenti post-Go Live.
 
 Questa roadmap è pensata come guida post-Go Live: il progetto è considerabile al 100% “pronto” per lanciare, ma ha una coda chiara di miglioramenti da pianificare negli sprint successivi.
 
@@ -106,3 +104,8 @@ Questa roadmap è pensata come guida post-Go Live: il progetto è considerabile 
 - [x] UX-MEDIA-01 – Rifiniture MyMedia (header, tab Video/Foto, card media, empty state, microcopy share) – SOLO UI, nessun cambiamento a feed/API.
 - [x] UX-PROFILE-UI-01 – Badge Club/Player e rifinitura Competenze (view+edit) – SOLO UI.
 - [x] UX-ONBOARDING-01 – Alleggerimento e chiarificazione del box onboarding in /feed (SOLO UI, logica dismiss invariata).
+
+### Fase 2 – feed & follow (post-Go Live)
+- Vedi `docs/tech-phase2-feed-and-follow-2026-01-15.md` per:
+  - TECH-04A/B/C – Cursor + virtualizzazione feed.
+  - TECH-05A/B/C/D – Allineamento feed/follow a `standardResponses`.
