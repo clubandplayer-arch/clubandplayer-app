@@ -1041,28 +1041,6 @@ export default function ProfileEditForm() {
         </section>
 
         {!isClub && (
-          <section className="rounded-2xl border p-4 md:p-5">
-            <h2 className="mb-3 text-lg font-semibold">Nazionalità</h2>
-            <div className="grid gap-4 md:grid-cols-4">
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-gray-600">Paese</label>
-                <select
-                  className="rounded-lg border p-2"
-                  value={residenceCountry}
-                  onChange={(e) => setResidenceCountry(e.target.value)}
-                >
-                  {COUNTRIES.map((c) => (
-                    <option key={c.code} value={c.code}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {!isClub && (
           <section className="rounded-2xl border bg-white p-4 md:p-5 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-1">
