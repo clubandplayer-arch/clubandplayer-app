@@ -1242,54 +1242,55 @@ export default function ProfileEditForm() {
         </section>
 
         {!isClub && (
-          <section className="rounded-2xl border p-4 md:p-5">
+          <section className="rounded-2xl border bg-white p-4 md:p-5 shadow-sm">
             <div className="flex items-start justify-between gap-3">
-              <div>
-                <h2 className="mb-1 text-lg font-semibold">Competenze</h2>
+              <div className="space-y-1">
+                <h2 className="text-lg font-semibold text-neutral-900">Competenze</h2>
                 <p className="text-sm text-gray-600">
-                  Aggiungi fino a {MAX_SKILLS} competenze: verranno mostrate sul profilo pubblico con il contatore di
-                  endorsement.
+                  Aggiungi fino a {MAX_SKILLS} competenze chiave (es. attaccante, regista, leadership di spogliatoio): saranno visibili sul profilo con il contatore di endorsement.
                 </p>
               </div>
-              <span className="text-xs text-gray-500 whitespace-nowrap">{skills.length}/{MAX_SKILLS}</span>
+              <span className="whitespace-nowrap text-xs text-gray-500">{skills.length}/{MAX_SKILLS}</span>
             </div>
 
-            <div className="mt-3 flex flex-col gap-2 md:flex-row md:items-center">
+            <div className="mt-4 flex flex-col gap-2 md:flex-row md:items-center">
               <input
-                className="flex-1 rounded-lg border p-2"
+                className="flex-1 rounded-lg border px-3 py-2"
                 value={skillInput}
                 maxLength={MAX_SKILL_LENGTH}
                 onChange={(e) => { setSkillInput(e.target.value); setSkillsError(null); }}
-                placeholder="Es. Dribbling, Leadership, Scouting"
+                placeholder="Es. Dribbling, leadership, visione di gioco"
               />
               <button
                 type="button"
                 onClick={onAddSkill}
                 disabled={skills.length >= MAX_SKILLS || !skillInput.trim()}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-60"
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-60"
               >
                 Aggiungi
               </button>
             </div>
             {skillsError && <p className="mt-1 text-xs text-red-600">{skillsError}</p>}
 
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-4 flex flex-wrap gap-2">
               {skills.length === 0 ? (
-                <p className="text-sm text-gray-500">Nessuna competenza inserita.</p>
+                <div className="w-full rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm text-gray-600">
+                  Nessuna competenza inserita.
+                </div>
               ) : (
                 skills.map((skill) => (
                   <span
                     key={skill.name}
-                    className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm bg-slate-50"
+                    className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm"
                   >
-                    <span>{skill.name}</span>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-800">
+                    <span className="font-medium text-neutral-900">{skill.name}</span>
+                    <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-800">
                       {skill.endorsementsCount}
                     </span>
                     <button
                       type="button"
                       onClick={() => onRemoveSkill(skill.name)}
-                      className="text-xs text-red-600 hover:underline"
+                      className="text-xs text-red-600 underline-offset-2 hover:underline"
                     >
                       ✕
                     </button>

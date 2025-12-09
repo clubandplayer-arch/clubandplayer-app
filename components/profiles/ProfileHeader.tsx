@@ -45,9 +45,11 @@ export default function ProfileHeader({
   const initials = initialsFromName(name, accountType);
   const subtitleText = subtitle?.trim();
   const locationText = locationLabel?.trim();
+  const isClub = accountType === 'club';
+  const badgeLabel = isClub ? 'Club' : 'Giocatore';
 
   return (
-    <header className="rounded-2xl border bg-white p-5 shadow-sm">
+    <header className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:gap-6">
         <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-full bg-transparent ring-1 ring-white/60 shadow-sm md:h-32 md:w-32">
           {avatarUrl ? (
@@ -61,12 +63,21 @@ export default function ProfileHeader({
 
         <div className="flex flex-1 flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="space-y-2">
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-2xl font-semibold leading-tight text-neutral-900 md:text-3xl">{name}</h1>
-              {subtitleText ? (
-                <p className="text-sm font-medium text-neutral-700 md:text-base">{subtitleText}</p>
-              ) : null}
+              <span
+                className={`${
+                  isClub
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-blue-50 text-blue-800 ring-1 ring-inset ring-blue-200'
+                } inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold leading-tight`}
+              >
+                {badgeLabel}
+              </span>
             </div>
+            {subtitleText ? (
+              <p className="text-sm font-medium text-neutral-700 md:text-base">{subtitleText}</p>
+            ) : null}
             {locationText ? (
               <p className="text-xs text-neutral-500">{locationText}</p>
             ) : (

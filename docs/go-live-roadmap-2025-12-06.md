@@ -89,5 +89,5 @@ Questa roadmap è pensata come guida post-Go Live: il progetto è considerabile 
 ## 4. UX e rifiniture dashboard
 
 - [x] UX-MEDIA-01 – Rifiniture MyMedia (header, tab Video/Foto, card media, empty state, microcopy share) – SOLO UI, nessun cambiamento a feed/API.
-- [ ] UX-PROFILE-UI-01 – Rifinitura visuale profilo club/player (badge tipo profilo, spacing competenze) – SOLO UI.
+- [x] UX-PROFILE-UI-01 – Badge Club/Player e rifinitura Competenze (view+edit) – SOLO UI.
 - [ ] UX-ONBOARDING-01 – Alleggerimento box onboarding in /feed (layout + microcopy, senza toccare dismiss logic).
