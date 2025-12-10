@@ -85,8 +85,15 @@ function normalizePost(p: any): MediaPost {
   };
 }
 
-async function fetchMyMedia(signal?: AbortSignal): Promise<MediaPost[]> {
-  const res = await fetch(`/api/feed/posts?mine=true&limit=${DEFAULT_LIMIT}`, {
+async function fetchMyMedia({ signal, authorId }: { signal?: AbortSignal; authorId?: string | null }): Promise<MediaPost[]> {
+  const params = new URLSearchParams({ limit: String(DEFAULT_LIMIT) });
+  if (authorId) {
+    params.set('authorId', authorId);
+  } else {
+    params.set('mine', 'true');
+  }
+
+  const res = await fetch(`/api/feed/posts?${params.toString()}`, {
     credentials: 'include',
     cache: 'no-store',
     signal,
@@ -143,7 +150,26 @@ export default function MyMediaPage() {
       setLoading(true);
       setErr(null);
       try {
-        const data = await fetchMyMedia(ctrl.signal);
+        let currentUserId: string | null = null;
+
+        try {
+          const whoamiRes = await fetch('/api/auth/whoami', {
+            credentials: 'include',
+            cache: 'no-store',
+            signal: ctrl.signal,
+          });
+
+          if (whoamiRes.ok) {
+            const whoamiJson = await whoamiRes.json().catch(() => null);
+            currentUserId = whoamiJson?.user?.id ?? null;
+          }
+        } catch (whoamiErr: any) {
+          if (!ctrl.signal.aborted) {
+            console.error('[mymedia] whoami failed', whoamiErr);
+          }
+        }
+
+        const data = await fetchMyMedia({ signal: ctrl.signal, authorId: currentUserId });
         setItems(data);
       } catch (e: any) {
         if (!ctrl.signal.aborted) setErr(e?.message || 'Errore nel caricamento dei media');
