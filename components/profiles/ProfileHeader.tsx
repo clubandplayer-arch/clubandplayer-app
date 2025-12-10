@@ -51,7 +51,7 @@ export default function ProfileHeader({
   return (
     <header className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:gap-6">
-        <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-full bg-transparent ring-1 ring-white/60 shadow-sm md:h-32 md:w-32">
+        <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-full bg-transparent ring-1 ring-white/60 md:h-32 md:w-32">
           {avatarUrl ? (
             <Image src={avatarUrl} alt={name} fill sizes="128px" className="rounded-full object-cover" />
           ) : (
