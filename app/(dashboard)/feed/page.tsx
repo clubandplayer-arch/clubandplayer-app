@@ -53,7 +53,6 @@ export default function FeedPage() {
   const [reactionError, setReactionError] = useState<string | null>(null);
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
   const [pickerFor, setPickerFor] = useState<string | null>(null);
-  const [quoteTarget, setQuoteTarget] = useState<FeedPost | null>(null);
   const seenPostIds = useRef<Set<string>>(new Set());
   const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
   const headingId = 'feed-heading';
@@ -322,7 +321,7 @@ export default function FeedPage() {
               </button>
             </div>
           </div>
-          <FeedComposer onPosted={handleRefresh} quotedPost={quoteTarget} onClearQuote={() => setQuoteTarget(null)} />
+          <FeedComposer onPosted={handleRefresh} />
 
           <div className="space-y-4" aria-live="polite" aria-busy={isInitialLoading}>
             {isInitialLoading && (
@@ -361,7 +360,6 @@ export default function FeedPage() {
                     onCommentCountChange={(next) =>
                       setCommentCounts((curr) => ({ ...curr, [String(p.id)]: next }))
                     }
-                    onQuote={() => setQuoteTarget(p)}
                   />
                 </Fragment>
               ))}
