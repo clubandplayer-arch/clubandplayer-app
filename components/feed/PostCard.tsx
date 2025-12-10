@@ -111,9 +111,13 @@ export function PostCard({
   }, [post.id]);
 
   const handleShare = useCallback(() => {
+    const shareText = isEvent
+      ? [shareUrl, eventDetails?.title ?? description].filter(Boolean).join('\n\n')
+      : [shareUrl, description || undefined].filter(Boolean).join('\n\n');
+
     void shareOrCopyLink({
       title: isEvent ? 'Evento del club' : 'Post del feed',
-      text: isEvent ? eventDetails?.title ?? description : description || undefined,
+      text: shareText,
       url: shareUrl,
       copiedMessage: 'Link del post copiato negli appunti',
     });

@@ -268,9 +268,11 @@ function PublicPostCard({
   }, [post.id]);
 
   const handleShare = useCallback(() => {
+    const shareText = [shareUrl, post.content || undefined].filter(Boolean).join('\n\n');
+
     void shareOrCopyLink({
       title: 'Post',
-      text: post.content || undefined,
+      text: shareText,
       url: shareUrl,
       copiedMessage: 'Link del post copiato negli appunti',
     });

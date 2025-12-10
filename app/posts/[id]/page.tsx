@@ -3,6 +3,7 @@ import { PostClient } from './PostClient';
 import { normalizePost, type FeedPost } from '@/components/feed/postShared';
 import { getUserAndRole } from '@/lib/auth/role';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,7 +30,15 @@ export default async function PostPage({ params }: { params: { id: string } }) {
     : null;
 
   if (!data || !normalized) {
-    const message = error && !currentUserId ? (
+    const admin = getSupabaseAdminClientOrNull();
+    const { data: adminData } = admin
+      ? await admin.from('posts').select('id').eq('id', params.id).maybeSingle()
+      : { data: null };
+    const exists = Boolean(adminData);
+
+    const message = !exists ? (
+      <div className="glass-panel p-4 text-sm text-neutral-700">Post non trovato.</div>
+    ) : !currentUserId ? (
       <div className="glass-panel space-y-2 p-4 text-sm text-neutral-700">
         <p>Per vedere questo post devi accedere.</p>
         <div className="flex flex-wrap gap-2">
@@ -42,7 +51,10 @@ export default async function PostPage({ params }: { params: { id: string } }) {
         </div>
       </div>
     ) : (
-      <div className="glass-panel p-4 text-sm text-neutral-700">Post non trovato.</div>
+      <div className="glass-panel space-y-2 p-4 text-sm text-neutral-700">
+        <p>Il post esiste ma non puoi visualizzarlo.</p>
+        {error ? <div className="text-xs text-neutral-500">Dettagli: {(error as any)?.message || 'Accesso negato'}</div> : null}
+      </div>
     );
 
     return (
@@ -82,9 +94,23 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
     .eq('id', params.id)
     .maybeSingle();
 
-  const title = data?.event_payload?.title || data?.content || 'Post';
-  const description = data?.content ? data.content.slice(0, 140) : undefined;
-  const image = data?.link_image || data?.media_url || undefined;
+  let postMeta = data ?? null;
+
+  if (!postMeta) {
+    const admin = getSupabaseAdminClientOrNull();
+    const { data: adminData } = admin
+      ? await admin
+          .from('posts')
+          .select('content, event_payload, media_url, media_type, link_image')
+          .eq('id', params.id)
+          .maybeSingle()
+      : { data: null };
+    postMeta = adminData ?? null;
+  }
+
+  const title = postMeta?.event_payload?.title || postMeta?.content || 'Post';
+  const description = postMeta?.content ? postMeta.content.slice(0, 140) : undefined;
+  const image = postMeta?.link_image || postMeta?.media_url || undefined;
 
   return {
     title,
