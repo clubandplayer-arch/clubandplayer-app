@@ -17,6 +17,10 @@ type DirectMessage = {
   recipient_profile_id: string;
   content: string;
   created_at: string;
+  edited_at?: string | null;
+  edited_by?: string | null;
+  deleted_at?: string | null;
+  deleted_by?: string | null;
 };
 
 type DirectMessagePeer = {
@@ -115,6 +119,66 @@ export async function sendDirectMessage(
   } catch (error: any) {
     console.error('[direct-messages] sendDirectMessage failed', { error, target });
     throw new Error(error?.message || 'Non è stato possibile inviare il messaggio');
+  }
+}
+
+export async function updateDirectMessage(messageId: string, content: string): Promise<DirectMessage> {
+  const target = (messageId || '').trim();
+  const text = (content || '').trim();
+  if (!target) throw new Error('messageId mancante');
+  if (!text) throw new Error('contenuto mancante');
+
+  try {
+    const res = await fetch(`/api/direct-messages/message/${target}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: text }),
+    });
+    const { json, rawText } = await parseResponse(res);
+    if (!res.ok) {
+      console.error('[direct-messages] updateDirectMessage failed', { status: res.status, body: json, target });
+      throw new Error((json as any)?.message || rawText || 'Non è stato possibile modificare il messaggio');
+    }
+
+    return ((json as any)?.message || null) as DirectMessage;
+  } catch (error: any) {
+    console.error('[direct-messages] updateDirectMessage failed', { error, target });
+    throw new Error(error?.message || 'Non è stato possibile modificare il messaggio');
+  }
+}
+
+export async function deleteDirectMessage(messageId: string): Promise<string> {
+  const target = (messageId || '').trim();
+  if (!target) throw new Error('messageId mancante');
+
+  try {
+    const res = await fetch(`/api/direct-messages/message/${target}`, { method: 'DELETE' });
+    const { json, rawText } = await parseResponse(res);
+    if (!res.ok) {
+      console.error('[direct-messages] deleteDirectMessage failed', { status: res.status, body: json, target });
+      throw new Error((json as any)?.message || rawText || 'Non è stato possibile eliminare il messaggio');
+    }
+
+    const id = (json as any)?.messageId || target;
+    return String(id);
+  } catch (error: any) {
+    console.error('[direct-messages] deleteDirectMessage failed', { error, target });
+    throw new Error(error?.message || 'Non è stato possibile eliminare il messaggio');
+  }
+}
+
+export async function deleteDirectConversation(targetProfileId: string): Promise<void> {
+  const target = ensureTargetProfileId(targetProfileId);
+  try {
+    const res = await fetch(`/api/direct-messages/conversation/${target}`, { method: 'DELETE' });
+    const { json, rawText } = await parseResponse(res);
+    if (!res.ok) {
+      console.error('[direct-messages] deleteDirectConversation failed', { status: res.status, body: json, target });
+      throw new Error((json as any)?.message || rawText || 'Non è stato possibile cancellare la chat');
+    }
+  } catch (error: any) {
+    console.error('[direct-messages] deleteDirectConversation failed', { error, target });
+    throw new Error(error?.message || 'Non è stato possibile cancellare la chat');
   }
 }
 

@@ -26,6 +26,7 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
       .from('direct_messages')
       .select('sender_profile_id, recipient_profile_id, content, created_at')
       .or(`sender_profile_id.eq.${me.id},recipient_profile_id.eq.${me.id}`)
+      .is('deleted_at', null)
       .order('created_at', { ascending: false });
 
     if (messagesError) throw messagesError;

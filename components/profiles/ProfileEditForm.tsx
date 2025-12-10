@@ -7,13 +7,16 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 import AvatarUploader from '@/components/profiles/AvatarUploader';
 import ClubStadiumMapPicker from '@/components/profiles/ClubStadiumMapPicker';
+import {
+  LocationFallback,
+  LocationFields,
+  LocationSelection,
+} from '@/components/profiles/LocationFields';
 import { SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
 import { COUNTRIES } from '@/lib/opps/geo';
 import { MAX_SKILLS, MAX_SKILL_LENGTH, normalizeProfileSkills, toDbSkills } from '@/lib/profiles/skills';
 import { ProfileSkill } from '@/types/profile';
 
-type LocationLevel = 'region' | 'province' | 'municipality';
-type LocationRow   = { id: number; name: string };
 type AccountType   = 'club' | 'athlete' | null;
 
 type Links = {
@@ -90,60 +93,6 @@ const supabase = createSupabaseClient(
 function pickData<T = any>(raw: any): T {
   if (raw && typeof raw === 'object' && 'data' in raw) return (raw as any).data as T;
   return raw as T;
-}
-const sortByName = (arr: LocationRow[]) =>
-  [...arr].sort((a, b) => a.name.localeCompare(b.name, 'it', { sensitivity: 'accent' }));
-const normalizeLocation = (value?: string | null) =>
-  (value || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/gi, ' ')
-    .trim()
-    .toLowerCase();
-const resolveLocationId = (options: LocationRow[], target?: string | null) => {
-  const normalizedTarget = normalizeLocation(target);
-  if (!normalizedTarget) return null;
-
-  const direct = options.find((opt) => normalizeLocation(opt.name) === normalizedTarget);
-  if (direct) return direct.id;
-
-  const partial = options.find((opt) => {
-    const normalizedOpt = normalizeLocation(opt.name);
-    return normalizedOpt && (normalizedOpt.startsWith(normalizedTarget) || normalizedTarget.startsWith(normalizedOpt));
-  });
-
-  return partial?.id ?? null;
-};
-
-const findMatchingLocationId = (options: LocationRow[], target?: string | number | null) => {
-  if (target == null) return null;
-  const asString = typeof target === 'number' ? String(target) : target;
-
-  const byId = options.find((opt) => String(opt.id) === asString);
-  if (byId) return byId.id;
-
-  return resolveLocationId(options, asString);
-};
-
-async function rpcChildren(level: LocationLevel, parent: number | null) {
-  try {
-    const { data, error } = await supabase.rpc('location_children', { level, parent });
-    if (!error && Array.isArray(data)) return sortByName(data as LocationRow[]);
-  } catch {}
-  if (level === 'region') {
-    const { data } = await supabase.from('regions').select('id,name').order('name', { ascending: true });
-    return sortByName((data ?? []) as LocationRow[]);
-  }
-  if (level === 'province') {
-    if (parent == null) return [];
-    const { data } = await supabase
-      .from('provinces').select('id,name').eq('region_id', parent).order('name', { ascending: true });
-    return sortByName((data ?? []) as LocationRow[]);
-  }
-  if (parent == null) return [];
-  const { data } = await supabase
-    .from('municipalities').select('id,name').eq('province_id', parent).order('name', { ascending: true });
-  return sortByName((data ?? []) as LocationRow[]);
 }
 
 function flagEmoji(iso2?: string | null) {
@@ -262,11 +211,13 @@ export default function ProfileEditForm() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [bio, setBio] = useState('');
   const [country, setCountry] = useState('IT');
+  const [residenceCountry, setResidenceCountry] = useState('IT');
 
   // Atleta only
   const [birthYear, setBirthYear] = useState<number | ''>('');
   const [birthPlace, setBirthPlace] = useState('');
   const [clubCity, setClubCity] = useState('');
+  const [residenceCity, setResidenceCity] = useState('');
 
   // Nascita (atleta)
   const [birthCountry, setBirthCountry] = useState('IT');
@@ -274,16 +225,37 @@ export default function ProfileEditForm() {
   const [birthProvinceId, setBirthProvinceId] = useState<number | null>(null);
   const [birthMunicipalityId, setBirthMunicipalityId] = useState<number | null>(null);
 
-  // Zona interesse (comune)
-  const [regionId, setRegionId] = useState<number | null>(null);
-  const [provinceId, setProvinceId] = useState<number | null>(null);
-  const [municipalityId, setMunicipalityId] = useState<number | null>(null);
-  const [regions, setRegions] = useState<LocationRow[]>([]);
-  const [provinces, setProvinces] = useState<LocationRow[]>([]);
-  const [municipalities, setMunicipalities] = useState<LocationRow[]>([]);
-  const [regionNameFallback, setRegionNameFallback] = useState<string | null>(null);
-  const [provinceNameFallback, setProvinceNameFallback] = useState<string | null>(null);
-  const [cityNameFallback, setCityNameFallback] = useState<string | null>(null);
+  // Location
+  const [clubLocation, setClubLocation] = useState<LocationSelection>({
+    regionId: null,
+    provinceId: null,
+    municipalityId: null,
+    regionName: null,
+    provinceName: null,
+    cityName: null,
+  });
+  const [clubLocationFallback, setClubLocationFallback] = useState<LocationFallback>({});
+
+  const [residenceLocation, setResidenceLocation] = useState<LocationSelection>({
+    regionId: null,
+    provinceId: null,
+    municipalityId: null,
+    regionName: null,
+    provinceName: null,
+    cityName: null,
+  });
+  const [residenceFallback, setResidenceFallback] = useState<LocationFallback>({});
+
+  const [interestCountry, setInterestCountry] = useState('IT');
+  const [interestLocation, setInterestLocation] = useState<LocationSelection>({
+    regionId: null,
+    provinceId: null,
+    municipalityId: null,
+    regionName: null,
+    provinceName: null,
+    cityName: null,
+  });
+  const [interestFallback, setInterestFallback] = useState<LocationFallback>({});
 
   // Atleta + notifiche
   const [foot, setFoot] = useState('');
@@ -443,24 +415,61 @@ export default function ProfileEditForm() {
     setAvatarUrl(p.avatar_url || null);
     setBio(p.bio || '');
     setCountry(normalizeCountryCode(p.country) || 'IT');
+    setResidenceCountry(normalizeCountryCode(p.country) || 'IT');
 
     // atleta
     setBirthYear(p.birth_year ?? '');
     setBirthPlace(p.birth_place || '');
     setClubCity(p.city || '');
+    setResidenceCity(p.city || '');
 
     setBirthCountry(normalizeCountryCode(p.birth_country) || 'IT');
     setBirthRegionId(p.birth_region_id);
     setBirthProvinceId(p.birth_province_id);
     setBirthMunicipalityId(p.birth_municipality_id);
 
-    setRegionId(p.interest_region_id);
-    setProvinceId(p.interest_province_id);
-    setMunicipalityId(p.interest_municipality_id);
+    setClubLocation({
+      regionId: p.interest_region_id ?? null,
+      provinceId: p.interest_province_id ?? null,
+      municipalityId: p.interest_municipality_id ?? null,
+      regionName: p.region ?? null,
+      provinceName: p.province ?? null,
+      cityName: p.city ?? null,
+    });
+    setClubLocationFallback({
+      region: p.region ?? null,
+      province: p.province ?? null,
+      city: p.city ?? null,
+    });
 
-    setRegionNameFallback(p.interest_region || p.region || null);
-    setProvinceNameFallback(p.interest_province || p.province || null);
-    setCityNameFallback(p.interest_city || p.city || null);
+    setResidenceLocation({
+      regionId: p.residence_region_id,
+      provinceId: p.residence_province_id,
+      municipalityId: p.residence_municipality_id,
+      regionName: null,
+      provinceName: null,
+      cityName: null,
+    });
+    setResidenceFallback({
+      region: p.region ?? null,
+      province: p.province ?? null,
+      city: p.city ?? null,
+    });
+
+    setInterestCountry(p.interest_country || 'IT');
+    setInterestLocation({
+      regionId: p.interest_region_id,
+      provinceId: p.interest_province_id,
+      municipalityId: p.interest_municipality_id,
+      regionName: p.interest_region || null,
+      provinceName: p.interest_province || null,
+      cityName: p.interest_city || null,
+    });
+    setInterestFallback({
+      region: p.interest_region || p.region || null,
+      province: p.interest_province || p.province || null,
+      city: p.interest_city || p.city || null,
+    });
 
     setFoot(p.foot || '');
     setHeightCm(p.height_cm ?? '');
@@ -494,12 +503,6 @@ export default function ProfileEditForm() {
       try {
         setLoading(true);
         await loadProfile();
-
-        // liste iniziali
-        setRegions(sortByName(await rpcChildren('region', null)));
-
-        if (regionId != null) setProvinces(sortByName(await rpcChildren('province', regionId)));
-        if (provinceId != null) setMunicipalities(sortByName(await rpcChildren('municipality', provinceId)));
       } catch (e: any) {
         console.error(e);
         setError(e?.message ?? 'Errore caricamento profilo');
@@ -510,193 +513,11 @@ export default function ProfileEditForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // interesse cascade (comune)
-  useEffect(() => {
-    (async () => {
-      if (regionId == null) { setProvinces([]); setProvinceId(null); setMunicipalities([]); setMunicipalityId(null); return; }
-      const ps = await rpcChildren('province', regionId);
-      setProvinces(ps);
-      setProvinceId((prev) => (ps.some((p) => p.id === prev) ? prev : null));
-      setMunicipalities([]); setMunicipalityId(null);
-    })();
-  }, [regionId]);
-  useEffect(() => {
-    (async () => {
-      if (provinceId == null) { setMunicipalities([]); setMunicipalityId(null); return; }
-      const ms = await rpcChildren('municipality', provinceId);
-      setMunicipalities(ms);
-      setMunicipalityId((prev) => (ms.some((m) => m.id === prev) ? prev : null));
-    })();
-  }, [provinceId]);
-
-  useEffect(() => {
-    if (process.env.NODE_ENV !== 'production') {
-      if (provinces.length) {
-        console.debug('[ProfileEditForm] province options', provinces.slice(0, 5));
-      }
-      if (municipalities.length) {
-        console.debug('[ProfileEditForm] city options', municipalities.slice(0, 5));
-      }
-    }
-  }, [provinces, municipalities]);
-
-  useEffect(() => {
-    if (regionId == null && regions.length && regionNameFallback) {
-      const match = resolveLocationId(regions, regionNameFallback);
-      if (match) setRegionId(match);
-    }
-  }, [regionId, regions, regionNameFallback]);
-
-  useEffect(() => {
-    if (provinceId == null && provinces.length && provinceNameFallback) {
-      const match = resolveLocationId(provinces, provinceNameFallback);
-      if (match) setProvinceId(match);
-    }
-  }, [provinceId, provinces, provinceNameFallback]);
-
-  // Allinea i select provincia/città del club ai valori salvati (stesso pattern di country/region)
-  useEffect(() => {
-    if (!profile || profile.account_type !== 'club') return;
-    if (normalizeCountryCode(country) !== 'IT') return;
-
-    if (process.env.NODE_ENV !== 'production') {
-      console.debug('[ClubProfileEdit] profile location', {
-        country: profile.country,
-        region: profile.region,
-        province: profile.province,
-        city: profile.city,
-      });
-      if (provinces.length) {
-        console.debug('[ClubProfileEdit] provinceOptions', provinces.slice(0, 3));
-      }
-      if (municipalities.length) {
-        console.debug('[ClubProfileEdit] cityOptions', municipalities.slice(0, 3));
-      }
-    }
-
-    const resolvedRegionId =
-      regionId ?? findMatchingLocationId(regions, profile.region ?? regionNameFallback);
-    if (resolvedRegionId && regionId !== resolvedRegionId) {
-      setRegionId(resolvedRegionId);
-      return; // attendo che le province vengano caricate con la regione corretta
-    }
-
-    if (!provinces.length || regionId == null) return;
-
-    const resolvedProvinceId = findMatchingLocationId(
-      provinces,
-      profile.province ?? provinceNameFallback,
-    );
-
-    if (resolvedProvinceId && provinceId !== resolvedProvinceId) {
-      setProvinceId(resolvedProvinceId);
-      return; // attendo che le città vengano caricate
-    }
-
-    if (!municipalities.length || provinceId == null) return;
-
-    const resolvedCityId = findMatchingLocationId(
-      municipalities,
-      profile.city ?? cityNameFallback,
-    );
-
-    if (resolvedCityId && municipalityId !== resolvedCityId) {
-      setMunicipalityId(resolvedCityId);
-    }
-  }, [
-    profile,
-    country,
-    regionId,
-    regions,
-    provinces,
-    municipalities,
-    provinceId,
-    municipalityId,
-    regionNameFallback,
-    provinceNameFallback,
-    cityNameFallback,
-  ]);
-
-  // Allinea i select della zona di interesse (player) ai valori salvati
-  useEffect(() => {
-    if (!profile || profile.account_type === 'club') return;
-    if (normalizeCountryCode(country) !== 'IT') return;
-
-    if (process.env.NODE_ENV !== 'production') {
-      console.debug('[PlayerInterest] profile location', {
-        interest_region: profile.interest_region,
-        interest_province: profile.interest_province,
-        interest_city: profile.interest_city,
-        interest_region_id: profile.interest_region_id,
-        interest_province_id: profile.interest_province_id,
-        interest_municipality_id: profile.interest_municipality_id,
-      });
-    }
-
-    const resolvedRegionId =
-      regionId ?? findMatchingLocationId(regions, profile.interest_region_id ?? profile.interest_region ?? regionNameFallback);
-    if (resolvedRegionId && regionId !== resolvedRegionId) {
-      setRegionId(resolvedRegionId);
-      return;
-    }
-
-    if (!provinces.length || regionId == null) return;
-
-    const resolvedProvinceId = findMatchingLocationId(
-      provinces,
-      profile.interest_province_id ?? profile.interest_province ?? provinceNameFallback,
-    );
-    if (resolvedProvinceId && provinceId !== resolvedProvinceId) {
-      setProvinceId(resolvedProvinceId);
-      return;
-    }
-
-    if (!municipalities.length || provinceId == null) return;
-
-    const resolvedCityId = findMatchingLocationId(
-      municipalities,
-      profile.interest_municipality_id ?? profile.interest_city ?? cityNameFallback,
-    );
-    if (resolvedCityId && municipalityId !== resolvedCityId) {
-      setMunicipalityId(resolvedCityId);
-    }
-  }, [
-    profile,
-    country,
-    regionId,
-    regions,
-    provinces,
-    municipalities,
-    provinceId,
-    municipalityId,
-    regionNameFallback,
-    provinceNameFallback,
-    cityNameFallback,
-  ]);
-
-  useEffect(() => {
-    if (municipalityId == null && municipalities.length && cityNameFallback) {
-      const match = resolveLocationId(municipalities, cityNameFallback);
-      if (match) setMunicipalityId(match);
-    }
-  }, [municipalityId, municipalities, cityNameFallback]);
-
-  useEffect(() => {
-    if (isClub && country !== 'IT') {
-      setRegionId(null);
-      setProvinceId(null);
-      setMunicipalityId(null);
-      setProvinces([]);
-      setMunicipalities([]);
-    }
-    if (isClub && country === 'IT') {
-      setClubCity('');
-    }
-  }, [isClub, country]);
-
   const canSave = useMemo(() => !saving && profile != null, [saving, profile]);
   const currentYear = new Date().getFullYear();
   const normalizedCountry = normalizeCountryCode(country);
+  const normalizedResidenceCountry = normalizeCountryCode(residenceCountry);
+  const normalizedInterestCountry = normalizeCountryCode(interestCountry || 'IT') || 'IT';
 
   function normalizeSocial(kind: keyof Links, value: string): string | null {
     const v = (value || '').trim();
@@ -729,6 +550,20 @@ export default function ProfileEditForm() {
       };
       Object.keys(links).forEach((k) => (links as any)[k] === undefined && delete (links as any)[k]);
 
+      const clubRegionName = clubLocation.regionName || clubLocationFallback.region || null;
+      const clubProvinceName = clubLocation.provinceName || clubLocationFallback.province || null;
+      const clubCityName =
+        normalizedCountry === 'IT'
+          ? clubLocation.cityName || clubLocationFallback.city || null
+          : (clubCity || '').trim() || null;
+
+      const residenceRegionName = residenceLocation.regionName || residenceFallback.region || null;
+      const residenceProvinceName = residenceLocation.provinceName || residenceFallback.province || null;
+      const residenceCityName =
+        normalizedResidenceCountry === 'IT'
+          ? residenceLocation.cityName || residenceFallback.city || null
+          : (residenceCity || '').trim() || null;
+
       const basePayload: any = {
         full_name: (fullName || '').trim() || null,
         bio:       (bio || '').trim() || null,
@@ -736,10 +571,19 @@ export default function ProfileEditForm() {
         avatar_url: avatarUrl || null,
 
         // interesse
-        interest_country: isClub ? normalizedCountry : 'IT',
-        interest_region_id: isClub && country !== 'IT' ? null : regionId,
-        interest_province_id: isClub && country !== 'IT' ? null : provinceId,
-        interest_municipality_id: isClub && country !== 'IT' ? null : municipalityId,
+        interest_country: isClub ? normalizedCountry : normalizedInterestCountry,
+        interest_region_id:
+          (isClub ? normalizedCountry : normalizedInterestCountry) === 'IT'
+            ? (isClub ? clubLocation.regionId : interestLocation.regionId)
+            : null,
+        interest_province_id:
+          (isClub ? normalizedCountry : normalizedInterestCountry) === 'IT'
+            ? (isClub ? clubLocation.provinceId : interestLocation.provinceId)
+            : null,
+        interest_municipality_id:
+          (isClub ? normalizedCountry : normalizedInterestCountry) === 'IT'
+            ? (isClub ? clubLocation.municipalityId : interestLocation.municipalityId)
+            : null,
 
         // social & notifiche
         links,
@@ -747,17 +591,7 @@ export default function ProfileEditForm() {
         notify_email_new_message: !!notifyEmail,
       };
 
-      const selectedMunicipality =
-        country === 'IT'
-          ? municipalities.find((m) => m.id === municipalityId)
-          : null;
-
       if (isClub) {
-        const clubCityName =
-          country === 'IT'
-            ? selectedMunicipality?.name || null
-            : (clubCity || '').trim() || null;
-
         Object.assign(basePayload, {
           sport: (sport || '').trim() || null,
           club_league_category: (clubCategory || '').trim() || null,
@@ -768,6 +602,8 @@ export default function ProfileEditForm() {
           club_stadium_lng: stadiumLng ?? null,
           club_motto: (clubMotto || '').trim() || null,
 
+          region: normalizedCountry === 'IT' ? clubRegionName : null,
+          province: normalizedCountry === 'IT' ? clubProvinceName : null,
           city: clubCityName,
 
           // pulizia campi atleta
@@ -787,15 +623,17 @@ export default function ProfileEditForm() {
         });
       } else {
         // PLAYER
-        const interestCityName = country === 'IT' ? selectedMunicipality?.name || null : null;
         Object.assign(basePayload, {
           birth_year: birthYear === '' ? null : Number(birthYear),
 
+          region: normalizedResidenceCountry === 'IT' ? residenceRegionName : null,
+          province: normalizedResidenceCountry === 'IT' ? residenceProvinceName : null,
+          city: residenceCityName,
+
           // residenza (non più mostrata, uso la zona di interesse come riferimento principale)
-          residence_region_id: null,
-          residence_province_id: null,
-          residence_municipality_id: null,
-          city: interestCityName,
+          residence_region_id: normalizedResidenceCountry === 'IT' ? residenceLocation.regionId : null,
+          residence_province_id: normalizedResidenceCountry === 'IT' ? residenceLocation.provinceId : null,
+          residence_municipality_id: normalizedResidenceCountry === 'IT' ? residenceLocation.municipalityId : null,
 
           // nascita
           birth_country: normalizeCountryCode(birthCountry), // <<< ISO2
@@ -911,57 +749,18 @@ export default function ProfileEditForm() {
                 </div>
 
                 {country === 'IT' ? (
-                  <>
-                    <div className="flex flex-col gap-1">
-                      <label className="text-sm text-gray-600">Regione del club</label>
-                      <select
-                        className="rounded-lg border p-2"
-                        value={regionId ?? ''}
-                        onChange={(e) => setRegionId(e.target.value ? Number(e.target.value) : null)}
-                      >
-                        <option value="">— Seleziona regione —</option>
-                        {regions.map((r) => (
-                          <option key={r.id} value={r.id}>
-                            {r.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                      <label className="text-sm text-gray-600">Provincia del club</label>
-                      <select
-                        className="rounded-lg border p-2 disabled:bg-gray-50"
-                        value={provinceId ?? ''}
-                        onChange={(e) => setProvinceId(e.target.value ? Number(e.target.value) : null)}
-                        disabled={!regionId}
-                      >
-                        <option value="">— Seleziona provincia —</option>
-                        {provinces.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                      <label className="text-sm text-gray-600">Città del club</label>
-                      <select
-                        className="rounded-lg border p-2 disabled:bg-gray-50"
-                        value={municipalityId ?? ''}
-                        onChange={(e) => setMunicipalityId(e.target.value ? Number(e.target.value) : null)}
-                        disabled={!provinceId}
-                      >
-                        <option value="">— Seleziona città —</option>
-                        {municipalities.map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </>
+                  <LocationFields
+                    supabase={supabase}
+                    country={country}
+                    value={clubLocation}
+                    fallback={clubLocationFallback}
+                    onChange={setClubLocation}
+                    labels={{
+                      region: 'Regione del club',
+                      province: 'Provincia del club',
+                      city: 'Città del club',
+                    }}
+                  />
                 ) : (
                   <div className="md:col-span-3 flex flex-col gap-1">
                     <label className="text-sm text-gray-600">Città del club</label>
@@ -1308,57 +1107,26 @@ export default function ProfileEditForm() {
             <div className="grid gap-4 md:grid-cols-4">
               <div className="flex flex-col gap-1">
                 <label className="text-sm text-gray-600">Paese</label>
-                <select className="rounded-lg border p-2" value="IT" disabled>
-                  <option value="IT">Italia</option>
-                </select>
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-gray-600">Regione</label>
                 <select
                   className="rounded-lg border p-2"
-                  value={regionId ?? ''}
-                  onChange={(e) => setRegionId(e.target.value ? Number(e.target.value) : null)}
+                  value={interestCountry}
+                  onChange={(e) => setInterestCountry(e.target.value)}
                 >
-                  <option value="">— Seleziona regione —</option>
-                  {regions.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.name}
+                  {COUNTRIES.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.label}
                     </option>
                   ))}
                 </select>
               </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-gray-600">Provincia</label>
-                <select
-                  className="rounded-lg border p-2 disabled:bg-gray-50"
-                  value={provinceId ?? ''}
-                  onChange={(e) => setProvinceId(e.target.value ? Number(e.target.value) : null)}
-                  disabled={!regionId}
-                >
-                  <option value="">— Seleziona provincia —</option>
-                  {provinces.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-gray-600">Città</label>
-                <select
-                  className="rounded-lg border p-2 disabled:bg-gray-50"
-                  value={municipalityId ?? ''}
-                  onChange={(e) => setMunicipalityId(e.target.value ? Number(e.target.value) : null)}
-                  disabled={!provinceId}
-                >
-                  <option value="">— Seleziona città —</option>
-                  {municipalities.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <LocationFields
+                supabase={supabase}
+                country={interestCountry}
+                value={interestLocation}
+                fallback={interestFallback}
+                onChange={setInterestLocation}
+                labels={{ region: 'Regione', province: 'Provincia', city: 'Città' }}
+              />
             </div>
           </section>
         )}

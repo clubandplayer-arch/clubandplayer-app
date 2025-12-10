@@ -1,55 +1,28 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { LocationFields, LocationFallback, LocationSelection } from '@/components/profiles/LocationFields';
+import { COUNTRIES } from '@/lib/opps/geo';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
-
-type Opt = { id: string; name: string };
 
 export default function InterestAreaForm() {
   const supabase = useMemo(() => supabaseBrowser(), []);
 
   const [uid, setUid] = useState<string | null>(null);
 
-  // valori selezionati (string per coerenza con col. text nel profilo)
   const [country, setCountry] = useState('IT');
-  const [regionId, setRegionId] = useState<string>('');
-  const [provinceId, setProvinceId] = useState<string>('');
-  const [cityId, setCityId] = useState<string>('');
-
-  // opzioni
-  const [regions, setRegions] = useState<Opt[]>([]);
-  const [provinces, setProvinces] = useState<Opt[]>([]);
-  const [cities, setCities] = useState<Opt[]>([]);
+  const [location, setLocation] = useState<LocationSelection>({
+    regionId: null,
+    provinceId: null,
+    municipalityId: null,
+    regionName: null,
+    provinceName: null,
+    cityName: null,
+  });
+  const [fallback, setFallback] = useState<LocationFallback>({});
 
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
-
-  // --- RPC helpers
-  const fetchRegions = async () => {
-    const { data, error } = await supabase.rpc('location_children', {
-      level: 'region',
-      parent: null as unknown as string, // ignorato dalla funzione
-    });
-    if (!error) setRegions((data ?? []) as Opt[]);
-  };
-
-  const fetchProvinces = async (rid: string) => {
-    if (!rid) { setProvinces([]); return; }
-    const { data, error } = await supabase.rpc('location_children', {
-      level: 'province',
-      parent: String(rid),
-    });
-    if (!error) setProvinces((data ?? []) as Opt[]);
-  };
-
-  const fetchCities = async (pid: string) => {
-    if (!pid) { setCities([]); return; }
-    const { data, error } = await supabase.rpc('location_children', {
-      level: 'municipality',
-      parent: String(pid),
-    });
-    if (!error) setCities((data ?? []) as Opt[]);
-  };
 
   // load iniziale
   useEffect(() => {
@@ -59,8 +32,6 @@ export default function InterestAreaForm() {
       if (!u) return;
       setUid(u.id);
 
-      await fetchRegions();
-
       const { data: p } = await supabase
         .from('profiles')
         .select('interest_country, interest_region_id, interest_province_id, interest_municipality_id')
@@ -69,34 +40,23 @@ export default function InterestAreaForm() {
 
       if (p) {
         if (p.interest_country) setCountry(p.interest_country);
-        if (p.interest_region_id) {
-          setRegionId(String(p.interest_region_id));
-          await fetchProvinces(String(p.interest_region_id));
-        }
-        if (p.interest_province_id) {
-          setProvinceId(String(p.interest_province_id));
-          await fetchCities(String(p.interest_province_id));
-        }
-        if (p.interest_municipality_id) setCityId(String(p.interest_municipality_id));
+        setLocation({
+          regionId: p.interest_region_id ?? null,
+          provinceId: p.interest_province_id ?? null,
+          municipalityId: p.interest_municipality_id ?? null,
+          regionName: null,
+          provinceName: null,
+          cityName: null,
+        });
+        setFallback({
+          region: null,
+          province: null,
+          city: null,
+        });
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // cambia regione → reset e carica province
-  useEffect(() => {
-    setProvinceId('');
-    setCityId('');
-    fetchProvinces(regionId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [regionId]);
-
-  // cambia provincia → reset e carica comuni
-  useEffect(() => {
-    setCityId('');
-    fetchCities(provinceId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [provinceId]);
 
   const save = async () => {
     if (!uid) return;
@@ -106,9 +66,9 @@ export default function InterestAreaForm() {
       .from('profiles')
       .update({
         interest_country: country || null,
-        interest_region_id: regionId || null,
-        interest_province_id: provinceId || null,
-        interest_municipality_id: cityId || null,
+        interest_region_id: location.regionId || null,
+        interest_province_id: location.provinceId || null,
+        interest_municipality_id: location.municipalityId || null,
       })
       .eq('id', uid);
 
@@ -129,53 +89,26 @@ export default function InterestAreaForm() {
         <label className="label">
           Paese
           <select className="select" value={country} onChange={(e) => setCountry(e.target.value)}>
-            <option value="IT">Italia</option>
-          </select>
-        </label>
-
-        <label className="label">
-          Regione
-          <select
-            className="select"
-            value={regionId}
-            onChange={(e) => setRegionId(e.target.value)}
-          >
-            <option value="">Seleziona</option>
-            {regions.map((r) => (
-              <option key={r.id} value={r.id}>{r.name}</option>
+            {COUNTRIES.map((c) => (
+              <option key={c.code} value={c.code}>{c.label}</option>
             ))}
           </select>
         </label>
 
-        <label className="label">
-          Provincia
-          <select
-            className="select"
-            disabled={!regionId}
-            value={provinceId}
-            onChange={(e) => setProvinceId(e.target.value)}
-          >
-            <option value="">{regionId ? 'Seleziona' : '—'}</option>
-            {provinces.map((p) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
-        </label>
-
-        <label className="label">
-          Città
-          <select
-            className="select"
-            disabled={!provinceId}
-            value={cityId}
-            onChange={(e) => setCityId(e.target.value)}
-          >
-            <option value="">{provinceId ? 'Seleziona' : '—'}</option>
-            {cities.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-        </label>
+        {country === 'IT' ? (
+          <LocationFields
+            supabase={supabase}
+            country={country}
+            value={location}
+            fallback={fallback}
+            onChange={setLocation}
+            labels={{ region: 'Regione', province: 'Provincia', city: 'Città' }}
+          />
+        ) : (
+          <div className="md:col-span-3 text-sm text-gray-600">
+            La zona di interesse è supportata solo per località italiane.
+          </div>
+        )}
       </div>
 
       <div>

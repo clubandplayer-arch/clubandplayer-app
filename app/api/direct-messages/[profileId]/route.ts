@@ -50,10 +50,11 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }, routeC
 
     const { data: rows, error } = await supabase
       .from('direct_messages')
-      .select('id, sender_profile_id, recipient_profile_id, content, created_at')
+      .select('id, sender_profile_id, recipient_profile_id, content, created_at, edited_at, edited_by')
       .or(
         `and(sender_profile_id.eq.${me.id},recipient_profile_id.eq.${peer.id}),and(sender_profile_id.eq.${peer.id},recipient_profile_id.eq.${me.id})`,
       )
+      .is('deleted_at', null)
       .order('created_at', { ascending: true });
 
     if (error) throw error;
@@ -129,7 +130,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }, routeC
         recipient_profile_id: peer.id,
         content,
       })
-      .select('id, sender_profile_id, recipient_profile_id, content, created_at')
+      .select('id, sender_profile_id, recipient_profile_id, content, created_at, edited_at, edited_by')
       .maybeSingle();
 
     if (error) throw error;

@@ -119,7 +119,7 @@ export default function DashboardNav() {
     (href !== '/' && pathname.startsWith(href));
 
   const profileHref =
-    role === 'club' ? '/club/profile' : '/profile';
+    role === 'club' ? '/club/profile' : '/player/profile';
 
   return (
     <nav className="w-full border-b bg-gray-50">
@@ -137,7 +137,7 @@ export default function DashboardNav() {
           <Link
             href={profileHref}
             className={pill(
-              isActive('/profile') ||
+              isActive('/player/profile') ||
                 isActive('/club/profile')
             )}
           >

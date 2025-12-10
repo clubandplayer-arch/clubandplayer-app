@@ -331,7 +331,7 @@ export default function ProfileMiniCard() {
           ) : null}
 
           <div className="pt-1">
-            <Link href="/profile" className="inline-block rounded-xl border px-3 py-1.5 text-sm hover:bg-gray-50">
+            <Link href="/player/profile" className="inline-block rounded-xl border px-3 py-1.5 text-sm hover:bg-gray-50">
               Modifica profilo
             </Link>
           </div>
@@ -393,7 +393,7 @@ export default function ProfileMiniCard() {
           ) : null}
 
           <div className="pt-1">
-            <Link href="/profile" className="inline-block rounded-xl border px-3 py-1.5 text-sm hover:bg-gray-50">
+            <Link href="/player/profile" className="inline-block rounded-xl border px-3 py-1.5 text-sm hover:bg-gray-50">
               Modifica profilo
             </Link>
           </div>

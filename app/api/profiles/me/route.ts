@@ -44,6 +44,8 @@ const FIELDS: Record<string, 'text' | 'number' | 'bool' | 'json'> = {
   avatar_url: 'text',
   bio: 'text',
   country: 'text', // nazionalità
+  region: 'text',
+  province: 'text',
 
   // atleta (solo per account_type=athlete)
   birth_year: 'number',

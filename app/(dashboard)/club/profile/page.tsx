@@ -7,9 +7,6 @@ export default function ProfilePage() {
     <main className="container mx-auto space-y-6 py-6">
       <header className="space-y-1">
         <h1 className="heading-h1 mb-1">Modifica dati club</h1>
-        <p className="text-sm text-neutral-600">
-          Aggiorna le informazioni del club; i cambiamenti si rifletteranno sul profilo pubblico e sul feed.
-        </p>
       </header>
 
       <section className="glass-panel p-5 md:p-6">
