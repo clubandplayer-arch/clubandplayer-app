@@ -124,7 +124,7 @@ export default function ClubProfileDetails() {
     <section className="glass-panel space-y-6 p-5 md:p-6">
       <header className="text-center space-y-2">
         {profile?.avatar_url ? (
-          <div className="mx-auto h-36 w-36 overflow-hidden rounded-full border border-white/60 shadow md:h-40 md:w-40">
+          <div className="mx-auto h-36 w-36 overflow-hidden rounded-full border border-white/60 md:h-40 md:w-40">
             <img
               src={profile.avatar_url}
               alt={displayName}
@@ -132,7 +132,7 @@ export default function ClubProfileDetails() {
             />
           </div>
         ) : (
-          <div className="mx-auto h-36 w-36 rounded-full bg-gradient-to-br from-neutral-100 to-neutral-200 shadow md:h-40 md:w-40" />
+          <div className="mx-auto h-36 w-36 rounded-full bg-gradient-to-br from-neutral-100 to-neutral-200 md:h-40 md:w-40" />
         )}
         <div>
           <h2 className="heading-h2 mb-1">Dati club</h2>

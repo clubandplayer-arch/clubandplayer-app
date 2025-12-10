@@ -223,7 +223,7 @@ export default function ProfileMiniCard() {
   return (
     <div className="glass-panel p-4 space-y-4">
       <div className="flex flex-col items-center gap-3 text-center">
-        <div className="relative w-3/4 max-w-[140px] aspect-square overflow-hidden rounded-full bg-transparent shadow-sm ring-1 ring-white/70 md:w-2/3 md:max-w-[160px]">
+        <div className="relative w-3/4 max-w-[140px] aspect-square overflow-hidden rounded-full bg-transparent ring-1 ring-white/70 md:w-2/3 md:max-w-[160px]">
           {p?.avatar_url ? (
             <img
               src={p.avatar_url}

@@ -10,7 +10,7 @@ type Props = {
 };
 
 const TARGET_SIZE = 512; // quadrato, visualizzato come cerchio via CSS
-const MIN_ZOOM = 0.8;
+const MIN_ZOOM = 0.6;
 const MAX_ZOOM = 3;
 const INITIAL_ZOOM = (MIN_ZOOM + MAX_ZOOM) / 2;
 
