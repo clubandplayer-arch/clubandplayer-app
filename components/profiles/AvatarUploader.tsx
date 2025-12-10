@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import type { PointerEvent } from 'react';
+import { useRef, useState } from 'react';
+import Cropper, { type Area } from 'react-easy-crop';
+import 'react-easy-crop/react-easy-crop.css';
 
 type Props = {
   value: string | null;
@@ -15,15 +16,18 @@ const INITIAL_ZOOM = (MIN_ZOOM + MAX_ZOOM) / 2;
 
 type CropState = {
   zoom: number;
-  offsetX: number;
-  offsetY: number;
+  crop: { x: number; y: number };
 };
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
-function computeCropParams(image: HTMLImageElement, { zoom, offsetX, offsetY }: CropState) {
+function computeCropParams(
+  image: HTMLImageElement,
+  pixels: Area | null,
+  { zoom }: CropState
+) {
   const srcW = image.naturalWidth;
   const srcH = image.naturalHeight;
 
@@ -31,57 +35,30 @@ function computeCropParams(image: HTMLImageElement, { zoom, offsetX, offsetY }: 
     throw new Error('Dimensioni immagine non valide');
   }
 
+  if (pixels) {
+    return {
+      cropSize: Math.min(pixels.width, pixels.height),
+      originX: pixels.x,
+      originY: pixels.y,
+    };
+  }
+
   const base = Math.min(srcW, srcH); // area quadrata di partenza
   const effectiveZoom = clamp(zoom, MIN_ZOOM, MAX_ZOOM);
   const cropSize = base / effectiveZoom;
 
-  const diffX = Math.max(0, srcW - cropSize);
-  const diffY = Math.max(0, srcH - cropSize);
-
-  const normX = clamp(offsetX, -1, 1);
-  const normY = clamp(offsetY, -1, 1);
-
-  const originX = diffX * ((normX + 1) / 2);
-  const originY = diffY * ((normY + 1) / 2);
+  const originX = Math.max(0, (srcW - cropSize) / 2);
+  const originY = Math.max(0, (srcH - cropSize) / 2);
 
   return { cropSize, originX, originY };
 }
 
-function renderAvatarPreview(
-  image: HTMLImageElement,
-  crop: CropState
-): string {
-  const { cropSize, originX, originY } = computeCropParams(image, crop);
-  const canvas = document.createElement('canvas');
-  canvas.width = TARGET_SIZE;
-  canvas.height = TARGET_SIZE;
-  const ctx = canvas.getContext('2d');
-
-  if (!ctx) {
-    throw new Error('Impossibile inizializzare il canvas');
-  }
-
-  ctx.clearRect(0, 0, TARGET_SIZE, TARGET_SIZE);
-  ctx.drawImage(
-    image,
-    originX,
-    originY,
-    cropSize,
-    cropSize,
-    0,
-    0,
-    TARGET_SIZE,
-    TARGET_SIZE
-  );
-
-  return canvas.toDataURL('image/png');
-}
-
 async function createAvatarBlob(
   image: HTMLImageElement,
+  pixels: Area | null,
   crop: CropState
 ): Promise<Blob> {
-  const { cropSize, originX, originY } = computeCropParams(image, crop);
+  const { cropSize, originX, originY } = computeCropParams(image, pixels, crop);
   const canvas = document.createElement('canvas');
   canvas.width = TARGET_SIZE;
   canvas.height = TARGET_SIZE;
@@ -130,42 +107,19 @@ export default function AvatarUploader({ value, onChange }: Props) {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorCrop, setEditorCrop] = useState<CropState>({
     zoom: INITIAL_ZOOM,
-    offsetX: 0,
-    offsetY: 0,
+    crop: { x: 0, y: 0 },
   });
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
 
   const imageRef = useRef<HTMLImageElement | null>(null);
-  const previewRef = useRef<HTMLDivElement | null>(null);
-  const dragRef = useRef<{
-    pointerId: number;
-    startX: number;
-    startY: number;
-    startOffsetX: number;
-    startOffsetY: number;
-    width: number;
-    height: number;
-  } | null>(null);
-
-  useEffect(() => {
-    if (!editorOpen) return;
-    const image = imageRef.current;
-    if (!image) return;
-
-    try {
-      const url = renderAvatarPreview(image, editorCrop);
-      setPreviewUrl(url);
-    } catch (err) {
-      console.error('[AvatarUploader] anteprima fallita', err);
-    }
-  }, [editorOpen, editorCrop]);
 
   function resetEditor() {
     setEditorOpen(false);
-    setPreviewUrl(null);
-    setEditorCrop({ zoom: INITIAL_ZOOM, offsetX: 0, offsetY: 0 });
+    setImageSrc(null);
+    setEditorCrop({ zoom: INITIAL_ZOOM, crop: { x: 0, y: 0 } });
+    setCroppedAreaPixels(null);
     imageRef.current = null;
-    dragRef.current = null;
   }
 
   async function handleFileChange(
@@ -192,16 +146,10 @@ export default function AvatarUploader({ value, onChange }: Props) {
       });
 
       imageRef.current = img;
-      const initialCrop: CropState = { zoom: INITIAL_ZOOM, offsetX: 0, offsetY: 0 };
+      const initialCrop: CropState = { zoom: INITIAL_ZOOM, crop: { x: 0, y: 0 } };
       setEditorCrop(initialCrop);
-
-      try {
-        const preview = renderAvatarPreview(img, initialCrop);
-        setPreviewUrl(preview);
-      } catch (err) {
-        console.error('[AvatarUploader] anteprima fallita', err);
-        setPreviewUrl(null);
-      }
+      setImageSrc(dataUrl);
+      setCroppedAreaPixels(null);
 
       setEditorOpen(true);
     } catch (err: any) {
@@ -227,7 +175,7 @@ export default function AvatarUploader({ value, onChange }: Props) {
       setUploading(true);
       setError(null);
 
-      const avatarBlob = await createAvatarBlob(image, editorCrop);
+      const avatarBlob = await createAvatarBlob(image, croppedAreaPixels, editorCrop);
       const form = new FormData();
       form.append('file', avatarBlob, 'avatar.png');
 
@@ -270,61 +218,10 @@ export default function AvatarUploader({ value, onChange }: Props) {
     setEditorCrop((prev) => ({ ...prev, zoom: next }));
   }
 
-  function handlePreviewPointerDown(
-    e: PointerEvent<HTMLDivElement>
-  ) {
-    if (uploading) return;
-    const rect = previewRef.current?.getBoundingClientRect();
-    if (!rect) return;
-
-    dragRef.current = {
-      pointerId: e.pointerId,
-      startX: e.clientX,
-      startY: e.clientY,
-      startOffsetX: editorCrop.offsetX,
-      startOffsetY: editorCrop.offsetY,
-      width: rect.width,
-      height: rect.height,
-    };
-
-    e.currentTarget.setPointerCapture(e.pointerId);
-  }
-
-  function handlePreviewPointerMove(
-    e: PointerEvent<HTMLDivElement>
-  ) {
-    const drag = dragRef.current;
-    if (!drag || drag.pointerId !== e.pointerId || uploading) return;
-
-    const rect = previewRef.current?.getBoundingClientRect();
-    const width = rect?.width ?? drag.width;
-    const height = rect?.height ?? drag.height;
-    if (!width || !height) return;
-
-    const dx = e.clientX - drag.startX;
-    const dy = e.clientY - drag.startY;
-
-    const deltaX = (dx / width) * 2;
-    const deltaY = (dy / height) * 2;
-
-    setEditorCrop((prev) => ({
-      ...prev,
-      offsetX: clamp(drag.startOffsetX + deltaX, -1, 1),
-      offsetY: clamp(drag.startOffsetY + deltaY, -1, 1),
-    }));
-  }
-
-  function releasePointer(e: PointerEvent<HTMLDivElement>) {
-    if (dragRef.current?.pointerId === e.pointerId) {
-      dragRef.current = null;
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    }
-  }
-
   return (
     <>
       <div className="flex items-start gap-4">
-        <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-full border bg-gray-50">
+        <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-full border bg-transparent">
           {value ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -371,22 +268,21 @@ export default function AvatarUploader({ value, onChange }: Props) {
               </p>
             </div>
 
-            <div
-              ref={previewRef}
-              className="relative mx-auto h-72 w-72 overflow-hidden rounded-full border-4 border-white bg-transparent shadow-inner"
-              onPointerDown={handlePreviewPointerDown}
-              onPointerMove={handlePreviewPointerMove}
-              onPointerUp={releasePointer}
-              onPointerCancel={releasePointer}
-              onPointerLeave={releasePointer}
-            >
-              {previewUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={previewUrl}
-                  alt="Anteprima avatar"
-                  className="absolute inset-0 h-full w-full select-none object-cover"
-                  draggable={false}
+            <div className="relative mx-auto h-72 w-72 overflow-hidden rounded-full border-4 border-white bg-transparent shadow-inner">
+              {imageSrc ? (
+                <Cropper
+                  image={imageSrc}
+                  crop={editorCrop.crop}
+                  zoom={editorCrop.zoom}
+                  aspect={1}
+                  cropShape="round"
+                  showGrid={false}
+                  onCropChange={(next) => setEditorCrop((prev) => ({ ...prev, crop: next }))}
+                  onZoomChange={onZoomChange}
+                  onCropComplete={(_, areaPixels) => setCroppedAreaPixels(areaPixels)}
+                  restrictPosition={false}
+                  objectFit="contain"
+                  classes={{ containerClassName: 'bg-transparent touch-none', cropAreaClassName: 'backdrop-blur-[0px]' }}
                 />
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center text-xs text-gray-500">
