@@ -4,7 +4,9 @@ alter table public.direct_messages
   add column if not exists edited_at timestamptz,
   add column if not exists edited_by uuid references public.profiles(id) on delete set null;
 
-create policy if not exists "direct_messages_update_own"
+drop policy if exists "direct_messages_update_own" on public.direct_messages;
+
+create policy "direct_messages_update_own"
   on public.direct_messages
   for update
   using (
