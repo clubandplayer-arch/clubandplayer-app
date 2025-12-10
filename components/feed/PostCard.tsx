@@ -64,7 +64,6 @@ export type PostCardProps = {
   onCommentCountChange?: (next: number) => void;
   onUpdated?: (next: FeedPost) => void;
   onDeleted?: (id: string) => void;
-  onQuote?: (post: FeedPost) => void;
 };
 
 export function PostCard({
@@ -79,7 +78,6 @@ export function PostCard({
   onClosePicker,
   onToggleReaction,
   onCommentCountChange,
-  onQuote,
 }: PostCardProps) {
   const isEvent = (post.kind ?? 'normal') === 'event';
   const eventDetails = post.event_payload;
@@ -113,9 +111,13 @@ export function PostCard({
   }, [post.id]);
 
   const handleShare = useCallback(() => {
+    const shareText = isEvent
+      ? [shareUrl, eventDetails?.title ?? description].filter(Boolean).join('\n\n')
+      : [shareUrl, description || undefined].filter(Boolean).join('\n\n');
+
     void shareOrCopyLink({
       title: isEvent ? 'Evento del club' : 'Post del feed',
-      text: isEvent ? eventDetails?.title ?? description : description || undefined,
+      text: shareText,
       url: shareUrl,
       copiedMessage: 'Link del post copiato negli appunti',
     });
@@ -128,14 +130,6 @@ export function PostCard({
   const reactionSummaryText = reactionSummaryParts.length ? reactionSummaryParts.join(' · ') : 'Nessuna reazione';
 
   const actionIconClass = 'text-[18px] leading-none align-middle';
-
-  const handleQuote = useCallback(() => {
-    if (onQuote) {
-      onQuote(post);
-    } else {
-      handleShare();
-    }
-  }, [handleShare, onQuote, post]);
 
   useEffect(() => {
     if (!editing) setText(description);
@@ -391,15 +385,6 @@ export function PostCard({
         >
           <span aria-hidden>💬</span>
           <span>Commenta</span>
-        </button>
-
-        <button
-          type="button"
-          className="inline-flex items-center gap-2 rounded-full bg-slate-50 px-3 py-1.5 text-neutral-800 transition hover:bg-slate-100"
-          onClick={handleQuote}
-        >
-          <span aria-hidden>🔗</span>
-          <span>Condividi con commento</span>
         </button>
       </div>
 
