@@ -9,7 +9,9 @@ type Props = {
 };
 
 const TARGET_SIZE = 512; // quadrato, visualizzato come cerchio via CSS
+const MIN_ZOOM = 0.8;
 const MAX_ZOOM = 3;
+const INITIAL_ZOOM = (MIN_ZOOM + MAX_ZOOM) / 2;
 
 type CropState = {
   zoom: number;
@@ -30,7 +32,7 @@ function computeCropParams(image: HTMLImageElement, { zoom, offsetX, offsetY }: 
   }
 
   const base = Math.min(srcW, srcH); // area quadrata di partenza
-  const effectiveZoom = clamp(zoom, 1, MAX_ZOOM);
+  const effectiveZoom = clamp(zoom, MIN_ZOOM, MAX_ZOOM);
   const cropSize = base / effectiveZoom;
 
   const diffX = Math.max(0, srcW - cropSize);
@@ -59,6 +61,7 @@ function renderAvatarPreview(
     throw new Error('Impossibile inizializzare il canvas');
   }
 
+  ctx.clearRect(0, 0, TARGET_SIZE, TARGET_SIZE);
   ctx.drawImage(
     image,
     originX,
@@ -71,7 +74,7 @@ function renderAvatarPreview(
     TARGET_SIZE
   );
 
-  return canvas.toDataURL('image/jpeg', 0.9);
+  return canvas.toDataURL('image/png');
 }
 
 async function createAvatarBlob(
@@ -88,6 +91,7 @@ async function createAvatarBlob(
     throw new Error('Impossibile inizializzare il canvas');
   }
 
+  ctx.clearRect(0, 0, TARGET_SIZE, TARGET_SIZE);
   ctx.drawImage(
     image,
     originX,
@@ -101,14 +105,10 @@ async function createAvatarBlob(
   );
 
   return new Promise((resolve, reject) => {
-    canvas.toBlob(
-      (blob) => {
-        if (blob) resolve(blob);
-        else reject(new Error('Impossibile generare il blob'));
-      },
-      'image/jpeg',
-      0.9
-    );
+    canvas.toBlob((blob) => {
+      if (blob) resolve(blob);
+      else reject(new Error('Impossibile generare il blob'));
+    }, 'image/png');
   });
 }
 
@@ -129,7 +129,7 @@ export default function AvatarUploader({ value, onChange }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorCrop, setEditorCrop] = useState<CropState>({
-    zoom: 1,
+    zoom: INITIAL_ZOOM,
     offsetX: 0,
     offsetY: 0,
   });
@@ -163,7 +163,7 @@ export default function AvatarUploader({ value, onChange }: Props) {
   function resetEditor() {
     setEditorOpen(false);
     setPreviewUrl(null);
-    setEditorCrop({ zoom: 1, offsetX: 0, offsetY: 0 });
+    setEditorCrop({ zoom: INITIAL_ZOOM, offsetX: 0, offsetY: 0 });
     imageRef.current = null;
     dragRef.current = null;
   }
@@ -192,7 +192,7 @@ export default function AvatarUploader({ value, onChange }: Props) {
       });
 
       imageRef.current = img;
-      const initialCrop: CropState = { zoom: 1, offsetX: 0, offsetY: 0 };
+      const initialCrop: CropState = { zoom: INITIAL_ZOOM, offsetX: 0, offsetY: 0 };
       setEditorCrop(initialCrop);
 
       try {
@@ -229,7 +229,7 @@ export default function AvatarUploader({ value, onChange }: Props) {
 
       const avatarBlob = await createAvatarBlob(image, editorCrop);
       const form = new FormData();
-      form.append('file', avatarBlob, 'avatar.jpg');
+      form.append('file', avatarBlob, 'avatar.png');
 
       const res = await fetch('/api/profiles/avatar', {
         method: 'POST',
@@ -266,7 +266,7 @@ export default function AvatarUploader({ value, onChange }: Props) {
   }
 
   function onZoomChange(value: number) {
-    const next = clamp(value, 1, MAX_ZOOM);
+    const next = clamp(value, MIN_ZOOM, MAX_ZOOM);
     setEditorCrop((prev) => ({ ...prev, zoom: next }));
   }
 
@@ -373,7 +373,7 @@ export default function AvatarUploader({ value, onChange }: Props) {
 
             <div
               ref={previewRef}
-              className="relative mx-auto h-72 w-72 overflow-hidden rounded-full border-4 border-white bg-gray-100 shadow-inner"
+              className="relative mx-auto h-72 w-72 overflow-hidden rounded-full border-4 border-white bg-transparent shadow-inner"
               onPointerDown={handlePreviewPointerDown}
               onPointerMove={handlePreviewPointerMove}
               onPointerUp={releasePointer}
@@ -406,7 +406,7 @@ export default function AvatarUploader({ value, onChange }: Props) {
                 Zoom
                 <input
                   type="range"
-                  min="1"
+                  min={MIN_ZOOM}
                   max={MAX_ZOOM}
                   step="0.01"
                   value={editorCrop.zoom}
