@@ -490,22 +490,26 @@ function MyMediaHub({
           <MediaPreviewGrid
             emptyLabel="Non hai ancora video"
             items={videos}
-            linkHref="/mymedia?type=video"
+            linkHref={currentUserId ? `/mymedia?type=video&authorId=${currentUserId}` : '/mymedia?type=video'}
             sectionId="my-videos"
           />
         ) : (
           <MediaPreviewGrid
             emptyLabel="Non hai ancora foto"
             items={photos}
-            linkHref="/mymedia?type=photo"
+            linkHref={currentUserId ? `/mymedia?type=photo&authorId=${currentUserId}` : '/mymedia?type=photo'}
             sectionId="my-photos"
           />
         )}
         <Link
           href={
             tab === 'video'
-              ? '/mymedia?type=video#my-videos'
-              : '/mymedia?type=photo#my-photos'
+              ? currentUserId
+                ? `/mymedia?type=video&authorId=${currentUserId}#my-videos`
+                : '/mymedia?type=video#my-videos'
+              : currentUserId
+                ? `/mymedia?type=photo&authorId=${currentUserId}#my-photos`
+                : '/mymedia?type=photo#my-photos'
           }
           className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-blue-700 hover:underline"
         >

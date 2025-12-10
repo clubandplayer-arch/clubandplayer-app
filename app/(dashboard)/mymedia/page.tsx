@@ -143,6 +143,9 @@ export default function MyMediaPage() {
   const [items, setItems] = useState<MediaPost[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const searchParams = useSearchParams();
+
+  const authorIdFromParams = useMemo(() => searchParams?.get('authorId') ?? null, [searchParams]);
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -150,26 +153,7 @@ export default function MyMediaPage() {
       setLoading(true);
       setErr(null);
       try {
-        let currentUserId: string | null = null;
-
-        try {
-          const whoamiRes = await fetch('/api/auth/whoami', {
-            credentials: 'include',
-            cache: 'no-store',
-            signal: ctrl.signal,
-          });
-
-          if (whoamiRes.ok) {
-            const whoamiJson = await whoamiRes.json().catch(() => null);
-            currentUserId = whoamiJson?.user?.id ?? null;
-          }
-        } catch (whoamiErr: any) {
-          if (!ctrl.signal.aborted) {
-            console.error('[mymedia] whoami failed', whoamiErr);
-          }
-        }
-
-        const data = await fetchMyMedia({ signal: ctrl.signal, authorId: currentUserId });
+        const data = await fetchMyMedia({ signal: ctrl.signal, authorId: authorIdFromParams });
         setItems(data);
       } catch (e: any) {
         if (!ctrl.signal.aborted) setErr(e?.message || 'Errore nel caricamento dei media');
@@ -178,7 +162,7 @@ export default function MyMediaPage() {
       }
     })();
     return () => ctrl.abort();
-  }, []);
+  }, [authorIdFromParams]);
 
   const videos = useMemo(() => items.filter(isVideoPost), [items]);
   const photos = useMemo(() => items.filter(isPhotoPost), [items]);
@@ -195,7 +179,6 @@ export default function MyMediaPage() {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [activeVideo, setActiveVideo] = useState<MediaPost | null>(null);
   const [returnFocusEl, setReturnFocusEl] = useState<HTMLElement | null>(null);
-  const searchParams = useSearchParams();
 
   const activeTab: MediaTab = useMemo(() => {
     const type = searchParams?.get('type');
@@ -241,6 +224,8 @@ export default function MyMediaPage() {
     alt: item.content ?? 'Media',
   }));
 
+  const authorQuery = authorIdFromParams ? `&authorId=${authorIdFromParams}` : '';
+
   return (
     <div className="flex w-full justify-center">
       <div className="w-full max-w-5xl space-y-8 px-4 py-8 md:px-6 lg:px-8">
@@ -261,8 +246,16 @@ export default function MyMediaPage() {
         </div>
 
         <div className="mt-2 flex items-center gap-4 overflow-x-auto pb-1 text-base font-medium">
-          <TabLink label="Video" isActive={activeTab === 'video'} href="/mymedia?type=video#my-videos" />
-          <TabLink label="Foto" isActive={activeTab === 'photo'} href="/mymedia?type=photo#my-photos" />
+          <TabLink
+            label="Video"
+            isActive={activeTab === 'video'}
+            href={`/mymedia?type=video${authorQuery}#my-videos`}
+          />
+          <TabLink
+            label="Foto"
+            isActive={activeTab === 'photo'}
+            href={`/mymedia?type=photo${authorQuery}#my-photos`}
+          />
         </div>
 
         {loading && <div className="glass-panel p-4">Caricamento…</div>}
