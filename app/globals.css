@@ -194,6 +194,10 @@ h3 { @apply text-lg md:text-xl font-semibold tracking-tight mt-2 mb-2; }
   .text-cp-brand { color: var(--brand); }
   .text-cp-brand-soft { color: var(--brand-soft); }
   .border-cp-brand-soft { border-color: var(--brand-border); }
+  .font-logo {
+    font-family: var(--font-righteous), 'Righteous', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-weight: 400;
+  }
 }
 
 /* Link evidenziati */

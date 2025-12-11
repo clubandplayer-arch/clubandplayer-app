@@ -348,7 +348,7 @@ export default function OpportunitiesClient() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <p className="text-xs uppercase tracking-wide text-gray-500">Suggerite</p>
-            <h2 className="text-lg font-semibold">Opportunità per te</h2>
+            <h2 className="text-lg font-semibold">Opportunità presenti</h2>
           </div>
           <button
             type="button"
@@ -364,11 +364,6 @@ export default function OpportunitiesClient() {
           {!recommendedLoading && recommendedError && (
             <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
               {recommendedError}
-            </div>
-          )}
-          {!recommendedLoading && !recommendedError && recommended.length === 0 && (
-            <div className="rounded-xl border border-dashed px-3 py-2 text-sm text-gray-600">
-              Al momento non ci sono opportunità in linea con il tuo profilo. Prova a esplorare tutte le opportunità.
             </div>
           )}
           {!recommendedLoading && !recommendedError && recommended.length > 0 && (
