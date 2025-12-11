@@ -11,13 +11,13 @@ type BrandLogoProps = {
 
 const variantConfig: Record<BrandLogoVariant, { imageClass: string; textClass: string; gapClass: string }> = {
   marketing: {
-    imageClass: 'h-16 w-auto sm:h-[68px]',
-    textClass: 'font-logo text-3xl sm:text-4xl font-extrabold text-[#00527a] leading-none',
+    imageClass: 'h-20 w-auto sm:h-[88px] lg:h-24',
+    textClass: 'font-logo text-4xl sm:text-5xl lg:text-6xl font-extrabold text-[#00527a] leading-none',
     gapClass: 'gap-3 sm:gap-4',
   },
   navbar: {
     imageClass: 'h-9 w-auto',
-    textClass: 'font-logo text-lg font-semibold text-[var(--brand)] whitespace-nowrap leading-none',
+    textClass: 'font-logo text-xl sm:text-2xl font-semibold text-[var(--brand)] whitespace-nowrap leading-none',
     gapClass: 'gap-2',
   },
 }
