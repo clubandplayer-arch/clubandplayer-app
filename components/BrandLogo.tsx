@@ -34,7 +34,13 @@ export default function BrandLogo({ variant, className, href }: BrandLogoProps) 
         className={`${config.imageClass} max-w-full`}
         priority={variant === 'navbar'}
       />
-      <span className={config.textClass}>Club &amp; Player</span>
+      <span className={config.textClass}>
+        <span>Club</span>
+        {' '}
+        <span className="text-[#036f9a]">&amp;</span>
+        {' '}
+        <span>Player</span>
+      </span>
     </div>
   )
 

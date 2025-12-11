@@ -366,12 +366,6 @@ export default function OpportunitiesClient() {
               {recommendedError}
             </div>
           )}
-          {!recommendedLoading && !recommendedError && recommended.length === 0 && (
-            <div className="rounded-xl border border-dashed px-3 py-2 text-sm text-gray-600">
-              Al momento non ci sono opportunità presenti in questa sezione. Puoi provare a esplorare tutte le
-              opportunità usando i filtri qui sotto.
-            </div>
-          )}
           {!recommendedLoading && !recommendedError && recommended.length > 0 && (
             <div className="space-y-3">
               {recommended.map((opp) => {
