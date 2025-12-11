@@ -12,6 +12,7 @@ import NotificationsDropdown from '@/components/notifications/NotificationsDropd
 import { useUnreadDirectThreads } from '@/hooks/useUnreadDirectThreads';
 import { MessagingDock } from '@/components/messaging/MessagingDock';
 import { useNotificationsBadge } from '@/hooks/useNotificationsBadge';
+import BrandLogo from '../BrandLogo';
 
 type Role = 'athlete' | 'club' | 'guest';
 
@@ -96,78 +97,75 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <div className="min-h-screen bg-clubplayer-gradient">
           <header className="fixed inset-x-0 top-0 z-40 border-b bg-white/90 backdrop-blur">
             <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4">
-              <Link
-                href="/feed"
-            className="heading-h2 !mt-0 !mb-0 !text-xl md:!text-2xl lg:!text-3xl font-semibold tracking-tight text-[var(--brand)]"
-          >
-            Club&Player
-          </Link>
+              <BrandLogo variant="navbar" href="/feed" />
 
-          <nav className="hidden flex-1 justify-center md:flex">
-            <div className="flex items-center gap-1 rounded-full border border-white/40 bg-white/70 px-2 py-1 shadow-sm backdrop-blur">
-              {navItems.map((item) => {
-                const active = isActive(item.href);
-                if (item.href === '/notifications') {
-                  return (
-                    <div key={item.href} className="flex h-10 w-10 items-center justify-center">
-                      <NotificationsDropdown
-                        unreadCount={unreadNotifications}
-                        onUnreadChange={(v) => setUnreadNotifications(Math.max(0, v))}
-                        active={active}
-                      />
-                    </div>
-                  );
-                }
+              <nav className="hidden flex-1 justify-center md:flex">
+                <div className="flex items-center gap-1 rounded-full border border-white/40 bg-white/70 px-2 py-1 shadow-sm backdrop-blur">
+                  {navItems.map((item) => {
+                    const active = isActive(item.href);
+                    if (item.href === '/notifications') {
+                      return (
+                        <div key={item.href} className="flex h-10 w-10 items-center justify-center">
+                          <NotificationsDropdown
+                            unreadCount={unreadNotifications}
+                            onUnreadChange={(v) => setUnreadNotifications(Math.max(0, v))}
+                            active={active}
+                          />
+                        </div>
+                      );
+                    }
 
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    aria-label={item.label}
-                    aria-current={active ? 'page' : undefined}
-                    title={item.label}
-                    className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${active ? 'bg-[var(--brand)] text-white shadow-sm' : 'text-neutral-600 hover:bg-neutral-100'}`}
-                  >
-                    <MaterialIcon name={item.icon} fontSize="small" />
-                    <span className="sr-only">{item.label}</span>
-                    {item.href === '/messages' && unreadDirectThreads > 0 && (
-                      <span className="absolute -right-1 -top-1 inline-flex min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-semibold text-white">
-                        {unreadDirectThreads > 9 ? '9+' : unreadDirectThreads}
-                      </span>
-                    )}
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        aria-label={item.label}
+                        aria-current={active ? 'page' : undefined}
+                        title={item.label}
+                        className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
+                          active ? 'bg-[var(--brand)] text-white shadow-sm' : 'text-neutral-600 hover:bg-neutral-100'
+                        }`}
+                      >
+                        <MaterialIcon name={item.icon} fontSize="small" />
+                        <span className="sr-only">{item.label}</span>
+                        {item.href === '/messages' && unreadDirectThreads > 0 && (
+                          <span className="absolute -right-1 -top-1 inline-flex min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-semibold text-white">
+                            {unreadDirectThreads > 9 ? '9+' : unreadDirectThreads}
+                          </span>
+                        )}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </nav>
+
+              <div className="ml-auto hidden items-center gap-2 md:flex">
+                {/* CTA sempre e solo per club (usiamo useIsClub) */}
+                {isClub && (
+                  <Link href="/opportunities/new" className="rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50">
+                    + Nuova opportunità
                   </Link>
-                );
-              })}
+                )}
+
+                <Link href="/logout" className="rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50">
+                  Logout
+                </Link>
+              </div>
+
+              <button
+                type="button"
+                className="ml-auto inline-flex items-center justify-center rounded-md border px-3 py-2 text-sm text-neutral-700 transition hover:bg-neutral-100 md:hidden"
+                onClick={() => setIsMenuOpen((v) => !v)}
+                aria-label={isMenuOpen ? 'Chiudi menu di navigazione' : 'Apri menu di navigazione'}
+                aria-expanded={isMenuOpen}
+              >
+                {isMenuOpen ? <NavCloseIcon fontSize="small" aria-hidden /> : <NavMenuIcon fontSize="small" aria-hidden />}
+              </button>
             </div>
-          </nav>
-
-          <div className="ml-auto hidden items-center gap-2 md:flex">
-            {/* CTA sempre e solo per club (usiamo useIsClub) */}
-            {isClub && (
-              <Link href="/opportunities/new" className="rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50">
-                + Nuova opportunità
-              </Link>
-            )}
-
-            <Link href="/logout" className="rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50">
-              Logout
-            </Link>
-          </div>
-
-          <button
-            type="button"
-            className="ml-auto inline-flex items-center justify-center rounded-md border px-3 py-2 text-sm text-neutral-700 transition hover:bg-neutral-100 md:hidden"
-            onClick={() => setIsMenuOpen((v) => !v)}
-            aria-label={isMenuOpen ? 'Chiudi menu di navigazione' : 'Apri menu di navigazione'}
-            aria-expanded={isMenuOpen}
-          >
-            {isMenuOpen ? <NavCloseIcon fontSize="small" aria-hidden /> : <NavMenuIcon fontSize="small" aria-hidden />}
-          </button>
-        </div>
-        {isMenuOpen ? (
-          <div className="border-t bg-white/95 shadow-sm backdrop-blur md:hidden">
-            <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3">
-                <div className="flex flex-wrap gap-2">
+            {isMenuOpen ? (
+              <div className="border-t bg-white/95 shadow-sm backdrop-blur md:hidden">
+                <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3">
+                  <div className="flex flex-wrap gap-2">
                     {navItems.map((item) => {
                       const active = isActive(item.href);
                       return (
@@ -175,7 +173,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                           key={item.href}
                           href={item.href}
                           onClick={() => setIsMenuOpen(false)}
-                          className={`flex flex-1 min-w-[140px] items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${active ? 'border-[var(--brand)] bg-[var(--brand)]/10 text-[var(--brand)]' : 'hover:bg-neutral-50'}`}
+                          className={`flex flex-1 min-w-[140px] items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${
+                            active ? 'border-[var(--brand)] bg-[var(--brand)]/10 text-[var(--brand)]' : 'hover:bg-neutral-50'
+                          }`}
                         >
                           <MaterialIcon name={item.icon} fontSize={16} />
                           <span>{item.label}</span>
@@ -194,28 +194,28 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     })}
                   </div>
 
-              <div className="flex flex-col gap-2">
-                {isClub && (
-                  <Link
-                    href="/opportunities/new"
-                    onClick={() => setIsMenuOpen(false)}
-                    className="rounded-md border px-3 py-2 text-sm font-semibold text-[var(--brand)] hover:bg-neutral-50"
-                  >
-                    + Nuova opportunità
-                  </Link>
-                )}
+                  <div className="flex flex-col gap-2">
+                    {isClub && (
+                      <Link
+                        href="/opportunities/new"
+                        onClick={() => setIsMenuOpen(false)}
+                        className="rounded-md border px-3 py-2 text-sm font-semibold text-[var(--brand)] hover:bg-neutral-50"
+                      >
+                        + Nuova opportunità
+                      </Link>
+                    )}
 
-                <Link
-                  href="/logout"
-                  onClick={() => setIsMenuOpen(false)}
-                  className="rounded-md border px-3 py-2 text-sm hover:bg-neutral-50"
-                >
-                  Logout
-                </Link>
+                    <Link
+                      href="/logout"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="rounded-md border px-3 py-2 text-sm hover:bg-neutral-50"
+                    >
+                      Logout
+                    </Link>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        ) : null}
+            ) : null}
           </header>
 
           <div className="flex min-h-screen flex-col pt-16">

@@ -17,7 +17,7 @@ const variantConfig: Record<BrandLogoVariant, { imageClass: string; textClass: s
   },
   navbar: {
     imageClass: 'h-9 w-auto',
-    textClass: 'font-logo text-lg font-semibold text-white whitespace-nowrap leading-none',
+    textClass: 'font-logo text-lg font-semibold text-[var(--brand)] whitespace-nowrap leading-none',
     gapClass: 'gap-2',
   },
 }
