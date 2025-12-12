@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 
 import OpportunitiesTable from '@/components/opportunities/OpportunitiesTable';
@@ -10,7 +10,7 @@ import type { OpportunitiesApiResponse, Opportunity } from '@/types/opportunity'
 
 import { COUNTRIES } from '@/lib/opps/geo';
 import { AGE_BRACKETS, SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
-import { PLAYING_CATEGORY_EN } from '@/lib/enums';
+import { CATEGORIES_BY_SPORT } from '@/lib/opps/categories';
 import { useItalyLocations } from '@/hooks/useItalyLocations';
 
 type Role = 'athlete' | 'club' | 'guest';
@@ -36,6 +36,7 @@ export default function OpportunitiesClient() {
   const selectedRegion = sp.get('region') ?? '';
   const selectedProvince = sp.get('province') ?? '';
   const selectedCategory = sp.get('category') ?? sp.get('required_category') ?? '';
+  const selectedSport = sp.get('sport') ?? '';
   const selectedRole = sp.get('role') ?? '';
   const selectedStatus = sp.get('status') ?? '';
   const availableProvinces =
@@ -43,15 +44,63 @@ export default function OpportunitiesClient() {
   const availableCities =
     selectedCountry === 'Italia' ? italyLocations.citiesByProvince[selectedProvince] ?? [] : [];
 
-  const roleOptions = useMemo(() => {
-    const values = Object.values(SPORTS_ROLES).flat();
-    return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b));
-  }, []);
+  const setParam = useCallback((name: string, value: string) => {
+    const p = new URLSearchParams(sp.toString());
+    if (value) p.set(name, value);
+    else p.delete(name);
+    if (name !== 'page') p.set('page', '1');
+    const qs = p.toString();
+    router.replace(qs ? `/opportunities?${qs}` : '/opportunities');
+  }, [router, sp]);
 
-  const categoryOptions = useMemo(
-    () => PLAYING_CATEGORY_EN.map((c) => ({ value: c, label: c.charAt(0).toUpperCase() + c.slice(1) })),
-    [],
-  );
+  const roleOptions = useMemo(() => {
+    if (!selectedSport) return [] as string[];
+    return SPORTS_ROLES[selectedSport] ?? [];
+  }, [selectedSport]);
+
+  const categoryOptions = useMemo(() => {
+    if (!selectedSport) return [] as string[];
+    return CATEGORIES_BY_SPORT[selectedSport] ?? [];
+  }, [selectedSport]);
+
+  useEffect(() => {
+    if (!selectedSport && selectedRole) {
+      setParam('role', '');
+      return;
+    }
+    if (selectedRole && !roleOptions.includes(selectedRole)) {
+      setParam('role', '');
+    }
+  }, [selectedSport, selectedRole, roleOptions, setParam]);
+
+  useEffect(() => {
+    if (!selectedSport && selectedCategory) {
+      setParam('category', '');
+      setParam('required_category', '');
+      return;
+    }
+    if (selectedCategory && !categoryOptions.includes(selectedCategory)) {
+      setParam('category', '');
+      setParam('required_category', '');
+    }
+  }, [selectedSport, selectedCategory, categoryOptions, setParam]);
+
+  function handleSportChange(value: string) {
+    setParam('sport', value);
+    if (!value) {
+      setParam('role', '');
+      setParam('category', '');
+      setParam('required_category', '');
+      return;
+    }
+    if (selectedRole && !((SPORTS_ROLES[value] ?? []).includes(selectedRole))) {
+      setParam('role', '');
+    }
+    if (selectedCategory && !((CATEGORIES_BY_SPORT[value] ?? []).includes(selectedCategory))) {
+      setParam('category', '');
+      setParam('required_category', '');
+    }
+  }
 
   const statusOptions = useMemo(
     () => [
@@ -80,15 +129,6 @@ export default function OpportunitiesClient() {
     }
     return p;
   }, [sp]);
-
-  function setParam(name: string, value: string) {
-    const p = new URLSearchParams(sp.toString());
-    if (value) p.set(name, value);
-    else p.delete(name);
-    if (name !== 'page') p.set('page', '1');
-    const qs = p.toString();
-    router.replace(qs ? `/opportunities?${qs}` : '/opportunities');
-  }
 
   function clearClubFilter() {
     const p = new URLSearchParams(sp.toString());
@@ -327,8 +367,9 @@ export default function OpportunitiesClient() {
             value={selectedRole}
             onChange={(e) => setParam('role', e.target.value)}
             className="w-full rounded-xl border px-3 py-2"
+            disabled={!selectedSport}
           >
-            <option value="">Ruolo/posizione</option>
+            <option value="">{selectedSport ? 'Ruolo/posizione' : 'Seleziona uno sport'}</option>
             {roleOptions.map((r) => (
               <option key={r} value={r}>
                 {r}
@@ -410,8 +451,8 @@ export default function OpportunitiesClient() {
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <select
-            value={sp.get('sport') ?? ''}
-            onChange={(e) => setParam('sport', e.target.value)}
+            value={selectedSport}
+            onChange={(e) => handleSportChange(e.target.value)}
             className="w-full rounded-xl border px-3 py-2"
           >
             <option value="">Sport</option>
@@ -439,11 +480,12 @@ export default function OpportunitiesClient() {
             value={selectedCategory}
             onChange={(e) => setParam('category', e.target.value)}
             className="w-full rounded-xl border px-3 py-2"
+            disabled={!selectedSport}
           >
-            <option value="">Categoria/Livello</option>
+            <option value="">{selectedSport ? 'Categoria/Livello' : 'Seleziona uno sport'}</option>
             {categoryOptions.map((c) => (
-              <option key={c.value} value={c.value}>
-                {c.label}
+              <option key={c} value={c}>
+                {c}
               </option>
             ))}
           </select>
