@@ -33,32 +33,46 @@ export default function OpportunitiesClient() {
   const [editItem, setEditItem] = useState<Opportunity | null>(null);
   const { data: italyLocations } = useItalyLocations();
   const selectedCountry = sp.get('country') ?? '';
-  const selectedRegion = sp.get('region') ?? '';
-  const selectedProvince = sp.get('province') ?? '';
+  const selectedRegionParam = sp.get('region') ?? '';
+  const selectedProvinceParam = sp.get('province') ?? '';
   const selectedCategory = sp.get('category') ?? sp.get('required_category') ?? '';
   const selectedSport = sp.get('sport') ?? '';
   const selectedRole = sp.get('role') ?? '';
   const selectedStatus = sp.get('status') ?? '';
-  const selectedCountryCode = useMemo(() => {
-    if (!selectedCountry) return '';
-    const norm = selectedCountry.trim().toLowerCase();
+  const resolveCountryCode = useCallback((value: string) => {
+    if (!value) return '';
+    const norm = value.trim().toLowerCase();
     const byLabel = COUNTRIES.find((c) => c.label.toLowerCase() === norm);
     if (byLabel) return byLabel.code;
     const byCode = COUNTRIES.find((c) => c.code.toLowerCase() === norm);
     return byCode?.code ?? '';
-  }, [selectedCountry]);
+  }, []);
+
+  const [countryCode, setCountryCode] = useState<string>(() => resolveCountryCode(selectedCountry));
+  const [region, setRegion] = useState<string>(selectedRegionParam);
+  const [province, setProvince] = useState<string>(selectedProvinceParam);
+  const [city, setCity] = useState<string>(sp.get('city') ?? '');
+
+  useEffect(() => {
+    const nextCode = resolveCountryCode(selectedCountry);
+    if (nextCode !== countryCode) setCountryCode(nextCode);
+    if (selectedRegionParam !== region) setRegion(selectedRegionParam);
+    if (selectedProvinceParam !== province) setProvince(selectedProvinceParam);
+    const selectedCity = sp.get('city') ?? '';
+    if (selectedCity !== city) setCity(selectedCity);
+  }, [city, countryCode, province, region, resolveCountryCode, selectedCountry, selectedProvinceParam, selectedRegionParam, sp]);
 
   const availableRegions = useMemo(
-    () => (selectedCountryCode === 'IT' ? italyLocations.regions : []),
-    [italyLocations, selectedCountryCode],
+    () => (countryCode === 'IT' ? italyLocations.regions : []),
+    [countryCode, italyLocations],
   );
   const availableProvinces = useMemo(
-    () => (selectedCountryCode === 'IT' ? italyLocations.provincesByRegion[selectedRegion] ?? [] : []),
-    [italyLocations, selectedCountryCode, selectedRegion],
+    () => (countryCode === 'IT' ? italyLocations.provincesByRegion[region] ?? [] : []),
+    [countryCode, italyLocations, region],
   );
   const availableCities = useMemo(
-    () => (selectedCountryCode === 'IT' ? italyLocations.citiesByProvince[selectedProvince] ?? [] : []),
-    [italyLocations, selectedCountryCode, selectedProvince],
+    () => (countryCode === 'IT' ? italyLocations.citiesByProvince[province] ?? [] : []),
+    [countryCode, italyLocations, province],
   );
 
   const setParam = useCallback((name: string, value: string) => {
@@ -383,10 +397,14 @@ export default function OpportunitiesClient() {
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <select
-            value={selectedCountryCode}
+            value={countryCode}
             onChange={(e) => {
               const nextCode = e.target.value;
               const nextCountry = COUNTRIES.find((c) => c.code === nextCode)?.label ?? '';
+              setCountryCode(nextCode);
+              setRegion('');
+              setProvince('');
+              setCity('');
               setParam('country', nextCountry || nextCode);
               setParam('region', '');
               setParam('province', '');
@@ -403,12 +421,16 @@ export default function OpportunitiesClient() {
           </select>
 
           {/* Regione/Provincia/Città per Italia */}
-          {selectedCountryCode === 'IT' && (
+          {countryCode === 'IT' && (
             <>
               <select
-                value={selectedRegion}
+                value={region}
                 onChange={(e) => {
-                  setParam('region', e.target.value);
+                  const nextRegion = e.target.value;
+                  setRegion(nextRegion);
+                  setProvince('');
+                  setCity('');
+                  setParam('region', nextRegion);
                   setParam('province', '');
                   setParam('city', '');
                 }}
@@ -421,9 +443,12 @@ export default function OpportunitiesClient() {
               </select>
 
               <select
-                value={selectedProvince}
+                value={province}
                 onChange={(e) => {
-                  setParam('province', e.target.value);
+                  const nextProvince = e.target.value;
+                  setProvince(nextProvince);
+                  setCity('');
+                  setParam('province', nextProvince);
                   setParam('city', '');
                 }}
                 className="w-full rounded-xl border px-3 py-2"
@@ -435,8 +460,12 @@ export default function OpportunitiesClient() {
               </select>
 
               <select
-                value={sp.get('city') ?? ''}
-                onChange={(e) => setParam('city', e.target.value)}
+                value={city}
+                onChange={(e) => {
+                  const nextCity = e.target.value;
+                  setCity(nextCity);
+                  setParam('city', nextCity);
+                }}
                 className="w-full rounded-xl border px-3 py-2"
               >
                 <option value="">Città</option>

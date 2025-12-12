@@ -105,10 +105,7 @@ export async function GET(req: NextRequest) {
   if (club) query = query.ilike('club_name', `%${club}%`);
   if (sport) query = query.eq('sport', sport);
   if (role) query = query.eq('role', role);
-  if (category) {
-    const normalized = normalizeToEN(category) ?? category;
-    query = query.or(`category.eq.${category},required_category.eq.${normalized}`);
-  }
+  if (category) query = query.eq('category', category);
   if (ageB) {
     const { age_min, age_max } = bracketToRange(ageB);
     if (age_min != null) query = query.gte('age_min', age_min);
@@ -263,7 +260,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
       .from('opportunities')
       .insert(payload)
       .select(
-        'id,title,description,created_by,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name,gender,club_id',
+        'id,title,description,created_by,created_at,country,region,province,city,sport,role,category,required_category,age_min,age_max,club_name,gender,club_id',
       )
       .single();
 

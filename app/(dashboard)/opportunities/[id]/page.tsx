@@ -28,7 +28,7 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
   const { data: opp, error } = await supabase
     .from('opportunities')
     .select(
-      'id,title,description,sport,role,country,region,province,city,created_at,status,owner_id,created_by,club_name,club_id,required_category,age_min,age_max,gender',
+      'id,title,description,sport,role,category,country,region,province,city,created_at,status,owner_id,created_by,club_name,club_id,required_category,age_min,age_max,gender',
     )
     .eq('id', params.id)
     .maybeSingle();
@@ -65,6 +65,7 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
   const clubProfileId = clubProfile?.id ?? clubId;
 
   const place = [opp.city, opp.province, opp.region, opp.country].filter(Boolean).join(', ');
+  const categoryLabel = (opp as any).category ?? (opp as any).required_category ?? null;
   const genderLabel = opportunityGenderLabel((opp as any).gender) ?? undefined;
   const ageLabel = formatAge((opp as any).age_min, (opp as any).age_max);
   const published = formatDateHuman((opp as any).created_at);
@@ -111,9 +112,7 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
               <li>Sport e ruolo richiesti: {opp.sport || '—'} • {opp.role || '—'}</li>
               <li>Età target: {ageLabel}</li>
               <li>{place ? `Località: ${place}` : 'Località non specificata'}</li>
-              <li>
-                Categoria richiesta: {(opp as any).required_category ?? '—'}{genderLabel ? ` • ${genderLabel}` : ''}
-              </li>
+              <li>Categoria richiesta: {categoryLabel ?? '—'}{genderLabel ? ` • ${genderLabel}` : ''}</li>
             </ul>
           </section>
         </section>
