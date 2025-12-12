@@ -412,68 +412,66 @@ export default function OpportunitiesClient() {
             className="w-full rounded-xl border px-3 py-2"
           >
             <option value="">Paese</option>
-            {COUNTRIES.map((c) => (
-              <option key={c.code} value={c.code}>
-                {c.label}
-              </option>
+              {COUNTRIES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.label}
+                </option>
+              ))}
+          </select>
+
+          <select
+            value={region}
+            onChange={(e) => {
+              const nextRegion = e.target.value;
+              setRegion(nextRegion);
+              setProvince('');
+              setCity('');
+              setParam('region', nextRegion);
+              setParam('province', '');
+              setParam('city', '');
+            }}
+            className="w-full rounded-xl border px-3 py-2"
+            disabled={!countryCode || countryCode !== 'IT'}
+          >
+            <option value="">Regione</option>
+            {availableRegions.map((r: string) => (
+              <option key={r} value={r}>{r}</option>
             ))}
           </select>
 
-          {/* Regione/Provincia/Città per Italia */}
-          {countryCode === 'IT' && (
-            <>
-              <select
-                value={region}
-                onChange={(e) => {
-                  const nextRegion = e.target.value;
-                  setRegion(nextRegion);
-                  setProvince('');
-                  setCity('');
-                  setParam('region', nextRegion);
-                  setParam('province', '');
-                  setParam('city', '');
-                }}
-                className="w-full rounded-xl border px-3 py-2"
-              >
-                <option value="">Regione</option>
-                {availableRegions.map((r: string) => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
-              </select>
+          <select
+            value={province}
+            onChange={(e) => {
+              const nextProvince = e.target.value;
+              setProvince(nextProvince);
+              setCity('');
+              setParam('province', nextProvince);
+              setParam('city', '');
+            }}
+            className="w-full rounded-xl border px-3 py-2"
+            disabled={!region || countryCode !== 'IT'}
+          >
+            <option value="">Provincia</option>
+            {availableProvinces.map((p: string) => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
 
-              <select
-                value={province}
-                onChange={(e) => {
-                  const nextProvince = e.target.value;
-                  setProvince(nextProvince);
-                  setCity('');
-                  setParam('province', nextProvince);
-                  setParam('city', '');
-                }}
-                className="w-full rounded-xl border px-3 py-2"
-              >
-                <option value="">Provincia</option>
-                {availableProvinces.map((p: string) => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
-              </select>
-
-              <select
-                value={city}
-                onChange={(e) => {
-                  const nextCity = e.target.value;
-                  setCity(nextCity);
-                  setParam('city', nextCity);
-                }}
-                className="w-full rounded-xl border px-3 py-2"
-              >
-                <option value="">Città</option>
-                {availableCities.map((c: string) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-            </>
-          )}
+          <select
+            value={city}
+            onChange={(e) => {
+              const nextCity = e.target.value;
+              setCity(nextCity);
+              setParam('city', nextCity);
+            }}
+            className="w-full rounded-xl border px-3 py-2"
+            disabled={!province || countryCode !== 'IT'}
+          >
+            <option value="">Città</option>
+            {availableCities.map((c: string) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
         </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
