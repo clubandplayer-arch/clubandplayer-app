@@ -87,7 +87,7 @@ export async function GET(req: NextRequest) {
   let query = supabase
     .from('opportunities')
     .select(
-      'id,title,description,created_by,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name,gender,owner_id,club_id,status',
+      'id,title,description,created_by,created_at,country,region,province,city,sport,role,category,required_category,age_min,age_max,club_name,gender,owner_id,club_id,status',
       { count: 'exact' },
     )
     .order('created_at', { ascending: sort === 'oldest' })
@@ -105,7 +105,10 @@ export async function GET(req: NextRequest) {
   if (club) query = query.ilike('club_name', `%${club}%`);
   if (sport) query = query.eq('sport', sport);
   if (role) query = query.eq('role', role);
-  if (category) query = query.eq('required_category', normalizeToEN(category) ?? category);
+  if (category) {
+    const normalized = normalizeToEN(category) ?? category;
+    query = query.or(`category.eq.${category},required_category.eq.${normalized}`);
+  }
   if (ageB) {
     const { age_min, age_max } = bracketToRange(ageB);
     if (age_min != null) query = query.gte('age_min', age_min);
@@ -233,6 +236,8 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     required_category = en;
   }
 
+  const category = norm((body as any).category);
+
   const basePayload: Record<string, unknown> = {
     title,
     description,
@@ -245,6 +250,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     city,
     sport,
     role: roleHuman,
+    category,
     required_category,
     age_min,
     age_max,

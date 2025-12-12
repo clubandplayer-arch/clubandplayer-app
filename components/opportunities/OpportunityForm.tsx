@@ -5,6 +5,7 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 import type { Opportunity } from '@/types/opportunity';
 import { AGE_BRACKETS, type AgeBracket, SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
+import { CATEGORIES_BY_SPORT } from '@/lib/opps/categories';
 import { COUNTRIES } from '@/lib/opps/geo';
 import {
   OPPORTUNITY_GENDER_LABELS,
@@ -124,10 +125,12 @@ export default function OpportunityForm({
   const provincesLoadedRef = useRef(false);
   const citiesLoadedRef = useRef(false);
 
-  // Sport/ruolo
+  // Sport/ruolo/categoria
   const [sport, setSport] = useState<string>(initial?.sport || 'Calcio');
-  const roleOptions = useMemo(() => SPORTS_ROLES[sport] ?? [], [sport]);
   const [role, setRole] = useState<string>(initial?.role ?? '');
+  const [category, setCategory] = useState<string>(initial?.category ?? '');
+  const roleOptions = useMemo(() => SPORTS_ROLES[sport] ?? [], [sport]);
+  const categoryOptions = useMemo(() => CATEGORIES_BY_SPORT[sport] ?? [], [sport]);
 
   // Genere (OBBLIGATORIO)
   const [gender, setGender] = useState<OpportunityGenderCode | ''>(
@@ -280,6 +283,7 @@ export default function OpportunityForm({
         city: (city || '').trim() || null,
         sport,
         role: role || null,
+        category: category || null,
         gender: normalizedGender,
         age_bracket: ageBracket || undefined,
         age_min,
@@ -468,13 +472,32 @@ export default function OpportunityForm({
               className="w-full rounded-xl border px-3 py-2"
               value={sport}
               onChange={(e) => {
-                setSport(e.target.value);
+                const nextSport = e.target.value;
+                setSport(nextSport);
                 setRole('');
+                const allowedCategories = CATEGORIES_BY_SPORT[nextSport] ?? [];
+                if (!allowedCategories.includes(category)) setCategory('');
               }}
             >
               {SPORTS.map((s: string) => (
                 <option key={s} value={s}>
                   {s}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Categoria / Livello</label>
+            <select
+              className="w-full rounded-xl border px-3 py-2"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+            >
+              <option value="">—</option>
+              {categoryOptions.map((c: string) => (
+                <option key={c} value={c}>
+                  {c}
                 </option>
               ))}
             </select>

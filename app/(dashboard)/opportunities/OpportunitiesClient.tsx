@@ -41,12 +41,17 @@ export default function OpportunitiesClient() {
   const selectedStatus = sp.get('status') ?? '';
   const selectedCountryCode = useMemo(() => {
     if (!selectedCountry) return '';
-    const byLabel = COUNTRIES.find((c) => c.label === selectedCountry);
+    const norm = selectedCountry.trim().toLowerCase();
+    const byLabel = COUNTRIES.find((c) => c.label.toLowerCase() === norm);
     if (byLabel) return byLabel.code;
-    const byCode = COUNTRIES.find((c) => c.code === selectedCountry);
+    const byCode = COUNTRIES.find((c) => c.code.toLowerCase() === norm);
     return byCode?.code ?? '';
   }, [selectedCountry]);
 
+  const availableRegions = useMemo(
+    () => (selectedCountryCode === 'IT' ? italyLocations.regions : []),
+    [italyLocations, selectedCountryCode],
+  );
   const availableProvinces = useMemo(
     () => (selectedCountryCode === 'IT' ? italyLocations.provincesByRegion[selectedRegion] ?? [] : []),
     [italyLocations, selectedCountryCode, selectedRegion],
@@ -231,9 +236,6 @@ export default function OpportunitiesClient() {
     setErr(null);
 
     const p = new URLSearchParams(urlFilters.toString());
-    // Evita di inviare category/required_category: il backend attuale accetta solo playing_role
-    p.delete('category');
-    p.delete('required_category');
     const resolveMe = (key: string) => {
       if (p.get(key) === 'me') {
         if (meId) p.set(key, meId);
@@ -385,7 +387,7 @@ export default function OpportunitiesClient() {
             onChange={(e) => {
               const nextCode = e.target.value;
               const nextCountry = COUNTRIES.find((c) => c.code === nextCode)?.label ?? '';
-              setParam('country', nextCountry);
+              setParam('country', nextCountry || nextCode);
               setParam('region', '');
               setParam('province', '');
               setParam('city', '');
@@ -413,53 +415,35 @@ export default function OpportunitiesClient() {
                 className="w-full rounded-xl border px-3 py-2"
               >
                 <option value="">Regione</option>
-                {italyLocations.regions.map((r: string) => (
+                {availableRegions.map((r: string) => (
                   <option key={r} value={r}>{r}</option>
                 ))}
               </select>
 
-              {availableProvinces.length > 0 ? (
-                <select
-                  value={selectedProvince}
-                  onChange={(e) => {
-                    setParam('province', e.target.value);
-                    setParam('city', '');
-                  }}
-                  className="w-full rounded-xl border px-3 py-2"
-                >
-                  <option value="">Provincia</option>
-                  {availableProvinces.map((p: string) => (
-                    <option key={p} value={p}>{p}</option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  placeholder="Provincia"
-                  defaultValue={selectedProvince}
-                  onBlur={(e) => setParam('province', e.currentTarget.value)}
-                  className="w-full rounded-xl border px-3 py-2"
-                />
-              )}
+              <select
+                value={selectedProvince}
+                onChange={(e) => {
+                  setParam('province', e.target.value);
+                  setParam('city', '');
+                }}
+                className="w-full rounded-xl border px-3 py-2"
+              >
+                <option value="">Provincia</option>
+                {availableProvinces.map((p: string) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
 
-              {availableCities.length > 0 ? (
-                <select
-                  value={sp.get('city') ?? ''}
-                  onChange={(e) => setParam('city', e.target.value)}
-                  className="w-full rounded-xl border px-3 py-2"
-                >
-                  <option value="">Città</option>
-                  {availableCities.map((c: string) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  placeholder="Città"
-                  defaultValue={sp.get('city') ?? ''}
-                  onBlur={(e) => setParam('city', e.currentTarget.value)}
-                  className="w-full rounded-xl border px-3 py-2"
-                />
-              )}
+              <select
+                value={sp.get('city') ?? ''}
+                onChange={(e) => setParam('city', e.target.value)}
+                className="w-full rounded-xl border px-3 py-2"
+              >
+                <option value="">Città</option>
+                {availableCities.map((c: string) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
             </>
           )}
         </div>
