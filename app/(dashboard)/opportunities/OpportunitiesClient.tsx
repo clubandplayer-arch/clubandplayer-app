@@ -32,26 +32,21 @@ export default function OpportunitiesClient() {
   const [openCreate, setOpenCreate] = useState(false);
   const [editItem, setEditItem] = useState<Opportunity | null>(null);
   const { data: italyLocations } = useItalyLocations();
-  const selectedCountry = sp.get('country') ?? '';
-  const selectedRegionParam = sp.get('region') ?? '';
-  const selectedProvinceParam = sp.get('province') ?? '';
+  const [countryCode, setCountryCode] = useState(() => sp.get('country') ?? '');
+  const [region, setRegion] = useState(() => sp.get('region') ?? '');
+  const [province, setProvince] = useState(() => sp.get('province') ?? '');
+  const [city, setCity] = useState(() => sp.get('city') ?? '');
   const selectedCategory = sp.get('category') ?? sp.get('required_category') ?? '';
   const selectedSport = sp.get('sport') ?? '';
   const selectedRole = sp.get('role') ?? '';
   const selectedStatus = sp.get('status') ?? '';
-  const resolveCountryCode = useCallback((value: string) => {
-    if (!value) return '';
-    const norm = value.trim().toLowerCase();
-    const byLabel = COUNTRIES.find((c) => c.label.toLowerCase() === norm);
-    if (byLabel) return byLabel.code;
-    const byCode = COUNTRIES.find((c) => c.code.toLowerCase() === norm);
-    return byCode?.code ?? '';
-  }, []);
 
-  const countryCode = useMemo(() => resolveCountryCode(selectedCountry), [resolveCountryCode, selectedCountry]);
-  const region = selectedRegionParam;
-  const province = selectedProvinceParam;
-  const city = sp.get('city') ?? '';
+  useEffect(() => {
+    setCountryCode(sp.get('country') ?? '');
+    setRegion(sp.get('region') ?? '');
+    setProvince(sp.get('province') ?? '');
+    setCity(sp.get('city') ?? '');
+  }, [sp]);
 
   const availableRegions = useMemo(
     () => (countryCode === 'IT' ? italyLocations.regions : []),
@@ -66,14 +61,20 @@ export default function OpportunitiesClient() {
     [countryCode, italyLocations, province],
   );
 
-  const setParam = useCallback((name: string, value: string) => {
-    const p = new URLSearchParams(sp.toString());
-    if (value) p.set(name, value);
-    else p.delete(name);
-    if (name !== 'page') p.set('page', '1');
-    const qs = p.toString();
+  const updateParams = useCallback((mutator: (params: URLSearchParams) => void, options?: { resetPage?: boolean }) => {
+    const base = new URLSearchParams(sp.toString());
+    mutator(base);
+    if (options?.resetPage ?? true) base.set('page', '1');
+    const qs = base.toString();
     router.replace(qs ? `/opportunities?${qs}` : '/opportunities');
   }, [router, sp]);
+
+  const setParam = useCallback((name: string, value: string, options?: { resetPage?: boolean }) => {
+    updateParams((p) => {
+      if (value) p.set(name, value);
+      else p.delete(name);
+    }, options);
+  }, [updateParams]);
 
   const roleOptions = useMemo(() => {
     if (!selectedSport) return [] as string[];
@@ -108,20 +109,19 @@ export default function OpportunitiesClient() {
   }, [selectedSport, selectedCategory, categoryOptions, setParam]);
 
   function handleSportChange(value: string) {
-    setParam('sport', value);
-    if (!value) {
-      setParam('role', '');
-      setParam('category', '');
-      setParam('required_category', '');
-      return;
-    }
-    if (selectedRole && !((SPORTS_ROLES[value] ?? []).includes(selectedRole))) {
-      setParam('role', '');
-    }
-    if (selectedCategory && !((CATEGORIES_BY_SPORT[value] ?? []).includes(selectedCategory))) {
-      setParam('category', '');
-      setParam('required_category', '');
-    }
+    updateParams((p) => {
+      if (value) p.set('sport', value);
+      else p.delete('sport');
+
+      const roleIsValid = value && selectedRole && (SPORTS_ROLES[value] ?? []).includes(selectedRole);
+      const categoryIsValid = value && selectedCategory && (CATEGORIES_BY_SPORT[value] ?? []).includes(selectedCategory);
+
+      if (!value || !roleIsValid) p.delete('role');
+      if (!value || !categoryIsValid) {
+        p.delete('category');
+        p.delete('required_category');
+      }
+    });
   }
 
   const statusOptions = useMemo(
@@ -391,10 +391,17 @@ export default function OpportunitiesClient() {
             value={countryCode}
             onChange={(e) => {
               const nextCode = e.target.value;
-              setParam('country', nextCode);
-              setParam('region', '');
-              setParam('province', '');
-              setParam('city', '');
+              setCountryCode(nextCode);
+              setRegion('');
+              setProvince('');
+              setCity('');
+              updateParams((p) => {
+                if (nextCode) p.set('country', nextCode);
+                else p.delete('country');
+                p.delete('region');
+                p.delete('province');
+                p.delete('city');
+              });
             }}
             className="w-full rounded-xl border px-3 py-2"
           >
@@ -410,9 +417,15 @@ export default function OpportunitiesClient() {
             value={region}
             onChange={(e) => {
               const nextRegion = e.target.value;
-              setParam('region', nextRegion);
-              setParam('province', '');
-              setParam('city', '');
+              setRegion(nextRegion);
+              setProvince('');
+              setCity('');
+              updateParams((p) => {
+                if (nextRegion) p.set('region', nextRegion);
+                else p.delete('region');
+                p.delete('province');
+                p.delete('city');
+              });
             }}
             className="w-full rounded-xl border px-3 py-2"
             disabled={!countryCode || countryCode !== 'IT'}
@@ -427,8 +440,13 @@ export default function OpportunitiesClient() {
             value={province}
             onChange={(e) => {
               const nextProvince = e.target.value;
-              setParam('province', nextProvince);
-              setParam('city', '');
+              setProvince(nextProvince);
+              setCity('');
+              updateParams((p) => {
+                if (nextProvince) p.set('province', nextProvince);
+                else p.delete('province');
+                p.delete('city');
+              });
             }}
             className="w-full rounded-xl border px-3 py-2"
             disabled={!region || countryCode !== 'IT'}
@@ -443,7 +461,11 @@ export default function OpportunitiesClient() {
             value={city}
             onChange={(e) => {
               const nextCity = e.target.value;
-              setParam('city', nextCity);
+              setCity(nextCity);
+              updateParams((p) => {
+                if (nextCity) p.set('city', nextCity);
+                else p.delete('city');
+              });
             }}
             className="w-full rounded-xl border px-3 py-2"
             disabled={!province || countryCode !== 'IT'}
