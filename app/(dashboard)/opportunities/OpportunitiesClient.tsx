@@ -40,8 +40,11 @@ export default function OpportunitiesClient() {
   const selectedRole = sp.get('role') ?? '';
   const selectedStatus = sp.get('status') ?? '';
   const selectedCountryCode = useMemo(() => {
-    const found = COUNTRIES.find((c) => c.label === selectedCountry);
-    return found?.code ?? '';
+    if (!selectedCountry) return '';
+    const byLabel = COUNTRIES.find((c) => c.label === selectedCountry);
+    if (byLabel) return byLabel.code;
+    const byCode = COUNTRIES.find((c) => c.code === selectedCountry);
+    return byCode?.code ?? '';
   }, [selectedCountry]);
 
   const availableProvinces = useMemo(
@@ -228,6 +231,9 @@ export default function OpportunitiesClient() {
     setErr(null);
 
     const p = new URLSearchParams(urlFilters.toString());
+    // Evita di inviare category/required_category: il backend attuale accetta solo playing_role
+    p.delete('category');
+    p.delete('required_category');
     const resolveMe = (key: string) => {
       if (p.get(key) === 'me') {
         if (meId) p.set(key, meId);
@@ -375,9 +381,11 @@ export default function OpportunitiesClient() {
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <select
-            value={selectedCountry}
+            value={selectedCountryCode}
             onChange={(e) => {
-              setParam('country', e.target.value);
+              const nextCode = e.target.value;
+              const nextCountry = COUNTRIES.find((c) => c.code === nextCode)?.label ?? '';
+              setParam('country', nextCountry);
               setParam('region', '');
               setParam('province', '');
               setParam('city', '');
@@ -386,7 +394,7 @@ export default function OpportunitiesClient() {
           >
             <option value="">Paese</option>
             {COUNTRIES.map((c) => (
-              <option key={c.code} value={c.label}>
+              <option key={c.code} value={c.code}>
                 {c.label}
               </option>
             ))}
