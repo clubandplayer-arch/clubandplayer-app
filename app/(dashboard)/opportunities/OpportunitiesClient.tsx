@@ -55,12 +55,12 @@ export default function OpportunitiesClient() {
 
   useEffect(() => {
     const nextCode = resolveCountryCode(selectedCountry);
-    if (nextCode !== countryCode) setCountryCode(nextCode);
-    if (selectedRegionParam !== region) setRegion(selectedRegionParam);
-    if (selectedProvinceParam !== province) setProvince(selectedProvinceParam);
+    setCountryCode((prev) => (prev === nextCode ? prev : nextCode));
+    setRegion((prev) => (prev === selectedRegionParam ? prev : selectedRegionParam));
+    setProvince((prev) => (prev === selectedProvinceParam ? prev : selectedProvinceParam));
     const selectedCity = sp.get('city') ?? '';
-    if (selectedCity !== city) setCity(selectedCity);
-  }, [city, countryCode, province, region, resolveCountryCode, selectedCountry, selectedProvinceParam, selectedRegionParam, sp]);
+    setCity((prev) => (prev === selectedCity ? prev : selectedCity));
+  }, [resolveCountryCode, selectedCountry, selectedProvinceParam, selectedRegionParam, sp]);
 
   const availableRegions = useMemo(
     () => (countryCode === 'IT' ? italyLocations.regions : []),
@@ -400,12 +400,11 @@ export default function OpportunitiesClient() {
             value={countryCode}
             onChange={(e) => {
               const nextCode = e.target.value;
-              const nextCountry = COUNTRIES.find((c) => c.code === nextCode)?.label ?? '';
               setCountryCode(nextCode);
               setRegion('');
               setProvince('');
               setCity('');
-              setParam('country', nextCountry || nextCode);
+              setParam('country', nextCode);
               setParam('region', '');
               setParam('province', '');
               setParam('city', '');
