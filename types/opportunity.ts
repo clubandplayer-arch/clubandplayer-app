@@ -61,6 +61,7 @@ export type Opportunity = {
   /** Dati sportivi */
   sport?: OpportunitySport | null;
   role?: OpportunityRole | null;
+  category?: string | null; // livello/lega dell'opportunità
   required_category?: string | null; // es. "U17", "Eccellenza", ecc.
   age_min?: number | null;
   age_max?: number | null;

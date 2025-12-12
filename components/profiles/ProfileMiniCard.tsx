@@ -354,7 +354,7 @@ export default function ProfileMiniCard() {
             <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Dettagli player</div>
           </div>
 
-          <dl className="space-y-2 rounded-xl bg-white/70 p-3 text-sm text-gray-800 shadow-sm ring-1 ring-gray-100">
+          <dl className="grid grid-cols-1 gap-3 rounded-xl bg-white/70 p-3 text-sm text-gray-800 shadow-sm ring-1 ring-gray-100 sm:grid-cols-2">
             <div className="flex flex-col gap-0.5">
               <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Età</dt>
               <dd className="font-medium text-gray-900">{age ?? '—'}</dd>
@@ -367,7 +367,7 @@ export default function ProfileMiniCard() {
               <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Ruolo</dt>
               <dd className="font-medium text-gray-900">{p?.role || '—'}</dd>
             </div>
-            <div className="flex flex-col gap-0.5">
+            <div className="flex flex-col gap-0.5 sm:col-span-2">
               <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Città / Paese</dt>
               <dd className="font-medium text-gray-900">{p?.city || interestLabel || '—'}</dd>
             </div>

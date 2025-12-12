@@ -15,7 +15,7 @@ function getSupabase() {
 }
 
 const SELECT =
-  'id,title,description,owner_id,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name,gender';
+  'id,title,description,owner_id,created_at,country,region,province,city,sport,role,category,required_category,age_min,age_max,club_name,gender';
 
 function extractId(req: NextRequest): string | null {
   const pathname = new URL(req.url).pathname;
@@ -100,6 +100,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
     norm((body as any).roleLabel) ??
     norm((body as any).roleValue);
   const clubName = norm((body as any).club_name);
+  const category = norm((body as any).category);
 
   const hasRequiredField =
     Object.prototype.hasOwnProperty.call(body, 'required_category') ||
@@ -159,6 +160,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
     update.role = roleHuman;
   }
   if (Object.prototype.hasOwnProperty.call(body, 'club_name')) update.club_name = clubName;
+  if (Object.prototype.hasOwnProperty.call(body, 'category')) update.category = category;
   if (hasGenderField) update.gender = genderDb;
   if (hasAgeMin) update.age_min = ageMin ?? null;
   if (hasAgeMax) update.age_max = ageMax ?? null;

@@ -16,7 +16,7 @@ export async function GET(_req: NextRequest) {
     const supabase = getSupabase();
     const { data, error } = await supabase
       .from('opportunities')
-      .select('country,region,province,city,sport,role,required_category,club_name');
+      .select('country,region,province,city,sport,role,category,required_category,club_name');
 
     if (error) return dbError(error.message);
 
@@ -31,6 +31,7 @@ export async function GET(_req: NextRequest) {
       city: uniq(rows.map((r) => r.city)),
       sport: uniq(rows.map((r) => r.sport)),
       role: uniq(rows.map((r) => r.role)),
+      category: uniq(rows.map((r: any) => r.category)),
       required_category: uniq(rows.map((r: any) => r.required_category)),
       club_name: uniq(rows.map((r) => r.club_name)),
     });

@@ -10,7 +10,7 @@ import type { OpportunitiesApiResponse, Opportunity } from '@/types/opportunity'
 
 import { COUNTRIES } from '@/lib/opps/geo';
 import { AGE_BRACKETS, SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
-import { PLAYING_CATEGORY_EN } from '@/lib/enums';
+import { CATEGORIES_BY_SPORT } from '@/lib/opps/categories';
 import { useItalyLocations } from '@/hooks/useItalyLocations';
 
 type Role = 'athlete' | 'club' | 'guest';
@@ -24,9 +24,6 @@ export default function OpportunitiesClient() {
   const [err, setErr] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [clubNames, setClubNames] = useState<Record<string, string>>({});
-  const [recommended, setRecommended] = useState<Opportunity[]>([]);
-  const [recommendedError, setRecommendedError] = useState<string | null>(null);
-  const [recommendedLoading, setRecommendedLoading] = useState(false);
 
   const [meId, setMeId] = useState<string | null>(null);
   const [role, setRole] = useState<Role>('guest');            // da /api/auth/whoami
@@ -35,26 +32,97 @@ export default function OpportunitiesClient() {
   const [openCreate, setOpenCreate] = useState(false);
   const [editItem, setEditItem] = useState<Opportunity | null>(null);
   const { data: italyLocations } = useItalyLocations();
-  const selectedCountry = sp.get('country') ?? '';
-  const selectedRegion = sp.get('region') ?? '';
-  const selectedProvince = sp.get('province') ?? '';
+  const [countryCode, setCountryCode] = useState(() => sp.get('country') ?? '');
+  const [region, setRegion] = useState(() => sp.get('region') ?? '');
+  const [province, setProvince] = useState(() => sp.get('province') ?? '');
+  const [city, setCity] = useState(() => sp.get('city') ?? '');
   const selectedCategory = sp.get('category') ?? sp.get('required_category') ?? '';
+  const selectedSport = sp.get('sport') ?? '';
   const selectedRole = sp.get('role') ?? '';
   const selectedStatus = sp.get('status') ?? '';
-  const availableProvinces =
-    selectedCountry === 'Italia' ? italyLocations.provincesByRegion[selectedRegion] ?? [] : [];
-  const availableCities =
-    selectedCountry === 'Italia' ? italyLocations.citiesByProvince[selectedProvince] ?? [] : [];
+
+  useEffect(() => {
+    setCountryCode(sp.get('country') ?? '');
+    setRegion(sp.get('region') ?? '');
+    setProvince(sp.get('province') ?? '');
+    setCity(sp.get('city') ?? '');
+  }, [sp]);
+
+  const availableRegions = useMemo(
+    () => (countryCode === 'IT' ? italyLocations.regions : []),
+    [countryCode, italyLocations],
+  );
+  const availableProvinces = useMemo(
+    () => (countryCode === 'IT' ? italyLocations.provincesByRegion[region] ?? [] : []),
+    [countryCode, italyLocations, region],
+  );
+  const availableCities = useMemo(
+    () => (countryCode === 'IT' ? italyLocations.citiesByProvince[province] ?? [] : []),
+    [countryCode, italyLocations, province],
+  );
+
+  const updateParams = useCallback((mutator: (params: URLSearchParams) => void, options?: { resetPage?: boolean }) => {
+    const base = new URLSearchParams(sp.toString());
+    mutator(base);
+    if (options?.resetPage ?? true) base.set('page', '1');
+    const qs = base.toString();
+    router.replace(qs ? `/opportunities?${qs}` : '/opportunities');
+  }, [router, sp]);
+
+  const setParam = useCallback((name: string, value: string, options?: { resetPage?: boolean }) => {
+    updateParams((p) => {
+      if (value) p.set(name, value);
+      else p.delete(name);
+    }, options);
+  }, [updateParams]);
 
   const roleOptions = useMemo(() => {
-    const values = Object.values(SPORTS_ROLES).flat();
-    return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b));
-  }, []);
+    if (!selectedSport) return [] as string[];
+    return SPORTS_ROLES[selectedSport] ?? [];
+  }, [selectedSport]);
 
-  const categoryOptions = useMemo(
-    () => PLAYING_CATEGORY_EN.map((c) => ({ value: c, label: c.charAt(0).toUpperCase() + c.slice(1) })),
-    [],
-  );
+  const categoryOptions = useMemo(() => {
+    if (!selectedSport) return [] as string[];
+    return CATEGORIES_BY_SPORT[selectedSport] ?? [];
+  }, [selectedSport]);
+
+  useEffect(() => {
+    if (!selectedSport && selectedRole) {
+      setParam('role', '');
+      return;
+    }
+    if (selectedRole && !roleOptions.includes(selectedRole)) {
+      setParam('role', '');
+    }
+  }, [selectedSport, selectedRole, roleOptions, setParam]);
+
+  useEffect(() => {
+    if (!selectedSport && selectedCategory) {
+      setParam('category', '');
+      setParam('required_category', '');
+      return;
+    }
+    if (selectedCategory && !categoryOptions.includes(selectedCategory)) {
+      setParam('category', '');
+      setParam('required_category', '');
+    }
+  }, [selectedSport, selectedCategory, categoryOptions, setParam]);
+
+  function handleSportChange(value: string) {
+    updateParams((p) => {
+      if (value) p.set('sport', value);
+      else p.delete('sport');
+
+      const roleIsValid = value && selectedRole && (SPORTS_ROLES[value] ?? []).includes(selectedRole);
+      const categoryIsValid = value && selectedCategory && (CATEGORIES_BY_SPORT[value] ?? []).includes(selectedCategory);
+
+      if (!value || !roleIsValid) p.delete('role');
+      if (!value || !categoryIsValid) {
+        p.delete('category');
+        p.delete('required_category');
+      }
+    });
+  }
 
   const statusOptions = useMemo(
     () => [
@@ -66,36 +134,6 @@ export default function OpportunitiesClient() {
     ],
     [],
   );
-
-  const loadRecommended = useCallback(() => {
-    if (!meId) {
-      setRecommended([]);
-      return;
-    }
-
-    setRecommendedLoading(true);
-    setRecommendedError(null);
-
-    fetch(`/api/opportunities/recommended?limit=5`, { credentials: 'include', cache: 'no-store' })
-      .then(async (r) => {
-        const json = await r.json().catch(() => ({}));
-        if (!r.ok) {
-          const message = (json as any)?.message || (json as any)?.error || `HTTP ${r.status}`;
-          throw new Error(message);
-        }
-        return (json as any)?.data || [];
-      })
-      .then((rows: Opportunity[]) => {
-        setRecommended(Array.isArray(rows) ? rows : []);
-      })
-      .catch((e: any) => {
-        setRecommendedError(e?.message || 'Errore nel caricamento delle opportunità consigliate');
-        setRecommended([]);
-      })
-      .finally(() => {
-        setRecommendedLoading(false);
-      });
-  }, [meId]);
 
   // Costruisci i filtri base dai parametri URL
   const urlFilters = useMemo(() => {
@@ -113,15 +151,6 @@ export default function OpportunitiesClient() {
     }
     return p;
   }, [sp]);
-
-  function setParam(name: string, value: string) {
-    const p = new URLSearchParams(sp.toString());
-    if (value) p.set(name, value);
-    else p.delete(name);
-    if (name !== 'page') p.set('page', '1');
-    const qs = p.toString();
-    router.replace(qs ? `/opportunities?${qs}` : '/opportunities');
-  }
 
   function clearClubFilter() {
     const p = new URLSearchParams(sp.toString());
@@ -181,11 +210,6 @@ export default function OpportunitiesClient() {
 
     return () => { cancelled = true; };
   }, [meId, role]);
-
-  // 2bis) Opportunità raccomandate per il profilo corrente
-  useEffect(() => {
-    loadRecommended();
-  }, [loadRecommended]);
 
   const isClub = role === 'club' || profileType.startsWith('club');
   const activeClubFilter = sp.get('clubId') ?? sp.get('club_id');
@@ -344,61 +368,6 @@ export default function OpportunitiesClient() {
         {/* CTA spostata in topbar (link /opportunities?new=1) */}
       </div>
 
-      <div className="rounded-2xl border bg-white/70 p-4 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <p className="text-xs uppercase tracking-wide text-gray-500">Suggerite</p>
-            <h2 className="text-lg font-semibold">Opportunità presenti</h2>
-          </div>
-          <button
-            type="button"
-            onClick={loadRecommended}
-            className="rounded-xl border px-3 py-1.5 text-sm font-medium hover:bg-gray-50"
-          >
-            Aggiorna
-          </button>
-        </div>
-
-        <div className="mt-3 space-y-3">
-          {recommendedLoading && <div className="h-20 w-full animate-pulse rounded-xl bg-gray-200" />}
-          {!recommendedLoading && recommendedError && (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-              {recommendedError}
-            </div>
-          )}
-          {!recommendedLoading && !recommendedError && recommended.length > 0 && (
-            <div className="space-y-3">
-              {recommended.map((opp) => {
-                const place = [opp.city, opp.province, opp.region, opp.country].filter(Boolean).join(', ');
-                return (
-                  <div key={opp.id} className="rounded-xl border bg-gray-50 px-3 py-2 shadow-sm">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="min-w-0 space-y-1">
-                        <div className="text-xs uppercase tracking-wide text-gray-500">Suggerita</div>
-                        <a href={`/opportunities/${opp.id}`} className="block text-base font-semibold hover:underline">
-                          {opp.title}
-                        </a>
-                        <div className="flex flex-wrap items-center gap-2 text-xs text-gray-700">
-                          {opp.sport && <span className="rounded-full bg-white px-2 py-0.5">{opp.sport}</span>}
-                          {opp.role && <span className="rounded-full bg-white px-2 py-0.5">{opp.role}</span>}
-                          {place && <span className="rounded-full bg-white px-2 py-0.5">📍 {place}</span>}
-                        </div>
-                      </div>
-                      <a
-                        href={`/opportunities/${opp.id}`}
-                        className="shrink-0 rounded-lg border px-3 py-1 text-sm font-semibold text-blue-700 hover:bg-blue-50"
-                      >
-                        Vedi dettagli
-                      </a>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* Barra filtri */}
       <div className="space-y-4 rounded-2xl border p-4 bg-white/70 shadow-sm">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -415,96 +384,103 @@ export default function OpportunitiesClient() {
             onBlur={(e) => setParam('club', e.currentTarget.value)}
             className="w-full rounded-xl border px-3 py-2"
           />
-
-          <select
-            value={selectedRole}
-            onChange={(e) => setParam('role', e.target.value)}
-            className="w-full rounded-xl border px-3 py-2"
-          >
-            <option value="">Ruolo/posizione</option>
-            {roleOptions.map((r) => (
-              <option key={r} value={r}>
-                {r}
-              </option>
-            ))}
-          </select>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <select
-            value={sp.get('country') ?? ''}
-            onChange={(e) => setParam('country', e.target.value)}
+            value={countryCode}
+            onChange={(e) => {
+              const nextCode = e.target.value;
+              setCountryCode(nextCode);
+              setRegion('');
+              setProvince('');
+              setCity('');
+              updateParams((p) => {
+                if (nextCode) p.set('country', nextCode);
+                else p.delete('country');
+                p.delete('region');
+                p.delete('province');
+                p.delete('city');
+              });
+            }}
             className="w-full rounded-xl border px-3 py-2"
           >
             <option value="">Paese</option>
             {COUNTRIES.map((c) => (
-              <option key={c.code} value={c.label}>
+              <option key={c.code} value={c.code}>
                 {c.label}
               </option>
             ))}
           </select>
 
-          {/* Regione/Provincia/Città per Italia */}
-          {selectedCountry === 'Italia' && (
-            <>
-              <select
-                value={selectedRegion}
-                onChange={(e) => { setParam('region', e.target.value); setParam('province', ''); setParam('city', ''); }}
-                className="w-full rounded-xl border px-3 py-2"
-              >
-                <option value="">Regione</option>
-                {italyLocations.regions.map((r: string) => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
-              </select>
+          <select
+            value={region}
+            onChange={(e) => {
+              const nextRegion = e.target.value;
+              setRegion(nextRegion);
+              setProvince('');
+              setCity('');
+              updateParams((p) => {
+                if (nextRegion) p.set('region', nextRegion);
+                else p.delete('region');
+                p.delete('province');
+                p.delete('city');
+              });
+            }}
+            className="w-full rounded-xl border px-3 py-2"
+            disabled={!countryCode || countryCode !== 'IT'}
+          >
+            <option value="">Regione</option>
+            {availableRegions.map((r: string) => (
+              <option key={r} value={r}>{r}</option>
+            ))}
+          </select>
 
-              {availableProvinces.length > 0 ? (
-                <select
-                  value={selectedProvince}
-                  onChange={(e) => { setParam('province', e.target.value); setParam('city', ''); }}
-                  className="w-full rounded-xl border px-3 py-2"
-                >
-                  <option value="">Provincia</option>
-                  {availableProvinces.map((p: string) => (
-                    <option key={p} value={p}>{p}</option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  placeholder="Provincia"
-                  defaultValue={selectedProvince}
-                  onBlur={(e) => setParam('province', e.currentTarget.value)}
-                  className="w-full rounded-xl border px-3 py-2"
-                />
-              )}
+          <select
+            value={province}
+            onChange={(e) => {
+              const nextProvince = e.target.value;
+              setProvince(nextProvince);
+              setCity('');
+              updateParams((p) => {
+                if (nextProvince) p.set('province', nextProvince);
+                else p.delete('province');
+                p.delete('city');
+              });
+            }}
+            className="w-full rounded-xl border px-3 py-2"
+            disabled={!region || countryCode !== 'IT'}
+          >
+            <option value="">Provincia</option>
+            {availableProvinces.map((p: string) => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
 
-              {availableCities.length > 0 ? (
-                <select
-                  value={sp.get('city') ?? ''}
-                  onChange={(e) => setParam('city', e.target.value)}
-                  className="w-full rounded-xl border px-3 py-2"
-                >
-                  <option value="">Città</option>
-                  {availableCities.map((c: string) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  placeholder="Città"
-                  defaultValue={sp.get('city') ?? ''}
-                  onBlur={(e) => setParam('city', e.currentTarget.value)}
-                  className="w-full rounded-xl border px-3 py-2"
-                />
-              )}
-            </>
-          )}
+          <select
+            value={city}
+            onChange={(e) => {
+              const nextCity = e.target.value;
+              setCity(nextCity);
+              updateParams((p) => {
+                if (nextCity) p.set('city', nextCity);
+                else p.delete('city');
+              });
+            }}
+            className="w-full rounded-xl border px-3 py-2"
+            disabled={!province || countryCode !== 'IT'}
+          >
+            <option value="">Città</option>
+            {availableCities.map((c: string) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
         </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <select
-            value={sp.get('sport') ?? ''}
-            onChange={(e) => setParam('sport', e.target.value)}
+            value={selectedSport}
+            onChange={(e) => handleSportChange(e.target.value)}
             className="w-full rounded-xl border px-3 py-2"
           >
             <option value="">Sport</option>
@@ -516,27 +492,15 @@ export default function OpportunitiesClient() {
           </select>
 
           <select
-            value={sp.get('age') ?? ''}
-            onChange={(e) => setParam('age', e.target.value)}
+            value={selectedRole}
+            onChange={(e) => setParam('role', e.target.value)}
             className="w-full rounded-xl border px-3 py-2"
+            disabled={!selectedSport}
           >
-            <option value="">Età</option>
-            {AGE_BRACKETS.map((b: string) => (
-              <option key={b} value={b}>
-                {b}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={selectedCategory}
-            onChange={(e) => setParam('category', e.target.value)}
-            className="w-full rounded-xl border px-3 py-2"
-          >
-            <option value="">Categoria/Livello</option>
-            {categoryOptions.map((c) => (
-              <option key={c.value} value={c.value}>
-                {c.label}
+            <option value="">{selectedSport ? 'Ruolo/posizione' : 'Seleziona uno sport'}</option>
+            {roleOptions.map((r) => (
+              <option key={r} value={r}>
+                {r}
               </option>
             ))}
           </select>
@@ -550,6 +514,35 @@ export default function OpportunitiesClient() {
             {statusOptions.map((s) => (
               <option key={s.value || 'all'} value={s.value}>
                 {s.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <select
+            value={selectedCategory}
+            onChange={(e) => setParam('category', e.target.value)}
+            className="w-full rounded-xl border px-3 py-2"
+            disabled={!selectedSport}
+          >
+            <option value="">{selectedSport ? 'Categoria/Livello' : 'Seleziona uno sport'}</option>
+            {categoryOptions.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={sp.get('age') ?? ''}
+            onChange={(e) => setParam('age', e.target.value)}
+            className="w-full rounded-xl border px-3 py-2"
+          >
+            <option value="">Età</option>
+            {AGE_BRACKETS.map((b: string) => (
+              <option key={b} value={b}>
+                {b}
               </option>
             ))}
           </select>
