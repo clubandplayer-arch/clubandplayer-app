@@ -48,19 +48,10 @@ export default function OpportunitiesClient() {
     return byCode?.code ?? '';
   }, []);
 
-  const [countryCode, setCountryCode] = useState<string>(() => resolveCountryCode(selectedCountry));
-  const [region, setRegion] = useState<string>(selectedRegionParam);
-  const [province, setProvince] = useState<string>(selectedProvinceParam);
-  const [city, setCity] = useState<string>(sp.get('city') ?? '');
-
-  useEffect(() => {
-    const nextCode = resolveCountryCode(selectedCountry);
-    setCountryCode((prev) => (prev === nextCode ? prev : nextCode));
-    setRegion((prev) => (prev === selectedRegionParam ? prev : selectedRegionParam));
-    setProvince((prev) => (prev === selectedProvinceParam ? prev : selectedProvinceParam));
-    const selectedCity = sp.get('city') ?? '';
-    setCity((prev) => (prev === selectedCity ? prev : selectedCity));
-  }, [resolveCountryCode, selectedCountry, selectedProvinceParam, selectedRegionParam, sp]);
+  const countryCode = useMemo(() => resolveCountryCode(selectedCountry), [resolveCountryCode, selectedCountry]);
+  const region = selectedRegionParam;
+  const province = selectedProvinceParam;
+  const city = sp.get('city') ?? '';
 
   const availableRegions = useMemo(
     () => (countryCode === 'IT' ? italyLocations.regions : []),
@@ -400,10 +391,6 @@ export default function OpportunitiesClient() {
             value={countryCode}
             onChange={(e) => {
               const nextCode = e.target.value;
-              setCountryCode(nextCode);
-              setRegion('');
-              setProvince('');
-              setCity('');
               setParam('country', nextCode);
               setParam('region', '');
               setParam('province', '');
@@ -412,20 +399,17 @@ export default function OpportunitiesClient() {
             className="w-full rounded-xl border px-3 py-2"
           >
             <option value="">Paese</option>
-              {COUNTRIES.map((c) => (
-                <option key={c.code} value={c.code}>
-                  {c.label}
-                </option>
-              ))}
+            {COUNTRIES.map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.label}
+              </option>
+            ))}
           </select>
 
           <select
             value={region}
             onChange={(e) => {
               const nextRegion = e.target.value;
-              setRegion(nextRegion);
-              setProvince('');
-              setCity('');
               setParam('region', nextRegion);
               setParam('province', '');
               setParam('city', '');
@@ -443,8 +427,6 @@ export default function OpportunitiesClient() {
             value={province}
             onChange={(e) => {
               const nextProvince = e.target.value;
-              setProvince(nextProvince);
-              setCity('');
               setParam('province', nextProvince);
               setParam('city', '');
             }}
@@ -461,7 +443,6 @@ export default function OpportunitiesClient() {
             value={city}
             onChange={(e) => {
               const nextCity = e.target.value;
-              setCity(nextCity);
               setParam('city', nextCity);
             }}
             className="w-full rounded-xl border px-3 py-2"
