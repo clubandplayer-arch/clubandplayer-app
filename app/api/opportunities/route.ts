@@ -4,6 +4,7 @@ import { withAuth } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { normalizeToEN, PLAYING_CATEGORY_EN } from '@/lib/enums';
+import { COUNTRIES } from '@/lib/geo/countries';
 import { normalizeOpportunityGender, toOpportunityDbValue } from '@/lib/opps/gender';
 import { dbError, invalidPayload, notAuthorized, rateLimited, successResponse } from '@/lib/api/standardResponses';
 
@@ -70,7 +71,9 @@ export async function GET(req: NextRequest) {
   const pageSize = clamp(Number(url.searchParams.get('pageSize') || '20'), 1, 100);
   const sort = (url.searchParams.get('sort') || 'recent') as 'recent' | 'oldest';
 
-  const country = (url.searchParams.get('country') || '').trim();
+  const countryRaw = (url.searchParams.get('country') || '').trim();
+  const countryOption = COUNTRIES.find((c) => c.code === countryRaw);
+  const country = countryOption?.label ?? countryRaw;
   const region = (url.searchParams.get('region') || '').trim();
   const province = (url.searchParams.get('province') || '').trim();
   const city = (url.searchParams.get('city') || '').trim();
