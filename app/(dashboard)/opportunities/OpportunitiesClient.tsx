@@ -39,10 +39,19 @@ export default function OpportunitiesClient() {
   const selectedSport = sp.get('sport') ?? '';
   const selectedRole = sp.get('role') ?? '';
   const selectedStatus = sp.get('status') ?? '';
-  const availableProvinces =
-    selectedCountry === 'Italia' ? italyLocations.provincesByRegion[selectedRegion] ?? [] : [];
-  const availableCities =
-    selectedCountry === 'Italia' ? italyLocations.citiesByProvince[selectedProvince] ?? [] : [];
+  const selectedCountryCode = useMemo(() => {
+    const found = COUNTRIES.find((c) => c.label === selectedCountry);
+    return found?.code ?? '';
+  }, [selectedCountry]);
+
+  const availableProvinces = useMemo(
+    () => (selectedCountryCode === 'IT' ? italyLocations.provincesByRegion[selectedRegion] ?? [] : []),
+    [italyLocations, selectedCountryCode, selectedRegion],
+  );
+  const availableCities = useMemo(
+    () => (selectedCountryCode === 'IT' ? italyLocations.citiesByProvince[selectedProvince] ?? [] : []),
+    [italyLocations, selectedCountryCode, selectedProvince],
+  );
 
   const setParam = useCallback((name: string, value: string) => {
     const p = new URLSearchParams(sp.toString());
@@ -362,26 +371,17 @@ export default function OpportunitiesClient() {
             onBlur={(e) => setParam('club', e.currentTarget.value)}
             className="w-full rounded-xl border px-3 py-2"
           />
-
-          <select
-            value={selectedRole}
-            onChange={(e) => setParam('role', e.target.value)}
-            className="w-full rounded-xl border px-3 py-2"
-            disabled={!selectedSport}
-          >
-            <option value="">{selectedSport ? 'Ruolo/posizione' : 'Seleziona uno sport'}</option>
-            {roleOptions.map((r) => (
-              <option key={r} value={r}>
-                {r}
-              </option>
-            ))}
-          </select>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <select
-            value={sp.get('country') ?? ''}
-            onChange={(e) => setParam('country', e.target.value)}
+            value={selectedCountry}
+            onChange={(e) => {
+              setParam('country', e.target.value);
+              setParam('region', '');
+              setParam('province', '');
+              setParam('city', '');
+            }}
             className="w-full rounded-xl border px-3 py-2"
           >
             <option value="">Paese</option>
@@ -393,11 +393,15 @@ export default function OpportunitiesClient() {
           </select>
 
           {/* Regione/Provincia/Città per Italia */}
-          {selectedCountry === 'Italia' && (
+          {selectedCountryCode === 'IT' && (
             <>
               <select
                 value={selectedRegion}
-                onChange={(e) => { setParam('region', e.target.value); setParam('province', ''); setParam('city', ''); }}
+                onChange={(e) => {
+                  setParam('region', e.target.value);
+                  setParam('province', '');
+                  setParam('city', '');
+                }}
                 className="w-full rounded-xl border px-3 py-2"
               >
                 <option value="">Regione</option>
@@ -409,7 +413,10 @@ export default function OpportunitiesClient() {
               {availableProvinces.length > 0 ? (
                 <select
                   value={selectedProvince}
-                  onChange={(e) => { setParam('province', e.target.value); setParam('city', ''); }}
+                  onChange={(e) => {
+                    setParam('province', e.target.value);
+                    setParam('city', '');
+                  }}
                   className="w-full rounded-xl border px-3 py-2"
                 >
                   <option value="">Provincia</option>
@@ -464,18 +471,34 @@ export default function OpportunitiesClient() {
           </select>
 
           <select
-            value={sp.get('age') ?? ''}
-            onChange={(e) => setParam('age', e.target.value)}
+            value={selectedRole}
+            onChange={(e) => setParam('role', e.target.value)}
             className="w-full rounded-xl border px-3 py-2"
+            disabled={!selectedSport}
           >
-            <option value="">Età</option>
-            {AGE_BRACKETS.map((b: string) => (
-              <option key={b} value={b}>
-                {b}
+            <option value="">{selectedSport ? 'Ruolo/posizione' : 'Seleziona uno sport'}</option>
+            {roleOptions.map((r) => (
+              <option key={r} value={r}>
+                {r}
               </option>
             ))}
           </select>
 
+          <select
+            value={selectedStatus}
+            onChange={(e) => setParam('status', e.target.value)}
+            className="w-full rounded-xl border px-3 py-2"
+          >
+            <option value="">Tipo opportunità</option>
+            {statusOptions.map((s) => (
+              <option key={s.value || 'all'} value={s.value}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <select
             value={selectedCategory}
             onChange={(e) => setParam('category', e.target.value)}
@@ -491,14 +514,14 @@ export default function OpportunitiesClient() {
           </select>
 
           <select
-            value={selectedStatus}
-            onChange={(e) => setParam('status', e.target.value)}
+            value={sp.get('age') ?? ''}
+            onChange={(e) => setParam('age', e.target.value)}
             className="w-full rounded-xl border px-3 py-2"
           >
-            <option value="">Tipo opportunità</option>
-            {statusOptions.map((s) => (
-              <option key={s.value || 'all'} value={s.value}>
-                {s.label}
+            <option value="">Età</option>
+            {AGE_BRACKETS.map((b: string) => (
+              <option key={b} value={b}>
+                {b}
               </option>
             ))}
           </select>
