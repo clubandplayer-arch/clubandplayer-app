@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 
 import OpportunitiesTable from '@/components/opportunities/OpportunitiesTable';
@@ -24,9 +24,6 @@ export default function OpportunitiesClient() {
   const [err, setErr] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [clubNames, setClubNames] = useState<Record<string, string>>({});
-  const [recommended, setRecommended] = useState<Opportunity[]>([]);
-  const [recommendedError, setRecommendedError] = useState<string | null>(null);
-  const [recommendedLoading, setRecommendedLoading] = useState(false);
 
   const [meId, setMeId] = useState<string | null>(null);
   const [role, setRole] = useState<Role>('guest');            // da /api/auth/whoami
@@ -66,36 +63,6 @@ export default function OpportunitiesClient() {
     ],
     [],
   );
-
-  const loadRecommended = useCallback(() => {
-    if (!meId) {
-      setRecommended([]);
-      return;
-    }
-
-    setRecommendedLoading(true);
-    setRecommendedError(null);
-
-    fetch(`/api/opportunities/recommended?limit=5`, { credentials: 'include', cache: 'no-store' })
-      .then(async (r) => {
-        const json = await r.json().catch(() => ({}));
-        if (!r.ok) {
-          const message = (json as any)?.message || (json as any)?.error || `HTTP ${r.status}`;
-          throw new Error(message);
-        }
-        return (json as any)?.data || [];
-      })
-      .then((rows: Opportunity[]) => {
-        setRecommended(Array.isArray(rows) ? rows : []);
-      })
-      .catch((e: any) => {
-        setRecommendedError(e?.message || 'Errore nel caricamento delle opportunità consigliate');
-        setRecommended([]);
-      })
-      .finally(() => {
-        setRecommendedLoading(false);
-      });
-  }, [meId]);
 
   // Costruisci i filtri base dai parametri URL
   const urlFilters = useMemo(() => {
@@ -181,11 +148,6 @@ export default function OpportunitiesClient() {
 
     return () => { cancelled = true; };
   }, [meId, role]);
-
-  // 2bis) Opportunità raccomandate per il profilo corrente
-  useEffect(() => {
-    loadRecommended();
-  }, [loadRecommended]);
 
   const isClub = role === 'club' || profileType.startsWith('club');
   const activeClubFilter = sp.get('clubId') ?? sp.get('club_id');
@@ -342,61 +304,6 @@ export default function OpportunitiesClient() {
       <div className="flex items-center justify-between gap-3">
         <h1 className="heading-h1">Opportunità</h1>
         {/* CTA spostata in topbar (link /opportunities?new=1) */}
-      </div>
-
-      <div className="rounded-2xl border bg-white/70 p-4 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <p className="text-xs uppercase tracking-wide text-gray-500">Suggerite</p>
-            <h2 className="text-lg font-semibold">Opportunità presenti</h2>
-          </div>
-          <button
-            type="button"
-            onClick={loadRecommended}
-            className="rounded-xl border px-3 py-1.5 text-sm font-medium hover:bg-gray-50"
-          >
-            Aggiorna
-          </button>
-        </div>
-
-        <div className="mt-3 space-y-3">
-          {recommendedLoading && <div className="h-20 w-full animate-pulse rounded-xl bg-gray-200" />}
-          {!recommendedLoading && recommendedError && (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-              {recommendedError}
-            </div>
-          )}
-          {!recommendedLoading && !recommendedError && recommended.length > 0 && (
-            <div className="space-y-3">
-              {recommended.map((opp) => {
-                const place = [opp.city, opp.province, opp.region, opp.country].filter(Boolean).join(', ');
-                return (
-                  <div key={opp.id} className="rounded-xl border bg-gray-50 px-3 py-2 shadow-sm">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="min-w-0 space-y-1">
-                        <div className="text-xs uppercase tracking-wide text-gray-500">Suggerita</div>
-                        <a href={`/opportunities/${opp.id}`} className="block text-base font-semibold hover:underline">
-                          {opp.title}
-                        </a>
-                        <div className="flex flex-wrap items-center gap-2 text-xs text-gray-700">
-                          {opp.sport && <span className="rounded-full bg-white px-2 py-0.5">{opp.sport}</span>}
-                          {opp.role && <span className="rounded-full bg-white px-2 py-0.5">{opp.role}</span>}
-                          {place && <span className="rounded-full bg-white px-2 py-0.5">📍 {place}</span>}
-                        </div>
-                      </div>
-                      <a
-                        href={`/opportunities/${opp.id}`}
-                        className="shrink-0 rounded-lg border px-3 py-1 text-sm font-semibold text-blue-700 hover:bg-blue-50"
-                      >
-                        Vedi dettagli
-                      </a>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
       </div>
 
       {/* Barra filtri */}
