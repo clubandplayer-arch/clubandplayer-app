@@ -190,15 +190,20 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   const { data: profileByUser } = await supabase
     .from('profiles')
-    .select('id')
+    .select('id, user_id, display_name, full_name')
     .eq('user_id', user.id)
     .maybeSingle();
 
   const { data: profileById } = profileByUser
     ? { data: null }
-    : await supabase.from('profiles').select('id').eq('id', user.id).maybeSingle();
+    : await supabase
+        .from('profiles')
+        .select('id, user_id, display_name, full_name')
+        .eq('id', user.id)
+        .maybeSingle();
 
-  const clubId = profileByUser?.id ?? profileById?.id ?? user.id;
+  const clubProfile = profileByUser ?? profileById ?? null;
+  const clubId = clubProfile?.id ?? user.id;
 
   const body = await req.json().catch(() => ({}));
   const title = norm((body as any).title);
@@ -214,7 +219,10 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     norm((body as any).role) ??
     norm((body as any).roleLabel) ??
     norm((body as any).roleValue);
-  const club_name = norm((body as any).club_name);
+  const club_name =
+    clubProfile?.display_name ??
+    clubProfile?.full_name ??
+    (typeof (user.user_metadata as any)?.club_name === 'string' ? (user.user_metadata as any).club_name : null);
   const { age_min, age_max } = bracketToRange((body as any).age_bracket);
   const genderDb = resolveGender((body as any).gender);
   if (!genderDb) return invalidPayload('invalid_gender');
