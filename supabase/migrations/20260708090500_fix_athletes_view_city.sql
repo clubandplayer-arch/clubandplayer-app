@@ -1,0 +1,23 @@
+-- Ensure athletes_view exposes city from residence with fallback to interest
+create or replace view public.athletes_view as
+select
+  p.id,
+  p.user_id,
+  p.display_name,
+  p.full_name,
+  p.first_name,
+  p.last_name,
+  p.headline,
+  p.bio,
+  p.sport,
+  p.role,
+  p.country,
+  p.region,
+  p.province,
+  coalesce(nullif(p.city, ''), nullif(p.interest_city, '')) as city,
+  p.avatar_url,
+  p.account_type,
+  p.created_at,
+  p.updated_at
+from public.profiles p
+where p.account_type = 'athlete';

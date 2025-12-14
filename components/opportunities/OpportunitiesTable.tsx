@@ -55,17 +55,24 @@ export default function OpportunitiesTable({
   return (
     <div className="space-y-4">
       {items.map((o) => {
-        const ownerId = (o as any).club_id ?? o.created_by ?? o.owner_id ?? null;
+        const ownerId = o.created_by ?? o.owner_id ?? null;
         const profileOwnerId = (o as any).club_id ?? ownerId;
         const canEdit = !!currentUserId && (ownerId === currentUserId || o.created_by === currentUserId || o.owner_id === currentUserId);
         const place = [o.city, o.province, o.region, o.country].filter(Boolean).join(', ');
         const showApply = userRole === 'athlete' && !canEdit;
         const showFollow = userRole === 'athlete' && !!profileOwnerId;
-        const clubLabel =
-          (o as any).clubName ||
-          o.club_name ||
-          (ownerId ? ownerNameMap[ownerId] : undefined) ||
-          '—';
+        const clubLabel = (() => {
+          const explicit = (o as any).clubName || o.club_name;
+          if (explicit) return explicit;
+
+          const clubId = (o as any).club_id ?? null;
+          if (clubId && ownerNameMap[clubId]) return ownerNameMap[clubId];
+
+          const ownerKey = ownerId ?? null;
+          if (ownerKey && ownerNameMap[ownerKey]) return ownerNameMap[ownerKey];
+
+          return (o as any).owner_email || (o as any).created_by_email || (o as any).email || '—';
+        })();
 
         return (
           <article key={o.id} className="rounded-2xl border bg-white/80 shadow-sm p-4 md:p-5">

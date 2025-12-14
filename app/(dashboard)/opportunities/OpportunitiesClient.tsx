@@ -268,7 +268,17 @@ export default function OpportunitiesClient() {
         const normalized = rows.map((row: any) => {
           const ownerId = row?.owner_id ?? row?.created_by ?? null;
           const clubName = row?.club_name ?? row?.clubName ?? row?.owner_name ?? null;
-          return { ...row, owner_id: ownerId, created_by: ownerId, club_name: clubName, clubName };
+          const ownerEmail =
+            row?.owner_email ?? row?.created_by_email ?? row?.email ?? row?.owner ?? null;
+
+          return {
+            ...row,
+            owner_id: ownerId,
+            created_by: ownerId,
+            club_name: clubName,
+            clubName,
+            owner_email: ownerEmail,
+          };
         });
         setData({ ...(json as any), data: normalized } as OpportunitiesApiResponse);
       })
@@ -345,9 +355,12 @@ export default function OpportunitiesClient() {
         const list = Array.isArray(json?.data) ? json.data : [];
         list.forEach((row: any) => {
           const name = row.display_name || row.full_name || row.headline || null;
-          const userId = row.user_id || row.id;
-          if (name && userId) {
-            map[String(userId)] = name;
+          const userId = row.user_id || null;
+          const profileId = row.id || null;
+
+          if (name) {
+            if (userId) map[String(userId)] = name;
+            if (profileId) map[String(profileId)] = name;
           }
         });
         setClubNames(map);
