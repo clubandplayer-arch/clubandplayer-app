@@ -8,7 +8,7 @@ with club as (
   select
     id as club_profile_id,
     user_id as owner_user_id,
-    coalesce(display_name, full_name) as club_name
+    full_name as club_name
   from public.profiles
   where id = 'ea936d48-7b32-4355-9da9-7467c2043b14'
 ), payload as (

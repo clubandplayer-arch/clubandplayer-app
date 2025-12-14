@@ -132,6 +132,7 @@ export async function GET(req: NextRequest) {
             user_id: user.id,
             display_name: user.user_metadata?.full_name || user.email || 'Profilo',
             account_type: accountType ?? null,
+            role: accountType === 'club' ? 'Club' : null,
           },
           { onConflict: 'user_id' }
         )

@@ -144,7 +144,7 @@ export async function GET(req: NextRequest) {
     const allProfiles = [...(profilesById.data || []), ...(profilesByUser.data || [])];
 
     clubNameMap = allProfiles.reduce((acc, row) => {
-      const name = row.display_name || row.full_name;
+      const name = row.full_name || row.display_name;
       if (name) {
         if (row.id) acc[row.id] = name;
         if (row.user_id) acc[row.user_id] = name;
@@ -229,7 +229,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     norm((body as any).role) ??
     norm((body as any).roleLabel) ??
     norm((body as any).roleValue);
-  const club_name = clubProfile.display_name ?? clubProfile.full_name ?? null;
+  const club_name = clubProfile.full_name ?? null;
   if (!club_name) return invalidPayload('club_name_missing');
   const { age_min, age_max } = bracketToRange((body as any).age_bracket);
   const genderDb = resolveGender((body as any).gender);
