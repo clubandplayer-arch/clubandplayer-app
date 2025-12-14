@@ -1,5 +1,7 @@
--- Ensure athletes_view exposes city from residence with fallback to interest
-create or replace view public.athletes_view as
+drop view if exists public.athletes_view;
+
+-- Recreate athletes_view using existing profile columns
+create view public.athletes_view as
 select
   p.id,
   p.user_id,
