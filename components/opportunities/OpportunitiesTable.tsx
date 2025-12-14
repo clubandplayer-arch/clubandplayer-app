@@ -71,7 +71,7 @@ export default function OpportunitiesTable({
           const ownerKey = ownerId ?? null;
           if (ownerKey && ownerNameMap[ownerKey]) return ownerNameMap[ownerKey];
 
-          return (o as any).owner_email || (o as any).created_by_email || (o as any).email || '—';
+          return 'Club';
         })();
 
         return (

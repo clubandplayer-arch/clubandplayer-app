@@ -130,15 +130,23 @@ export async function GET(req: NextRequest) {
 
   let clubNameMap: Record<string, string> = {};
   if (ownerIds.length) {
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('id, user_id, display_name, full_name')
-      .in('id', ownerIds);
+    const [profilesById, profilesByUser] = await Promise.all([
+      supabase
+        .from('profiles')
+        .select('id, user_id, display_name, full_name')
+        .in('id', ownerIds),
+      supabase
+        .from('profiles')
+        .select('id, user_id, display_name, full_name')
+        .in('user_id', ownerIds),
+    ]);
 
-    clubNameMap = (profiles || []).reduce((acc, row) => {
+    const allProfiles = [...(profilesById.data || []), ...(profilesByUser.data || [])];
+
+    clubNameMap = allProfiles.reduce((acc, row) => {
       const name = row.display_name || row.full_name;
       if (name) {
-        acc[row.id] = name;
+        if (row.id) acc[row.id] = name;
         if (row.user_id) acc[row.user_id] = name;
       }
       return acc;

@@ -359,7 +359,7 @@ export default function OpportunityForm({
 
       <fieldset className="space-y-3">
         <legend className="text-sm font-semibold">Località</legend>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
             <label className="block text-sm font-medium mb-1">Paese</label>
             <select
@@ -465,7 +465,7 @@ export default function OpportunityForm({
 
       <fieldset className="space-y-3">
         <legend className="text-sm font-semibold">Sport & Profilo</legend>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
             <label className="block text-sm font-medium mb-1">Sport</label>
             <select
@@ -488,7 +488,7 @@ export default function OpportunityForm({
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Categoria / Livello</label>
+            <label className="block text-sm font-medium mb-1">Categoria</label>
             <select
               className="w-full rounded-xl border px-3 py-2"
               value={category}
