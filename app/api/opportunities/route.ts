@@ -211,7 +211,9 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
         .maybeSingle();
 
   const clubProfile = profileByUser ?? profileById ?? null;
-  const clubId = clubProfile?.id ?? user.id;
+  if (!clubProfile) return invalidPayload('club_profile_not_found');
+
+  const clubId = clubProfile.id;
 
   const body = await req.json().catch(() => ({}));
   const title = norm((body as any).title);
@@ -227,10 +229,8 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     norm((body as any).role) ??
     norm((body as any).roleLabel) ??
     norm((body as any).roleValue);
-  const club_name =
-    clubProfile?.display_name ??
-    clubProfile?.full_name ??
-    (typeof (user.user_metadata as any)?.club_name === 'string' ? (user.user_metadata as any).club_name : null);
+  const club_name = clubProfile.display_name ?? clubProfile.full_name ?? null;
+  if (!club_name) return invalidPayload('club_name_missing');
   const { age_min, age_max } = bracketToRange((body as any).age_bracket);
   const genderDb = resolveGender((body as any).gender);
   if (!genderDb) return invalidPayload('invalid_gender');

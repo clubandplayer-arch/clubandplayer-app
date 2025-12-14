@@ -90,6 +90,7 @@ export default function OpportunitiesTable({
                 <div className="flex flex-wrap items-center gap-2 text-sm text-gray-700">
                   {o.sport && <span className="rounded-full bg-gray-100 px-2.5 py-1">{o.sport}</span>}
                   {o.role && <span className="rounded-full bg-gray-100 px-2.5 py-1">{o.role}</span>}
+                  {o.category && <span className="rounded-full bg-gray-100 px-2.5 py-1">{o.category}</span>}
                   <span className="rounded-full bg-gray-100 px-2.5 py-1">Età: {formatBracket(o.age_min as any, o.age_max as any)}</span>
                   {place && <span className="rounded-full bg-gray-100 px-2.5 py-1">📍 {place}</span>}
                 </div>
