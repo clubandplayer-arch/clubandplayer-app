@@ -48,7 +48,7 @@ select
   p.age_max,
   p.gender,
   c.owner_user_id,
-  c.club_profile_id,
+  c.owner_user_id,
   c.club_profile_id,
   c.club_name,
   p.status
