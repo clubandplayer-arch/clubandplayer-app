@@ -130,15 +130,23 @@ export async function GET(req: NextRequest) {
 
   let clubNameMap: Record<string, string> = {};
   if (ownerIds.length) {
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('id, user_id, display_name, full_name')
-      .in('id', ownerIds);
+    const [profilesById, profilesByUser] = await Promise.all([
+      supabase
+        .from('profiles')
+        .select('id, user_id, display_name, full_name')
+        .in('id', ownerIds),
+      supabase
+        .from('profiles')
+        .select('id, user_id, display_name, full_name')
+        .in('user_id', ownerIds),
+    ]);
 
-    clubNameMap = (profiles || []).reduce((acc, row) => {
-      const name = row.display_name || row.full_name;
+    const allProfiles = [...(profilesById.data || []), ...(profilesByUser.data || [])];
+
+    clubNameMap = allProfiles.reduce((acc, row) => {
+      const name = row.full_name || row.display_name;
       if (name) {
-        acc[row.id] = name;
+        if (row.id) acc[row.id] = name;
         if (row.user_id) acc[row.user_id] = name;
       }
       return acc;
@@ -190,15 +198,22 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   const { data: profileByUser } = await supabase
     .from('profiles')
-    .select('id')
+    .select('id, user_id, display_name, full_name')
     .eq('user_id', user.id)
     .maybeSingle();
 
   const { data: profileById } = profileByUser
     ? { data: null }
-    : await supabase.from('profiles').select('id').eq('id', user.id).maybeSingle();
+    : await supabase
+        .from('profiles')
+        .select('id, user_id, display_name, full_name')
+        .eq('id', user.id)
+        .maybeSingle();
 
-  const clubId = profileByUser?.id ?? profileById?.id ?? user.id;
+  const clubProfile = profileByUser ?? profileById ?? null;
+  if (!clubProfile) return invalidPayload('club_profile_not_found');
+
+  const clubId = clubProfile.id;
 
   const body = await req.json().catch(() => ({}));
   const title = norm((body as any).title);
@@ -214,7 +229,8 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     norm((body as any).role) ??
     norm((body as any).roleLabel) ??
     norm((body as any).roleValue);
-  const club_name = norm((body as any).club_name);
+  const club_name = clubProfile.full_name ?? null;
+  if (!club_name) return invalidPayload('club_name_missing');
   const { age_min, age_max } = bracketToRange((body as any).age_bracket);
   const genderDb = resolveGender((body as any).gender);
   if (!genderDb) return invalidPayload('invalid_gender');

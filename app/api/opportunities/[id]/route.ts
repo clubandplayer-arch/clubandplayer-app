@@ -205,3 +205,35 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   if (error) return jsonError(error.message, 400);
   return NextResponse.json({ data });
 });
+
+export const DELETE = withAuth(async (req: NextRequest, { supabase, user }) => {
+  try {
+    await rateLimit(req, { key: 'opps:DELETE', limit: 30, window: '1m' } as any);
+  } catch {
+    return jsonError('Too Many Requests', 429);
+  }
+
+  const id = extractId(req);
+  if (!id) return jsonError('Missing id', 400);
+
+  const { data: opp, error: fetchError } = await supabase
+    .from('opportunities')
+    .select('id, owner_id, created_by')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (fetchError) return jsonError(fetchError.message, 400);
+  if (!opp) return jsonError('not_found', 404);
+
+  const ownerId = (opp.owner_id as string | null) ?? (opp.created_by as string | null);
+  if (ownerId && ownerId !== user.id) return jsonError('forbidden', 403);
+
+  const { error: deleteError } = await supabase
+    .from('opportunities')
+    .delete()
+    .eq('id', id)
+    .or(`owner_id.eq.${user.id},created_by.eq.${user.id}`);
+
+  if (deleteError) return jsonError(deleteError.message, 400);
+  return NextResponse.json({ success: true });
+});

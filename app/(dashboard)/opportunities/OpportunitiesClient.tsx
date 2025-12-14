@@ -31,6 +31,7 @@ export default function OpportunitiesClient() {
 
   const [openCreate, setOpenCreate] = useState(false);
   const [editItem, setEditItem] = useState<Opportunity | null>(null);
+  const [deleteItem, setDeleteItem] = useState<Opportunity | null>(null);
   const { data: italyLocations } = useItalyLocations();
   const [countryCode, setCountryCode] = useState(() => sp.get('country') ?? '');
   const [region, setRegion] = useState(() => sp.get('region') ?? '');
@@ -268,7 +269,17 @@ export default function OpportunitiesClient() {
         const normalized = rows.map((row: any) => {
           const ownerId = row?.owner_id ?? row?.created_by ?? null;
           const clubName = row?.club_name ?? row?.clubName ?? row?.owner_name ?? null;
-          return { ...row, owner_id: ownerId, created_by: ownerId, club_name: clubName, clubName };
+          const ownerEmail =
+            row?.owner_email ?? row?.created_by_email ?? row?.email ?? row?.owner ?? null;
+
+          return {
+            ...row,
+            owner_id: ownerId,
+            created_by: ownerId,
+            club_name: clubName,
+            clubName,
+            owner_email: ownerEmail,
+          };
         });
         setData({ ...(json as any), data: normalized } as OpportunitiesApiResponse);
       })
@@ -279,8 +290,7 @@ export default function OpportunitiesClient() {
     // dipendenze: quando cambiano i parametri URL, l'utente (meId) o la forzatura reloadKey
   }, [urlFilters, meId, reloadKey]);
 
-  async function handleDelete(o: Opportunity) {
-    if (!confirm(`Eliminare "${o.title}"?`)) return;
+  async function performDelete(o: Opportunity) {
     try {
       const res = await fetch(`/api/opportunities/${o.id}`, { method: 'DELETE', credentials: 'include' });
       const t = await res.text();
@@ -290,6 +300,7 @@ export default function OpportunitiesClient() {
       }
       setReloadKey((k) => k + 1);
       router.refresh();
+      setDeleteItem(null);
     } catch (e: any) {
       alert(e.message || 'Errore durante eliminazione');
     }
@@ -345,9 +356,12 @@ export default function OpportunitiesClient() {
         const list = Array.isArray(json?.data) ? json.data : [];
         list.forEach((row: any) => {
           const name = row.display_name || row.full_name || row.headline || null;
-          const userId = row.user_id || row.id;
-          if (name && userId) {
-            map[String(userId)] = name;
+          const userId = row.user_id || null;
+          const profileId = row.id || null;
+
+          if (name) {
+            if (userId) map[String(userId)] = name;
+            if (profileId) map[String(profileId)] = name;
           }
         });
         setClubNames(map);
@@ -646,7 +660,7 @@ export default function OpportunitiesClient() {
           userRole={role}
           clubNames={clubNames}
           onEdit={(o) => setEditItem(o)}
-          onDelete={(o) => handleDelete(o)}
+          onDelete={(o) => setDeleteItem(o)}
         />
       )}
 
@@ -677,6 +691,34 @@ export default function OpportunitiesClient() {
               router.refresh();
             }}
           />
+        )}
+      </Modal>
+
+      <Modal
+        open={!!deleteItem}
+        title="Eliminare opportunità?"
+        onClose={() => setDeleteItem(null)}
+      >
+        {deleteItem && (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-700">Vuoi eliminare “{deleteItem.title}”?</p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                className="rounded-xl border px-4 py-2 text-sm font-medium hover:bg-gray-50"
+                onClick={() => setDeleteItem(null)}
+              >
+                Annulla
+              </button>
+              <button
+                type="button"
+                className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+                onClick={() => performDelete(deleteItem)}
+              >
+                Elimina
+              </button>
+            </div>
+          </div>
         )}
       </Modal>
     </div>

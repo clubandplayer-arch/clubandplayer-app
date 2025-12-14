@@ -150,6 +150,22 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   if (updates.interest_country === undefined) updates.interest_country = 'IT';
 
+  let currentProfile: { account_type: string | null; role: string | null } | null = null;
+  const { data: existingProfile } = await supabase
+    .from('profiles')
+    .select('account_type, role')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (existingProfile) currentProfile = existingProfile;
+
+  const effectiveAccountType = ((updates.account_type as string | null | undefined) ?? currentProfile?.account_type ?? null) as
+    | string
+    | null;
+  if (effectiveAccountType === 'club') {
+    updates.role = 'Club';
+  }
+
   const { data, error } = await supabase
     .from('profiles')
     .update({ ...updates, updated_at: new Date().toISOString() })

@@ -55,17 +55,24 @@ export default function OpportunitiesTable({
   return (
     <div className="space-y-4">
       {items.map((o) => {
-        const ownerId = (o as any).club_id ?? o.created_by ?? o.owner_id ?? null;
+        const ownerId = o.created_by ?? o.owner_id ?? null;
         const profileOwnerId = (o as any).club_id ?? ownerId;
         const canEdit = !!currentUserId && (ownerId === currentUserId || o.created_by === currentUserId || o.owner_id === currentUserId);
         const place = [o.city, o.province, o.region, o.country].filter(Boolean).join(', ');
         const showApply = userRole === 'athlete' && !canEdit;
         const showFollow = userRole === 'athlete' && !!profileOwnerId;
-        const clubLabel =
-          (o as any).clubName ||
-          o.club_name ||
-          (ownerId ? ownerNameMap[ownerId] : undefined) ||
-          '—';
+        const clubLabel = (() => {
+          const explicit = (o as any).clubName || o.club_name;
+          if (explicit) return explicit;
+
+          const clubId = (o as any).club_id ?? null;
+          if (clubId && ownerNameMap[clubId]) return ownerNameMap[clubId];
+
+          const ownerKey = ownerId ?? null;
+          if (ownerKey && ownerNameMap[ownerKey]) return ownerNameMap[ownerKey];
+
+          return 'Club';
+        })();
 
         return (
           <article key={o.id} className="rounded-2xl border bg-white/80 shadow-sm p-4 md:p-5">
@@ -83,6 +90,7 @@ export default function OpportunitiesTable({
                 <div className="flex flex-wrap items-center gap-2 text-sm text-gray-700">
                   {o.sport && <span className="rounded-full bg-gray-100 px-2.5 py-1">{o.sport}</span>}
                   {o.role && <span className="rounded-full bg-gray-100 px-2.5 py-1">{o.role}</span>}
+                  {o.category && <span className="rounded-full bg-gray-100 px-2.5 py-1">{o.category}</span>}
                   <span className="rounded-full bg-gray-100 px-2.5 py-1">Età: {formatBracket(o.age_min as any, o.age_max as any)}</span>
                   {place && <span className="rounded-full bg-gray-100 px-2.5 py-1">📍 {place}</span>}
                 </div>

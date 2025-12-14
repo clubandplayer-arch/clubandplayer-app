@@ -22,13 +22,13 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
 
     const { data: profiles, error: profError } = await supabase
       .from('profiles')
-      .select('id, display_name, account_type, avatar_url, city, country, sport, role')
+      .select('id, full_name, display_name, account_type, avatar_url, city, country, sport, role')
       .in('id', targetIds);
     if (profError) throw profError;
 
     const items = (profiles || []).map((p) => ({
       id: p.id,
-      name: p.display_name || 'Profilo',
+      name: p.full_name || p.display_name || 'Profilo',
       account_type: p.account_type,
       city: p.city,
       country: p.country,
