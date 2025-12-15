@@ -117,6 +117,46 @@ function normalizeRow(row: any, quotedMap?: Map<string, any>, depth = 0): any {
   };
 }
 
+type ProfileClient =
+  | Awaited<ReturnType<typeof getSupabaseServerClient>>
+  | NonNullable<ReturnType<typeof getSupabaseAdminClientOrNull>>;
+
+type AuthorProfileMaps = {
+  byUserId: Map<string, any> | null;
+  byProfileId: Map<string, any> | null;
+};
+
+async function buildAuthorProfileMaps(client: ProfileClient, authorIds: string[]): Promise<AuthorProfileMaps> {
+  if (!authorIds.length) {
+    return { byUserId: null, byProfileId: null };
+  }
+
+  const [{ data: profilesByUserId }, { data: profilesByProfileId }] = await Promise.all([
+    client.from('profiles').select(PROFILE_FIELDS).in('user_id', authorIds),
+    client.from('profiles').select(PROFILE_FIELDS).in('id', authorIds),
+  ]);
+
+  const byUserId = profilesByUserId?.length
+    ? new Map(profilesByUserId.map((p) => [String((p as any)?.user_id), { ...p, type: (p as any)?.type ?? null }]))
+    : null;
+  const byProfileId = profilesByProfileId?.length
+    ? new Map(profilesByProfileId.map((p) => [String((p as any)?.id), { ...p, type: (p as any)?.type ?? null }]))
+    : null;
+
+  return { byUserId, byProfileId };
+}
+
+function attachAuthorProfile(row: any, maps: AuthorProfileMaps): any {
+  if (!row?.author && !row?.profiles && row?.author_id) {
+    const fromUserId = maps.byUserId?.get(row.author_id);
+    const fromProfileId = maps.byProfileId?.get(row.author_id);
+    if (fromUserId || fromProfileId) {
+      return { ...row, author: fromUserId || fromProfileId };
+    }
+  }
+  return row;
+}
+
 // GET: lettura autenticata, filtra i post per ruolo dell'autore
 export async function GET(req: NextRequest) {
   const searchParams = new URL(req.url).searchParams;
@@ -289,24 +329,12 @@ export async function GET(req: NextRequest) {
 
   const postsCountBeforeJoin = Array.isArray(data) ? data.length : 0;
 
-  const authorUserIds = Array.from(
+  const authorIds = Array.from(
     new Set((Array.isArray(data) ? data : []).map((r) => r?.author_id).filter(Boolean)),
   ) as string[];
 
-  let authorProfileMap: Map<string, any> | null = null;
-
-  if (authorUserIds.length) {
-    const { data: authorProfiles } = await supabase
-      .from('profiles')
-      .select('id, user_id, full_name, display_name, avatar_url, account_type, type')
-      .in('user_id', authorUserIds);
-
-    if (authorProfiles?.length) {
-      authorProfileMap = new Map(
-        authorProfiles.map((p) => [String((p as any)?.user_id), { ...p, type: (p as any)?.type ?? null }]),
-      );
-    }
-  }
+  const { byUserId: authorProfileMapByUserId, byProfileId: authorProfileMapByProfileId } =
+    await buildAuthorProfileMaps(supabase, authorIds);
 
   let quotedMap: Map<string, any> | null = null;
 
@@ -325,18 +353,18 @@ export async function GET(req: NextRequest) {
       .in('id', quotedIds);
 
     if (!quotedError && Array.isArray(quotedRows)) {
-      quotedMap = new Map(quotedRows.map((row) => [row.id, row]));
+      const quotedMaps = await buildAuthorProfileMaps(
+        supabase,
+        Array.from(new Set(quotedRows.map((r) => r?.author_id).filter(Boolean) as string[])),
+      );
+      const enrichedQuotedRows = quotedRows.map((row) => attachAuthorProfile(row, quotedMaps));
+      quotedMap = new Map(enrichedQuotedRows.map((row) => [row.id, row]));
     }
   }
 
   const rows =
     (data ?? [])
-      .map((r) => {
-        if (!r?.author && !r?.profiles && r?.author_id && authorProfileMap?.has(r.author_id)) {
-          return { ...r, author: authorProfileMap.get(r.author_id) };
-        }
-        return r;
-      })
+      .map((r) => attachAuthorProfile(r, { byUserId: authorProfileMapByUserId, byProfileId: authorProfileMapByProfileId }))
       .map((r) => normalizeRow(r, quotedMap ?? undefined)) || [];
   const postsCountAfterJoin = rows.length;
 
@@ -406,13 +434,14 @@ function isKindConstraintError(err: any) {
   );
 }
 
-const AUTHOR_SELECT = 'author:profiles!posts_author_id_fkey(id, full_name, avatar_url, account_type, type)';
+const PROFILE_FIELDS = 'id, user_id, full_name, display_name, avatar_url, account_type, type';
+
 const SELECT_WITH_MEDIA =
-  `id, author_id, content, created_at, media_url, media_type, media_aspect, kind, event_payload, quoted_post_id, ${AUTHOR_SELECT}`;
+  'id, author_id, content, created_at, media_url, media_type, media_aspect, kind, event_payload, quoted_post_id';
 const SELECT_WITH_LINK = `${SELECT_WITH_MEDIA}, link_url, link_title, link_description, link_image`;
-const SELECT_BASE = `id, author_id, content, created_at, kind, event_payload, quoted_post_id, ${AUTHOR_SELECT}`;
+const SELECT_BASE = 'id, author_id, content, created_at, kind, event_payload, quoted_post_id';
 const SELECT_QUOTED =
-  `id, author_id, content, created_at, media_url, media_type, media_aspect, kind, event_payload, link_url, link_title, link_description, link_image, quoted_post_id, ${AUTHOR_SELECT}`;
+  'id, author_id, content, created_at, media_url, media_type, media_aspect, kind, event_payload, link_url, link_title, link_description, link_image, quoted_post_id';
 const DEFAULT_POSTS_BUCKET = process.env.NEXT_PUBLIC_POSTS_BUCKET || 'posts';
 
 function sanitizeStoragePath(path: string) {
@@ -702,7 +731,10 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const res = successResponse({ item: normalizeRow(data) }, { status: 201 });
+    const authorMaps = await buildAuthorProfileMaps(supabase, data?.author_id ? [String(data.author_id)] : []);
+    const enrichedRow = attachAuthorProfile(data, authorMaps);
+
+    const res = successResponse({ item: normalizeRow(enrichedRow) }, { status: 201 });
     res.cookies.set(LAST_POST_TS_COOKIE, String(now), {
       httpOnly: false,
       path: '/',
