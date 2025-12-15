@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import ProfileHeader from '@/components/profiles/ProfileHeader';
 import ClubOpenOpportunitiesWidget from '@/components/clubs/ClubOpenOpportunitiesWidget';
 import PublicAuthorFeed from '@/components/feed/PublicAuthorFeed';
+import { buildClubDisplayName } from '@/lib/displayName';
 
 import { resolveCountryName, resolveStateName } from '@/lib/geodata/countryStateCityDataset';
 import { getLatestOpenOpportunitiesByClub } from '@/lib/data/opportunities';
@@ -132,7 +133,7 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
     club_id: (opp as any).club_id ?? null,
   }));
 
-  const displayName = profile.display_name || profile.full_name || 'Club';
+  const displayName = buildClubDisplayName(profile.full_name, profile.display_name, 'Club');
   const subtitle = [profile.club_league_category, profile.sport].filter(Boolean).join(' · ') || '—';
   const location = locationLabel(profile) || undefined;
 
@@ -186,7 +187,7 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
       <ClubOpenOpportunitiesWidget
         items={opportunities}
         clubId={clubProfileId}
-        clubName={profile.display_name || profile.full_name}
+        clubName={displayName}
       />
 
       <section className="space-y-3 rounded-2xl border bg-white p-5 shadow-sm">
