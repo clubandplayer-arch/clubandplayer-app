@@ -6,28 +6,36 @@ import { useToast } from '@/components/common/ToastProvider';
 
 type Props = {
   opportunityId: string;
-  ownerId?: string | null;
+  clubProfileId?: string | null;
   showApply?: boolean;
+  isOwner?: boolean;
 };
 
-export default function OpportunityActions({ opportunityId, ownerId, showApply = true }: Props) {
+export default function OpportunityActions({
+  opportunityId,
+  clubProfileId,
+  showApply = true,
+  isOwner = false,
+}: Props) {
   const toast = useToast();
 
   return (
     <div className="flex flex-wrap items-center gap-3">
       {showApply && <ApplyCTA oppId={opportunityId} />}
 
-      <button
-        type="button"
-        onClick={() => toast.info('Salvataggio opportunità in arrivo')}
-        className="rounded-xl border px-4 py-2 text-sm font-semibold hover:bg-gray-50"
-      >
-        Salva
-      </button>
+      {!isOwner && (
+        <button
+          type="button"
+          onClick={() => toast.info('Salvataggio opportunità in arrivo')}
+          className="rounded-xl border px-4 py-2 text-sm font-semibold hover:bg-gray-50"
+        >
+          Salva
+        </button>
+      )}
 
-      {ownerId && (
+      {clubProfileId && !isOwner && (
         <Link
-          href={`/clubs/${ownerId}`}
+          href={`/clubs/${clubProfileId}`}
           className="rounded-xl border px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50"
         >
           Visita club

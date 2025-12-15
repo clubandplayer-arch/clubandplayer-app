@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { trackApplicationConversion } from '@/lib/analytics';
+import { useToast } from '@/components/common/ToastProvider';
 
 type Props = {
   oppId: string;
@@ -14,35 +15,77 @@ export default function ApplyCTA({ oppId, initialApplied, onApplied, size = 'md'
   const [applied, setApplied] = useState<boolean>(!!initialApplied);
   const [loading, setLoading] = useState(false);
   const small = size === 'sm';
+  const toast = useToast();
 
   useEffect(() => {
     setApplied(!!initialApplied);
   }, [initialApplied]);
 
+  useEffect(() => {
+    if (initialApplied !== undefined) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const r = await fetch(`/api/applications/mine?opportunityId=${encodeURIComponent(oppId)}`, {
+          credentials: 'include',
+          cache: 'no-store',
+        });
+        if (!r.ok || cancelled) return;
+        const j = await r.json().catch(() => ({}));
+        const has = Array.isArray(j?.data) && j.data.length > 0;
+        if (!cancelled) setApplied(has);
+      } catch {
+        // ignore
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialApplied, oppId]);
+
   async function handleApply() {
     if (applied || loading) return;
     setLoading(true);
     try {
-      const r = await fetch(`/api/opportunities/${oppId}/apply`, {
+      const r = await fetch('/api/applications', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ opportunity_id: oppId }),
       });
-      // idempotente: ok anche se già candidato (409)
-      if (r.ok || r.status === 409) {
+
+      const contentType = r.headers.get('content-type') || '';
+      const isJson = contentType.includes('application/json');
+      const payload = isJson ? await r.json().catch(() => null) : null;
+      const text = isJson ? null : await r.text();
+
+      if (r.status === 409) {
         setApplied(true);
-        try {
-          trackApplicationConversion({ opportunityId: oppId, source: 'cta' });
-        } catch {
-          /* no-op */
-        }
+        toast.info('Ti sei già candidato');
         onApplied?.();
-      } else {
-        const t = await r.text();
-        throw new Error(t || `HTTP ${r.status}`);
+        return;
       }
+
+      if (!r.ok) {
+        const msg = (payload as any)?.error || (payload as any)?.message || text || `HTTP ${r.status}`;
+        toast.error(msg || 'Candidatura non riuscita');
+        console.error('[apply] error', { status: r.status, text: text ?? payload });
+        return;
+      }
+
+      setApplied(true);
+      toast.success('Candidatura inviata');
+      try {
+        trackApplicationConversion({ opportunityId: oppId, source: 'cta' });
+      } catch {
+        /* no-op */
+      }
+      onApplied?.();
     } catch (e: any) {
-      alert(e?.message || 'Errore durante la candidatura');
+      toast.error(e?.message || 'Candidatura non riuscita');
+      console.error('[apply] unexpected', e);
     } finally {
       setLoading(false);
     }

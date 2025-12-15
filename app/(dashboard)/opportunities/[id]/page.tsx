@@ -5,6 +5,7 @@ import OpportunityActions from '@/components/opportunities/OpportunityActions';
 import FollowButton from '@/components/common/FollowButton';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { opportunityGenderLabel } from '@/lib/opps/gender';
+import { buildClubDisplayName } from '@/lib/displayName';
 
 function formatDateHuman(date: string | null | undefined) {
   if (!date) return '—';
@@ -24,6 +25,14 @@ function formatAge(min?: number | null, max?: number | null) {
 export default async function OpportunityDetailPage({ params }: { params: { id: string } }) {
   const supabase = await getSupabaseServerClient();
   const { data: authUser } = await supabase.auth.getUser();
+
+  const { data: myProfile } = authUser?.user
+    ? await supabase
+        .from('profiles')
+        .select('id,user_id,account_type,profile_type,type')
+        .eq('user_id', authUser.user.id)
+        .maybeSingle()
+    : { data: null };
 
   const { data: opp, error } = await supabase
     .from('opportunities')
@@ -52,25 +61,42 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
   const { data: clubProfile } = ownerId
     ? await supabase
         .from('profiles')
-        .select('id,user_id,display_name,full_name,avatar_url,city,country,profile_type,account_type')
+        .select(
+          'id,user_id,display_name,full_name,avatar_url,city,province,region,country,profile_type,account_type',
+        )
         .or(`id.eq.${ownerId},user_id.eq.${ownerId}`)
         .maybeSingle()
     : { data: null };
 
-  const clubName =
-    opp.club_name ??
-    clubProfile?.display_name ??
-    clubProfile?.full_name ??
-    undefined;
-  const clubProfileId = clubProfile?.id ?? clubId;
+  const clubName = buildClubDisplayName(
+    clubProfile?.full_name,
+    clubProfile?.display_name,
+    opp.club_name ?? undefined,
+  );
+  const clubProfileId = clubProfile?.id ?? clubId ?? ownerId;
 
+  const clubLocation = [clubProfile?.city, clubProfile?.province, clubProfile?.region, clubProfile?.country]
+    .filter(Boolean)
+    .join(', ');
   const place = [opp.city, opp.province, opp.region, opp.country].filter(Boolean).join(', ');
   const categoryLabel = (opp as any).category ?? (opp as any).required_category ?? null;
   const genderLabel = opportunityGenderLabel((opp as any).gender) ?? undefined;
   const ageLabel = formatAge((opp as any).age_min, (opp as any).age_max);
   const published = formatDateHuman((opp as any).created_at);
-  const isOwner = !!authUser?.user && !!ownerId && authUser.user.id === ownerId;
-  const allClubOpportunitiesHref = clubId ? `/opportunities?clubId=${clubId}` : null;
+  const myProfileId = myProfile?.id ?? null;
+  const meUserId = authUser?.user?.id ?? null;
+  const isClubUser = (() => {
+    const raw = [myProfile?.account_type, (myProfile as any)?.profile_type, (myProfile as any)?.type]
+      .map((v) => (v ?? '').toString().toLowerCase())
+      .find((v) => v);
+    return raw ? raw.includes('club') || raw.includes('soc') : false;
+  })();
+  const isOwner = Boolean(
+    (meUserId && (meUserId === ownerId || meUserId === clubProfile?.user_id)) ||
+      (myProfileId && (myProfileId === ownerId || myProfileId === clubProfile?.id)),
+  );
+  const showApply = !!authUser?.user && !isOwner && !isClubUser;
+  const allClubOpportunitiesHref = !isOwner && clubProfileId ? `/opportunities?clubId=${clubProfileId}` : null;
 
   return (
     <div className="page-shell space-y-4">
@@ -97,7 +123,12 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
                 </div>
               </div>
 
-              <OpportunityActions opportunityId={opp.id} ownerId={ownerId} showApply={!isOwner} />
+              <OpportunityActions
+                opportunityId={opp.id}
+                clubProfileId={clubProfileId ?? null}
+                showApply={showApply}
+                isOwner={isOwner}
+              />
             </div>
           </header>
 
@@ -134,13 +165,17 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
                   {(clubName || 'C')[0]}
                 </div>
               )}
-                <div className="min-w-0">
-                  <Link href={clubProfileId ? `/clubs/${clubProfileId}` : '#'} className="font-semibold hover:underline">
-                    {clubName ?? 'Club'}
-                  </Link>
-                  <p className="text-sm text-gray-600">{clubProfile?.city || clubProfile?.country || 'Località n/d'}</p>
-                </div>
+              <div className="min-w-0">
+                <Link href={clubProfileId ? `/clubs/${clubProfileId}` : '#'} className="font-semibold hover:underline">
+                  {clubName ?? 'Club'}
+                </Link>
+                <p className="text-sm text-gray-600">{clubLocation || 'Località n/d'}</p>
               </div>
+            </div>
+
+            {isOwner && (
+              <p className="text-sm text-gray-600">Questa è una tua opportunità.</p>
+            )}
 
             {clubProfileId && !isOwner && (
               <FollowButton
@@ -150,7 +185,7 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
               />
             )}
 
-            {clubProfileId && (
+            {clubProfileId && !isOwner && (
               <Link
                 href={`/clubs/${clubProfileId}`}
                 className="block rounded-xl border px-4 py-2 text-center text-sm font-semibold text-blue-700 hover:bg-blue-50"
