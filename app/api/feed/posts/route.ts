@@ -77,6 +77,15 @@ function normalizeRow(row: any, quotedMap?: Map<string, any>, depth = 0): any {
   const aspectFromUrl = inferAspectFromUrl(row.media_url);
   const quotedRaw: any = row.quoted_post_id ? quotedMap?.get(row.quoted_post_id) : null;
   const quotedPost = quotedRaw && depth < 1 ? normalizeRow(quotedRaw, quotedMap, depth + 1) : null;
+  const authorProfile = (row as any)?.author ?? (row as any)?.profiles ?? null;
+  const authorDisplayName =
+    (authorProfile?.full_name as string | undefined) ??
+    (authorProfile?.display_name as string | undefined) ??
+    (authorProfile?.name as string | undefined) ??
+    null;
+  const authorAvatarUrl = (authorProfile?.avatar_url as string | undefined) ?? null;
+  const authorRole = normRole(authorProfile?.account_type ?? authorProfile?.type) ?? null;
+  const authorProfileId = (authorProfile?.id as string | undefined) ?? null;
 
   return {
     id: row.id,
@@ -100,6 +109,10 @@ function normalizeRow(row: any, quotedMap?: Map<string, any>, depth = 0): any {
     role: undefined as unknown as 'club' | 'athlete' | undefined,
     quoted_post_id: row.quoted_post_id ?? null,
     quoted_post: quotedPost,
+    author_display_name: authorDisplayName,
+    author_avatar_url: authorAvatarUrl,
+    author_role: authorRole,
+    author_profile_id: authorProfileId,
   };
 }
 
@@ -330,12 +343,13 @@ function isKindConstraintError(err: any) {
   );
 }
 
+const AUTHOR_SELECT = 'author:profiles!posts_author_id_fkey(id, full_name, avatar_url, account_type, type)';
 const SELECT_WITH_MEDIA =
-  'id, author_id, content, created_at, media_url, media_type, media_aspect, kind, event_payload, quoted_post_id';
+  `id, author_id, content, created_at, media_url, media_type, media_aspect, kind, event_payload, quoted_post_id, ${AUTHOR_SELECT}`;
 const SELECT_WITH_LINK = `${SELECT_WITH_MEDIA}, link_url, link_title, link_description, link_image`;
-const SELECT_BASE = 'id, author_id, content, created_at, kind, event_payload, quoted_post_id';
+const SELECT_BASE = `id, author_id, content, created_at, kind, event_payload, quoted_post_id, ${AUTHOR_SELECT}`;
 const SELECT_QUOTED =
-  'id, author_id, content, created_at, media_url, media_type, media_aspect, kind, event_payload, link_url, link_title, link_description, link_image, quoted_post_id';
+  `id, author_id, content, created_at, media_url, media_type, media_aspect, kind, event_payload, link_url, link_title, link_description, link_image, quoted_post_id, ${AUTHOR_SELECT}`;
 const DEFAULT_POSTS_BUCKET = process.env.NEXT_PUBLIC_POSTS_BUCKET || 'posts';
 
 function sanitizeStoragePath(path: string) {

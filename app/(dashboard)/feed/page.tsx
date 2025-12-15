@@ -69,7 +69,7 @@ export default function FeedPage() {
     refresh,
     updatePost,
     removePost,
-  } = useFeed({ authorId: currentUserId });
+  } = useFeed();
   const posts = feedPosts;
   const errorMessage = error?.message ?? null;
 

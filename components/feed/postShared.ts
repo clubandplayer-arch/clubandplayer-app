@@ -23,6 +23,10 @@ export type FeedPost = {
   createdAt?: string | null;
   author_id?: string | null;
   authorId?: string | null;
+  author_display_name?: string | null;
+  author_avatar_url?: string | null;
+  author_profile_id?: string | null;
+  author_role?: 'club' | 'athlete' | null;
   media_url?: string | null;
   media_type?: 'image' | 'video' | null;
   media_aspect?: '16:9' | '9:16' | null;
@@ -140,5 +144,14 @@ export function normalizePost(p: any, depth = 0): FeedPost {
     event_payload: normalizeEventPayload(p.event_payload ?? p.event ?? null),
     quoted_post_id: p.quoted_post_id ?? p.quotedPostId ?? null,
     quoted_post: quoted,
+    author_display_name:
+      p.author_display_name ??
+      p.author_full_name ??
+      p.author_name ??
+      p.author?.full_name ??
+      p.author ??
+      null,
+    author_avatar_url: p.author_avatar_url ?? p.author?.avatar_url ?? null,
+    author_profile_id: p.author_profile_id ?? p.author?.id ?? null,
   };
 }
