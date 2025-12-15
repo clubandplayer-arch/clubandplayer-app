@@ -1,53 +1,17 @@
 // components/feed/PublicAuthorFeed.tsx
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { CommentsSection } from '@/components/feed/CommentsSection';
-import { PostMedia } from '@/components/feed/PostMedia';
-import { QuotedPostCard } from '@/components/feed/QuotedPostCard';
-import { normalizePost, type FeedPost } from '@/components/feed/postShared';
-import { getPostPermalink, shareOrCopyLink } from '@/lib/share';
-
-const REACTION_ORDER = ['like', 'love', 'care', 'angry'] as const;
-type ReactionType = (typeof REACTION_ORDER)[number];
-
-type ReactionState = {
-  counts: Record<ReactionType, number>;
-  mine: ReactionType | null;
-};
-
-const REACTION_EMOJI: Record<ReactionType, string> = {
-  like: '👍',
-  love: '❤️',
-  care: '🤗',
-  angry: '😡',
-};
-
-const defaultReactionState: ReactionState = {
-  counts: { like: 0, love: 0, care: 0, angry: 0 },
-  mine: null,
-};
-
-function createDefaultReaction(): ReactionState {
-  return { counts: { ...defaultReactionState.counts }, mine: null };
-}
-
-function computeOptimistic(prev: ReactionState, nextMine: ReactionType | null): ReactionState {
-  const counts: ReactionState['counts'] = { ...prev.counts };
-  if (prev.mine) counts[prev.mine] = Math.max(0, (counts[prev.mine] || 0) - 1);
-  if (nextMine) counts[nextMine] = (counts[nextMine] || 0) + 1;
-  return { counts, mine: nextMine };
-}
-
-function formatDate(value?: string | null) {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  return new Intl.DateTimeFormat('it-IT', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(date);
-}
+import { useCallback, useEffect, useState } from 'react';
+import { PostCard } from '@/components/feed/PostCard';
+import {
+  REACTION_ORDER,
+  computeOptimistic,
+  createDefaultReaction,
+  normalizePost,
+  type FeedPost,
+  type ReactionState,
+  type ReactionType,
+} from '@/components/feed/postShared';
 
 type Props = {
   authorId: string;
@@ -213,9 +177,10 @@ export default function PublicAuthorFeed({ authorId, fallbackAuthorIds = [] }: P
       )}
 
       {posts.map((post) => (
-        <PublicPostCard
+        <PostCard
           key={post.id}
           post={post}
+          currentUserId={null}
           reaction={reactions[String(post.id)] ?? createDefaultReaction()}
           pickerOpen={pickerFor === String(post.id)}
           onOpenPicker={() => setPickerFor(String(post.id))}
@@ -230,163 +195,5 @@ export default function PublicAuthorFeed({ authorId, fallbackAuthorIds = [] }: P
 
       {reactionError ? <div className="text-xs text-red-600">{reactionError}</div> : null}
     </div>
-  );
-}
-
-type PublicPostCardProps = {
-  post: FeedPost;
-  reaction: ReactionState;
-  pickerOpen: boolean;
-  onOpenPicker: () => void;
-  onClosePicker: () => void;
-  onToggleReaction: (type: ReactionType) => void;
-  commentCount: number;
-  onCommentCountChange?: (next: number) => void;
-};
-
-function PublicPostCard({
-  post,
-  reaction,
-  pickerOpen,
-  onOpenPicker,
-  onClosePicker,
-  onToggleReaction,
-  commentCount,
-  onCommentCountChange,
-}: PublicPostCardProps) {
-  const [commentSignal, setCommentSignal] = useState(0);
-  const createdAt = post.created_at || post.createdAt;
-  const reactionSummaryParts = REACTION_ORDER.filter((key) => (reaction.counts[key] || 0) > 0).map(
-    (key) => `${REACTION_EMOJI[key]} ${reaction.counts[key]}`,
-  );
-  const totalReactions = REACTION_ORDER.reduce((acc, key) => acc + (reaction.counts[key] || 0), 0);
-  const reactionSummaryText = reactionSummaryParts.length ? reactionSummaryParts.join(' · ') : 'Nessuna reazione';
-
-  const shareUrl = useMemo(() => {
-    if (typeof window === 'undefined') return '';
-    return getPostPermalink(window.location.origin, String(post.id));
-  }, [post.id]);
-
-  const handleShare = useCallback(() => {
-    const shareText = [shareUrl, post.content || undefined].filter(Boolean).join('\n\n');
-
-    void shareOrCopyLink({
-      title: 'Post',
-      text: shareText,
-      url: shareUrl,
-      copiedMessage: 'Link del post copiato negli appunti',
-    });
-  }, [post.content, shareUrl]);
-
-  return (
-    <article className="space-y-2 rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-      <div className="text-xs text-neutral-500">{formatDate(createdAt)}</div>
-      {post.content ? <p className="whitespace-pre-wrap text-sm text-neutral-800">{post.content}</p> : null}
-
-      {post.quoted_post_id ? (
-        <QuotedPostCard post={post.quoted_post} missingText="Questo post non è più disponibile" />
-      ) : null}
-      <PostMedia
-        postId={post.id}
-        mediaUrl={post.media_url}
-        mediaType={post.media_type}
-        aspect={post.media_type === 'video' ? '16:9' : null}
-        alt={post.content || 'Media del post'}
-      />
-      {post.link_url ? (
-        <a
-          href={post.link_url}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-1 text-sm font-semibold text-blue-700 underline-offset-4 hover:underline"
-        >
-          {post.link_url}
-        </a>
-      ) : null}
-
-      <div className="mt-2 flex items-center justify-between text-xs text-neutral-600">
-        <div>
-          {totalReactions > 0 ? `${totalReactions} reazioni · ${reactionSummaryText}` : 'Nessuna reazione'}
-        </div>
-        <div>{commentCount > 0 ? `${commentCount} commenti` : 'Nessun commento'}</div>
-      </div>
-
-      <div
-        className="mt-2 flex flex-wrap items-center gap-2 border-t border-neutral-200 pt-2 text-sm font-semibold text-neutral-700"
-        onMouseLeave={onClosePicker}
-      >
-        <div className="relative inline-flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => onToggleReaction('like')}
-            onMouseEnter={onOpenPicker}
-            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 transition ${
-              reaction.mine
-                ? 'border-[var(--brand)] bg-[var(--brand)]/10 text-[var(--brand)]'
-                : 'border-neutral-200 bg-white text-neutral-800 hover:border-neutral-300'
-            }`}
-            aria-pressed={reaction.mine === 'like'}
-          >
-            <span aria-hidden className="text-xl">{REACTION_EMOJI[reaction.mine ?? 'like']}</span>
-            <span>Reagisci</span>
-          </button>
-
-          <button
-            type="button"
-            className="rounded-full border border-neutral-200 bg-white px-2 py-1 text-[11px] text-neutral-600 hover:border-neutral-300"
-            onClick={() => (pickerOpen ? onClosePicker() : onOpenPicker())}
-            aria-label="Scegli reazione"
-          >
-            ⋯
-          </button>
-
-          {pickerOpen && (
-            <div className="absolute left-0 top-full z-10 mt-1 flex gap-2 rounded-full border border-neutral-200 bg-white px-2 py-1 shadow-lg">
-              {REACTION_ORDER.map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => {
-                    onToggleReaction(r);
-                    onClosePicker();
-                  }}
-                  className={`flex items-center justify-center rounded-full px-2 py-1 text-xl transition ${
-                    reaction.mine === r ? 'bg-[var(--brand)]/10 text-[var(--brand)]' : 'hover:bg-neutral-100'
-                  }`}
-                >
-                  <span aria-hidden>{REACTION_EMOJI[r]}</span>
-                  <span className="sr-only">{r}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <button
-          type="button"
-          className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-neutral-800 transition hover:border-neutral-300"
-          onClick={() => setCommentSignal((v) => v + 1)}
-        >
-          <span aria-hidden>💬</span>
-          <span>Commenta</span>
-        </button>
-
-        <button
-          type="button"
-          className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-neutral-800 transition hover:border-neutral-300"
-          onClick={handleShare}
-        >
-          <span aria-hidden>🔗</span>
-          <span>Condividi</span>
-        </button>
-      </div>
-
-      <CommentsSection
-        postId={String(post.id)}
-        initialCount={commentCount}
-        expandSignal={commentSignal}
-        onCountChange={onCommentCountChange}
-      />
-    </article>
   );
 }
