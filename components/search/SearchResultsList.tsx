@@ -72,7 +72,7 @@ function resolvePublicHref(profile: SearchMapProfile) {
   const profileId = resolveProfileId(profile);
   if (!profileId) return '#';
   const type = (profile.type || profile.account_type || '').trim().toLowerCase();
-  return type === 'club' ? `/clubs/${profileId}` : `/athletes/${profileId}`;
+  return type === 'club' ? `/clubs/${profileId}` : `/players/${profileId}`;
 }
 
 export default function SearchResultsList({

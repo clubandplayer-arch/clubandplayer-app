@@ -3,6 +3,8 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
+
+import { buildPlayerDisplayName } from '@/lib/displayName';
 import { useRouter } from 'next/navigation';
 
 type AthleteSummary = {
@@ -135,7 +137,7 @@ export default function ApplicationsTable({
     const hasProfile = !!r.athlete;
     const athleteId = r.athlete?.id ?? r.athlete_id;
     const display = hasProfile
-      ? r.athlete?.name || r.athlete?.display_name || r.athlete?.full_name || 'Giocatore'
+      ? buildPlayerDisplayName(r.athlete?.full_name, r.athlete?.display_name, 'Giocatore')
       : r.player_name || (athleteId ? 'Profilo non disponibile' : '—');
     const headline =
       r.player_headline ||
@@ -148,7 +150,7 @@ export default function ApplicationsTable({
 
     return athleteId ? (
       <div className="flex flex-col">
-        <Link className="font-medium text-blue-700 hover:underline" href={`/athletes/${athleteId}`}>
+        <Link className="font-medium text-blue-700 hover:underline" href={`/players/${athleteId}`}>
           {display}
         </Link>
         {headline ? <span className="text-xs text-gray-600">{headline}</span> : null}

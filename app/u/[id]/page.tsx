@@ -9,6 +9,7 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
 import ProfileHeader from '@/components/profiles/ProfileHeader'
+import { buildPlayerDisplayName } from '@/lib/displayName'
 import { buildEndorsedSet, normalizeProfileSkills, normalizeSkillName } from '@/lib/profiles/skills'
 import { ProfileSkill } from '@/types/profile'
 
@@ -234,7 +235,7 @@ export default function PublicAthleteProfile() {
         <>
           <ProfileHeader
             profileId={profile.id}
-            displayName={profile.display_name || profile.full_name || 'Player'}
+            displayName={buildPlayerDisplayName(profile.full_name, profile.display_name)}
             accountType="athlete"
             avatarUrl={profile.avatar_url}
             subtitle={buildTagline(profile)}

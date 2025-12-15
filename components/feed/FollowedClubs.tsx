@@ -4,6 +4,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentProfileContext';
+import { buildPlayerDisplayName } from '@/lib/displayName';
 
 type FollowedItem = {
   id: string;
@@ -15,7 +16,7 @@ type FollowedItem = {
 };
 
 function targetHref(item: FollowedItem) {
-  return item.accountType === 'club' ? `/clubs/${item.id}` : `/athletes/${item.id}`;
+  return item.accountType === 'club' ? `/clubs/${item.id}` : `/players/${item.id}`;
 }
 
 function subtitle(item: FollowedItem, viewerRole: ProfileRole) {
@@ -47,9 +48,13 @@ export default function FollowedClubs() {
           ? (data.items as any[])
               .map((item) => {
                 const accountType: 'club' | 'athlete' = item.account_type === 'club' ? 'club' : 'athlete';
+                const safeName =
+                  accountType === 'club'
+                    ? item.name ?? item.display_name ?? 'Profilo'
+                    : buildPlayerDisplayName(item.full_name, item.display_name, 'Profilo');
                 return {
                   id: item.id,
-                  name: item.name ?? item.display_name ?? 'Profilo',
+                  name: safeName,
                   city: item.city ?? item.country ?? null,
                   sport: item.sport ?? null,
                   avatarUrl: item.avatar_url ?? item.avatarUrl ?? null,
