@@ -131,6 +131,19 @@ export async function GET(req: NextRequest) {
   const to = from + limit - 1;
   const supabase = await getSupabaseServerClient();
 
+  const buildDebug = (extra?: Record<string, any>) =>
+    debug && process.env.NODE_ENV !== 'production'
+      ? {
+          userId: currentUserId,
+          activeProfileId: currentProfileId,
+          scope,
+          followedCount: followedAuthorProfileIds.length,
+          followedUserIdsCount: followedAuthorUserIds.length,
+          allowedAuthorIdsCount: allowedAuthors?.length ?? 0,
+          ...extra,
+        }
+      : null;
+
   // determina ruolo dell'utente corrente
   let currentUserId: string | null = null;
   let currentProfileId: string | null = null;
@@ -150,6 +163,7 @@ export async function GET(req: NextRequest) {
   }
 
   const followedAuthorProfileIds: string[] = [];
+  const followedAuthorUserIds: string[] = [];
 
   const shouldLoadFollows = Boolean(currentProfileId && (scope === 'following' || (!authorIdFilter && !mine)));
 
@@ -169,6 +183,18 @@ export async function GET(req: NextRequest) {
         })
         .filter(Boolean)
         .forEach((pid) => followedAuthorProfileIds.push(pid as string));
+
+      const targetProfiles = Array.from(new Set(followedAuthorProfileIds));
+      if (targetProfiles.length) {
+        const { data: profileRows } = await supabase
+          .from('profiles')
+          .select('id, user_id')
+          .in('id', targetProfiles);
+        (profileRows ?? [])
+          .map((p) => (p as any)?.user_id)
+          .filter(Boolean)
+          .forEach((uid) => followedAuthorUserIds.push(String(uid)));
+      }
     }
   }
 
@@ -177,23 +203,27 @@ export async function GET(req: NextRequest) {
   if (scope === 'following') {
     if (authorIdFilter) {
       allowedAuthors = [authorIdFilter];
-    } else if (mine && currentProfileId) {
-      allowedAuthors = [currentProfileId];
+    } else if (mine && currentUserId) {
+      allowedAuthors = [currentUserId];
     } else {
-      if (!currentProfileId) {
+      if (!currentUserId) {
+        const debugPayload = buildDebug({ count: 0 });
+        if (debugPayload) console.log('[feed]', debugPayload);
         return successResponse({
           items: [],
           nextPage: null,
-          ...(debug ? { _debug: { scope, count: 0, userId: currentUserId, profileId: currentProfileId } } : {}),
+          ...(debugPayload ? { _debug: debugPayload } : {}),
         });
       }
 
-      const uniq = Array.from(new Set(followedAuthorProfileIds.filter(Boolean)));
+      const uniq = Array.from(new Set(followedAuthorUserIds.filter(Boolean)));
       if (!uniq.length) {
+        const debugPayload = buildDebug({ count: 0 });
+        if (debugPayload) console.log('[feed]', debugPayload);
         return successResponse({
           items: [],
           nextPage: null,
-          ...(debug ? { _debug: { scope, count: 0, userId: currentUserId, profileId: currentProfileId } } : {}),
+          ...(debugPayload ? { _debug: debugPayload } : {}),
         });
       }
 
@@ -202,10 +232,10 @@ export async function GET(req: NextRequest) {
   } else {
     allowedAuthors = (() => {
       if (authorIdFilter) return [authorIdFilter];
-      if (mine && currentProfileId) return [currentProfileId];
-      if (!authorIdFilter && !mine && currentProfileId) {
+      if (mine && currentUserId) return [currentUserId];
+      if (!authorIdFilter && !mine && currentUserId) {
         const uniq = Array.from(
-          new Set([currentProfileId, ...followedAuthorProfileIds].filter(Boolean)),
+          new Set([currentUserId, ...followedAuthorUserIds].filter(Boolean)),
         );
         return uniq.length ? uniq : null;
       }
@@ -249,6 +279,27 @@ export async function GET(req: NextRequest) {
     return dbError('Errore nel recupero dei post', debug ? { message: error.message, details: error.details } : undefined);
   }
 
+  const postsCountBeforeJoin = Array.isArray(data) ? data.length : 0;
+
+  const authorUserIds = Array.from(
+    new Set((Array.isArray(data) ? data : []).map((r) => r?.author_id).filter(Boolean)),
+  ) as string[];
+
+  let authorProfileMap: Map<string, any> | null = null;
+
+  if (authorUserIds.length) {
+    const { data: authorProfiles } = await supabase
+      .from('profiles')
+      .select('id, user_id, full_name, display_name, avatar_url, account_type, type')
+      .in('user_id', authorUserIds);
+
+    if (authorProfiles?.length) {
+      authorProfileMap = new Map(
+        authorProfiles.map((p) => [String((p as any)?.user_id), { ...p, type: (p as any)?.type ?? null }]),
+      );
+    }
+  }
+
   let quotedMap: Map<string, any> | null = null;
 
   const quotedIds = Array.from(
@@ -270,29 +321,41 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const rows = (data ?? []).map((r) => normalizeRow(r, quotedMap ?? undefined)) || [];
+  const rows =
+    (data ?? [])
+      .map((r) => {
+        if (!r?.author && !r?.profiles && r?.author_id && authorProfileMap?.has(r.author_id)) {
+          return { ...r, author: authorProfileMap.get(r.author_id) };
+        }
+        return r;
+      })
+      .map((r) => normalizeRow(r, quotedMap ?? undefined)) || [];
+  const postsCountAfterJoin = rows.length;
+
+  const debugPayload = buildDebug({
+    count: rows.length,
+    allowedAuthorIdsCount: allowedAuthors?.length ?? 0,
+    postsCountBeforeJoin,
+    postsCountAfterJoin,
+    scope,
+  });
+
+  if (debugPayload) {
+    console.log('[feed]', debugPayload);
+  }
 
   if (mine || authorIdFilter) {
     return successResponse({
       items: rows,
       nextPage: rows.length === limit ? page + 1 : null,
-      ...(debug
-        ? {
-            _debug: {
-              count: rows.length,
-              mine: mine || !!authorIdFilter,
-              userId: currentUserId ?? authorIdFilter,
-              profileId: currentProfileId ?? null,
-            },
-          }
-        : {}),
+      ...(debugPayload ? { _debug: debugPayload } : {}),
     });
   }
 
   return successResponse({
     items: rows,
     nextPage: rows.length === limit ? page + 1 : null,
-    ...(debug ? { _debug: { count: rows.length, userId: currentUserId, allowedAuthors } } : {}),
+    ...(debugPayload ? { _debug: debugPayload } : {}),
   });
 }
 
