@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 import { withAuth } from '@/lib/api/auth';
 import { notAuthorized, successResponse, unknownError } from '@/lib/api/feedFollowStandardWrapper';
 import { getActiveProfile } from '@/lib/api/profile';
+import { buildProfileDisplayName } from '@/lib/displayName';
 
 export const runtime = 'nodejs';
 
@@ -28,7 +29,9 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
 
     const items = (profiles || []).map((p) => ({
       id: p.id,
-      name: p.full_name || p.display_name || 'Profilo',
+      name: buildProfileDisplayName(p.full_name, p.display_name, 'Profilo'),
+      full_name: p.full_name,
+      display_name: p.display_name,
       account_type: p.account_type,
       city: p.city,
       country: p.country,
