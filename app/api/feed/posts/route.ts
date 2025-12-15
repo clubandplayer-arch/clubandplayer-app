@@ -131,6 +131,8 @@ export async function GET(req: NextRequest) {
   const to = from + limit - 1;
   const supabase = await getSupabaseServerClient();
 
+  const allowedAuthorProfileIds: string[] = [];
+
   const buildDebug = (extra?: Record<string, any>) =>
     debug && process.env.NODE_ENV !== 'production'
       ? {
@@ -139,6 +141,7 @@ export async function GET(req: NextRequest) {
           scope,
           followedCount: followedAuthorProfileIds.length,
           followedUserIdsCount: followedAuthorUserIds.length,
+          allowedAuthorProfileIdsCount: allowedAuthorProfileIds.length,
           allowedAuthorIdsCount: allowedAuthors?.length ?? 0,
           ...extra,
         }
@@ -217,7 +220,8 @@ export async function GET(req: NextRequest) {
       }
 
       const uniq = Array.from(new Set(followedAuthorUserIds.filter(Boolean)));
-      if (!uniq.length) {
+      allowedAuthorProfileIds.push(...followedAuthorProfileIds);
+      if (!uniq.length && !allowedAuthorProfileIds.length) {
         const debugPayload = buildDebug({ count: 0 });
         if (debugPayload) console.log('[feed]', debugPayload);
         return successResponse({
@@ -227,15 +231,19 @@ export async function GET(req: NextRequest) {
         });
       }
 
-      allowedAuthors = uniq;
+      const fromProfiles = allowedAuthorProfileIds.filter(Boolean);
+      const merged = Array.from(new Set([...uniq, ...fromProfiles]));
+      allowedAuthors = merged;
     }
   } else {
     allowedAuthors = (() => {
       if (authorIdFilter) return [authorIdFilter];
-      if (mine && currentUserId) return [currentUserId];
-      if (!authorIdFilter && !mine && currentUserId) {
+      const selfIds = [currentUserId, currentProfileId].filter(Boolean) as string[];
+      if (mine && selfIds.length) return selfIds;
+      if (!authorIdFilter && !mine && (currentUserId || currentProfileId)) {
+        allowedAuthorProfileIds.push(...followedAuthorProfileIds);
         const uniq = Array.from(
-          new Set([currentUserId, ...followedAuthorUserIds].filter(Boolean)),
+          new Set([...selfIds, ...followedAuthorUserIds, ...allowedAuthorProfileIds].filter(Boolean)),
         );
         return uniq.length ? uniq : null;
       }
