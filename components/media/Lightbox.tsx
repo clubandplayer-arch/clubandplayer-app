@@ -4,6 +4,8 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 
+import { useExclusiveVideoPlayback } from '@/hooks/useExclusiveVideoPlayback';
+
 export type LightboxItem = {
   url: string;
   type: 'image' | 'video';
@@ -20,6 +22,9 @@ type Props = {
 
 export function Lightbox({ items, index, onClose, onPrev, onNext }: Props) {
   const item = items[index];
+  const { videoRef, handleEnded, handlePause, handlePlay } = useExclusiveVideoPlayback(
+    item?.url ?? 'lightbox',
+  );
 
   useEffect(() => {
     if (!item) return undefined;
@@ -80,10 +85,14 @@ export function Lightbox({ items, index, onClose, onPrev, onNext }: Props) {
 
         {item.type === 'video' ? (
           <video
+            ref={videoRef}
             src={item.url}
             controls
             className="max-h-[90vh] max-w-[90vw] object-contain bg-black"
             playsInline
+            onPlay={handlePlay}
+            onPause={handlePause}
+            onEnded={handleEnded}
           />
         ) : (
           <img src={item.url} alt={item.alt ?? 'Media'} className="max-h-[90vh] max-w-[90vw] object-contain" />

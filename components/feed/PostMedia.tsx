@@ -1,5 +1,7 @@
 'use client';
 
+/* eslint-disable @next/next/no-img-element */
+
 import { useMemo, useState } from 'react';
 import { Lightbox, type LightboxItem } from '@/components/media/Lightbox';
 import { useExclusiveVideoPlayback } from '@/hooks/useExclusiveVideoPlayback';
@@ -25,11 +27,11 @@ export function PostMedia({ postId, mediaUrl, mediaType, aspect, alt }: Props) {
   const { videoRef, handleEnded, handlePause, handlePlay } = useExclusiveVideoPlayback(postId);
 
   const items = useMemo<LightboxItem[]>(() => {
-    if (!mediaUrl || !mediaType || mediaType === 'video') return [];
+    if (!mediaUrl || !mediaType) return [];
     return [
       {
         url: mediaUrl,
-        type: 'image',
+        type: mediaType,
         alt: alt || undefined,
       },
     ];
@@ -39,46 +41,50 @@ export function PostMedia({ postId, mediaUrl, mediaType, aspect, alt }: Props) {
 
   const aspectClass = frameAspect(mediaType, aspect);
 
-  const containerClasses = [
-    'relative flex items-center justify-center bg-black/5',
-    aspectClass,
-    mediaType === 'video' ? 'max-h-[420px]' : null,
-  ]
-    .filter(Boolean)
-    .join(' ');
-
   return (
     <div className="mt-4 flex w-full justify-center px-1 md:px-2">
       <div className="mx-auto flex w-full max-w-2xl justify-center overflow-hidden rounded-xl bg-neutral-50 shadow-sm ring-1 ring-slate-100">
-        <div className={`${containerClasses} overflow-hidden rounded-xl`}>
-          {mediaType === 'video' ? (
-            <video
-              ref={videoRef}
-              src={mediaUrl ?? undefined}
-              controls
-              className="mx-auto h-full max-h-[420px] w-auto max-w-full object-contain bg-black"
-              onPlay={handlePlay}
-              onPause={handlePause}
-              onEnded={handleEnded}
-              playsInline
-            />
-          ) : (
-            <button
-              type="button"
-              className="flex h-full w-full items-center justify-center"
-              onClick={() => setLightboxIndex(0)}
-            >
-              <span className="sr-only">{aria}</span>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
+        <button
+          type="button"
+          aria-label={aria}
+          onClick={() => setLightboxIndex(0)}
+          className="group relative w-full"
+        >
+          <div
+            className={`relative h-[360px] w-full overflow-hidden rounded-xl bg-black/5 md:h-[420px] ${
+              aspectClass ? aspectClass : ''
+            }`}
+          >
+            {mediaType === 'video' ? (
+              <video
+                ref={videoRef}
+                src={mediaUrl ?? undefined}
+                className="h-full w-full object-cover"
+                onPlay={handlePlay}
+                onPause={handlePause}
+                onEnded={handleEnded}
+                playsInline
+                muted
+                preload="metadata"
+              />
+            ) : (
               <img
                 src={mediaUrl}
                 alt={aria}
-                className="mx-auto block h-full max-h-[420px] w-auto max-w-full object-contain"
+                className="h-full w-full object-cover"
                 loading="lazy"
               />
-            </button>
-          )}
-        </div>
+            )}
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/10 via-black/0 to-black/20 opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
+            {mediaType === 'video' ? (
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-black/60 text-white shadow-lg transition duration-200 group-hover:scale-105">
+                  ▶
+                </span>
+              </div>
+            ) : null}
+          </div>
+        </button>
       </div>
 
       {lightboxIndex !== null && items.length > 0 ? (

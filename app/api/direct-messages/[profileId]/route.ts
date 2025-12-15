@@ -20,6 +20,13 @@ function extractProfileId(routeContext?: { params?: Promise<Record<string, strin
   return null;
 }
 
+function isMissingHiddenThreadsTable(error: any) {
+  return typeof error?.message === 'string'
+    ? error.message.includes('direct_message_hidden_threads') ||
+        error.message.includes('relation "direct_message_hidden_threads"')
+    : error?.code === '42P01';
+}
+
 export const GET = withAuth(async (_req: NextRequest, { supabase, user }, routeContext) => {
   const targetProfileId = extractProfileId(routeContext);
   const otherId = typeof targetProfileId === 'string' ? targetProfileId.trim() : '';
@@ -48,14 +55,38 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }, routeC
       return notFoundResponse('Profilo target non trovato');
     }
 
-    const { data: rows, error } = await supabase
+    let clearedAt: string | null = null;
+
+    try {
+      const { data: hiddenRow, error: hiddenError } = await supabase
+        .from('direct_message_hidden_threads')
+        .select('cleared_at')
+        .eq('owner_profile_id', me.id)
+        .eq('other_profile_id', peer.id)
+        .maybeSingle();
+
+      if (hiddenError) throw hiddenError;
+      clearedAt = hiddenRow?.cleared_at ? (hiddenRow.cleared_at as string) : null;
+    } catch (hiddenError: any) {
+      if (!isMissingHiddenThreadsTable(hiddenError)) {
+        throw hiddenError;
+      }
+      console.warn('[direct-messages] GET /api/direct-messages/:profileId missing table direct_message_hidden_threads');
+    }
+
+    let messagesQuery = supabase
       .from('direct_messages')
       .select('id, sender_profile_id, recipient_profile_id, content, created_at, edited_at, edited_by')
       .or(
         `and(sender_profile_id.eq.${me.id},recipient_profile_id.eq.${peer.id}),and(sender_profile_id.eq.${peer.id},recipient_profile_id.eq.${me.id})`,
       )
-      .is('deleted_at', null)
-      .order('created_at', { ascending: true });
+      .is('deleted_at', null);
+
+    if (clearedAt) {
+      messagesQuery = messagesQuery.gt('created_at', clearedAt);
+    }
+
+    const { data: rows, error } = await messagesQuery.order('created_at', { ascending: true });
 
     if (error) throw error;
 

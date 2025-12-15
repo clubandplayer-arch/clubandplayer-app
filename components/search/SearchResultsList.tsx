@@ -7,6 +7,7 @@ import { useMemo } from 'react';
 import FollowButton from '@/components/common/FollowButton';
 import { buildDirectConversationUrl } from '@/lib/services/messaging';
 import { SearchMapProfile } from '@/lib/services/search';
+import { buildProfileDisplayName } from '@/lib/displayName';
 
 export type SearchResultsListProps = {
   results: SearchMapProfile[];
@@ -33,7 +34,8 @@ function MarkerIcon({ type }: { type?: string | null }) {
 }
 
 function Avatar({ profile }: { profile: SearchMapProfile }) {
-  const display = profile.display_name || profile.full_name || 'Profilo';
+  const display =
+    profile.friendly_name || buildProfileDisplayName(profile.full_name, profile.display_name, 'Profilo');
   const alt = display || 'Avatar profilo';
   const initial = display.trim()[0]?.toUpperCase() || 'P';
 
@@ -126,6 +128,8 @@ export default function SearchResultsList({
             const location = locationLabel(profile);
             const details = detailsLabel(profile);
             const canMessage = !!profileId;
+            const displayName =
+              profile.friendly_name || buildProfileDisplayName(profile.full_name, profile.display_name, 'Profilo');
 
             return (
               <div
@@ -144,18 +148,23 @@ export default function SearchResultsList({
                 }}
               >
                 <div className="flex items-start gap-3">
-                  <Avatar profile={profile} />
+                  <Link
+                    href={href}
+                    className="shrink-0"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Avatar profile={profile} />
+                  </Link>
                   <div className="flex flex-1 flex-col gap-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <div className="font-semibold leading-tight">{profile.display_name || profile.full_name || 'Profilo'}</div>
-                      <MarkerIcon type={profile.type || profile.account_type} />
                       <Link
                         href={href}
-                        className="text-xs font-medium text-blue-700 underline decoration-blue-600 underline-offset-2 hover:no-underline"
                         onClick={(e) => e.stopPropagation()}
+                        className="font-semibold leading-tight text-blue-800 underline-offset-2 hover:underline"
                       >
-                        Visita profilo
+                        {displayName}
                       </Link>
+                      <MarkerIcon type={profile.type || profile.account_type} />
                     </div>
                     <div className="text-xs text-gray-600">{location || 'Località non disponibile'}</div>
                     <div className="text-xs text-gray-500">{details || 'Ruolo/sport non specificato'}</div>
