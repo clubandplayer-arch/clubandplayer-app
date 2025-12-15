@@ -220,8 +220,8 @@ export default function AvatarUploader({ value, onChange }: Props) {
 
   return (
     <>
-      <div className="flex items-start gap-4">
-        <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-full border bg-transparent">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+        <div className="flex h-28 w-28 flex-shrink-0 items-center justify-center overflow-hidden rounded-full border bg-white sm:h-32 sm:w-32">
           {value ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img

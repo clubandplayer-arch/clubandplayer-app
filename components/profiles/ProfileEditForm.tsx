@@ -687,11 +687,11 @@ export default function ProfileEditForm() {
                 </div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-4">
-                <div className="flex flex-col gap-1">
+              <div className="grid min-w-0 gap-4 md:grid-cols-4">
+                <div className="flex min-w-0 flex-col gap-1">
                   <label className="text-sm text-gray-600">Nazione del club</label>
                   <select
-                    className="rounded-lg border p-2"
+                    className="w-full min-w-0 rounded-lg border p-2"
                     value={country}
                     onChange={(e) => setCountry(e.target.value)}
                   >
@@ -720,10 +720,10 @@ export default function ProfileEditForm() {
                     }}
                   />
                 ) : (
-                  <div className="md:col-span-3 flex flex-col gap-1">
+                  <div className="flex min-w-0 flex-col gap-1 md:col-span-3">
                     <label className="text-sm text-gray-600">Città del club</label>
                     <input
-                      className="rounded-lg border p-2"
+                      className="w-full min-w-0 rounded-lg border p-2"
                       value={clubCity}
                       onChange={(e) => setClubCity(e.target.value)}
                       placeholder="Es. Sydney"

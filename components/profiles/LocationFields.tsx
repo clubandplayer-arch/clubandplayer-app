@@ -161,10 +161,10 @@ export function LocationFields({
 
   return (
     <>
-      <div className="flex flex-col gap-1">
+      <div className="flex min-w-0 flex-col gap-1">
         <label className="text-sm text-gray-600">{labels.region}</label>
         <select
-          className="rounded-lg border p-2"
+          className="w-full min-w-0 rounded-lg border p-2"
           value={value.regionId ?? ''}
           onChange={(e) => handleRegionChange(e.target.value ? Number(e.target.value) : null)}
           disabled={disabled}
@@ -178,10 +178,10 @@ export function LocationFields({
         </select>
       </div>
 
-      <div className="flex flex-col gap-1">
+      <div className="flex min-w-0 flex-col gap-1">
         <label className="text-sm text-gray-600">{labels.province}</label>
         <select
-          className="rounded-lg border p-2 disabled:bg-gray-50"
+          className="w-full min-w-0 rounded-lg border p-2 disabled:bg-gray-50"
           value={value.provinceId ?? ''}
           onChange={(e) => handleProvinceChange(e.target.value ? Number(e.target.value) : null)}
           disabled={disabled || !value.regionId}
@@ -195,10 +195,10 @@ export function LocationFields({
         </select>
       </div>
 
-      <div className="flex flex-col gap-1">
+      <div className="flex min-w-0 flex-col gap-1">
         <label className="text-sm text-gray-600">{labels.city}</label>
         <select
-          className="rounded-lg border p-2 disabled:bg-gray-50"
+          className="w-full min-w-0 rounded-lg border p-2 disabled:bg-gray-50"
           value={value.municipalityId ?? ''}
           onChange={(e) => handleMunicipalityChange(e.target.value ? Number(e.target.value) : null)}
           disabled={disabled || !value.provinceId}
