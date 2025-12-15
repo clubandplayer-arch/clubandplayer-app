@@ -15,6 +15,7 @@ import {
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 import { reportApiError } from '@/lib/monitoring/reportApiError';
+import { getActiveProfile } from '@/lib/api/profile';
 import { CreatePostSchema, FeedPostsQuerySchema, type CreatePostInput, type FeedPostsQueryInput } from '@/lib/validation/feed';
 
 export const runtime = 'nodejs';
@@ -137,21 +138,11 @@ export async function GET(req: NextRequest) {
     const { data, error } = await supabase.auth.getUser();
     if (!error && data?.user) {
       currentUserId = data.user.id;
+      const activeProfile = await getActiveProfile(supabase, data.user.id);
+      currentProfileId = activeProfile?.id ?? null;
     }
   } catch {
     // se qualcosa fallisce, continuiamo senza ruolo
-  }
-
-  if (currentUserId) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('id, status')
-      .eq('user_id', currentUserId)
-      .maybeSingle();
-
-    if (profile?.id && profile.status === 'active') {
-      currentProfileId = profile.id;
-    }
   }
 
   if (mine && !currentProfileId) {
@@ -167,6 +158,7 @@ export async function GET(req: NextRequest) {
       .from('follows')
       .select('target_profile_id')
       .eq('follower_profile_id', currentProfileId)
+      .neq('target_profile_id', currentProfileId)
       .limit(500);
 
     if (!followError && Array.isArray(followRows) && followRows.length) {
