@@ -12,6 +12,13 @@ function isMissingReadStateTable(error: any) {
     : error?.code === '42P01';
 }
 
+function isMissingHiddenThreadsTable(error: any) {
+  return typeof error?.message === 'string'
+    ? error.message.includes('direct_message_hidden_threads') ||
+        error.message.includes('relation "direct_message_hidden_threads"')
+    : error?.code === '42P01';
+}
+
 export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
   try {
     const me = await getActiveProfile(supabase, user.id);
@@ -61,6 +68,28 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
           });
         }
       }
+    }
+
+    const hiddenThreadsMap = new Map<string, string>();
+
+    try {
+      const { data: hiddenThreads, error: hiddenError } = await supabase
+        .from('direct_message_hidden_threads')
+        .select('other_profile_id, hidden_at')
+        .eq('owner_profile_id', me.id);
+
+      if (hiddenError) throw hiddenError;
+
+      for (const row of hiddenThreads ?? []) {
+        if (row.other_profile_id && row.hidden_at) {
+          hiddenThreadsMap.set(row.other_profile_id as string, row.hidden_at as string);
+        }
+      }
+    } catch (error: any) {
+      if (!isMissingHiddenThreadsTable(error)) {
+        throw error;
+      }
+      console.warn('[direct-messages] GET /api/direct-messages/threads missing table direct_message_hidden_threads');
     }
 
     let readStates: { other_profile_id: string | null; last_read_at: string | null }[] = [];
@@ -128,20 +157,29 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
       }
     }
 
-    const threads = Array.from(threadsMap.values()).map((thread) => {
-      const lastRead = thread.otherProfileId ? readMap.get(thread.otherProfileId) : undefined;
-      const hasUnread =
-        !!thread.lastIncomingAt && (!lastRead || new Date(thread.lastIncomingAt).getTime() > new Date(lastRead).getTime());
+    const threads = Array.from(threadsMap.values())
+      .filter((thread) => {
+        const hiddenAt = thread.otherProfileId ? hiddenThreadsMap.get(thread.otherProfileId) : null;
+        if (!hiddenAt) return true;
+        const lastMessageTime = thread.lastMessageAt ? new Date(thread.lastMessageAt).getTime() : 0;
+        const hiddenTime = new Date(hiddenAt).getTime();
+        // Show the thread again if there is activity after it was hidden
+        return lastMessageTime > hiddenTime;
+      })
+      .map((thread) => {
+        const lastRead = thread.otherProfileId ? readMap.get(thread.otherProfileId) : undefined;
+        const hasUnread =
+          !!thread.lastIncomingAt && (!lastRead || new Date(thread.lastIncomingAt).getTime() > new Date(lastRead).getTime());
 
-      return {
-        otherProfileId: thread.otherProfileId,
-        otherName: thread.otherName,
-        otherAvatarUrl: thread.otherAvatarUrl,
-        lastMessage: thread.lastMessage,
-        lastMessageAt: thread.lastMessageAt,
-        hasUnread,
-      };
-    });
+        return {
+          otherProfileId: thread.otherProfileId,
+          otherName: thread.otherName,
+          otherAvatarUrl: thread.otherAvatarUrl,
+          lastMessage: thread.lastMessage,
+          lastMessageAt: thread.lastMessageAt,
+          hasUnread,
+        };
+      });
 
     console.info('[direct-messages] GET /api/direct-messages/threads summary', {
       profile: me.id,

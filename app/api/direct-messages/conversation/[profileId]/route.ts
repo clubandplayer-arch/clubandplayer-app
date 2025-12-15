@@ -43,21 +43,21 @@ export const DELETE = withAuth(async (_req: NextRequest, { supabase, user }, rou
     }
 
     const now = new Date().toISOString();
-    const { data: deletedRows, error: deleteError } = await supabase
-      .from('direct_messages')
-      .update({
-        deleted_at: now,
-        deleted_by: me.id,
-      })
-      .eq('sender_profile_id', me.id)
-      .eq('recipient_profile_id', peer.id)
-      .is('deleted_at', null)
-      .select('id');
+    const { error: hideError } = await supabase
+      .from('direct_message_hidden_threads')
+      .upsert(
+        {
+          owner_profile_id: me.id,
+          other_profile_id: peer.id,
+          hidden_at: now,
+        },
+        { onConflict: 'owner_profile_id,other_profile_id' },
+      );
 
-    if (deleteError) throw deleteError;
+    if (hideError) throw hideError;
 
     return successResponse({
-      deletedCount: deletedRows?.length || 0,
+      hiddenAt: now,
       targetProfileId: peer.id,
     });
   } catch (error: any) {
