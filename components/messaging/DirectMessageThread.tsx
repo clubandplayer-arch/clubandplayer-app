@@ -222,6 +222,9 @@ export function DirectMessageThread({
     try {
       await deleteDirectConversation(targetProfileId);
       setMessages([]);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('app:direct-messages-updated'));
+      }
       if (onClose) {
         onClose();
       } else {

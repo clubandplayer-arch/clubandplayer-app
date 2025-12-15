@@ -354,10 +354,22 @@ export default function ProfileMiniCard() {
             <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Dettagli player</div>
           </div>
 
-          <dl className="grid grid-cols-1 gap-3 rounded-xl bg-white/70 p-3 text-sm text-gray-800 shadow-sm ring-1 ring-gray-100 sm:grid-cols-2">
+          <dl className="grid grid-cols-2 gap-3 rounded-xl bg-white/70 p-3 text-sm text-gray-800 shadow-sm ring-1 ring-gray-100">
             <div className="flex flex-col gap-0.5">
               <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Età</dt>
               <dd className="font-medium text-gray-900">{age ?? '—'}</dd>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Altezza</dt>
+              <dd className="font-medium text-gray-900">{p?.height_cm ? `${p.height_cm} cm` : '—'}</dd>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Peso</dt>
+              <dd className="font-medium text-gray-900">{p?.weight_kg ? `${p.weight_kg} kg` : '—'}</dd>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Piede</dt>
+              <dd className="font-medium text-gray-900">{p?.foot || '—'}</dd>
             </div>
             <div className="flex flex-col gap-0.5">
               <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Sport</dt>
@@ -367,21 +379,9 @@ export default function ProfileMiniCard() {
               <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Ruolo</dt>
               <dd className="font-medium text-gray-900">{p?.role || '—'}</dd>
             </div>
-            <div className="flex flex-col gap-0.5 sm:col-span-2">
+            <div className="flex flex-col gap-0.5 col-span-2">
               <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Città / Paese</dt>
               <dd className="font-medium text-gray-900">{p?.city || interestLabel || '—'}</dd>
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Piede</dt>
-              <dd className="font-medium text-gray-900">{p?.foot || '—'}</dd>
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Altezza</dt>
-              <dd className="font-medium text-gray-900">{p?.height_cm ? `${p.height_cm} cm` : '—'}</dd>
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Peso</dt>
-              <dd className="font-medium text-gray-900">{p?.weight_kg ? `${p.weight_kg} kg` : '—'}</dd>
             </div>
           </dl>
 

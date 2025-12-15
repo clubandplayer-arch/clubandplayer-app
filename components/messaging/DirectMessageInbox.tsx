@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/common/ToastProvider';
@@ -52,30 +52,39 @@ export function DirectMessageInbox({ onSelectThread, hideHeader, className }: Pr
   const [error, setError] = useState<string | null>(null);
   const containerClass = ['rounded-xl border bg-white p-6 shadow-sm', className].filter(Boolean).join(' ');
 
+  const loadInbox = useCallback(async (cancelled?: { current: boolean }) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const inbox = await getDirectInbox();
+      if (!cancelled?.current) setThreads(inbox);
+    } catch (err: any) {
+      if (cancelled?.current) return;
+      const message = err?.message || 'Errore caricamento conversazioni';
+      console.error('[direct-messages] inbox load failed', { error: err });
+      setError(message);
+      show(message, { variant: 'error' });
+    } finally {
+      if (!cancelled?.current) setLoading(false);
+    }
+  }, [show]);
+
   useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const inbox = await getDirectInbox();
-        if (!cancelled) setThreads(inbox);
-      } catch (err: any) {
-        if (cancelled) return;
-        const message = err?.message || 'Errore caricamento conversazioni';
-        console.error('[direct-messages] inbox load failed', { error: err });
-        setError(message);
-        show(message, { variant: 'error' });
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+    const cancelled = { current: false };
+    void loadInbox(cancelled);
+    return () => {
+      cancelled.current = true;
+    };
+  }, [loadInbox]);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      void loadInbox();
     };
 
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [show]);
+    window.addEventListener('app:direct-messages-updated', handleUpdate);
+    return () => window.removeEventListener('app:direct-messages-updated', handleUpdate);
+  }, [loadInbox]);
 
   const handleOpen = async (thread: DirectThreadSummary) => {
     const markAsRead = async () => {
