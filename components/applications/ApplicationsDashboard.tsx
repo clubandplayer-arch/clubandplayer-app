@@ -13,60 +13,15 @@ type ApplicationRow = {
   status?: string | null;
   note?: string | null;
   opportunity_id?: string | null;
-  opportunity?: OpportunitySummary | null;
-  athlete_id?: string | null;
+  opportunity?: { id?: string | null; title?: string | null; location?: string | null } | null;
+  counterparty?: Record<string, any> | null;
   [key: string]: any;
 };
 
-type OpportunitySummary = {
-  id: string;
-  title?: string | null;
-  club_name?: string | null;
-  city?: string | null;
-  province?: string | null;
-  region?: string | null;
-  country?: string | null;
-};
-
-async function fetchOpportunityMap(ids: string[]): Promise<Map<string, OpportunitySummary>> {
-  const unique = Array.from(new Set(ids.filter(Boolean)));
-  const map = new Map<string, OpportunitySummary>();
-  if (!unique.length) return map;
-
-  await Promise.all(
-    unique.map(async (id) => {
-      try {
-        const res = await fetch(`/api/opportunities/${id}`, { cache: 'no-store' });
-        if (!res.ok) return;
-        const json = await res.json().catch(() => null);
-        const data = (json as any)?.data ?? null;
-        if (data) map.set(id, data as OpportunitySummary);
-      } catch {
-        /* ignore */
-      }
-    })
-  );
-
-  return map;
-}
-
-async function detectRole(): Promise<Role> {
-  try {
-    const res = await fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' });
-    const json = await res.json().catch(() => ({} as any));
-    const raw = (json?.role ?? '').toString().toLowerCase();
-    if (raw.includes('club')) return 'club';
-    if (raw.includes('athlete') || raw.includes('player')) return 'athlete';
-
-    const profRes = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
-    const prof = await profRes.json().catch(() => ({} as any));
-    const t = (prof?.data?.type ?? prof?.data?.profile_type ?? '').toString().toLowerCase();
-    if (t.startsWith('club')) return 'club';
-    if (t.includes('athlete')) return 'athlete';
-  } catch {
-    /* ignore */
-  }
-
+function normalizeRole(v: unknown): Role {
+  const raw = (typeof v === 'string' ? v : '').toLowerCase();
+  if (raw.includes('club')) return 'club';
+  if (raw.includes('athlete') || raw.includes('player')) return 'athlete';
   return 'guest';
 }
 
@@ -80,36 +35,32 @@ export default function ApplicationsDashboard() {
   const [filterStatus, setFilterStatus] = useState<string>('');
 
   useEffect(() => {
-    detectRole().then(setRole);
-  }, []);
-
-  useEffect(() => {
     let cancelled = false;
 
     async function load() {
       setLoading(true);
       setErr(null);
       try {
-        if (role === 'club') {
-          const res = await fetch('/api/applications/received', { credentials: 'include', cache: 'no-store' });
-          const text = await res.text();
-          if (!res.ok) throw new Error(text || 'Errore');
-          const json = JSON.parse(text || '{}');
-          if (!cancelled) setRowsReceived(Array.isArray(json?.data) ? json.data : []);
-        } else if (role === 'athlete') {
-          const res = await fetch('/api/applications/mine', { credentials: 'include', cache: 'no-store' });
-          const text = await res.text();
-          if (!res.ok) throw new Error(text || 'Errore');
-          const json = JSON.parse(text || '{}');
-          const rows = (Array.isArray(json?.data) ? json.data : Array.isArray(json) ? json : []) as ApplicationRow[];
+        const res = await fetch('/api/applications', { credentials: 'include', cache: 'no-store' });
+        const text = await res.text();
+        if (res.status === 401) {
+          if (!cancelled) {
+            setRole('guest');
+            setRowsReceived([]);
+            setRowsSent([]);
+          }
+          return;
+        }
+        if (!res.ok) throw new Error(text || 'Errore');
 
-          const oppMap = await fetchOpportunityMap(rows.map((r) => r.opportunity_id || ''));
-          const enhanced = rows.map((r) => ({
-            ...r,
-            opportunity: r.opportunity || oppMap.get(r.opportunity_id || '') || null,
-          }));
+        const json = JSON.parse(text || '{}');
+        const data = Array.isArray(json?.data) ? (json.data as ApplicationRow[]) : [];
+        const apiRole: Role = normalizeRole(json?.role);
 
-          if (!cancelled) setRowsSent(enhanced);
+        if (!cancelled) {
+          setRole(apiRole);
+          if (apiRole === 'club') setRowsReceived(data);
+          else if (apiRole === 'athlete') setRowsSent(data);
         }
       } catch (e: any) {
         if (!cancelled) setErr(e?.message || 'Errore nel caricamento delle candidature');
@@ -122,53 +73,7 @@ export default function ApplicationsDashboard() {
     return () => {
       cancelled = true;
     };
-  }, [role]);
-
-  useEffect(() => {
-    if (role !== 'club') return;
-    const needsEnrichment = rowsReceived.some((r) => r.athlete_id && !r.athlete);
-    if (!needsEnrichment) return;
-    const ids = Array.from(
-      new Set(rowsReceived.map((r) => r.athlete_id).filter(Boolean) as string[]),
-    );
-    if (!ids.length) return;
-
-    const controller = new AbortController();
-    (async () => {
-      try {
-        const qs = encodeURIComponent(ids.join(','));
-        const res = await fetch(`/api/profiles/public?ids=${qs}`, {
-          cache: 'no-store',
-          credentials: 'include',
-          signal: controller.signal,
-        });
-        const json = await res.json().catch(() => ({ data: [] }));
-        const map: Record<string, any> = {};
-        const list = Array.isArray(json?.data) ? json.data : [];
-        list.forEach((row: any) => {
-          const key = row.id || row.user_id;
-          if (!key) return;
-          map[String(key)] = {
-            ...row,
-            id: row.user_id || row.id,
-            name: row.display_name || row.full_name || row.headline || null,
-          };
-        });
-        setRowsReceived((prev) =>
-          prev.map((r) => {
-            const enriched = map[r.athlete_id ?? ''];
-            return enriched ? { ...r, athlete: enriched } : r;
-          }),
-        );
-      } catch (fetchErr) {
-        if (!(fetchErr as any)?.name?.includes('AbortError')) {
-          // ignora
-        }
-      }
-    })();
-
-    return () => controller.abort();
-  }, [role, rowsReceived]);
+  }, []);
 
   const filteredReceived = useMemo(() => {
     return rowsReceived.filter((row) => {

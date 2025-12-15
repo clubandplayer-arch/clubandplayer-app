@@ -24,15 +24,13 @@ function pill(active: boolean) {
 export default function DashboardNav() {
   const pathname = usePathname();
   const [role, setRole] = useState<Role>(null);
-  const [sentCount, setSentCount] = useState(0);
-  const [receivedCount, setReceivedCount] = useState(0);
+  const [applicationsCount, setApplicationsCount] = useState(0);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     let ignore = false;
 
     (async () => {
-      // 1) Ruolo da /api/profiles/me
       try {
         const r = await fetch('/api/profiles/me', {
           credentials: 'include',
@@ -49,56 +47,34 @@ export default function DashboardNav() {
           const t = String(raw).toLowerCase();
           if (!ignore) {
             if (t.includes('club')) setRole('club');
-            else if (t.includes('athlete') || t.includes('atlet'))
-              setRole('athlete');
+            else if (t.includes('athlete') || t.includes('atlet')) setRole('athlete');
           }
         }
       } catch {
-        // ignore, fallback sotto
+        // ignore
       }
 
-      // 2) Fallback da applications
       try {
-        const [mine, rec] = await Promise.allSettled([
-          fetch('/api/applications', {
-            credentials: 'include',
-            cache: 'no-store',
-          }),
-          fetch('/api/applications/received', {
-            credentials: 'include',
-            cache: 'no-store',
-          }),
-        ]);
+        const res = await fetch('/api/applications', {
+          credentials: 'include',
+          cache: 'no-store',
+        });
+        if (res.ok) {
+          const json = await res.json().catch(() => ({} as any));
+          const data = Array.isArray(json?.data) ? json.data : [];
+          const apiRole = String(json?.role || '').toLowerCase();
 
-        if (
-          mine.status === 'fulfilled' &&
-          mine.value.ok
-        ) {
-          const jm = await mine.value
-            .json()
-            .catch(() => ({} as any));
-          const n = Array.isArray(jm?.data)
-            ? jm.data.length
-            : 0;
-          if (!ignore) {
-            setSentCount(n);
-            if (!role && n > 0) setRole('athlete');
-          }
-        }
+          const pending = data.filter((row: any) => {
+            const s = (row?.status || '').toLowerCase();
+            return !['accepted', 'rejected', 'withdrawn'].includes(s);
+          }).length;
 
-        if (
-          rec.status === 'fulfilled' &&
-          rec.value.ok
-        ) {
-          const jr = await rec.value
-            .json()
-            .catch(() => ({} as any));
-          const n = Array.isArray(jr?.data)
-            ? jr.data.length
-            : 0;
           if (!ignore) {
-            setReceivedCount(n);
-            if (!role && n > 0) setRole('club');
+            setApplicationsCount(pending);
+            if (!role) {
+              if (apiRole.includes('club')) setRole('club');
+              else if (apiRole.includes('athlete') || apiRole.includes('player')) setRole('athlete');
+            }
           }
         }
       } catch {
@@ -144,26 +120,14 @@ export default function DashboardNav() {
             Profilo
           </Link>
           <Link
-            href="/applications/sent"
-            className={pill(
-              isActive('/applications/sent')
-            )}
-          >
-            Candidature inviate
-            {sentCount > 0 && (
-              <span className="ml-1 rounded-full bg-gray-900 px-1.5 text-[10px] text-white">
-                {sentCount}
-              </span>
-            )}
-          </Link>
-          <Link
             href="/applications"
             className={pill(isActive('/applications'))}
           >
-            Candidature ricevute
-            {receivedCount > 0 && (
+            <span className="mr-1">💼</span>
+            Candidature
+            {applicationsCount > 0 && (
               <span className="ml-1 rounded-full bg-gray-900 px-1.5 text-[10px] text-white">
-                {receivedCount}
+                {applicationsCount}
               </span>
             )}
           </Link>

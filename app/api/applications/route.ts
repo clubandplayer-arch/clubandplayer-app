@@ -1,12 +1,174 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
+import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
+import { getPublicProfilesMap } from '@/lib/profiles/publicLookup';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
 
 const missingClubColumn = (msg?: string | null) =>
   !!msg && /club_id/i.test(msg) && (/does not exist/i.test(msg) || /schema cache/i.test(msg));
+
+type Role = 'club' | 'athlete';
+
+const APPLICATION_FIELDS =
+  'id, opportunity_id, athlete_id, club_id, note, status, created_at, updated_at';
+
+/**
+ * GET /api/applications
+ *  - club  → candidature ricevute sulle opportunità create dall'utente
+ *  - player→ candidature inviate dall'atleta corrente
+ */
+export const GET = withAuth(async (req: NextRequest, { supabase, user }: any) => {
+  try {
+    await rateLimit(req as any, { key: 'apps:GET', limit: 120, window: '1m' } as any);
+  } catch {
+    return jsonError('Too Many Requests', 429);
+  }
+
+  const admin = getSupabaseAdminClientOrNull();
+
+  const runWithFallback = async <T>(fn: (c: any) => Promise<{ data: T | null; error: any }>) => {
+    let res = await fn(supabase);
+    if (
+      res.error &&
+      admin &&
+      (/row-level security/i.test(res.error.message || '') || /permission/i.test(res.error.message || ''))
+    ) {
+      res = await fn(admin);
+    }
+    return res;
+  };
+
+  // 1) Determina ruolo (club vs athlete)
+  let role: Role = 'athlete';
+  try {
+    const { data: prof } = await supabase
+      .from('profiles')
+      .select('account_type,type')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    const raw = String((prof as any)?.account_type || (prof as any)?.type || '')
+      .trim()
+      .toLowerCase();
+    if (raw.includes('club')) role = 'club';
+  } catch {
+    // fallback: ruoli legacy
+  }
+
+  // 2) Opportunità (solo per club, per athlete arricchiamo dopo)
+  const oppSelect = 'id, title, city, province, region, country, owner_id, created_by, club_id';
+  let opportunities: any[] = [];
+
+  if (role === 'club') {
+    const { data: oppRows, error: oppErr } = await runWithFallback<any[]>((client) =>
+      client
+        .from('opportunities')
+        .select(oppSelect)
+        .or(`owner_id.eq.${user.id},created_by.eq.${user.id}`)
+    );
+    if (oppErr) return jsonError(oppErr.message, 400);
+    opportunities = Array.isArray(oppRows) ? oppRows : [];
+  }
+
+  const oppMap = new Map<string, any>(opportunities.map((o: any) => [String(o.id), o]));
+
+  // 3) Candidature
+  const oppIds = role === 'club' ? opportunities.map((o: any) => String(o.id)) : [];
+
+  const { data: appRows, error: appsErr } = await runWithFallback<any[]>((client) => {
+    if (role === 'club') {
+      return client
+        .from('applications')
+        .select(APPLICATION_FIELDS)
+        .in('opportunity_id', oppIds.length ? oppIds : ['__none'])
+        .order('created_at', { ascending: false });
+    }
+    return client
+      .from('applications')
+      .select(APPLICATION_FIELDS)
+      .eq('athlete_id', user.id)
+      .order('created_at', { ascending: false });
+  });
+  if (appsErr) return jsonError(appsErr.message, 400);
+
+  const applications = Array.isArray(appRows) ? appRows : [];
+  if (!applications.length) return NextResponse.json({ role, data: [] });
+
+  // 4) Enrichment profili
+  const athleteIds = new Set<string>();
+  const clubIds = new Set<string>();
+  const oppIdsForFetch = new Set<string>();
+
+  for (const app of applications) {
+    if (app.athlete_id) athleteIds.add(String(app.athlete_id));
+    if (app.opportunity_id) oppIdsForFetch.add(String(app.opportunity_id));
+    const oppOwner = oppMap.get(String(app.opportunity_id ?? ''));
+    const ownerId = app.club_id || oppOwner?.owner_id || oppOwner?.created_by || oppOwner?.club_id;
+    if (ownerId) clubIds.add(String(ownerId));
+  }
+
+  const oppsToFetch = Array.from(oppIdsForFetch).filter((id) => id && !oppMap.has(id));
+  if (oppsToFetch.length) {
+    const { data: extraOpps } = await runWithFallback<any[]>((client) =>
+      client
+        .from('opportunities')
+        .select(oppSelect)
+        .in('id', oppsToFetch)
+    );
+    (extraOpps || []).forEach((o: any) => oppMap.set(String(o.id), o));
+  }
+
+  const profilesClient = admin ?? supabase;
+  const athleteMap = await getPublicProfilesMap(Array.from(athleteIds), profilesClient, {
+    fallbackToAdmin: true,
+  });
+  const clubMap = await getPublicProfilesMap(Array.from(clubIds), profilesClient, {
+    fallbackToAdmin: true,
+  });
+
+  const toLocation = (o: any) =>
+    [o?.city, o?.province, o?.region, o?.country].filter(Boolean).join(' · ');
+
+  const data = applications.map((app: any) => {
+    const opportunity = oppMap.get(String(app.opportunity_id ?? '')) || null;
+    const ownerId = app.club_id || opportunity?.owner_id || opportunity?.created_by || null;
+    const athleteProfile = athleteMap.get(String(app.athlete_id ?? '')) || null;
+    const clubProfile = ownerId ? clubMap.get(String(ownerId)) || null : null;
+
+    const counterparty = role === 'club' ? athleteProfile : clubProfile;
+    const counterpartyName =
+      role === 'club'
+        ? buildPlayerDisplayName(counterparty?.full_name, counterparty?.display_name, 'Player')
+        : buildClubDisplayName(counterparty?.full_name, counterparty?.display_name, 'Club');
+
+    return {
+      ...app,
+      opportunity: opportunity
+        ? {
+            id: opportunity.id,
+            title: opportunity.title ?? null,
+            location: toLocation(opportunity),
+          }
+        : { id: app.opportunity_id },
+      counterparty: counterparty
+        ? {
+            id: counterparty.id,
+            profile_id: counterparty.profile_id ?? counterparty.id,
+            user_id: counterparty.user_id ?? null,
+            full_name: counterparty.full_name ?? null,
+            display_name: counterparty.display_name ?? null,
+            avatar_url: counterparty.avatar_url ?? null,
+            account_type: counterparty.account_type ?? (role === 'club' ? 'athlete' : 'club'),
+            name: counterpartyName,
+          }
+        : null,
+    } as any;
+  });
+
+  return NextResponse.json({ role, data });
+});
 
 /** POST /api/applications  Body: { opportunity_id: string, note?: string } */
 export const POST = withAuth(async (req: NextRequest, { supabase, user }: any) => {

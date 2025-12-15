@@ -2,25 +2,22 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useMemo, useState } from 'react';
 
-import { buildPlayerDisplayName } from '@/lib/displayName';
+import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
+import { MessageButton } from '@/components/messaging/MessageButton';
 import { useRouter } from 'next/navigation';
 
-type AthleteSummary = {
-  id: string;
+type Counterparty = {
+  id?: string | null;
+  profile_id?: string | null;
+  user_id?: string | null;
   name?: string | null;
-  display_name: string | null;
-  full_name: string | null;
-  headline: string | null;
-  bio: string | null;
-  sport: string | null;
-  role: string | null;
-  country: string | null;
-  region: string | null;
-  province: string | null;
-  city: string | null;
-  avatar_url: string | null;
+  display_name?: string | null;
+  full_name?: string | null;
+  avatar_url?: string | null;
+  account_type?: string | null;
 };
 
 type Row = {
@@ -28,10 +25,11 @@ type Row = {
   created_at?: string | null;
   note?: string | null;
   opportunity_id?: string | null;
-  opportunity?: { title?: string | null } | null;
-  status?: string | null; // submitted | in_review | accepted | rejected | withdrawn | pending...
+  opportunity?: { id?: string | null; title?: string | null; location?: string | null } | null;
+  status?: string | null; // submitted | accepted | rejected ...
+  counterparty?: Counterparty | null;
   athlete_id?: string | null;
-  athlete?: AthleteSummary | null;
+  athlete?: Counterparty | null;
   player_name?: string | null;
   player_headline?: string | null;
   player_location?: string | null;
@@ -56,7 +54,7 @@ export default function ApplicationsTable({
     () => [
       { key: 'created_at', label: 'Data' },
       { key: 'opportunity_id', label: 'Annuncio' },
-      ...(kind === 'received' ? [{ key: 'athlete_id', label: 'Player' }] : []),
+      { key: 'counterparty', label: kind === 'received' ? 'Player' : 'Club' },
       { key: 'status', label: 'Stato' },
       { key: 'note', label: kind === 'sent' ? 'Nota (mia)' : 'Nota' },
       { key: 'actions', label: 'Azioni' },
@@ -65,13 +63,14 @@ export default function ApplicationsTable({
   );
 
   const STATUS_LABEL: Record<string, string> = {
-    submitted: 'Inviata',
+    submitted: 'In attesa',
     in_review: 'In revisione',
     pending: 'In revisione',
     accepted: 'Accettata',
-    rejected: 'Rifiutata',
+    rejected: 'Respinta',
     withdrawn: 'Ritirata',
     open: 'Aperta',
+    seen: 'In revisione',
   };
 
   const STATUS_CLASS: Record<string, string> = {
@@ -93,8 +92,8 @@ export default function ApplicationsTable({
 
     try {
       setSavingId(id);
-      const res = await fetch(`/api/applications/${id}`, {
-        method: 'PATCH',
+      const res = await fetch(`/api/applications/${id}/status`, {
+        method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: next }),
@@ -133,34 +132,42 @@ export default function ApplicationsTable({
     );
   }
 
-  const renderPlayer = (r: Row) => {
-    const hasProfile = !!r.athlete;
-    const athleteId = r.athlete?.id ?? r.athlete_id;
-    const display = hasProfile
-      ? buildPlayerDisplayName(r.athlete?.full_name, r.athlete?.display_name, 'Giocatore')
-      : r.player_name || (athleteId ? 'Profilo non disponibile' : '—');
-    const headline =
-      r.player_headline ||
-      [r.athlete?.role, r.athlete?.sport].filter(Boolean).join(' · ') ||
-      null;
-    const location =
-      r.player_location ||
-      [r.athlete?.city, r.athlete?.province, r.athlete?.region].filter(Boolean).join(' · ') ||
-      '';
+  const renderCounterparty = (r: Row) => {
+    const profile = r.counterparty ?? r.athlete ?? null;
+    const accountType = (profile?.account_type || '').toString().toLowerCase();
+    const isClub = accountType === 'club';
+    const href = isClub ? `/clubs/${profile?.id}` : `/players/${profile?.id}`;
+    const name = isClub
+      ? buildClubDisplayName(profile?.full_name, profile?.display_name, 'Club')
+      : buildPlayerDisplayName(profile?.full_name, profile?.display_name, 'Player');
 
-    return athleteId ? (
-      <div className="flex flex-col">
-        <Link className="font-medium text-blue-700 hover:underline" href={`/players/${athleteId}`}>
-          {display}
-        </Link>
-        {headline ? <span className="text-xs text-gray-600">{headline}</span> : null}
-        {location ? <span className="text-xs text-gray-500">{location}</span> : null}
-      </div>
-    ) : (
-      <div className="flex flex-col">
-        <span className="font-medium text-gray-800">{display}</span>
-        {headline ? <span className="text-xs text-gray-600">{headline}</span> : null}
-        {location ? <span className="text-xs text-gray-500">{location}</span> : null}
+    const avatar = profile?.avatar_url;
+
+    return (
+      <div className="flex items-center gap-2">
+        <div className="relative h-10 w-10 overflow-hidden rounded-full bg-gray-100 ring-1 ring-gray-200">
+          {avatar ? (
+            <Image src={avatar} alt={name || 'Avatar'} fill sizes="40px" className="object-cover" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-gray-500">
+              {(name || '—').slice(0, 2).toUpperCase()}
+            </div>
+          )}
+        </div>
+        <div className="flex flex-col">
+          {profile?.id ? (
+            <Link className="font-medium text-blue-700 hover:underline" href={href}>
+              {name || 'Profilo'}
+            </Link>
+          ) : (
+            <span className="font-medium text-gray-800">{name || 'Profilo non disponibile'}</span>
+          )}
+          {profile?.user_id && kind === 'sent' && r.status === 'accepted' ? (
+            <div className="mt-1">
+              <MessageButton targetProfileId={profile.profile_id || profile.user_id} label="Messaggia" className="px-2 py-1 text-xs" />
+            </div>
+          ) : null}
+        </div>
       </div>
     );
   };
@@ -217,9 +224,7 @@ export default function ApplicationsTable({
                   )}
                 </td>
 
-                {kind === 'received' && (
-                  <td className="min-w-[12rem] px-3 py-2 align-top">{renderPlayer(r)}</td>
-                )}
+                <td className="min-w-[14rem] px-3 py-2 align-top">{renderCounterparty(r)}</td>
 
                 <td className="px-3 py-2 align-top">
                   <span
@@ -311,12 +316,10 @@ export default function ApplicationsTable({
                 )}
               </div>
 
-              {kind === 'received' && (
-                <div>
-                  <div className="text-xs text-gray-500">Player</div>
-                  {renderPlayer(r)}
-                </div>
-              )}
+              <div>
+                <div className="text-xs text-gray-500">{kind === 'received' ? 'Player' : 'Club'}</div>
+                {renderCounterparty(r)}
+              </div>
 
               <div>
                 <div className="text-xs text-gray-500">Nota</div>
