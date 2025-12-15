@@ -18,6 +18,26 @@ type Bounds = {
 
 type PolygonPoint = [number, number];
 
+type PersistedSearchState = {
+  queryText: string;
+  filterType: 'all' | 'club' | 'player';
+  activeArea: PolygonPoint[] | null;
+  searchBounds: Bounds | null;
+  clubSport: string;
+  clubCategory: string;
+  playerSport: string;
+  playerFoot: string;
+  playerGender: string;
+  ageMin: string;
+  ageMax: string;
+  points: SearchMapProfile[];
+  selectedProfileId: string | null;
+  timestamp: number;
+};
+
+const STORAGE_KEY = 'cp.searchMap.state.v1';
+const STALE_MS = 60 * 60 * 1000;
+
 const DEFAULT_CENTER: [number, number] = [41.9, 12.5];
 
 function loadLeaflet(): Promise<LeafletLib> {
@@ -84,11 +104,18 @@ export default function SearchMapClient() {
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
+  const [mapReady, setMapReady] = useState(false);
+
   const mapRef = useRef<LeafletLib['Map'] | null>(null);
   const polygonRef = useRef<LeafletLib['Polygon'] | null>(null);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
 
   const hasArea = !!searchBounds;
+
+  const clearPersistedState = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    sessionStorage.removeItem(STORAGE_KEY);
+  }, []);
 
   const clearPolygonLayer = useCallback(() => {
     if (polygonRef.current) {
@@ -156,7 +183,39 @@ export default function SearchMapClient() {
     setSearchBounds(null);
     setPoints([]);
     clearPolygonLayer();
-  }, [clearPolygonLayer]);
+    clearPersistedState();
+  }, [clearPersistedState, clearPolygonLayer]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+
+    try {
+      const saved = JSON.parse(raw) as PersistedSearchState;
+      if (!saved.timestamp || Date.now() - saved.timestamp > STALE_MS) {
+        sessionStorage.removeItem(STORAGE_KEY);
+        return;
+      }
+
+      setSearchQuery(saved.queryText || '');
+      setTypeFilter(saved.filterType || 'all');
+      setActiveArea(saved.activeArea || null);
+      setSearchBounds(saved.searchBounds || null);
+      setClubSport(saved.clubSport || '');
+      setClubCategory(saved.clubCategory || '');
+      setPlayerSport(saved.playerSport || '');
+      setPlayerFoot(saved.playerFoot || '');
+      setPlayerGender(saved.playerGender || '');
+      setAgeMin(saved.ageMin || '');
+      setAgeMax(saved.ageMax || '');
+      setPoints(saved.points || []);
+      setSelectedProfileId(saved.selectedProfileId || null);
+    } catch {
+      sessionStorage.removeItem(STORAGE_KEY);
+    }
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -182,6 +241,7 @@ export default function SearchMapClient() {
           attribution: '&copy; OpenStreetMap',
         }).addTo(map);
         mapRef.current = map;
+        setMapReady(true);
       })
       .catch((error) => {
         console.error('Leaflet load error', error);
@@ -193,8 +253,59 @@ export default function SearchMapClient() {
       if (mapRef.current) {
         mapRef.current.remove();
       }
+      setMapReady(false);
     };
   }, []);
+
+  useEffect(() => {
+    if (!mapReady || isDrawing || !activeArea?.length) return;
+    void updatePolygonLayer(activeArea, true);
+  }, [activeArea, isDrawing, mapReady, updatePolygonLayer]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const timer = setTimeout(() => {
+      const payload: PersistedSearchState = {
+        queryText: searchQuery,
+        filterType: typeFilter,
+        activeArea,
+        searchBounds,
+        clubSport,
+        clubCategory,
+        playerSport,
+        playerFoot,
+        playerGender,
+        ageMin,
+        ageMax,
+        points,
+        selectedProfileId,
+        timestamp: Date.now(),
+      };
+
+      try {
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      } catch {
+        // ignore persistence errors
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [
+    activeArea,
+    ageMax,
+    ageMin,
+    clubCategory,
+    clubSport,
+    playerFoot,
+    playerGender,
+    playerSport,
+    points,
+    searchBounds,
+    searchQuery,
+    selectedProfileId,
+    typeFilter,
+  ]);
 
   useEffect(() => {
     const map = mapRef.current;

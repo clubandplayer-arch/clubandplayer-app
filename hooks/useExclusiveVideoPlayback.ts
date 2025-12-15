@@ -1,52 +1,36 @@
 import { useCallback, useEffect, useRef } from 'react';
 
-const registry = new Map<string, HTMLVideoElement>();
-let currentPlayingId: string | null = null;
-
-function pauseAllExcept(id: string) {
-  registry.forEach((el, key) => {
-    if (key !== id) {
-      try {
-        el.pause();
-      } catch {
-        // ignore
-      }
-    }
-  });
-}
+import { emitExclusiveVideoPlay, subscribeExclusiveVideoPlay } from '@/lib/media/exclusivePlayback';
 
 export function useExclusiveVideoPlayback(videoId: string) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
-    const el = videoRef.current;
-    if (el) {
-      registry.set(videoId, el);
-    }
-    return () => {
-      registry.delete(videoId);
-      if (currentPlayingId === videoId) {
-        currentPlayingId = null;
+    const unsubscribe = subscribeExclusiveVideoPlay((otherId) => {
+      if (otherId === videoId) return;
+      const el = videoRef.current;
+      if (!el) return;
+      try {
+        el.pause();
+      } catch {
+        // ignore
       }
-    };
+    });
+
+    return unsubscribe;
   }, [videoId]);
 
   const handlePlay = useCallback(() => {
-    pauseAllExcept(videoId);
-    currentPlayingId = videoId;
+    emitExclusiveVideoPlay(videoId);
   }, [videoId]);
 
   const handlePause = useCallback(() => {
-    if (currentPlayingId === videoId) {
-      currentPlayingId = null;
-    }
-  }, [videoId]);
+    // no-op: kept for API parity
+  }, []);
 
   const handleEnded = useCallback(() => {
-    if (currentPlayingId === videoId) {
-      currentPlayingId = null;
-    }
-  }, [videoId]);
+    // no-op: kept for API parity
+  }, []);
 
   return { videoRef, handlePlay, handlePause, handleEnded };
 }

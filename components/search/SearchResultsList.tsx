@@ -148,18 +148,23 @@ export default function SearchResultsList({
                 }}
               >
                 <div className="flex items-start gap-3">
-                  <Avatar profile={profile} />
+                  <Link
+                    href={href}
+                    className="shrink-0"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Avatar profile={profile} />
+                  </Link>
                   <div className="flex flex-1 flex-col gap-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <div className="font-semibold leading-tight">{displayName}</div>
-                      <MarkerIcon type={profile.type || profile.account_type} />
                       <Link
                         href={href}
-                        className="text-xs font-medium text-blue-700 underline decoration-blue-600 underline-offset-2 hover:no-underline"
                         onClick={(e) => e.stopPropagation()}
+                        className="font-semibold leading-tight text-blue-800 underline-offset-2 hover:underline"
                       >
-                        Visita profilo
+                        {displayName}
                       </Link>
+                      <MarkerIcon type={profile.type || profile.account_type} />
                     </div>
                     <div className="text-xs text-gray-600">{location || 'Località non disponibile'}</div>
                     <div className="text-xs text-gray-500">{details || 'Ruolo/sport non specificato'}</div>
