@@ -4,10 +4,13 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentProfileContext';
+import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
 
 type FollowedItem = {
   id: string;
   name: string;
+  fullName?: string | null;
+  displayName?: string | null;
   city: string | null;
   sport: string | null;
   avatarUrl?: string | null;
@@ -15,7 +18,7 @@ type FollowedItem = {
 };
 
 function targetHref(item: FollowedItem) {
-  return item.accountType === 'club' ? `/clubs/${item.id}` : `/athletes/${item.id}`;
+  return item.accountType === 'club' ? `/clubs/${item.id}` : `/players/${item.id}`;
 }
 
 function subtitle(item: FollowedItem, viewerRole: ProfileRole) {
@@ -44,15 +47,23 @@ export default function FollowedClubs() {
         const nextRole: ProfileRole =
           data?.role === 'club' || data?.role === 'athlete' ? data.role : contextRole;
         const rows: FollowedItem[] = Array.isArray(data?.items)
-          ? (data.items as any[])
-              .map((item) => {
-                const accountType: 'club' | 'athlete' = item.account_type === 'club' ? 'club' : 'athlete';
-                return {
-                  id: item.id,
-                  name: item.name ?? item.display_name ?? 'Profilo',
-                  city: item.city ?? item.country ?? null,
-                  sport: item.sport ?? null,
-                  avatarUrl: item.avatar_url ?? item.avatarUrl ?? null,
+              ? (data.items as any[])
+                  .map((item) => {
+                    const accountType: 'club' | 'athlete' = item.account_type === 'club' ? 'club' : 'athlete';
+                    const fullName = item.full_name ?? item.fullName ?? null;
+                    const displayName = item.display_name ?? item.displayName ?? null;
+                    const safeName =
+                      accountType === 'club'
+                        ? buildClubDisplayName(fullName, displayName, 'Club')
+                        : buildPlayerDisplayName(fullName, displayName, 'Profilo');
+                    return {
+                      id: item.id,
+                      name: safeName,
+                      fullName,
+                      displayName,
+                      city: item.city ?? item.country ?? null,
+                      sport: item.sport ?? null,
+                      avatarUrl: item.avatar_url ?? item.avatarUrl ?? null,
                   accountType,
                 };
               })
