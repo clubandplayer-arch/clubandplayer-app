@@ -43,13 +43,15 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }: any) =>
 
   // 1) Determina ruolo (club vs athlete)
   let role: Role = 'athlete';
+  let profileId: string | null = null;
   try {
     const { data: prof } = await supabase
       .from('profiles')
-      .select('account_type,type')
+      .select('id, user_id, account_type, type, profile_type')
       .eq('user_id', user.id)
       .maybeSingle();
-    const raw = String((prof as any)?.account_type || (prof as any)?.type || '')
+    profileId = (prof as any)?.id ?? null;
+    const raw = String((prof as any)?.account_type || (prof as any)?.type || (prof as any)?.profile_type || '')
       .trim()
       .toLowerCase();
     if (raw.includes('club')) role = 'club';
@@ -61,12 +63,18 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }: any) =>
   const oppSelect = 'id, title, city, province, region, country, owner_id, created_by, club_id';
   let opportunities: any[] = [];
 
+  const ownerKeys = Array.from(new Set([user.id, profileId].filter(Boolean))).map(String);
+
   if (role === 'club') {
     const { data: oppRows, error: oppErr } = await runWithFallback<any[]>((client) =>
       client
         .from('opportunities')
         .select(oppSelect)
-        .or(`owner_id.eq.${user.id},created_by.eq.${user.id}`)
+        .or(
+          ownerKeys
+            .flatMap((id) => [`owner_id.eq.${id}`, `created_by.eq.${id}`, `club_id.eq.${id}`])
+            .join(','),
+        )
     );
     if (oppErr) return jsonError(oppErr.message, 400);
     opportunities = Array.isArray(oppRows) ? oppRows : [];
@@ -88,7 +96,7 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }: any) =>
     return client
       .from('applications')
       .select(APPLICATION_FIELDS)
-      .eq('athlete_id', user.id)
+      .or(ownerKeys.map((id) => `athlete_id.eq.${id}`).join(','))
       .order('created_at', { ascending: false });
   });
   if (appsErr) return jsonError(appsErr.message, 400);
@@ -177,6 +185,18 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }: any) =
   const body = await req.json().catch(() => null);
   if (!body || !body.opportunity_id) return jsonError('Missing opportunity_id', 400);
 
+  let myProfileId: string | null = null;
+  try {
+    const { data: meProfile } = await supabase
+      .from('profiles')
+      .select('id, account_type, type, profile_type')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    myProfileId = (meProfile as any)?.id ?? null;
+  } catch {
+    // ignore profile lookup failures
+  }
+
   const opportunity_id = String(body.opportunity_id);
   const note = typeof body.note === 'string'
     ? body.note.trim() || null
@@ -193,14 +213,17 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }: any) =
 
   if (oppErr) return jsonError(oppErr.message, 400);
   const ownerId = opp?.owner_id ?? opp?.created_by ?? null;
-  if (ownerId === user.id) return jsonError('Cannot apply to your own opportunity', 400);
+  if (ownerId && (ownerId === user.id || ownerId === myProfileId)) {
+    return jsonError('Cannot apply to your own opportunity', 400);
+  }
 
   // evita doppia candidatura
+  const athleteIds = Array.from(new Set([user.id, myProfileId].filter(Boolean))).map(String);
   const { data: exists } = await supabase
     .from('applications')
     .select('id')
     .eq('opportunity_id', opportunity_id)
-    .eq('athlete_id', user.id)
+    .in('athlete_id', athleteIds.length ? athleteIds : ['__none'])
     .maybeSingle();
 
   if (exists) return jsonError('Already applied', 409);
@@ -209,7 +232,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }: any) =
 
   const insertPayload = {
     opportunity_id,
-    athlete_id: user.id,
+    athlete_id: myProfileId ?? user.id,
     club_id: ownerId,
     note,
   } as Record<string, any>;

@@ -27,6 +27,18 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   const status = normalizeStatus((body as any)?.status);
   if (!status) return jsonError('Invalid status', 400);
 
+  let myProfileId: string | null = null;
+  try {
+    const { data: prof } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    myProfileId = (prof as any)?.id ?? null;
+  } catch {
+    // ignore profile lookup failures
+  }
+
   const { data: app, error: appErr } = await supabase
     .from('applications')
     .select('opportunity_id, club_id')
@@ -50,12 +62,12 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     clubId ||
     null;
 
-  if (!ownerId || ownerId !== user.id) return jsonError('Forbidden', 403);
+  if (!ownerId || (ownerId !== user.id && ownerId !== myProfileId)) return jsonError('Forbidden', 403);
 
   const payload: Record<string, any> = {
     status,
     updated_at: new Date().toISOString(),
-    updated_by: user.id,
+    updated_by: myProfileId ?? user.id,
   };
 
   const { data, error } = await supabase

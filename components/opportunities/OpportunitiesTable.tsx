@@ -27,17 +27,21 @@ function fmtDateHuman(s?: string | null) {
 export default function OpportunitiesTable({
   items,
   currentUserId,
+  currentProfileId,
   userRole = 'guest',
   clubNames,
   onEdit,
   onDelete,
+  viewingOwnClubFilter = false,
 }: {
   items: Opportunity[];
   currentUserId?: string | null;
+  currentProfileId?: string | null;
   userRole?: Role;
   clubNames?: Record<string, string>;
   onEdit?: (opp: Opportunity) => void;
   onDelete?: (opp: Opportunity) => void;
+  viewingOwnClubFilter?: boolean;
 }) {
   const toast = useToast();
   const [saving, setSaving] = useState<string | null>(null);
@@ -58,6 +62,10 @@ export default function OpportunitiesTable({
         const ownerId = o.created_by ?? o.owner_id ?? null;
         const profileOwnerId = (o as any).club_id ?? ownerId;
         const canEdit = !!currentUserId && (ownerId === currentUserId || o.created_by === currentUserId || o.owner_id === currentUserId);
+        const isOwner = Boolean(
+          (currentUserId && (ownerId === currentUserId || profileOwnerId === currentUserId)) ||
+            (currentProfileId && (profileOwnerId === currentProfileId || ownerId === currentProfileId)),
+        );
         const place = [o.city, o.province, o.region, o.country].filter(Boolean).join(', ');
         const showApply = userRole === 'athlete' && !canEdit;
         const showFollow = userRole === 'athlete' && !!profileOwnerId;
@@ -119,9 +127,14 @@ export default function OpportunitiesTable({
                   <Link href={`/opportunities/${o.id}`} className="text-blue-700 hover:underline">
                     Dettagli annuncio
                   </Link>
-                  {profileOwnerId && (
+                  {profileOwnerId && !isOwner && (
                     <Link href={`/clubs/${profileOwnerId}`} className="text-blue-700 hover:underline">
                       Visita profilo club
+                    </Link>
+                  )}
+                  {isOwner && viewingOwnClubFilter && (
+                    <Link href="/feed" className="text-blue-700 hover:underline">
+                      Torna al feed
                     </Link>
                   )}
                 </div>
