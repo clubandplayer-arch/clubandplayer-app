@@ -40,9 +40,8 @@ export function PostMedia({ postId, mediaUrl, mediaType, aspect, alt }: Props) {
   const aspectClass = frameAspect(mediaType, aspect);
 
   const containerClasses = [
-    'relative flex items-center justify-center bg-black/5',
+    'relative flex w-full items-center justify-center bg-black/5',
     aspectClass,
-    mediaType === 'video' ? 'max-h-[420px]' : null,
   ]
     .filter(Boolean)
     .join(' ');
@@ -50,13 +49,13 @@ export function PostMedia({ postId, mediaUrl, mediaType, aspect, alt }: Props) {
   return (
     <div className="mt-4 flex w-full justify-center px-1 md:px-2">
       <div className="mx-auto flex w-full max-w-2xl justify-center overflow-hidden rounded-xl bg-neutral-50 shadow-sm ring-1 ring-slate-100">
-        <div className={`${containerClasses} overflow-hidden rounded-xl`}>
+        <div className={`${containerClasses} rounded-xl`}>
           {mediaType === 'video' ? (
             <video
               ref={videoRef}
               src={mediaUrl ?? undefined}
               controls
-              className="mx-auto h-full max-h-[420px] w-auto max-w-full object-contain bg-black"
+              className="h-full w-full object-contain bg-black"
               onPlay={handlePlay}
               onPause={handlePause}
               onEnded={handleEnded}

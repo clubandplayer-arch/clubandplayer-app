@@ -7,6 +7,7 @@ import { useMemo } from 'react';
 import FollowButton from '@/components/common/FollowButton';
 import { buildDirectConversationUrl } from '@/lib/services/messaging';
 import { SearchMapProfile } from '@/lib/services/search';
+import { buildProfileDisplayName } from '@/lib/displayName';
 
 export type SearchResultsListProps = {
   results: SearchMapProfile[];
@@ -33,7 +34,8 @@ function MarkerIcon({ type }: { type?: string | null }) {
 }
 
 function Avatar({ profile }: { profile: SearchMapProfile }) {
-  const display = profile.display_name || profile.full_name || 'Profilo';
+  const display =
+    profile.friendly_name || buildProfileDisplayName(profile.full_name, profile.display_name, 'Profilo');
   const alt = display || 'Avatar profilo';
   const initial = display.trim()[0]?.toUpperCase() || 'P';
 
@@ -126,6 +128,8 @@ export default function SearchResultsList({
             const location = locationLabel(profile);
             const details = detailsLabel(profile);
             const canMessage = !!profileId;
+            const displayName =
+              profile.friendly_name || buildProfileDisplayName(profile.full_name, profile.display_name, 'Profilo');
 
             return (
               <div
@@ -147,7 +151,7 @@ export default function SearchResultsList({
                   <Avatar profile={profile} />
                   <div className="flex flex-1 flex-col gap-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <div className="font-semibold leading-tight">{profile.display_name || profile.full_name || 'Profilo'}</div>
+                      <div className="font-semibold leading-tight">{displayName}</div>
                       <MarkerIcon type={profile.type || profile.account_type} />
                       <Link
                         href={href}

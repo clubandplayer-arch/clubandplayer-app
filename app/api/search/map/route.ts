@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 
 import { dbError, rateLimited, successResponse, unknownError } from '@/lib/api/standardResponses';
 import { rateLimit } from '@/lib/api/rateLimit';
+import { buildProfileDisplayName } from '@/lib/displayName';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
@@ -11,6 +12,7 @@ type SearchMapRow = {
   type?: string | null;
   full_name?: string | null;
   display_name?: string | null;
+  friendly_name?: string | null;
 } & Record<string, unknown>;
 
 type GenericStringError = { error: true };
@@ -270,6 +272,8 @@ export async function GET(req: NextRequest) {
               ? (row as any).club_stadium_lng
               : null;
 
+        const friendlyName = buildProfileDisplayName(row.full_name, row.display_name, 'Profilo');
+
         return {
           ...row,
           id: profileId,
@@ -279,6 +283,9 @@ export async function GET(req: NextRequest) {
           account_type: normalizedType ?? (row as any)?.account_type ?? null,
           latitude,
           longitude,
+          full_name: row.full_name ?? null,
+          display_name: row.display_name ?? null,
+          friendly_name: friendlyName,
         } as SearchMapRow;
       })
       .filter((row) => {
