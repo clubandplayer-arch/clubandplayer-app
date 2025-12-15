@@ -50,6 +50,7 @@ export const DELETE = withAuth(async (_req: NextRequest, { supabase, user }, rou
           owner_profile_id: me.id,
           other_profile_id: peer.id,
           hidden_at: now,
+          cleared_at: now,
         },
         { onConflict: 'owner_profile_id,other_profile_id' },
       );
@@ -58,6 +59,7 @@ export const DELETE = withAuth(async (_req: NextRequest, { supabase, user }, rou
 
     return successResponse({
       hiddenAt: now,
+      clearedAt: now,
       targetProfileId: peer.id,
     });
   } catch (error: any) {
