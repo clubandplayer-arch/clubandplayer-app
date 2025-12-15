@@ -7,6 +7,7 @@ import {
   REACTION_ORDER,
   computeOptimistic,
   createDefaultReaction,
+  defaultReactionState,
   normalizePost,
   type FeedPost,
   type ReactionState,
