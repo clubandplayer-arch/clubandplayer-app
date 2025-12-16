@@ -1,6 +1,7 @@
 // components/opportunities/OpportunityStatusControl.tsx
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useToast } from '@/components/common/ToastProvider';
 
@@ -27,6 +28,7 @@ const normalizeLocalStatus = (value: string | null | undefined) => {
 
 export default function OpportunityStatusControl({ opportunityId, initialStatus, isOwner = false, onStatusChange }: Props) {
   const toast = useToast();
+  const router = useRouter();
   const [status, setStatus] = useState<string>(normalizeLocalStatus(initialStatus ?? 'open'));
   const [saving, setSaving] = useState(false);
 
@@ -65,6 +67,7 @@ export default function OpportunityStatusControl({ opportunityId, initialStatus,
       const updatedStatus = normalizeLocalStatus(String((payload as any)?.data?.status ?? nextStatus));
       setStatus(updatedStatus);
       onStatusChange?.(updatedStatus);
+      router.refresh();
       toast.success(nextStatus === 'closed' ? 'Annuncio chiuso' : 'Annuncio riaperto');
     } catch (e: any) {
       toast.error(e?.message || 'Impossibile aggiornare lo stato');
