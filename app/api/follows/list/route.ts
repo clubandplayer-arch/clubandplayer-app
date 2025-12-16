@@ -21,33 +21,22 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
       return raw;
     })();
 
-    const followerMatches = [
-      `follower_profile_id.eq.${me.id}`,
-      `follower_id.eq.${user.id}`,
-      `follower_user_id.eq.${user.id}`,
-    ];
+    const followerColumn = 'follower_profile_id';
+    const targetColumn = 'target_profile_id';
 
     const { data: rows, error } = await supabase
       .from('follows')
-      .select('id, target_profile_id, target_user_id, target_id, target_type, follower_profile_id, follower_user_id, follower_id, created_at')
-      .or(followerMatches.join(','))
+      .select('id, target_profile_id, follower_profile_id, created_at')
+      .eq(followerColumn, me.id)
       .limit(500);
     if (error) throw error;
 
-    const profileTargetIds = new Set<string>();
-    const userTargetIds = new Set<string>();
+    const targetIds = (rows || [])
+      .map((r) => (r as any)?.[targetColumn])
+      .filter(Boolean)
+      .map((v) => String(v));
 
-    for (const row of rows || []) {
-      const anyRow = row as any;
-      if (anyRow?.target_profile_id) profileTargetIds.add(String(anyRow.target_profile_id));
-      if (anyRow?.target_id) profileTargetIds.add(String(anyRow.target_id));
-      if (anyRow?.target_user_id) userTargetIds.add(String(anyRow.target_user_id));
-    }
-
-    const targetIds = Array.from(profileTargetIds);
-    const targetUserIds = Array.from(userTargetIds);
-
-    if (!targetIds.length && !targetUserIds.length) {
+    if (!targetIds.length) {
       return successResponse({
         items: [],
         role,
@@ -59,36 +48,17 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
                 activeProfileRole: role,
                 followsCount: 0,
                 sampleRows: (rows || []).slice(0, 3),
-                columnsUsed: ['target_profile_id', 'target_user_id', 'target_id'],
+                columnsUsed: { followerCol: followerColumn, targetCol: targetColumn, followerValueUsed: me.id },
               }
             : undefined,
       });
     }
 
-    const idsFetched = new Set<string>();
-    const profiles: any[] = [];
-
-    if (targetIds.length) {
-      const { data: byProfile, error: profError } = await supabase
-        .from('profiles')
-        .select('id, user_id, full_name, display_name, account_type, avatar_url, city, country, sport, role')
-        .in('id', targetIds);
-      if (profError) throw profError;
-      (byProfile || []).forEach((p: any) => {
-        profiles.push(p);
-        idsFetched.add(String(p.id));
-      });
-    }
-
-    const remainingUserIds = targetUserIds.filter((uid) => !Array.from(idsFetched).includes(uid));
-    if (remainingUserIds.length) {
-      const { data: byUser, error: profError } = await supabase
-        .from('profiles')
-        .select('id, user_id, full_name, display_name, account_type, avatar_url, city, country, sport, role')
-        .in('user_id', remainingUserIds);
-      if (profError) throw profError;
-      (byUser || []).forEach((p: any) => profiles.push(p));
-    }
+    const { data: profiles, error: profError } = await supabase
+      .from('profiles')
+      .select('id, user_id, full_name, display_name, account_type, avatar_url, city, country, sport, role')
+      .in('id', targetIds);
+    if (profError) throw profError;
 
     const items = (profiles || []).map((p) => ({
       id: p.id,
@@ -114,7 +84,7 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
               activeProfileRole: role,
               followsCount: items.length,
               sampleRows: (rows || []).slice(0, 3),
-              columnsUsed: ['follower_profile_id', 'follower_id', 'follower_user_id', 'target_profile_id', 'target_user_id', 'target_id'],
+              columnsUsed: { followerCol: followerColumn, targetCol: targetColumn, followerValueUsed: me.id },
             }
           : undefined,
     });
