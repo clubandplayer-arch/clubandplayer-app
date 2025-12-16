@@ -71,6 +71,10 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
         .maybeSingle()
     : { data: null };
 
+  if (process.env.NODE_ENV !== 'production') {
+    console.debug('[OpportunityDetail] clubProfile avatar', clubProfile?.avatar_url);
+  }
+
   const clubName = buildClubDisplayName(
     clubProfile?.full_name,
     clubProfile?.display_name,
@@ -229,17 +233,20 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
 
           <div className="rounded-2xl border bg-white/80 p-4 shadow-sm text-sm text-gray-700 space-y-2">
             <h4 className="text-base font-semibold">Dettagli annuncio</h4>
-            <div className="flex items-center justify-between gap-3">
-              <div className="text-sm">
-                <p className="font-medium">Stato annuncio</p>
-                <p className="text-gray-700">{opp.status ?? '—'}</p>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-sm">
+                  <p className="font-medium">Stato annuncio</p>
+                </div>
+                <OpportunityStatusControl
+                  opportunityId={opp.id}
+                  initialStatus={opp.status ?? 'open'}
+                  isOwner={isOwner}
+                />
               </div>
-              {isOwner && (
-                <OpportunityStatusControl opportunityId={opp.id} initialStatus={opp.status ?? 'open'} />
-              )}
+              <p><span className="font-medium">Pubblicata:</span> {published}</p>
+              <p><span className="font-medium">ID:</span> {opp.id}</p>
             </div>
-            <p><span className="font-medium">Pubblicata:</span> {published}</p>
-            <p><span className="font-medium">ID:</span> {opp.id}</p>
           </div>
         </aside>
       </div>

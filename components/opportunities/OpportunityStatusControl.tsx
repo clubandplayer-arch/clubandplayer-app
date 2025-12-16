@@ -7,6 +7,8 @@ import { useToast } from '@/components/common/ToastProvider';
 type Props = {
   opportunityId: string;
   initialStatus?: string | null;
+  isOwner?: boolean;
+  onStatusChange?: (status: string) => void;
 };
 
 const LABELS: Record<string, string> = {
@@ -23,7 +25,7 @@ const normalizeLocalStatus = (value: string | null | undefined) => {
   return raw || 'open';
 };
 
-export default function OpportunityStatusControl({ opportunityId, initialStatus }: Props) {
+export default function OpportunityStatusControl({ opportunityId, initialStatus, isOwner = false, onStatusChange }: Props) {
   const toast = useToast();
   const [status, setStatus] = useState<string>(normalizeLocalStatus(initialStatus ?? 'open'));
   const [saving, setSaving] = useState(false);
@@ -60,8 +62,9 @@ export default function OpportunityStatusControl({ opportunityId, initialStatus 
         throw new Error(msg);
       }
 
-      const updatedStatus = (payload as any)?.data?.status ?? nextStatus;
-      setStatus(normalizeLocalStatus(String(updatedStatus)));
+      const updatedStatus = normalizeLocalStatus(String((payload as any)?.data?.status ?? nextStatus));
+      setStatus(updatedStatus);
+      onStatusChange?.(updatedStatus);
       toast.success(nextStatus === 'closed' ? 'Annuncio chiuso' : 'Annuncio riaperto');
     } catch (e: any) {
       toast.error(e?.message || 'Impossibile aggiornare lo stato');
@@ -75,14 +78,16 @@ export default function OpportunityStatusControl({ opportunityId, initialStatus 
       <span className={`rounded-full border px-2 py-1 text-xs font-semibold capitalize ${badgeClass}`}>
         {label}
       </span>
-      <button
-        type="button"
-        onClick={toggleStatus}
-        disabled={saving}
-        className="rounded-lg border px-3 py-1 text-xs font-semibold hover:bg-gray-50 disabled:opacity-50"
-      >
-        {isClosed ? 'Riapri' : 'Chiudi annuncio'}
-      </button>
+      {isOwner && (
+        <button
+          type="button"
+          onClick={toggleStatus}
+          disabled={saving}
+          className="rounded-lg border px-3 py-1 text-xs font-semibold hover:bg-gray-50 disabled:opacity-50"
+        >
+          {isClosed ? 'Riapri' : 'Chiudi annuncio'}
+        </button>
+      )}
     </div>
   );
 }
