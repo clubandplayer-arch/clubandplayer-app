@@ -9,6 +9,7 @@ type Props = {
   clubProfileId?: string | null;
   showApply?: boolean;
   isOwner?: boolean;
+  initialApplicationStatus?: string | null;
 };
 
 export default function OpportunityActions({
@@ -16,12 +17,13 @@ export default function OpportunityActions({
   clubProfileId,
   showApply = true,
   isOwner = false,
+  initialApplicationStatus = null,
 }: Props) {
   const toast = useToast();
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      {showApply && <ApplyCTA oppId={opportunityId} />}
+      {showApply && <ApplyCTA oppId={opportunityId} initialStatus={initialApplicationStatus ?? undefined} />}
 
       {!isOwner && (
         <button
