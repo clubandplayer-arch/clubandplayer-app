@@ -128,6 +128,15 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
   const clubProfileId = clubProfile?.id ?? clubId;
   const clubAvatarUrl = await resolveProfileAvatarUrl(clubProfile?.avatar_url, supabase);
 
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[opportunity:club-box]', {
+      clubProfileId: clubProfile?.id ?? null,
+      clubProfileUserId: clubProfile?.user_id ?? null,
+      clubProfileAvatarRaw: clubProfile?.avatar_url ?? null,
+      resolvedClubAvatarUrl: clubAvatarUrl ?? null,
+    });
+  }
+
   const place = [opp.city, opp.province, opp.region, opp.country].filter(Boolean).join(', ');
   const categoryLabel = (opp as any).category ?? (opp as any).required_category ?? null;
   const genderLabel = opportunityGenderLabel((opp as any).gender) ?? undefined;
