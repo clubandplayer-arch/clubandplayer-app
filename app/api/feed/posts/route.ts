@@ -211,10 +211,12 @@ export async function GET(req: NextRequest) {
   const shouldLoadFollows = Boolean(currentProfileId && (scope === 'following' || (!authorIdFilter && !mine)));
 
   if (shouldLoadFollows) {
+    const followerIds = Array.from(new Set([currentProfileId, currentUserId].filter(Boolean)));
+
     const { data: followRows, error: followError } = await supabase
       .from('follows')
       .select('target_profile_id')
-      .eq('follower_profile_id', currentProfileId)
+      .or(followerIds.map((id) => `follower_profile_id.eq.${id}`).join(','))
       .neq('target_profile_id', currentProfileId)
       .limit(500);
 
@@ -237,8 +239,16 @@ export async function GET(req: NextRequest) {
           .map((p) => (p as any)?.user_id)
           .filter(Boolean)
           .forEach((uid) => followedAuthorUserIds.push(String(uid)));
-      }
     }
+
+    if (process.env.NODE_ENV !== 'production') {
+      console.debug('[feed/posts] follows scope', {
+        followerIds,
+        profileCount: followedAuthorProfileIds.length,
+        userCount: followedAuthorUserIds.length,
+      });
+    }
+  }
   }
 
   let allowedAuthors: string[] | null = null;

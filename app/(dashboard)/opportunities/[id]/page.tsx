@@ -28,7 +28,15 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
   const supabase = await getSupabaseServerClient();
   const { data: authUser } = await supabase.auth.getUser();
 
-  const myProfile = authUser?.user ? await getActiveProfile(supabase, authUser.user.id) : null;
+  let myProfile = null as Awaited<ReturnType<typeof getActiveProfile>>;
+  if (authUser?.user) {
+    try {
+      myProfile = await getActiveProfile(supabase, authUser.user.id);
+    } catch (err) {
+      console.error('[OpportunityDetail] active profile fetch failed', err);
+      myProfile = null;
+    }
+  }
 
   const { data: opp, error } = await supabase
     .from('opportunities')
@@ -56,15 +64,22 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
 
   const clubLookupIds = Array.from(new Set([clubId, ownerId].filter(Boolean).map(String)));
 
-  const { data: clubProfile } = clubLookupIds.length
-    ? await supabase
+  let clubProfile: any = null;
+  if (clubLookupIds.length) {
+    try {
+      const { data } = await supabase
         .from('profiles')
         .select(
           'id,user_id,display_name,full_name,avatar_url,city,province,region,country,profile_type,account_type',
         )
         .or(clubLookupIds.map((id) => `id.eq.${id}`).concat(clubLookupIds.map((id) => `user_id.eq.${id}`)).join(','))
-        .maybeSingle()
-    : { data: null };
+        .maybeSingle();
+      clubProfile = data ?? null;
+    } catch (err) {
+      console.error('[OpportunityDetail] club profile fetch failed', err);
+      clubProfile = null;
+    }
+  }
 
   const place = [opp.city, opp.province, opp.region, opp.country].filter(Boolean).join(', ');
   const categoryLabel = (opp as any).category ?? (opp as any).required_category ?? null;
