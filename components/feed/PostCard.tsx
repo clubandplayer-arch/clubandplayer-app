@@ -8,6 +8,7 @@ import { PostIconDelete, PostIconEdit, PostIconShare } from '@/components/icons/
 import { PostMedia } from '@/components/feed/PostMedia';
 import { QuotedPostCard } from '@/components/feed/QuotedPostCard';
 import { getPostPermalink, shareOrCopyLink } from '@/lib/share';
+import { buildClubDisplayName, buildProfileDisplayName } from '@/lib/displayName';
 import {
   REACTION_EMOJI,
   REACTION_ORDER,
@@ -83,13 +84,24 @@ export function PostCard({
   const eventDetails = post.event_payload;
   const baseDescription = post.content ?? post.text ?? '';
   const description = isEvent ? baseDescription || eventDetails?.description || '' : baseDescription;
-  const authorLabel =
+  const authorProfile = post.author_profile ?? null;
+  const authorAccountType = authorProfile?.account_type ?? authorProfile?.type ?? null;
+  const fallbackAuthorLabel =
     (post as any).author_display_name ??
     (post as any).author_full_name ??
     (post as any).author_name ??
     (post as any).author ??
     null;
-  const avatarUrl = (post as any).author_avatar_url ?? null;
+  const authorLabel = authorProfile
+    ? authorAccountType === 'club'
+      ? buildClubDisplayName(authorProfile.full_name, authorProfile.display_name, fallbackAuthorLabel ?? 'Club')
+      : buildProfileDisplayName(
+          authorProfile.full_name,
+          authorProfile.display_name,
+          fallbackAuthorLabel ?? 'Profilo',
+        )
+    : fallbackAuthorLabel;
+  const avatarUrl = authorProfile?.avatar_url ?? (post as any).author_avatar_url ?? null;
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(description);
   const [saving, setSaving] = useState(false);

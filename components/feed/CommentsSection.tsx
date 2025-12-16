@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { buildProfileDisplayName } from '@/lib/displayName';
 
 export type CommentAuthor = {
   id: string;
@@ -139,7 +140,7 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
 
       {displayed.map((c) => {
         const author = c.author;
-        const name = author?.display_name || author?.full_name || 'Utente';
+        const name = buildProfileDisplayName(author?.full_name, author?.display_name, 'Profilo');
         return (
           <div key={c.id} className="rounded-lg border border-neutral-200 bg-neutral-50 p-2">
             <div className="flex items-center gap-2">
@@ -173,17 +174,35 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
         <div className="text-sm text-neutral-500">Nessun commento</div>
       ) : null}
 
-      {!expanded && remaining > 0 ? (
-        <button
-          type="button"
-          className="text-sm font-semibold text-[var(--brand)] hover:underline"
-          onClick={openComments}
-        >
-          Mostra altri {remaining} commenti
-        </button>
-      ) : null}
+      {!expanded ? (
+        <div className="flex flex-wrap items-center gap-3">
+          {remaining > 0 ? (
+            <button
+              type="button"
+              className="text-sm font-semibold text-[var(--brand)] hover:underline whitespace-nowrap"
+              onClick={openComments}
+            >
+              Mostra altri {remaining} commenti
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="text-sm font-semibold text-[var(--brand)] hover:underline whitespace-nowrap"
+              onClick={openComments}
+            >
+              Mostra commenti
+            </button>
+          )}
 
-      {expanded ? (
+          <button
+            type="button"
+            className="text-sm font-semibold text-[var(--brand)] hover:underline whitespace-nowrap"
+            onClick={openComments}
+          >
+            Aggiungi un commento
+          </button>
+        </div>
+      ) : expanded ? (
         <div className="space-y-2">
           <div className="flex flex-col gap-2">
             <label htmlFor={`comment-${postId}`} className="text-xs font-semibold text-neutral-700">
@@ -216,15 +235,7 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
             </div>
           </div>
         </div>
-      ) : (
-        <button
-          type="button"
-          className="text-sm font-semibold text-[var(--brand)] hover:underline"
-          onClick={openComments}
-        >
-          Aggiungi un commento
-        </button>
-      )}
+      ) : null}
 
       {loading ? <div className="text-sm text-neutral-500">Caricamento commenti…</div> : null}
     </div>

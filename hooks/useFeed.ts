@@ -150,7 +150,7 @@ export function useFeed(options?: UseFeedOptions): UseFeedResult {
       cancelIdle(handle);
       abortOngoing();
     };
-  }, [refresh, abortOngoing]);
+  }, [refresh, abortOngoing, scope]);
 
   const setScope = useCallback((next: FeedScope) => {
     setScopeState((curr) => (curr === next ? curr : next));
