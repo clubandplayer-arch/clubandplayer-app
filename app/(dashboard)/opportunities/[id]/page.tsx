@@ -7,6 +7,7 @@ import FollowButton from '@/components/common/FollowButton';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { opportunityGenderLabel } from '@/lib/opps/gender';
 import { buildClubDisplayName } from '@/lib/displayName';
+import { getActiveProfile } from '@/lib/api/profile';
 
 function formatDateHuman(date: string | null | undefined) {
   if (!date) return '—';
@@ -27,15 +28,7 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
   const supabase = await getSupabaseServerClient();
   const { data: authUser } = await supabase.auth.getUser();
 
-  const { data: myProfile } = authUser?.user
-    ? await supabase
-        .from('profiles')
-        .select(
-          'id,user_id,account_type,profile_type,type,display_name,full_name,avatar_url,city,province,region,country',
-        )
-        .eq('user_id', authUser.user.id)
-        .maybeSingle()
-    : { data: null };
+  const myProfile = authUser?.user ? await getActiveProfile(supabase, authUser.user.id) : null;
 
   const { data: opp, error } = await supabase
     .from('opportunities')
