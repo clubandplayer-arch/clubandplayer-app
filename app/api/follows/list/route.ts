@@ -11,6 +11,16 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
     const me = await getActiveProfile(supabase, user.id);
     if (!me) return notAuthorized('Profilo non trovato');
 
+    const role = (() => {
+      const raw = [me.account_type, me.profile_type, me.type]
+        .map((v) => (v ?? '').toString().toLowerCase())
+        .find((v) => v);
+      if (!raw) return null;
+      if (raw.includes('club')) return 'club';
+      if (raw.includes('athlete') || raw.includes('player')) return 'athlete';
+      return raw;
+    })();
+
     const { data: rows, error } = await supabase
       .from('follows')
       .select('target_profile_id')
@@ -40,7 +50,19 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
       avatar_url: p.avatar_url,
     }));
 
-    return successResponse({ items });
+    return successResponse({
+      items,
+      role,
+      debug:
+        process.env.NODE_ENV !== 'production'
+          ? {
+              userId: user.id,
+              activeProfileId: me.id,
+              activeProfileRole: role,
+              followsCount: targetIds.length,
+            }
+          : undefined,
+    });
   } catch (error: any) {
     console.error('[api/follows/list] errore', { error });
     return unknownError({ endpoint: '/api/follows/list', error, context: { userId: user.id } });
