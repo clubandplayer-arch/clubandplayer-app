@@ -5,6 +5,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import OpportunityActions from '@/components/opportunities/OpportunityActions';
 import FollowButton from '@/components/common/FollowButton';
+import { getActiveProfile } from '@/lib/api/profile';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { opportunityGenderLabel } from '@/lib/opps/gender';
 
@@ -87,6 +88,8 @@ function formatAge(min?: number | null, max?: number | null) {
 export default async function OpportunityDetailPage({ params }: { params: { id: string } }) {
   const supabase = await getSupabaseServerClient();
   const { data: authUser } = await supabase.auth.getUser();
+  const user = authUser?.user ?? null;
+  const me = user ? await getActiveProfile(supabase, user.id) : null;
 
   const { data: opp, error } = await supabase
     .from('opportunities')
@@ -111,25 +114,46 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
 
   const ownerId = (opp as any).owner_id ?? (opp as any).created_by ?? null;
   const clubId = (opp as any).club_id ?? ownerId ?? null;
+  const isOwner = !!authUser?.user && !!ownerId && authUser.user.id === ownerId;
 
-  const { data: clubProfile } = ownerId
-    ? await supabase
-        .from('profiles')
-        .select('id,user_id,display_name,full_name,avatar_url,city,country,profile_type,account_type')
-        .or(`id.eq.${ownerId},user_id.eq.${ownerId}`)
-        .maybeSingle()
-    : { data: null };
+  let clubProfile:
+    | {
+        id?: string | null;
+        user_id?: string | null;
+        display_name?: string | null;
+        full_name?: string | null;
+        avatar_url?: string | null;
+        city?: string | null;
+        country?: string | null;
+        profile_type?: string | null;
+        account_type?: string | null;
+      }
+    | null = null;
+
+  if (isOwner && me?.id) {
+    const { data } = await supabase
+      .from('profiles')
+      .select('id,user_id,display_name,full_name,avatar_url,city,country,profile_type,account_type')
+      .eq('id', me.id)
+      .maybeSingle();
+    clubProfile = data ?? null;
+  } else if (clubId) {
+    const { data } = await supabase
+      .from('profiles')
+      .select('id,user_id,display_name,full_name,avatar_url,city,country,profile_type,account_type')
+      .or(`id.eq.${clubId},user_id.eq.${clubId}`)
+      .maybeSingle();
+    clubProfile = data ?? null;
+  }
 
   const clubName =
     opp.club_name ??
-    clubProfile?.display_name ??
     clubProfile?.full_name ??
+    clubProfile?.display_name ??
     undefined;
-  const clubProfileId = clubProfile?.id ?? clubId;
+  const clubProfileId = clubProfile?.id ?? (clubProfile ? null : clubId ?? null);
   const clubAvatarUrl = await resolveProfileAvatarUrl(clubProfile?.avatar_url, supabase);
 
-  const user = authUser?.user ?? null;
-  const me = null;
   console.log(
     '[opportunity:club-box]',
     JSON.stringify({
@@ -138,8 +162,8 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
       oppOwnerId: (opp as any)?.owner_id,
       oppCreatedBy: (opp as any)?.created_by,
       viewerUserId: user?.id,
-      activeProfileId: (me as any)?.id,
-      activeProfileUserId: (me as any)?.user_id,
+      activeProfileId: (me as any)?.id ?? null,
+      activeProfileUserId: (me as any)?.user_id ?? user?.id ?? null,
       resolvedOwnerIdUsedForLookup: ownerId,
       clubProfileFound: !!clubProfile,
       clubProfileId: clubProfile?.id,
@@ -160,7 +184,6 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
   const genderLabel = opportunityGenderLabel((opp as any).gender) ?? undefined;
   const ageLabel = formatAge((opp as any).age_min, (opp as any).age_max);
   const published = formatDateHuman((opp as any).created_at);
-  const isOwner = !!authUser?.user && !!ownerId && authUser.user.id === ownerId;
   const allClubOpportunitiesHref = clubId ? `/opportunities?clubId=${clubId}` : null;
 
   return (
