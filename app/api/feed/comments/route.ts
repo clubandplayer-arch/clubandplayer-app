@@ -56,20 +56,33 @@ export async function GET(req: NextRequest) {
   }
 
   const authorIds = Array.from(new Set((data ?? []).map((c) => c.author_id))).filter(Boolean) as string[];
-  let authors: Record<string, any> = {};
+  const authors: Record<string, any> = {};
 
   if (authorIds.length > 0) {
-    const { data: profiles } = await supabase
+    const { data: profilesByUser } = await supabase
       .from('profiles')
       .select('id, user_id, full_name, display_name, avatar_url, account_type, status')
       .in('user_id', authorIds);
 
-    if (Array.isArray(profiles)) {
-      authors = profiles.reduce((acc, p) => {
-        const key = (p.user_id || p.id) as string;
-        acc[key] = p;
-        return acc;
-      }, {} as Record<string, any>);
+    const storeProfile = (p: any) => {
+      if (!p) return;
+      const keyUser = (p as any)?.user_id ? String((p as any).user_id) : null;
+      const keyId = (p as any)?.id ? String((p as any).id) : null;
+      if (keyUser) authors[keyUser] = p;
+      if (keyId && !authors[keyId]) authors[keyId] = p;
+    };
+
+    (profilesByUser ?? []).forEach(storeProfile);
+
+    const missingByUserId = authorIds.filter((id) => !authors[id]);
+
+    if (missingByUserId.length) {
+      const { data: profilesById } = await supabase
+        .from('profiles')
+        .select('id, user_id, full_name, display_name, avatar_url, account_type, status')
+        .in('id', missingByUserId);
+
+      (profilesById ?? []).forEach(storeProfile);
     }
   }
 

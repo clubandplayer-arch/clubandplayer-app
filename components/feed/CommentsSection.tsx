@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { buildProfileDisplayName } from '@/lib/displayName';
 
 export type CommentAuthor = {
   id: string;
@@ -139,7 +140,7 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
 
       {displayed.map((c) => {
         const author = c.author;
-        const name = author?.display_name || author?.full_name || 'Utente';
+        const name = buildProfileDisplayName(author?.full_name, author?.display_name, 'Profilo');
         return (
           <div key={c.id} className="rounded-lg border border-neutral-200 bg-neutral-50 p-2">
             <div className="flex items-center gap-2">
