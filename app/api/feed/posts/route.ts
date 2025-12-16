@@ -16,6 +16,7 @@ import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 import { reportApiError } from '@/lib/monitoring/reportApiError';
 import { getActiveProfile } from '@/lib/api/profile';
+import { buildProfileDisplayName } from '@/lib/displayName';
 import { CreatePostSchema, FeedPostsQuerySchema, type CreatePostInput, type FeedPostsQueryInput } from '@/lib/validation/feed';
 
 export const runtime = 'nodejs';
@@ -74,19 +75,54 @@ function normalizeEventPayload(raw: any): EventPayload | null {
   };
 }
 
+type ProfileRow = {
+  id?: string | null;
+  user_id?: string | null;
+  full_name?: string | null;
+  display_name?: string | null;
+  avatar_url?: string | null;
+  account_type?: string | null;
+  type?: string | null;
+};
+
+function normalizeProfileRow(raw: any): ProfileRow | null {
+  if (!raw || typeof raw !== 'object') return null;
+  return {
+    id: (raw as any)?.id ?? null,
+    user_id: (raw as any)?.user_id ?? null,
+    full_name: (raw as any)?.full_name ?? null,
+    display_name: (raw as any)?.display_name ?? (raw as any)?.name ?? null,
+    avatar_url: (raw as any)?.avatar_url ?? null,
+    account_type: (raw as any)?.account_type ?? (raw as any)?.type ?? null,
+    type: (raw as any)?.type ?? (raw as any)?.account_type ?? null,
+  };
+}
+
 function normalizeRow(row: any, quotedMap?: Map<string, any>, depth = 0): any {
   const aspectFromUrl = inferAspectFromUrl(row.media_url);
   const quotedRaw: any = row.quoted_post_id ? quotedMap?.get(row.quoted_post_id) : null;
   const quotedPost = quotedRaw && depth < 1 ? normalizeRow(quotedRaw, quotedMap, depth + 1) : null;
-  const authorProfile = (row as any)?.author ?? (row as any)?.profiles ?? null;
-  const authorDisplayName =
-    (authorProfile?.full_name as string | undefined) ??
-    (authorProfile?.display_name as string | undefined) ??
-    (authorProfile?.name as string | undefined) ??
+  const authorProfile = normalizeProfileRow(
+    (row as any)?.author_profile ?? (row as any)?.author ?? (row as any)?.profiles ?? null,
+  );
+  const fallbackAuthorDisplayName =
+    (row as any)?.author_display_name ??
+    (row as any)?.author_full_name ??
+    (row as any)?.author_name ??
+    (row as any)?.author ??
     null;
-  const authorAvatarUrl = (authorProfile?.avatar_url as string | undefined) ?? null;
+  const authorDisplayName =
+    authorProfile
+      ? buildProfileDisplayName(
+          authorProfile.full_name ?? undefined,
+          authorProfile.display_name ?? undefined,
+          fallbackAuthorDisplayName ?? 'Profilo',
+        )
+      : fallbackAuthorDisplayName;
+  const authorAvatarUrl = authorProfile?.avatar_url ?? (row as any)?.author_avatar_url ?? null;
   const authorRole = normRole(authorProfile?.account_type ?? authorProfile?.type) ?? null;
   const authorProfileId = (authorProfile?.id as string | undefined) ?? null;
+  const authorUserId = (authorProfile?.user_id as string | undefined) ?? null;
 
   return {
     id: row.id,
@@ -114,6 +150,8 @@ function normalizeRow(row: any, quotedMap?: Map<string, any>, depth = 0): any {
     author_avatar_url: authorAvatarUrl,
     author_role: authorRole,
     author_profile_id: authorProfileId,
+    author_profile: authorProfile,
+    author_user_id: authorUserId,
   };
 }
 
@@ -122,8 +160,8 @@ type ProfileClient =
   | NonNullable<ReturnType<typeof getSupabaseAdminClientOrNull>>;
 
 type AuthorProfileMaps = {
-  byUserId: Map<string, any> | null;
-  byProfileId: Map<string, any> | null;
+  byUserId: Map<string, ProfileRow> | null;
+  byProfileId: Map<string, ProfileRow> | null;
 };
 
 async function buildAuthorProfileMaps(client: ProfileClient, authorIds: string[]): Promise<AuthorProfileMaps> {
@@ -137,22 +175,41 @@ async function buildAuthorProfileMaps(client: ProfileClient, authorIds: string[]
   ]);
 
   const byUserId = profilesByUserId?.length
-    ? new Map(profilesByUserId.map((p) => [String((p as any)?.user_id), { ...p, type: (p as any)?.type ?? null }]))
+    ? new Map(
+        profilesByUserId
+          .map((p) => {
+            const normalized = normalizeProfileRow(p);
+            const key = normalized?.user_id ? String(normalized.user_id) : null;
+            return key ? [key, normalized] : null;
+          })
+          .filter(Boolean) as Array<[string, ProfileRow]>,
+      )
     : null;
   const byProfileId = profilesByProfileId?.length
-    ? new Map(profilesByProfileId.map((p) => [String((p as any)?.id), { ...p, type: (p as any)?.type ?? null }]))
+    ? new Map(
+        profilesByProfileId
+          .map((p) => {
+            const normalized = normalizeProfileRow(p);
+            const key = normalized?.id ? String(normalized.id) : null;
+            return key ? [key, normalized] : null;
+          })
+          .filter(Boolean) as Array<[string, ProfileRow]>,
+      )
     : null;
 
   return { byUserId, byProfileId };
 }
 
 function attachAuthorProfile(row: any, maps: AuthorProfileMaps): any {
-  if (!row?.author && !row?.profiles && row?.author_id) {
-    const fromUserId = maps.byUserId?.get(row.author_id);
-    const fromProfileId = maps.byProfileId?.get(row.author_id);
-    if (fromUserId || fromProfileId) {
-      return { ...row, author: fromUserId || fromProfileId };
-    }
+  if (!row?.author_id) return row;
+  if (row?.author_profile) return row;
+  const fromUserId = maps.byUserId?.get(row.author_id);
+  const fromProfileId = maps.byProfileId?.get(row.author_id);
+  if (fromUserId || fromProfileId) {
+    const profile = fromUserId || fromProfileId;
+    const next = { ...row, author_profile: profile } as any;
+    if (!next.author) next.author = profile;
+    return next;
   }
   return row;
 }
@@ -171,23 +228,7 @@ export async function GET(req: NextRequest) {
   const to = from + limit - 1;
   const supabase = await getSupabaseServerClient();
 
-  const allowedAuthorProfileIds: string[] = [];
-
-  const buildDebug = (extra?: Record<string, any>) =>
-    debug && process.env.NODE_ENV !== 'production'
-      ? {
-          userId: currentUserId,
-          activeProfileId: currentProfileId,
-          scope,
-          followedCount: followedAuthorProfileIds.length,
-          followedUserIdsCount: followedAuthorUserIds.length,
-          allowedAuthorProfileIdsCount: allowedAuthorProfileIds.length,
-          allowedAuthorIdsCount: allowedAuthors?.length ?? 0,
-          ...extra,
-        }
-      : null;
-
-  // determina ruolo dell'utente corrente
+  // utente corrente + profilo attivo
   let currentUserId: string | null = null;
   let currentProfileId: string | null = null;
   try {
@@ -201,14 +242,16 @@ export async function GET(req: NextRequest) {
     // se qualcosa fallisce, continuiamo senza ruolo
   }
 
-  if (mine && !currentProfileId) {
+  const selfId = currentUserId;
+
+  if (mine && !selfId) {
     return notAuthenticated('Utente non autenticato per filtrare i propri post');
   }
 
-  const followedAuthorProfileIds: string[] = [];
-  const followedAuthorUserIds: string[] = [];
+  const followedProfileIds: string[] = [];
+  const followedAuthorIds: string[] = [];
 
-  const shouldLoadFollows = Boolean(currentProfileId && (scope === 'following' || (!authorIdFilter && !mine)));
+  const shouldLoadFollows = Boolean(currentProfileId && (scope === 'following' || scope === 'all'));
 
   if (shouldLoadFollows) {
     const { data: followRows, error: followError } = await supabase
@@ -219,76 +262,60 @@ export async function GET(req: NextRequest) {
       .limit(500);
 
     if (!followError && Array.isArray(followRows) && followRows.length) {
-      followRows
-        .map((row) => {
-          const target = (row as any)?.target_profile_id;
-          return target ? String(target) : null;
-        })
-        .filter(Boolean)
-        .forEach((pid) => followedAuthorProfileIds.push(pid as string));
+      followRows.forEach((row) => {
+        const target = (row as any)?.target_profile_id;
+        if (target) followedProfileIds.push(String(target));
+      });
 
-      const targetProfiles = Array.from(new Set(followedAuthorProfileIds));
+      const targetProfiles = Array.from(new Set(followedProfileIds));
       if (targetProfiles.length) {
         const { data: profileRows } = await supabase
           .from('profiles')
-          .select('id, user_id')
+          .select(PROFILE_FIELDS)
           .in('id', targetProfiles);
-        (profileRows ?? [])
-          .map((p) => (p as any)?.user_id)
-          .filter(Boolean)
-          .forEach((uid) => followedAuthorUserIds.push(String(uid)));
+        (profileRows ?? []).forEach((p) => {
+          const uid = (p as any)?.user_id;
+          if (uid) followedAuthorIds.push(String(uid));
+        });
       }
     }
   }
 
   let allowedAuthors: string[] | null = null;
 
-  if (scope === 'following') {
-    if (authorIdFilter) {
-      allowedAuthors = [authorIdFilter];
-    } else if (mine && currentUserId) {
-      allowedAuthors = [currentUserId];
-    } else {
-      if (!currentUserId) {
-        const debugPayload = buildDebug({ count: 0 });
-        if (debugPayload) console.log('[feed]', debugPayload);
-        return successResponse({
-          items: [],
-          nextPage: null,
-          ...(debugPayload ? { _debug: debugPayload } : {}),
-        });
-      }
-
-      const uniq = Array.from(new Set(followedAuthorUserIds.filter(Boolean)));
-      allowedAuthorProfileIds.push(...followedAuthorProfileIds);
-      if (!uniq.length && !allowedAuthorProfileIds.length) {
-        const debugPayload = buildDebug({ count: 0 });
-        if (debugPayload) console.log('[feed]', debugPayload);
-        return successResponse({
-          items: [],
-          nextPage: null,
-          ...(debugPayload ? { _debug: debugPayload } : {}),
-        });
-      }
-
-      const fromProfiles = allowedAuthorProfileIds.filter(Boolean);
-      const merged = Array.from(new Set([...uniq, ...fromProfiles]));
-      allowedAuthors = merged;
-    }
+  if (authorIdFilter) {
+    allowedAuthors = [authorIdFilter];
+  } else if (mine) {
+    allowedAuthors = selfId ? [selfId] : null;
+  } else if (scope === 'following') {
+    allowedAuthors = Array.from(new Set(followedAuthorIds.filter(Boolean)));
   } else {
-    allowedAuthors = (() => {
-      if (authorIdFilter) return [authorIdFilter];
-      const selfIds = [currentUserId, currentProfileId].filter(Boolean) as string[];
-      if (mine && selfIds.length) return selfIds;
-      if (!authorIdFilter && !mine && (currentUserId || currentProfileId)) {
-        allowedAuthorProfileIds.push(...followedAuthorProfileIds);
-        const uniq = Array.from(
-          new Set([...selfIds, ...followedAuthorUserIds, ...allowedAuthorProfileIds].filter(Boolean)),
-        );
-        return uniq.length ? uniq : null;
-      }
-      return null;
-    })();
+    const base = [selfId, ...followedAuthorIds].filter(Boolean) as string[];
+    allowedAuthors = Array.from(new Set(base));
+  }
+
+  const buildDebug = (extra?: Record<string, any>) =>
+    debug && process.env.NODE_ENV !== 'production'
+      ? {
+          userId: currentUserId,
+          activeProfileId: currentProfileId,
+          selfId,
+          scope,
+          followedProfileCount: followedProfileIds.length,
+          followedAuthorIdsCount: followedAuthorIds.length,
+          allowedAuthorIdsCount: allowedAuthors?.length ?? 0,
+          ...extra,
+        }
+      : null;
+
+  if (Array.isArray(allowedAuthors) && allowedAuthors.length === 0) {
+    const debugPayload = buildDebug({ count: 0 });
+    if (debugPayload) console.log('[feed]', debugPayload);
+    return successResponse({
+      items: [],
+      nextPage: null,
+      ...(debugPayload ? { _debug: debugPayload } : {}),
+    });
   }
 
   const fetchPosts = async (sel: string) => {

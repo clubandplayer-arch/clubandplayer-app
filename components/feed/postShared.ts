@@ -5,6 +5,29 @@ export type ReactionState = {
   mine: ReactionType | null;
 };
 
+export type FeedAuthorProfile = {
+  id?: string | null;
+  user_id?: string | null;
+  full_name?: string | null;
+  display_name?: string | null;
+  avatar_url?: string | null;
+  account_type?: string | null;
+  type?: string | null;
+};
+
+function normalizeAuthorProfile(raw: any): FeedAuthorProfile | null {
+  if (!raw || typeof raw !== 'object') return null;
+  return {
+    id: (raw as any)?.id ?? null,
+    user_id: (raw as any)?.user_id ?? null,
+    full_name: (raw as any)?.full_name ?? null,
+    display_name: (raw as any)?.display_name ?? (raw as any)?.name ?? null,
+    avatar_url: (raw as any)?.avatar_url ?? null,
+    account_type: (raw as any)?.account_type ?? (raw as any)?.type ?? null,
+    type: (raw as any)?.type ?? (raw as any)?.account_type ?? null,
+  };
+}
+
 export type EventPayload = {
   title: string;
   date: string;
@@ -26,7 +49,9 @@ export type FeedPost = {
   author_display_name?: string | null;
   author_avatar_url?: string | null;
   author_profile_id?: string | null;
+  author_user_id?: string | null;
   author_role?: 'club' | 'athlete' | null;
+  author_profile?: FeedAuthorProfile | null;
   media_url?: string | null;
   media_type?: 'image' | 'video' | null;
   media_aspect?: '16:9' | '9:16' | null;
@@ -128,11 +153,23 @@ export function domainFromUrl(url: string) {
 export function normalizePost(p: any, depth = 0): FeedPost {
   const aspect = aspectFromUrl(p?.media_url);
   const quoted = depth === 0 && p?.quoted_post ? normalizePost(p.quoted_post, depth + 1) : null;
+  const authorProfile = normalizeAuthorProfile(p?.author_profile ?? p?.author ?? null);
+  const authorProfileId = p?.author_profile_id ?? authorProfile?.id ?? p?.author?.id ?? null;
+  const authorUserId = p?.author_user_id ?? authorProfile?.user_id ?? p?.author?.user_id ?? null;
+  const authorDisplayName =
+    authorProfile?.full_name ??
+    authorProfile?.display_name ??
+    p?.author_display_name ??
+    p?.author_full_name ??
+    p?.author_name ??
+    p?.author ??
+    null;
+  const authorAvatarUrl = authorProfile?.avatar_url ?? p?.author_avatar_url ?? p?.author?.avatar_url ?? null;
   return {
     id: p.id,
     content: p.content ?? p.text ?? '',
     createdAt: p.created_at ?? p.createdAt ?? null,
-    authorId: p.author_id ?? p.authorId ?? null,
+    authorId: p.author_id ?? p.authorId ?? authorUserId ?? null,
     media_url: p.media_url ?? null,
     media_type: p.media_type ?? null,
     media_aspect: normalizeAspect(p.media_aspect) ?? aspect ?? null,
@@ -144,14 +181,10 @@ export function normalizePost(p: any, depth = 0): FeedPost {
     event_payload: normalizeEventPayload(p.event_payload ?? p.event ?? null),
     quoted_post_id: p.quoted_post_id ?? p.quotedPostId ?? null,
     quoted_post: quoted,
-    author_display_name:
-      p.author_display_name ??
-      p.author_full_name ??
-      p.author_name ??
-      p.author?.full_name ??
-      p.author ??
-      null,
-    author_avatar_url: p.author_avatar_url ?? p.author?.avatar_url ?? null,
-    author_profile_id: p.author_profile_id ?? p.author?.id ?? null,
+    author_display_name: authorDisplayName,
+    author_avatar_url: authorAvatarUrl,
+    author_profile_id: authorProfileId,
+    author_user_id: authorUserId,
+    author_profile: authorProfile,
   };
 }
