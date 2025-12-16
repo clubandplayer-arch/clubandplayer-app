@@ -26,6 +26,7 @@ export default function OpportunitiesClient() {
   const [clubNames, setClubNames] = useState<Record<string, string>>({});
 
   const [meId, setMeId] = useState<string | null>(null);
+  const [myProfileId, setMyProfileId] = useState<string | null>(null);
   const [role, setRole] = useState<Role>('guest');            // da /api/auth/whoami
   const [profileType, setProfileType] = useState<string>(''); // fallback da /api/profiles/me
 
@@ -181,31 +182,32 @@ export default function OpportunitiesClient() {
     return () => { cancelled = true; };
   }, []);
 
-  // 2) Fallback ruolo da profiles.me se whoami non chiarisce
+  // 2) Recupera profilo e ruolo fallback da /profiles/me
   useEffect(() => {
     let cancelled = false;
     if (!meId) return;
-    if (role === 'club' || role === 'athlete') return;
 
     (async () => {
       try {
         const r = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
         const j = await r.json().catch(() => ({}));
         if (cancelled) return;
+        const profile = j?.data || j?.profile || null;
+        if (profile?.id) setMyProfileId(profile.id);
         const t = (
-          j?.data?.account_type ??
-          j?.data?.profile_type ??
-          j?.data?.type ??
+          profile?.account_type ??
+          profile?.profile_type ??
+          profile?.type ??
           j?.type ??
-          j?.profile?.account_type ??
-          j?.profile?.type ??
           ''
         )
           .toString()
           .toLowerCase();
         setProfileType(t);
-        if (t.startsWith('club')) setRole('club');
-        else if (t === 'athlete') setRole('athlete');
+        if (role === 'guest') {
+          if (t.startsWith('club')) setRole('club');
+          else if (t === 'athlete') setRole('athlete');
+        }
       } catch { /* noop */ }
     })();
 
@@ -214,6 +216,10 @@ export default function OpportunitiesClient() {
 
   const isClub = role === 'club' || profileType.startsWith('club');
   const activeClubFilter = sp.get('clubId') ?? sp.get('club_id');
+  const viewingOwnClubFilter = useMemo(
+    () => Boolean(activeClubFilter && myProfileId && activeClubFilter === myProfileId),
+    [activeClubFilter, myProfileId],
+  );
 
   // 3) Apertura robusta della modale da ?new=1 e pulizia URL
   useEffect(() => {
@@ -657,10 +663,12 @@ export default function OpportunitiesClient() {
         <OpportunitiesTable
           items={items}
           currentUserId={meId ?? undefined}
+          currentProfileId={myProfileId ?? undefined}
           userRole={role}
           clubNames={clubNames}
           onEdit={(o) => setEditItem(o)}
           onDelete={(o) => setDeleteItem(o)}
+          viewingOwnClubFilter={viewingOwnClubFilter}
         />
       )}
 

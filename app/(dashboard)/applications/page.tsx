@@ -1,8 +1,9 @@
-// app/applications/page.tsx
-export const dynamic = 'force-dynamic';
-
 import ApplicationsDashboard from '@/components/applications/ApplicationsDashboard';
 
-export default function Page() {
+export const metadata = {
+  title: 'Candidature | Club & Player',
+};
+
+export default function ApplicationsPage() {
   return <ApplicationsDashboard />;
 }

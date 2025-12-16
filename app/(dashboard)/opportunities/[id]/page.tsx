@@ -2,9 +2,12 @@ import Link from 'next/link';
 import Image from 'next/image';
 
 import OpportunityActions from '@/components/opportunities/OpportunityActions';
+import OpportunityStatusControl from '@/components/opportunities/OpportunityStatusControl';
 import FollowButton from '@/components/common/FollowButton';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { opportunityGenderLabel } from '@/lib/opps/gender';
+import { buildClubDisplayName } from '@/lib/displayName';
+import { getActiveProfile } from '@/lib/api/profile';
 
 function formatDateHuman(date: string | null | undefined) {
   if (!date) return '—';
@@ -24,6 +27,16 @@ function formatAge(min?: number | null, max?: number | null) {
 export default async function OpportunityDetailPage({ params }: { params: { id: string } }) {
   const supabase = await getSupabaseServerClient();
   const { data: authUser } = await supabase.auth.getUser();
+
+  let myProfile = null as Awaited<ReturnType<typeof getActiveProfile>>;
+  if (authUser?.user) {
+    try {
+      myProfile = await getActiveProfile(supabase, authUser.user.id);
+    } catch (err) {
+      console.error('[OpportunityDetail] active profile fetch failed', err);
+      myProfile = null;
+    }
+  }
 
   const { data: opp, error } = await supabase
     .from('opportunities')
@@ -49,28 +62,86 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
   const ownerId = (opp as any).owner_id ?? (opp as any).created_by ?? null;
   const clubId = (opp as any).club_id ?? ownerId ?? null;
 
-  const { data: clubProfile } = ownerId
-    ? await supabase
-        .from('profiles')
-        .select('id,user_id,display_name,full_name,avatar_url,city,country,profile_type,account_type')
-        .or(`id.eq.${ownerId},user_id.eq.${ownerId}`)
-        .maybeSingle()
-    : { data: null };
+  const clubLookupIds = Array.from(new Set([clubId, ownerId].filter(Boolean).map(String)));
 
-  const clubName =
-    opp.club_name ??
-    clubProfile?.display_name ??
-    clubProfile?.full_name ??
-    undefined;
-  const clubProfileId = clubProfile?.id ?? clubId;
+  let clubProfile: any = null;
+  if (clubLookupIds.length) {
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select(
+          'id,user_id,display_name,full_name,avatar_url,city,province,region,country,profile_type,account_type',
+        )
+        .or(clubLookupIds.map((id) => `id.eq.${id}`).concat(clubLookupIds.map((id) => `user_id.eq.${id}`)).join(','))
+        .maybeSingle();
+      clubProfile = data ?? null;
+    } catch (err) {
+      console.error('[OpportunityDetail] club profile fetch failed', err);
+      clubProfile = null;
+    }
+  }
 
   const place = [opp.city, opp.province, opp.region, opp.country].filter(Boolean).join(', ');
   const categoryLabel = (opp as any).category ?? (opp as any).required_category ?? null;
   const genderLabel = opportunityGenderLabel((opp as any).gender) ?? undefined;
   const ageLabel = formatAge((opp as any).age_min, (opp as any).age_max);
   const published = formatDateHuman((opp as any).created_at);
-  const isOwner = !!authUser?.user && !!ownerId && authUser.user.id === ownerId;
-  const allClubOpportunitiesHref = clubId ? `/opportunities?clubId=${clubId}` : null;
+  const myProfileId = myProfile?.id ?? null;
+  const meUserId = authUser?.user?.id ?? null;
+  const isClubUser = (() => {
+    const raw = [myProfile?.account_type, (myProfile as any)?.profile_type, (myProfile as any)?.type]
+      .map((v) => (v ?? '').toString().toLowerCase())
+      .find((v) => v);
+    return raw ? raw.includes('club') || raw.includes('soc') : false;
+  })();
+  const isOwner = Boolean(
+    (meUserId && (meUserId === ownerId || meUserId === clubProfile?.user_id)) ||
+      (myProfileId && (myProfileId === ownerId || myProfileId === clubProfile?.id)),
+  );
+
+  const ownerProfile = isOwner ? myProfile ?? clubProfile : clubProfile;
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.debug('[OpportunityDetail] clubProfile avatar', ownerProfile?.avatar_url, {
+      profileId: ownerProfile?.id,
+      city: ownerProfile?.city,
+      province: ownerProfile?.province,
+      region: ownerProfile?.region,
+      country: ownerProfile?.country,
+    });
+  }
+
+  const clubName = buildClubDisplayName(
+    ownerProfile?.full_name,
+    ownerProfile?.display_name,
+    opp.club_name ?? undefined,
+  );
+  const clubProfileIdResolved = ownerProfile?.id ?? clubId ?? ownerId;
+
+  const clubLocation = [ownerProfile?.city, ownerProfile?.province, ownerProfile?.region, ownerProfile?.country]
+    .filter(Boolean)
+    .join(', ');
+  const statusNormalized = (opp.status || '').toString().toLowerCase();
+  const isClosed = ['closed', 'archived', 'draft', 'cancelled', 'canceled'].includes(statusNormalized);
+
+  const showApply = !!authUser?.user && !isOwner && !isClubUser && !isClosed;
+  const allClubOpportunitiesHref = !isOwner && clubProfileIdResolved ? `/opportunities?clubId=${clubProfileIdResolved}` : null;
+
+  let myApplication: { id: string; status?: string | null } | null = null;
+  if (authUser?.user && !isOwner && !isClubUser) {
+    const athleteIds = Array.from(new Set([authUser.user.id, myProfile?.id].filter(Boolean))).map(String);
+    if (athleteIds.length) {
+      const { data: existingApp } = await supabase
+        .from('applications')
+        .select('id,status')
+        .eq('opportunity_id', opp.id)
+        .in('athlete_id', athleteIds)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      myApplication = existingApp ?? null;
+    }
+  }
 
   return (
     <div className="page-shell space-y-4">
@@ -97,7 +168,13 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
                 </div>
               </div>
 
-              <OpportunityActions opportunityId={opp.id} ownerId={ownerId} showApply={!isOwner} />
+              <OpportunityActions
+                opportunityId={opp.id}
+                clubProfileId={clubProfileIdResolved ?? null}
+                showApply={showApply}
+                isOwner={isOwner}
+                initialApplicationStatus={myApplication?.status}
+              />
             </div>
           </header>
 
@@ -121,9 +198,9 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
           <div className="rounded-2xl border bg-white/80 p-4 shadow-sm space-y-3">
             <h3 className="text-lg font-semibold">Club</h3>
             <div className="flex items-center gap-3">
-              {clubProfile?.avatar_url ? (
+              {ownerProfile?.avatar_url ? (
                 <Image
-                  src={clubProfile.avatar_url}
+                  src={ownerProfile.avatar_url}
                   alt={clubName ?? 'Club'}
                   width={56}
                   height={56}
@@ -134,25 +211,29 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
                   {(clubName || 'C')[0]}
                 </div>
               )}
-                <div className="min-w-0">
-                  <Link href={clubProfileId ? `/clubs/${clubProfileId}` : '#'} className="font-semibold hover:underline">
-                    {clubName ?? 'Club'}
-                  </Link>
-                  <p className="text-sm text-gray-600">{clubProfile?.city || clubProfile?.country || 'Località n/d'}</p>
-                </div>
+              <div className="min-w-0">
+                <Link href={clubProfileIdResolved ? `/clubs/${clubProfileIdResolved}` : '#'} className="font-semibold hover:underline">
+                  {clubName ?? 'Club'}
+                </Link>
+                <p className="text-sm text-gray-600">{clubLocation || 'Località n/d'}</p>
               </div>
+            </div>
 
-            {clubProfileId && !isOwner && (
+            {isOwner && (
+              <p className="text-sm text-gray-600">Questa è una tua opportunità.</p>
+            )}
+
+            {clubProfileIdResolved && !isOwner && (
               <FollowButton
-                targetProfileId={clubProfileId}
+                targetProfileId={clubProfileIdResolved}
                 size="md"
                 className="w-full justify-center"
               />
             )}
 
-            {clubProfileId && (
+            {clubProfileIdResolved && !isOwner && (
               <Link
-                href={`/clubs/${clubProfileId}`}
+                href={`/clubs/${clubProfileIdResolved}`}
                 className="block rounded-xl border px-4 py-2 text-center text-sm font-semibold text-blue-700 hover:bg-blue-50"
               >
                 Visita profilo
@@ -171,9 +252,20 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
 
           <div className="rounded-2xl border bg-white/80 p-4 shadow-sm text-sm text-gray-700 space-y-2">
             <h4 className="text-base font-semibold">Dettagli annuncio</h4>
-            <p><span className="font-medium">Stato:</span> {opp.status ?? '—'}</p>
-            <p><span className="font-medium">Pubblicata:</span> {published}</p>
-            <p><span className="font-medium">ID:</span> {opp.id}</p>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-sm">
+                  <p className="font-medium">Stato annuncio</p>
+                </div>
+                <OpportunityStatusControl
+                  opportunityId={opp.id}
+                  initialStatus={opp.status ?? 'open'}
+                  isOwner={isOwner}
+                />
+              </div>
+              <p><span className="font-medium">Pubblicata:</span> {published}</p>
+              <p><span className="font-medium">ID:</span> {opp.id}</p>
+            </div>
           </div>
         </aside>
       </div>
