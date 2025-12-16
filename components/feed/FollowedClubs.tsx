@@ -47,23 +47,23 @@ export default function FollowedClubs() {
         const nextRole: ProfileRole =
           data?.role === 'club' || data?.role === 'athlete' ? data.role : contextRole;
         const rows: FollowedItem[] = Array.isArray(data?.items)
-              ? (data.items as any[])
-                  .map((item) => {
-                    const accountType: 'club' | 'athlete' = item.account_type === 'club' ? 'club' : 'athlete';
-                    const fullName = item.full_name ?? item.fullName ?? null;
-                    const displayName = item.display_name ?? item.displayName ?? null;
-                    const safeName =
-                      accountType === 'club'
-                        ? buildClubDisplayName(fullName, displayName, 'Club')
-                        : buildPlayerDisplayName(fullName, displayName, 'Profilo');
-                    return {
-                      id: item.id,
-                      name: safeName,
-                      fullName,
-                      displayName,
-                      city: item.city ?? item.country ?? null,
-                      sport: item.sport ?? null,
-                      avatarUrl: item.avatar_url ?? item.avatarUrl ?? null,
+          ? (data.items as any[])
+              .map((item) => {
+                const accountType: 'club' | 'athlete' = item.account_type === 'club' ? 'club' : 'athlete';
+                const fullName = item.full_name ?? item.fullName ?? null;
+                const displayName = item.display_name ?? item.displayName ?? null;
+                const safeName =
+                  accountType === 'club'
+                    ? buildClubDisplayName(fullName, displayName, 'Club')
+                    : buildPlayerDisplayName(fullName, displayName, 'Profilo');
+                return {
+                  id: item.id,
+                  name: safeName,
+                  fullName,
+                  displayName,
+                  city: item.city ?? item.country ?? null,
+                  sport: item.sport ?? null,
+                  avatarUrl: item.avatar_url ?? item.avatarUrl ?? null,
                   accountType,
                 };
               })

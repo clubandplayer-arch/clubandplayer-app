@@ -11,28 +11,14 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
     const me = await getActiveProfile(supabase, user.id);
     if (!me) return notAuthorized('Profilo non trovato');
 
-    const followerIds = Array.from(new Set([user.id, me.id].filter(Boolean)));
-
-    if (process.env.NODE_ENV !== 'production') {
-      console.debug('[api/follows/list] follower ids used', followerIds);
-    }
-
     const { data: rows, error } = await supabase
       .from('follows')
       .select('target_profile_id')
-      .or(followerIds.map((id) => `follower_profile_id.eq.${id}`).join(','))
+      .eq('follower_profile_id', me.id)
       .neq('target_profile_id', me.id);
     if (error) throw error;
 
     const targetIds = (rows || []).map((r) => (r as any)?.target_profile_id).filter(Boolean);
-
-    if (process.env.NODE_ENV !== 'production') {
-      console.debug('[api/follows/list] found follows', {
-        followerIds,
-        count: targetIds.length,
-      });
-    }
-
     if (!targetIds.length) return successResponse({ items: [] });
 
     const { data: profiles, error: profError } = await supabase
