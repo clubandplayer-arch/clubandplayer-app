@@ -128,14 +128,32 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
   const clubProfileId = clubProfile?.id ?? clubId;
   const clubAvatarUrl = await resolveProfileAvatarUrl(clubProfile?.avatar_url, supabase);
 
-  if (process.env.NODE_ENV !== 'production') {
-    console.log('[opportunity:club-box]', {
-      clubProfileId: clubProfile?.id ?? null,
-      clubProfileUserId: clubProfile?.user_id ?? null,
-      clubProfileAvatarRaw: clubProfile?.avatar_url ?? null,
-      resolvedClubAvatarUrl: clubAvatarUrl ?? null,
-    });
-  }
+  const user = authUser?.user ?? null;
+  const me = null;
+  console.log(
+    '[opportunity:club-box]',
+    JSON.stringify({
+      oppId: (opp as any)?.id,
+      oppClubId: (opp as any)?.club_id,
+      oppOwnerId: (opp as any)?.owner_id,
+      oppCreatedBy: (opp as any)?.created_by,
+      viewerUserId: user?.id,
+      activeProfileId: (me as any)?.id,
+      activeProfileUserId: (me as any)?.user_id,
+      resolvedOwnerIdUsedForLookup: ownerId,
+      clubProfileFound: !!clubProfile,
+      clubProfileId: clubProfile?.id,
+      clubProfileUserId: clubProfile?.user_id,
+      clubProfileFullName: clubProfile?.full_name,
+      clubProfileDisplayName: clubProfile?.display_name,
+      clubProfileAvatarRaw: clubProfile?.avatar_url,
+      clubProfileCity: clubProfile?.city,
+      clubProfileCountry: clubProfile?.country,
+      resolvedClubAvatarUrl: clubAvatarUrl,
+      locationLabel: clubProfile?.city || clubProfile?.country || 'Località n/d',
+      note: 'REMOVE_ME_AFTER_DEBUG',
+    }),
+  );
 
   const place = [opp.city, opp.province, opp.region, opp.country].filter(Boolean).join(', ');
   const categoryLabel = (opp as any).category ?? (opp as any).required_category ?? null;
