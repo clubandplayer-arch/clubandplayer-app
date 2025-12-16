@@ -1,10 +1,73 @@
 import Link from 'next/link';
 import Image from 'next/image';
 
+import type { SupabaseClient } from '@supabase/supabase-js';
+
 import OpportunityActions from '@/components/opportunities/OpportunityActions';
 import FollowButton from '@/components/common/FollowButton';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { opportunityGenderLabel } from '@/lib/opps/gender';
+
+const AVATARS_BUCKET = process.env.NEXT_PUBLIC_AVATARS_BUCKET || 'avatars';
+const SUPABASE_URL = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').replace(/\/+$/, '');
+
+function isHttpUrl(url: string) {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+function parseSupabaseStorageUrl(url: string) {
+  if (!SUPABASE_URL) return null;
+  const prefix = `${SUPABASE_URL}/storage/v1/object/`;
+  if (!url.startsWith(prefix)) return null;
+  const parts = url.slice(prefix.length).split('/').filter(Boolean);
+  if (parts.length < 2) return null;
+
+  const visibility = parts[0];
+  const visibilityPrefixes = new Set(['public', 'private', 'sign', 'auth']);
+  const bucket = visibilityPrefixes.has(visibility) ? parts[1] : parts[0];
+  const pathParts = visibilityPrefixes.has(visibility) ? parts.slice(2) : parts.slice(1);
+
+  if (!bucket || !pathParts.length) return null;
+  return { bucket, path: pathParts.join('/') };
+}
+
+async function resolveProfileAvatarUrl(
+  avatarUrl: string | null | undefined,
+  supabase: SupabaseClient<any, 'public', any>,
+) {
+  const raw = (avatarUrl || '').trim();
+  if (!raw) return null;
+
+  const parsedStorage = parseSupabaseStorageUrl(raw);
+  if (isHttpUrl(raw) && !parsedStorage) {
+    return raw;
+  }
+
+  const bucket = parsedStorage?.bucket || AVATARS_BUCKET;
+  const objectPath = parsedStorage?.path || raw.replace(/^\/+/, '');
+  if (!bucket || !objectPath) return null;
+
+  try {
+    const { data: signed } = await supabase.storage.from(bucket).createSignedUrl(objectPath, 3600);
+    if (signed?.signedUrl) return signed.signedUrl;
+  } catch {
+    // Silently fall back to public URL resolution below
+  }
+
+  try {
+    const { data: publicInfo } = supabase.storage.from(bucket).getPublicUrl(objectPath);
+    if (publicInfo?.publicUrl) return publicInfo.publicUrl;
+  } catch {
+    // Ignore and return null
+  }
+
+  return null;
+}
 
 function formatDateHuman(date: string | null | undefined) {
   if (!date) return '—';
@@ -63,6 +126,7 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
     clubProfile?.full_name ??
     undefined;
   const clubProfileId = clubProfile?.id ?? clubId;
+  const clubAvatarUrl = await resolveProfileAvatarUrl(clubProfile?.avatar_url, supabase);
 
   const place = [opp.city, opp.province, opp.region, opp.country].filter(Boolean).join(', ');
   const categoryLabel = (opp as any).category ?? (opp as any).required_category ?? null;
@@ -121,9 +185,9 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
           <div className="rounded-2xl border bg-white/80 p-4 shadow-sm space-y-3">
             <h3 className="text-lg font-semibold">Club</h3>
             <div className="flex items-center gap-3">
-              {clubProfile?.avatar_url ? (
+              {clubAvatarUrl ? (
                 <Image
-                  src={clubProfile.avatar_url}
+                  src={clubAvatarUrl}
                   alt={clubName ?? 'Club'}
                   width={56}
                   height={56}
