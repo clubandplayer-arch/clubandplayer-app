@@ -28,6 +28,29 @@ function buildLocationLabel(city?: string | null, province?: string | null, regi
   return parts.length ? parts.join(', ') : null;
 }
 
+const AVATAR_BUCKET = process.env.NEXT_PUBLIC_AVATARS_BUCKET || 'avatars';
+const DEFAULT_SIGNED_URL_TTL = 3600;
+
+function normalizeAvatarPath(raw: string) {
+  const cleaned = raw.replace(/^https?:\/\/[^/]+\/storage\/v1\/object\/(public|sign)\//i, '').replace(/^\/+/, '');
+  return cleaned.startsWith(`${AVATAR_BUCKET}/`) ? cleaned.slice(AVATAR_BUCKET.length + 1) : cleaned;
+}
+
+async function resolveAvatarUrl(raw: string | null | undefined, supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>) {
+  if (!raw) return null;
+  if (/^https?:\/\//i.test(raw)) return raw;
+
+  const path = normalizeAvatarPath(raw);
+  const { data, error } = await supabase.storage.from(AVATAR_BUCKET).createSignedUrl(path, DEFAULT_SIGNED_URL_TTL);
+  if (error) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('[opportunities] avatar signed URL failed', error);
+    }
+    return null;
+  }
+  return data?.signedUrl ?? null;
+}
+
 export default async function OpportunityDetailPage({ params }: { params: { id: string } }) {
   const supabase = await getSupabaseServerClient();
   const { data: authUser } = await supabase.auth.getUser();
@@ -70,6 +93,7 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
     clubProfile?.full_name ??
     undefined;
   const clubProfileId = clubProfile?.id ?? clubId;
+  const clubAvatarUrl = await resolveAvatarUrl(clubProfile?.avatar_url ?? null, supabase);
   const clubLocationLabel = buildLocationLabel(
     clubProfile?.city,
     clubProfile?.province,
@@ -136,9 +160,9 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
           <div className="rounded-2xl border bg-white/80 p-4 shadow-sm space-y-3">
             <h3 className="text-lg font-semibold">Club</h3>
             <div className="flex items-center gap-3">
-              {clubProfile?.avatar_url ? (
+              {clubAvatarUrl ? (
                 <Image
-                  src={clubProfile.avatar_url}
+                  src={clubAvatarUrl}
                   alt={clubName ?? 'Club'}
                   width={56}
                   height={56}
@@ -149,13 +173,13 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
                   {(clubName || 'C')[0]}
                 </div>
               )}
-                <div className="min-w-0">
-                  <Link href={clubProfileId ? `/clubs/${clubProfileId}` : '#'} className="font-semibold hover:underline">
-                    {clubName ?? 'Club'}
-                  </Link>
-                  <p className="text-sm text-gray-600">{clubLocation}</p>
-                </div>
+              <div className="min-w-0">
+                <Link href={clubProfileId ? `/clubs/${clubProfileId}` : '#'} className="font-semibold hover:underline">
+                  {clubName ?? 'Club'}
+                </Link>
+                <p className="text-sm text-gray-600">{clubLocation}</p>
               </div>
+            </div>
 
             {clubProfileId && !isOwner && (
               <FollowButton
