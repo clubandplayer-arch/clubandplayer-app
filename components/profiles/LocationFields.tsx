@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SupabaseClient } from '@supabase/supabase-js';
 
 import {
   fetchLocationChildren,
   findMatchingLocationId,
   LocationOption,
+  normalizeLocation,
 } from '@/lib/geo/location';
 
 export type LocationSelection = {
@@ -56,6 +57,14 @@ export function LocationFields({
   const [regions, setRegions] = useState<LocationOption[]>([]);
   const [provinces, setProvinces] = useState<LocationOption[]>([]);
   const [municipalities, setMunicipalities] = useState<LocationOption[]>([]);
+  const [cityFallback, setCityFallback] = useState<string | null>(null);
+  const didInitCity = useRef(false);
+
+  const normalizeLoc = useCallback((s?: string | null) => normalizeLocation(s), []);
+  const savedCity = useMemo(
+    () => value.cityName || fallback?.city || null,
+    [fallback?.city, value.cityName],
+  );
 
   const appliedFallback = useMemo(
     () => ({
@@ -72,6 +81,8 @@ export function LocationFields({
       setProvinces([]);
       setMunicipalities([]);
       onChange({ regionId: null, provinceId: null, municipalityId: null, regionName: null, provinceName: null, cityName: null });
+      setCityFallback(null);
+      didInitCity.current = false;
       return;
     }
 
@@ -96,7 +107,11 @@ export function LocationFields({
     if (country !== 'IT') return;
     if (value.regionId == null) {
       setProvinces([]);
-      onChange({ ...value, provinceId: null, municipalityId: null, provinceName: null, cityName: null });
+      if (value.provinceId !== null || value.municipalityId !== null || value.provinceName || value.cityName) {
+        onChange({ ...value, provinceId: null, municipalityId: null, provinceName: null, cityName: null });
+      }
+      setCityFallback(null);
+      didInitCity.current = false;
       return;
     }
 
@@ -121,7 +136,11 @@ export function LocationFields({
     if (country !== 'IT') return;
     if (value.provinceId == null) {
       setMunicipalities([]);
-      onChange({ ...value, municipalityId: null, cityName: null });
+      if (value.municipalityId !== null || value.cityName) {
+        onChange({ ...value, municipalityId: null, cityName: null });
+      }
+      setCityFallback(null);
+      didInitCity.current = false;
       return;
     }
 
@@ -133,33 +152,73 @@ export function LocationFields({
 
   useEffect(() => {
     if (country !== 'IT') return;
-    if (!value.municipalityId && municipalities.length && fallback?.city && !appliedFallback.city) {
-      const id = findMatchingLocationId(municipalities, fallback.city);
-      const name = municipalities.find((m) => m.id === id)?.name ?? fallback.city ?? null;
-      if (id) {
-        onChange({ ...value, municipalityId: id, cityName: name });
+    if (!municipalities.length) return;
+    if (didInitCity.current) return;
+
+    if (value.municipalityId) {
+      const name = municipalities.find((m) => m.id === value.municipalityId)?.name ?? value.cityName ?? null;
+      if (name && name !== value.cityName) {
+        onChange({ ...value, cityName: name });
       }
+      didInitCity.current = true;
+      return;
     }
-  }, [appliedFallback.city, country, fallback?.city, municipalities, onChange, value]);
+
+    if (savedCity) {
+      const normalizedSaved = normalizeLoc(savedCity);
+      const matched = municipalities.find((m) => normalizeLoc(m.name) === normalizedSaved);
+      if (matched) {
+        setCityFallback(null);
+        onChange({ ...value, municipalityId: matched.id, cityName: matched.name });
+      } else {
+        setCityFallback(savedCity);
+        if (value.cityName !== savedCity) {
+          onChange({ ...value, cityName: savedCity });
+        }
+      }
+      didInitCity.current = true;
+    }
+  }, [appliedFallback.city, country, municipalities, onChange, savedCity, value, normalizeLoc]);
 
   const handleRegionChange = (id: number | null) => {
+    if (id === value.regionId) return;
+    didInitCity.current = false;
+    setCityFallback(null);
     const name = regions.find((r) => r.id === id)?.name ?? null;
     onChange({ regionId: id, provinceId: null, municipalityId: null, regionName: name, provinceName: null, cityName: null });
   };
 
   const handleProvinceChange = (id: number | null) => {
+    if (id === value.provinceId) return;
+    didInitCity.current = false;
+    setCityFallback(null);
     const name = provinces.find((p) => p.id === id)?.name ?? null;
     onChange({ ...value, provinceId: id, municipalityId: null, provinceName: name, cityName: null });
   };
 
-  const handleMunicipalityChange = (id: number | null) => {
+  const handleMunicipalityChange = (raw: string) => {
+    if (raw === '__saved__') {
+      onChange({ ...value, municipalityId: null, cityName: cityFallback });
+      return;
+    }
+    const id = raw ? Number(raw) : null;
     const name = municipalities.find((m) => m.id === id)?.name ?? null;
+    setCityFallback(null);
     onChange({ ...value, municipalityId: id, cityName: name });
   };
 
-  if (country !== 'IT') return null;
+  const municipalityOptions = useMemo(() => {
+    const opts: Array<LocationOption & { isFallback?: boolean }> = [...municipalities];
+    if (cityFallback) {
+      opts.unshift({ id: -1, name: `${cityFallback} (salvata)`, isFallback: true });
+    }
+    return opts;
+  }, [cityFallback, municipalities]);
 
-  return (
+  const selectedMunicipalityValue =
+    value.municipalityId != null ? String(value.municipalityId) : cityFallback ? '__saved__' : '';
+
+  return country !== 'IT' ? null : (
     <>
       <div className="flex min-w-0 flex-col gap-1">
         <label className="text-sm text-gray-600">{labels.region}</label>
@@ -199,13 +258,13 @@ export function LocationFields({
         <label className="text-sm text-gray-600">{labels.city}</label>
         <select
           className="w-full min-w-0 rounded-lg border p-2 disabled:bg-gray-50"
-          value={value.municipalityId ?? ''}
-          onChange={(e) => handleMunicipalityChange(e.target.value ? Number(e.target.value) : null)}
+          value={selectedMunicipalityValue}
+          onChange={(e) => handleMunicipalityChange(e.target.value)}
           disabled={disabled || !value.provinceId}
         >
           <option value="">— Seleziona città —</option>
-          {municipalities.map((m) => (
-            <option key={m.id} value={m.id}>
+          {municipalityOptions.map((m) => (
+            <option key={`${m.id}-${m.name}`} value={m.isFallback ? '__saved__' : m.id}>
               {m.name}
             </option>
           ))}
