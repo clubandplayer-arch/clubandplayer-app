@@ -6,7 +6,7 @@ import ClubOpenOpportunitiesWidget from '@/components/clubs/ClubOpenOpportunitie
 import PublicAuthorFeed from '@/components/feed/PublicAuthorFeed';
 import { buildClubDisplayName } from '@/lib/displayName';
 
-import { resolveCountryName, resolveStateName } from '@/lib/geodata/countryStateCityDataset';
+import { buildLocationLabel } from '@/lib/geo/locationLabel';
 import { getLatestOpenOpportunitiesByClub } from '@/lib/data/opportunities';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
@@ -31,6 +31,10 @@ type ClubProfileRow = {
   status: string | null;
   account_type: string | null;
   type: string | null;
+  interest_country?: string | null;
+  interest_region?: string | null;
+  interest_province?: string | null;
+  interest_city?: string | null;
 };
 
 type GenericStringError = { message: string };
@@ -66,6 +70,10 @@ async function loadClubProfile(id: string): Promise<ClubProfileRow | null> {
     'region',
     'province',
     'city',
+    'interest_country',
+    'interest_region',
+    'interest_province',
+    'interest_city',
     'avatar_url',
     'sport',
     'club_league_category',
@@ -101,10 +109,20 @@ async function loadClubProfile(id: string): Promise<ClubProfileRow | null> {
 }
 
 function locationLabel(row: ClubProfileRow): string {
-  const state = resolveStateName(row.country || null, row.region || row.province || '');
-  return [row.city, row.province, state, resolveCountryName(row.country || undefined)]
-    .filter(Boolean)
-    .join(' · ');
+  const interest = buildLocationLabel({
+    interest_city: row.interest_city ?? null,
+    interest_province: row.interest_province ?? null,
+    interest_region: row.interest_region ?? null,
+    interest_country: row.interest_country ?? row.country ?? null,
+  });
+  if (interest !== 'Località n/d') return interest;
+  const base = buildLocationLabel({
+    city: row.city ?? null,
+    province: row.province ?? null,
+    region: row.region ?? null,
+    country: row.country ?? null,
+  });
+  return base === 'Località n/d' ? '' : base;
 }
 
 export default async function ClubPublicProfilePage({ params }: { params: { id: string } }) {

@@ -7,12 +7,16 @@ export const fetchCache = 'default-no-store';
 
 import { useEffect, useState } from 'react';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
-import LocationPicker, { LocationValue } from '@/components/forms/LocationPicker';
+import { LocationFields, LocationValue } from '@/components/profiles/LocationFields';
 
 export default function LocationSettingsPage() {
   const supabase = supabaseBrowser();
 
   const [value, setValue] = useState<LocationValue>({
+    country: 'IT',
+    region: null,
+    province: null,
+    city: null,
     region_id: null,
     province_id: null,
     municipality_id: null,
@@ -28,15 +32,19 @@ export default function LocationSettingsPage() {
 
       const { data } = await supabase
         .from('profiles')
-        .select('region_id, province_id, municipality_id')
+        .select('country, region, province, city')
         .eq('id', user.id)
         .maybeSingle();
 
       if (data) {
         setValue({
-          region_id: data.region_id ?? null,
-          province_id: data.province_id ?? null,
-          municipality_id: data.municipality_id ?? null,
+          country: data.country ?? 'IT',
+          region: data.region ?? null,
+          province: data.province ?? null,
+          city: data.city ?? null,
+          region_id: (data as any)?.region_id ?? null,
+          province_id: (data as any)?.province_id ?? null,
+          municipality_id: (data as any)?.municipality_id ?? null,
         });
       }
     })();
@@ -52,9 +60,13 @@ export default function LocationSettingsPage() {
     const { error } = await supabase
       .from('profiles')
       .update({
-        region_id: value.region_id,
-        province_id: value.province_id,
-        municipality_id: value.municipality_id,
+        country: (value as any).country || null,
+        region: (value as any).region || null,
+        province: (value as any).province || null,
+        city: (value as any).city || null,
+        region_id: (value as any).country === 'IT' ? (value as any).region_id ?? null : null,
+        province_id: (value as any).country === 'IT' ? (value as any).province_id ?? null : null,
+        municipality_id: (value as any).country === 'IT' ? (value as any).municipality_id ?? null : null,
       })
       .eq('id', user.id);
 
@@ -68,7 +80,13 @@ export default function LocationSettingsPage() {
       <p className="lead">Imposta regione, provincia e comune del tuo profilo.</p>
 
       <div className="card p-4 mt-4">
-        <LocationPicker value={value} onChange={setValue} required />
+        <LocationFields
+          supabase={supabase}
+          mode="base"
+          value={value}
+          onChange={setValue as (v: LocationValue) => void}
+          label="Sede/Residenza"
+        />
         <div className="mt-4 flex gap-2">
           <button className="btn btn-brand" disabled={busy} onClick={save}>
             {busy ? 'Salvataggio…' : 'Salva'}

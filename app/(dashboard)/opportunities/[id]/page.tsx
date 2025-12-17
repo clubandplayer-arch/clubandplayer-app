@@ -5,6 +5,7 @@ import OpportunityActions from '@/components/opportunities/OpportunityActions';
 import FollowButton from '@/components/common/FollowButton';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { opportunityGenderLabel } from '@/lib/opps/gender';
+import { buildLocationLabel } from '@/lib/geo/locationLabel';
 
 function formatDateHuman(date: string | null | undefined) {
   if (!date) return '—';
@@ -52,7 +53,7 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
   const { data: clubProfile } = ownerId
     ? await supabase
         .from('profiles')
-        .select('id,user_id,display_name,full_name,avatar_url,city,country,profile_type,account_type')
+        .select('id,user_id,display_name,full_name,avatar_url,city,province,region,country,interest_city,interest_province,interest_region,interest_country,profile_type,account_type')
         .or(`id.eq.${ownerId},user_id.eq.${ownerId}`)
         .maybeSingle()
     : { data: null };
@@ -63,6 +64,18 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
     clubProfile?.full_name ??
     undefined;
   const clubProfileId = clubProfile?.id ?? clubId;
+  const clubLocation = clubProfile
+    ? buildLocationLabel({
+        interest_city: (clubProfile as any)?.interest_city ?? null,
+        interest_province: (clubProfile as any)?.interest_province ?? null,
+        interest_region: (clubProfile as any)?.interest_region ?? null,
+        interest_country: (clubProfile as any)?.interest_country ?? (clubProfile as any)?.country ?? null,
+        city: (clubProfile as any)?.city ?? null,
+        province: (clubProfile as any)?.province ?? null,
+        region: (clubProfile as any)?.region ?? null,
+        country: (clubProfile as any)?.country ?? null,
+      })
+    : 'Località n/d';
 
   const place = [opp.city, opp.province, opp.region, opp.country].filter(Boolean).join(', ');
   const categoryLabel = (opp as any).category ?? (opp as any).required_category ?? null;
@@ -138,7 +151,7 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
                   <Link href={clubProfileId ? `/clubs/${clubProfileId}` : '#'} className="font-semibold hover:underline">
                     {clubName ?? 'Club'}
                   </Link>
-                  <p className="text-sm text-gray-600">{clubProfile?.city || clubProfile?.country || 'Località n/d'}</p>
+                  <p className="text-sm text-gray-600">{clubLocation || 'Località n/d'}</p>
                 </div>
               </div>
 

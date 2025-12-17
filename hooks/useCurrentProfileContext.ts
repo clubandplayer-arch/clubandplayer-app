@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 
+import { buildLocationLabel } from '@/lib/geo/locationLabel';
+
 export type ProfileRole = 'guest' | 'athlete' | 'club';
 
 export type CurrentProfileContext = {
@@ -38,12 +40,27 @@ export function useCurrentProfileContext() {
         const data = meJson?.data || null;
         if (!active) return;
         if (data) {
+          const interestLocation = buildLocationLabel({
+            interest_city: data.interest_city ?? null,
+            interest_province: data.interest_province ?? null,
+            interest_region: data.interest_region ?? null,
+            interest_country: data.interest_country ?? data.country ?? null,
+          });
+          const fallbackLocation =
+            interestLocation === 'Località n/d'
+              ? buildLocationLabel({
+                  city: data.city ?? null,
+                  province: data.province ?? null,
+                  region: data.region ?? null,
+                  country: data.country ?? null,
+                })
+              : interestLocation;
           setProfile({
             id: data.id ?? null,
             account_type: data.account_type ?? nextRole ?? null,
             status: data.status ?? null,
             country: data.interest_country ?? data.country ?? null,
-            city: data.interest_city ?? data.city ?? null,
+            city: fallbackLocation === 'Località n/d' ? null : fallbackLocation,
             display_name: data.display_name ?? null,
             full_name: data.full_name ?? null,
           });

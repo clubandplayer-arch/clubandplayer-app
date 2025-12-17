@@ -1,25 +1,19 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { LocationFields, LocationFallback, LocationSelection } from '@/components/profiles/LocationFields';
-import { COUNTRIES } from '@/lib/opps/geo';
+import { LocationFields, LocationValue } from '@/components/profiles/LocationFields';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 export default function InterestAreaForm() {
   const supabase = useMemo(() => supabaseBrowser(), []);
 
   const [uid, setUid] = useState<string | null>(null);
-
-  const [country, setCountry] = useState('IT');
-  const [location, setLocation] = useState<LocationSelection>({
-    regionId: null,
-    provinceId: null,
-    municipalityId: null,
-    regionName: null,
-    provinceName: null,
-    cityName: null,
+  const [location, setLocation] = useState<LocationValue>({
+    interest_country: 'IT',
+    interest_region: null,
+    interest_province: null,
+    interest_city: null,
   });
-  const [fallback, setFallback] = useState<LocationFallback>({});
 
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
@@ -34,24 +28,16 @@ export default function InterestAreaForm() {
 
       const { data: p } = await supabase
         .from('profiles')
-        .select('interest_country, interest_region_id, interest_province_id, interest_municipality_id')
+        .select('interest_country, interest_region, interest_province, interest_city')
         .eq('id', u.id)
         .maybeSingle();
 
       if (p) {
-        if (p.interest_country) setCountry(p.interest_country);
         setLocation({
-          regionId: p.interest_region_id ?? null,
-          provinceId: p.interest_province_id ?? null,
-          municipalityId: p.interest_municipality_id ?? null,
-          regionName: null,
-          provinceName: null,
-          cityName: null,
-        });
-        setFallback({
-          region: null,
-          province: null,
-          city: null,
+          interest_country: (p as any)?.interest_country || 'IT',
+          interest_region: (p as any)?.interest_region || null,
+          interest_province: (p as any)?.interest_province || null,
+          interest_city: (p as any)?.interest_city || null,
         });
       }
     })();
@@ -62,13 +48,26 @@ export default function InterestAreaForm() {
     if (!uid) return;
     setSaving(true);
     setMsg('');
+    const interestValue = location as {
+      interest_country?: string | null;
+      interest_region?: string | null;
+      interest_province?: string | null;
+      interest_city?: string | null;
+      interest_region_id?: number | null;
+      interest_province_id?: number | null;
+      interest_municipality_id?: number | null;
+    };
+    const interestCountry = (interestValue.interest_country || 'IT').trim() || 'IT';
     const { error } = await supabase
       .from('profiles')
       .update({
-        interest_country: country || null,
-        interest_region_id: location.regionId || null,
-        interest_province_id: location.provinceId || null,
-        interest_municipality_id: location.municipalityId || null,
+        interest_country: interestValue.interest_country || null,
+        interest_region: interestValue.interest_region || null,
+        interest_province: interestValue.interest_province || null,
+        interest_city: interestValue.interest_city || null,
+        interest_region_id: interestCountry === 'IT' ? interestValue.interest_region_id ?? null : null,
+        interest_province_id: interestCountry === 'IT' ? interestValue.interest_province_id ?? null : null,
+        interest_municipality_id: interestCountry === 'IT' ? interestValue.interest_municipality_id ?? null : null,
       })
       .eq('id', uid);
 
@@ -85,31 +84,13 @@ export default function InterestAreaForm() {
         </p>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-        <label className="label">
-          Paese
-          <select className="select" value={country} onChange={(e) => setCountry(e.target.value)}>
-            {COUNTRIES.map((c) => (
-              <option key={c.code} value={c.code}>{c.label}</option>
-            ))}
-          </select>
-        </label>
-
-        {country === 'IT' ? (
-          <LocationFields
-            supabase={supabase}
-            country={country}
-            value={location}
-            fallback={fallback}
-            onChange={setLocation}
-            labels={{ region: 'Regione', province: 'Provincia', city: 'Città' }}
-          />
-        ) : (
-          <div className="md:col-span-3 text-sm text-gray-600">
-            La zona di interesse è supportata solo per località italiane.
-          </div>
-        )}
-      </div>
+      <LocationFields
+        supabase={supabase}
+        mode="interest"
+        value={location}
+        onChange={setLocation as (v: LocationValue) => void}
+        label="Zona di interesse"
+      />
 
       <div>
         <button onClick={save} disabled={saving} className="btn btn-brand">
