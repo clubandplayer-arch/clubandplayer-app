@@ -15,6 +15,9 @@ type BaseLocation = {
   region?: string | null;
   province?: string | null;
   city?: string | null;
+  region_id?: number | null;
+  province_id?: number | null;
+  municipality_id?: number | null;
 };
 
 type InterestLocation = {
@@ -22,6 +25,9 @@ type InterestLocation = {
   interest_region?: string | null;
   interest_province?: string | null;
   interest_city?: string | null;
+  interest_region_id?: number | null;
+  interest_province_id?: number | null;
+  interest_municipality_id?: number | null;
 };
 
 export type LocationValue = BaseLocation | InterestLocation;
@@ -40,6 +46,9 @@ type LocationKeys = {
   region: 'region' | 'interest_region';
   province: 'province' | 'interest_province';
   city: 'city' | 'interest_city';
+  regionId: 'region_id' | 'interest_region_id';
+  provinceId: 'province_id' | 'interest_province_id';
+  municipalityId: 'municipality_id' | 'interest_municipality_id';
 };
 
 const defaultLabels: Record<'base' | 'interest', string> = {
@@ -57,42 +66,59 @@ export function LocationFields<T extends LocationValue>({
 }: Props<T>) {
   const keys: LocationKeys =
     mode === 'base'
-      ? { country: 'country', region: 'region', province: 'province', city: 'city' }
+      ? {
+          country: 'country',
+          region: 'region',
+          province: 'province',
+          city: 'city',
+          regionId: 'region_id',
+          provinceId: 'province_id',
+          municipalityId: 'municipality_id',
+        }
       : {
           country: 'interest_country',
           region: 'interest_region',
           province: 'interest_province',
           city: 'interest_city',
+          regionId: 'interest_region_id',
+          provinceId: 'interest_province_id',
+          municipalityId: 'interest_municipality_id',
         };
 
   const currentCountry = ((value as any)[keys.country] as string | null) || 'IT';
   const currentRegion = ((value as any)[keys.region] as string | null) || null;
   const currentProvince = ((value as any)[keys.province] as string | null) || null;
   const currentCity = ((value as any)[keys.city] as string | null) || null;
+  const currentRegionIdFromValue = (value as any)[keys.regionId] as number | null | undefined;
+  const currentProvinceIdFromValue = (value as any)[keys.provinceId] as number | null | undefined;
+  const currentMunicipalityIdFromValue = (value as any)[keys.municipalityId] as number | null | undefined;
 
   const [regions, setRegions] = useState<LocationOption[]>([]);
   const [provinces, setProvinces] = useState<LocationOption[]>([]);
   const [municipalities, setMunicipalities] = useState<LocationOption[]>([]);
 
-  const [regionId, setRegionId] = useState<number | null>(null);
-  const [provinceId, setProvinceId] = useState<number | null>(null);
+  const [regionId, setRegionId] = useState<number | null>(currentRegionIdFromValue ?? null);
+  const [provinceId, setProvinceId] = useState<number | null>(currentProvinceIdFromValue ?? null);
 
   const title = label || defaultLabels[mode];
 
-  function updateLocation(patch: Partial<Record<keyof LocationKeys, string | null>>) {
+  function updateLocation(patch: Partial<Record<string, string | number | null>>) {
     const next = {
       ...value,
-      ...(patch.country !== undefined ? { [keys.country]: patch.country } : {}),
-      ...(patch.region !== undefined ? { [keys.region]: patch.region } : {}),
-      ...(patch.province !== undefined ? { [keys.province]: patch.province } : {}),
-      ...(patch.city !== undefined ? { [keys.city]: patch.city } : {}),
+      ...(patch[keys.country] !== undefined ? { [keys.country]: patch[keys.country] } : {}),
+      ...(patch[keys.region] !== undefined ? { [keys.region]: patch[keys.region] } : {}),
+      ...(patch[keys.province] !== undefined ? { [keys.province]: patch[keys.province] } : {}),
+      ...(patch[keys.city] !== undefined ? { [keys.city]: patch[keys.city] } : {}),
+      ...(patch[keys.regionId] !== undefined ? { [keys.regionId]: patch[keys.regionId] } : {}),
+      ...(patch[keys.provinceId] !== undefined ? { [keys.provinceId]: patch[keys.provinceId] } : {}),
+      ...(patch[keys.municipalityId] !== undefined ? { [keys.municipalityId]: patch[keys.municipalityId] } : {}),
     } as T;
     onChange(next);
   }
 
   useEffect(() => {
     if (!currentCountry) {
-      updateLocation({ country: 'IT' });
+      updateLocation({ [keys.country]: 'IT' });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentCountry]);
@@ -104,7 +130,14 @@ export function LocationFields<T extends LocationValue>({
       setMunicipalities([]);
       setRegionId(null);
       setProvinceId(null);
-      updateLocation({ region: null, province: null, city: currentCity });
+      updateLocation({
+        [keys.region]: null,
+        [keys.province]: null,
+        [keys.city]: currentCity,
+        [keys.regionId]: null,
+        [keys.provinceId]: null,
+        [keys.municipalityId]: null,
+      });
       return;
     }
 
@@ -123,9 +156,10 @@ export function LocationFields<T extends LocationValue>({
 
   useEffect(() => {
     if (currentCountry !== 'IT') return;
-    const matchedId = findMatchingLocationId(regions, currentRegion);
+    const matchedId =
+      currentRegionIdFromValue != null ? currentRegionIdFromValue : findMatchingLocationId(regions, currentRegion);
     setRegionId(matchedId);
-  }, [currentCountry, currentRegion, regions]);
+  }, [currentCountry, currentRegion, currentRegionIdFromValue, regions]);
 
   useEffect(() => {
     if (currentCountry !== 'IT') return;
@@ -133,7 +167,12 @@ export function LocationFields<T extends LocationValue>({
       setProvinces([]);
       setProvinceId(null);
       setMunicipalities([]);
-      updateLocation({ province: null, city: null });
+      updateLocation({
+        [keys.province]: null,
+        [keys.city]: null,
+        [keys.provinceId]: null,
+        [keys.municipalityId]: null,
+      });
       return;
     }
 
@@ -152,15 +191,16 @@ export function LocationFields<T extends LocationValue>({
 
   useEffect(() => {
     if (currentCountry !== 'IT') return;
-    const matchedId = findMatchingLocationId(provinces, currentProvince);
+    const matchedId =
+      currentProvinceIdFromValue != null ? currentProvinceIdFromValue : findMatchingLocationId(provinces, currentProvince);
     setProvinceId(matchedId);
-  }, [currentCountry, currentProvince, provinces]);
+  }, [currentCountry, currentProvince, currentProvinceIdFromValue, provinces]);
 
   useEffect(() => {
     if (currentCountry !== 'IT') return;
     if (provinceId == null) {
       setMunicipalities([]);
-      updateLocation({ city: null });
+      updateLocation({ [keys.city]: null, [keys.municipalityId]: null });
       return;
     }
 
@@ -186,18 +226,30 @@ export function LocationFields<T extends LocationValue>({
     const name = regions.find((r) => r.id === id)?.name ?? null;
     setRegionId(id);
     setProvinceId(null);
-    updateLocation({ region: name, province: null, city: null });
+    updateLocation({
+      [keys.region]: name,
+      [keys.province]: null,
+      [keys.city]: null,
+      [keys.regionId]: id,
+      [keys.provinceId]: null,
+      [keys.municipalityId]: null,
+    });
   };
 
   const handleProvinceChange = (id: number | null) => {
     const name = provinces.find((p) => p.id === id)?.name ?? null;
     setProvinceId(id);
-    updateLocation({ province: name, city: null });
+    updateLocation({
+      [keys.province]: name,
+      [keys.city]: null,
+      [keys.provinceId]: id,
+      [keys.municipalityId]: null,
+    });
   };
 
   const handleCityChange = (id: number | null) => {
     const name = municipalities.find((m) => m.id === id)?.name ?? null;
-    updateLocation({ city: name });
+    updateLocation({ [keys.city]: name, [keys.municipalityId]: id });
   };
 
   return (
@@ -207,7 +259,17 @@ export function LocationFields<T extends LocationValue>({
         <select
           className="w-full min-w-0 rounded-lg border p-2"
           value={currentCountry}
-          onChange={(e) => updateLocation({ country: e.target.value || null, region: null, province: null, city: null })}
+          onChange={(e) =>
+            updateLocation({
+              [keys.country]: e.target.value || null,
+              [keys.region]: null,
+              [keys.province]: null,
+              [keys.city]: null,
+              [keys.regionId]: null,
+              [keys.provinceId]: null,
+              [keys.municipalityId]: null,
+            })
+          }
           disabled={disabled}
         >
           {COUNTRIES.map((c) => (
@@ -261,7 +323,11 @@ export function LocationFields<T extends LocationValue>({
             <label className="text-sm text-gray-600">Città</label>
             <select
               className="w-full min-w-0 rounded-lg border p-2 disabled:bg-gray-50"
-              value={findMatchingLocationId(municipalities, currentCity) ?? ''}
+              value={
+                currentMunicipalityIdFromValue != null
+                  ? currentMunicipalityIdFromValue
+                  : findMatchingLocationId(municipalities, currentCity) ?? ''
+              }
               onChange={(e) => handleCityChange(e.target.value ? Number(e.target.value) : null)}
               disabled={disabled || !provinceId}
             >
@@ -281,7 +347,7 @@ export function LocationFields<T extends LocationValue>({
             <input
               className="w-full min-w-0 rounded-lg border p-2"
               value={currentRegion || ''}
-              onChange={(e) => updateLocation({ region: e.target.value || null })}
+              onChange={(e) => updateLocation({ [keys.region]: e.target.value || null })}
               placeholder="Es. California"
               disabled={disabled}
             />
@@ -291,7 +357,7 @@ export function LocationFields<T extends LocationValue>({
             <input
               className="w-full min-w-0 rounded-lg border p-2"
               value={currentProvince || ''}
-              onChange={(e) => updateLocation({ province: e.target.value || null })}
+              onChange={(e) => updateLocation({ [keys.province]: e.target.value || null })}
               placeholder="Opzionale"
               disabled={disabled}
             />
@@ -301,7 +367,7 @@ export function LocationFields<T extends LocationValue>({
             <input
               className="w-full min-w-0 rounded-lg border p-2"
               value={currentCity || ''}
-              onChange={(e) => updateLocation({ city: e.target.value || null })}
+              onChange={(e) => updateLocation({ [keys.city]: e.target.value || null })}
               placeholder="Es. Sydney"
               disabled={disabled}
             />

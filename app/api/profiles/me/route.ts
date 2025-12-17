@@ -46,6 +46,9 @@ const FIELDS: Record<string, 'text' | 'number' | 'bool' | 'json'> = {
   country: 'text', // nazionalità
   region: 'text',
   province: 'text',
+  region_id: 'number',
+  province_id: 'number',
+  municipality_id: 'number',
 
   // atleta (solo per account_type=athlete)
   birth_year: 'number',
@@ -68,6 +71,9 @@ const FIELDS: Record<string, 'text' | 'number' | 'bool' | 'json'> = {
 
   // interesse geo (comune)
   interest_country: 'text',
+  interest_region_id: 'number',
+  interest_province_id: 'number',
+  interest_municipality_id: 'number',
   interest_region: 'text',
   interest_province: 'text',
   interest_city: 'text',
@@ -106,6 +112,80 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
     .select('*')
     .eq('user_id', user.id)
     .maybeSingle();
+
+  if (data) {
+    const profile = { ...(data as any) };
+    const regionIds = new Set<number>();
+    const provinceIds = new Set<number>();
+    const municipalityIds = new Set<number>();
+
+    const pushNumber = (set: Set<number>, v: any) => {
+      const n = Number(v);
+      if (Number.isFinite(n)) set.add(n);
+    };
+
+    pushNumber(regionIds, profile.region_id);
+    pushNumber(regionIds, profile.residence_region_id);
+    pushNumber(regionIds, profile.interest_region_id);
+    pushNumber(provinceIds, profile.province_id);
+    pushNumber(provinceIds, profile.residence_province_id);
+    pushNumber(provinceIds, profile.interest_province_id);
+    pushNumber(municipalityIds, profile.municipality_id);
+    pushNumber(municipalityIds, profile.residence_municipality_id);
+    pushNumber(municipalityIds, profile.interest_municipality_id);
+
+    const [regionRows, provinceRows, municipalityRows] = await Promise.all([
+      regionIds.size
+        ? supabase.from('regions').select('id,name').in('id', Array.from(regionIds))
+        : Promise.resolve({ data: [] }),
+      provinceIds.size
+        ? supabase.from('provinces').select('id,name').in('id', Array.from(provinceIds))
+        : Promise.resolve({ data: [] }),
+      municipalityIds.size
+        ? supabase.from('municipalities').select('id,name').in('id', Array.from(municipalityIds))
+        : Promise.resolve({ data: [] }),
+    ]);
+
+    const regionMap = new Map<number, string>();
+    const provinceMap = new Map<number, string>();
+    const municipalityMap = new Map<number, string>();
+    (regionRows.data || []).forEach((r: any) => regionMap.set(Number(r.id), r.name));
+    (provinceRows.data || []).forEach((r: any) => provinceMap.set(Number(r.id), r.name));
+    (municipalityRows.data || []).forEach((r: any) => municipalityMap.set(Number(r.id), r.name));
+
+    const ensureBaseLocation = profile.country === 'IT';
+    const ensureInterestLocation = (profile.interest_country || profile.country) === 'IT';
+
+    const pickBaseRegionId = profile.region_id ?? profile.residence_region_id ?? null;
+    const pickBaseProvinceId = profile.province_id ?? profile.residence_province_id ?? null;
+    const pickBaseMunicipalityId = profile.municipality_id ?? profile.residence_municipality_id ?? null;
+
+    if (ensureBaseLocation) {
+      if (!profile.region && pickBaseRegionId && regionMap.has(pickBaseRegionId)) {
+        profile.region = regionMap.get(pickBaseRegionId);
+      }
+      if (!profile.province && pickBaseProvinceId && provinceMap.has(pickBaseProvinceId)) {
+        profile.province = provinceMap.get(pickBaseProvinceId);
+      }
+      if (!profile.city && pickBaseMunicipalityId && municipalityMap.has(pickBaseMunicipalityId)) {
+        profile.city = municipalityMap.get(pickBaseMunicipalityId);
+      }
+    }
+
+    if (ensureInterestLocation) {
+      if (!profile.interest_region && profile.interest_region_id && regionMap.has(profile.interest_region_id)) {
+        profile.interest_region = regionMap.get(profile.interest_region_id);
+      }
+      if (!profile.interest_province && profile.interest_province_id && provinceMap.has(profile.interest_province_id)) {
+        profile.interest_province = provinceMap.get(profile.interest_province_id);
+      }
+      if (!profile.interest_city && profile.interest_municipality_id && municipalityMap.has(profile.interest_municipality_id)) {
+        profile.interest_city = municipalityMap.get(profile.interest_municipality_id);
+      }
+    }
+
+    return NextResponse.json({ data: profile });
+  }
 
   if (error) return jsonError(error.message, 400);
   return NextResponse.json({ data: data ?? null });

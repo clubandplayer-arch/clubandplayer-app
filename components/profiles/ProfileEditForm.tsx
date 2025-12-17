@@ -136,12 +136,23 @@ export default function ProfileEditForm() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [bio, setBio] = useState('');
 
-  type BaseLocationState = { country: string | null; region?: string | null; province?: string | null; city?: string | null };
+  type BaseLocationState = {
+    country: string | null;
+    region?: string | null;
+    province?: string | null;
+    city?: string | null;
+    region_id?: number | null;
+    province_id?: number | null;
+    municipality_id?: number | null;
+  };
   type InterestLocationState = {
     interest_country: string | null;
     interest_region?: string | null;
     interest_province?: string | null;
     interest_city?: string | null;
+    interest_region_id?: number | null;
+    interest_province_id?: number | null;
+    interest_municipality_id?: number | null;
   };
   const [baseLocation, setBaseLocation] = useState<BaseLocationState>({
     country: 'IT',
@@ -320,6 +331,9 @@ export default function ProfileEditForm() {
       region: p.region ?? null,
       province: p.province ?? null,
       city: p.city ?? null,
+      region_id: (p as any)?.region_id ?? (p as any)?.residence_region_id ?? null,
+      province_id: (p as any)?.province_id ?? (p as any)?.residence_province_id ?? null,
+      municipality_id: (p as any)?.municipality_id ?? (p as any)?.residence_municipality_id ?? null,
     });
 
     // atleta
@@ -336,6 +350,9 @@ export default function ProfileEditForm() {
       interest_region: p.interest_region || null,
       interest_province: p.interest_province || null,
       interest_city: p.interest_city || null,
+      interest_region_id: (p as any)?.interest_region_id ?? null,
+      interest_province_id: (p as any)?.interest_province_id ?? null,
+      interest_municipality_id: (p as any)?.interest_municipality_id ?? null,
     });
 
     setFoot(p.foot || '');
@@ -432,6 +449,21 @@ export default function ProfileEditForm() {
         textOrNull(interestLocation.interest_province) || (isClub ? baseProvince : null);
       const effectiveInterestCity =
         textOrNull(interestLocation.interest_city) || (isClub ? baseCity : null);
+      const baseRegionId = normalizedBaseCountry === 'IT' ? baseLocation.region_id ?? null : null;
+      const baseProvinceId = normalizedBaseCountry === 'IT' ? baseLocation.province_id ?? null : null;
+      const baseMunicipalityId = normalizedBaseCountry === 'IT' ? baseLocation.municipality_id ?? null : null;
+      const interestRegionId =
+        effectiveInterestCountry === 'IT'
+          ? interestLocation.interest_region_id ?? (isClub ? baseLocation.region_id ?? null : null)
+          : null;
+      const interestProvinceId =
+        effectiveInterestCountry === 'IT'
+          ? interestLocation.interest_province_id ?? (isClub ? baseLocation.province_id ?? null : null)
+          : null;
+      const interestMunicipalityId =
+        effectiveInterestCountry === 'IT'
+          ? interestLocation.interest_municipality_id ?? (isClub ? baseLocation.municipality_id ?? null : null)
+          : null;
 
       const basePayload: any = {
         full_name: textOrNull(fullName),
@@ -440,6 +472,9 @@ export default function ProfileEditForm() {
         region: baseRegion,
         province: baseProvince,
         city: baseCity,
+        region_id: baseRegionId,
+        province_id: baseProvinceId,
+        municipality_id: baseMunicipalityId,
         avatar_url: avatarUrl || null,
 
         // interesse
@@ -447,6 +482,9 @@ export default function ProfileEditForm() {
         interest_region: effectiveInterestRegion,
         interest_province: effectiveInterestProvince,
         interest_city: effectiveInterestCity,
+        interest_region_id: interestRegionId,
+        interest_province_id: interestProvinceId,
+        interest_municipality_id: interestMunicipalityId,
 
         // social & notifiche
         links,

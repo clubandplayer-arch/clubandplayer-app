@@ -53,7 +53,11 @@ export default function InterestAreaForm() {
       interest_region?: string | null;
       interest_province?: string | null;
       interest_city?: string | null;
+      interest_region_id?: number | null;
+      interest_province_id?: number | null;
+      interest_municipality_id?: number | null;
     };
+    const interestCountry = (interestValue.interest_country || 'IT').trim() || 'IT';
     const { error } = await supabase
       .from('profiles')
       .update({
@@ -61,6 +65,9 @@ export default function InterestAreaForm() {
         interest_region: interestValue.interest_region || null,
         interest_province: interestValue.interest_province || null,
         interest_city: interestValue.interest_city || null,
+        interest_region_id: interestCountry === 'IT' ? interestValue.interest_region_id ?? null : null,
+        interest_province_id: interestCountry === 'IT' ? interestValue.interest_province_id ?? null : null,
+        interest_municipality_id: interestCountry === 'IT' ? interestValue.interest_municipality_id ?? null : null,
       })
       .eq('id', uid);
 

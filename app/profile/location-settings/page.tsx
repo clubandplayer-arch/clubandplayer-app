@@ -17,6 +17,9 @@ export default function LocationSettingsPage() {
     region: null,
     province: null,
     city: null,
+    region_id: null,
+    province_id: null,
+    municipality_id: null,
   });
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -39,6 +42,9 @@ export default function LocationSettingsPage() {
           region: data.region ?? null,
           province: data.province ?? null,
           city: data.city ?? null,
+          region_id: (data as any)?.region_id ?? null,
+          province_id: (data as any)?.province_id ?? null,
+          municipality_id: (data as any)?.municipality_id ?? null,
         });
       }
     })();
@@ -58,6 +64,9 @@ export default function LocationSettingsPage() {
         region: (value as any).region || null,
         province: (value as any).province || null,
         city: (value as any).city || null,
+        region_id: (value as any).country === 'IT' ? (value as any).region_id ?? null : null,
+        province_id: (value as any).country === 'IT' ? (value as any).province_id ?? null : null,
+        municipality_id: (value as any).country === 'IT' ? (value as any).municipality_id ?? null : null,
       })
       .eq('id', user.id);
 
