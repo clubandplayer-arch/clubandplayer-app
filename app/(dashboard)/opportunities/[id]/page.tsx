@@ -1,8 +1,8 @@
 import Link from 'next/link';
-import Image from 'next/image';
 
 import OpportunityActions from '@/components/opportunities/OpportunityActions';
 import FollowButton from '@/components/common/FollowButton';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { opportunityGenderLabel } from '@/lib/opps/gender';
 import { getCountryName } from '@/lib/geo/countries';
@@ -160,19 +160,15 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
           <div className="rounded-2xl border bg-white/80 p-4 shadow-sm space-y-3">
             <h3 className="text-lg font-semibold">Club</h3>
             <div className="flex items-center gap-3">
-              {clubAvatarUrl ? (
-                <Image
-                  src={clubAvatarUrl}
+              <Avatar className="h-14 w-14 border bg-gray-100" data-avatar-src={clubAvatarUrl ?? ''}>
+                <AvatarImage
+                  src={clubAvatarUrl ?? undefined}
                   alt={clubName ?? 'Club'}
-                  width={56}
-                  height={56}
-                  className="h-14 w-14 rounded-full border object-cover"
                 />
-              ) : (
-                <div className="flex h-14 w-14 items-center justify-center rounded-full border bg-gray-100 text-lg font-semibold">
-                  {(clubName || 'C')[0]}
-                </div>
-              )}
+                <AvatarFallback className="text-lg font-semibold">
+                  {clubName?.[0]?.toUpperCase() ?? 'C'}
+                </AvatarFallback>
+              </Avatar>
               <div className="min-w-0">
                 <Link href={clubProfileId ? `/clubs/${clubProfileId}` : '#'} className="font-semibold hover:underline">
                   {clubName ?? 'Club'}
