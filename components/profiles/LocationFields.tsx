@@ -9,7 +9,6 @@ import {
   LocationOption,
   normalizeLocation,
 } from '@/lib/geo/location';
-import { isEuCountry } from '@/lib/geo/countries';
 
 export type LocationSelection = {
   regionId: number | null;
@@ -98,6 +97,7 @@ export function LocationFields({
     if (country === prevCountryRef.current) return;
 
     const switchedToNonIT = country !== 'IT';
+    const switchedToIT = prevCountryRef.current !== 'IT' && country === 'IT';
     if (switchedToNonIT) {
       if (value.regionId || value.provinceId || value.municipalityId || value.provinceName) {
         onChange({
@@ -111,6 +111,9 @@ export function LocationFields({
       setProvinces([]);
       setMunicipalities([]);
       setCityFallback(value.cityName || fallback?.city || null);
+      didInitCity.current = false;
+    } else if (switchedToIT) {
+      setCityFallback(null);
       didInitCity.current = false;
     }
 
@@ -285,7 +288,7 @@ export function LocationFields({
               })
             }
             disabled={disabled}
-            required={isEuCountry(country)}
+            required={country.trim().toUpperCase() !== 'IT'}
             placeholder="Es. Parigi"
           />
         </div>

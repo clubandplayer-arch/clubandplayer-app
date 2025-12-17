@@ -13,7 +13,7 @@ import {
   LocationSelection,
 } from '@/components/profiles/LocationFields';
 import { SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
-import { EU_COUNTRY_OPTIONS } from '@/lib/geo/countries';
+import { WORLD_COUNTRY_OPTIONS } from '@/lib/geo/countries';
 import { MAX_SKILLS, MAX_SKILL_LENGTH, normalizeProfileSkills, toDbSkills } from '@/lib/profiles/skills';
 import { ProfileSkill } from '@/types/profile';
 import { CATEGORIES_BY_SPORT, CLUB_SPORT_OPTIONS, DEFAULT_CLUB_CATEGORIES } from '@/lib/opps/categories';
@@ -716,7 +716,7 @@ export default function ProfileEditForm() {
                     value={country}
                     onChange={(e) => setCountry(e.target.value)}
                   >
-                    {EU_COUNTRY_OPTIONS.map((c) => (
+                    {WORLD_COUNTRY_OPTIONS.map((c) => (
                       <option key={c.code} value={c.code}>
                         {c.name}
                       </option>
@@ -902,7 +902,7 @@ export default function ProfileEditForm() {
                   value={country}
                   onChange={(e) => setCountry(e.target.value)}
                 >
-                  {EU_COUNTRY_OPTIONS.map((c) => (
+                  {WORLD_COUNTRY_OPTIONS.map((c) => (
                     <option key={c.code} value={c.code}>
                       {c.name}
                     </option>
@@ -1079,7 +1079,7 @@ export default function ProfileEditForm() {
                   value={interestCountry}
                   onChange={(e) => setInterestCountry(e.target.value)}
                 >
-                  {EU_COUNTRY_OPTIONS.map((c) => (
+                  {WORLD_COUNTRY_OPTIONS.map((c) => (
                     <option key={c.code} value={c.code}>
                       {c.name}
                     </option>

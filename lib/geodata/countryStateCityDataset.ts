@@ -1,5 +1,6 @@
 // Minimal dataset derivato da dr5hn/countries-states-cities-database
 // Limitato ai casi più frequenti nell'app, senza chiamate API esterne.
+import { getCountryName } from '@/lib/geo/countries';
 export type DatasetState = {
   name: string;
   isoCode?: string;
@@ -54,6 +55,8 @@ export const COUNTRY_STATE_CITY_DATA: DatasetCountry[] = [
 export function resolveCountryName(code?: string | null): string {
   if (!code) return '';
   const normalized = code.trim().toUpperCase();
+  const fromWorld = getCountryName(normalized);
+  if (fromWorld) return fromWorld;
   const hit = COUNTRY_STATE_CITY_DATA.find((c) => c.isoCode === normalized);
   return hit?.name ?? normalized;
 }
