@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { SupabaseClient } from '@supabase/supabase-js';
 
 import { COUNTRIES } from '@/lib/opps/geo';
+import { EU_COUNTRIES, EU_WHITELIST } from '@/lib/geo/data/eu';
 import {
   fetchLocationChildren,
   findMatchingLocationId,
@@ -86,6 +87,8 @@ export function LocationFields<T extends LocationValue>({
         };
 
   const currentCountry = ((value as any)[keys.country] as string | null) || 'IT';
+  const isItaly = currentCountry === 'IT';
+  const isEu = EU_WHITELIST.includes(currentCountry);
   const currentRegion = ((value as any)[keys.region] as string | null) || null;
   const currentProvince = ((value as any)[keys.province] as string | null) || null;
   const currentCity = ((value as any)[keys.city] as string | null) || null;
@@ -124,7 +127,7 @@ export function LocationFields<T extends LocationValue>({
   }, [currentCountry]);
 
   useEffect(() => {
-    if (currentCountry !== 'IT') {
+    if (!isItaly) {
       setRegions([]);
       setProvinces([]);
       setMunicipalities([]);
@@ -155,14 +158,14 @@ export function LocationFields<T extends LocationValue>({
   }, [currentCountry, supabase]);
 
   useEffect(() => {
-    if (currentCountry !== 'IT') return;
+    if (!isItaly) return;
     const matchedId =
       currentRegionIdFromValue != null ? currentRegionIdFromValue : findMatchingLocationId(regions, currentRegion);
     setRegionId(matchedId);
-  }, [currentCountry, currentRegion, currentRegionIdFromValue, regions]);
+  }, [currentCountry, currentRegion, currentRegionIdFromValue, regions, isItaly]);
 
   useEffect(() => {
-    if (currentCountry !== 'IT') return;
+    if (!isItaly) return;
     if (regionId == null) {
       setProvinces([]);
       setProvinceId(null);
@@ -190,14 +193,14 @@ export function LocationFields<T extends LocationValue>({
   }, [currentCountry, regionId, supabase]);
 
   useEffect(() => {
-    if (currentCountry !== 'IT') return;
+    if (!isItaly) return;
     const matchedId =
       currentProvinceIdFromValue != null ? currentProvinceIdFromValue : findMatchingLocationId(provinces, currentProvince);
     setProvinceId(matchedId);
-  }, [currentCountry, currentProvince, currentProvinceIdFromValue, provinces]);
+  }, [currentCountry, currentProvince, currentProvinceIdFromValue, provinces, isItaly]);
 
   useEffect(() => {
-    if (currentCountry !== 'IT') return;
+    if (!isItaly) return;
     if (provinceId == null) {
       setMunicipalities([]);
       updateLocation({ [keys.city]: null, [keys.municipalityId]: null });
@@ -283,7 +286,7 @@ export function LocationFields<T extends LocationValue>({
         ) : null}
       </div>
 
-      {currentCountry === 'IT' ? (
+      {isItaly ? (
         <>
           <div className="flex min-w-0 flex-col gap-1">
             <label className="text-sm text-gray-600">Regione</label>
@@ -340,39 +343,39 @@ export function LocationFields<T extends LocationValue>({
             </select>
           </div>
         </>
-      ) : (
+      ) : isEu ? (
         <>
           <div className="flex min-w-0 flex-col gap-1">
-            <label className="text-sm text-gray-600">Regione / Stato</label>
+            <label className="text-sm text-gray-600">Regione / Stato (opzionale)</label>
             <input
               className="w-full min-w-0 rounded-lg border p-2"
               value={currentRegion || ''}
               onChange={(e) => updateLocation({ [keys.region]: e.target.value || null })}
-              placeholder="Es. California"
-              disabled={disabled}
-            />
-          </div>
-          <div className="flex min-w-0 flex-col gap-1">
-            <label className="text-sm text-gray-600">Provincia</label>
-            <input
-              className="w-full min-w-0 rounded-lg border p-2"
-              value={currentProvince || ''}
-              onChange={(e) => updateLocation({ [keys.province]: e.target.value || null })}
-              placeholder="Opzionale"
+              placeholder="Es. Île-de-France"
               disabled={disabled}
             />
           </div>
           <div className="flex min-w-0 flex-col gap-1">
             <label className="text-sm text-gray-600">Città</label>
-            <input
+            <select
               className="w-full min-w-0 rounded-lg border p-2"
-              value={currentCity || ''}
+              value={(currentCity || '').trim()}
               onChange={(e) => updateLocation({ [keys.city]: e.target.value || null })}
-              placeholder="Es. Sydney"
               disabled={disabled}
-            />
+            >
+              <option value="">— Seleziona città —</option>
+              {(EU_COUNTRIES.find((c) => c.iso2 === currentCountry)?.cities || []).map((city) => (
+                <option key={city} value={city}>
+                  {city}
+                </option>
+              ))}
+            </select>
           </div>
         </>
+      ) : (
+        <div className="col-span-1 md:col-span-3 text-sm text-red-600">
+          Paese non supportato in questa fase.
+        </div>
       )}
     </div>
   );

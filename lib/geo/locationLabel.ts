@@ -1,4 +1,5 @@
 import { COUNTRY_STATE_CITY_DATA } from '@/lib/geodata/countryStateCityDataset';
+import { EU_COUNTRIES } from '@/lib/geo/data/eu';
 
 type BaseLocation = {
   country?: string | null;
@@ -20,9 +21,13 @@ function resolveCountryLabel(code?: string | null): string | null {
   const normalized = (code || '').trim().toUpperCase();
   if (!normalized) return null;
 
+  const euName = EU_COUNTRIES.find((c) => c.iso2 === normalized)?.name;
+  if (euName) return euName;
+
   try {
     const dn = new Intl.DisplayNames(['it'], { type: 'region' });
-    return dn.of(normalized) || normalized;
+    const intl = dn.of(normalized);
+    if (intl) return intl;
   } catch {
     // ignore
   }
