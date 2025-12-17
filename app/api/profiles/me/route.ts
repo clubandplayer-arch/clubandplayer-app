@@ -6,10 +6,14 @@ import { MAX_SKILLS, parseSkillsInput } from '@/lib/profiles/skills';
 export const runtime = 'nodejs';
 
 /* ------------------------ utils di normalizzazione ------------------------ */
-function toTextOrNull(v: unknown) {
+function normalizeSpaces(v: string) {
+  return v.replace(/\s+/g, ' ').trim();
+}
+function toTextOrNull(v: unknown, { collapseSpaces = false }: { collapseSpaces?: boolean } = {}) {
   if (v === null || v === undefined) return null;
   const t = String(v).trim();
-  return t === '' ? null : t;
+  if (t === '') return null;
+  return collapseSpaces ? normalizeSpaces(t) : t;
 }
 function toNumberOrNull(v: unknown) {
   if (v === '' || v === null || v === undefined) return null;
@@ -132,6 +136,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
 
   const updates: Record<string, any> = {};
+  const collapseText = new Set(['city', 'interest_city', 'region', 'province', 'interest_region', 'interest_province']);
   for (const [key, kind] of Object.entries(FIELDS)) {
     if (!(key in body)) continue;
     const val = body[key];
@@ -142,13 +147,16 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
       updates.skills = parsed;
       continue;
     }
-    if (kind === 'text') updates[key] = toTextOrNull(val);
+    if (kind === 'text') updates[key] = toTextOrNull(val, { collapseSpaces: collapseText.has(key) });
     if (kind === 'number') updates[key] = toNumberOrNull(val);
     if (kind === 'bool') updates[key] = toBool(val);
     if (kind === 'json') updates[key] = toJsonOrNull(val);
   }
 
   if (updates.interest_country === undefined) updates.interest_country = 'IT';
+  if (updates.country) updates.country = updates.country.toString().trim().toUpperCase();
+  if (updates.interest_country) updates.interest_country = updates.interest_country.toString().trim().toUpperCase();
+  if (updates.birth_country) updates.birth_country = updates.birth_country.toString().trim().toUpperCase();
 
   let currentProfile: { account_type: string | null; role: string | null } | null = null;
   const { data: existingProfile } = await supabase

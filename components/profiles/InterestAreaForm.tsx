@@ -8,8 +8,6 @@ import { supabaseBrowser } from '@/lib/supabaseBrowser';
 export default function InterestAreaForm() {
   const supabase = useMemo(() => supabaseBrowser(), []);
 
-  const [uid, setUid] = useState<string | null>(null);
-
   const [country, setCountry] = useState('IT');
   const [location, setLocation] = useState<LocationSelection>({
     regionId: null,
@@ -23,58 +21,83 @@ export default function InterestAreaForm() {
 
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
+  const [loading, setLoading] = useState(true);
 
   // load iniziale
   useEffect(() => {
+    let cancelled = false;
     (async () => {
-      const { data: ures } = await supabase.auth.getUser();
-      const u = ures?.user ?? null;
-      if (!u) return;
-      setUid(u.id);
+      try {
+        setLoading(true);
+        const res = await fetch('/api/profiles/me', { credentials: 'include' });
+        const json = await res.json().catch(() => ({}));
+        const p = json?.data ?? null;
+        if (!p || cancelled) return;
 
-      const { data: p } = await supabase
-        .from('profiles')
-        .select('interest_country, interest_region_id, interest_province_id, interest_municipality_id')
-        .eq('id', u.id)
-        .maybeSingle();
-
-      if (p) {
         if (p.interest_country) setCountry(p.interest_country);
         setLocation({
           regionId: p.interest_region_id ?? null,
           provinceId: p.interest_province_id ?? null,
           municipalityId: p.interest_municipality_id ?? null,
-          regionName: null,
-          provinceName: null,
-          cityName: null,
+          regionName: p.interest_region ?? null,
+          provinceName: p.interest_province ?? null,
+          cityName: p.interest_city ?? null,
         });
         setFallback({
-          region: null,
-          province: null,
-          city: null,
+          region: p.interest_region ?? null,
+          province: p.interest_province ?? null,
+          city: p.interest_city ?? null,
         });
+      } catch (error) {
+        console.error('[InterestAreaForm] load failed', error);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const save = async () => {
-    if (!uid) return;
     setSaving(true);
     setMsg('');
-    const { error } = await supabase
-      .from('profiles')
-      .update({
-        interest_country: country || null,
-        interest_region_id: location.regionId || null,
-        interest_province_id: location.provinceId || null,
-        interest_municipality_id: location.municipalityId || null,
-      })
-      .eq('id', uid);
+    const payload =
+      country === 'IT'
+        ? {
+            interest_country: country || null,
+            interest_region_id: location.regionId || null,
+            interest_province_id: location.provinceId || null,
+            interest_municipality_id: location.municipalityId || null,
+            interest_region: location.regionName || fallback.region || null,
+            interest_province: location.provinceName || fallback.province || null,
+            interest_city: location.cityName || fallback.city || null,
+          }
+        : {
+            interest_country: country || null,
+            interest_region_id: null,
+            interest_province_id: null,
+            interest_municipality_id: null,
+            interest_region: null,
+            interest_province: null,
+            interest_city: null,
+          };
 
-    setSaving(false);
-    if (error) setMsg(`Errore: ${error.message}`);
-    else setMsg('Salvato.');
+    try {
+      const res = await fetch('/api/profiles/me', {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error || 'Errore salvataggio');
+      setMsg('Salvato.');
+    } catch (error: any) {
+      setMsg(`Errore: ${error?.message || 'Salvataggio non riuscito'}`);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -88,7 +111,7 @@ export default function InterestAreaForm() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         <label className="label">
           Paese
-          <select className="select" value={country} onChange={(e) => setCountry(e.target.value)}>
+          <select className="select" value={country} onChange={(e) => setCountry(e.target.value)} disabled={loading}>
             {COUNTRIES.map((c) => (
               <option key={c.code} value={c.code}>{c.label}</option>
             ))}
@@ -103,6 +126,7 @@ export default function InterestAreaForm() {
             fallback={fallback}
             onChange={setLocation}
             labels={{ region: 'Regione', province: 'Provincia', city: 'Città' }}
+            disabled={loading}
           />
         ) : (
           <div className="md:col-span-3 text-sm text-gray-600">
@@ -112,7 +136,7 @@ export default function InterestAreaForm() {
       </div>
 
       <div>
-        <button onClick={save} disabled={saving} className="btn btn-brand">
+        <button onClick={save} disabled={saving || loading} className="btn btn-brand">
           {saving ? 'Salvataggio…' : 'Salva'}
         </button>
       </div>
