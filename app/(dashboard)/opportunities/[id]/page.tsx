@@ -79,13 +79,37 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
   const ownerId = (opp as any).owner_id ?? (opp as any).created_by ?? null;
   const clubId = (opp as any).club_id ?? ownerId ?? null;
 
-  const { data: clubProfile } = ownerId
-    ? await supabase
-        .from('profiles')
-        .select('id,user_id,display_name,full_name,avatar_url,city,province,region,country,profile_type,account_type')
-        .or(`id.eq.${ownerId},user_id.eq.${ownerId}`)
-        .maybeSingle()
-    : { data: null };
+  let clubProfile: {
+    id: string;
+    user_id: string | null;
+    display_name: string | null;
+    full_name: string | null;
+    avatar_url: string | null;
+    city: string | null;
+    province: string | null;
+    region: string | null;
+    country: string | null;
+    profile_type?: string | null;
+    account_type?: string | null;
+  } | null = null;
+
+  if (ownerId) {
+    const { data } = await supabase
+      .from('profiles')
+      .select('id,user_id,display_name,full_name,avatar_url,city,province,region,country,profile_type,account_type')
+      .eq('user_id', ownerId)
+      .maybeSingle();
+    clubProfile = data ?? null;
+  }
+
+  if (!clubProfile && clubId) {
+    const { data } = await supabase
+      .from('profiles')
+      .select('id,user_id,display_name,full_name,avatar_url,city,province,region,country,profile_type,account_type')
+      .eq('id', clubId)
+      .maybeSingle();
+    clubProfile = data ?? null;
+  }
 
   const clubName =
     opp.club_name ??
