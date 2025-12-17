@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { LocationFields, LocationFallback, LocationSelection } from '@/components/profiles/LocationFields';
-import { COUNTRIES } from '@/lib/opps/geo';
+import { EU_COUNTRY_OPTIONS } from '@/lib/geo/countries';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 export default function InterestAreaForm() {
@@ -112,27 +112,21 @@ export default function InterestAreaForm() {
         <label className="label">
           Paese
           <select className="select" value={country} onChange={(e) => setCountry(e.target.value)} disabled={loading}>
-            {COUNTRIES.map((c) => (
-              <option key={c.code} value={c.code}>{c.label}</option>
+            {EU_COUNTRY_OPTIONS.map((c) => (
+              <option key={c.code} value={c.code}>{c.name}</option>
             ))}
           </select>
         </label>
 
-        {country === 'IT' ? (
-          <LocationFields
-            supabase={supabase}
-            country={country}
-            value={location}
-            fallback={fallback}
-            onChange={setLocation}
-            labels={{ region: 'Regione', province: 'Provincia', city: 'Città' }}
-            disabled={loading}
-          />
-        ) : (
-          <div className="md:col-span-3 text-sm text-gray-600">
-            La zona di interesse è supportata solo per località italiane.
-          </div>
-        )}
+        <LocationFields
+          supabase={supabase}
+          country={country}
+          value={location}
+          fallback={fallback}
+          onChange={setLocation}
+          labels={{ region: 'Regione', province: 'Provincia', city: 'Città' }}
+          disabled={loading}
+        />
       </div>
 
       <div>

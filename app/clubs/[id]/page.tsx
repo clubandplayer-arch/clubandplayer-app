@@ -6,7 +6,8 @@ import ClubOpenOpportunitiesWidget from '@/components/clubs/ClubOpenOpportunitie
 import PublicAuthorFeed from '@/components/feed/PublicAuthorFeed';
 import { buildClubDisplayName } from '@/lib/displayName';
 
-import { resolveCountryName, resolveStateName } from '@/lib/geodata/countryStateCityDataset';
+import { resolveStateName } from '@/lib/geodata/countryStateCityDataset';
+import { getCountryName } from '@/lib/geo/countries';
 import { getLatestOpenOpportunitiesByClub } from '@/lib/data/opportunities';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
@@ -102,7 +103,8 @@ async function loadClubProfile(id: string): Promise<ClubProfileRow | null> {
 
 function locationLabel(row: ClubProfileRow): string {
   const state = resolveStateName(row.country || null, row.region || row.province || '');
-  return [row.city, row.province, state, resolveCountryName(row.country || undefined)]
+  const countryLabel = getCountryName(row.country || undefined) ?? (row.country || '');
+  return [row.city, row.province, state, countryLabel]
     .filter(Boolean)
     .join(' · ');
 }

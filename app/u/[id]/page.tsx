@@ -12,6 +12,7 @@ import ProfileHeader from '@/components/profiles/ProfileHeader'
 import { buildPlayerDisplayName } from '@/lib/displayName'
 import { buildEndorsedSet, normalizeProfileSkills, normalizeSkillName } from '@/lib/profiles/skills'
 import { ProfileSkill } from '@/types/profile'
+import { getCountryName } from '@/lib/geo/countries'
 
 type Profile = {
   id: string
@@ -53,7 +54,8 @@ function buildTagline(p: Profile): string {
 }
 
 function buildLocation(p: Profile): string | null {
-  const parts = [p.city, p.province, p.region, p.country]
+  const countryLabel = getCountryName(p.country) ?? (p.country ?? '')
+  const parts = [p.city, p.province, p.region, countryLabel]
     .map((part) => (part ?? '').trim())
     .filter(Boolean)
   return parts.length ? parts.join(' · ') : null

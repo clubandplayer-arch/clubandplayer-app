@@ -252,3 +252,47 @@ export const COUNTRIES: CountryOption[] = [
   { code: 'ZW', label: 'Zimbabwe' },
   { code: 'OTHER', label: 'Altro…' },
 ];
+
+export const EU_COUNTRY_OPTIONS: Array<{ code: string; name: string }> = [
+  { code: 'AT', name: 'Austria' },
+  { code: 'BE', name: 'Belgio' },
+  { code: 'BG', name: 'Bulgaria' },
+  { code: 'HR', name: 'Croazia' },
+  { code: 'CY', name: 'Cipro' },
+  { code: 'CZ', name: 'Repubblica Ceca' },
+  { code: 'DK', name: 'Danimarca' },
+  { code: 'EE', name: 'Estonia' },
+  { code: 'FI', name: 'Finlandia' },
+  { code: 'FR', name: 'Francia' },
+  { code: 'DE', name: 'Germania' },
+  { code: 'GR', name: 'Grecia' },
+  { code: 'HU', name: 'Ungheria' },
+  { code: 'IE', name: 'Irlanda' },
+  { code: 'IT', name: 'Italia' },
+  { code: 'LV', name: 'Lettonia' },
+  { code: 'LT', name: 'Lituania' },
+  { code: 'LU', name: 'Lussemburgo' },
+  { code: 'MT', name: 'Malta' },
+  { code: 'NL', name: 'Paesi Bassi' },
+  { code: 'PL', name: 'Polonia' },
+  { code: 'PT', name: 'Portogallo' },
+  { code: 'RO', name: 'Romania' },
+  { code: 'SK', name: 'Slovacchia' },
+  { code: 'SI', name: 'Slovenia' },
+  { code: 'ES', name: 'Spagna' },
+  { code: 'SE', name: 'Svezia' },
+];
+
+const COUNTRY_NAME_MAP = new Map<string, string>(COUNTRIES.map((c) => [c.code.toUpperCase(), c.label]));
+const EU_CODE_SET = new Set(EU_COUNTRY_OPTIONS.map((c) => c.code.toUpperCase()));
+
+export function getCountryName(code?: string | null): string | null {
+  if (!code) return null;
+  const key = code.trim().toUpperCase();
+  return COUNTRY_NAME_MAP.get(key) ?? null;
+}
+
+export function isEuCountry(code: string): boolean {
+  if (!code) return false;
+  return EU_CODE_SET.has(code.trim().toUpperCase());
+}

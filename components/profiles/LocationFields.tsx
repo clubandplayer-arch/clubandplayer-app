@@ -9,6 +9,7 @@ import {
   LocationOption,
   normalizeLocation,
 } from '@/lib/geo/location';
+import { isEuCountry } from '@/lib/geo/countries';
 
 export type LocationSelection = {
   regionId: number | null;
@@ -59,6 +60,7 @@ export function LocationFields({
   const [municipalities, setMunicipalities] = useState<LocationOption[]>([]);
   const [cityFallback, setCityFallback] = useState<string | null>(null);
   const didInitCity = useRef(false);
+  const prevCountryRef = useRef(country);
 
   const normalizeLoc = useCallback((s?: string | null) => normalizeLocation(s), []);
   const savedCity = useMemo(
@@ -91,6 +93,29 @@ export function LocationFields({
       setRegions(r);
     })();
   }, [country, supabase, onChange]);
+
+  useEffect(() => {
+    if (country === prevCountryRef.current) return;
+
+    const switchedToNonIT = country !== 'IT';
+    if (switchedToNonIT) {
+      if (value.regionId || value.provinceId || value.municipalityId || value.provinceName) {
+        onChange({
+          ...value,
+          regionId: null,
+          provinceId: null,
+          municipalityId: null,
+          provinceName: null,
+        });
+      }
+      setProvinces([]);
+      setMunicipalities([]);
+      setCityFallback(value.cityName || fallback?.city || null);
+      didInitCity.current = false;
+    }
+
+    prevCountryRef.current = country;
+  }, [country, fallback?.city, onChange, value]);
 
   useEffect(() => {
     if (country !== 'IT') return;
@@ -218,7 +243,59 @@ export function LocationFields({
   const selectedMunicipalityValue =
     value.municipalityId != null ? String(value.municipalityId) : cityFallback ? '__saved__' : '';
 
-  return country !== 'IT' ? null : (
+  if (country !== 'IT') {
+    const regionValue = value.regionName ?? fallback?.region ?? '';
+    const cityValue = value.cityName ?? fallback?.city ?? '';
+    const disabledProvince = true;
+
+    return (
+      <>
+        <div className="flex min-w-0 flex-col gap-1">
+          <label className="text-sm text-gray-600">{labels.region}</label>
+          <input
+            className="w-full min-w-0 rounded-lg border p-2"
+            value={regionValue}
+            onChange={(e) =>
+              onChange({
+                ...value,
+                regionName: e.target.value,
+                provinceName: null,
+                regionId: null,
+                provinceId: null,
+                municipalityId: null,
+              })
+            }
+            disabled={disabled}
+            placeholder="Es. Île-de-France"
+          />
+        </div>
+
+        <div className="flex min-w-0 flex-col gap-1">
+          <label className="text-sm text-gray-600">{labels.city}</label>
+          <input
+            className="w-full min-w-0 rounded-lg border p-2"
+            value={cityValue}
+            onChange={(e) =>
+              onChange({
+                ...value,
+                cityName: e.target.value,
+                provinceId: null,
+                municipalityId: null,
+                provinceName: null,
+              })
+            }
+            disabled={disabled}
+            required={isEuCountry(country)}
+            placeholder="Es. Parigi"
+          />
+        </div>
+
+        <input type="hidden" value="" aria-hidden disabled={disabledProvince} />
+      </>
+    );
+  }
+
+  return (
     <>
       <div className="flex min-w-0 flex-col gap-1">
         <label className="text-sm text-gray-600">{labels.region}</label>
