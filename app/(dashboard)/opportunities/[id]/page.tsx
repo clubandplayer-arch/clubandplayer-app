@@ -1,10 +1,73 @@
 import Link from 'next/link';
 import Image from 'next/image';
 
+import type { SupabaseClient } from '@supabase/supabase-js';
+
 import OpportunityActions from '@/components/opportunities/OpportunityActions';
 import FollowButton from '@/components/common/FollowButton';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { opportunityGenderLabel } from '@/lib/opps/gender';
+
+const AVATARS_BUCKET = process.env.NEXT_PUBLIC_AVATARS_BUCKET || 'avatars';
+const SUPABASE_URL = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').replace(/\/+$/, '');
+
+function isHttpUrl(url: string) {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+function parseSupabaseStorageUrl(url: string) {
+  if (!SUPABASE_URL) return null;
+  const prefix = `${SUPABASE_URL}/storage/v1/object/`;
+  if (!url.startsWith(prefix)) return null;
+  const parts = url.slice(prefix.length).split('/').filter(Boolean);
+  if (parts.length < 2) return null;
+
+  const visibility = parts[0];
+  const visibilityPrefixes = new Set(['public', 'private', 'sign', 'auth']);
+  const bucket = visibilityPrefixes.has(visibility) ? parts[1] : parts[0];
+  const pathParts = visibilityPrefixes.has(visibility) ? parts.slice(2) : parts.slice(1);
+
+  if (!bucket || !pathParts.length) return null;
+  return { bucket, path: pathParts.join('/') };
+}
+
+async function resolveProfileAvatarUrl(
+  avatarUrl: string | null | undefined,
+  supabase: SupabaseClient<any, 'public', any>,
+) {
+  const raw = (avatarUrl || '').trim();
+  if (!raw) return null;
+
+  const parsedStorage = parseSupabaseStorageUrl(raw);
+  if (isHttpUrl(raw) && !parsedStorage) {
+    return raw;
+  }
+
+  const bucket = parsedStorage?.bucket || AVATARS_BUCKET;
+  const objectPath = parsedStorage?.path || raw.replace(/^\/+/, '');
+  if (!bucket || !objectPath) return null;
+
+  try {
+    const { data: signed } = await supabase.storage.from(bucket).createSignedUrl(objectPath, 3600);
+    if (signed?.signedUrl) return signed.signedUrl;
+  } catch {
+    // Silently fall back to public URL resolution below
+  }
+
+  try {
+    const { data: publicInfo } = supabase.storage.from(bucket).getPublicUrl(objectPath);
+    if (publicInfo?.publicUrl) return publicInfo.publicUrl;
+  } catch {
+    // Ignore and return null
+  }
+
+  return null;
+}
 
 function formatDateHuman(date: string | null | undefined) {
   if (!date) return '—';
@@ -24,6 +87,7 @@ function formatAge(min?: number | null, max?: number | null) {
 export default async function OpportunityDetailPage({ params }: { params: { id: string } }) {
   const supabase = await getSupabaseServerClient();
   const { data: authUser } = await supabase.auth.getUser();
+  const user = authUser?.user ?? null;
 
   const { data: opp, error } = await supabase
     .from('opportunities')
@@ -48,28 +112,55 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
 
   const ownerId = (opp as any).owner_id ?? (opp as any).created_by ?? null;
   const clubId = (opp as any).club_id ?? ownerId ?? null;
+  const isOwner = !!authUser?.user && !!ownerId && authUser.user.id === ownerId;
 
-  const { data: clubProfile } = ownerId
-    ? await supabase
-        .from('profiles')
-        .select('id,user_id,display_name,full_name,avatar_url,city,country,profile_type,account_type')
-        .or(`id.eq.${ownerId},user_id.eq.${ownerId}`)
-        .maybeSingle()
-    : { data: null };
+  let clubProfile:
+    | {
+        id?: string | null;
+        user_id?: string | null;
+        display_name?: string | null;
+        full_name?: string | null;
+        avatar_url?: string | null;
+        city?: string | null;
+        province?: string | null;
+        region?: string | null;
+        country?: string | null;
+        profile_type?: string | null;
+        account_type?: string | null;
+      }
+    | null = null;
+
+  if (clubId) {
+    const { data } = await supabase
+      .from('profiles')
+      .select('id,user_id,display_name,full_name,avatar_url,city,province,region,country,profile_type,account_type')
+      .eq('id', clubId)
+      .maybeSingle();
+    clubProfile = data ?? null;
+  } else if (ownerId) {
+    const { data } = await supabase
+      .from('profiles')
+      .select('id,user_id,display_name,full_name,avatar_url,city,province,region,country,profile_type,account_type')
+      .eq('user_id', ownerId)
+      .maybeSingle();
+    clubProfile = data ?? null;
+  }
 
   const clubName =
     opp.club_name ??
-    clubProfile?.display_name ??
     clubProfile?.full_name ??
+    clubProfile?.display_name ??
     undefined;
-  const clubProfileId = clubProfile?.id ?? clubId;
+  const clubProfileId = clubProfile?.id ?? (clubProfile ? null : clubId ?? null);
+  const clubAvatarUrl = await resolveProfileAvatarUrl(clubProfile?.avatar_url, supabase);
+  const locationLabel =
+    [clubProfile?.city, clubProfile?.country].filter(Boolean).join(', ') || 'Località n/d';
 
   const place = [opp.city, opp.province, opp.region, opp.country].filter(Boolean).join(', ');
   const categoryLabel = (opp as any).category ?? (opp as any).required_category ?? null;
   const genderLabel = opportunityGenderLabel((opp as any).gender) ?? undefined;
   const ageLabel = formatAge((opp as any).age_min, (opp as any).age_max);
   const published = formatDateHuman((opp as any).created_at);
-  const isOwner = !!authUser?.user && !!ownerId && authUser.user.id === ownerId;
   const allClubOpportunitiesHref = clubId ? `/opportunities?clubId=${clubId}` : null;
 
   return (
@@ -121,9 +212,9 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
           <div className="rounded-2xl border bg-white/80 p-4 shadow-sm space-y-3">
             <h3 className="text-lg font-semibold">Club</h3>
             <div className="flex items-center gap-3">
-              {clubProfile?.avatar_url ? (
+              {clubAvatarUrl ? (
                 <Image
-                  src={clubProfile.avatar_url}
+                  src={clubAvatarUrl}
                   alt={clubName ?? 'Club'}
                   width={56}
                   height={56}
