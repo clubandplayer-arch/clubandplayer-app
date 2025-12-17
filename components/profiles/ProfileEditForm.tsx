@@ -13,7 +13,7 @@ import {
   LocationSelection,
 } from '@/components/profiles/LocationFields';
 import { SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
-import { COUNTRIES } from '@/lib/opps/geo';
+import { WORLD_COUNTRY_OPTIONS } from '@/lib/geo/countries';
 import { MAX_SKILLS, MAX_SKILL_LENGTH, normalizeProfileSkills, toDbSkills } from '@/lib/profiles/skills';
 import { ProfileSkill } from '@/types/profile';
 import { CATEGORIES_BY_SPORT, CLUB_SPORT_OPTIONS, DEFAULT_CLUB_CATEGORIES } from '@/lib/opps/categories';
@@ -174,8 +174,6 @@ export default function ProfileEditForm() {
   // Atleta only
   const [birthYear, setBirthYear] = useState<number | ''>('');
   const [birthPlace, setBirthPlace] = useState('');
-  const [clubCity, setClubCity] = useState('');
-  const [residenceCity, setResidenceCity] = useState('');
 
   // Nascita (atleta)
   const [birthCountry, setBirthCountry] = useState('IT');
@@ -378,8 +376,6 @@ export default function ProfileEditForm() {
     // atleta
     setBirthYear(p.birth_year ?? '');
     setBirthPlace(p.birth_place || '');
-    setClubCity(p.city || '');
-    setResidenceCity(p.city || '');
 
     setBirthCountry(normalizeCountryCode(p.birth_country) || 'IT');
     setBirthRegionId(p.birth_region_id);
@@ -513,14 +509,27 @@ export default function ProfileEditForm() {
       const clubCityName =
         normalizedCountry === 'IT'
           ? clubLocation.cityName || clubLocationFallback.city || null
-          : (clubCity || '').trim() || null;
+          : clubLocation.cityName || clubLocationFallback.city || null;
+
+      const interestRegionName =
+        (isClub ? clubLocation : interestLocation).regionName ||
+        (isClub ? clubLocationFallback : interestFallback).region ||
+        null;
+      const interestProvinceName =
+        (isClub ? clubLocation : interestLocation).provinceName ||
+        (isClub ? clubLocationFallback : interestFallback).province ||
+        null;
+      const interestCityName =
+        (isClub ? clubLocation : interestLocation).cityName ||
+        (isClub ? clubLocationFallback : interestFallback).city ||
+        null;
 
       const residenceRegionName = residenceLocation.regionName || residenceFallback.region || null;
       const residenceProvinceName = residenceLocation.provinceName || residenceFallback.province || null;
       const residenceCityName =
         normalizedResidenceCountry === 'IT'
           ? residenceLocation.cityName || residenceFallback.city || null
-          : (residenceCity || '').trim() || null;
+          : residenceLocation.cityName || residenceFallback.city || null;
 
       const basePayload: any = {
         full_name: (fullName || '').trim() || null,
@@ -542,6 +551,18 @@ export default function ProfileEditForm() {
           (isClub ? normalizedCountry : normalizedInterestCountry) === 'IT'
             ? (isClub ? clubLocation.municipalityId : interestLocation.municipalityId)
             : null,
+        interest_region:
+          (isClub ? normalizedCountry : normalizedInterestCountry) === 'IT'
+            ? interestRegionName
+            : interestRegionName,
+        interest_province:
+          (isClub ? normalizedCountry : normalizedInterestCountry) === 'IT'
+            ? interestProvinceName
+            : null,
+        interest_city:
+          (isClub ? normalizedCountry : normalizedInterestCountry) === 'IT'
+            ? interestCityName
+            : interestCityName,
 
         // social & notifiche
         links,
@@ -560,7 +581,7 @@ export default function ProfileEditForm() {
           club_stadium_lng: stadiumLng ?? null,
           club_motto: (clubMotto || '').trim() || null,
 
-          region: normalizedCountry === 'IT' ? clubRegionName : null,
+          region: normalizedCountry === 'IT' ? clubRegionName : (clubLocation.regionName || clubLocationFallback.region || null),
           province: normalizedCountry === 'IT' ? clubProvinceName : null,
           city: clubCityName,
 
@@ -584,7 +605,7 @@ export default function ProfileEditForm() {
         Object.assign(basePayload, {
           birth_year: birthYear === '' ? null : Number(birthYear),
 
-          region: normalizedResidenceCountry === 'IT' ? residenceRegionName : null,
+          region: normalizedResidenceCountry === 'IT' ? residenceRegionName : residenceLocation.regionName || residenceFallback.region || null,
           province: normalizedResidenceCountry === 'IT' ? residenceProvinceName : null,
           city: residenceCityName,
 
@@ -695,41 +716,29 @@ export default function ProfileEditForm() {
                     value={country}
                     onChange={(e) => setCountry(e.target.value)}
                   >
-                    {COUNTRIES.map((c) => (
+                    {WORLD_COUNTRY_OPTIONS.map((c) => (
                       <option key={c.code} value={c.code}>
-                        {c.label}
+                        {c.name}
                       </option>
                     ))}
                   </select>
-                  {country && (
-                    <span className="text-xs text-gray-500">{countryPreview}</span>
-                  )}
-                </div>
-
-                {country === 'IT' ? (
-                  <LocationFields
-                    supabase={supabase}
-                    country={country}
-                    value={clubLocation}
-                    fallback={clubLocationFallback}
-                    onChange={setClubLocation}
-                    labels={{
-                      region: 'Regione del club',
-                      province: 'Provincia del club',
-                      city: 'Città del club',
-                    }}
-                  />
-                ) : (
-                  <div className="flex min-w-0 flex-col gap-1 md:col-span-3">
-                    <label className="text-sm text-gray-600">Città del club</label>
-                    <input
-                      className="w-full min-w-0 rounded-lg border p-2"
-                      value={clubCity}
-                      onChange={(e) => setClubCity(e.target.value)}
-                      placeholder="Es. Sydney"
-                    />
-                  </div>
+                {country && (
+                  <span className="text-xs text-gray-500">{countryPreview}</span>
                 )}
+              </div>
+
+                <LocationFields
+                  supabase={supabase}
+                  country={country}
+                  value={clubLocation}
+                  fallback={clubLocationFallback}
+                  onChange={setClubLocation}
+                  labels={{
+                    region: 'Regione del club',
+                    province: 'Provincia del club',
+                    city: 'Città del club',
+                  }}
+                />
               </div>
 
               <div className="flex flex-col gap-1">
@@ -893,9 +902,9 @@ export default function ProfileEditForm() {
                   value={country}
                   onChange={(e) => setCountry(e.target.value)}
                 >
-                  {COUNTRIES.map((c) => (
+                  {WORLD_COUNTRY_OPTIONS.map((c) => (
                     <option key={c.code} value={c.code}>
-                      {c.label}
+                      {c.name}
                     </option>
                   ))}
                 </select>
@@ -1070,9 +1079,9 @@ export default function ProfileEditForm() {
                   value={interestCountry}
                   onChange={(e) => setInterestCountry(e.target.value)}
                 >
-                  {COUNTRIES.map((c) => (
+                  {WORLD_COUNTRY_OPTIONS.map((c) => (
                     <option key={c.code} value={c.code}>
-                      {c.label}
+                      {c.name}
                     </option>
                   ))}
                 </select>

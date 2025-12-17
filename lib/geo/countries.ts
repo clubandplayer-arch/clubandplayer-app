@@ -252,3 +252,24 @@ export const COUNTRIES: CountryOption[] = [
   { code: 'ZW', label: 'Zimbabwe' },
   { code: 'OTHER', label: 'Altro…' },
 ];
+
+export const WORLD_COUNTRY_OPTIONS: Array<{ code: string; name: string }> = COUNTRIES.map((c) => ({
+  code: c.code,
+  name: c.label,
+}));
+
+const COUNTRY_NAME_MAP = new Map<string, string>(COUNTRIES.map((c) => [c.code.toUpperCase(), c.label]));
+const EU_CODE_SET = new Set([
+  'AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE','GR','HU','IE','IT','LV','LT','LU','MT','NL','PL','PT','RO','SK','SI','ES','SE',
+]);
+
+export function getCountryName(code?: string | null): string | null {
+  if (!code) return null;
+  const key = code.trim().toUpperCase();
+  return COUNTRY_NAME_MAP.get(key) ?? null;
+}
+
+export function isEuCountry(code: string): boolean {
+  if (!code) return false;
+  return EU_CODE_SET.has(code.trim().toUpperCase());
+}

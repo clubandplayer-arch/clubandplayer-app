@@ -8,6 +8,7 @@ import FollowButton from '@/components/common/FollowButton';
 import { buildDirectConversationUrl } from '@/lib/services/messaging';
 import { SearchMapProfile } from '@/lib/services/search';
 import { buildProfileDisplayName } from '@/lib/displayName';
+import { getCountryName } from '@/lib/geo/countries';
 
 export type SearchResultsListProps = {
   results: SearchMapProfile[];
@@ -59,7 +60,8 @@ function Avatar({ profile }: { profile: SearchMapProfile }) {
 }
 
 function locationLabel(profile: SearchMapProfile) {
-  return [profile.city, profile.province, profile.region, profile.country].filter(Boolean).join(' · ');
+  const countryLabel = getCountryName(profile.country || null) ?? (profile.country || '');
+  return [profile.city, profile.province, profile.region, countryLabel].filter(Boolean).join(' · ');
 }
 
 function detailsLabel(profile: SearchMapProfile) {
