@@ -5,7 +5,6 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import OpportunityActions from '@/components/opportunities/OpportunityActions';
 import FollowButton from '@/components/common/FollowButton';
-import { getActiveProfile } from '@/lib/api/profile';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { opportunityGenderLabel } from '@/lib/opps/gender';
 
@@ -89,7 +88,6 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
   const supabase = await getSupabaseServerClient();
   const { data: authUser } = await supabase.auth.getUser();
   const user = authUser?.user ?? null;
-  const me = user ? await getActiveProfile(supabase, user.id) : null;
 
   const { data: opp, error } = await supabase
     .from('opportunities')
@@ -124,24 +122,26 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
         full_name?: string | null;
         avatar_url?: string | null;
         city?: string | null;
+        province?: string | null;
+        region?: string | null;
         country?: string | null;
         profile_type?: string | null;
         account_type?: string | null;
       }
     | null = null;
 
-  if (isOwner && me?.id) {
+  if (clubId) {
     const { data } = await supabase
       .from('profiles')
-      .select('id,user_id,display_name,full_name,avatar_url,city,country,profile_type,account_type')
-      .eq('id', me.id)
+      .select('id,user_id,display_name,full_name,avatar_url,city,province,region,country,profile_type,account_type')
+      .eq('id', clubId)
       .maybeSingle();
     clubProfile = data ?? null;
-  } else if (clubId) {
+  } else if (ownerId) {
     const { data } = await supabase
       .from('profiles')
-      .select('id,user_id,display_name,full_name,avatar_url,city,country,profile_type,account_type')
-      .or(`id.eq.${clubId},user_id.eq.${clubId}`)
+      .select('id,user_id,display_name,full_name,avatar_url,city,province,region,country,profile_type,account_type')
+      .eq('user_id', ownerId)
       .maybeSingle();
     clubProfile = data ?? null;
   }
@@ -153,31 +153,8 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
     undefined;
   const clubProfileId = clubProfile?.id ?? (clubProfile ? null : clubId ?? null);
   const clubAvatarUrl = await resolveProfileAvatarUrl(clubProfile?.avatar_url, supabase);
-
-  console.log(
-    '[opportunity:club-box]',
-    JSON.stringify({
-      oppId: (opp as any)?.id,
-      oppClubId: (opp as any)?.club_id,
-      oppOwnerId: (opp as any)?.owner_id,
-      oppCreatedBy: (opp as any)?.created_by,
-      viewerUserId: user?.id,
-      activeProfileId: (me as any)?.id ?? null,
-      activeProfileUserId: (me as any)?.user_id ?? user?.id ?? null,
-      resolvedOwnerIdUsedForLookup: ownerId,
-      clubProfileFound: !!clubProfile,
-      clubProfileId: clubProfile?.id,
-      clubProfileUserId: clubProfile?.user_id,
-      clubProfileFullName: clubProfile?.full_name,
-      clubProfileDisplayName: clubProfile?.display_name,
-      clubProfileAvatarRaw: clubProfile?.avatar_url,
-      clubProfileCity: clubProfile?.city,
-      clubProfileCountry: clubProfile?.country,
-      resolvedClubAvatarUrl: clubAvatarUrl,
-      locationLabel: clubProfile?.city || clubProfile?.country || 'Località n/d',
-      note: 'REMOVE_ME_AFTER_DEBUG',
-    }),
-  );
+  const locationLabel =
+    [clubProfile?.city, clubProfile?.country].filter(Boolean).join(', ') || 'Località n/d';
 
   const place = [opp.city, opp.province, opp.region, opp.country].filter(Boolean).join(', ');
   const categoryLabel = (opp as any).category ?? (opp as any).required_category ?? null;
