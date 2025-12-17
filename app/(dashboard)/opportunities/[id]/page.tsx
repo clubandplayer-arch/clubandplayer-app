@@ -5,6 +5,7 @@ import OpportunityActions from '@/components/opportunities/OpportunityActions';
 import FollowButton from '@/components/common/FollowButton';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { opportunityGenderLabel } from '@/lib/opps/gender';
+import { getCountryName } from '@/lib/geo/countries';
 
 function formatDateHuman(date: string | null | undefined) {
   if (!date) return '—';
@@ -19,6 +20,12 @@ function formatAge(min?: number | null, max?: number | null) {
   if (min != null) return `${min}+`;
   if (max != null) return `≤${max}`;
   return '—';
+}
+
+function buildLocationLabel(city?: string | null, province?: string | null, region?: string | null, country?: string | null) {
+  const countryLabel = getCountryName(country) ?? (country || '');
+  const parts = [city, province, region, countryLabel].map((p) => (p ?? '').trim()).filter(Boolean);
+  return parts.length ? parts.join(', ') : null;
 }
 
 export default async function OpportunityDetailPage({ params }: { params: { id: string } }) {
@@ -52,7 +59,7 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
   const { data: clubProfile } = ownerId
     ? await supabase
         .from('profiles')
-        .select('id,user_id,display_name,full_name,avatar_url,city,country,profile_type,account_type')
+        .select('id,user_id,display_name,full_name,avatar_url,city,province,region,country,profile_type,account_type')
         .or(`id.eq.${ownerId},user_id.eq.${ownerId}`)
         .maybeSingle()
     : { data: null };
@@ -63,8 +70,16 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
     clubProfile?.full_name ??
     undefined;
   const clubProfileId = clubProfile?.id ?? clubId;
+  const clubLocationLabel = buildLocationLabel(
+    clubProfile?.city,
+    clubProfile?.province,
+    clubProfile?.region,
+    clubProfile?.country,
+  );
 
   const place = [opp.city, opp.province, opp.region, opp.country].filter(Boolean).join(', ');
+  const placeLabel = buildLocationLabel(opp.city, opp.province, opp.region, opp.country);
+  const clubLocation = clubLocationLabel || placeLabel || 'Località n/d';
   const categoryLabel = (opp as any).category ?? (opp as any).required_category ?? null;
   const genderLabel = opportunityGenderLabel((opp as any).gender) ?? undefined;
   const ageLabel = formatAge((opp as any).age_min, (opp as any).age_max);
@@ -138,7 +153,7 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
                   <Link href={clubProfileId ? `/clubs/${clubProfileId}` : '#'} className="font-semibold hover:underline">
                     {clubName ?? 'Club'}
                   </Link>
-                  <p className="text-sm text-gray-600">{clubProfile?.city || clubProfile?.country || 'Località n/d'}</p>
+                  <p className="text-sm text-gray-600">{clubLocation}</p>
                 </div>
               </div>
 
