@@ -225,6 +225,10 @@ export function LocationFields<T extends LocationValue>({
     [currentCountry],
   );
 
+  const normalizedCity = (currentCity || '').trim();
+  const _normalizedRegion = (currentRegion || '').trim();
+  const _normalizedProvince = (currentProvince || '').trim();
+
   const handleRegionChange = (id: number | null) => {
     const name = regions.find((r) => r.id === id)?.name ?? null;
     setRegionId(id);
@@ -254,6 +258,13 @@ export function LocationFields<T extends LocationValue>({
     const name = municipalities.find((m) => m.id === id)?.name ?? null;
     updateLocation({ [keys.city]: name, [keys.municipalityId]: id });
   };
+
+  const fallbackSavedCity =
+    !isItaly && normalizedCity
+      ? normalizedCity
+      : isItaly && !currentMunicipalityIdFromValue && normalizedCity
+        ? normalizedCity
+        : null;
 
   return (
     <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
@@ -329,15 +340,27 @@ export function LocationFields<T extends LocationValue>({
               value={
                 currentMunicipalityIdFromValue != null
                   ? currentMunicipalityIdFromValue
-                  : findMatchingLocationId(municipalities, currentCity) ?? ''
+                  : findMatchingLocationId(
+                        municipalities.map((m) => ({ ...m, name: m.name.trim() })),
+                        normalizedCity,
+                    ) ?? (fallbackSavedCity || '')
               }
-              onChange={(e) => handleCityChange(e.target.value ? Number(e.target.value) : null)}
+              onChange={(e) => {
+                const raw = e.target.value;
+                if (!raw) return handleCityChange(null);
+                const parsed = Number(raw);
+                if (Number.isFinite(parsed)) return handleCityChange(parsed);
+                updateLocation({ [keys.city]: raw, [keys.municipalityId]: null });
+              }}
               disabled={disabled || !provinceId}
             >
               <option value="">— Seleziona città —</option>
+              {fallbackSavedCity ? (
+                <option value={fallbackSavedCity}>{`(salvata) ${fallbackSavedCity}`}</option>
+              ) : null}
               {municipalities.map((m) => (
                 <option key={m.id} value={m.id}>
-                  {m.name}
+                  {m.name.trim()}
                 </option>
               ))}
             </select>
@@ -359,16 +382,20 @@ export function LocationFields<T extends LocationValue>({
             <label className="text-sm text-gray-600">Città</label>
             <select
               className="w-full min-w-0 rounded-lg border p-2"
-              value={(currentCity || '').trim()}
-              onChange={(e) => updateLocation({ [keys.city]: e.target.value || null })}
+              value={normalizedCity}
+              onChange={(e) => updateLocation({ [keys.city]: (e.target.value || '').trim() || null })}
               disabled={disabled}
             >
               <option value="">— Seleziona città —</option>
               {(EU_COUNTRIES.find((c) => c.iso2 === currentCountry)?.cities || []).map((city) => (
-                <option key={city} value={city}>
-                  {city}
+                <option key={city} value={city.trim()}>
+                  {city.trim()}
                 </option>
               ))}
+              {!EU_COUNTRIES.find((c) => c.iso2 === currentCountry)?.cities?.some((c) => c.trim() === normalizedCity) &&
+              normalizedCity ? (
+                <option value={normalizedCity}>{`(salvata) ${normalizedCity}`}</option>
+              ) : null}
             </select>
           </div>
         </>
