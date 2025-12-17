@@ -3,12 +3,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { useEffect, useMemo, useState } from 'react';
 
 import FollowButton from '@/components/clubs/FollowButton';
 
-import { resolveCountryName, resolveStateName } from '@/lib/geodata/countryStateCityDataset';
+import { buildLocationLabel } from '@/lib/geo/locationLabel';
 
 type P = {
   id?: string | null;
@@ -20,22 +19,16 @@ type P = {
   display_name?: string | null;
   bio?: string | null;
   birth_year?: number | null;
-  city?: string | null;            // residenza libera (estero)
-  country?: string | null;         // nazionalità ISO2 o testo
+  city?: string | null;
+  region?: string | null;
+  province?: string | null;
+  country?: string | null;
 
   role?: string | null;
-
-  // residenza IT (atleta)
-  residence_region_id?: number | null;
-  residence_province_id?: number | null;
-  residence_municipality_id?: number | null;
 
   // nascita (atleta)
   birth_country?: string | null;   // ISO2
   birth_place?: string | null;     // città estera fallback
-  birth_region_id?: number | null;
-  birth_province_id?: number | null;
-  birth_municipality_id?: number | null;
 
   // atleta
   foot?: string | null;
@@ -53,9 +46,6 @@ type P = {
   club_motto?: string | null;
 
   // interesse (non mostrato)
-  interest_region_id?: number | null;
-  interest_province_id?: number | null;
-  interest_municipality_id?: number | null;
   interest_country?: string | null;
   interest_region?: string | null;
   interest_province?: string | null;
@@ -68,19 +58,6 @@ type P = {
     tiktok?: string | null;
     x?: string | null;
   } | null;
-};
-
-type Row = { id: number; name: string };
-
-const supabase = createSupabaseClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
-type InterestGeo = {
-  city: string;
-  region: string;
-  country: string;
 };
 
 /* ---------- helpers bandiera/nome paese ---------- */
@@ -132,7 +109,6 @@ function countryLabel(value?: string | null): { iso: string | null; label: strin
 
 export default function ProfileMiniCard() {
   const [p, setP] = useState<P | null>(null);
-  const [interest, setInterest] = useState<InterestGeo>({ city: '—', region: '', country: '' });
 
   useEffect(() => {
     (async () => {
@@ -141,39 +117,6 @@ export default function ProfileMiniCard() {
         const raw = await r.json().catch(() => ({}));
         const j = (raw && typeof raw === 'object' && 'data' in raw ? (raw as any).data : raw) || {};
         setP(j || {});
-
-        const countryCode = (j?.interest_country || j?.country || '').trim() || null;
-        const countryName = resolveCountryName(countryCode) || countryLabel(countryCode).label || '';
-
-        let cityName = (j?.interest_city || '').trim();
-        let regionName = (j?.interest_region || j?.interest_province || '').trim();
-
-        if (j?.interest_municipality_id || j?.interest_province_id || j?.interest_region_id) {
-          const [mun, prov, reg] = await Promise.all([
-            j?.interest_municipality_id
-              ? supabase.from('municipalities').select('id,name').eq('id', j.interest_municipality_id).maybeSingle()
-              : Promise.resolve({ data: null }),
-            j?.interest_province_id
-              ? supabase.from('provinces').select('id,name').eq('id', j.interest_province_id).maybeSingle()
-              : Promise.resolve({ data: null }),
-            j?.interest_region_id
-              ? supabase.from('regions').select('id,name').eq('id', j.interest_region_id).maybeSingle()
-              : Promise.resolve({ data: null }),
-          ]);
-
-          const m = (mun as any)?.data as Row | null;
-          const pr = (prov as any)?.data as Row | null;
-          const re = (reg as any)?.data as Row | null;
-
-          cityName = cityName || m?.name || '';
-          regionName = regionName || pr?.name || re?.name || '';
-        }
-
-        setInterest({
-          city: cityName || '—',
-          region: resolveStateName(countryCode, regionName),
-          country: countryName || '—',
-        });
       } catch {
         setP({});
       }
@@ -187,7 +130,29 @@ export default function ProfileMiniCard() {
   const year = new Date().getFullYear();
   const age = !isClub && p?.birth_year ? Math.max(0, year - p.birth_year) : null;
   const name = p?.full_name || p?.display_name || (isClub ? 'Il tuo club' : 'Benvenuto!');
-  const interestLabel = [interest.city, interest.region, interest.country].filter(Boolean).join(', ');
+  const baseLocationLabel = useMemo(
+    () =>
+      buildLocationLabel({
+        city: p?.city ?? null,
+        province: p?.province ?? null,
+        region: p?.region ?? null,
+        country: p?.country ?? null,
+      }),
+    [p?.city, p?.country, p?.province, p?.region],
+  );
+  const interestLabel = useMemo(() => {
+    const label = buildLocationLabel({
+      interest_city: p?.interest_city ?? null,
+      interest_province: p?.interest_province ?? null,
+      interest_region: p?.interest_region ?? null,
+      interest_country: p?.interest_country ?? p?.country ?? null,
+    });
+    if (label === 'Località n/d') return baseLocationLabel;
+    return label;
+  }, [baseLocationLabel, p?.country, p?.interest_city, p?.interest_country, p?.interest_province, p?.interest_region]);
+  const safeBaseLocation = baseLocationLabel === 'Località n/d' ? '' : baseLocationLabel;
+  const safeInterestLabel = interestLabel === 'Località n/d' ? '' : interestLabel;
+  const primaryLocationLabel = safeBaseLocation || safeInterestLabel;
 
   // nazionalità con bandiera
   const nat = countryLabel(p?.country);
@@ -250,12 +215,12 @@ export default function ProfileMiniCard() {
           {!isClub && (
             <div className="text-xs text-gray-600">
               <div className="text-[11px] uppercase tracking-wide text-gray-500">Zona di interesse</div>
-              <div className="text-sm font-semibold text-gray-800">{interestLabel || '—'}</div>
+              <div className="text-sm font-semibold text-gray-800">{safeInterestLabel || '—'}</div>
             </div>
           )}
 
           {isClub && interestLabel ? (
-            <p className="text-sm font-medium text-gray-800">{interestLabel}</p>
+            <p className="text-sm font-medium text-gray-800">{safeInterestLabel || '—'}</p>
           ) : null}
           {isClub && p?.club_motto ? (
             <p className="text-xs italic text-gray-600">{p.club_motto}</p>
@@ -381,7 +346,7 @@ export default function ProfileMiniCard() {
             </div>
             <div className="flex flex-col gap-0.5 col-span-2">
               <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Città / Paese</dt>
-              <dd className="font-medium text-gray-900">{p?.city || interestLabel || '—'}</dd>
+              <dd className="font-medium text-gray-900">{primaryLocationLabel || '—'}</dd>
             </div>
           </dl>
 

@@ -52,11 +52,6 @@ const FIELDS: Record<string, 'text' | 'number' | 'bool' | 'json'> = {
   birth_place: 'text',
   city: 'text',
 
-  // residenza (IT) – solo atleta
-  residence_region_id: 'number',
-  residence_province_id: 'number',
-  residence_municipality_id: 'number',
-
   // nascita (IT) – solo atleta
   birth_country: 'text',
   birth_region_id: 'number',
@@ -73,11 +68,6 @@ const FIELDS: Record<string, 'text' | 'number' | 'bool' | 'json'> = {
 
   // interesse geo (comune)
   interest_country: 'text',
-  interest_region_id: 'number',
-  interest_province_id: 'number',
-  interest_municipality_id: 'number',
-
-  // compat vecchi form
   interest_region: 'text',
   interest_province: 'text',
   interest_city: 'text',

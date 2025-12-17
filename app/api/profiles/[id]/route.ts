@@ -38,8 +38,8 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase }) => {
   const body = (await req.json()) as Record<string, any>;
   const allowed = new Set([
     'display_name', 'bio', 'height_cm', 'weight_kg', 'foot', 'sport', 'role', 'visibility',
-    'interest_country', 'interest_region_id', 'interest_province_id', 'interest_municipality_id',
-    'interest_region', 'interest_province', 'interest_city',
+    'country', 'region', 'province', 'city',
+    'interest_country', 'interest_region', 'interest_province', 'interest_city',
   ]);
   const update: Record<string, any> = {};
   for (const k of Object.keys(body)) {

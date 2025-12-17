@@ -2,9 +2,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
-import { resolveCountryName, resolveStateName } from '@/lib/geodata/countryStateCityDataset';
+import { buildLocationLabel } from '@/lib/geo/locationLabel';
 
 type Profile = {
   account_type?: string | null;
@@ -14,10 +13,13 @@ type Profile = {
   bio?: string | null;
   country?: string | null;
   city?: string | null;
+  region?: string | null;
+  province?: string | null;
   club_motto?: string | null;
-  interest_region_id?: number | null;
-  interest_province_id?: number | null;
-  interest_municipality_id?: number | null;
+  interest_country?: string | null;
+  interest_region?: string | null;
+  interest_province?: string | null;
+  interest_city?: string | null;
   sport?: string | null;
   club_league_category?: string | null;
   club_foundation_year?: number | null;
@@ -27,17 +29,9 @@ type Profile = {
   club_stadium_lng?: number | null;
 };
 
-type LocationRow = { id: number; name: string };
-
-const supabase = createSupabaseClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-);
-
 export default function ClubProfileDetails() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [location, setLocation] = useState<{ region?: string; province?: string; municipality?: string }>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -50,36 +44,6 @@ export default function ClubProfileDetails() {
 
         if (cancelled) return;
         setProfile(j || {});
-
-        if (!j?.interest_region_id && !j?.interest_province_id && !j?.interest_municipality_id) return;
-
-        const [reg, prov, mun] = await Promise.all([
-          j?.interest_region_id
-            ? supabase.from('regions').select('id,name').eq('id', j.interest_region_id).maybeSingle()
-            : Promise.resolve({ data: null }),
-          j?.interest_province_id
-            ? supabase.from('provinces').select('id,name').eq('id', j.interest_province_id).maybeSingle()
-            : Promise.resolve({ data: null }),
-          j?.interest_municipality_id
-            ? supabase
-                .from('municipalities')
-                .select('id,name')
-                .eq('id', j.interest_municipality_id)
-                .maybeSingle()
-            : Promise.resolve({ data: null }),
-        ]);
-
-        const region = (reg as any)?.data as LocationRow | null;
-        const province = (prov as any)?.data as LocationRow | null;
-        const municipality = (mun as any)?.data as LocationRow | null;
-
-        if (!cancelled) {
-          setLocation({
-            region: region?.name,
-            province: province?.name,
-            municipality: municipality?.name,
-          });
-        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -97,15 +61,22 @@ export default function ClubProfileDetails() {
     [profile?.display_name, profile?.full_name],
   );
 
-  const country = useMemo(() => resolveCountryName(profile?.country || undefined), [profile?.country]);
-
   const cityLine = useMemo(() => {
-    const city = profile?.city || location.municipality;
-    const parts = [city, location.province, resolveStateName(profile?.country || null, location.region), country]
-      .filter(Boolean)
-      .map((p) => String(p));
-    return parts.join(' · ');
-  }, [country, location.municipality, location.province, location.region, profile?.city, profile?.country]);
+    const interest = buildLocationLabel({
+      interest_city: profile?.interest_city ?? null,
+      interest_province: profile?.interest_province ?? null,
+      interest_region: profile?.interest_region ?? null,
+      interest_country: profile?.interest_country ?? profile?.country ?? null,
+    });
+    if (interest !== 'Località n/d') return interest;
+    const base = buildLocationLabel({
+      city: profile?.city ?? null,
+      province: profile?.province ?? null,
+      region: profile?.region ?? null,
+      country: profile?.country ?? null,
+    });
+    return base === 'Località n/d' ? '' : base;
+  }, [profile?.city, profile?.country, profile?.interest_city, profile?.interest_country, profile?.interest_province, profile?.interest_region, profile?.province, profile?.region]);
 
   if (loading) {
     return (
