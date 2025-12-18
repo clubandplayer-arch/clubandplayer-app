@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { UserRound } from 'lucide-react';
 import useIsClub from '@/hooks/useIsClub';
 import { ToastProvider } from '@/components/common/ToastProvider';
 import { FollowProvider } from '@/components/follow/FollowProvider';
@@ -91,6 +92,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     setIsMenuOpen(false);
   }, [pathname]);
 
+  const showRosterNav = isClub && (pathname?.startsWith('/feed') || pathname?.startsWith('/club/roster'));
+
   return (
     <ToastProvider>
       <FollowProvider>
@@ -101,6 +104,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
               <nav className="hidden flex-1 justify-center md:flex">
                 <div className="flex items-center gap-1 rounded-full border border-white/40 bg-white/70 px-2 py-1 shadow-sm backdrop-blur">
+                  {showRosterNav && (
+                    <Link
+                      href="/club/roster"
+                      aria-label="Rosa"
+                      aria-current={isActive('/club/roster') ? 'page' : undefined}
+                      title="Rosa"
+                      className={`relative flex h-10 w-10 items-center justify-center rounded-xl text-pink-600 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
+                        isActive('/club/roster') ? 'bg-pink-100 text-pink-700 shadow-sm' : 'hover:bg-pink-50'
+                      }`}
+                    >
+                      <UserRound className="h-5 w-5" aria-hidden />
+                      <span className="sr-only">Rosa</span>
+                    </Link>
+                  )}
                   {navItems.map((item) => {
                     const active = isActive(item.href);
                     if (item.href === '/notifications') {
@@ -166,6 +183,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <div className="border-t bg-white/95 shadow-sm backdrop-blur md:hidden">
                 <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3">
                   <div className="flex flex-wrap gap-2">
+                    {showRosterNav && (
+                      <Link
+                        href="/club/roster"
+                        onClick={() => setIsMenuOpen(false)}
+                        className={`flex flex-1 min-w-[140px] items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${
+                          isActive('/club/roster')
+                            ? 'border-pink-400 bg-pink-50 text-pink-700'
+                            : 'hover:bg-pink-50 text-pink-700'
+                        }`}
+                      >
+                        <UserRound className="h-4 w-4" aria-hidden />
+                        <span>Rosa</span>
+                      </Link>
+                    )}
                     {navItems.map((item) => {
                       const active = isActive(item.href);
                       return (
