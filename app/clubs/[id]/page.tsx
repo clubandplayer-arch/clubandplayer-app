@@ -155,29 +155,27 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
       <section className="grid grid-cols-1 gap-4">
         <div className="rounded-2xl border bg-white p-5 shadow-sm">
           <h2 className="heading-h2 text-xl">Dati club</h2>
-          <dl className="mt-3 space-y-3 text-sm text-neutral-800">
-            <div className="space-y-1">
-              <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Tipologia / Categoria</dt>
-              <dd className="text-base font-semibold text-neutral-900">{profile.club_league_category || '—'}</dd>
+          <div className="mt-3 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+              <div className="text-xs font-semibold tracking-wide text-muted-foreground">Sede</div>
+              <div className="mt-1 font-medium text-neutral-900">{locationLabel(profile) || '—'}</div>
             </div>
-            <div className="space-y-1">
-              <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Sport principale</dt>
-              <dd className="text-base font-semibold text-neutral-900">{profile.sport || '—'}</dd>
+            <div>
+              <div className="text-xs font-semibold tracking-wide text-muted-foreground">Sport principale</div>
+              <div className="mt-1 font-medium text-neutral-900">{profile.sport || '—'}</div>
             </div>
-            <div className="space-y-1">
-              <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Impianto sportivo</dt>
-              <dd className="text-base font-semibold text-neutral-900">{profile.club_stadium || '—'}</dd>
-              <dd className="text-xs text-neutral-600">{profile.club_stadium_address || '—'}</dd>
+            <div>
+              <div className="text-xs font-semibold tracking-wide text-muted-foreground">Tipologia / Categoria</div>
+              <div className="mt-1 font-medium text-neutral-900">{profile.club_league_category || '—'}</div>
             </div>
-            <div className="space-y-1">
-              <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Sede</dt>
-              <dd className="text-base font-semibold text-neutral-900">{locationLabel(profile) || '—'}</dd>
+            <div>
+              <div className="text-xs font-semibold tracking-wide text-muted-foreground">Impianto sportivo</div>
+              <div className="mt-1 font-medium text-neutral-900">{profile.club_stadium || '—'}</div>
+              {profile.club_stadium_address && (
+                <div className="text-xs text-neutral-600">{profile.club_stadium_address}</div>
+              )}
             </div>
-            <div className="space-y-1">
-              <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Contatti</dt>
-              <dd className="text-base font-semibold text-neutral-900">—</dd>
-            </div>
-          </dl>
+          </div>
         </div>
 
         <div className="rounded-2xl border bg-white p-5 shadow-sm">
