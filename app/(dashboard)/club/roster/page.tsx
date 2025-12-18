@@ -4,7 +4,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { UserRound } from 'lucide-react';
+import { MaterialIcon } from '@/components/icons/MaterialIcon';
 import useIsClub from '@/hooks/useIsClub';
 import { buildProfileDisplayName } from '@/lib/displayName';
 
@@ -193,7 +193,7 @@ export default function ClubRosterPage() {
     <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-6">
       <header className="space-y-2">
         <div className="inline-flex items-center gap-2 rounded-full bg-pink-50 px-3 py-1 text-sm font-semibold text-pink-700">
-          <UserRound className="h-4 w-4" aria-hidden />
+          <MaterialIcon name="following" fontSize={16} />
           <span>Rosa</span>
         </div>
         <h1 className="heading-h1">Rosa</h1>

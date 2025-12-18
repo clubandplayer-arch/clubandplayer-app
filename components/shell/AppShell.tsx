@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { UserRound } from 'lucide-react';
 import useIsClub from '@/hooks/useIsClub';
 import { ToastProvider } from '@/components/common/ToastProvider';
 import { FollowProvider } from '@/components/follow/FollowProvider';
@@ -114,7 +113,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                         isActive('/club/roster') ? 'bg-pink-100 text-pink-700 shadow-sm' : 'hover:bg-pink-50'
                       }`}
                     >
-                      <UserRound className="h-5 w-5" aria-hidden />
+                      <MaterialIcon name="following" fontSize="small" />
                       <span className="sr-only">Rosa</span>
                     </Link>
                   )}
@@ -193,7 +192,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                             : 'hover:bg-pink-50 text-pink-700'
                         }`}
                       >
-                        <UserRound className="h-4 w-4" aria-hidden />
+                        <MaterialIcon name="following" fontSize={16} />
                         <span>Rosa</span>
                       </Link>
                     )}
