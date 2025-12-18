@@ -54,7 +54,7 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
   }
 
   const ownerId = (opp as any).owner_id ?? (opp as any).created_by ?? null;
-  const clubId = (opp as any).club_id ?? ownerId ?? null;
+  const clubId = (opp as any).club_id ?? null;
 
   const { data: clubProfile } = clubId
     ? await supabase
