@@ -48,9 +48,79 @@ function capitalizeRole(role?: string | null) {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
+function normalizeRole(input?: string | null) {
+  return (input ?? '')
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function footballBucketFromRole(role?: string | null) {
+  const r = normalizeRole(role);
+  if (!r) return 'Ruolo non specificato';
+  const has = (...parts: string[]) => parts.some((p) => r.includes(p));
+
+  // PORTIERI
+  if (has('portiere', 'goalkeeper', 'keeper', 'gk')) return 'Portieri';
+
+  // ATTACCANTI (PRIMA: evita che “punta centrale” venga confusa)
+  if (
+    has(
+      'punta',
+      'punta centrale',
+      'centravanti',
+      'seconda punta',
+      'attaccante',
+      'ala',
+      'esterno offensivo',
+      'forward',
+      'striker',
+      'winger',
+      'st',
+      'cf',
+    )
+  ) {
+    return 'Attaccanti';
+  }
+
+  // DIFENSORI
+  if (
+    has(
+      'difensore',
+      'terzino',
+      'difesa',
+      'difensore centrale',
+      'centrale difensivo',
+      'stopper',
+      'braccetto',
+      'cb',
+      'rb',
+      'lb',
+      'wingback',
+      'fullback',
+      'wb',
+    )
+  ) {
+    return 'Difensori';
+  }
+
+  // CENTROCAMPISTI (SOLO “centrocamp*”, non “centro”)
+  if (has('centrocamp', 'mediano', 'regista', 'mezzala', 'interno', 'mf', 'cm', 'cdm', 'cam')) {
+    return 'Centrocampisti';
+  }
+
+  return 'Ruolo non specificato';
+}
+
 function resolveRoleGroup(sport: string | null, role: string | null) {
   const normalizedSport = String(sport ?? '').trim().toLowerCase();
-  const normalizedRole = String(role ?? '').trim().toLowerCase();
+  const normalizedRole = normalizeRole(role);
+
+  if (['calcio', 'soccer', 'football'].includes(normalizedSport)) {
+    return footballBucketFromRole(role);
+  }
 
   if (!normalizedRole) return 'Ruolo non specificato';
 

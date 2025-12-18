@@ -146,6 +146,19 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   }
 
   if (inRoster) {
+    const { data: existingRoster, error: existingError } = await supabase
+      .from('club_roster_members')
+      .select('club_profile_id')
+      .eq('player_profile_id', playerProfileId)
+      .maybeSingle();
+
+    if (existingError) return jsonError(existingError.message, 400);
+    if (existingRoster?.club_profile_id && existingRoster.club_profile_id !== clubProfile.id) {
+      return jsonError('Questo player è già nella rosa di un altro club. Rimuovilo prima di aggiungerlo.', 409, {
+        code: 'PLAYER_ALREADY_IN_ROSTER',
+      });
+    }
+
     const { data: followRow, error: followError } = await supabase
       .from('follows')
       .select('id')

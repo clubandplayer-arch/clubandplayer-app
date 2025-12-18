@@ -196,6 +196,16 @@ export default function FollowingPage() {
         body: JSON.stringify({ playerProfileId: cleanId, inRoster: next }),
       });
       const data = await res.json().catch(() => ({} as any));
+      if (res.status === 409 && (data as any)?.code === 'PLAYER_ALREADY_IN_ROSTER') {
+        setRosterError('Player già in rosa di un altro club. Deve essere rimosso prima.');
+        setRosterIds((curr) => {
+          const copy = new Set(curr);
+          if (next) copy.delete(cleanId);
+          else copy.add(cleanId);
+          return copy;
+        });
+        return;
+      }
       if (!res.ok) throw new Error((data as any)?.error || 'Errore nel salvare la rosa');
 
       const confirmed = (data as any)?.inRoster === false ? false : next;
