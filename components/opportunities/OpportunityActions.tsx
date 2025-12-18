@@ -6,11 +6,11 @@ import { useToast } from '@/components/common/ToastProvider';
 
 type Props = {
   opportunityId: string;
-  ownerId?: string | null;
+  clubProfileId?: string | null;
   showApply?: boolean;
 };
 
-export default function OpportunityActions({ opportunityId, ownerId, showApply = true }: Props) {
+export default function OpportunityActions({ opportunityId, clubProfileId, showApply = true }: Props) {
   const toast = useToast();
 
   return (
@@ -25,9 +25,9 @@ export default function OpportunityActions({ opportunityId, ownerId, showApply =
         Salva
       </button>
 
-      {ownerId && (
+      {clubProfileId && (
         <Link
-          href={`/clubs/${ownerId}`}
+          href={`/clubs/${clubProfileId}`}
           className="rounded-xl border px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50"
         >
           Visita club

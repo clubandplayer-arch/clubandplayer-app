@@ -28,6 +28,7 @@ export default function OpportunitiesTable({
   items,
   currentUserId,
   userRole = 'guest',
+  myProfileId,
   clubNames,
   onEdit,
   onDelete,
@@ -35,6 +36,7 @@ export default function OpportunitiesTable({
   items: Opportunity[];
   currentUserId?: string | null;
   userRole?: Role;
+  myProfileId?: string | null;
   clubNames?: Record<string, string>;
   onEdit?: (opp: Opportunity) => void;
   onDelete?: (opp: Opportunity) => void;
@@ -61,6 +63,8 @@ export default function OpportunitiesTable({
         const place = [o.city, o.province, o.region, o.country].filter(Boolean).join(', ');
         const showApply = userRole === 'athlete' && !canEdit;
         const showFollow = userRole === 'athlete' && !!profileOwnerId;
+        const isMyClub = !!myProfileId && !!profileOwnerId && myProfileId === profileOwnerId;
+        const showVisitClub = !!profileOwnerId && !isMyClub;
         const clubLabel = (() => {
           const explicit = (o as any).clubName || o.club_name;
           if (explicit) return explicit;
@@ -116,10 +120,10 @@ export default function OpportunitiesTable({
                   />
                 )}
                   <span className="text-gray-500">•</span>
-                  <Link href={`/opportunities/${o.id}`} className="text-blue-700 hover:underline">
-                    Dettagli annuncio
-                  </Link>
-                  {profileOwnerId && (
+                <Link href={`/opportunities/${o.id}`} className="text-blue-700 hover:underline">
+                  Dettagli annuncio
+                </Link>
+                  {showVisitClub && (
                     <Link href={`/clubs/${profileOwnerId}`} className="text-blue-700 hover:underline">
                       Visita profilo club
                     </Link>

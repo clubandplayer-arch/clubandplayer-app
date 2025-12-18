@@ -28,6 +28,7 @@ export default function OpportunitiesClient() {
   const [meId, setMeId] = useState<string | null>(null);
   const [role, setRole] = useState<Role>('guest');            // da /api/auth/whoami
   const [profileType, setProfileType] = useState<string>(''); // fallback da /api/profiles/me
+  const [meProfileId, setMeProfileId] = useState<string | null>(null);
 
   const [openCreate, setOpenCreate] = useState(false);
   const [editItem, setEditItem] = useState<Opportunity | null>(null);
@@ -181,17 +182,22 @@ export default function OpportunitiesClient() {
     return () => { cancelled = true; };
   }, []);
 
-  // 2) Fallback ruolo da profiles.me se whoami non chiarisce
+  // 2) Profilo corrente da /api/profiles/me (id + tipo)
   useEffect(() => {
     let cancelled = false;
-    if (!meId) return;
-    if (role === 'club' || role === 'athlete') return;
 
     (async () => {
       try {
         const r = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
         const j = await r.json().catch(() => ({}));
         if (cancelled) return;
+        setMeProfileId(
+          (j?.data?.id ||
+            j?.data?.profile_id ||
+            j?.profile?.id ||
+            j?.profile?.profile_id ||
+            null) as string | null,
+        );
         const t = (
           j?.data?.account_type ??
           j?.data?.profile_type ??
@@ -204,13 +210,15 @@ export default function OpportunitiesClient() {
           .toString()
           .toLowerCase();
         setProfileType(t);
-        if (t.startsWith('club')) setRole('club');
-        else if (t === 'athlete') setRole('athlete');
+        if (role === 'guest') {
+          if (t.startsWith('club')) setRole('club');
+          else if (t === 'athlete') setRole('athlete');
+        }
       } catch { /* noop */ }
     })();
 
     return () => { cancelled = true; };
-  }, [meId, role]);
+  }, [role]);
 
   const isClub = role === 'club' || profileType.startsWith('club');
   const activeClubFilter = sp.get('clubId') ?? sp.get('club_id');
@@ -658,6 +666,7 @@ export default function OpportunitiesClient() {
           items={items}
           currentUserId={meId ?? undefined}
           userRole={role}
+          myProfileId={meProfileId ?? undefined}
           clubNames={clubNames}
           onEdit={(o) => setEditItem(o)}
           onDelete={(o) => setDeleteItem(o)}

@@ -1,8 +1,6 @@
 import Link from 'next/link';
-import Image from 'next/image';
 
 import OpportunityActions from '@/components/opportunities/OpportunityActions';
-import FollowButton from '@/components/common/FollowButton';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { opportunityGenderLabel } from '@/lib/opps/gender';
 import { getCountryName } from '@/lib/geo/countries';
@@ -54,38 +52,24 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
   }
 
   const ownerId = (opp as any).owner_id ?? (opp as any).created_by ?? null;
-  const clubId = (opp as any).club_id ?? ownerId ?? null;
+  const clubId = (opp as any).club_id ?? null;
 
-  const { data: clubProfile } = ownerId
+  const { data: clubProfile } = clubId
     ? await supabase
         .from('profiles')
         .select('id,user_id,display_name,full_name,avatar_url,city,province,region,country,profile_type,account_type')
-        .or(`id.eq.${ownerId},user_id.eq.${ownerId}`)
+        .eq('id', clubId)
         .maybeSingle()
     : { data: null };
 
-  const clubName =
-    opp.club_name ??
-    clubProfile?.display_name ??
-    clubProfile?.full_name ??
-    undefined;
   const clubProfileId = clubProfile?.id ?? clubId;
-  const clubLocationLabel = buildLocationLabel(
-    clubProfile?.city,
-    clubProfile?.province,
-    clubProfile?.region,
-    clubProfile?.country,
-  );
-
-  const place = [opp.city, opp.province, opp.region, opp.country].filter(Boolean).join(', ');
   const placeLabel = buildLocationLabel(opp.city, opp.province, opp.region, opp.country);
-  const clubLocation = clubLocationLabel || placeLabel || 'Località n/d';
+  const place = placeLabel || [opp.city, opp.province, opp.region, opp.country].filter(Boolean).join(', ');
   const categoryLabel = (opp as any).category ?? (opp as any).required_category ?? null;
   const genderLabel = opportunityGenderLabel((opp as any).gender) ?? undefined;
   const ageLabel = formatAge((opp as any).age_min, (opp as any).age_max);
   const published = formatDateHuman((opp as any).created_at);
   const isOwner = !!authUser?.user && !!ownerId && authUser.user.id === ownerId;
-  const allClubOpportunitiesHref = clubId ? `/opportunities?clubId=${clubId}` : null;
 
   return (
     <div className="page-shell space-y-4">
@@ -93,7 +77,7 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
         ← Torna alla lista
       </Link>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] lg:items-start">
+      <div className="space-y-4">
         <section className="space-y-4">
           <header className="rounded-2xl border bg-white/80 p-4 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-4">
@@ -112,9 +96,16 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
                 </div>
               </div>
 
-              <OpportunityActions opportunityId={opp.id} ownerId={ownerId} showApply={!isOwner} />
+              <OpportunityActions opportunityId={opp.id} clubProfileId={clubProfileId} showApply={!isOwner} />
             </div>
           </header>
+
+          <section className="rounded-2xl border bg-white/80 p-4 shadow-sm text-sm text-gray-700 space-y-2">
+            <h4 className="text-base font-semibold">Dettagli annuncio</h4>
+            <p><span className="font-medium">Stato:</span> {opp.status ?? '—'}</p>
+            <p><span className="font-medium">Pubblicata:</span> {published}</p>
+            <p><span className="font-medium">ID:</span> {opp.id}</p>
+          </section>
 
           <section className="rounded-2xl border bg-white/80 p-4 shadow-sm space-y-3">
             <h2 className="text-lg font-semibold">Descrizione</h2>
@@ -131,66 +122,6 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
             </ul>
           </section>
         </section>
-
-        <aside className="space-y-4">
-          <div className="rounded-2xl border bg-white/80 p-4 shadow-sm space-y-3">
-            <h3 className="text-lg font-semibold">Club</h3>
-            <div className="flex items-center gap-3">
-              {clubProfile?.avatar_url ? (
-                <Image
-                  src={clubProfile.avatar_url}
-                  alt={clubName ?? 'Club'}
-                  width={56}
-                  height={56}
-                  className="h-14 w-14 rounded-full border object-cover"
-                />
-              ) : (
-                <div className="flex h-14 w-14 items-center justify-center rounded-full border bg-gray-100 text-lg font-semibold">
-                  {(clubName || 'C')[0]}
-                </div>
-              )}
-                <div className="min-w-0">
-                  <Link href={clubProfileId ? `/clubs/${clubProfileId}` : '#'} className="font-semibold hover:underline">
-                    {clubName ?? 'Club'}
-                  </Link>
-                  <p className="text-sm text-gray-600">{clubLocation}</p>
-                </div>
-              </div>
-
-            {clubProfileId && !isOwner && (
-              <FollowButton
-                targetProfileId={clubProfileId}
-                size="md"
-                className="w-full justify-center"
-              />
-            )}
-
-            {clubProfileId && (
-              <Link
-                href={`/clubs/${clubProfileId}`}
-                className="block rounded-xl border px-4 py-2 text-center text-sm font-semibold text-blue-700 hover:bg-blue-50"
-              >
-                Visita profilo
-              </Link>
-            )}
-
-            {allClubOpportunitiesHref && (
-              <Link
-                href={allClubOpportunitiesHref}
-                className="block rounded-xl border border-dashed px-4 py-2 text-center text-sm font-semibold text-blue-700 hover:bg-blue-50"
-              >
-                Vedi tutte le opportunità di questo club
-              </Link>
-            )}
-          </div>
-
-          <div className="rounded-2xl border bg-white/80 p-4 shadow-sm text-sm text-gray-700 space-y-2">
-            <h4 className="text-base font-semibold">Dettagli annuncio</h4>
-            <p><span className="font-medium">Stato:</span> {opp.status ?? '—'}</p>
-            <p><span className="font-medium">Pubblicata:</span> {published}</p>
-            <p><span className="font-medium">ID:</span> {opp.id}</p>
-          </div>
-        </aside>
       </div>
     </div>
   );
