@@ -28,29 +28,6 @@ function buildLocationLabel(city?: string | null, province?: string | null, regi
   return parts.length ? parts.join(', ') : null;
 }
 
-const AVATAR_BUCKET = process.env.NEXT_PUBLIC_AVATARS_BUCKET || 'avatars';
-const DEFAULT_SIGNED_URL_TTL = 3600;
-
-function normalizeAvatarPath(raw: string) {
-  const cleaned = raw.replace(/^https?:\/\/[^/]+\/storage\/v1\/object\/(public|sign)\//i, '').replace(/^\/+/, '');
-  return cleaned.startsWith(`${AVATAR_BUCKET}/`) ? cleaned.slice(AVATAR_BUCKET.length + 1) : cleaned;
-}
-
-async function resolveAvatarUrl(raw: string | null | undefined, supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>) {
-  if (!raw) return null;
-  if (/^https?:\/\//i.test(raw)) return raw;
-
-  const path = normalizeAvatarPath(raw);
-  const { data, error } = await supabase.storage.from(AVATAR_BUCKET).createSignedUrl(path, DEFAULT_SIGNED_URL_TTL);
-  if (error) {
-    if (process.env.NODE_ENV !== 'production') {
-      console.warn('[opportunities] avatar signed URL failed', error);
-    }
-    return null;
-  }
-  return data?.signedUrl ?? null;
-}
-
 export default async function OpportunityDetailPage({ params }: { params: { id: string } }) {
   const supabase = await getSupabaseServerClient();
   const { data: authUser } = await supabase.auth.getUser();
@@ -79,37 +56,13 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
   const ownerId = (opp as any).owner_id ?? (opp as any).created_by ?? null;
   const clubId = (opp as any).club_id ?? ownerId ?? null;
 
-  let clubProfile: {
-    id: string;
-    user_id: string | null;
-    display_name: string | null;
-    full_name: string | null;
-    avatar_url: string | null;
-    city: string | null;
-    province: string | null;
-    region: string | null;
-    country: string | null;
-    profile_type?: string | null;
-    account_type?: string | null;
-  } | null = null;
-
-  if (ownerId) {
-    const { data } = await supabase
-      .from('profiles')
-      .select('id,user_id,display_name,full_name,avatar_url,city,province,region,country,profile_type,account_type')
-      .eq('user_id', ownerId)
-      .maybeSingle();
-    clubProfile = data ?? null;
-  }
-
-  if (!clubProfile && clubId) {
-    const { data } = await supabase
-      .from('profiles')
-      .select('id,user_id,display_name,full_name,avatar_url,city,province,region,country,profile_type,account_type')
-      .eq('id', clubId)
-      .maybeSingle();
-    clubProfile = data ?? null;
-  }
+  const { data: clubProfile } = clubId
+    ? await supabase
+        .from('profiles')
+        .select('id,user_id,display_name,full_name,avatar_url,city,province,region,country,profile_type,account_type')
+        .eq('id', clubId)
+        .maybeSingle()
+    : { data: null };
 
   const clubName =
     opp.club_name ??
@@ -117,7 +70,7 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
     clubProfile?.full_name ??
     undefined;
   const clubProfileId = clubProfile?.id ?? clubId;
-  const clubAvatarUrl = await resolveAvatarUrl(clubProfile?.avatar_url ?? null, supabase);
+  const clubAvatarUrl = clubProfile?.avatar_url ?? null;
   const clubLocationLabel = buildLocationLabel(
     clubProfile?.city,
     clubProfile?.province,
