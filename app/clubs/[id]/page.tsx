@@ -152,12 +152,7 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
         showFollowButton={!isMe}
       />
 
-      <section className="grid gap-4 lg:grid-cols-3">
-        <div className="rounded-2xl border bg-white p-5 shadow-sm lg:col-span-2">
-          <h2 className="heading-h2 text-xl">About</h2>
-          <p className="mt-2 whitespace-pre-wrap text-sm text-neutral-800">{aboutText}</p>
-        </div>
-
+      <section className="grid grid-cols-1 gap-4">
         <div className="rounded-2xl border bg-white p-5 shadow-sm">
           <h2 className="heading-h2 text-xl">Dati club</h2>
           <dl className="mt-3 space-y-3 text-sm text-neutral-800">
@@ -183,6 +178,11 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
               <dd className="text-base font-semibold text-neutral-900">—</dd>
             </div>
           </dl>
+        </div>
+
+        <div className="rounded-2xl border bg-white p-5 shadow-sm">
+          <h2 className="heading-h2 text-xl">Biografia</h2>
+          <p className="mt-2 whitespace-pre-wrap text-sm text-neutral-800">{aboutText}</p>
         </div>
       </section>
 
