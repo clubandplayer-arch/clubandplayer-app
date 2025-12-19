@@ -19,6 +19,8 @@ type RosterPlayer = {
   player: {
     id: string;
     name: string;
+    full_name?: string | null;
+    display_name?: string | null;
     avatarUrl: string | null;
     sport: string | null;
     role: string | null;
@@ -63,26 +65,31 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   if (!clubProfile) return jsonError('Solo i club possono visualizzare la rosa', 403);
 
-  const { data, error } = await supabase
+  const { data: rosterRows, error } = await supabase
     .from('club_roster_members')
-    .select(
-      `player_profile_id,status,created_at,
-       player:profiles!club_roster_members_player_profile_id_fkey(id, full_name, display_name, avatar_url, sport, role, city, region, province, country, account_type, status)`
-    )
+    .select('player_profile_id,status,created_at')
     .eq('club_profile_id', clubProfile.id)
     .order('created_at', { ascending: true });
 
   if (error) return jsonError(error.message, 400);
 
-  const roster: RosterPlayer[] = (data || [])
-    .map((row: any) => {
-      const player = row?.player;
-      if (!player?.id) return null;
+  const playerIds = (rosterRows || []).map((row: any) => row.player_profile_id).filter(Boolean);
+  let playersMap = new Map<string, any>();
 
-      const accountType = String(player.account_type ?? '').toLowerCase();
-      const playerStatus = String(player.status ?? '').toLowerCase();
-      if (accountType && accountType !== 'athlete') return null;
-      if (playerStatus && playerStatus !== 'active') return null;
+  if (playerIds.length) {
+    const { data: players, error: playerError } = await supabase
+      .from('players_view')
+      .select('id, full_name, display_name, avatar_url, sport, role, city, region, province, country')
+      .in('id', playerIds);
+
+    if (playerError) return jsonError(playerError.message, 400);
+    playersMap = new Map((players || []).map((p: any) => [p.id, p]));
+  }
+
+  const roster: RosterPlayer[] = (rosterRows || [])
+    .map((row: any) => {
+      const player = playersMap.get(row.player_profile_id);
+      if (!player?.id) return null;
 
       return {
         playerProfileId: row.player_profile_id as string,
@@ -90,7 +97,7 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
         createdAt: row.created_at ?? null,
         player: {
           id: player.id as string,
-          name: buildProfileDisplayName(player.full_name, player.display_name, 'Player'),
+          name: buildProfileDisplayName(player.full_name, player.display_name, 'Profilo'),
           avatarUrl: player.avatar_url ?? null,
           sport: player.sport ?? null,
           role: player.role ?? null,
@@ -98,6 +105,8 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
           province: player.province ?? null,
           region: player.region ?? null,
           country: player.country ?? null,
+          full_name: player.full_name ?? null,
+          display_name: player.display_name ?? null,
         },
       } as RosterPlayer;
     })

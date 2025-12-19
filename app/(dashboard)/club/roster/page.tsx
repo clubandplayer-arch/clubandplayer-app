@@ -6,7 +6,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { MaterialIcon } from '@/components/icons/MaterialIcon';
 import useIsClub from '@/hooks/useIsClub';
-import { buildProfileDisplayName } from '@/lib/displayName';
 
 type ApiRosterPlayer = {
   playerProfileId?: string;
@@ -29,6 +28,8 @@ type ApiRosterPlayer = {
 type RosterPlayer = {
   id: string;
   name: string;
+  fullName?: string | null;
+  displayName?: string | null;
   avatarUrl: string | null;
   role: string | null;
   sport: string | null;
@@ -71,9 +72,12 @@ export default function ClubRosterPage() {
           const player = row?.player ?? {};
           const id = row?.playerProfileId || row?.player_profile_id || player?.id;
           if (!id) return null;
+          const title = (player.full_name || '').trim() || (player.display_name || '').trim() || 'Profilo';
           return {
             id: String(id),
-            name: buildProfileDisplayName(player.full_name, player.display_name, 'Profilo'),
+            name: title,
+            fullName: player.full_name ?? null,
+            displayName: player.display_name ?? null,
             avatarUrl: player.avatarUrl ?? player.avatar_url ?? null,
             role: player.role ?? null,
             sport: player.sport ?? null,
@@ -100,8 +104,8 @@ export default function ClubRosterPage() {
   const sortedRoster = useMemo(() => {
     const copy = [...roster];
     copy.sort((a, b) => {
-      const na = (a.name || '').toLocaleLowerCase('it');
-      const nb = (b.name || '').toLocaleLowerCase('it');
+      const na = (a.fullName || a.displayName || a.name || '').toLocaleLowerCase('it');
+      const nb = (b.fullName || b.displayName || b.name || '').toLocaleLowerCase('it');
       return na.localeCompare(nb, 'it', { sensitivity: 'base' });
     });
     return copy;
@@ -168,8 +172,9 @@ export default function ClubRosterPage() {
 }
 
 function RosterPlayerCard({ player }: { player: RosterPlayer }) {
+  const title = player.fullName?.trim() || player.displayName?.trim() || player.name || 'Profilo';
   const badge = [player.role, player.location].filter(Boolean).join(' · ') || '—';
-  const initials = getInitials(player.name);
+  const initials = getInitials(title);
 
   return (
     <div className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white/70 p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
@@ -186,7 +191,7 @@ function RosterPlayerCard({ player }: { player: RosterPlayer }) {
         </div>
       )}
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-neutral-900">{player.name}</p>
+        <p className="truncate text-sm font-semibold text-neutral-900">{title}</p>
         <p className="text-xs text-neutral-600">{badge}</p>
       </div>
       <Link href={`/u/${player.id}`} className="text-xs font-semibold text-[var(--brand)] hover:underline">
