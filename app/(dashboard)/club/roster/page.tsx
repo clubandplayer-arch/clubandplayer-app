@@ -35,154 +35,12 @@ type RosterPlayer = {
   location: string | null;
 };
 
-const SPORT_ROLE_GROUPS: Record<string, string[]> = {
-  calcio: ['Portieri', 'Difensori', 'Centrocampisti', 'Attaccanti'],
-  basket: ['Playmaker', 'Guardia', 'Ala', 'Centro'],
-  rugby: ['Prima linea', 'Seconda linea', 'Terza linea', 'Mediani', 'Trequarti', 'Estremi'],
-};
-
-function capitalizeRole(role?: string | null) {
-  if (!role) return 'Ruolo non specificato';
-  const value = role.trim();
-  if (!value) return 'Ruolo non specificato';
-  return value.charAt(0).toUpperCase() + value.slice(1);
-}
-
-function normalizeRole(input?: string | null) {
-  return (input ?? '')
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .toLowerCase()
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function footballBucketFromRole(role?: string | null) {
-  const r = normalizeRole(role);
-  if (!r) return 'Ruolo non specificato';
-  const has = (...parts: string[]) => parts.some((p) => r.includes(p));
-
-  // PORTIERI
-  if (has('portiere', 'goalkeeper', 'keeper', 'gk')) return 'Portieri';
-
-  // ATTACCANTI (PRIMA: evita che “punta centrale” venga confusa)
-  if (
-    has(
-      'punta',
-      'punta centrale',
-      'centravanti',
-      'seconda punta',
-      'attaccante',
-      'ala',
-      'esterno offensivo',
-      'forward',
-      'striker',
-      'winger',
-      'st',
-      'cf',
-    )
-  ) {
-    return 'Attaccanti';
-  }
-
-  // DIFENSORI
-  if (
-    has(
-      'difensore',
-      'terzino',
-      'difesa',
-      'difensore centrale',
-      'centrale difensivo',
-      'stopper',
-      'braccetto',
-      'cb',
-      'rb',
-      'lb',
-      'wingback',
-      'fullback',
-      'wb',
-    )
-  ) {
-    return 'Difensori';
-  }
-
-  // CENTROCAMPISTI (SOLO “centrocamp*”, non “centro”)
-  if (has('centrocamp', 'mediano', 'regista', 'mezzala', 'interno', 'mf', 'cm', 'cdm', 'cam')) {
-    return 'Centrocampisti';
-  }
-
-  return 'Ruolo non specificato';
-}
-
-function resolveRoleGroup(sport: string | null, role: string | null) {
-  const normalizedSport = String(sport ?? '').trim().toLowerCase();
-  const normalizedRole = normalizeRole(role);
-
-  if (['calcio', 'soccer', 'football'].includes(normalizedSport)) {
-    return footballBucketFromRole(role);
-  }
-
-  if (!normalizedRole) return 'Ruolo non specificato';
-
-  if (['calcio', 'soccer', 'football'].includes(normalizedSport)) {
-    if (normalizedRole.includes('portier')) return 'Portieri';
-    if (normalizedRole.includes('difens')) return 'Difensori';
-    if (normalizedRole.includes('centr') || normalizedRole.includes('mid') || normalizedRole.includes('mezz')) {
-      return 'Centrocampisti';
-    }
-    if (normalizedRole.includes('attacc') || normalizedRole.includes('punta') || normalizedRole.includes('forward')) {
-      return 'Attaccanti';
-    }
-  }
-
-  if (normalizedSport === 'basket' || normalizedSport === 'basketball') {
-    if (normalizedRole.includes('play')) return 'Playmaker';
-    if (normalizedRole.includes('guard')) return 'Guardia';
-    if (normalizedRole.includes('ala')) return 'Ala';
-    if (normalizedRole.includes('centro') || normalizedRole.includes('pivot')) return 'Centro';
-  }
-
-  if (normalizedSport === 'rugby') {
-    if (normalizedRole.includes('prima linea') || normalizedRole.includes('pilone')) return 'Prima linea';
-    if (normalizedRole.includes('seconda linea') || normalizedRole.includes('lock')) return 'Seconda linea';
-    if (normalizedRole.includes('terza linea') || normalizedRole.includes('flanker') || normalizedRole.includes('numero 8')) {
-      return 'Terza linea';
-    }
-    if (normalizedRole.includes('mediano') || normalizedRole.includes('half')) return 'Mediani';
-    if (normalizedRole.includes('trequart') || normalizedRole.includes('centre') || normalizedRole.includes('wing')) return 'Trequarti';
-    if (normalizedRole.includes('estrem')) return 'Estremi';
-  }
-
-  return capitalizeRole(role);
-}
-
 function buildLocation(row?: { city?: string | null; province?: string | null; region?: string | null; country?: string | null }) {
   if (!row) return null;
   const parts = [row.city, row.province || row.region, row.country]
     .map((value) => (value || '').trim())
     .filter(Boolean);
   return parts.length ? parts.join(', ') : null;
-}
-
-function groupRosterByRole(roster: RosterPlayer[], sport: string | null) {
-  const normalizedSport = String(sport ?? '').trim().toLowerCase();
-  const orderedGroups = SPORT_ROLE_GROUPS[normalizedSport] ?? [];
-  const buckets = new Map<string, RosterPlayer[]>();
-
-  roster.forEach((player) => {
-    const group = resolveRoleGroup(normalizedSport, player.role);
-    if (!buckets.has(group)) buckets.set(group, []);
-    buckets.get(group)!.push(player);
-  });
-
-  const dynamicGroups = Array.from(buckets.keys());
-  const preferredOrder = orderedGroups.length ? orderedGroups : dynamicGroups;
-  const ordered = [...preferredOrder, ...dynamicGroups.filter((g) => !preferredOrder.includes(g))];
-
-  return ordered
-    .filter((label, index) => ordered.indexOf(label) === index)
-    .map((label) => ({ label, players: buckets.get(label) ?? [] }))
-    .filter((group) => group.players.length > 0);
 }
 
 function getInitials(name: string) {
@@ -195,7 +53,6 @@ function getInitials(name: string) {
 
 export default function ClubRosterPage() {
   const { isClub, loading } = useIsClub();
-  const [sport, setSport] = useState<string | null>(null);
   const [roster, setRoster] = useState<RosterPlayer[]>([]);
   const [loadingRoster, setLoadingRoster] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -216,7 +73,7 @@ export default function ClubRosterPage() {
           if (!id) return null;
           return {
             id: String(id),
-            name: buildProfileDisplayName(player.full_name, player.display_name, 'Player'),
+            name: buildProfileDisplayName(player.full_name, player.display_name, 'Profilo'),
             avatarUrl: player.avatarUrl ?? player.avatar_url ?? null,
             role: player.role ?? null,
             sport: player.sport ?? null,
@@ -226,7 +83,6 @@ export default function ClubRosterPage() {
         .filter(Boolean) as RosterPlayer[];
 
       setRoster(mapped);
-      setSport((json as any)?.sport ?? null);
     } catch (err: any) {
       setError(err?.message || 'Impossibile caricare la rosa');
       setRoster([]);
@@ -241,8 +97,16 @@ export default function ClubRosterPage() {
     void loadRoster();
   }, [isClub, loading, loadRoster]);
 
-  const groups = useMemo(() => groupRosterByRole(roster, sport), [roster, sport]);
-  const hasPlayers = groups.some((group) => group.players.length > 0);
+  const sortedRoster = useMemo(() => {
+    const copy = [...roster];
+    copy.sort((a, b) => {
+      const na = (a.name || '').toLocaleLowerCase('it');
+      const nb = (b.name || '').toLocaleLowerCase('it');
+      return na.localeCompare(nb, 'it', { sensitivity: 'base' });
+    });
+    return copy;
+  }, [roster]);
+  const hasPlayers = sortedRoster.length > 0;
 
   if (loading) {
     return <div className="p-6 text-sm text-neutral-600">Verifica permessi…</div>;
@@ -292,22 +156,10 @@ export default function ClubRosterPage() {
         </div>
       ) : null}
 
-      {!loadingRoster && groups.length > 0 ? (
-        <div className="space-y-5">
-          {groups.map((group) => (
-            <section key={group.label} className="space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <h2 className="text-lg font-semibold text-neutral-900">{group.label}</h2>
-                <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-semibold text-neutral-700">
-                  {group.players.length} player{group.players.length === 1 ? '' : 's'}
-                </span>
-              </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {group.players.map((player) => (
-                  <RosterPlayerCard key={`${group.label}-${player.id}`} player={player} />
-                ))}
-              </div>
-            </section>
+      {!loadingRoster && hasPlayers ? (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {sortedRoster.map((player) => (
+            <RosterPlayerCard key={player.id} player={player} />
           ))}
         </div>
       ) : null}
@@ -316,7 +168,7 @@ export default function ClubRosterPage() {
 }
 
 function RosterPlayerCard({ player }: { player: RosterPlayer }) {
-  const badge = [player.role || 'Player', player.location].filter(Boolean).join(' · ') || 'Player';
+  const badge = [player.role, player.location].filter(Boolean).join(' · ') || '—';
   const initials = getInitials(player.name);
 
   return (

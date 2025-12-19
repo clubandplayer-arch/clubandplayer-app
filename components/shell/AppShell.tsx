@@ -91,8 +91,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     setIsMenuOpen(false);
   }, [pathname]);
 
-  const showRosterNav = isClub && (pathname?.startsWith('/feed') || pathname?.startsWith('/club/roster'));
-
   return (
     <ToastProvider>
       <FollowProvider>
@@ -103,7 +101,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
               <nav className="hidden flex-1 justify-center md:flex">
                 <div className="flex items-center gap-1 rounded-full border border-white/40 bg-white/70 px-2 py-1 shadow-sm backdrop-blur">
-                  {showRosterNav && (
+                  {isClub && (
                     <Link
                       href="/club/roster"
                       aria-label="Rosa"
@@ -178,11 +176,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 {isMenuOpen ? <NavCloseIcon fontSize="small" aria-hidden /> : <NavMenuIcon fontSize="small" aria-hidden />}
               </button>
             </div>
-            {isMenuOpen ? (
+              {isMenuOpen ? (
               <div className="border-t bg-white/95 shadow-sm backdrop-blur md:hidden">
                 <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3">
                   <div className="flex flex-wrap gap-2">
-                    {showRosterNav && (
+                    {isClub && (
                       <Link
                         href="/club/roster"
                         onClick={() => setIsMenuOpen(false)}
