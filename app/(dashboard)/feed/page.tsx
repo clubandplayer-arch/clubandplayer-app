@@ -19,7 +19,6 @@ import {
   type ReactionState,
   type ReactionType,
 } from '@/components/feed/postShared';
-import FirstStepsCard from '@/components/onboarding/FirstStepsCard';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import useFeed, { type FeedScope } from '@/hooks/useFeed';
 import type { Profile } from '@/types/profile';
@@ -48,7 +47,7 @@ const FeedHighlights = dynamic(() => import('@/components/feed/FeedHighlights'),
 
 export default function FeedPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [_profile, setProfile] = useState<Profile | null>(null);
   const [reactions, setReactions] = useState<Record<string, ReactionState>>({});
   const [reactionError, setReactionError] = useState<string | null>(null);
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
@@ -294,8 +293,6 @@ export default function FeedPage() {
           <h1 id={headingId} className="sr-only">
             Bacheca feed
           </h1>
-          <FirstStepsCard profile={profile} />
-
           <div className="glass-panel flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm font-semibold text-neutral-700">
             <div className="text-xs font-medium uppercase tracking-wide text-neutral-500">Visibilità</div>
             <div

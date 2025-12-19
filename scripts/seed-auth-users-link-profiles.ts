@@ -74,7 +74,7 @@ async function main() {
 
     const { data: prof, error: profErr } = await supabase
       .from('profiles')
-      .select('id,user_id,full_name,display_name,type')
+      .select('id,user_id,full_name,display_name,type,account_type,sport,role,birth_year,country,region,province,city')
       .eq('type', 'athlete')
       .eq('full_name', p.fullName)
       .maybeSingle();
@@ -106,10 +106,10 @@ async function main() {
       }
     }
 
-    if (!userId) {
-      console.warn(`[FAIL] userId mancante per ${p.fullName}`);
-      continue;
-    }
+  if (!userId) {
+    console.warn(`[FAIL] userId mancante per ${p.fullName}`);
+    continue;
+  }
 
     const interestUpdate: Record<string, any> = {
       interest_country: 'IT',
@@ -117,17 +117,29 @@ async function main() {
       interest_province: 'Siracusa',
       interest_city: 'Carlentini',
     };
+    const geoUpdate: Record<string, any> = {
+      country: 'Italia',
+      region: 'Sicilia',
+      province: 'Siracusa',
+      city: 'Carlentini',
+    };
 
-    const { error: updErr } = await supabase
-      .from('profiles')
-      .update({
-        user_id: userId,
-        display_name: prof.display_name || p.fullName,
+  const { error: updErr } = await supabase
+    .from('profiles')
+    .update({
+      user_id: userId,
+      display_name: prof.display_name || p.fullName,
+        account_type: prof.account_type || 'athlete',
+        type: prof.type || 'athlete',
+        sport: p.sport,
+        role: p.role,
+        birth_year: p.birthYear,
+        ...geoUpdate,
         ...interestUpdate,
-      })
-      .eq('id', prof.id);
+    })
+    .eq('id', prof.id);
 
-    if (updErr) throw updErr;
+  if (updErr) throw updErr;
 
     console.log(`[OK] ${p.fullName} -> ${email} / ${password} (linked user_id=${userId})`);
   }
