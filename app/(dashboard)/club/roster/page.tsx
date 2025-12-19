@@ -175,6 +175,25 @@ function RosterPlayerCard({ player }: { player: RosterPlayer }) {
   const title = player.fullName?.trim() || player.displayName?.trim() || player.name || 'Profilo';
   const badge = [player.role, player.location].filter(Boolean).join(' · ') || '—';
   const initials = getInitials(title);
+  const [removing, setRemoving] = useState(false);
+
+  const handleRemove = async () => {
+    if (removing) return;
+    setRemoving(true);
+    try {
+      await fetch('/api/clubs/me/roster', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playerProfileId: player.id, inRoster: false }),
+      });
+    } catch {
+      // silenzio: la lista verrà ricaricata manualmente
+    } finally {
+      setRemoving(false);
+      window.location.reload();
+    }
+  };
 
   return (
     <div className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white/70 p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
@@ -197,6 +216,14 @@ function RosterPlayerCard({ player }: { player: RosterPlayer }) {
       <Link href={`/u/${player.id}`} className="text-xs font-semibold text-[var(--brand)] hover:underline">
         Vedi profilo
       </Link>
+      <button
+        type="button"
+        onClick={handleRemove}
+        disabled={removing}
+        className="text-xs font-semibold text-pink-700 hover:underline disabled:opacity-60"
+      >
+        {removing ? 'Rimozione…' : 'Rimuovi'}
+      </button>
     </div>
   );
 }

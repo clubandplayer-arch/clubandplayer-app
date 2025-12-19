@@ -10,6 +10,7 @@ type FollowedProfile = {
   id: string;
   name: string;
   account_type: string | null;
+  type?: string | null;
   city: string | null;
   sport: string | null;
   role: string | null;
@@ -20,6 +21,7 @@ type ApiResponse = {
     id: string;
     name?: string | null;
     account_type?: string | null;
+    type?: string | null;
     city?: string | null;
     country?: string | null;
     sport?: string | null;
@@ -126,6 +128,7 @@ export default function FollowingPage() {
               id: row.id,
               name: buildProfileDisplayName(row.name, row.name, 'Profilo'),
               account_type: row.account_type ?? null,
+              type: (row as any)?.type ?? null,
               city: row.city ?? null,
               sport: row.sport ?? null,
               role: row.role ?? null,
