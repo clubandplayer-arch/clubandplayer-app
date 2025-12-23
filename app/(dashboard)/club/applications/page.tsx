@@ -211,7 +211,6 @@ export default function ClubApplicationsPage() {
               {rows.map((row) => {
                 const athleteId = row.athlete?.id ?? row.athlete_id;
                 const name =
-                  row.player_name ||
                   row.athlete?.full_name ||
                   row.athlete?.display_name ||
                   row.athlete_id ||
