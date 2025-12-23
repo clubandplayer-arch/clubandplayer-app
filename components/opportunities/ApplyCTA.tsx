@@ -105,11 +105,9 @@ export default function ApplyCTA({ oppId, initialApplied, onApplied, size = 'md'
         ? 'Candidatura rifiutata'
         : 'Candidatura inviata';
     const cls =
-      key === 'accepted'
-        ? 'bg-green-100 text-green-800 border-green-200'
-        : key === 'rejected'
+      key === 'rejected'
         ? 'bg-red-100 text-red-800 border-red-200'
-        : 'bg-gray-100 text-gray-700 border-gray-200';
+        : 'bg-emerald-100 text-emerald-800 border-emerald-200';
 
     return (
       <span

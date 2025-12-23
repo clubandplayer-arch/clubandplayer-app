@@ -39,7 +39,7 @@ export default function MyApplicationsPage() {
   const [rows, setRows] = useState<ApplicationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'accepted' | 'rejected'>('pending');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'accepted' | 'rejected'>('all');
 
   useEffect(() => {
     let cancelled = false;
@@ -113,10 +113,10 @@ export default function MyApplicationsPage() {
             onChange={(e) => setStatusFilter(e.target.value as any)}
             className="rounded-lg border px-3 py-2 text-sm"
           >
+            <option value="all">Tutte</option>
             <option value="pending">In valutazione</option>
             <option value="accepted">Accettate</option>
             <option value="rejected">Rifiutate</option>
-            <option value="all">Tutte</option>
           </select>
         </label>
       </div>
