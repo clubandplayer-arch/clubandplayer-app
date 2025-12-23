@@ -9,11 +9,25 @@ export const runtime = 'nodejs';
 const missingClubColumn = (msg?: string | null) =>
   !!msg && /club_id/i.test(msg) && (/does not exist/i.test(msg) || /schema cache/i.test(msg));
 
+const parseStatuses = (param: string | null) => {
+  const raw = (param || '').toLowerCase();
+  if (!raw || raw === 'pending') return ['submitted', 'seen'];
+  if (raw === 'accepted') return ['accepted'];
+  if (raw === 'rejected') return ['rejected'];
+  if (raw === 'all') return [];
+  const parts = raw.split(',').map((s) => s.trim()).filter(Boolean);
+  return parts.length ? parts : ['submitted', 'seen'];
+};
+
 /** GET /api/applications/received  → candidature per le opportunità create dall’utente corrente */
 export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   try { await rateLimit(req, { key: 'applications:RECEIVED', limit: 120, window: '1m' } as any); }
   catch { return jsonError('Too Many Requests', 429); }
 
+  const url = new URL(req.url);
+  const statusParam = url.searchParams.get('status');
+  const opportunityId = (url.searchParams.get('opportunity_id') || '').trim();
+  const statuses = parseStatuses(statusParam);
   const admin = getSupabaseAdminClientOrNull();
 
   const runWithFallback = async <T>(fn: (c: any) => Promise<{ data: T | null; error: any }>) => {
@@ -31,7 +45,7 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   const { data: oppsRawInitial, error: oppErr } = await runWithFallback((client) =>
     client
       .from('opportunities')
-      .select('id, title, city, province, region, country, owner_id, created_by')
+      .select('id, title, role, city, province, region, country, owner_id, created_by')
       .or(`owner_id.eq.${user.id},created_by.eq.${user.id}`)
   );
   if (oppErr) return jsonError(oppErr.message, 400);
@@ -41,7 +55,7 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   if ((!oppsRaw.length) && admin) {
     const res = await admin
       .from('opportunities')
-      .select('id, title, city, province, region, country, owner_id, created_by')
+      .select('id, title, role, city, province, region, country, owner_id, created_by')
       .or(`owner_id.eq.${user.id},created_by.eq.${user.id}`);
     if (!res.error) oppsRaw = res.data;
   }
@@ -64,13 +78,18 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   const runApps = async (
     sel: string,
   ): Promise<{ data: any[] | null; error: any }> =>
-    runWithFallback<any[]>((client) =>
-      client
+    runWithFallback<any[]>((client) => {
+      let q = client
         .from('applications')
         .select(sel)
         .in('opportunity_id', oppIds)
-        .order('created_at', { ascending: false })
-    );
+        .order('created_at', { ascending: false });
+
+      if (opportunityId) q = q.eq('opportunity_id', opportunityId);
+      if (statuses.length) q = q.in('status', statuses);
+
+      return q;
+    });
 
   let rows: any[] | null = null;
   let e2: any = null;

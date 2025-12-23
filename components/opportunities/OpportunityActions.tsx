@@ -8,9 +8,10 @@ type Props = {
   opportunityId: string;
   clubProfileId?: string | null;
   showApply?: boolean;
+  hideClubLink?: boolean;
 };
 
-export default function OpportunityActions({ opportunityId, clubProfileId, showApply = true }: Props) {
+export default function OpportunityActions({ opportunityId, clubProfileId, showApply = true, hideClubLink = false }: Props) {
   const toast = useToast();
 
   return (
@@ -25,7 +26,7 @@ export default function OpportunityActions({ opportunityId, clubProfileId, showA
         Salva
       </button>
 
-      {clubProfileId && (
+      {clubProfileId && !hideClubLink && (
         <Link
           href={`/clubs/${clubProfileId}`}
           className="rounded-xl border px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50"
