@@ -209,12 +209,11 @@ export default function ClubApplicationsPage() {
             </thead>
             <tbody>
               {rows.map((row) => {
-                const athleteId = row.athlete?.id ?? row.athlete_id;
+                const athleteProfileId = row.athlete?.id ?? null;
                 const name =
-                  row.athlete?.full_name ||
-                  row.athlete?.display_name ||
-                  row.athlete_id ||
-                  'Candidato';
+                  row.athlete?.full_name?.trim() ||
+                  row.athlete?.display_name?.trim() ||
+                  'Senza nome';
                 const headline = [row.athlete?.role, row.athlete?.sport].filter(Boolean).join(' · ');
                 const oppTitle = (row.opportunity?.title || '').trim() || row.opportunity_id || 'Annuncio';
                 const created = row.created_at ? new Date(row.created_at).toLocaleString('it-IT') : '—';
@@ -224,8 +223,8 @@ export default function ClubApplicationsPage() {
                   <tr key={row.id} className="border-t">
                     <td className="px-3 py-3 align-top">
                       <div className="font-semibold text-gray-900">
-                        {athleteId ? (
-                          <Link href={`/players/${athleteId}`} className="text-blue-700 hover:underline">
+                        {athleteProfileId ? (
+                          <Link href={`/players/${athleteProfileId}`} className="text-blue-700 hover:underline">
                             {name}
                           </Link>
                         ) : (

@@ -1,7 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
-import { getPublicProfilesMap } from '@/lib/profiles/publicLookup';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
@@ -123,27 +122,33 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   const apps = rows ?? [];
   if (!apps.length) return NextResponse.json({ data: [] });
 
-  // 3) Profili atleti (fallback se la JOIN non restituisce nulla)
-  const athleteIds = Array.from(
+  // 3) Profili atleti da athletes_view (join su user_id)
+  const athleteUserIds = Array.from(
     new Set(apps.map(a => String(a.athlete_id ?? '')).filter(id => id.length > 0))
   );
-    const profileClient = admin ?? supabase;
-    const profMap = await getPublicProfilesMap(athleteIds, profileClient, {
-      fallbackToAdmin: true,
-    });
+
+  let athletes: any[] = [];
+  if (athleteUserIds.length) {
+    const client = admin ?? supabase;
+    const { data: athData, error: athErr } = await client
+      .from('athletes_view')
+      .select('id, user_id, full_name, display_name, role, sport, city, province, region')
+      .in('user_id', athleteUserIds);
+    if (!athErr && Array.isArray(athData)) {
+      athletes = athData;
+    }
+  }
+  const athleteByUserId = new Map<string, any>(
+    athletes.map((a) => [String(a.user_id), a]),
+  );
 
   // 4) Arricchisci con nomi e link sempre disponibili
   const enhanced = apps.map(a => {
-    const profile = profMap.get(String(a.athlete_id ?? '')) || null;
-
-    const first = typeof profile?.first_name === 'string' ? profile.first_name.trim() : '';
-    const last = typeof profile?.last_name === 'string' ? profile.last_name.trim() : '';
-    const nameFromParts = [first, last].filter(Boolean).join(' ').trim() || null;
+    const profile = athleteByUserId.get(String(a.athlete_id ?? '')) || null;
 
     const name =
-      (profile as any)?.display_name ||
-      (profile as any)?.full_name ||
-      nameFromParts ||
+      (profile as any)?.full_name?.trim?.() ||
+      (profile as any)?.display_name?.trim?.() ||
       null;
 
     const location = [profile?.city, profile?.province, profile?.region].filter(Boolean).join(' · ');
@@ -151,14 +156,16 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
 
     return {
       ...a,
-      player_name: name,
       player_location: location,
       player_headline: headline,
       opportunity: oppMap.get(a.opportunity_id) ?? (a as any).opportunity ?? null,
       athlete: profile
         ? {
             ...profile,
-            id: (profile as any).user_id ?? (profile as any).id ?? a.athlete_id ?? null,
+            id: profile.id ?? null, // profile_id
+            user_id: profile.user_id ?? a.athlete_id ?? null,
+            full_name: profile.full_name ?? null,
+            display_name: profile.display_name ?? null,
             name,
           }
         : null,
