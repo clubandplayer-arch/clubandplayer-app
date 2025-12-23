@@ -41,6 +41,21 @@ function renderContent(notification: NotificationWithActor) {
       const title = typeof payload?.title === 'string' ? payload.title : 'nuova opportunità';
       return `${actorName || 'Un club'} ha pubblicato ${title}`;
     }
+    case 'application_status': {
+      const title =
+        typeof payload?.opportunity_title === 'string'
+          ? payload.opportunity_title
+          : typeof payload?.title === 'string'
+          ? payload.title
+          : 'la tua candidatura';
+      const rawStatus = typeof payload?.status === 'string' ? payload.status.toLowerCase() : '';
+      const statusLabel = rawStatus === 'accepted'
+        ? 'accettata'
+        : rawStatus === 'rejected'
+        ? 'rifiutata'
+        : 'aggiornata';
+      return `Candidatura ${statusLabel} per ${title}`;
+    }
     default:
       return payload?.title ? String(payload.title) : 'Nuova notifica';
   }
@@ -65,6 +80,9 @@ export default function NotificationItem({ notification, onClick, compact }: Pro
       return `/profiles/${payload.follower_profile_id}`;
     }
     if (notification.kind === 'new_opportunity' && typeof payload.opportunity_id === 'string') {
+      return `/opportunities/${payload.opportunity_id}`;
+    }
+    if (notification.kind === 'application_status' && typeof payload.opportunity_id === 'string') {
       return `/opportunities/${payload.opportunity_id}`;
     }
     return '/notifications';

@@ -130,9 +130,9 @@ export default function OpportunitiesClient() {
     () => [
       { value: '', label: 'Tutte' },
       { value: 'open', label: 'Aperte' },
-      { value: 'draft', label: 'Bozza' },
       { value: 'closed', label: 'Chiuse' },
       { value: 'archived', label: 'Archiviate' },
+      { value: 'draft', label: 'Bozza' },
     ],
     [],
   );

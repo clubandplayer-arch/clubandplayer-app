@@ -30,6 +30,14 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
   const supabase = await getSupabaseServerClient();
   const { data: authUser } = await supabase.auth.getUser();
 
+  const currentProfile = authUser?.user
+    ? await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', authUser.user.id)
+        .maybeSingle()
+    : { data: null };
+
   const { data: opp, error } = await supabase
     .from('opportunities')
     .select(
@@ -70,6 +78,7 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
   const ageLabel = formatAge((opp as any).age_min, (opp as any).age_max);
   const published = formatDateHuman((opp as any).created_at);
   const isOwner = !!authUser?.user && !!ownerId && authUser.user.id === ownerId;
+  const isOwnerProfile = !!currentProfile.data?.id && !!clubProfileId && currentProfile.data.id === clubProfileId;
 
   return (
     <div className="page-shell space-y-4">
@@ -96,7 +105,12 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
                 </div>
               </div>
 
-              <OpportunityActions opportunityId={opp.id} clubProfileId={clubProfileId} showApply={!isOwner} />
+              <OpportunityActions
+                opportunityId={opp.id}
+                clubProfileId={clubProfileId}
+                showApply={!isOwner}
+                hideClubLink={isOwnerProfile}
+              />
             </div>
           </header>
 

@@ -83,6 +83,8 @@ export async function GET(req: NextRequest) {
   const role = (url.searchParams.get('role') || '').trim();
   const ageB = (url.searchParams.get('age') || '').trim();
   const category = (url.searchParams.get('category') || url.searchParams.get('required_category') || '').trim();
+  const rawStatus = (url.searchParams.get('status') || '').trim().toLowerCase();
+  const allowedStatuses = new Set(['open', 'closed', 'archived', 'draft']);
   
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -109,6 +111,9 @@ export async function GET(req: NextRequest) {
   if (sport) query = query.eq('sport', sport);
   if (role) query = query.eq('role', role);
   if (category) query = query.eq('category', category);
+  if (rawStatus && allowedStatuses.has(rawStatus)) {
+    query = query.eq('status', rawStatus);
+  }
   if (ageB) {
     const { age_min, age_max } = bracketToRange(ageB);
     if (age_min != null) query = query.gte('age_min', age_min);

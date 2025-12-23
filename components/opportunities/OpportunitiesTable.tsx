@@ -1,10 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import ApplyCell from '@/components/opportunities/ApplyCell';
 import FollowButton from '@/components/common/FollowButton';
-import { useToast } from '@/components/common/ToastProvider';
 import type { Opportunity } from '@/types/opportunity';
 
 type Role = 'athlete' | 'club' | 'guest';
@@ -41,9 +40,6 @@ export default function OpportunitiesTable({
   onEdit?: (opp: Opportunity) => void;
   onDelete?: (opp: Opportunity) => void;
 }) {
-  const toast = useToast();
-  const [saving, setSaving] = useState<string | null>(null);
-
   const ownerNameMap = useMemo(() => clubNames ?? {}, [clubNames]);
 
   if (!items.length) {
@@ -133,19 +129,6 @@ export default function OpportunitiesTable({
 
               <div className="flex flex-row flex-wrap items-center gap-2 md:flex-col md:items-end">
                 {showApply && <ApplyCell opportunityId={o.id} ownerId={ownerId} />}
-
-                <button
-                  type="button"
-                  disabled={saving === o.id}
-                  onClick={() => {
-                    setSaving(o.id);
-                    toast.info('Salvataggio opportunità in arrivo');
-                    setTimeout(() => setSaving(null), 800);
-                  }}
-                  className="rounded-xl border px-4 py-2 text-sm font-medium hover:bg-gray-50 disabled:opacity-60"
-                >
-                  {saving === o.id ? '... ' : 'Salva'}
-                </button>
 
                 {canEdit && (
                   <div className="flex items-center gap-2">

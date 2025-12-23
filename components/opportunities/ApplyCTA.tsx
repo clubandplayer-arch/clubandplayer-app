@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { trackApplicationConversion } from '@/lib/analytics';
 
 type Props = {
@@ -10,8 +10,13 @@ type Props = {
   size?: 'sm' | 'md';
 };
 
+type ApplicationRow = {
+  status?: string | null;
+};
+
 export default function ApplyCTA({ oppId, initialApplied, onApplied, size = 'md' }: Props) {
   const [applied, setApplied] = useState<boolean>(!!initialApplied);
+  const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const small = size === 'sm';
 
@@ -19,18 +24,61 @@ export default function ApplyCTA({ oppId, initialApplied, onApplied, size = 'md'
     setApplied(!!initialApplied);
   }, [initialApplied]);
 
+  const loadExisting = useCallback(async (signal?: AbortSignal) => {
+    try {
+      const r = await fetch(`/api/applications/mine?opportunityId=${encodeURIComponent(oppId)}`, {
+        credentials: 'include',
+        cache: 'no-store',
+        signal,
+      });
+      if (!r.ok) return;
+      const j = await r.json().catch(() => ({} as any));
+      const arr = Array.isArray(j?.data)
+        ? j.data
+        : Array.isArray(j)
+          ? j
+          : [];
+      const first = (arr as ApplicationRow[])[0];
+      if (signal?.aborted) return;
+      if (first) {
+        setApplied(true);
+        setStatus(first.status ?? null);
+      }
+    } catch (e: any) {
+      if (e?.name === 'AbortError') return;
+    }
+  }, [oppId]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    loadExisting(controller.signal);
+    return () => controller.abort();
+  }, [loadExisting]);
+
   async function handleApply() {
     if (applied || loading) return;
     setLoading(true);
     try {
-      const r = await fetch(`/api/opportunities/${oppId}/apply`, {
+      const r = await fetch('/api/applications', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ opportunity_id: oppId }),
       });
       // idempotente: ok anche se già candidato (409)
       if (r.ok || r.status === 409) {
         setApplied(true);
+        if (r.ok) {
+          try {
+            const j = await r.json().catch(() => ({} as any));
+            const newStatus = (j as any)?.data?.status ?? null;
+            if (newStatus) setStatus(String(newStatus));
+          } catch {
+            /* ignore */
+          }
+        } else {
+          await loadExisting();
+        }
         try {
           trackApplicationConversion({ opportunityId: oppId, source: 'cta' });
         } catch {
@@ -49,15 +97,27 @@ export default function ApplyCTA({ oppId, initialApplied, onApplied, size = 'md'
   }
 
   if (applied) {
+    const key = (status || '').toLowerCase();
+    const label =
+      key === 'accepted'
+        ? 'Candidatura accettata'
+        : key === 'rejected'
+        ? 'Candidatura rifiutata'
+        : 'Candidatura inviata';
+    const cls =
+      key === 'rejected'
+        ? 'bg-red-100 text-red-800 border-red-200'
+        : 'bg-emerald-100 text-emerald-800 border-emerald-200';
+
     return (
       <span
         className={[
           'inline-flex items-center rounded-lg border px-3 py-1 text-sm font-medium',
           small ? 'text-xs px-2 py-0.5' : '',
-          'bg-gray-100 text-gray-700 border-gray-200',
+          cls,
         ].join(' ')}
       >
-        Già candidato
+        {label}
       </span>
     );
   }
