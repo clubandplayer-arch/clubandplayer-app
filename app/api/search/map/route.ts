@@ -185,6 +185,7 @@ export async function GET(req: NextRequest) {
     };
 
     const { north, south, east, west } = bounds;
+    const hasBounds = north != null || south != null || east != null || west != null;
 
     const applyBounds = (
       query: ReturnType<typeof baseQuery>,
@@ -205,6 +206,91 @@ export async function GET(req: NextRequest) {
       const q = applyBounds(applyFilters(baseQuery()), { withBounds });
       return q;
     };
+
+    if (type === 'opportunity') {
+      let clubQuery = supabase
+        .from('profiles')
+        .select('id, latitude, longitude, club_stadium_lat, club_stadium_lng')
+        .eq('status', 'active')
+        .neq('is_admin', true)
+        .or('account_type.eq.club,type.eq.club');
+
+      if (hasBounds) {
+        if (south != null && north != null) {
+          clubQuery = clubQuery.gte('latitude', south).lte('latitude', north);
+        }
+        if (west != null && east != null) {
+          clubQuery = clubQuery.gte('longitude', west).lte('longitude', east);
+        }
+      }
+
+      const { data: clubsData, error: clubsError } = await clubQuery;
+      if (clubsError) return dbError(clubsError.message);
+
+      const clubIds = Array.from(new Set((clubsData ?? []).map((c: any) => c.id).filter(Boolean)));
+
+      const oppSelect = [
+        'id',
+        'title',
+        'description',
+        'city',
+        'province',
+        'region',
+        'country',
+        'club_name',
+        'club_id',
+        'owner_id',
+        'created_at',
+      ].join(',');
+
+      let oppQuery = supabase
+        .from('opportunities')
+        .select(oppSelect)
+        .order('created_at', { ascending: false })
+        .limit(Math.min(limit, 100));
+
+      if (clubIds.length) {
+        oppQuery = oppQuery.in('club_id', clubIds);
+      } else if (hasBounds) {
+        return successResponse({ data: [], total: 0 });
+      }
+
+      if (ilikeQuery) {
+        oppQuery = oppQuery.or(
+          [
+            `title.ilike.${ilikeQuery}`,
+            `description.ilike.${ilikeQuery}`,
+            `city.ilike.${ilikeQuery}`,
+            `province.ilike.${ilikeQuery}`,
+            `region.ilike.${ilikeQuery}`,
+          ].join(','),
+        );
+      }
+
+      const { data: opps, error: oppErr, count: oppCount } = await oppQuery;
+      if (oppErr) return dbError(oppErr.message);
+
+      const rows = (opps ?? []).map((o: any) => {
+        const locationLabel = [o.city, o.province, o.region, o.country].filter(Boolean).join(' · ');
+        return {
+          id: o.id,
+          profile_id: o.id,
+          type: 'opportunity',
+          account_type: 'opportunity',
+          title: o.title ?? 'Annuncio',
+          club_name: o.club_name ?? null,
+          club_id: o.club_id ?? o.owner_id ?? null,
+          city: o.city ?? null,
+          province: o.province ?? null,
+          region: o.region ?? null,
+          country: o.country ?? null,
+          location_label: locationLabel || null,
+          created_at: o.created_at ?? null,
+        };
+      });
+
+      return successResponse({ data: rows, total: oppCount ?? rows.length });
+    }
 
     const firstQuery = await runQuery({ withBounds: true });
     const { data, error, count } = await firstQuery;

@@ -23,18 +23,35 @@ export type SearchResultsListProps = {
 function MarkerIcon({ type }: { type?: string | null }) {
   const lower = (type || '').toLowerCase();
   const isClub = lower.includes('club');
+  const isOpp = lower === 'opportunity';
   return (
     <span
       className={`inline-flex h-6 min-w-[1.5rem] items-center justify-center rounded-full px-2 text-xs font-semibold ${
-        isClub ? 'bg-blue-50 text-blue-700' : 'bg-emerald-50 text-emerald-700'
+        isOpp
+          ? 'bg-amber-50 text-amber-700'
+          : isClub
+            ? 'bg-blue-50 text-blue-700'
+            : 'bg-emerald-50 text-emerald-700'
       }`}
     >
-      {isClub ? 'CLUB' : 'PLAYER'}
+      {isOpp ? 'OPP' : isClub ? 'CLUB' : 'PLAYER'}
     </span>
   );
 }
 
 function Avatar({ profile }: { profile: SearchMapProfile }) {
+  const lower = (profile.type || profile.account_type || '').toLowerCase();
+  const isOpp = lower === 'opportunity';
+  if (isOpp) {
+    const display = profile.title || profile.friendly_name || 'Annuncio';
+    const initial = display.trim()[0]?.toUpperCase() || 'P';
+    return (
+      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-sm font-semibold text-amber-800">
+        <span>{initial}</span>
+      </div>
+    );
+  }
+
   const display =
     profile.friendly_name || buildProfileDisplayName(profile.full_name, profile.display_name, 'Profilo');
   const alt = display || 'Avatar profilo';
@@ -76,6 +93,7 @@ function resolvePublicHref(profile: SearchMapProfile) {
   const profileId = resolveProfileId(profile);
   if (!profileId) return '#';
   const type = (profile.type || profile.account_type || '').trim().toLowerCase();
+  if (type === 'opportunity') return `/opportunities/${profileId}`;
   return type === 'club' ? `/clubs/${profileId}` : `/players/${profileId}`;
 }
 
@@ -130,8 +148,15 @@ export default function SearchResultsList({
             const location = locationLabel(profile);
             const details = detailsLabel(profile);
             const canMessage = !!profileId;
-            const displayName =
-              profile.friendly_name || buildProfileDisplayName(profile.full_name, profile.display_name, 'Profilo');
+            const lowerType = (profile.type || profile.account_type || '').toLowerCase();
+            const isOpportunity = lowerType === 'opportunity';
+            const displayName = isOpportunity
+              ? profile.title || profile.friendly_name || 'Annuncio'
+              : profile.friendly_name || buildProfileDisplayName(profile.full_name, profile.display_name, 'Profilo');
+            const clubLabel = isOpportunity ? profile.club_name || 'Club' : null;
+            const locationText = isOpportunity
+              ? profile.location_label || location || 'Località non disponibile'
+              : location || 'Località non disponibile';
 
             return (
               <div
@@ -168,22 +193,40 @@ export default function SearchResultsList({
                       </Link>
                       <MarkerIcon type={profile.type || profile.account_type} />
                     </div>
-                    <div className="text-xs text-gray-600">{location || 'Località non disponibile'}</div>
-                    <div className="text-xs text-gray-500">{details || 'Ruolo/sport non specificato'}</div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {profileId && (
-                        <FollowButton targetProfileId={profileId} size="sm" className="min-w-[90px]" />
-                      )}
-                      {canMessage && (
-                        <Link
-                          href={buildDirectConversationUrl(profileId)}
-                          onClick={(e) => e.stopPropagation()}
-                          className="inline-flex items-center justify-center rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm font-medium text-neutral-800 hover:bg-neutral-50"
-                        >
-                          Messaggia
-                        </Link>
-                      )}
-                    </div>
+                    {isOpportunity ? (
+                      <>
+                        <div className="text-xs text-gray-600">{locationText}</div>
+                        <div className="text-xs text-gray-500">{clubLabel}</div>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <Link
+                            href={href}
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center justify-center rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-800 hover:bg-blue-100"
+                          >
+                            Dettagli annuncio
+                          </Link>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="text-xs text-gray-600">{location || 'Località non disponibile'}</div>
+                        <div className="text-xs text-gray-500">{details || 'Ruolo/sport non specificato'}</div>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {profileId && (
+                            <FollowButton targetProfileId={profileId} size="sm" className="min-w-[90px]" />
+                          )}
+                          {canMessage && (
+                            <Link
+                              href={buildDirectConversationUrl(profileId)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center justify-center rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm font-medium text-neutral-800 hover:bg-neutral-50"
+                            >
+                              Messaggia
+                            </Link>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>

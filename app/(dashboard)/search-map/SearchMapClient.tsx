@@ -20,7 +20,7 @@ type PolygonPoint = [number, number];
 
 type PersistedSearchState = {
   queryText: string;
-  filterType: 'all' | 'club' | 'player';
+  filterType: 'all' | 'club' | 'player' | 'opportunity';
   activeArea: PolygonPoint[] | null;
   searchBounds: Bounds | null;
   clubSport: string;
@@ -80,7 +80,7 @@ function pointInPolygon(point: PolygonPoint, polygon: PolygonPoint[]): boolean {
 }
 
 export default function SearchMapClient() {
-  const [typeFilter, setTypeFilter] = useState<'all' | 'club' | 'player'>('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'club' | 'player' | 'opportunity'>('all');
   const [searchBounds, setSearchBounds] = useState<Bounds | null>(null);
   const [points, setPoints] = useState<SearchMapProfile[]>([]);
   const [loading, setLoading] = useState(false);
@@ -109,8 +109,9 @@ export default function SearchMapClient() {
   const mapRef = useRef<LeafletLib['Map'] | null>(null);
   const polygonRef = useRef<LeafletLib['Polygon'] | null>(null);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const clubPinsLayerRef = useRef<LeafletLib['LayerGroup'] | null>(null);
 
-  const hasArea = !!searchBounds;
+  const hasArea = typeFilter === 'opportunity' ? true : !!searchBounds;
 
   const clearPersistedState = useCallback(() => {
     if (typeof window === 'undefined') return;
@@ -123,6 +124,37 @@ export default function SearchMapClient() {
       polygonRef.current = null;
     }
   }, []);
+
+  const clearClubPins = useCallback(() => {
+    if (clubPinsLayerRef.current && mapRef.current) {
+      clubPinsLayerRef.current.removeFrom(mapRef.current);
+      clubPinsLayerRef.current = null;
+    }
+  }, []);
+
+  const renderClubPins = useCallback(
+    async (pins: Array<{ id: string; display_name?: string | null; full_name?: string | null; latitude: number; longitude: number }>) => {
+      const map = mapRef.current;
+      if (!map) return;
+      const L = await loadLeaflet();
+      clearClubPins();
+      if (!pins.length) return;
+
+      const layer = L.layerGroup();
+      pins.forEach((pin) => {
+        const name = pin.display_name || pin.full_name || 'Club';
+        const marker = L.marker([pin.latitude, pin.longitude]);
+        marker.bindPopup(
+          `<div><strong>${name}</strong><br /><a href="/clubs/${pin.id}">Apri profilo club</a></div>`,
+        );
+        marker.addTo(layer);
+      });
+
+      layer.addTo(map);
+      clubPinsLayerRef.current = layer;
+    },
+    [clearClubPins],
+  );
 
   const updatePolygonLayer = useCallback(
     async (pts: PolygonPoint[], fit = false) => {
@@ -312,6 +344,46 @@ export default function SearchMapClient() {
     if (!map) return;
     let clickHandler: any = null;
     let dblHandler: any = null;
+    let moveHandler: any = null;
+    let zoomHandler: any = null;
+    let debounceTimer: any = null;
+
+    const fetchClubPins = async () => {
+      const currentMap = mapRef.current;
+      if (!currentMap) return;
+      const zoom = currentMap.getZoom();
+      const ZOOM_THRESHOLD = 12;
+      if (zoom < ZOOM_THRESHOLD) {
+        clearClubPins();
+        return;
+      }
+      const b = currentMap.getBounds();
+      const params = new URLSearchParams({
+        north: String(b.getNorth()),
+        south: String(b.getSouth()),
+        east: String(b.getEast()),
+        west: String(b.getWest()),
+      });
+      try {
+        const res = await fetch(`/api/search/clubs-in-bounds?${params.toString()}`, { cache: 'no-store' });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+        const data = Array.isArray(json?.data) ? json.data : [];
+        const pins = data
+          .map((row: any) => ({
+            id: row.id as string,
+            display_name: row.display_name ?? null,
+            full_name: row.full_name ?? null,
+            latitude: typeof row.latitude === 'number' ? row.latitude : null,
+            longitude: typeof row.longitude === 'number' ? row.longitude : null,
+          }))
+          .filter((p: { id: string; latitude: number | null; longitude: number | null }) => p.id && p.latitude != null && p.longitude != null);
+        await renderClubPins(pins as any);
+      } catch (err) {
+        console.error('[search-map] club pins error', err);
+        clearClubPins();
+      }
+    };
 
     loadLeaflet()
       .then(() => {
@@ -336,14 +408,28 @@ export default function SearchMapClient() {
 
         map.on('click', clickHandler);
         map.on('dblclick', dblHandler);
+        moveHandler = () => {
+          if (debounceTimer) clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(() => {
+            void fetchClubPins();
+          }, 300);
+        };
+        zoomHandler = moveHandler;
+        map.on('moveend', moveHandler);
+        map.on('zoomend', zoomHandler);
+        void fetchClubPins();
       })
       .catch(() => {});
 
     return () => {
       if (clickHandler) map.off('click', clickHandler);
       if (dblHandler) map.off('dblclick', dblHandler);
+      if (moveHandler) map.off('moveend', moveHandler);
+      if (zoomHandler) map.off('zoomend', zoomHandler);
+      if (debounceTimer) clearTimeout(debounceTimer);
+      clearClubPins();
     };
-  }, [commitArea, isDrawing, updatePolygonLayer]);
+  }, [clearClubPins, commitArea, isDrawing, renderClubPins, updatePolygonLayer]);
 
   useEffect(() => {
     if (!isDrawing && activeArea?.length) {
@@ -352,7 +438,7 @@ export default function SearchMapClient() {
   }, [activeArea, isDrawing, updatePolygonLayer]);
 
   useEffect(() => {
-    if (!searchBounds) {
+    if (!searchBounds && typeFilter !== 'opportunity') {
       setPoints([]);
       setSelectedProfileId(null);
       return;
@@ -382,11 +468,12 @@ export default function SearchMapClient() {
       });
 
       try {
+        const boundsToUse = searchBounds ?? {};
         const response = await searchProfilesOnMap({
-          bounds: searchBounds,
+          bounds: boundsToUse,
           query: searchQuery,
           type: typeFilter,
-          limit: 300,
+          limit: typeFilter === 'opportunity' ? 100 : 300,
           filters,
           currentUserId,
         });
@@ -435,9 +522,11 @@ export default function SearchMapClient() {
       const type = (p.type || p.account_type || '').trim().toLowerCase();
       const isClub = type === 'club';
       const isAthlete = type === 'athlete' || type === 'player';
+      const isOpportunity = type === 'opportunity';
 
       if (typeFilter === 'club' && !isClub) return false;
       if (typeFilter === 'player' && !isAthlete) return false;
+      if (typeFilter === 'opportunity' && !isOpportunity) return false;
 
       if (currentUserId && (p.user_id === currentUserId || p.id === currentUserId)) return false;
 
@@ -465,7 +554,7 @@ export default function SearchMapClient() {
         }
       }
 
-      if (normalizedQuery) {
+      if (normalizedQuery && !isOpportunity) {
         const name = (p.display_name || '').toLowerCase();
         const fullName = (p.full_name || '').toLowerCase();
         const city = (p.city || '').toLowerCase();
@@ -545,7 +634,7 @@ export default function SearchMapClient() {
           type="search"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Cerca per nome club o player…"
+          placeholder="Cerca per nome club, player o opportunità…"
           className="w-full rounded-lg border px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
           autoComplete="off"
         />
@@ -629,6 +718,13 @@ export default function SearchMapClient() {
                 className={`flex-1 rounded-lg border px-3 py-2 text-sm ${typeFilter === 'player' ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`}
               >
                 Player
+              </button>
+              <button
+                type="button"
+                onClick={() => setTypeFilter('opportunity')}
+                className={`flex-1 rounded-lg border px-3 py-2 text-sm ${typeFilter === 'opportunity' ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`}
+              >
+                Opportunità
               </button>
             </div>
 

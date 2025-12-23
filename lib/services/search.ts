@@ -21,6 +21,10 @@ export type SearchMapProfile = Partial<Profile> & {
   profile_id?: string | null;
   account_type?: Profile['type'] | null;
   full_name?: string | null;
+  title?: string | null;
+  club_name?: string | null;
+  location_label?: string | null;
+  created_at?: string | null;
   friendly_name?: string | null;
   latitude?: number | null;
   longitude?: number | null;
@@ -33,7 +37,7 @@ export type SearchMapProfile = Partial<Profile> & {
 export type SearchMapParams = {
   bounds: SearchMapBounds;
   query?: string;
-  type?: 'all' | 'club' | 'player' | 'athlete';
+  type?: 'all' | 'club' | 'player' | 'athlete' | 'opportunity';
   limit?: number;
   filters?: SearchMapFilters;
   currentUserId?: string | null;
