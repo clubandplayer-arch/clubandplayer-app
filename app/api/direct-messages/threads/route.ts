@@ -48,13 +48,13 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
 
     const otherProfiles = new Map<
       string,
-      { id: string; display_name: string | null; avatar_url: string | null; status: string | null }
+      { id: string; display_name: string | null; avatar_url: string | null; status: string | null; account_type: string | null }
     >();
 
     if (otherIds.size > 0) {
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, display_name, avatar_url, status')
+        .select('id, display_name, avatar_url, status, account_type')
         .in('id', Array.from(otherIds));
 
       if (profilesError) throw profilesError;
@@ -65,6 +65,31 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
             display_name: (p as any).display_name ?? null,
             avatar_url: (p as any).avatar_url ?? null,
             status: (p as any).status ?? null,
+            account_type: (p as any).account_type ?? null,
+          });
+        }
+      }
+    }
+
+    // atleti (preferito per il nome)
+    const otherAthletes = new Map<
+      string,
+      { id: string | null; user_id: string | null; full_name: string | null; display_name: string | null; avatar_url: string | null }
+    >();
+    if (otherIds.size > 0) {
+      const { data: athletes, error: athError } = await supabase
+        .from('athletes_view')
+        .select('id, user_id, full_name, display_name, avatar_url')
+        .in('id', Array.from(otherIds));
+      if (athError) throw athError;
+      for (const a of athletes ?? []) {
+        if (a.id) {
+          otherAthletes.set(a.id as string, {
+            id: a.id as string,
+            user_id: (a as any).user_id ?? null,
+            full_name: (a as any).full_name ?? null,
+            display_name: (a as any).display_name ?? null,
+            avatar_url: (a as any).avatar_url ?? null,
           });
         }
       }
@@ -135,12 +160,20 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
 
       const profile = otherProfiles.get(otherId);
       if (!profile || profile.status !== 'active') continue;
+      const isAthlete = typeof profile.account_type === 'string' && profile.account_type.toLowerCase().includes('athlete');
+      const athlete = isAthlete ? otherAthletes.get(otherId) : null;
+      const resolvedName =
+        athlete?.full_name?.trim?.() ||
+        athlete?.display_name?.trim?.() ||
+        profile.display_name ||
+        'Profilo';
+      const resolvedAvatar = athlete?.avatar_url ?? profile.avatar_url ?? null;
 
       if (!threadsMap.has(otherId)) {
         threadsMap.set(otherId, {
           otherProfileId: profile.id,
-          otherName: profile.display_name || 'Profilo',
-          otherAvatarUrl: profile.avatar_url || null,
+          otherName: resolvedName,
+          otherAvatarUrl: resolvedAvatar,
           lastMessage: row.content as string,
           lastMessageAt: row.created_at as string,
           lastIncomingAt: row.recipient_profile_id === me.id ? (row.created_at as string) : null,
