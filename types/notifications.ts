@@ -1,4 +1,4 @@
-export type NotificationKind = 'new_follower' | 'new_message' | 'new_opportunity' | 'system';
+export type NotificationKind = 'new_follower' | 'new_message' | 'new_opportunity' | 'application_status' | 'system';
 
 export type NotificationRow = {
   id: string;
