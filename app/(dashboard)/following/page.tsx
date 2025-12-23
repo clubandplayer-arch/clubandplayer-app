@@ -1,12 +1,16 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import FollowButton from '@/components/common/FollowButton';
+import useIsClub from '@/hooks/useIsClub';
+import { buildProfileDisplayName } from '@/lib/displayName';
 
 type FollowedProfile = {
   id: string;
   name: string;
   account_type: string | null;
+  type?: string | null;
   city: string | null;
   sport: string | null;
   role: string | null;
@@ -17,6 +21,7 @@ type ApiResponse = {
     id: string;
     name?: string | null;
     account_type?: string | null;
+    type?: string | null;
     city?: string | null;
     country?: string | null;
     sport?: string | null;
@@ -30,25 +35,71 @@ function mapAccountType(value: string | null | undefined): AccountType {
   return value === 'club' ? 'club' : 'athlete';
 }
 
-function FollowCard({ profile, type }: { profile: FollowedProfile; type: AccountType }) {
+function getInitials(value: string) {
+  const clean = value.trim();
+  if (!clean) return 'PR';
+  const parts = clean.split(' ').filter(Boolean);
+  return parts.slice(0, 2).map((p) => p[0]).join('').toUpperCase();
+}
+
+type FollowCardProps = {
+  profile: FollowedProfile;
+  type: AccountType;
+  showRosterToggle: boolean;
+  inRoster: boolean;
+  rosterPending?: boolean;
+  onToggleRoster?: (id: string, next: boolean) => void;
+};
+
+function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, onToggleRoster }: FollowCardProps) {
   const href = type === 'club' ? `/c/${profile.id}` : `/u/${profile.id}`;
   const meta = [profile.city, profile.sport, profile.role].filter(Boolean).join(' · ');
+  const initials = getInitials(profile.name || 'Profilo');
+  const toggleDisabled = rosterPending || !onToggleRoster;
+
+  const handleToggle = () => {
+    if (!onToggleRoster || toggleDisabled) return;
+    onToggleRoster(profile.id, !inRoster);
+  };
+
   return (
-    <Link
-      href={href}
-      className="flex flex-col gap-2 rounded-2xl border border-neutral-200 bg-white/70 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900/60"
-    >
-      <div className="flex items-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[var(--brand)]/20 to-[var(--brand)]/40 text-sm font-semibold uppercase text-[var(--brand)]">
-          {(profile.name || 'Profilo').substring(0, 2)}
-        </div>
-        <div className="flex-1">
-          <p className="text-sm font-semibold text-neutral-900 dark:text-white">{profile.name}</p>
-          <p className="text-xs uppercase tracking-wide text-neutral-500 dark:text-neutral-400">{type === 'club' ? 'Club' : 'Player'}</p>
-        </div>
+    <div className="flex flex-col gap-3 rounded-2xl border border-neutral-200 bg-white/70 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900/60">
+      <div className="flex items-start gap-3">
+        <Link href={href} className="flex flex-1 gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[var(--brand)]/20 to-[var(--brand)]/40 text-sm font-semibold uppercase text-[var(--brand)]">
+            {initials}
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-neutral-900 dark:text-white">{profile.name}</p>
+            <p className="text-xs uppercase tracking-wide text-neutral-500 dark:text-neutral-400">{type === 'club' ? 'Club' : 'Player'}</p>
+            {meta && <p className="text-xs text-neutral-600 dark:text-neutral-300">{meta}</p>}
+          </div>
+        </Link>
+        <FollowButton targetProfileId={profile.id} size="sm" className="min-w-[96px]" />
       </div>
-      {meta && <p className="text-xs text-neutral-600 dark:text-neutral-300">{meta}</p>}
-    </Link>
+
+      {showRosterToggle && type === 'athlete' ? (
+        <div className="flex items-center justify-between rounded-lg border border-pink-100 bg-pink-50 px-3 py-2">
+          <div className="text-xs font-semibold text-pink-700">In Rosa</div>
+          <button
+            type="button"
+            onClick={handleToggle}
+            disabled={toggleDisabled}
+            role="switch"
+            aria-checked={inRoster}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
+              inRoster ? 'bg-pink-500' : 'bg-neutral-300'
+            } ${toggleDisabled ? 'opacity-60' : 'hover:opacity-90'}`}
+          >
+            <span
+              className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
+                inRoster ? 'translate-x-[18px]' : 'translate-x-1'
+              }`}
+            />
+          </button>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -56,6 +107,11 @@ export default function FollowingPage() {
   const [items, setItems] = useState<FollowedProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [rosterIds, setRosterIds] = useState<Set<string>>(new Set());
+  const [rosterLoading, setRosterLoading] = useState(false);
+  const [rosterError, setRosterError] = useState<string | null>(null);
+  const [pendingRoster, setPendingRoster] = useState<Set<string>>(new Set());
+  const { isClub, loading: roleLoading } = useIsClub();
 
   useEffect(() => {
     const load = async () => {
@@ -70,8 +126,9 @@ export default function FollowingPage() {
         const mapped: FollowedProfile[] = Array.isArray(data.items)
           ? data.items.map((row) => ({
               id: row.id,
-              name: row.name ?? 'Profilo',
+              name: buildProfileDisplayName(row.name, row.name, 'Profilo'),
               account_type: row.account_type ?? null,
+              type: (row as any)?.type ?? null,
               city: row.city ?? null,
               sport: row.sport ?? null,
               role: row.role ?? null,
@@ -90,24 +147,111 @@ export default function FollowingPage() {
     void load();
   }, []);
 
-  const clubFollows = useMemo(
-    () => items.filter((p) => mapAccountType(p.account_type) === 'club'),
-    [items],
-  );
-  const playerFollows = useMemo(
-    () => items.filter((p) => mapAccountType(p.account_type) === 'athlete'),
-    [items],
-  );
+  const loadRoster = useCallback(async () => {
+    if (!isClub) {
+      setRosterIds(new Set());
+      setRosterError(null);
+      return;
+    }
+    setRosterLoading(true);
+    setRosterError(null);
+    try {
+      const res = await fetch('/api/clubs/me/roster', { credentials: 'include', cache: 'no-store' });
+      const data = await res.json().catch(() => ({} as any));
+      if (!res.ok) throw new Error((data as any)?.error || 'Errore nel caricare la rosa');
+      const rosterRows = Array.isArray((data as any)?.roster) ? (data as any).roster : [];
+      const ids = new Set<string>();
+      rosterRows.forEach((row: any) => {
+        const id = row?.playerProfileId || row?.player_profile_id || row?.player?.id;
+        if (typeof id === 'string' && id.trim()) ids.add(id.trim());
+      });
+      setRosterIds(ids);
+    } catch (err: any) {
+      setRosterError(err?.message || 'Errore nel caricare la rosa');
+      setRosterIds(new Set());
+    } finally {
+      setRosterLoading(false);
+    }
+  }, [isClub]);
+
+  useEffect(() => {
+    if (roleLoading) return;
+    void loadRoster();
+  }, [roleLoading, loadRoster]);
+
+  const handleToggleRoster = useCallback(async (profileId: string, next: boolean) => {
+    const cleanId = profileId.trim();
+    if (!cleanId) return;
+    setRosterError(null);
+    setPendingRoster((curr) => new Set(curr).add(cleanId));
+    setRosterIds((curr) => {
+      const copy = new Set(curr);
+      if (next) copy.add(cleanId);
+      else copy.delete(cleanId);
+      return copy;
+    });
+
+    try {
+      const res = await fetch('/api/clubs/me/roster', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playerProfileId: cleanId, inRoster: next }),
+      });
+      const data = await res.json().catch(() => ({} as any));
+      if (res.status === 409 && (data as any)?.code === 'PLAYER_ALREADY_IN_ROSTER') {
+        setRosterError('Player già in rosa di un altro club. Deve essere rimosso prima.');
+        setRosterIds((curr) => {
+          const copy = new Set(curr);
+          if (next) copy.delete(cleanId);
+          else copy.add(cleanId);
+          return copy;
+        });
+        return;
+      }
+      if (!res.ok) throw new Error((data as any)?.error || 'Errore nel salvare la rosa');
+
+      const confirmed = (data as any)?.inRoster === false ? false : next;
+      setRosterIds((curr) => {
+        const copy = new Set(curr);
+        if (confirmed) copy.add(cleanId);
+        else copy.delete(cleanId);
+        return copy;
+      });
+    } catch (err: any) {
+      setRosterError(err?.message || 'Errore nel salvare la rosa');
+      setRosterIds((curr) => {
+        const copy = new Set(curr);
+        if (next) copy.delete(cleanId);
+        else copy.add(cleanId);
+        return copy;
+      });
+    } finally {
+      setPendingRoster((curr) => {
+        const copy = new Set(curr);
+        copy.delete(cleanId);
+        return copy;
+      });
+    }
+  }, []);
+
+  const clubFollows = useMemo(() => items.filter((p) => mapAccountType(p.account_type) === 'club'), [items]);
+  const playerFollows = useMemo(() => items.filter((p) => mapAccountType(p.account_type) === 'athlete'), [items]);
+  const showRosterControls = isClub && !roleLoading;
 
   return (
     <div className="space-y-6 p-4 md:p-6">
       <div className="space-y-1">
         <h1 className="heading-h1">Club &amp; Player che segui</h1>
-        <p className="text-sm text-neutral-600 dark:text-neutral-300">Una panoramica di tutti i profili che hai deciso di seguire.</p>
+        <p className="text-sm text-neutral-600 dark:text-neutral-300">
+          Una panoramica di tutti i profili che hai deciso di seguire. {showRosterControls ? 'Come club puoi usare il toggle “In Rosa” per attivare la rosa dei player.' : ''}
+        </p>
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
+      {rosterError && showRosterControls ? <p className="text-sm text-red-600">{rosterError}</p> : null}
       {loading && <p className="text-sm text-neutral-600">Caricamento…</p>}
+      {rosterLoading && showRosterControls ? <p className="text-xs text-pink-700">Aggiornamento stato “In Rosa”…</p> : null}
 
       {!loading && items.length === 0 && !error ? (
         <div className="rounded-xl border border-dashed border-neutral-200 bg-white/70 p-4 text-sm text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900/60 dark:text-neutral-300">
@@ -120,7 +264,13 @@ export default function FollowingPage() {
           <h2 className="heading-h2 text-xl">Club che segui</h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             {clubFollows.map((profile) => (
-              <FollowCard key={profile.id} profile={profile} type="club" />
+              <FollowCard
+                key={profile.id}
+                profile={profile}
+                type="club"
+                showRosterToggle={false}
+                inRoster={false}
+              />
             ))}
           </div>
         </section>
@@ -131,7 +281,15 @@ export default function FollowingPage() {
           <h2 className="heading-h2 text-xl">Player che segui</h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             {playerFollows.map((profile) => (
-              <FollowCard key={profile.id} profile={profile} type="athlete" />
+              <FollowCard
+                key={profile.id}
+                profile={profile}
+                type="athlete"
+                showRosterToggle={showRosterControls}
+                inRoster={rosterIds.has(profile.id)}
+                rosterPending={pendingRoster.has(profile.id)}
+                onToggleRoster={showRosterControls ? handleToggleRoster : undefined}
+              />
             ))}
           </div>
         </section>

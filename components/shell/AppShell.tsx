@@ -101,6 +101,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
               <nav className="hidden flex-1 justify-center md:flex">
                 <div className="flex items-center gap-1 rounded-full border border-white/40 bg-white/70 px-2 py-1 shadow-sm backdrop-blur">
+                  {isClub && (
+                    <Link
+                      href="/club/roster"
+                      aria-label="Rosa"
+                      aria-current={isActive('/club/roster') ? 'page' : undefined}
+                      title="Rosa"
+                      className={`relative flex h-10 w-10 items-center justify-center rounded-xl text-pink-600 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
+                        isActive('/club/roster') ? 'bg-pink-100 text-pink-700 shadow-sm' : 'hover:bg-pink-50'
+                      }`}
+                    >
+                      <MaterialIcon name="following" fontSize="small" />
+                      <span className="sr-only">Rosa</span>
+                    </Link>
+                  )}
                   {navItems.map((item) => {
                     const active = isActive(item.href);
                     if (item.href === '/notifications') {
@@ -162,10 +176,24 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 {isMenuOpen ? <NavCloseIcon fontSize="small" aria-hidden /> : <NavMenuIcon fontSize="small" aria-hidden />}
               </button>
             </div>
-            {isMenuOpen ? (
+              {isMenuOpen ? (
               <div className="border-t bg-white/95 shadow-sm backdrop-blur md:hidden">
                 <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3">
                   <div className="flex flex-wrap gap-2">
+                    {isClub && (
+                      <Link
+                        href="/club/roster"
+                        onClick={() => setIsMenuOpen(false)}
+                        className={`flex flex-1 min-w-[140px] items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${
+                          isActive('/club/roster')
+                            ? 'border-pink-400 bg-pink-50 text-pink-700'
+                            : 'hover:bg-pink-50 text-pink-700'
+                        }`}
+                      >
+                        <MaterialIcon name="following" fontSize={16} />
+                        <span>Rosa</span>
+                      </Link>
+                    )}
                     {navItems.map((item) => {
                       const active = isActive(item.href);
                       return (
