@@ -9,6 +9,15 @@ export const metadata = {
 
 export const dynamic = 'force-dynamic';
 
+const emailRegex = /\S+@\S+\.\S+/;
+
+function cleanName(value?: string | null) {
+  const trimmed = typeof value === 'string' ? value.trim() : '';
+  if (!trimmed) return null;
+  if (emailRegex.test(trimmed)) return null;
+  return trimmed;
+}
+
 export default async function DirectMessagesPage({ params }: { params: { profileId?: string } }) {
   const rawId = params?.profileId;
   const profileId = typeof rawId === 'string' ? rawId : Array.isArray(rawId) ? rawId[0] : null;
@@ -24,11 +33,16 @@ export default async function DirectMessagesPage({ params }: { params: { profile
 
   if (!targetProfile) notFound();
 
+  const title =
+    cleanName(targetProfile.full_name) ||
+    cleanName(targetProfile.display_name) ||
+    'Senza nome';
+
   return (
     <div className="page-shell">
       <DirectMessageThread
         targetProfileId={targetProfile.id}
-        targetDisplayName={targetProfile.display_name || 'Profilo'}
+        targetDisplayName={title}
         targetAvatarUrl={targetProfile.avatar_url}
       />
     </div>
