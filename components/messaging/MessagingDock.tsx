@@ -34,6 +34,11 @@ export function MessagingDock() {
     [],
   );
 
+  const activeThreadTitle =
+    activeThread?.other?.full_name?.trim?.() ||
+    activeThread?.other?.display_name?.trim?.() ||
+    'Senza nome';
+
   return (
     <div className="hidden md:block">
       <ChatFloatingButton onClick={dockState === 'closed' ? openList : closeDock} />
@@ -77,7 +82,7 @@ export function MessagingDock() {
         >
           <DirectMessageThread
             targetProfileId={activeThread.otherProfileId}
-            targetDisplayName={activeThread.otherName}
+            targetDisplayName={activeThreadTitle}
             targetAvatarUrl={activeThread.otherAvatarUrl}
             layout="dock"
             onClose={handleCloseThread}
