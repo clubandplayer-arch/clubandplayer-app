@@ -139,28 +139,35 @@ export function DirectMessageInbox({ onSelectThread, hideHeader, className }: Pr
           </div>
         )}
         {!loading && !error &&
-          threads.map((thread) => (
-            <button
-              key={thread.otherProfileId}
-              type="button"
-              onClick={() => void handleOpen(thread)}
-              className="flex w-full items-center gap-3 rounded-lg border border-transparent p-3 text-left transition hover:border-[var(--brand)] hover:bg-neutral-50"
-            >
-              <Avatar name={thread.otherName} avatarUrl={thread.otherAvatarUrl} />
-              <div className="flex-1">
-                <div className={`text-sm font-semibold ${thread.hasUnread ? 'text-[var(--brand)]' : 'text-neutral-900'}`}>
-                  {thread.otherName}
+          threads.map((thread) => {
+            const title =
+              thread.other?.full_name?.trim?.() ||
+              thread.other?.display_name?.trim?.() ||
+              'Senza nome';
+
+            return (
+              <button
+                key={thread.otherProfileId}
+                type="button"
+                onClick={() => void handleOpen(thread)}
+                className="flex w-full items-center gap-3 rounded-lg border border-transparent p-3 text-left transition hover:border-[var(--brand)] hover:bg-neutral-50"
+              >
+                <Avatar name={title} avatarUrl={thread.otherAvatarUrl} />
+                <div className="flex-1">
+                  <div className={`text-sm font-semibold ${thread.hasUnread ? 'text-[var(--brand)]' : 'text-neutral-900'}`}>
+                    {title}
+                  </div>
+                  <div className={`line-clamp-2 text-sm ${thread.hasUnread ? 'text-neutral-800' : 'text-neutral-600'}`}>
+                    {thread.lastMessage}
+                  </div>
                 </div>
-                <div className={`line-clamp-2 text-sm ${thread.hasUnread ? 'text-neutral-800' : 'text-neutral-600'}`}>
-                  {thread.lastMessage}
-                </div>
-              </div>
-              <div className="text-xs text-neutral-500">{formatDate(thread.lastMessageAt)}</div>
-              {thread.hasUnread && (
-                <span className="ml-2 inline-flex h-2 w-2 rounded-full bg-[var(--brand)]" aria-hidden="true" />
-              )}
-            </button>
-          ))}
+                <div className="text-xs text-neutral-500">{formatDate(thread.lastMessageAt)}</div>
+                {thread.hasUnread && (
+                  <span className="ml-2 inline-flex h-2 w-2 rounded-full bg-[var(--brand)]" aria-hidden="true" />
+                )}
+              </button>
+            );
+          })}
       </div>
     </div>
   );

@@ -6,6 +6,15 @@ import { getActiveProfile } from '@/lib/api/profile';
 
 export const runtime = 'nodejs';
 
+const emailRegex = /\S+@\S+\.\S+/;
+
+function cleanName(value?: string | null) {
+  const trimmed = typeof value === 'string' ? value.trim() : '';
+  if (!trimmed) return null;
+  if (emailRegex.test(trimmed)) return null;
+  return trimmed;
+}
+
 function isMissingReadStateTable(error: any) {
   return typeof error?.message === 'string'
     ? error.message.includes('direct_message_read_state') || error.message.includes('relation "direct_message_read_state"')
@@ -48,13 +57,20 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
 
     const otherProfiles = new Map<
       string,
-      { id: string; display_name: string | null; avatar_url: string | null; status: string | null; account_type: string | null }
+      {
+        id: string;
+        display_name: string | null;
+        full_name: string | null;
+        avatar_url: string | null;
+        status: string | null;
+        account_type: string | null;
+      }
     >();
 
     if (otherIds.size > 0) {
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, display_name, avatar_url, status, account_type')
+        .select('id, display_name, full_name, avatar_url, status, account_type')
         .in('id', Array.from(otherIds));
 
       if (profilesError) throw profilesError;
@@ -63,6 +79,7 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
           otherProfiles.set(p.id as string, {
             id: p.id as string,
             display_name: (p as any).display_name ?? null,
+            full_name: (p as any).full_name ?? null,
             avatar_url: (p as any).avatar_url ?? null,
             status: (p as any).status ?? null,
             account_type: (p as any).account_type ?? null,
@@ -146,6 +163,11 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
         otherProfileId: string;
         otherName: string;
         otherAvatarUrl: string | null;
+        other: {
+          full_name: string | null;
+          display_name: string | null;
+          avatar_url: string | null;
+        };
         lastMessage: string;
         lastMessageAt: string;
         lastIncomingAt: string | null;
@@ -162,11 +184,17 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
       if (!profile || profile.status !== 'active') continue;
       const isAthlete = typeof profile.account_type === 'string' && profile.account_type.toLowerCase().includes('athlete');
       const athlete = isAthlete ? otherAthletes.get(otherId) : null;
+      const athleteFullName = cleanName(athlete?.full_name);
+      const athleteDisplayName = cleanName(athlete?.display_name);
+      const profileFullName = cleanName(profile.full_name);
+      const profileDisplayName = cleanName(profile.display_name);
+      const otherFullName = isAthlete ? athleteFullName : profileFullName;
+      const otherDisplayName = isAthlete ? athleteDisplayName : profileDisplayName;
       const resolvedName =
-        athlete?.full_name?.trim?.() ||
-        athlete?.display_name?.trim?.() ||
-        profile.display_name ||
-        'Profilo';
+        otherFullName ||
+        otherDisplayName ||
+        (isAthlete ? null : profileFullName || profileDisplayName) ||
+        'Senza nome';
       const resolvedAvatar = athlete?.avatar_url ?? profile.avatar_url ?? null;
 
       if (!threadsMap.has(otherId)) {
@@ -174,6 +202,11 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
           otherProfileId: profile.id,
           otherName: resolvedName,
           otherAvatarUrl: resolvedAvatar,
+          other: {
+            full_name: otherFullName ?? null,
+            display_name: otherDisplayName ?? null,
+            avatar_url: resolvedAvatar,
+          },
           lastMessage: row.content as string,
           lastMessageAt: row.created_at as string,
           lastIncomingAt: row.recipient_profile_id === me.id ? (row.created_at as string) : null,
@@ -208,6 +241,7 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
           otherProfileId: thread.otherProfileId,
           otherName: thread.otherName,
           otherAvatarUrl: thread.otherAvatarUrl,
+          other: thread.other,
           lastMessage: thread.lastMessage,
           lastMessageAt: thread.lastMessageAt,
           hasUnread,

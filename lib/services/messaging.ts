@@ -6,6 +6,11 @@ type DirectThreadSummary = {
   otherProfileId: string;
   otherName: string;
   otherAvatarUrl: string | null;
+  other?: {
+    full_name: string | null;
+    display_name: string | null;
+    avatar_url: string | null;
+  };
   lastMessage: string;
   lastMessageAt: string;
   hasUnread?: boolean;
