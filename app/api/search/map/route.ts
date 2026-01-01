@@ -263,31 +263,36 @@ export async function GET(req: NextRequest) {
         'created_at',
       ].join(',');
 
+      const hasTextQuery = Boolean(ilikeQuery);
+      const boundsApplied = !hasTextQuery && hasBounds && clubIds.length > 0;
+
       let oppQuery = supabase
         .from('opportunities')
         .select(oppSelect)
         .order('created_at', { ascending: false })
-        .limit(Math.min(limit, 100))
+        .limit(hasTextQuery ? 100 : Math.min(limit, 100))
         .eq('status', 'open');
 
-      if (clubIds.length) {
-        oppQuery = oppQuery.or(
-          [`club_id.in.(${clubIds.join(',')})`, `owner_id.in.(${clubIds.join(',')})`].join(','),
-        );
-      } else if (hasBounds) {
-        if (debugMode) {
-          debug = {
-            q: searchQuery,
-            bounds,
-            status: 'open',
-            totalOpenOpp: 0,
-            oppAfterText: 0,
-            clubsInBoundsCount: 0,
-            oppAfterBounds: 0,
-            sampleOpp: null,
-          };
+      if (!hasTextQuery) {
+        if (clubIds.length) {
+          oppQuery = oppQuery.or(
+            [`club_id.in.(${clubIds.join(',')})`, `owner_id.in.(${clubIds.join(',')})`].join(','),
+          );
+        } else if (hasBounds) {
+          if (debugMode) {
+            debug = {
+              q: searchQuery,
+              bounds,
+              status: 'open',
+              totalOpenOpp: 0,
+              oppAfterText: 0,
+              clubsInBoundsCount: 0,
+              oppAfterBounds: 0,
+              sampleOpp: null,
+            };
+          }
+          return successResponse({ data: [], total: 0, boundsApplied: false, ...(debug ? { debug } : {}) });
         }
-        return successResponse({ data: [], total: 0, ...(debug ? { debug } : {}) });
       }
 
       if (ilikeQuery) {
@@ -298,6 +303,8 @@ export async function GET(req: NextRequest) {
             `city.ilike.${ilikeQuery}`,
             `province.ilike.${ilikeQuery}`,
             `region.ilike.${ilikeQuery}`,
+            `country.ilike.${ilikeQuery}`,
+            `club_name.ilike.${ilikeQuery}`,
           ].join(','),
         );
       }
@@ -325,6 +332,29 @@ export async function GET(req: NextRequest) {
         };
       });
 
+      const rankedRows = hasTextQuery
+        ? [...rows]
+            .map((row) => {
+              const title = String(row.title ?? '').toLowerCase();
+              const description = String(row.description ?? '').toLowerCase();
+              const location = String(row.location_label ?? '').toLowerCase();
+              const queryLower = searchQuery.toLowerCase();
+              const score =
+                (title.includes(queryLower) ? 3 : 0) +
+                (description.includes(queryLower) ? 2 : 0) +
+                (location.includes(queryLower) ? 1 : 0);
+              return { row, score };
+            })
+            .sort((a, b) => {
+              if (b.score !== a.score) return b.score - a.score;
+              const dateA = a.row.created_at ? new Date(a.row.created_at).getTime() : 0;
+              const dateB = b.row.created_at ? new Date(b.row.created_at).getTime() : 0;
+              return dateB - dateA;
+            })
+            .map((entry) => entry.row)
+            .slice(0, 20)
+        : rows;
+
       if (debugMode) {
         const [
           totalOpenResult,
@@ -348,7 +378,7 @@ export async function GET(req: NextRequest) {
                   ].join(','),
                 )
             : supabase.from('opportunities').select('id', { count: 'exact', head: true }).eq('status', 'open'),
-          clubIds.length
+          boundsApplied
             ? supabase
                 .from('opportunities')
                 .select('id', { count: 'exact', head: true })
@@ -371,7 +401,7 @@ export async function GET(req: NextRequest) {
           totalOpenOpp: totalOpenResult.count ?? 0,
           oppAfterText: oppAfterTextResult.count ?? 0,
           clubsInBoundsCount: clubIds.length,
-          oppAfterBounds: oppAfterBoundsResult.count ?? 0,
+          oppAfterBounds: boundsApplied ? oppAfterBoundsResult.count ?? 0 : oppAfterTextResult.count ?? 0,
           sampleOpp: Array.isArray(sampleOppResult.data) && sampleOppResult.data.length
             ? {
                 id: sampleOppResult.data[0]?.id,
@@ -383,7 +413,12 @@ export async function GET(req: NextRequest) {
         };
       }
 
-      return successResponse({ data: rows, total: oppCount ?? rows.length, ...(debug ? { debug } : {}) });
+      return successResponse({
+        data: rankedRows,
+        total: oppCount ?? rankedRows.length,
+        boundsApplied,
+        ...(debug ? { debug } : {}),
+      });
     }
 
     const firstQuery = await runQuery({ withBounds: true });

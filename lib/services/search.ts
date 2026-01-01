@@ -48,6 +48,7 @@ export type SearchMapResponse = {
   data: SearchMapProfile[];
   total?: number;
   fallback?: string;
+  boundsApplied?: boolean;
 };
 
 function appendIfValue(params: URLSearchParams, key: string, value?: string | number | null) {
@@ -116,6 +117,7 @@ export async function searchProfilesOnMap(params: SearchMapParams): Promise<Sear
     data: data as SearchMapProfile[],
     total: typeof json?.total === 'number' ? json.total : undefined,
     fallback: typeof json?.fallback === 'string' ? json.fallback : undefined,
+    boundsApplied: typeof json?.boundsApplied === 'boolean' ? json.boundsApplied : undefined,
   };
 
   console.log('[search-service] success', { count: payload.data.length, total: payload.total, fallback: payload.fallback });

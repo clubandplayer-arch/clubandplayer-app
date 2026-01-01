@@ -89,6 +89,7 @@ export default function SearchMapClient() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [opportunityLoading, setOpportunityLoading] = useState(false);
   const [opportunitiesLoaded, setOpportunitiesLoaded] = useState(false);
+  const [opportunitiesBoundsApplied, setOpportunitiesBoundsApplied] = useState(true);
   const [mapError, setMapError] = useState<string | null>(null);
   const [dataError, setDataError] = useState<string | null>(null);
 
@@ -459,6 +460,7 @@ export default function SearchMapClient() {
       setProfilePoints([]);
       setOpportunityPoints([]);
       setOpportunitiesLoaded(false);
+      setOpportunitiesBoundsApplied(true);
       setSelectedProfileId(null);
       return;
     }
@@ -556,6 +558,7 @@ export default function SearchMapClient() {
 
         if (!cancelled) {
           setOpportunityPoints(response.data);
+          setOpportunitiesBoundsApplied(response.boundsApplied ?? true);
           setOpportunitiesLoaded(true);
         }
       } catch (err: any) {
@@ -563,6 +566,7 @@ export default function SearchMapClient() {
           console.error('[search-map] opportunities error', err);
           setDataError(err?.message || 'Errore nel caricamento delle opportunità.');
           setOpportunityPoints([]);
+          setOpportunitiesBoundsApplied(true);
           setOpportunitiesLoaded(true);
         }
       } finally {
@@ -944,6 +948,12 @@ export default function SearchMapClient() {
             query={searchQuery}
             profileCount={profileCount}
             opportunityCount={opportunityCount}
+            showOpportunityBoundsNote={
+              activeTab === 'opportunities' &&
+              hasArea &&
+              !opportunitiesBoundsApplied &&
+              !searchQuery.trim()
+            }
             activeTab={activeTab}
             onTabChange={(tab) => setActiveTab(tab)}
           />

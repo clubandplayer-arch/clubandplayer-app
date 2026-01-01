@@ -20,6 +20,7 @@ export type SearchResultsListProps = {
   query?: string;
   profileCount?: number;
   opportunityCount?: number | null;
+  showOpportunityBoundsNote?: boolean;
   activeTab?: 'profiles' | 'opportunities';
   onTabChange?: (tab: 'profiles' | 'opportunities') => void;
   className?: string;
@@ -163,6 +164,7 @@ export default function SearchResultsList({
   query,
   profileCount = 0,
   opportunityCount = null,
+  showOpportunityBoundsNote = false,
   activeTab = 'profiles',
   onTabChange,
   className,
@@ -229,6 +231,12 @@ export default function SearchResultsList({
       </div>
 
       {content}
+
+      {showOpportunityBoundsNote && (
+        <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          Per le opportunità la ricerca area non è disponibile: usa la ricerca testuale.
+        </div>
+      )}
 
       {loading && !hasResults && (
         <div className="mt-3 space-y-2">
