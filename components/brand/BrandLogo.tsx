@@ -39,7 +39,7 @@ export default function BrandLogo({
         // sizing di default sensato (poi puoi override via className)
         variant === "signup"
           ? "h-16 sm:h-20 md:h-24 lg:h-28 w-auto max-w-full object-contain"
-          : "h-8 md:h-9 w-auto max-w-[180px] md:max-w-[240px] object-contain",
+          : "h-8 md:h-9 w-auto max-h-9 object-contain",
         className,
       ]
         .filter(Boolean)
