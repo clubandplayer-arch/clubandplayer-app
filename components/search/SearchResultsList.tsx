@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 
 import FollowButton from '@/components/common/FollowButton';
 import { buildDirectConversationUrl } from '@/lib/services/messaging';
@@ -17,6 +17,11 @@ export type SearchResultsListProps = {
   error?: string | null;
   selectedId?: string | null;
   onSelect?: (result: SearchMapProfile) => void;
+  query?: string;
+  profileCount?: number;
+  opportunityCount?: number;
+  activeTab?: 'profiles' | 'opportunities';
+  onTabChange?: (tab: 'profiles' | 'opportunities') => void;
   className?: string;
 };
 
@@ -97,6 +102,57 @@ function resolvePublicHref(profile: SearchMapProfile) {
   return type === 'club' ? `/clubs/${profileId}` : `/players/${profileId}`;
 }
 
+function highlightText(text: string, query: string) {
+  const cleanQuery = query.trim();
+  if (!cleanQuery) return text;
+  const lowerText = text.toLowerCase();
+  const lowerQuery = cleanQuery.toLowerCase();
+  if (!lowerText.includes(lowerQuery)) return text;
+
+  const parts: ReactNode[] = [];
+  let startIndex = 0;
+  let matchIndex = lowerText.indexOf(lowerQuery, startIndex);
+  while (matchIndex !== -1) {
+    if (matchIndex > startIndex) {
+      parts.push(text.slice(startIndex, matchIndex));
+    }
+    const matchText = text.slice(matchIndex, matchIndex + cleanQuery.length);
+    parts.push(
+      <mark
+        key={`${matchIndex}-${matchText}`}
+        className="rounded bg-amber-100 px-0.5 font-semibold text-amber-900"
+      >
+        {matchText}
+      </mark>,
+    );
+    startIndex = matchIndex + cleanQuery.length;
+    matchIndex = lowerText.indexOf(lowerQuery, startIndex);
+  }
+  if (startIndex < text.length) {
+    parts.push(text.slice(startIndex));
+  }
+  return parts;
+}
+
+function buildSnippet(text: string, query: string, maxLength = 120) {
+  const cleanQuery = query.trim();
+  if (!cleanQuery || !text) return null;
+  const lowerText = text.toLowerCase();
+  const lowerQuery = cleanQuery.toLowerCase();
+  const matchIndex = lowerText.indexOf(lowerQuery);
+  if (matchIndex === -1) return null;
+
+  const padding = Math.max(0, Math.floor((maxLength - cleanQuery.length) / 2));
+  const start = Math.max(0, matchIndex - padding);
+  const end = Math.min(text.length, matchIndex + cleanQuery.length + padding);
+  const snippetText = text.slice(start, end).trim();
+  return {
+    text: snippetText,
+    prefix: start > 0 ? '…' : '',
+    suffix: end < text.length ? '…' : '',
+  };
+}
+
 export default function SearchResultsList({
   results,
   loading,
@@ -104,9 +160,15 @@ export default function SearchResultsList({
   error,
   selectedId,
   onSelect,
+  query,
+  profileCount = 0,
+  opportunityCount = 0,
+  activeTab = 'profiles',
+  onTabChange,
   className,
 }: SearchResultsListProps) {
   const hasResults = results.length > 0;
+  const cleanQuery = query?.trim() ?? '';
 
   const content = useMemo(() => {
     if (error) {
@@ -117,14 +179,19 @@ export default function SearchResultsList({
 
     if (!hasArea && !loading) {
       return (
-        <div className="text-sm text-gray-600">
-          Disegna un’area sulla mappa o sposta la mappa e chiudi il poligono per iniziare la ricerca.
+        <div className="rounded-lg border border-dashed border-gray-200 bg-white px-4 py-3 text-sm text-gray-600">
+          <p className="font-medium text-gray-700">
+            Disegna un’area sulla mappa e premi “Chiudi area e cerca”.
+          </p>
+          <p className="mt-1 text-xs text-gray-500">
+            La ricerca mostra solo i risultati all’interno dell’area selezionata.
+          </p>
         </div>
       );
     }
 
     if (hasArea && !hasResults && !loading) {
-      return <div className="text-sm text-gray-600">Nessun profilo nell’area selezionata.</div>;
+      return <div className="text-sm text-gray-600">Nessun risultato nell’area selezionata.</div>;
     }
 
     return null;
@@ -132,12 +199,55 @@ export default function SearchResultsList({
 
   return (
     <section className={`rounded-xl border bg-white/80 p-3 shadow-sm ${className || ''}`}>
-      <div className="flex items-center justify-between">
-        <h2 className="heading-h2 text-lg">Risultati</h2>
-        {loading && <span className="text-xs text-gray-500">Caricamento…</span>}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h2 className="heading-h2 text-lg">Risultati</h2>
+          {loading && <span className="text-xs text-gray-500">Caricamento…</span>}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => onTabChange?.('profiles')}
+            className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${
+              activeTab === 'profiles' ? 'border-blue-300 bg-blue-50 text-blue-800' : 'hover:bg-gray-50'
+            }`}
+          >
+            Profili ({profileCount})
+          </button>
+          <button
+            type="button"
+            onClick={() => onTabChange?.('opportunities')}
+            className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${
+              activeTab === 'opportunities'
+                ? 'border-amber-300 bg-amber-50 text-amber-800'
+                : 'hover:bg-gray-50'
+            }`}
+          >
+            Opportunità ({opportunityCount})
+          </button>
+        </div>
       </div>
 
       {content}
+
+      {loading && !hasResults && (
+        <div className="mt-3 space-y-2">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div
+              key={`skeleton-${index}`}
+              className="animate-pulse rounded-lg border border-gray-200 bg-white px-3 py-3"
+            >
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-full bg-gray-200" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3 w-1/2 rounded bg-gray-200" />
+                  <div className="h-3 w-2/3 rounded bg-gray-200" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {hasResults && (
         <div className="mt-3 space-y-2 overflow-y-auto pr-1 max-h-[520px] lg:max-h-[calc(100vh-320px)]">
@@ -157,7 +267,12 @@ export default function SearchResultsList({
             const locationText = isOpportunity
               ? profile.location_label || location || 'Località non disponibile'
               : location || 'Località non disponibile';
-
+            const description = isOpportunity ? (profile.description as string | null) || profile.bio || '' : '';
+            const snippet = isOpportunity && cleanQuery ? buildSnippet(description, cleanQuery, 120) : null;
+            const titleNode =
+              isOpportunity && cleanQuery ? highlightText(displayName, cleanQuery) : displayName;
+            const locationNode =
+              isOpportunity && cleanQuery ? highlightText(locationText, cleanQuery) : locationText;
             return (
               <div
                 key={profile.id}
@@ -175,11 +290,7 @@ export default function SearchResultsList({
                 }}
               >
                 <div className="flex items-start gap-3">
-                  <Link
-                    href={href}
-                    className="shrink-0"
-                    onClick={(e) => e.stopPropagation()}
-                  >
+                  <Link href={href} className="shrink-0" onClick={(e) => e.stopPropagation()}>
                     <Avatar profile={profile} />
                   </Link>
                   <div className="flex flex-1 flex-col gap-1">
@@ -189,14 +300,21 @@ export default function SearchResultsList({
                         onClick={(e) => e.stopPropagation()}
                         className="font-semibold leading-tight text-blue-800 underline-offset-2 hover:underline"
                       >
-                        {displayName}
+                        {titleNode}
                       </Link>
                       <MarkerIcon type={profile.type || profile.account_type} />
                     </div>
                     {isOpportunity ? (
                       <>
-                        <div className="text-xs text-gray-600">{locationText}</div>
-                        <div className="text-xs text-gray-500">{clubLabel}</div>
+                        <div className="text-xs text-gray-600">{locationNode}</div>
+                        {snippet && (
+                          <div className="text-xs text-gray-500">
+                            {snippet.prefix}
+                            {highlightText(snippet.text, cleanQuery)}
+                            {snippet.suffix}
+                          </div>
+                        )}
+                        {!snippet && clubLabel && <div className="text-xs text-gray-500">{clubLabel}</div>}
                         <div className="mt-2 flex flex-wrap gap-2">
                           <Link
                             href={href}

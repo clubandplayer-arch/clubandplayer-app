@@ -515,22 +515,70 @@ export default function SearchMapClient() {
     typeFilter,
   ]);
 
-  const filteredPoints = useMemo(() => {
+  const { filteredPoints, profileCount, opportunityCount } = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
 
-    return points.filter((p) => {
+    const getOpportunityText = (p: SearchMapProfile) => ({
+      title: (p.title || p.friendly_name || p.display_name || '').toLowerCase(),
+      description: ((p.description as string | null) || p.bio || '').toLowerCase(),
+      location: [
+        p.location_label,
+        p.city,
+        p.province,
+        p.region,
+        p.country,
+        p.club_name,
+      ]
+        .filter(Boolean)
+        .join(' · ')
+        .toLowerCase(),
+    });
+
+    const matchesQuery = (p: SearchMapProfile, isOpportunity: boolean) => {
+      if (!normalizedQuery) return true;
+      if (isOpportunity) {
+        const { title, description, location } = getOpportunityText(p);
+        return (
+          title.includes(normalizedQuery) ||
+          description.includes(normalizedQuery) ||
+          location.includes(normalizedQuery)
+        );
+      }
+
+      const name = (p.display_name || '').toLowerCase();
+      const fullName = (p.full_name || '').toLowerCase();
+      const city = (p.city || '').toLowerCase();
+      const province = (p.province || '').toLowerCase();
+      const region = (p.region || '').toLowerCase();
+      const country = (p.country || '').toLowerCase();
+      const sport = (p.sport || '').toLowerCase();
+      const role = (p.role || '').toLowerCase();
+      return (
+        name.includes(normalizedQuery) ||
+        fullName.includes(normalizedQuery) ||
+        city.includes(normalizedQuery) ||
+        province.includes(normalizedQuery) ||
+        region.includes(normalizedQuery) ||
+        country.includes(normalizedQuery) ||
+        sport.includes(normalizedQuery) ||
+        role.includes(normalizedQuery)
+      );
+    };
+
+    const matchesFilters = (p: SearchMapProfile, filter: typeof typeFilter) => {
       const type = (p.type || p.account_type || '').trim().toLowerCase();
       const isClub = type === 'club';
       const isAthlete = type === 'athlete' || type === 'player';
       const isOpportunity = type === 'opportunity';
 
-      if (typeFilter === 'club' && !isClub) return false;
-      if (typeFilter === 'player' && !isAthlete) return false;
-      if (typeFilter === 'opportunity' && !isOpportunity) return false;
+      if (filter === 'club' && !isClub) return false;
+      if (filter === 'player' && !isAthlete) return false;
+      if (filter === 'opportunity' && !isOpportunity) return false;
+      if (filter === 'all' && isOpportunity) return false;
 
       if (currentUserId && (p.user_id === currentUserId || p.id === currentUserId)) return false;
 
-      if (typeFilter === 'club') {
+      if (filter === 'club') {
         if (clubSport && (p.sport || '').toLowerCase() !== clubSport.toLowerCase()) return false;
         if (
           clubCategory &&
@@ -539,7 +587,7 @@ export default function SearchMapClient() {
           return false;
       }
 
-      if (typeFilter === 'player') {
+      if (filter === 'player') {
         if (playerSport && (p.sport || '').toLowerCase() !== playerSport.toLowerCase()) return false;
         if (playerFoot && (p.foot || '').toLowerCase() !== playerFoot.toLowerCase()) return false;
         if (playerGender && (p.gender || '').toLowerCase() !== playerGender.toLowerCase()) return false;
@@ -554,34 +602,42 @@ export default function SearchMapClient() {
         }
       }
 
-      if (normalizedQuery && !isOpportunity) {
-        const name = (p.display_name || '').toLowerCase();
-        const fullName = (p.full_name || '').toLowerCase();
-        const city = (p.city || '').toLowerCase();
-        const province = (p.province || '').toLowerCase();
-        const region = (p.region || '').toLowerCase();
-        const country = (p.country || '').toLowerCase();
-        const sport = (p.sport || '').toLowerCase();
-        const role = (p.role || '').toLowerCase();
-        if (
-          !name.includes(normalizedQuery) &&
-          !fullName.includes(normalizedQuery) &&
-          !city.includes(normalizedQuery) &&
-          !province.includes(normalizedQuery) &&
-          !region.includes(normalizedQuery) &&
-          !country.includes(normalizedQuery) &&
-          !sport.includes(normalizedQuery) &&
-          !role.includes(normalizedQuery)
-        )
-          return false;
-      }
+      if (!matchesQuery(p, isOpportunity)) return false;
 
       if (activeArea && activeArea.length >= 3 && p.latitude != null && p.longitude != null) {
         if (!pointInPolygon([p.latitude, p.longitude], activeArea)) return false;
       }
 
       return true;
-    });
+    };
+
+    const filterByType = (filter: typeof typeFilter) => points.filter((p) => matchesFilters(p, filter));
+    const opportunityMatches = filterByType('opportunity');
+    const profileMatches = filterByType(typeFilter === 'opportunity' ? 'all' : typeFilter);
+
+    const sortedOpportunities =
+      normalizedQuery && typeFilter === 'opportunity'
+        ? [...opportunityMatches]
+            .map((p, index) => {
+              const { title, description, location } = getOpportunityText(p);
+              const score =
+                (title.includes(normalizedQuery) ? 3 : 0) +
+                (description.includes(normalizedQuery) ? 2 : 0) +
+                (location.includes(normalizedQuery) ? 1 : 0);
+              return { profile: p, score, index };
+            })
+            .sort((a, b) => {
+              if (b.score !== a.score) return b.score - a.score;
+              return a.index - b.index;
+            })
+            .map((entry) => entry.profile)
+        : opportunityMatches;
+
+    return {
+      filteredPoints: typeFilter === 'opportunity' ? sortedOpportunities : profileMatches,
+      profileCount: profileMatches.length,
+      opportunityCount: opportunityMatches.length,
+    };
   }, [
     activeArea,
     ageMax,
@@ -634,12 +690,12 @@ export default function SearchMapClient() {
           type="search"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Cerca per nome club, player o opportunità…"
+          placeholder="Cerca per nome profilo o parola nell’annuncio (es. Garbatella, Tor de’ Cenci…)"
           className="w-full rounded-lg border px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
           autoComplete="off"
         />
         <p className="text-xs text-gray-600">
-          Il nome filtra i risultati nell’area selezionata senza cambiare i confini disegnati sulla mappa.
+          Filtra i risultati nell’area selezionata.
         </p>
       </div>
 
@@ -697,36 +753,36 @@ export default function SearchMapClient() {
         <div className="space-y-3">
           <div className="space-y-3 rounded-xl border bg-white/80 p-4 shadow-sm">
             <h2 className="heading-h2 text-lg">Filtri</h2>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setTypeFilter('all')}
-                className={`flex-1 rounded-lg border px-3 py-2 text-sm ${typeFilter === 'all' ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`}
-              >
-                Tutti
-              </button>
-              <button
-                type="button"
-                onClick={() => setTypeFilter('club')}
-                className={`flex-1 rounded-lg border px-3 py-2 text-sm ${typeFilter === 'club' ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`}
-              >
-                Club
-              </button>
-              <button
-                type="button"
-                onClick={() => setTypeFilter('player')}
-                className={`flex-1 rounded-lg border px-3 py-2 text-sm ${typeFilter === 'player' ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`}
-              >
-                Player
-              </button>
-              <button
-                type="button"
-                onClick={() => setTypeFilter('opportunity')}
-                className={`flex-1 rounded-lg border px-3 py-2 text-sm ${typeFilter === 'opportunity' ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`}
-              >
-                Opportunità
-              </button>
-            </div>
+            {typeFilter !== 'opportunity' && (
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setTypeFilter('all')}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-sm ${typeFilter === 'all' ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`}
+                >
+                  Tutti
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTypeFilter('club')}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-sm ${typeFilter === 'club' ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`}
+                >
+                  Club
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTypeFilter('player')}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-sm ${typeFilter === 'player' ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`}
+                >
+                  Player
+                </button>
+              </div>
+            )}
+            {typeFilter === 'opportunity' && (
+              <p className="text-xs text-gray-600">
+                I filtri profilo non si applicano alle opportunità.
+              </p>
+            )}
 
             {typeFilter === 'club' && (
               <div className="space-y-2 text-sm">
@@ -823,6 +879,13 @@ export default function SearchMapClient() {
             error={dataError}
             selectedId={selectedProfileId}
             onSelect={handleSelectFromList}
+            query={searchQuery}
+            profileCount={profileCount}
+            opportunityCount={opportunityCount}
+            activeTab={typeFilter === 'opportunity' ? 'opportunities' : 'profiles'}
+            onTabChange={(tab) => {
+              setTypeFilter(tab === 'opportunities' ? 'opportunity' : 'all');
+            }}
           />
         </div>
       </div>

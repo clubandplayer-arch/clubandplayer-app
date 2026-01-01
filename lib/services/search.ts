@@ -22,6 +22,7 @@ export type SearchMapProfile = Partial<Profile> & {
   account_type?: Profile['type'] | null;
   full_name?: string | null;
   title?: string | null;
+  description?: string | null;
   club_name?: string | null;
   location_label?: string | null;
   created_at?: string | null;
