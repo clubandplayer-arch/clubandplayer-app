@@ -7,6 +7,7 @@ type Props = {
   variant: Variant;
   href?: string; // default: /feed
   className?: string; // per sizing esterno
+  containerClassName?: string;
   priority?: boolean;
   unlinked?: boolean; // se true non wrappa con Link
 };
@@ -15,6 +16,7 @@ export default function BrandLogo({
   variant,
   href = "/feed",
   className,
+  containerClassName,
   priority = false,
   unlinked = false,
 }: Props) {
@@ -36,8 +38,8 @@ export default function BrandLogo({
       className={[
         // sizing di default sensato (poi puoi override via className)
         variant === "signup"
-          ? "h-16 sm:h-20 md:h-24 lg:h-28 w-auto"
-          : "h-8 md:h-9 w-auto",
+          ? "h-16 sm:h-20 md:h-24 lg:h-28 w-auto max-w-full object-contain"
+          : "h-8 md:h-9 w-auto max-h-9 object-contain",
         className,
       ]
         .filter(Boolean)
@@ -45,10 +47,14 @@ export default function BrandLogo({
     />
   );
 
-  if (unlinked) return img;
+  if (unlinked) return <span className={containerClassName}>{img}</span>;
 
   return (
-    <Link href={href} aria-label="Club & Player" className="inline-flex items-center">
+    <Link
+      href={href}
+      aria-label="Club & Player"
+      className={["inline-flex items-center", containerClassName].filter(Boolean).join(" ")}
+    >
       {img}
     </Link>
   );
