@@ -79,7 +79,10 @@ export async function searchProfilesOnMap(params: SearchMapParams): Promise<Sear
   appendIfValue(searchParams, 'current_user_id', currentUserId ?? undefined);
 
   const trimmedQuery = query?.trim();
-  if (trimmedQuery) searchParams.set('query', trimmedQuery);
+  if (trimmedQuery) {
+    searchParams.set('query', trimmedQuery);
+    searchParams.set('q', trimmedQuery);
+  }
 
   const queryString = searchParams.toString();
   const url = `/api/search/map?${queryString}`;
