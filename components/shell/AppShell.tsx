@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { Users } from 'lucide-react';
 import useIsClub from '@/hooks/useIsClub';
 import { ToastProvider } from '@/components/common/ToastProvider';
 import { FollowProvider } from '@/components/follow/FollowProvider';
@@ -106,18 +107,32 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <nav className="hidden flex-1 justify-center md:flex">
                 <div className="flex items-center gap-1 rounded-full border border-white/40 bg-white/70 px-2 py-1 shadow-sm backdrop-blur">
                   {isClub && (
-                    <Link
-                      href="/club/roster"
-                      aria-label="Rosa"
-                      aria-current={isActive('/club/roster') ? 'page' : undefined}
-                      title="Rosa"
-                      className={`relative flex h-10 w-10 items-center justify-center rounded-xl text-pink-600 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
-                        isActive('/club/roster') ? 'bg-pink-100 text-pink-700 shadow-sm' : 'hover:bg-pink-50'
-                      }`}
-                    >
-                      <MaterialIcon name="following" fontSize="small" />
-                      <span className="sr-only">Rosa</span>
-                    </Link>
+                    <>
+                      <Link
+                        href="/following"
+                        aria-label="Seguiti"
+                        aria-current={isActive('/following') ? 'page' : undefined}
+                        title="Seguiti"
+                        className={`relative flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
+                          isActive('/following') ? 'bg-slate-100 text-slate-800 shadow-sm' : 'hover:bg-slate-50'
+                        }`}
+                      >
+                        <Users size={18} aria-hidden />
+                        <span className="sr-only">Seguiti</span>
+                      </Link>
+                      <Link
+                        href="/club/roster"
+                        aria-label="Rosa"
+                        aria-current={isActive('/club/roster') ? 'page' : undefined}
+                        title="Rosa"
+                        className={`relative flex h-10 w-10 items-center justify-center rounded-xl text-pink-600 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
+                          isActive('/club/roster') ? 'bg-pink-100 text-pink-700 shadow-sm' : 'hover:bg-pink-50'
+                        }`}
+                      >
+                        <MaterialIcon name="following" fontSize="small" />
+                        <span className="sr-only">Rosa</span>
+                      </Link>
+                    </>
                   )}
                   {navItems.map((item) => {
                     const active = isActive(item.href);
@@ -185,18 +200,32 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3">
                   <div className="flex flex-wrap gap-2">
                     {isClub && (
-                      <Link
-                        href="/club/roster"
-                        onClick={() => setIsMenuOpen(false)}
-                        className={`flex flex-1 min-w-[140px] items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${
-                          isActive('/club/roster')
-                            ? 'border-pink-400 bg-pink-50 text-pink-700'
-                            : 'hover:bg-pink-50 text-pink-700'
-                        }`}
-                      >
-                        <MaterialIcon name="following" fontSize={16} />
-                        <span>Rosa</span>
-                      </Link>
+                      <>
+                        <Link
+                          href="/following"
+                          onClick={() => setIsMenuOpen(false)}
+                          className={`flex flex-1 min-w-[140px] items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${
+                            isActive('/following')
+                              ? 'border-slate-300 bg-slate-50 text-slate-800'
+                              : 'hover:bg-slate-50 text-slate-700'
+                          }`}
+                        >
+                          <Users size={16} aria-hidden />
+                          <span>Seguiti</span>
+                        </Link>
+                        <Link
+                          href="/club/roster"
+                          onClick={() => setIsMenuOpen(false)}
+                          className={`flex flex-1 min-w-[140px] items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${
+                            isActive('/club/roster')
+                              ? 'border-pink-400 bg-pink-50 text-pink-700'
+                              : 'hover:bg-pink-50 text-pink-700'
+                          }`}
+                        >
+                          <MaterialIcon name="following" fontSize={16} />
+                          <span>Rosa</span>
+                        </Link>
+                      </>
                     )}
                     {navItems.map((item) => {
                       const active = isActive(item.href);
