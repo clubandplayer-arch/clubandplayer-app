@@ -99,7 +99,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <div className="min-h-screen bg-clubplayer-gradient">
           <header className="fixed inset-x-0 top-0 z-40 border-b bg-white/90 backdrop-blur">
             <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4">
-              <BrandLogo variant="header" href="/feed" priority />
+              <div className="min-w-0 overflow-hidden flex-shrink-0">
+                <BrandLogo
+                  variant="header"
+                  href="/feed"
+                  priority
+                  className="max-w-[180px] md:max-w-[240px]"
+                />
+              </div>
 
               <nav className="hidden flex-1 justify-center md:flex">
                 <div className="flex items-center gap-1 rounded-full border border-white/40 bg-white/70 px-2 py-1 shadow-sm backdrop-blur">

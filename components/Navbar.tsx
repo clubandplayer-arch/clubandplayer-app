@@ -64,7 +64,14 @@ export default function Navbar() {
         <div className="flex h-16 items-center justify-between">
           {/* Left */}
           <div className="flex items-center gap-3">
-            <BrandLogo variant="header" href="/feed" priority />
+            <div className="min-w-0 overflow-hidden flex-shrink-0">
+              <BrandLogo
+                variant="header"
+                href="/feed"
+                priority
+                className="max-w-[180px] md:max-w-[240px]"
+              />
+            </div>
 
             <div className="ml-4 hidden md:flex items-center gap-1">
               <Link href="/" className={linkClass('/')}>Home</Link>
