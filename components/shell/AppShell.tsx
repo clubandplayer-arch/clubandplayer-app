@@ -12,7 +12,7 @@ import NotificationsDropdown from '@/components/notifications/NotificationsDropd
 import { useUnreadDirectThreads } from '@/hooks/useUnreadDirectThreads';
 import { MessagingDock } from '@/components/messaging/MessagingDock';
 import { useNotificationsBadge } from '@/hooks/useNotificationsBadge';
-import BrandLogo from '../BrandLogo';
+import BrandLogo from '@/components/brand/BrandLogo';
 
 type Role = 'athlete' | 'club' | 'guest';
 
@@ -99,7 +99,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <div className="min-h-screen bg-clubplayer-gradient">
           <header className="fixed inset-x-0 top-0 z-40 border-b bg-white/90 backdrop-blur">
             <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4">
-              <BrandLogo variant="navbar" href="/feed" />
+              <BrandLogo variant="header" href="/feed" priority />
 
               <nav className="hidden flex-1 justify-center md:flex">
                 <div className="flex items-center gap-1 rounded-full border border-white/40 bg-white/70 px-2 py-1 shadow-sm backdrop-blur">

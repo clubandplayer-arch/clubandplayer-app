@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
 import NotificationsBell from './NotificationsBell'
-import BrandLogo from './BrandLogo'
+import BrandLogo from '@/components/brand/BrandLogo'
 
 type ProfileRow = {
   id: string
@@ -64,7 +64,7 @@ export default function Navbar() {
         <div className="flex h-16 items-center justify-between">
           {/* Left */}
           <div className="flex items-center gap-3">
-            <BrandLogo variant="navbar" href="/" />
+            <BrandLogo variant="header" href="/feed" priority />
 
             <div className="ml-4 hidden md:flex items-center gap-1">
               <Link href="/" className={linkClass('/')}>Home</Link>

@@ -10,7 +10,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 import SocialLogin from '@/components/auth/SocialLogin';
-import BrandLogo from '@/components/BrandLogo';
+import BrandLogo from '@/components/brand/BrandLogo';
 
 type Role = 'athlete' | 'club';
 
@@ -122,7 +122,7 @@ export default function SignupPage() {
     <main className="min-h-screen bg-clubplayer-gradient">
       <div className="mx-auto flex w-full max-w-[1440px] flex-col items-start gap-10 px-6 py-12 lg:flex-row lg:items-center lg:gap-14 lg:px-10 lg:py-16">
         <section className="flex-1 space-y-6 text-left lg:max-w-2xl">
-          <BrandLogo variant="marketing" />
+          <BrandLogo variant="signup" unlinked />
           <div className="space-y-4">
             <h2 className="text-3xl font-bold leading-tight text-[#00527a] sm:text-4xl">
               Ti diamo il benvenuto nella più grande community sportiva.
