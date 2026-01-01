@@ -65,9 +65,9 @@ export default function ApplicationsTable({
   );
 
   const STATUS_LABEL: Record<string, string> = {
-    submitted: 'Inviata',
-    in_review: 'In revisione',
-    pending: 'In revisione',
+    submitted: 'In valutazione',
+    in_review: 'In valutazione',
+    pending: 'In valutazione',
     accepted: 'Accettata',
     rejected: 'Rifiutata',
     withdrawn: 'Ritirata',

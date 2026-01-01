@@ -23,21 +23,23 @@ const WITHDRAW_ALLOWED = new Set(['inviata', 'aperta', 'in_review', 'pending']);
 function StatusChip({ status }: { status?: string }) {
   const s = (status || 'inviata').toLowerCase();
   const map: Record<string, string> = {
-    inviata: 'bg-blue-100 text-blue-800',
+    inviata: 'bg-amber-100 text-amber-800',
     in_review: 'bg-amber-100 text-amber-800',
     accettata: 'bg-green-100 text-green-800',
     rifiutata: 'bg-red-100 text-red-800',
     ritirata: 'bg-gray-100 text-gray-700',
     pending: 'bg-amber-100 text-amber-800',
+    submitted: 'bg-amber-100 text-amber-800',
   };
   const cls = map[s] || 'bg-gray-100 text-gray-700';
   const label: Record<string, string> = {
-    inviata: 'Inviata',
-    in_review: 'In revisione',
+    inviata: 'In valutazione',
+    in_review: 'In valutazione',
     accettata: 'Accettata',
     rifiutata: 'Rifiutata',
     ritirata: 'Ritirata',
-    pending: 'In revisione',
+    pending: 'In valutazione',
+    submitted: 'In valutazione',
   };
   return <span className={`px-2 py-0.5 rounded-lg text-xs font-medium ${cls}`}>{label[s] ?? s}</span>;
 }

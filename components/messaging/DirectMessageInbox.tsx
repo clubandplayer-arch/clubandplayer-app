@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import EmptyState from '@/components/common/EmptyState';
 import { useToast } from '@/components/common/ToastProvider';
 import {
   getDirectInbox,
@@ -134,9 +135,11 @@ export function DirectMessageInbox({ onSelectThread, hideHeader, className }: Pr
           <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
         )}
         {!loading && !error && threads.length === 0 && (
-          <div className="rounded-md border border-dashed border-neutral-300 bg-neutral-50 p-4 text-sm text-neutral-700">
-            Non hai ancora messaggi. Apri un profilo e clicca “Messaggia” per iniziare una chat 1-a-1.
-          </div>
+          <EmptyState
+            title="Nessuna conversazione"
+            description="Apri un profilo e clicca “Messaggia” per iniziare una chat 1-a-1."
+            actions={[{ label: 'Cerca su mappa', href: '/search-map', variant: 'primary' }]}
+          />
         )}
         {!loading && !error &&
           threads.map((thread) => {
