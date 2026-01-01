@@ -108,35 +108,37 @@ export default function FollowedClubs() {
         <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
       ) : items.length > 0 ? (
         <ul className="space-y-2">
-          {items.slice(0, 5).map((item) => (
-            <li key={item.id} className="flex items-center gap-3">
-              <img
-                src={
-                  item.avatarUrl ||
-                  `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(item.name)}`
-                }
-                alt={item.name}
-                className="h-9 w-9 rounded-full object-cover ring-1 ring-zinc-200 dark:ring-zinc-800"
-              />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <div className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                    {item.name}
-                  </div>
+          {items.slice(0, 5).map((item) => {
+            const href = targetHref(item);
+            return (
+              <li key={item.id} className="flex items-center gap-3">
+                <Link href={href} aria-label={`Vai al profilo di ${item.name}`}>
+                  <img
+                    src={
+                      item.avatarUrl ||
+                      `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(item.name)}`
+                    }
+                    alt={item.name}
+                    className="h-9 w-9 rounded-full object-cover ring-1 ring-zinc-200 dark:ring-zinc-800"
+                  />
+                </Link>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href={href}
+                      className="truncate text-sm font-semibold text-zinc-900 hover:underline dark:text-zinc-100"
+                    >
+                      {item.name}
+                    </Link>
                   <span className="rounded-full border border-zinc-200 bg-zinc-100 px-2 py-[1px] text-[10px] font-semibold uppercase tracking-wide text-zinc-700">
                     {item.accountType === 'club' ? 'Club' : 'Player'}
                   </span>
                 </div>
                 <div className="truncate text-xs text-zinc-500">{subtitle(item, role)}</div>
-                <Link
-                  href={targetHref(item)}
-                  className="mt-1 inline-flex text-xs font-semibold text-blue-600 underline-offset-2 hover:underline"
-                >
-                  Visita profilo
-                </Link>
               </div>
             </li>
-          ))}
+            );
+          })}
         </ul>
       ) : (
         <div className="rounded-lg border border-dashed p-4 text-sm text-zinc-600 dark:border-zinc-800">{emptyCopy}</div>
