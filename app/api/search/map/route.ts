@@ -216,11 +216,20 @@ export async function GET(req: NextRequest) {
         .or('account_type.eq.club,type.eq.club');
 
       if (hasBounds) {
-        if (south != null && north != null) {
-          clubQuery = clubQuery.gte('latitude', south).lte('latitude', north);
-        }
-        if (west != null && east != null) {
-          clubQuery = clubQuery.gte('longitude', west).lte('longitude', east);
+        if (south != null && north != null && west != null && east != null) {
+          clubQuery = clubQuery.or(
+            [
+              `and(latitude.gte.${south},latitude.lte.${north},longitude.gte.${west},longitude.lte.${east})`,
+              `and(club_stadium_lat.gte.${south},club_stadium_lat.lte.${north},club_stadium_lng.gte.${west},club_stadium_lng.lte.${east})`,
+            ].join(','),
+          );
+        } else {
+          if (south != null && north != null) {
+            clubQuery = clubQuery.gte('latitude', south).lte('latitude', north);
+          }
+          if (west != null && east != null) {
+            clubQuery = clubQuery.gte('longitude', west).lte('longitude', east);
+          }
         }
       }
 
@@ -247,7 +256,8 @@ export async function GET(req: NextRequest) {
         .from('opportunities')
         .select(oppSelect)
         .order('created_at', { ascending: false })
-        .limit(Math.min(limit, 100));
+        .limit(Math.min(limit, 100))
+        .eq('status', 'open');
 
       if (clubIds.length) {
         oppQuery = oppQuery.in('club_id', clubIds);
@@ -278,6 +288,7 @@ export async function GET(req: NextRequest) {
           type: 'opportunity',
           account_type: 'opportunity',
           title: o.title ?? 'Annuncio',
+          description: o.description ?? null,
           club_name: o.club_name ?? null,
           club_id: o.club_id ?? o.owner_id ?? null,
           city: o.city ?? null,

@@ -19,7 +19,7 @@ export type SearchResultsListProps = {
   onSelect?: (result: SearchMapProfile) => void;
   query?: string;
   profileCount?: number;
-  opportunityCount?: number;
+  opportunityCount?: number | null;
   activeTab?: 'profiles' | 'opportunities';
   onTabChange?: (tab: 'profiles' | 'opportunities') => void;
   className?: string;
@@ -162,7 +162,7 @@ export default function SearchResultsList({
   onSelect,
   query,
   profileCount = 0,
-  opportunityCount = 0,
+  opportunityCount = null,
   activeTab = 'profiles',
   onTabChange,
   className,
@@ -223,7 +223,7 @@ export default function SearchResultsList({
                 : 'hover:bg-gray-50'
             }`}
           >
-            Opportunità ({opportunityCount})
+            {opportunityCount == null ? 'Opportunità (…)': `Opportunità (${opportunityCount})`}
           </button>
         </div>
       </div>
