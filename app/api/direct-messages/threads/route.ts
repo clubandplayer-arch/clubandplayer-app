@@ -167,6 +167,7 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
           full_name: string | null;
           display_name: string | null;
           avatar_url: string | null;
+          account_type: string | null;
         };
         lastMessage: string;
         lastMessageAt: string;
@@ -206,6 +207,7 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
             full_name: otherFullName ?? null,
             display_name: otherDisplayName ?? null,
             avatar_url: resolvedAvatar,
+            account_type: profile.account_type ?? null,
           },
           lastMessage: row.content as string,
           lastMessageAt: row.created_at as string,
