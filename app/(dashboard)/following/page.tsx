@@ -66,7 +66,7 @@ function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, 
   };
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-neutral-200 bg-white/70 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900/60">
+    <div className="flex h-full flex-col gap-3 rounded-2xl border border-neutral-200 bg-white/70 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900/60">
       <div className="flex items-start gap-3">
         <Link href={href} className="flex flex-1 gap-3">
           <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[var(--brand)]/20 to-[var(--brand)]/40 text-sm font-semibold uppercase text-[var(--brand)] aspect-square">
@@ -92,7 +92,7 @@ function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, 
       </div>
 
       {showRosterToggle && type === 'athlete' ? (
-        <div className="flex items-center justify-between rounded-lg border border-pink-100 bg-pink-50 px-3 py-2">
+        <div className="mt-auto flex items-center justify-between rounded-lg border border-pink-100 bg-pink-50 px-3 py-2">
           <div className="text-xs font-semibold text-pink-700">In Rosa</div>
           <button
             type="button"
