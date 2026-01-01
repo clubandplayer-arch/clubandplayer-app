@@ -21,6 +21,7 @@ type PolygonPoint = [number, number];
 type PersistedSearchState = {
   queryText: string;
   filterType: 'all' | 'club' | 'player' | 'opportunity';
+  activeTab?: 'profiles' | 'opportunities';
   activeArea: PolygonPoint[] | null;
   searchBounds: Bounds | null;
   clubSport: string;
@@ -80,7 +81,8 @@ function pointInPolygon(point: PolygonPoint, polygon: PolygonPoint[]): boolean {
 }
 
 export default function SearchMapClient() {
-  const [typeFilter, setTypeFilter] = useState<'all' | 'club' | 'player' | 'opportunity'>('all');
+  const [activeTab, setActiveTab] = useState<'profiles' | 'opportunities'>('profiles');
+  const [profileFilter, setProfileFilter] = useState<'all' | 'club' | 'player'>('all');
   const [searchBounds, setSearchBounds] = useState<Bounds | null>(null);
   const [profilePoints, setProfilePoints] = useState<SearchMapProfile[]>([]);
   const [opportunityPoints, setOpportunityPoints] = useState<SearchMapProfile[]>([]);
@@ -115,7 +117,6 @@ export default function SearchMapClient() {
   const clubPinsLayerRef = useRef<LeafletLib['LayerGroup'] | null>(null);
 
   const hasArea = !!searchBounds;
-  const [lastProfileFilter, setLastProfileFilter] = useState<'all' | 'club' | 'player'>('all');
 
   const clearPersistedState = useCallback(() => {
     if (typeof window === 'undefined') return;
@@ -240,7 +241,13 @@ export default function SearchMapClient() {
       }
 
       setSearchQuery(saved.queryText || '');
-      setTypeFilter(saved.filterType || 'all');
+      const restoredTab = saved.activeTab || (saved.filterType === 'opportunity' ? 'opportunities' : 'profiles');
+      setActiveTab(restoredTab);
+      if (saved.filterType === 'club' || saved.filterType === 'player' || saved.filterType === 'all') {
+        setProfileFilter(saved.filterType);
+      } else {
+        setProfileFilter('all');
+      }
       setActiveArea(saved.activeArea || null);
       setSearchBounds(saved.searchBounds || null);
       setClubSport(saved.clubSport || '');
@@ -308,7 +315,8 @@ export default function SearchMapClient() {
     const timer = setTimeout(() => {
       const payload: PersistedSearchState = {
         queryText: searchQuery,
-        filterType: typeFilter,
+        filterType: activeTab === 'opportunities' ? 'opportunity' : profileFilter,
+        activeTab,
         activeArea,
         searchBounds,
         clubSport,
@@ -318,7 +326,7 @@ export default function SearchMapClient() {
         playerGender,
         ageMin,
         ageMax,
-      points: profilePoints,
+        points: profilePoints,
         selectedProfileId,
         timestamp: Date.now(),
       };
@@ -344,7 +352,8 @@ export default function SearchMapClient() {
     searchBounds,
     searchQuery,
     selectedProfileId,
-    typeFilter,
+    activeTab,
+    profileFilter,
   ]);
 
   useEffect(() => {
@@ -446,8 +455,6 @@ export default function SearchMapClient() {
   }, [activeArea, isDrawing, updatePolygonLayer]);
 
   useEffect(() => {
-    const profileFilter = typeFilter === 'opportunity' ? lastProfileFilter : typeFilter;
-
     if (!searchBounds) {
       setProfilePoints([]);
       setOpportunityPoints([]);
@@ -475,7 +482,7 @@ export default function SearchMapClient() {
       console.log('[search-map] calling search service', {
         bounds: searchBounds,
         query: searchQuery,
-        type: typeFilter,
+        type: profileFilter,
         filters,
       });
 
@@ -484,11 +491,11 @@ export default function SearchMapClient() {
         const response = await searchProfilesOnMap({
           bounds: boundsToUse,
           query: searchQuery,
-        type: profileFilter,
-        limit: 300,
-        filters,
-        currentUserId,
-      });
+          type: profileFilter,
+          limit: 300,
+          filters,
+          currentUserId,
+        });
 
         if (!cancelled) {
           console.log('[search-map] service success', {
@@ -524,8 +531,7 @@ export default function SearchMapClient() {
     playerSport,
     searchQuery,
     searchBounds,
-    lastProfileFilter,
-    typeFilter,
+    profileFilter,
   ]);
 
   useEffect(() => {
@@ -620,7 +626,7 @@ export default function SearchMapClient() {
       );
     };
 
-    const matchesFilters = (p: SearchMapProfile, filter: typeof typeFilter) => {
+    const matchesFilters = (p: SearchMapProfile, filter: typeof profileFilter) => {
       const type = (p.type || p.account_type || '').trim().toLowerCase();
       const isClub = type === 'club';
       const isAthlete = type === 'athlete' || type === 'player';
@@ -628,8 +634,7 @@ export default function SearchMapClient() {
 
       if (filter === 'club' && !isClub) return false;
       if (filter === 'player' && !isAthlete) return false;
-      if (filter === 'opportunity' && !isOpportunity) return false;
-      if (filter === 'all' && isOpportunity) return false;
+      if (isOpportunity) return false;
 
       if (currentUserId && (p.user_id === currentUserId || p.id === currentUserId)) return false;
 
@@ -666,7 +671,6 @@ export default function SearchMapClient() {
       return true;
     };
 
-    const profileFilter = typeFilter === 'opportunity' ? lastProfileFilter : typeFilter;
     const profileMatches = profilePoints.filter((p) => matchesFilters(p, profileFilter));
     const opportunityMatches = opportunityPoints.filter((p) => matchesQuery(p, true));
 
@@ -689,7 +693,7 @@ export default function SearchMapClient() {
         : opportunityMatches;
 
     return {
-      filteredPoints: typeFilter === 'opportunity' ? sortedOpportunities : profileMatches,
+      filteredPoints: activeTab === 'opportunities' ? sortedOpportunities : profileMatches,
       profileCount: profileMatches.length,
       opportunityCount: opportunitiesLoaded ? opportunityMatches.length : null,
     };
@@ -703,12 +707,12 @@ export default function SearchMapClient() {
     playerFoot,
     playerGender,
     playerSport,
-    lastProfileFilter,
     opportunitiesLoaded,
     opportunityPoints,
     profilePoints,
     searchQuery,
-    typeFilter,
+    activeTab,
+    profileFilter,
   ]);
 
   useEffect(() => {
@@ -811,47 +815,38 @@ export default function SearchMapClient() {
         <div className="space-y-3">
           <div className="space-y-3 rounded-xl border bg-white/80 p-4 shadow-sm">
             <h2 className="heading-h2 text-lg">Filtri</h2>
-            {typeFilter !== 'opportunity' && (
+            {activeTab === 'profiles' && (
               <div className="flex gap-2">
                 <button
                   type="button"
-            onClick={() => {
-              setTypeFilter('all');
-              setLastProfileFilter('all');
-            }}
-                  className={`flex-1 rounded-lg border px-3 py-2 text-sm ${typeFilter === 'all' ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`}
+                  onClick={() => setProfileFilter('all')}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-sm ${profileFilter === 'all' ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`}
                 >
                   Tutti
                 </button>
                 <button
                   type="button"
-            onClick={() => {
-              setTypeFilter('club');
-              setLastProfileFilter('club');
-            }}
-                  className={`flex-1 rounded-lg border px-3 py-2 text-sm ${typeFilter === 'club' ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`}
+                  onClick={() => setProfileFilter('club')}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-sm ${profileFilter === 'club' ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`}
                 >
                   Club
                 </button>
                 <button
                   type="button"
-            onClick={() => {
-              setTypeFilter('player');
-              setLastProfileFilter('player');
-            }}
-                  className={`flex-1 rounded-lg border px-3 py-2 text-sm ${typeFilter === 'player' ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`}
+                  onClick={() => setProfileFilter('player')}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-sm ${profileFilter === 'player' ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`}
                 >
                   Player
                 </button>
               </div>
             )}
-            {typeFilter === 'opportunity' && (
+            {activeTab === 'opportunities' && (
               <p className="text-xs text-gray-600">
                 I filtri profilo non si applicano alle opportunità.
               </p>
             )}
 
-            {typeFilter === 'club' && (
+            {profileFilter === 'club' && activeTab === 'profiles' && (
               <div className="space-y-2 text-sm">
                 <div className="space-y-1">
                   <label className="text-xs text-gray-600">Sport</label>
@@ -874,7 +869,7 @@ export default function SearchMapClient() {
               </div>
             )}
 
-            {typeFilter === 'player' && (
+            {profileFilter === 'player' && activeTab === 'profiles' && (
               <div className="space-y-2 text-sm">
                 <div className="space-y-1">
                   <label className="text-xs text-gray-600">Sport</label>
@@ -941,7 +936,7 @@ export default function SearchMapClient() {
 
           <SearchResultsList
             results={filteredPoints}
-            loading={typeFilter === 'opportunity' ? opportunityLoading : profileLoading}
+            loading={activeTab === 'opportunities' ? opportunityLoading : profileLoading}
             hasArea={hasArea}
             error={dataError}
             selectedId={selectedProfileId}
@@ -949,14 +944,8 @@ export default function SearchMapClient() {
             query={searchQuery}
             profileCount={profileCount}
             opportunityCount={opportunityCount}
-            activeTab={typeFilter === 'opportunity' ? 'opportunities' : 'profiles'}
-            onTabChange={(tab) => {
-              if (tab === 'opportunities') {
-                setTypeFilter('opportunity');
-              } else {
-                setTypeFilter(lastProfileFilter);
-              }
-            }}
+            activeTab={activeTab}
+            onTabChange={(tab) => setActiveTab(tab)}
           />
         </div>
       </div>
