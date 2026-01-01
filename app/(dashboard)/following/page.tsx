@@ -11,6 +11,7 @@ type FollowedProfile = {
   name: string;
   account_type: string | null;
   type?: string | null;
+  avatar_url?: string | null;
   city: string | null;
   sport: string | null;
   role: string | null;
@@ -22,6 +23,7 @@ type ApiResponse = {
     name?: string | null;
     account_type?: string | null;
     type?: string | null;
+    avatar_url?: string | null;
     city?: string | null;
     country?: string | null;
     sport?: string | null;
@@ -56,6 +58,7 @@ function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, 
   const meta = [profile.city, profile.sport, profile.role].filter(Boolean).join(' · ');
   const initials = getInitials(profile.name || 'Profilo');
   const toggleDisabled = rosterPending || !onToggleRoster;
+  const avatarUrl = profile.avatar_url ? profile.avatar_url.trim() : '';
 
   const handleToggle = () => {
     if (!onToggleRoster || toggleDisabled) return;
@@ -66,9 +69,19 @@ function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, 
     <div className="flex flex-col gap-3 rounded-2xl border border-neutral-200 bg-white/70 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900/60">
       <div className="flex items-start gap-3">
         <Link href={href} className="flex flex-1 gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[var(--brand)]/20 to-[var(--brand)]/40 text-sm font-semibold uppercase text-[var(--brand)]">
-            {initials}
-          </div>
+          {avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={avatarUrl}
+              alt={profile.name || 'Profilo'}
+              className="h-12 w-12 rounded-full object-cover"
+              loading="lazy"
+            />
+          ) : (
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[var(--brand)]/20 to-[var(--brand)]/40 text-sm font-semibold uppercase text-[var(--brand)]">
+              {initials}
+            </div>
+          )}
           <div className="min-w-0">
             <p className="text-sm font-semibold text-neutral-900 dark:text-white">{profile.name}</p>
             <p className="text-xs uppercase tracking-wide text-neutral-500 dark:text-neutral-400">{type === 'club' ? 'Club' : 'Player'}</p>
@@ -132,6 +145,7 @@ export default function FollowingPage() {
               city: row.city ?? null,
               sport: row.sport ?? null,
               role: row.role ?? null,
+              avatar_url: row.avatar_url ?? null,
             }))
           : [];
         setItems(mapped);
