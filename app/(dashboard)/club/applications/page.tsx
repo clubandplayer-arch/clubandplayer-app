@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import EmptyState from '@/components/common/EmptyState';
 import { useToast } from '@/components/common/ToastProvider';
 
 type Athlete = {
@@ -35,9 +36,10 @@ type ApplicationRow = {
 
 const statusLabel = (s: string | null | undefined) => {
   const key = (s || '').toLowerCase();
+  if (key === 'submitted' || key === 'in_review' || key === 'pending') return 'In valutazione';
   if (key === 'accepted') return 'Accettata';
   if (key === 'rejected') return 'Rifiutata';
-  return 'In attesa';
+  return 'In valutazione';
 };
 
 const statusBadgeClass = (s: string | null | undefined) => {
@@ -159,7 +161,7 @@ export default function ClubApplicationsPage() {
             onChange={(e) => setStatusFilter(e.target.value as any)}
             className="rounded-lg border px-3 py-2 text-sm"
           >
-            <option value="pending">In attesa</option>
+            <option value="pending">In valutazione</option>
             <option value="accepted">Accettate</option>
             <option value="rejected">Rifiutate</option>
             <option value="all">Tutte</option>
@@ -192,9 +194,11 @@ export default function ClubApplicationsPage() {
       {loading ? (
         <div className="rounded-lg border bg-white/70 p-6 text-sm text-gray-600">Caricamento candidature…</div>
       ) : rows.length === 0 ? (
-        <div className="rounded-lg border bg-white/70 p-6 text-sm text-gray-600">
-          Nessuna candidatura trovata per il filtro selezionato.
-        </div>
+        <EmptyState
+          title="Nessuna candidatura ricevuta"
+          description="Non hai ancora ricevuto candidature sulle opportunità pubblicate."
+          actions={[{ label: 'Vai alle tue opportunità', href: '/opportunities', variant: 'primary' }]}
+        />
       ) : (
         <div className="overflow-x-auto rounded-xl border bg-white/80">
           <table className="w-full min-w-[720px] text-sm">

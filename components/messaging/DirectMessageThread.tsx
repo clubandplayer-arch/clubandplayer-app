@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/common/ToastProvider';
 import {
@@ -18,6 +19,7 @@ type Props = {
   targetProfileId: string;
   targetDisplayName: string;
   targetAvatarUrl: string | null;
+  targetAccountType?: string | null;
   layout?: 'card' | 'dock';
   onClose?: () => void;
   className?: string;
@@ -67,6 +69,7 @@ export function DirectMessageThread({
   layout = 'card',
   onClose,
   className,
+  targetAccountType,
 }: Props) {
   const router = useRouter();
   const { show } = useToast();
@@ -76,6 +79,7 @@ export function DirectMessageThread({
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [peerAccountType, setPeerAccountType] = useState<string | null>(targetAccountType ?? null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState('');
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
@@ -109,6 +113,7 @@ export function DirectMessageThread({
         if (cancelled) return;
         setMessages(threadData.messages || []);
         setCurrentProfileId(threadData.currentProfileId ?? null);
+        setPeerAccountType(threadData.peer?.account_type ?? targetAccountType ?? null);
       } catch (err: any) {
         if (cancelled) return;
         const message = err?.message || 'Errore caricamento messaggi';
@@ -124,7 +129,7 @@ export function DirectMessageThread({
     return () => {
       cancelled = true;
     };
-  }, [show, targetProfileId]);
+  }, [show, targetAccountType, targetProfileId]);
 
   useEffect(() => {
     if (loading || error) return;
@@ -238,6 +243,10 @@ export function DirectMessageThread({
   };
 
   const headerName = targetDisplayName || 'Profilo';
+  const profileHref =
+    peerAccountType && peerAccountType.toLowerCase().includes('club')
+      ? `/c/${targetProfileId}`
+      : `/u/${targetProfileId}`;
 
   return (
     <div
@@ -251,9 +260,13 @@ export function DirectMessageThread({
         .join(' ')}
     >
       <div className={`flex flex-none items-center gap-3 border-b bg-white ${isDock ? 'px-4 py-3' : 'px-5 py-4'}`}>
-        <Avatar name={headerName} avatarUrl={targetAvatarUrl} />
-        <div className="flex-1">
-          <div className="text-lg font-semibold text-neutral-900">{headerName}</div>
+        <Link href={profileHref} aria-label={`Vai al profilo di ${headerName}`}>
+          <Avatar name={headerName} avatarUrl={targetAvatarUrl} />
+        </Link>
+        <div className="min-w-0 flex-1">
+          <Link href={profileHref} className="block truncate text-lg font-semibold text-neutral-900 hover:underline">
+            {headerName}
+          </Link>
           <div className="text-sm text-neutral-500">Messaggi diretti</div>
         </div>
         <div className="flex items-center gap-2">

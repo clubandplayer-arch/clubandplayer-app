@@ -11,6 +11,7 @@ type FollowedProfile = {
   name: string;
   account_type: string | null;
   type?: string | null;
+  avatar_url?: string | null;
   city: string | null;
   sport: string | null;
   role: string | null;
@@ -22,6 +23,7 @@ type ApiResponse = {
     name?: string | null;
     account_type?: string | null;
     type?: string | null;
+    avatar_url?: string | null;
     city?: string | null;
     country?: string | null;
     sport?: string | null;
@@ -56,6 +58,7 @@ function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, 
   const meta = [profile.city, profile.sport, profile.role].filter(Boolean).join(' · ');
   const initials = getInitials(profile.name || 'Profilo');
   const toggleDisabled = rosterPending || !onToggleRoster;
+  const avatarUrl = profile.avatar_url ? profile.avatar_url.trim() : '';
 
   const handleToggle = () => {
     if (!onToggleRoster || toggleDisabled) return;
@@ -63,11 +66,21 @@ function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, 
   };
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-neutral-200 bg-white/70 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900/60">
+    <div className="flex h-full flex-col gap-3 rounded-2xl border border-neutral-200 bg-white/70 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900/60">
       <div className="flex items-start gap-3">
         <Link href={href} className="flex flex-1 gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[var(--brand)]/20 to-[var(--brand)]/40 text-sm font-semibold uppercase text-[var(--brand)]">
-            {initials}
+          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[var(--brand)]/20 to-[var(--brand)]/40 text-sm font-semibold uppercase text-[var(--brand)] aspect-square">
+            {avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={avatarUrl}
+                alt={profile.name || 'Profilo'}
+                className="h-full w-full object-cover"
+                loading="lazy"
+              />
+            ) : (
+              <span>{initials}</span>
+            )}
           </div>
           <div className="min-w-0">
             <p className="text-sm font-semibold text-neutral-900 dark:text-white">{profile.name}</p>
@@ -79,7 +92,7 @@ function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, 
       </div>
 
       {showRosterToggle && type === 'athlete' ? (
-        <div className="flex items-center justify-between rounded-lg border border-pink-100 bg-pink-50 px-3 py-2">
+        <div className="mt-auto flex items-center justify-between rounded-lg border border-pink-100 bg-pink-50 px-3 py-2">
           <div className="text-xs font-semibold text-pink-700">In Rosa</div>
           <button
             type="button"
@@ -132,6 +145,7 @@ export default function FollowingPage() {
               city: row.city ?? null,
               sport: row.sport ?? null,
               role: row.role ?? null,
+              avatar_url: row.avatar_url ?? null,
             }))
           : [];
         setItems(mapped);

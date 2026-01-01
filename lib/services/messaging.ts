@@ -10,6 +10,7 @@ type DirectThreadSummary = {
     full_name: string | null;
     display_name: string | null;
     avatar_url: string | null;
+    account_type: string | null;
   };
   lastMessage: string;
   lastMessageAt: string;

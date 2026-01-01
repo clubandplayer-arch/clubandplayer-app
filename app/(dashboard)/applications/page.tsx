@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import EmptyState from '@/components/common/EmptyState';
 
 type Opportunity = {
   id?: string | null;
@@ -21,6 +22,7 @@ type ApplicationRow = {
 
 const statusLabel = (s: string | null | undefined) => {
   const key = (s || '').toLowerCase();
+  if (key === 'submitted' || key === 'in_review' || key === 'pending') return 'In valutazione';
   if (key === 'accepted') return 'Accettata';
   if (key === 'rejected') return 'Rifiutata';
   return 'In valutazione';
@@ -130,9 +132,11 @@ export default function MyApplicationsPage() {
       {loading ? (
         <div className="rounded-lg border bg-white/70 p-6 text-sm text-gray-600">Caricamento candidature…</div>
       ) : rowsSorted.length === 0 ? (
-        <div className="rounded-lg border bg-white/70 p-6 text-sm text-gray-600">
-          Non hai candidature per il filtro selezionato.
-        </div>
+        <EmptyState
+          title="Nessuna candidatura inviata"
+          description="Scopri nuove opportunità e invia la tua candidatura in pochi tap."
+          actions={[{ label: 'Scopri opportunità', href: '/opportunities', variant: 'primary' }]}
+        />
       ) : (
         <div className="overflow-x-auto rounded-xl border bg-white/80">
           <table className="w-full min-w-[720px] text-sm">

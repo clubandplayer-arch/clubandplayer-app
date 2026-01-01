@@ -44,6 +44,7 @@ export default async function DirectMessagesPage({ params }: { params: { profile
         targetProfileId={targetProfile.id}
         targetDisplayName={title}
         targetAvatarUrl={targetProfile.avatar_url}
+        targetAccountType={targetProfile.account_type}
       />
     </div>
   );

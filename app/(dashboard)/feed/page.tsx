@@ -8,8 +8,10 @@ import dynamic from 'next/dynamic';
 import FeedComposer from '@/components/feed/FeedComposer';
 import TrackRetention from '@/components/analytics/TrackRetention';
 import { PostCard } from '@/components/feed/PostCard';
+import EmptyState from '@/components/common/EmptyState';
 import { HorizontalAdBanner } from '@/components/ads/HorizontalAdBanner';
 import { VerticalAdBanner } from '@/components/ads/VerticalAdBanner';
+import OpportunityCard from '@/components/opportunities/OpportunityCard';
 import {
   computeOptimistic,
   createDefaultReaction,
@@ -21,6 +23,7 @@ import {
 } from '@/components/feed/postShared';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import useFeed, { type FeedScope } from '@/hooks/useFeed';
+import type { Opportunity } from '@/types/opportunity';
 import type { Profile } from '@/types/profile';
 
 // carico le sidebar in modo "sicuro" (se il componente esiste lo usa, altrimenti mostra un box vuoto)
@@ -45,6 +48,18 @@ const FeedHighlights = dynamic(() => import('@/components/feed/FeedHighlights'),
   loading: () => <SidebarCard title="In evidenza" />,
 });
 
+type StarterProfile = {
+  id: string;
+  full_name?: string | null;
+  display_name?: string | null;
+  account_type?: string | null;
+  city?: string | null;
+  country?: string | null;
+  sport?: string | null;
+  role?: string | null;
+  avatar_url?: string | null;
+};
+
 export default function FeedPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [_profile, setProfile] = useState<Profile | null>(null);
@@ -55,6 +70,12 @@ export default function FeedPage() {
   const seenPostIds = useRef<Set<string>>(new Set());
   const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
   const headingId = 'feed-heading';
+  const [starterPack, setStarterPack] = useState<{
+    opportunities: Opportunity[];
+    profiles: StarterProfile[];
+  } | null>(null);
+  const [starterPackLoading, setStarterPackLoading] = useState(false);
+  const [starterPackError, setStarterPackError] = useState<string | null>(null);
 
   const {
     posts: feedPosts,
@@ -71,6 +92,8 @@ export default function FeedPage() {
   } = useFeed();
   const posts = feedPosts;
   const errorMessage = error?.message ?? null;
+  const canCreatePost = Boolean(currentUserId);
+  const shouldShowEmptyState = !isInitialLoading && !errorMessage && posts.length === 0;
 
   useInfiniteScroll<HTMLDivElement>(loadMoreSentinelRef, {
     enabled: !isInitialLoading && !errorMessage && posts.length > 0 && hasNextPage,
@@ -78,6 +101,11 @@ export default function FeedPage() {
     isLoading: isLoadingMore,
     onLoadMore: loadMore,
   });
+  const userRole =
+    _profile?.account_type === 'club' || _profile?.account_type === 'athlete'
+      ? _profile.account_type
+      : 'guest';
+  const shouldShowStarterPack = !isInitialLoading && !errorMessage && posts.length < 3;
 
   const handleRefresh = useCallback(async () => {
     setReactions({});
@@ -85,6 +113,14 @@ export default function FeedPage() {
     seenPostIds.current = new Set();
     await refresh();
   }, [refresh]);
+
+  const handleFocusComposer = useCallback(() => {
+    if (typeof document === 'undefined') return;
+    const input = document.getElementById('feed-composer-input') as HTMLTextAreaElement | null;
+    if (!input) return;
+    input.focus();
+    input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, []);
 
   const loadReactions = useCallback(async (ids: Array<string | number>) => {
     if (!ids.length) return;
@@ -252,6 +288,45 @@ export default function FeedPage() {
     seenPostIds.current = new Set(ids);
   }, [posts, loadReactions, loadCommentCounts]);
 
+  useEffect(() => {
+    if (!shouldShowStarterPack) {
+      setStarterPack(null);
+      setStarterPackError(null);
+      setStarterPackLoading(false);
+      return;
+    }
+    if (starterPack || starterPackLoading) return;
+
+    let cancelled = false;
+    (async () => {
+      setStarterPackLoading(true);
+      setStarterPackError(null);
+      try {
+        const res = await fetch('/api/feed/starter-pack', {
+          credentials: 'include',
+          cache: 'no-store',
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+        if (cancelled) return;
+        setStarterPack({
+          opportunities: Array.isArray(json?.opportunities) ? json.opportunities : [],
+          profiles: Array.isArray(json?.profiles) ? json.profiles : [],
+        });
+      } catch (err: any) {
+        if (!cancelled) {
+          setStarterPackError(err?.message || 'Impossibile caricare i suggerimenti.');
+        }
+      } finally {
+        if (!cancelled) setStarterPackLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [shouldShowStarterPack, starterPack, starterPackLoading]);
+
   const handleScopeChange = useCallback(
     (next: FeedScope) => {
       if (next === scope) return;
@@ -331,10 +406,18 @@ export default function FeedPage() {
                 {errorMessage}
               </div>
             )}
-            {!isInitialLoading && !errorMessage && posts.length === 0 && (
-              <div className="glass-panel p-4 text-sm text-gray-600" role="status">
-                {scope === 'following' ? 'Non segui ancora nessun profilo.' : 'Nessun post ancora.'}
-              </div>
+            {shouldShowEmptyState && (
+              <EmptyState
+                title="Il feed è ancora vuoto"
+                description="Inizia pubblicando un post o scopri club e player nella tua zona."
+                actions={[
+                  { label: 'Cerca su mappa', href: '/search-map', variant: 'primary' },
+                  { label: 'Scopri opportunità', href: '/opportunities', variant: 'secondary' },
+                  ...(canCreatePost
+                    ? [{ label: 'Crea un post', onClick: handleFocusComposer, variant: 'secondary' as const }]
+                    : []),
+                ]}
+              />
             )}
             {!isInitialLoading &&
               !errorMessage &&
@@ -360,6 +443,16 @@ export default function FeedPage() {
                   />
                 </Fragment>
               ))}
+            {shouldShowStarterPack && (
+              <StarterPackSection
+                loading={starterPackLoading}
+                error={starterPackError}
+                opportunities={starterPack?.opportunities ?? []}
+                profiles={starterPack?.profiles ?? []}
+                userRole={userRole}
+                currentUserId={currentUserId}
+              />
+            )}
             <div ref={loadMoreSentinelRef} aria-hidden className="h-1" />
             {!isInitialLoading && !errorMessage && posts.length > 0 && (
               <div className="flex justify-center">
@@ -568,6 +661,117 @@ function MediaPreviewGrid({
           </Link>
         ))}
       </div>
+    </div>
+  );
+}
+
+function StarterPackSection({
+  loading,
+  error,
+  opportunities,
+  profiles,
+  userRole,
+  currentUserId,
+}: {
+  loading: boolean;
+  error: string | null;
+  opportunities: Opportunity[];
+  profiles: StarterProfile[];
+  userRole: 'club' | 'athlete' | 'guest';
+  currentUserId: string | null;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="glass-panel p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="text-sm font-semibold text-neutral-900">Opportunità consigliate</h2>
+            <p className="text-xs text-neutral-500">Una selezione veloce per riempire il feed.</p>
+          </div>
+          <Link href="/opportunities" className="text-xs font-semibold text-blue-700 hover:underline">
+            Vedi tutte →
+          </Link>
+        </div>
+        {loading ? (
+          <div className="mt-4 space-y-3">
+            {Array.from({ length: 2 }).map((_, index) => (
+              <div key={index} className="h-24 rounded-xl bg-neutral-100 animate-pulse" />
+            ))}
+          </div>
+        ) : opportunities.length > 0 ? (
+          <div className="mt-4 space-y-3">
+            {opportunities.map((opp) => (
+              <OpportunityCard
+                key={opp.id}
+                opp={opp}
+                _currentUserId={currentUserId}
+                userRole={userRole}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="mt-4 text-sm text-neutral-600">Nessuna opportunità consigliata al momento.</div>
+        )}
+      </div>
+
+      <div className="glass-panel p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="text-sm font-semibold text-neutral-900">Profili consigliati</h2>
+            <p className="text-xs text-neutral-500">Club e player in linea con il tuo profilo.</p>
+          </div>
+          <Link href="/search-map" className="text-xs font-semibold text-blue-700 hover:underline">
+            Cerca su mappa →
+          </Link>
+        </div>
+        {loading ? (
+          <div className="mt-4 space-y-3">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <div key={index} className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white p-3">
+                <div className="h-10 w-10 rounded-full bg-neutral-100 animate-pulse" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3 w-1/3 rounded bg-neutral-100 animate-pulse" />
+                  <div className="h-3 w-1/2 rounded bg-neutral-100 animate-pulse" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : profiles.length > 0 ? (
+          <ul className="mt-4 space-y-3">
+            {profiles.map((profile) => {
+              const name = profile.full_name?.trim() || profile.display_name?.trim() || 'Profilo';
+              const detail =
+                [profile.role, profile.sport].filter(Boolean).join(' · ') ||
+                [profile.city, profile.country].filter(Boolean).join(', ') ||
+                'Profilo consigliato';
+              const profileHref =
+                profile.account_type === 'club' ? `/clubs/${profile.id}` : `/players/${profile.id}`;
+              return (
+                <li key={profile.id} className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white p-3">
+                  <img
+                    src={
+                      profile.avatar_url ||
+                      `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`
+                    }
+                    alt={name}
+                    className="h-10 w-10 rounded-full object-cover"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <Link href={profileHref} className="block truncate text-sm font-semibold text-neutral-900 hover:underline">
+                      {name}
+                    </Link>
+                    <div className="truncate text-xs text-neutral-500">{detail}</div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <div className="mt-4 text-sm text-neutral-600">Nessun profilo consigliato al momento.</div>
+        )}
+      </div>
+
+      {error ? <div className="text-xs text-red-600">{error}</div> : null}
     </div>
   );
 }

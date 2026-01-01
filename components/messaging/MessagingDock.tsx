@@ -84,6 +84,7 @@ export function MessagingDock() {
             targetProfileId={activeThread.otherProfileId}
             targetDisplayName={activeThreadTitle}
             targetAvatarUrl={activeThread.otherAvatarUrl}
+            targetAccountType={activeThread.other?.account_type ?? null}
             layout="dock"
             onClose={handleCloseThread}
             className="h-full max-h-full"
