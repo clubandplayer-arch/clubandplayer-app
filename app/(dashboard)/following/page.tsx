@@ -69,19 +69,19 @@ function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, 
     <div className="flex flex-col gap-3 rounded-2xl border border-neutral-200 bg-white/70 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900/60">
       <div className="flex items-start gap-3">
         <Link href={href} className="flex flex-1 gap-3">
-          {avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={avatarUrl}
-              alt={profile.name || 'Profilo'}
-              className="h-12 w-12 rounded-full object-cover"
-              loading="lazy"
-            />
-          ) : (
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[var(--brand)]/20 to-[var(--brand)]/40 text-sm font-semibold uppercase text-[var(--brand)]">
-              {initials}
-            </div>
-          )}
+          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[var(--brand)]/20 to-[var(--brand)]/40 text-sm font-semibold uppercase text-[var(--brand)] aspect-square">
+            {avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={avatarUrl}
+                alt={profile.name || 'Profilo'}
+                className="h-full w-full object-cover"
+                loading="lazy"
+              />
+            ) : (
+              <span>{initials}</span>
+            )}
+          </div>
           <div className="min-w-0">
             <p className="text-sm font-semibold text-neutral-900 dark:text-white">{profile.name}</p>
             <p className="text-xs uppercase tracking-wide text-neutral-500 dark:text-neutral-400">{type === 'club' ? 'Club' : 'Player'}</p>
