@@ -112,7 +112,7 @@ export default function Navbar() {
   return (
     <nav className="sticky top-0 z-40 bg-gray-800">
       <div className="mx-auto max-w-7xl px-4">
-        <div className="flex h-16 items-center justify-between">
+        <div className="flex h-16 items-center justify-between" style={{ ['--nav-h' as any]: '64px' }}>
           {/* Left */}
           <div className="flex h-full items-center gap-3">
             <div className="min-w-0 flex h-10 flex-shrink-0 items-center overflow-hidden">
@@ -148,12 +148,13 @@ export default function Navbar() {
                   aria-haspopup="menu"
                   aria-expanded={isProfileMenuOpen}
                   aria-controls="navbar-profile-menu"
-                  className="inline-flex h-12 w-12 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-800"
+                  className="inline-flex items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-800"
+                  style={{ width: 'calc(var(--nav-h) * 0.9)', height: 'calc(var(--nav-h) * 0.9)' }}
                 >
                   <span className="sr-only">Apri menu profilo</span>
                   <span className="relative block h-full w-full overflow-hidden rounded-full border border-gray-600">
                     {avatarUrl ? (
-                      <Image src={avatarUrl} alt="Profilo" fill className="object-cover" sizes="48px" />
+                      <Image src={avatarUrl} alt="Profilo" fill className="object-cover" sizes="58px" />
                     ) : (
                       <span className="flex h-full w-full items-center justify-center bg-gray-700 text-sm font-semibold text-gray-200">
                         {profileInitials}

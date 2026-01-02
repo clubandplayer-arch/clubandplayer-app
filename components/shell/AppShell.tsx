@@ -168,7 +168,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <FollowProvider>
         <div className="min-h-screen bg-clubplayer-gradient">
           <header className="fixed inset-x-0 top-0 z-40 border-b bg-white/90 backdrop-blur">
-            <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4">
+            <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4" style={{ ['--nav-h' as any]: '64px' }}>
               <div className="min-w-0 flex h-10 flex-shrink-0 items-center overflow-hidden">
                 <BrandLogo variant="header" href="/feed" priority />
               </div>
@@ -273,11 +273,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                       aria-haspopup="menu"
                       aria-expanded={isProfileMenuOpen}
                       aria-controls="profile-menu"
-                      className="inline-flex h-12 w-12 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                      className="inline-flex items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                      style={{ width: 'calc(var(--nav-h) * 0.9)', height: 'calc(var(--nav-h) * 0.9)' }}
                     >
                       <div className="relative block h-full w-full aspect-square overflow-hidden rounded-full border border-neutral-200 flex-shrink-0 transition hover:ring-2 hover:ring-neutral-200">
                         {avatarUrl ? (
-                          <Image src={avatarUrl} alt="Profilo" fill className="object-cover" sizes="48px" />
+                          <Image src={avatarUrl} alt="Profilo" fill className="object-cover" sizes="58px" />
                         ) : avatarLoading ? (
                           <div className="h-full w-full bg-slate-200" />
                         ) : (
