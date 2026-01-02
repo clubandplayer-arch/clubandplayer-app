@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
 import NotificationsBell from './NotificationsBell'
 import BrandLogo from '@/components/brand/BrandLogo'
+import { LogOut } from 'lucide-react'
 
 type ProfileRow = {
   id: string
@@ -71,8 +72,6 @@ export default function Navbar() {
             <div className="ml-4 hidden md:flex items-center gap-1">
               <Link href="/" className={linkClass('/')}>Home</Link>
               <Link href="/opportunities" className={linkClass('/opportunities')}>Opportunità</Link>
-              <Link href="/search-map?type=player" className={linkClass('/search-map')}>Atleti</Link>
-              <Link href="/search-map?type=club" className={linkClass('/search-map')}>Club</Link>
               <Link href="/favorites" className={linkClass('/favorites')}>Preferiti</Link>
               {isAdmin && (
                 <Link href="/admin/reports" className={linkClass('/admin/reports')}>Moderazione</Link>
@@ -94,9 +93,11 @@ export default function Navbar() {
                 <Link href="/settings" className="text-sm text-gray-300 hover:text-white">Impostazioni</Link>
                 <button
                   onClick={handleLogout}
-                  className="rounded-md bg-gray-700 px-3 py-2 text-sm text-white hover:bg-gray-600"
+                  aria-label="Esci"
+                  title="Esci"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-600 text-gray-200 transition hover:bg-gray-700 hover:text-white"
                 >
-                  Esci
+                  <LogOut className="h-4 w-4" aria-hidden />
                 </button>
               </>
             ) : (

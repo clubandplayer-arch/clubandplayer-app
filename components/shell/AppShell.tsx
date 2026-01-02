@@ -1,9 +1,10 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Users } from 'lucide-react';
+import { LogOut, Plus, Search, Users } from 'lucide-react';
 import useIsClub from '@/hooks/useIsClub';
 import { ToastProvider } from '@/components/common/ToastProvider';
 import { FollowProvider } from '@/components/follow/FollowProvider';
@@ -14,6 +15,7 @@ import { useUnreadDirectThreads } from '@/hooks/useUnreadDirectThreads';
 import { MessagingDock } from '@/components/messaging/MessagingDock';
 import { useNotificationsBadge } from '@/hooks/useNotificationsBadge';
 import BrandLogo from '@/components/brand/BrandLogo';
+import { buildProfileDisplayName } from '@/lib/displayName';
 
 type Role = 'athlete' | 'club' | 'guest';
 
@@ -24,9 +26,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [role, setRole] = useState<Role>('guest');
   const [_loadingRole, setLoadingRole] = useState(true);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [profileName, setProfileName] = useState<string>('');
+  const [avatarLoading, setAvatarLoading] = useState(true);
   const unreadDirectThreads = useUnreadDirectThreads();
   const { unreadCount: unreadNotifications, setUnreadCount: setUnreadNotifications } = useNotificationsBadge();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // unica fonte affidabile per la CTA
   const { isClub } = useIsClub();
@@ -61,8 +67,33 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         }
 
         setRole(rawRole === 'club' || rawRole === 'athlete' ? (rawRole as Role) : 'guest');
+        setAvatarUrl(typeof profile?.avatar_url === 'string' ? profile.avatar_url : null);
+        setProfileName(buildProfileDisplayName(profile?.full_name, profile?.display_name, 'Profilo'));
+
+        if (j?.user?.id) {
+          try {
+            const profileRes = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
+            const profileJson = await profileRes.json().catch(() => null);
+            if (profileRes.ok && profileJson?.data) {
+              const detailedProfile = profileJson.data;
+              setAvatarUrl(typeof detailedProfile?.avatar_url === 'string' ? detailedProfile.avatar_url : null);
+              setProfileName(
+                buildProfileDisplayName(detailedProfile?.full_name, detailedProfile?.display_name, 'Profilo'),
+              );
+            }
+          } catch {
+            // ignora errori profilo dettagliato
+          } finally {
+            if (!cancelled) setAvatarLoading(false);
+          }
+        } else if (!cancelled) {
+          setAvatarLoading(false);
+        }
       } catch {
-        if (!cancelled) setRole('guest');
+        if (!cancelled) {
+          setRole('guest');
+          setAvatarLoading(false);
+        }
       } finally {
         if (!cancelled) setLoadingRole(false);
       }
@@ -78,14 +109,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const navItems = useMemo<NavItem[]>(
     () => [
       { label: 'Feed', href: '/feed', icon: 'home' },
-      { label: 'Cerca', href: '/search-map', icon: 'globe' },
       { label: 'Opportunità', href: '/opportunities', icon: 'opportunities' },
       { label: 'Candidature', href: applicationsHref, icon: 'applications' },
       { label: 'Messaggi', href: '/messages', icon: 'mail' },
       { label: 'Notifiche', href: '/notifications', icon: 'notifications' },
-      { label: 'Profilo', href: profileHref, icon: 'person' },
     ],
-    [applicationsHref, profileHref],
+    [applicationsHref],
   );
 
   const isActive = (href: string) => pathname === href || (!!pathname && pathname.startsWith(href + '/'));
@@ -93,6 +122,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setIsMenuOpen(false);
   }, [pathname]);
+
+  const profileInitials = useMemo(() => {
+    const trimmed = profileName.trim();
+    if (!trimmed) return 'CP';
+    const parts = trimmed.split(/\s+/).filter(Boolean);
+    const letters = parts.slice(0, 2).map((part) => part[0]?.toUpperCase());
+    return letters.join('') || 'CP';
+  }, [profileName]);
 
   return (
     <ToastProvider>
@@ -103,6 +140,27 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <div className="min-w-0 flex h-10 flex-shrink-0 items-center overflow-hidden">
                 <BrandLogo variant="header" href="/feed" priority />
               </div>
+              <form
+                className="flex flex-1 items-center md:flex-none md:w-80"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const trimmed = searchQuery.trim();
+                  if (!trimmed) return;
+                  router.push(`/search?q=${encodeURIComponent(trimmed)}&type=all`);
+                }}
+              >
+                <div className="relative w-full">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="search"
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder="Cerca club, player, opportunità, post, eventi…"
+                    aria-label="Cerca"
+                    className="h-10 w-full rounded-full border border-slate-200 bg-white/90 pl-10 pr-4 text-sm text-slate-700 shadow-sm transition focus:border-[var(--brand)] focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/20"
+                  />
+                </div>
+              </form>
 
               <nav className="hidden flex-1 justify-center md:flex">
                 <div className="flex items-center gap-1 rounded-full border border-white/40 bg-white/70 px-2 py-1 shadow-sm backdrop-blur">
@@ -175,13 +233,37 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <div className="ml-auto hidden items-center gap-2 md:flex">
                 {/* CTA sempre e solo per club (usiamo useIsClub) */}
                 {isClub && (
-                  <Link href="/opportunities/new" className="rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50">
-                    + Nuova opportunità
+                  <Link
+                    href="/opportunities/new"
+                    aria-label="Nuova opportunità"
+                    title="Nuova opportunità"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition hover:bg-slate-50 hover:text-slate-800"
+                  >
+                    <Plus className="h-4 w-4" aria-hidden />
                   </Link>
                 )}
 
-                <Link href="/logout" className="rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50">
-                  Logout
+                <Link href={profileHref} aria-label="Profilo" title="Profilo">
+                  <div className="relative h-9 w-9 aspect-square overflow-hidden rounded-full border border-neutral-200 flex-shrink-0 transition hover:ring-2 hover:ring-neutral-200">
+                    {avatarUrl ? (
+                      <Image src={avatarUrl} alt="Profilo" fill className="object-cover" sizes="36px" />
+                    ) : avatarLoading ? (
+                      <div className="h-full w-full bg-slate-200" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-slate-200 text-sm font-semibold text-slate-700">
+                        {profileInitials}
+                      </div>
+                    )}
+                  </div>
+                </Link>
+
+                <Link
+                  href="/logout"
+                  aria-label="Esci"
+                  title="Esci"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition hover:bg-slate-50 hover:text-slate-800"
+                >
+                  <LogOut className="h-4 w-4" aria-hidden />
                 </Link>
               </div>
 
@@ -259,19 +341,42 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     {isClub && (
                       <Link
                         href="/opportunities/new"
+                        aria-label="Nuova opportunità"
+                        title="Nuova opportunità"
                         onClick={() => setIsMenuOpen(false)}
-                        className="rounded-md border px-3 py-2 text-sm font-semibold text-[var(--brand)] hover:bg-neutral-50"
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition hover:bg-slate-50 hover:text-slate-800"
                       >
-                        + Nuova opportunità
+                        <Plus className="h-4 w-4" aria-hidden />
                       </Link>
                     )}
 
                     <Link
-                      href="/logout"
+                      href={profileHref}
+                      aria-label="Profilo"
+                      title="Profilo"
                       onClick={() => setIsMenuOpen(false)}
-                      className="rounded-md border px-3 py-2 text-sm hover:bg-neutral-50"
                     >
-                      Logout
+                      <div className="relative h-9 w-9 aspect-square overflow-hidden rounded-full border border-neutral-200 flex-shrink-0 transition hover:ring-2 hover:ring-neutral-200">
+                        {avatarUrl ? (
+                          <Image src={avatarUrl} alt="Profilo" fill className="object-cover" sizes="36px" />
+                        ) : avatarLoading ? (
+                          <div className="h-full w-full bg-slate-200" />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center bg-slate-200 text-sm font-semibold text-slate-700">
+                            {profileInitials}
+                          </div>
+                        )}
+                      </div>
+                    </Link>
+
+                    <Link
+                      href="/logout"
+                      aria-label="Esci"
+                      title="Esci"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition hover:bg-slate-50 hover:text-slate-800"
+                    >
+                      <LogOut className="h-4 w-4" aria-hidden />
                     </Link>
                   </div>
                 </div>
