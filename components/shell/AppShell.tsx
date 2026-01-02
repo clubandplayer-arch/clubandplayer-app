@@ -262,7 +262,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 </div>
               </nav>
 
-              <div className="ml-auto flex items-center gap-2">
+              <div className="ml-auto flex h-full items-center gap-2">
                 {role !== 'guest' && (
                   <div className="relative" ref={profileMenuRef}>
                     <button
@@ -273,11 +273,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                       aria-haspopup="menu"
                       aria-expanded={isProfileMenuOpen}
                       aria-controls="profile-menu"
-                      className="inline-flex items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                      className="inline-flex h-12 w-12 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                     >
-                      <div className="relative h-11 w-11 aspect-square overflow-hidden rounded-full border border-neutral-200 flex-shrink-0 transition hover:ring-2 hover:ring-neutral-200">
+                      <div className="relative block h-full w-full aspect-square overflow-hidden rounded-full border border-neutral-200 flex-shrink-0 transition hover:ring-2 hover:ring-neutral-200">
                         {avatarUrl ? (
-                          <Image src={avatarUrl} alt="Profilo" fill className="object-cover" sizes="44px" />
+                          <Image src={avatarUrl} alt="Profilo" fill className="object-cover" sizes="48px" />
                         ) : avatarLoading ? (
                           <div className="h-full w-full bg-slate-200" />
                         ) : (

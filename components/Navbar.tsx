@@ -114,7 +114,7 @@ export default function Navbar() {
       <div className="mx-auto max-w-7xl px-4">
         <div className="flex h-16 items-center justify-between">
           {/* Left */}
-          <div className="flex items-center gap-3">
+          <div className="flex h-full items-center gap-3">
             <div className="min-w-0 flex h-10 flex-shrink-0 items-center overflow-hidden">
               <BrandLogo variant="header" href="/feed" priority />
             </div>
@@ -148,12 +148,12 @@ export default function Navbar() {
                   aria-haspopup="menu"
                   aria-expanded={isProfileMenuOpen}
                   aria-controls="navbar-profile-menu"
-                  className="inline-flex items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-800"
+                  className="inline-flex h-12 w-12 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-800"
                 >
                   <span className="sr-only">Apri menu profilo</span>
-                  <span className="relative h-11 w-11 overflow-hidden rounded-full border border-gray-600">
+                  <span className="relative block h-full w-full overflow-hidden rounded-full border border-gray-600">
                     {avatarUrl ? (
-                      <Image src={avatarUrl} alt="Profilo" fill className="object-cover" sizes="44px" />
+                      <Image src={avatarUrl} alt="Profilo" fill className="object-cover" sizes="48px" />
                     ) : (
                       <span className="flex h-full w-full items-center justify-center bg-gray-700 text-sm font-semibold text-gray-200">
                         {profileInitials}
