@@ -27,7 +27,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<Role>('guest');
   const [_loadingRole, setLoadingRole] = useState(true);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [profileName, setProfileName] = useState<string>('Profilo');
+  const [profileName, setProfileName] = useState<string>('');
+  const [avatarLoading, setAvatarLoading] = useState(true);
   const unreadDirectThreads = useUnreadDirectThreads();
   const { unreadCount: unreadNotifications, setUnreadCount: setUnreadNotifications } = useNotificationsBadge();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -68,8 +69,31 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         setRole(rawRole === 'club' || rawRole === 'athlete' ? (rawRole as Role) : 'guest');
         setAvatarUrl(typeof profile?.avatar_url === 'string' ? profile.avatar_url : null);
         setProfileName(buildProfileDisplayName(profile?.full_name, profile?.display_name, 'Profilo'));
+
+        if (j?.user?.id) {
+          try {
+            const profileRes = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
+            const profileJson = await profileRes.json().catch(() => null);
+            if (profileRes.ok && profileJson?.data) {
+              const detailedProfile = profileJson.data;
+              setAvatarUrl(typeof detailedProfile?.avatar_url === 'string' ? detailedProfile.avatar_url : null);
+              setProfileName(
+                buildProfileDisplayName(detailedProfile?.full_name, detailedProfile?.display_name, 'Profilo'),
+              );
+            }
+          } catch {
+            // ignora errori profilo dettagliato
+          } finally {
+            if (!cancelled) setAvatarLoading(false);
+          }
+        } else if (!cancelled) {
+          setAvatarLoading(false);
+        }
       } catch {
-        if (!cancelled) setRole('guest');
+        if (!cancelled) {
+          setRole('guest');
+          setAvatarLoading(false);
+        }
       } finally {
         if (!cancelled) setLoadingRole(false);
       }
@@ -223,6 +247,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   <div className="relative h-9 w-9 aspect-square overflow-hidden rounded-full border border-neutral-200 flex-shrink-0 transition hover:ring-2 hover:ring-neutral-200">
                     {avatarUrl ? (
                       <Image src={avatarUrl} alt="Profilo" fill className="object-cover" sizes="36px" />
+                    ) : avatarLoading ? (
+                      <div className="h-full w-full bg-slate-200" />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center bg-slate-200 text-sm font-semibold text-slate-700">
                         {profileInitials}
@@ -333,6 +359,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                       <div className="relative h-9 w-9 aspect-square overflow-hidden rounded-full border border-neutral-200 flex-shrink-0 transition hover:ring-2 hover:ring-neutral-200">
                         {avatarUrl ? (
                           <Image src={avatarUrl} alt="Profilo" fill className="object-cover" sizes="36px" />
+                        ) : avatarLoading ? (
+                          <div className="h-full w-full bg-slate-200" />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center bg-slate-200 text-sm font-semibold text-slate-700">
                             {profileInitials}
