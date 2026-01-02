@@ -9,10 +9,12 @@ export default function NotificationsPageClient() {
   const [items, setItems] = useState<NotificationWithActor[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch(`/api/notifications?limit=50${filter === 'unread' ? '&unread=true' : ''}`, {
         cache: 'no-store',
@@ -21,6 +23,8 @@ export default function NotificationsPageClient() {
       if (!res.ok) throw new Error(json?.error || 'Errore caricamento notifiche');
       setItems(json?.data ?? []);
     } catch (e: any) {
+      console.error('[notifications] page load error', e);
+      setError(e?.message || 'Impossibile caricare le notifiche');
       toast({ title: 'Errore', description: e?.message || 'Impossibile caricare le notifiche', variant: 'destructive' });
     } finally {
       setLoading(false);
@@ -79,6 +83,8 @@ export default function NotificationsPageClient() {
 
       {loading ? (
         <div className="rounded-lg border p-6 text-sm text-neutral-500">Caricamento…</div>
+      ) : error ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-sm text-red-600">{error}</div>
       ) : items.length > 0 ? (
         <div className="space-y-3">
           {items.map((n) => (
