@@ -2,7 +2,6 @@
 // components/profiles/ProfileMiniCard.tsx
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
@@ -330,11 +329,6 @@ export default function ProfileMiniCard() {
             </div>
           ) : null}
 
-          <div className="pt-1">
-            <Link href="/player/profile" className="inline-block rounded-xl border px-3 py-1.5 text-sm hover:bg-gray-50">
-              Modifica profilo
-            </Link>
-          </div>
         </div>
       ) : (
         <div className="space-y-3">
@@ -392,11 +386,6 @@ export default function ProfileMiniCard() {
             </div>
           ) : null}
 
-          <div className="pt-1">
-            <Link href="/player/profile" className="inline-block rounded-xl border px-3 py-1.5 text-sm hover:bg-gray-50">
-              Modifica profilo
-            </Link>
-          </div>
         </div>
       )}
 
