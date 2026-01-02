@@ -181,11 +181,11 @@ function buildOpportunityQuery(
   ilikeQuery: string,
   select: string,
   options?: { count?: 'exact'; head?: boolean },
+  status?: string | null,
 ) {
-  return supabase
+  let query = supabase
     .from('opportunities')
     .select(select, options)
-    .eq('status', 'open')
     .or(
       [
         `title.ilike.${ilikeQuery}`,
@@ -194,8 +194,14 @@ function buildOpportunityQuery(
         `province.ilike.${ilikeQuery}`,
         `region.ilike.${ilikeQuery}`,
         `country.ilike.${ilikeQuery}`,
+        `sport.ilike.${ilikeQuery}`,
+        `role.ilike.${ilikeQuery}`,
       ].join(','),
     );
+  if (status) {
+    query = query.eq('status', status);
+  }
+  return query;
 }
 
 async function fetchOpportunityResults(params: {
@@ -203,8 +209,9 @@ async function fetchOpportunityResults(params: {
   ilikeQuery: string;
   limit: number;
   page: number;
+  status?: string | null;
 }) {
-  const { supabase, ilikeQuery, limit, page } = params;
+  const { supabase, ilikeQuery, limit, page, status } = params;
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
@@ -213,6 +220,7 @@ async function fetchOpportunityResults(params: {
     ilikeQuery,
     'id, title, description, city, province, region, country, club_id, club_name, created_by, owner_id',
     { count: 'exact' },
+    status,
   )
     .order('created_at', { ascending: false })
     .range(from, to);
@@ -273,12 +281,13 @@ async function fetchOpportunityResults(params: {
 async function fetchOpportunityCount(params: {
   supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>;
   ilikeQuery: string;
+  status?: string | null;
 }) {
-  const { supabase, ilikeQuery } = params;
+  const { supabase, ilikeQuery, status } = params;
   const { count, error } = await buildOpportunityQuery(supabase, ilikeQuery, 'id', {
     count: 'exact',
     head: true,
-  });
+  }, status);
   if (error) throw new Error(error.message);
   return count ?? 0;
 }
@@ -404,10 +413,14 @@ export async function GET(req: NextRequest) {
   }
 
   const url = new URL(req.url);
-  const query = (url.searchParams.get('q') || '').trim();
+  const raw = url.searchParams.get('q') ?? url.searchParams.get('query') ?? url.searchParams.get('keywords') ?? '';
+  const query = raw.trim();
   const type = normalizeType(url.searchParams.get('type'));
   const page = clamp(Number(url.searchParams.get('page') || '1'), 1, 1000);
   const limit = clamp(Number(url.searchParams.get('limit') || String(DEFAULT_LIMIT)), 1, 50);
+  const rawStatus = (url.searchParams.get('status') || '').trim().toLowerCase();
+  const allowedStatuses = new Set(['open', 'closed', 'archived', 'draft']);
+  const status = rawStatus && allowedStatuses.has(rawStatus) ? rawStatus : null;
 
   if (query.length < 2) {
     return invalidPayload('La query deve contenere almeno 2 caratteri.');
@@ -426,7 +439,7 @@ export async function GET(req: NextRequest) {
       const [clubs, players, opportunities, posts, events] = await Promise.all([
         fetchProfileResults({ supabase, kind: 'clubs', ilikeQuery, limit: previewLimit, page: 1 }),
         fetchProfileResults({ supabase, kind: 'players', ilikeQuery, limit: previewLimit, page: 1 }),
-        fetchOpportunityResults({ supabase, ilikeQuery, limit: previewLimit, page: 1 }),
+        fetchOpportunityResults({ supabase, ilikeQuery, limit: previewLimit, page: 1, status }),
         fetchPosts({ supabase, ilikeQuery, limit: previewLimit, page: 1, kind: 'normal' }),
         fetchPosts({ supabase, ilikeQuery, limit: previewLimit, page: 1, kind: 'event' }),
       ]);
@@ -448,7 +461,7 @@ export async function GET(req: NextRequest) {
       const countPromises = Promise.all([
         fetchProfileCount({ supabase, kind: 'clubs', ilikeQuery }),
         fetchProfileCount({ supabase, kind: 'players', ilikeQuery }),
-        fetchOpportunityCount({ supabase, ilikeQuery }),
+        fetchOpportunityCount({ supabase, ilikeQuery, status }),
         fetchPostsCount({ supabase, ilikeQuery, kind: 'normal' }),
         fetchPostsCount({ supabase, ilikeQuery, kind: 'event' }),
       ]);
@@ -466,7 +479,7 @@ export async function GET(req: NextRequest) {
               return payload;
             });
           case 'opportunities':
-            return fetchOpportunityResults({ supabase, ilikeQuery, limit, page }).then((payload) => {
+            return fetchOpportunityResults({ supabase, ilikeQuery, limit, page, status }).then((payload) => {
               results.opportunities = payload.results;
               return payload;
             });
