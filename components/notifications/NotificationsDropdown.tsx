@@ -29,6 +29,7 @@ export default function NotificationsDropdown({ unreadCount, onUnreadChange, act
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<NotificationWithActor[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -39,6 +40,7 @@ export default function NotificationsDropdown({ unreadCount, onUnreadChange, act
     let cancelled = false;
     (async () => {
       setLoading(true);
+      setError(null);
       try {
         const res = await fetch('/api/notifications?limit=10', { cache: 'no-store' });
         const json = await res.json();
@@ -55,6 +57,8 @@ export default function NotificationsDropdown({ unreadCount, onUnreadChange, act
           window.dispatchEvent(new Event('app:notifications-updated'));
         }
       } catch (e: any) {
+        console.error('[notifications] dropdown load error', e);
+        setError(e?.message || 'Impossibile caricare le notifiche');
         toast({ title: 'Errore notifiche', description: e?.message || 'Impossibile caricare le notifiche', variant: 'destructive' });
       } finally {
         if (!cancelled) setLoading(false);
@@ -97,6 +101,8 @@ export default function NotificationsDropdown({ unreadCount, onUnreadChange, act
           <div className="max-h-[420px] overflow-auto p-3">
             {loading ? (
               <div className="p-3 text-sm text-neutral-500">Caricamento…</div>
+            ) : error ? (
+              <div className="p-3 text-sm text-red-500">{error}</div>
             ) : items.length > 0 ? (
               <div className="space-y-2">
                 {items.map((n) => (

@@ -10,6 +10,7 @@ import {
 } from '@/lib/api/standardResponses';
 import { withAuth } from '@/lib/api/auth';
 import { getActiveProfile, getProfileById } from '@/lib/api/profile';
+import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
 
@@ -25,6 +26,39 @@ function isMissingHiddenThreadsTable(error: any) {
     ? error.message.includes('direct_message_hidden_threads') ||
         error.message.includes('relation "direct_message_hidden_threads"')
     : error?.code === '42P01';
+}
+
+async function notifyDirectMessage(params: {
+  recipientProfileId: string;
+  senderProfileId: string;
+  messageId: string;
+  preview: string;
+}) {
+  const admin = getSupabaseAdminClientOrNull();
+  if (!admin) return;
+
+  const { recipientProfileId, senderProfileId, messageId, preview } = params;
+  const { data: recipient } = await admin
+    .from('profiles')
+    .select('user_id')
+    .eq('id', recipientProfileId)
+    .maybeSingle();
+
+  if (!recipient?.user_id) return;
+
+  await admin.from('notifications').insert({
+    user_id: recipient.user_id,
+    recipient_profile_id: recipientProfileId,
+    actor_profile_id: senderProfileId,
+    kind: 'message',
+    payload: {
+      sender_profile_id: senderProfileId,
+      recipient_profile_id: recipientProfileId,
+      message_id: messageId,
+      preview,
+    },
+    read: false,
+  });
 }
 
 export const GET = withAuth(async (_req: NextRequest, { supabase, user }, routeContext) => {
@@ -165,6 +199,15 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }, routeC
       .maybeSingle();
 
     if (error) throw error;
+
+    if (inserted?.id) {
+      await notifyDirectMessage({
+        recipientProfileId: peer.id,
+        senderProfileId: me.id,
+        messageId: inserted.id as string,
+        preview: content.slice(0, 140),
+      });
+    }
 
     return successResponse({ message: inserted });
   } catch (error: any) {

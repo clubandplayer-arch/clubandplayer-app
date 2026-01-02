@@ -7,13 +7,14 @@ import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentPr
 
 type Suggestion = {
   id: string;
-  name: string;
+  display_name?: string | null;
+  full_name?: string | null;
+  type?: string | null;
   city?: string | null;
   country?: string | null;
   sport?: string | null;
   role?: string | null;
   avatar_url?: string | null;
-  followers?: number | null;
 };
 
 function detailLine(suggestion: Suggestion, viewerRole: ProfileRole) {
@@ -31,23 +32,24 @@ export default function WhoToFollow() {
   const [role, setRole] = useState<ProfileRole>('guest');
   const [items, setItems] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch('/api/follows/suggestions', {
+        const res = await fetch('/api/suggestions/who-to-follow?limit=5', {
           credentials: 'include',
           cache: 'no-store',
         });
         const data = await res.json().catch(() => ({}));
-        const suggestions = Array.isArray(data?.items) ? (data.items as Suggestion[]) : [];
-        const nextRole: ProfileRole =
-          data?.role === 'club' || data?.role === 'athlete' ? data.role : contextRole;
-        setRole(nextRole || 'guest');
-        setItems(suggestions.slice(0, 3));
+        const suggestions = Array.isArray(data?.data) ? (data.data as Suggestion[]) : [];
+        setRole(contextRole || 'guest');
+        setItems(suggestions);
+        setError(res.ok ? null : 'Impossibile caricare i suggerimenti.');
       } catch {
         setItems([]);
         setRole(contextRole || 'guest');
+        setError('Impossibile caricare i suggerimenti.');
       } finally {
         setLoading(false);
       }
@@ -81,22 +83,30 @@ export default function WhoToFollow() {
     <div className="space-y-3">
       <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{heading}</div>
       <div className="text-xs text-zinc-500">{subtitle}</div>
-      {items.length > 0 ? (
+      {error ? (
+        <div className="rounded-lg border border-dashed p-4 text-center text-sm text-zinc-500 dark:border-zinc-800">
+          {error}
+        </div>
+      ) : items.length > 0 ? (
         <ul className="space-y-3">
           {items.map((it) => (
             <li key={it.id} className="flex items-center gap-3">
+              {(() => {
+                const name = it.display_name || it.full_name || 'Profilo';
+                return (
               <img
                 src={
-                  it.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(it.name)}`
+                      it.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`
                 }
-                alt={it.name}
+                    alt={name}
                 className="h-10 w-10 rounded-full object-cover ring-1 ring-zinc-200 dark:ring-zinc-800"
               />
+                );
+              })()}
               <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-medium">{it.name}</div>
+                <div className="truncate text-sm font-medium">{it.display_name || it.full_name || 'Profilo'}</div>
                 <div className="truncate text-xs text-zinc-500">
                   {detailLine(it, role) || '—'}
-                  {typeof it.followers === 'number' ? ` · ${it.followers} follower` : ''}
                 </div>
               </div>
 

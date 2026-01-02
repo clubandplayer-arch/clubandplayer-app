@@ -36,6 +36,7 @@ function renderContent(notification: NotificationWithActor) {
     case 'new_follower':
       return `${actorName} ha iniziato a seguirti`;
     case 'new_message':
+    case 'message':
       return `${actorName} ti ha inviato un messaggio`;
     case 'new_opportunity': {
       const title = typeof payload?.title === 'string' ? payload.title : 'nuova opportunità';
@@ -73,8 +74,17 @@ function formatRelative(dateStr: string) {
 export default function NotificationItem({ notification, onClick, compact }: Props) {
   const hrefFromPayload = () => {
     const payload = notification.payload || {};
-    if (notification.kind === 'new_message' && typeof payload.conversation_id === 'string') {
-      return `/messages?conversationId=${payload.conversation_id}`;
+    if (notification.kind === 'new_message' || notification.kind === 'message') {
+      if (typeof payload.conversation_id === 'string') {
+        return `/messages?conversationId=${payload.conversation_id}`;
+      }
+      const senderId =
+        typeof payload.sender_profile_id === 'string'
+          ? payload.sender_profile_id
+          : notification.actor_profile_id;
+      if (senderId) {
+        return `/messages/${senderId}`;
+      }
     }
     if (notification.kind === 'new_follower' && typeof payload.follower_profile_id === 'string') {
       return `/profiles/${payload.follower_profile_id}`;
