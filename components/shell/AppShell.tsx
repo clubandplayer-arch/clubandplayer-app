@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Users } from 'lucide-react';
+import { Search, Users } from 'lucide-react';
 import useIsClub from '@/hooks/useIsClub';
 import { ToastProvider } from '@/components/common/ToastProvider';
 import { FollowProvider } from '@/components/follow/FollowProvider';
@@ -27,6 +27,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const unreadDirectThreads = useUnreadDirectThreads();
   const { unreadCount: unreadNotifications, setUnreadCount: setUnreadNotifications } = useNotificationsBadge();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // unica fonte affidabile per la CTA
   const { isClub } = useIsClub();
@@ -78,7 +79,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const navItems = useMemo<NavItem[]>(
     () => [
       { label: 'Feed', href: '/feed', icon: 'home' },
-      { label: 'Cerca', href: '/search-map', icon: 'globe' },
       { label: 'Opportunità', href: '/opportunities', icon: 'opportunities' },
       { label: 'Candidature', href: applicationsHref, icon: 'applications' },
       { label: 'Messaggi', href: '/messages', icon: 'mail' },
@@ -103,6 +103,27 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <div className="min-w-0 flex h-10 flex-shrink-0 items-center overflow-hidden">
                 <BrandLogo variant="header" href="/feed" priority />
               </div>
+              <form
+                className="flex flex-1 items-center md:flex-none md:w-80"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const trimmed = searchQuery.trim();
+                  if (!trimmed) return;
+                  router.push(`/search?q=${encodeURIComponent(trimmed)}&type=all`);
+                }}
+              >
+                <div className="relative w-full">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="search"
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder="Cerca club, player, opportunità, post, eventi…"
+                    aria-label="Cerca"
+                    className="h-10 w-full rounded-full border border-slate-200 bg-white/90 pl-10 pr-4 text-sm text-slate-700 shadow-sm transition focus:border-[var(--brand)] focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/20"
+                  />
+                </div>
+              </form>
 
               <nav className="hidden flex-1 justify-center md:flex">
                 <div className="flex items-center gap-1 rounded-full border border-white/40 bg-white/70 px-2 py-1 shadow-sm backdrop-blur">

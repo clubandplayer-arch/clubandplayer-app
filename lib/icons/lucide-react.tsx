@@ -38,3 +38,33 @@ export const Users = React.forwardRef<SVGSVGElement, LucideProps>(function Users
     </svg>
   );
 });
+
+export const Search = React.forwardRef<SVGSVGElement, LucideProps>(function Search(
+  { color = 'currentColor', size = 24, strokeWidth = 2, absoluteStrokeWidth = false, ...props },
+  ref,
+) {
+  const computedStrokeWidth =
+    absoluteStrokeWidth && typeof size === 'number'
+      ? (Number(strokeWidth) * 24) / size
+      : strokeWidth;
+
+  return (
+    <svg
+      ref={ref}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={computedStrokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      {...props}
+    >
+      <circle cx="11" cy="11" r="8" />
+      <path d="m21 21-4.35-4.35" />
+    </svg>
+  );
+});

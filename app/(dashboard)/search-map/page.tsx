@@ -1,18 +1,5 @@
-// app/(dashboard)/search-map/page.tsx
-'use client';
-
-import SearchMapClient from './SearchMapClient';
+import { redirect } from 'next/navigation';
 
 export default function SearchMapPage() {
-  return (
-    <div className="page-shell space-y-4">
-      <div className="space-y-1">
-        <h1 className="heading-h1">Ricerca su mappa</h1>
-        <p className="text-sm text-neutral-600">
-          Disegna la tua area di ricerca, applica i filtri e scopri club o player solo nella zona che ti interessa.
-        </p>
-      </div>
-      <SearchMapClient />
-    </div>
-  );
+  redirect('/search');
 }
