@@ -21,6 +21,7 @@ type PolygonPoint = [number, number];
 type PersistedSearchState = {
   queryText: string;
   filterType: 'all' | 'club' | 'player' | 'opportunity';
+  activeTab?: 'profiles' | 'opportunities';
   activeArea: PolygonPoint[] | null;
   searchBounds: Bounds | null;
   clubSport: string;
@@ -80,10 +81,15 @@ function pointInPolygon(point: PolygonPoint, polygon: PolygonPoint[]): boolean {
 }
 
 export default function SearchMapClient() {
-  const [typeFilter, setTypeFilter] = useState<'all' | 'club' | 'player' | 'opportunity'>('all');
+  const [activeTab, setActiveTab] = useState<'profiles' | 'opportunities'>('profiles');
+  const [profileFilter, setProfileFilter] = useState<'all' | 'club' | 'player'>('all');
   const [searchBounds, setSearchBounds] = useState<Bounds | null>(null);
-  const [points, setPoints] = useState<SearchMapProfile[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [profilePoints, setProfilePoints] = useState<SearchMapProfile[]>([]);
+  const [opportunityPoints, setOpportunityPoints] = useState<SearchMapProfile[]>([]);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [opportunityLoading, setOpportunityLoading] = useState(false);
+  const [opportunitiesLoaded, setOpportunitiesLoaded] = useState(false);
+  const [opportunitiesBoundsApplied, setOpportunitiesBoundsApplied] = useState(true);
   const [mapError, setMapError] = useState<string | null>(null);
   const [dataError, setDataError] = useState<string | null>(null);
 
@@ -111,7 +117,7 @@ export default function SearchMapClient() {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const clubPinsLayerRef = useRef<LeafletLib['LayerGroup'] | null>(null);
 
-  const hasArea = typeFilter === 'opportunity' ? true : !!searchBounds;
+  const hasArea = !!searchBounds;
 
   const clearPersistedState = useCallback(() => {
     if (typeof window === 'undefined') return;
@@ -200,7 +206,9 @@ export default function SearchMapClient() {
 
   const startDrawing = useCallback(() => {
     setDataError(null);
-    setPoints([]);
+    setProfilePoints([]);
+    setOpportunityPoints([]);
+    setOpportunitiesLoaded(false);
     setSearchBounds(null);
     setActiveArea(null);
     setDrawPoints([]);
@@ -213,7 +221,9 @@ export default function SearchMapClient() {
     setDrawPoints([]);
     setActiveArea(null);
     setSearchBounds(null);
-    setPoints([]);
+    setProfilePoints([]);
+    setOpportunityPoints([]);
+    setOpportunitiesLoaded(false);
     clearPolygonLayer();
     clearPersistedState();
   }, [clearPersistedState, clearPolygonLayer]);
@@ -232,7 +242,13 @@ export default function SearchMapClient() {
       }
 
       setSearchQuery(saved.queryText || '');
-      setTypeFilter(saved.filterType || 'all');
+      const restoredTab = saved.activeTab || (saved.filterType === 'opportunity' ? 'opportunities' : 'profiles');
+      setActiveTab(restoredTab);
+      if (saved.filterType === 'club' || saved.filterType === 'player' || saved.filterType === 'all') {
+        setProfileFilter(saved.filterType);
+      } else {
+        setProfileFilter('all');
+      }
       setActiveArea(saved.activeArea || null);
       setSearchBounds(saved.searchBounds || null);
       setClubSport(saved.clubSport || '');
@@ -242,7 +258,7 @@ export default function SearchMapClient() {
       setPlayerGender(saved.playerGender || '');
       setAgeMin(saved.ageMin || '');
       setAgeMax(saved.ageMax || '');
-      setPoints(saved.points || []);
+      setProfilePoints(saved.points || []);
       setSelectedProfileId(saved.selectedProfileId || null);
     } catch {
       sessionStorage.removeItem(STORAGE_KEY);
@@ -300,7 +316,8 @@ export default function SearchMapClient() {
     const timer = setTimeout(() => {
       const payload: PersistedSearchState = {
         queryText: searchQuery,
-        filterType: typeFilter,
+        filterType: activeTab === 'opportunities' ? 'opportunity' : profileFilter,
+        activeTab,
         activeArea,
         searchBounds,
         clubSport,
@@ -310,7 +327,7 @@ export default function SearchMapClient() {
         playerGender,
         ageMin,
         ageMax,
-        points,
+        points: profilePoints,
         selectedProfileId,
         timestamp: Date.now(),
       };
@@ -332,11 +349,12 @@ export default function SearchMapClient() {
     playerFoot,
     playerGender,
     playerSport,
-    points,
+    profilePoints,
     searchBounds,
     searchQuery,
     selectedProfileId,
-    typeFilter,
+    activeTab,
+    profileFilter,
   ]);
 
   useEffect(() => {
@@ -438,32 +456,35 @@ export default function SearchMapClient() {
   }, [activeArea, isDrawing, updatePolygonLayer]);
 
   useEffect(() => {
-    if (!searchBounds && typeFilter !== 'opportunity') {
-      setPoints([]);
+    if (!searchBounds) {
+      setProfilePoints([]);
+      setOpportunityPoints([]);
+      setOpportunitiesLoaded(false);
+      setOpportunitiesBoundsApplied(true);
       setSelectedProfileId(null);
       return;
     }
 
     let cancelled = false;
     const timer = setTimeout(async () => {
-      setLoading(true);
+      setProfileLoading(true);
       setDataError(null);
 
       const ageMinNumber = ageMin ? Number(ageMin) : null;
       const ageMaxNumber = ageMax ? Number(ageMax) : null;
       const filters = {
-        sport: typeFilter === 'club' ? clubSport || null : playerSport || null,
-        clubCategory: typeFilter === 'club' ? clubCategory || null : null,
-        foot: typeFilter === 'player' ? playerFoot || null : null,
-        gender: typeFilter === 'player' ? playerGender || null : null,
-        ageMin: typeFilter === 'player' && !Number.isNaN(ageMinNumber) ? ageMinNumber : null,
-        ageMax: typeFilter === 'player' && !Number.isNaN(ageMaxNumber) ? ageMaxNumber : null,
+        sport: profileFilter === 'club' ? clubSport || null : playerSport || null,
+        clubCategory: profileFilter === 'club' ? clubCategory || null : null,
+        foot: profileFilter === 'player' ? playerFoot || null : null,
+        gender: profileFilter === 'player' ? playerGender || null : null,
+        ageMin: profileFilter === 'player' && !Number.isNaN(ageMinNumber) ? ageMinNumber : null,
+        ageMax: profileFilter === 'player' && !Number.isNaN(ageMaxNumber) ? ageMaxNumber : null,
       };
 
       console.log('[search-map] calling search service', {
         bounds: searchBounds,
         query: searchQuery,
-        type: typeFilter,
+        type: profileFilter,
         filters,
       });
 
@@ -472,8 +493,8 @@ export default function SearchMapClient() {
         const response = await searchProfilesOnMap({
           bounds: boundsToUse,
           query: searchQuery,
-          type: typeFilter,
-          limit: typeFilter === 'opportunity' ? 100 : 300,
+          type: profileFilter,
+          limit: 300,
           filters,
           currentUserId,
         });
@@ -484,16 +505,16 @@ export default function SearchMapClient() {
             total: response.total,
             fallback: response.fallback,
           });
-          setPoints(response.data);
+          setProfilePoints(response.data);
         }
       } catch (err: any) {
         if (!cancelled) {
           console.error('[search-map] service error', err);
           setDataError(err?.message || 'Errore nel caricamento dei profili.');
-          setPoints([]);
+          setProfilePoints([]);
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setProfileLoading(false);
       }
     }, 400);
 
@@ -512,25 +533,116 @@ export default function SearchMapClient() {
     playerSport,
     searchQuery,
     searchBounds,
-    typeFilter,
+    profileFilter,
   ]);
 
-  const filteredPoints = useMemo(() => {
+  useEffect(() => {
+    if (!searchBounds) return;
+
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setOpportunityLoading(true);
+      setOpportunitiesLoaded(false);
+      setDataError(null);
+
+      try {
+        const boundsToUse = searchBounds ?? {};
+        const response = await searchProfilesOnMap({
+          bounds: boundsToUse,
+          query: searchQuery,
+          type: 'opportunity',
+          limit: 100,
+          filters: {},
+          currentUserId,
+        });
+
+        if (!cancelled) {
+          setOpportunityPoints(response.data);
+          setOpportunitiesBoundsApplied(response.boundsApplied ?? true);
+          setOpportunitiesLoaded(true);
+        }
+      } catch (err: any) {
+        if (!cancelled) {
+          console.error('[search-map] opportunities error', err);
+          setDataError(err?.message || 'Errore nel caricamento delle opportunità.');
+          setOpportunityPoints([]);
+          setOpportunitiesBoundsApplied(true);
+          setOpportunitiesLoaded(true);
+        }
+      } finally {
+        if (!cancelled) setOpportunityLoading(false);
+      }
+    }, 400);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [currentUserId, searchBounds, searchQuery]);
+
+  const { filteredPoints, profileCount, opportunityCount } = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
 
-    return points.filter((p) => {
+    const getOpportunityText = (p: SearchMapProfile) => ({
+      title: (p.title || p.friendly_name || p.display_name || '').toLowerCase(),
+      description: ((p.description as string | null) || p.bio || '').toLowerCase(),
+      location: [
+        p.location_label,
+        p.city,
+        p.province,
+        p.region,
+        p.country,
+        p.club_name,
+      ]
+        .filter(Boolean)
+        .join(' · ')
+        .toLowerCase(),
+    });
+
+    const matchesQuery = (p: SearchMapProfile, isOpportunity: boolean) => {
+      if (!normalizedQuery) return true;
+      if (isOpportunity) {
+        const { title, description, location } = getOpportunityText(p);
+        return (
+          title.includes(normalizedQuery) ||
+          description.includes(normalizedQuery) ||
+          location.includes(normalizedQuery)
+        );
+      }
+
+      const name = (p.display_name || '').toLowerCase();
+      const fullName = (p.full_name || '').toLowerCase();
+      const city = (p.city || '').toLowerCase();
+      const province = (p.province || '').toLowerCase();
+      const region = (p.region || '').toLowerCase();
+      const country = (p.country || '').toLowerCase();
+      const sport = (p.sport || '').toLowerCase();
+      const role = (p.role || '').toLowerCase();
+      return (
+        name.includes(normalizedQuery) ||
+        fullName.includes(normalizedQuery) ||
+        city.includes(normalizedQuery) ||
+        province.includes(normalizedQuery) ||
+        region.includes(normalizedQuery) ||
+        country.includes(normalizedQuery) ||
+        sport.includes(normalizedQuery) ||
+        role.includes(normalizedQuery)
+      );
+    };
+
+    const matchesFilters = (p: SearchMapProfile, filter: typeof profileFilter) => {
       const type = (p.type || p.account_type || '').trim().toLowerCase();
       const isClub = type === 'club';
       const isAthlete = type === 'athlete' || type === 'player';
       const isOpportunity = type === 'opportunity';
 
-      if (typeFilter === 'club' && !isClub) return false;
-      if (typeFilter === 'player' && !isAthlete) return false;
-      if (typeFilter === 'opportunity' && !isOpportunity) return false;
+      if (filter === 'club' && !isClub) return false;
+      if (filter === 'player' && !isAthlete) return false;
+      if (isOpportunity) return false;
 
       if (currentUserId && (p.user_id === currentUserId || p.id === currentUserId)) return false;
 
-      if (typeFilter === 'club') {
+      if (filter === 'club') {
         if (clubSport && (p.sport || '').toLowerCase() !== clubSport.toLowerCase()) return false;
         if (
           clubCategory &&
@@ -539,7 +651,7 @@ export default function SearchMapClient() {
           return false;
       }
 
-      if (typeFilter === 'player') {
+      if (filter === 'player') {
         if (playerSport && (p.sport || '').toLowerCase() !== playerSport.toLowerCase()) return false;
         if (playerFoot && (p.foot || '').toLowerCase() !== playerFoot.toLowerCase()) return false;
         if (playerGender && (p.gender || '').toLowerCase() !== playerGender.toLowerCase()) return false;
@@ -554,34 +666,41 @@ export default function SearchMapClient() {
         }
       }
 
-      if (normalizedQuery && !isOpportunity) {
-        const name = (p.display_name || '').toLowerCase();
-        const fullName = (p.full_name || '').toLowerCase();
-        const city = (p.city || '').toLowerCase();
-        const province = (p.province || '').toLowerCase();
-        const region = (p.region || '').toLowerCase();
-        const country = (p.country || '').toLowerCase();
-        const sport = (p.sport || '').toLowerCase();
-        const role = (p.role || '').toLowerCase();
-        if (
-          !name.includes(normalizedQuery) &&
-          !fullName.includes(normalizedQuery) &&
-          !city.includes(normalizedQuery) &&
-          !province.includes(normalizedQuery) &&
-          !region.includes(normalizedQuery) &&
-          !country.includes(normalizedQuery) &&
-          !sport.includes(normalizedQuery) &&
-          !role.includes(normalizedQuery)
-        )
-          return false;
-      }
+      if (!matchesQuery(p, isOpportunity)) return false;
 
       if (activeArea && activeArea.length >= 3 && p.latitude != null && p.longitude != null) {
         if (!pointInPolygon([p.latitude, p.longitude], activeArea)) return false;
       }
 
       return true;
-    });
+    };
+
+    const profileMatches = profilePoints.filter((p) => matchesFilters(p, profileFilter));
+    const opportunityMatches = opportunityPoints.filter((p) => matchesQuery(p, true));
+
+    const sortedOpportunities =
+      normalizedQuery
+        ? [...opportunityMatches]
+            .map((p, index) => {
+              const { title, description, location } = getOpportunityText(p);
+              const score =
+                (title.includes(normalizedQuery) ? 3 : 0) +
+                (description.includes(normalizedQuery) ? 2 : 0) +
+                (location.includes(normalizedQuery) ? 1 : 0);
+              return { profile: p, score, index };
+            })
+            .sort((a, b) => {
+              if (b.score !== a.score) return b.score - a.score;
+              return a.index - b.index;
+            })
+            .map((entry) => entry.profile)
+        : opportunityMatches;
+
+    return {
+      filteredPoints: activeTab === 'opportunities' ? sortedOpportunities : profileMatches,
+      profileCount: profileMatches.length,
+      opportunityCount: opportunitiesLoaded ? opportunityMatches.length : null,
+    };
   }, [
     activeArea,
     ageMax,
@@ -592,9 +711,12 @@ export default function SearchMapClient() {
     playerFoot,
     playerGender,
     playerSport,
-    points,
+    opportunitiesLoaded,
+    opportunityPoints,
+    profilePoints,
     searchQuery,
-    typeFilter,
+    activeTab,
+    profileFilter,
   ]);
 
   useEffect(() => {
@@ -634,12 +756,12 @@ export default function SearchMapClient() {
           type="search"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Cerca per nome club, player o opportunità…"
+          placeholder="Cerca per nome profilo o parola nell’annuncio (es. Garbatella, Tor de’ Cenci…)"
           className="w-full rounded-lg border px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
           autoComplete="off"
         />
         <p className="text-xs text-gray-600">
-          Il nome filtra i risultati nell’area selezionata senza cambiare i confini disegnati sulla mappa.
+          Filtra i risultati nell’area selezionata.
         </p>
       </div>
 
@@ -697,38 +819,38 @@ export default function SearchMapClient() {
         <div className="space-y-3">
           <div className="space-y-3 rounded-xl border bg-white/80 p-4 shadow-sm">
             <h2 className="heading-h2 text-lg">Filtri</h2>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setTypeFilter('all')}
-                className={`flex-1 rounded-lg border px-3 py-2 text-sm ${typeFilter === 'all' ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`}
-              >
-                Tutti
-              </button>
-              <button
-                type="button"
-                onClick={() => setTypeFilter('club')}
-                className={`flex-1 rounded-lg border px-3 py-2 text-sm ${typeFilter === 'club' ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`}
-              >
-                Club
-              </button>
-              <button
-                type="button"
-                onClick={() => setTypeFilter('player')}
-                className={`flex-1 rounded-lg border px-3 py-2 text-sm ${typeFilter === 'player' ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`}
-              >
-                Player
-              </button>
-              <button
-                type="button"
-                onClick={() => setTypeFilter('opportunity')}
-                className={`flex-1 rounded-lg border px-3 py-2 text-sm ${typeFilter === 'opportunity' ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`}
-              >
-                Opportunità
-              </button>
-            </div>
+            {activeTab === 'profiles' && (
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setProfileFilter('all')}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-sm ${profileFilter === 'all' ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`}
+                >
+                  Tutti
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setProfileFilter('club')}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-sm ${profileFilter === 'club' ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`}
+                >
+                  Club
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setProfileFilter('player')}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-sm ${profileFilter === 'player' ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}`}
+                >
+                  Player
+                </button>
+              </div>
+            )}
+            {activeTab === 'opportunities' && (
+              <p className="text-xs text-gray-600">
+                I filtri profilo non si applicano alle opportunità.
+              </p>
+            )}
 
-            {typeFilter === 'club' && (
+            {profileFilter === 'club' && activeTab === 'profiles' && (
               <div className="space-y-2 text-sm">
                 <div className="space-y-1">
                   <label className="text-xs text-gray-600">Sport</label>
@@ -751,7 +873,7 @@ export default function SearchMapClient() {
               </div>
             )}
 
-            {typeFilter === 'player' && (
+            {profileFilter === 'player' && activeTab === 'profiles' && (
               <div className="space-y-2 text-sm">
                 <div className="space-y-1">
                   <label className="text-xs text-gray-600">Sport</label>
@@ -818,11 +940,22 @@ export default function SearchMapClient() {
 
           <SearchResultsList
             results={filteredPoints}
-            loading={loading}
+            loading={activeTab === 'opportunities' ? opportunityLoading : profileLoading}
             hasArea={hasArea}
             error={dataError}
             selectedId={selectedProfileId}
             onSelect={handleSelectFromList}
+            query={searchQuery}
+            profileCount={profileCount}
+            opportunityCount={opportunityCount}
+            showOpportunityBoundsNote={
+              activeTab === 'opportunities' &&
+              hasArea &&
+              !opportunitiesBoundsApplied &&
+              !searchQuery.trim()
+            }
+            activeTab={activeTab}
+            onTabChange={(tab) => setActiveTab(tab)}
           />
         </div>
       </div>

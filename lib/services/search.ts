@@ -22,6 +22,7 @@ export type SearchMapProfile = Partial<Profile> & {
   account_type?: Profile['type'] | null;
   full_name?: string | null;
   title?: string | null;
+  description?: string | null;
   club_name?: string | null;
   location_label?: string | null;
   created_at?: string | null;
@@ -47,6 +48,7 @@ export type SearchMapResponse = {
   data: SearchMapProfile[];
   total?: number;
   fallback?: string;
+  boundsApplied?: boolean;
 };
 
 function appendIfValue(params: URLSearchParams, key: string, value?: string | number | null) {
@@ -78,7 +80,10 @@ export async function searchProfilesOnMap(params: SearchMapParams): Promise<Sear
   appendIfValue(searchParams, 'current_user_id', currentUserId ?? undefined);
 
   const trimmedQuery = query?.trim();
-  if (trimmedQuery) searchParams.set('query', trimmedQuery);
+  if (trimmedQuery) {
+    searchParams.set('query', trimmedQuery);
+    searchParams.set('q', trimmedQuery);
+  }
 
   const queryString = searchParams.toString();
   const url = `/api/search/map?${queryString}`;
@@ -112,6 +117,7 @@ export async function searchProfilesOnMap(params: SearchMapParams): Promise<Sear
     data: data as SearchMapProfile[],
     total: typeof json?.total === 'number' ? json.total : undefined,
     fallback: typeof json?.fallback === 'string' ? json.fallback : undefined,
+    boundsApplied: typeof json?.boundsApplied === 'boolean' ? json.boundsApplied : undefined,
   };
 
   console.log('[search-service] success', { count: payload.data.length, total: payload.total, fallback: payload.fallback });

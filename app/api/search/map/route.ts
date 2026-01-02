@@ -95,8 +95,9 @@ export async function GET(req: NextRequest) {
   const bounds = parseBounds(url);
   const limit = clampLimit(Number(url.searchParams.get('limit') || '100'));
   const filters = parseFilters(url);
-  const searchQuery = (url.searchParams.get('query') || '').trim();
+  const searchQuery = (url.searchParams.get('query') || url.searchParams.get('q') || '').trim();
   const ilikeQuery = searchQuery ? toIlikePattern(searchQuery) : null;
+  const debugMode = url.searchParams.get('debug') === '1';
   const requestedUserId = url.searchParams.get('current_user_id');
   const currentYear = new Date().getFullYear();
 
@@ -208,6 +209,16 @@ export async function GET(req: NextRequest) {
     };
 
     if (type === 'opportunity') {
+      let debug: {
+        q: string;
+        bounds: Bounds;
+        status: string;
+        totalOpenOpp: number;
+        oppAfterText: number;
+        clubsInBoundsCount: number;
+        oppAfterBounds: number;
+        sampleOpp: { id: string; title?: string | null; club_id?: string | null; status?: string | null } | null;
+      } | null = null;
       let clubQuery = supabase
         .from('profiles')
         .select('id, latitude, longitude, club_stadium_lat, club_stadium_lng')
@@ -216,11 +227,20 @@ export async function GET(req: NextRequest) {
         .or('account_type.eq.club,type.eq.club');
 
       if (hasBounds) {
-        if (south != null && north != null) {
-          clubQuery = clubQuery.gte('latitude', south).lte('latitude', north);
-        }
-        if (west != null && east != null) {
-          clubQuery = clubQuery.gte('longitude', west).lte('longitude', east);
+        if (south != null && north != null && west != null && east != null) {
+          clubQuery = clubQuery.or(
+            [
+              `and(latitude.gte.${south},latitude.lte.${north},longitude.gte.${west},longitude.lte.${east})`,
+              `and(club_stadium_lat.gte.${south},club_stadium_lat.lte.${north},club_stadium_lng.gte.${west},club_stadium_lng.lte.${east})`,
+            ].join(','),
+          );
+        } else {
+          if (south != null && north != null) {
+            clubQuery = clubQuery.gte('latitude', south).lte('latitude', north);
+          }
+          if (west != null && east != null) {
+            clubQuery = clubQuery.gte('longitude', west).lte('longitude', east);
+          }
         }
       }
 
@@ -243,16 +263,36 @@ export async function GET(req: NextRequest) {
         'created_at',
       ].join(',');
 
+      const hasTextQuery = Boolean(ilikeQuery);
+      const boundsApplied = !hasTextQuery && hasBounds && clubIds.length > 0;
+
       let oppQuery = supabase
         .from('opportunities')
         .select(oppSelect)
         .order('created_at', { ascending: false })
-        .limit(Math.min(limit, 100));
+        .limit(hasTextQuery ? 100 : Math.min(limit, 100))
+        .eq('status', 'open');
 
-      if (clubIds.length) {
-        oppQuery = oppQuery.in('club_id', clubIds);
-      } else if (hasBounds) {
-        return successResponse({ data: [], total: 0 });
+      if (!hasTextQuery) {
+        if (clubIds.length) {
+          oppQuery = oppQuery.or(
+            [`club_id.in.(${clubIds.join(',')})`, `owner_id.in.(${clubIds.join(',')})`].join(','),
+          );
+        } else if (hasBounds) {
+          if (debugMode) {
+            debug = {
+              q: searchQuery,
+              bounds,
+              status: 'open',
+              totalOpenOpp: 0,
+              oppAfterText: 0,
+              clubsInBoundsCount: 0,
+              oppAfterBounds: 0,
+              sampleOpp: null,
+            };
+          }
+          return successResponse({ data: [], total: 0, boundsApplied: false, ...(debug ? { debug } : {}) });
+        }
       }
 
       if (ilikeQuery) {
@@ -263,6 +303,8 @@ export async function GET(req: NextRequest) {
             `city.ilike.${ilikeQuery}`,
             `province.ilike.${ilikeQuery}`,
             `region.ilike.${ilikeQuery}`,
+            `country.ilike.${ilikeQuery}`,
+            `club_name.ilike.${ilikeQuery}`,
           ].join(','),
         );
       }
@@ -278,6 +320,7 @@ export async function GET(req: NextRequest) {
           type: 'opportunity',
           account_type: 'opportunity',
           title: o.title ?? 'Annuncio',
+          description: o.description ?? null,
           club_name: o.club_name ?? null,
           club_id: o.club_id ?? o.owner_id ?? null,
           city: o.city ?? null,
@@ -289,7 +332,93 @@ export async function GET(req: NextRequest) {
         };
       });
 
-      return successResponse({ data: rows, total: oppCount ?? rows.length });
+      const rankedRows = hasTextQuery
+        ? [...rows]
+            .map((row) => {
+              const title = String(row.title ?? '').toLowerCase();
+              const description = String(row.description ?? '').toLowerCase();
+              const location = String(row.location_label ?? '').toLowerCase();
+              const queryLower = searchQuery.toLowerCase();
+              const score =
+                (title.includes(queryLower) ? 3 : 0) +
+                (description.includes(queryLower) ? 2 : 0) +
+                (location.includes(queryLower) ? 1 : 0);
+              return { row, score };
+            })
+            .sort((a, b) => {
+              if (b.score !== a.score) return b.score - a.score;
+              const dateA = a.row.created_at ? new Date(a.row.created_at).getTime() : 0;
+              const dateB = b.row.created_at ? new Date(b.row.created_at).getTime() : 0;
+              return dateB - dateA;
+            })
+            .map((entry) => entry.row)
+            .slice(0, 20)
+        : rows;
+
+      if (debugMode) {
+        const [
+          totalOpenResult,
+          oppAfterTextResult,
+          oppAfterBoundsResult,
+          sampleOppResult,
+        ] = await Promise.all([
+          supabase.from('opportunities').select('id', { count: 'exact', head: true }).eq('status', 'open'),
+          ilikeQuery
+            ? supabase
+                .from('opportunities')
+                .select('id', { count: 'exact', head: true })
+                .eq('status', 'open')
+                .or(
+                  [
+                    `title.ilike.${ilikeQuery}`,
+                    `description.ilike.${ilikeQuery}`,
+                    `city.ilike.${ilikeQuery}`,
+                    `province.ilike.${ilikeQuery}`,
+                    `region.ilike.${ilikeQuery}`,
+                  ].join(','),
+                )
+            : supabase.from('opportunities').select('id', { count: 'exact', head: true }).eq('status', 'open'),
+          boundsApplied
+            ? supabase
+                .from('opportunities')
+                .select('id', { count: 'exact', head: true })
+                .eq('status', 'open')
+                .or(
+                  [`club_id.in.(${clubIds.join(',')})`, `owner_id.in.(${clubIds.join(',')})`].join(','),
+                )
+            : supabase.from('opportunities').select('id', { count: 'exact', head: true }).eq('status', 'open').limit(0),
+          supabase
+            .from('opportunities')
+            .select('id,title,club_id,status')
+            .eq('status', 'open')
+            .limit(1),
+        ]);
+
+        debug = {
+          q: searchQuery,
+          bounds,
+          status: 'open',
+          totalOpenOpp: totalOpenResult.count ?? 0,
+          oppAfterText: oppAfterTextResult.count ?? 0,
+          clubsInBoundsCount: clubIds.length,
+          oppAfterBounds: boundsApplied ? oppAfterBoundsResult.count ?? 0 : oppAfterTextResult.count ?? 0,
+          sampleOpp: Array.isArray(sampleOppResult.data) && sampleOppResult.data.length
+            ? {
+                id: sampleOppResult.data[0]?.id,
+                title: sampleOppResult.data[0]?.title ?? null,
+                club_id: sampleOppResult.data[0]?.club_id ?? null,
+                status: sampleOppResult.data[0]?.status ?? null,
+              }
+            : null,
+        };
+      }
+
+      return successResponse({
+        data: rankedRows,
+        total: oppCount ?? rankedRows.length,
+        boundsApplied,
+        ...(debug ? { debug } : {}),
+      });
     }
 
     const firstQuery = await runQuery({ withBounds: true });

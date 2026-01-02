@@ -358,7 +358,7 @@ export default function FeedPage() {
             {/* Se esiste, il componente reale rimpiazzerà questo blocco via dynamic() */}
             <ProfileMiniCard />
           </div>
-          <MyMediaHub currentUserId={currentUserId} posts={posts} />
+          <MyMediaHub currentUserId={currentUserId} />
           <VerticalAdBanner className="hidden border border-blue-900/30 md:block" />
         </aside>
 
@@ -535,21 +535,81 @@ function ProfileCardFallback() {
   );
 }
 
-function MyMediaHub({
-  currentUserId,
-  posts,
-}: {
-  currentUserId: string | null;
-  posts: FeedPost[];
-}) {
-  const [tab, setTab] = useState<'video' | 'image'>('video');
+type MediaType = 'image' | 'video' | null;
 
-  const { videos, photos } = useMemo(() => {
-    const mine = posts.filter((p) => p.authorId && p.authorId === currentUserId);
-    const vids = mine.filter((p) => p.media_type === 'video' && p.media_url).slice(0, 3);
-    const imgs = mine.filter((p) => p.media_type === 'image' && p.media_url).slice(0, 3);
-    return { videos: vids, photos: imgs };
-  }, [posts, currentUserId]);
+function normalizeMediaType(raw?: string | null): MediaType {
+  if (!raw) return null;
+  const value = raw.trim().toLowerCase();
+  if (value === 'image' || value === 'photo') return 'image';
+  if (value === 'video') return 'video';
+  if (value.startsWith('image/')) return 'image';
+  if (value.startsWith('video/')) return 'video';
+  return null;
+}
+
+function inferMediaTypeFromUrl(url?: string | null): MediaType {
+  if (!url) return null;
+  const lower = url.toLowerCase();
+  if (/\.(mp4|mov|avi|mkv)(\?|$)/.test(lower)) return 'video';
+  if (/\.(png|jpe?g|gif|webp|avif)(\?|$)/.test(lower)) return 'image';
+  return null;
+}
+
+type MediaPreviewItem = Pick<FeedPost, 'id' | 'media_url' | 'media_type'>;
+
+function normalizePreviewPost(post: FeedPost): MediaPreviewItem {
+  const normalizedType =
+    normalizeMediaType(post.media_type ?? null) ?? inferMediaTypeFromUrl(post.media_url ?? null);
+  return {
+    id: post.id,
+    media_url: post.media_url ?? null,
+    media_type: normalizedType,
+  };
+}
+
+async function fetchMyMediaPreview(authorId: string, signal?: AbortSignal): Promise<MediaPreviewItem[]> {
+  const params = new URLSearchParams({ authorId, limit: '30' });
+  const res = await fetch(`/api/feed/posts?${params.toString()}`, {
+    credentials: 'include',
+    cache: 'no-store',
+    signal,
+  });
+  if (!res.ok) return [];
+  const json = await res.json().catch(() => ({}));
+  const items = Array.isArray(json?.items ?? json?.data) ? (json.items ?? json.data) : [];
+  return items.map((item: FeedPost) => normalizePreviewPost(item));
+}
+
+function MyMediaHub({ currentUserId }: { currentUserId: string | null }) {
+  const [tab, setTab] = useState<'video' | 'photo'>('video');
+  const [previewItems, setPreviewItems] = useState<MediaPreviewItem[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!currentUserId) return;
+    const ctrl = new AbortController();
+    setLoading(true);
+    fetchMyMediaPreview(currentUserId, ctrl.signal)
+      .then((items) => {
+        if (!ctrl.signal.aborted) setPreviewItems(items);
+      })
+      .catch(() => {
+        if (!ctrl.signal.aborted) setPreviewItems([]);
+      })
+      .finally(() => {
+        if (!ctrl.signal.aborted) setLoading(false);
+      });
+    return () => ctrl.abort();
+  }, [currentUserId]);
+
+  const videos = useMemo(
+    () => previewItems.filter((p) => p.media_type === 'video' && p.media_url).slice(0, 3),
+    [previewItems],
+  );
+  const photos = useMemo(
+    () => previewItems.filter((p) => p.media_type === 'image' && p.media_url).slice(0, 3),
+    [previewItems],
+  );
 
   if (!currentUserId) return null;
 
@@ -566,8 +626,8 @@ function MyMediaHub({
           </button>
           <button
             type="button"
-            className={`rounded-full px-3 py-1 ${tab === 'image' ? 'bg-gray-900 text-white' : 'bg-white/60'}`}
-            onClick={() => setTab('image')}
+            className={`rounded-full px-3 py-1 ${tab === 'photo' ? 'bg-gray-900 text-white' : 'bg-white/60'}`}
+            onClick={() => setTab('photo')}
           >
             MyPhoto
           </button>
@@ -576,14 +636,14 @@ function MyMediaHub({
       <div className="px-4 pb-4">
         {tab === 'video' ? (
           <MediaPreviewGrid
-            emptyLabel="Non hai ancora video"
+            emptyLabel={loading ? 'Caricamento…' : 'Non hai ancora video'}
             items={videos}
             linkHref={currentUserId ? `/mymedia?type=video&authorId=${currentUserId}` : '/mymedia?type=video'}
             sectionId="my-videos"
           />
         ) : (
           <MediaPreviewGrid
-            emptyLabel="Non hai ancora foto"
+            emptyLabel={loading ? 'Caricamento…' : 'Non hai ancora foto'}
             items={photos}
             linkHref={currentUserId ? `/mymedia?type=photo&authorId=${currentUserId}` : '/mymedia?type=photo'}
             sectionId="my-photos"
