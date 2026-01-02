@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
@@ -14,6 +15,7 @@ import { useUnreadDirectThreads } from '@/hooks/useUnreadDirectThreads';
 import { MessagingDock } from '@/components/messaging/MessagingDock';
 import { useNotificationsBadge } from '@/hooks/useNotificationsBadge';
 import BrandLogo from '@/components/brand/BrandLogo';
+import { buildProfileDisplayName } from '@/lib/displayName';
 
 type Role = 'athlete' | 'club' | 'guest';
 
@@ -24,6 +26,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [role, setRole] = useState<Role>('guest');
   const [_loadingRole, setLoadingRole] = useState(true);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [profileName, setProfileName] = useState<string>('Profilo');
   const unreadDirectThreads = useUnreadDirectThreads();
   const { unreadCount: unreadNotifications, setUnreadCount: setUnreadNotifications } = useNotificationsBadge();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -62,6 +66,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         }
 
         setRole(rawRole === 'club' || rawRole === 'athlete' ? (rawRole as Role) : 'guest');
+        setAvatarUrl(typeof profile?.avatar_url === 'string' ? profile.avatar_url : null);
+        setProfileName(buildProfileDisplayName(profile?.full_name, profile?.display_name, 'Profilo'));
       } catch {
         if (!cancelled) setRole('guest');
       } finally {
@@ -83,9 +89,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       { label: 'Candidature', href: applicationsHref, icon: 'applications' },
       { label: 'Messaggi', href: '/messages', icon: 'mail' },
       { label: 'Notifiche', href: '/notifications', icon: 'notifications' },
-      { label: 'Profilo', href: profileHref, icon: 'person' },
     ],
-    [applicationsHref, profileHref],
+    [applicationsHref],
   );
 
   const isActive = (href: string) => pathname === href || (!!pathname && pathname.startsWith(href + '/'));
@@ -93,6 +98,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setIsMenuOpen(false);
   }, [pathname]);
+
+  const profileInitials = useMemo(() => {
+    const trimmed = profileName.trim();
+    if (!trimmed) return 'CP';
+    const parts = trimmed.split(/\s+/).filter(Boolean);
+    const letters = parts.slice(0, 2).map((part) => part[0]?.toUpperCase());
+    return letters.join('') || 'CP';
+  }, [profileName]);
 
   return (
     <ToastProvider>
@@ -206,6 +219,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   </Link>
                 )}
 
+                <Link href={profileHref} aria-label="Profilo" title="Profilo">
+                  <div className="relative h-9 w-9 aspect-square overflow-hidden rounded-full border border-neutral-200 flex-shrink-0 transition hover:ring-2 hover:ring-neutral-200">
+                    {avatarUrl ? (
+                      <Image src={avatarUrl} alt="Profilo" fill className="object-cover" sizes="36px" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-slate-200 text-sm font-semibold text-slate-700">
+                        {profileInitials}
+                      </div>
+                    )}
+                  </div>
+                </Link>
+
                 <Link
                   href="/logout"
                   aria-label="Esci"
@@ -298,6 +323,23 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                         <Plus className="h-4 w-4" aria-hidden />
                       </Link>
                     )}
+
+                    <Link
+                      href={profileHref}
+                      aria-label="Profilo"
+                      title="Profilo"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      <div className="relative h-9 w-9 aspect-square overflow-hidden rounded-full border border-neutral-200 flex-shrink-0 transition hover:ring-2 hover:ring-neutral-200">
+                        {avatarUrl ? (
+                          <Image src={avatarUrl} alt="Profilo" fill className="object-cover" sizes="36px" />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center bg-slate-200 text-sm font-semibold text-slate-700">
+                            {profileInitials}
+                          </div>
+                        )}
+                      </div>
+                    </Link>
 
                     <Link
                       href="/logout"
