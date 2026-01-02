@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Search, Users } from 'lucide-react';
+import { LogOut, Plus, Search, Users } from 'lucide-react';
 import useIsClub from '@/hooks/useIsClub';
 import { ToastProvider } from '@/components/common/ToastProvider';
 import { FollowProvider } from '@/components/follow/FollowProvider';
@@ -196,13 +196,23 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <div className="ml-auto hidden items-center gap-2 md:flex">
                 {/* CTA sempre e solo per club (usiamo useIsClub) */}
                 {isClub && (
-                  <Link href="/opportunities/new" className="rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50">
-                    + Nuova opportunità
+                  <Link
+                    href="/opportunities/new"
+                    aria-label="Nuova opportunità"
+                    title="Nuova opportunità"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition hover:bg-slate-50 hover:text-slate-800"
+                  >
+                    <Plus className="h-4 w-4" aria-hidden />
                   </Link>
                 )}
 
-                <Link href="/logout" className="rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50">
-                  Logout
+                <Link
+                  href="/logout"
+                  aria-label="Esci"
+                  title="Esci"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition hover:bg-slate-50 hover:text-slate-800"
+                >
+                  <LogOut className="h-4 w-4" aria-hidden />
                 </Link>
               </div>
 
@@ -280,19 +290,23 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     {isClub && (
                       <Link
                         href="/opportunities/new"
+                        aria-label="Nuova opportunità"
+                        title="Nuova opportunità"
                         onClick={() => setIsMenuOpen(false)}
-                        className="rounded-md border px-3 py-2 text-sm font-semibold text-[var(--brand)] hover:bg-neutral-50"
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition hover:bg-slate-50 hover:text-slate-800"
                       >
-                        + Nuova opportunità
+                        <Plus className="h-4 w-4" aria-hidden />
                       </Link>
                     )}
 
                     <Link
                       href="/logout"
+                      aria-label="Esci"
+                      title="Esci"
                       onClick={() => setIsMenuOpen(false)}
-                      className="rounded-md border px-3 py-2 text-sm hover:bg-neutral-50"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition hover:bg-slate-50 hover:text-slate-800"
                     >
-                      Logout
+                      <LogOut className="h-4 w-4" aria-hidden />
                     </Link>
                   </div>
                 </div>

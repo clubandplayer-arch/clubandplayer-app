@@ -68,3 +68,64 @@ export const Search = React.forwardRef<SVGSVGElement, LucideProps>(function Sear
     </svg>
   );
 });
+
+export const LogOut = React.forwardRef<SVGSVGElement, LucideProps>(function LogOut(
+  { color = 'currentColor', size = 24, strokeWidth = 2, absoluteStrokeWidth = false, ...props },
+  ref,
+) {
+  const computedStrokeWidth =
+    absoluteStrokeWidth && typeof size === 'number'
+      ? (Number(strokeWidth) * 24) / size
+      : strokeWidth;
+
+  return (
+    <svg
+      ref={ref}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={computedStrokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      {...props}
+    >
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" x2="9" y1="12" y2="12" />
+    </svg>
+  );
+});
+
+export const Plus = React.forwardRef<SVGSVGElement, LucideProps>(function Plus(
+  { color = 'currentColor', size = 24, strokeWidth = 2, absoluteStrokeWidth = false, ...props },
+  ref,
+) {
+  const computedStrokeWidth =
+    absoluteStrokeWidth && typeof size === 'number'
+      ? (Number(strokeWidth) * 24) / size
+      : strokeWidth;
+
+  return (
+    <svg
+      ref={ref}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={computedStrokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      {...props}
+    >
+      <line x1="12" x2="12" y1="5" y2="19" />
+      <line x1="5" x2="19" y1="12" y2="12" />
+    </svg>
+  );
+});
