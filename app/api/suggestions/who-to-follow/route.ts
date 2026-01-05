@@ -44,6 +44,7 @@ function isAthlete(accountType: string | null | undefined) {
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const limit = Math.max(1, Math.min(Number(url.searchParams.get('limit')) || 5, 10));
+  const debugMode = url.searchParams.get('debug') === '1';
 
   try {
     const supabase = await getSupabaseServerClient();
@@ -51,7 +52,7 @@ export async function GET(req: NextRequest) {
     const user = auth?.user;
 
     if (!user) {
-      return successResponse({ data: [] as Suggestion[] });
+      return successResponse({ suggestions: [] as Suggestion[] });
     }
 
     const { data: profile } = await supabase
@@ -63,7 +64,7 @@ export async function GET(req: NextRequest) {
       .maybeSingle();
 
     if (!profile?.id || profile.status !== 'active') {
-      return successResponse({ data: [] as Suggestion[] });
+      return successResponse({ suggestions: [] as Suggestion[] });
     }
 
     const { data: existing } = await supabase
@@ -79,16 +80,13 @@ export async function GET(req: NextRequest) {
         .map((id) => id.toString()),
     );
     alreadyFollowing.add(profile.id);
-    const alreadyFollowedAnyCount = alreadyFollowing.size ? alreadyFollowing.size - 1 : 0;
-    let alreadyFollowedActiveCount = 0;
-    if (alreadyFollowedAnyCount > 0) {
-      const { count } = await supabase
-        .from('profiles')
-        .select('id', { count: 'exact', head: true })
-        .in('id', Array.from(alreadyFollowing).filter((id) => id !== profile.id))
-        .eq('status', 'active');
-      alreadyFollowedActiveCount = count ?? 0;
-    }
+    const followRowsAny = (existing ?? []).length;
+    const followRowsActive = followRowsAny;
+    const excludedByFollow = followRowsAny;
+    const sampleExcludedIds = (existing ?? [])
+      .map((row) => (row as any)?.target_profile_id)
+      .filter(Boolean)
+      .slice(0, 5) as string[];
 
     const baseSelect =
       'id, full_name, display_name, avatar_url, sport, role, city, country, account_type, status, updated_at';
@@ -97,6 +95,20 @@ export async function GET(req: NextRequest) {
       let query = supabase
         .from('profiles')
         .select(baseSelect)
+        .or('status.eq.active,status.eq.pending,status.is.null');
+      if (alreadyFollowing.size) {
+        const values = Array.from(alreadyFollowing)
+          .map((id) => `'${id}'`)
+          .join(',');
+        query = query.not('id', 'in', `(${values})`);
+      }
+      return query;
+    };
+
+    const buildCountQuery = () => {
+      let query = supabase
+        .from('profiles')
+        .select('id', { count: 'exact', head: true })
         .or('status.eq.active,status.eq.pending,status.is.null');
       if (alreadyFollowing.size) {
         const values = Array.from(alreadyFollowing)
@@ -150,12 +162,12 @@ export async function GET(req: NextRequest) {
 
     const results: Suggestion[] = [];
     const seen = new Set<string>();
-    let zoneCount = 0;
-    let sportCount = 0;
-    let fallbackCount = 0;
     let zoneCandidates = 0;
     let sportCandidates = 0;
     let recentFallbackCandidates = 0;
+
+    const candidatesTotal = (await buildCountQuery()).count ?? 0;
+    const candidatesAfterType = candidatesTotal;
 
     const addSuggestions = (items: Suggestion[]) => {
       let added = 0;
@@ -184,8 +196,7 @@ export async function GET(req: NextRequest) {
         .limit(limit * 3);
 
       zoneCandidates += (rows ?? []).length;
-      const added = addSuggestions(await mapSuggestions((rows ?? []) as SuggestionRow[]));
-      zoneCount += added;
+      addSuggestions(await mapSuggestions((rows ?? []) as SuggestionRow[]));
     }
 
     if (results.length < limit && profile.sport) {
@@ -195,8 +206,7 @@ export async function GET(req: NextRequest) {
         .limit(limit * 3);
 
       sportCandidates += (rows ?? []).length;
-      const added = addSuggestions(await mapSuggestions((rows ?? []) as SuggestionRow[]));
-      sportCount += added;
+      addSuggestions(await mapSuggestions((rows ?? []) as SuggestionRow[]));
     }
 
     if (results.length < limit) {
@@ -205,26 +215,33 @@ export async function GET(req: NextRequest) {
         .limit(limit * 3);
 
       recentFallbackCandidates += (rows ?? []).length;
-      const added = addSuggestions(await mapSuggestions((rows ?? []) as SuggestionRow[]));
-      fallbackCount += added;
+      addSuggestions(await mapSuggestions((rows ?? []) as SuggestionRow[]));
     }
 
-    return successResponse({
-      data: results.slice(0, limit),
-      debug: {
-        meProfileId: profile.id,
-        meUserId: user.id,
-        alreadyFollowedActiveCount,
-        alreadyFollowedAnyCount,
-        zoneCandidates,
-        sportCandidates,
-        recentFallbackCandidates,
-        returned: results.slice(0, limit).length,
-        zoneCount,
-        sportCount,
-        fallbackCount,
-      },
-    });
+    const suggestions = results.slice(0, limit);
+
+    return successResponse(
+      debugMode
+        ? {
+            suggestions,
+            debug: {
+              meProfileId: profile.id,
+              meUserId: user.id,
+              followRowsAny,
+              followRowsActive,
+              excludedByFollow,
+              candidatesTotal,
+              candidatesAfterType,
+              candidatesAfterZone: zoneCandidates,
+              candidatesAfterSport: sportCandidates,
+              fallbackRecent: recentFallbackCandidates,
+              returned: suggestions.length,
+              sampleExcludedIds,
+              sampleReturnedIds: suggestions.map((item) => item.id).slice(0, 5),
+            },
+          }
+        : { suggestions },
+    );
   } catch (error) {
     return unknownError({ endpoint: 'suggestions/who-to-follow', error });
   }
