@@ -3,6 +3,7 @@ import { successResponse, unknownError } from '@/lib/api/standardResponses';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
+const ENDPOINT_VERSION = 'who-to-follow@2026-01-05a';
 
 type SuggestionRow = {
   id: string;
@@ -44,14 +45,16 @@ function isAthlete(accountType: string | null | undefined) {
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const limit = Math.max(1, Math.min(Number(url.searchParams.get('limit')) || 5, 10));
+  const debugMode = url.searchParams.get('debug') === '1';
 
   try {
     const supabase = await getSupabaseServerClient();
+    const profilesClient = supabase;
     const { data: auth } = await supabase.auth.getUser();
     const user = auth?.user;
 
     if (!user) {
-      return successResponse({ data: [] as Suggestion[] });
+      return successResponse({ suggestions: [] as Suggestion[] });
     }
 
     const { data: profile } = await supabase
@@ -63,7 +66,7 @@ export async function GET(req: NextRequest) {
       .maybeSingle();
 
     if (!profile?.id || profile.status !== 'active') {
-      return successResponse({ data: [] as Suggestion[] });
+      return successResponse({ suggestions: [] as Suggestion[] });
     }
 
     const { data: existing } = await supabase
@@ -79,12 +82,18 @@ export async function GET(req: NextRequest) {
         .map((id) => id.toString()),
     );
     alreadyFollowing.add(profile.id);
+    const followRowsTotal = (existing ?? []).length;
+    const followRowsActive = followRowsTotal;
+    const excludedIdsCount = alreadyFollowing.size;
 
     const baseSelect =
       'id, full_name, display_name, avatar_url, sport, role, city, country, account_type, status, updated_at';
 
     const buildBaseQuery = () => {
-      let query = supabase.from('profiles').select(baseSelect).eq('status', 'active');
+      let query = profilesClient
+        .from('profiles')
+        .select(baseSelect)
+        .or('status.eq.active,status.eq.pending,status.is.null');
       if (alreadyFollowing.size) {
         const values = Array.from(alreadyFollowing)
           .map((id) => `'${id}'`)
@@ -94,15 +103,22 @@ export async function GET(req: NextRequest) {
       return query;
     };
 
+    const buildCountQuery = () => {
+      return profilesClient
+        .from('profiles')
+        .select('id', { count: 'exact', head: true })
+        .or('status.eq.active,status.eq.pending,status.is.null');
+    };
+
     async function mapSuggestions(rows: SuggestionRow[]) {
       const athleteIds = rows.filter((row) => isAthlete(row.account_type)).map((row) => row.id);
       const athleteMap = new Map<string, { full_name: string | null; display_name: string | null }>();
 
       if (athleteIds.length) {
-        const { data: athletes } = await supabase
-          .from('athletes_view')
-          .select('id, full_name, display_name')
-          .in('id', athleteIds);
+      const { data: athletes } = await profilesClient
+        .from('athletes_view')
+        .select('id, full_name, display_name')
+        .in('id', athleteIds);
 
         for (const athlete of athletes ?? []) {
           if (athlete.id) {
@@ -118,8 +134,7 @@ export async function GET(req: NextRequest) {
         .map((row) => {
           const athlete = athleteMap.get(row.id);
           const fullName = cleanName(athlete?.full_name ?? row.full_name);
-          const displayName = cleanName(athlete?.display_name ?? row.display_name);
-          if (!fullName && !displayName) return null;
+          const displayName = cleanName(athlete?.display_name ?? row.display_name) ?? fullName ?? 'Profilo';
           return {
             id: row.id,
             type: row.account_type ?? null,
@@ -137,14 +152,45 @@ export async function GET(req: NextRequest) {
 
     const results: Suggestion[] = [];
     const seen = new Set<string>();
+    let zoneCandidates = 0;
+    let sportCandidates = 0;
+    let recentFallbackCandidates = 0;
+
+    const { count: totalProfilesCount, error: totalProfilesError } = await profilesClient
+      .from('profiles')
+      .select('id', { count: 'exact', head: true });
+    if (totalProfilesError) {
+      throw totalProfilesError;
+    }
+
+    const profilesVisibleTotal = totalProfilesCount ?? 0;
+    const candidatesAfterSelfExclude = profile.id
+      ? ((await buildCountQuery().neq('id', profile.id)).count ?? 0)
+      : profilesVisibleTotal;
+    const candidatesAfterAlreadyFollowedExclude = alreadyFollowing.size
+      ? ((await buildCountQuery().not('id', 'in', `(${Array.from(alreadyFollowing).map((id) => `'${id}'`).join(',')})`))
+          .count ?? 0)
+      : candidatesAfterSelfExclude;
+    const { count: totalEligibleAfterExcludeCount, error: totalEligibleError } = await profilesClient
+      .from('profiles')
+      .select('id', { count: 'exact', head: true })
+      .or('status.eq.active,status.eq.pending,status.is.null')
+      .not('id', 'in', `(${Array.from(alreadyFollowing).map((id) => `'${id}'`).join(',')})`);
+    if (totalEligibleError) {
+      throw totalEligibleError;
+    }
+    const totalEligibleAfterExclude = totalEligibleAfterExcludeCount ?? 0;
 
     const addSuggestions = (items: Suggestion[]) => {
+      let added = 0;
       for (const item of items) {
         if (seen.has(item.id)) continue;
         seen.add(item.id);
         results.push(item);
+        added += 1;
         if (results.length >= limit) break;
       }
+      return added;
     };
 
     const locationFilters = [
@@ -161,6 +207,7 @@ export async function GET(req: NextRequest) {
         .order('updated_at', { ascending: false })
         .limit(limit * 3);
 
+      zoneCandidates += (rows ?? []).length;
       addSuggestions(await mapSuggestions((rows ?? []) as SuggestionRow[]));
     }
 
@@ -170,6 +217,7 @@ export async function GET(req: NextRequest) {
         .order('updated_at', { ascending: false })
         .limit(limit * 3);
 
+      sportCandidates += (rows ?? []).length;
       addSuggestions(await mapSuggestions((rows ?? []) as SuggestionRow[]));
     }
 
@@ -178,10 +226,62 @@ export async function GET(req: NextRequest) {
         .order('updated_at', { ascending: false })
         .limit(limit * 3);
 
+      recentFallbackCandidates += (rows ?? []).length;
       addSuggestions(await mapSuggestions((rows ?? []) as SuggestionRow[]));
     }
 
-    return successResponse({ data: results.slice(0, limit) });
+    const suggestions = results.slice(0, limit);
+    const sampleReturned = suggestions.slice(0, 3).map((item) => ({
+      id: item.id,
+      type: item.type ?? null,
+      name: item.display_name ?? item.full_name ?? 'Profilo',
+    }));
+    const sampleExcluded = [
+      ...(profile?.id ? [{ id: profile.id, reason: 'self' }] : []),
+      ...(existing ?? [])
+        .map((row) => (row as any)?.target_profile_id)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((id) => ({ id, reason: 'already_followed' })),
+    ].slice(0, 3);
+
+    return successResponse(
+      debugMode
+        ? {
+            suggestions,
+            debug: {
+              endpointVersion: ENDPOINT_VERSION,
+              adminModeEnabled: false,
+              serviceRoleConfigured: false,
+              adminQueryError: null,
+              meProfileId: profile.id,
+              meUserId: user.id,
+              totalProfilesInDb: profilesVisibleTotal,
+              totalEligibleAfterExclude,
+              returnedCount: suggestions.length,
+              profilesVisibleTotal,
+              followRowsTotal,
+              followRowsActive,
+              excludedIdsCount,
+              candidatesAfterSelfExclude,
+              candidatesAfterAlreadyFollowedExclude,
+              zoneCandidates,
+              sportCandidates,
+              fallbackRecentCandidates: recentFallbackCandidates,
+              returned: suggestions.length,
+              sampleReturned,
+              sampleExcluded,
+              usedColumns: {
+                follows: {
+                  follower: 'follower_profile_id',
+                  target: 'target_profile_id',
+                },
+                profiles: 'id',
+              },
+            },
+          }
+        : { suggestions },
+    );
   } catch (error) {
     return unknownError({ endpoint: 'suggestions/who-to-follow', error });
   }

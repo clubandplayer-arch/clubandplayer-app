@@ -42,7 +42,11 @@ export default function WhoToFollow() {
           cache: 'no-store',
         });
         const data = await res.json().catch(() => ({}));
-        const suggestions = Array.isArray(data?.data) ? (data.data as Suggestion[]) : [];
+        const suggestions = Array.isArray(data?.suggestions)
+          ? (data.suggestions as Suggestion[])
+          : Array.isArray(data?.data)
+          ? (data.data as Suggestion[])
+          : [];
         setRole(contextRole || 'guest');
         setItems(suggestions);
         setError(res.ok ? null : 'Impossibile caricare i suggerimenti.');
