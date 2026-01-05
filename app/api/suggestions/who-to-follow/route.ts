@@ -1,7 +1,5 @@
 import type { NextRequest } from 'next/server';
-import { jsonError } from '@/lib/api/auth';
 import { successResponse, unknownError } from '@/lib/api/standardResponses';
-import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
@@ -51,20 +49,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const supabase = await getSupabaseServerClient();
-    const admin = getSupabaseAdminClientOrNull();
-    const serviceRoleConfigured = Boolean(
-      (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL) &&
-        process.env.SUPABASE_SERVICE_ROLE_KEY,
-    );
-    const adminModeEnabled = Boolean(admin);
-    if (!adminModeEnabled) {
-      return jsonError('Service role non configurata: impossibile leggere profili', 500, {
-        endpointVersion: ENDPOINT_VERSION,
-        adminModeEnabled,
-        serviceRoleConfigured,
-      });
-    }
-    const profilesClient = admin ?? supabase;
+    const profilesClient = supabase;
     const { data: auth } = await supabase.auth.getUser();
     const user = auth?.user;
 
@@ -149,8 +134,7 @@ export async function GET(req: NextRequest) {
         .map((row) => {
           const athlete = athleteMap.get(row.id);
           const fullName = cleanName(athlete?.full_name ?? row.full_name);
-          const displayName = cleanName(athlete?.display_name ?? row.display_name);
-          if (!fullName && !displayName) return null;
+          const displayName = cleanName(athlete?.display_name ?? row.display_name) ?? fullName ?? 'Profilo';
           return {
             id: row.id,
             type: row.account_type ?? null,
@@ -172,18 +156,11 @@ export async function GET(req: NextRequest) {
     let sportCandidates = 0;
     let recentFallbackCandidates = 0;
 
-    let adminQueryError: string | null = null;
     const { count: totalProfilesCount, error: totalProfilesError } = await profilesClient
       .from('profiles')
       .select('id', { count: 'exact', head: true });
     if (totalProfilesError) {
-      adminQueryError = totalProfilesError.message;
-      return jsonError('Errore query admin profiles', 500, {
-        endpointVersion: ENDPOINT_VERSION,
-        adminModeEnabled,
-        serviceRoleConfigured,
-        adminQueryError,
-      });
+      throw totalProfilesError;
     }
 
     const profilesVisibleTotal = totalProfilesCount ?? 0;
@@ -200,13 +177,7 @@ export async function GET(req: NextRequest) {
       .or('status.eq.active,status.eq.pending,status.is.null')
       .not('id', 'in', `(${Array.from(alreadyFollowing).map((id) => `'${id}'`).join(',')})`);
     if (totalEligibleError) {
-      adminQueryError = totalEligibleError.message;
-      return jsonError('Errore query admin eligible profiles', 500, {
-        endpointVersion: ENDPOINT_VERSION,
-        adminModeEnabled,
-        serviceRoleConfigured,
-        adminQueryError,
-      });
+      throw totalEligibleError;
     }
     const totalEligibleAfterExclude = totalEligibleAfterExcludeCount ?? 0;
 
@@ -280,9 +251,9 @@ export async function GET(req: NextRequest) {
             suggestions,
             debug: {
               endpointVersion: ENDPOINT_VERSION,
-              adminModeEnabled,
-              serviceRoleConfigured,
-              adminQueryError,
+              adminModeEnabled: false,
+              serviceRoleConfigured: false,
+              adminQueryError: null,
               meProfileId: profile.id,
               meUserId: user.id,
               totalProfilesInDb: profilesVisibleTotal,
