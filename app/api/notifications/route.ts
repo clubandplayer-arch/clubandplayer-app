@@ -1,5 +1,5 @@
-import { withAuth } from '@/lib/api/auth';
-import { dbError, successResponse, unknownError } from '@/lib/api/standardResponses';
+import { jsonError, withAuth } from '@/lib/api/auth';
+import { successResponse } from '@/lib/api/standardResponses';
 import type { NotificationWithActor } from '@/types/notifications';
 
 export const runtime = 'nodejs';
@@ -21,7 +21,7 @@ export const GET = withAuth(async (req, { supabase, user }) => {
     const paginated = all ? base.range((page - 1) * limit, page * limit - 1) : base.limit(limit);
 
     const { data, error } = unreadOnly ? await paginated.is('read_at', null) : await paginated;
-    if (error) return dbError(error.message);
+    if (error) return jsonError(error.message, 500);
 
     const actorIds = Array.from(new Set((data ?? []).map((n) => n.actor_profile_id).filter(Boolean))) as string[];
     const { data: actors } = actorIds.length
@@ -40,7 +40,8 @@ export const GET = withAuth(async (req, { supabase, user }) => {
 
     return successResponse({ data: items });
   } catch (e: any) {
-    return unknownError({ endpoint: 'notifications/list', error: e, message: e?.message || 'Errore inatteso' });
+    console.error('[notifications/list] errore', e);
+    return jsonError(e?.message || 'Errore inatteso', 500);
   }
 });
 
@@ -61,10 +62,11 @@ export const PATCH = withAuth(async (req, { supabase, user }) => {
       ? await updateBuilder.in('id', ids)
       : { error: null, count: 0 } as const;
 
-    if (error) return dbError(error.message);
+    if (error) return jsonError(error.message, 500);
 
     return successResponse({ updated: count || 0 });
   } catch (e: any) {
-    return unknownError({ endpoint: 'notifications/update', error: e, message: e?.message || 'Errore inatteso' });
+    console.error('[notifications/update] errore', e);
+    return jsonError(e?.message || 'Errore inatteso', 500);
   }
 });

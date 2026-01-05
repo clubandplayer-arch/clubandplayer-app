@@ -137,14 +137,20 @@ export async function GET(req: NextRequest) {
 
     const results: Suggestion[] = [];
     const seen = new Set<string>();
+    let zoneCount = 0;
+    let sportCount = 0;
+    let fallbackCount = 0;
 
     const addSuggestions = (items: Suggestion[]) => {
+      let added = 0;
       for (const item of items) {
         if (seen.has(item.id)) continue;
         seen.add(item.id);
         results.push(item);
+        added += 1;
         if (results.length >= limit) break;
       }
+      return added;
     };
 
     const locationFilters = [
@@ -161,7 +167,8 @@ export async function GET(req: NextRequest) {
         .order('updated_at', { ascending: false })
         .limit(limit * 3);
 
-      addSuggestions(await mapSuggestions((rows ?? []) as SuggestionRow[]));
+      const added = addSuggestions(await mapSuggestions((rows ?? []) as SuggestionRow[]));
+      zoneCount += added;
     }
 
     if (results.length < limit && profile.sport) {
@@ -170,7 +177,8 @@ export async function GET(req: NextRequest) {
         .order('updated_at', { ascending: false })
         .limit(limit * 3);
 
-      addSuggestions(await mapSuggestions((rows ?? []) as SuggestionRow[]));
+      const added = addSuggestions(await mapSuggestions((rows ?? []) as SuggestionRow[]));
+      sportCount += added;
     }
 
     if (results.length < limit) {
@@ -178,10 +186,18 @@ export async function GET(req: NextRequest) {
         .order('updated_at', { ascending: false })
         .limit(limit * 3);
 
-      addSuggestions(await mapSuggestions((rows ?? []) as SuggestionRow[]));
+      const added = addSuggestions(await mapSuggestions((rows ?? []) as SuggestionRow[]));
+      fallbackCount += added;
     }
 
-    return successResponse({ data: results.slice(0, limit) });
+    return successResponse({
+      data: results.slice(0, limit),
+      debug: {
+        zoneCount,
+        sportCount,
+        fallbackCount,
+      },
+    });
   } catch (error) {
     return unknownError({ endpoint: 'suggestions/who-to-follow', error });
   }
