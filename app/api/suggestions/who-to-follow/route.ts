@@ -82,11 +82,16 @@ export async function GET(req: NextRequest) {
     alreadyFollowing.add(profile.id);
     const followRowsAny = (existing ?? []).length;
     const followRowsActive = followRowsAny;
-    const excludedByFollow = followRowsAny;
-    const sampleExcludedIds = (existing ?? [])
-      .map((row) => (row as any)?.target_profile_id)
-      .filter(Boolean)
-      .slice(0, 5) as string[];
+    const excludedByFollowAny = followRowsAny;
+    const excludedByFollowActive = followRowsActive;
+    const sampleExcluded = [
+      ...(profile?.id ? [{ id: profile.id, reason: 'self' }] : []),
+      ...(existing ?? [])
+        .map((row) => (row as any)?.target_profile_id)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((id) => ({ id, reason: 'already_followed' })),
+    ].slice(0, 3);
 
     const baseSelect =
       'id, full_name, display_name, avatar_url, sport, role, city, country, account_type, status, updated_at';
@@ -106,17 +111,10 @@ export async function GET(req: NextRequest) {
     };
 
     const buildCountQuery = () => {
-      let query = supabase
+      return supabase
         .from('profiles')
         .select('id', { count: 'exact', head: true })
         .or('status.eq.active,status.eq.pending,status.is.null');
-      if (alreadyFollowing.size) {
-        const values = Array.from(alreadyFollowing)
-          .map((id) => `'${id}'`)
-          .join(',');
-        query = query.not('id', 'in', `(${values})`);
-      }
-      return query;
     };
 
     async function mapSuggestions(rows: SuggestionRow[]) {
@@ -167,7 +165,13 @@ export async function GET(req: NextRequest) {
     let recentFallbackCandidates = 0;
 
     const candidatesTotal = (await buildCountQuery()).count ?? 0;
-    const candidatesAfterType = candidatesTotal;
+    const candidatesAfterSelfExclude = profile.id
+      ? ((await buildCountQuery().neq('id', profile.id)).count ?? 0)
+      : candidatesTotal;
+    const candidatesAfterAlreadyFollowedExclude = alreadyFollowing.size
+      ? ((await buildCountQuery().not('id', 'in', `(${Array.from(alreadyFollowing).map((id) => `'${id}'`).join(',')})`))
+          .count ?? 0)
+      : candidatesAfterSelfExclude;
 
     const addSuggestions = (items: Suggestion[]) => {
       let added = 0;
@@ -219,6 +223,11 @@ export async function GET(req: NextRequest) {
     }
 
     const suggestions = results.slice(0, limit);
+    const sampleReturned = suggestions.slice(0, 3).map((item) => ({
+      id: item.id,
+      type: item.type ?? null,
+      name: item.display_name ?? item.full_name ?? 'Profilo',
+    }));
 
     return successResponse(
       debugMode
@@ -229,15 +238,17 @@ export async function GET(req: NextRequest) {
               meUserId: user.id,
               followRowsAny,
               followRowsActive,
-              excludedByFollow,
+              excludedByFollowActive,
+              excludedByFollowAny,
               candidatesTotal,
-              candidatesAfterType,
-              candidatesAfterZone: zoneCandidates,
-              candidatesAfterSport: sportCandidates,
-              fallbackRecent: recentFallbackCandidates,
+              candidatesAfterSelfExclude,
+              candidatesAfterAlreadyFollowedExclude,
+              zoneCandidates,
+              sportCandidates,
+              fallbackRecentCandidates: recentFallbackCandidates,
               returned: suggestions.length,
-              sampleExcludedIds,
-              sampleReturnedIds: suggestions.map((item) => item.id).slice(0, 5),
+              sampleReturned,
+              sampleExcluded,
             },
           }
         : { suggestions },
