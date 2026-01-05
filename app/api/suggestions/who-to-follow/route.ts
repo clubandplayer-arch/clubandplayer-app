@@ -79,12 +79,25 @@ export async function GET(req: NextRequest) {
         .map((id) => id.toString()),
     );
     alreadyFollowing.add(profile.id);
+    const alreadyFollowedAnyCount = alreadyFollowing.size ? alreadyFollowing.size - 1 : 0;
+    let alreadyFollowedActiveCount = 0;
+    if (alreadyFollowedAnyCount > 0) {
+      const { count } = await supabase
+        .from('profiles')
+        .select('id', { count: 'exact', head: true })
+        .in('id', Array.from(alreadyFollowing).filter((id) => id !== profile.id))
+        .eq('status', 'active');
+      alreadyFollowedActiveCount = count ?? 0;
+    }
 
     const baseSelect =
       'id, full_name, display_name, avatar_url, sport, role, city, country, account_type, status, updated_at';
 
     const buildBaseQuery = () => {
-      let query = supabase.from('profiles').select(baseSelect).eq('status', 'active');
+      let query = supabase
+        .from('profiles')
+        .select(baseSelect)
+        .or('status.eq.active,status.eq.pending,status.is.null');
       if (alreadyFollowing.size) {
         const values = Array.from(alreadyFollowing)
           .map((id) => `'${id}'`)
@@ -140,6 +153,9 @@ export async function GET(req: NextRequest) {
     let zoneCount = 0;
     let sportCount = 0;
     let fallbackCount = 0;
+    let zoneCandidates = 0;
+    let sportCandidates = 0;
+    let recentFallbackCandidates = 0;
 
     const addSuggestions = (items: Suggestion[]) => {
       let added = 0;
@@ -167,6 +183,7 @@ export async function GET(req: NextRequest) {
         .order('updated_at', { ascending: false })
         .limit(limit * 3);
 
+      zoneCandidates += (rows ?? []).length;
       const added = addSuggestions(await mapSuggestions((rows ?? []) as SuggestionRow[]));
       zoneCount += added;
     }
@@ -177,6 +194,7 @@ export async function GET(req: NextRequest) {
         .order('updated_at', { ascending: false })
         .limit(limit * 3);
 
+      sportCandidates += (rows ?? []).length;
       const added = addSuggestions(await mapSuggestions((rows ?? []) as SuggestionRow[]));
       sportCount += added;
     }
@@ -186,6 +204,7 @@ export async function GET(req: NextRequest) {
         .order('updated_at', { ascending: false })
         .limit(limit * 3);
 
+      recentFallbackCandidates += (rows ?? []).length;
       const added = addSuggestions(await mapSuggestions((rows ?? []) as SuggestionRow[]));
       fallbackCount += added;
     }
@@ -193,6 +212,14 @@ export async function GET(req: NextRequest) {
     return successResponse({
       data: results.slice(0, limit),
       debug: {
+        meProfileId: profile.id,
+        meUserId: user.id,
+        alreadyFollowedActiveCount,
+        alreadyFollowedAnyCount,
+        zoneCandidates,
+        sportCandidates,
+        recentFallbackCandidates,
+        returned: results.slice(0, limit).length,
         zoneCount,
         sportCount,
         fallbackCount,
