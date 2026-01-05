@@ -8,16 +8,19 @@ export const GET = withAuth(async (req, { supabase, user }) => {
   try {
     const url = new URL(req.url);
     const limit = Math.max(1, Math.min(Number(url.searchParams.get('limit')) || 20, 50));
+    const all = url.searchParams.get('all') === '1';
+    const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
     const unreadOnly = url.searchParams.get('unread') === 'true';
 
     const base = supabase
       .from('notifications')
       .select('id, kind, payload, created_at, updated_at, read_at, read, actor_profile_id, recipient_profile_id')
       .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(limit);
+      .order('created_at', { ascending: false });
 
-    const { data, error } = unreadOnly ? await base.is('read_at', null) : await base;
+    const paginated = all ? base.range((page - 1) * limit, page * limit - 1) : base.limit(limit);
+
+    const { data, error } = unreadOnly ? await paginated.is('read_at', null) : await paginated;
     if (error) return dbError(error.message);
 
     const actorIds = Array.from(new Set((data ?? []).map((n) => n.actor_profile_id).filter(Boolean))) as string[];
