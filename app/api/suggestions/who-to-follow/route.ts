@@ -1,5 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { successResponse, unknownError } from '@/lib/api/standardResponses';
+import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
@@ -48,6 +49,8 @@ export async function GET(req: NextRequest) {
 
   try {
     const supabase = await getSupabaseServerClient();
+    const admin = getSupabaseAdminClientOrNull();
+    const profilesClient = admin ?? supabase;
     const { data: auth } = await supabase.auth.getUser();
     const user = auth?.user;
 
@@ -88,7 +91,7 @@ export async function GET(req: NextRequest) {
       'id, full_name, display_name, avatar_url, sport, role, city, country, account_type, status, updated_at';
 
     const buildBaseQuery = () => {
-      let query = supabase
+      let query = profilesClient
         .from('profiles')
         .select(baseSelect)
         .or('status.eq.active,status.eq.pending,status.is.null');
@@ -102,7 +105,7 @@ export async function GET(req: NextRequest) {
     };
 
     const buildCountQuery = () => {
-      return supabase
+      return profilesClient
         .from('profiles')
         .select('id', { count: 'exact', head: true })
         .or('status.eq.active,status.eq.pending,status.is.null');
@@ -113,10 +116,10 @@ export async function GET(req: NextRequest) {
       const athleteMap = new Map<string, { full_name: string | null; display_name: string | null }>();
 
       if (athleteIds.length) {
-        const { data: athletes } = await supabase
-          .from('athletes_view')
-          .select('id, full_name, display_name')
-          .in('id', athleteIds);
+      const { data: athletes } = await profilesClient
+        .from('athletes_view')
+        .select('id, full_name, display_name')
+        .in('id', athleteIds);
 
         for (const athlete of athletes ?? []) {
           if (athlete.id) {
