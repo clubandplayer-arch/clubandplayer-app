@@ -1,5 +1,6 @@
 import { jsonError, withAuth } from '@/lib/api/auth';
 import { successResponse } from '@/lib/api/standardResponses';
+import { getActiveProfile } from '@/lib/api/profile';
 import type { NotificationWithActor } from '@/types/notifications';
 
 export const runtime = 'nodejs';
@@ -11,6 +12,7 @@ export const GET = withAuth(async (req, { supabase, user }) => {
     const all = url.searchParams.get('all') === '1';
     const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
     const unreadOnly = url.searchParams.get('unread') === 'true';
+    const debugMode = url.searchParams.get('debug') === '1';
 
     const base = supabase
       .from('notifications')
@@ -38,7 +40,20 @@ export const GET = withAuth(async (req, { supabase, user }) => {
       actor: row.actor_profile_id ? actorMap[row.actor_profile_id] ?? null : null,
     }));
 
-    return successResponse({ data: items });
+    if (!debugMode) {
+      return successResponse({ data: items });
+    }
+
+    const profile = await getActiveProfile(supabase, user.id);
+    return successResponse({
+      data: items,
+      debug: {
+        meUserId: user.id,
+        meProfileId: profile?.id ?? null,
+        filter: { table: 'notifications', column: 'user_id', value: user.id },
+        returned: items.length,
+      },
+    });
   } catch (e: any) {
     console.error('[notifications/list] errore', e);
     return jsonError(e?.message || 'Errore inatteso', 500);
