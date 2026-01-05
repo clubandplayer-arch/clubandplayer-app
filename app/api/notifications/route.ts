@@ -4,6 +4,7 @@ import { getActiveProfile } from '@/lib/api/profile';
 import type { NotificationWithActor } from '@/types/notifications';
 
 export const runtime = 'nodejs';
+const ENDPOINT_VERSION = 'notifications@2026-01-05a';
 
 export const GET = withAuth(async (req, { supabase, user }) => {
   try {
@@ -45,13 +46,25 @@ export const GET = withAuth(async (req, { supabase, user }) => {
     }
 
     const profile = await getActiveProfile(supabase, user.id);
+    const { count, error: countError } = await supabase
+      .from('notifications')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id);
+    if (countError) {
+      return jsonError('Errore conteggio notifiche', 500, {
+        endpointVersion: ENDPOINT_VERSION,
+        message: countError.message,
+      });
+    }
     return successResponse({
       data: items,
       debug: {
+        endpointVersion: ENDPOINT_VERSION,
         meUserId: user.id,
         meProfileId: profile?.id ?? null,
         filter: { table: 'notifications', column: 'user_id', value: user.id },
         returned: items.length,
+        notificationsTotalInDbForUser: count ?? 0,
       },
     });
   } catch (e: any) {

@@ -1,9 +1,11 @@
 import type { NextRequest } from 'next/server';
+import { jsonError } from '@/lib/api/auth';
 import { successResponse, unknownError } from '@/lib/api/standardResponses';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
+const ENDPOINT_VERSION = 'who-to-follow@2026-01-05a';
 
 type SuggestionRow = {
   id: string;
@@ -50,6 +52,18 @@ export async function GET(req: NextRequest) {
   try {
     const supabase = await getSupabaseServerClient();
     const admin = getSupabaseAdminClientOrNull();
+    const serviceRoleConfigured = Boolean(
+      (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL) &&
+        process.env.SUPABASE_SERVICE_ROLE_KEY,
+    );
+    const adminModeEnabled = Boolean(admin);
+    if (!adminModeEnabled) {
+      return jsonError('Service role non configurata: impossibile leggere profili', 500, {
+        endpointVersion: ENDPOINT_VERSION,
+        adminModeEnabled,
+        serviceRoleConfigured,
+      });
+    }
     const profilesClient = admin ?? supabase;
     const { data: auth } = await supabase.auth.getUser();
     const user = auth?.user;
@@ -158,7 +172,21 @@ export async function GET(req: NextRequest) {
     let sportCandidates = 0;
     let recentFallbackCandidates = 0;
 
-    const profilesVisibleTotal = (await buildCountQuery()).count ?? 0;
+    let adminQueryError: string | null = null;
+    const { count: totalProfilesCount, error: totalProfilesError } = await profilesClient
+      .from('profiles')
+      .select('id', { count: 'exact', head: true });
+    if (totalProfilesError) {
+      adminQueryError = totalProfilesError.message;
+      return jsonError('Errore query admin profiles', 500, {
+        endpointVersion: ENDPOINT_VERSION,
+        adminModeEnabled,
+        serviceRoleConfigured,
+        adminQueryError,
+      });
+    }
+
+    const profilesVisibleTotal = totalProfilesCount ?? 0;
     const candidatesAfterSelfExclude = profile.id
       ? ((await buildCountQuery().neq('id', profile.id)).count ?? 0)
       : profilesVisibleTotal;
@@ -166,6 +194,21 @@ export async function GET(req: NextRequest) {
       ? ((await buildCountQuery().not('id', 'in', `(${Array.from(alreadyFollowing).map((id) => `'${id}'`).join(',')})`))
           .count ?? 0)
       : candidatesAfterSelfExclude;
+    const { count: totalEligibleAfterExcludeCount, error: totalEligibleError } = await profilesClient
+      .from('profiles')
+      .select('id', { count: 'exact', head: true })
+      .or('status.eq.active,status.eq.pending,status.is.null')
+      .not('id', 'in', `(${Array.from(alreadyFollowing).map((id) => `'${id}'`).join(',')})`);
+    if (totalEligibleError) {
+      adminQueryError = totalEligibleError.message;
+      return jsonError('Errore query admin eligible profiles', 500, {
+        endpointVersion: ENDPOINT_VERSION,
+        adminModeEnabled,
+        serviceRoleConfigured,
+        adminQueryError,
+      });
+    }
+    const totalEligibleAfterExclude = totalEligibleAfterExcludeCount ?? 0;
 
     const addSuggestions = (items: Suggestion[]) => {
       let added = 0;
@@ -236,8 +279,15 @@ export async function GET(req: NextRequest) {
         ? {
             suggestions,
             debug: {
+              endpointVersion: ENDPOINT_VERSION,
+              adminModeEnabled,
+              serviceRoleConfigured,
+              adminQueryError,
               meProfileId: profile.id,
               meUserId: user.id,
+              totalProfilesInDb: profilesVisibleTotal,
+              totalEligibleAfterExclude,
+              returnedCount: suggestions.length,
               profilesVisibleTotal,
               followRowsTotal,
               followRowsActive,
