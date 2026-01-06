@@ -47,7 +47,9 @@ export default function WhoToFollow() {
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok || data?.ok === false) {
-          throw new Error(data?.message || 'Impossibile caricare i suggerimenti.');
+          const message =
+            data?.message || (res.status ? `Errore server (HTTP ${res.status}).` : 'Impossibile caricare i suggerimenti.');
+          throw new Error(message);
         }
         const rawItems = Array.isArray(data?.items)
           ? data.items

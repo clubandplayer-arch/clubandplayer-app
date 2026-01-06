@@ -1,10 +1,11 @@
 // app/api/follows/suggestions/route.ts
-import { type NextRequest } from 'next/server';
-import { successResponse, unknownError, validationError } from '@/lib/api/feedFollowStandardWrapper';
+import { NextResponse, type NextRequest } from 'next/server';
+import { successResponse, validationError } from '@/lib/api/feedFollowStandardWrapper';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { FollowSuggestionsQuerySchema, type FollowSuggestionsQueryInput } from '@/lib/validation/follow';
 
 export const runtime = 'nodejs';
+const ENDPOINT_VERSION = 'follows-suggestions@2026-01-10a';
 
 type Role = 'athlete' | 'club' | 'guest';
 
@@ -27,15 +28,55 @@ export async function GET(req: NextRequest) {
     return validationError('Parametri non validi', parsed.error.flatten());
   }
   const { limit }: FollowSuggestionsQueryInput = parsed.data;
+  const debugMode = url.searchParams.get('debug') === '1';
+  let step = 'init';
+
+  function errorResponse(params: {
+    code: string;
+    message: string;
+    status?: number;
+    error?: unknown;
+  }) {
+    const { code, message, status = 500, error } = params;
+    const details = debugMode
+      ? {
+          endpointVersion: ENDPOINT_VERSION,
+          step,
+          errorName: error instanceof Error ? error.name : null,
+          errorMessage: error instanceof Error ? error.message : null,
+          errorCode: (error as any)?.code ?? null,
+        }
+      : undefined;
+    return NextResponse.json(
+      { ok: false, code, message, ...(details ? { details } : {}) },
+      { status },
+    );
+  }
 
   try {
+    step = 'auth';
     const supabase = await getSupabaseServerClient();
-    const { data: userRes } = await supabase.auth.getUser();
+    const { data: userRes, error: authError } = await supabase.auth.getUser();
 
-    if (!userRes?.user) {
-      return successResponse({ items: [], role: 'guest' });
+    if (authError) {
+      console.error('[follows/suggestions] auth error', authError);
+      return errorResponse({
+        code: 'AUTH_REQUIRED',
+        message: 'Devi accedere per vedere i suggerimenti.',
+        status: 401,
+        error: authError,
+      });
     }
 
+    if (!userRes?.user) {
+      return errorResponse({
+        code: 'AUTH_REQUIRED',
+        message: 'Devi accedere per vedere i suggerimenti.',
+        status: 401,
+      });
+    }
+
+    step = 'meProfile';
     const { data: profile } = await supabase
       .from('profiles')
       .select('id, account_type, status, country, city, interest_country, interest_city')
@@ -56,11 +97,13 @@ export async function GET(req: NextRequest) {
     const targetProfileType: Role = role === 'club' ? 'athlete' : 'club';
     const viewerCountry = (profile?.interest_country || profile?.country || '').trim();
 
-    const { data: existing } = await supabase
+    step = 'follows';
+    const { data: existing, error: followsError } = await supabase
       .from('follows')
       .select('target_profile_id')
       .eq('follower_profile_id', profileId)
       .limit(200);
+    if (followsError) throw followsError;
 
     const alreadyFollowing = new Set(
       (existing || [])
@@ -70,7 +113,7 @@ export async function GET(req: NextRequest) {
     );
 
     const baseSelect =
-      'id, account_type, full_name, display_name, role, city, country, sport, avatar_url, followers_count, status';
+      'id, account_type, full_name, display_name, role, city, country, sport, avatar_url, status, updated_at';
 
     async function runQuery(filters: Array<(q: any) => any>) {
       let query = supabase
@@ -91,7 +134,7 @@ export async function GET(req: NextRequest) {
         query = query.not('id', 'in', `(${values})`);
       }
 
-      query = query.order('followers_count', { ascending: false }).limit(limit);
+      query = query.order('updated_at', { ascending: false }).limit(limit);
 
       const { data, error } = await query;
       if (error) throw error;
@@ -120,6 +163,7 @@ export async function GET(req: NextRequest) {
       return data || [];
     }
 
+    step = 'candidates';
     let rows: any[] = await runQuery(
       viewerCountry ? [(q) => q.eq('country', viewerCountry)] : [],
     );
@@ -135,7 +179,7 @@ export async function GET(req: NextRequest) {
       role: p.role || null,
       sport: p.sport || null,
       avatar_url: p.avatar_url || null,
-      followers: p.followers_count ?? null,
+      followers: null,
       account_type: p.account_type || targetProfileType,
     } as any));
 
@@ -145,7 +189,26 @@ export async function GET(req: NextRequest) {
       role,
     });
   } catch (err) {
-    console.error('[follows/suggestions] error', err);
-    return unknownError({ endpoint: '/api/follows/suggestions', error: err, context: { stage: 'handler' } });
+    const error = err as any;
+    console.error('[follows/suggestions] error', { step, error });
+    const message = typeof error?.message === 'string' ? error.message : 'Errore server';
+    const code = (() => {
+      if (message.toLowerCase().includes('permission') || message.toLowerCase().includes('rls')) {
+        return 'RLS_DENIED';
+      }
+      if (message.toLowerCase().includes('column') && message.toLowerCase().includes('does not exist')) {
+        return 'SCHEMA_MISMATCH';
+      }
+      if (typeof error?.code === 'string' && error.code === '42501') {
+        return 'RLS_DENIED';
+      }
+      return 'DB_ERROR';
+    })();
+    return errorResponse({
+      code,
+      message: code === 'SCHEMA_MISMATCH' ? 'Schema non allineato per i suggerimenti.' : 'Errore server.',
+      status: 500,
+      error,
+    });
   }
 }
