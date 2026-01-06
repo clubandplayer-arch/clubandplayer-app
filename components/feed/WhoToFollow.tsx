@@ -35,30 +35,57 @@ export default function WhoToFollow() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
+      setLoading(true);
+      setError(null);
       try {
-        const res = await fetch('/api/suggestions/who-to-follow?limit=5', {
+        const res = await fetch('/api/follows/suggestions?limit=5', {
           credentials: 'include',
           cache: 'no-store',
           next: { revalidate: 0 },
         });
         const data = await res.json().catch(() => ({}));
-        const suggestions = Array.isArray(data?.suggestions)
-          ? (data.suggestions as Suggestion[])
+        if (!res.ok || data?.ok === false) {
+          throw new Error(data?.message || 'Impossibile caricare i suggerimenti.');
+        }
+        const rawItems = Array.isArray(data?.items)
+          ? data.items
           : Array.isArray(data?.data)
-          ? (data.data as Suggestion[])
+          ? data.data
+          : Array.isArray(data?.suggestions)
+          ? data.suggestions
           : [];
-        setRole(contextRole || 'guest');
+        const suggestions = rawItems.map((item: any) => ({
+          id: item.id,
+          display_name: item.display_name ?? item.name ?? null,
+          full_name: item.full_name ?? item.name ?? null,
+          type: item.type ?? item.account_type ?? null,
+          city: item.city ?? null,
+          country: item.country ?? null,
+          sport: item.sport ?? null,
+          role: item.role ?? null,
+          avatar_url: item.avatar_url ?? null,
+        })) as Suggestion[];
+        if (cancelled) return;
+        setRole((data?.role as ProfileRole) || contextRole || 'guest');
         setItems(suggestions);
-        setError(res.ok ? null : 'Impossibile caricare i suggerimenti.');
-      } catch {
+        setError(null);
+      } catch (err) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.error('[who-to-follow] load error', err);
+        }
+        if (cancelled) return;
         setItems([]);
         setRole(contextRole || 'guest');
-        setError('Impossibile caricare i suggerimenti.');
+        setError(err instanceof Error ? err.message : 'Impossibile caricare i suggerimenti.');
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [contextRole]);
 
   if (loading) {

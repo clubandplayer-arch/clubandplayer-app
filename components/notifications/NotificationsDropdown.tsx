@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { MaterialIcon } from '@/components/icons/MaterialIcon';
 import NotificationItem from './NotificationItem';
-import type { NotificationWithActor } from '@/types/notifications';
 import { useToast } from '@/components/common/ToastProvider';
+import { useNotificationsList } from '@/hooks/useNotificationsList';
 
 function useOutsideClick(ref: React.RefObject<HTMLDivElement | null>, onClose: () => void) {
   useEffect(() => {
@@ -27,54 +27,49 @@ type Props = {
 
 export default function NotificationsDropdown({ unreadCount, onUnreadChange, active }: Props) {
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [items, setItems] = useState<NotificationWithActor[]>([]);
-  const [error, setError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const { items, loading, error } = useNotificationsList({ limit: 10, enabled: open });
 
   useOutsideClick(containerRef, () => setOpen(false));
 
   useEffect(() => {
-    if (!open || items.length > 0 || loading) return;
+    if (!open || loading || error || unreadCount <= 0) return;
     let cancelled = false;
     (async () => {
-      setLoading(true);
-      setError(null);
       try {
-        const res = await fetch('/api/notifications?limit=10', {
-          cache: 'no-store',
-          next: { revalidate: 0 },
-        });
-        const json = await res.json().catch(() => ({}));
-        if (cancelled) return;
-        if (!res.ok) throw new Error(json?.error || 'Errore nel caricamento notifiche');
-        setItems(json?.data ?? []);
-        if (unreadCount > 0) {
-          const markRes = await fetch('/api/notifications/mark-all-read', { method: 'POST' });
-          if (!markRes.ok) {
-            const errJson = await markRes.json().catch(() => ({}));
-            throw new Error(errJson?.error || 'Impossibile segnare le notifiche');
-          }
-          onUnreadChange(0);
-          window.dispatchEvent(new Event('app:notifications-updated'));
+        const markRes = await fetch('/api/notifications/mark-all-read', { method: 'POST' });
+        if (!markRes.ok) {
+          const errJson = await markRes.json().catch(() => ({}));
+          throw new Error(errJson?.error || 'Impossibile segnare le notifiche');
         }
-      } catch (e: any) {
-        console.error('[notifications] dropdown load error', e);
-        setError('Errore nel caricamento notifiche');
+        if (cancelled) return;
+        onUnreadChange(0);
+        window.dispatchEvent(new Event('app:notifications-updated'));
+      } catch (err) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.error('[notifications] dropdown mark-all-read error', err);
+        }
         toast({
           title: 'Errore notifiche',
-          description: 'Errore nel caricamento notifiche',
+          description: 'Impossibile segnare le notifiche',
           variant: 'destructive',
         });
-      } finally {
-        if (!cancelled) setLoading(false);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [open, items.length, loading, unreadCount, onUnreadChange, toast]);
+  }, [open, loading, error, unreadCount, onUnreadChange, toast]);
+
+  useEffect(() => {
+    if (!error) return;
+    toast({
+      title: 'Errore notifiche',
+      description: 'Errore nel caricamento notifiche',
+      variant: 'destructive',
+    });
+  }, [error, toast]);
 
   const badge = unreadCount > 0 && (
     <span className="absolute -right-1 -top-1 min-w-[18px] rounded-full bg-red-500 px-1.5 text-center text-[11px] font-semibold text-white">
