@@ -8,11 +8,14 @@ export const runtime = 'nodejs';
 const ENDPOINT_VERSION = 'follows-suggestions@2026-01-10a';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-type Role = 'athlete' | 'club' | 'guest';
-
 type Suggestion = {
   id: string;
   name: string;
+  kind: 'club' | 'player';
+  location?: string | null;
+  category?: string | null;
+  full_name?: string | null;
+  display_name?: string | null;
   city?: string | null;
   country?: string | null;
   sport?: string | null;
@@ -90,7 +93,7 @@ export async function GET(req: NextRequest) {
     step = 'meProfile';
     const { data: profile } = await supabase
       .from('profiles')
-      .select('id, account_type, status, country, city, interest_country, interest_city')
+      .select('id, account_type, status, country, city, province, region, interest_country, interest_city, interest_province, interest_region, sport')
       .eq('user_id', userRes.user.id)
       .maybeSingle();
 
@@ -106,7 +109,6 @@ export async function GET(req: NextRequest) {
     const profileId = profile.id;
     debugInfo.meProfileId = profileId;
 
-    const targetProfileType: Role = role === 'club' ? 'athlete' : 'club';
     const viewerCountry = (profile?.interest_country || profile?.country || '').trim();
 
     step = 'follows';
@@ -128,15 +130,26 @@ export async function GET(req: NextRequest) {
     debugInfo.invalidIdsSample = invalidIds.slice(0, 5);
 
     const alreadyFollowing = new Set(excludedUuid);
+    alreadyFollowing.add(profileId);
 
     const baseSelect =
-      'id, account_type, full_name, display_name, role, city, country, sport, avatar_url, status, updated_at';
+      'id, account_type, full_name, display_name, role, city, province, region, country, sport, avatar_url, status, updated_at';
 
-    async function runQuery(filters: Array<(q: any) => any>) {
+    const applyExclusions = (query: any) => {
+      if (alreadyFollowing.size) {
+        const values = Array.from(alreadyFollowing).join(',');
+        const inClause = `(${values})`;
+        debugInfo.inClause = inClause;
+        return query.not('id', 'in', inClause);
+      }
+      return query;
+    };
+
+    async function runQuery(accountType: 'club' | 'athlete', filters: Array<(q: any) => any>, max: number) {
       let query = supabase
         .from('profiles')
         .select(baseSelect)
-        .eq('account_type', targetProfileType)
+        .eq('account_type', accountType)
         .eq('status', 'active')
         .neq('id', profile?.id ?? '');
 
@@ -144,61 +157,120 @@ export async function GET(req: NextRequest) {
         query = fn(query);
       });
 
-      if (alreadyFollowing.size) {
-        const values = Array.from(alreadyFollowing).join(',');
-        const inClause = `(${values})`;
-        debugInfo.inClause = inClause;
-        query = query.not('id', 'in', inClause);
-      }
+      query = applyExclusions(query);
 
-      query = query.order('updated_at', { ascending: false }).limit(limit);
+      query = query.order('updated_at', { ascending: false }).limit(max);
 
       const { data, error } = await query;
       if (error) throw error;
       return data || [];
     }
 
-    async function runFallbackQuery() {
-      let query = supabase
-        .from('profiles')
-        .select(baseSelect)
-        .eq('account_type', targetProfileType)
-        .eq('status', 'active')
-        .neq('id', profile?.id ?? '');
+    const buildLocation = (row: any) => [row.city, row.province, row.region, row.country].filter(Boolean).join(', ');
 
-      if (alreadyFollowing.size) {
-        const values = Array.from(alreadyFollowing).join(',');
-        const inClause = `(${values})`;
-        debugInfo.inClause = inClause;
-        query = query.not('id', 'in', inClause);
+    const mapSuggestion = (row: any): Suggestion => ({
+      id: row.id,
+      name: (row.full_name || row.display_name || 'Profilo').toString(),
+      kind: row.account_type === 'club' ? 'club' : 'player',
+      location: buildLocation(row) || null,
+      category: row.sport || null,
+      city: row.city || null,
+      country: row.country || null,
+      role: row.role || null,
+      sport: row.sport || null,
+      avatar_url: row.avatar_url || null,
+      followers: null,
+      account_type: row.account_type || null,
+      full_name: row.full_name ?? null,
+      display_name: row.display_name ?? null,
+    });
+
+    const results: Suggestion[] = [];
+    const seen = new Set<string>();
+
+    const addSuggestions = (rows: any[], maxToAdd?: number) => {
+      let added = 0;
+      for (const row of rows) {
+        if (!row?.id) continue;
+        const id = String(row.id);
+        if (seen.has(id)) continue;
+        seen.add(id);
+        results.push(mapSuggestion(row));
+        added += 1;
+        if (results.length >= limit || (maxToAdd && added >= maxToAdd)) break;
       }
-
-      query = query.order('updated_at', { ascending: false }).limit(limit);
-
-      const { data, error } = await query;
-      if (error) throw error;
-      return data || [];
-    }
+      return added;
+    };
 
     step = 'candidates';
-    let rows: any[] = await runQuery(
-      viewerCountry ? [(q) => q.eq('country', viewerCountry)] : [],
-    );
-    if (rows.length === 0) {
-      rows = await runFallbackQuery();
+    const clubSlotsTarget = Math.min(2, limit);
+    const playerSlotsTarget = Math.max(0, Math.min(2, limit - clubSlotsTarget));
+
+    const clubFilters: Array<Array<(q: any) => any>> = [];
+    if (profile.sport) {
+      clubFilters.push([(q) => q.eq('sport', profile.sport)]);
+    }
+    if (profile.interest_province || profile.province) {
+      const province = (profile.interest_province || profile.province || '').trim();
+      if (province) clubFilters.push([(q) => q.eq('province', province)]);
+    }
+    if (profile.interest_region || profile.region) {
+      const region = (profile.interest_region || profile.region || '').trim();
+      if (region) clubFilters.push([(q) => q.eq('region', region)]);
+    }
+    if (viewerCountry) {
+      clubFilters.push([(q) => q.eq('country', viewerCountry)]);
+    }
+    clubFilters.push([]);
+
+    for (const filters of clubFilters) {
+      if (results.length >= clubSlotsTarget) break;
+      const rows = await runQuery('club', filters, limit * 4);
+      addSuggestions(rows, clubSlotsTarget - results.length);
     }
 
-    const items: Suggestion[] = rows.map((p) => ({
-      id: p.id,
-      name: (p.full_name || p.display_name || 'Profilo').toString(),
-      city: p.city || null,
-      country: p.country || null,
-      role: p.role || null,
-      sport: p.sport || null,
-      avatar_url: p.avatar_url || null,
-      followers: null,
-      account_type: p.account_type || targetProfileType,
-    } as any));
+    const playerFilters: Array<Array<(q: any) => any>> = [];
+    const playerLocations = [
+      profile.interest_city || profile.city,
+      profile.interest_province || profile.province,
+      profile.interest_region || profile.region,
+      viewerCountry,
+    ]
+      .map((value, idx) => ({ value: value?.trim(), field: ['city', 'province', 'region', 'country'][idx] }))
+      .filter((item) => item.value);
+
+    for (const loc of playerLocations) {
+      playerFilters.push([(q) => q.eq(loc.field, loc.value)]);
+    }
+    if (profile.sport) {
+      playerFilters.push([(q) => q.eq('sport', profile.sport)]);
+    }
+    playerFilters.push([]);
+
+    let addedPlayers = 0;
+    for (const filters of playerFilters) {
+      if (addedPlayers >= playerSlotsTarget || results.length >= limit) break;
+      const rows = await runQuery('athlete', filters, limit * 4);
+      addedPlayers += addSuggestions(rows, playerSlotsTarget - addedPlayers);
+    }
+
+    if (results.length < limit) {
+      for (const filters of clubFilters) {
+        if (results.length >= limit) break;
+        const rows = await runQuery('club', filters, limit * 6);
+        addSuggestions(rows);
+      }
+    }
+
+    if (results.length < limit) {
+      for (const filters of playerFilters) {
+        if (results.length >= limit) break;
+        const rows = await runQuery('athlete', filters, limit * 6);
+        addSuggestions(rows);
+      }
+    }
+
+    const items = results.slice(0, limit);
 
     return successResponse({
       items,

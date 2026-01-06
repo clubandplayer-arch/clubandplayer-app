@@ -9,7 +9,9 @@ type Suggestion = {
   id: string;
   display_name?: string | null;
   full_name?: string | null;
-  type?: string | null;
+  kind?: 'club' | 'player' | null;
+  category?: string | null;
+  location?: string | null;
   city?: string | null;
   country?: string | null;
   sport?: string | null;
@@ -18,8 +20,8 @@ type Suggestion = {
 };
 
 function detailLine(suggestion: Suggestion, viewerRole: ProfileRole) {
-  const location = [suggestion.city, suggestion.country].filter(Boolean).join(', ');
-  const sportRole = [suggestion.role, suggestion.sport].filter(Boolean).join(' · ');
+  const location = suggestion.location || [suggestion.city, suggestion.country].filter(Boolean).join(', ');
+  const sportRole = [suggestion.category || suggestion.sport, suggestion.role].filter(Boolean).join(' · ');
 
   if (viewerRole === 'club') {
     return sportRole || location;
@@ -40,7 +42,7 @@ export default function WhoToFollow() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch('/api/follows/suggestions?limit=5', {
+        const res = await fetch('/api/follows/suggestions?limit=4', {
           credentials: 'include',
           cache: 'no-store',
           next: { revalidate: 0 },
@@ -62,7 +64,9 @@ export default function WhoToFollow() {
           id: item.id,
           display_name: item.display_name ?? item.name ?? null,
           full_name: item.full_name ?? item.name ?? null,
-          type: item.type ?? item.account_type ?? null,
+          kind: item.kind ?? (item.account_type === 'club' ? 'club' : item.account_type ? 'player' : null),
+          category: item.category ?? null,
+          location: item.location ?? null,
           city: item.city ?? null,
           country: item.country ?? null,
           sport: item.sport ?? null,
@@ -111,7 +115,7 @@ export default function WhoToFollow() {
   }
 
   const heading = 'Chi seguire';
-  const subtitle = role === 'club' ? 'Player nella tua zona' : 'Club nella tua zona';
+  const subtitle = 'Suggeriti per te';
 
   return (
     <div className="space-y-3">
@@ -144,6 +148,11 @@ export default function WhoToFollow() {
                 </div>
               </div>
 
+              {it.kind ? (
+                <span className="rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-600">
+                  {it.kind === 'club' ? 'CLUB' : 'PLAYER'}
+                </span>
+              ) : null}
               <FollowButton
                 targetProfileId={it.id}
                 size="sm"
