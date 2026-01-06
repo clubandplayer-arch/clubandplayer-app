@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { successResponse, validationError } from '@/lib/api/feedFollowStandardWrapper';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { FollowSuggestionsQuerySchema, type FollowSuggestionsQueryInput } from '@/lib/validation/follow';
+import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
 
 export const runtime = 'nodejs';
 const ENDPOINT_VERSION = 'follows-suggestions@2026-01-10a';
@@ -168,22 +169,33 @@ export async function GET(req: NextRequest) {
 
     const buildLocation = (row: any) => [row.city, row.province, row.region, row.country].filter(Boolean).join(', ');
 
-    const mapSuggestion = (row: any): Suggestion => ({
-      id: row.id,
-      name: (row.full_name || row.display_name || 'Profilo').toString(),
-      kind: row.account_type === 'club' ? 'club' : 'player',
-      location: buildLocation(row) || null,
-      category: row.sport || null,
-      city: row.city || null,
-      country: row.country || null,
-      role: row.role || null,
-      sport: row.sport || null,
-      avatar_url: row.avatar_url || null,
-      followers: null,
-      account_type: row.account_type || null,
-      full_name: row.full_name ?? null,
-      display_name: row.display_name ?? null,
-    });
+    const mapSuggestion = (row: any, athleteOverride?: any): Suggestion => {
+      const kind = row.account_type === 'club' ? 'club' : 'player';
+      const fullName = athleteOverride?.full_name ?? row.full_name ?? null;
+      const displayName = athleteOverride?.display_name ?? row.display_name ?? null;
+      const avatarUrl = athleteOverride?.avatar_url ?? row.avatar_url ?? null;
+      const name =
+        kind === 'club'
+          ? buildClubDisplayName(fullName, displayName, 'Club')
+          : buildPlayerDisplayName(fullName, displayName, 'Profilo');
+
+      return {
+        id: row.id,
+        name,
+        kind,
+        location: buildLocation(row) || null,
+        category: row.sport || null,
+        city: row.city || null,
+        country: row.country || null,
+        role: row.role || null,
+        sport: row.sport || null,
+        avatar_url: avatarUrl || null,
+        followers: null,
+        account_type: row.account_type || null,
+        full_name: fullName,
+        display_name: displayName,
+      };
+    };
 
     const results: Suggestion[] = [];
     const seen = new Set<string>();
@@ -195,7 +207,7 @@ export async function GET(req: NextRequest) {
         const id = String(row.id);
         if (seen.has(id)) continue;
         seen.add(id);
-        results.push(mapSuggestion(row));
+        results.push(row);
         added += 1;
         if (results.length >= limit || (maxToAdd && added >= maxToAdd)) break;
       }
@@ -270,7 +282,32 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const items = results.slice(0, limit);
+    const rawResults = results.slice(0, limit);
+    const athleteIds = rawResults
+      .filter((row) => row?.account_type !== 'club')
+      .map((row) => row.id)
+      .filter(Boolean);
+    let athleteMap = new Map<string, { full_name?: string | null; display_name?: string | null; avatar_url?: string | null }>();
+    if (athleteIds.length) {
+      const { data: athletes, error: athletesError } = await supabase
+        .from('athletes_view')
+        .select('id, full_name, display_name, avatar_url')
+        .in('id', athleteIds);
+      if (athletesError) throw athletesError;
+      const nextMap = new Map<string, { full_name?: string | null; display_name?: string | null; avatar_url?: string | null }>();
+      (athletes ?? []).forEach((row: any) => {
+        if (row?.id) {
+          nextMap.set(String(row.id), {
+            full_name: row.full_name ?? null,
+            display_name: row.display_name ?? null,
+            avatar_url: row.avatar_url ?? null,
+          });
+        }
+      });
+      athleteMap = nextMap;
+    }
+
+    const items = rawResults.map((row) => mapSuggestion(row, athleteMap.get(String(row.id))));
 
     return successResponse({
       items,

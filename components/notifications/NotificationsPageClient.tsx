@@ -34,7 +34,6 @@ export default function NotificationsPageClient() {
       <div className="flex flex-wrap items-center gap-3">
         <div>
           <h1 className="text-2xl font-bold">Notifiche</h1>
-          <p className="text-sm text-neutral-500">Centro notifiche stile LinkedIn</p>
         </div>
         <div className="ml-auto flex items-center gap-2">
           <button
