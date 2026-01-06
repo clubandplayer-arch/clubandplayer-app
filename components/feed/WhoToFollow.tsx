@@ -2,6 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import FollowButton from '@/components/common/FollowButton';
 import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentProfileContext';
 
@@ -128,35 +129,47 @@ export default function WhoToFollow() {
       ) : items.length > 0 ? (
         <ul className="space-y-3">
           {items.map((it) => (
-            <li key={it.id} className="flex items-center gap-3">
-              {(() => {
-                const name = it.display_name || it.full_name || 'Profilo';
-                return (
-              <img
-                src={
-                      it.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`
-                }
-                    alt={name}
-                className="h-10 w-10 rounded-full object-cover ring-1 ring-zinc-200 dark:ring-zinc-800"
+            <li key={it.id} className="relative flex items-center gap-3">
+              <Link
+                href={it.kind === 'club' ? `/clubs/${it.id}` : `/players/${it.id}`}
+                aria-label={`Apri profilo ${it.display_name || it.full_name || 'profilo'}`}
+                className="absolute inset-0 z-10 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
               />
-                );
-              })()}
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-medium">{it.display_name || it.full_name || 'Profilo'}</div>
-                <div className="truncate text-xs text-zinc-500">
-                  {detailLine(it, role) || '—'}
+              <div className="relative z-20 flex min-w-0 flex-1 items-center gap-3 pointer-events-none">
+                {(() => {
+                  const name = it.display_name || it.full_name || 'Profilo';
+                  return (
+                    <img
+                      src={it.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`}
+                      alt={name}
+                      className="h-10 w-10 rounded-full object-cover ring-1 ring-zinc-200 dark:ring-zinc-800"
+                    />
+                  );
+                })()}
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium">{it.display_name || it.full_name || 'Profilo'}</div>
+                  <div className="truncate text-xs text-zinc-500">{detailLine(it, role) || '—'}</div>
                 </div>
               </div>
 
               {it.kind ? (
-                <span className="rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-600">
+                <span className="relative z-20 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-600 pointer-events-none">
                   {it.kind === 'club' ? 'CLUB' : 'PLAYER'}
                 </span>
               ) : null}
-              <FollowButton
-                targetProfileId={it.id}
-                size="sm"
-              />
+              <div
+                className="relative z-30"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                }}
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                }}
+              >
+                <FollowButton targetProfileId={it.id} size="sm" />
+              </div>
             </li>
           ))}
         </ul>
