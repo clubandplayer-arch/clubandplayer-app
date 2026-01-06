@@ -17,6 +17,10 @@ type Suggestion = {
   category?: string | null;
   full_name?: string | null;
   display_name?: string | null;
+  profileId?: string;
+  resolvedName?: string;
+  nameSource?: 'full_name' | 'display_name' | 'fallback';
+  resolvedAvatarSource?: 'avatar_url' | 'fallback';
   city?: string | null;
   country?: string | null;
   sport?: string | null;
@@ -134,7 +138,15 @@ export async function GET(req: NextRequest) {
     alreadyFollowing.add(profileId);
 
     const baseSelect =
-      'id, account_type, full_name, display_name, role, city, province, region, country, sport, avatar_url, status, updated_at';
+      'id, account_type, type, full_name, display_name, role, city, province, region, country, sport, avatar_url, status, updated_at';
+
+    const normalizeAccountType = (value?: string | null) => {
+      const cleaned = typeof value === 'string' ? value.toLowerCase().trim() : '';
+      if (!cleaned) return null;
+      if (cleaned === 'club') return 'club';
+      if (cleaned === 'athlete' || cleaned === 'player') return 'athlete';
+      return null;
+    };
 
     const applyExclusions = (query: any) => {
       if (alreadyFollowing.size) {
@@ -170,7 +182,8 @@ export async function GET(req: NextRequest) {
     const buildLocation = (row: any) => [row.city, row.province, row.region, row.country].filter(Boolean).join(', ');
 
     const mapSuggestion = (row: any, athleteOverride?: any): Suggestion => {
-      const kind = row.account_type === 'club' ? 'club' : 'player';
+      const normalizedType = normalizeAccountType(row.account_type ?? row.type);
+      const kind = normalizedType === 'club' ? 'club' : 'player';
       const fullName = athleteOverride?.full_name ?? row.full_name ?? null;
       const displayName = athleteOverride?.display_name ?? row.display_name ?? null;
       const avatarUrl = athleteOverride?.avatar_url ?? row.avatar_url ?? null;
@@ -178,6 +191,9 @@ export async function GET(req: NextRequest) {
         kind === 'club'
           ? buildClubDisplayName(fullName, displayName, 'Club')
           : buildPlayerDisplayName(fullName, displayName, 'Profilo');
+
+      const resolvedNameSource = fullName ? 'full_name' : displayName ? 'display_name' : 'fallback';
+      const resolvedAvatarSource = avatarUrl ? 'avatar_url' : 'fallback';
 
       return {
         id: row.id,
@@ -194,10 +210,18 @@ export async function GET(req: NextRequest) {
         account_type: row.account_type || null,
         full_name: fullName,
         display_name: displayName,
+        ...(debugMode
+          ? {
+              profileId: row.id,
+              resolvedName: name,
+              nameSource: resolvedNameSource,
+              resolvedAvatarSource,
+            }
+          : {}),
       };
     };
 
-    const results: Suggestion[] = [];
+    const results: any[] = [];
     const seen = new Set<string>();
 
     const addSuggestions = (rows: any[], maxToAdd?: number) => {
@@ -284,7 +308,7 @@ export async function GET(req: NextRequest) {
 
     const rawResults = results.slice(0, limit);
     const athleteIds = rawResults
-      .filter((row) => row?.account_type !== 'club')
+      .filter((row) => normalizeAccountType(row?.account_type ?? row?.type) === 'athlete')
       .map((row) => row.id)
       .filter(Boolean);
     let athleteMap = new Map<string, { full_name?: string | null; display_name?: string | null; avatar_url?: string | null }>();
@@ -313,6 +337,14 @@ export async function GET(req: NextRequest) {
       items,
       nextCursor: null,
       role,
+      ...(debugMode
+        ? {
+            debug: {
+              endpointVersion: ENDPOINT_VERSION,
+              step,
+            },
+          }
+        : {}),
     });
   } catch (err) {
     const error = err as any;
