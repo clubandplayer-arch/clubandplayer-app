@@ -6,6 +6,7 @@ import { FollowSuggestionsQuerySchema, type FollowSuggestionsQueryInput } from '
 
 export const runtime = 'nodejs';
 const ENDPOINT_VERSION = 'follows-suggestions@2026-01-10a';
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 type Role = 'athlete' | 'club' | 'guest';
 
@@ -30,6 +31,12 @@ export async function GET(req: NextRequest) {
   const { limit }: FollowSuggestionsQueryInput = parsed.data;
   const debugMode = url.searchParams.get('debug') === '1';
   let step = 'init';
+  const debugInfo = {
+    meProfileId: null as string | null,
+    excludedIdsCount: 0,
+    excludedIdsSample: [] as string[],
+    invalidIdsSample: [] as string[],
+  };
 
   function errorResponse(params: {
     code: string;
@@ -43,8 +50,11 @@ export async function GET(req: NextRequest) {
           endpointVersion: ENDPOINT_VERSION,
           step,
           errorName: error instanceof Error ? error.name : null,
-          errorMessage: error instanceof Error ? error.message : null,
+          errorMessage: error instanceof Error ? error.message : (error as any)?.message ?? null,
           errorCode: (error as any)?.code ?? null,
+          errorHint: (error as any)?.hint ?? null,
+          errorDetails: (error as any)?.details ?? null,
+          ...debugInfo,
         }
       : undefined;
     return NextResponse.json(
@@ -93,6 +103,7 @@ export async function GET(req: NextRequest) {
     }
 
     const profileId = profile.id;
+    debugInfo.meProfileId = profileId;
 
     const targetProfileType: Role = role === 'club' ? 'athlete' : 'club';
     const viewerCountry = (profile?.interest_country || profile?.country || '').trim();
@@ -105,12 +116,17 @@ export async function GET(req: NextRequest) {
       .limit(200);
     if (followsError) throw followsError;
 
-    const alreadyFollowing = new Set(
-      (existing || [])
-        .map((row) => (row as any)?.target_profile_id)
-        .filter(Boolean)
-        .map((id) => id.toString()),
-    );
+    const excludedIdsRaw = (existing || [])
+      .map((row) => (row as any)?.target_profile_id)
+      .filter((id) => id !== null && id !== undefined)
+      .map((id) => (typeof id === 'string' ? id : String(id)));
+    const excludedUuid = excludedIdsRaw.filter((id) => UUID_RE.test(id));
+    const invalidIds = excludedIdsRaw.filter((id) => !UUID_RE.test(id));
+    debugInfo.excludedIdsCount = excludedIdsRaw.length;
+    debugInfo.excludedIdsSample = excludedIdsRaw.slice(0, 5);
+    debugInfo.invalidIdsSample = invalidIds.slice(0, 5);
+
+    const alreadyFollowing = new Set(excludedUuid);
 
     const baseSelect =
       'id, account_type, full_name, display_name, role, city, country, sport, avatar_url, status, updated_at';
