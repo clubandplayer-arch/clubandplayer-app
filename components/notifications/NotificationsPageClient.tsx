@@ -19,13 +19,13 @@ export default function NotificationsPageClient() {
       const res = await fetch(`/api/notifications?limit=50${filter === 'unread' ? '&unread=true' : ''}`, {
         cache: 'no-store',
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || 'Errore caricamento notifiche');
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error || 'Errore nel caricamento notifiche');
       setItems(json?.data ?? []);
     } catch (e: any) {
       console.error('[notifications] page load error', e);
-      setError(e?.message || 'Impossibile caricare le notifiche');
-      toast({ title: 'Errore', description: e?.message || 'Impossibile caricare le notifiche', variant: 'destructive' });
+      setError('Errore nel caricamento notifiche');
+      toast({ title: 'Errore', description: 'Errore nel caricamento notifiche', variant: 'destructive' });
     } finally {
       setLoading(false);
     }

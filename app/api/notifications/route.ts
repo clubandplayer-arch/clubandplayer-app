@@ -1,8 +1,10 @@
-import { withAuth } from '@/lib/api/auth';
-import { dbError, successResponse, unknownError } from '@/lib/api/standardResponses';
+import { jsonError, withAuth } from '@/lib/api/auth';
+import { successResponse } from '@/lib/api/standardResponses';
+import { getActiveProfile } from '@/lib/api/profile';
 import type { NotificationWithActor } from '@/types/notifications';
 
 export const runtime = 'nodejs';
+const ENDPOINT_VERSION = 'notifications@2026-01-05a';
 
 export const GET = withAuth(async (req, { supabase, user }) => {
   try {
@@ -11,6 +13,7 @@ export const GET = withAuth(async (req, { supabase, user }) => {
     const all = url.searchParams.get('all') === '1';
     const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
     const unreadOnly = url.searchParams.get('unread') === 'true';
+    const debugMode = url.searchParams.get('debug') === '1';
 
     const base = supabase
       .from('notifications')
@@ -21,7 +24,7 @@ export const GET = withAuth(async (req, { supabase, user }) => {
     const paginated = all ? base.range((page - 1) * limit, page * limit - 1) : base.limit(limit);
 
     const { data, error } = unreadOnly ? await paginated.is('read_at', null) : await paginated;
-    if (error) return dbError(error.message);
+    if (error) return jsonError(error.message, 500);
 
     const actorIds = Array.from(new Set((data ?? []).map((n) => n.actor_profile_id).filter(Boolean))) as string[];
     const { data: actors } = actorIds.length
@@ -38,9 +41,35 @@ export const GET = withAuth(async (req, { supabase, user }) => {
       actor: row.actor_profile_id ? actorMap[row.actor_profile_id] ?? null : null,
     }));
 
-    return successResponse({ data: items });
+    if (!debugMode) {
+      return successResponse({ data: items });
+    }
+
+    const profile = await getActiveProfile(supabase, user.id);
+    const { count, error: countError } = await supabase
+      .from('notifications')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id);
+    if (countError) {
+      return jsonError('Errore conteggio notifiche', 500, {
+        endpointVersion: ENDPOINT_VERSION,
+        message: countError.message,
+      });
+    }
+    return successResponse({
+      data: items,
+      debug: {
+        endpointVersion: ENDPOINT_VERSION,
+        meUserId: user.id,
+        meProfileId: profile?.id ?? null,
+        filter: { table: 'notifications', column: 'user_id', value: user.id },
+        returned: items.length,
+        notificationsTotalInDbForUser: count ?? 0,
+      },
+    });
   } catch (e: any) {
-    return unknownError({ endpoint: 'notifications/list', error: e, message: e?.message || 'Errore inatteso' });
+    console.error('[notifications/list] errore', e);
+    return jsonError(e?.message || 'Errore inatteso', 500);
   }
 });
 
@@ -61,10 +90,11 @@ export const PATCH = withAuth(async (req, { supabase, user }) => {
       ? await updateBuilder.in('id', ids)
       : { error: null, count: 0 } as const;
 
-    if (error) return dbError(error.message);
+    if (error) return jsonError(error.message, 500);
 
     return successResponse({ updated: count || 0 });
   } catch (e: any) {
-    return unknownError({ endpoint: 'notifications/update', error: e, message: e?.message || 'Errore inatteso' });
+    console.error('[notifications/update] errore', e);
+    return jsonError(e?.message || 'Errore inatteso', 500);
   }
 });

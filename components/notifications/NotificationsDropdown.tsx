@@ -43,9 +43,9 @@ export default function NotificationsDropdown({ unreadCount, onUnreadChange, act
       setError(null);
       try {
         const res = await fetch('/api/notifications?limit=10', { cache: 'no-store' });
-        const json = await res.json();
+        const json = await res.json().catch(() => ({}));
         if (cancelled) return;
-        if (!res.ok) throw new Error(json?.error || 'Errore nel caricamento');
+        if (!res.ok) throw new Error(json?.error || 'Errore nel caricamento notifiche');
         setItems(json?.data ?? []);
         if (unreadCount > 0) {
           const markRes = await fetch('/api/notifications/mark-all-read', { method: 'POST' });
@@ -58,8 +58,12 @@ export default function NotificationsDropdown({ unreadCount, onUnreadChange, act
         }
       } catch (e: any) {
         console.error('[notifications] dropdown load error', e);
-        setError(e?.message || 'Impossibile caricare le notifiche');
-        toast({ title: 'Errore notifiche', description: e?.message || 'Impossibile caricare le notifiche', variant: 'destructive' });
+        setError('Errore nel caricamento notifiche');
+        toast({
+          title: 'Errore notifiche',
+          description: 'Errore nel caricamento notifiche',
+          variant: 'destructive',
+        });
       } finally {
         if (!cancelled) setLoading(false);
       }

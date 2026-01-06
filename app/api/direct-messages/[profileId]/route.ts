@@ -53,6 +53,7 @@ async function notifyDirectMessage(params: {
     kind: 'message',
     payload: {
       sender_profile_id: senderProfileId,
+      thread_id: senderProfileId,
       recipient_profile_id: recipientProfileId,
       message_id: messageId,
       preview,
