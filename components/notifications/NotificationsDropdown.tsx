@@ -42,7 +42,10 @@ export default function NotificationsDropdown({ unreadCount, onUnreadChange, act
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch('/api/notifications?limit=10', { cache: 'no-store' });
+        const res = await fetch('/api/notifications?limit=10', {
+          cache: 'no-store',
+          next: { revalidate: 0 },
+        });
         const json = await res.json().catch(() => ({}));
         if (cancelled) return;
         if (!res.ok) throw new Error(json?.error || 'Errore nel caricamento notifiche');
@@ -114,7 +117,7 @@ export default function NotificationsDropdown({ unreadCount, onUnreadChange, act
                 ))}
               </div>
             ) : (
-              <div className="p-3 text-sm text-neutral-500">Nessuna notifica recente</div>
+              <div className="p-3 text-sm text-neutral-500">Nessuna notifica</div>
             )}
           </div>
         </div>

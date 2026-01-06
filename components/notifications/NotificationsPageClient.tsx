@@ -18,6 +18,7 @@ export default function NotificationsPageClient() {
     try {
       const res = await fetch(`/api/notifications?limit=50${filter === 'unread' ? '&unread=true' : ''}`, {
         cache: 'no-store',
+        next: { revalidate: 0 },
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json?.error || 'Errore nel caricamento notifiche');

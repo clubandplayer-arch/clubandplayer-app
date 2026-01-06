@@ -40,6 +40,7 @@ export default function WhoToFollow() {
         const res = await fetch('/api/suggestions/who-to-follow?limit=5', {
           credentials: 'include',
           cache: 'no-store',
+          next: { revalidate: 0 },
         });
         const data = await res.json().catch(() => ({}));
         const suggestions = Array.isArray(data?.suggestions)

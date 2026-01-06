@@ -98,9 +98,34 @@ export async function GET(req: NextRequest) {
       return data || [];
     }
 
-    const rows: any[] = await runQuery(
+    async function runFallbackQuery() {
+      let query = supabase
+        .from('profiles')
+        .select(baseSelect)
+        .eq('account_type', targetProfileType)
+        .eq('status', 'active')
+        .neq('id', profile?.id ?? '');
+
+      if (alreadyFollowing.size) {
+        const values = Array.from(alreadyFollowing)
+          .map((id) => `'${id}'`)
+          .join(',');
+        query = query.not('id', 'in', `(${values})`);
+      }
+
+      query = query.order('updated_at', { ascending: false }).limit(limit);
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    }
+
+    let rows: any[] = await runQuery(
       viewerCountry ? [(q) => q.eq('country', viewerCountry)] : [],
     );
+    if (rows.length === 0) {
+      rows = await runFallbackQuery();
+    }
 
     const items: Suggestion[] = rows.map((p) => ({
       id: p.id,
