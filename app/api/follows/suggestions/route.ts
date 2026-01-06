@@ -36,6 +36,7 @@ export async function GET(req: NextRequest) {
     excludedIdsCount: 0,
     excludedIdsSample: [] as string[],
     invalidIdsSample: [] as string[],
+    inClause: null as string | null,
   };
 
   function errorResponse(params: {
@@ -144,10 +145,10 @@ export async function GET(req: NextRequest) {
       });
 
       if (alreadyFollowing.size) {
-        const values = Array.from(alreadyFollowing)
-          .map((id) => `'${id}'`)
-          .join(',');
-        query = query.not('id', 'in', `(${values})`);
+        const values = Array.from(alreadyFollowing).join(',');
+        const inClause = `(${values})`;
+        debugInfo.inClause = inClause;
+        query = query.not('id', 'in', inClause);
       }
 
       query = query.order('updated_at', { ascending: false }).limit(limit);
@@ -166,10 +167,10 @@ export async function GET(req: NextRequest) {
         .neq('id', profile?.id ?? '');
 
       if (alreadyFollowing.size) {
-        const values = Array.from(alreadyFollowing)
-          .map((id) => `'${id}'`)
-          .join(',');
-        query = query.not('id', 'in', `(${values})`);
+        const values = Array.from(alreadyFollowing).join(',');
+        const inClause = `(${values})`;
+        debugInfo.inClause = inClause;
+        query = query.not('id', 'in', inClause);
       }
 
       query = query.order('updated_at', { ascending: false }).limit(limit);
