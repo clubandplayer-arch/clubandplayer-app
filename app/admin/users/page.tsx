@@ -10,7 +10,8 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 type ProfileRow = {
-  user_id: string;
+  id: string;
+  user_id: string | null;
   display_name: string | null;
   full_name: string | null;
   account_type: string | null;
@@ -21,16 +22,17 @@ type ProfileRow = {
   status: string | null;
   avatar_url: string | null;
   created_at: string | null;
+  email?: string | null;
 };
 
 export default function AdminUsersPage() {
   const [rows, setRows] = useState<ProfileRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<'pending' | 'active' | 'rejected'>('pending');
+  const [statusFilter, setStatusFilter] = useState<'pending' | 'active' | 'rejected' | 'orphan'>('pending');
   const [error, setError] = useState<string | null>(null);
 
-  const load = async (status: 'pending' | 'active' | 'rejected') => {
+  const load = async (status: 'pending' | 'active' | 'rejected' | 'orphan') => {
     setLoading(true);
     setError(null);
     const res = await fetch(`/api/admin/users?status=${status}`, { cache: 'no-store' });
@@ -72,6 +74,12 @@ export default function AdminUsersPage() {
     return parts.join(', ');
   };
 
+  const getTitle = (r: ProfileRow) => {
+    const name = r.full_name?.trim() || r.display_name?.trim() || '';
+    if (name && !name.includes('@')) return name;
+    return r.full_name?.trim() || 'Senza nome';
+  };
+
   return (
     <main className="container mx-auto max-w-6xl px-4 py-8">
       <h1 className="heading-h2 mb-4 text-2xl font-bold">Approva utenti</h1>
@@ -90,6 +98,7 @@ export default function AdminUsersPage() {
             <option value="pending">In attesa</option>
             <option value="active">Attivi</option>
             <option value="rejected">Rifiutati</option>
+            <option value="orphan">Senza login</option>
           </select>
         </label>
       </div>
@@ -121,26 +130,31 @@ export default function AdminUsersPage() {
                 </td>
               </tr>
             ) : (
-              rows.map((r) => (
-                <tr key={r.user_id} className="hover:bg-gray-50">
+              rows.map((r) => {
+                const rowId = r.user_id ?? r.id;
+                const title = getTitle(r);
+                const subtitle = r.email || r.user_id || r.id;
+                const canUpdate = Boolean(r.user_id);
+                return (
+                <tr key={rowId} className="hover:bg-gray-50">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       {r.avatar_url ? (
                         <Image
                           src={r.avatar_url}
-                          alt={r.display_name || 'Avatar'}
+                          alt={title || 'Avatar'}
                           width={40}
                           height={40}
                           className="h-10 w-10 rounded-full object-cover"
                         />
                       ) : (
                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 text-xs text-gray-600">
-                          {r.display_name?.slice(0, 2).toUpperCase() ?? 'NA'}
+                          {title?.slice(0, 2).toUpperCase() ?? 'NA'}
                         </div>
                       )}
                       <div>
-                        <div className="font-semibold">{r.display_name || r.full_name || 'Senza nome'}</div>
-                        <div className="text-xs text-neutral-500">{r.user_id}</div>
+                        <div className="font-semibold">{title}</div>
+                        <div className="text-xs text-neutral-500">{subtitle}</div>
                       </div>
                     </div>
                   </td>
@@ -150,15 +164,15 @@ export default function AdminUsersPage() {
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-2">
                       <button
-                        disabled={savingId === r.user_id || r.status === 'active'}
-                        onClick={() => updateStatus(r.user_id, 'active')}
+                        disabled={!canUpdate || savingId === r.user_id || r.status === 'active'}
+                        onClick={() => r.user_id && updateStatus(r.user_id, 'active')}
                         className="rounded-full bg-emerald-600 px-3 py-1 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         Approva
                       </button>
                       <button
-                        disabled={savingId === r.user_id || r.status === 'rejected'}
-                        onClick={() => updateStatus(r.user_id, 'rejected')}
+                        disabled={!canUpdate || savingId === r.user_id || r.status === 'rejected'}
+                        onClick={() => r.user_id && updateStatus(r.user_id, 'rejected')}
                         className="rounded-full bg-red-600 px-3 py-1 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         Rifiuta
@@ -166,7 +180,7 @@ export default function AdminUsersPage() {
                     </div>
                   </td>
                 </tr>
-              ))
+              )})
             )}
           </tbody>
         </table>
