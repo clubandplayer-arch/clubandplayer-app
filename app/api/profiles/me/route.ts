@@ -158,6 +158,36 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   if (updates.interest_country) updates.interest_country = updates.interest_country.toString().trim().toUpperCase();
   if (updates.birth_country) updates.birth_country = updates.birth_country.toString().trim().toUpperCase();
 
+  const shouldResolveInterestLabels =
+    updates.interest_country === 'IT' &&
+    ((updates.interest_municipality_id && !updates.interest_city) ||
+      (updates.interest_province_id && !updates.interest_province) ||
+      (updates.interest_region_id && !updates.interest_region));
+
+  if (shouldResolveInterestLabels) {
+    const [municipalityRes, provinceRes, regionRes] = await Promise.all([
+      updates.interest_municipality_id
+        ? supabase.from('municipalities').select('name').eq('id', updates.interest_municipality_id).maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+      updates.interest_province_id
+        ? supabase.from('provinces').select('name').eq('id', updates.interest_province_id).maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+      updates.interest_region_id
+        ? supabase.from('regions').select('name').eq('id', updates.interest_region_id).maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+    ]);
+
+    if (!updates.interest_city && municipalityRes.data?.name) {
+      updates.interest_city = municipalityRes.data.name;
+    }
+    if (!updates.interest_province && provinceRes.data?.name) {
+      updates.interest_province = provinceRes.data.name;
+    }
+    if (!updates.interest_region && regionRes.data?.name) {
+      updates.interest_region = regionRes.data.name;
+    }
+  }
+
   let currentProfile: { account_type: string | null; role: string | null } | null = null;
   const { data: existingProfile } = await supabase
     .from('profiles')
