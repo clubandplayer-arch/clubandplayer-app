@@ -140,14 +140,20 @@ export const GET = withAuth(async (req, { supabase, user }) => {
   const userIds = Array.from(new Set(dedupedRows.map((row) => row.user_id).filter((id): id is string => Boolean(id))));
   const emailByUserId = new Map<string, string>();
   if (adminClient && userIds.length > 0) {
-    await Promise.all(
-      userIds.map(async (id) => {
-        const { data, error } = await adminClient.auth.admin.getUserById(id);
-        if (!error && data?.user?.email) {
-          emailByUserId.set(id, data.user.email);
+    const { data: authUsers, error: authError } = await adminClient
+      .schema('auth')
+      .from('users')
+      .select('id, email')
+      .in('id', userIds);
+    if (authError) {
+      console.error('[admin/users] auth.users query error', authError);
+    } else {
+      for (const userRow of authUsers ?? []) {
+        if (userRow?.id && userRow?.email) {
+          emailByUserId.set(String(userRow.id), String(userRow.email));
         }
-      })
-    );
+      }
+    }
   }
 
   const data = dedupedRows.map((row) => {

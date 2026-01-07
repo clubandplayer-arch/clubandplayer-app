@@ -75,9 +75,10 @@ export default function AdminUsersPage() {
   };
 
   const getTitle = (r: ProfileRow) => {
-    const name = r.full_name?.trim() || r.display_name?.trim() || '';
-    if (name && !name.includes('@')) return name;
-    return r.full_name?.trim() || 'Senza nome';
+    const cleanedName = r.full_name?.trim() || r.display_name?.trim() || '';
+    if (cleanedName && !cleanedName.includes('@')) return cleanedName;
+    if (r.email) return r.email;
+    return 'Senza nome';
   };
 
   return (
@@ -133,7 +134,7 @@ export default function AdminUsersPage() {
               rows.map((r) => {
                 const rowId = r.user_id ?? r.id;
                 const title = getTitle(r);
-                const subtitle = r.email || r.user_id || r.id;
+                const subtitle = title === r.email ? null : r.email || r.user_id || r.id;
                 const canUpdate = Boolean(r.user_id);
                 return (
                 <tr key={rowId} className="hover:bg-gray-50">
@@ -154,7 +155,7 @@ export default function AdminUsersPage() {
                       )}
                       <div>
                         <div className="font-semibold">{title}</div>
-                        <div className="text-xs text-neutral-500">{subtitle}</div>
+                        {subtitle ? <div className="text-xs text-neutral-500">{subtitle}</div> : null}
                       </div>
                     </div>
                   </td>
