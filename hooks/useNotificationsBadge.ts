@@ -9,7 +9,10 @@ export function useNotificationsBadge(pollIntervalMs = 45000) {
 
   const refresh = useCallback(async () => {
     try {
-      const res = await fetch('/api/notifications/unread-count', { cache: 'no-store' });
+      const res = await fetch('/api/notifications/unread-count', {
+        cache: 'no-store',
+        next: { revalidate: 0 },
+      });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json?.error || 'Errore caricamento badge notifiche');
       if (!cancelledRef.current) setUnreadCount(Number(json?.count) || 0);

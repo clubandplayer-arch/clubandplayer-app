@@ -7,8 +7,9 @@ import { CommentsSection } from '@/components/feed/CommentsSection';
 import { PostIconDelete, PostIconEdit, PostIconShare } from '@/components/icons/PostActionIcons';
 import { PostMedia } from '@/components/feed/PostMedia';
 import { QuotedPostCard } from '@/components/feed/QuotedPostCard';
-import { getPostPermalink, shareOrCopyLink } from '@/lib/share';
+import { getPostPermalink } from '@/lib/share';
 import { buildClubDisplayName, buildProfileDisplayName } from '@/lib/displayName';
+import ShareModal from '@/components/feed/ShareModal';
 import {
   REACTION_EMOJI,
   REACTION_ORDER,
@@ -106,6 +107,7 @@ export function PostCard({
   const [text, setText] = useState(description);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
   const linkUrl = post.link_url ?? firstUrl(description);
   const linkTitle = post.link_title ?? null;
   const linkDescription = post.link_description ?? null;
@@ -122,18 +124,35 @@ export function PostCard({
     return getPostPermalink(origin, String(post.id));
   }, [post.id]);
 
-  const handleShare = useCallback(() => {
-    const shareText = isEvent
+  const shareTitle = isEvent ? eventDetails?.title ?? 'Evento del club' : 'Post del feed';
+  const shareText = useMemo(() => {
+    if (!shareUrl) return '';
+    return isEvent
       ? [shareUrl, eventDetails?.title ?? description].filter(Boolean).join('\n\n')
       : [shareUrl, description || undefined].filter(Boolean).join('\n\n');
-
-    void shareOrCopyLink({
-      title: isEvent ? 'Evento del club' : 'Post del feed',
-      text: shareText,
-      url: shareUrl,
-      copiedMessage: 'Link del post copiato negli appunti',
-    });
   }, [description, eventDetails?.title, isEvent, shareUrl]);
+
+  const handleShare = useCallback(async () => {
+    if (!shareUrl) {
+      setShareOpen(true);
+      return;
+    }
+    const isMobile =
+      typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+    if (isMobile && typeof navigator !== 'undefined' && 'share' in navigator) {
+      try {
+        await navigator.share({ title: shareTitle, text: shareText || undefined, url: shareUrl });
+        return;
+      } catch (err: any) {
+        if (err?.name === 'AbortError') {
+          return;
+        }
+      }
+    }
+
+    setShareOpen(true);
+  }, [shareText, shareTitle, shareUrl]);
 
   const reactionSummaryParts = REACTION_ORDER.filter((key) => (reaction.counts[key] || 0) > 0).map(
     (key) => `${REACTION_EMOJI[key]} ${reaction.counts[key]}`,
@@ -411,7 +430,13 @@ export function PostCard({
           {error}
         </div>
       ) : null}
-
+      <ShareModal
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        title={shareTitle}
+        text={shareText}
+        url={shareUrl}
+      />
     </article>
   );
 }

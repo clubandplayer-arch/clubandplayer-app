@@ -1,39 +1,19 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import NotificationItem from './NotificationItem';
-import type { NotificationWithActor } from '@/types/notifications';
 import { useToast } from '@/components/common/ToastProvider';
+import { useNotificationsList } from '@/hooks/useNotificationsList';
 
 export default function NotificationsPageClient() {
-  const [items, setItems] = useState<NotificationWithActor[]>([]);
-  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
-  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/notifications?limit=50${filter === 'unread' ? '&unread=true' : ''}`, {
-        cache: 'no-store',
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json?.error || 'Errore nel caricamento notifiche');
-      setItems(json?.data ?? []);
-    } catch (e: any) {
-      console.error('[notifications] page load error', e);
-      setError('Errore nel caricamento notifiche');
-      toast({ title: 'Errore', description: 'Errore nel caricamento notifiche', variant: 'destructive' });
-    } finally {
-      setLoading(false);
-    }
-  }, [filter, toast]);
+  const { items, loading, error, reload } = useNotificationsList({ limit: 50, filter, enabled: true });
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (!error) return;
+    toast({ title: 'Errore', description: 'Errore nel caricamento notifiche', variant: 'destructive' });
+  }, [error, toast]);
 
   const markAllRead = async () => {
     try {
@@ -43,7 +23,7 @@ export default function NotificationsPageClient() {
         throw new Error(json?.error || 'Errore nel marcare le notifiche come lette');
       }
       window.dispatchEvent(new Event('app:notifications-updated'));
-      setItems((prev) => prev.map((n) => ({ ...n, read: true, read_at: n.read_at ?? new Date().toISOString() })));
+      reload();
     } catch (e: any) {
       toast({ title: 'Errore', description: e?.message || 'Impossibile aggiornare le notifiche', variant: 'destructive' });
     }
@@ -54,7 +34,6 @@ export default function NotificationsPageClient() {
       <div className="flex flex-wrap items-center gap-3">
         <div>
           <h1 className="text-2xl font-bold">Notifiche</h1>
-          <p className="text-sm text-neutral-500">Centro notifiche stile LinkedIn</p>
         </div>
         <div className="ml-auto flex items-center gap-2">
           <button

@@ -21,7 +21,7 @@ export const FollowStateQuerySchema = z.object({
 });
 
 export const FollowSuggestionsQuerySchema = z.object({
-  limit: numberFromParam(3, 1, 20),
+  limit: numberFromParam(4, 1, 20),
 });
 
 export type ToggleFollowInput = z.infer<typeof ToggleFollowSchema>;

@@ -21,7 +21,7 @@ type NetworkProfile = {
 type TabKey = 'suggested' | 'following' | 'followers';
 type FilterType = 'all' | 'club' | 'athlete';
 
-type ApiResponse = { items?: any[]; role?: string; targetType?: string };
+type ApiResponse = { ok?: boolean; items?: any[]; role?: string; targetType?: string; message?: string };
 
 const tabs: { key: TabKey; label: string }[] = [
   { key: 'suggested', label: 'Suggeriti' },
@@ -135,8 +135,15 @@ export default function NetworkPage() {
     setLoading((prev) => ({ ...prev, suggested: true }));
     setErrors((prev) => ({ ...prev, suggested: null }));
     try {
-      const res = await fetch('/api/follows/suggestions?limit=20', { credentials: 'include', cache: 'no-store' });
+      const res = await fetch('/api/follows/suggestions?limit=20', {
+        credentials: 'include',
+        cache: 'no-store',
+        next: { revalidate: 0 },
+      });
       const data = (await res.json().catch(() => ({}))) as ApiResponse;
+      if (!res.ok || data?.ok === false) {
+        throw new Error(data?.message || 'Errore nel caricare i suggerimenti');
+      }
       const items: NetworkProfile[] = Array.isArray(data?.items)
         ? data.items.map((p: any) => ({
             id: p.id,
