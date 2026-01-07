@@ -18,6 +18,7 @@ function shareLink(base: string, params: Record<string, string>) {
 
 export default function ShareModal({ open, onClose, title, text, url }: ShareModalProps) {
   const { toast } = useToast();
+  const systemShareAvailable = typeof navigator !== 'undefined' && 'share' in navigator;
   const snippet = text?.trim() ? text.trim().slice(0, 160) : '';
   const shareText = [title, snippet].filter(Boolean).join(' - ');
 
@@ -62,6 +63,16 @@ export default function ShareModal({ open, onClose, title, text, url }: ShareMod
     }
   };
 
+  const handleSystemShare = async () => {
+    if (!systemShareAvailable) return;
+    try {
+      await navigator.share({ title, text: text || undefined, url });
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return;
+      toast({ title: 'Condivisione non disponibile', description: 'Impossibile aprire il menu di sistema.' });
+    }
+  };
+
   return (
     <Modal open={open} onClose={onClose} title="Condividi">
       <div className="space-y-4">
@@ -72,6 +83,15 @@ export default function ShareModal({ open, onClose, title, text, url }: ShareMod
         </div>
 
         <div className="flex flex-wrap gap-2">
+          {systemShareAvailable ? (
+            <button
+              type="button"
+              onClick={handleSystemShare}
+              className="rounded-full border px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Condivisione di sistema
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={copyLink}

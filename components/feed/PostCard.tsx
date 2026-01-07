@@ -137,7 +137,10 @@ export function PostCard({
       setShareOpen(true);
       return;
     }
-    if (typeof navigator !== 'undefined' && 'share' in navigator) {
+    const isMobile =
+      typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+    if (isMobile && typeof navigator !== 'undefined' && 'share' in navigator) {
       try {
         await navigator.share({ title: shareTitle, text: shareText || undefined, url: shareUrl });
         return;
