@@ -1,0 +1,196 @@
+'use client';
+
+/* eslint-disable @next/next/no-img-element */
+
+import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import FollowButton from '@/components/common/FollowButton';
+import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentProfileContext';
+import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
+
+type Suggestion = {
+  id: string;
+  display_name?: string | null;
+  full_name?: string | null;
+  kind?: 'club' | 'player' | null;
+  category?: string | null;
+  location?: string | null;
+  city?: string | null;
+  country?: string | null;
+  sport?: string | null;
+  role?: string | null;
+  avatar_url?: string | null;
+};
+
+type TabKey = 'club' | 'player';
+
+const TABS: Array<{ key: TabKey; label: string }> = [
+  { key: 'club', label: 'Club' },
+  { key: 'player', label: 'Player' },
+];
+
+function targetHref(item: Suggestion) {
+  return item.kind === 'club' ? `/clubs/${item.id}` : `/players/${item.id}`;
+}
+
+function displayName(item: Suggestion) {
+  return item.kind === 'club'
+    ? buildClubDisplayName(item.full_name ?? null, item.display_name ?? null, 'Club')
+    : buildPlayerDisplayName(item.full_name ?? null, item.display_name ?? null, 'Profilo');
+}
+
+function detailLine(suggestion: Suggestion, viewerRole: ProfileRole) {
+  const location = suggestion.location || [suggestion.city, suggestion.country].filter(Boolean).join(', ');
+  const sportRole = [suggestion.category || suggestion.sport, suggestion.role].filter(Boolean).join(' · ');
+
+  if (viewerRole === 'club') {
+    return sportRole || location;
+  }
+  return location || sportRole;
+}
+
+export default function DiscoverPage() {
+  const { role: contextRole } = useCurrentProfileContext();
+  const [role, setRole] = useState<ProfileRole>('guest');
+  const [activeTab, setActiveTab] = useState<TabKey>('club');
+  const [items, setItems] = useState<Record<TabKey, Suggestion[]>>({ club: [], player: [] });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const controller = new AbortController();
+
+    const fetchSuggestions = async (kind: TabKey) => {
+      const params = new URLSearchParams({ kind, limit: '50' });
+      const res = await fetch(`/api/follows/suggestions?${params.toString()}`, {
+        credentials: 'include',
+        cache: 'no-store',
+        signal: controller.signal,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.ok === false) {
+        const message = data?.message || `Errore nel caricamento dei suggerimenti (${kind}).`;
+        throw new Error(message);
+      }
+      const rawItems = Array.isArray(data?.items)
+        ? data.items
+        : Array.isArray(data?.data)
+        ? data.data
+        : Array.isArray(data?.suggestions)
+        ? data.suggestions
+        : [];
+      const suggestions = rawItems.map((item: any) => ({
+        id: item.id,
+        display_name: item.display_name ?? item.name ?? null,
+        full_name: item.full_name ?? item.name ?? null,
+        kind: item.kind ?? (item.account_type === 'club' ? 'club' : item.account_type ? 'player' : null),
+        category: item.category ?? null,
+        location: item.location ?? null,
+        city: item.city ?? null,
+        country: item.country ?? null,
+        sport: item.sport ?? null,
+        role: item.role ?? null,
+        avatar_url: item.avatar_url ?? null,
+      })) as Suggestion[];
+
+      return { suggestions, role: (data?.role as ProfileRole) || contextRole || 'guest' };
+    };
+
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const [clubs, players] = await Promise.all([fetchSuggestions('club'), fetchSuggestions('player')]);
+        if (cancelled) return;
+        setItems({ club: clubs.suggestions, player: players.suggestions });
+        setRole(clubs.role || players.role || contextRole || 'guest');
+      } catch (err) {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : 'Impossibile caricare i suggerimenti.');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [contextRole]);
+
+  const activeItems = useMemo(() => items[activeTab] || [], [items, activeTab]);
+
+  return (
+    <div className="page-shell space-y-6">
+      <header className="space-y-2">
+        <h1 className="heading-h1">Scopri profili</h1>
+        <p className="text-sm text-neutral-600">
+          Suggerimenti ordinati per zona di interesse (città, provincia, regione).
+        </p>
+      </header>
+
+      <div className="flex flex-wrap gap-2">
+        {TABS.map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            onClick={() => setActiveTab(tab.key)}
+            className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
+              activeTab === tab.key
+                ? 'border-[var(--brand)] bg-[var(--brand)]/10 text-[var(--brand)]'
+                : 'border-neutral-200 text-neutral-600 hover:bg-neutral-50'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {loading ? (
+        <div className="rounded-xl border border-dashed p-6 text-sm text-neutral-600">Caricamento suggerimenti…</div>
+      ) : error ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>
+      ) : activeItems.length === 0 ? (
+        <div className="rounded-xl border border-dashed p-6 text-sm text-neutral-600">
+          Nessun suggerimento disponibile.
+        </div>
+      ) : (
+        <ul className="space-y-3">
+          {activeItems.map((item) => {
+            const name = displayName(item);
+            const href = targetHref(item);
+            return (
+              <li key={item.id} className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white p-3">
+                <Link href={href} className="flex min-w-0 flex-1 items-center gap-3">
+                  <img
+                    src={item.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`}
+                    alt={name}
+                    className="h-11 w-11 rounded-full object-cover ring-1 ring-neutral-200"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-semibold text-neutral-900">{name}</div>
+                    <div className="truncate text-xs text-neutral-500">{detailLine(item, role) || '—'}</div>
+                  </div>
+                </Link>
+                <div
+                  className="flex items-center gap-2"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                  }}
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                  }}
+                >
+                  <FollowButton targetProfileId={item.id} size="sm" />
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
