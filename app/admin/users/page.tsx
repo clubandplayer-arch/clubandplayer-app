@@ -22,6 +22,7 @@ type ProfileRow = {
   status: string | null;
   avatar_url: string | null;
   created_at: string | null;
+  auth_email?: string | null;
   email?: string | null;
 };
 
@@ -77,7 +78,7 @@ export default function AdminUsersPage() {
   const getTitle = (r: ProfileRow) => {
     const cleanedName = r.full_name?.trim() || r.display_name?.trim() || '';
     if (cleanedName && !cleanedName.includes('@')) return cleanedName;
-    if (r.email) return r.email;
+    if (r.auth_email || r.email) return r.auth_email || r.email;
     return 'Senza nome';
   };
 
@@ -134,7 +135,8 @@ export default function AdminUsersPage() {
               rows.map((r) => {
                 const rowId = r.user_id ?? r.id;
                 const title = getTitle(r);
-                const subtitle = title === r.email ? null : r.email || r.user_id || r.id;
+                const email = r.auth_email || r.email;
+                const subtitle = title === email ? (r.user_id ?? r.id) : email || r.user_id || r.id;
                 const canUpdate = Boolean(r.user_id);
                 return (
                 <tr key={rowId} className="hover:bg-gray-50">

@@ -20,6 +20,7 @@ export const GET = withAuth(async (req, { supabase, user }) => {
   const filterStatus = status && allowedStatuses.has(status) ? status : 'pending';
   const includeOrphans = filterStatus === 'orphan';
   const statusFilter = includeOrphans ? null : filterStatus;
+  const debug = searchParams.get('debug') === '1';
   const adminClient = getSupabaseAdminClientOrNull();
   const dbClient = adminClient ?? supabase;
 
@@ -147,6 +148,18 @@ export const GET = withAuth(async (req, { supabase, user }) => {
       .in('id', userIds);
     if (authError) {
       console.error('[admin/users] auth.users query error', authError);
+      const results = await Promise.allSettled(
+        userIds.map((id) => adminClient.auth.admin.getUserById(id))
+      );
+      for (const result of results) {
+        if (result.status === 'fulfilled') {
+          const email = result.value?.data?.user?.email;
+          const id = result.value?.data?.user?.id;
+          if (id && email) {
+            emailByUserId.set(String(id), String(email));
+          }
+        }
+      }
     } else {
       for (const userRow of authUsers ?? []) {
         if (userRow?.id && userRow?.email) {
@@ -157,7 +170,7 @@ export const GET = withAuth(async (req, { supabase, user }) => {
   }
 
   const data = dedupedRows.map((row) => {
-    const email = row.user_id ? emailByUserId.get(row.user_id) ?? null : null;
+    const authEmail = row.user_id ? emailByUserId.get(row.user_id) ?? null : null;
     const displayName =
       row.full_name?.trim() ||
       (row.display_name && !emailRegex.test(row.display_name) ? row.display_name : null) ||
@@ -165,9 +178,17 @@ export const GET = withAuth(async (req, { supabase, user }) => {
     return {
       ...row,
       display_name: displayName,
-      email,
+      auth_email: authEmail,
     };
   });
 
-  return NextResponse.json({ data });
+  const debugPayload = debug
+    ? {
+        userIdsCount: userIds.length,
+        emailsFoundCount: emailByUserId.size,
+        missingEmailUserIdsSample: userIds.filter((id) => !emailByUserId.has(id)).slice(0, 5),
+      }
+    : undefined;
+
+  return NextResponse.json({ data, ...(debugPayload ? { debug: debugPayload } : {}) });
 });
