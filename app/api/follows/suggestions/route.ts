@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
   if (!parsed.success) {
     return validationError('Parametri non validi', parsed.error.flatten());
   }
-  const { limit }: FollowSuggestionsQueryInput = parsed.data;
+  const { limit, kind }: FollowSuggestionsQueryInput = parsed.data;
   const debugMode = url.searchParams.get('debug') === '1';
   let step = 'init';
   const debugInfo = {
@@ -115,6 +115,9 @@ export async function GET(req: NextRequest) {
     debugInfo.meProfileId = profileId;
 
     const viewerCountry = (profile?.interest_country || profile?.country || '').trim();
+    const viewerCity = (profile?.interest_city || profile?.city || '').trim();
+    const viewerProvince = (profile?.interest_province || profile?.province || '').trim();
+    const viewerRegion = (profile?.interest_region || profile?.region || '').trim();
 
     step = 'follows';
     const { data: existing, error: followsError } = await supabase
@@ -239,70 +242,69 @@ export async function GET(req: NextRequest) {
     };
 
     step = 'candidates';
-    const clubSlotsTarget = Math.min(2, limit);
-    const playerSlotsTarget = Math.max(0, Math.min(2, limit - clubSlotsTarget));
+    const locationPriority: Array<{ field: 'city' | 'province' | 'region'; value: string | null }> = [
+      { field: 'city', value: viewerCity || null },
+      { field: 'province', value: viewerProvince || null },
+      { field: 'region', value: viewerRegion || null },
+    ];
 
-    const clubFilters: Array<Array<(q: any) => any>> = [];
-    if (profile.sport) {
-      clubFilters.push([(q) => q.eq('sport', profile.sport)]);
-    }
-    if (profile.interest_province || profile.province) {
-      const province = (profile.interest_province || profile.province || '').trim();
-      if (province) clubFilters.push([(q) => q.eq('province', province)]);
-    }
-    if (profile.interest_region || profile.region) {
-      const region = (profile.interest_region || profile.region || '').trim();
-      if (region) clubFilters.push([(q) => q.eq('region', region)]);
-    }
-    if (viewerCountry) {
-      clubFilters.push([(q) => q.eq('country', viewerCountry)]);
-    }
-    clubFilters.push([]);
+    const buildFilters = () => {
+      const filters: Array<Array<(q: any) => any>> = [];
+      locationPriority.forEach((loc) => {
+        if (loc.value) filters.push([(q) => q.eq(loc.field, loc.value)]);
+      });
+      if (viewerCountry) {
+        filters.push([(q) => q.eq('country', viewerCountry)]);
+      }
+      if (profile.sport) {
+        filters.push([(q) => q.eq('sport', profile.sport)]);
+      }
+      filters.push([]);
+      return filters;
+    };
 
-    for (const filters of clubFilters) {
-      if (results.length >= clubSlotsTarget) break;
-      const rows = await runQuery('club', filters, limit * 4);
-      addSuggestions(rows, clubSlotsTarget - results.length);
-    }
+    const clubFilters = buildFilters();
+    const playerFilters = buildFilters();
 
-    const playerFilters: Array<Array<(q: any) => any>> = [];
-    const playerLocations = [
-      profile.interest_city || profile.city,
-      profile.interest_province || profile.province,
-      profile.interest_region || profile.region,
-      viewerCountry,
-    ]
-      .map((value, idx) => ({ value: value?.trim(), field: ['city', 'province', 'region', 'country'][idx] }))
-      .filter((item) => item.value);
-
-    for (const loc of playerLocations) {
-      playerFilters.push([(q) => q.eq(loc.field, loc.value)]);
-    }
-    if (profile.sport) {
-      playerFilters.push([(q) => q.eq('sport', profile.sport)]);
-    }
-    playerFilters.push([]);
-
-    let addedPlayers = 0;
-    for (const filters of playerFilters) {
-      if (addedPlayers >= playerSlotsTarget || results.length >= limit) break;
-      const rows = await runQuery('athlete', filters, limit * 4);
-      addedPlayers += addSuggestions(rows, playerSlotsTarget - addedPlayers);
-    }
-
-    if (results.length < limit) {
-      for (const filters of clubFilters) {
+    if (kind === 'club' || kind === 'player') {
+      const accountType = kind === 'club' ? 'club' : 'athlete';
+      const filters = kind === 'club' ? clubFilters : playerFilters;
+      for (const filterGroup of filters) {
         if (results.length >= limit) break;
-        const rows = await runQuery('club', filters, limit * 6);
+        const rows = await runQuery(accountType, filterGroup, limit * 6);
         addSuggestions(rows);
       }
-    }
+    } else {
+      const clubSlotsTarget = Math.min(2, limit);
+      const playerSlotsTarget = Math.max(0, Math.min(2, limit - clubSlotsTarget));
 
-    if (results.length < limit) {
+      for (const filters of clubFilters) {
+        if (results.length >= clubSlotsTarget) break;
+        const rows = await runQuery('club', filters, limit * 4);
+        addSuggestions(rows, clubSlotsTarget - results.length);
+      }
+
+      let addedPlayers = 0;
       for (const filters of playerFilters) {
-        if (results.length >= limit) break;
-        const rows = await runQuery('athlete', filters, limit * 6);
-        addSuggestions(rows);
+        if (addedPlayers >= playerSlotsTarget || results.length >= limit) break;
+        const rows = await runQuery('athlete', filters, limit * 4);
+        addedPlayers += addSuggestions(rows, playerSlotsTarget - addedPlayers);
+      }
+
+      if (results.length < limit) {
+        for (const filters of clubFilters) {
+          if (results.length >= limit) break;
+          const rows = await runQuery('club', filters, limit * 6);
+          addSuggestions(rows);
+        }
+      }
+
+      if (results.length < limit) {
+        for (const filters of playerFilters) {
+          if (results.length >= limit) break;
+          const rows = await runQuery('athlete', filters, limit * 6);
+          addSuggestions(rows);
+        }
       }
     }
 

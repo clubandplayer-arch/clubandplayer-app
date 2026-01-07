@@ -85,7 +85,12 @@ export default function FollowedClubs() {
   if (loading) {
     return (
       <div className="space-y-3">
-        <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{heading}</div>
+        <div className="flex items-center justify-between">
+          <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{heading}</div>
+          <Link href="/following" className="text-xs font-semibold text-[var(--brand)] hover:underline">
+            Vedi tutti
+          </Link>
+        </div>
         <ul className="space-y-2">
           {Array.from({ length: 3 }).map((_, i) => (
             <li key={i} className="flex items-center gap-3">
@@ -103,7 +108,12 @@ export default function FollowedClubs() {
 
   return (
     <div className="space-y-3">
-      <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{heading}</div>
+      <div className="flex items-center justify-between">
+        <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{heading}</div>
+        <Link href="/following" className="text-xs font-semibold text-[var(--brand)] hover:underline">
+          Vedi tutti
+        </Link>
+      </div>
       {error ? (
         <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
       ) : items.length > 0 ? (

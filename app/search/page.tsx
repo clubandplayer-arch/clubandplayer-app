@@ -45,8 +45,22 @@ const PAGE_LIMIT = 10;
 
 function normalizeType(raw?: string | null): SearchType {
   const value = (raw || '').trim().toLowerCase();
-  if (value === 'opportunities' || value === 'clubs' || value === 'players' || value === 'posts' || value === 'events') {
-    return value;
+  const aliases: Record<string, SearchType> = {
+    all: 'all',
+    opportunity: 'opportunities',
+    opportunities: 'opportunities',
+    club: 'clubs',
+    clubs: 'clubs',
+    player: 'players',
+    players: 'players',
+    post: 'posts',
+    posts: 'posts',
+    event: 'events',
+    events: 'events',
+  };
+  const resolved = aliases[value] ?? value;
+  if (resolved === 'opportunities' || resolved === 'clubs' || resolved === 'players' || resolved === 'posts' || resolved === 'events') {
+    return resolved;
   }
   return 'all';
 }

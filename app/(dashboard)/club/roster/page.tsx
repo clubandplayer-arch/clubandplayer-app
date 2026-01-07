@@ -197,24 +197,23 @@ function RosterPlayerCard({ player }: { player: RosterPlayer }) {
 
   return (
     <div className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white/70 p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-      {player.avatarUrl ? (
-        <img
-          src={player.avatarUrl}
-          alt={player.name}
-          className="h-12 w-12 rounded-full object-cover"
-          referrerPolicy="no-referrer"
-        />
-      ) : (
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-pink-100 text-sm font-semibold text-pink-700">
-          {initials}
+      <Link href={`/u/${player.id}`} className="flex min-w-0 flex-1 items-center gap-3">
+        {player.avatarUrl ? (
+          <img
+            src={player.avatarUrl}
+            alt={player.name}
+            className="h-12 w-12 rounded-full object-cover"
+            referrerPolicy="no-referrer"
+          />
+        ) : (
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-pink-100 text-sm font-semibold text-pink-700">
+            {initials}
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-neutral-900">{title}</p>
+          <p className="text-xs text-neutral-600">{badge}</p>
         </div>
-      )}
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-neutral-900">{title}</p>
-        <p className="text-xs text-neutral-600">{badge}</p>
-      </div>
-      <Link href={`/u/${player.id}`} className="text-xs font-semibold text-[var(--brand)] hover:underline">
-        Vedi profilo
       </Link>
       <button
         type="button"

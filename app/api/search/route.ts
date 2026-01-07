@@ -56,13 +56,35 @@ function toIlikePattern(value: string) {
   return `%${escaped}%`;
 }
 
+function buildLocationFrom(parts: Array<string | null | undefined>) {
+  return parts.map((part) => (typeof part === 'string' ? part.trim() : part)).filter(Boolean).join(' · ');
+}
+
 function buildLocation(row: Record<string, any>) {
-  return [row.city, row.province, row.region, row.country].filter(Boolean).join(' · ');
+  return buildLocationFrom([row.city, row.province, row.region, row.country]);
+}
+
+function buildInterestLocation(row: Record<string, any>) {
+  return buildLocationFrom([row.interest_city, row.interest_province, row.interest_region, row.interest_country]);
 }
 
 function normalizeType(raw?: string | null): SearchType {
   const cleaned = (raw || '').toLowerCase().trim();
-  return SUPPORTED_TYPES.includes(cleaned as SearchType) ? (cleaned as SearchType) : 'all';
+  const aliases: Record<string, SearchType> = {
+    all: 'all',
+    opportunity: 'opportunities',
+    opportunities: 'opportunities',
+    club: 'clubs',
+    clubs: 'clubs',
+    player: 'players',
+    players: 'players',
+    post: 'posts',
+    posts: 'posts',
+    event: 'events',
+    events: 'events',
+  };
+  const resolved = aliases[cleaned] ?? cleaned;
+  return SUPPORTED_TYPES.includes(resolved as SearchType) ? (resolved as SearchType) : 'all';
 }
 
 function emptyCounts(): CountsByKind {
@@ -116,7 +138,7 @@ async function fetchProfileResults(params: {
   const to = from + limit - 1;
 
   const select =
-    'id, user_id, display_name, full_name, avatar_url, city, province, region, country, sport, role, account_type, type';
+    'id, user_id, display_name, full_name, avatar_url, city, province, region, country, interest_city, interest_province, interest_region, interest_country, sport, role, account_type, type';
   const query = buildProfileQuery(supabase, kind, ilikeQuery, select, { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(from, to);
@@ -152,7 +174,10 @@ async function fetchProfileResults(params: {
     const title = displayName || buildProfileDisplayName(row.full_name, row.display_name, 'Profilo');
     const details = [row.role, row.sport].filter(Boolean).join(' · ');
     const location = buildLocation(row);
-    const subtitle = [details, location].filter(Boolean).join(' · ');
+    const interestLocation = buildInterestLocation(row);
+    const interestLabel =
+      interestLocation && interestLocation !== location ? `Interesse: ${interestLocation}` : null;
+    const subtitle = [details, location, interestLabel].filter(Boolean).join(' · ');
     const href = kind === 'clubs' ? `/clubs/${row.id}` : `/players/${row.id}`;
 
     return {
