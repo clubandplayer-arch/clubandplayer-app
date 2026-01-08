@@ -344,22 +344,31 @@ export const POST = async (req: NextRequest) => {
     return jsonError('Ads unavailable', 500);
   }
 
+  const evalDate = (campaign: { start_at: string | null; end_at: string | null }, referenceMs: number) => {
+    const toMs = (value: string | null | undefined) => {
+      if (!value) return null;
+      const t = new Date(value).getTime();
+      return Number.isFinite(t) ? t : null;
+    };
+    const startMs = toMs(campaign.start_at);
+    const endMs = toMs(campaign.end_at);
+    const startOk = startMs === null || startMs <= referenceMs;
+    const endOk = endMs === null || endMs >= referenceMs;
+    const dateOk = startOk && endOk;
+    return { startMs, endMs, startOk, endOk, dateOk };
+  };
+  const campaignsAfterDate = (campaignsActive ?? []).filter((campaign) => evalDate(campaign, nowMs).dateOk);
   const creativeRows = (creatives ?? []) as CreativeWithCampaign[];
-  const campaignsAfterDateFilter = new Set<string>();
   const eligibleCampaigns: Array<{
     id: string;
     start_at: string | null;
     end_at: string | null;
-    startT: number;
-    endT: number;
+    startMs: number | null;
+    endMs: number | null;
     startOk: boolean;
     endOk: boolean;
+    dateOk: boolean;
   }> = [];
-  const toMs = (value: string | null | undefined) => {
-    if (!value) return null;
-    const t = new Date(value).getTime();
-    return Number.isFinite(t) ? t : null;
-  };
   const targetsForActiveCampaigns: AdTargetRow[] = [];
   const rejectedSamples: Array<{
     campaign_id: string | null;
@@ -397,10 +406,7 @@ export const POST = async (req: NextRequest) => {
       return acc;
     }
 
-    const startMs = toMs(campaign.start_at);
-    const endMs = toMs(campaign.end_at);
-    const startOk = startMs === null || startMs <= nowMs;
-    const endOk = endMs === null || endMs >= nowMs;
+    const { startMs, endMs, startOk, endOk, dateOk } = evalDate(campaign, nowMs);
     if (!startOk) {
       recordReject({
         campaign_id: campaign.id,
@@ -417,16 +423,15 @@ export const POST = async (req: NextRequest) => {
       });
       return acc;
     }
-
-    campaignsAfterDateFilter.add(campaign.id);
     eligibleCampaigns.push({
       id: campaign.id,
       start_at: campaign.start_at ?? null,
       end_at: campaign.end_at ?? null,
-      startT: startMs ?? Number.NaN,
-      endT: endMs ?? Number.NaN,
+      startMs,
+      endMs,
       startOk,
       endOk,
+      dateOk,
     });
 
     const targets = campaign.ad_targets ?? [];
@@ -456,21 +461,12 @@ export const POST = async (req: NextRequest) => {
     });
     return acc;
   }, []);
-  const dateSample = (campaignsActive ?? []).slice(0, 3).map((campaign) => {
-    const startMs = toMs(campaign.start_at);
-    const endMs = toMs(campaign.end_at);
-    const startOk = startMs === null || startMs <= nowMs;
-    const endOk = endMs === null || endMs >= nowMs;
-    return {
-      id: campaign.id,
-      start_at: campaign.start_at,
-      end_at: campaign.end_at,
-      startMs,
-      endMs,
-      startOk,
-      endOk,
-    };
-  });
+  const dateSample = (campaignsActive ?? []).slice(0, 3).map((campaign) => ({
+    id: campaign.id,
+    start_at: campaign.start_at,
+    end_at: campaign.end_at,
+    ...evalDate(campaign, nowMs),
+  }));
 
   if (!eligible.length) {
     if (!firstRejectReason) {
@@ -500,7 +496,7 @@ export const POST = async (req: NextRequest) => {
             nowIso,
             counts: {
               campaignsActiveCount: campaignsActiveCount ?? 0,
-              campaignsAfterDateFilterCount: campaignsAfterDateFilter.size,
+              campaignsAfterDateFilterCount: campaignsAfterDate.length,
               targetsCountForActiveCampaigns: targetsForActiveCampaigns.length,
               creativesCountForSlot: creativeRows.length,
               creativesJoinedWithCampaignCount: creativeRows.filter((row) => row.ad_campaigns?.length).length,
@@ -545,7 +541,7 @@ export const POST = async (req: NextRequest) => {
             nowIso,
             counts: {
               campaignsActiveCount: campaignsActiveCount ?? 0,
-              campaignsAfterDateFilterCount: campaignsAfterDateFilter.size,
+              campaignsAfterDateFilterCount: campaignsAfterDate.length,
               targetsCountForActiveCampaigns: targetsForActiveCampaigns.length,
               creativesCountForSlot: creativeRows.length,
               creativesJoinedWithCampaignCount: creativeRows.filter((row) => row.ad_campaigns?.length).length,
@@ -606,7 +602,7 @@ export const POST = async (req: NextRequest) => {
           nowIso,
           counts: {
             campaignsActiveCount: campaignsActiveCount ?? 0,
-            campaignsAfterDateFilterCount: campaignsAfterDateFilter.size,
+            campaignsAfterDateFilterCount: campaignsAfterDate.length,
             targetsCountForActiveCampaigns: targetsForActiveCampaigns.length,
             creativesCountForSlot: creativeRows.length,
             creativesJoinedWithCampaignCount: creativeRows.filter((row) => row.ad_campaigns?.length).length,
