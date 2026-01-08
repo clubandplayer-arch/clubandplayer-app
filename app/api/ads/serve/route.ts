@@ -80,8 +80,7 @@ const targetValueOrNull = (targets: AdTargetRow[], field: keyof AdTargetRow) => 
   return value ? value.toString() : null;
 };
 
-const supabaseUrlHost = () => {
-  const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+const supabaseUrlHost = (url: string | undefined | null) => {
   if (!url) return '';
   try {
     return new URL(url).host;
@@ -99,7 +98,8 @@ export const POST = async (req: NextRequest) => {
   const serviceRoleConfigured = Boolean(
     process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_KEY,
   );
-  const supabaseHost = supabaseUrlHost();
+  const publicUrlHost = supabaseUrlHost(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const adminUrlHost = supabaseUrlHost(process.env.SUPABASE_URL);
 
   let payload: ServePayload;
   try {
@@ -130,7 +130,8 @@ export const POST = async (req: NextRequest) => {
             },
             serviceRoleConfigured,
             usingAdminClient: false,
-            supabaseUrlHost: supabaseHost,
+            publicUrlHost,
+            adminUrlHost,
             derivedContext: {
               country: '',
               region: '',
@@ -172,7 +173,8 @@ export const POST = async (req: NextRequest) => {
             },
             serviceRoleConfigured,
             usingAdminClient: false,
-            supabaseUrlHost: supabaseHost,
+            publicUrlHost,
+            adminUrlHost,
             derivedContext: {
               country: '',
               region: '',
@@ -231,6 +233,62 @@ export const POST = async (req: NextRequest) => {
     .from('ad_campaigns')
     .select('id', { count: 'exact', head: true })
     .eq('status', 'active');
+
+  const { count: probeCampaignsTotal, error: probeCampaignsErr } = await admin
+    .from('ad_campaigns')
+    .select('id', { count: 'exact', head: true });
+  const { count: probeCreativesTotal, error: probeCreativesErr } = await admin
+    .from('ad_creatives')
+    .select('id', { count: 'exact', head: true });
+  const { count: probeTargetsTotal, error: probeTargetsErr } = await admin
+    .from('ad_targets')
+    .select('id', { count: 'exact', head: true });
+
+  const probeErrors = {
+    campaignsErr: probeCampaignsErr ? `${probeCampaignsErr.message} (${probeCampaignsErr.code ?? 'unknown'})` : null,
+    creativesErr: probeCreativesErr ? `${probeCreativesErr.message} (${probeCreativesErr.code ?? 'unknown'})` : null,
+    targetsErr: probeTargetsErr ? `${probeTargetsErr.message} (${probeTargetsErr.code ?? 'unknown'})` : null,
+  };
+
+  if (probeCampaignsErr || probeCreativesErr || probeTargetsErr) {
+    return NextResponse.json({
+      ok: false,
+      code: 'DB_ERROR',
+      message: 'Errore durante le probe query delle tabelle ads.',
+      creative: null,
+      debug: debugEnabled
+        ? {
+            endpointVersion,
+            flags,
+            serviceRoleConfigured,
+            usingAdminClient: true,
+            publicUrlHost,
+            adminUrlHost,
+            derivedContext: {
+              ...context,
+              page,
+              slot,
+            },
+            counts: {
+              campaignsActiveCount: campaignsActiveCount ?? 0,
+              campaignsAfterDateFilterCount: 0,
+              targetsCountForActiveCampaigns: 0,
+              creativesCountForSlot: 0,
+              creativesJoinedWithCampaignCount: 0,
+              eligibleCount: 0,
+            },
+            probe: {
+              campaignsTotal: probeCampaignsTotal ?? 0,
+              creativesTotal: probeCreativesTotal ?? 0,
+              targetsTotal: probeTargetsTotal ?? 0,
+            },
+            probeErrors,
+            firstRejectReason: 'probe_query_error',
+            rejectedSamples: [],
+          }
+        : undefined,
+    });
+  }
 
   const { data: creatives, error } = await admin
     .from('ad_creatives')
@@ -374,7 +432,8 @@ export const POST = async (req: NextRequest) => {
             flags,
             serviceRoleConfigured,
             usingAdminClient: true,
-            supabaseUrlHost: supabaseHost,
+            publicUrlHost,
+            adminUrlHost,
             derivedContext: {
               ...context,
               page,
@@ -388,6 +447,12 @@ export const POST = async (req: NextRequest) => {
               creativesJoinedWithCampaignCount: creativeRows.filter((row) => row.ad_campaigns?.length).length,
               eligibleCount: eligible.length,
             },
+            probe: {
+              campaignsTotal: probeCampaignsTotal ?? 0,
+              creativesTotal: probeCreativesTotal ?? 0,
+              targetsTotal: probeTargetsTotal ?? 0,
+            },
+            probeErrors,
             firstRejectReason,
             rejectedSamples,
           }
@@ -409,7 +474,8 @@ export const POST = async (req: NextRequest) => {
             flags,
             serviceRoleConfigured,
             usingAdminClient: true,
-            supabaseUrlHost: supabaseHost,
+            publicUrlHost,
+            adminUrlHost,
             derivedContext: {
               ...context,
               page,
@@ -423,6 +489,12 @@ export const POST = async (req: NextRequest) => {
               creativesJoinedWithCampaignCount: creativeRows.filter((row) => row.ad_campaigns?.length).length,
               eligibleCount: eligible.length,
             },
+            probe: {
+              campaignsTotal: probeCampaignsTotal ?? 0,
+              creativesTotal: probeCreativesTotal ?? 0,
+              targetsTotal: probeTargetsTotal ?? 0,
+            },
+            probeErrors,
             firstRejectReason: 'missing_target_url',
             rejectedSamples,
           }
@@ -460,7 +532,8 @@ export const POST = async (req: NextRequest) => {
           flags,
           serviceRoleConfigured,
           usingAdminClient: true,
-          supabaseUrlHost: supabaseHost,
+          publicUrlHost,
+          adminUrlHost,
           derivedContext: {
             ...context,
             page,
@@ -474,6 +547,12 @@ export const POST = async (req: NextRequest) => {
             creativesJoinedWithCampaignCount: creativeRows.filter((row) => row.ad_campaigns?.length).length,
             eligibleCount: eligible.length,
           },
+          probe: {
+            campaignsTotal: probeCampaignsTotal ?? 0,
+            creativesTotal: probeCreativesTotal ?? 0,
+            targetsTotal: probeTargetsTotal ?? 0,
+          },
+          probeErrors,
           firstRejectReason: firstRejectReason || null,
           rejectedSamples,
         }
