@@ -39,6 +39,10 @@ type CreativeWithCampaign = {
 };
 
 const normalize = (value: string | null | undefined) => value?.toString().trim().toLowerCase() ?? '';
+const toNullableText = (value: string | null | undefined) => {
+  const trimmed = value?.toString().trim() ?? '';
+  return trimmed ? trimmed : null;
+};
 
 const isWildcard = (value: string | null | undefined) => {
   const normalized = normalize(value);
@@ -220,17 +224,21 @@ export const POST = async (req: NextRequest) => {
     city: string | null;
     sport: string | null;
     interest_province: string | null;
+    account_type: string | null;
+    type: string | null;
   } | null = null;
   if (user?.id) {
     const { data } = await admin
       .from('profiles')
-      .select('country, region, province, city, sport, interest_province')
+      .select('country, region, province, city, sport, interest_province, account_type, type')
       .eq('user_id', user.id)
       .maybeSingle();
     profile = data ?? null;
   }
 
   const province = normalize(profile?.province) || normalize(profile?.interest_province);
+  const viewerAudience =
+    toNullableText(profile?.account_type) ?? toNullableText(profile?.type) ?? 'all';
   const device = detectDevice(req.headers.get('user-agent'));
   const context = {
     country: normalize(profile?.country),
@@ -581,18 +589,27 @@ export const POST = async (req: NextRequest) => {
     });
   }
 
-  await admin.from('ad_events').insert({
+  const eventPayload = {
     campaign_id: selected.campaign_id,
     creative_id: selected.id,
     event_type: 'impression',
     slot,
     page,
+    viewer_country: toNullableText(profile?.country),
+    viewer_region: toNullableText(profile?.region),
+    viewer_province: toNullableText(profile?.province) ?? toNullableText(profile?.interest_province),
+    viewer_city: toNullableText(profile?.city),
+    viewer_sport: toNullableText(profile?.sport),
+    viewer_audience: viewerAudience,
+    viewer_user_id: user?.id ?? null,
     user_id: user?.id ?? null,
     country: profile?.country ?? null,
     region: profile?.region ?? null,
     city: profile?.city ?? null,
     device,
-  });
+  };
+
+  await admin.from('ad_events').insert(eventPayload);
 
   return NextResponse.json({
     ok: true,
@@ -617,6 +634,11 @@ export const POST = async (req: NextRequest) => {
             ...context,
             page,
             slot,
+          },
+          eventPayload: {
+            ...eventPayload,
+            viewer_user_id: user?.id ? 'set' : null,
+            user_id: user?.id ? 'set' : null,
           },
           nowMs,
           nowIso,
