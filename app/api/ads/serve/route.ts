@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { jsonError } from '@/lib/api/auth';
-import { isAdsEnabledServer } from '@/lib/env/features';
+import { isAdsEnabled, isAdsEnabledServer } from '@/lib/env/features';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
@@ -9,6 +9,7 @@ export const runtime = 'nodejs';
 type ServePayload = {
   slot?: string;
   page?: string;
+  debug?: boolean;
 };
 
 type AdTargetRow = {
@@ -43,6 +44,11 @@ type CreativeWithCampaign = {
 
 const normalize = (value: string | null | undefined) => value?.toString().trim().toLowerCase() ?? '';
 
+const isWildcard = (value: string | null | undefined) => {
+  const normalized = normalize(value);
+  return normalized === '' || normalized === 'all';
+};
+
 const matchesTarget = (target: AdTargetRow, context: Record<string, string>) => {
   const checks: Array<[keyof AdTargetRow, string]> = [
     ['country', context.country],
@@ -54,9 +60,10 @@ const matchesTarget = (target: AdTargetRow, context: Record<string, string>) => 
   ];
 
   return checks.every(([field, value]) => {
-    const targetValue = normalize(target[field]);
-    if (!targetValue) return true;
-    return targetValue === normalize(value);
+    if (isWildcard(target[field])) return true;
+    const normalizedValue = normalize(value);
+    if (!normalizedValue) return true;
+    return normalize(target[field]) === normalizedValue;
   });
 };
 
@@ -68,10 +75,31 @@ const detectDevice = (userAgent: string | null) => {
   return 'desktop';
 };
 
-export const POST = async (req: NextRequest) => {
-  if (!isAdsEnabledServer()) {
-    return NextResponse.json({ creative: null });
+const targetValueOrNull = (targets: AdTargetRow[], field: keyof AdTargetRow) => {
+  const value = targets.find((target) => normalize(target[field]) !== '')?.[field] ?? null;
+  return value ? value.toString() : null;
+};
+
+const supabaseUrlHost = (url: string | undefined | null) => {
+  if (!url) return '';
+  try {
+    return new URL(url).host;
+  } catch {
+    return '';
   }
+};
+
+export const POST = async (req: NextRequest) => {
+  const endpointVersion = 'ads-serve@2026-01-08a';
+  const queryDebug = req.nextUrl.searchParams.get('debug');
+  const debugFromQuery = queryDebug === '1' || queryDebug === 'true';
+  const adsEnabled = isAdsEnabledServer();
+  const clientAdsEnabled = isAdsEnabled();
+  const serviceRoleConfigured = Boolean(
+    process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_KEY,
+  );
+  const publicUrlHost = supabaseUrlHost(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const adminUrlHost = supabaseUrlHost(process.env.SUPABASE_URL);
 
   let payload: ServePayload;
   try {
@@ -80,16 +108,96 @@ export const POST = async (req: NextRequest) => {
     return jsonError('Invalid payload', 400);
   }
 
-  const slot = typeof payload?.slot === 'string' ? payload.slot.trim() : '';
+  const debugFromBody = payload?.debug === true;
+  const debugEnabled = debugFromQuery || debugFromBody;
+  const slot = typeof payload?.slot === 'string' ? payload.slot.trim().toLowerCase() : '';
   const page = typeof payload?.page === 'string' ? payload.page.trim() : '';
 
   if (!slot || !page) {
     return jsonError('Missing slot or page', 400);
   }
 
+  if (!adsEnabled) {
+    return NextResponse.json({
+      creative: null,
+      ok: false,
+      debug: debugEnabled
+        ? {
+            endpointVersion,
+            flags: {
+              ADS_ENABLED: adsEnabled,
+              NEXT_PUBLIC_ADS_ENABLED: clientAdsEnabled,
+            },
+            serviceRoleConfigured,
+            usingAdminClient: false,
+            publicUrlHost,
+            adminUrlHost,
+            derivedContext: {
+              country: '',
+              region: '',
+              city: '',
+              sport: '',
+              audience: '',
+              device: '',
+              page,
+              slot,
+            },
+            counts: {
+              campaignsActiveCount: 0,
+              campaignsAfterDateFilterCount: 0,
+              targetsCountForActiveCampaigns: 0,
+              creativesCountForSlot: 0,
+              creativesJoinedWithCampaignCount: 0,
+              eligibleCount: 0,
+            },
+            firstRejectReason: 'ads_disabled',
+            rejectedSamples: [],
+          }
+        : undefined,
+    });
+  }
+
   const admin = getSupabaseAdminClientOrNull();
   if (!admin) {
-    return NextResponse.json({ creative: null });
+    return NextResponse.json({
+      ok: false,
+      code: 'CONFIG_MISSING_SERVICE_ROLE',
+      message: 'SUPABASE_SERVICE_ROLE_KEY is missing or invalid for ads serving.',
+      creative: null,
+      debug: debugEnabled
+        ? {
+            endpointVersion,
+            flags: {
+              ADS_ENABLED: adsEnabled,
+              NEXT_PUBLIC_ADS_ENABLED: clientAdsEnabled,
+            },
+            serviceRoleConfigured,
+            usingAdminClient: false,
+            publicUrlHost,
+            adminUrlHost,
+            derivedContext: {
+              country: '',
+              region: '',
+              city: '',
+              sport: '',
+              audience: '',
+              device: '',
+              page,
+              slot,
+            },
+            counts: {
+              campaignsActiveCount: 0,
+              campaignsAfterDateFilterCount: 0,
+              targetsCountForActiveCampaigns: 0,
+              creativesCountForSlot: 0,
+              creativesJoinedWithCampaignCount: 0,
+              eligibleCount: 0,
+            },
+            firstRejectReason: 'supabase_admin_unavailable',
+            rejectedSamples: [],
+          }
+        : undefined,
+    });
   }
 
   const supabase = await getSupabaseServerClient();
@@ -115,6 +223,72 @@ export const POST = async (req: NextRequest) => {
     audience: '',
     device: normalize(device),
   };
+
+  const flags = {
+    ADS_ENABLED: adsEnabled,
+    NEXT_PUBLIC_ADS_ENABLED: clientAdsEnabled,
+  };
+
+  const { count: campaignsActiveCount } = await admin
+    .from('ad_campaigns')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'active');
+
+  const { count: probeCampaignsTotal, error: probeCampaignsErr } = await admin
+    .from('ad_campaigns')
+    .select('id', { count: 'exact', head: true });
+  const { count: probeCreativesTotal, error: probeCreativesErr } = await admin
+    .from('ad_creatives')
+    .select('id', { count: 'exact', head: true });
+  const { count: probeTargetsTotal, error: probeTargetsErr } = await admin
+    .from('ad_targets')
+    .select('id', { count: 'exact', head: true });
+
+  const probeErrors = {
+    campaignsErr: probeCampaignsErr ? `${probeCampaignsErr.message} (${probeCampaignsErr.code ?? 'unknown'})` : null,
+    creativesErr: probeCreativesErr ? `${probeCreativesErr.message} (${probeCreativesErr.code ?? 'unknown'})` : null,
+    targetsErr: probeTargetsErr ? `${probeTargetsErr.message} (${probeTargetsErr.code ?? 'unknown'})` : null,
+  };
+
+  if (probeCampaignsErr || probeCreativesErr || probeTargetsErr) {
+    return NextResponse.json({
+      ok: false,
+      code: 'DB_ERROR',
+      message: 'Errore durante le probe query delle tabelle ads.',
+      creative: null,
+      debug: debugEnabled
+        ? {
+            endpointVersion,
+            flags,
+            serviceRoleConfigured,
+            usingAdminClient: true,
+            publicUrlHost,
+            adminUrlHost,
+            derivedContext: {
+              ...context,
+              page,
+              slot,
+            },
+            counts: {
+              campaignsActiveCount: campaignsActiveCount ?? 0,
+              campaignsAfterDateFilterCount: 0,
+              targetsCountForActiveCampaigns: 0,
+              creativesCountForSlot: 0,
+              creativesJoinedWithCampaignCount: 0,
+              eligibleCount: 0,
+            },
+            probe: {
+              campaignsTotal: probeCampaignsTotal ?? 0,
+              creativesTotal: probeCreativesTotal ?? 0,
+              targetsTotal: probeTargetsTotal ?? 0,
+            },
+            probeErrors,
+            firstRejectReason: 'probe_query_error',
+            rejectedSamples: [],
+          }
+        : undefined,
+    });
+  }
 
   const { data: creatives, error } = await admin
     .from('ad_creatives')
@@ -154,20 +328,84 @@ export const POST = async (req: NextRequest) => {
 
   const now = Date.now();
   const creativeRows = (creatives ?? []) as CreativeWithCampaign[];
+  const campaignsAfterDateFilter = new Set<string>();
+  const targetsForActiveCampaigns: AdTargetRow[] = [];
+  const rejectedSamples: Array<{
+    campaign_id: string | null;
+    reason: string;
+    fields: Record<string, string | null>;
+  }> = [];
+
+  let firstRejectReason = '';
+
+  const recordReject = (entry: { campaign_id: string | null; reason: string; fields: Record<string, string | null> }) => {
+    if (!firstRejectReason) {
+      firstRejectReason = entry.reason;
+    }
+    if (rejectedSamples.length < 3) {
+      rejectedSamples.push(entry);
+    }
+  };
+
   const eligible = creativeRows.reduce<Array<{ creative: CreativeWithCampaign; priority: number }>>((acc, creative) => {
     const campaign = Array.isArray(creative.ad_campaigns) ? creative.ad_campaigns[0] : null;
-    if (!campaign) return acc;
-    if (campaign.status !== 'active') return acc;
+    if (!campaign) {
+      recordReject({
+        campaign_id: creative.campaign_id,
+        reason: 'missing_campaign_join',
+        fields: { campaign_id: creative.campaign_id },
+      });
+      return acc;
+    }
+    if (campaign.status !== 'active') {
+      recordReject({
+        campaign_id: campaign.id,
+        reason: 'campaign_inactive',
+        fields: { status: campaign.status },
+      });
+      return acc;
+    }
 
     const startAt = campaign.start_at ? new Date(campaign.start_at).getTime() : null;
     const endAt = campaign.end_at ? new Date(campaign.end_at).getTime() : null;
-    if (startAt && startAt > now) return acc;
-    if (endAt && endAt < now) return acc;
+    if (startAt && startAt > now) {
+      recordReject({
+        campaign_id: campaign.id,
+        reason: 'campaign_not_started',
+        fields: { start_at: campaign.start_at },
+      });
+      return acc;
+    }
+    if (endAt && endAt < now) {
+      recordReject({
+        campaign_id: campaign.id,
+        reason: 'campaign_expired',
+        fields: { end_at: campaign.end_at },
+      });
+      return acc;
+    }
+
+    campaignsAfterDateFilter.add(campaign.id);
 
     const targets = campaign.ad_targets ?? [];
+    targetsForActiveCampaigns.push(...targets);
     if (targets.length) {
       const matches = targets.some((target) => matchesTarget(target, context));
-      if (!matches) return acc;
+      if (!matches) {
+        recordReject({
+          campaign_id: campaign.id,
+          reason: 'target_mismatch',
+          fields: {
+            country: targetValueOrNull(targets, 'country'),
+            region: targetValueOrNull(targets, 'region'),
+            city: targetValueOrNull(targets, 'city'),
+            sport: targetValueOrNull(targets, 'sport'),
+            audience: targetValueOrNull(targets, 'audience'),
+            device: targetValueOrNull(targets, 'device'),
+          },
+        });
+        return acc;
+      }
     }
 
     acc.push({
@@ -178,7 +416,48 @@ export const POST = async (req: NextRequest) => {
   }, []);
 
   if (!eligible.length) {
-    return NextResponse.json({ creative: null });
+    if (!firstRejectReason) {
+      if (!creativeRows.length) {
+        firstRejectReason = 'no_creatives_for_slot';
+      } else {
+        firstRejectReason = 'no_eligible_creatives';
+      }
+    }
+    return NextResponse.json({
+      creative: null,
+      ok: false,
+      debug: debugEnabled
+        ? {
+            endpointVersion,
+            flags,
+            serviceRoleConfigured,
+            usingAdminClient: true,
+            publicUrlHost,
+            adminUrlHost,
+            derivedContext: {
+              ...context,
+              page,
+              slot,
+            },
+            counts: {
+              campaignsActiveCount: campaignsActiveCount ?? 0,
+              campaignsAfterDateFilterCount: campaignsAfterDateFilter.size,
+              targetsCountForActiveCampaigns: targetsForActiveCampaigns.length,
+              creativesCountForSlot: creativeRows.length,
+              creativesJoinedWithCampaignCount: creativeRows.filter((row) => row.ad_campaigns?.length).length,
+              eligibleCount: eligible.length,
+            },
+            probe: {
+              campaignsTotal: probeCampaignsTotal ?? 0,
+              creativesTotal: probeCreativesTotal ?? 0,
+              targetsTotal: probeTargetsTotal ?? 0,
+            },
+            probeErrors,
+            firstRejectReason,
+            rejectedSamples,
+          }
+        : undefined,
+    });
   }
 
   const maxPriority = Math.max(...eligible.map((item) => item.priority));
@@ -186,7 +465,41 @@ export const POST = async (req: NextRequest) => {
   const selected = top[Math.floor(Math.random() * top.length)]?.creative ?? null;
 
   if (!selected?.target_url) {
-    return NextResponse.json({ creative: null });
+    return NextResponse.json({
+      creative: null,
+      ok: false,
+      debug: debugEnabled
+        ? {
+            endpointVersion,
+            flags,
+            serviceRoleConfigured,
+            usingAdminClient: true,
+            publicUrlHost,
+            adminUrlHost,
+            derivedContext: {
+              ...context,
+              page,
+              slot,
+            },
+            counts: {
+              campaignsActiveCount: campaignsActiveCount ?? 0,
+              campaignsAfterDateFilterCount: campaignsAfterDateFilter.size,
+              targetsCountForActiveCampaigns: targetsForActiveCampaigns.length,
+              creativesCountForSlot: creativeRows.length,
+              creativesJoinedWithCampaignCount: creativeRows.filter((row) => row.ad_campaigns?.length).length,
+              eligibleCount: eligible.length,
+            },
+            probe: {
+              campaignsTotal: probeCampaignsTotal ?? 0,
+              creativesTotal: probeCreativesTotal ?? 0,
+              targetsTotal: probeTargetsTotal ?? 0,
+            },
+            probeErrors,
+            firstRejectReason: 'missing_target_url',
+            rejectedSamples,
+          }
+        : undefined,
+    });
   }
 
   await admin.from('ad_events').insert({
@@ -203,6 +516,7 @@ export const POST = async (req: NextRequest) => {
   });
 
   return NextResponse.json({
+    ok: true,
     creative: {
       id: selected.id,
       campaignId: selected.campaign_id,
@@ -212,5 +526,36 @@ export const POST = async (req: NextRequest) => {
       imageUrl: selected.image_url,
       targetUrl: selected.target_url,
     },
+    debug: debugEnabled
+      ? {
+          endpointVersion,
+          flags,
+          serviceRoleConfigured,
+          usingAdminClient: true,
+          publicUrlHost,
+          adminUrlHost,
+          derivedContext: {
+            ...context,
+            page,
+            slot,
+          },
+          counts: {
+            campaignsActiveCount: campaignsActiveCount ?? 0,
+            campaignsAfterDateFilterCount: campaignsAfterDateFilter.size,
+            targetsCountForActiveCampaigns: targetsForActiveCampaigns.length,
+            creativesCountForSlot: creativeRows.length,
+            creativesJoinedWithCampaignCount: creativeRows.filter((row) => row.ad_campaigns?.length).length,
+            eligibleCount: eligible.length,
+          },
+          probe: {
+            campaignsTotal: probeCampaignsTotal ?? 0,
+            creativesTotal: probeCreativesTotal ?? 0,
+            targetsTotal: probeTargetsTotal ?? 0,
+          },
+          probeErrors,
+          firstRejectReason: firstRejectReason || null,
+          rejectedSamples,
+        }
+      : undefined,
   });
 };
