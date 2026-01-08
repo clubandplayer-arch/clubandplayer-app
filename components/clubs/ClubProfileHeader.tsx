@@ -4,6 +4,7 @@ import Image from 'next/image';
 
 import FollowButton from '@/components/clubs/FollowButton';
 import { MessageButton } from '@/components/messaging/MessageButton';
+import { normalizeSport } from '@/lib/opps/constants';
 
 type ClubProfile = {
   id: string;
@@ -35,6 +36,7 @@ function initialsFromName(name: string) {
 export default function ClubProfileHeader({ profile }: { profile: ClubProfile }) {
   const name = profile.display_name || profile.full_name || 'Club';
   const location = formatLocation(profile);
+  const sportLabel = normalizeSport(profile.sport ?? null) ?? profile.sport ?? null;
 
   return (
     <header className="rounded-2xl border bg-white p-5 shadow-sm">
@@ -60,7 +62,7 @@ export default function ClubProfileHeader({ profile }: { profile: ClubProfile })
             <div className="flex flex-col gap-1">
               <h1 className="text-2xl font-semibold leading-tight text-neutral-900 md:text-3xl">{name}</h1>
               <p className="text-sm font-medium text-neutral-700 md:text-base">
-                {[profile.club_league_category, profile.sport].filter(Boolean).join(' · ') || '—'}
+                {[profile.club_league_category, sportLabel].filter(Boolean).join(' · ') || '—'}
               </p>
             </div>
             {location ? <p className="text-xs text-neutral-500">{location}</p> : <p className="text-xs text-neutral-400">Località —</p>}

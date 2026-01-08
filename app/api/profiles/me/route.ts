@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
+import { normalizeSport } from '@/lib/opps/constants';
 import { MAX_SKILLS, parseSkillsInput } from '@/lib/profiles/skills';
 
 export const runtime = 'nodejs';
@@ -153,6 +154,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
     if (kind === 'json') updates[key] = toJsonOrNull(val);
   }
 
+  if (updates.sport) updates.sport = normalizeSport(updates.sport) ?? updates.sport;
   if (updates.interest_country === undefined) updates.interest_country = 'IT';
   if (updates.country) updates.country = updates.country.toString().trim().toUpperCase();
   if (updates.interest_country) updates.interest_country = updates.interest_country.toString().trim().toUpperCase();

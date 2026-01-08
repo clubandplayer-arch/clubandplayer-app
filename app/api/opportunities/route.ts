@@ -6,6 +6,7 @@ import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { normalizeToEN, PLAYING_CATEGORY_EN } from '@/lib/enums';
 import { COUNTRIES } from '@/lib/geo/countries';
 import { normalizeOpportunityGender, toOpportunityDbValue } from '@/lib/opps/gender';
+import { normalizeSport } from '@/lib/opps/constants';
 import { dbError, invalidPayload, notAuthorized, rateLimited, successResponse } from '@/lib/api/standardResponses';
 
 export const runtime = 'nodejs';
@@ -79,7 +80,7 @@ export async function GET(req: NextRequest) {
   const city = (url.searchParams.get('city') || '').trim();
   const club = (url.searchParams.get('club') || '').trim();
   const clubId = (url.searchParams.get('clubId') || url.searchParams.get('club_id') || '').trim();
-  const sport = (url.searchParams.get('sport') || '').trim();
+  const sport = normalizeSport((url.searchParams.get('sport') || '').trim()) ?? '';
   const role = (url.searchParams.get('role') || '').trim();
   const ageB = (url.searchParams.get('age') || '').trim();
   const category = (url.searchParams.get('category') || url.searchParams.get('required_category') || '').trim();
@@ -229,7 +230,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   const region = norm((body as any).region);
   const province = norm((body as any).province);
   const city = norm((body as any).city);
-  const sport = norm((body as any).sport);
+  const sport = normalizeSport(norm((body as any).sport)) ?? null;
   const roleHuman =
     norm((body as any).role) ??
     norm((body as any).roleLabel) ??

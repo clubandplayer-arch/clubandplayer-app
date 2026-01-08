@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 import { resolveCountryName, resolveStateName } from '@/lib/geodata/countryStateCityDataset';
+import { normalizeSport } from '@/lib/opps/constants';
 
 type Profile = {
   account_type?: string | null;
@@ -98,6 +99,10 @@ export default function ClubProfileDetails() {
   );
 
   const country = useMemo(() => resolveCountryName(profile?.country || undefined), [profile?.country]);
+  const sportLabel = useMemo(
+    () => normalizeSport(profile?.sport ?? null) ?? profile?.sport ?? null,
+    [profile?.sport],
+  );
 
   const cityLine = useMemo(() => {
     const city = profile?.city || location.municipality;
@@ -147,7 +152,7 @@ export default function ClubProfileDetails() {
       <dl className="grid gap-4 sm:grid-cols-2">
         <div className="rounded-xl border border-white/30 bg-white/40 p-3 shadow-sm backdrop-blur">
           <dt className="text-xs uppercase tracking-wide text-neutral-500">Sport</dt>
-          <dd className="text-base font-semibold text-neutral-900">{profile?.sport || '—'}</dd>
+          <dd className="text-base font-semibold text-neutral-900">{sportLabel || '—'}</dd>
         </div>
         <div className="rounded-xl border border-white/30 bg-white/40 p-3 shadow-sm backdrop-blur">
           <dt className="text-xs uppercase tracking-wide text-neutral-500">Categoria</dt>

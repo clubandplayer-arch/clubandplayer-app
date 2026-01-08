@@ -8,6 +8,7 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import FollowButton from '@/components/clubs/FollowButton';
 
 import { resolveCountryName, resolveStateName } from '@/lib/geodata/countryStateCityDataset';
+import { normalizeSport } from '@/lib/opps/constants';
 
 type P = {
   id?: string | null;
@@ -187,6 +188,7 @@ export default function ProfileMiniCard() {
   const age = !isClub && p?.birth_year ? Math.max(0, year - p.birth_year) : null;
   const name = p?.full_name || p?.display_name || (isClub ? 'Il tuo club' : 'Benvenuto!');
   const interestLabel = [interest.city, interest.region, interest.country].filter(Boolean).join(', ');
+  const sportLabel = normalizeSport(p?.sport ?? null) ?? p?.sport ?? null;
 
   // nazionalità con bandiera
   const nat = countryLabel(p?.country);
@@ -283,7 +285,7 @@ export default function ProfileMiniCard() {
             {p?.sport && (
               <div className="flex flex-col gap-0.5">
                 <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Sport</dt>
-                <dd className="font-medium text-gray-900">{p.sport}</dd>
+                <dd className="font-medium text-gray-900">{sportLabel}</dd>
               </div>
             )}
             {p?.club_league_category && (

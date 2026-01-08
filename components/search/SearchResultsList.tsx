@@ -9,6 +9,7 @@ import { buildDirectConversationUrl } from '@/lib/services/messaging';
 import { SearchMapProfile } from '@/lib/services/search';
 import { buildProfileDisplayName } from '@/lib/displayName';
 import { getCountryName } from '@/lib/geo/countries';
+import { normalizeSport } from '@/lib/opps/constants';
 
 export type SearchResultsListProps = {
   results: SearchMapProfile[];
@@ -88,7 +89,8 @@ function locationLabel(profile: SearchMapProfile) {
 }
 
 function detailsLabel(profile: SearchMapProfile) {
-  return [profile.role, profile.sport].filter(Boolean).join(' · ');
+  const sportLabel = normalizeSport(profile.sport ?? null) ?? profile.sport ?? null;
+  return [profile.role, sportLabel].filter(Boolean).join(' · ');
 }
 
 function resolveProfileId(profile: SearchMapProfile) {

@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import FollowButton from '@/components/clubs/FollowButton';
 import { MessageButton } from '@/components/messaging/MessageButton';
+import { normalizeSport } from '@/lib/opps/constants';
 
 type AthleteProfile = {
   id: string;
@@ -32,7 +33,8 @@ export default function AthleteProfileHeader({
   const name = resolveName(profile);
 
   const subtitle = (() => {
-    const parts = [profile.role, profile.sport].filter(Boolean);
+    const sportLabel = normalizeSport(profile.sport ?? null) ?? profile.sport ?? null;
+    const parts = [profile.role, sportLabel].filter(Boolean);
     return parts.join(' · ') || '—';
   })();
 
