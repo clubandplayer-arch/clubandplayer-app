@@ -4,13 +4,13 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import FeedComposer from '@/components/feed/FeedComposer';
 import TrackRetention from '@/components/analytics/TrackRetention';
 import { PostCard } from '@/components/feed/PostCard';
 import EmptyState from '@/components/common/EmptyState';
-import { HorizontalAdBanner } from '@/components/ads/HorizontalAdBanner';
-import { VerticalAdBanner } from '@/components/ads/VerticalAdBanner';
+import AdSlot from '@/components/ads/AdSlot';
 import OpportunityCard from '@/components/opportunities/OpportunityCard';
 import {
   computeOptimistic,
@@ -61,6 +61,7 @@ type StarterProfile = {
 };
 
 export default function FeedPage() {
+  const pathname = usePathname();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [_profile, setProfile] = useState<Profile | null>(null);
   const [reactions, setReactions] = useState<Record<string, ReactionState>>({});
@@ -359,7 +360,8 @@ export default function FeedPage() {
             <ProfileMiniCard />
           </div>
           <MyMediaHub currentUserId={currentUserId} />
-          <VerticalAdBanner className="hidden border border-blue-900/30 md:block" />
+          <AdSlot slot="left_top" page={pathname} />
+          <AdSlot slot="left_bottom" page={pathname} />
         </aside>
 
         {/* Colonna centrale: composer + feed */}
@@ -423,9 +425,6 @@ export default function FeedPage() {
               !errorMessage &&
               posts.map((p, index) => (
                 <Fragment key={p.id}>
-                  {index > 0 && index % 2 === 0 ? (
-                    <HorizontalAdBanner className="border border-amber-200/70" />
-                  ) : null}
                   <PostCard
                     post={p}
                     currentUserId={currentUserId}
@@ -441,6 +440,7 @@ export default function FeedPage() {
                       setCommentCounts((curr) => ({ ...curr, [String(p.id)]: next }))
                     }
                   />
+                  {(index + 1) % 2 === 0 ? <AdSlot slot="feed_infeed" page={pathname} /> : null}
                 </Fragment>
               ))}
             {shouldShowStarterPack && (
@@ -492,9 +492,8 @@ export default function FeedPage() {
             <FeedHighlights />
           </SidebarCard>
 
-          <VerticalAdBanner className="border border-blue-900/30" />
-
-          <VerticalAdBanner className="border border-blue-900/30" />
+          <AdSlot slot="sidebar_top" page={pathname} />
+          <AdSlot slot="sidebar_bottom" page={pathname} />
         </aside>
       </div>
     </div>

@@ -20,7 +20,7 @@ const nextConfig: NextConfig = {
 
   // ✅ Usa domains (più compatibile) invece di remotePatterns
   images: {
-    domains: ['api.dicebear.com', ...(supaHost ? [supaHost] : [])],
+    domains: ['api.dicebear.com', 'via.placeholder.com', ...(supaHost ? [supaHost] : [])],
     formats: ['image/avif', 'image/webp'],
     minimumCacheTTL: ONE_YEAR,
     deviceSizes: [320, 420, 640, 768, 1024, 1280, 1536],

@@ -22,6 +22,18 @@ type AdSlotProps = {
   page: string;
 };
 
+const pageCreativeIds = new Map<string, Set<string>>();
+
+const getExcludeCreativeIds = (page: string) => {
+  return Array.from(pageCreativeIds.get(page) ?? []);
+};
+
+const rememberCreativeId = (page: string, creativeId: string) => {
+  const existing = pageCreativeIds.get(page) ?? new Set<string>();
+  existing.add(creativeId);
+  pageCreativeIds.set(page, existing);
+};
+
 export default function AdSlot({ slot, page }: AdSlotProps) {
   const adsEnabled = isAdsEnabled();
   const [creative, setCreative] = useState<AdCreative | null>(null);
@@ -32,10 +44,11 @@ export default function AdSlot({ slot, page }: AdSlotProps) {
 
     (async () => {
       try {
+        const excludeCreativeIds = getExcludeCreativeIds(page);
         const res = await fetch(ADS_ENDPOINT, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ slot, page }),
+          body: JSON.stringify({ slot, page, excludeCreativeIds }),
         });
 
         if (!res.ok) {
@@ -45,7 +58,11 @@ export default function AdSlot({ slot, page }: AdSlotProps) {
 
         const payload = await res.json().catch(() => null);
         if (cancelled) return;
-        setCreative(payload?.creative ?? null);
+        const nextCreative = payload?.creative ?? null;
+        if (nextCreative?.id) {
+          rememberCreativeId(page, nextCreative.id);
+        }
+        setCreative(nextCreative);
       } catch {
         if (!cancelled) setCreative(null);
       }
@@ -81,7 +98,7 @@ export default function AdSlot({ slot, page }: AdSlotProps) {
   if (!adsEnabled || !creative) return null;
 
   return (
-    <aside className="hidden xl:block fixed right-6 top-24 z-30 w-72">
+    <div className="w-full">
       <div className="rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur">
         <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Sponsored</div>
         <a
@@ -106,6 +123,6 @@ export default function AdSlot({ slot, page }: AdSlotProps) {
           </div>
         </a>
       </div>
-    </aside>
+    </div>
   );
 }
