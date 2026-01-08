@@ -10,6 +10,7 @@ type ServePayload = {
   slot?: string;
   page?: string;
   debug?: boolean;
+  excludeCreativeIds?: string[];
 };
 
 type AdTargetRow = {
@@ -106,6 +107,10 @@ export const POST = async (req: NextRequest) => {
   const debugEnabled = debugFromQuery || debugFromBody;
   const slot = typeof payload?.slot === 'string' ? payload.slot.trim().toLowerCase() : '';
   const page = typeof payload?.page === 'string' ? payload.page.trim() : '';
+  const excludeCreativeIds = Array.isArray(payload?.excludeCreativeIds)
+    ? payload.excludeCreativeIds.filter((id) => typeof id === 'string' && id.trim().length > 0)
+    : [];
+  const excludeCreativeIdsSet = new Set(excludeCreativeIds);
   const nowMs = Date.now();
   const nowIso = new Date(nowMs).toISOString();
 
@@ -511,8 +516,12 @@ export const POST = async (req: NextRequest) => {
     });
   }
 
-  const maxPriority = Math.max(...eligible.map((item) => item.priority));
-  const top = eligible.filter((item) => item.priority === maxPriority);
+  const eligibleWithoutExcluded = excludeCreativeIdsSet.size
+    ? eligible.filter((item) => !excludeCreativeIdsSet.has(item.creative.id))
+    : eligible;
+  const eligibleForSelection = eligibleWithoutExcluded.length ? eligibleWithoutExcluded : eligible;
+  const maxPriority = Math.max(...eligibleForSelection.map((item) => item.priority));
+  const top = eligibleForSelection.filter((item) => item.priority === maxPriority);
   const selected = top[Math.floor(Math.random() * top.length)]?.creative ?? null;
 
   if (!selected?.target_url) {
