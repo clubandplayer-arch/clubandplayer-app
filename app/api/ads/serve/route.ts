@@ -112,6 +112,8 @@ export const POST = async (req: NextRequest) => {
   const debugEnabled = debugFromQuery || debugFromBody;
   const slot = typeof payload?.slot === 'string' ? payload.slot.trim().toLowerCase() : '';
   const page = typeof payload?.page === 'string' ? payload.page.trim() : '';
+  const nowMs = Date.now();
+  const nowIso = new Date(nowMs).toISOString();
 
   if (!slot || !page) {
     return jsonError('Missing slot or page', 400);
@@ -142,6 +144,8 @@ export const POST = async (req: NextRequest) => {
               page,
               slot,
             },
+            nowMs,
+            nowIso,
             counts: {
               campaignsActiveCount: 0,
               campaignsAfterDateFilterCount: 0,
@@ -185,6 +189,8 @@ export const POST = async (req: NextRequest) => {
               page,
               slot,
             },
+            nowMs,
+            nowIso,
             counts: {
               campaignsActiveCount: 0,
               campaignsAfterDateFilterCount: 0,
@@ -274,6 +280,8 @@ export const POST = async (req: NextRequest) => {
               page,
               slot,
             },
+            nowMs,
+            nowIso,
             counts: {
               campaignsActiveCount: campaignsActiveCount ?? 0,
               campaignsAfterDateFilterCount: 0,
@@ -336,7 +344,6 @@ export const POST = async (req: NextRequest) => {
     return jsonError('Ads unavailable', 500);
   }
 
-  const now = Date.now();
   const creativeRows = (creatives ?? []) as CreativeWithCampaign[];
   const campaignsAfterDateFilter = new Set<string>();
   const eligibleCampaigns: Array<{
@@ -348,10 +355,10 @@ export const POST = async (req: NextRequest) => {
     startOk: boolean;
     endOk: boolean;
   }> = [];
-  const parseTs = (value: string | null | undefined) => {
-    if (!value) return Number.NaN;
-    const s = String(value).replace(' ', 'T').replace(/\+00$/, '+00:00');
-    return Date.parse(s);
+  const toMs = (value: string | null | undefined) => {
+    if (!value) return null;
+    const t = new Date(value).getTime();
+    return Number.isFinite(t) ? t : null;
   };
   const targetsForActiveCampaigns: AdTargetRow[] = [];
   const rejectedSamples: Array<{
@@ -390,10 +397,10 @@ export const POST = async (req: NextRequest) => {
       return acc;
     }
 
-    const startT = parseTs(campaign.start_at);
-    const endT = parseTs(campaign.end_at);
-    const startOk = !campaign.start_at || Number.isNaN(startT) || startT <= now;
-    const endOk = !campaign.end_at || Number.isNaN(endT) || endT >= now;
+    const startMs = toMs(campaign.start_at);
+    const endMs = toMs(campaign.end_at);
+    const startOk = startMs === null || startMs <= nowMs;
+    const endOk = endMs === null || endMs >= nowMs;
     if (!startOk) {
       recordReject({
         campaign_id: campaign.id,
@@ -416,8 +423,8 @@ export const POST = async (req: NextRequest) => {
       id: campaign.id,
       start_at: campaign.start_at ?? null,
       end_at: campaign.end_at ?? null,
-      startT,
-      endT,
+      startT: startMs ?? Number.NaN,
+      endT: endMs ?? Number.NaN,
       startOk,
       endOk,
     });
@@ -450,16 +457,16 @@ export const POST = async (req: NextRequest) => {
     return acc;
   }, []);
   const dateSample = (campaignsActive ?? []).slice(0, 3).map((campaign) => {
-    const startT = parseTs(campaign.start_at);
-    const endT = parseTs(campaign.end_at);
-    const startOk = !campaign.start_at || Number.isNaN(startT) || startT <= now;
-    const endOk = !campaign.end_at || Number.isNaN(endT) || endT >= now;
+    const startMs = toMs(campaign.start_at);
+    const endMs = toMs(campaign.end_at);
+    const startOk = startMs === null || startMs <= nowMs;
+    const endOk = endMs === null || endMs >= nowMs;
     return {
       id: campaign.id,
       start_at: campaign.start_at,
       end_at: campaign.end_at,
-      startT,
-      endT,
+      startMs,
+      endMs,
       startOk,
       endOk,
     };
@@ -489,6 +496,8 @@ export const POST = async (req: NextRequest) => {
               page,
               slot,
             },
+            nowMs,
+            nowIso,
             counts: {
               campaignsActiveCount: campaignsActiveCount ?? 0,
               campaignsAfterDateFilterCount: campaignsAfterDateFilter.size,
@@ -532,6 +541,8 @@ export const POST = async (req: NextRequest) => {
               page,
               slot,
             },
+            nowMs,
+            nowIso,
             counts: {
               campaignsActiveCount: campaignsActiveCount ?? 0,
               campaignsAfterDateFilterCount: campaignsAfterDateFilter.size,
@@ -591,6 +602,8 @@ export const POST = async (req: NextRequest) => {
             page,
             slot,
           },
+          nowMs,
+          nowIso,
           counts: {
             campaignsActiveCount: campaignsActiveCount ?? 0,
             campaignsAfterDateFilterCount: campaignsAfterDateFilter.size,
