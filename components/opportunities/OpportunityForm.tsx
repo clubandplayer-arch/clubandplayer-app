@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 import type { Opportunity } from '@/types/opportunity';
-import { AGE_BRACKETS, type AgeBracket, SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
+import { AGE_BRACKETS, type AgeBracket, normalizeSport, SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
 import { CATEGORIES_BY_SPORT } from '@/lib/opps/categories';
 import { COUNTRIES } from '@/lib/opps/geo';
 import {
@@ -126,11 +126,12 @@ export default function OpportunityForm({
   const citiesLoadedRef = useRef(false);
 
   // Sport/ruolo/categoria
-  const [sport, setSport] = useState<string>(initial?.sport || 'Calcio');
+  const [sport, setSport] = useState<string>(normalizeSport(initial?.sport) || 'Calcio');
   const [role, setRole] = useState<string>(initial?.role ?? '');
   const [category, setCategory] = useState<string>(initial?.category ?? '');
-  const roleOptions = useMemo(() => SPORTS_ROLES[sport] ?? [], [sport]);
-  const categoryOptions = useMemo(() => CATEGORIES_BY_SPORT[sport] ?? [], [sport]);
+  const normalizedSport = normalizeSport(sport) ?? sport;
+  const roleOptions = useMemo(() => SPORTS_ROLES[normalizedSport] ?? [], [normalizedSport]);
+  const categoryOptions = useMemo(() => CATEGORIES_BY_SPORT[normalizedSport] ?? [], [normalizedSport]);
 
   // Genere (OBBLIGATORIO)
   const [gender, setGender] = useState<OpportunityGenderCode | ''>(
@@ -585,4 +586,3 @@ export default function OpportunityForm({
     </form>
   );
 }
-

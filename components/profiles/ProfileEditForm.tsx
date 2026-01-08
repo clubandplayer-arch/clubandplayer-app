@@ -12,7 +12,7 @@ import {
   LocationFields,
   LocationSelection,
 } from '@/components/profiles/LocationFields';
-import { SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
+import { normalizeSport, SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
 import { WORLD_COUNTRY_OPTIONS } from '@/lib/geo/countries';
 import { MAX_SKILLS, MAX_SKILL_LENGTH, normalizeProfileSkills, toDbSkills } from '@/lib/profiles/skills';
 import { ProfileSkill } from '@/types/profile';
@@ -243,7 +243,9 @@ export default function ProfileEditForm() {
   const [clubMotto, setClubMotto] = useState('');
 
   // categorie dinamiche per sport
-  const sportCategories = CATEGORIES_BY_SPORT[sport] ?? DEFAULT_CLUB_CATEGORIES;
+  const normalizedClubSport = normalizeSport(sport) ?? sport;
+  const normalizedAthleteSport = normalizeSport(athleteSport) ?? athleteSport;
+  const sportCategories = CATEGORIES_BY_SPORT[normalizedClubSport] ?? DEFAULT_CLUB_CATEGORIES;
 
   useEffect(() => {
     if (!sportCategories.includes(clubCategory)) {
@@ -252,8 +254,8 @@ export default function ProfileEditForm() {
   }, [sport, sportCategories, clubCategory]);
 
   const athleteRoles = useMemo(
-    () => SPORTS_ROLES[athleteSport] ?? SPORTS_ROLES.Calcio ?? [],
-    [athleteSport],
+    () => SPORTS_ROLES[normalizedAthleteSport] ?? SPORTS_ROLES.Calcio ?? [],
+    [normalizedAthleteSport],
   );
 
   useEffect(() => {
@@ -428,7 +430,7 @@ export default function ProfileEditForm() {
     setFoot(p.foot || '');
     setHeightCm(p.height_cm ?? '');
     setWeightKg(p.weight_kg ?? '');
-    setAthleteSport(p.sport || 'Calcio');
+    setAthleteSport(normalizeSport(p.sport) || 'Calcio');
     setAthleteRole(p.role || '');
     setNotifyEmail(Boolean(p.notify_email_new_message));
 
@@ -441,7 +443,7 @@ export default function ProfileEditForm() {
     setSkillsError(null);
 
     // club
-    setSport(p.sport || 'Calcio');
+    setSport(normalizeSport(p.sport) || 'Calcio');
     setClubCategory(p.club_league_category || 'Altro');
     setFoundationYear(p.club_foundation_year ?? '');
     setStadium(p.club_stadium || '');

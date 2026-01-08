@@ -5,6 +5,7 @@ import ProfileHeader from '@/components/profiles/ProfileHeader';
 import ClubOpenOpportunitiesWidget from '@/components/clubs/ClubOpenOpportunitiesWidget';
 import PublicAuthorFeed from '@/components/feed/PublicAuthorFeed';
 import { buildClubDisplayName } from '@/lib/displayName';
+import { normalizeSport } from '@/lib/opps/constants';
 
 import { resolveStateName } from '@/lib/geodata/countryStateCityDataset';
 import { getCountryName } from '@/lib/geo/countries';
@@ -136,7 +137,8 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
   }));
 
   const displayName = buildClubDisplayName(profile.full_name, profile.display_name, 'Club');
-  const subtitle = [profile.club_league_category, profile.sport].filter(Boolean).join(' · ') || '—';
+  const sportLabel = normalizeSport(profile.sport ?? null) ?? profile.sport ?? null;
+  const subtitle = [profile.club_league_category, sportLabel].filter(Boolean).join(' · ') || '—';
   const location = locationLabel(profile) || undefined;
 
   return (
@@ -162,7 +164,7 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
             </div>
             <div>
               <div className="text-xs font-semibold tracking-wide text-muted-foreground">Sport principale</div>
-              <div className="mt-1 font-medium text-neutral-900">{profile.sport || '—'}</div>
+              <div className="mt-1 font-medium text-neutral-900">{sportLabel || '—'}</div>
             </div>
             <div>
               <div className="text-xs font-semibold tracking-wide text-muted-foreground">Tipologia / Categoria</div>

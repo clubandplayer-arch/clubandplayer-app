@@ -19,3 +19,14 @@ export const SPORTS_ROLES: Record<string, string[]> = {
 };
 
 export const SPORTS = Object.keys(SPORTS_ROLES);
+
+export const SPORT_ALIASES: Record<string, string> = {
+  Pallavolo: 'Volley',
+};
+
+export function normalizeSport(input?: string | null): string | null {
+  if (input == null) return null;
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+  return SPORT_ALIASES[trimmed] ?? trimmed;
+}

@@ -4,6 +4,7 @@ import { jsonError, withAuth } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
 import { normalizeToEN, PLAYING_CATEGORY_EN } from '@/lib/enums';
 import { normalizeOpportunityGender, toOpportunityDbValue } from '@/lib/opps/gender';
+import { normalizeSport } from '@/lib/opps/constants';
 
 export const runtime = 'nodejs';
 
@@ -94,7 +95,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   const region = norm(body.region);
   const province = norm(body.province);
   const city = norm(body.city);
-  const sport = norm(body.sport);
+  const sport = normalizeSport(norm(body.sport)) ?? null;
   const roleHuman =
     norm((body as any).role) ??
     norm((body as any).roleLabel) ??
@@ -166,7 +167,9 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   if (hasAgeMax) update.age_max = ageMax ?? null;
 
   const nextSport =
-    (update.sport as string | null | undefined) ?? (opp.sport as string | null | undefined) ?? null;
+    normalizeSport((update.sport as string | null | undefined) ?? null) ??
+    normalizeSport((opp.sport as string | null | undefined) ?? null) ??
+    null;
 
   if (nextSport === 'Calcio') {
     const candidate = requiredCandidate ?? roleHuman;

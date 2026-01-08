@@ -13,6 +13,7 @@ import AthleteStatsSection from '@/components/athletes/AthleteStatsSection';
 import PublicAuthorFeed from '@/components/feed/PublicAuthorFeed';
 import ProfileHeader from '@/components/profiles/ProfileHeader';
 import { buildPlayerDisplayName } from '@/lib/displayName';
+import { normalizeSport } from '@/lib/opps/constants';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 type AthleteProfileRow = {
@@ -263,9 +264,15 @@ export default function PlayerPublicProfilePage() {
 
   const headerSubtitle = useMemo(() => {
     if (!profile) return '';
-    const parts = [profile.role, profile.sport].filter(Boolean);
+    const sportLabel = normalizeSport(profile.sport ?? null) ?? profile.sport ?? null;
+    const parts = [profile.role, sportLabel].filter(Boolean);
     return parts.join(' · ') || '—';
   }, [profile]);
+
+  const sportLabel = useMemo(
+    () => normalizeSport(profile?.sport ?? null) ?? profile?.sport ?? null,
+    [profile?.sport],
+  );
 
   return (
     <main className="mx-auto max-w-5xl space-y-6 px-4 py-6">
@@ -312,7 +319,7 @@ export default function PlayerPublicProfilePage() {
             <h2 className="heading-h2 text-xl">Panoramica</h2>
             <ul className="mt-3 space-y-1 text-sm text-neutral-800">
               <li>
-                <b>Sport:</b> {profile.sport ?? '—'}
+                <b>Sport:</b> {sportLabel ?? '—'}
               </li>
               <li>
                 <b>Ruolo:</b> {profile.role ?? '—'}

@@ -9,7 +9,7 @@ import OpportunityForm from '@/components/opportunities/OpportunityForm';
 import type { OpportunitiesApiResponse, Opportunity } from '@/types/opportunity';
 
 import { COUNTRIES } from '@/lib/opps/geo';
-import { AGE_BRACKETS, SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
+import { AGE_BRACKETS, normalizeSport, SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
 import { CATEGORIES_BY_SPORT } from '@/lib/opps/categories';
 import { useItalyLocations } from '@/hooks/useItalyLocations';
 
@@ -40,6 +40,7 @@ export default function OpportunitiesClient() {
   const [city, setCity] = useState(() => sp.get('city') ?? '');
   const selectedCategory = sp.get('category') ?? sp.get('required_category') ?? '';
   const selectedSport = sp.get('sport') ?? '';
+  const normalizedSelectedSport = normalizeSport(selectedSport) ?? selectedSport;
   const selectedRole = sp.get('role') ?? '';
   const selectedStatus = sp.get('status') ?? '';
 
@@ -79,14 +80,14 @@ export default function OpportunitiesClient() {
   }, [updateParams]);
 
   const roleOptions = useMemo(() => {
-    if (!selectedSport) return [] as string[];
-    return SPORTS_ROLES[selectedSport] ?? [];
-  }, [selectedSport]);
+    if (!normalizedSelectedSport) return [] as string[];
+    return SPORTS_ROLES[normalizedSelectedSport] ?? [];
+  }, [normalizedSelectedSport]);
 
   const categoryOptions = useMemo(() => {
-    if (!selectedSport) return [] as string[];
-    return CATEGORIES_BY_SPORT[selectedSport] ?? [];
-  }, [selectedSport]);
+    if (!normalizedSelectedSport) return [] as string[];
+    return CATEGORIES_BY_SPORT[normalizedSelectedSport] ?? [];
+  }, [normalizedSelectedSport]);
 
   useEffect(() => {
     if (!selectedSport && selectedRole) {
@@ -115,8 +116,9 @@ export default function OpportunitiesClient() {
       if (value) p.set('sport', value);
       else p.delete('sport');
 
-      const roleIsValid = value && selectedRole && (SPORTS_ROLES[value] ?? []).includes(selectedRole);
-      const categoryIsValid = value && selectedCategory && (CATEGORIES_BY_SPORT[value] ?? []).includes(selectedCategory);
+      const normalizedValue = normalizeSport(value) ?? value;
+      const roleIsValid = value && selectedRole && (SPORTS_ROLES[normalizedValue] ?? []).includes(selectedRole);
+      const categoryIsValid = value && selectedCategory && (CATEGORIES_BY_SPORT[normalizedValue] ?? []).includes(selectedCategory);
 
       if (!value || !roleIsValid) p.delete('role');
       if (!value || !categoryIsValid) {

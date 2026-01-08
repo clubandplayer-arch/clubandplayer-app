@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
 import { getPublicProfile } from '@/lib/profiles/publicLookup';
+import { normalizeSport } from '@/lib/opps/constants';
 
 export const runtime = 'nodejs';
 
@@ -45,6 +46,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase }) => {
   for (const k of Object.keys(body)) {
     if (allowed.has(k)) update[k] = body[k];
   }
+  if (update.sport) update.sport = normalizeSport(update.sport) ?? update.sport;
 
   // Decidi colonna match: preferisci PK id se il record esiste
   const probe = await supabase.from('profiles').select('id').eq('id', id).maybeSingle();
