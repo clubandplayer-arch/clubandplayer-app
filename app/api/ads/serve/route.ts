@@ -11,7 +11,7 @@ type ServePayload = {
   page?: string;
 };
 
-type AdTarget = {
+type AdTargetRow = {
   country: string | null;
   region: string | null;
   city: string | null;
@@ -20,16 +20,16 @@ type AdTarget = {
   device: string | null;
 };
 
-type AdCampaign = {
+type AdCampaignRow = {
   id: string;
   status: string;
   priority: number | null;
   start_at: string | null;
   end_at: string | null;
-  ad_targets?: AdTarget[] | null;
+  ad_targets?: AdTargetRow[] | null;
 };
 
-type AdCreativeRow = {
+type CreativeWithCampaign = {
   id: string;
   campaign_id: string;
   slot: string;
@@ -38,13 +38,13 @@ type AdCreativeRow = {
   image_url: string | null;
   target_url: string | null;
   is_active: boolean | null;
-  ad_campaigns?: AdCampaign | null;
+  ad_campaigns?: AdCampaignRow[] | null;
 };
 
 const normalize = (value: string | null | undefined) => value?.toString().trim().toLowerCase() ?? '';
 
-const matchesTarget = (target: AdTarget, context: Record<string, string>) => {
-  const checks: Array<[keyof AdTarget, string]> = [
+const matchesTarget = (target: AdTargetRow, context: Record<string, string>) => {
+  const checks: Array<[keyof AdTargetRow, string]> = [
     ['country', context.country],
     ['region', context.region],
     ['city', context.city],
@@ -153,29 +153,29 @@ export const POST = async (req: NextRequest) => {
   }
 
   const now = Date.now();
-  const eligible = (creatives ?? [])
-    .map((creative) => {
-      const campaign = creative.ad_campaigns;
-      if (!campaign) return null;
-      if (campaign.status !== 'active') return null;
+  const creativeRows = (creatives ?? []) as CreativeWithCampaign[];
+  const eligible = creativeRows.reduce<Array<{ creative: CreativeWithCampaign; priority: number }>>((acc, creative) => {
+    const campaign = Array.isArray(creative.ad_campaigns) ? creative.ad_campaigns[0] : null;
+    if (!campaign) return acc;
+    if (campaign.status !== 'active') return acc;
 
-      const startAt = campaign.start_at ? new Date(campaign.start_at).getTime() : null;
-      const endAt = campaign.end_at ? new Date(campaign.end_at).getTime() : null;
-      if (startAt && startAt > now) return null;
-      if (endAt && endAt < now) return null;
+    const startAt = campaign.start_at ? new Date(campaign.start_at).getTime() : null;
+    const endAt = campaign.end_at ? new Date(campaign.end_at).getTime() : null;
+    if (startAt && startAt > now) return acc;
+    if (endAt && endAt < now) return acc;
 
-      const targets = campaign.ad_targets ?? [];
-      if (targets.length) {
-        const matches = targets.some((target) => matchesTarget(target, context));
-        if (!matches) return null;
-      }
+    const targets = campaign.ad_targets ?? [];
+    if (targets.length) {
+      const matches = targets.some((target) => matchesTarget(target, context));
+      if (!matches) return acc;
+    }
 
-      return {
-        creative,
-        priority: Number.isFinite(campaign.priority) ? (campaign.priority as number) : 0,
-      };
-    })
-    .filter(Boolean) as Array<{ creative: AdCreativeRow; priority: number }>;
+    acc.push({
+      creative,
+      priority: Number.isFinite(campaign.priority) ? (campaign.priority as number) : 0,
+    });
+    return acc;
+  }, []);
 
   if (!eligible.length) {
     return NextResponse.json({ creative: null });

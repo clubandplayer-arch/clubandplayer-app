@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useCallback, useEffect, useState } from 'react';
 import { isAdsEnabled } from '@/lib/env/features';
 
@@ -92,7 +93,7 @@ export default function AdSlot({ slot, page }: AdSlotProps) {
         >
           {creative.imageUrl ? (
             <div className="relative w-full overflow-hidden rounded-xl border border-slate-100 bg-slate-50">
-              <img src={creative.imageUrl} alt="" className="h-36 w-full object-cover" />
+              <Image src={creative.imageUrl} alt="" width={320} height={144} className="h-36 w-full object-cover" />
             </div>
           ) : null}
           <div>
