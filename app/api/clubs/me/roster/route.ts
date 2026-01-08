@@ -155,17 +155,20 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   }
 
   if (inRoster) {
-    const { data: existingRoster, error: existingError } = await supabase
-      .from('club_roster_members')
-      .select('club_profile_id')
-      .eq('player_profile_id', playerProfileId)
-      .maybeSingle();
+    if (clubProfile.sport) {
+      const { data: existingRoster, error: existingError } = await supabase
+        .from('club_roster_members')
+        .select('club_profile_id')
+        .eq('player_profile_id', playerProfileId)
+        .eq('club_sport', clubProfile.sport)
+        .maybeSingle();
 
-    if (existingError) return jsonError(existingError.message, 400);
-    if (existingRoster?.club_profile_id && existingRoster.club_profile_id !== clubProfile.id) {
-      return jsonError('Questo player è già nella rosa di un altro club. Rimuovilo prima di aggiungerlo.', 409, {
-        code: 'PLAYER_ALREADY_IN_ROSTER',
-      });
+      if (existingError) return jsonError(existingError.message, 400);
+      if (existingRoster?.club_profile_id && existingRoster.club_profile_id !== clubProfile.id) {
+        return jsonError('Giocatore già in rosa per questo sport.', 409, {
+          code: 'PLAYER_ALREADY_IN_ROSTER_SPORT',
+        });
+      }
     }
 
     const { data: followRow, error: followError } = await supabase
@@ -190,7 +193,15 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
         { onConflict: 'club_profile_id,player_profile_id' },
       );
 
-    if (upsertError) return jsonError(upsertError.message, 400);
+    if (upsertError) {
+      const message = upsertError.message ?? '';
+      if (message.includes('club_roster_members_unique_player_sport')) {
+        return jsonError('Giocatore già in rosa per questo sport.', 409, {
+          code: 'PLAYER_ALREADY_IN_ROSTER_SPORT',
+        });
+      }
+      return jsonError(message, 400);
+    }
 
     return NextResponse.json({ ok: true, inRoster: true, playerProfileId });
   }
