@@ -31,3 +31,11 @@ export function clubsAdminAllowlist() {
 export function clubsAdminServerAllowlist() {
   return Array.from(new Set([...DEFAULT_ADMIN_EMAILS, ...listFromEnv(process.env.CLUBS_ADMIN_EMAILS)]));
 }
+
+export function isAdsEnabled() {
+  return boolFromEnv(process.env.NEXT_PUBLIC_ADS_ENABLED, false);
+}
+
+export function isAdsEnabledServer() {
+  return boolFromEnv(process.env.ADS_ENABLED ?? process.env.NEXT_PUBLIC_ADS_ENABLED, false);
+}
