@@ -80,12 +80,26 @@ const targetValueOrNull = (targets: AdTargetRow[], field: keyof AdTargetRow) => 
   return value ? value.toString() : null;
 };
 
+const supabaseUrlHost = () => {
+  const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+  if (!url) return '';
+  try {
+    return new URL(url).host;
+  } catch {
+    return '';
+  }
+};
+
 export const POST = async (req: NextRequest) => {
   const endpointVersion = 'ads-serve@2026-01-08a';
   const queryDebug = req.nextUrl.searchParams.get('debug');
   const debugFromQuery = queryDebug === '1' || queryDebug === 'true';
   const adsEnabled = isAdsEnabledServer();
   const clientAdsEnabled = isAdsEnabled();
+  const serviceRoleConfigured = Boolean(
+    process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_KEY,
+  );
+  const supabaseHost = supabaseUrlHost();
 
   let payload: ServePayload;
   try {
@@ -106,6 +120,7 @@ export const POST = async (req: NextRequest) => {
   if (!adsEnabled) {
     return NextResponse.json({
       creative: null,
+      ok: false,
       debug: debugEnabled
         ? {
             endpointVersion,
@@ -113,6 +128,9 @@ export const POST = async (req: NextRequest) => {
               ADS_ENABLED: adsEnabled,
               NEXT_PUBLIC_ADS_ENABLED: clientAdsEnabled,
             },
+            serviceRoleConfigured,
+            usingAdminClient: false,
+            supabaseUrlHost: supabaseHost,
             derivedContext: {
               country: '',
               region: '',
@@ -141,6 +159,9 @@ export const POST = async (req: NextRequest) => {
   const admin = getSupabaseAdminClientOrNull();
   if (!admin) {
     return NextResponse.json({
+      ok: false,
+      code: 'CONFIG_MISSING_SERVICE_ROLE',
+      message: 'SUPABASE_SERVICE_ROLE_KEY is missing or invalid for ads serving.',
       creative: null,
       debug: debugEnabled
         ? {
@@ -149,6 +170,9 @@ export const POST = async (req: NextRequest) => {
               ADS_ENABLED: adsEnabled,
               NEXT_PUBLIC_ADS_ENABLED: clientAdsEnabled,
             },
+            serviceRoleConfigured,
+            usingAdminClient: false,
+            supabaseUrlHost: supabaseHost,
             derivedContext: {
               country: '',
               region: '',
@@ -343,10 +367,14 @@ export const POST = async (req: NextRequest) => {
     }
     return NextResponse.json({
       creative: null,
+      ok: false,
       debug: debugEnabled
         ? {
             endpointVersion,
             flags,
+            serviceRoleConfigured,
+            usingAdminClient: true,
+            supabaseUrlHost: supabaseHost,
             derivedContext: {
               ...context,
               page,
@@ -374,10 +402,14 @@ export const POST = async (req: NextRequest) => {
   if (!selected?.target_url) {
     return NextResponse.json({
       creative: null,
+      ok: false,
       debug: debugEnabled
         ? {
             endpointVersion,
             flags,
+            serviceRoleConfigured,
+            usingAdminClient: true,
+            supabaseUrlHost: supabaseHost,
             derivedContext: {
               ...context,
               page,
@@ -412,6 +444,7 @@ export const POST = async (req: NextRequest) => {
   });
 
   return NextResponse.json({
+    ok: true,
     creative: {
       id: selected.id,
       campaignId: selected.campaign_id,
@@ -425,6 +458,9 @@ export const POST = async (req: NextRequest) => {
       ? {
           endpointVersion,
           flags,
+          serviceRoleConfigured,
+          usingAdminClient: true,
+          supabaseUrlHost: supabaseHost,
           derivedContext: {
             ...context,
             page,
