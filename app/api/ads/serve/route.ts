@@ -231,7 +231,7 @@ export const POST = async (req: NextRequest) => {
 
   const { count: campaignsActiveCount } = await admin
     .from('ad_campaigns')
-    .select('id', { count: 'exact', head: true })
+    .select('id, start_at, end_at', { count: 'exact', head: true })
     .eq('status', 'active');
 
   const { count: probeCampaignsTotal, error: probeCampaignsErr } = await admin
@@ -326,9 +326,16 @@ export const POST = async (req: NextRequest) => {
     return jsonError('Ads unavailable', 500);
   }
 
-  const now = Date.now();
+  const now = new Date();
   const creativeRows = (creatives ?? []) as CreativeWithCampaign[];
   const campaignsAfterDateFilter = new Set<string>();
+  const eligibleCampaigns: Array<{
+    id: string;
+    start_at: string | null;
+    end_at: string | null;
+    startOk: boolean;
+    endOk: boolean;
+  }> = [];
   const targetsForActiveCampaigns: AdTargetRow[] = [];
   const rejectedSamples: Array<{
     campaign_id: string | null;
@@ -366,9 +373,9 @@ export const POST = async (req: NextRequest) => {
       return acc;
     }
 
-    const startAt = campaign.start_at ? new Date(campaign.start_at).getTime() : null;
-    const endAt = campaign.end_at ? new Date(campaign.end_at).getTime() : null;
-    if (startAt && startAt > now) {
+    const startOk = !campaign.start_at || new Date(campaign.start_at) <= now;
+    const endOk = !campaign.end_at || new Date(campaign.end_at) >= now;
+    if (!startOk) {
       recordReject({
         campaign_id: campaign.id,
         reason: 'campaign_not_started',
@@ -376,7 +383,7 @@ export const POST = async (req: NextRequest) => {
       });
       return acc;
     }
-    if (endAt && endAt < now) {
+    if (!endOk) {
       recordReject({
         campaign_id: campaign.id,
         reason: 'campaign_expired',
@@ -386,6 +393,13 @@ export const POST = async (req: NextRequest) => {
     }
 
     campaignsAfterDateFilter.add(campaign.id);
+    eligibleCampaigns.push({
+      id: campaign.id,
+      start_at: campaign.start_at ?? null,
+      end_at: campaign.end_at ?? null,
+      startOk,
+      endOk,
+    });
 
     const targets = campaign.ad_targets ?? [];
     targetsForActiveCampaigns.push(...targets);
@@ -414,6 +428,13 @@ export const POST = async (req: NextRequest) => {
     });
     return acc;
   }, []);
+  const dateSample = eligibleCampaigns.slice(0, 3).map((campaign) => ({
+    id: campaign.id,
+    start_at: campaign.start_at,
+    end_at: campaign.end_at,
+    startOk: campaign.startOk,
+    endOk: campaign.endOk,
+  }));
 
   if (!eligible.length) {
     if (!firstRejectReason) {
@@ -453,6 +474,7 @@ export const POST = async (req: NextRequest) => {
               targetsTotal: probeTargetsTotal ?? 0,
             },
             probeErrors,
+            dateSample,
             firstRejectReason,
             rejectedSamples,
           }
@@ -489,16 +511,17 @@ export const POST = async (req: NextRequest) => {
               creativesJoinedWithCampaignCount: creativeRows.filter((row) => row.ad_campaigns?.length).length,
               eligibleCount: eligible.length,
             },
-            probe: {
-              campaignsTotal: probeCampaignsTotal ?? 0,
-              creativesTotal: probeCreativesTotal ?? 0,
-              targetsTotal: probeTargetsTotal ?? 0,
-            },
-            probeErrors,
-            firstRejectReason: 'missing_target_url',
-            rejectedSamples,
-          }
-        : undefined,
+          probe: {
+            campaignsTotal: probeCampaignsTotal ?? 0,
+            creativesTotal: probeCreativesTotal ?? 0,
+            targetsTotal: probeTargetsTotal ?? 0,
+          },
+          probeErrors,
+          dateSample,
+          firstRejectReason: 'missing_target_url',
+          rejectedSamples,
+        }
+      : undefined,
     });
   }
 
@@ -553,6 +576,7 @@ export const POST = async (req: NextRequest) => {
             targetsTotal: probeTargetsTotal ?? 0,
           },
           probeErrors,
+          dateSample,
           firstRejectReason: firstRejectReason || null,
           rejectedSamples,
         }
