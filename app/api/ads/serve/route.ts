@@ -229,9 +229,14 @@ export const POST = async (req: NextRequest) => {
     NEXT_PUBLIC_ADS_ENABLED: clientAdsEnabled,
   };
 
+  const { data: campaignsActive, error: campaignsActiveError } = await admin
+    .from('ad_campaigns')
+    .select('id,status,priority,start_at,end_at,created_at')
+    .eq('status', 'active');
+
   const { count: campaignsActiveCount } = await admin
     .from('ad_campaigns')
-    .select('id, start_at, end_at', { count: 'exact', head: true })
+    .select('id', { count: 'exact', head: true })
     .eq('status', 'active');
 
   const { count: probeCampaignsTotal, error: probeCampaignsErr } = await admin
@@ -250,7 +255,7 @@ export const POST = async (req: NextRequest) => {
     targetsErr: probeTargetsErr ? `${probeTargetsErr.message} (${probeTargetsErr.code ?? 'unknown'})` : null,
   };
 
-  if (probeCampaignsErr || probeCreativesErr || probeTargetsErr) {
+  if (campaignsActiveError || probeCampaignsErr || probeCreativesErr || probeTargetsErr) {
     return NextResponse.json({
       ok: false,
       code: 'DB_ERROR',
@@ -282,7 +287,12 @@ export const POST = async (req: NextRequest) => {
               creativesTotal: probeCreativesTotal ?? 0,
               targetsTotal: probeTargetsTotal ?? 0,
             },
-            probeErrors,
+            probeErrors: {
+              ...probeErrors,
+              campaignsActiveErr: campaignsActiveError
+                ? `${campaignsActiveError.message} (${campaignsActiveError.code ?? 'unknown'})`
+                : null,
+            },
             firstRejectReason: 'probe_query_error',
             rejectedSamples: [],
           }
@@ -326,16 +336,23 @@ export const POST = async (req: NextRequest) => {
     return jsonError('Ads unavailable', 500);
   }
 
-  const now = new Date();
+  const now = Date.now();
   const creativeRows = (creatives ?? []) as CreativeWithCampaign[];
   const campaignsAfterDateFilter = new Set<string>();
   const eligibleCampaigns: Array<{
     id: string;
     start_at: string | null;
     end_at: string | null;
+    startT: number;
+    endT: number;
     startOk: boolean;
     endOk: boolean;
   }> = [];
+  const parseTs = (value: string | null | undefined) => {
+    if (!value) return Number.NaN;
+    const s = String(value).replace(' ', 'T').replace(/\+00$/, '+00:00');
+    return Date.parse(s);
+  };
   const targetsForActiveCampaigns: AdTargetRow[] = [];
   const rejectedSamples: Array<{
     campaign_id: string | null;
@@ -373,8 +390,10 @@ export const POST = async (req: NextRequest) => {
       return acc;
     }
 
-    const startOk = !campaign.start_at || new Date(campaign.start_at) <= now;
-    const endOk = !campaign.end_at || new Date(campaign.end_at) >= now;
+    const startT = parseTs(campaign.start_at);
+    const endT = parseTs(campaign.end_at);
+    const startOk = !campaign.start_at || Number.isNaN(startT) || startT <= now;
+    const endOk = !campaign.end_at || Number.isNaN(endT) || endT >= now;
     if (!startOk) {
       recordReject({
         campaign_id: campaign.id,
@@ -397,6 +416,8 @@ export const POST = async (req: NextRequest) => {
       id: campaign.id,
       start_at: campaign.start_at ?? null,
       end_at: campaign.end_at ?? null,
+      startT,
+      endT,
       startOk,
       endOk,
     });
@@ -428,13 +449,21 @@ export const POST = async (req: NextRequest) => {
     });
     return acc;
   }, []);
-  const dateSample = eligibleCampaigns.slice(0, 3).map((campaign) => ({
-    id: campaign.id,
-    start_at: campaign.start_at,
-    end_at: campaign.end_at,
-    startOk: campaign.startOk,
-    endOk: campaign.endOk,
-  }));
+  const dateSample = (campaignsActive ?? []).slice(0, 3).map((campaign) => {
+    const startT = parseTs(campaign.start_at);
+    const endT = parseTs(campaign.end_at);
+    const startOk = !campaign.start_at || Number.isNaN(startT) || startT <= now;
+    const endOk = !campaign.end_at || Number.isNaN(endT) || endT >= now;
+    return {
+      id: campaign.id,
+      start_at: campaign.start_at,
+      end_at: campaign.end_at,
+      startT,
+      endT,
+      startOk,
+      endOk,
+    };
+  });
 
   if (!eligible.length) {
     if (!firstRejectReason) {
@@ -511,17 +540,17 @@ export const POST = async (req: NextRequest) => {
               creativesJoinedWithCampaignCount: creativeRows.filter((row) => row.ad_campaigns?.length).length,
               eligibleCount: eligible.length,
             },
-          probe: {
-            campaignsTotal: probeCampaignsTotal ?? 0,
-            creativesTotal: probeCreativesTotal ?? 0,
-            targetsTotal: probeTargetsTotal ?? 0,
-          },
-          probeErrors,
-          dateSample,
-          firstRejectReason: 'missing_target_url',
-          rejectedSamples,
-        }
-      : undefined,
+            probe: {
+              campaignsTotal: probeCampaignsTotal ?? 0,
+              creativesTotal: probeCreativesTotal ?? 0,
+              targetsTotal: probeTargetsTotal ?? 0,
+            },
+            probeErrors,
+            dateSample,
+            firstRejectReason: 'missing_target_url',
+            rejectedSamples,
+          }
+        : undefined,
     });
   }
 
