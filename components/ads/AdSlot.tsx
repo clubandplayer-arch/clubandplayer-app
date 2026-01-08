@@ -81,7 +81,7 @@ export default function AdSlot({ slot, page }: AdSlotProps) {
   if (!adsEnabled || !creative) return null;
 
   return (
-    <aside className="hidden xl:block fixed right-6 top-24 z-30 w-72">
+    <div className="w-full">
       <div className="rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur">
         <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Sponsored</div>
         <a
@@ -106,6 +106,6 @@ export default function AdSlot({ slot, page }: AdSlotProps) {
           </div>
         </a>
       </div>
-    </aside>
+    </div>
   );
 }

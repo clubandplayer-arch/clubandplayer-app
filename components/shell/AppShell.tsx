@@ -16,7 +16,6 @@ import { MessagingDock } from '@/components/messaging/MessagingDock';
 import { useNotificationsBadge } from '@/hooks/useNotificationsBadge';
 import BrandLogo from '@/components/brand/BrandLogo';
 import { buildProfileDisplayName } from '@/lib/displayName';
-import AdSlot from '@/components/ads/AdSlot';
 
 type Role = 'athlete' | 'club' | 'guest';
 
@@ -405,7 +404,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
           <div className="flex min-h-screen flex-col pt-16">
             <main className="flex-1">{children}</main>
-            <AdSlot slot="sidebar" page={pathname} />
 
             <MessagingDock />
           </div>

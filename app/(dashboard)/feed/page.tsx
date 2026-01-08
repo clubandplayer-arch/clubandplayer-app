@@ -4,6 +4,7 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import FeedComposer from '@/components/feed/FeedComposer';
 import TrackRetention from '@/components/analytics/TrackRetention';
@@ -11,6 +12,7 @@ import { PostCard } from '@/components/feed/PostCard';
 import EmptyState from '@/components/common/EmptyState';
 import { HorizontalAdBanner } from '@/components/ads/HorizontalAdBanner';
 import { VerticalAdBanner } from '@/components/ads/VerticalAdBanner';
+import AdSlot from '@/components/ads/AdSlot';
 import OpportunityCard from '@/components/opportunities/OpportunityCard';
 import {
   computeOptimistic,
@@ -25,6 +27,7 @@ import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import useFeed, { type FeedScope } from '@/hooks/useFeed';
 import type { Opportunity } from '@/types/opportunity';
 import type { Profile } from '@/types/profile';
+import { isAdsEnabled } from '@/lib/env/features';
 
 // carico le sidebar in modo "sicuro" (se il componente esiste lo usa, altrimenti mostra un box vuoto)
 // N.B. ssr: false evita problemi coi Server Components in prod
@@ -61,6 +64,8 @@ type StarterProfile = {
 };
 
 export default function FeedPage() {
+  const pathname = usePathname();
+  const adsEnabled = isAdsEnabled();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [_profile, setProfile] = useState<Profile | null>(null);
   const [reactions, setReactions] = useState<Record<string, ReactionState>>({});
@@ -359,7 +364,7 @@ export default function FeedPage() {
             <ProfileMiniCard />
           </div>
           <MyMediaHub currentUserId={currentUserId} />
-          <VerticalAdBanner className="hidden border border-blue-900/30 md:block" />
+          {!adsEnabled ? <VerticalAdBanner className="hidden border border-blue-900/30 md:block" /> : null}
         </aside>
 
         {/* Colonna centrale: composer + feed */}
@@ -492,9 +497,11 @@ export default function FeedPage() {
             <FeedHighlights />
           </SidebarCard>
 
-          <VerticalAdBanner className="border border-blue-900/30" />
-
-          <VerticalAdBanner className="border border-blue-900/30" />
+          {adsEnabled ? (
+            <AdSlot slot="sidebar" page={pathname} />
+          ) : (
+            <VerticalAdBanner className="border border-blue-900/30" />
+          )}
         </aside>
       </div>
     </div>
