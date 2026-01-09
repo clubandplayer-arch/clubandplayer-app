@@ -63,7 +63,7 @@ const matchesTarget = (target: AdTargetRow, context: Record<string, string>) => 
   return checks.every(([field, value]) => {
     if (isWildcard(target[field])) return true;
     const normalizedValue = normalize(value);
-    if (!normalizedValue) return true;
+    if (!normalizedValue) return false;
     return normalize(target[field]) === normalizedValue;
   });
 };
@@ -246,7 +246,7 @@ export const POST = async (req: NextRequest) => {
     province,
     city: normalize(profile?.city),
     sport: normalize(profile?.sport),
-    audience: '',
+    audience: normalize(viewerAudience),
     device: normalize(device),
   };
 
