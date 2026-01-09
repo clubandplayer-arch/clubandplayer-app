@@ -16,6 +16,7 @@ type ServePayload = {
 type AdTargetRow = {
   country: string | null;
   region: string | null;
+  province: string | null;
   city: string | null;
   sport: string | null;
   audience: string | null;
@@ -38,6 +39,10 @@ type CreativeWithCampaign = {
 };
 
 const normalize = (value: string | null | undefined) => value?.toString().trim().toLowerCase() ?? '';
+const toNullableText = (value: string | null | undefined) => {
+  const trimmed = value?.toString().trim() ?? '';
+  return trimmed ? trimmed : null;
+};
 
 const isWildcard = (value: string | null | undefined) => {
   const normalized = normalize(value);
@@ -48,6 +53,7 @@ const matchesTarget = (target: AdTargetRow, context: Record<string, string>) => 
   const checks: Array<[keyof AdTargetRow, string]> = [
     ['country', context.country],
     ['region', context.region],
+    ['province', context.province],
     ['city', context.city],
     ['sport', context.sport],
     ['audience', context.audience],
@@ -136,6 +142,7 @@ export const POST = async (req: NextRequest) => {
             derivedContext: {
               country: '',
               region: '',
+              province: '',
               city: '',
               sport: '',
               audience: '',
@@ -181,6 +188,7 @@ export const POST = async (req: NextRequest) => {
             derivedContext: {
               country: '',
               region: '',
+              province: '',
               city: '',
               sport: '',
               audience: '',
@@ -209,20 +217,33 @@ export const POST = async (req: NextRequest) => {
   const { data: authData } = await supabase.auth.getUser();
   const user = authData?.user ?? null;
 
-  let profile: { country: string | null; region: string | null; city: string | null; sport: string | null } | null = null;
+  let profile: {
+    country: string | null;
+    region: string | null;
+    province: string | null;
+    city: string | null;
+    sport: string | null;
+    interest_province: string | null;
+    account_type: string | null;
+    type: string | null;
+  } | null = null;
   if (user?.id) {
     const { data } = await admin
       .from('profiles')
-      .select('country, region, city, sport')
+      .select('country, region, province, city, sport, interest_province, account_type, type')
       .eq('user_id', user.id)
       .maybeSingle();
     profile = data ?? null;
   }
 
+  const province = normalize(profile?.province) || normalize(profile?.interest_province);
+  const viewerAudience =
+    toNullableText(profile?.account_type) ?? toNullableText(profile?.type) ?? 'all';
   const device = detectDevice(req.headers.get('user-agent'));
   const context = {
     country: normalize(profile?.country),
     region: normalize(profile?.region),
+    province,
     city: normalize(profile?.city),
     sport: normalize(profile?.sport),
     audience: '',
@@ -359,7 +380,7 @@ export const POST = async (req: NextRequest) => {
   const { data: targetsData, error: targetsError } = campaignIds.length
     ? await admin
         .from('ad_targets')
-        .select('campaign_id, country, region, city, sport, audience, device')
+        .select('campaign_id, country, region, province, city, sport, audience, device')
         .in('campaign_id', campaignIds)
     : { data: [], error: null };
   if (targetsError) {
@@ -371,6 +392,7 @@ export const POST = async (req: NextRequest) => {
     list.push({
       country: target.country ?? null,
       region: target.region ?? null,
+      province: target.province ?? null,
       city: target.city ?? null,
       sport: target.sport ?? null,
       audience: target.audience ?? null,
@@ -444,6 +466,7 @@ export const POST = async (req: NextRequest) => {
           fields: {
             country: targetValueOrNull(targets, 'country'),
             region: targetValueOrNull(targets, 'region'),
+            province: targetValueOrNull(targets, 'province'),
             city: targetValueOrNull(targets, 'city'),
             sport: targetValueOrNull(targets, 'sport'),
             audience: targetValueOrNull(targets, 'audience'),
@@ -566,18 +589,27 @@ export const POST = async (req: NextRequest) => {
     });
   }
 
-  await admin.from('ad_events').insert({
+  const eventPayload = {
     campaign_id: selected.campaign_id,
     creative_id: selected.id,
     event_type: 'impression',
     slot,
     page,
+    viewer_country: toNullableText(profile?.country),
+    viewer_region: toNullableText(profile?.region),
+    viewer_province: toNullableText(profile?.province) ?? toNullableText(profile?.interest_province),
+    viewer_city: toNullableText(profile?.city),
+    viewer_sport: toNullableText(profile?.sport),
+    viewer_audience: viewerAudience,
+    viewer_user_id: user?.id ?? null,
     user_id: user?.id ?? null,
     country: profile?.country ?? null,
     region: profile?.region ?? null,
     city: profile?.city ?? null,
     device,
-  });
+  };
+
+  await admin.from('ad_events').insert(eventPayload);
 
   return NextResponse.json({
     ok: true,
@@ -602,6 +634,11 @@ export const POST = async (req: NextRequest) => {
             ...context,
             page,
             slot,
+          },
+          eventPayload: {
+            ...eventPayload,
+            viewer_user_id: user?.id ? 'set' : null,
+            user_id: user?.id ? 'set' : null,
           },
           nowMs,
           nowIso,

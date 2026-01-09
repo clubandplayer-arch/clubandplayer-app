@@ -14,8 +14,8 @@ const VOLLEY_CATEGORIES = [
   'C',
   'D',
   'Amatoriale',
-  'Giovanili',
   'Amatoriale Misto',
+  'Giovanili',
 ];
 
 export const CATEGORIES_BY_SPORT: Record<string, string[]> = {

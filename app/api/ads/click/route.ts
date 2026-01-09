@@ -11,6 +11,12 @@ type ClickPayload = {
   campaignId?: string;
   slot?: string;
   page?: string;
+  debug?: boolean;
+};
+
+const toNullableText = (value: string | null | undefined) => {
+  const trimmed = value?.toString().trim() ?? '';
+  return trimmed ? trimmed : null;
 };
 
 const detectDevice = (userAgent: string | null) => {
@@ -26,6 +32,9 @@ export const POST = async (req: NextRequest) => {
     return NextResponse.json({ ok: true });
   }
 
+  const queryDebug = req.nextUrl.searchParams.get('debug');
+  const debugFromQuery = queryDebug === '1' || queryDebug === 'true';
+
   let payload: ClickPayload;
   try {
     payload = await req.json();
@@ -33,6 +42,8 @@ export const POST = async (req: NextRequest) => {
     return jsonError('Invalid payload', 400);
   }
 
+  const debugFromBody = payload?.debug === true;
+  const debugEnabled = debugFromQuery || debugFromBody;
   const creativeId = typeof payload?.creativeId === 'string' ? payload.creativeId.trim() : '';
   const campaignId = typeof payload?.campaignId === 'string' ? payload.campaignId.trim() : '';
   const slot = typeof payload?.slot === 'string' ? payload.slot.trim() : '';
@@ -52,15 +63,57 @@ export const POST = async (req: NextRequest) => {
   const user = authData?.user ?? null;
   const device = detectDevice(req.headers.get('user-agent'));
 
-  await admin.from('ad_events').insert({
+  let profile: {
+    country: string | null;
+    region: string | null;
+    province: string | null;
+    city: string | null;
+    sport: string | null;
+    interest_province: string | null;
+    account_type: string | null;
+    type: string | null;
+  } | null = null;
+  if (user?.id) {
+    const { data } = await admin
+      .from('profiles')
+      .select('country, region, province, city, sport, interest_province, account_type, type')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    profile = data ?? null;
+  }
+
+  const viewerAudience =
+    toNullableText(profile?.account_type) ?? toNullableText(profile?.type) ?? 'all';
+
+  const eventPayload = {
     campaign_id: campaignId,
     creative_id: creativeId,
     event_type: 'click',
     slot: slot || null,
     page: page || null,
+    viewer_country: toNullableText(profile?.country),
+    viewer_region: toNullableText(profile?.region),
+    viewer_province: toNullableText(profile?.province) ?? toNullableText(profile?.interest_province),
+    viewer_city: toNullableText(profile?.city),
+    viewer_sport: toNullableText(profile?.sport),
+    viewer_audience: viewerAudience,
+    viewer_user_id: user?.id ?? null,
     user_id: user?.id ?? null,
     device,
-  });
+  };
 
-  return NextResponse.json({ ok: true });
+  await admin.from('ad_events').insert(eventPayload);
+
+  return NextResponse.json({
+    ok: true,
+    debug: debugEnabled
+      ? {
+          eventPayload: {
+            ...eventPayload,
+            viewer_user_id: user?.id ? 'set' : null,
+            user_id: user?.id ? 'set' : null,
+          },
+        }
+      : undefined,
+  });
 };
