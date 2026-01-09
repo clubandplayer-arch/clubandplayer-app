@@ -63,7 +63,7 @@ const matchesTarget = (target: AdTargetRow, context: Record<string, string>) => 
   return checks.every(([field, value]) => {
     if (isWildcard(target[field])) return true;
     const normalizedValue = normalize(value);
-    if (!normalizedValue) return true;
+    if (!normalizedValue) return false;
     return normalize(target[field]) === normalizedValue;
   });
 };
@@ -246,7 +246,7 @@ export const POST = async (req: NextRequest) => {
     province,
     city: normalize(profile?.city),
     sport: normalize(profile?.sport),
-    audience: '',
+    audience: normalize(viewerAudience),
     device: normalize(device),
   };
 
@@ -257,7 +257,7 @@ export const POST = async (req: NextRequest) => {
 
   const { data: campaignsActive, error: campaignsActiveError } = await admin
     .from('ad_campaigns')
-    .select('id,status,priority,start_at,end_at,created_at')
+    .select('id,status,priority,start_at,end_at,created_at,daily_cap')
     .eq('status', 'active');
 
   const { count: campaignsActiveCount } = await admin
@@ -420,7 +420,9 @@ export const POST = async (req: NextRequest) => {
     }
   };
 
-  const eligible = creativeRows.reduce<Array<{ creative: CreativeWithCampaign; priority: number }>>((acc, creative) => {
+  const eligible = creativeRows.reduce<
+    Array<{ creative: CreativeWithCampaign; priority: number; dailyCap: number | null }>
+  >((acc, creative) => {
     const campaign = campaignsById.get(creative.campaign_id) ?? null;
     if (!campaign) {
       recordReject({
@@ -480,6 +482,7 @@ export const POST = async (req: NextRequest) => {
     acc.push({
       creative,
       priority: Number.isFinite(campaign.priority) ? (campaign.priority as number) : 0,
+      dailyCap: Number.isFinite(campaign.daily_cap) ? (campaign.daily_cap as number) : null,
     });
     return acc;
   }, []);
@@ -543,9 +546,129 @@ export const POST = async (req: NextRequest) => {
     ? eligible.filter((item) => !excludeCreativeIdsSet.has(item.creative.id))
     : eligible;
   const eligibleForSelection = eligibleWithoutExcluded.length ? eligibleWithoutExcluded : eligible;
-  const maxPriority = Math.max(...eligibleForSelection.map((item) => item.priority));
-  const top = eligibleForSelection.filter((item) => item.priority === maxPriority);
-  const selected = top[Math.floor(Math.random() * top.length)]?.creative ?? null;
+  const viewerUserId = user?.id ?? null;
+  const viewerUserIdPresent = Boolean(viewerUserId);
+  const dayStart = new Date(nowMs);
+  dayStart.setUTCHours(0, 0, 0, 0);
+  const dayStartIso = dayStart.toISOString();
+  const maxCapChecks = 10;
+  const excludedByCap: Array<{
+    creativeId: string;
+    campaignId: string;
+    dailyCap: number;
+    impressionsToday: number;
+    rejectReason: 'frequency_cap';
+  }> = [];
+
+  let selected: CreativeWithCampaign | null = null;
+  let remaining = eligibleForSelection.slice();
+  let attempts = 0;
+
+  const pickCandidate = (list: typeof remaining) => {
+    if (!list.length) return null;
+    const maxPriority = Math.max(...list.map((item) => item.priority));
+    const top = list
+      .map((item, index) => ({ item, index }))
+      .filter((entry) => entry.item.priority === maxPriority);
+    const choice = top[Math.floor(Math.random() * top.length)];
+    return choice ?? null;
+  };
+
+  while (remaining.length && attempts < maxCapChecks) {
+    const candidate = pickCandidate(remaining);
+    if (!candidate) break;
+    const { item, index } = candidate;
+    attempts += 1;
+
+    if (!viewerUserIdPresent || item.dailyCap === null) {
+      selected = item.creative;
+      break;
+    }
+
+    if (item.dailyCap === 0) {
+      excludedByCap.push({
+        creativeId: item.creative.id,
+        campaignId: item.creative.campaign_id,
+        dailyCap: item.dailyCap,
+        impressionsToday: 0,
+        rejectReason: 'frequency_cap',
+      });
+      remaining = remaining.filter((_, idx) => idx !== index);
+      continue;
+    }
+
+    const { count: impressionsToday } = await admin
+      .from('ad_events')
+      .select('id', { count: 'exact', head: true })
+      .eq('event_type', 'impression')
+      .eq('creative_id', item.creative.id)
+      .eq('viewer_user_id', viewerUserId)
+      .gte('created_at', dayStartIso);
+
+    const impressionsCount = impressionsToday ?? 0;
+    if (impressionsCount >= item.dailyCap) {
+      excludedByCap.push({
+        creativeId: item.creative.id,
+        campaignId: item.creative.campaign_id,
+        dailyCap: item.dailyCap,
+        impressionsToday: impressionsCount,
+        rejectReason: 'frequency_cap',
+      });
+      remaining = remaining.filter((_, idx) => idx !== index);
+      continue;
+    }
+
+    selected = item.creative;
+    break;
+  }
+
+  if (!selected) {
+    return NextResponse.json({
+      ok: true,
+      creative: null,
+      debug: debugEnabled
+        ? {
+            endpointVersion,
+            flags,
+            serviceRoleConfigured,
+            usingAdminClient: true,
+            publicUrlHost,
+            adminUrlHost,
+            derivedContext: {
+              ...context,
+              page,
+              slot,
+            },
+            nowMs,
+            nowIso,
+            counts: {
+              campaignsActiveCount: campaignsActiveCount ?? 0,
+              campaignsAfterDateFilterCount: campaignsAfterDate.length,
+              targetsCountForActiveCampaigns: targetsForActiveCampaigns.length,
+              creativesCountForSlot: creativeRows.length,
+              creativesJoinedWithCampaignCount: joined.length,
+              eligibleCount: eligible.length,
+            },
+            probe: {
+              campaignsTotal: probeCampaignsTotal ?? 0,
+              creativesTotal: probeCreativesTotal ?? 0,
+              targetsTotal: probeTargetsTotal ?? 0,
+            },
+            probeErrors,
+            missingCampaignIdsSample,
+            dateSample,
+            firstRejectReason: firstRejectReason || null,
+            rejectedSamples,
+            cap: {
+              applied: viewerUserIdPresent,
+              dayStartIso,
+              viewerUserIdPresent,
+            },
+            excludedByCap,
+          }
+        : undefined,
+    });
+  }
 
   if (!selected?.target_url) {
     return NextResponse.json({
@@ -584,6 +707,12 @@ export const POST = async (req: NextRequest) => {
             dateSample,
             firstRejectReason: 'missing_target_url',
             rejectedSamples,
+            cap: {
+              applied: viewerUserIdPresent,
+              dayStartIso,
+              viewerUserIdPresent,
+            },
+            excludedByCap,
           }
         : undefined,
     });
@@ -660,6 +789,12 @@ export const POST = async (req: NextRequest) => {
           dateSample,
           firstRejectReason: firstRejectReason || null,
           rejectedSamples,
+          cap: {
+            applied: viewerUserIdPresent,
+            dayStartIso,
+            viewerUserIdPresent,
+          },
+          excludedByCap,
         }
       : undefined,
   });
