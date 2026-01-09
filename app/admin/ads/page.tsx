@@ -95,6 +95,10 @@ export default function AdminAdsPage() {
     target_url: '',
   });
 
+  const [debugSlot, setDebugSlot] = useState<string>('feed_infeed');
+  const [debugResult, setDebugResult] = useState<string | null>(null);
+  const [debugLoading, setDebugLoading] = useState(false);
+
   const [reportFrom, setReportFrom] = useState(dateMinusDays(30));
   const [reportTo, setReportTo] = useState(new Date().toISOString().slice(0, 10));
 
@@ -319,6 +323,52 @@ export default function AdminAdsPage() {
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
+  const isProvinceDisabled = !targetForm.region.trim();
+  const isCityDisabled = !targetForm.province.trim();
+
+  const campaignHealth = useMemo(() => {
+    if (!selectedCampaign) return null;
+    const now = new Date();
+    const startAt = selectedCampaign.start_at ? new Date(selectedCampaign.start_at) : null;
+    const endAt = selectedCampaign.end_at ? new Date(selectedCampaign.end_at) : null;
+    const startOk = !startAt || startAt.getTime() <= now.getTime();
+    const endOk = !endAt || endAt.getTime() >= now.getTime();
+    const dateOk = startOk && endOk;
+    const creativesBySlot = creatives.reduce<Record<string, number>>((acc, creative) => {
+      if (creative.is_active === false) return acc;
+      acc[creative.slot] = (acc[creative.slot] ?? 0) + 1;
+      return acc;
+    }, {});
+    return {
+      statusOk: selectedCampaign.status === 'active',
+      dateOk,
+      targetsCount: targets.length,
+      creativesBySlot,
+    };
+  }, [creatives, selectedCampaign, targets.length]);
+
+  const runServeTest = async () => {
+    setDebugLoading(true);
+    setDebugResult(null);
+    try {
+      const res = await fetch('/api/ads/serve?debug=1', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          slot: debugSlot,
+          page: 'admin_preview',
+          debug: true,
+        }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      setDebugResult(JSON.stringify(payload, null, 2));
+    } catch (err) {
+      setDebugResult(`Errore durante il test serve: ${(err as Error).message}`);
+    } finally {
+      setDebugLoading(false);
+    }
+  };
+
   return (
     <main className="container mx-auto max-w-6xl px-4 py-8">
       <h1 className="heading-h2 mb-4 text-2xl font-bold">Inventory ads</h1>
@@ -469,6 +519,10 @@ export default function AdminAdsPage() {
 
               <div>
                 <h3 className="mb-3 text-base font-semibold">Targets</h3>
+                <div className="mb-3 rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-xs text-neutral-600">
+                  Lascia vuoto per includere tutte le aree. Compila i campi in ordine: Country → Region → Province →
+                  City.
+                </div>
                 {detailLoading ? (
                   <div className="text-sm text-neutral-600">Caricamento target…</div>
                 ) : targets.length === 0 ? (
@@ -515,26 +569,43 @@ export default function AdminAdsPage() {
                 <div className="mt-3 grid gap-2 md:grid-cols-4">
                   <input
                     className="rounded-md border px-3 py-2 text-xs"
-                    placeholder="Country"
+                    placeholder="Country (Lascia vuoto per includere tutte le aree)"
                     value={targetForm.country}
                     onChange={(e) => setTargetForm((prev) => ({ ...prev, country: e.target.value }))}
                   />
                   <input
                     className="rounded-md border px-3 py-2 text-xs"
-                    placeholder="Region"
+                    placeholder="Region (Lascia vuoto per includere tutte le aree)"
                     value={targetForm.region}
-                    onChange={(e) => setTargetForm((prev) => ({ ...prev, region: e.target.value }))}
+                    onChange={(e) => {
+                      const region = e.target.value;
+                      setTargetForm((prev) => ({
+                        ...prev,
+                        region,
+                        province: region ? prev.province : '',
+                        city: region ? prev.city : '',
+                      }));
+                    }}
                   />
                   <input
                     className="rounded-md border px-3 py-2 text-xs"
-                    placeholder="Province"
+                    placeholder="Province (Lascia vuoto per includere tutte le aree)"
                     value={targetForm.province}
-                    onChange={(e) => setTargetForm((prev) => ({ ...prev, province: e.target.value }))}
+                    disabled={isProvinceDisabled}
+                    onChange={(e) => {
+                      const province = e.target.value;
+                      setTargetForm((prev) => ({
+                        ...prev,
+                        province,
+                        city: province ? prev.city : '',
+                      }));
+                    }}
                   />
                   <input
                     className="rounded-md border px-3 py-2 text-xs"
-                    placeholder="City"
+                    placeholder="City (Lascia vuoto per includere tutte le aree)"
                     value={targetForm.city}
+                    disabled={isCityDisabled}
                     onChange={(e) => setTargetForm((prev) => ({ ...prev, city: e.target.value }))}
                   />
                   <input
@@ -654,6 +725,82 @@ export default function AdminAdsPage() {
                     Aggiungi creative
                   </button>
                 </div>
+              </div>
+
+              <div className="rounded-xl border bg-white p-4">
+                <h3 className="mb-2 text-base font-semibold">Perché non la vedo?</h3>
+                <p className="text-xs text-neutral-600">
+                  Lo slot determina la posizione (feed_infeed, left_*, sidebar_*). Una campagna deve essere attiva, in
+                  finestra data, e il target deve combaciare con il profilo.
+                </p>
+                <div className="mt-3 grid gap-2 text-xs text-neutral-700 md:grid-cols-2">
+                  <div className="rounded-md border border-neutral-200 bg-neutral-50 p-2">
+                    <div className="font-semibold">Status</div>
+                    <div>{campaignHealth?.statusOk ? '✅ active' : `❌ ${selectedCampaign.status}`}</div>
+                  </div>
+                  <div className="rounded-md border border-neutral-200 bg-neutral-50 p-2">
+                    <div className="font-semibold">Date</div>
+                    <div>{campaignHealth?.dateOk ? '✅ oggi incluso' : '❌ fuori range'}</div>
+                  </div>
+                  <div className="rounded-md border border-neutral-200 bg-neutral-50 p-2">
+                    <div className="font-semibold">Targets</div>
+                    <div>{campaignHealth ? `${campaignHealth.targetsCount} configurati` : '—'}</div>
+                  </div>
+                  <div className="rounded-md border border-neutral-200 bg-neutral-50 p-2">
+                    <div className="font-semibold">Creatives per slot</div>
+                    <ul className="mt-1 space-y-1">
+                      {SLOT_OPTIONS.map((slot) => (
+                        <li key={slot} className="flex items-center justify-between">
+                          <span>{slot}</span>
+                          <span>{campaignHealth?.creativesBySlot[slot] ?? 0}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+                <div className="mt-4 rounded-lg border border-neutral-200 p-3">
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    <label className="font-semibold text-neutral-700">Test serve</label>
+                    <select
+                      className="rounded-md border px-2 py-1"
+                      value={debugSlot}
+                      onChange={(e) => setDebugSlot(e.target.value)}
+                    >
+                      {SLOT_OPTIONS.map((slot) => (
+                        <option key={slot} value={slot}>
+                          {slot}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => void runServeTest()}
+                      className="rounded-md bg-neutral-900 px-3 py-1 text-xs font-semibold text-white"
+                    >
+                      {debugLoading ? 'Test in corso…' : 'Esegui'}
+                    </button>
+                  </div>
+                  {debugResult && (
+                    <pre className="mt-2 max-h-64 overflow-auto rounded-md bg-neutral-950 p-2 text-[11px] text-neutral-100">
+                      {debugResult}
+                    </pre>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-xl border bg-white p-4">
+                <h3 className="mb-2 text-base font-semibold">Mappa posizionamenti</h3>
+                <div className="rounded-md border border-dashed border-neutral-300 bg-neutral-50 p-3 text-xs text-neutral-700">
+                  <pre className="whitespace-pre-wrap font-mono">
+                    {`[ Colonna sinistra ]  [ Colonna centrale ]  [ Colonna destra ]
+ left_top             feed_infeed          sidebar_top
+ left_bottom          (1 ogni 2 post)      sidebar_bottom`}
+                  </pre>
+                </div>
+                <ul className="mt-3 list-disc space-y-1 pl-5 text-xs text-neutral-700">
+                  <li>feed_infeed: colonna centrale, 1 ogni 2 post.</li>
+                  <li>left_top / left_bottom: colonna sinistra.</li>
+                  <li>sidebar_top / sidebar_bottom: colonna destra.</li>
+                </ul>
               </div>
 
               <div>
