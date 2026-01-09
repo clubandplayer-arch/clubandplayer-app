@@ -38,14 +38,32 @@ type CreativeWithCampaign = {
   is_active: boolean | null;
 };
 
-const normalize = (value: string | null | undefined) => value?.toString().trim().toLowerCase() ?? '';
+const normalizeText = (value: string | null | undefined) => value?.toString().trim().toLowerCase() ?? '';
+const normalizeSport = (value: string | null | undefined) => {
+  const normalized = normalizeText(value);
+  if (!normalized) return '';
+  const aliases: Record<string, string> = {
+    pallavolo: 'volley',
+    volley: 'volley',
+    football: 'calcio',
+    soccer: 'calcio',
+    'calcio a 5': 'futsal',
+    calcetto: 'futsal',
+    futsal: 'futsal',
+  };
+  return aliases[normalized] ?? normalized;
+};
+const normalizeDevice = (value: string | null | undefined) => {
+  const normalized = normalizeText(value);
+  return normalized === 'mobile' ? 'mobile' : 'desktop';
+};
 const toNullableText = (value: string | null | undefined) => {
   const trimmed = value?.toString().trim() ?? '';
   return trimmed ? trimmed : null;
 };
 
 const isWildcard = (value: string | null | undefined) => {
-  const normalized = normalize(value);
+  const normalized = normalizeText(value);
   return normalized === '' || normalized === 'all';
 };
 
@@ -62,9 +80,12 @@ const matchesTarget = (target: AdTargetRow, context: Record<string, string>) => 
 
   return checks.every(([field, value]) => {
     if (isWildcard(target[field])) return true;
-    const normalizedValue = normalize(value);
+    const normalizedValue =
+      field === 'sport' ? normalizeSport(value) : normalizeText(value);
     if (!normalizedValue) return false;
-    return normalize(target[field]) === normalizedValue;
+    const normalizedTarget =
+      field === 'sport' ? normalizeSport(target[field]) : normalizeText(target[field]);
+    return normalizedTarget === normalizedValue;
   });
 };
 
@@ -77,7 +98,7 @@ const detectDevice = (userAgent: string | null) => {
 };
 
 const targetValueOrNull = (targets: AdTargetRow[], field: keyof AdTargetRow) => {
-  const value = targets.find((target) => normalize(target[field]) !== '')?.[field] ?? null;
+  const value = targets.find((target) => normalizeText(target[field]) !== '')?.[field] ?? null;
   return value ? value.toString() : null;
 };
 
@@ -236,18 +257,18 @@ export const POST = async (req: NextRequest) => {
     profile = data ?? null;
   }
 
-  const province = normalize(profile?.province) || normalize(profile?.interest_province);
+  const province = normalizeText(profile?.province) || normalizeText(profile?.interest_province);
   const viewerAudience =
     toNullableText(profile?.account_type) ?? toNullableText(profile?.type) ?? 'all';
-  const device = detectDevice(req.headers.get('user-agent'));
+  const device = normalizeDevice(detectDevice(req.headers.get('user-agent')));
   const context = {
-    country: normalize(profile?.country),
-    region: normalize(profile?.region),
+    country: normalizeText(profile?.country),
+    region: normalizeText(profile?.region),
     province,
-    city: normalize(profile?.city),
-    sport: normalize(profile?.sport),
-    audience: normalize(viewerAudience),
-    device: normalize(device),
+    city: normalizeText(profile?.city),
+    sport: normalizeSport(profile?.sport),
+    audience: normalizeText(viewerAudience),
+    device,
   };
 
   const flags = {

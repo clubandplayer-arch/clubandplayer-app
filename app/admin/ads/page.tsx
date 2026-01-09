@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { SPORTS } from '@/lib/opps/constants';
 
 const SLOT_OPTIONS = ['left_top', 'left_bottom', 'sidebar_top', 'sidebar_bottom', 'feed_infeed'] as const;
 
@@ -84,8 +85,8 @@ export default function AdminAdsPage() {
     province: '',
     city: '',
     sport: '',
-    audience: 'all',
-    device: 'all',
+    audience: '',
+    device: '',
   });
 
   const [creativeForm, setCreativeForm] = useState({
@@ -255,8 +256,8 @@ export default function AdminAdsPage() {
       province: '',
       city: '',
       sport: '',
-      audience: 'all',
-      device: 'all',
+      audience: '',
+      device: '',
     });
     await loadDetails(selectedCampaign.id);
   };
@@ -650,24 +651,39 @@ export default function AdminAdsPage() {
                     disabled={isCityDisabled}
                     onChange={(e) => setTargetForm((prev) => ({ ...prev, city: e.target.value }))}
                   />
-                  <input
+                  <div className="space-y-1">
+                    <select
+                      className="w-full rounded-md border px-3 py-2 text-xs"
+                      value={targetForm.sport}
+                      onChange={(e) => setTargetForm((prev) => ({ ...prev, sport: e.target.value }))}
+                    >
+                      <option value="">Tutti gli sport</option>
+                      {SPORTS.map((sport) => (
+                        <option key={sport} value={sport}>
+                          {sport}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-[11px] text-neutral-500">Esempio: Calcio, Volley, Basket…</p>
+                  </div>
+                  <select
                     className="rounded-md border px-3 py-2 text-xs"
-                    placeholder="Sport"
-                    value={targetForm.sport}
-                    onChange={(e) => setTargetForm((prev) => ({ ...prev, sport: e.target.value }))}
-                  />
-                  <input
-                    className="rounded-md border px-3 py-2 text-xs"
-                    placeholder="Audience"
                     value={targetForm.audience}
                     onChange={(e) => setTargetForm((prev) => ({ ...prev, audience: e.target.value }))}
-                  />
-                  <input
+                  >
+                    <option value="">Tutti i profili</option>
+                    <option value="club">Club</option>
+                    <option value="player">Player</option>
+                  </select>
+                  <select
                     className="rounded-md border px-3 py-2 text-xs"
-                    placeholder="Device"
                     value={targetForm.device}
                     onChange={(e) => setTargetForm((prev) => ({ ...prev, device: e.target.value }))}
-                  />
+                  >
+                    <option value="">Tutti i device</option>
+                    <option value="desktop">Desktop</option>
+                    <option value="mobile">Mobile</option>
+                  </select>
                   <button
                     onClick={() => void addTarget()}
                     className="rounded-md bg-neutral-900 px-3 py-2 text-xs font-semibold text-white"
