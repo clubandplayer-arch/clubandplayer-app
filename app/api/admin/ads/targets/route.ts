@@ -12,6 +12,31 @@ const toNullableText = (value: unknown) => {
   const trimmed = value.trim();
   return trimmed ? trimmed : null;
 };
+const normalizeText = (value: unknown) => {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim().toLowerCase();
+  return trimmed ? trimmed : null;
+};
+const normalizeSport = (value: unknown) => {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return null;
+  const aliases: Record<string, string> = {
+    pallavolo: 'volley',
+    volley: 'volley',
+    football: 'calcio',
+    soccer: 'calcio',
+    'calcio a 5': 'futsal',
+    calcetto: 'futsal',
+    futsal: 'futsal',
+  };
+  return aliases[normalized] ?? normalized;
+};
+const normalizeOptional = (value: unknown) => {
+  const normalized = normalizeText(value);
+  if (!normalized || normalized === 'all') return null;
+  return normalized;
+};
 
 export const GET = withAuth(async (req, { supabase, user }) => {
   const admin = await isAdminUser(supabase, user);
@@ -55,9 +80,9 @@ export const POST = withAuth(async (req, { supabase, user }) => {
     region: toNullableText(body?.region),
     province: toNullableText(body?.province),
     city: toNullableText(body?.city),
-    sport: toNullableText(body?.sport),
-    audience: toNullableText(body?.audience),
-    device: toNullableText(body?.device),
+    sport: normalizeSport(body?.sport),
+    audience: normalizeOptional(body?.audience),
+    device: normalizeOptional(body?.device),
   };
 
   const { data, error } = await adminClient

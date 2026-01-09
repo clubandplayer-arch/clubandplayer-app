@@ -38,14 +38,32 @@ type CreativeWithCampaign = {
   is_active: boolean | null;
 };
 
-const normalize = (value: string | null | undefined) => value?.toString().trim().toLowerCase() ?? '';
+const normalizeText = (value: string | null | undefined) => value?.toString().trim().toLowerCase() ?? '';
+const normalizeSport = (value: string | null | undefined) => {
+  const normalized = normalizeText(value);
+  if (!normalized) return '';
+  const aliases: Record<string, string> = {
+    pallavolo: 'volley',
+    volley: 'volley',
+    football: 'calcio',
+    soccer: 'calcio',
+    'calcio a 5': 'futsal',
+    calcetto: 'futsal',
+    futsal: 'futsal',
+  };
+  return aliases[normalized] ?? normalized;
+};
+const normalizeDevice = (value: string | null | undefined) => {
+  const normalized = normalizeText(value);
+  return normalized === 'mobile' ? 'mobile' : 'desktop';
+};
 const toNullableText = (value: string | null | undefined) => {
   const trimmed = value?.toString().trim() ?? '';
   return trimmed ? trimmed : null;
 };
 
 const isWildcard = (value: string | null | undefined) => {
-  const normalized = normalize(value);
+  const normalized = normalizeText(value);
   return normalized === '' || normalized === 'all';
 };
 
@@ -62,9 +80,12 @@ const matchesTarget = (target: AdTargetRow, context: Record<string, string>) => 
 
   return checks.every(([field, value]) => {
     if (isWildcard(target[field])) return true;
-    const normalizedValue = normalize(value);
+    const normalizedValue =
+      field === 'sport' ? normalizeSport(value) : normalizeText(value);
     if (!normalizedValue) return false;
-    return normalize(target[field]) === normalizedValue;
+    const normalizedTarget =
+      field === 'sport' ? normalizeSport(target[field]) : normalizeText(target[field]);
+    return normalizedTarget === normalizedValue;
   });
 };
 
@@ -77,7 +98,7 @@ const detectDevice = (userAgent: string | null) => {
 };
 
 const targetValueOrNull = (targets: AdTargetRow[], field: keyof AdTargetRow) => {
-  const value = targets.find((target) => normalize(target[field]) !== '')?.[field] ?? null;
+  const value = targets.find((target) => normalizeText(target[field]) !== '')?.[field] ?? null;
   return value ? value.toString() : null;
 };
 
@@ -236,18 +257,18 @@ export const POST = async (req: NextRequest) => {
     profile = data ?? null;
   }
 
-  const province = normalize(profile?.province) || normalize(profile?.interest_province);
+  const province = normalizeText(profile?.province) || normalizeText(profile?.interest_province);
   const viewerAudience =
     toNullableText(profile?.account_type) ?? toNullableText(profile?.type) ?? 'all';
-  const device = detectDevice(req.headers.get('user-agent'));
+  const device = normalizeDevice(detectDevice(req.headers.get('user-agent')));
   const context = {
-    country: normalize(profile?.country),
-    region: normalize(profile?.region),
+    country: normalizeText(profile?.country),
+    region: normalizeText(profile?.region),
     province,
-    city: normalize(profile?.city),
-    sport: normalize(profile?.sport),
-    audience: normalize(viewerAudience),
-    device: normalize(device),
+    city: normalizeText(profile?.city),
+    sport: normalizeSport(profile?.sport),
+    audience: normalizeText(viewerAudience),
+    device,
   };
 
   const flags = {
@@ -552,6 +573,7 @@ export const POST = async (req: NextRequest) => {
   dayStart.setUTCHours(0, 0, 0, 0);
   const dayStartIso = dayStart.toISOString();
   const maxCapChecks = 10;
+  const FAIR_TOP_N = 3;
   const excludedByCap: Array<{
     creativeId: string;
     campaignId: string;
@@ -559,6 +581,16 @@ export const POST = async (req: NextRequest) => {
     impressionsToday: number;
     rejectReason: 'frequency_cap';
   }> = [];
+  let fairnessDebug:
+    | {
+        algorithm: 'campaign_first_topN_weighted';
+        fairTopN: number;
+        topCampaigns: Array<{ campaignId: string; priority: number; creativesCount: number }>;
+        chosenCampaignId: string;
+        chosenPriority: number;
+        weights: number[];
+      }
+    | null = null;
 
   let selected: CreativeWithCampaign | null = null;
   let remaining = eligibleForSelection.slice();
@@ -566,18 +598,62 @@ export const POST = async (req: NextRequest) => {
 
   const pickCandidate = (list: typeof remaining) => {
     if (!list.length) return null;
-    const maxPriority = Math.max(...list.map((item) => item.priority));
-    const top = list
-      .map((item, index) => ({ item, index }))
-      .filter((entry) => entry.item.priority === maxPriority);
-    const choice = top[Math.floor(Math.random() * top.length)];
-    return choice ?? null;
+
+    const byCampaign = new Map<
+      string,
+      { campaignId: string; priority: number; indices: number[] }
+    >();
+
+    for (let i = 0; i < list.length; i += 1) {
+      const entry = list[i];
+      const campaignId = entry.creative.campaign_id;
+      const prev = byCampaign.get(campaignId) ?? { campaignId, priority: entry.priority, indices: [] };
+      prev.priority = Number.isFinite(prev.priority) ? prev.priority : entry.priority;
+      prev.indices.push(i);
+      byCampaign.set(campaignId, prev);
+    }
+
+    const campaigns = Array.from(byCampaign.values()).sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
+    const topN = campaigns.slice(0, Math.min(FAIR_TOP_N, campaigns.length));
+    if (!topN.length) return null;
+
+    const weights = topN.map((c) => Math.max(1, Number.isFinite(c.priority) ? c.priority : 0));
+    const total = weights.reduce((sum, value) => sum + value, 0);
+    let r = Math.random() * total;
+    let chosenCampaign = topN[0];
+    for (let i = 0; i < topN.length; i += 1) {
+      r -= weights[i];
+      if (r <= 0) {
+        chosenCampaign = topN[i];
+        break;
+      }
+    }
+
+    const pickIndex = chosenCampaign.indices[Math.floor(Math.random() * chosenCampaign.indices.length)];
+    const picked = list[pickIndex];
+    return {
+      item: picked,
+      index: pickIndex,
+      fairness: {
+        algorithm: 'campaign_first_topN_weighted' as const,
+        fairTopN: FAIR_TOP_N,
+        topCampaigns: topN.map((c) => ({
+          campaignId: c.campaignId,
+          priority: c.priority,
+          creativesCount: c.indices.length,
+        })),
+        chosenCampaignId: chosenCampaign.campaignId,
+        chosenPriority: chosenCampaign.priority,
+        weights,
+      },
+    };
   };
 
   while (remaining.length && attempts < maxCapChecks) {
     const candidate = pickCandidate(remaining);
     if (!candidate) break;
     const { item, index } = candidate;
+    fairnessDebug = candidate.fairness ?? fairnessDebug;
     attempts += 1;
 
     if (!viewerUserIdPresent || item.dailyCap === null) {
@@ -665,6 +741,14 @@ export const POST = async (req: NextRequest) => {
               viewerUserIdPresent,
             },
             excludedByCap,
+            fairness:
+              fairnessDebug ?? {
+                algorithm: 'campaign_first_topN_weighted',
+                fairTopN: FAIR_TOP_N,
+                topCampaigns: [],
+                chosenCampaignId: null,
+                chosenPriority: null,
+              },
           }
         : undefined,
     });
@@ -713,6 +797,14 @@ export const POST = async (req: NextRequest) => {
               viewerUserIdPresent,
             },
             excludedByCap,
+            fairness:
+              fairnessDebug ?? {
+                algorithm: 'campaign_first_topN_weighted',
+                fairTopN: FAIR_TOP_N,
+                topCampaigns: [],
+                chosenCampaignId: null,
+                chosenPriority: null,
+              },
           }
         : undefined,
     });
@@ -795,6 +887,14 @@ export const POST = async (req: NextRequest) => {
             viewerUserIdPresent,
           },
           excludedByCap,
+          fairness:
+            fairnessDebug ?? {
+              algorithm: 'campaign_first_topN_weighted',
+              fairTopN: FAIR_TOP_N,
+              topCampaigns: [],
+              chosenCampaignId: null,
+              chosenPriority: null,
+            },
         }
       : undefined,
   });

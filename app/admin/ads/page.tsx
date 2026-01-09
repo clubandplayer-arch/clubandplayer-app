@@ -1,6 +1,8 @@
 'use client';
 
+import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { SPORTS } from '@/lib/opps/constants';
 
 const SLOT_OPTIONS = ['left_top', 'left_bottom', 'sidebar_top', 'sidebar_bottom', 'feed_infeed'] as const;
 
@@ -83,8 +85,8 @@ export default function AdminAdsPage() {
     province: '',
     city: '',
     sport: '',
-    audience: 'all',
-    device: 'all',
+    audience: '',
+    device: '',
   });
 
   const [creativeForm, setCreativeForm] = useState({
@@ -94,6 +96,10 @@ export default function AdminAdsPage() {
     image_url: '',
     target_url: '',
   });
+  const [creativeFile, setCreativeFile] = useState<File | null>(null);
+  const [creativeUploadLoading, setCreativeUploadLoading] = useState(false);
+  const [creativeUploadError, setCreativeUploadError] = useState<string | null>(null);
+  const [creativeUploadKey, setCreativeUploadKey] = useState(0);
 
   const [debugSlot, setDebugSlot] = useState<string>('feed_infeed');
   const [debugResult, setDebugResult] = useState<string | null>(null);
@@ -250,8 +256,8 @@ export default function AdminAdsPage() {
       province: '',
       city: '',
       sport: '',
-      audience: 'all',
-      device: 'all',
+      audience: '',
+      device: '',
     });
     await loadDetails(selectedCampaign.id);
   };
@@ -301,6 +307,9 @@ export default function AdminAdsPage() {
       image_url: '',
       target_url: '',
     });
+    setCreativeFile(null);
+    setCreativeUploadError(null);
+    setCreativeUploadKey((prev) => prev + 1);
     await loadDetails(selectedCampaign.id);
   };
 
@@ -321,6 +330,40 @@ export default function AdminAdsPage() {
     if (!selectedCampaign) return;
     const url = `/api/admin/ads/reports?campaign_id=${selectedCampaign.id}&from=${reportFrom}&to=${reportTo}&format=csv`;
     window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const uploadCreativeImage = async () => {
+    if (!selectedCampaign) return;
+    setCreativeUploadError(null);
+    if (!creativeFile) {
+      setCreativeUploadError('Seleziona un file immagine');
+      return;
+    }
+    setCreativeUploadLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', creativeFile);
+      formData.append('campaignId', selectedCampaign.id);
+      formData.append('slot', creativeForm.slot);
+
+      const res = await fetch('/api/admin/ads/creatives/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setCreativeUploadError(payload?.error ?? 'Errore durante upload');
+        return;
+      }
+      setCreativeForm((prev) => ({ ...prev, image_url: payload?.publicUrl ?? '' }));
+      setMessage('Immagine caricata');
+      setCreativeFile(null);
+      setCreativeUploadKey((prev) => prev + 1);
+    } catch (err) {
+      setCreativeUploadError((err as Error).message);
+    } finally {
+      setCreativeUploadLoading(false);
+    }
   };
 
   const isProvinceDisabled = !targetForm.region.trim();
@@ -608,24 +651,39 @@ export default function AdminAdsPage() {
                     disabled={isCityDisabled}
                     onChange={(e) => setTargetForm((prev) => ({ ...prev, city: e.target.value }))}
                   />
-                  <input
+                  <div className="space-y-1">
+                    <select
+                      className="w-full rounded-md border px-3 py-2 text-xs"
+                      value={targetForm.sport}
+                      onChange={(e) => setTargetForm((prev) => ({ ...prev, sport: e.target.value }))}
+                    >
+                      <option value="">Tutti gli sport</option>
+                      {SPORTS.map((sport) => (
+                        <option key={sport} value={sport}>
+                          {sport}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-[11px] text-neutral-500">Esempio: Calcio, Volley, Basket…</p>
+                  </div>
+                  <select
                     className="rounded-md border px-3 py-2 text-xs"
-                    placeholder="Sport"
-                    value={targetForm.sport}
-                    onChange={(e) => setTargetForm((prev) => ({ ...prev, sport: e.target.value }))}
-                  />
-                  <input
-                    className="rounded-md border px-3 py-2 text-xs"
-                    placeholder="Audience"
                     value={targetForm.audience}
                     onChange={(e) => setTargetForm((prev) => ({ ...prev, audience: e.target.value }))}
-                  />
-                  <input
+                  >
+                    <option value="">Tutti i profili</option>
+                    <option value="club">Club</option>
+                    <option value="player">Player</option>
+                  </select>
+                  <select
                     className="rounded-md border px-3 py-2 text-xs"
-                    placeholder="Device"
                     value={targetForm.device}
                     onChange={(e) => setTargetForm((prev) => ({ ...prev, device: e.target.value }))}
-                  />
+                  >
+                    <option value="">Tutti i device</option>
+                    <option value="desktop">Desktop</option>
+                    <option value="mobile">Mobile</option>
+                  </select>
                   <button
                     onClick={() => void addTarget()}
                     className="rounded-md bg-neutral-900 px-3 py-2 text-xs font-semibold text-white"
@@ -706,12 +764,47 @@ export default function AdminAdsPage() {
                     value={creativeForm.body}
                     onChange={(e) => setCreativeForm((prev) => ({ ...prev, body: e.target.value }))}
                   />
-                  <input
-                    className="rounded-md border px-3 py-2 text-xs"
-                    placeholder="Image URL"
-                    value={creativeForm.image_url}
-                    onChange={(e) => setCreativeForm((prev) => ({ ...prev, image_url: e.target.value }))}
-                  />
+                  <div className="md:col-span-3">
+                    <label className="text-xs text-neutral-700">
+                      Immagine
+                      <input
+                        key={creativeUploadKey}
+                        type="file"
+                        accept="image/*"
+                        className="mt-1 w-full rounded-md border px-3 py-2 text-xs"
+                        onChange={(e) => setCreativeFile(e.target.files?.[0] ?? null)}
+                      />
+                    </label>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <button
+                        onClick={() => void uploadCreativeImage()}
+                        className="rounded-md bg-neutral-900 px-3 py-2 text-xs font-semibold text-white"
+                        disabled={creativeUploadLoading}
+                      >
+                        {creativeUploadLoading ? 'Caricamento…' : 'Carica immagine'}
+                      </button>
+                      <input
+                        className="flex-1 rounded-md border px-3 py-2 text-xs"
+                        placeholder="Image URL"
+                        value={creativeForm.image_url}
+                        onChange={(e) => setCreativeForm((prev) => ({ ...prev, image_url: e.target.value }))}
+                      />
+                    </div>
+                    {creativeUploadError ? (
+                      <div className="mt-2 text-xs text-red-600">{creativeUploadError}</div>
+                    ) : null}
+                    {creativeForm.image_url ? (
+                      <div className="relative mt-2 h-32 overflow-hidden rounded-lg border border-neutral-200">
+                        <Image
+                          src={creativeForm.image_url}
+                          alt="Preview creative"
+                          fill
+                          sizes="(max-width: 768px) 100vw, 480px"
+                          className="object-cover"
+                        />
+                      </div>
+                    ) : null}
+                  </div>
                   <input
                     className="rounded-md border px-3 py-2 text-xs"
                     placeholder="Target URL"

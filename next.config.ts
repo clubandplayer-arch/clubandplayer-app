@@ -18,9 +18,18 @@ const nextConfig: NextConfig = {
   // Lint gestito in CI; evita fail di build su Vercel
   eslint: { ignoreDuringBuilds: true },
 
-  // ✅ Usa domains (più compatibile) invece di remotePatterns
+  // ✅ Usa domains per compatibilità + remotePatterns per bucket Supabase Storage
   images: {
     domains: ['api.dicebear.com', 'via.placeholder.com', ...(supaHost ? [supaHost] : [])],
+    remotePatterns: supaHost
+      ? [
+          {
+            protocol: 'https' as const,
+            hostname: supaHost,
+            pathname: '/storage/v1/object/public/**',
+          },
+        ]
+      : [],
     formats: ['image/avif', 'image/webp'],
     minimumCacheTTL: ONE_YEAR,
     deviceSizes: [320, 420, 640, 768, 1024, 1280, 1536],
