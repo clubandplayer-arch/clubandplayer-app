@@ -29,7 +29,7 @@ export const GET = withAuth(async (_req, { supabase, user }) => {
 
   const { data, error } = await adminClient
     .from('ad_campaigns')
-    .select('id,name,status,priority,start_at,end_at,created_at')
+    .select('id,name,status,priority,start_at,end_at,customer_name,customer_contact,notes,created_at')
     .order('priority', { ascending: false })
     .order('created_at', { ascending: false });
 
@@ -50,6 +50,9 @@ export const POST = withAuth(async (req, { supabase, user }) => {
 
   const body = await req.json().catch(() => ({}));
   const name = toNullableText(body?.name);
+  const customerName = toNullableText(body?.customer_name);
+  const customerContact = toNullableText(body?.customer_contact);
+  const notes = toNullableText(body?.notes);
   if (!name) return jsonError('Nome campagna obbligatorio', 400);
 
   const rawStatus = typeof body?.status === 'string' ? body.status.trim().toLowerCase() : '';
@@ -68,8 +71,11 @@ export const POST = withAuth(async (req, { supabase, user }) => {
       priority,
       start_at: startAt,
       end_at: endAt,
+      customer_name: customerName,
+      customer_contact: customerContact,
+      notes,
     })
-    .select('id,name,status,priority,start_at,end_at,created_at')
+    .select('id,name,status,priority,start_at,end_at,customer_name,customer_contact,notes,created_at')
     .single();
 
   if (error) {

@@ -64,13 +64,25 @@ export const PATCH = withAuth(async (req, { supabase, user }, routeContext) => {
     update.end_at = endAt;
   }
 
+  if (Object.prototype.hasOwnProperty.call(body, 'customer_name')) {
+    update.customer_name = toNullableText(body?.customer_name);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, 'customer_contact')) {
+    update.customer_contact = toNullableText(body?.customer_contact);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, 'notes')) {
+    update.notes = toNullableText(body?.notes);
+  }
+
   if (Object.keys(update).length === 0) return jsonError('Nessun campo da aggiornare', 400);
 
   const { data, error } = await adminClient
     .from('ad_campaigns')
     .update(update)
     .eq('id', id)
-    .select('id,name,status,priority,start_at,end_at,created_at')
+    .select('id,name,status,priority,start_at,end_at,customer_name,customer_contact,notes,created_at')
     .single();
 
   if (error) {

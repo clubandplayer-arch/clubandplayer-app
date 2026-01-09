@@ -11,6 +11,9 @@ type CampaignRow = {
   priority: number;
   start_at: string | null;
   end_at: string | null;
+  customer_name: string | null;
+  customer_contact: string | null;
+  notes: string | null;
   created_at: string | null;
 };
 
@@ -69,6 +72,9 @@ export default function AdminAdsPage() {
     priority: 0,
     start_at: '',
     end_at: '',
+    customer_name: '',
+    customer_contact: '',
+    notes: '',
   });
 
   const [targetForm, setTargetForm] = useState({
@@ -152,6 +158,9 @@ export default function AdminAdsPage() {
       priority: selectedCampaign.priority ?? 0,
       start_at: toDateInput(selectedCampaign.start_at),
       end_at: toDateInput(selectedCampaign.end_at),
+      customer_name: selectedCampaign.customer_name ?? '',
+      customer_contact: selectedCampaign.customer_contact ?? '',
+      notes: selectedCampaign.notes ?? '',
     });
     void loadDetails(selectedCampaign.id);
   }, [loadDetails, selectedCampaign]);
@@ -194,6 +203,9 @@ export default function AdminAdsPage() {
         priority: Number(campaignForm.priority),
         start_at: campaignForm.start_at ? toIsoDate(campaignForm.start_at) : null,
         end_at: campaignForm.end_at ? toIsoDate(campaignForm.end_at) : null,
+        customer_name: campaignForm.customer_name,
+        customer_contact: campaignForm.customer_contact,
+        notes: campaignForm.notes,
       }),
     });
     if (!res.ok) {
@@ -350,7 +362,12 @@ export default function AdminAdsPage() {
                   >
                     <span>
                       <span className="block font-semibold">{campaign.name}</span>
-                      <span className="text-xs text-neutral-500">{campaign.status} · priority {campaign.priority}</span>
+                      <span className="text-xs text-neutral-500">
+                        {campaign.status} · priority {campaign.priority}
+                      </span>
+                      <span className="text-xs text-neutral-400">
+                        {campaign.customer_name?.trim() ? campaign.customer_name : '—'}
+                      </span>
                     </span>
                     <span className="text-xs text-neutral-400">{campaign.created_at?.slice(0, 10) ?? '—'}</span>
                   </button>
@@ -414,6 +431,31 @@ export default function AdminAdsPage() {
                       className="mt-1 w-full rounded-md border px-3 py-2"
                       value={campaignForm.end_at}
                       onChange={(e) => setCampaignForm((prev) => ({ ...prev, end_at: e.target.value }))}
+                    />
+                  </label>
+                  <label className="text-sm">
+                    Azienda/Cliente
+                    <input
+                      className="mt-1 w-full rounded-md border px-3 py-2"
+                      value={campaignForm.customer_name}
+                      onChange={(e) => setCampaignForm((prev) => ({ ...prev, customer_name: e.target.value }))}
+                    />
+                  </label>
+                  <label className="text-sm">
+                    Contatto
+                    <input
+                      className="mt-1 w-full rounded-md border px-3 py-2"
+                      value={campaignForm.customer_contact}
+                      onChange={(e) => setCampaignForm((prev) => ({ ...prev, customer_contact: e.target.value }))}
+                    />
+                  </label>
+                  <label className="text-sm md:col-span-2">
+                    Note/Pacchetto
+                    <textarea
+                      className="mt-1 w-full rounded-md border px-3 py-2"
+                      rows={3}
+                      value={campaignForm.notes}
+                      onChange={(e) => setCampaignForm((prev) => ({ ...prev, notes: e.target.value }))}
                     />
                   </label>
                 </div>
