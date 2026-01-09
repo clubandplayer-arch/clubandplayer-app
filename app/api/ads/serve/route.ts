@@ -552,6 +552,7 @@ export const POST = async (req: NextRequest) => {
   dayStart.setUTCHours(0, 0, 0, 0);
   const dayStartIso = dayStart.toISOString();
   const maxCapChecks = 10;
+  const FAIR_TOP_N = 3;
   const excludedByCap: Array<{
     creativeId: string;
     campaignId: string;
@@ -559,6 +560,16 @@ export const POST = async (req: NextRequest) => {
     impressionsToday: number;
     rejectReason: 'frequency_cap';
   }> = [];
+  let fairnessDebug:
+    | {
+        algorithm: 'campaign_first_topN_weighted';
+        fairTopN: number;
+        topCampaigns: Array<{ campaignId: string; priority: number; creativesCount: number }>;
+        chosenCampaignId: string;
+        chosenPriority: number;
+        weights: number[];
+      }
+    | null = null;
 
   let selected: CreativeWithCampaign | null = null;
   let remaining = eligibleForSelection.slice();
@@ -566,18 +577,62 @@ export const POST = async (req: NextRequest) => {
 
   const pickCandidate = (list: typeof remaining) => {
     if (!list.length) return null;
-    const maxPriority = Math.max(...list.map((item) => item.priority));
-    const top = list
-      .map((item, index) => ({ item, index }))
-      .filter((entry) => entry.item.priority === maxPriority);
-    const choice = top[Math.floor(Math.random() * top.length)];
-    return choice ?? null;
+
+    const byCampaign = new Map<
+      string,
+      { campaignId: string; priority: number; indices: number[] }
+    >();
+
+    for (let i = 0; i < list.length; i += 1) {
+      const entry = list[i];
+      const campaignId = entry.creative.campaign_id;
+      const prev = byCampaign.get(campaignId) ?? { campaignId, priority: entry.priority, indices: [] };
+      prev.priority = Number.isFinite(prev.priority) ? prev.priority : entry.priority;
+      prev.indices.push(i);
+      byCampaign.set(campaignId, prev);
+    }
+
+    const campaigns = Array.from(byCampaign.values()).sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
+    const topN = campaigns.slice(0, Math.min(FAIR_TOP_N, campaigns.length));
+    if (!topN.length) return null;
+
+    const weights = topN.map((c) => Math.max(1, Number.isFinite(c.priority) ? c.priority : 0));
+    const total = weights.reduce((sum, value) => sum + value, 0);
+    let r = Math.random() * total;
+    let chosenCampaign = topN[0];
+    for (let i = 0; i < topN.length; i += 1) {
+      r -= weights[i];
+      if (r <= 0) {
+        chosenCampaign = topN[i];
+        break;
+      }
+    }
+
+    const pickIndex = chosenCampaign.indices[Math.floor(Math.random() * chosenCampaign.indices.length)];
+    const picked = list[pickIndex];
+    return {
+      item: picked,
+      index: pickIndex,
+      fairness: {
+        algorithm: 'campaign_first_topN_weighted' as const,
+        fairTopN: FAIR_TOP_N,
+        topCampaigns: topN.map((c) => ({
+          campaignId: c.campaignId,
+          priority: c.priority,
+          creativesCount: c.indices.length,
+        })),
+        chosenCampaignId: chosenCampaign.campaignId,
+        chosenPriority: chosenCampaign.priority,
+        weights,
+      },
+    };
   };
 
   while (remaining.length && attempts < maxCapChecks) {
     const candidate = pickCandidate(remaining);
     if (!candidate) break;
     const { item, index } = candidate;
+    fairnessDebug = candidate.fairness ?? fairnessDebug;
     attempts += 1;
 
     if (!viewerUserIdPresent || item.dailyCap === null) {
@@ -665,6 +720,14 @@ export const POST = async (req: NextRequest) => {
               viewerUserIdPresent,
             },
             excludedByCap,
+            fairness:
+              fairnessDebug ?? {
+                algorithm: 'campaign_first_topN_weighted',
+                fairTopN: FAIR_TOP_N,
+                topCampaigns: [],
+                chosenCampaignId: null,
+                chosenPriority: null,
+              },
           }
         : undefined,
     });
@@ -713,6 +776,14 @@ export const POST = async (req: NextRequest) => {
               viewerUserIdPresent,
             },
             excludedByCap,
+            fairness:
+              fairnessDebug ?? {
+                algorithm: 'campaign_first_topN_weighted',
+                fairTopN: FAIR_TOP_N,
+                topCampaigns: [],
+                chosenCampaignId: null,
+                chosenPriority: null,
+              },
           }
         : undefined,
     });
@@ -795,6 +866,14 @@ export const POST = async (req: NextRequest) => {
             viewerUserIdPresent,
           },
           excludedByCap,
+          fairness:
+            fairnessDebug ?? {
+              algorithm: 'campaign_first_topN_weighted',
+              fairTopN: FAIR_TOP_N,
+              topCampaigns: [],
+              chosenCampaignId: null,
+              chosenPriority: null,
+            },
         }
       : undefined,
   });
