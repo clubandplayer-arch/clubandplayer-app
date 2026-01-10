@@ -38,7 +38,7 @@ Ads in Club&Player sono sponsorizzazioni native che appaiono in posizioni dedica
 | **City** | City + Country (opz.) | left_top, sidebar_top | 1–2 | 1 | Ideale per sponsor locali |
 | **Province** | Province + Country/Region (opz.) | left_top, sidebar_top, feed_infeed | 2–3 | 2 | Copertura intermedia |
 | **Region** | Region + Country (opz.) | left_* + sidebar_* + feed_infeed | 3–4 | 3 | Maggiore visibilità |
-| **Italy** | Country=Italy | Tutti gli slot | 4–6 | 4 | Copertura nazionale |
+| **Italy** | country=it (ISO2) | Tutti gli slot | 4–6 | 4 | Copertura nazionale |
 | **Sport-specific** | Sport specifico (es. “calcio”) | feed_infeed + sidebar_top | 2–3 | 2–3 | Valido per sponsor verticali |
 | **Premium** | Area + Sport + Audience | Tutti gli slot + priorità alta | 4–8 | 5+ | Massima esposizione |
 
@@ -62,6 +62,7 @@ Ads in Club&Player sono sponsorizzazioni native che appaiono in posizioni dedica
 2. **Crea Targets**
    - `country`, `region`, `province`, `city`
    - `sport`, `audience`, `device` (vuoto = wildcard)
+   - Nota: i valori vengono normalizzati in lowercase. Per `country` usa ISO2 (es. `it`). `region`/`province`/`city` vanno inseriti come da profilo (es. `sicilia`, `siracusa`).
 3. **Crea Creatives**
    - Upload immagine (bucket Supabase `ads-creatives`)
    - Inserisci `target_url`
@@ -81,7 +82,10 @@ Endpoint: `/api/admin/ads/reports`
 - **Clicks**: numero di click.
 - **CTR**: clicks / impressions.
 
-**Esempi colonne CSV**
+**Esempi colonne CSV (aggregato)**
+- `date_range`, `slot`, `region`, `province`, `city`, `impressions`, `clicks`, `ctr`
+
+**Modalità raw (se attiva, non default)**
 - `created_at`, `event_type`, `campaign_id`, `creative_id`, `slot`, `page`, `viewer_region`, `viewer_province`, `viewer_city`, `viewer_country`, `viewer_sport`, `viewer_audience`, `viewer_user_id`
 
 **Interpretazione CTR**
@@ -149,7 +153,7 @@ Endpoint: `/api/admin/ads/reports`
 
 ## 11) FAQ breve
 **Posso targettizzare solo Siracusa?**
-Sì: imposta `city=Siracusa` in targets e lascia gli altri campi vuoti.
+Sì: imposta `province=Siracusa` (per provincia) oppure `city=Siracusa` (per città) e consigliato `country=it`.
 
 **Posso cambiare creatività a metà mese?**
 Sì: aggiungi nuove creatives o sostituisci la creatività mantenendo la campagna attiva.
