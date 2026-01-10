@@ -413,16 +413,22 @@ export default function AdminAdsPage() {
   };
 
   return (
-    <main className="container mx-auto max-w-6xl px-4 py-8">
+    <main className="container mx-auto max-w-7xl overflow-x-hidden px-4 py-8">
       <h1 className="heading-h2 mb-4 text-2xl font-bold">Inventory ads</h1>
       <p className="mb-6 text-sm text-neutral-600">
         Gestisci campagne, target e creatives. Solo admin autorizzati possono accedere a questa pagina.
       </p>
 
-      {error && <div className="mb-4 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-      {message && <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">{message}</div>}
+      {error && (
+        <div className="mb-4 break-words rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-700">{error}</div>
+      )}
+      {message && (
+        <div className="mb-4 break-words rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
+          {message}
+        </div>
+      )}
 
-      <div className="grid gap-6 lg:grid-cols-[1.1fr_2fr]">
+      <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
         <section className="rounded-xl border bg-white p-4">
           <h2 className="mb-3 text-base font-semibold">Campagne</h2>
           <div className="mb-4 flex flex-col gap-2">
@@ -470,7 +476,7 @@ export default function AdminAdsPage() {
           )}
         </section>
 
-        <section className="rounded-xl border bg-white p-4">
+        <section className="min-w-0 rounded-xl border bg-white p-4">
           {!selectedCampaign ? (
             <div className="text-sm text-neutral-600">Seleziona una campagna per vedere i dettagli.</div>
           ) : (
@@ -609,15 +615,15 @@ export default function AdminAdsPage() {
                     </table>
                   </div>
                 )}
-                <div className="mt-3 grid gap-2 md:grid-cols-4">
+                <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
                   <input
-                    className="rounded-md border px-3 py-2 text-xs"
+                    className="w-full min-w-0 rounded-md border px-3 py-2 text-xs"
                     placeholder="Country (Lascia vuoto per includere tutte le aree)"
                     value={targetForm.country}
                     onChange={(e) => setTargetForm((prev) => ({ ...prev, country: e.target.value }))}
                   />
                   <input
-                    className="rounded-md border px-3 py-2 text-xs"
+                    className="w-full min-w-0 rounded-md border px-3 py-2 text-xs"
                     placeholder="Region (Lascia vuoto per includere tutte le aree)"
                     value={targetForm.region}
                     onChange={(e) => {
@@ -631,7 +637,7 @@ export default function AdminAdsPage() {
                     }}
                   />
                   <input
-                    className="rounded-md border px-3 py-2 text-xs"
+                    className="w-full min-w-0 rounded-md border px-3 py-2 text-xs"
                     placeholder="Province (Lascia vuoto per includere tutte le aree)"
                     value={targetForm.province}
                     disabled={isProvinceDisabled}
@@ -645,15 +651,17 @@ export default function AdminAdsPage() {
                     }}
                   />
                   <input
-                    className="rounded-md border px-3 py-2 text-xs"
+                    className="w-full min-w-0 rounded-md border px-3 py-2 text-xs"
                     placeholder="City (Lascia vuoto per includere tutte le aree)"
                     value={targetForm.city}
                     disabled={isCityDisabled}
                     onChange={(e) => setTargetForm((prev) => ({ ...prev, city: e.target.value }))}
                   />
+                </div>
+                <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4 xl:items-end">
                   <div className="space-y-1">
                     <select
-                      className="w-full rounded-md border px-3 py-2 text-xs"
+                      className="w-full min-w-0 rounded-md border px-3 py-2 text-xs"
                       value={targetForm.sport}
                       onChange={(e) => setTargetForm((prev) => ({ ...prev, sport: e.target.value }))}
                     >
@@ -664,10 +672,10 @@ export default function AdminAdsPage() {
                         </option>
                       ))}
                     </select>
-                    <p className="text-[11px] text-neutral-500">Esempio: Calcio, Volley, Basket…</p>
+                    <p className="mt-1 break-words text-[11px] text-neutral-500">Esempio: Calcio, Volley, Basket…</p>
                   </div>
                   <select
-                    className="rounded-md border px-3 py-2 text-xs"
+                    className="w-full min-w-0 rounded-md border px-3 py-2 text-xs"
                     value={targetForm.audience}
                     onChange={(e) => setTargetForm((prev) => ({ ...prev, audience: e.target.value }))}
                   >
@@ -676,7 +684,7 @@ export default function AdminAdsPage() {
                     <option value="player">Player</option>
                   </select>
                   <select
-                    className="rounded-md border px-3 py-2 text-xs"
+                    className="w-full min-w-0 rounded-md border px-3 py-2 text-xs"
                     value={targetForm.device}
                     onChange={(e) => setTargetForm((prev) => ({ ...prev, device: e.target.value }))}
                   >
@@ -686,7 +694,7 @@ export default function AdminAdsPage() {
                   </select>
                   <button
                     onClick={() => void addTarget()}
-                    className="rounded-md bg-neutral-900 px-3 py-2 text-xs font-semibold text-white"
+                    className="w-full rounded-md bg-neutral-900 px-3 py-2 text-xs font-semibold text-white"
                   >
                     Aggiungi target
                   </button>
@@ -719,7 +727,12 @@ export default function AdminAdsPage() {
                             <td className="px-3 py-2">{creative.body ?? '—'}</td>
                             <td className="px-3 py-2">
                               {creative.target_url ? (
-                                <a className="text-blue-600 underline" href={creative.target_url} target="_blank" rel="noreferrer">
+                                <a
+                                  className="break-words text-blue-600 underline"
+                                  href={creative.target_url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                >
                                   {creative.target_url}
                                 </a>
                               ) : (
@@ -775,7 +788,7 @@ export default function AdminAdsPage() {
                         onChange={(e) => setCreativeFile(e.target.files?.[0] ?? null)}
                       />
                     </label>
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
                       <button
                         onClick={() => void uploadCreativeImage()}
                         className="rounded-md bg-neutral-900 px-3 py-2 text-xs font-semibold text-white"
@@ -784,14 +797,14 @@ export default function AdminAdsPage() {
                         {creativeUploadLoading ? 'Caricamento…' : 'Carica immagine'}
                       </button>
                       <input
-                        className="flex-1 rounded-md border px-3 py-2 text-xs"
+                        className="w-full min-w-0 rounded-md border px-3 py-2 text-xs sm:flex-1"
                         placeholder="Image URL"
                         value={creativeForm.image_url}
                         onChange={(e) => setCreativeForm((prev) => ({ ...prev, image_url: e.target.value }))}
                       />
                     </div>
                     {creativeUploadError ? (
-                      <div className="mt-2 text-xs text-red-600">{creativeUploadError}</div>
+                      <div className="mt-2 break-words text-xs text-red-600">{creativeUploadError}</div>
                     ) : null}
                     {creativeForm.image_url ? (
                       <div className="relative mt-2 h-32 overflow-hidden rounded-lg border border-neutral-200">
