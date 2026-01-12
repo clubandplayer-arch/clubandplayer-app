@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SPORTS } from '@/lib/opps/constants';
 import { AD_SLOT_VALUES } from '@/lib/ads/slots';
 
@@ -95,6 +95,9 @@ export default function AdminAdsPage() {
     image_url: '',
     target_url: '',
   });
+  const creativeFormRef = useRef<HTMLDivElement | null>(null);
+  const creativeTitleRef = useRef<HTMLInputElement | null>(null);
+  const [editingCreativeId, setEditingCreativeId] = useState<string | null>(null);
   const [creativeFile, setCreativeFile] = useState<File | null>(null);
   const [creativeUploadLoading, setCreativeUploadLoading] = useState(false);
   const [creativeUploadError, setCreativeUploadError] = useState<string | null>(null);
@@ -179,6 +182,17 @@ export default function AdminAdsPage() {
       customer_contact: selectedCampaign.customer_contact ?? '',
       notes: selectedCampaign.notes ?? '',
     });
+    setEditingCreativeId(null);
+    setCreativeForm({
+      slot: 'sidebar_top',
+      title: '',
+      body: '',
+      image_url: '',
+      target_url: '',
+    });
+    setCreativeFile(null);
+    setCreativeUploadError(null);
+    setCreativeUploadKey((prev) => prev + 1);
     void loadDetails(selectedCampaign.id);
   }, [loadDetails, selectedCampaign]);
 
@@ -320,10 +334,62 @@ export default function AdminAdsPage() {
     await loadDetails(selectedCampaign.id);
   };
 
+  const updateCreative = async () => {
+    if (!selectedCampaign || !editingCreativeId) return;
+    setMessage(null);
+    setError(null);
+    if (!creativeForm.target_url.trim()) {
+      setError('Inserisci target URL');
+      return;
+    }
+    const res = await fetch(`/api/admin/ads/creatives/${editingCreativeId}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        slot: creativeForm.slot,
+        title: creativeForm.title,
+        body: creativeForm.body,
+        image_url: creativeForm.image_url,
+        target_url: creativeForm.target_url,
+      }),
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      setError(j?.error ?? 'Errore durante il salvataggio creative');
+      return;
+    }
+    setMessage('Creative aggiornata');
+    setCreativeForm({
+      slot: 'sidebar_top',
+      title: '',
+      body: '',
+      image_url: '',
+      target_url: '',
+    });
+    setEditingCreativeId(null);
+    setCreativeFile(null);
+    setCreativeUploadError(null);
+    setCreativeUploadKey((prev) => prev + 1);
+    await loadDetails(selectedCampaign.id);
+  };
+
   const removeCreative = async (id: string) => {
     if (!selectedCampaign) return;
     setMessage(null);
     setError(null);
+    if (editingCreativeId === id) {
+      setEditingCreativeId(null);
+      setCreativeForm({
+        slot: 'sidebar_top',
+        title: '',
+        body: '',
+        image_url: '',
+        target_url: '',
+      });
+      setCreativeFile(null);
+      setCreativeUploadError(null);
+      setCreativeUploadKey((prev) => prev + 1);
+    }
     const res = await fetch(`/api/admin/ads/creatives/${id}`, { method: 'DELETE' });
     if (!res.ok) {
       const j = await res.json().catch(() => ({}));
@@ -331,6 +397,56 @@ export default function AdminAdsPage() {
       return;
     }
     await loadDetails(selectedCampaign.id);
+  };
+
+  const startEditingCreative = (creative: CreativeRow) => {
+    setEditingCreativeId(creative.id);
+    setCreativeForm({
+      slot: creative.slot,
+      title: creative.title ?? '',
+      body: creative.body ?? '',
+      image_url: creative.image_url ?? '',
+      target_url: creative.target_url ?? '',
+    });
+    setCreativeFile(null);
+    setCreativeUploadError(null);
+    setCreativeUploadKey((prev) => prev + 1);
+    setMessage(null);
+    setError(null);
+  };
+
+  const duplicateCreative = (creative: CreativeRow) => {
+    setEditingCreativeId(null);
+    setCreativeForm({
+      slot: creative.slot,
+      title: creative.title ? `${creative.title} (copia)` : '',
+      body: creative.body ?? '',
+      image_url: creative.image_url ?? '',
+      target_url: creative.target_url ?? '',
+    });
+    setCreativeFile(null);
+    setCreativeUploadError(null);
+    setCreativeUploadKey((prev) => prev + 1);
+    setMessage(null);
+    setError(null);
+    requestAnimationFrame(() => {
+      creativeFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      creativeTitleRef.current?.focus();
+    });
+  };
+
+  const cancelEditingCreative = () => {
+    setEditingCreativeId(null);
+    setCreativeForm({
+      slot: 'sidebar_top',
+      title: '',
+      body: '',
+      image_url: '',
+      target_url: '',
+    });
+    setCreativeFile(null);
+    setCreativeUploadError(null);
+    setCreativeUploadKey((prev) => prev + 1);
   };
 
   const downloadCsv = () => {
@@ -363,7 +479,7 @@ export default function AdminAdsPage() {
         return;
       }
       setCreativeForm((prev) => ({ ...prev, image_url: payload?.publicUrl ?? '' }));
-      setMessage('Immagine caricata');
+      setMessage(editingCreativeId ? 'Immagine aggiornata' : 'Immagine caricata');
       setCreativeFile(null);
       setCreativeUploadKey((prev) => prev + 1);
     } catch (err) {
@@ -747,12 +863,26 @@ export default function AdminAdsPage() {
                               )}
                             </td>
                             <td className="px-3 py-2">
-                              <button
-                                onClick={() => void removeCreative(creative.id)}
-                                className="rounded-md border border-red-200 px-2 py-1 text-xs text-red-700"
-                              >
-                                Elimina
-                              </button>
+                              <div className="flex flex-wrap gap-2">
+                                <button
+                                  onClick={() => startEditingCreative(creative)}
+                                  className="rounded-md border border-blue-200 px-2 py-1 text-xs text-blue-700"
+                                >
+                                  Modifica
+                                </button>
+                                <button
+                                  onClick={() => duplicateCreative(creative)}
+                                  className="rounded-md border border-amber-200 px-2 py-1 text-xs text-amber-700"
+                                >
+                                  Duplica
+                                </button>
+                                <button
+                                  onClick={() => void removeCreative(creative.id)}
+                                  className="rounded-md border border-red-200 px-2 py-1 text-xs text-red-700"
+                                >
+                                  Elimina
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -760,7 +890,7 @@ export default function AdminAdsPage() {
                     </table>
                   </div>
                 )}
-                <div className="mt-3 grid gap-2 md:grid-cols-3">
+                <div ref={creativeFormRef} className="mt-3 grid gap-2 md:grid-cols-3">
                   <select
                     className="rounded-md border px-3 py-2 text-xs"
                     value={creativeForm.slot}
@@ -776,6 +906,7 @@ export default function AdminAdsPage() {
                     Consigliato: left_* 1200x675 (16:9) — sidebar_top 1080x1350 (4:5) — sidebar_bottom 1200x675 (16:9)
                   </p>
                   <input
+                    ref={creativeTitleRef}
                     className="rounded-md border px-3 py-2 text-xs"
                     placeholder="Titolo"
                     value={creativeForm.title}
@@ -834,12 +965,22 @@ export default function AdminAdsPage() {
                     value={creativeForm.target_url}
                     onChange={(e) => setCreativeForm((prev) => ({ ...prev, target_url: e.target.value }))}
                   />
-                  <button
-                    onClick={() => void addCreative()}
-                    className="rounded-md bg-neutral-900 px-3 py-2 text-xs font-semibold text-white"
-                  >
-                    Aggiungi creative
-                  </button>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => void (editingCreativeId ? updateCreative() : addCreative())}
+                      className="rounded-md bg-neutral-900 px-3 py-2 text-xs font-semibold text-white"
+                    >
+                      {editingCreativeId ? 'Salva modifiche' : 'Aggiungi creative'}
+                    </button>
+                    {editingCreativeId ? (
+                      <button
+                        onClick={cancelEditingCreative}
+                        className="rounded-md border border-neutral-300 px-3 py-2 text-xs font-semibold text-neutral-700"
+                      >
+                        Annulla
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
               </div>
 
