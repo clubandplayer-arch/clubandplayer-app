@@ -360,8 +360,11 @@ export default function FeedPage() {
             <ProfileMiniCard />
           </div>
           <MyMediaHub currentUserId={currentUserId} />
-          <AdSlot slot="left_top" page={pathname} />
-          <AdSlot slot="left_bottom" page={pathname} />
+          <div className="space-y-4 lg:sticky lg:top-24 lg:self-start">
+            <AdSlot slot="left_top" page={pathname} />
+            <AdSlot slot="left_bottom" page={pathname} />
+            <AdSlot slot="left_extra" page={pathname} />
+          </div>
         </aside>
 
         {/* Colonna centrale: composer + feed */}
@@ -492,8 +495,11 @@ export default function FeedPage() {
             <FeedHighlights />
           </SidebarCard>
 
-          <AdSlot slot="sidebar_top" page={pathname} />
-          <AdSlot slot="sidebar_bottom" page={pathname} />
+          <div className="space-y-4 lg:sticky lg:top-24 lg:self-start">
+            <AdSlot slot="sidebar_top" page={pathname} />
+            <AdSlot slot="sidebar_bottom" page={pathname} />
+            <AdSlot slot="sidebar_extra" page={pathname} />
+          </div>
         </aside>
       </div>
     </div>

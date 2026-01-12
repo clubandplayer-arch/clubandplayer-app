@@ -4,7 +4,15 @@ import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { SPORTS } from '@/lib/opps/constants';
 
-const SLOT_OPTIONS = ['left_top', 'left_bottom', 'sidebar_top', 'sidebar_bottom', 'feed_infeed'] as const;
+const SLOT_OPTIONS = [
+  'left_top',
+  'left_bottom',
+  'left_extra',
+  'sidebar_top',
+  'sidebar_bottom',
+  'sidebar_extra',
+  'feed_infeed',
+] as const;
 
 type CampaignRow = {
   id: string;
