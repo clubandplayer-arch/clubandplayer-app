@@ -359,9 +359,9 @@ export default function FeedPage() {
           </div>
           <MyMediaHub currentUserId={currentUserId} />
           <div className="space-y-4 md:sticky md:top-24" data-ads-sticky="left">
-            <AdSlot slot="left_top" page={pathname} />
-            <AdSlot slot="left_bottom" page={pathname} />
-            <AdSlot slot="left_extra" page={pathname} />
+            <AdSlot slot="left_top" page={pathname} imageAspect="landscape" />
+            <AdSlot slot="left_extra" page={pathname} imageAspect="landscape" />
+            <AdSlot slot="left_bottom" page={pathname} imageAspect="landscape" />
           </div>
         </aside>
 
@@ -494,9 +494,8 @@ export default function FeedPage() {
           </SidebarCard>
 
           <div className="space-y-4 md:sticky md:top-24" data-ads-sticky="right">
-            <AdSlot slot="sidebar_top" page={pathname} />
-            <AdSlot slot="sidebar_bottom" page={pathname} />
-            <AdSlot slot="sidebar_extra" page={pathname} />
+            <AdSlot slot="sidebar_top" page={pathname} imageAspect="portrait" />
+            <AdSlot slot="sidebar_bottom" page={pathname} imageAspect="portrait" />
           </div>
         </aside>
       </div>
