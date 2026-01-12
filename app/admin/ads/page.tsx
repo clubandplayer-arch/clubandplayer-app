@@ -99,8 +99,14 @@ export default function AdminAdsPage() {
   const [creativeUploadLoading, setCreativeUploadLoading] = useState(false);
   const [creativeUploadError, setCreativeUploadError] = useState<string | null>(null);
   const [creativeUploadKey, setCreativeUploadKey] = useState(0);
-  const isSidebarSlot = creativeForm.slot.startsWith('sidebar_');
-  const previewAspectClass = isSidebarSlot ? 'aspect-[9/16]' : 'aspect-video';
+  const previewAspectClass =
+    creativeForm.slot === 'sidebar_top'
+      ? 'aspect-[4/5]'
+      : creativeForm.slot === 'sidebar_bottom'
+        ? 'aspect-video'
+        : creativeForm.slot.startsWith('sidebar_')
+          ? 'aspect-[9/16]'
+          : 'aspect-video';
 
   const [debugSlot, setDebugSlot] = useState<string>('feed_infeed');
   const [debugResult, setDebugResult] = useState<string | null>(null);
@@ -767,7 +773,7 @@ export default function AdminAdsPage() {
                     ))}
                   </select>
                   <p className="text-[11px] text-neutral-500 md:col-span-2">
-                    Consigliato: left_* 1200x675 (16:9) — sidebar_* 1080x1920 (9:16)
+                    Consigliato: left_* 1200x675 (16:9) — sidebar_top 1080x1350 (4:5) — sidebar_bottom 1200x675 (16:9)
                   </p>
                   <input
                     className="rounded-md border px-3 py-2 text-xs"

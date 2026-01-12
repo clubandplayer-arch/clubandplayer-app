@@ -20,7 +20,7 @@ type AdCreative = {
 type AdSlotProps = {
   slot: string;
   page: string;
-  imageAspect?: 'landscape' | 'portrait';
+  imageAspect?: 'landscape' | 'portrait' | 'portraitShort';
 };
 
 const pageCreativeIds = new Map<string, Set<string>>();
@@ -38,7 +38,8 @@ const rememberCreativeId = (page: string, creativeId: string) => {
 export default function AdSlot({ slot, page, imageAspect = 'landscape' }: AdSlotProps) {
   const adsEnabled = isAdsEnabled();
   const [creative, setCreative] = useState<AdCreative | null>(null);
-  const imageAspectClass = imageAspect === 'portrait' ? 'aspect-[9/16]' : 'aspect-video';
+  const imageAspectClass =
+    imageAspect === 'portrait' ? 'aspect-[9/16]' : imageAspect === 'portraitShort' ? 'aspect-[4/5]' : 'aspect-video';
 
   useEffect(() => {
     if (!adsEnabled) return;

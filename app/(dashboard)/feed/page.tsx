@@ -494,7 +494,8 @@ export default function FeedPage() {
           </SidebarCard>
 
           <div className="space-y-4 md:sticky md:top-24" data-ads-sticky="right">
-            <AdSlot slot="sidebar_top" page={pathname} imageAspect="portrait" />
+            <AdSlot slot="sidebar_top" page={pathname} imageAspect="portraitShort" />
+            <AdSlot slot="sidebar_bottom" page={pathname} imageAspect="landscape" />
           </div>
         </aside>
       </div>
