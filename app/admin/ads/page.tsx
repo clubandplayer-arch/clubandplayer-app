@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SPORTS } from '@/lib/opps/constants';
 import { AD_SLOT_VALUES } from '@/lib/ads/slots';
 
@@ -95,6 +95,8 @@ export default function AdminAdsPage() {
     image_url: '',
     target_url: '',
   });
+  const creativeFormRef = useRef<HTMLDivElement | null>(null);
+  const creativeTitleRef = useRef<HTMLInputElement | null>(null);
   const [editingCreativeId, setEditingCreativeId] = useState<string | null>(null);
   const [creativeFile, setCreativeFile] = useState<File | null>(null);
   const [creativeUploadLoading, setCreativeUploadLoading] = useState(false);
@@ -411,6 +413,26 @@ export default function AdminAdsPage() {
     setCreativeUploadKey((prev) => prev + 1);
     setMessage(null);
     setError(null);
+  };
+
+  const duplicateCreative = (creative: CreativeRow) => {
+    setEditingCreativeId(null);
+    setCreativeForm({
+      slot: creative.slot,
+      title: creative.title ? `${creative.title} (copia)` : '',
+      body: creative.body ?? '',
+      image_url: creative.image_url ?? '',
+      target_url: creative.target_url ?? '',
+    });
+    setCreativeFile(null);
+    setCreativeUploadError(null);
+    setCreativeUploadKey((prev) => prev + 1);
+    setMessage(null);
+    setError(null);
+    requestAnimationFrame(() => {
+      creativeFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      creativeTitleRef.current?.focus();
+    });
   };
 
   const cancelEditingCreative = () => {
@@ -849,6 +871,12 @@ export default function AdminAdsPage() {
                                   Modifica
                                 </button>
                                 <button
+                                  onClick={() => duplicateCreative(creative)}
+                                  className="rounded-md border border-amber-200 px-2 py-1 text-xs text-amber-700"
+                                >
+                                  Duplica
+                                </button>
+                                <button
                                   onClick={() => void removeCreative(creative.id)}
                                   className="rounded-md border border-red-200 px-2 py-1 text-xs text-red-700"
                                 >
@@ -862,7 +890,7 @@ export default function AdminAdsPage() {
                     </table>
                   </div>
                 )}
-                <div className="mt-3 grid gap-2 md:grid-cols-3">
+                <div ref={creativeFormRef} className="mt-3 grid gap-2 md:grid-cols-3">
                   <select
                     className="rounded-md border px-3 py-2 text-xs"
                     value={creativeForm.slot}
@@ -878,6 +906,7 @@ export default function AdminAdsPage() {
                     Consigliato: left_* 1200x675 (16:9) — sidebar_top 1080x1350 (4:5) — sidebar_bottom 1200x675 (16:9)
                   </p>
                   <input
+                    ref={creativeTitleRef}
                     className="rounded-md border px-3 py-2 text-xs"
                     placeholder="Titolo"
                     value={creativeForm.title}
