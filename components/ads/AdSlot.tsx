@@ -20,6 +20,7 @@ type AdCreative = {
 type AdSlotProps = {
   slot: string;
   page: string;
+  imageAspect?: 'landscape' | 'portrait' | 'portraitShort';
 };
 
 const pageCreativeIds = new Map<string, Set<string>>();
@@ -34,9 +35,11 @@ const rememberCreativeId = (page: string, creativeId: string) => {
   pageCreativeIds.set(page, existing);
 };
 
-export default function AdSlot({ slot, page }: AdSlotProps) {
+export default function AdSlot({ slot, page, imageAspect = 'landscape' }: AdSlotProps) {
   const adsEnabled = isAdsEnabled();
   const [creative, setCreative] = useState<AdCreative | null>(null);
+  const imageAspectClass =
+    imageAspect === 'portrait' ? 'aspect-[9/16]' : imageAspect === 'portraitShort' ? 'aspect-[4/5]' : 'aspect-video';
 
   useEffect(() => {
     if (!adsEnabled) return;
@@ -109,8 +112,10 @@ export default function AdSlot({ slot, page }: AdSlotProps) {
           target="_blank"
         >
           {creative.imageUrl ? (
-            <div className="relative w-full overflow-hidden rounded-xl border border-slate-100 bg-slate-50">
-              <Image src={creative.imageUrl} alt="" width={320} height={144} className="h-36 w-full object-cover" />
+            <div
+              className={`relative w-full ${imageAspectClass} overflow-hidden rounded-xl border border-slate-100 bg-slate-50`}
+            >
+              <Image src={creative.imageUrl} alt="" fill sizes="(max-width: 1024px) 100vw, 320px" className="object-cover" />
             </div>
           ) : null}
           <div>

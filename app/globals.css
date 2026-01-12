@@ -49,12 +49,15 @@
   background: var(--clubplayer-gradient);
 }
 
-html, body {
+html {
+  overflow-x: hidden;
+}
+
+body {
   min-height: 100%;
   background: var(--clubplayer-gradient);
   color: var(--fg);
   /* ⛔️ Non impostiamo il font qui per non sovrascrivere Inter dal layout */
-  overflow-x: hidden;
 }
 
 img, video, svg {

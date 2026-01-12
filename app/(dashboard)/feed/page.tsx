@@ -350,18 +350,19 @@ export default function FeedPage() {
       aria-labelledby={headingId}
     >
       {/* layout a 3 colonne: sx (minicard) / centro (composer + post) / dx (suggerimenti) */}
-      <div
-        className="grid grid-cols-1 gap-4 lg:gap-6 lg:grid-cols-[280px_minmax(0,2.2fr)_minmax(0,1.2fr)] xl:grid-cols-[300px_minmax(0,2.5fr)_minmax(0,1.3fr)] lg:items-start"
-      >
+      <div className="grid grid-cols-1 gap-4 md:gap-6 md:grid-cols-[280px_minmax(0,2.2fr)_minmax(0,1.2fr)] xl:grid-cols-[300px_minmax(0,2.5fr)_minmax(0,1.3fr)] md:items-stretch">
         {/* Colonna sinistra: mini profilo */}
-        <aside className="min-w-0 space-y-4">
+        <aside className="min-w-0 space-y-4 md:self-stretch md:min-h-full">
           <div className="space-y-3">
             {/* Se esiste, il componente reale rimpiazzerà questo blocco via dynamic() */}
             <ProfileMiniCard />
           </div>
           <MyMediaHub currentUserId={currentUserId} />
-          <AdSlot slot="left_top" page={pathname} />
-          <AdSlot slot="left_bottom" page={pathname} />
+          <div className="space-y-4 md:sticky md:top-16" data-ads-sticky="left">
+            <AdSlot slot="left_top" page={pathname} imageAspect="landscape" />
+            <AdSlot slot="left_extra" page={pathname} imageAspect="landscape" />
+            <AdSlot slot="left_bottom" page={pathname} imageAspect="landscape" />
+          </div>
         </aside>
 
         {/* Colonna centrale: composer + feed */}
@@ -479,7 +480,7 @@ export default function FeedPage() {
         </main>
 
         {/* Colonna destra: suggerimenti/annunci/club seguiti */}
-        <aside className="min-w-0 space-y-4">
+        <aside className="min-w-0 space-y-4 md:self-stretch md:min-h-full">
           <SidebarCard>
             <WhoToFollow />
           </SidebarCard>
@@ -492,8 +493,10 @@ export default function FeedPage() {
             <FeedHighlights />
           </SidebarCard>
 
-          <AdSlot slot="sidebar_top" page={pathname} />
-          <AdSlot slot="sidebar_bottom" page={pathname} />
+          <div className="space-y-4 md:sticky md:top-16" data-ads-sticky="right">
+            <AdSlot slot="sidebar_top" page={pathname} imageAspect="portraitShort" />
+            <AdSlot slot="sidebar_bottom" page={pathname} imageAspect="landscape" />
+          </div>
         </aside>
       </div>
     </div>
