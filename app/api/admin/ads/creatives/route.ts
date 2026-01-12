@@ -2,11 +2,11 @@ import { NextResponse } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { isAdminUser } from '@/lib/api/admin';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
+import { isAdSlotValue } from '@/lib/ads/slots';
 
 export const runtime = 'nodejs';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const SLOT_VALUES = new Set(['left_top', 'left_bottom', 'sidebar_top', 'sidebar_bottom', 'feed_infeed']);
 
 const toNullableText = (value: unknown) => {
   if (typeof value !== 'string') return null;
@@ -51,7 +51,7 @@ export const POST = withAuth(async (req, { supabase, user }) => {
   if (!UUID_REGEX.test(campaignId)) return jsonError('campaign_id non valido', 400);
 
   const slot = typeof body?.slot === 'string' ? body.slot.trim() : '';
-  if (!SLOT_VALUES.has(slot)) return jsonError('Slot non valido', 400);
+  if (!isAdSlotValue(slot)) return jsonError('Slot non valido', 400);
 
   const targetUrl = toNullableText(body?.target_url);
   if (!targetUrl) return jsonError('target_url obbligatorio', 400);

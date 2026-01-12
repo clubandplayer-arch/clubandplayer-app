@@ -3,16 +3,7 @@
 import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { SPORTS } from '@/lib/opps/constants';
-
-const SLOT_OPTIONS = [
-  'left_top',
-  'left_bottom',
-  'left_extra',
-  'sidebar_top',
-  'sidebar_bottom',
-  'sidebar_extra',
-  'feed_infeed',
-] as const;
+import { AD_SLOT_VALUES } from '@/lib/ads/slots';
 
 type CampaignRow = {
   id: string;
@@ -769,7 +760,7 @@ export default function AdminAdsPage() {
                     value={creativeForm.slot}
                     onChange={(e) => setCreativeForm((prev) => ({ ...prev, slot: e.target.value }))}
                   >
-                    {SLOT_OPTIONS.map((slot) => (
+                    {AD_SLOT_VALUES.map((slot) => (
                       <option key={slot} value={slot}>
                         {slot}
                       </option>
@@ -868,7 +859,7 @@ export default function AdminAdsPage() {
                   <div className="rounded-md border border-neutral-200 bg-neutral-50 p-2">
                     <div className="font-semibold">Creatives per slot</div>
                     <ul className="mt-1 space-y-1">
-                      {SLOT_OPTIONS.map((slot) => (
+                      {AD_SLOT_VALUES.map((slot) => (
                         <li key={slot} className="flex items-center justify-between">
                           <span>{slot}</span>
                           <span>{campaignHealth?.creativesBySlot[slot] ?? 0}</span>
@@ -885,7 +876,7 @@ export default function AdminAdsPage() {
                       value={debugSlot}
                       onChange={(e) => setDebugSlot(e.target.value)}
                     >
-                      {SLOT_OPTIONS.map((slot) => (
+                      {AD_SLOT_VALUES.map((slot) => (
                         <option key={slot} value={slot}>
                           {slot}
                         </option>

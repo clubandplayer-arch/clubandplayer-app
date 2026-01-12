@@ -2,12 +2,12 @@ import { NextResponse } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { isAdminUser } from '@/lib/api/admin';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
+import { isAdSlotValue } from '@/lib/ads/slots';
 
 export const runtime = 'nodejs';
 
 const MAX_BYTES = 5 * 1024 * 1024;
 const ALLOWED_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'webp']);
-const SLOT_VALUES = new Set(['left_top', 'left_bottom', 'sidebar_top', 'sidebar_bottom', 'feed_infeed']);
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const sanitizeFileName = (name?: string | null) => {
@@ -55,7 +55,7 @@ export const POST = withAuth(async (req, { supabase, user }) => {
   }
 
   const slot = typeof form.get('slot') === 'string' ? String(form.get('slot')).trim() : '';
-  if (slot && !SLOT_VALUES.has(slot)) {
+  if (slot && !isAdSlotValue(slot)) {
     return jsonError('Slot non valido', 400);
   }
 
