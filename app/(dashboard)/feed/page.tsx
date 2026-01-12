@@ -358,7 +358,7 @@ export default function FeedPage() {
             <ProfileMiniCard />
           </div>
           <MyMediaHub currentUserId={currentUserId} />
-          <div className="space-y-4 md:sticky md:top-24" data-ads-sticky="left">
+          <div className="space-y-4 md:sticky md:top-16" data-ads-sticky="left">
             <AdSlot slot="left_top" page={pathname} imageAspect="landscape" />
             <AdSlot slot="left_extra" page={pathname} imageAspect="landscape" />
             <AdSlot slot="left_bottom" page={pathname} imageAspect="landscape" />
@@ -493,7 +493,7 @@ export default function FeedPage() {
             <FeedHighlights />
           </SidebarCard>
 
-          <div className="space-y-4 md:sticky md:top-24" data-ads-sticky="right">
+          <div className="space-y-4 md:sticky md:top-16" data-ads-sticky="right">
             <AdSlot slot="sidebar_top" page={pathname} imageAspect="portraitShort" />
             <AdSlot slot="sidebar_bottom" page={pathname} imageAspect="landscape" />
           </div>
