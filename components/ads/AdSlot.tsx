@@ -114,6 +114,8 @@ export default function AdSlot({ slot, page, imageAspect = 'landscape' }: AdSlot
           {creative.imageUrl ? (
             <div
               className={`relative w-full ${imageAspectClass} overflow-hidden rounded-xl border border-slate-100 bg-slate-50`}
+              data-ad-slot={slot}
+              data-ad-aspect={imageAspect ?? 'landscape'}
             >
               <Image src={creative.imageUrl} alt="" fill sizes="(max-width: 1024px) 100vw, 320px" className="object-cover" />
             </div>
