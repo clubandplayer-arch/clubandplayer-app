@@ -108,6 +108,8 @@ export default function AdminAdsPage() {
   const [creativeUploadLoading, setCreativeUploadLoading] = useState(false);
   const [creativeUploadError, setCreativeUploadError] = useState<string | null>(null);
   const [creativeUploadKey, setCreativeUploadKey] = useState(0);
+  const isSidebarSlot = creativeForm.slot.startsWith('sidebar_');
+  const previewAspectClass = isSidebarSlot ? 'aspect-[9/16]' : 'aspect-video';
 
   const [debugSlot, setDebugSlot] = useState<string>('feed_infeed');
   const [debugResult, setDebugResult] = useState<string | null>(null);
@@ -773,6 +775,9 @@ export default function AdminAdsPage() {
                       </option>
                     ))}
                   </select>
+                  <p className="text-[11px] text-neutral-500 md:col-span-2">
+                    Consigliato: left_* 1200x675 (16:9) — sidebar_* 1080x1920 (9:16)
+                  </p>
                   <input
                     className="rounded-md border px-3 py-2 text-xs"
                     placeholder="Titolo"
@@ -815,7 +820,7 @@ export default function AdminAdsPage() {
                       <div className="mt-2 break-words text-xs text-red-600">{creativeUploadError}</div>
                     ) : null}
                     {creativeForm.image_url ? (
-                      <div className="relative mt-2 h-32 overflow-hidden rounded-lg border border-neutral-200">
+                      <div className={`relative mt-2 ${previewAspectClass} overflow-hidden rounded-lg border border-neutral-200`}>
                         <Image
                           src={creativeForm.image_url}
                           alt="Preview creative"
