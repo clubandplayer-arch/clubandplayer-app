@@ -31,6 +31,14 @@ Ads in Club&Player sono sponsorizzazioni native che appaiono in posizioni dedica
 - Peso file consigliato: **< 500 KB**.
 - Formati supportati: **JPG / PNG / WEBP**.
 
+Nota nitidezza: il sito usa **Next/Image** e serve immagini **responsive** (più larghezze). Per gli ads applichiamo una **quality alta (es. 90)** e `sizes` per slot, così testi e loghi non risultano sfocati. Consiglio: caricare asset in **alta qualità**, nel **ratio corretto** (4:5 o 16:9) e con testo/logo dentro la **safe area**.
+
+### Troubleshooting – immagini sfocate
+Se un’immagine appare sfocata:
+- Verifica che l’asset abbia il **ratio corretto** (16:9 o 4:5) e sia esportato in **qualità alta** (PNG/WebP high quality).
+- Evita di caricare immagini **piccole** e poi “upscalate”.
+- (Opzionale) In DevTools verifica che `/_next/image` usi una `q` alta (es. **90**).
+
 ## 4) Pacchetti commerciali (tabella)
 
 | Pacchetto | Targeting incluso | Slot inclusi | Creatives consigliate | Priority suggerita | Note |
