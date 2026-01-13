@@ -33,7 +33,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const { unreadCount: unreadNotifications, setUnreadCount: setUnreadNotifications } = useNotificationsBadge();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchMode, setSearchMode] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
   const profileButtonRef = useRef<HTMLButtonElement | null>(null);
 
@@ -169,11 +171,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <div className="min-h-screen bg-clubplayer-gradient">
           <header className="fixed inset-x-0 top-0 z-40 border-b bg-white/90 backdrop-blur">
             <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4" style={{ ['--nav-h' as any]: '64px' }}>
-              <div className="min-w-0 flex h-10 flex-shrink-0 items-center overflow-hidden">
+              <div
+                className={`min-w-0 flex flex-shrink-0 items-center overflow-hidden ${
+                  searchMode ? 'hidden md:flex' : 'flex'
+                } h-8 md:h-10`}
+              >
                 <BrandLogo variant="header" href="/feed" priority />
               </div>
               <form
-                className="flex flex-1 items-center md:flex-none md:w-80"
+                className="flex flex-1 min-w-0 items-center md:flex-none md:w-80"
                 onSubmit={(event) => {
                   event.preventDefault();
                   const trimmed = searchQuery.trim();
@@ -181,18 +187,38 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   router.push(`/search?q=${encodeURIComponent(trimmed)}&type=all`);
                 }}
               >
-                <div className="relative w-full">
+                <div className="relative w-full min-w-0">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <input
                     type="search"
+                    ref={searchInputRef}
                     value={searchQuery}
                     onChange={(event) => setSearchQuery(event.target.value)}
+                    onFocus={() => setSearchMode(true)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Escape') {
+                        setSearchMode(false);
+                        searchInputRef.current?.blur();
+                      }
+                    }}
                     placeholder="Cerca club, player, opportunità, post, eventi…"
                     aria-label="Cerca"
-                    className="h-10 w-full rounded-full border border-slate-200 bg-white/90 pl-10 pr-4 text-sm text-slate-700 shadow-sm transition focus:border-[var(--brand)] focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/20"
+                    className="h-10 w-full min-w-0 rounded-full border border-slate-200 bg-white/90 pl-10 pr-4 text-sm text-slate-700 shadow-sm transition focus:border-[var(--brand)] focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/20"
                   />
                 </div>
               </form>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchMode(false);
+                  searchInputRef.current?.blur();
+                }}
+                className={`text-sm font-medium text-slate-600 transition hover:text-slate-800 md:hidden ${
+                  searchMode ? 'inline-flex' : 'hidden'
+                }`}
+              >
+                Annulla
+              </button>
 
               <nav className="hidden flex-1 justify-center md:flex">
                 <div className="flex items-center gap-1 rounded-full border border-white/40 bg-white/70 px-2 py-1 shadow-sm backdrop-blur">
@@ -264,7 +290,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
               <div className="ml-auto flex h-full items-center gap-2">
                 {role !== 'guest' && (
-                  <div className="relative" ref={profileMenuRef}>
+                  <div className="relative hidden md:block" ref={profileMenuRef}>
                     <button
                       type="button"
                       ref={profileButtonRef}
@@ -341,6 +367,24 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <div className="border-t bg-white/95 shadow-sm backdrop-blur md:hidden">
                 <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3">
                   <div className="flex flex-wrap gap-2">
+                    {role !== 'guest' && (
+                      <Link
+                        href={profileHref}
+                        onClick={() => setIsMenuOpen(false)}
+                        className="flex flex-1 min-w-[140px] items-center gap-2 rounded-lg border px-3 py-2 text-sm transition hover:bg-neutral-50"
+                      >
+                        <div className="relative h-6 w-6 overflow-hidden rounded-full border border-neutral-200 bg-slate-200">
+                          {avatarUrl ? (
+                            <Image src={avatarUrl} alt="Profilo" fill className="object-cover" sizes="24px" />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-[10px] font-semibold text-slate-700">
+                              {profileInitials}
+                            </div>
+                          )}
+                        </div>
+                        <span>Profilo</span>
+                      </Link>
+                    )}
                     {isClub && (
                       <>
                         <Link
