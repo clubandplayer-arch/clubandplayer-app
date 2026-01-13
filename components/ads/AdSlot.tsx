@@ -40,6 +40,12 @@ export default function AdSlot({ slot, page, imageAspect = 'landscape' }: AdSlot
   const [creative, setCreative] = useState<AdCreative | null>(null);
   const imageAspectClass =
     imageAspect === 'portrait' ? 'aspect-[9/16]' : imageAspect === 'portraitShort' ? 'aspect-[4/5]' : 'aspect-video';
+  const computedSizes =
+    slot === 'feed_infeed'
+      ? '(min-width: 1280px) 560px, (min-width: 1024px) 520px, (min-width: 768px) 560px, 100vw'
+      : slot.startsWith('left_') || slot.startsWith('sidebar_')
+        ? '(min-width: 1280px) 260px, (min-width: 1024px) 246px, (min-width: 768px) 240px, 100vw'
+        : '(max-width: 1024px) 100vw, 320px';
 
   useEffect(() => {
     if (!adsEnabled) return;
@@ -117,7 +123,14 @@ export default function AdSlot({ slot, page, imageAspect = 'landscape' }: AdSlot
               data-ad-slot={slot}
               data-ad-aspect={imageAspect ?? 'landscape'}
             >
-              <Image src={creative.imageUrl} alt="" fill sizes="(max-width: 1024px) 100vw, 320px" className="object-cover" />
+              <Image
+                src={creative.imageUrl}
+                alt=""
+                fill
+                sizes={computedSizes}
+                quality={90}
+                className="object-cover"
+              />
             </div>
           ) : null}
           <div>
