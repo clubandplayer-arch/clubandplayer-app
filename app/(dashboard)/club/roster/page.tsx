@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { MaterialIcon } from '@/components/icons/MaterialIcon';
 import useIsClub from '@/hooks/useIsClub';
-import { sortRosterMembersByRole } from '@/lib/utils/rosterRoleSort';
+import { buildRosterRoleSections } from '@/lib/utils/rosterRoleSort';
 
 type ApiRosterPlayer = {
   playerProfileId?: string;
@@ -104,10 +104,10 @@ export default function ClubRosterPage() {
     void loadRoster();
   }, [isClub, loading, loadRoster]);
 
-  const sortedRoster = useMemo(() => {
-    return sortRosterMembersByRole(roster, clubSport);
+  const rosterSections = useMemo(() => {
+    return buildRosterRoleSections(roster, clubSport);
   }, [clubSport, roster]);
-  const hasPlayers = sortedRoster.length > 0;
+  const hasPlayers = rosterSections.length > 0;
 
   if (loading) {
     return <div className="p-6 text-sm text-neutral-600">Verifica permessi…</div>;
@@ -158,9 +158,19 @@ export default function ClubRosterPage() {
       ) : null}
 
       {!loadingRoster && hasPlayers ? (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {sortedRoster.map((player) => (
-            <RosterPlayerCard key={player.id} player={player} />
+        <div className="space-y-6">
+          {rosterSections.map((section) => (
+            <section key={section.roleLabel} className="space-y-3">
+              <div className="flex items-center gap-3">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-700">{section.roleLabel}</h2>
+                <div className="h-px flex-1 bg-neutral-200" />
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {section.members.map((player) => (
+                  <RosterPlayerCard key={player.id} player={player} />
+                ))}
+              </div>
+            </section>
           ))}
         </div>
       ) : null}
