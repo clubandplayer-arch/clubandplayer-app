@@ -385,6 +385,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                         <span>Profilo</span>
                       </Link>
                     )}
+                    {role !== 'guest' && (
+                      <Link
+                        href="/logout"
+                        onClick={() => setIsMenuOpen(false)}
+                        className="flex flex-1 min-w-[140px] items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-sm text-red-600 transition hover:bg-red-50"
+                      >
+                        <span>Logout</span>
+                      </Link>
+                    )}
                     {isClub && (
                       <>
                         <Link
