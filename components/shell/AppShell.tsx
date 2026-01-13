@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Search, Users } from 'lucide-react';
+import { LogOut, Search, Users } from 'lucide-react';
 import useIsClub from '@/hooks/useIsClub';
 import { ToastProvider } from '@/components/common/ToastProvider';
 import { FollowProvider } from '@/components/follow/FollowProvider';
@@ -21,6 +21,15 @@ import MobileSearchOverlay from '@/components/search/MobileSearchOverlay';
 type Role = 'athlete' | 'club' | 'guest';
 
 type NavItem = { label: string; href: string; icon: MaterialIconName };
+
+type MobileMenuItem = {
+  key: string;
+  label: string;
+  href: string;
+  icon?: React.ReactNode;
+  tone?: 'danger';
+  badge?: number;
+};
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -183,6 +192,49 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     const letters = parts.slice(0, 2).map((part) => part[0]?.toUpperCase());
     return letters.join('') || 'CP';
   }, [profileName]);
+
+  const mobileMenuItems = useMemo<MobileMenuItem[]>(() => {
+    const items: MobileMenuItem[] = [];
+
+    if (role !== 'guest') {
+      const profileIcon = (
+        <div className="relative h-6 w-6 overflow-hidden rounded-full border border-neutral-200 bg-slate-200">
+          {avatarUrl ? (
+            <Image src={avatarUrl} alt="Profilo" fill className="object-cover" sizes="24px" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-[10px] font-semibold text-slate-700">
+              {profileInitials}
+            </div>
+          )}
+        </div>
+      );
+
+      items.push({ key: 'profile', label: 'Profilo', href: profileHref, icon: profileIcon });
+      items.push({ key: 'logout', label: 'Logout', href: '/logout', icon: <LogOut size={16} aria-hidden />, tone: 'danger' });
+    }
+
+    if (isClub) {
+      items.push({ key: 'following', label: 'Seguiti', href: '/following', icon: <Users size={16} aria-hidden /> });
+      items.push({ key: 'roster', label: 'Rosa', href: '/club/roster', icon: <MaterialIcon name="following" fontSize={16} /> });
+    }
+
+    items.push(
+      ...navItems.map((item) => ({
+        key: item.href,
+        label: item.label,
+        href: item.href,
+        icon: <MaterialIcon name={item.icon} fontSize={16} />,
+        badge:
+          item.href === '/notifications'
+            ? unreadNotifications
+            : item.href === '/messages'
+              ? unreadDirectThreads
+              : undefined,
+      })),
+    );
+
+    return items;
+  }, [avatarUrl, isClub, navItems, profileHref, profileInitials, role, unreadDirectThreads, unreadNotifications]);
 
   return (
     <ToastProvider>
@@ -370,73 +422,31 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <div className="border-t bg-white/95 shadow-sm backdrop-blur md:hidden">
                 <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3">
                   <div className="flex flex-wrap gap-2">
-                    {role !== 'guest' && (
-                      <Link
-                        href={profileHref}
-                        onClick={() => setIsMenuOpen(false)}
-                        className="flex flex-1 min-w-[140px] items-center gap-2 rounded-lg border px-3 py-2 text-sm transition hover:bg-neutral-50"
-                      >
-                        <div className="relative h-6 w-6 overflow-hidden rounded-full border border-neutral-200 bg-slate-200">
-                          {avatarUrl ? (
-                            <Image src={avatarUrl} alt="Profilo" fill className="object-cover" sizes="24px" />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center text-[10px] font-semibold text-slate-700">
-                              {profileInitials}
-                            </div>
-                          )}
-                        </div>
-                        <span>Profilo</span>
-                      </Link>
-                    )}
-                    {isClub && (
-                      <>
-                        <Link
-                          href="/following"
-                          onClick={() => setIsMenuOpen(false)}
-                          className={`flex flex-1 min-w-[140px] items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${
-                            isActive('/following')
-                              ? 'border-slate-300 bg-slate-50 text-slate-800'
-                              : 'hover:bg-slate-50 text-slate-700'
-                          }`}
-                        >
-                          <Users size={16} aria-hidden />
-                          <span>Seguiti</span>
-                        </Link>
-                        <Link
-                          href="/club/roster"
-                          onClick={() => setIsMenuOpen(false)}
-                          className={`flex flex-1 min-w-[140px] items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${
-                            isActive('/club/roster')
-                              ? 'border-pink-400 bg-pink-50 text-pink-700'
-                              : 'hover:bg-pink-50 text-pink-700'
-                          }`}
-                        >
-                          <MaterialIcon name="following" fontSize={16} />
-                          <span>Rosa</span>
-                        </Link>
-                      </>
-                    )}
-                    {navItems.map((item) => {
+                    {mobileMenuItems.map((item) => {
                       const active = isActive(item.href);
+                      const toneClasses =
+                        item.tone === 'danger'
+                          ? 'border-red-200 text-red-600 hover:bg-red-50'
+                          : 'hover:bg-neutral-50';
+                      const activeClasses =
+                        item.tone === 'danger'
+                          ? toneClasses
+                          : active
+                            ? 'border-[var(--brand)] bg-[var(--brand)]/10 text-[var(--brand)]'
+                            : toneClasses;
+
                       return (
                         <Link
-                          key={item.href}
+                          key={item.key}
                           href={item.href}
                           onClick={() => setIsMenuOpen(false)}
-                          className={`flex flex-1 min-w-[140px] items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${
-                            active ? 'border-[var(--brand)] bg-[var(--brand)]/10 text-[var(--brand)]' : 'hover:bg-neutral-50'
-                          }`}
+                          className={`flex flex-1 min-w-[140px] items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${activeClasses}`}
                         >
-                          <MaterialIcon name={item.icon} fontSize={16} />
+                          {item.icon}
                           <span>{item.label}</span>
-                          {item.href === '/notifications' && unreadNotifications > 0 && (
+                          {item.badge && item.badge > 0 && (
                             <span className="ml-auto inline-flex min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-semibold text-white">
-                              {unreadNotifications}
-                            </span>
-                          )}
-                          {item.href === '/messages' && unreadDirectThreads > 0 && (
-                            <span className="ml-auto inline-flex min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-semibold text-white">
-                              {unreadDirectThreads > 9 ? '9+' : unreadDirectThreads}
+                              {item.badge > 9 ? '9+' : item.badge}
                             </span>
                           )}
                         </Link>
