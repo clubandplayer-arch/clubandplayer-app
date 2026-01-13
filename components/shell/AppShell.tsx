@@ -16,6 +16,7 @@ import { MessagingDock } from '@/components/messaging/MessagingDock';
 import { useNotificationsBadge } from '@/hooks/useNotificationsBadge';
 import BrandLogo from '@/components/brand/BrandLogo';
 import { buildProfileDisplayName } from '@/lib/displayName';
+import MobileSearchOverlay from '@/components/search/MobileSearchOverlay';
 
 type Role = 'athlete' | 'club' | 'guest';
 
@@ -33,7 +34,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const { unreadCount: unreadNotifications, setUnreadCount: setUnreadNotifications } = useNotificationsBadge();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchMode, setSearchMode] = useState(false);
+  const [isSearchOverlayOpen, setIsSearchOverlayOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
@@ -157,6 +158,24 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [isProfileMenuOpen]);
 
+  useEffect(() => {
+    if (!isSearchOverlayOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsSearchOverlayOpen(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isSearchOverlayOpen]);
+
   const profileInitials = useMemo(() => {
     const trimmed = profileName.trim();
     if (!trimmed) return 'CP';
@@ -172,9 +191,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <header className="fixed inset-x-0 top-0 z-40 border-b bg-white/90 backdrop-blur">
             <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4" style={{ ['--nav-h' as any]: '64px' }}>
               <div
-                className={`min-w-0 flex flex-shrink-0 items-center overflow-hidden ${
-                  searchMode ? 'hidden md:flex' : 'flex'
-                } h-8 md:h-10`}
+                className="min-w-0 flex h-8 flex-shrink-0 items-center overflow-hidden md:h-10"
               >
                 <BrandLogo variant="header" href="/feed" priority />
               </div>
@@ -194,12 +211,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     ref={searchInputRef}
                     value={searchQuery}
                     onChange={(event) => setSearchQuery(event.target.value)}
-                    onFocus={() => setSearchMode(true)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Escape') {
-                        setSearchMode(false);
-                        searchInputRef.current?.blur();
-                      }
+                    onFocus={() => {
+                      if (window.matchMedia('(min-width: 768px)').matches) return;
+                      setIsSearchOverlayOpen(true);
+                      searchInputRef.current?.blur();
                     }}
                     placeholder="Cerca club, player, opportunità, post, eventi…"
                     aria-label="Cerca"
@@ -207,18 +222,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   />
                 </div>
               </form>
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchMode(false);
-                  searchInputRef.current?.blur();
-                }}
-                className={`text-sm font-medium text-slate-600 transition hover:text-slate-800 md:hidden ${
-                  searchMode ? 'inline-flex' : 'hidden'
-                }`}
-              >
-                Annulla
-              </button>
 
               <nav className="hidden flex-1 justify-center md:flex">
                 <div className="flex items-center gap-1 rounded-full border border-white/40 bg-white/70 px-2 py-1 shadow-sm backdrop-blur">
@@ -385,15 +388,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                         <span>Profilo</span>
                       </Link>
                     )}
-                    {role !== 'guest' && (
-                      <Link
-                        href="/logout"
-                        onClick={() => setIsMenuOpen(false)}
-                        className="flex flex-1 min-w-[140px] items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-sm text-red-600 transition hover:bg-red-50"
-                      >
-                        <span>Logout</span>
-                      </Link>
-                    )}
                     {isClub && (
                       <>
                         <Link
@@ -454,6 +448,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </div>
             ) : null}
           </header>
+          <MobileSearchOverlay
+            isOpen={isSearchOverlayOpen}
+            query={searchQuery}
+            onQueryChange={setSearchQuery}
+            onClose={() => setIsSearchOverlayOpen(false)}
+            onSubmit={() => {
+              const trimmed = searchQuery.trim();
+              if (!trimmed) return;
+              setIsSearchOverlayOpen(false);
+              router.push(`/search?q=${encodeURIComponent(trimmed)}&type=all`);
+            }}
+          />
 
           <div className="flex min-h-screen flex-col pt-16">
             <main className="flex-1">{children}</main>
