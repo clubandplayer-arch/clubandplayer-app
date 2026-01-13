@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { MaterialIcon } from '@/components/icons/MaterialIcon';
 import useIsClub from '@/hooks/useIsClub';
+import { sortRosterMembersByRole } from '@/lib/utils/rosterRoleSort';
 
 type ApiRosterPlayer = {
   playerProfileId?: string;
@@ -55,6 +56,7 @@ function getInitials(name: string) {
 export default function ClubRosterPage() {
   const { isClub, loading } = useIsClub();
   const [roster, setRoster] = useState<RosterPlayer[]>([]);
+  const [clubSport, setClubSport] = useState<string | null>(null);
   const [loadingRoster, setLoadingRoster] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -67,6 +69,7 @@ export default function ClubRosterPage() {
       if (!res.ok) throw new Error((json as any)?.error || 'Errore nel caricare la rosa');
 
       const rosterRows = Array.isArray((json as any)?.roster) ? (json as any).roster : [];
+      setClubSport((json as any)?.sport ?? null);
       const mapped: RosterPlayer[] = rosterRows
         .map((row: ApiRosterPlayer) => {
           const player = row?.player ?? {};
@@ -102,14 +105,8 @@ export default function ClubRosterPage() {
   }, [isClub, loading, loadRoster]);
 
   const sortedRoster = useMemo(() => {
-    const copy = [...roster];
-    copy.sort((a, b) => {
-      const na = (a.fullName || a.displayName || a.name || '').toLocaleLowerCase('it');
-      const nb = (b.fullName || b.displayName || b.name || '').toLocaleLowerCase('it');
-      return na.localeCompare(nb, 'it', { sensitivity: 'base' });
-    });
-    return copy;
-  }, [roster]);
+    return sortRosterMembersByRole(roster, clubSport);
+  }, [clubSport, roster]);
   const hasPlayers = sortedRoster.length > 0;
 
   if (loading) {
