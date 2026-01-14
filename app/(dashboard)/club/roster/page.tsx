@@ -72,6 +72,8 @@ export default function ClubRosterPage() {
           const id = row?.playerProfileId || row?.player_profile_id || player?.id;
           if (!id) return null;
           const title = (player.full_name || '').trim() || (player.display_name || '').trim() || 'Profilo';
+          const countryRaw = player.country?.trim() || null;
+          const derivedIso = countryRaw?.match(/^[A-Za-z]{2}\b/)?.[0]?.toUpperCase() ?? null;
           return {
             id: String(id),
             name: title,
@@ -81,8 +83,8 @@ export default function ClubRosterPage() {
             role: player.role?.trim() || null,
             sport: player.sport ?? null,
             city: player.city?.trim() || null,
-            countryCode: player.country && player.country.trim().length === 2 ? player.country.trim().toUpperCase() : null,
-            countryLabel: player.country ? resolveCountryName(player.country) : null,
+            countryCode: countryRaw && countryRaw.length === 2 ? countryRaw.toUpperCase() : derivedIso,
+            countryLabel: countryRaw ? resolveCountryName(countryRaw) : null,
           } as RosterPlayer;
         })
         .filter(Boolean) as RosterPlayer[];
