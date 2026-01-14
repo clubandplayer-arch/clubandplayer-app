@@ -33,21 +33,6 @@ const ProfileMiniCard = dynamic(() => import('@/components/profiles/ProfileMiniC
   loading: () => <ProfileCardFallback />,
 });
 
-const WhoToFollow = dynamic(() => import('@/components/feed/WhoToFollow'), {
-  ssr: false,
-  loading: () => <SidebarCard title="Chi seguire" />,
-});
-
-const FollowedClubs = dynamic(() => import('@/components/feed/FollowedClubs'), {
-  ssr: false,
-  loading: () => <SidebarCard title="Club che segui" />,
-});
-
-const FeedHighlights = dynamic(() => import('@/components/feed/FeedHighlights'), {
-  ssr: false,
-  loading: () => <SidebarCard title="In evidenza" />,
-});
-
 type StarterProfile = {
   id: string;
   full_name?: string | null;
@@ -345,12 +330,9 @@ export default function FeedPage() {
   }
 
   return (
-    <div
-      className="mx-auto w-full max-w-[1440px] px-4 pb-6 pt-4 sm:px-5 md:px-6 lg:px-6"
-      aria-labelledby={headingId}
-    >
-      {/* layout a 3 colonne: sx (minicard) / centro (composer + post) / dx (suggerimenti) */}
-      <div className="grid grid-cols-1 gap-4 md:gap-6 md:grid-cols-[280px_minmax(0,2.2fr)_minmax(0,1.2fr)] xl:grid-cols-[300px_minmax(0,2.5fr)_minmax(0,1.3fr)] md:items-stretch">
+    <div className="pb-6" aria-labelledby={headingId}>
+      {/* layout a 2 colonne: sx (minicard) / centro (composer + post) */}
+      <div className="grid grid-cols-1 gap-4 md:gap-6 md:grid-cols-[280px_minmax(0,2.2fr)] xl:grid-cols-[300px_minmax(0,2.5fr)] md:items-stretch">
         {/* Colonna sinistra: mini profilo */}
         <aside className="min-w-0 space-y-4 md:self-stretch md:min-h-full">
           <div className="space-y-3">
@@ -441,7 +423,7 @@ export default function FeedPage() {
                       setCommentCounts((curr) => ({ ...curr, [String(p.id)]: next }))
                     }
                   />
-                  {(index + 1) % 2 === 0 ? <AdSlot slot="feed_infeed" page={pathname} /> : null}
+                  {(index + 1) % 3 === 0 ? <AdSlot slot="feed_infeed" page={pathname} /> : null}
                 </Fragment>
               ))}
             {shouldShowStarterPack && (
@@ -478,49 +460,12 @@ export default function FeedPage() {
             )}
           </div>
         </main>
-
-        {/* Colonna destra: suggerimenti/annunci/club seguiti */}
-        <aside className="min-w-0 space-y-4 md:self-stretch md:min-h-full">
-          <SidebarCard>
-            <WhoToFollow />
-          </SidebarCard>
-
-          <SidebarCard>
-            <FollowedClubs />
-          </SidebarCard>
-
-          <SidebarCard>
-            <FeedHighlights />
-          </SidebarCard>
-
-          <div className="space-y-4 md:sticky md:top-16" data-ads-sticky="right">
-            <AdSlot slot="sidebar_top" page={pathname} imageAspect="portraitShort" />
-            <AdSlot slot="sidebar_bottom" page={pathname} imageAspect="landscape" />
-          </div>
-        </aside>
       </div>
     </div>
   );
 }
 
 /* ====== UI helpers ====== */
-
-function SidebarCard({
-  title,
-  children,
-}: {
-  title?: string;
-  children?: React.ReactNode;
-}) {
-  return (
-    <div className="glass-panel">
-      {title ? (
-        <div className="px-4 py-3 text-sm font-semibold">{title}</div>
-      ) : null}
-      <div className="px-4 py-3">{children}</div>
-    </div>
-  );
-}
 
 function ProfileCardFallback() {
   return (

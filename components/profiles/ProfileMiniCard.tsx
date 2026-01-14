@@ -9,6 +9,7 @@ import FollowButton from '@/components/clubs/FollowButton';
 
 import { resolveCountryName, resolveStateName } from '@/lib/geodata/countryStateCityDataset';
 import { normalizeSport } from '@/lib/opps/constants';
+import { getCountryDisplay } from '@/lib/utils/countryDisplay';
 
 type P = {
   id?: string | null;
@@ -84,51 +85,6 @@ type InterestGeo = {
 };
 
 /* ---------- helpers bandiera/nome paese ---------- */
-function getRegionCodes(): string[] {
-  try {
-    return (Intl as any).supportedValuesOf?.('region') ?? [];
-  } catch {
-    return [];
-  }
-}
-const REGION_CODES = getRegionCodes();
-const DN_IT = new Intl.DisplayNames(['it'], { type: 'region' });
-const DN_EN = new Intl.DisplayNames(['en'], { type: 'region' });
-
-const COUNTRY_ALIASES: Record<string, string> = {
-  uk: 'GB', 'u.k.': 'GB', 'united kingdom': 'GB', 'great britain': 'GB',
-  usa: 'US', 'u.s.a.': 'US', 'united states': 'US', 'stati uniti': 'US',
-  'czech republic': 'CZ', 'repubblica ceca': 'CZ',
-  'cote d’ivoire': 'CI', "côte d’ivoire": 'CI',
-  russia: 'RU', 'south korea': 'KR', 'north korea': 'KP', 'viet nam': 'VN',
-  // aggiunte per testi comuni
-  italia: 'IT', italy: 'IT',
-  francia: 'FR', france: 'FR',
-  spagna: 'ES', spain: 'ES',
-  germania: 'DE', germany: 'DE',
-  portogallo: 'PT', portugal: 'PT',
-};
-
-function nameToIso2(v?: string | null): string | null {
-  const raw = (v || '').trim();
-  if (!raw) return null;
-  if (/^[A-Za-z]{2}$/.test(raw)) return raw.toUpperCase();
-  const key = raw.toLowerCase();
-  if (COUNTRY_ALIASES[key]) return COUNTRY_ALIASES[key];
-  for (const code of REGION_CODES) {
-    const it = (DN_IT.of(code) || '').toLowerCase();
-    const en = (DN_EN.of(code) || '').toLowerCase();
-    if (key === it || key === en) return code as string;
-  }
-  return null;
-}
-function countryLabel(value?: string | null): { iso: string | null; label: string } {
-  if (!value) return { iso: null, label: '' };
-  const iso = nameToIso2(value);
-  if (iso) return { iso, label: DN_IT.of(iso) || iso };
-  return { iso: null, label: value };
-}
-/* -------------------------------------------------- */
 
 export default function ProfileMiniCard() {
   const [p, setP] = useState<P | null>(null);
@@ -143,7 +99,7 @@ export default function ProfileMiniCard() {
         setP(j || {});
 
         const countryCode = (j?.interest_country || j?.country || '').trim() || null;
-        const countryName = resolveCountryName(countryCode) || countryLabel(countryCode).label || '';
+        const countryName = resolveCountryName(countryCode) || getCountryDisplay(countryCode).label || '';
 
         let cityName = (j?.interest_city || '').trim();
         let regionName = (j?.interest_region || j?.interest_province || '').trim();
@@ -191,8 +147,7 @@ export default function ProfileMiniCard() {
   const sportLabel = normalizeSport(p?.sport ?? null) ?? p?.sport ?? null;
 
   // nazionalità con bandiera
-  const nat = countryLabel(p?.country);
-  const flagUrl = nat.iso ? `https://flagcdn.com/w20/${nat.iso.toLowerCase()}.png` : null;
+  const nat = getCountryDisplay(p?.country);
 
   const mapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const hasStadiumCoords =
@@ -243,7 +198,7 @@ export default function ProfileMiniCard() {
           {!isClub && (
             <div className="flex items-center justify-center gap-2 text-xs text-gray-700">
               <span className="text-gray-500">Nazionalità:</span>
-              {flagUrl ? <img src={flagUrl} alt={nat.label} className="inline-block h-3 w-5 rounded-[2px]" /> : null}
+              {nat.flag ? <span aria-hidden>{nat.flag}</span> : null}
               <span className="font-medium text-gray-900">{nat.label || '—'}</span>
             </div>
           )}

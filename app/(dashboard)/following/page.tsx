@@ -67,7 +67,7 @@ function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, 
 
   return (
     <div className="flex h-full flex-col gap-3 rounded-2xl border border-neutral-200 bg-white/70 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900/60">
-      <div className="flex items-start gap-3">
+      <div className="flex flex-wrap items-start gap-3">
         <Link href={href} className="flex flex-1 gap-3">
           <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[var(--brand)]/20 to-[var(--brand)]/40 text-sm font-semibold uppercase text-[var(--brand)] aspect-square">
             {avatarUrl ? (
@@ -83,35 +83,39 @@ function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, 
             )}
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-neutral-900 dark:text-white">{profile.name}</p>
-            <p className="text-xs uppercase tracking-wide text-neutral-500 dark:text-neutral-400">{type === 'club' ? 'Club' : 'Player'}</p>
-            {meta && <p className="text-xs text-neutral-600 dark:text-neutral-300">{meta}</p>}
+            <p className="text-sm font-semibold text-neutral-900 dark:text-white truncate">{profile.name}</p>
+            <p className="text-xs uppercase tracking-wide text-neutral-500 dark:text-neutral-400 truncate">{type === 'club' ? 'Club' : 'Player'}</p>
+            {meta && <p className="text-xs text-neutral-600 dark:text-neutral-300 truncate">{meta}</p>}
           </div>
         </Link>
-        <FollowButton targetProfileId={profile.id} size="sm" className="min-w-[96px]" />
       </div>
 
-      {showRosterToggle && type === 'athlete' ? (
-        <div className="mt-auto flex items-center justify-between rounded-lg border border-pink-100 bg-pink-50 px-3 py-2">
-          <div className="text-xs font-semibold text-pink-700">In Rosa</div>
-          <button
-            type="button"
-            onClick={handleToggle}
-            disabled={toggleDisabled}
-            role="switch"
-            aria-checked={inRoster}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
-              inRoster ? 'bg-pink-500' : 'bg-neutral-300'
-            } ${toggleDisabled ? 'opacity-60' : 'hover:opacity-90'}`}
-          >
-            <span
-              className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
-                inRoster ? 'translate-x-[18px]' : 'translate-x-1'
-              }`}
-            />
-          </button>
-        </div>
-      ) : null}
+      <div className={`mt-auto flex items-center justify-between gap-3 ${showRosterToggle && type === 'athlete' ? 'rounded-lg border border-pink-100 bg-pink-50 px-3 py-2' : ''}`}>
+        {showRosterToggle && type === 'athlete' ? (
+          <div className="flex items-center gap-3">
+            <div className="text-xs font-semibold text-pink-700">In Rosa</div>
+            <button
+              type="button"
+              onClick={handleToggle}
+              disabled={toggleDisabled}
+              role="switch"
+              aria-checked={inRoster}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
+                inRoster ? 'bg-pink-500' : 'bg-neutral-300'
+              } ${toggleDisabled ? 'opacity-60' : 'hover:opacity-90'}`}
+            >
+              <span
+                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
+                  inRoster ? 'translate-x-[18px]' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+        ) : (
+          <div className="min-h-[24px]" aria-hidden="true" />
+        )}
+        <FollowButton targetProfileId={profile.id} size="sm" className="min-w-[96px] shrink-0" />
+      </div>
     </div>
   );
 }
@@ -276,7 +280,7 @@ export default function FollowingPage() {
       {clubFollows.length > 0 && (
         <section className="space-y-2">
           <h2 className="heading-h2 text-xl">Club che segui</h2>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3">
             {clubFollows.map((profile) => (
               <FollowCard
                 key={profile.id}
@@ -293,7 +297,7 @@ export default function FollowingPage() {
       {playerFollows.length > 0 && (
         <section className="space-y-2">
           <h2 className="heading-h2 text-xl">Player che segui</h2>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3">
             {playerFollows.map((profile) => (
               <FollowCard
                 key={profile.id}

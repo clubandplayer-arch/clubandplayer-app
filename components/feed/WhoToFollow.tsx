@@ -6,6 +6,7 @@ import Link from 'next/link';
 import FollowButton from '@/components/common/FollowButton';
 import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentProfileContext';
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
+import { getCountryDisplay } from '@/lib/utils/countryDisplay';
 
 type Suggestion = {
   id: string;
@@ -31,8 +32,16 @@ function displayName(item: Suggestion) {
     : buildPlayerDisplayName(item.full_name ?? null, item.display_name ?? null, 'Profilo');
 }
 
+function formatCountry(country?: string | null) {
+  const info = getCountryDisplay(country);
+  if (!info.label) return '';
+  return info.flag ? `${info.flag} ${info.label}` : info.label;
+}
+
 function detailLine(suggestion: Suggestion, viewerRole: ProfileRole) {
-  const location = suggestion.location || [suggestion.city, suggestion.country].filter(Boolean).join(', ');
+  const countryDisplay = formatCountry(suggestion.country);
+  const composedLocation = [suggestion.city, countryDisplay].filter(Boolean).join(', ');
+  const location = composedLocation || suggestion.location || '';
   const sportRole = [suggestion.category || suggestion.sport, suggestion.role].filter(Boolean).join(' · ');
 
   if (viewerRole === 'club') {

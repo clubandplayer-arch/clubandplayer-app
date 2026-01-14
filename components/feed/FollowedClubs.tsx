@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentProfileContext';
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
+import { getCountryDisplay } from '@/lib/utils/countryDisplay';
 
 type FollowedItem = {
   id: string;
@@ -12,6 +13,7 @@ type FollowedItem = {
   fullName?: string | null;
   displayName?: string | null;
   city: string | null;
+  country: string | null;
   sport: string | null;
   avatarUrl?: string | null;
   accountType: 'club' | 'athlete';
@@ -22,7 +24,9 @@ function targetHref(item: FollowedItem) {
 }
 
 function subtitle(item: FollowedItem, viewerRole: ProfileRole) {
-  const location = item.city || '';
+  const countryInfo = getCountryDisplay(item.country);
+  const countryDisplay = countryInfo.label ? (countryInfo.flag ? `${countryInfo.flag} ${countryInfo.label}` : countryInfo.label) : '';
+  const location = [item.city, countryDisplay].filter(Boolean).join(', ');
   const sport = item.sport || '';
   if (viewerRole === 'club') {
     return [sport, location].filter(Boolean).join(' · ');
@@ -61,7 +65,8 @@ export default function FollowedClubs() {
                       name: safeName,
                       fullName,
                       displayName,
-                      city: item.city ?? item.country ?? null,
+                      city: item.city ?? null,
+                      country: item.country ?? null,
                       sport: item.sport ?? null,
                       avatarUrl: item.avatar_url ?? item.avatarUrl ?? null,
                   accountType,
