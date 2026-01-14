@@ -6,7 +6,7 @@ import Link from 'next/link';
 import FollowButton from '@/components/common/FollowButton';
 import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentProfileContext';
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
-import { iso2ToFlagEmoji } from '@/lib/utils/flags';
+import { CountryFlag } from '@/components/ui/CountryFlag';
 
 type Suggestion = {
   id: string;
@@ -48,23 +48,18 @@ function joinWithSeparator(parts: ReactNode[], separator: string) {
 
 function getCountryInfo(country?: string | null) {
   const raw = (country ?? '').trim();
-  if (!raw) return { flag: null, label: '' };
+  if (!raw) return { iso2: null, label: '' };
   const matchCountry = raw.match(/^([A-Za-z]{2})(?:\s+(.+))?$/);
   const iso2 = matchCountry ? matchCountry[1].trim().toUpperCase() : null;
   const label = (matchCountry ? (matchCountry[2]?.trim() || iso2 || '') : raw) || '';
-  const flag = iso2 ? iso2ToFlagEmoji(iso2) : null;
-  return { flag, label };
+  return { iso2, label };
 }
 
-function formatCountryNode(info: { flag: string | null; label: string }) {
+function formatCountryNode(info: { iso2: string | null; label: string }) {
   if (!info.label) return null;
   return (
     <span className="inline-flex items-center gap-1">
-      {info.flag ? (
-        <span className="font-emoji leading-none" aria-hidden>
-          {info.flag}
-        </span>
-      ) : null}
+      <CountryFlag iso2={info.iso2} />
       <span>{info.label}</span>
     </span>
   );

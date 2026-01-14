@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentProfileContext';
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
-import { iso2ToFlagEmoji } from '@/lib/utils/flags';
+import { CountryFlag } from '@/components/ui/CountryFlag';
 
 type FollowedItem = {
   id: string;
@@ -42,7 +42,6 @@ function subtitle(item: FollowedItem, viewerRole: ProfileRole): ReactNode {
   const matchCountry = rawCountry.match(/^([A-Za-z]{2})(?:\s+(.+))?$/);
   const iso2 = matchCountry ? matchCountry[1].trim().toUpperCase() : null;
   const countryLabel = (matchCountry ? (matchCountry[2]?.trim() || iso2 || '') : rawCountry) || '';
-  const flag = iso2 ? iso2ToFlagEmoji(iso2) : null;
   const locationParts: ReactNode[] = [];
   if (item.city) {
     locationParts.push(<span key="city">{item.city}</span>);
@@ -50,11 +49,7 @@ function subtitle(item: FollowedItem, viewerRole: ProfileRole): ReactNode {
   if (countryLabel) {
     locationParts.push(
       <span key="country" className="inline-flex items-center gap-1">
-        {flag ? (
-          <span className="font-emoji leading-none" aria-hidden>
-            {flag}
-          </span>
-        ) : null}
+        <CountryFlag iso2={iso2} />
         <span>{countryLabel}</span>
       </span>
     );

@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { MaterialIcon } from '@/components/icons/MaterialIcon';
 import useIsClub from '@/hooks/useIsClub';
-import { iso2ToFlagEmoji } from '@/lib/utils/flags';
+import { CountryFlag } from '@/components/ui/CountryFlag';
 import { buildRosterRoleSections } from '@/lib/utils/rosterRoleSort';
 
 type ApiRosterPlayer = {
@@ -182,7 +182,6 @@ function RosterPlayerCard({ player }: { player: RosterPlayer }) {
   const iso2 = matchCountry ? matchCountry[1].trim().toUpperCase() : null;
   const countryLabel =
     (matchCountry ? (matchCountry[2]?.trim() || iso2 || '') : rawCountry) || null;
-  const flag = iso2 ? iso2ToFlagEmoji(iso2) : null;
 
   const handleRemove = async () => {
     if (removing) return;
@@ -223,11 +222,7 @@ function RosterPlayerCard({ player }: { player: RosterPlayer }) {
           {player.city ? <p className="text-xs text-neutral-600">{player.city}</p> : null}
           {countryLabel ? (
             <p className="flex items-center gap-1 text-xs text-neutral-600">
-              {flag ? (
-                <span className="font-emoji leading-none" aria-hidden>
-                  {flag}
-                </span>
-              ) : null}
+              <CountryFlag iso2={iso2} />
               <span>{countryLabel}</span>
             </p>
           ) : null}
