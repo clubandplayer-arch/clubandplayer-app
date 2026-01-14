@@ -17,6 +17,7 @@ import { WORLD_COUNTRY_OPTIONS } from '@/lib/geo/countries';
 import { MAX_SKILLS, MAX_SKILL_LENGTH, normalizeProfileSkills, toDbSkills } from '@/lib/profiles/skills';
 import { ProfileSkill } from '@/types/profile';
 import { CATEGORIES_BY_SPORT, CLUB_SPORT_OPTIONS, DEFAULT_CLUB_CATEGORIES } from '@/lib/opps/categories';
+import { iso2ToFlagEmoji } from '@/lib/utils/flags';
 
 type AccountType   = 'club' | 'athlete' | null;
 
@@ -96,12 +97,6 @@ function pickData<T = any>(raw: any): T {
   return raw as T;
 }
 
-function flagEmoji(iso2?: string | null) {
-  const code = (iso2 || '').trim().toUpperCase();
-  if (!/^[A-Z]{2}$/.test(code)) return '';
-  const A = 0x1f1e6, a = 'A'.charCodeAt(0);
-  return String.fromCodePoint(A + code.charCodeAt(0) - a) + String.fromCodePoint(A + code.charCodeAt(1) - a);
-}
 function countryName(codeOrText?: string | null) {
   if (!codeOrText) return '';
   const v = codeOrText.trim();
@@ -669,7 +664,7 @@ export default function ProfileEditForm() {
   if (error)   return <div className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-800">{error}</div>;
   if (!profile) return null;
 
-  const countryPreview = country ? `${flagEmoji(country)} ${countryName(country)}` : '';
+  const countryPreview = country ? [iso2ToFlagEmoji(country), countryName(country)].filter(Boolean).join(' ') : '';
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">

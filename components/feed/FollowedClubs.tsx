@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentProfileContext';
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
 import { getCountryDisplay } from '@/lib/utils/countryDisplay';
+import { iso2ToFlagEmoji, parsePrefixedCountry } from '@/lib/utils/flags';
 
 type FollowedItem = {
   id: string;
@@ -24,8 +25,16 @@ function targetHref(item: FollowedItem) {
 }
 
 function subtitle(item: FollowedItem, viewerRole: ProfileRole) {
-  const countryInfo = getCountryDisplay(item.country);
-  const countryDisplay = countryInfo.label ? (countryInfo.flag ? `${countryInfo.flag} ${countryInfo.label}` : countryInfo.label) : '';
+  const parsed = parsePrefixedCountry(item.country);
+  const hasPrefixed = !!(parsed.iso2 && parsed.label && parsed.label !== (item.country ?? '').trim());
+  const countryInfo = hasPrefixed
+    ? { flag: iso2ToFlagEmoji(parsed.iso2), label: parsed.label ?? '' }
+    : getCountryDisplay(item.country);
+  const countryDisplay = countryInfo.label
+    ? countryInfo.flag
+      ? `${countryInfo.flag} ${countryInfo.label}`
+      : countryInfo.label
+    : '';
   const location = [item.city, countryDisplay].filter(Boolean).join(', ');
   const sport = item.sport || '';
   if (viewerRole === 'club') {

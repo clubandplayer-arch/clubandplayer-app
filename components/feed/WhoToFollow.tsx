@@ -7,6 +7,7 @@ import FollowButton from '@/components/common/FollowButton';
 import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentProfileContext';
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
 import { getCountryDisplay } from '@/lib/utils/countryDisplay';
+import { iso2ToFlagEmoji, parsePrefixedCountry } from '@/lib/utils/flags';
 
 type Suggestion = {
   id: string;
@@ -33,6 +34,13 @@ function displayName(item: Suggestion) {
 }
 
 function formatCountry(country?: string | null) {
+  if (!country) return '';
+  const parsed = parsePrefixedCountry(country);
+  const hasPrefixed = !!(parsed.iso2 && parsed.label && parsed.label !== country.trim());
+  if (hasPrefixed) {
+    const flag = iso2ToFlagEmoji(parsed.iso2);
+    return parsed.label ? (flag ? `${flag} ${parsed.label}` : parsed.label) : '';
+  }
   const info = getCountryDisplay(country);
   if (!info.label) return '';
   return info.flag ? `${info.flag} ${info.label}` : info.label;
