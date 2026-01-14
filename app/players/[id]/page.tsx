@@ -12,6 +12,7 @@ import AthleteOpenToOpportunitiesPanel from '@/components/athletes/AthleteOpenTo
 import AthleteStatsSection from '@/components/athletes/AthleteStatsSection';
 import PublicAuthorFeed from '@/components/feed/PublicAuthorFeed';
 import ProfileHeader from '@/components/profiles/ProfileHeader';
+import { CountryFlag } from '@/components/ui/CountryFlag';
 import { buildPlayerDisplayName } from '@/lib/displayName';
 import { normalizeSport } from '@/lib/opps/constants';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
@@ -257,6 +258,15 @@ export default function PlayerPublicProfilePage() {
     return parts.join(' · ');
   }, [profile]);
 
+  const nationality = useMemo(() => {
+    const raw = (profile?.country ?? '').trim();
+    if (!raw) return { iso2: null, label: '' };
+    const match = raw.match(/^([A-Za-z]{2})(?:\s+(.+))?$/);
+    const iso2 = match ? match[1].trim().toUpperCase() : null;
+    const label = (match ? (match[2]?.trim() || iso2 || '') : raw) || '';
+    return { iso2, label };
+  }, [profile?.country]);
+
   const headerDisplayName = useMemo(() => {
     if (!profile) return 'Player';
     return buildPlayerDisplayName(profile.full_name, profile.display_name);
@@ -326,6 +336,11 @@ export default function PlayerPublicProfilePage() {
               </li>
               <li>
                 <b>Città:</b> {profileLocation || '—'}
+              </li>
+              <li className="flex items-center gap-2">
+                <b>Nazionalità:</b>
+                <CountryFlag iso2={nationality.iso2} />
+                <span>{nationality.label || '—'}</span>
               </li>
             </ul>
           </section>

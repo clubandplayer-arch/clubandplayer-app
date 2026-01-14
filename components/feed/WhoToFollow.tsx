@@ -1,12 +1,12 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import FollowButton from '@/components/common/FollowButton';
 import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentProfileContext';
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
-import { getCountryDisplay } from '@/lib/utils/countryDisplay';
+import { CountryFlag } from '@/components/ui/CountryFlag';
 
 type Suggestion = {
   id: string;
@@ -32,22 +32,75 @@ function displayName(item: Suggestion) {
     : buildPlayerDisplayName(item.full_name ?? null, item.display_name ?? null, 'Profilo');
 }
 
-function formatCountry(country?: string | null) {
-  const info = getCountryDisplay(country);
-  if (!info.label) return '';
-  return info.flag ? `${info.flag} ${info.label}` : info.label;
+function joinWithSeparator(parts: ReactNode[], separator: string) {
+  return parts.reduce<ReactNode[]>((acc, part, index) => {
+    if (index > 0) {
+      acc.push(
+        <span key={`sep-${index}`} className="text-inherit">
+          {separator}
+        </span>
+      );
+    }
+    acc.push(part);
+    return acc;
+  }, []);
 }
 
-function detailLine(suggestion: Suggestion, viewerRole: ProfileRole) {
-  const countryDisplay = formatCountry(suggestion.country);
-  const composedLocation = [suggestion.city, countryDisplay].filter(Boolean).join(', ');
-  const location = composedLocation || suggestion.location || '';
+function getCountryInfo(country?: string | null) {
+  const raw = (country ?? '').trim();
+  if (!raw) return { iso2: null, label: '' };
+  const matchCountry = raw.match(/^([A-Za-z]{2})(?:\s+(.+))?$/);
+  const iso2 = matchCountry ? matchCountry[1].trim().toUpperCase() : null;
+  const label = (matchCountry ? (matchCountry[2]?.trim() || iso2 || '') : raw) || '';
+  return { iso2, label };
+}
+
+function formatCountryNode(info: { iso2: string | null; label: string }) {
+  if (!info.label) return null;
+  return (
+    <span className="inline-flex items-center gap-1">
+      <CountryFlag iso2={info.iso2} />
+      <span>{info.label}</span>
+    </span>
+  );
+}
+
+function formatLocationNode(location?: string | null) {
+  const raw = (location ?? '').trim();
+  if (!raw) return null;
+  const parts = raw.split(' · ');
+  if (parts.length < 2) {
+    return formatCountryNode(getCountryInfo(raw));
+  }
+  const last = parts[parts.length - 1];
+  const formattedLast = formatCountryNode(getCountryInfo(last));
+  if (!formattedLast) return raw;
+  const leading = parts.slice(0, -1).join(' · ');
+  const nodes: ReactNode[] = [];
+  if (leading) {
+    nodes.push(<span key="leading">{leading}</span>);
+  }
+  nodes.push(<span key="country">{formattedLast}</span>);
+  return <>{joinWithSeparator(nodes, ' · ')}</>;
+}
+
+function detailLine(suggestion: Suggestion, viewerRole: ProfileRole): ReactNode {
+  const countryInfo = getCountryInfo(suggestion.country);
+  const countryNode = formatCountryNode(countryInfo);
+  const locationParts: ReactNode[] = [];
+  if (suggestion.city) {
+    locationParts.push(<span key="city">{suggestion.city}</span>);
+  }
+  if (countryNode) {
+    locationParts.push(<span key="country">{countryNode}</span>);
+  }
+  const location = locationParts.length ? <>{joinWithSeparator(locationParts, ', ')}</> : formatLocationNode(suggestion.location);
   const sportRole = [suggestion.category || suggestion.sport, suggestion.role].filter(Boolean).join(' · ');
 
   if (viewerRole === 'club') {
-    return sportRole || location;
+    return sportRole || location || '';
   }
-  return location || sportRole;
+  return location || sportRole || '';
 }
 
 export default function WhoToFollow() {

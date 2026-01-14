@@ -2,9 +2,10 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import FollowButton from '@/components/common/FollowButton';
+import { CountryFlag } from '@/components/ui/CountryFlag';
 import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentProfileContext';
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
 
@@ -39,10 +40,59 @@ function displayName(item: Suggestion) {
     : buildPlayerDisplayName(item.full_name ?? null, item.display_name ?? null, 'Profilo');
 }
 
-function detailLine(suggestion: Suggestion, viewerRole: ProfileRole) {
+function extractIso2(text?: string | null) {
+  const raw = (text ?? '').trim();
+  if (!raw) return null;
+  const match = raw.match(/([A-Za-z]{2})\s*$/);
+  return match ? match[1].toUpperCase() : null;
+}
+
+function getCountryLabel(text?: string | null, iso2?: string | null) {
+  const raw = (text ?? '').trim();
+  if (!raw) return iso2 ?? '';
+  const match = raw.match(/^([A-Za-z]{2})(?:\s+(.+))?$/);
+  if (match) {
+    return match[2]?.trim() || match[1].toUpperCase();
+  }
+  return raw;
+}
+
+function clubDetailLine(suggestion: Suggestion) {
+  const locationText = (suggestion.location || [suggestion.city, suggestion.country].filter(Boolean).join(', ')).trim();
+  const iso2 = extractIso2(suggestion.country || locationText);
+  const region = iso2 ? locationText.replace(new RegExp(`[\\s,]*${iso2}$`, 'i'), '').trim() : locationText;
+
+  return (
+    <div className="flex min-w-0 items-center gap-1 text-xs text-neutral-500">
+      {region ? <span className="truncate">{region}</span> : null}
+      {iso2 ? (
+        <>
+          {region ? <span>·</span> : null}
+          <CountryFlag iso2={iso2} />
+          <span>{iso2}</span>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+function playerDetailLine(suggestion: Suggestion) {
+  const iso2 = extractIso2(suggestion.country);
+  const label = getCountryLabel(suggestion.country, iso2);
+  if (!iso2 && !label) return null;
+  return (
+    <div className="flex items-center gap-1 text-xs text-neutral-500">
+      {iso2 ? <CountryFlag iso2={iso2} /> : null}
+      <span>{label || '—'}</span>
+    </div>
+  );
+}
+
+function detailLine(suggestion: Suggestion, viewerRole: ProfileRole, tab: TabKey): ReactNode {
+  if (tab === 'club') return clubDetailLine(suggestion);
+  if (tab === 'player') return playerDetailLine(suggestion);
   const location = suggestion.location || [suggestion.city, suggestion.country].filter(Boolean).join(', ');
   const sportRole = [suggestion.category || suggestion.sport, suggestion.role].filter(Boolean).join(' · ');
-
   if (viewerRole === 'club') {
     return sportRole || location;
   }
@@ -156,35 +206,37 @@ export default function DiscoverPage() {
           Nessun suggerimento disponibile.
         </div>
       ) : (
-        <ul className="space-y-3">
+        <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {activeItems.map((item) => {
             const name = displayName(item);
             const href = targetHref(item);
             return (
-              <li key={item.id} className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white p-3">
-                <Link href={href} className="flex min-w-0 flex-1 items-center gap-3">
-                  <img
-                    src={item.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`}
-                    alt={name}
-                    className="h-11 w-11 rounded-full object-cover ring-1 ring-neutral-200"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-semibold text-neutral-900">{name}</div>
-                    <div className="truncate text-xs text-neutral-500">{detailLine(item, role) || '—'}</div>
+              <li key={item.id} className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+                <div className="flex items-start justify-between gap-3">
+                  <Link href={href} className="flex min-w-0 items-center gap-3">
+                    <img
+                      src={item.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`}
+                      alt={name}
+                      className="h-11 w-11 rounded-full object-cover ring-1 ring-neutral-200"
+                    />
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold text-neutral-900">{name}</div>
+                      {detailLine(item, role, activeTab) || <span className="text-xs text-neutral-500">—</span>}
+                    </div>
+                  </Link>
+                  <div
+                    className="shrink-0"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                    }}
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                    }}
+                  >
+                    <FollowButton targetProfileId={item.id} size="sm" />
                   </div>
-                </Link>
-                <div
-                  className="flex items-center gap-2"
-                  onClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                  }}
-                  onMouseDown={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                  }}
-                >
-                  <FollowButton targetProfileId={item.id} size="sm" />
                 </div>
               </li>
             );

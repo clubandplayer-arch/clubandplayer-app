@@ -21,15 +21,22 @@ const nextConfig: NextConfig = {
   // ✅ Usa domains per compatibilità + remotePatterns per bucket Supabase Storage
   images: {
     domains: ['api.dicebear.com', 'via.placeholder.com', ...(supaHost ? [supaHost] : [])],
-    remotePatterns: supaHost
-      ? [
-          {
-            protocol: 'https' as const,
-            hostname: supaHost,
-            pathname: '/storage/v1/object/public/**',
-          },
-        ]
-      : [],
+    remotePatterns: [
+      ...(supaHost
+        ? [
+            {
+              protocol: 'https' as const,
+              hostname: supaHost,
+              pathname: '/storage/v1/object/public/**',
+            },
+          ]
+        : []),
+      {
+        protocol: 'https' as const,
+        hostname: 'flagcdn.com',
+        pathname: '/**',
+      },
+    ],
     formats: ['image/avif', 'image/webp'],
     minimumCacheTTL: ONE_YEAR,
     deviceSizes: [320, 420, 640, 768, 1024, 1280, 1536],

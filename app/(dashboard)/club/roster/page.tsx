@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { MaterialIcon } from '@/components/icons/MaterialIcon';
 import useIsClub from '@/hooks/useIsClub';
-import { getCountryDisplay } from '@/lib/utils/countryDisplay';
+import { CountryFlag } from '@/components/ui/CountryFlag';
 import { buildRosterRoleSections } from '@/lib/utils/rosterRoleSort';
 
 type ApiRosterPlayer = {
@@ -36,8 +36,7 @@ type RosterPlayer = {
   role: string | null;
   sport: string | null;
   city: string | null;
-  countryLabel: string | null;
-  countryFlag: string | null;
+  countryText: string | null;
 };
 
 function getInitials(name: string) {
@@ -71,8 +70,6 @@ export default function ClubRosterPage() {
           const id = row?.playerProfileId || row?.player_profile_id || player?.id;
           if (!id) return null;
           const title = (player.full_name || '').trim() || (player.display_name || '').trim() || 'Profilo';
-          const countryRaw = player.country?.trim() || null;
-          const countryInfo = getCountryDisplay(countryRaw);
           return {
             id: String(id),
             name: title,
@@ -82,8 +79,7 @@ export default function ClubRosterPage() {
             role: player.role?.trim() || null,
             sport: player.sport ?? null,
             city: player.city?.trim() || null,
-            countryLabel: countryInfo.label || null,
-            countryFlag: countryInfo.flag,
+            countryText: player.country?.trim() || null,
           } as RosterPlayer;
         })
         .filter(Boolean) as RosterPlayer[];
@@ -181,7 +177,11 @@ function RosterPlayerCard({ player }: { player: RosterPlayer }) {
   const title = player.fullName?.trim() || player.displayName?.trim() || player.name || 'Profilo';
   const initials = getInitials(title);
   const [removing, setRemoving] = useState(false);
-  const flag = player.countryFlag;
+  const rawCountry = (player.countryText ?? '').trim();
+  const matchCountry = rawCountry.match(/^([A-Za-z]{2})(?:\s+(.+))?$/);
+  const iso2 = matchCountry ? matchCountry[1].trim().toUpperCase() : null;
+  const countryLabel =
+    (matchCountry ? (matchCountry[2]?.trim() || iso2 || '') : rawCountry) || null;
 
   const handleRemove = async () => {
     if (removing) return;
@@ -220,10 +220,10 @@ function RosterPlayerCard({ player }: { player: RosterPlayer }) {
           <p className="truncate text-sm font-semibold text-neutral-900">{title}</p>
           {player.role ? <p className="text-xs text-neutral-600">{player.role}</p> : null}
           {player.city ? <p className="text-xs text-neutral-600">{player.city}</p> : null}
-          {player.countryLabel ? (
+          {countryLabel ? (
             <p className="flex items-center gap-1 text-xs text-neutral-600">
-              {flag ? <span aria-hidden>{flag}</span> : null}
-              <span>{player.countryLabel}</span>
+              <CountryFlag iso2={iso2} />
+              <span>{countryLabel}</span>
             </p>
           ) : null}
         </div>

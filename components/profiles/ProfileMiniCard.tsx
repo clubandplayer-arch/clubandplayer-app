@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 import FollowButton from '@/components/clubs/FollowButton';
+import { CountryFlag } from '@/components/ui/CountryFlag';
 
 import { resolveCountryName, resolveStateName } from '@/lib/geodata/countryStateCityDataset';
 import { normalizeSport } from '@/lib/opps/constants';
@@ -147,7 +148,10 @@ export default function ProfileMiniCard() {
   const sportLabel = normalizeSport(p?.sport ?? null) ?? p?.sport ?? null;
 
   // nazionalità con bandiera
-  const nat = getCountryDisplay(p?.country);
+  const rawCountry = (p?.country ?? '').trim();
+  const matchCountry = rawCountry.match(/^([A-Za-z]{2})(?:\s+(.+))?$/);
+  const iso2 = matchCountry ? matchCountry[1].trim().toUpperCase() : null;
+  const countryLabel = (matchCountry ? (matchCountry[2]?.trim() || iso2 || '') : rawCountry) || '';
 
   const mapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const hasStadiumCoords =
@@ -198,8 +202,8 @@ export default function ProfileMiniCard() {
           {!isClub && (
             <div className="flex items-center justify-center gap-2 text-xs text-gray-700">
               <span className="text-gray-500">Nazionalità:</span>
-              {nat.flag ? <span aria-hidden>{nat.flag}</span> : null}
-              <span className="font-medium text-gray-900">{nat.label || '—'}</span>
+              <CountryFlag iso2={iso2} />
+              <span className="font-medium text-gray-900">{countryLabel || '—'}</span>
             </div>
           )}
 

@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import Image from 'next/image';
 
 import FollowButton from '@/components/clubs/FollowButton';
@@ -14,6 +15,7 @@ type ProfileHeaderProps = {
   avatarUrl?: string | null;
   subtitle?: string | null;
   locationLabel?: string | null;
+  locationContent?: ReactNode;
   showMessageButton?: boolean;
   showFollowButton?: boolean;
   messageLabel?: string;
@@ -37,6 +39,7 @@ export default function ProfileHeader({
   avatarUrl,
   subtitle,
   locationLabel,
+  locationContent,
   showMessageButton = true,
   showFollowButton = true,
   messageLabel = 'Messaggia',
@@ -78,7 +81,9 @@ export default function ProfileHeader({
             {subtitleText ? (
               <p className="text-sm font-medium text-neutral-700 md:text-base">{subtitleText}</p>
             ) : null}
-            {locationText ? (
+            {locationContent ? (
+              <div className="text-xs text-neutral-500">{locationContent}</div>
+            ) : locationText ? (
               <p className="text-xs text-neutral-500">{locationText}</p>
             ) : (
               <p className="text-xs text-neutral-400">Località —</p>
