@@ -2,6 +2,7 @@
 import { notFound } from 'next/navigation';
 
 import ProfileHeader from '@/components/profiles/ProfileHeader';
+import { CountryFlag } from '@/components/ui/CountryFlag';
 import ClubOpenOpportunitiesWidget from '@/components/clubs/ClubOpenOpportunitiesWidget';
 import PublicAuthorFeed from '@/components/feed/PublicAuthorFeed';
 import { buildClubDisplayName } from '@/lib/displayName';
@@ -140,6 +141,23 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
   const sportLabel = normalizeSport(profile.sport ?? null) ?? profile.sport ?? null;
   const subtitle = [profile.club_league_category, sportLabel].filter(Boolean).join(' · ') || '—';
   const location = locationLabel(profile) || undefined;
+  const rawCountry = (profile.country ?? '').trim();
+  const matchCountry = rawCountry.match(/^([A-Za-z]{2})(?:\s+(.+))?$/);
+  const iso2 = matchCountry ? matchCountry[1].trim().toUpperCase() : null;
+  const countryLabel = getCountryName(iso2 ?? rawCountry) ?? rawCountry;
+  const state = resolveStateName(profile.country || null, profile.region || profile.province || '');
+  const locationParts = [profile.city, profile.province, state].filter(Boolean).join(' · ');
+  const locationContent = (
+    <span className="flex flex-wrap items-center gap-2">
+      {locationParts ? <span>{locationParts}</span> : null}
+      {countryLabel ? (
+        <span className="inline-flex items-center gap-1">
+          <CountryFlag iso2={iso2} />
+          <span>{countryLabel}</span>
+        </span>
+      ) : null}
+    </span>
+  );
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-4 md:p-6">
@@ -150,6 +168,7 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
         avatarUrl={profile.avatar_url}
         subtitle={subtitle}
         locationLabel={location}
+        locationContent={locationContent}
         showMessageButton
         showFollowButton={!isMe}
       />
