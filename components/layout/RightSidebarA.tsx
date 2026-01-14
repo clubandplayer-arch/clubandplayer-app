@@ -20,7 +20,7 @@ const FeedHighlights = dynamic(() => import('@/components/feed/FeedHighlights'),
 
 export default function RightSidebarA() {
   return (
-    <aside className="hidden xl:block">
+    <aside className="hidden xl:block min-w-0">
       <div className="sticky top-16 self-start space-y-4">
         <SidebarCard>
           <WhoToFollow />

@@ -12,9 +12,9 @@ export default function DashboardAdsLayout({ children }: { children: React.React
 
   return (
     <AdsServeCoordinatorProvider key={coordinatorKey}>
-      <div className="mx-auto w-full max-w-[1760px] px-4 pt-4 lg:px-6">
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[320px_minmax(0,680px)_320px] 2xl:grid-cols-[320px_minmax(0,680px)_320px_260px]">
-          <div className="min-w-0">{children}</div>
+      <div className="mx-auto w-full max-w-[1800px] px-4 pt-4 lg:px-6">
+        <div className="grid grid-cols-1 gap-y-6 xl:grid-cols-[minmax(280px,20%)_minmax(0,40%)_minmax(280px,20%)_minmax(240px,20%)] xl:gap-x-6">
+          <div className="min-w-0 xl:col-span-2">{children}</div>
           <RightSidebarA />
           <RightSidebarB />
         </div>
