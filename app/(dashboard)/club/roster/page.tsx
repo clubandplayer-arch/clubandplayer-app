@@ -223,7 +223,11 @@ function RosterPlayerCard({ player }: { player: RosterPlayer }) {
           {player.city ? <p className="text-xs text-neutral-600">{player.city}</p> : null}
           {countryLabel ? (
             <p className="flex items-center gap-1 text-xs text-neutral-600">
-              {flag ? <span aria-hidden>{flag}</span> : null}
+              {flag ? (
+                <span className="font-emoji leading-none" aria-hidden>
+                  {flag}
+                </span>
+              ) : null}
               <span>{countryLabel}</span>
             </p>
           ) : null}

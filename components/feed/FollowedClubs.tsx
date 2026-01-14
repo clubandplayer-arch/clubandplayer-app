@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentProfileContext';
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
 import { iso2ToFlagEmoji } from '@/lib/utils/flags';
@@ -23,19 +23,48 @@ function targetHref(item: FollowedItem) {
   return item.accountType === 'club' ? `/clubs/${item.id}` : `/players/${item.id}`;
 }
 
-function subtitle(item: FollowedItem, viewerRole: ProfileRole) {
+function joinWithSeparator(parts: ReactNode[], separator: string) {
+  return parts.reduce<ReactNode[]>((acc, part, index) => {
+    if (index > 0) {
+      acc.push(
+        <span key={`sep-${index}`} className="text-inherit">
+          {separator}
+        </span>
+      );
+    }
+    acc.push(part);
+    return acc;
+  }, []);
+}
+
+function subtitle(item: FollowedItem, viewerRole: ProfileRole): ReactNode {
   const rawCountry = (item.country ?? '').trim();
   const matchCountry = rawCountry.match(/^([A-Za-z]{2})(?:\s+(.+))?$/);
   const iso2 = matchCountry ? matchCountry[1].trim().toUpperCase() : null;
   const countryLabel = (matchCountry ? (matchCountry[2]?.trim() || iso2 || '') : rawCountry) || '';
   const flag = iso2 ? iso2ToFlagEmoji(iso2) : null;
-  const countryDisplay = countryLabel ? (flag ? `${flag} ${countryLabel}` : countryLabel) : '';
-  const location = [item.city, countryDisplay].filter(Boolean).join(', ');
+  const locationParts: ReactNode[] = [];
+  if (item.city) {
+    locationParts.push(<span key="city">{item.city}</span>);
+  }
+  if (countryLabel) {
+    locationParts.push(
+      <span key="country" className="inline-flex items-center gap-1">
+        {flag ? (
+          <span className="font-emoji leading-none" aria-hidden>
+            {flag}
+          </span>
+        ) : null}
+        <span>{countryLabel}</span>
+      </span>
+    );
+  }
+  const location = locationParts.length ? <>{joinWithSeparator(locationParts, ', ')}</> : null;
   const sport = item.sport || '';
   if (viewerRole === 'club') {
-    return [sport, location].filter(Boolean).join(' · ');
+    return location ? <>{joinWithSeparator([sport, location].filter(Boolean) as ReactNode[], ' · ')}</> : sport;
   }
-  return [location, sport].filter(Boolean).join(' · ');
+  return location ? <>{joinWithSeparator([location, sport].filter(Boolean) as ReactNode[], ' · ')}</> : sport;
 }
 
 export default function FollowedClubs() {
