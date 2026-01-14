@@ -22,11 +22,12 @@ const FeedHighlights = dynamic(() => import('@/components/feed/FeedHighlights'),
 
 export default function RightAdsSidebar() {
   const pathname = usePathname();
-  const isFeed = pathname === '/feed';
+  const isFeed = pathname === '/feed' || pathname.startsWith('/feed/');
+  const stickyClasses = isFeed ? 'lg:sticky lg:top-16' : '';
 
   return (
-    <aside className="hidden lg:block lg:w-[280px] xl:w-[320px]">
-      <div className="space-y-4 lg:sticky lg:top-16" data-ads-sticky="right">
+    <aside className="hidden lg:block lg:w-[280px] xl:w-[320px] pt-4">
+      <div className={`space-y-4 ${stickyClasses}`} data-ads-sticky="right">
         {isFeed ? (
           <>
             <SidebarCard>
