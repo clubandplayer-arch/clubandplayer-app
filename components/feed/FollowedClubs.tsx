@@ -25,9 +25,9 @@ function targetHref(item: FollowedItem) {
 
 function subtitle(item: FollowedItem, viewerRole: ProfileRole) {
   const rawCountry = (item.country ?? '').trim();
-  const matchCountry = rawCountry.match(/^([A-Za-z]{2})\s+(.+)$/);
+  const matchCountry = rawCountry.match(/^([A-Za-z]{2})(?:\s+(.+))?$/);
   const iso2 = matchCountry ? matchCountry[1].trim().toUpperCase() : null;
-  const countryLabel = (matchCountry ? matchCountry[2].trim() : rawCountry) || '';
+  const countryLabel = (matchCountry ? (matchCountry[2]?.trim() || iso2 || '') : rawCountry) || '';
   const flag = iso2 ? iso2ToFlagEmoji(iso2) : null;
   const countryDisplay = countryLabel ? (flag ? `${flag} ${countryLabel}` : countryLabel) : '';
   const location = [item.city, countryDisplay].filter(Boolean).join(', ');

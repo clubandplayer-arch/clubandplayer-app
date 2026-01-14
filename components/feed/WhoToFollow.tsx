@@ -35,9 +35,9 @@ function displayName(item: Suggestion) {
 function formatCountry(country?: string | null) {
   const raw = (country ?? '').trim();
   if (!raw) return '';
-  const matchCountry = raw.match(/^([A-Za-z]{2})\s+(.+)$/);
+  const matchCountry = raw.match(/^([A-Za-z]{2})(?:\s+(.+))?$/);
   const iso2 = matchCountry ? matchCountry[1].trim().toUpperCase() : null;
-  const label = (matchCountry ? matchCountry[2].trim() : raw) || '';
+  const label = (matchCountry ? (matchCountry[2]?.trim() || iso2 || '') : raw) || '';
   const flag = iso2 ? iso2ToFlagEmoji(iso2) : null;
   return label ? (flag ? `${flag} ${label}` : label) : '';
 }

@@ -178,9 +178,10 @@ function RosterPlayerCard({ player }: { player: RosterPlayer }) {
   const initials = getInitials(title);
   const [removing, setRemoving] = useState(false);
   const rawCountry = (player.countryText ?? '').trim();
-  const matchCountry = rawCountry.match(/^([A-Za-z]{2})\s+(.+)$/);
+  const matchCountry = rawCountry.match(/^([A-Za-z]{2})(?:\s+(.+))?$/);
   const iso2 = matchCountry ? matchCountry[1].trim().toUpperCase() : null;
-  const countryLabel = (matchCountry ? matchCountry[2].trim() : rawCountry) || null;
+  const countryLabel =
+    (matchCountry ? (matchCountry[2]?.trim() || iso2 || '') : rawCountry) || null;
   const flag = iso2 ? iso2ToFlagEmoji(iso2) : null;
 
   const handleRemove = async () => {
