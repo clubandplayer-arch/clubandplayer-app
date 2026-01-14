@@ -6,8 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { MaterialIcon } from '@/components/icons/MaterialIcon';
 import useIsClub from '@/hooks/useIsClub';
-import { countryLabel } from '@/lib/utils/country';
-import { countryCodeToFlagEmoji } from '@/lib/utils/flags';
+import { getCountryDisplay } from '@/lib/utils/countryDisplay';
 import { buildRosterRoleSections } from '@/lib/utils/rosterRoleSort';
 
 type ApiRosterPlayer = {
@@ -37,8 +36,8 @@ type RosterPlayer = {
   role: string | null;
   sport: string | null;
   city: string | null;
-  countryCode: string | null;
   countryLabel: string | null;
+  countryFlag: string | null;
 };
 
 function getInitials(name: string) {
@@ -73,7 +72,7 @@ export default function ClubRosterPage() {
           if (!id) return null;
           const title = (player.full_name || '').trim() || (player.display_name || '').trim() || 'Profilo';
           const countryRaw = player.country?.trim() || null;
-          const countryInfo = countryLabel(countryRaw);
+          const countryInfo = getCountryDisplay(countryRaw);
           return {
             id: String(id),
             name: title,
@@ -83,8 +82,8 @@ export default function ClubRosterPage() {
             role: player.role?.trim() || null,
             sport: player.sport ?? null,
             city: player.city?.trim() || null,
-            countryCode: countryInfo.iso,
             countryLabel: countryInfo.label || null,
+            countryFlag: countryInfo.flag,
           } as RosterPlayer;
         })
         .filter(Boolean) as RosterPlayer[];
@@ -182,7 +181,7 @@ function RosterPlayerCard({ player }: { player: RosterPlayer }) {
   const title = player.fullName?.trim() || player.displayName?.trim() || player.name || 'Profilo';
   const initials = getInitials(title);
   const [removing, setRemoving] = useState(false);
-  const flag = player.countryCode ? countryCodeToFlagEmoji(player.countryCode) : null;
+  const flag = player.countryFlag;
 
   const handleRemove = async () => {
     if (removing) return;

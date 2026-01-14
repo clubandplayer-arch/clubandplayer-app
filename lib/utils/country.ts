@@ -43,6 +43,8 @@ export function nameToIso2(value?: string | null): string | null {
   const raw = (value || '').trim();
   if (!raw) return null;
   if (/^[A-Za-z]{2}$/.test(raw)) return raw.toUpperCase();
+  const prefixedIso = raw.match(/^[A-Za-z]{2}\b/)?.[0];
+  if (prefixedIso) return prefixedIso.toUpperCase();
   const key = raw.toLowerCase();
   if (COUNTRY_ALIASES[key]) return COUNTRY_ALIASES[key];
   for (const code of REGION_CODES) {
