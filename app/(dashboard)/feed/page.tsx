@@ -443,7 +443,7 @@ export default function FeedPage() {
                         setCommentCounts((curr) => ({ ...curr, [String(p.id)]: next }))
                       }
                     />
-                    {(index + 1) % 2 === 0 ? <AdSlot slot="feed_infeed" page={pathname} /> : null}
+                  {(index + 1) % 3 === 0 ? <AdSlot slot="feed_infeed" page={pathname} /> : null}
                   </Fragment>
                 ))}
               {shouldShowStarterPack && (
