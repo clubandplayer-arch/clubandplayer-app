@@ -330,10 +330,7 @@ export default function FeedPage() {
   }
 
   return (
-    <div
-      className="mx-auto w-full max-w-[1440px] px-4 pb-6 pt-4 sm:px-5 md:px-6 lg:px-6"
-      aria-labelledby={headingId}
-    >
+    <div className="pb-6" aria-labelledby={headingId}>
       {/* layout a 2 colonne: sx (minicard) / centro (composer + post) */}
       <div className="grid grid-cols-1 gap-4 md:gap-6 md:grid-cols-[280px_minmax(0,2.2fr)] xl:grid-cols-[300px_minmax(0,2.5fr)] md:items-stretch">
         {/* Colonna sinistra: mini profilo */}
