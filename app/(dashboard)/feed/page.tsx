@@ -11,6 +11,7 @@ import TrackRetention from '@/components/analytics/TrackRetention';
 import { PostCard } from '@/components/feed/PostCard';
 import EmptyState from '@/components/common/EmptyState';
 import AdSlot from '@/components/ads/AdSlot';
+import { AdsServeCoordinatorProvider } from '@/components/ads/AdsServeCoordinator';
 import OpportunityCard from '@/components/opportunities/OpportunityCard';
 import {
   computeOptimistic,
@@ -345,161 +346,163 @@ export default function FeedPage() {
   }
 
   return (
-    <div
-      className="mx-auto w-full max-w-[1440px] px-4 pb-6 pt-4 sm:px-5 md:px-6 lg:px-6"
-      aria-labelledby={headingId}
-    >
-      {/* layout a 3 colonne: sx (minicard) / centro (composer + post) / dx (suggerimenti) */}
-      <div className="grid grid-cols-1 gap-4 md:gap-6 md:grid-cols-[280px_minmax(0,2.2fr)_minmax(0,1.2fr)] xl:grid-cols-[300px_minmax(0,2.5fr)_minmax(0,1.3fr)] md:items-stretch">
-        {/* Colonna sinistra: mini profilo */}
-        <aside className="min-w-0 space-y-4 md:self-stretch md:min-h-full">
-          <div className="space-y-3">
-            {/* Se esiste, il componente reale rimpiazzerà questo blocco via dynamic() */}
-            <ProfileMiniCard />
-          </div>
-          <MyMediaHub currentUserId={currentUserId} />
-          <div className="space-y-4 md:sticky md:top-16" data-ads-sticky="left">
-            <AdSlot slot="left_top" page={pathname} imageAspect="landscape" />
-            <AdSlot slot="left_extra" page={pathname} imageAspect="landscape" />
-            <AdSlot slot="left_bottom" page={pathname} imageAspect="landscape" />
-          </div>
-        </aside>
-
-        {/* Colonna centrale: composer + feed */}
-        <main className="min-w-0 space-y-4" aria-labelledby={headingId}>
-          <TrackRetention scope="feed" />
-          <h1 id={headingId} className="sr-only">
-            Bacheca feed
-          </h1>
-          <div className="glass-panel flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm font-semibold text-neutral-700">
-            <div className="text-xs font-medium uppercase tracking-wide text-neutral-500">Visibilità</div>
-            <div
-              className="flex items-center gap-1 rounded-full border border-neutral-200 bg-white p-1 shadow-sm"
-              role="group"
-              aria-label="Filtra feed"
-            >
-              <button
-                type="button"
-                className={`rounded-full px-3 py-1 text-xs font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-blue-500 ${scope === 'all' ? 'bg-neutral-900 text-white shadow-sm' : 'bg-white text-neutral-700 hover:bg-neutral-100'}`}
-                onClick={() => handleScopeChange('all')}
-                aria-pressed={scope === 'all'}
-              >
-                Tutti
-              </button>
-              <button
-                type="button"
-                className={`rounded-full px-3 py-1 text-xs font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-blue-500 ${scope === 'following' ? 'bg-neutral-900 text-white shadow-sm' : 'bg-white text-neutral-700 hover:bg-neutral-100'}`}
-                onClick={() => handleScopeChange('following')}
-                aria-pressed={scope === 'following'}
-              >
-                Seguiti
-              </button>
+    <AdsServeCoordinatorProvider>
+      <div
+        className="mx-auto w-full max-w-[1440px] px-4 pb-6 pt-4 sm:px-5 md:px-6 lg:px-6"
+        aria-labelledby={headingId}
+      >
+        {/* layout a 3 colonne: sx (minicard) / centro (composer + post) / dx (suggerimenti) */}
+        <div className="grid grid-cols-1 gap-4 md:gap-6 md:grid-cols-[280px_minmax(0,2.2fr)_minmax(0,1.2fr)] xl:grid-cols-[300px_minmax(0,2.5fr)_minmax(0,1.3fr)] md:items-stretch">
+          {/* Colonna sinistra: mini profilo */}
+          <aside className="min-w-0 space-y-4 md:self-stretch md:min-h-full">
+            <div className="space-y-3">
+              {/* Se esiste, il componente reale rimpiazzerà questo blocco via dynamic() */}
+              <ProfileMiniCard />
             </div>
-          </div>
-          <FeedComposer onPosted={handleRefresh} />
+            <MyMediaHub currentUserId={currentUserId} />
+            <div className="space-y-4 md:sticky md:top-16" data-ads-sticky="left">
+              <AdSlot slot="left_top" page={pathname} imageAspect="landscape" />
+              <AdSlot slot="left_extra" page={pathname} imageAspect="landscape" />
+              <AdSlot slot="left_bottom" page={pathname} imageAspect="landscape" />
+            </div>
+          </aside>
 
-          <div className="space-y-4" aria-live="polite" aria-busy={isInitialLoading}>
-            {isInitialLoading && (
-              <div className="glass-panel p-4" role="status">
-                Caricamento…
+          {/* Colonna centrale: composer + feed */}
+          <main className="min-w-0 space-y-4" aria-labelledby={headingId}>
+            <TrackRetention scope="feed" />
+            <h1 id={headingId} className="sr-only">
+              Bacheca feed
+            </h1>
+            <div className="glass-panel flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm font-semibold text-neutral-700">
+              <div className="text-xs font-medium uppercase tracking-wide text-neutral-500">Visibilità</div>
+              <div
+                className="flex items-center gap-1 rounded-full border border-neutral-200 bg-white p-1 shadow-sm"
+                role="group"
+                aria-label="Filtra feed"
+              >
+                <button
+                  type="button"
+                  className={`rounded-full px-3 py-1 text-xs font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-blue-500 ${scope === 'all' ? 'bg-neutral-900 text-white shadow-sm' : 'bg-white text-neutral-700 hover:bg-neutral-100'}`}
+                  onClick={() => handleScopeChange('all')}
+                  aria-pressed={scope === 'all'}
+                >
+                  Tutti
+                </button>
+                <button
+                  type="button"
+                  className={`rounded-full px-3 py-1 text-xs font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-blue-500 ${scope === 'following' ? 'bg-neutral-900 text-white shadow-sm' : 'bg-white text-neutral-700 hover:bg-neutral-100'}`}
+                  onClick={() => handleScopeChange('following')}
+                  aria-pressed={scope === 'following'}
+                >
+                  Seguiti
+                </button>
               </div>
-            )}
-            {errorMessage && (
-              <div className="glass-panel p-4 text-red-600" role="alert">
-                {errorMessage}
-              </div>
-            )}
-            {shouldShowEmptyState && (
-              <EmptyState
-                title="Il feed è ancora vuoto"
-                description="Inizia pubblicando un post o scopri club e player nella tua zona."
-                actions={[
-                  { label: 'Cerca su mappa', href: '/search-map', variant: 'primary' },
-                  { label: 'Scopri opportunità', href: '/opportunities', variant: 'secondary' },
-                  ...(canCreatePost
-                    ? [{ label: 'Crea un post', onClick: handleFocusComposer, variant: 'secondary' as const }]
-                    : []),
-                ]}
-              />
-            )}
-            {!isInitialLoading &&
-              !errorMessage &&
-              posts.map((p, index) => (
-                <Fragment key={p.id}>
-                  <PostCard
-                    post={p}
-                    currentUserId={currentUserId}
-                    onUpdated={onPostUpdated}
-                    onDeleted={onPostDeleted}
-                    reaction={reactions[String(p.id)] ?? createDefaultReaction()}
-                    commentCount={commentCounts[String(p.id)] ?? 0}
-                    pickerOpen={pickerFor === String(p.id)}
-                    onOpenPicker={() => setPickerFor(String(p.id))}
-                    onClosePicker={() => setPickerFor((curr) => (curr === String(p.id) ? null : curr))}
-                    onToggleReaction={(type) => toggleReaction(String(p.id), type)}
-                    onCommentCountChange={(next) =>
-                      setCommentCounts((curr) => ({ ...curr, [String(p.id)]: next }))
-                    }
-                  />
-                  {(index + 1) % 2 === 0 ? <AdSlot slot="feed_infeed" page={pathname} /> : null}
-                </Fragment>
-              ))}
-            {shouldShowStarterPack && (
-              <StarterPackSection
-                loading={starterPackLoading}
-                error={starterPackError}
-                opportunities={starterPack?.opportunities ?? []}
-                profiles={starterPack?.profiles ?? []}
-                userRole={userRole}
-                currentUserId={currentUserId}
-              />
-            )}
-            <div ref={loadMoreSentinelRef} aria-hidden className="h-1" />
-            {!isInitialLoading && !errorMessage && posts.length > 0 && (
-              <div className="flex justify-center">
-                {hasNextPage ? (
-                  <button
-                    type="button"
-                    onClick={loadMore}
-                    disabled={isLoadingMore}
-                    className="rounded-full border border-neutral-200 bg-white px-4 py-2 text-sm font-semibold text-neutral-700 shadow-sm transition hover:border-neutral-300 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {isLoadingMore ? 'Caricamento…' : 'Carica altri'}
-                  </button>
-                ) : (
-                  <div className="text-center text-xs text-neutral-500">Hai visto tutti i post</div>
-                )}
-              </div>
-            )}
-            {reactionError && (
-              <div className="text-[11px] text-red-600" role="status">
-                {reactionError}
-              </div>
-            )}
-          </div>
-        </main>
+            </div>
+            <FeedComposer onPosted={handleRefresh} />
 
-        {/* Colonna destra: suggerimenti/annunci/club seguiti */}
-        <aside className="min-w-0 space-y-4 md:self-stretch md:min-h-full">
-          <SidebarCard>
-            <WhoToFollow />
-          </SidebarCard>
+            <div className="space-y-4" aria-live="polite" aria-busy={isInitialLoading}>
+              {isInitialLoading && (
+                <div className="glass-panel p-4" role="status">
+                  Caricamento…
+                </div>
+              )}
+              {errorMessage && (
+                <div className="glass-panel p-4 text-red-600" role="alert">
+                  {errorMessage}
+                </div>
+              )}
+              {shouldShowEmptyState && (
+                <EmptyState
+                  title="Il feed è ancora vuoto"
+                  description="Inizia pubblicando un post o scopri club e player nella tua zona."
+                  actions={[
+                    { label: 'Cerca su mappa', href: '/search-map', variant: 'primary' },
+                    { label: 'Scopri opportunità', href: '/opportunities', variant: 'secondary' },
+                    ...(canCreatePost
+                      ? [{ label: 'Crea un post', onClick: handleFocusComposer, variant: 'secondary' as const }]
+                      : []),
+                  ]}
+                />
+              )}
+              {!isInitialLoading &&
+                !errorMessage &&
+                posts.map((p, index) => (
+                  <Fragment key={p.id}>
+                    <PostCard
+                      post={p}
+                      currentUserId={currentUserId}
+                      onUpdated={onPostUpdated}
+                      onDeleted={onPostDeleted}
+                      reaction={reactions[String(p.id)] ?? createDefaultReaction()}
+                      commentCount={commentCounts[String(p.id)] ?? 0}
+                      pickerOpen={pickerFor === String(p.id)}
+                      onOpenPicker={() => setPickerFor(String(p.id))}
+                      onClosePicker={() => setPickerFor((curr) => (curr === String(p.id) ? null : curr))}
+                      onToggleReaction={(type) => toggleReaction(String(p.id), type)}
+                      onCommentCountChange={(next) =>
+                        setCommentCounts((curr) => ({ ...curr, [String(p.id)]: next }))
+                      }
+                    />
+                    {(index + 1) % 2 === 0 ? <AdSlot slot="feed_infeed" page={pathname} /> : null}
+                  </Fragment>
+                ))}
+              {shouldShowStarterPack && (
+                <StarterPackSection
+                  loading={starterPackLoading}
+                  error={starterPackError}
+                  opportunities={starterPack?.opportunities ?? []}
+                  profiles={starterPack?.profiles ?? []}
+                  userRole={userRole}
+                  currentUserId={currentUserId}
+                />
+              )}
+              <div ref={loadMoreSentinelRef} aria-hidden className="h-1" />
+              {!isInitialLoading && !errorMessage && posts.length > 0 && (
+                <div className="flex justify-center">
+                  {hasNextPage ? (
+                    <button
+                      type="button"
+                      onClick={loadMore}
+                      disabled={isLoadingMore}
+                      className="rounded-full border border-neutral-200 bg-white px-4 py-2 text-sm font-semibold text-neutral-700 shadow-sm transition hover:border-neutral-300 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {isLoadingMore ? 'Caricamento…' : 'Carica altri'}
+                    </button>
+                  ) : (
+                    <div className="text-center text-xs text-neutral-500">Hai visto tutti i post</div>
+                  )}
+                </div>
+              )}
+              {reactionError && (
+                <div className="text-[11px] text-red-600" role="status">
+                  {reactionError}
+                </div>
+              )}
+            </div>
+          </main>
 
-          <SidebarCard>
-            <FollowedClubs />
-          </SidebarCard>
+          {/* Colonna destra: suggerimenti/annunci/club seguiti */}
+          <aside className="min-w-0 space-y-4 md:self-stretch md:min-h-full">
+            <SidebarCard>
+              <WhoToFollow />
+            </SidebarCard>
 
-          <SidebarCard>
-            <FeedHighlights />
-          </SidebarCard>
+            <SidebarCard>
+              <FollowedClubs />
+            </SidebarCard>
 
-          <div className="space-y-4 md:sticky md:top-16" data-ads-sticky="right">
-            <AdSlot slot="sidebar_top" page={pathname} imageAspect="portraitShort" />
-            <AdSlot slot="sidebar_bottom" page={pathname} imageAspect="landscape" />
-          </div>
-        </aside>
+            <SidebarCard>
+              <FeedHighlights />
+            </SidebarCard>
+
+            <div className="space-y-4 md:sticky md:top-16" data-ads-sticky="right">
+              <AdSlot slot="sidebar_top" page={pathname} imageAspect="portraitShort" />
+              <AdSlot slot="sidebar_bottom" page={pathname} imageAspect="landscape" />
+            </div>
+          </aside>
+        </div>
       </div>
-    </div>
+    </AdsServeCoordinatorProvider>
   );
 }
 

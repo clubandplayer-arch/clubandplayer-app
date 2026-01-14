@@ -11,6 +11,9 @@ type ServePayload = {
   page?: string;
   debug?: boolean;
   excludeCreativeIds?: string[];
+  excludeCampaignIds?: string[];
+  exclude_campaign_ids?: string[];
+  exclude_creative_ids?: string[];
 };
 
 type AdTargetRow = {
@@ -134,9 +137,23 @@ export const POST = async (req: NextRequest) => {
   const debugEnabled = debugFromQuery || debugFromBody;
   const slot = typeof payload?.slot === 'string' ? payload.slot.trim().toLowerCase() : '';
   const page = typeof payload?.page === 'string' ? payload.page.trim() : '';
-  const excludeCreativeIds = Array.isArray(payload?.excludeCreativeIds)
-    ? payload.excludeCreativeIds.filter((id) => typeof id === 'string' && id.trim().length > 0)
-    : [];
+  const excludeCampaignIdsRaw = Array.isArray(payload?.excludeCampaignIds)
+    ? payload.excludeCampaignIds
+    : Array.isArray(payload?.exclude_campaign_ids)
+      ? payload.exclude_campaign_ids
+      : [];
+  const excludeCampaignIds = excludeCampaignIdsRaw.filter(
+    (id) => typeof id === 'string' && id.trim().length > 0,
+  );
+  const excludeCreativeIdsRaw = Array.isArray(payload?.excludeCreativeIds)
+    ? payload.excludeCreativeIds
+    : Array.isArray(payload?.exclude_creative_ids)
+      ? payload.exclude_creative_ids
+      : [];
+  const excludeCreativeIds = excludeCreativeIdsRaw.filter(
+    (id) => typeof id === 'string' && id.trim().length > 0,
+  );
+  const excludeCampaignIdsSet = new Set(excludeCampaignIds);
   const excludeCreativeIdsSet = new Set(excludeCreativeIds);
   const nowMs = Date.now();
   const nowIso = new Date(nowMs).toISOString();
@@ -441,6 +458,12 @@ export const POST = async (req: NextRequest) => {
     }
   };
 
+  const recordDedupeReject = (entry: { campaign_id: string | null; reason: string; fields: Record<string, string | null> }) => {
+    if (rejectedSamples.length < 3) {
+      rejectedSamples.push(entry);
+    }
+  };
+
   const eligible = creativeRows.reduce<
     Array<{ creative: CreativeWithCampaign; priority: number; dailyCap: number | null }>
   >((acc, creative) => {
@@ -513,6 +536,59 @@ export const POST = async (req: NextRequest) => {
     end_at: campaign.end_at,
     ...evalDate(campaign, nowMs),
   }));
+  const campaignsBeforeDedupe = new Set(eligible.map((item) => item.creative.campaign_id));
+  const dedupeExclusionsSummary = {
+    total: 0,
+    byReason: {
+      dedupe_excluded_campaign: 0,
+      dedupe_excluded_creative: 0,
+    },
+  };
+
+  let eligibleAfterDedupe = eligible;
+  if (excludeCampaignIdsSet.size) {
+    const filtered: typeof eligible = [];
+    for (const item of eligible) {
+      if (excludeCampaignIdsSet.has(item.creative.campaign_id)) {
+        dedupeExclusionsSummary.total += 1;
+        dedupeExclusionsSummary.byReason.dedupe_excluded_campaign += 1;
+        recordDedupeReject({
+          campaign_id: item.creative.campaign_id,
+          reason: 'dedupe_excluded',
+          fields: { campaign_id: item.creative.campaign_id, creative_id: item.creative.id },
+        });
+        continue;
+      }
+      filtered.push(item);
+    }
+    eligibleAfterDedupe = filtered;
+  }
+
+  if (excludeCreativeIdsSet.size) {
+    const filtered: typeof eligible = [];
+    for (const item of eligibleAfterDedupe) {
+      if (excludeCreativeIdsSet.has(item.creative.id)) {
+        dedupeExclusionsSummary.total += 1;
+        dedupeExclusionsSummary.byReason.dedupe_excluded_creative += 1;
+        recordDedupeReject({
+          campaign_id: item.creative.campaign_id,
+          reason: 'dedupe_excluded',
+          fields: { campaign_id: item.creative.campaign_id, creative_id: item.creative.id },
+        });
+        continue;
+      }
+      filtered.push(item);
+    }
+    eligibleAfterDedupe = filtered;
+  }
+
+  const campaignsAfterDedupe = new Set(eligibleAfterDedupe.map((item) => item.creative.campaign_id));
+  const dedupeCounts = {
+    eligibleBeforeDedupeCount: eligible.length,
+    eligibleAfterDedupeCount: eligibleAfterDedupe.length,
+    campaignsBeforeDedupeCount: campaignsBeforeDedupe.size,
+    campaignsAfterDedupeCount: campaignsAfterDedupe.size,
+  };
 
   if (!eligible.length) {
     if (!firstRejectReason) {
@@ -558,15 +634,67 @@ export const POST = async (req: NextRequest) => {
             dateSample,
             firstRejectReason,
             rejectedSamples,
+            dedupe: {
+              excludeCampaignIds,
+              excludeCreativeIds,
+              counts: dedupeCounts,
+              excludedByDedupe: dedupeExclusionsSummary,
+            },
           }
         : undefined,
     });
   }
 
-  const eligibleWithoutExcluded = excludeCreativeIdsSet.size
-    ? eligible.filter((item) => !excludeCreativeIdsSet.has(item.creative.id))
-    : eligible;
-  const eligibleForSelection = eligibleWithoutExcluded.length ? eligibleWithoutExcluded : eligible;
+  if (eligible.length && excludeCampaignIdsSet.size + excludeCreativeIdsSet.size > 0 && !eligibleAfterDedupe.length) {
+    return NextResponse.json({
+      ok: true,
+      creative: null,
+      debug: debugEnabled
+        ? {
+            endpointVersion,
+            flags,
+            serviceRoleConfigured,
+            usingAdminClient: true,
+            publicUrlHost,
+            adminUrlHost,
+            derivedContext: {
+              ...context,
+              page,
+              slot,
+            },
+            nowMs,
+            nowIso,
+            counts: {
+              campaignsActiveCount: campaignsActiveCount ?? 0,
+              campaignsAfterDateFilterCount: campaignsAfterDate.length,
+              targetsCountForActiveCampaigns: targetsForActiveCampaigns.length,
+              creativesCountForSlot: creativeRows.length,
+              creativesJoinedWithCampaignCount: joined.length,
+              eligibleCount: eligible.length,
+            },
+            probe: {
+              campaignsTotal: probeCampaignsTotal ?? 0,
+              creativesTotal: probeCreativesTotal ?? 0,
+              targetsTotal: probeTargetsTotal ?? 0,
+            },
+            probeErrors,
+            missingCampaignIdsSample,
+            dateSample,
+            firstRejectReason: firstRejectReason || null,
+            rejectedSamples,
+            dedupe: {
+              excludeCampaignIds,
+              excludeCreativeIds,
+              counts: dedupeCounts,
+              excludedByDedupe: dedupeExclusionsSummary,
+            },
+            noFillDueToDedupe: true,
+          }
+        : undefined,
+    });
+  }
+
+  const eligibleForSelection = eligibleAfterDedupe.length ? eligibleAfterDedupe : eligible;
   const viewerUserId = user?.id ?? null;
   const viewerUserIdPresent = Boolean(viewerUserId);
   const dayStart = new Date(nowMs);
@@ -735,6 +863,12 @@ export const POST = async (req: NextRequest) => {
             dateSample,
             firstRejectReason: firstRejectReason || null,
             rejectedSamples,
+            dedupe: {
+              excludeCampaignIds,
+              excludeCreativeIds,
+              counts: dedupeCounts,
+              excludedByDedupe: dedupeExclusionsSummary,
+            },
             cap: {
               applied: viewerUserIdPresent,
               dayStartIso,
@@ -791,6 +925,12 @@ export const POST = async (req: NextRequest) => {
             dateSample,
             firstRejectReason: 'missing_target_url',
             rejectedSamples,
+            dedupe: {
+              excludeCampaignIds,
+              excludeCreativeIds,
+              counts: dedupeCounts,
+              excludedByDedupe: dedupeExclusionsSummary,
+            },
             cap: {
               applied: viewerUserIdPresent,
               dayStartIso,
@@ -881,6 +1021,12 @@ export const POST = async (req: NextRequest) => {
           dateSample,
           firstRejectReason: firstRejectReason || null,
           rejectedSamples,
+          dedupe: {
+            excludeCampaignIds,
+            excludeCreativeIds,
+            counts: dedupeCounts,
+            excludedByDedupe: dedupeExclusionsSummary,
+          },
           cap: {
             applied: viewerUserIdPresent,
             dayStartIso,

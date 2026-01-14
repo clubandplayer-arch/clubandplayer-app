@@ -1,8 +1,9 @@
 'use client';
 
 import Image from 'next/image';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { isAdsEnabled } from '@/lib/env/features';
+import { useAdsServeCoordinator, type DedupeMode } from '@/components/ads/AdsServeCoordinator';
 
 const ADS_ENDPOINT = '/api/ads/serve';
 const ADS_CLICK_ENDPOINT = '/api/ads/click';
@@ -21,23 +22,32 @@ type AdSlotProps = {
   slot: string;
   page: string;
   imageAspect?: 'landscape' | 'portrait' | 'portraitShort';
+  dedupeMode?: DedupeMode;
 };
 
-const pageCreativeIds = new Map<string, Set<string>>();
+const pageCampaignIds = new Map<string, Set<string>>();
 
-const getExcludeCreativeIds = (page: string) => {
-  return Array.from(pageCreativeIds.get(page) ?? []);
+const getExcludeCampaignIds = (page: string) => {
+  return Array.from(pageCampaignIds.get(page) ?? []);
 };
 
-const rememberCreativeId = (page: string, creativeId: string) => {
-  const existing = pageCreativeIds.get(page) ?? new Set<string>();
-  existing.add(creativeId);
-  pageCreativeIds.set(page, existing);
+const rememberCampaignId = (page: string, campaignId: string) => {
+  const existing = pageCampaignIds.get(page) ?? new Set<string>();
+  existing.add(campaignId);
+  pageCampaignIds.set(page, existing);
 };
 
-export default function AdSlot({ slot, page, imageAspect = 'landscape' }: AdSlotProps) {
+const inferDedupeMode = (slot: string) => {
+  if (slot === 'feed_infeed') return 'infeed';
+  if (slot.startsWith('left_') || slot.startsWith('sidebar_')) return 'page';
+  return 'none';
+};
+
+export default function AdSlot({ slot, page, imageAspect = 'landscape', dedupeMode }: AdSlotProps) {
   const adsEnabled = isAdsEnabled();
   const [creative, setCreative] = useState<AdCreative | null>(null);
+  const coordinator = useAdsServeCoordinator();
+  const effectiveDedupeMode = useMemo(() => dedupeMode ?? inferDedupeMode(slot), [dedupeMode, slot]);
   const imageAspectClass =
     imageAspect === 'portrait' ? 'aspect-[9/16]' : imageAspect === 'portraitShort' ? 'aspect-[4/5]' : 'aspect-video';
   const computedSizes =
@@ -53,11 +63,17 @@ export default function AdSlot({ slot, page, imageAspect = 'landscape' }: AdSlot
 
     (async () => {
       try {
-        const excludeCreativeIds = getExcludeCreativeIds(page);
+        if (coordinator) {
+          const nextCreative = await coordinator.serveAd({ slot, page, dedupeMode: effectiveDedupeMode });
+          if (!cancelled) setCreative(nextCreative);
+          return;
+        }
+
+        const excludeCampaignIds = getExcludeCampaignIds(page);
         const res = await fetch(ADS_ENDPOINT, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ slot, page, excludeCreativeIds }),
+          body: JSON.stringify({ slot, page, exclude_campaign_ids: excludeCampaignIds }),
         });
 
         if (!res.ok) {
@@ -68,8 +84,8 @@ export default function AdSlot({ slot, page, imageAspect = 'landscape' }: AdSlot
         const payload = await res.json().catch(() => null);
         if (cancelled) return;
         const nextCreative = payload?.creative ?? null;
-        if (nextCreative?.id) {
-          rememberCreativeId(page, nextCreative.id);
+        if (nextCreative?.campaignId) {
+          rememberCampaignId(page, nextCreative.campaignId);
         }
         setCreative(nextCreative);
       } catch {
@@ -80,7 +96,7 @@ export default function AdSlot({ slot, page, imageAspect = 'landscape' }: AdSlot
     return () => {
       cancelled = true;
     };
-  }, [adsEnabled, page, slot]);
+  }, [adsEnabled, coordinator, effectiveDedupeMode, page, slot]);
 
   const handleClick = useCallback(() => {
     if (!creative) return;
