@@ -10,7 +10,7 @@ const WhoToFollow = dynamic(() => import('@/components/feed/WhoToFollow'), {
 
 const FollowedClubs = dynamic(() => import('@/components/feed/FollowedClubs'), {
   ssr: false,
-  loading: () => <SidebarCard title="Club che segui" />,
+  loading: () => <SidebarCard title="I profili che segui" />,
 });
 
 const FeedHighlights = dynamic(() => import('@/components/feed/FeedHighlights'), {
@@ -18,10 +18,10 @@ const FeedHighlights = dynamic(() => import('@/components/feed/FeedHighlights'),
   loading: () => <SidebarCard title="In evidenza" />,
 });
 
-export default function RightRailContent() {
+export default function RightSidebarA() {
   return (
-    <aside className="hidden lg:block">
-      <div className="space-y-4">
+    <aside className="hidden xl:block">
+      <div className="sticky top-16 self-start space-y-4">
         <SidebarCard>
           <WhoToFollow />
         </SidebarCard>
