@@ -5,8 +5,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentProfileContext';
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
-import { getCountryDisplay } from '@/lib/utils/countryDisplay';
-import { iso2ToFlagEmoji, parsePrefixedCountry } from '@/lib/utils/flags';
+import { iso2ToFlagEmoji } from '@/lib/utils/flags';
 
 type FollowedItem = {
   id: string;
@@ -25,16 +24,12 @@ function targetHref(item: FollowedItem) {
 }
 
 function subtitle(item: FollowedItem, viewerRole: ProfileRole) {
-  const parsed = parsePrefixedCountry(item.country);
-  const hasPrefixed = !!(parsed.iso2 && parsed.label && parsed.label !== (item.country ?? '').trim());
-  const countryInfo = hasPrefixed
-    ? { flag: iso2ToFlagEmoji(parsed.iso2), label: parsed.label ?? '' }
-    : getCountryDisplay(item.country);
-  const countryDisplay = countryInfo.label
-    ? countryInfo.flag
-      ? `${countryInfo.flag} ${countryInfo.label}`
-      : countryInfo.label
-    : '';
+  const rawCountry = (item.country ?? '').trim();
+  const matchCountry = rawCountry.match(/^([A-Za-z]{2})\s+(.+)$/);
+  const iso2 = matchCountry ? matchCountry[1].trim().toUpperCase() : null;
+  const countryLabel = (matchCountry ? matchCountry[2].trim() : rawCountry) || '';
+  const flag = iso2 ? iso2ToFlagEmoji(iso2) : null;
+  const countryDisplay = countryLabel ? (flag ? `${flag} ${countryLabel}` : countryLabel) : '';
   const location = [item.city, countryDisplay].filter(Boolean).join(', ');
   const sport = item.sport || '';
   if (viewerRole === 'club') {

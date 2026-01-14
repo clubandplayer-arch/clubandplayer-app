@@ -6,8 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { MaterialIcon } from '@/components/icons/MaterialIcon';
 import useIsClub from '@/hooks/useIsClub';
-import { getCountryDisplay } from '@/lib/utils/countryDisplay';
-import { iso2ToFlagEmoji, parsePrefixedCountry } from '@/lib/utils/flags';
+import { iso2ToFlagEmoji } from '@/lib/utils/flags';
 import { buildRosterRoleSections } from '@/lib/utils/rosterRoleSort';
 
 type ApiRosterPlayer = {
@@ -178,17 +177,11 @@ function RosterPlayerCard({ player }: { player: RosterPlayer }) {
   const title = player.fullName?.trim() || player.displayName?.trim() || player.name || 'Profilo';
   const initials = getInitials(title);
   const [removing, setRemoving] = useState(false);
-  const parsedCountry = parsePrefixedCountry(player.countryText);
-  const hasPrefixedCountry =
-    !!player.countryText &&
-    parsedCountry.iso2 &&
-    parsedCountry.label &&
-    parsedCountry.label !== player.countryText.trim();
-  const countryInfo = hasPrefixedCountry
-    ? { flag: iso2ToFlagEmoji(parsedCountry.iso2), label: parsedCountry.label ?? '' }
-    : getCountryDisplay(player.countryText);
-  const countryLabel = countryInfo.label || null;
-  const flag = countryInfo.flag;
+  const rawCountry = (player.countryText ?? '').trim();
+  const matchCountry = rawCountry.match(/^([A-Za-z]{2})\s+(.+)$/);
+  const iso2 = matchCountry ? matchCountry[1].trim().toUpperCase() : null;
+  const countryLabel = (matchCountry ? matchCountry[2].trim() : rawCountry) || null;
+  const flag = iso2 ? iso2ToFlagEmoji(iso2) : null;
 
   const handleRemove = async () => {
     if (removing) return;

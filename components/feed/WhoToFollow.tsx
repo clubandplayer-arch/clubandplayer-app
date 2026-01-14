@@ -6,8 +6,7 @@ import Link from 'next/link';
 import FollowButton from '@/components/common/FollowButton';
 import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentProfileContext';
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
-import { getCountryDisplay } from '@/lib/utils/countryDisplay';
-import { iso2ToFlagEmoji, parsePrefixedCountry } from '@/lib/utils/flags';
+import { iso2ToFlagEmoji } from '@/lib/utils/flags';
 
 type Suggestion = {
   id: string;
@@ -34,22 +33,32 @@ function displayName(item: Suggestion) {
 }
 
 function formatCountry(country?: string | null) {
-  if (!country) return '';
-  const parsed = parsePrefixedCountry(country);
-  const hasPrefixed = !!(parsed.iso2 && parsed.label && parsed.label !== country.trim());
-  if (hasPrefixed) {
-    const flag = iso2ToFlagEmoji(parsed.iso2);
-    return parsed.label ? (flag ? `${flag} ${parsed.label}` : parsed.label) : '';
+  const raw = (country ?? '').trim();
+  if (!raw) return '';
+  const matchCountry = raw.match(/^([A-Za-z]{2})\s+(.+)$/);
+  const iso2 = matchCountry ? matchCountry[1].trim().toUpperCase() : null;
+  const label = (matchCountry ? matchCountry[2].trim() : raw) || '';
+  const flag = iso2 ? iso2ToFlagEmoji(iso2) : null;
+  return label ? (flag ? `${flag} ${label}` : label) : '';
+}
+
+function formatLocation(location?: string | null) {
+  const raw = (location ?? '').trim();
+  if (!raw) return '';
+  const parts = raw.split(' · ');
+  if (parts.length < 2) {
+    return formatCountry(raw);
   }
-  const info = getCountryDisplay(country);
-  if (!info.label) return '';
-  return info.flag ? `${info.flag} ${info.label}` : info.label;
+  const last = parts[parts.length - 1];
+  const formattedLast = formatCountry(last);
+  if (!formattedLast) return raw;
+  return [...parts.slice(0, -1), formattedLast].join(' · ');
 }
 
 function detailLine(suggestion: Suggestion, viewerRole: ProfileRole) {
   const countryDisplay = formatCountry(suggestion.country);
   const composedLocation = [suggestion.city, countryDisplay].filter(Boolean).join(', ');
-  const location = composedLocation || suggestion.location || '';
+  const location = composedLocation || formatLocation(suggestion.location);
   const sportRole = [suggestion.category || suggestion.sport, suggestion.role].filter(Boolean).join(' · ');
 
   if (viewerRole === 'club') {
