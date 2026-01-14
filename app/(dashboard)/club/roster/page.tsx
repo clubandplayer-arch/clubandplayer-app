@@ -6,6 +6,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { MaterialIcon } from '@/components/icons/MaterialIcon';
 import useIsClub from '@/hooks/useIsClub';
+import { resolveCountryName } from '@/lib/geodata/countryStateCityDataset';
+import { countryCodeToFlagEmoji } from '@/lib/utils/flags';
 import { buildRosterRoleSections } from '@/lib/utils/rosterRoleSort';
 
 type ApiRosterPlayer = {
@@ -34,16 +36,10 @@ type RosterPlayer = {
   avatarUrl: string | null;
   role: string | null;
   sport: string | null;
-  location: string | null;
+  city: string | null;
+  countryCode: string | null;
+  countryLabel: string | null;
 };
-
-function buildLocation(row?: { city?: string | null; province?: string | null; region?: string | null; country?: string | null }) {
-  if (!row) return null;
-  const parts = [row.city, row.province || row.region, row.country]
-    .map((value) => (value || '').trim())
-    .filter(Boolean);
-  return parts.length ? parts.join(', ') : null;
-}
 
 function getInitials(name: string) {
   const trimmed = name.trim();
@@ -82,9 +78,11 @@ export default function ClubRosterPage() {
             fullName: player.full_name ?? null,
             displayName: player.display_name ?? null,
             avatarUrl: player.avatarUrl ?? player.avatar_url ?? null,
-            role: player.role ?? null,
+            role: player.role?.trim() || null,
             sport: player.sport ?? null,
-            location: buildLocation(player),
+            city: player.city?.trim() || null,
+            countryCode: player.country && player.country.trim().length === 2 ? player.country.trim().toUpperCase() : null,
+            countryLabel: player.country ? resolveCountryName(player.country) : null,
           } as RosterPlayer;
         })
         .filter(Boolean) as RosterPlayer[];
@@ -180,9 +178,9 @@ export default function ClubRosterPage() {
 
 function RosterPlayerCard({ player }: { player: RosterPlayer }) {
   const title = player.fullName?.trim() || player.displayName?.trim() || player.name || 'Profilo';
-  const badge = [player.role, player.location].filter(Boolean).join(' · ') || '—';
   const initials = getInitials(title);
   const [removing, setRemoving] = useState(false);
+  const flag = player.countryCode ? countryCodeToFlagEmoji(player.countryCode) : null;
 
   const handleRemove = async () => {
     if (removing) return;
@@ -219,7 +217,14 @@ function RosterPlayerCard({ player }: { player: RosterPlayer }) {
         )}
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-neutral-900">{title}</p>
-          <p className="text-xs text-neutral-600">{badge}</p>
+          {player.role ? <p className="text-xs text-neutral-600">{player.role}</p> : null}
+          {player.city ? <p className="text-xs text-neutral-600">{player.city}</p> : null}
+          {player.countryLabel ? (
+            <p className="flex items-center gap-1 text-xs text-neutral-600">
+              {flag ? <span aria-hidden>{flag}</span> : null}
+              <span>{player.countryLabel}</span>
+            </p>
+          ) : null}
         </div>
       </Link>
       <button
