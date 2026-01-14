@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { MaterialIcon } from '@/components/icons/MaterialIcon';
 import useIsClub from '@/hooks/useIsClub';
-import { resolveCountryName } from '@/lib/geodata/countryStateCityDataset';
+import { countryLabel } from '@/lib/utils/country';
 import { countryCodeToFlagEmoji } from '@/lib/utils/flags';
 import { buildRosterRoleSections } from '@/lib/utils/rosterRoleSort';
 
@@ -73,7 +73,7 @@ export default function ClubRosterPage() {
           if (!id) return null;
           const title = (player.full_name || '').trim() || (player.display_name || '').trim() || 'Profilo';
           const countryRaw = player.country?.trim() || null;
-          const derivedIso = countryRaw?.match(/^[A-Za-z]{2}\b/)?.[0]?.toUpperCase() ?? null;
+          const countryInfo = countryLabel(countryRaw);
           return {
             id: String(id),
             name: title,
@@ -83,8 +83,8 @@ export default function ClubRosterPage() {
             role: player.role?.trim() || null,
             sport: player.sport ?? null,
             city: player.city?.trim() || null,
-            countryCode: countryRaw && countryRaw.length === 2 ? countryRaw.toUpperCase() : derivedIso,
-            countryLabel: countryRaw ? resolveCountryName(countryRaw) : null,
+            countryCode: countryInfo.iso,
+            countryLabel: countryInfo.label || null,
           } as RosterPlayer;
         })
         .filter(Boolean) as RosterPlayer[];
