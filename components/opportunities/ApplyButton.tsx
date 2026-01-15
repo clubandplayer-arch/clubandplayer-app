@@ -35,9 +35,9 @@ export default function ApplyButton({ onApply, disabled = false, applied = false
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
       <input
-        className="border rounded px-2 py-1 text-sm w-56"
+        className="w-full min-w-0 rounded border px-2 py-1 text-sm"
         placeholder="Nota (opzionale)"
         value={note}
         onChange={(e) => setNote(e.currentTarget.value)}
@@ -46,7 +46,7 @@ export default function ApplyButton({ onApply, disabled = false, applied = false
       <button
         onClick={handleClick}
         disabled={disabled || busy}
-        className={`px-3 py-1 rounded ${
+        className={`w-full rounded px-3 py-1 sm:w-auto sm:shrink-0 ${
           disabled || busy ? 'bg-gray-300 text-gray-600' : 'bg-gray-900 text-white hover:opacity-90'
         }`}
       >

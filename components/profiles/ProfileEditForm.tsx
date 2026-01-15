@@ -676,7 +676,7 @@ export default function ProfileEditForm() {
 
           {isClub ? (
             <div className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="flex flex-col gap-2 md:col-span-2">
                   <label className="text-sm text-gray-600">Foto profilo</label>
                   <AvatarUploader value={avatarUrl} onChange={setAvatarUrl} />
@@ -697,7 +697,7 @@ export default function ProfileEditForm() {
                 <div className="flex flex-col gap-1 md:col-span-2">
                   <label className="text-sm text-gray-600">Nome del club</label>
                   <input
-                    className="rounded-lg border p-2"
+                    className="w-full min-w-0 rounded-lg border p-2"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="Es. ASD Carlentini"
@@ -705,7 +705,7 @@ export default function ProfileEditForm() {
                 </div>
               </div>
 
-              <div className="grid min-w-0 gap-4 md:grid-cols-4">
+              <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-4">
                 <div className="flex min-w-0 flex-col gap-1">
                   <label className="text-sm text-gray-600">Nazione del club</label>
                   <select
@@ -738,21 +738,21 @@ export default function ProfileEditForm() {
                 />
               </div>
 
-              <div className="flex flex-col gap-1">
+              <div className="flex min-w-0 flex-col gap-1">
                 <label className="text-sm text-gray-600">Motto del club</label>
                 <input
-                  className="rounded-lg border p-2"
+                  className="w-full min-w-0 rounded-lg border p-2"
                   value={clubMotto}
                   onChange={(e) => setClubMotto(e.target.value)}
                   placeholder="Es. Caesarea et inexpugnabilis"
                 />
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="flex flex-col gap-1">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="flex min-w-0 flex-col gap-1">
                   <label className="text-sm text-gray-600">Sport del club</label>
                   <select
-                    className="rounded-lg border p-2"
+                    className="w-full min-w-0 rounded-lg border p-2"
                     value={sport}
                     onChange={(e) => setSport(e.target.value)}
                   >
@@ -764,10 +764,10 @@ export default function ProfileEditForm() {
                   </select>
                 </div>
 
-                <div className="flex flex-col gap-1">
+                <div className="flex min-w-0 flex-col gap-1">
                   <label className="text-sm text-gray-600">Categoria</label>
                   <select
-                    className="rounded-lg border p-2"
+                    className="w-full min-w-0 rounded-lg border p-2"
                     value={clubCategory}
                     onChange={(e) => setClubCategory(e.target.value)}
                   >
@@ -779,12 +779,12 @@ export default function ProfileEditForm() {
                   </select>
                 </div>
 
-                <div className="flex flex-col gap-1">
+                <div className="flex min-w-0 flex-col gap-1">
                   <label className="text-sm text-gray-600">Anno di fondazione</label>
                   <input
                     type="number"
                     inputMode="numeric"
-                    className="rounded-lg border p-2"
+                    className="w-full min-w-0 rounded-lg border p-2"
                     value={foundationYear}
                     onChange={(e) =>
                       setFoundationYear(
@@ -797,7 +797,7 @@ export default function ProfileEditForm() {
                   />
                 </div>
 
-                <div className="flex flex-col gap-1">
+                <div className="flex min-w-0 flex-col gap-1">
                   <label className="text-sm text-gray-600">Stadio o impianto</label>
                   <ClubStadiumMapPicker
                     value={{ name: stadium, address: stadiumAddress, lat: stadiumLat, lng: stadiumLng }}
@@ -811,7 +811,7 @@ export default function ProfileEditForm() {
                 </div>
               </div>
 
-              <div className="grid gap-3 rounded-xl bg-gray-50 p-3 text-xs text-gray-700 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 rounded-xl bg-gray-50 p-3 text-xs text-gray-700 md:grid-cols-2">
                 <div>
                   <div className="text-[11px] uppercase tracking-wide text-gray-500">Nome stadio</div>
                   <div className="font-semibold text-gray-900">{stadium || '—'}</div>
@@ -836,10 +836,10 @@ export default function ProfileEditForm() {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-1">
+              <div className="flex min-w-0 flex-col gap-1">
                 <label className="text-sm text-gray-600">Biografia del club</label>
                 <textarea
-                  className="rounded-lg border p-2"
+                  className="w-full min-w-0 rounded-lg border p-2"
                   rows={4}
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
@@ -848,7 +848,7 @@ export default function ProfileEditForm() {
               </div>
             </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="flex flex-col gap-2 md:col-span-2">
                 <label className="text-sm text-gray-600">Foto profilo</label>
                 <AvatarUploader value={avatarUrl} onChange={setAvatarUrl} />
@@ -869,19 +869,19 @@ export default function ProfileEditForm() {
               <div className="flex flex-col gap-1 md:col-span-2">
                 <label className="text-sm text-gray-600">Nome e cognome</label>
                 <input
-                  className="rounded-lg border p-2"
+                  className="w-full min-w-0 rounded-lg border p-2"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Es. Mario Rossi"
                 />
               </div>
 
-              <div className="flex flex-col gap-1">
+              <div className="flex min-w-0 flex-col gap-1">
                 <label className="text-sm text-gray-600">Anno di nascita</label>
                 <input
                   type="number"
                   inputMode="numeric"
-                  className="rounded-lg border p-2"
+                  className="w-full min-w-0 rounded-lg border p-2"
                   value={birthYear}
                   onChange={(e) =>
                     setBirthYear(e.target.value === '' ? '' : Number(e.target.value))
@@ -892,10 +892,10 @@ export default function ProfileEditForm() {
                 />
               </div>
 
-              <div className="flex flex-col gap-1">
+              <div className="flex min-w-0 flex-col gap-1">
                 <label className="text-sm text-gray-600">Nazionalità</label>
                 <select
-                  className="rounded-lg border p-2"
+                  className="w-full min-w-0 rounded-lg border p-2"
                   value={country}
                   onChange={(e) => setCountry(e.target.value)}
                 >
@@ -910,11 +910,11 @@ export default function ProfileEditForm() {
                 )}
               </div>
 
-              <div className="md:col-span-2 grid gap-4 md:grid-cols-2">
-                <div className="flex flex-col gap-1">
+              <div className="grid grid-cols-1 gap-4 md:col-span-2 md:grid-cols-2">
+                <div className="flex min-w-0 flex-col gap-1">
                   <label className="text-sm text-gray-600">Sport</label>
                   <select
-                    className="rounded-lg border p-2"
+                    className="w-full min-w-0 rounded-lg border p-2"
                     value={athleteSport}
                     onChange={(e) => setAthleteSport(e.target.value)}
                   >
@@ -926,10 +926,10 @@ export default function ProfileEditForm() {
                   </select>
                 </div>
 
-                <div className="flex flex-col gap-1">
+                <div className="flex min-w-0 flex-col gap-1">
                   <label className="text-sm text-gray-600">Ruolo</label>
                   <select
-                    className="rounded-lg border p-2"
+                    className="w-full min-w-0 rounded-lg border p-2"
                     value={athleteRole}
                     onChange={(e) => setAthleteRole(e.target.value)}
                   >
@@ -944,10 +944,10 @@ export default function ProfileEditForm() {
                 </div>
               </div>
 
-              <div className="md:col-span-2 flex flex-col gap-1">
+              <div className="flex flex-col gap-1 md:col-span-2">
                 <label className="text-sm text-gray-600">Biografia</label>
                 <textarea
-                  className="rounded-lg border p-2"
+                  className="w-full min-w-0 rounded-lg border p-2"
                   rows={4}
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
@@ -955,11 +955,11 @@ export default function ProfileEditForm() {
                 />
               </div>
 
-              <div className="md:col-span-2 grid gap-4 md:grid-cols-3">
-                <div className="flex flex-col gap-1">
+              <div className="grid grid-cols-1 gap-4 md:col-span-2 md:grid-cols-3">
+                <div className="flex min-w-0 flex-col gap-1">
                   <label className="text-sm text-gray-600">Piede preferito</label>
                   <select
-                    className="rounded-lg border p-2"
+                    className="w-full min-w-0 rounded-lg border p-2"
                     value={foot}
                     onChange={(e) => setFoot(e.target.value)}
                   >
@@ -969,12 +969,12 @@ export default function ProfileEditForm() {
                     <option value="Ambidestro">Ambidestro</option>
                   </select>
                 </div>
-                <div className="flex flex-col gap-1">
+                <div className="flex min-w-0 flex-col gap-1">
                   <label className="text-sm text-gray-600">Altezza (cm)</label>
                   <input
                     type="number"
                     inputMode="numeric"
-                    className="rounded-lg border p-2"
+                    className="w-full min-w-0 rounded-lg border p-2"
                     value={heightCm}
                     onChange={(e) =>
                       setHeightCm(e.target.value === '' ? '' : Number(e.target.value))
@@ -984,12 +984,12 @@ export default function ProfileEditForm() {
                     placeholder="es. 183"
                   />
                 </div>
-                <div className="flex flex-col gap-1">
+                <div className="flex min-w-0 flex-col gap-1">
                   <label className="text-sm text-gray-600">Peso (kg)</label>
                   <input
                     type="number"
                     inputMode="numeric"
-                    className="rounded-lg border p-2"
+                    className="w-full min-w-0 rounded-lg border p-2"
                     value={weightKg}
                     onChange={(e) =>
                       setWeightKg(e.target.value === '' ? '' : Number(e.target.value))
@@ -1068,11 +1068,11 @@ export default function ProfileEditForm() {
         {!isClub && (
           <section className="rounded-2xl border p-4 md:p-5">
             <h2 className="mb-3 text-lg font-semibold">Zona di interesse</h2>
-            <div className="grid gap-4 md:grid-cols-4">
-              <div className="flex flex-col gap-1">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+              <div className="flex min-w-0 flex-col gap-1">
                 <label className="text-sm text-gray-600">Paese</label>
                 <select
-                  className="rounded-lg border p-2"
+                  className="w-full min-w-0 rounded-lg border p-2"
                   value={interestCountry}
                   onChange={(e) => setInterestCountry(e.target.value)}
                 >
@@ -1101,38 +1101,38 @@ export default function ProfileEditForm() {
           <p className="mb-3 text-xs text-gray-500">
             Inserisci URL completi o semplici @handle.
           </p>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="flex flex-col gap-1">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="flex min-w-0 flex-col gap-1">
               <label className="text-sm text-gray-600">Instagram</label>
               <input
-                className="rounded-lg border p-2"
+                className="w-full min-w-0 rounded-lg border p-2"
                 value={instagram}
                 onChange={(e) => setInstagram(e.target.value)}
                 placeholder="@tuonome oppure https://instagram.com/tuonome"
               />
             </div>
-            <div className="flex flex-col gap-1">
+            <div className="flex min-w-0 flex-col gap-1">
               <label className="text-sm text-gray-600">Facebook</label>
               <input
-                className="rounded-lg border p-2"
+                className="w-full min-w-0 rounded-lg border p-2"
                 value={facebook}
                 onChange={(e) => setFacebook(e.target.value)}
                 placeholder="pagina o profilo"
               />
             </div>
-            <div className="flex flex-col gap-1">
+            <div className="flex min-w-0 flex-col gap-1">
               <label className="text-sm text-gray-600">TikTok</label>
               <input
-                className="rounded-lg border p-2"
+                className="w-full min-w-0 rounded-lg border p-2"
                 value={tiktok}
                 onChange={(e) => setTiktok(e.target.value)}
                 placeholder="@tuonome"
               />
             </div>
-            <div className="flex flex-col gap-1">
+            <div className="flex min-w-0 flex-col gap-1">
               <label className="text-sm text-gray-600">X (Twitter)</label>
               <input
-                className="rounded-lg border p-2"
+                className="w-full min-w-0 rounded-lg border p-2"
                 value={x}
                 onChange={(e) => setX(e.target.value)}
                 placeholder="@tuonome"
