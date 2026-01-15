@@ -5,12 +5,10 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
-import AthleteExperiencesSection from '@/components/athletes/AthleteExperiencesSection';
 import AthleteMediaHighlightsSection, {
   type AthleteMediaItem,
 } from '@/components/athletes/AthleteMediaHighlightsSection';
 import AthleteOpenToOpportunitiesPanel from '@/components/athletes/AthleteOpenToOpportunitiesPanel';
-import AthleteStatsSection from '@/components/athletes/AthleteStatsSection';
 import PublicAuthorFeed from '@/components/feed/PublicAuthorFeed';
 import ProfileHeader from '@/components/profiles/ProfileHeader';
 import { CountryFlag } from '@/components/ui/CountryFlag';
@@ -62,25 +60,6 @@ type ApplicationRow = {
   };
 };
 
-type AthleteExperienceRow = {
-  id: string;
-  club_name: string | null;
-  sport: string | null;
-  role: string | null;
-  category: string | null;
-  start_year: number | null;
-  end_year: number | null;
-  is_current: boolean | null;
-  description: string | null;
-};
-
-function isAthleteExperienceRows(data: unknown): data is AthleteExperienceRow[] {
-  return (
-    Array.isArray(data) &&
-    data.every((item) => item && typeof item === 'object' && 'id' in item && 'club_name' in item)
-  );
-}
-
 type ClubMembershipRow = {
   club_profile_id: string | null;
   club_sport: string | null;
@@ -122,7 +101,6 @@ export default function PlayerPublicProfilePage() {
   const [profile, setProfile] = useState<AthleteProfileRow | null>(null);
   const [clubOfBelonging, setClubOfBelonging] = useState<ClubProfileSummary | null>(null);
   const [apps, setApps] = useState<ApplicationRow[]>([]);
-  const [experiences, setExperiences] = useState<AthleteExperienceRow[]>([]);
   const [media, setMedia] = useState<AthleteMediaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState<string>('');
@@ -276,43 +254,20 @@ export default function PlayerPublicProfilePage() {
         setClubOfBelonging(null);
       }
 
-      const [expRes, mediaRes] = await Promise.all([
-        supabase
-          .from('athlete_experiences')
-          .select(
-            [
-              'id',
-              'club_name',
-              'sport',
-              'role',
-              'category',
-              'start_year',
-              'end_year',
-              'is_current',
-              'description',
-            ].join(','),
-          )
-          .eq('profile_id', normalizedProfile.id)
-          .order('is_current', { ascending: false })
-          .order('start_year', { ascending: false })
-          .order('end_year', { ascending: false }),
-        supabase
-          .from('posts')
-          .select('id, media_url, media_type, created_at')
-          .not('media_url', 'is', null)
-          .in(
-            'author_id',
-            normalizedProfile.user_id && normalizedProfile.user_id !== normalizedProfile.id
-              ? [normalizedProfile.id, normalizedProfile.user_id]
-              : [normalizedProfile.id],
-          )
-          .order('created_at', { ascending: false })
-          .limit(6),
-      ]);
+      const { data: mediaRes } = await supabase
+        .from('posts')
+        .select('id, media_url, media_type, created_at')
+        .not('media_url', 'is', null)
+        .in(
+          'author_id',
+          normalizedProfile.user_id && normalizedProfile.user_id !== normalizedProfile.id
+            ? [normalizedProfile.id, normalizedProfile.user_id]
+            : [normalizedProfile.id],
+        )
+        .order('created_at', { ascending: false })
+        .limit(6);
 
-      const experienceRows = isAthleteExperienceRows(expRes.data) ? expRes.data : [];
-      setExperiences(experienceRows);
-      setMedia((mediaRes.data as AthleteMediaItem[])?.slice(0, 3) ?? []);
+      setMedia((mediaRes as AthleteMediaItem[])?.slice(0, 3) ?? []);
 
       if (currentUserId && (currentUserId === normalizedProfile.user_id || currentUserId === normalizedProfile.id)) {
         const { data: appsData } = await supabase
@@ -362,15 +317,6 @@ export default function PlayerPublicProfilePage() {
     return parts.join(' · ');
   }, [profile]);
 
-  const nationality = useMemo(() => {
-    const raw = (profile?.country ?? '').trim();
-    if (!raw) return { iso2: null, label: '' };
-    const match = raw.match(/^([A-Za-z]{2})(?:\s+(.+))?$/);
-    const iso2 = match ? match[1].trim().toUpperCase() : null;
-    const label = (match ? (match[2]?.trim() || iso2 || '') : raw) || '';
-    return { iso2, label };
-  }, [profile?.country]);
-
   const headerDisplayName = useMemo(() => {
     if (!profile) return 'Player';
     return buildPlayerDisplayName(profile.full_name, profile.display_name);
@@ -382,11 +328,6 @@ export default function PlayerPublicProfilePage() {
     const parts = [profile.role, sportLabel].filter(Boolean);
     return parts.join(' · ') || '—';
   }, [profile]);
-
-  const sportLabel = useMemo(
-    () => normalizeSport(profile?.sport ?? null) ?? profile?.sport ?? null,
-    [profile?.sport],
-  );
 
   const clubDisplayName = useMemo(() => {
     if (!clubOfBelonging) return null;
@@ -409,6 +350,32 @@ export default function PlayerPublicProfilePage() {
     return { iso2, label };
   }, [clubOfBelonging?.country]);
 
+  const headerCountry = useMemo(() => {
+    const raw = (profile?.country ?? '').trim();
+    if (!raw) return { iso2: null, label: '' };
+    const match = raw.match(/^([A-Za-z]{2})(?:\s+(.+))?$/);
+    const iso2 = match ? match[1].trim().toUpperCase() : raw.toUpperCase();
+    const label = (match ? (match[2]?.trim() || iso2 || '') : raw) || '';
+    return { iso2, label };
+  }, [profile?.country]);
+
+  const headerLocationContent = useMemo(() => {
+    const rawLocation = profileLocation.trim();
+    const countryLabel = headerCountry.label || (headerCountry.iso2 ? headerCountry.iso2.toUpperCase() : '');
+    if (!rawLocation && !countryLabel) return null;
+    return (
+      <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-500">
+        {rawLocation ? <span>{rawLocation}</span> : null}
+        {countryLabel ? (
+          <span className="inline-flex items-center gap-2">
+            <CountryFlag iso2={headerCountry.iso2} />
+            <span>{countryLabel}</span>
+          </span>
+        ) : null}
+      </div>
+    );
+  }, [headerCountry.iso2, headerCountry.label, profileLocation]);
+
   return (
     <main className="mx-auto max-w-5xl space-y-6 px-4 py-6">
       {loading && <p>Caricamento…</p>}
@@ -422,6 +389,7 @@ export default function PlayerPublicProfilePage() {
             avatarUrl={profile.avatar_url}
             subtitle={headerSubtitle}
             locationLabel={profileLocation}
+            locationContent={headerLocationContent}
             showMessageButton
             showFollowButton={!isMe}
             messageLabel="Messaggia"
@@ -470,14 +438,6 @@ export default function PlayerPublicProfilePage() {
             preferredRoles={profile.preferred_roles}
           />
 
-          <AthleteExperiencesSection experiences={experiences} />
-
-          <AthleteStatsSection
-            matches={profile.matches_played}
-            goals={profile.goals_scored}
-            assists={profile.assists}
-          />
-
           <AthleteMediaHighlightsSection items={media} />
 
           <section className="rounded-2xl border bg-white p-5 shadow-sm">
@@ -485,26 +445,6 @@ export default function PlayerPublicProfilePage() {
             <p className="mt-2 whitespace-pre-wrap text-sm text-neutral-800">
               {profile.bio && profile.bio.trim().length > 0 ? profile.bio : 'Nessuna bio disponibile.'}
             </p>
-          </section>
-
-          <section className="rounded-2xl border bg-white p-5 shadow-sm">
-            <h2 className="heading-h2 text-xl">Panoramica</h2>
-            <ul className="mt-3 space-y-1 text-sm text-neutral-800">
-              <li>
-                <b>Sport:</b> {sportLabel ?? '—'}
-              </li>
-              <li>
-                <b>Ruolo:</b> {profile.role ?? '—'}
-              </li>
-              <li>
-                <b>Città:</b> {profileLocation || '—'}
-              </li>
-              <li className="flex items-center gap-2">
-                <b>Nazionalità:</b>
-                <CountryFlag iso2={nationality.iso2} />
-                <span>{nationality.label || '—'}</span>
-              </li>
-            </ul>
           </section>
 
           <section className="space-y-3 rounded-2xl border bg-white p-5 shadow-sm">
