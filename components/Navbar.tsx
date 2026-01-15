@@ -186,6 +186,16 @@ export default function Navbar() {
                     >
                       Modifica profilo
                     </Link>
+                    {isClub && (
+                      <Link
+                        href="/club/verification"
+                        role="menuitem"
+                        onClick={() => setIsProfileMenuOpen(false)}
+                        className="block rounded-lg px-3 py-2 text-gray-100 transition hover:bg-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+                      >
+                        Verifica profilo
+                      </Link>
+                    )}
                     <div className="my-1 h-px bg-gray-700" role="separator" />
                     <button
                       type="button"

@@ -210,6 +210,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       );
 
       items.push({ key: 'profile', label: 'Profilo', href: profileHref, icon: profileIcon });
+      if (isClub) {
+        items.push({ key: 'verification', label: 'Verifica profilo', href: '/club/verification' });
+      }
       items.push({ key: 'logout', label: 'Logout', href: '/logout', icon: <LogOut size={16} aria-hidden />, tone: 'danger' });
     }
 
@@ -393,6 +396,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                         >
                           Modifica profilo
                         </Link>
+                        {isClub && (
+                          <Link
+                            href="/club/verification"
+                            role="menuitem"
+                            onClick={() => setIsProfileMenuOpen(false)}
+                            className="block rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
+                          >
+                            Verifica profilo
+                          </Link>
+                        )}
                         <div className="my-1 h-px bg-slate-200" role="separator" />
                         <Link
                           href="/logout"
