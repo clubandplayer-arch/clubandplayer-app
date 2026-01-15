@@ -14,14 +14,16 @@ export default async function ClubVerificationPage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('account_type, type, status')
+    .select('id, account_type, type, status')
     .eq('user_id', user.id)
     .maybeSingle();
 
   const accountType = String(profile?.account_type ?? profile?.type ?? '').toLowerCase();
   const status = String(profile?.status ?? '').toLowerCase();
 
-  if (accountType !== 'club' || (status && status !== 'active')) {
+  const isClub = accountType === 'club' && (!status || status === 'active');
+
+  if (!isClub) {
     return (
       <main className="container mx-auto space-y-4 py-6">
         <header className="space-y-1">
@@ -43,7 +45,14 @@ export default async function ClubVerificationPage() {
         </p>
       </header>
 
-      <VerificationClient />
+      <VerificationClient
+        isClub={isClub}
+        debug={{
+          userId: user.id,
+          profileType: accountType || null,
+          clubId: profile?.id ? String(profile.id) : null,
+        }}
+      />
     </main>
   );
 }

@@ -21,16 +21,9 @@ export async function getClubContext(supabase: any, userId: string): Promise<Clu
   if (accountType !== 'club') return null;
   if (status && status !== 'active') return null;
 
-  const { data: clubRow, error: clubError } = await supabase
-    .from('clubs')
-    .select('id')
-    .eq('owner_id', userId)
-    .maybeSingle();
+  const clubId = String(profile.id);
 
-  if (clubError) throw clubError;
-  if (!clubRow?.id) return null;
-
-  return { clubId: String(clubRow.id), profileId: String(profile.id) };
+  return { clubId, profileId: String(profile.id) };
 }
 
 export function clubOnlyError() {

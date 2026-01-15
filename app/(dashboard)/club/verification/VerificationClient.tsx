@@ -55,7 +55,18 @@ function extractFileName(path?: string | null) {
   return parts[parts.length - 1] || null;
 }
 
-export default function VerificationClient() {
+type DebugInfo = {
+  userId: string;
+  profileType: string | null;
+  clubId: string | null;
+};
+
+type Props = {
+  isClub: boolean;
+  debug?: DebugInfo;
+};
+
+export default function VerificationClient({ isClub, debug }: Props) {
   const [request, setRequest] = useState<VerificationRequest | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -98,8 +109,9 @@ export default function VerificationClient() {
   }
 
   useEffect(() => {
+    if (!isClub) return;
     void loadRequest();
-  }, []);
+  }, [isClub]);
 
   async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -269,6 +281,15 @@ export default function VerificationClient() {
 
           {error && <div className="text-sm text-rose-600">{error}</div>}
           {success && <div className="text-sm text-emerald-600">{success}</div>}
+
+          {process.env.NODE_ENV !== 'production' && debug && (
+            <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
+              <p className="font-semibold text-slate-700">Debug</p>
+              <p className="mt-1">userId: {debug.userId}</p>
+              <p className="mt-1">profileType: {debug.profileType ?? '—'}</p>
+              <p className="mt-1">clubId: {debug.clubId ?? '—'}</p>
+            </div>
+          )}
         </div>
       )}
     </section>
