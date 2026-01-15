@@ -1,26 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 320" role="img" aria-labelledby="title desc">
-  <title id="title">Club &amp; Player</title>
-  <desc id="desc">Logo collegato con lettere C, P e &amp; in cerchi gialli con bordo blu.</desc>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Livello_1" data-name="Livello 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 219.43 420.7">
   <defs>
     <style>
-      .accent { fill: #f5af2b; }
-      .outline { stroke: #00527a; }
-      .glyph { fill: #00527a; font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif; font-weight: 800; }
+      .cls-1 {
+        fill: #036f9a;
+      }
     </style>
   </defs>
-
-  <path class="outline" d="M110 110 L250 110 M110 110 L180 210 M250 110 L180 210" stroke-width="26" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-  <path d="M110 110 L250 110 M110 110 L180 210 M250 110 L180 210" stroke="#f5af2b" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-
-  <circle cx="110" cy="110" r="72" class="accent outline" stroke-width="26" />
-  <circle cx="110" cy="110" r="72" fill="none" stroke="#f5af2b" stroke-width="16" />
-  <text x="110" y="133" font-size="96" text-anchor="middle" class="glyph">C</text>
-
-  <circle cx="250" cy="110" r="72" class="accent outline" stroke-width="26" />
-  <circle cx="250" cy="110" r="72" fill="none" stroke="#f5af2b" stroke-width="16" />
-  <text x="250" y="133" font-size="96" text-anchor="middle" class="glyph">P</text>
-
-  <circle cx="180" cy="210" r="58" class="accent outline" stroke-width="26" />
-  <circle cx="180" cy="210" r="58" fill="none" stroke="#f5af2b" stroke-width="16" />
-  <text x="180" y="232" font-size="72" text-anchor="middle" class="glyph">&amp;</text>
+  <path class="cls-1" d="M155.27,53.61h64.16v63.57h-124.22c-4.3,0-8.35.83-12.16,2.49-3.81,1.66-7.18,3.96-10.11,6.88s-5.23,6.3-6.88,10.11c-1.66,3.81-2.49,7.86-2.49,12.16s.83,8.74,2.49,12.74c1.66,4,3.96,7.47,6.88,10.4s6.3,5.23,10.11,6.88c3.81,1.66,7.86,2.49,12.16,2.49h76.46v63.57h-76.46c-4.3,0-8.35.83-12.16,2.49-3.81,1.66-7.18,3.96-10.11,6.88s-5.23,6.3-6.88,10.11c-1.66,3.81-2.49,7.86-2.49,12.16s.83,8.74,2.49,12.74c1.66,4,3.96,7.47,6.88,10.4s6.3,5.23,10.11,6.88c3.81,1.66,7.86,2.49,12.16,2.49h124.22v63.57h-64.16v48.05h-53.91v-48.05h-6.15c-13.28,0-25.68-2.49-37.21-7.47-11.53-4.98-21.58-11.82-30.18-20.51-8.6-8.69-15.38-18.85-20.36-30.47-4.98-11.62-7.47-24.17-7.47-37.65,0-11.72,2.05-23.04,6.15-33.98,4.1-10.94,10.25-20.8,18.46-29.59-8.2-8.79-14.36-18.65-18.46-29.59-4.1-10.94-6.15-22.46-6.15-34.57,0-13.08,2.49-25.44,7.47-37.06,4.98-11.62,11.76-21.73,20.36-30.32s18.65-15.38,30.18-20.36c11.52-4.98,23.92-7.47,37.21-7.47h6.15V0h53.91v53.61Z"/>
 </svg>
