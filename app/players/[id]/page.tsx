@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
@@ -13,7 +14,7 @@ import AthleteStatsSection from '@/components/athletes/AthleteStatsSection';
 import PublicAuthorFeed from '@/components/feed/PublicAuthorFeed';
 import ProfileHeader from '@/components/profiles/ProfileHeader';
 import { CountryFlag } from '@/components/ui/CountryFlag';
-import { buildPlayerDisplayName } from '@/lib/displayName';
+import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
 import { normalizeSport } from '@/lib/opps/constants';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
@@ -80,6 +81,38 @@ function isAthleteExperienceRows(data: unknown): data is AthleteExperienceRow[] 
   );
 }
 
+type ClubMembershipRow = {
+  club_profile_id: string | null;
+  club_sport: string | null;
+  created_at: string | null;
+  status: string | null;
+};
+
+type ClubProfileSummary = {
+  id: string;
+  full_name: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+  sport: string | null;
+  club_league_category: string | null;
+  country: string | null;
+  account_type: string | null;
+  type: string | null;
+  status: string | null;
+};
+
+function isClubProfileSummary(row: unknown): row is ClubProfileSummary {
+  return !!row && typeof row === 'object' && 'id' in row;
+}
+
+function getInitials(name: string) {
+  const trimmed = (name || '').trim();
+  if (!trimmed) return 'CL';
+  const parts = trimmed.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+}
+
 export default function PlayerPublicProfilePage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -87,6 +120,7 @@ export default function PlayerPublicProfilePage() {
 
   const [meId, setMeId] = useState<string | null>(null);
   const [profile, setProfile] = useState<AthleteProfileRow | null>(null);
+  const [clubOfBelonging, setClubOfBelonging] = useState<ClubProfileSummary | null>(null);
   const [apps, setApps] = useState<ApplicationRow[]>([]);
   const [experiences, setExperiences] = useState<AthleteExperienceRow[]>([]);
   const [media, setMedia] = useState<AthleteMediaItem[]>([]);
@@ -171,6 +205,76 @@ export default function PlayerPublicProfilePage() {
       };
 
       setProfile(normalizedProfile);
+
+      try {
+        const { data: rosterRows, error: rosterError } = await supabase
+          .from('club_roster_members')
+          .select('club_profile_id, club_sport, created_at, status')
+          .eq('player_profile_id', normalizedProfile.id)
+          .eq('status', 'active');
+
+        if (rosterError) {
+          setClubOfBelonging(null);
+        } else {
+          const rows = (rosterRows ?? []) as ClubMembershipRow[];
+          if (rows.length === 0) {
+            setClubOfBelonging(null);
+          } else {
+            const normalizedPlayerSport =
+              normalizeSport(normalizedProfile.sport ?? null) ?? normalizedProfile.sport ?? null;
+            const matchingSport = normalizedPlayerSport
+              ? rows.filter((row) => {
+                  const rowSport = normalizeSport(row.club_sport ?? null) ?? row.club_sport ?? null;
+                  return rowSport === normalizedPlayerSport;
+                })
+              : [];
+            const candidates = matchingSport.length > 0 ? matchingSport : rows;
+            const sorted = [...candidates].sort((a, b) => {
+              const aDate = a.created_at ? new Date(a.created_at).getTime() : 0;
+              const bDate = b.created_at ? new Date(b.created_at).getTime() : 0;
+              return bDate - aDate;
+            });
+            const chosenClubId = sorted[0]?.club_profile_id ?? null;
+
+            if (chosenClubId) {
+              const { data: clubProfile, error: clubError } = await supabase
+                .from('profiles')
+                .select(
+                  [
+                    'id',
+                    'full_name',
+                    'display_name',
+                    'avatar_url',
+                    'sport',
+                    'club_league_category',
+                    'country',
+                    'account_type',
+                    'type',
+                    'status',
+                  ].join(','),
+                )
+                .eq('id', chosenClubId)
+                .eq('status', 'active')
+                .maybeSingle();
+
+              if (clubError || !isClubProfileSummary(clubProfile)) {
+                setClubOfBelonging(null);
+              } else {
+                const accountType = String(clubProfile.account_type ?? clubProfile.type ?? '').toLowerCase();
+                if (accountType !== 'club') {
+                  setClubOfBelonging(null);
+                } else {
+                  setClubOfBelonging(clubProfile);
+                }
+              }
+            } else {
+              setClubOfBelonging(null);
+            }
+          }
+        }
+      } catch {
+        setClubOfBelonging(null);
+      }
 
       const [expRes, mediaRes] = await Promise.all([
         supabase
@@ -284,6 +388,27 @@ export default function PlayerPublicProfilePage() {
     [profile?.sport],
   );
 
+  const clubDisplayName = useMemo(() => {
+    if (!clubOfBelonging) return null;
+    return buildClubDisplayName(clubOfBelonging.full_name, clubOfBelonging.display_name, 'Club');
+  }, [clubOfBelonging]);
+
+  const clubSubtitle = useMemo(() => {
+    if (!clubOfBelonging) return null;
+    const normalizedClubSport =
+      normalizeSport(clubOfBelonging.sport ?? null) ?? clubOfBelonging.sport ?? null;
+    return [clubOfBelonging.club_league_category, normalizedClubSport].filter(Boolean).join(' · ') || null;
+  }, [clubOfBelonging]);
+
+  const clubCountry = useMemo(() => {
+    if (!clubOfBelonging?.country) return { iso2: null, label: '' };
+    const raw = clubOfBelonging.country.trim();
+    const match = raw.match(/^([A-Za-z]{2})(?:\s+(.+))?$/);
+    const iso2 = match ? match[1].trim().toUpperCase() : null;
+    const label = (match ? (match[2]?.trim() || iso2 || '') : raw) || '';
+    return { iso2, label };
+  }, [clubOfBelonging?.country]);
+
   return (
     <main className="mx-auto max-w-5xl space-y-6 px-4 py-6">
       {loading && <p>Caricamento…</p>}
@@ -301,6 +426,43 @@ export default function PlayerPublicProfilePage() {
             showFollowButton={!isMe}
             messageLabel="Messaggia"
           />
+
+          {clubOfBelonging && clubDisplayName ? (
+            <section className="rounded-2xl border bg-white p-4 shadow-sm">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Club di appartenenza</h2>
+              <Link
+                href={`/clubs/${clubOfBelonging.id}`}
+                className="mt-3 flex items-center gap-3 rounded-xl border border-neutral-200 bg-white/80 p-3 transition hover:border-pink-200 hover:bg-pink-50/40"
+              >
+                {clubOfBelonging.avatar_url ? (
+                  <Image
+                    src={clubOfBelonging.avatar_url}
+                    alt={clubDisplayName}
+                    width={44}
+                    height={44}
+                    className="h-11 w-11 rounded-full object-cover"
+                    referrerPolicy="no-referrer"
+                    unoptimized
+                  />
+                ) : (
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-pink-100 text-xs font-semibold text-pink-700">
+                    {getInitials(clubDisplayName)}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="truncate text-sm font-semibold text-neutral-900">{clubDisplayName}</p>
+                    {clubCountry.iso2 ? <CountryFlag iso2={clubCountry.iso2} /> : null}
+                  </div>
+                  {clubSubtitle ? (
+                    <p className="text-xs text-neutral-600">{clubSubtitle}</p>
+                  ) : clubCountry.label ? (
+                    <p className="text-xs text-neutral-600">{clubCountry.label}</p>
+                  ) : null}
+                </div>
+              </Link>
+            </section>
+          ) : null}
 
           <AthleteOpenToOpportunitiesPanel
             openTo={profile.open_to_opportunities}
