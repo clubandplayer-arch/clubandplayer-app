@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 320" role="img" aria-labelledby="title desc">
+  <title id="title">Club &amp; Player</title>
+  <desc id="desc">Logo collegato con lettere C, P e &amp; in cerchi gialli con bordo blu.</desc>
+  <defs>
+    <style>
+      .accent { fill: #f5af2b; }
+      .outline { stroke: #00527a; }
+      .glyph { fill: #00527a; font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif; font-weight: 800; }
+    </style>
+  </defs>
+
+  <path class="outline" d="M110 110 L250 110 M110 110 L180 210 M250 110 L180 210" stroke-width="26" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+  <path d="M110 110 L250 110 M110 110 L180 210 M250 110 L180 210" stroke="#f5af2b" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+
+  <circle cx="110" cy="110" r="72" class="accent outline" stroke-width="26" />
+  <circle cx="110" cy="110" r="72" fill="none" stroke="#f5af2b" stroke-width="16" />
+  <text x="110" y="133" font-size="96" text-anchor="middle" class="glyph">C</text>
+
+  <circle cx="250" cy="110" r="72" class="accent outline" stroke-width="26" />
+  <circle cx="250" cy="110" r="72" fill="none" stroke="#f5af2b" stroke-width="16" />
+  <text x="250" y="133" font-size="96" text-anchor="middle" class="glyph">P</text>
+
+  <circle cx="180" cy="210" r="58" class="accent outline" stroke-width="26" />
+  <circle cx="180" cy="210" r="58" fill="none" stroke="#f5af2b" stroke-width="16" />
+  <text x="180" y="232" font-size="72" text-anchor="middle" class="glyph">&amp;</text>
+</svg>
