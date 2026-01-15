@@ -1,1 +1,1 @@
-export { default } from '../players/layout';
+export { default } from '@/components/shell/AppPageLayout';

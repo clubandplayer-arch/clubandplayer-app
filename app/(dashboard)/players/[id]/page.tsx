@@ -385,7 +385,7 @@ export default function PlayerPublicProfilePage() {
   }, [headerCountry.iso2, headerCountry.label, profileLocationBase]);
 
   return (
-    <main className="mx-auto max-w-5xl space-y-6 px-4 py-6">
+    <main className="mx-auto min-w-0 max-w-5xl space-y-6 px-4 py-6">
       {loading && <p>Caricamento…</p>}
       {!loading && !!msg && <p style={{ color: '#b91c1c' }}>{msg}</p>}
       {!loading && !msg && profile && (
