@@ -317,6 +317,14 @@ export default function PlayerPublicProfilePage() {
     return parts.join(' · ');
   }, [profile]);
 
+  const profileLocationBase = useMemo(() => {
+    if (!profile) return '';
+    const parts = [profile.city, profile.province, profile.region]
+      .map((part) => (part ?? '').trim())
+      .filter(Boolean);
+    return parts.join(' · ');
+  }, [profile]);
+
   const headerDisplayName = useMemo(() => {
     if (!profile) return 'Player';
     return buildPlayerDisplayName(profile.full_name, profile.display_name);
@@ -360,7 +368,7 @@ export default function PlayerPublicProfilePage() {
   }, [profile?.country]);
 
   const headerLocationContent = useMemo(() => {
-    const rawLocation = profileLocation.trim();
+    const rawLocation = profileLocationBase.trim();
     const countryLabel = headerCountry.label || (headerCountry.iso2 ? headerCountry.iso2.toUpperCase() : '');
     if (!rawLocation && !countryLabel) return null;
     return (
@@ -374,7 +382,7 @@ export default function PlayerPublicProfilePage() {
         ) : null}
       </div>
     );
-  }, [headerCountry.iso2, headerCountry.label, profileLocation]);
+  }, [headerCountry.iso2, headerCountry.label, profileLocationBase]);
 
   return (
     <main className="mx-auto max-w-5xl space-y-6 px-4 py-6">
@@ -438,14 +446,14 @@ export default function PlayerPublicProfilePage() {
             preferredRoles={profile.preferred_roles}
           />
 
-          <AthleteMediaHighlightsSection items={media} />
-
           <section className="rounded-2xl border bg-white p-5 shadow-sm">
             <h2 className="heading-h2 text-xl">Bio</h2>
             <p className="mt-2 whitespace-pre-wrap text-sm text-neutral-800">
               {profile.bio && profile.bio.trim().length > 0 ? profile.bio : 'Nessuna bio disponibile.'}
             </p>
           </section>
+
+          <AthleteMediaHighlightsSection items={media} />
 
           <section className="space-y-3 rounded-2xl border bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between gap-3">
