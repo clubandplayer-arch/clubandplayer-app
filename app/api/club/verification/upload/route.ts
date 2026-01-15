@@ -25,6 +25,13 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   if (!clubContext) return clubOnlyError();
 
+  if (process.env.NODE_ENV !== 'production') {
+    console.info('[club-verification][UPLOAD] debug', {
+      authUserId: user.id,
+      detectedClubId: clubContext.clubId,
+    });
+  }
+
   const formData = await req.formData().catch(() => null);
   if (!formData) return jsonError('Payload non valido', 400);
 

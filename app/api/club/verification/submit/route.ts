@@ -22,6 +22,13 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   if (!clubContext) return clubOnlyError();
 
+  if (process.env.NODE_ENV !== 'production') {
+    console.info('[club-verification][SUBMIT] debug', {
+      authUserId: user.id,
+      detectedClubId: clubContext.clubId,
+    });
+  }
+
   const { data: latestRequest, error } = await supabase
     .from('club_verification_requests')
     .select('id, status, certificate_path')
