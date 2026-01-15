@@ -138,26 +138,18 @@ export default function MyApplicationsPage() {
           actions={[{ label: 'Scopri opportunità', href: '/opportunities', variant: 'primary' }]}
         />
       ) : (
-        <div className="overflow-x-auto rounded-xl border bg-white/80">
-          <table className="w-full min-w-[720px] text-sm">
-            <thead className="bg-gray-50 text-left text-gray-600">
-              <tr>
-                <th className="px-3 py-2">Opportunità</th>
-                <th className="px-3 py-2">Club</th>
-                <th className="px-3 py-2">Stato</th>
-                <th className="px-3 py-2">Data</th>
-                <th className="px-3 py-2">Azione</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rowsSorted.map((row) => {
-                const oppTitle = (row.opportunity?.title || '').trim() || 'Annuncio';
-                const clubName = row.opportunity?.club_name || 'Club';
-                const created = row.created_at ? new Date(row.created_at).toLocaleString('it-IT') : '—';
+        <>
+          <div className="space-y-3 md:hidden">
+            {rowsSorted.map((row) => {
+              const oppTitle = (row.opportunity?.title || '').trim() || 'Annuncio';
+              const clubName = row.opportunity?.club_name || 'Club';
+              const created = row.created_at ? new Date(row.created_at).toLocaleString('it-IT') : '—';
 
-                return (
-                  <tr key={row.id} className="border-t">
-                    <td className="px-3 py-3 align-top">
+              return (
+                <div key={row.id} className="rounded-xl border bg-white p-4 shadow-sm">
+                  <div className="space-y-2">
+                    <div className="text-xs uppercase tracking-wide text-gray-500">Opportunità</div>
+                    <div className="text-sm font-semibold text-gray-900">
                       {row.opportunity_id ? (
                         <Link href={`/opportunities/${row.opportunity_id}`} className="text-blue-700 hover:underline">
                           {oppTitle}
@@ -165,32 +157,97 @@ export default function MyApplicationsPage() {
                       ) : (
                         oppTitle
                       )}
-                    </td>
-                    <td className="px-3 py-3 align-top text-gray-800">{clubName}</td>
-                    <td className="px-3 py-3 align-top">
+                    </div>
+                  </div>
+
+                  <div className="mt-3 space-y-2 text-sm text-gray-700">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-gray-500">Club</span>
+                      <span className="font-medium text-gray-900">{clubName}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-gray-500">Stato</span>
                       <span className={`rounded-full px-2 py-1 text-xs font-semibold ${statusBadgeClass(row.status)}`}>
                         {statusLabel(row.status)}
                       </span>
-                    </td>
-                    <td className="px-3 py-3 align-top text-gray-700">{created}</td>
-                    <td className="px-3 py-3 align-top">
-                      {row.opportunity_id ? (
-                        <Link
-                          href={`/opportunities/${row.opportunity_id}`}
-                          className="rounded-md border px-3 py-1 text-sm text-blue-700 hover:bg-blue-50"
-                        >
-                          Dettagli annuncio
-                        </Link>
-                      ) : (
-                        <span className="text-sm text-gray-500">—</span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-gray-500">Data</span>
+                      <span className="font-medium text-gray-900">{created}</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    {row.opportunity_id ? (
+                      <Link
+                        href={`/opportunities/${row.opportunity_id}`}
+                        className="inline-flex w-full items-center justify-center rounded-md border px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50"
+                      >
+                        Dettagli annuncio
+                      </Link>
+                    ) : (
+                      <span className="text-sm text-gray-500">—</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="hidden overflow-x-auto rounded-xl border bg-white/80 md:block">
+            <table className="w-full min-w-[720px] text-sm">
+              <thead className="bg-gray-50 text-left text-gray-600">
+                <tr>
+                  <th className="px-3 py-2">Opportunità</th>
+                  <th className="px-3 py-2">Club</th>
+                  <th className="px-3 py-2">Stato</th>
+                  <th className="px-3 py-2">Data</th>
+                  <th className="px-3 py-2">Azione</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rowsSorted.map((row) => {
+                  const oppTitle = (row.opportunity?.title || '').trim() || 'Annuncio';
+                  const clubName = row.opportunity?.club_name || 'Club';
+                  const created = row.created_at ? new Date(row.created_at).toLocaleString('it-IT') : '—';
+
+                  return (
+                    <tr key={row.id} className="border-t">
+                      <td className="px-3 py-3 align-top">
+                        {row.opportunity_id ? (
+                          <Link href={`/opportunities/${row.opportunity_id}`} className="text-blue-700 hover:underline">
+                            {oppTitle}
+                          </Link>
+                        ) : (
+                          oppTitle
+                        )}
+                      </td>
+                      <td className="px-3 py-3 align-top text-gray-800">{clubName}</td>
+                      <td className="px-3 py-3 align-top">
+                        <span className={`rounded-full px-2 py-1 text-xs font-semibold ${statusBadgeClass(row.status)}`}>
+                          {statusLabel(row.status)}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 align-top text-gray-700">{created}</td>
+                      <td className="px-3 py-3 align-top">
+                        {row.opportunity_id ? (
+                          <Link
+                            href={`/opportunities/${row.opportunity_id}`}
+                            className="rounded-md border px-3 py-1 text-sm text-blue-700 hover:bg-blue-50"
+                          >
+                            Dettagli annuncio
+                          </Link>
+                        ) : (
+                          <span className="text-sm text-gray-500">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </main>
   );
