@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import ProfileHeader from '@/components/profiles/ProfileHeader';
 import { CountryFlag } from '@/components/ui/CountryFlag';
 import ClubOpenOpportunitiesWidget from '@/components/clubs/ClubOpenOpportunitiesWidget';
+import PublicClubRosterSection from '@/components/clubs/PublicClubRosterSection';
 import PublicAuthorFeed from '@/components/feed/PublicAuthorFeed';
 import { buildClubDisplayName } from '@/lib/displayName';
 import { normalizeSport } from '@/lib/opps/constants';
@@ -210,6 +211,8 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
         clubId={clubProfileId}
         clubName={displayName}
       />
+
+      <PublicClubRosterSection clubId={clubProfileId} />
 
       <section className="space-y-3 rounded-2xl border bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between gap-3">
