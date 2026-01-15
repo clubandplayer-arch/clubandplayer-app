@@ -161,7 +161,7 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
   );
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 p-4 md:p-6">
+    <div className="mx-auto min-w-0 max-w-5xl space-y-6 p-4 md:p-6">
       <ProfileHeader
         profileId={profile.id}
         displayName={displayName}
