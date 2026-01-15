@@ -200,33 +200,41 @@ export default function ClubApplicationsPage() {
           actions={[{ label: 'Vai alle tue opportunità', href: '/opportunities', variant: 'primary' }]}
         />
       ) : (
-        <div className="overflow-x-auto rounded-xl border bg-white/80">
-          <table className="w-full min-w-[720px] text-sm">
-            <thead className="bg-gray-50 text-left text-gray-600">
-              <tr>
-                <th className="px-3 py-2">Candidato</th>
-                <th className="px-3 py-2">Opportunità</th>
-                <th className="px-3 py-2">Stato</th>
-                <th className="px-3 py-2">Data</th>
-                <th className="px-3 py-2">Azioni</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => {
-                const athleteProfileId = row.athlete?.id ?? null;
-                const name =
-                  row.athlete?.full_name?.trim() ||
-                  row.athlete?.display_name?.trim() ||
-                  'Senza nome';
-                const headline = [row.athlete?.role, row.athlete?.sport].filter(Boolean).join(' · ');
-                const oppTitle = (row.opportunity?.title || '').trim() || row.opportunity_id || 'Annuncio';
-                const created = row.created_at ? new Date(row.created_at).toLocaleString('it-IT') : '—';
-                const canUpdate = canAct(row.status);
+        <>
+          <div className="space-y-4 md:hidden">
+            {rows.map((row) => {
+              const athleteProfileId = row.athlete?.id ?? null;
+              const name =
+                row.athlete?.full_name?.trim() ||
+                row.athlete?.display_name?.trim() ||
+                'Senza nome';
+              const headline = [row.athlete?.role, row.athlete?.sport].filter(Boolean).join(' · ');
+              const oppTitle = (row.opportunity?.title || '').trim() || row.opportunity_id || 'Annuncio';
+              const created = row.created_at ? new Date(row.created_at).toLocaleString('it-IT') : '—';
+              const canUpdate = canAct(row.status);
+              const detailsHref = row.opportunity_id
+                ? `/opportunities/${row.opportunity_id}`
+                : athleteProfileId
+                  ? `/players/${athleteProfileId}`
+                  : null;
 
-                return (
-                  <tr key={row.id} className="border-t">
-                    <td className="px-3 py-3 align-top">
-                      <div className="font-semibold text-gray-900">
+              return (
+                <article key={row.id} className="rounded-xl border bg-white p-4 shadow-sm">
+                  <div className="text-xs font-semibold text-gray-500">OPPORTUNITÀ</div>
+                  <div className="mt-1 text-lg font-semibold text-gray-900">
+                    {row.opportunity_id ? (
+                      <Link href={`/opportunities/${row.opportunity_id}`} className="text-blue-700 hover:underline">
+                        {oppTitle}
+                      </Link>
+                    ) : (
+                      oppTitle
+                    )}
+                  </div>
+
+                  <div className="mt-3 space-y-3">
+                    <div>
+                      <div className="text-xs font-semibold text-gray-500">CANDIDATO</div>
+                      <div className="mt-1 font-medium text-gray-900">
                         {athleteProfileId ? (
                           <Link href={`/players/${athleteProfileId}`} className="text-blue-700 hover:underline">
                             {name}
@@ -235,47 +243,137 @@ export default function ClubApplicationsPage() {
                           name
                         )}
                       </div>
-                      {headline ? <div className="text-xs text-gray-600">{headline}</div> : null}
-                    </td>
-                    <td className="px-3 py-3 align-top">
-                      {row.opportunity_id ? (
-                        <Link href={`/opportunities/${row.opportunity_id}`} className="text-blue-700 hover:underline">
-                          {oppTitle}
-                        </Link>
-                      ) : (
-                        oppTitle
-                      )}
-                    </td>
-                    <td className="px-3 py-3 align-top">
-                      <span className={`rounded-full px-2 py-1 text-xs font-semibold ${statusBadgeClass(row.status)}`}>
-                        {statusLabel(row.status)}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 align-top text-gray-700">{created}</td>
-                    <td className="px-3 py-3 align-top">
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          disabled={!canUpdate}
-                          onClick={() => updateStatus(row.id, 'accepted')}
-                          className="rounded-md border border-green-200 px-3 py-1 text-sm font-semibold text-green-700 hover:bg-green-50 disabled:opacity-60"
+                      {headline ? <div className="text-sm text-gray-600">{headline}</div> : null}
+                    </div>
+
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <div className="text-xs font-semibold text-gray-500">STATO</div>
+                        <span
+                          className={`mt-1 inline-flex rounded-full px-2 py-1 text-xs font-semibold ${statusBadgeClass(row.status)}`}
                         >
-                          Accetta
-                        </button>
-                        <button
-                          disabled={!canUpdate}
-                          onClick={() => updateStatus(row.id, 'rejected')}
-                          className="rounded-md border border-red-200 px-3 py-1 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
-                        >
-                          Rifiuta
-                        </button>
+                          {statusLabel(row.status)}
+                        </span>
                       </div>
-                    </td>
+                      <div className="text-right">
+                        <div className="text-xs font-semibold text-gray-500">DATA</div>
+                        <div className="text-sm text-gray-700">{created}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex flex-col gap-2">
+                    {detailsHref ? (
+                      <Link
+                        href={detailsHref}
+                        className="w-full rounded-md border border-gray-200 px-3 py-2 text-center text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                      >
+                        Dettagli
+                      </Link>
+                    ) : null}
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        disabled={!canUpdate}
+                        onClick={() => updateStatus(row.id, 'accepted')}
+                        className="flex-1 rounded-md border border-green-200 px-3 py-2 text-sm font-semibold text-green-700 hover:bg-green-50 disabled:opacity-60"
+                      >
+                        Accetta
+                      </button>
+                      <button
+                        disabled={!canUpdate}
+                        onClick={() => updateStatus(row.id, 'rejected')}
+                        className="flex-1 rounded-md border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
+                      >
+                        Rifiuta
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+
+          <div className="hidden md:block">
+            <div className="overflow-x-auto rounded-xl border bg-white/80">
+              <table className="w-full min-w-[720px] text-sm">
+                <thead className="bg-gray-50 text-left text-gray-600">
+                  <tr>
+                    <th className="px-3 py-2">Candidato</th>
+                    <th className="px-3 py-2">Opportunità</th>
+                    <th className="px-3 py-2">Stato</th>
+                    <th className="px-3 py-2">Data</th>
+                    <th className="px-3 py-2">Azioni</th>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                </thead>
+                <tbody>
+                  {rows.map((row) => {
+                    const athleteProfileId = row.athlete?.id ?? null;
+                    const name =
+                      row.athlete?.full_name?.trim() ||
+                      row.athlete?.display_name?.trim() ||
+                      'Senza nome';
+                    const headline = [row.athlete?.role, row.athlete?.sport].filter(Boolean).join(' · ');
+                    const oppTitle = (row.opportunity?.title || '').trim() || row.opportunity_id || 'Annuncio';
+                    const created = row.created_at ? new Date(row.created_at).toLocaleString('it-IT') : '—';
+                    const canUpdate = canAct(row.status);
+
+                    return (
+                      <tr key={row.id} className="border-t">
+                        <td className="px-3 py-3 align-top">
+                          <div className="font-semibold text-gray-900">
+                            {athleteProfileId ? (
+                              <Link href={`/players/${athleteProfileId}`} className="text-blue-700 hover:underline">
+                                {name}
+                              </Link>
+                            ) : (
+                              name
+                            )}
+                          </div>
+                          {headline ? <div className="text-xs text-gray-600">{headline}</div> : null}
+                        </td>
+                        <td className="px-3 py-3 align-top">
+                          {row.opportunity_id ? (
+                            <Link href={`/opportunities/${row.opportunity_id}`} className="text-blue-700 hover:underline">
+                              {oppTitle}
+                            </Link>
+                          ) : (
+                            oppTitle
+                          )}
+                        </td>
+                        <td className="px-3 py-3 align-top">
+                          <span
+                            className={`rounded-full px-2 py-1 text-xs font-semibold ${statusBadgeClass(row.status)}`}
+                          >
+                            {statusLabel(row.status)}
+                          </span>
+                        </td>
+                        <td className="px-3 py-3 align-top text-gray-700">{created}</td>
+                        <td className="px-3 py-3 align-top">
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              disabled={!canUpdate}
+                              onClick={() => updateStatus(row.id, 'accepted')}
+                              className="rounded-md border border-green-200 px-3 py-1 text-sm font-semibold text-green-700 hover:bg-green-50 disabled:opacity-60"
+                            >
+                              Accetta
+                            </button>
+                            <button
+                              disabled={!canUpdate}
+                              onClick={() => updateStatus(row.id, 'rejected')}
+                              className="rounded-md border border-red-200 px-3 py-1 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
+                            >
+                              Rifiuta
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
       )}
     </main>
   );
