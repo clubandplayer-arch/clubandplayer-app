@@ -35,6 +35,7 @@ type ClubProfileRow = {
   status: string | null;
   account_type: string | null;
   type: string | null;
+  is_verified?: boolean | null;
 };
 
 type GenericStringError = { message: string };
@@ -104,6 +105,20 @@ async function loadClubProfile(id: string): Promise<ClubProfileRow | null> {
   };
 }
 
+async function loadClubVerificationStatus(clubId: string) {
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase
+    .from('club_verification_requests_view')
+    .select('is_verified')
+    .eq('club_id', clubId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) return null;
+  return data?.is_verified ?? null;
+}
+
 function locationLabel(row: ClubProfileRow): string {
   const state = resolveStateName(row.country || null, row.region || row.province || '');
   const countryLabel = getCountryName(row.country || undefined) ?? (row.country || '');
@@ -120,6 +135,7 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
   const { data: auth } = await supabase.auth.getUser();
   const meId = auth?.user?.id ?? null;
   const isMe = !!meId && (meId === profile.id || meId === profile.user_id);
+  const isVerified = await loadClubVerificationStatus(profile.id);
 
   const aboutText = profile.bio || 'Nessuna descrizione disponibile.';
   const clubProfileId = profile.id;
@@ -172,6 +188,7 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
         locationContent={locationContent}
         showMessageButton
         showFollowButton={!isMe}
+        isVerified={isVerified}
       />
 
       <section className="grid grid-cols-1 gap-4">

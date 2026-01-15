@@ -7,6 +7,7 @@ import FollowButton from '@/components/common/FollowButton';
 import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentProfileContext';
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
 import { CountryFlag } from '@/components/ui/CountryFlag';
+import VerifiedBadge from '@/components/ui/VerifiedBadge';
 
 type Suggestion = {
   id: string;
@@ -20,6 +21,7 @@ type Suggestion = {
   sport?: string | null;
   role?: string | null;
   avatar_url?: string | null;
+  is_verified?: boolean | null;
 };
 
 function targetHref(item: Suggestion) {
@@ -146,6 +148,7 @@ export default function WhoToFollow() {
           sport: item.sport ?? null,
           role: item.role ?? null,
           avatar_url: item.avatar_url ?? null,
+          is_verified: item.is_verified ?? null,
         })) as Suggestion[];
         if (cancelled) return;
         setRole((data?.role as ProfileRole) || contextRole || 'guest');
@@ -228,7 +231,12 @@ export default function WhoToFollow() {
                     className="h-10 w-10 rounded-full object-cover ring-1 ring-zinc-200 dark:ring-zinc-800"
                   />
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium">{name}</div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="truncate text-sm font-medium">{name}</span>
+                      {it.kind === 'club' && it.is_verified ? (
+                        <VerifiedBadge className="shrink-0" label="Verificato" />
+                      ) : null}
+                    </div>
                     <div className="truncate text-xs text-zinc-500">{detailLine(it, role) || '—'}</div>
                   </div>
                 </div>

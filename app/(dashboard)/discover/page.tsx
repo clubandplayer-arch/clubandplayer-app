@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import FollowButton from '@/components/common/FollowButton';
 import { CountryFlag } from '@/components/ui/CountryFlag';
+import VerifiedBadge from '@/components/ui/VerifiedBadge';
 import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentProfileContext';
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
 
@@ -21,6 +22,7 @@ type Suggestion = {
   sport?: string | null;
   role?: string | null;
   avatar_url?: string | null;
+  is_verified?: boolean | null;
 };
 
 type TabKey = 'club' | 'player';
@@ -130,19 +132,20 @@ export default function DiscoverPage() {
         : Array.isArray(data?.suggestions)
         ? data.suggestions
         : [];
-      const suggestions = rawItems.map((item: any) => ({
-        id: item.id,
-        display_name: item.display_name ?? item.name ?? null,
-        full_name: item.full_name ?? item.name ?? null,
-        kind: item.kind ?? (item.account_type === 'club' ? 'club' : item.account_type ? 'player' : null),
+        const suggestions = rawItems.map((item: any) => ({
+          id: item.id,
+          display_name: item.display_name ?? item.name ?? null,
+          full_name: item.full_name ?? item.name ?? null,
+          kind: item.kind ?? (item.account_type === 'club' ? 'club' : item.account_type ? 'player' : null),
         category: item.category ?? null,
         location: item.location ?? null,
         city: item.city ?? null,
-        country: item.country ?? null,
-        sport: item.sport ?? null,
-        role: item.role ?? null,
-        avatar_url: item.avatar_url ?? null,
-      })) as Suggestion[];
+          country: item.country ?? null,
+          sport: item.sport ?? null,
+          role: item.role ?? null,
+          avatar_url: item.avatar_url ?? null,
+          is_verified: item.is_verified ?? null,
+        })) as Suggestion[];
 
       return { suggestions, role: (data?.role as ProfileRole) || contextRole || 'guest' };
     };
@@ -220,7 +223,12 @@ export default function DiscoverPage() {
                       className="h-11 w-11 rounded-full object-cover ring-1 ring-neutral-200"
                     />
                     <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold text-neutral-900">{name}</div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="truncate text-sm font-semibold text-neutral-900">{name}</span>
+                        {item.kind === 'club' && item.is_verified ? (
+                          <VerifiedBadge className="shrink-0" label="Verificato" />
+                        ) : null}
+                      </div>
                       {detailLine(item, role, activeTab) || <span className="text-xs text-neutral-500">—</span>}
                     </div>
                   </Link>
