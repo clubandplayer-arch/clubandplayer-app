@@ -21,7 +21,7 @@ const FeedHighlights = dynamic(() => import('@/components/feed/FeedHighlights'),
 export default function RightSidebarA() {
   return (
     <aside className="hidden xl:block min-w-0">
-      <div className="sticky top-16 self-start space-y-4">
+      <div className="sticky top-16 self-start space-y-4 max-h-[calc(100vh-4rem)] overflow-auto pr-1">
         <SidebarCard>
           <WhoToFollow />
         </SidebarCard>
