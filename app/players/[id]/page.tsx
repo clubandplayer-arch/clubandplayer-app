@@ -1,19 +1,18 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
-import AthleteExperiencesSection from '@/components/athletes/AthleteExperiencesSection';
 import AthleteMediaHighlightsSection, {
   type AthleteMediaItem,
 } from '@/components/athletes/AthleteMediaHighlightsSection';
 import AthleteOpenToOpportunitiesPanel from '@/components/athletes/AthleteOpenToOpportunitiesPanel';
-import AthleteStatsSection from '@/components/athletes/AthleteStatsSection';
 import PublicAuthorFeed from '@/components/feed/PublicAuthorFeed';
 import ProfileHeader from '@/components/profiles/ProfileHeader';
 import { CountryFlag } from '@/components/ui/CountryFlag';
-import { buildPlayerDisplayName } from '@/lib/displayName';
+import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
 import { normalizeSport } from '@/lib/opps/constants';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
@@ -61,23 +60,36 @@ type ApplicationRow = {
   };
 };
 
-type AthleteExperienceRow = {
-  id: string;
-  club_name: string | null;
-  sport: string | null;
-  role: string | null;
-  category: string | null;
-  start_year: number | null;
-  end_year: number | null;
-  is_current: boolean | null;
-  description: string | null;
+type ClubMembershipRow = {
+  club_profile_id: string | null;
+  club_sport: string | null;
+  created_at: string | null;
+  status: string | null;
 };
 
-function isAthleteExperienceRows(data: unknown): data is AthleteExperienceRow[] {
-  return (
-    Array.isArray(data) &&
-    data.every((item) => item && typeof item === 'object' && 'id' in item && 'club_name' in item)
-  );
+type ClubProfileSummary = {
+  id: string;
+  full_name: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+  sport: string | null;
+  club_league_category: string | null;
+  country: string | null;
+  account_type: string | null;
+  type: string | null;
+  status: string | null;
+};
+
+function isClubProfileSummary(row: unknown): row is ClubProfileSummary {
+  return !!row && typeof row === 'object' && 'id' in row;
+}
+
+function getInitials(name: string) {
+  const trimmed = (name || '').trim();
+  if (!trimmed) return 'CL';
+  const parts = trimmed.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 }
 
 export default function PlayerPublicProfilePage() {
@@ -87,8 +99,8 @@ export default function PlayerPublicProfilePage() {
 
   const [meId, setMeId] = useState<string | null>(null);
   const [profile, setProfile] = useState<AthleteProfileRow | null>(null);
+  const [clubOfBelonging, setClubOfBelonging] = useState<ClubProfileSummary | null>(null);
   const [apps, setApps] = useState<ApplicationRow[]>([]);
-  const [experiences, setExperiences] = useState<AthleteExperienceRow[]>([]);
   const [media, setMedia] = useState<AthleteMediaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState<string>('');
@@ -172,43 +184,90 @@ export default function PlayerPublicProfilePage() {
 
       setProfile(normalizedProfile);
 
-      const [expRes, mediaRes] = await Promise.all([
-        supabase
-          .from('athlete_experiences')
-          .select(
-            [
-              'id',
-              'club_name',
-              'sport',
-              'role',
-              'category',
-              'start_year',
-              'end_year',
-              'is_current',
-              'description',
-            ].join(','),
-          )
-          .eq('profile_id', normalizedProfile.id)
-          .order('is_current', { ascending: false })
-          .order('start_year', { ascending: false })
-          .order('end_year', { ascending: false }),
-        supabase
-          .from('posts')
-          .select('id, media_url, media_type, created_at')
-          .not('media_url', 'is', null)
-          .in(
-            'author_id',
-            normalizedProfile.user_id && normalizedProfile.user_id !== normalizedProfile.id
-              ? [normalizedProfile.id, normalizedProfile.user_id]
-              : [normalizedProfile.id],
-          )
-          .order('created_at', { ascending: false })
-          .limit(6),
-      ]);
+      try {
+        const { data: rosterRows, error: rosterError } = await supabase
+          .from('club_roster_members')
+          .select('club_profile_id, club_sport, created_at, status')
+          .eq('player_profile_id', normalizedProfile.id)
+          .eq('status', 'active');
 
-      const experienceRows = isAthleteExperienceRows(expRes.data) ? expRes.data : [];
-      setExperiences(experienceRows);
-      setMedia((mediaRes.data as AthleteMediaItem[])?.slice(0, 3) ?? []);
+        if (rosterError) {
+          setClubOfBelonging(null);
+        } else {
+          const rows = (rosterRows ?? []) as ClubMembershipRow[];
+          if (rows.length === 0) {
+            setClubOfBelonging(null);
+          } else {
+            const normalizedPlayerSport =
+              normalizeSport(normalizedProfile.sport ?? null) ?? normalizedProfile.sport ?? null;
+            const matchingSport = normalizedPlayerSport
+              ? rows.filter((row) => {
+                  const rowSport = normalizeSport(row.club_sport ?? null) ?? row.club_sport ?? null;
+                  return rowSport === normalizedPlayerSport;
+                })
+              : [];
+            const candidates = matchingSport.length > 0 ? matchingSport : rows;
+            const sorted = [...candidates].sort((a, b) => {
+              const aDate = a.created_at ? new Date(a.created_at).getTime() : 0;
+              const bDate = b.created_at ? new Date(b.created_at).getTime() : 0;
+              return bDate - aDate;
+            });
+            const chosenClubId = sorted[0]?.club_profile_id ?? null;
+
+            if (chosenClubId) {
+              const { data: clubProfile, error: clubError } = await supabase
+                .from('profiles')
+                .select(
+                  [
+                    'id',
+                    'full_name',
+                    'display_name',
+                    'avatar_url',
+                    'sport',
+                    'club_league_category',
+                    'country',
+                    'account_type',
+                    'type',
+                    'status',
+                  ].join(','),
+                )
+                .eq('id', chosenClubId)
+                .eq('status', 'active')
+                .maybeSingle();
+
+              if (clubError || !isClubProfileSummary(clubProfile)) {
+                setClubOfBelonging(null);
+              } else {
+                const accountType = String(clubProfile.account_type ?? clubProfile.type ?? '').toLowerCase();
+                if (accountType !== 'club') {
+                  setClubOfBelonging(null);
+                } else {
+                  setClubOfBelonging(clubProfile);
+                }
+              }
+            } else {
+              setClubOfBelonging(null);
+            }
+          }
+        }
+      } catch {
+        setClubOfBelonging(null);
+      }
+
+      const { data: mediaRes } = await supabase
+        .from('posts')
+        .select('id, media_url, media_type, created_at')
+        .not('media_url', 'is', null)
+        .in(
+          'author_id',
+          normalizedProfile.user_id && normalizedProfile.user_id !== normalizedProfile.id
+            ? [normalizedProfile.id, normalizedProfile.user_id]
+            : [normalizedProfile.id],
+        )
+        .order('created_at', { ascending: false })
+        .limit(6);
+
+      setMedia((mediaRes as AthleteMediaItem[])?.slice(0, 3) ?? []);
 
       if (currentUserId && (currentUserId === normalizedProfile.user_id || currentUserId === normalizedProfile.id)) {
         const { data: appsData } = await supabase
@@ -258,14 +317,13 @@ export default function PlayerPublicProfilePage() {
     return parts.join(' · ');
   }, [profile]);
 
-  const nationality = useMemo(() => {
-    const raw = (profile?.country ?? '').trim();
-    if (!raw) return { iso2: null, label: '' };
-    const match = raw.match(/^([A-Za-z]{2})(?:\s+(.+))?$/);
-    const iso2 = match ? match[1].trim().toUpperCase() : null;
-    const label = (match ? (match[2]?.trim() || iso2 || '') : raw) || '';
-    return { iso2, label };
-  }, [profile?.country]);
+  const profileLocationBase = useMemo(() => {
+    if (!profile) return '';
+    const parts = [profile.city, profile.province, profile.region]
+      .map((part) => (part ?? '').trim())
+      .filter(Boolean);
+    return parts.join(' · ');
+  }, [profile]);
 
   const headerDisplayName = useMemo(() => {
     if (!profile) return 'Player';
@@ -279,10 +337,52 @@ export default function PlayerPublicProfilePage() {
     return parts.join(' · ') || '—';
   }, [profile]);
 
-  const sportLabel = useMemo(
-    () => normalizeSport(profile?.sport ?? null) ?? profile?.sport ?? null,
-    [profile?.sport],
-  );
+  const clubDisplayName = useMemo(() => {
+    if (!clubOfBelonging) return null;
+    return buildClubDisplayName(clubOfBelonging.full_name, clubOfBelonging.display_name, 'Club');
+  }, [clubOfBelonging]);
+
+  const clubSubtitle = useMemo(() => {
+    if (!clubOfBelonging) return null;
+    const normalizedClubSport =
+      normalizeSport(clubOfBelonging.sport ?? null) ?? clubOfBelonging.sport ?? null;
+    return [clubOfBelonging.club_league_category, normalizedClubSport].filter(Boolean).join(' · ') || null;
+  }, [clubOfBelonging]);
+
+  const clubCountry = useMemo(() => {
+    if (!clubOfBelonging?.country) return { iso2: null, label: '' };
+    const raw = clubOfBelonging.country.trim();
+    const match = raw.match(/^([A-Za-z]{2})(?:\s+(.+))?$/);
+    const iso2 = match ? match[1].trim().toUpperCase() : null;
+    const label = (match ? (match[2]?.trim() || iso2 || '') : raw) || '';
+    return { iso2, label };
+  }, [clubOfBelonging?.country]);
+
+  const headerCountry = useMemo(() => {
+    const raw = (profile?.country ?? '').trim();
+    if (!raw) return { iso2: null, label: '' };
+    const match = raw.match(/^([A-Za-z]{2})(?:\s+(.+))?$/);
+    const iso2 = match ? match[1].trim().toUpperCase() : raw.toUpperCase();
+    const label = (match ? (match[2]?.trim() || iso2 || '') : raw) || '';
+    return { iso2, label };
+  }, [profile?.country]);
+
+  const headerLocationContent = useMemo(() => {
+    const rawLocation = profileLocationBase.trim();
+    const countryLabel = headerCountry.label || (headerCountry.iso2 ? headerCountry.iso2.toUpperCase() : '');
+    if (!rawLocation && !countryLabel) return null;
+    return (
+      <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-500">
+        {rawLocation ? <span>{rawLocation}</span> : null}
+        {countryLabel ? (
+          <span className="inline-flex items-center gap-2">
+            <CountryFlag iso2={headerCountry.iso2} />
+            <span>{countryLabel}</span>
+          </span>
+        ) : null}
+      </div>
+    );
+  }, [headerCountry.iso2, headerCountry.label, profileLocationBase]);
 
   return (
     <main className="mx-auto max-w-5xl space-y-6 px-4 py-6">
@@ -297,26 +397,54 @@ export default function PlayerPublicProfilePage() {
             avatarUrl={profile.avatar_url}
             subtitle={headerSubtitle}
             locationLabel={profileLocation}
+            locationContent={headerLocationContent}
             showMessageButton
             showFollowButton={!isMe}
             messageLabel="Messaggia"
           />
+
+          {clubOfBelonging && clubDisplayName ? (
+            <section className="rounded-2xl border bg-white p-4 shadow-sm">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Club di appartenenza</h2>
+              <Link
+                href={`/clubs/${clubOfBelonging.id}`}
+                className="mt-3 flex items-center gap-3 rounded-xl border border-neutral-200 bg-white/80 p-3 transition hover:border-pink-200 hover:bg-pink-50/40"
+              >
+                {clubOfBelonging.avatar_url ? (
+                  <Image
+                    src={clubOfBelonging.avatar_url}
+                    alt={clubDisplayName}
+                    width={44}
+                    height={44}
+                    className="h-11 w-11 rounded-full object-cover"
+                    referrerPolicy="no-referrer"
+                    unoptimized
+                  />
+                ) : (
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-pink-100 text-xs font-semibold text-pink-700">
+                    {getInitials(clubDisplayName)}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="truncate text-sm font-semibold text-neutral-900">{clubDisplayName}</p>
+                    {clubCountry.iso2 ? <CountryFlag iso2={clubCountry.iso2} /> : null}
+                  </div>
+                  {clubSubtitle ? (
+                    <p className="text-xs text-neutral-600">{clubSubtitle}</p>
+                  ) : clubCountry.label ? (
+                    <p className="text-xs text-neutral-600">{clubCountry.label}</p>
+                  ) : null}
+                </div>
+              </Link>
+            </section>
+          ) : null}
 
           <AthleteOpenToOpportunitiesPanel
             openTo={profile.open_to_opportunities}
             preferredLocations={profile.preferred_locations}
             preferredRoles={profile.preferred_roles}
           />
-
-          <AthleteExperiencesSection experiences={experiences} />
-
-          <AthleteStatsSection
-            matches={profile.matches_played}
-            goals={profile.goals_scored}
-            assists={profile.assists}
-          />
-
-          <AthleteMediaHighlightsSection items={media} />
 
           <section className="rounded-2xl border bg-white p-5 shadow-sm">
             <h2 className="heading-h2 text-xl">Bio</h2>
@@ -325,25 +453,7 @@ export default function PlayerPublicProfilePage() {
             </p>
           </section>
 
-          <section className="rounded-2xl border bg-white p-5 shadow-sm">
-            <h2 className="heading-h2 text-xl">Panoramica</h2>
-            <ul className="mt-3 space-y-1 text-sm text-neutral-800">
-              <li>
-                <b>Sport:</b> {sportLabel ?? '—'}
-              </li>
-              <li>
-                <b>Ruolo:</b> {profile.role ?? '—'}
-              </li>
-              <li>
-                <b>Città:</b> {profileLocation || '—'}
-              </li>
-              <li className="flex items-center gap-2">
-                <b>Nazionalità:</b>
-                <CountryFlag iso2={nationality.iso2} />
-                <span>{nationality.label || '—'}</span>
-              </li>
-            </ul>
-          </section>
+          <AthleteMediaHighlightsSection items={media} />
 
           <section className="space-y-3 rounded-2xl border bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between gap-3">
