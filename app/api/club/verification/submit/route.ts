@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
+import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 import { clubOnlyError, getClubContext } from '../utils';
 
 export const runtime = 'nodejs';
@@ -22,14 +23,9 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   if (!clubContext) return clubOnlyError();
 
-  if (process.env.NODE_ENV !== 'production') {
-    console.info('[club-verification][SUBMIT] debug', {
-      authUserId: user.id,
-      detectedClubId: clubContext.clubId,
-    });
-  }
+  const admin = getSupabaseAdminClient();
 
-  const { data: latestRequest, error } = await supabase
+  const { data: latestRequest, error } = await admin
     .from('club_verification_requests')
     .select('id, status, certificate_path')
     .eq('club_id', clubContext.clubId)
@@ -44,7 +40,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   if (status !== 'draft') return jsonError('La richiesta non è in bozza', 409);
   if (!latestRequest.certificate_path) return jsonError('Carica il certificato PDF prima di inviare', 400);
 
-  const { data: updated, error: updateError } = await supabase
+  const { data: updated, error: updateError } = await admin
     .from('club_verification_requests')
     .update({ status: 'submitted', submitted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
     .eq('id', latestRequest.id)

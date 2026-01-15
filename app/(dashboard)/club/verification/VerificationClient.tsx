@@ -95,14 +95,14 @@ export default function VerificationClient({ isClub, debug }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/club/verification', { credentials: 'include' });
+      const res = await fetch('/api/club/verification/status', { credentials: 'include' });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
         throw new Error(json?.error || 'Impossibile caricare la richiesta.');
       }
       setRequest(json?.request ?? null);
     } catch (err: any) {
-      setError(err?.message || 'Errore nel caricamento della richiesta.');
+      setError(err?.message || 'Caricamento non riuscito. Verifica che il file sia un PDF (max 10MB).');
     } finally {
       setLoading(false);
     }
@@ -144,14 +144,14 @@ export default function VerificationClient({ isClub, debug }: Props) {
 
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(json?.error || 'Errore durante il caricamento del certificato.');
+        throw new Error(json?.error || 'Caricamento non riuscito. Verifica che il file sia un PDF (max 10MB).');
       }
 
       setRequest(json?.request ?? null);
       setSelectedFileName(file.name);
       setSuccess('Certificato caricato correttamente.');
     } catch (err: any) {
-      setError(err?.message || 'Errore durante il caricamento.');
+      setError(err?.message || 'Caricamento non riuscito. Verifica che il file sia un PDF (max 10MB).');
     } finally {
       setUploading(false);
       event.target.value = '';

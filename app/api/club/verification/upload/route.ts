@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
+import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 import { clubOnlyError, getClubContext } from '../utils';
 
 export const runtime = 'nodejs';
@@ -25,12 +26,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   if (!clubContext) return clubOnlyError();
 
-  if (process.env.NODE_ENV !== 'production') {
-    console.info('[club-verification][UPLOAD] debug', {
-      authUserId: user.id,
-      detectedClubId: clubContext.clubId,
-    });
-  }
+  const admin = getSupabaseAdminClient();
 
   const formData = await req.formData().catch(() => null);
   if (!formData) return jsonError('Payload non valido', 400);
@@ -41,7 +37,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   if (file.type !== 'application/pdf') return jsonError('Sono ammessi solo file PDF', 400);
   if (file.size > MAX_FILE_SIZE) return jsonError('File troppo grande (max 10MB)', 400);
 
-  const { data: latestRequest, error: latestError } = await supabase
+  const { data: latestRequest, error: latestError } = await admin
     .from('club_verification_requests')
     .select('id, status')
     .eq('club_id', clubContext.clubId)
@@ -55,7 +51,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   const latestStatus = (latestRequest?.status ?? '').toString();
 
   if (!requestId || latestStatus === 'rejected') {
-    const { data: created, error: createError } = await supabase
+    const { data: created, error: createError } = await admin
       .from('club_verification_requests')
       .insert({ club_id: clubContext.clubId, status: 'draft' })
       .select('id')
@@ -73,13 +69,13 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   const path = `${clubContext.clubId}/${requestId}.pdf`;
 
-  const { error: uploadError } = await supabase.storage
+  const { error: uploadError } = await admin.storage
     .from(BUCKET)
     .upload(path, file, { contentType: 'application/pdf', upsert: true });
 
   if (uploadError) return jsonError(uploadError.message, 400);
 
-  const { data: updated, error: updateError } = await supabase
+  const { data: updated, error: updateError } = await admin
     .from('club_verification_requests')
     .update({ certificate_path: path, updated_at: new Date().toISOString() })
     .eq('id', requestId)
