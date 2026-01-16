@@ -235,7 +235,7 @@ export default function WhoToFollow() {
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="truncate text-sm font-medium">{name}</span>
                       {it.kind === 'club' && it.is_verified ? (
-                        <VerifiedBadge className="shrink-0" label="Verificato" />
+                        <VerifiedBadge className="shrink-0" />
                       ) : null}
                     </div>
                     <div className="truncate text-xs text-zinc-500">{detailLine(it, role) || '—'}</div>

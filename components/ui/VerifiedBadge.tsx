@@ -1,16 +1,40 @@
 type VerifiedBadgeProps = {
   className?: string;
-  label?: string;
+  size?: 'sm' | 'md';
 };
 
-export default function VerifiedBadge({ className = '', label = 'Certified' }: VerifiedBadgeProps) {
+const sizeClasses = {
+  sm: 'h-4 w-4',
+  md: 'h-5 w-5',
+};
+
+export default function VerifiedBadge({ className = '', size = 'md' }: VerifiedBadgeProps) {
   return (
     <span
       title="Profilo verificato"
-      className={`inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800 ${className}`}
+      aria-label="Profilo verificato"
+      className={`inline-flex items-center ${className}`}
     >
-      <span className="h-2 w-2 rounded-full bg-amber-500" aria-hidden="true" />
-      <span>{label}</span>
+      <svg
+        viewBox="0 0 24 24"
+        className={`${sizeClasses[size]} shrink-0`}
+        aria-hidden="true"
+      >
+        <path
+          className="text-amber-500"
+          fill="currentColor"
+          d="M12 2 14.1 3.3 16.6 2.9 17.8 5.2 20.1 6.4 19.7 8.9 21 11.9 19.7 14.1 20.1 16.6 17.8 17.8 16.6 20.1 14.1 19.7 12 21 9.9 19.7 7.4 20.1 6.2 17.8 3.9 16.6 4.3 14.1 3 12 4.3 8.9 3.9 6.4 6.2 5.2 7.4 2.9 9.9 3.3 12 2Z"
+        />
+        <path
+          className="text-white"
+          d="M8.2 12.3 10.7 14.8 15.8 9.7"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+        />
+      </svg>
     </span>
   );
 }

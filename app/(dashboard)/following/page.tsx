@@ -89,7 +89,7 @@ function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, 
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-sm font-semibold text-neutral-900 dark:text-white truncate">{profile.name}</p>
               {type === 'club' && profile.is_verified ? (
-                <VerifiedBadge className="shrink-0" label="Verificato" />
+                <VerifiedBadge className="shrink-0" />
               ) : null}
             </div>
             <p className="text-xs uppercase tracking-wide text-neutral-500 dark:text-neutral-400 truncate">{type === 'club' ? 'Club' : 'Player'}</p>
