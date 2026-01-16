@@ -1,5 +1,3 @@
-import { BadgeCheck } from 'lucide-react';
-
 type VerifiedBadgeProps = {
   className?: string;
   label?: string;
@@ -9,9 +7,9 @@ export default function VerifiedBadge({ className = '', label = 'Verificato' }: 
   return (
     <span
       title="Profilo verificato"
-      className={`inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-700 ring-1 ring-inset ring-blue-200 ${className}`}
+      className={`inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 ${className}`}
     >
-      <BadgeCheck className="h-3 w-3" aria-hidden="true" />
+      <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden="true" />
       <span>{label}</span>
     </span>
   );

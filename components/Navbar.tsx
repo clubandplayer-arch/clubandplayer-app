@@ -8,7 +8,6 @@ import { supabaseBrowser } from '@/lib/supabaseBrowser'
 import NotificationsBell from './NotificationsBell'
 import BrandLogo from '@/components/brand/BrandLogo'
 import { buildProfileDisplayName } from '@/lib/displayName'
-import { BadgeCheck } from 'lucide-react'
 
 type ProfileRow = {
   id: string
@@ -177,11 +176,10 @@ export default function Navbar() {
                     )}
                     {isClub && isVerified ? (
                       <span
-                        className="absolute bottom-0 right-0 inline-flex h-4 w-4 items-center justify-center rounded-full bg-white text-blue-600 shadow ring-1 ring-blue-200"
+                        className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-white"
                         title="Profilo verificato"
-                      >
-                        <BadgeCheck className="h-3 w-3" aria-hidden="true" />
-                      </span>
+                        aria-hidden="true"
+                      />
                     ) : null}
                   </span>
                 </button>
