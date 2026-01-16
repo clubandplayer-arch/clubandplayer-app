@@ -36,7 +36,7 @@ export default function ClubAvatarVerified({
         fallback
       )}
       {isVerified ? (
-        <span className="absolute top-0 right-0 translate-x-1/4 -translate-y-1/4 z-10 rounded-full ring-2 ring-white shadow-sm">
+        <span className="absolute top-1 right-1 z-10 rounded-full ring-2 ring-white shadow-sm">
           <VerifiedBadge size={badgeSize} />
         </span>
       ) : null}

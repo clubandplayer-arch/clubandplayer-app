@@ -3,6 +3,7 @@ import { withAuth } from '@/lib/api/auth';
 import { notAuthorized, successResponse, unknownError } from '@/lib/api/feedFollowStandardWrapper';
 import { getActiveProfile } from '@/lib/api/profile';
 import { buildProfileDisplayName } from '@/lib/displayName';
+import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
 
@@ -38,7 +39,9 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
 
     let clubVerificationMap = new Map<string, boolean>();
     if (clubIds.length) {
-      const { data: verificationRows, error: verificationError } = await supabase
+      const adminClient = getSupabaseAdminClientOrNull();
+      const verificationClient = adminClient ?? supabase;
+      const { data: verificationRows, error: verificationError } = await verificationClient
         .from('club_verification_requests')
         .select('club_id, status, payment_status, verified_until, created_at')
         .in('club_id', clubIds)

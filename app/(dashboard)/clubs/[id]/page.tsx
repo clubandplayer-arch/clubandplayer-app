@@ -12,6 +12,7 @@ import { normalizeSport } from '@/lib/opps/constants';
 import { resolveStateName } from '@/lib/geodata/countryStateCityDataset';
 import { getCountryName } from '@/lib/geo/countries';
 import { getLatestOpenOpportunitiesByClub } from '@/lib/data/opportunities';
+import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 type ClubProfileRow = {
@@ -106,7 +107,8 @@ async function loadClubProfile(id: string): Promise<ClubProfileRow | null> {
 }
 
 async function loadClubVerificationStatus(clubId: string) {
-  const supabase = await getSupabaseServerClient();
+  const adminClient = getSupabaseAdminClientOrNull();
+  const supabase = adminClient ?? (await getSupabaseServerClient());
   const { data, error } = await supabase
     .from('club_verification_requests')
     .select('status, payment_status, verified_until, created_at')
