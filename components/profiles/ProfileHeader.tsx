@@ -5,6 +5,7 @@ import Image from 'next/image';
 
 import FollowButton from '@/components/clubs/FollowButton';
 import { MessageButton } from '@/components/messaging/MessageButton';
+import VerifiedBadge from '@/components/ui/VerifiedBadge';
 
 type AccountType = 'club' | 'athlete' | 'player';
 
@@ -19,6 +20,7 @@ type ProfileHeaderProps = {
   showMessageButton?: boolean;
   showFollowButton?: boolean;
   messageLabel?: string;
+  isVerified?: boolean | null;
 };
 
 function initialsFromName(name: string, accountType: AccountType) {
@@ -43,6 +45,7 @@ export default function ProfileHeader({
   showMessageButton = true,
   showFollowButton = true,
   messageLabel = 'Messaggia',
+  isVerified = null,
 }: ProfileHeaderProps) {
   const name = displayName || (accountType === 'club' ? 'Club' : 'Player');
   const initials = initialsFromName(name, accountType);
@@ -68,6 +71,7 @@ export default function ProfileHeader({
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-2xl font-semibold leading-tight text-neutral-900 md:text-3xl">{name}</h1>
+              {isClub && isVerified ? <VerifiedBadge /> : null}
               <span
                 className={`${
                   isClub

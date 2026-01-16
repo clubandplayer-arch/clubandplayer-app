@@ -5,6 +5,7 @@ import Link from 'next/link';
 import FollowButton from '@/components/common/FollowButton';
 import useIsClub from '@/hooks/useIsClub';
 import { buildProfileDisplayName } from '@/lib/displayName';
+import VerifiedBadge from '@/components/ui/VerifiedBadge';
 
 type FollowedProfile = {
   id: string;
@@ -15,6 +16,7 @@ type FollowedProfile = {
   city: string | null;
   sport: string | null;
   role: string | null;
+  is_verified?: boolean | null;
 };
 
 type ApiResponse = {
@@ -28,6 +30,7 @@ type ApiResponse = {
     country?: string | null;
     sport?: string | null;
     role?: string | null;
+    is_verified?: boolean | null;
   }>;
 };
 
@@ -83,7 +86,12 @@ function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, 
             )}
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-neutral-900 dark:text-white truncate">{profile.name}</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-semibold text-neutral-900 dark:text-white truncate">{profile.name}</p>
+              {type === 'club' && profile.is_verified ? (
+                <VerifiedBadge className="shrink-0" label="Verificato" />
+              ) : null}
+            </div>
             <p className="text-xs uppercase tracking-wide text-neutral-500 dark:text-neutral-400 truncate">{type === 'club' ? 'Club' : 'Player'}</p>
             {meta && <p className="text-xs text-neutral-600 dark:text-neutral-300 truncate">{meta}</p>}
           </div>
@@ -150,6 +158,7 @@ export default function FollowingPage() {
               sport: row.sport ?? null,
               role: row.role ?? null,
               avatar_url: row.avatar_url ?? null,
+              is_verified: (row as any)?.is_verified ?? null,
             }))
           : [];
         setItems(mapped);

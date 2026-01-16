@@ -28,6 +28,7 @@ type Suggestion = {
   avatar_url?: string | null;
   followers?: number | null;
   account_type?: string | null;
+  is_verified?: boolean | null;
 };
 
 export async function GET(req: NextRequest) {
@@ -333,7 +334,34 @@ export async function GET(req: NextRequest) {
       athleteMap = nextMap;
     }
 
-    const items = rawResults.map((row) => mapSuggestion(row, athleteMap.get(String(row.id))));
+    const clubIds = rawResults
+      .filter((row) => normalizeAccountType(row?.account_type ?? row?.type) === 'club')
+      .map((row) => row.id)
+      .filter(Boolean);
+
+    let clubVerificationMap = new Map<string, boolean>();
+    if (clubIds.length) {
+      const { data: verificationRows, error: verificationError } = await supabase
+        .from('club_verification_requests_view')
+        .select('club_id, is_verified, created_at')
+        .in('club_id', clubIds)
+        .order('created_at', { ascending: false });
+      if (verificationError) throw verificationError;
+      const nextMap = new Map<string, boolean>();
+      (verificationRows ?? []).forEach((row: any) => {
+        if (!row?.club_id || nextMap.has(String(row.club_id))) return;
+        nextMap.set(String(row.club_id), row.is_verified === true);
+      });
+      clubVerificationMap = nextMap;
+    }
+
+    const items = rawResults.map((row) => ({
+      ...mapSuggestion(row, athleteMap.get(String(row.id))),
+      is_verified:
+        normalizeAccountType(row?.account_type ?? row?.type) === 'club'
+          ? clubVerificationMap.get(String(row.id)) ?? null
+          : null,
+    }));
 
     return successResponse({
       items,

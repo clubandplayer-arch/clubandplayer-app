@@ -31,6 +31,27 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
       .in('id', targetIds);
     if (profError) throw profError;
 
+    const clubIds = (profiles || [])
+      .filter((p) => normalizeAccountType(p.account_type ?? (p as any)?.type) === 'club')
+      .map((p) => p.id)
+      .filter(Boolean);
+
+    let clubVerificationMap = new Map<string, boolean>();
+    if (clubIds.length) {
+      const { data: verificationRows, error: verificationError } = await supabase
+        .from('club_verification_requests_view')
+        .select('club_id, is_verified, created_at')
+        .in('club_id', clubIds)
+        .order('created_at', { ascending: false });
+      if (verificationError) throw verificationError;
+      const nextMap = new Map<string, boolean>();
+      (verificationRows ?? []).forEach((row: any) => {
+        if (!row?.club_id || nextMap.has(String(row.club_id))) return;
+        nextMap.set(String(row.club_id), row.is_verified === true);
+      });
+      clubVerificationMap = nextMap;
+    }
+
     const athleteIds = (profiles || [])
       .filter((p) => normalizeAccountType(p.account_type ?? (p as any)?.type) === 'athlete')
       .map((p) => p.id)
@@ -79,6 +100,10 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
         sport: p.sport,
         role: p.role,
         avatar_url: avatarUrl,
+        is_verified:
+          normalizeAccountType(accountType) === 'club'
+            ? clubVerificationMap.get(String(p.id)) ?? null
+            : null,
       };
     });
 
