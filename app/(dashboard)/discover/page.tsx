@@ -223,7 +223,7 @@ export default function DiscoverPage() {
                       sizeClass="h-11 w-11"
                       isVerified={item.kind === 'club' && item.is_verified}
                       badgeSize="md"
-                      badgePosition="inside"
+                      badgeVariant="list"
                       className="ring-1 ring-neutral-200 rounded-full"
                     />
                     <div className="min-w-0">

@@ -9,7 +9,7 @@ type ClubAvatarVerifiedProps = {
   sizeClass: string;
   isVerified?: boolean | null;
   badgeSize?: 'sm' | 'md' | 'lg';
-  badgePosition?: 'inside' | 'outside';
+  badgeVariant?: 'feed' | 'profile' | 'list';
   className?: string;
   imageClassName?: string;
   fallback?: ReactNode;
@@ -21,7 +21,7 @@ export default function ClubAvatarVerified({
   sizeClass,
   isVerified = false,
   badgeSize = 'md',
-  badgePosition = 'outside',
+  badgeVariant = 'list',
   className = '',
   imageClassName = '',
   fallback = null,
@@ -31,9 +31,11 @@ export default function ClubAvatarVerified({
       ? { 'data-verified': isVerified ? '1' : '0', 'data-debug-id': alt }
       : {};
   const positionClass =
-    badgePosition === 'inside'
-      ? 'absolute top-0 right-0 z-10'
-      : 'absolute top-0 right-0 -translate-y-1/3 translate-x-1/3 z-10';
+    badgeVariant === 'feed'
+      ? 'absolute top-2 right-2 z-10'
+      : badgeVariant === 'profile'
+      ? 'absolute top-2 right-2 z-10'
+      : 'absolute -top-1 -right-1 z-10';
   return (
     <div className={`relative overflow-visible ${sizeClass} ${className}`} {...debugAttributes}>
       {src ? (
@@ -42,7 +44,7 @@ export default function ClubAvatarVerified({
         fallback
       )}
       {isVerified ? (
-        <span className={`${positionClass} rounded-full shadow-sm`}>
+        <span className={`${positionClass} rounded-full`}>
           <VerifiedBadge size={badgeSize} />
         </span>
       ) : null}

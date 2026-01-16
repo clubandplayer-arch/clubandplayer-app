@@ -190,7 +190,7 @@ export default function ProfileMiniCard() {
           sizeClass="w-3/4 max-w-[140px] aspect-square md:w-2/3 md:max-w-[160px]"
           isVerified={isClub && p?.is_verified}
           badgeSize="lg"
-          badgePosition="outside"
+          badgeVariant="feed"
           className="ring-1 ring-white/70 rounded-full"
           imageClassName="object-cover"
           fallback={<div className="h-full w-full rounded-full bg-gradient-to-br from-gray-100 to-gray-200" />}
