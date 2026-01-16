@@ -31,11 +31,9 @@ export default function ClubAvatarVerified({
       ? { 'data-verified': isVerified ? '1' : '0', 'data-debug-id': alt }
       : {};
   const positionClass =
-    badgeVariant === 'feed'
-      ? 'absolute top-2 right-2 z-10'
-      : badgeVariant === 'profile'
-      ? 'absolute top-2 right-2 z-10'
-      : 'absolute -top-1 -right-1 z-10';
+    badgeVariant === 'list'
+      ? 'absolute -top-0.5 -right-0.5 z-10 translate-x-1/2 -translate-y-1/2'
+      : 'absolute -top-1 -right-1 z-10 translate-x-1/2 -translate-y-1/2';
   return (
     <div className={`relative overflow-visible ${sizeClass} ${className}`} {...debugAttributes}>
       {src ? (
