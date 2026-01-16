@@ -77,6 +77,7 @@ function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, 
             alt={profile.name || 'Profilo'}
             sizeClass="h-12 w-12"
             isVerified={type === 'club' && profile.is_verified}
+            badgeSize="md"
             className="flex flex-shrink-0 items-center justify-center bg-gradient-to-br from-[var(--brand)]/20 to-[var(--brand)]/40 text-sm font-semibold uppercase text-[var(--brand)] aspect-square rounded-full"
             imageClassName="object-cover"
             fallback={<span>{initials}</span>}

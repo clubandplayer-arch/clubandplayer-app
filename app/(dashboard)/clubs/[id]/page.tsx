@@ -108,15 +108,18 @@ async function loadClubProfile(id: string): Promise<ClubProfileRow | null> {
 async function loadClubVerificationStatus(clubId: string) {
   const supabase = await getSupabaseServerClient();
   const { data, error } = await supabase
-    .from('club_verification_requests_view')
-    .select('is_verified')
+    .from('club_verification_requests')
+    .select('status, payment_status, verified_until, created_at')
     .eq('club_id', clubId)
+    .eq('status', 'approved')
+    .in('payment_status', ['paid', 'waived'])
+    .gt('verified_until', new Date().toISOString())
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
 
   if (error) return null;
-  return data?.is_verified ?? null;
+  return Boolean(data);
 }
 
 function locationLabel(row: ClubProfileRow): string {

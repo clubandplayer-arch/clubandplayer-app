@@ -60,6 +60,7 @@ export default function ProfileHeader({
           alt={name}
           sizeClass="h-28 w-28 md:h-32 md:w-32"
           isVerified={isClub && isVerified}
+          badgeSize="lg"
           className="shrink-0 ring-1 ring-white/60 rounded-full"
           fallback={
             <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-neutral-50 to-neutral-200 text-xl font-semibold text-neutral-600">

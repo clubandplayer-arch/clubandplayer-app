@@ -8,6 +8,7 @@ type ClubAvatarVerifiedProps = {
   alt: string;
   sizeClass: string;
   isVerified?: boolean | null;
+  badgeSize?: 'sm' | 'md' | 'lg';
   className?: string;
   imageClassName?: string;
   fallback?: ReactNode;
@@ -18,20 +19,25 @@ export default function ClubAvatarVerified({
   alt,
   sizeClass,
   isVerified = false,
+  badgeSize = 'md',
   className = '',
   imageClassName = '',
   fallback = null,
 }: ClubAvatarVerifiedProps) {
+  const debugAttributes =
+    process.env.NODE_ENV !== 'production'
+      ? { 'data-verified': isVerified ? '1' : '0', 'data-debug-id': alt }
+      : {};
   return (
-    <div className={`relative overflow-visible ${sizeClass} ${className}`}>
+    <div className={`relative overflow-visible ${sizeClass} ${className}`} {...debugAttributes}>
       {src ? (
         <img src={src} alt={alt} className={`h-full w-full rounded-full object-cover ${imageClassName}`} />
       ) : (
         fallback
       )}
       {isVerified ? (
-        <span className="absolute top-0 right-0 translate-x-1/4 -translate-y-1/4 z-10">
-          <VerifiedBadge size="sm" />
+        <span className="absolute top-0 right-0 translate-x-1/4 -translate-y-1/4 z-10 rounded-full ring-2 ring-white shadow-sm">
+          <VerifiedBadge size={badgeSize} />
         </span>
       ) : null}
     </div>
