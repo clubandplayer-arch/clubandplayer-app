@@ -176,7 +176,7 @@ export default function Navbar() {
                     )}
                     {isClub && isVerified ? (
                       <span
-                        className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-white"
+                        className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-amber-500 ring-2 ring-white"
                         title="Profilo verificato"
                         aria-hidden="true"
                       />
