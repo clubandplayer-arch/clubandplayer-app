@@ -1,8 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { MaterialIcon } from '@/components/icons/MaterialIcon';
-import { useUnreadDirectThreads } from '@/hooks/useUnreadDirectThreads';
+import { LucideMail } from '@/components/icons/LucideMail';
 
 type Props = {
   onClick?: () => void;
@@ -10,7 +9,6 @@ type Props = {
 
 export default function ChatFloatingButton({ onClick }: Props) {
   const router = useRouter();
-  const unreadDirectThreads = useUnreadDirectThreads();
 
   const handleClick = () => {
     if (onClick) {
@@ -24,18 +22,13 @@ export default function ChatFloatingButton({ onClick }: Props) {
     <button
       type="button"
       onClick={handleClick}
-      aria-label="Apri messaggi"
-      className="fixed bottom-4 right-4 z-40 flex items-center gap-2 rounded-full border border-neutral-200 bg-white/90 px-4 py-2 text-sm font-semibold text-neutral-700 shadow-lg backdrop-blur transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-white md:bottom-6 md:right-6 lg:hidden"
+      aria-label="Messaggi"
+      className="group fixed bottom-6 right-6 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-amber-500 text-white shadow-lg shadow-black/10 transition hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-300 lg:right-[calc(40%+1.5rem)]"
     >
-      <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[var(--brand)] text-white shadow-inner">
-        <MaterialIcon name="mail" fontSize="small" />
+      <LucideMail className="h-5 w-5" />
+      <span className="pointer-events-none absolute bottom-full right-0 mb-2 hidden whitespace-nowrap rounded-md bg-neutral-900 px-2 py-1 text-xs font-semibold text-white shadow-lg opacity-0 transition group-hover:opacity-100 lg:block">
+        Messaggi
       </span>
-      <span className="leading-none">Messaggi</span>
-      {unreadDirectThreads > 0 ? (
-        <span className="ml-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-2 text-[11px] font-semibold text-white">
-          {unreadDirectThreads > 9 ? '9+' : unreadDirectThreads}
-        </span>
-      ) : null}
     </button>
   );
 }
