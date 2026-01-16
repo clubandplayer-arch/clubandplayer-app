@@ -8,6 +8,7 @@ import { supabaseBrowser } from '@/lib/supabaseBrowser'
 import NotificationsBell from './NotificationsBell'
 import BrandLogo from '@/components/brand/BrandLogo'
 import { buildProfileDisplayName } from '@/lib/displayName'
+import { BadgeCheck } from 'lucide-react'
 
 type ProfileRow = {
   id: string
@@ -26,6 +27,7 @@ export default function Navbar() {
   const [isAdmin, setIsAdmin] = useState<boolean>(false)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [profileName, setProfileName] = useState<string>('')
+  const [isVerified, setIsVerified] = useState<boolean>(false)
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
   const profileMenuRef = useRef<HTMLDivElement | null>(null)
   const profileButtonRef = useRef<HTMLButtonElement | null>(null)
@@ -37,6 +39,7 @@ export default function Navbar() {
         setSessionUserId(null)
         setAccountType(null)
         setIsAdmin(false)
+        setIsVerified(false)
         return
       }
       setSessionUserId(user.id)
@@ -52,6 +55,18 @@ export default function Navbar() {
         setIsAdmin(Boolean(data.is_admin))
         setAvatarUrl(data.avatar_url ?? null)
         setProfileName(buildProfileDisplayName(data.full_name, data.display_name, 'Profilo'))
+        if (data.account_type === 'club' && data.id) {
+          const { data: verificationData } = await supabase
+            .from('club_verification_requests_view')
+            .select('is_verified')
+            .eq('club_id', data.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+          setIsVerified(verificationData?.is_verified === true)
+        } else {
+          setIsVerified(false)
+        }
       }
     }
 
@@ -160,6 +175,14 @@ export default function Navbar() {
                         {profileInitials}
                       </span>
                     )}
+                    {isClub && isVerified ? (
+                      <span
+                        className="absolute bottom-0 right-0 inline-flex h-4 w-4 items-center justify-center rounded-full bg-white text-blue-600 shadow ring-1 ring-blue-200"
+                        title="Profilo verificato"
+                      >
+                        <BadgeCheck className="h-3 w-3" aria-hidden="true" />
+                      </span>
+                    ) : null}
                   </span>
                 </button>
                 {isProfileMenuOpen ? (

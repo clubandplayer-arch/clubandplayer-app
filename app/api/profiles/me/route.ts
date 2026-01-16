@@ -123,7 +123,20 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
     .maybeSingle();
 
   if (error) return jsonError(error.message, 400);
-  return NextResponse.json({ data: data ?? null });
+  let isVerified: boolean | null = null;
+  if (data?.id && data?.account_type === 'club') {
+    const { data: verification, error: verificationError } = await supabase
+      .from('club_verification_requests_view')
+      .select('is_verified')
+      .eq('club_id', data.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (verificationError) return jsonError(verificationError.message, 400);
+    isVerified = verification?.is_verified ?? null;
+  }
+
+  return NextResponse.json({ data: data ? { ...data, is_verified: isVerified } : null });
 });
 
 /* --------------------------------- PATCH --------------------------------- */

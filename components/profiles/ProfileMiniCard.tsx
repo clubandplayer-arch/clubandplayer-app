@@ -7,6 +7,7 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 import FollowButton from '@/components/clubs/FollowButton';
 import { CountryFlag } from '@/components/ui/CountryFlag';
+import VerifiedBadge from '@/components/ui/VerifiedBadge';
 
 import { resolveCountryName, resolveStateName } from '@/lib/geodata/countryStateCityDataset';
 import { normalizeSport } from '@/lib/opps/constants';
@@ -70,6 +71,7 @@ type P = {
     tiktok?: string | null;
     x?: string | null;
   } | null;
+  is_verified?: boolean | null;
 };
 
 type Row = { id: number; name: string };
@@ -196,7 +198,10 @@ export default function ProfileMiniCard() {
         </div>
 
         <div className="w-full space-y-1">
-          <div className="break-words text-base font-semibold">{name}</div>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <div className="break-words text-base font-semibold">{name}</div>
+            {isClub && p?.is_verified ? <VerifiedBadge /> : null}
+          </div>
 
           {/* righe info */}
           {!isClub && (
