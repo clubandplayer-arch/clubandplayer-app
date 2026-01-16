@@ -1,5 +1,6 @@
-/* eslint-disable @next/next/no-img-element */
 'use client';
+
+/* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
@@ -232,10 +233,10 @@ export default function WhoToFollow() {
                     className="h-10 w-10 rounded-full object-cover ring-1 ring-zinc-200 dark:ring-zinc-800"
                   />
                   <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-1">
                       <span className="truncate text-sm font-medium">{name}</span>
                       {it.kind === 'club' && it.is_verified ? (
-                        <VerifiedBadge className="shrink-0" label="Verificato" />
+                        <VerifiedBadge size="sm" className="inline-block align-middle" />
                       ) : null}
                     </div>
                     <div className="truncate text-xs text-zinc-500">{detailLine(it, role) || '—'}</div>

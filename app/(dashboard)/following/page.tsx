@@ -1,5 +1,7 @@
 'use client';
 
+/* eslint-disable @next/next/no-img-element */
+
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import FollowButton from '@/components/common/FollowButton';
@@ -74,7 +76,6 @@ function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, 
         <Link href={href} className="flex flex-1 gap-3">
           <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[var(--brand)]/20 to-[var(--brand)]/40 text-sm font-semibold uppercase text-[var(--brand)] aspect-square">
             {avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={avatarUrl}
                 alt={profile.name || 'Profilo'}
@@ -86,10 +87,10 @@ function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, 
             )}
           </div>
           <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-1">
               <p className="text-sm font-semibold text-neutral-900 dark:text-white truncate">{profile.name}</p>
               {type === 'club' && profile.is_verified ? (
-                <VerifiedBadge className="shrink-0" label="Verificato" />
+                <VerifiedBadge size="sm" className="inline-block align-middle" />
               ) : null}
             </div>
             <p className="text-xs uppercase tracking-wide text-neutral-500 dark:text-neutral-400 truncate">{type === 'club' ? 'Club' : 'Player'}</p>

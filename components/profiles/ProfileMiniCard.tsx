@@ -1,6 +1,7 @@
-/* eslint-disable @next/next/no-img-element */
 // components/profiles/ProfileMiniCard.tsx
 'use client';
+
+/* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useState } from 'react';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
@@ -187,20 +188,16 @@ export default function ProfileMiniCard() {
       <div className="flex flex-col items-center gap-3 text-center">
         <div className="relative w-3/4 max-w-[140px] aspect-square overflow-hidden rounded-full bg-transparent ring-1 ring-white/70 md:w-2/3 md:max-w-[160px]">
           {p?.avatar_url ? (
-            <img
-              src={p.avatar_url}
-              alt={name}
-              className="h-full w-full object-cover"
-            />
+            <img src={p.avatar_url} alt={name} className="h-full w-full object-cover" />
           ) : (
-            <div className="h-full w-full bg-gradient-to-br from-gray-100 to-gray-200" />
+            <div className="h-full w-full rounded-full bg-gradient-to-br from-gray-100 to-gray-200" />
           )}
         </div>
 
         <div className="w-full space-y-1">
-          <div className="flex flex-wrap items-center justify-center gap-2">
+          <div className="flex flex-wrap items-center justify-center gap-1">
             <div className="break-words text-base font-semibold">{name}</div>
-            {isClub && p?.is_verified ? <VerifiedBadge /> : null}
+            {isClub && p?.is_verified ? <VerifiedBadge size="sm" className="inline-block align-middle" /> : null}
           </div>
 
           {/* righe info */}

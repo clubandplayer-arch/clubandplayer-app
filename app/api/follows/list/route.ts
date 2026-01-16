@@ -3,6 +3,7 @@ import { withAuth } from '@/lib/api/auth';
 import { notAuthorized, successResponse, unknownError } from '@/lib/api/feedFollowStandardWrapper';
 import { getActiveProfile } from '@/lib/api/profile';
 import { buildProfileDisplayName } from '@/lib/displayName';
+import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
 
@@ -38,16 +39,21 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
 
     let clubVerificationMap = new Map<string, boolean>();
     if (clubIds.length) {
-      const { data: verificationRows, error: verificationError } = await supabase
-        .from('club_verification_requests_view')
-        .select('club_id, is_verified, created_at')
+      const adminClient = getSupabaseAdminClientOrNull();
+      const verificationClient = adminClient ?? supabase;
+      const { data: verificationRows, error: verificationError } = await verificationClient
+        .from('club_verification_requests')
+        .select('club_id, status, payment_status, verified_until, created_at')
         .in('club_id', clubIds)
+        .eq('status', 'approved')
+        .in('payment_status', ['paid', 'waived'])
+        .gt('verified_until', new Date().toISOString())
         .order('created_at', { ascending: false });
       if (verificationError) throw verificationError;
       const nextMap = new Map<string, boolean>();
       (verificationRows ?? []).forEach((row: any) => {
         if (!row?.club_id || nextMap.has(String(row.club_id))) return;
-        nextMap.set(String(row.club_id), row.is_verified === true);
+        nextMap.set(String(row.club_id), true);
       });
       clubVerificationMap = nextMap;
     }

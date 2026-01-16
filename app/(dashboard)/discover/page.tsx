@@ -223,10 +223,10 @@ export default function DiscoverPage() {
                       className="h-11 w-11 rounded-full object-cover ring-1 ring-neutral-200"
                     />
                     <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-1">
                         <span className="truncate text-sm font-semibold text-neutral-900">{name}</span>
                         {item.kind === 'club' && item.is_verified ? (
-                          <VerifiedBadge className="shrink-0" label="Verificato" />
+                          <VerifiedBadge size="sm" className="inline-block align-middle" />
                         ) : null}
                       </div>
                       {detailLine(item, role, activeTab) || <span className="text-xs text-neutral-500">—</span>}
