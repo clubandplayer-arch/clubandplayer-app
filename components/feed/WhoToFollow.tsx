@@ -118,7 +118,7 @@ export default function WhoToFollow() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch('/api/follows/suggestions?limit=4', {
+        const res = await fetch('/api/follows/suggestions?limit=3', {
           credentials: 'include',
           cache: 'no-store',
           next: { revalidate: 0 },
@@ -198,6 +198,7 @@ export default function WhoToFollow() {
 
   const heading = 'Chi seguire';
   const subtitle = 'Suggeriti per te';
+  const itemsToShow = items.slice(0, 3);
 
   return (
     <div className="space-y-3">
@@ -212,9 +213,9 @@ export default function WhoToFollow() {
         <div className="rounded-lg border border-dashed p-4 text-center text-sm text-zinc-500 dark:border-zinc-800">
           {error}
         </div>
-      ) : items.length > 0 ? (
+      ) : itemsToShow.length > 0 ? (
         <ul className="space-y-3">
-          {items.map((it) => {
+          {itemsToShow.map((it) => {
             const name = displayName(it);
             const href = targetHref(it);
             return (
