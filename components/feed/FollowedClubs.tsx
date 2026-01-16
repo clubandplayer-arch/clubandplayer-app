@@ -151,7 +151,7 @@ export default function FollowedClubs() {
         <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
       ) : items.length > 0 ? (
         <ul className="space-y-2">
-          {items.slice(0, 5).map((item) => {
+          {items.slice(0, 3).map((item) => {
             const href = targetHref(item);
             return (
               <li key={item.id} className="flex items-center gap-3">
