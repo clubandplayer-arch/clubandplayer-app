@@ -231,6 +231,7 @@ export default function WhoToFollow() {
                     sizeClass="h-10 w-10"
                     isVerified={it.kind === 'club' && it.is_verified}
                     badgeSize="md"
+                    badgePosition="inside"
                     className="ring-1 ring-zinc-200 dark:ring-zinc-800 rounded-full"
                   />
                   <div className="min-w-0 flex-1">
