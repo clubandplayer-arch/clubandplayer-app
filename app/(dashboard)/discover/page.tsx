@@ -1,12 +1,10 @@
 'use client';
 
-/* eslint-disable @next/next/no-img-element */
-
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import FollowButton from '@/components/common/FollowButton';
 import { CountryFlag } from '@/components/ui/CountryFlag';
-import VerifiedBadge from '@/components/ui/VerifiedBadge';
+import ClubAvatarVerified from '@/components/ui/ClubAvatarVerified';
 import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentProfileContext';
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
 
@@ -217,18 +215,15 @@ export default function DiscoverPage() {
               <li key={item.id} className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
                 <div className="flex items-start justify-between gap-3">
                   <Link href={href} className="flex min-w-0 items-center gap-3">
-                    <div className="relative">
-                      <img
-                        src={item.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`}
-                        alt={name}
-                        className="h-11 w-11 rounded-full object-cover ring-1 ring-neutral-200"
-                      />
-                      {item.kind === 'club' && item.is_verified ? (
-                        <span className="absolute -bottom-1 -right-1">
-                          <VerifiedBadge size="sm" />
-                        </span>
-                      ) : null}
-                    </div>
+                    <ClubAvatarVerified
+                      src={
+                        item.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`
+                      }
+                      alt={name}
+                      sizeClass="h-11 w-11"
+                      isVerified={item.kind === 'club' && item.is_verified}
+                      className="ring-1 ring-neutral-200 rounded-full"
+                    />
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="truncate text-sm font-semibold text-neutral-900">{name}</span>

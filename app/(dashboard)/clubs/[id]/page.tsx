@@ -136,6 +136,7 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
   const meId = auth?.user?.id ?? null;
   const isMe = !!meId && (meId === profile.id || meId === profile.user_id);
   const isVerified = await loadClubVerificationStatus(profile.id);
+  const profileWithVerification = { ...profile, is_verified: isVerified };
 
   const aboutText = profile.bio || 'Nessuna descrizione disponibile.';
   const clubProfileId = profile.id;
@@ -154,16 +155,26 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
     club_id: (opp as any).club_id ?? null,
   }));
 
-  const displayName = buildClubDisplayName(profile.full_name, profile.display_name, 'Club');
-  const sportLabel = normalizeSport(profile.sport ?? null) ?? profile.sport ?? null;
-  const subtitle = [profile.club_league_category, sportLabel].filter(Boolean).join(' · ') || '—';
-  const location = locationLabel(profile) || undefined;
-  const rawCountry = (profile.country ?? '').trim();
+  const displayName = buildClubDisplayName(profileWithVerification.full_name, profileWithVerification.display_name, 'Club');
+  const sportLabel = normalizeSport(profileWithVerification.sport ?? null) ?? profileWithVerification.sport ?? null;
+  const subtitle =
+    [profileWithVerification.club_league_category, sportLabel].filter(Boolean).join(' · ') || '—';
+  const location = locationLabel(profileWithVerification) || undefined;
+  const rawCountry = (profileWithVerification.country ?? '').trim();
   const matchCountry = rawCountry.match(/^([A-Za-z]{2})(?:\s+(.+))?$/);
   const iso2 = matchCountry ? matchCountry[1].trim().toUpperCase() : null;
   const countryLabel = getCountryName(iso2 ?? rawCountry) ?? rawCountry;
-  const state = resolveStateName(profile.country || null, profile.region || profile.province || '');
-  const locationParts = [profile.city, profile.province, state].filter(Boolean).join(' · ');
+  const state = resolveStateName(
+    profileWithVerification.country || null,
+    profileWithVerification.region || profileWithVerification.province || '',
+  );
+  const locationParts = [
+    profileWithVerification.city,
+    profileWithVerification.province,
+    state,
+  ]
+    .filter(Boolean)
+    .join(' · ');
   const locationContent = (
     <span className="flex flex-wrap items-center gap-2">
       {locationParts ? <span>{locationParts}</span> : null}
@@ -179,16 +190,16 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
   return (
     <div className="mx-auto min-w-0 max-w-5xl space-y-6 p-4 md:p-6">
       <ProfileHeader
-        profileId={profile.id}
+        profileId={profileWithVerification.id}
         displayName={displayName}
         accountType="club"
-        avatarUrl={profile.avatar_url}
+        avatarUrl={profileWithVerification.avatar_url}
         subtitle={subtitle}
         locationLabel={location}
         locationContent={locationContent}
         showMessageButton
         showFollowButton={!isMe}
-        isVerified={isVerified}
+        isVerified={profileWithVerification.is_verified}
       />
 
       <section className="grid grid-cols-1 gap-4">

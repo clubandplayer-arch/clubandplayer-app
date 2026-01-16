@@ -1,4 +1,3 @@
-/* eslint-disable @next/next/no-img-element */
 'use client';
 
 import { useEffect, useState, type ReactNode } from 'react';
@@ -7,7 +6,7 @@ import FollowButton from '@/components/common/FollowButton';
 import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentProfileContext';
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
 import { CountryFlag } from '@/components/ui/CountryFlag';
-import VerifiedBadge from '@/components/ui/VerifiedBadge';
+import ClubAvatarVerified from '@/components/ui/ClubAvatarVerified';
 
 type Suggestion = {
   id: string;
@@ -226,18 +225,13 @@ export default function WhoToFollow() {
                   className="absolute inset-0 z-10 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
                 />
                 <div className="relative z-20 flex min-w-0 flex-1 items-center gap-3 pointer-events-none">
-                  <div className="relative">
-                    <img
-                      src={it.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`}
-                      alt={name}
-                      className="h-10 w-10 rounded-full object-cover ring-1 ring-zinc-200 dark:ring-zinc-800"
-                    />
-                    {it.kind === 'club' && it.is_verified ? (
-                      <span className="absolute -bottom-1 -right-1">
-                        <VerifiedBadge size="sm" />
-                      </span>
-                    ) : null}
-                  </div>
+                  <ClubAvatarVerified
+                    src={it.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`}
+                    alt={name}
+                    sizeClass="h-10 w-10"
+                    isVerified={it.kind === 'club' && it.is_verified}
+                    className="ring-1 ring-zinc-200 dark:ring-zinc-800 rounded-full"
+                  />
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="truncate text-sm font-medium">{name}</span>

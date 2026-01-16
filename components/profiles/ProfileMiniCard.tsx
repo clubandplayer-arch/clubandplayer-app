@@ -1,4 +1,3 @@
-/* eslint-disable @next/next/no-img-element */
 // components/profiles/ProfileMiniCard.tsx
 'use client';
 
@@ -7,7 +6,7 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 import FollowButton from '@/components/clubs/FollowButton';
 import { CountryFlag } from '@/components/ui/CountryFlag';
-import VerifiedBadge from '@/components/ui/VerifiedBadge';
+import ClubAvatarVerified from '@/components/ui/ClubAvatarVerified';
 
 import { resolveCountryName, resolveStateName } from '@/lib/geodata/countryStateCityDataset';
 import { normalizeSport } from '@/lib/opps/constants';
@@ -185,22 +184,19 @@ export default function ProfileMiniCard() {
   return (
     <div className="glass-panel p-4 space-y-4">
       <div className="flex flex-col items-center gap-3 text-center">
-        <div className="relative w-3/4 max-w-[140px] aspect-square overflow-hidden rounded-full bg-transparent ring-1 ring-white/70 md:w-2/3 md:max-w-[160px]">
-          {p?.avatar_url ? (
-            <img
-              src={p.avatar_url}
-              alt={name}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <div className="h-full w-full bg-gradient-to-br from-gray-100 to-gray-200" />
-          )}
-        </div>
+        <ClubAvatarVerified
+          src={p?.avatar_url || null}
+          alt={name}
+          sizeClass="w-3/4 max-w-[140px] aspect-square md:w-2/3 md:max-w-[160px]"
+          isVerified={isClub && p?.is_verified}
+          className="ring-1 ring-white/70 rounded-full"
+          imageClassName="object-cover"
+          fallback={<div className="h-full w-full rounded-full bg-gradient-to-br from-gray-100 to-gray-200" />}
+        />
 
         <div className="w-full space-y-1">
           <div className="flex flex-wrap items-center justify-center gap-2">
             <div className="break-words text-base font-semibold">{name}</div>
-            {isClub && p?.is_verified ? <VerifiedBadge /> : null}
           </div>
 
           {/* righe info */}

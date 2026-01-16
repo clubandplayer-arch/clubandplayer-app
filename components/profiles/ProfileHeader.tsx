@@ -1,11 +1,9 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import Image from 'next/image';
-
 import FollowButton from '@/components/clubs/FollowButton';
 import { MessageButton } from '@/components/messaging/MessageButton';
-import VerifiedBadge from '@/components/ui/VerifiedBadge';
+import ClubAvatarVerified from '@/components/ui/ClubAvatarVerified';
 
 type AccountType = 'club' | 'athlete' | 'player';
 
@@ -57,20 +55,18 @@ export default function ProfileHeader({
   return (
     <header className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:gap-6">
-        <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-full bg-transparent ring-1 ring-white/60 md:h-32 md:w-32">
-          {avatarUrl ? (
-            <Image src={avatarUrl} alt={name} fill sizes="128px" className="rounded-full object-cover" />
-          ) : (
+        <ClubAvatarVerified
+          src={avatarUrl}
+          alt={name}
+          sizeClass="h-28 w-28 md:h-32 md:w-32"
+          isVerified={isClub && isVerified}
+          className="shrink-0 ring-1 ring-white/60 rounded-full"
+          fallback={
             <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-neutral-50 to-neutral-200 text-xl font-semibold text-neutral-600">
               {initials}
             </div>
-          )}
-          {isClub && isVerified ? (
-            <span className="absolute -bottom-1 -right-1">
-              <VerifiedBadge size="sm" />
-            </span>
-          ) : null}
-        </div>
+          }
+        />
 
         <div className="flex flex-1 flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="space-y-2">
