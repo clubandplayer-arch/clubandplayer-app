@@ -65,13 +65,17 @@ export default function ProfileHeader({
               {initials}
             </div>
           )}
+          {isClub && isVerified ? (
+            <span className="absolute -bottom-1 -right-1">
+              <VerifiedBadge size="sm" />
+            </span>
+          ) : null}
         </div>
 
         <div className="flex flex-1 flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-2xl font-semibold leading-tight text-neutral-900 md:text-3xl">{name}</h1>
-              {isClub && isVerified ? <VerifiedBadge /> : null}
               <span
                 className={`${
                   isClub
