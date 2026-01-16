@@ -1,12 +1,14 @@
 'use client';
 
+/* eslint-disable @next/next/no-img-element */
+
 import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import FollowButton from '@/components/common/FollowButton';
 import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentProfileContext';
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
 import { CountryFlag } from '@/components/ui/CountryFlag';
-import ClubAvatarVerified from '@/components/ui/ClubAvatarVerified';
+import VerifiedBadge from '@/components/ui/VerifiedBadge';
 
 type Suggestion = {
   id: string;
@@ -225,18 +227,17 @@ export default function WhoToFollow() {
                   className="absolute inset-0 z-10 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
                 />
                 <div className="relative z-20 flex min-w-0 flex-1 items-center gap-3 pointer-events-none">
-                  <ClubAvatarVerified
+                  <img
                     src={it.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`}
                     alt={name}
-                    sizeClass="h-10 w-10"
-                    isVerified={it.kind === 'club' && it.is_verified}
-                    badgeSize="md"
-                    badgeVariant="list"
-                    className="ring-1 ring-zinc-200 dark:ring-zinc-800 rounded-full"
+                    className="h-10 w-10 rounded-full object-cover ring-1 ring-zinc-200 dark:ring-zinc-800"
                   />
                   <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-1">
                       <span className="truncate text-sm font-medium">{name}</span>
+                      {it.kind === 'club' && it.is_verified ? (
+                        <VerifiedBadge size="sm" className="inline-block align-middle" />
+                      ) : null}
                     </div>
                     <div className="truncate text-xs text-zinc-500">{detailLine(it, role) || '—'}</div>
                   </div>

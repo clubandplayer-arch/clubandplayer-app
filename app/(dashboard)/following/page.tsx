@@ -1,11 +1,13 @@
 'use client';
 
+/* eslint-disable @next/next/no-img-element */
+
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import FollowButton from '@/components/common/FollowButton';
 import useIsClub from '@/hooks/useIsClub';
 import { buildProfileDisplayName } from '@/lib/displayName';
-import ClubAvatarVerified from '@/components/ui/ClubAvatarVerified';
+import VerifiedBadge from '@/components/ui/VerifiedBadge';
 
 type FollowedProfile = {
   id: string;
@@ -72,20 +74,24 @@ function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, 
     <div className="flex h-full flex-col gap-3 rounded-2xl border border-neutral-200 bg-white/70 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900/60">
       <div className="flex flex-wrap items-start gap-3">
         <Link href={href} className="flex flex-1 gap-3">
-          <ClubAvatarVerified
-            src={avatarUrl || null}
-            alt={profile.name || 'Profilo'}
-            sizeClass="h-12 w-12"
-            isVerified={type === 'club' && profile.is_verified}
-            badgeSize="md"
-            badgeVariant="list"
-            className="flex flex-shrink-0 items-center justify-center bg-gradient-to-br from-[var(--brand)]/20 to-[var(--brand)]/40 text-sm font-semibold uppercase text-[var(--brand)] aspect-square rounded-full"
-            imageClassName="object-cover"
-            fallback={<span>{initials}</span>}
-          />
+          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[var(--brand)]/20 to-[var(--brand)]/40 text-sm font-semibold uppercase text-[var(--brand)] aspect-square">
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt={profile.name || 'Profilo'}
+                className="h-full w-full object-cover"
+                loading="lazy"
+              />
+            ) : (
+              <span>{initials}</span>
+            )}
+          </div>
           <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-1">
               <p className="text-sm font-semibold text-neutral-900 dark:text-white truncate">{profile.name}</p>
+              {type === 'club' && profile.is_verified ? (
+                <VerifiedBadge size="sm" className="inline-block align-middle" />
+              ) : null}
             </div>
             <p className="text-xs uppercase tracking-wide text-neutral-500 dark:text-neutral-400 truncate">{type === 'club' ? 'Club' : 'Player'}</p>
             {meta && <p className="text-xs text-neutral-600 dark:text-neutral-300 truncate">{meta}</p>}
