@@ -25,7 +25,7 @@ export default function ChatFloatingButton({ onClick }: Props) {
       type="button"
       onClick={handleClick}
       aria-label="Apri messaggi"
-      className="fixed bottom-4 right-4 z-40 hidden items-center gap-2 rounded-full border border-neutral-200 bg-white/90 px-4 py-2 text-sm font-semibold text-neutral-700 shadow-lg backdrop-blur transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-white md:flex md:bottom-6 md:right-6"
+      className="fixed bottom-4 right-4 z-40 hidden items-center gap-2 rounded-full border border-neutral-200 bg-white/90 px-4 py-2 text-sm font-semibold text-neutral-700 shadow-lg backdrop-blur transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-white md:flex md:bottom-6 md:right-6 lg:right-80"
     >
       <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[var(--brand)] text-white shadow-inner">
         <MaterialIcon name="mail" fontSize="small" />
