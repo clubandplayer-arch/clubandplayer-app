@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
 import NotificationsBell from './NotificationsBell'
 import BrandLogo from '@/components/brand/BrandLogo'
+import CertifiedClubMark from '@/components/ui/CertifiedClubMark'
 import { buildProfileDisplayName } from '@/lib/displayName'
 
 type ProfileRow = {
@@ -175,11 +176,7 @@ export default function Navbar() {
                       </span>
                     )}
                     {isClub && isVerified ? (
-                      <span
-                        className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-amber-500 ring-2 ring-white"
-                        title="Profilo verificato"
-                        aria-hidden="true"
-                      />
+                      <CertifiedClubMark className="absolute -bottom-0.5 -right-0.5" />
                     ) : null}
                   </span>
                 </button>

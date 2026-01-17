@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import FollowButton from '@/components/common/FollowButton';
+import CertifiedClubMark from '@/components/ui/CertifiedClubMark';
 import useIsClub from '@/hooks/useIsClub';
 import { buildProfileDisplayName } from '@/lib/displayName';
 
@@ -63,6 +64,7 @@ function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, 
   const initials = getInitials(profile.name || 'Profilo');
   const toggleDisabled = rosterPending || !onToggleRoster;
   const avatarUrl = profile.avatar_url ? profile.avatar_url.trim() : '';
+  const isCertified = type === 'club' && Boolean((profile as any).is_verified ?? (profile as any).isVerified ?? false);
 
   const handleToggle = () => {
     if (!onToggleRoster || toggleDisabled) return;
@@ -90,11 +92,7 @@ function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, 
               <p className="text-sm font-semibold text-neutral-900 dark:text-white truncate">{profile.name}</p>
             </div>
             <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
-              {type === 'club' && profile.is_verified ? (
-                <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
-                  Certified
-                </span>
-              ) : null}
+              {isCertified ? <CertifiedClubMark /> : null}
               <span className="uppercase tracking-wide">{type === 'club' ? 'Club' : 'Player'}</span>
             </div>
             {meta && <p className="text-xs text-neutral-600 dark:text-neutral-300 truncate">{meta}</p>}

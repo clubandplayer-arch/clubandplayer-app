@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import Image from 'next/image';
 import FollowButton from '@/components/clubs/FollowButton';
 import { MessageButton } from '@/components/messaging/MessageButton';
-import VerifiedBadge from '@/components/ui/VerifiedBadge';
+import CertifiedClubMark from '@/components/ui/CertifiedClubMark';
 
 type AccountType = 'club' | 'athlete' | 'player';
 
@@ -70,9 +70,7 @@ export default function ProfileHeader({
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-2xl font-semibold leading-tight text-neutral-900 md:text-3xl">{name}</h1>
-              {isClub && isVerified ? (
-                <VerifiedBadge size="sm" className="inline-block align-middle" />
-              ) : null}
+              {isClub && isVerified ? <CertifiedClubMark /> : null}
               <span
                 className={`${
                   isClub

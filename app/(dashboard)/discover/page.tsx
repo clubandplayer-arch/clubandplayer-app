@@ -5,8 +5,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import FollowButton from '@/components/common/FollowButton';
+import CertifiedClubMark from '@/components/ui/CertifiedClubMark';
 import { CountryFlag } from '@/components/ui/CountryFlag';
-import VerifiedBadge from '@/components/ui/VerifiedBadge';
 import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentProfileContext';
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
 
@@ -213,6 +213,7 @@ export default function DiscoverPage() {
           {activeItems.map((item) => {
             const name = displayName(item);
             const href = targetHref(item);
+            const isCertified = item.kind === 'club' && Boolean((item as any).is_verified ?? (item as any).isVerified ?? false);
             return (
               <li key={item.id} className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
                 <div className="flex items-start justify-between gap-3">
@@ -225,9 +226,7 @@ export default function DiscoverPage() {
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-1">
                         <span className="truncate text-sm font-semibold text-neutral-900">{name}</span>
-                        {item.kind === 'club' && item.is_verified ? (
-                          <VerifiedBadge size="sm" className="inline-block align-middle" />
-                        ) : null}
+                        {isCertified ? <CertifiedClubMark /> : null}
                       </div>
                       {detailLine(item, role, activeTab) || <span className="text-xs text-neutral-500">—</span>}
                     </div>

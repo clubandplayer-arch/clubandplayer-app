@@ -7,6 +7,7 @@ import Link from 'next/link';
 import FollowButton from '@/components/common/FollowButton';
 import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentProfileContext';
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
+import CertifiedClubMark from '@/components/ui/CertifiedClubMark';
 import { CountryFlag } from '@/components/ui/CountryFlag';
 
 type Suggestion = {
@@ -246,7 +247,7 @@ export default function WhoToFollow() {
                     {isCertified ? (
                       <div className="flex items-center justify-between gap-2 text-xs text-zinc-500">
                         <span className="min-w-0 flex-1 truncate">{detailLine(it, role) || '—'}</span>
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">CERTIFIED</span>
+                        <CertifiedClubMark className="shrink-0" />
                       </div>
                     ) : (
                       <div className="truncate text-xs text-zinc-500">{detailLine(it, role) || '—'}</div>

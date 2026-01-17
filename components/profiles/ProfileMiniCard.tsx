@@ -7,8 +7,8 @@ import { useEffect, useState } from 'react';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 import FollowButton from '@/components/clubs/FollowButton';
+import CertifiedClubMark from '@/components/ui/CertifiedClubMark';
 import { CountryFlag } from '@/components/ui/CountryFlag';
-import VerifiedBadge from '@/components/ui/VerifiedBadge';
 
 import { resolveCountryName, resolveStateName } from '@/lib/geodata/countryStateCityDataset';
 import { normalizeSport } from '@/lib/opps/constants';
@@ -197,7 +197,7 @@ export default function ProfileMiniCard() {
         <div className="w-full space-y-1">
           <div className="flex flex-wrap items-center justify-center gap-1">
             <div className="break-words text-base font-semibold">{name}</div>
-            {isClub && p?.is_verified ? <VerifiedBadge size="sm" className="inline-block align-middle" /> : null}
+            {isClub && p?.is_verified ? <CertifiedClubMark /> : null}
           </div>
 
           {/* righe info */}
