@@ -225,17 +225,17 @@ export default function ProfileMiniCard() {
       </div>
       {isClub && p?.is_verified ? <CertifiedClubMark size="lg" className="absolute top-3 right-3" /> : null}
 
-          {isClub ? (
-            <div className="space-y-3">
-              {targetId && !isSelf ? (
-                <div className="flex justify-center">
-                  <FollowButton
-                    targetProfileId={targetId}
-                    labelFollow="Segui"
-                    labelFollowing="Seguo"
-                    size="md"
-                    className="w-full justify-center"
-                  />
+      {isClub ? (
+        <div className="space-y-3">
+          {targetId && !isSelf ? (
+            <div className="flex justify-center">
+              <FollowButton
+                targetProfileId={targetId}
+                labelFollow="Segui"
+                labelFollowing="Seguo"
+                size="md"
+                className="w-full justify-center"
+              />
             </div>
           ) : null}
 
