@@ -39,6 +39,33 @@ function safeRedirect(url: URL, target: string | null) {
   return new URL('/feed', url.origin);
 }
 
+function htmlRedirect(target: URL) {
+  const targetUrl = target.toString();
+  const body = `<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="cache-control" content="no-store" />
+    <meta http-equiv="refresh" content="0;url=${targetUrl}" />
+    <title>Reindirizzamento…</title>
+  </head>
+  <body>
+    <p>Reindirizzamento in corso…</p>
+    <script>
+      window.location.replace(${JSON.stringify(targetUrl)});
+    </script>
+  </body>
+</html>`;
+
+  return new NextResponse(body, {
+    status: 200,
+    headers: {
+      'content-type': 'text/html; charset=utf-8',
+      'cache-control': 'no-store',
+    },
+  });
+}
+
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const errorParam =
@@ -67,5 +94,5 @@ export async function GET(req: NextRequest) {
   }
 
   const redirectTo = url.searchParams.get('redirect_to');
-  return NextResponse.redirect(safeRedirect(url, redirectTo), { status: 302 });
+  return htmlRedirect(safeRedirect(url, redirectTo));
 }

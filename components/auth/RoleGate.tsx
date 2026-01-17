@@ -21,18 +21,31 @@ export default function RoleGate({ children }: { children: React.ReactNode }) {
   const search = useSearchParams();
 
   useEffect(() => {
+    let active = true;
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+    const MAX_RETRIES = 5;
+    const RETRY_DELAY_MS = 350;
+
     (async () => {
       try {
         // Se la path è esclusa, non fare nulla
         if (EXCLUDE_PREFIXES.some(p => pathname.startsWith(p))) {
-          setReady(true);
+          if (active) setReady(true);
           return;
         }
 
-        // Leggi profilo corrente
-        const r = await fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' });
-        const j = await r.json().catch(() => ({}));
-        const data: Me = (j?.profile as any) ?? {};
+        let j: any = {};
+        let data: Me = {};
+
+        for (let attempt = 0; attempt < MAX_RETRIES; attempt += 1) {
+          const r = await fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' });
+          j = await r.json().catch(() => ({}));
+          data = (j?.profile as any) ?? {};
+          if (j?.user?.id) break;
+          if (attempt < MAX_RETRIES - 1) {
+            await delay(RETRY_DELAY_MS);
+          }
+        }
 
         const next = pathname + (search?.toString() ? `?${search.toString()}` : '');
 
@@ -54,12 +67,16 @@ export default function RoleGate({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        setReady(true);
+        if (active) setReady(true);
       } catch {
         // In caso di errore non bloccare l'UI
-        setReady(true);
+        if (active) setReady(true);
       }
     })();
+
+    return () => {
+      active = false;
+    };
   }, [pathname, router, search]);
 
   if (!ready) {
