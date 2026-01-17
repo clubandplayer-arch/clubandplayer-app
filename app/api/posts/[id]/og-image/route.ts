@@ -16,14 +16,15 @@ function toAbsoluteUrl(raw: string, origin: string) {
   return `${origin}/${raw}`;
 }
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const admin = getSupabaseAdminClientOrNull();
   const supabase = admin ?? (await getSupabaseServerClient());
 
   const { data, error } = await supabase
     .from('posts')
     .select('link_image, media_url')
-    .eq('id', params.id)
+    .eq('id', id)
     .maybeSingle();
 
   if (error || !data) {
