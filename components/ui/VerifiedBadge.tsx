@@ -4,8 +4,8 @@ type VerifiedBadgeProps = {
 };
 
 const sizeClasses = {
-  sm: 'h-8 w-8',
-  md: 'h-12 w-12',
+  sm: 'h-6 w-6',
+  md: 'h-9 w-9',
 };
 
 export default function VerifiedBadge({ className = '', size = 'md' }: VerifiedBadgeProps) {
