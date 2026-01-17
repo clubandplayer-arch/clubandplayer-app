@@ -185,13 +185,13 @@ export default function ProfileMiniCard() {
   const CertifiedClubBadge = () => (
     <span
       aria-label="Club certificato"
-      className="absolute right-5 top-4 inline-flex h-8 w-8 items-center justify-center rounded-full bg-white shadow ring-1 ring-blue-200"
+      className="absolute right-10 top-4 inline-flex h-10 w-10 items-center justify-center bg-transparent shadow-none ring-0"
     >
       <svg
         viewBox="0 0 24 24"
         role="img"
         aria-hidden="true"
-        className="block h-5 w-5 text-blue-600 leading-none"
+        className="block h-10 w-10 text-blue-600 leading-none"
       >
         <text
           x="12"
