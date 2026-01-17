@@ -7,7 +7,6 @@ import { useEffect, useState } from 'react';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 import FollowButton from '@/components/clubs/FollowButton';
-import CertifiedClubMark from '@/components/ui/CertifiedClubMark';
 import { CountryFlag } from '@/components/ui/CountryFlag';
 
 import { resolveCountryName, resolveStateName } from '@/lib/geodata/countryStateCityDataset';
@@ -183,6 +182,32 @@ export default function ProfileMiniCard() {
     </a>
   );
 
+  const CertifiedClubBadge = () => (
+    <span
+      aria-label="Club certificato"
+      className="absolute right-5 top-4 inline-flex h-8 w-8 items-center justify-center rounded-full bg-white shadow ring-1 ring-blue-200"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        role="img"
+        aria-hidden="true"
+        className="block h-5 w-5 text-blue-600 leading-none"
+      >
+        <text
+          x="12"
+          y="16"
+          textAnchor="middle"
+          fontSize="16"
+          fontWeight="700"
+          fontFamily="system-ui, -apple-system, Segoe UI, sans-serif"
+          fill="currentColor"
+        >
+          C
+        </text>
+      </svg>
+    </span>
+  );
+
   return (
     <div className="relative glass-panel p-4 space-y-4">
       <div className="flex flex-col items-center gap-3 text-center">
@@ -223,7 +248,7 @@ export default function ProfileMiniCard() {
           ) : null}
         </div>
       </div>
-      {isClub && p?.is_verified ? <CertifiedClubMark size="lg" className="absolute top-3 right-3" /> : null}
+      {isClub && p?.is_verified ? <CertifiedClubBadge /> : null}
 
       {isClub ? (
         <div className="space-y-3">
