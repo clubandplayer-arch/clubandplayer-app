@@ -128,12 +128,14 @@ export function PostCard({
   }, [post.id]);
 
   const shareTitle = isEvent ? eventDetails?.title ?? 'Evento del club' : 'Post del feed';
+  const shareMessage = useMemo(() => {
+    if (isEvent) return eventDetails?.title ?? description;
+    return description || shareTitle;
+  }, [description, eventDetails?.title, isEvent, shareTitle]);
   const shareText = useMemo(() => {
     if (!shareUrl) return '';
-    return isEvent
-      ? [shareUrl, eventDetails?.title ?? description].filter(Boolean).join('\n\n')
-      : [shareUrl, description || undefined].filter(Boolean).join('\n\n');
-  }, [description, eventDetails?.title, isEvent, shareUrl]);
+    return `${shareMessage}\n${shareUrl}`;
+  }, [shareMessage, shareUrl]);
 
   const handleShare = useCallback(async () => {
     if (!shareUrl) {
@@ -145,7 +147,7 @@ export function PostCard({
 
     if (isMobile && typeof navigator !== 'undefined' && 'share' in navigator) {
       try {
-        await navigator.share({ title: shareTitle, text: shareText || undefined, url: shareUrl });
+        await navigator.share({ title: shareTitle, text: shareText || undefined });
         return;
       } catch (err: any) {
         if (err?.name === 'AbortError') {
@@ -463,7 +465,7 @@ export function PostCard({
         open={shareOpen}
         onClose={() => setShareOpen(false)}
         title={shareTitle}
-        text={shareText}
+        text={shareMessage}
         url={shareUrl}
       />
     </article>

@@ -7,6 +7,14 @@ import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
 
+function baseUrl() {
+  const raw =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.NEXT_PUBLIC_BASE_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://www.clubandplayer.com');
+  return raw.replace(/\/+$/, '');
+}
+
 export default async function PostPage({ params }: { params: { id: string } }) {
   const { supabase, user } = await getUserAndRole();
   const currentUserId = user?.id ?? null;
@@ -139,6 +147,7 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
   const title = postMeta?.event_payload?.title || postMeta?.content || 'Post';
   const description = postMeta?.content ? postMeta.content.slice(0, 140) : undefined;
   const image = postMeta?.link_image || postMeta?.media_url || undefined;
+  const ogImageUrl = image ? `${baseUrl()}/api/posts/${params.id}/og-image` : undefined;
 
   return {
     title,
@@ -146,7 +155,13 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
     openGraph: {
       title,
       description,
-      images: image ? [{ url: image }] : undefined,
+      images: ogImageUrl ? [{ url: ogImageUrl }] : undefined,
+    },
+    twitter: {
+      card: ogImageUrl ? 'summary_large_image' : 'summary',
+      title,
+      description,
+      images: ogImageUrl ? [ogImageUrl] : undefined,
     },
   };
 }
