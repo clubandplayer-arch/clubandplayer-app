@@ -215,8 +215,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       items.push({ key: 'logout', label: 'Logout', href: '/logout', icon: <LogOut size={16} aria-hidden />, tone: 'danger' });
     }
 
-    if (isClub) {
+    if (role !== 'guest') {
       items.push({ key: 'following', label: 'Seguiti', href: '/following', icon: <Users size={16} aria-hidden /> });
+    }
+    if (isClub) {
       items.push({ key: 'roster', label: 'Rosa', href: '/club/roster', icon: <MaterialIcon name="following" fontSize={16} /> });
     }
 
@@ -284,33 +286,33 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
               <nav className="hidden flex-1 justify-center md:flex">
                 <div className="flex items-center gap-1 rounded-full border border-white/40 bg-white/70 px-2 py-1 shadow-sm backdrop-blur">
+                  {role !== 'guest' && (
+                    <Link
+                      href="/following"
+                      aria-label="Seguiti"
+                      aria-current={isActive('/following') ? 'page' : undefined}
+                      title="Seguiti"
+                      className={`relative flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
+                        isActive('/following') ? 'bg-slate-100 text-slate-800 shadow-sm' : 'hover:bg-slate-50'
+                      }`}
+                    >
+                      <Users size={18} aria-hidden />
+                      <span className="sr-only">Seguiti</span>
+                    </Link>
+                  )}
                   {isClub && (
-                    <>
-                      <Link
-                        href="/following"
-                        aria-label="Seguiti"
-                        aria-current={isActive('/following') ? 'page' : undefined}
-                        title="Seguiti"
-                        className={`relative flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
-                          isActive('/following') ? 'bg-slate-100 text-slate-800 shadow-sm' : 'hover:bg-slate-50'
-                        }`}
-                      >
-                        <Users size={18} aria-hidden />
-                        <span className="sr-only">Seguiti</span>
-                      </Link>
-                      <Link
-                        href="/club/roster"
-                        aria-label="Rosa"
-                        aria-current={isActive('/club/roster') ? 'page' : undefined}
-                        title="Rosa"
-                        className={`relative flex h-10 w-10 items-center justify-center rounded-xl text-pink-600 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
-                          isActive('/club/roster') ? 'bg-pink-100 text-pink-700 shadow-sm' : 'hover:bg-pink-50'
-                        }`}
-                      >
-                        <MaterialIcon name="following" fontSize="small" />
-                        <span className="sr-only">Rosa</span>
-                      </Link>
-                    </>
+                    <Link
+                      href="/club/roster"
+                      aria-label="Rosa"
+                      aria-current={isActive('/club/roster') ? 'page' : undefined}
+                      title="Rosa"
+                      className={`relative flex h-10 w-10 items-center justify-center rounded-xl text-pink-600 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
+                        isActive('/club/roster') ? 'bg-pink-100 text-pink-700 shadow-sm' : 'hover:bg-pink-50'
+                      }`}
+                    >
+                      <MaterialIcon name="following" fontSize="small" />
+                      <span className="sr-only">Rosa</span>
+                    </Link>
                   )}
                   {navItems.map((item) => {
                     const active = isActive(item.href);
