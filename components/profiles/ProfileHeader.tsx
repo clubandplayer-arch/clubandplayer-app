@@ -56,21 +56,23 @@ export default function ProfileHeader({
   return (
     <header className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:gap-6">
-        <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-full bg-transparent ring-1 ring-white/60 md:h-32 md:w-32">
-          {avatarUrl ? (
-            <Image src={avatarUrl} alt={name} fill sizes="128px" className="rounded-full object-cover" />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-neutral-50 to-neutral-200 text-xl font-semibold text-neutral-600">
-              {initials}
-            </div>
-          )}
+        <div className="relative h-28 w-28 shrink-0 md:h-32 md:w-32">
+          <div className="h-full w-full overflow-hidden rounded-full bg-transparent ring-1 ring-white/60">
+            {avatarUrl ? (
+              <Image src={avatarUrl} alt={name} fill sizes="128px" className="rounded-full object-cover" />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-neutral-50 to-neutral-200 text-xl font-semibold text-neutral-600">
+                {initials}
+              </div>
+            )}
+          </div>
+          {isClub && isVerified ? <CertifiedClubMark size="lg" className="absolute -top-2 -right-2" /> : null}
         </div>
 
         <div className="flex flex-1 flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-2xl font-semibold leading-tight text-neutral-900 md:text-3xl">{name}</h1>
-              {isClub && isVerified ? <CertifiedClubMark /> : null}
               <span
                 className={`${
                   isClub

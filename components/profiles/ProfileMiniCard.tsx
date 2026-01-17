@@ -184,7 +184,7 @@ export default function ProfileMiniCard() {
   );
 
   return (
-    <div className="glass-panel p-4 space-y-4">
+    <div className="relative glass-panel p-4 space-y-4">
       <div className="flex flex-col items-center gap-3 text-center">
         <div className="relative w-3/4 max-w-[140px] aspect-square overflow-hidden rounded-full bg-transparent ring-1 ring-white/70 md:w-2/3 md:max-w-[160px]">
           {p?.avatar_url ? (
@@ -197,7 +197,6 @@ export default function ProfileMiniCard() {
         <div className="w-full space-y-1">
           <div className="flex flex-wrap items-center justify-center gap-1">
             <div className="break-words text-base font-semibold">{name}</div>
-            {isClub && p?.is_verified ? <CertifiedClubMark /> : null}
           </div>
 
           {/* righe info */}
@@ -224,6 +223,7 @@ export default function ProfileMiniCard() {
           ) : null}
         </div>
       </div>
+      {isClub && p?.is_verified ? <CertifiedClubMark size="lg" className="absolute top-3 right-3" /> : null}
 
           {isClub ? (
             <div className="space-y-3">

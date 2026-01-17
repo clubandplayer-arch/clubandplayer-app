@@ -235,23 +235,21 @@ export default function WhoToFollow() {
                   className="absolute inset-0 z-10 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
                 />
                 <div className="relative z-20 flex min-w-0 flex-1 items-center gap-3 pointer-events-none">
-                  <img
-                    src={it.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`}
-                    alt={name}
-                    className="h-10 w-10 rounded-full object-cover ring-1 ring-zinc-200 dark:ring-zinc-800"
-                  />
+                  <div className="relative">
+                    <div className="h-10 w-10 overflow-hidden rounded-full ring-1 ring-zinc-200 dark:ring-zinc-800">
+                      <img
+                        src={it.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`}
+                        alt={name}
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                    {isCertified ? <CertifiedClubMark size="sm" className="absolute -top-1 -right-1" /> : null}
+                  </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-1">
                       <span className="truncate text-sm font-medium">{name}</span>
                     </div>
-                    {isCertified ? (
-                      <div className="flex items-center justify-between gap-2 text-xs text-zinc-500">
-                        <span className="min-w-0 flex-1 truncate">{detailLine(it, role) || '—'}</span>
-                        <CertifiedClubMark className="shrink-0" />
-                      </div>
-                    ) : (
-                      <div className="truncate text-xs text-zinc-500">{detailLine(it, role) || '—'}</div>
-                    )}
+                    <div className="truncate text-xs text-zinc-500">{detailLine(it, role) || '—'}</div>
                   </div>
                 </div>
 

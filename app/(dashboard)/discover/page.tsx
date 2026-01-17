@@ -218,15 +218,19 @@ export default function DiscoverPage() {
               <li key={item.id} className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
                 <div className="flex items-start justify-between gap-3">
                   <Link href={href} className="flex min-w-0 items-center gap-3">
-                    <img
-                      src={item.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`}
-                      alt={name}
-                      className="h-11 w-11 rounded-full object-cover ring-1 ring-neutral-200"
-                    />
+                    <div className="relative">
+                      <div className="h-11 w-11 overflow-hidden rounded-full ring-1 ring-neutral-200">
+                        <img
+                          src={item.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`}
+                          alt={name}
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                      {isCertified ? <CertifiedClubMark size="sm" className="absolute -top-1 -right-1" /> : null}
+                    </div>
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-1">
                         <span className="truncate text-sm font-semibold text-neutral-900">{name}</span>
-                        {isCertified ? <CertifiedClubMark /> : null}
                       </div>
                       {detailLine(item, role, activeTab) || <span className="text-xs text-neutral-500">—</span>}
                     </div>
