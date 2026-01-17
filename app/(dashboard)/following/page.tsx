@@ -7,7 +7,6 @@ import Link from 'next/link';
 import FollowButton from '@/components/common/FollowButton';
 import useIsClub from '@/hooks/useIsClub';
 import { buildProfileDisplayName } from '@/lib/displayName';
-import VerifiedBadge from '@/components/ui/VerifiedBadge';
 
 type FollowedProfile = {
   id: string;
@@ -89,11 +88,15 @@ function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, 
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-1">
               <p className="text-sm font-semibold text-neutral-900 dark:text-white truncate">{profile.name}</p>
-              {type === 'club' && profile.is_verified ? (
-                <VerifiedBadge size="sm" className="inline-block align-middle" />
-              ) : null}
             </div>
-            <p className="text-xs uppercase tracking-wide text-neutral-500 dark:text-neutral-400 truncate">{type === 'club' ? 'Club' : 'Player'}</p>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
+              {type === 'club' && profile.is_verified ? (
+                <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+                  Certified
+                </span>
+              ) : null}
+              <span className="uppercase tracking-wide">{type === 'club' ? 'Club' : 'Player'}</span>
+            </div>
             {meta && <p className="text-xs text-neutral-600 dark:text-neutral-300 truncate">{meta}</p>}
           </div>
         </Link>
