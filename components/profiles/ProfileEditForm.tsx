@@ -530,6 +530,7 @@ export default function ProfileEditForm() {
 
       const basePayload: any = {
         full_name: (fullName || '').trim() || null,
+        display_name: (fullName || '').trim() || null,
         bio:       (bio || '').trim() || null,
         country:   normalizedCountry,   // ISO2 sempre
         avatar_url: avatarUrl || null,
