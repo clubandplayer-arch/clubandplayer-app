@@ -191,7 +191,7 @@ export default function ProfileMiniCard() {
         viewBox="0 0 24 24"
         role="img"
         aria-hidden="true"
-        className="block h-10 w-10 text-blue-600 leading-none"
+        className="block h-10 w-10 text-[var(--brand)] leading-none"
       >
         <text
           x="12"
@@ -199,7 +199,7 @@ export default function ProfileMiniCard() {
           textAnchor="middle"
           fontSize="16"
           fontWeight="700"
-          fontFamily="system-ui, -apple-system, Segoe UI, sans-serif"
+          fontFamily="var(--font-righteous), 'Righteous', system-ui, -apple-system, 'Segoe UI', sans-serif"
           fill="currentColor"
         >
           C
