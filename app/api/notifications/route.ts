@@ -30,7 +30,7 @@ export const GET = withAuth(async (req, { supabase, user }) => {
     const { data: actors } = actorIds.length
       ? await supabase
           .from('profiles')
-          .select('id, display_name, avatar_url, account_type, city, country')
+          .select('id, display_name, full_name, avatar_url, account_type, city, country')
           .in('id', actorIds)
       : { data: [] as any[] };
 

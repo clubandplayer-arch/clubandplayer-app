@@ -5,15 +5,16 @@ import Image from 'next/image';
 import type { NotificationWithActor } from '@/types/notifications';
 
 function Avatar({ notification }: { notification: NotificationWithActor }) {
+  const actorName = notification.actor?.display_name ?? notification.actor?.full_name ?? 'Utente';
   const src = notification.actor?.avatar_url
     ? notification.actor.avatar_url
     : `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
-        notification.actor?.display_name || 'CP'
+        actorName || 'CP'
       )}`;
   return (
     <Image
       src={src}
-      alt={notification.actor?.display_name || 'Utente'}
+      alt={actorName}
       width={40}
       height={40}
       className="h-10 w-10 flex-none rounded-full object-cover ring-1 ring-neutral-200"
@@ -30,7 +31,7 @@ type Props = {
 function renderContent(notification: NotificationWithActor) {
   const kind = (notification.kind || '').toString();
   const payload = notification.payload || {};
-  const actorName = notification.actor?.display_name ?? 'Un utente';
+  const actorName = notification.actor?.display_name ?? notification.actor?.full_name ?? 'Un utente';
 
   switch (kind) {
     case 'new_follower':
