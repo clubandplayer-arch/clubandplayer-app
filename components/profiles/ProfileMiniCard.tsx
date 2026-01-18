@@ -8,7 +8,6 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 import FollowButton from '@/components/clubs/FollowButton';
 import { CountryFlag } from '@/components/ui/CountryFlag';
-import VerifiedBadge from '@/components/ui/VerifiedBadge';
 
 import { resolveCountryName, resolveStateName } from '@/lib/geodata/countryStateCityDataset';
 import { normalizeSport } from '@/lib/opps/constants';
@@ -183,8 +182,34 @@ export default function ProfileMiniCard() {
     </a>
   );
 
+  const CertifiedClubBadge = () => (
+    <span
+      aria-label="Club certificato"
+      className="absolute right-10 top-4 inline-flex h-10 w-10 items-center justify-center bg-transparent shadow-none ring-0"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        role="img"
+        aria-hidden="true"
+        className="block h-10 w-10 text-[var(--brand)] leading-none"
+      >
+        <text
+          x="12"
+          y="16"
+          textAnchor="middle"
+          fontSize="16"
+          fontWeight="700"
+          fontFamily="var(--font-righteous), 'Righteous', system-ui, -apple-system, 'Segoe UI', sans-serif"
+          fill="currentColor"
+        >
+          C
+        </text>
+      </svg>
+    </span>
+  );
+
   return (
-    <div className="glass-panel p-4 space-y-4">
+    <div className="relative glass-panel p-4 space-y-4">
       <div className="flex flex-col items-center gap-3 text-center">
         <div className="relative w-3/4 max-w-[140px] aspect-square overflow-hidden rounded-full bg-transparent ring-1 ring-white/70 md:w-2/3 md:max-w-[160px]">
           {p?.avatar_url ? (
@@ -197,7 +222,6 @@ export default function ProfileMiniCard() {
         <div className="w-full space-y-1">
           <div className="flex flex-wrap items-center justify-center gap-1">
             <div className="break-words text-base font-semibold">{name}</div>
-            {isClub && p?.is_verified ? <VerifiedBadge size="sm" className="inline-block align-middle" /> : null}
           </div>
 
           {/* righe info */}
@@ -224,18 +248,19 @@ export default function ProfileMiniCard() {
           ) : null}
         </div>
       </div>
+      {isClub && p?.is_verified ? <CertifiedClubBadge /> : null}
 
-          {isClub ? (
-            <div className="space-y-3">
-              {targetId && !isSelf ? (
-                <div className="flex justify-center">
-                  <FollowButton
-                    targetProfileId={targetId}
-                    labelFollow="Segui"
-                    labelFollowing="Seguo"
-                    size="md"
-                    className="w-full justify-center"
-                  />
+      {isClub ? (
+        <div className="space-y-3">
+          {targetId && !isSelf ? (
+            <div className="flex justify-center">
+              <FollowButton
+                targetProfileId={targetId}
+                labelFollow="Segui"
+                labelFollowing="Seguo"
+                size="md"
+                className="w-full justify-center"
+              />
             </div>
           ) : null}
 

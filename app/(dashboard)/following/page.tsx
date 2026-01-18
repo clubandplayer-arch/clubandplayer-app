@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import FollowButton from '@/components/common/FollowButton';
+import CertifiedClubMark from '@/components/ui/CertifiedClubMark';
 import useIsClub from '@/hooks/useIsClub';
 import { buildProfileDisplayName } from '@/lib/displayName';
 
@@ -63,6 +64,7 @@ function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, 
   const initials = getInitials(profile.name || 'Profilo');
   const toggleDisabled = rosterPending || !onToggleRoster;
   const avatarUrl = profile.avatar_url ? profile.avatar_url.trim() : '';
+  const isCertified = type === 'club' && Boolean((profile as any).is_verified ?? (profile as any).isVerified ?? false);
 
   const handleToggle = () => {
     if (!onToggleRoster || toggleDisabled) return;
@@ -73,28 +75,26 @@ function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, 
     <div className="flex h-full flex-col gap-3 rounded-2xl border border-neutral-200 bg-white/70 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900/60">
       <div className="flex flex-wrap items-start gap-3">
         <Link href={href} className="flex flex-1 gap-3">
-          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[var(--brand)]/20 to-[var(--brand)]/40 text-sm font-semibold uppercase text-[var(--brand)] aspect-square">
-            {avatarUrl ? (
-              <img
-                src={avatarUrl}
-                alt={profile.name || 'Profilo'}
-                className="h-full w-full object-cover"
-                loading="lazy"
-              />
-            ) : (
-              <span>{initials}</span>
-            )}
+          <div className="relative">
+            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[var(--brand)]/20 to-[var(--brand)]/40 text-sm font-semibold uppercase text-[var(--brand)] aspect-square">
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt={profile.name || 'Profilo'}
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                />
+              ) : (
+                <span>{initials}</span>
+              )}
+            </div>
+            {isCertified ? <CertifiedClubMark size="sm" className="absolute -top-1 -right-1" /> : null}
           </div>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-1">
               <p className="text-sm font-semibold text-neutral-900 dark:text-white truncate">{profile.name}</p>
             </div>
             <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
-              {type === 'club' && profile.is_verified ? (
-                <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
-                  Certified
-                </span>
-              ) : null}
               <span className="uppercase tracking-wide">{type === 'club' ? 'Club' : 'Player'}</span>
             </div>
             {meta && <p className="text-xs text-neutral-600 dark:text-neutral-300 truncate">{meta}</p>}

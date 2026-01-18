@@ -7,14 +7,15 @@ import Link from 'next/link';
 import FollowButton from '@/components/common/FollowButton';
 import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentProfileContext';
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
+import CertifiedClubMark from '@/components/ui/CertifiedClubMark';
 import { CountryFlag } from '@/components/ui/CountryFlag';
-import VerifiedBadge from '@/components/ui/VerifiedBadge';
 
 type Suggestion = {
   id: string;
   display_name?: string | null;
   full_name?: string | null;
   kind?: 'club' | 'player' | null;
+  type?: string | null;
   category?: string | null;
   location?: string | null;
   city?: string | null;
@@ -23,6 +24,7 @@ type Suggestion = {
   role?: string | null;
   avatar_url?: string | null;
   is_verified?: boolean | null;
+  isVerified?: boolean | null;
 };
 
 function targetHref(item: Suggestion) {
@@ -141,7 +143,10 @@ export default function WhoToFollow() {
           id: item.id,
           display_name: item.display_name ?? item.name ?? null,
           full_name: item.full_name ?? item.name ?? null,
-          kind: item.kind ?? (item.account_type === 'club' ? 'club' : item.account_type ? 'player' : null),
+          kind:
+            item.kind ??
+            (item.account_type === 'club' || item.type === 'CLUB' ? 'club' : item.account_type || item.type ? 'player' : null),
+          type: item.type ?? null,
           category: item.category ?? null,
           location: item.location ?? null,
           city: item.city ?? null,
@@ -149,7 +154,8 @@ export default function WhoToFollow() {
           sport: item.sport ?? null,
           role: item.role ?? null,
           avatar_url: item.avatar_url ?? null,
-          is_verified: item.is_verified ?? null,
+          is_verified: item.is_verified ?? item.isVerified ?? null,
+          isVerified: item.isVerified ?? null,
         })) as Suggestion[];
         if (cancelled) return;
         setRole((data?.role as ProfileRole) || contextRole || 'guest');
@@ -219,6 +225,8 @@ export default function WhoToFollow() {
           {itemsToShow.map((it) => {
             const name = displayName(it);
             const href = targetHref(it);
+            const itemType = it.type ?? (it.kind === 'club' ? 'CLUB' : it.kind === 'player' ? 'PLAYER' : null);
+            const isCertified = itemType === 'CLUB' && Boolean((it as any).is_verified ?? (it as any).isVerified ?? false);
             return (
               <li key={it.id} className="relative flex items-center gap-3">
                 <Link
@@ -227,17 +235,19 @@ export default function WhoToFollow() {
                   className="absolute inset-0 z-10 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
                 />
                 <div className="relative z-20 flex min-w-0 flex-1 items-center gap-3 pointer-events-none">
-                  <img
-                    src={it.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`}
-                    alt={name}
-                    className="h-10 w-10 rounded-full object-cover ring-1 ring-zinc-200 dark:ring-zinc-800"
-                  />
+                  <div className="relative">
+                    <div className="h-10 w-10 overflow-hidden rounded-full ring-1 ring-zinc-200 dark:ring-zinc-800">
+                      <img
+                        src={it.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`}
+                        alt={name}
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                    {isCertified ? <CertifiedClubMark size="sm" className="absolute -top-1 -right-1" /> : null}
+                  </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-1">
                       <span className="truncate text-sm font-medium">{name}</span>
-                      {it.kind === 'club' && it.is_verified ? (
-                        <VerifiedBadge size="sm" className="inline-block align-middle" />
-                      ) : null}
                     </div>
                     <div className="truncate text-xs text-zinc-500">{detailLine(it, role) || '—'}</div>
                   </div>

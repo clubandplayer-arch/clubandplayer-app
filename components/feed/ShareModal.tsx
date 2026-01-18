@@ -21,18 +21,19 @@ export default function ShareModal({ open, onClose, title, text, url }: ShareMod
   const { toast } = useToast();
   const systemShareAvailable = typeof navigator !== 'undefined' && 'share' in navigator;
   const snippet = text?.trim() ? text.trim().slice(0, 160) : '';
-  const shareText = [title, snippet].filter(Boolean).join(' - ');
+  const shareMessage = [title, snippet].filter(Boolean).join(' - ');
+  const shareTextWithUrl = `${shareMessage}\n${url}`;
 
   const links = [
     {
       label: 'WhatsApp',
       icon: <WhatsAppIcon />,
-      href: shareLink('https://wa.me/', { text: `${shareText}\n${url}` }),
+      href: shareLink('https://wa.me/', { text: shareTextWithUrl }),
     },
     {
       label: 'Telegram',
       icon: <TelegramIcon />,
-      href: shareLink('https://t.me/share/url', { url, text: shareText }),
+      href: shareLink('https://t.me/share/url', { url, text: shareMessage }),
     },
     {
       label: 'Facebook',
@@ -42,7 +43,7 @@ export default function ShareModal({ open, onClose, title, text, url }: ShareMod
     {
       label: 'X',
       icon: <XIcon />,
-      href: shareLink('https://twitter.com/intent/tweet', { url, text: shareText }),
+      href: shareLink('https://twitter.com/intent/tweet', { url, text: shareMessage }),
     },
     {
       label: 'LinkedIn',
@@ -72,7 +73,7 @@ export default function ShareModal({ open, onClose, title, text, url }: ShareMod
   const handleSystemShare = async () => {
     if (!systemShareAvailable) return;
     try {
-      await navigator.share({ title, text: text || undefined, url });
+      await navigator.share({ title, text: shareTextWithUrl });
     } catch (err: any) {
       if (err?.name === 'AbortError') return;
       toast({ title: 'Condivisione non disponibile', description: 'Impossibile aprire il menu di sistema.' });
