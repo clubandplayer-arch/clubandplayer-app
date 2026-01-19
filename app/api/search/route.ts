@@ -2,7 +2,6 @@ import type { NextRequest } from 'next/server';
 
 import { dbError, invalidPayload, rateLimited, successResponse, unknownError } from '@/lib/api/standardResponses';
 import { rateLimit } from '@/lib/api/rateLimit';
-import { buildProfileDisplayName } from '@/lib/displayName';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
@@ -46,7 +45,7 @@ const DEFAULT_LIMIT = 10;
 const ALL_PREVIEW_LIMIT = 3;
 
 const SUPPORTED_TYPES: SearchType[] = ['all', 'opportunities', 'clubs', 'players', 'posts', 'events'];
-const ATHLETES_SELECT = 'id, display_name, full_name, avatar_url, city, province, region, country, sport, role';
+const ATHLETES_SELECT = 'id, full_name, avatar_url, city, province, region, country, sport, role';
 
 function clamp(n: number, min: number, max: number) {
   return Math.min(Math.max(n, min), max);
@@ -98,15 +97,14 @@ function buildProfileQuery(
   let query = supabase.from(table).select(select, options).eq('status', 'active');
 
   const commonOr = [
-    `display_name.ilike.${ilikeQuery}`,
     `city.ilike.${ilikeQuery}`,
     `province.ilike.${ilikeQuery}`,
     `region.ilike.${ilikeQuery}`,
     `country.ilike.${ilikeQuery}`,
     `sport.ilike.${ilikeQuery}`,
   ];
-  const athleteOr = [...commonOr, `full_name.ilike.${ilikeQuery}`, `role.ilike.${ilikeQuery}`];
-  const clubOr = [...commonOr];
+  const athleteOr = [`full_name.ilike.${ilikeQuery}`, ...commonOr, `role.ilike.${ilikeQuery}`];
+  const clubOr = [`display_name.ilike.${ilikeQuery}`, ...commonOr];
 
   query = query.or((table === 'athletes_view' ? athleteOr : clubOr).join(','));
 
@@ -180,8 +178,7 @@ async function fetchProfileResults(params: {
   const rows = Array.isArray(data) ? (data as any[]) : [];
 
   const results: SearchResult[] = rows.map((row) => {
-    const displayName = (row.display_name || row.full_name || '').trim();
-    const title = displayName || buildProfileDisplayName(row.full_name, row.display_name, 'Profilo');
+    const title = (row.full_name || '').trim() || 'Player';
     const details = [row.role, row.sport].filter(Boolean).join(' · ');
     const location = buildLocation(row);
     const subtitle = [details, location].filter(Boolean).join(' · ');
