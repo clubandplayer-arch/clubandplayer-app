@@ -6,6 +6,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentProfileContext';
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
 import { CountryFlag } from '@/components/ui/CountryFlag';
+import CertifiedCMark from '@/components/badges/CertifiedCMark';
 
 type FollowedItem = {
   id: string;
@@ -16,6 +17,7 @@ type FollowedItem = {
   country: string | null;
   sport: string | null;
   avatarUrl?: string | null;
+  isVerified?: boolean | null;
   accountType: 'club' | 'athlete';
 };
 
@@ -79,24 +81,25 @@ export default function FollowedClubs() {
         const nextRole: ProfileRole =
           data?.role === 'club' || data?.role === 'athlete' ? data.role : contextRole;
         const rows: FollowedItem[] = Array.isArray(data?.items)
-              ? (data.items as any[])
-                  .map((item) => {
-                    const accountType: 'club' | 'athlete' = item.account_type === 'club' ? 'club' : 'athlete';
-                    const fullName = item.full_name ?? item.fullName ?? null;
-                    const displayName = item.display_name ?? item.displayName ?? null;
-                    const safeName =
-                      accountType === 'club'
-                        ? buildClubDisplayName(fullName, displayName, 'Club')
-                        : buildPlayerDisplayName(fullName, displayName, 'Profilo');
-                    return {
-                      id: item.id,
-                      name: safeName,
-                      fullName,
-                      displayName,
-                      city: item.city ?? null,
-                      country: item.country ?? null,
-                      sport: item.sport ?? null,
-                      avatarUrl: item.avatar_url ?? item.avatarUrl ?? null,
+          ? (data.items as any[])
+              .map((item) => {
+                const accountType: 'club' | 'athlete' = item.account_type === 'club' ? 'club' : 'athlete';
+                const fullName = item.full_name ?? item.fullName ?? null;
+                const displayName = item.display_name ?? item.displayName ?? null;
+                const safeName =
+                  accountType === 'club'
+                    ? buildClubDisplayName(fullName, displayName, 'Club')
+                    : buildPlayerDisplayName(fullName, displayName, 'Profilo');
+                return {
+                  id: item.id,
+                  name: safeName,
+                  fullName,
+                  displayName,
+                  city: item.city ?? null,
+                  country: item.country ?? null,
+                  sport: item.sport ?? null,
+                  avatarUrl: item.avatar_url ?? item.avatarUrl ?? null,
+                  isVerified: item.is_verified ?? item.isVerified ?? null,
                   accountType,
                 };
               })
@@ -153,9 +156,10 @@ export default function FollowedClubs() {
         <ul className="space-y-2">
           {items.slice(0, 3).map((item) => {
             const href = targetHref(item);
+            const isCertified = item.accountType === 'club' && Boolean(item.isVerified);
             return (
               <li key={item.id} className="flex items-center gap-3">
-                <Link href={href} aria-label={`Vai al profilo di ${item.name}`}>
+                <Link href={href} aria-label={`Vai al profilo di ${item.name}`} className="relative">
                   <img
                     src={
                       item.avatarUrl ||
@@ -164,6 +168,7 @@ export default function FollowedClubs() {
                     alt={item.name}
                     className="h-9 w-9 rounded-full object-cover ring-1 ring-zinc-200 dark:ring-zinc-800"
                   />
+                  {isCertified ? <CertifiedCMark className="absolute -top-2 -right-2 scale-[0.75]" /> : null}
                 </Link>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
@@ -173,13 +178,13 @@ export default function FollowedClubs() {
                     >
                       {item.name}
                     </Link>
-                  <span className="rounded-full border border-zinc-200 bg-zinc-100 px-2 py-[1px] text-[10px] font-semibold uppercase tracking-wide text-zinc-700">
-                    {item.accountType === 'club' ? 'Club' : 'Player'}
-                  </span>
+                    <span className="rounded-full border border-zinc-200 bg-zinc-100 px-2 py-[1px] text-[10px] font-semibold uppercase tracking-wide text-zinc-700">
+                      {item.accountType === 'club' ? 'Club' : 'Player'}
+                    </span>
+                  </div>
+                  <div className="truncate text-xs text-zinc-500">{subtitle(item, role)}</div>
                 </div>
-                <div className="truncate text-xs text-zinc-500">{subtitle(item, role)}</div>
-              </div>
-            </li>
+              </li>
             );
           })}
         </ul>
