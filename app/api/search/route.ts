@@ -47,7 +47,7 @@ const ALL_PREVIEW_LIMIT = 3;
 
 const SUPPORTED_TYPES: SearchType[] = ['all', 'opportunities', 'clubs', 'players', 'posts', 'events'];
 const ATHLETES_SELECT = 'id, display_name, full_name, avatar_url, city, province, region, country, sport, role';
-const CLUBS_SELECT = 'id, display_name, full_name, avatar_url, city, province, region, country, sport';
+const CLUBS_SELECT = 'id, display_name, avatar_url, city, province, region, country, sport';
 
 function clamp(n: number, min: number, max: number) {
   return Math.min(Math.max(n, min), max);
@@ -98,20 +98,18 @@ function buildProfileQuery(
 ) {
   let query = supabase.from(table).select(select, options).eq('status', 'active');
 
-  const orParts = [
+  const commonOr = [
     `display_name.ilike.${ilikeQuery}`,
-    `full_name.ilike.${ilikeQuery}`,
     `city.ilike.${ilikeQuery}`,
     `province.ilike.${ilikeQuery}`,
     `region.ilike.${ilikeQuery}`,
     `country.ilike.${ilikeQuery}`,
     `sport.ilike.${ilikeQuery}`,
   ];
-  if (table === 'athletes_view') {
-    orParts.push(`role.ilike.${ilikeQuery}`);
-  }
+  const athleteOr = [...commonOr, `full_name.ilike.${ilikeQuery}`, `role.ilike.${ilikeQuery}`];
+  const clubOr = [...commonOr];
 
-  query = query.or(orParts.join(','));
+  query = query.or((table === 'athletes_view' ? athleteOr : clubOr).join(','));
 
   return query;
 }
@@ -139,7 +137,8 @@ async function fetchProfileResults(params: {
   const rows = Array.isArray(data) ? (data as any[]) : [];
 
   const results: SearchResult[] = rows.map((row) => {
-    const displayName = (row.display_name || row.full_name || '').trim();
+    const displayName =
+      table === 'athletes_view' ? (row.display_name || row.full_name || '').trim() : (row.display_name || '').trim();
     const title = displayName || buildProfileDisplayName(row.full_name, row.display_name, 'Profilo');
     const details = [row.role, row.sport].filter(Boolean).join(' · ');
     const location = buildLocation(row);

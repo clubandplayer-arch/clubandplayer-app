@@ -50,7 +50,7 @@ export const GET = withAuth(async (req, { supabase, user }) => {
         ? supabase.from('athletes_view').select('id, display_name, full_name').in('id', athleteIds)
         : Promise.resolve({ data: [] as any[], error: null }),
       clubIds.length
-        ? supabase.from('clubs_view').select('id, display_name, full_name').in('id', clubIds)
+        ? supabase.from('clubs_view').select('id, display_name').in('id', clubIds)
         : Promise.resolve({ data: [] as any[], error: null }),
     ]);
 
