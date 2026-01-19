@@ -2,9 +2,10 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import FollowButton from '@/components/common/FollowButton';
+import { AnimatePresence, motion } from 'framer-motion';
+import { useFollow } from '@/components/follow/FollowProvider';
 import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentProfileContext';
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
 import CertifiedClubMark from '@/components/ui/CertifiedClubMark';
@@ -26,6 +27,14 @@ type Suggestion = {
   is_verified?: boolean | null;
   isVerified?: boolean | null;
 };
+
+type SuggestionsState = {
+  visible: Suggestion[];
+  queue: Suggestion[];
+};
+
+const VISIBLE_COUNT = 3;
+const PREFETCH_LIMIT = 6;
 
 function targetHref(item: Suggestion) {
   return item.kind === 'club' ? `/clubs/${item.id}` : `/players/${item.id}`;
@@ -110,73 +119,166 @@ function detailLine(suggestion: Suggestion, viewerRole: ProfileRole): ReactNode 
 
 export default function WhoToFollow() {
   const { role: contextRole } = useCurrentProfileContext();
+  const { toggleFollow, ensureState, isFollowing, pending, currentProfileId } = useFollow();
   const [role, setRole] = useState<ProfileRole>('guest');
-  const [items, setItems] = useState<Suggestion[]>([]);
+  const [suggestions, setSuggestions] = useState<SuggestionsState>({ visible: [], queue: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [localPending, setLocalPending] = useState<Set<string>>(new Set());
+  const seenIds = useRef<Set<string>>(new Set());
+
+  const normalizeSuggestions = useCallback((rawItems: any[]): Suggestion[] => (
+    rawItems.map((item: any) => ({
+      id: item.id,
+      display_name: item.display_name ?? item.name ?? null,
+      full_name: item.full_name ?? item.name ?? null,
+      kind:
+        item.kind ??
+        (item.account_type === 'club' || item.type === 'CLUB' ? 'club' : item.account_type || item.type ? 'player' : null),
+      type: item.type ?? null,
+      category: item.category ?? null,
+      location: item.location ?? null,
+      city: item.city ?? null,
+      country: item.country ?? null,
+      sport: item.sport ?? null,
+      role: item.role ?? null,
+      avatar_url: item.avatar_url ?? null,
+      is_verified: item.is_verified ?? item.isVerified ?? null,
+      isVerified: item.isVerified ?? null,
+    })) as Suggestion[]
+  ), []);
+
+  const fetchSuggestions = useCallback(async (limit: number) => {
+    const res = await fetch(`/api/follows/suggestions?limit=${limit}`, {
+      credentials: 'include',
+      cache: 'no-store',
+      next: { revalidate: 0 },
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data?.ok === false) {
+      const message =
+        data?.message || (res.status ? `Errore server (HTTP ${res.status}).` : 'Impossibile caricare i suggerimenti.');
+      throw new Error(message);
+    }
+    const rawItems = Array.isArray(data?.items)
+      ? data.items
+      : Array.isArray(data?.data)
+      ? data.data
+      : Array.isArray(data?.suggestions)
+      ? data.suggestions
+      : [];
+    const normalized = normalizeSuggestions(rawItems);
+    const ids = normalized.map((item) => item.id).filter(Boolean);
+    if (ids.length) {
+      await ensureState(ids);
+    }
+    return {
+      role: (data?.role as ProfileRole) || contextRole || 'guest',
+      suggestions: normalized.filter((item) => {
+        if (!item.id) return false;
+        if (item.id === currentProfileId) return false;
+        if (seenIds.current.has(item.id)) return false;
+        if (isFollowing(item.id)) return false;
+        return true;
+      }),
+    };
+  }, [contextRole, currentProfileId, ensureState, isFollowing, normalizeSuggestions]);
+
+  const markSeen = useCallback((items: Suggestion[]) => {
+    items.forEach((item) => {
+      if (item.id) seenIds.current.add(item.id);
+    });
+  }, []);
+
+  const loadInitial = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    seenIds.current = new Set();
+    try {
+      const { role: resolvedRole, suggestions: nextSuggestions } = await fetchSuggestions(PREFETCH_LIMIT);
+      setRole(resolvedRole);
+      markSeen(nextSuggestions);
+      setSuggestions({
+        visible: nextSuggestions.slice(0, VISIBLE_COUNT),
+        queue: nextSuggestions.slice(VISIBLE_COUNT),
+      });
+      setError(null);
+    } catch (err) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('[who-to-follow] load error', err);
+      }
+      setSuggestions({ visible: [], queue: [] });
+      setRole(contextRole || 'guest');
+      setError(err instanceof Error ? err.message : 'Impossibile caricare i suggerimenti.');
+    } finally {
+      setLoading(false);
+    }
+  }, [contextRole, fetchSuggestions, markSeen]);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await fetch('/api/follows/suggestions?limit=3', {
-          credentials: 'include',
-          cache: 'no-store',
-          next: { revalidate: 0 },
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || data?.ok === false) {
-          const message =
-            data?.message || (res.status ? `Errore server (HTTP ${res.status}).` : 'Impossibile caricare i suggerimenti.');
-          throw new Error(message);
-        }
-        const rawItems = Array.isArray(data?.items)
-          ? data.items
-          : Array.isArray(data?.data)
-          ? data.data
-          : Array.isArray(data?.suggestions)
-          ? data.suggestions
-          : [];
-        const suggestions = rawItems.map((item: any) => ({
-          id: item.id,
-          display_name: item.display_name ?? item.name ?? null,
-          full_name: item.full_name ?? item.name ?? null,
-          kind:
-            item.kind ??
-            (item.account_type === 'club' || item.type === 'CLUB' ? 'club' : item.account_type || item.type ? 'player' : null),
-          type: item.type ?? null,
-          category: item.category ?? null,
-          location: item.location ?? null,
-          city: item.city ?? null,
-          country: item.country ?? null,
-          sport: item.sport ?? null,
-          role: item.role ?? null,
-          avatar_url: item.avatar_url ?? null,
-          is_verified: item.is_verified ?? item.isVerified ?? null,
-          isVerified: item.isVerified ?? null,
-        })) as Suggestion[];
-        if (cancelled) return;
-        setRole((data?.role as ProfileRole) || contextRole || 'guest');
-        setItems(suggestions);
-        setError(null);
-      } catch (err) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.error('[who-to-follow] load error', err);
-        }
-        if (cancelled) return;
-        setItems([]);
-        setRole(contextRole || 'guest');
-        setError(err instanceof Error ? err.message : 'Impossibile caricare i suggerimenti.');
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+      await loadInitial();
+      if (cancelled) return;
     })();
     return () => {
       cancelled = true;
     };
-  }, [contextRole]);
+  }, [loadInitial]);
+
+  const refillQueue = useCallback(async () => {
+    try {
+      const { suggestions: nextSuggestions } = await fetchSuggestions(PREFETCH_LIMIT);
+      if (!nextSuggestions.length) return;
+      markSeen(nextSuggestions);
+      setSuggestions((prev) => ({
+        visible: prev.visible,
+        queue: [...prev.queue, ...nextSuggestions],
+      }));
+    } catch (err) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('[who-to-follow] refill error', err);
+      }
+    }
+  }, [fetchSuggestions, markSeen]);
+
+  const handleFollow = useCallback(async (targetId: string) => {
+    const cleanId = (targetId || '').trim();
+    if (!cleanId) return;
+    if (localPending.has(cleanId) || pending.has(cleanId)) return;
+    setLocalPending((prev) => new Set(prev).add(cleanId));
+    try {
+      await toggleFollow(cleanId);
+      let shouldRefill = false;
+      setSuggestions((prev) => {
+        const nextVisible = prev.visible.filter((item) => item.id !== cleanId);
+        const [nextItem, ...restQueue] = prev.queue;
+        if (nextItem) {
+          return {
+            visible: [...nextVisible, nextItem],
+            queue: restQueue,
+          };
+        }
+        if (restQueue.length === 0 && nextVisible.length < VISIBLE_COUNT) {
+          shouldRefill = true;
+        }
+        return { visible: nextVisible, queue: restQueue };
+      });
+      if (shouldRefill) {
+        await refillQueue();
+      }
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('[who-to-follow] follow error', error);
+      }
+    } finally {
+      setLocalPending((prev) => {
+        const next = new Set(prev);
+        next.delete(cleanId);
+        return next;
+      });
+    }
+  }, [localPending, pending, refillQueue, toggleFollow]);
 
   if (loading) {
     return (
@@ -205,7 +307,7 @@ export default function WhoToFollow() {
 
   const heading = 'Chi seguire';
   const subtitle = 'Suggeriti per te';
-  const itemsToShow = items.slice(0, 3);
+  const itemsToShow = suggestions.visible;
 
   return (
     <div className="space-y-3">
@@ -222,58 +324,88 @@ export default function WhoToFollow() {
         </div>
       ) : itemsToShow.length > 0 ? (
         <ul className="space-y-3">
-          {itemsToShow.map((it) => {
-            const name = displayName(it);
-            const href = targetHref(it);
-            const itemType = it.type ?? (it.kind === 'club' ? 'CLUB' : it.kind === 'player' ? 'PLAYER' : null);
-            const isCertified = itemType === 'CLUB' && Boolean((it as any).is_verified ?? (it as any).isVerified ?? false);
-            return (
-              <li key={it.id} className="relative flex items-center gap-3">
-                <Link
-                  href={href}
-                  aria-label={`Apri profilo ${name}`}
-                  className="absolute inset-0 z-10 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
-                />
-                <div className="relative z-20 flex min-w-0 flex-1 items-center gap-3 pointer-events-none">
-                  <div className="relative">
-                    <div className="h-10 w-10 overflow-hidden rounded-full ring-1 ring-zinc-200 dark:ring-zinc-800">
-                      <img
-                        src={it.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`}
-                        alt={name}
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
-                    {isCertified ? <CertifiedClubMark size="sm" className="absolute -top-1 -right-1" /> : null}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-1">
-                      <span className="truncate text-sm font-medium">{name}</span>
-                    </div>
-                    <div className="truncate text-xs text-zinc-500">{detailLine(it, role) || '—'}</div>
-                  </div>
-                </div>
-
-                {it.kind ? (
-                  <span className="relative z-20 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-600 pointer-events-none">
-                    {it.kind === 'club' ? 'CLUB' : 'PLAYER'}
-                  </span>
-                ) : null}
-                <div
-                  className="relative z-30"
-                  onClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
+          <AnimatePresence initial={false}>
+            {itemsToShow.map((it) => {
+              const name = displayName(it);
+              const href = targetHref(it);
+              const itemType = it.type ?? (it.kind === 'club' ? 'CLUB' : it.kind === 'player' ? 'PLAYER' : null);
+              const isCertified = itemType === 'CLUB' && Boolean((it as any).is_verified ?? (it as any).isVerified ?? false);
+              const isLoading = localPending.has(it.id) || pending.has(it.id);
+              return (
+                <motion.li
+                  key={it.id}
+                  layout
+                  initial={{ opacity: 0, transform: 'translateY(6px)' }}
+                  animate={{ opacity: 1, transform: 'translateY(0px)' }}
+                  exit={{
+                    opacity: 0,
+                    transform: 'translateY(-6px)',
+                    height: 0,
+                    marginTop: 0,
+                    marginBottom: 0,
+                    paddingTop: 0,
+                    paddingBottom: 0,
                   }}
-                  onMouseDown={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                  }}
+                  transition={{ duration: 0.25 }}
+                  className="relative flex items-center gap-3"
                 >
-                  <FollowButton targetProfileId={it.id} size="sm" />
-                </div>
-              </li>
-            );
-          })}
+                  <Link
+                    href={href}
+                    aria-label={`Apri profilo ${name}`}
+                    className="absolute inset-0 z-10 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
+                  />
+                  <div className="relative z-20 flex min-w-0 flex-1 items-center gap-3 pointer-events-none">
+                    <div className="relative">
+                      <div className="h-10 w-10 overflow-hidden rounded-full ring-1 ring-zinc-200 dark:ring-zinc-800">
+                        <img
+                          src={it.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`}
+                          alt={name}
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                      {isCertified ? <CertifiedClubMark size="sm" className="absolute -top-1 -right-1" /> : null}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-1">
+                        <span className="truncate text-sm font-medium">{name}</span>
+                      </div>
+                      <div className="truncate text-xs text-zinc-500">{detailLine(it, role) || '—'}</div>
+                    </div>
+                  </div>
+
+                  {it.kind ? (
+                    <span className="relative z-20 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-600 pointer-events-none">
+                      {it.kind === 'club' ? 'CLUB' : 'PLAYER'}
+                    </span>
+                  ) : null}
+                  <div
+                    className="relative z-30"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                    }}
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => handleFollow(it.id)}
+                      disabled={isLoading}
+                      className={`inline-flex items-center gap-2 rounded-md border transition ${
+                        isLoading
+                          ? 'border-neutral-200 bg-neutral-50 text-neutral-400'
+                          : 'border-neutral-300 bg-white text-neutral-800 hover:bg-neutral-50'
+                      } px-2 py-1 text-sm`}
+                    >
+                      {isLoading ? '...' : 'Segui'}
+                    </button>
+                  </div>
+                </motion.li>
+              );
+            })}
+          </AnimatePresence>
         </ul>
       ) : (
         <div className="rounded-lg border border-dashed p-4 text-center text-sm text-zinc-500 dark:border-zinc-800">
