@@ -47,7 +47,6 @@ const ALL_PREVIEW_LIMIT = 3;
 
 const SUPPORTED_TYPES: SearchType[] = ['all', 'opportunities', 'clubs', 'players', 'posts', 'events'];
 const ATHLETES_SELECT = 'id, display_name, full_name, avatar_url, city, province, region, country, sport, role';
-const CLUBS_SELECT = 'id, display_name, avatar_url, city, province, region, country, sport';
 
 function clamp(n: number, min: number, max: number) {
   return Math.min(Math.max(n, min), max);
@@ -125,9 +124,53 @@ async function fetchProfileResults(params: {
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
-  const table = kind === 'players' ? 'athletes_view' : 'clubs_view';
-  const select = table === 'athletes_view' ? ATHLETES_SELECT : CLUBS_SELECT;
-  const query = buildProfileQuery(supabase, table, ilikeQuery, select, { count: 'exact' })
+  if (kind === 'clubs') {
+    const { data, count, error } = await supabase
+      .from('clubs_view')
+      .select('id, display_name', { count: 'exact' })
+      .ilike('display_name', ilikeQuery)
+      .order('display_name', { ascending: true })
+      .range(from, to);
+    if (error) throw new Error(error.message);
+
+    const rows = Array.isArray(data) ? (data as any[]) : [];
+    const clubIds = rows.map((row) => row.id).filter(Boolean);
+    let extrasMap = new Map<
+      string,
+      { avatar_url?: string | null; city?: string | null; province?: string | null; region?: string | null; country?: string | null; sport?: string | null }
+    >();
+
+    if (clubIds.length) {
+      const { data: extras, error: extrasError } = await supabase
+        .from('profiles')
+        .select('id, avatar_url, city, province, region, country, sport')
+        .in('id', clubIds);
+      if (extrasError) throw new Error(extrasError.message);
+      extrasMap = new Map(
+        (extras ?? []).map((row) => [String(row.id), row as { avatar_url?: string | null; city?: string | null; province?: string | null; region?: string | null; country?: string | null; sport?: string | null }]),
+      );
+    }
+
+    const results: SearchResult[] = rows.map((row) => {
+      const displayName = (row.display_name || '').trim();
+      const extras = extrasMap.get(String(row.id));
+      const location = buildLocation(extras ?? {});
+      const subtitle = [extras?.sport, location].filter(Boolean).join(' · ');
+      return {
+        id: String(row.id),
+        title: displayName || 'Club',
+        subtitle: subtitle || null,
+        image_url: extras?.avatar_url ?? null,
+        href: `/clubs/${row.id}`,
+        kind,
+      };
+    });
+
+    return { results, count: count ?? 0 };
+  }
+
+  const table = 'athletes_view';
+  const query = buildProfileQuery(supabase, table, ilikeQuery, ATHLETES_SELECT, { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(from, to);
 
@@ -137,20 +180,17 @@ async function fetchProfileResults(params: {
   const rows = Array.isArray(data) ? (data as any[]) : [];
 
   const results: SearchResult[] = rows.map((row) => {
-    const displayName =
-      table === 'athletes_view' ? (row.display_name || row.full_name || '').trim() : (row.display_name || '').trim();
+    const displayName = (row.display_name || row.full_name || '').trim();
     const title = displayName || buildProfileDisplayName(row.full_name, row.display_name, 'Profilo');
     const details = [row.role, row.sport].filter(Boolean).join(' · ');
     const location = buildLocation(row);
     const subtitle = [details, location].filter(Boolean).join(' · ');
-    const href = kind === 'clubs' ? `/clubs/${row.id}` : `/players/${row.id}`;
-
     return {
       id: String(row.id),
       title,
       subtitle: subtitle || null,
       image_url: row.avatar_url || null,
-      href,
+      href: `/players/${row.id}`,
       kind,
     };
   });
@@ -164,8 +204,15 @@ async function fetchProfileCount(params: {
   ilikeQuery: string;
 }) {
   const { supabase, kind, ilikeQuery } = params;
-  const table = kind === 'players' ? 'athletes_view' : 'clubs_view';
-  const query = buildProfileQuery(supabase, table, ilikeQuery, 'id', { count: 'exact', head: true });
+  if (kind === 'clubs') {
+    const { count, error } = await supabase
+      .from('clubs_view')
+      .select('id', { count: 'exact', head: true })
+      .ilike('display_name', ilikeQuery);
+    if (error) throw new Error(error.message);
+    return count ?? 0;
+  }
+  const query = buildProfileQuery(supabase, 'athletes_view', ilikeQuery, 'id', { count: 'exact', head: true });
   const { count, error } = await query;
   if (error) throw new Error(error.message);
   return count ?? 0;
