@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import Image from 'next/image';
 import FollowButton from '@/components/clubs/FollowButton';
 import { MessageButton } from '@/components/messaging/MessageButton';
-import CertifiedClubMark from '@/components/ui/CertifiedClubMark';
+import CertifiedCMark from '@/components/badges/CertifiedCMark';
 
 type AccountType = 'club' | 'athlete' | 'player';
 
@@ -66,7 +66,7 @@ export default function ProfileHeader({
               </div>
             )}
           </div>
-          {isClub && isVerified ? <CertifiedClubMark size="lg" className="absolute -top-2 -right-2" /> : null}
+          {isClub && isVerified ? <CertifiedCMark className="absolute -top-2 -right-2" /> : null}
         </div>
 
         <div className="flex flex-1 flex-col gap-4 md:flex-row md:items-start md:justify-between">
