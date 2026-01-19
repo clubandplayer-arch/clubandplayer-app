@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SPORTS } from '@/lib/opps/constants';
 import { AD_SLOT_VALUES } from '@/lib/ads/slots';
+import { normalizeExternalUrl } from '@/lib/utils/normalizeExternalUrl';
 
 type CampaignRow = {
   id: string;
@@ -300,10 +301,12 @@ export default function AdminAdsPage() {
     if (!selectedCampaign) return;
     setMessage(null);
     setError(null);
-    if (!creativeForm.target_url.trim()) {
-      setError('Inserisci target URL');
+    const normalizedTargetUrl = normalizeExternalUrl(creativeForm.target_url);
+    if (!normalizedTargetUrl) {
+      setError('Inserisci target URL valido');
       return;
     }
+    setCreativeForm((prev) => ({ ...prev, target_url: normalizedTargetUrl }));
     const res = await fetch('/api/admin/ads/creatives', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -313,7 +316,7 @@ export default function AdminAdsPage() {
         title: creativeForm.title,
         body: creativeForm.body,
         image_url: creativeForm.image_url,
-        target_url: creativeForm.target_url,
+        target_url: normalizedTargetUrl,
       }),
     });
     if (!res.ok) {
@@ -338,10 +341,12 @@ export default function AdminAdsPage() {
     if (!selectedCampaign || !editingCreativeId) return;
     setMessage(null);
     setError(null);
-    if (!creativeForm.target_url.trim()) {
-      setError('Inserisci target URL');
+    const normalizedTargetUrl = normalizeExternalUrl(creativeForm.target_url);
+    if (!normalizedTargetUrl) {
+      setError('Inserisci target URL valido');
       return;
     }
+    setCreativeForm((prev) => ({ ...prev, target_url: normalizedTargetUrl }));
     const res = await fetch(`/api/admin/ads/creatives/${editingCreativeId}`, {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
@@ -350,7 +355,7 @@ export default function AdminAdsPage() {
         title: creativeForm.title,
         body: creativeForm.body,
         image_url: creativeForm.image_url,
-        target_url: creativeForm.target_url,
+        target_url: normalizedTargetUrl,
       }),
     });
     if (!res.ok) {

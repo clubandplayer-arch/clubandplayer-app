@@ -3,6 +3,7 @@ import { withAuth, jsonError } from '@/lib/api/auth';
 import { isAdminUser } from '@/lib/api/admin';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 import { isAdSlotValue } from '@/lib/ads/slots';
+import { normalizeExternalUrl } from '@/lib/utils/normalizeExternalUrl';
 
 export const runtime = 'nodejs';
 
@@ -56,8 +57,8 @@ export const PATCH = withAuth(async (req, { supabase, user }, routeContext) => {
   if ('image_url' in body) updates.image_url = toNullableText(body?.image_url);
 
   if ('target_url' in body) {
-    const targetUrl = toNullableText(body?.target_url);
-    if (!targetUrl) return jsonError('target_url obbligatorio', 400);
+    const targetUrl = normalizeExternalUrl(body?.target_url);
+    if (!targetUrl) return jsonError('target_url obbligatorio o non valido', 400);
     updates.target_url = targetUrl;
   }
 
