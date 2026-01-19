@@ -46,6 +46,8 @@ const DEFAULT_LIMIT = 10;
 const ALL_PREVIEW_LIMIT = 3;
 
 const SUPPORTED_TYPES: SearchType[] = ['all', 'opportunities', 'clubs', 'players', 'posts', 'events'];
+const ATHLETES_SELECT = 'id, display_name, full_name, avatar_url, city, province, region, country, sport, role';
+const CLUBS_SELECT = 'id, display_name, full_name, avatar_url, city, province, region, country, sport';
 
 function clamp(n: number, min: number, max: number) {
   return Math.min(Math.max(n, min), max);
@@ -96,18 +98,20 @@ function buildProfileQuery(
 ) {
   let query = supabase.from(table).select(select, options).eq('status', 'active');
 
-  query = query.or(
-    [
-      `display_name.ilike.${ilikeQuery}`,
-      `full_name.ilike.${ilikeQuery}`,
-      `city.ilike.${ilikeQuery}`,
-      `province.ilike.${ilikeQuery}`,
-      `region.ilike.${ilikeQuery}`,
-      `country.ilike.${ilikeQuery}`,
-      `sport.ilike.${ilikeQuery}`,
-      `role.ilike.${ilikeQuery}`,
-    ].join(','),
-  );
+  const orParts = [
+    `display_name.ilike.${ilikeQuery}`,
+    `full_name.ilike.${ilikeQuery}`,
+    `city.ilike.${ilikeQuery}`,
+    `province.ilike.${ilikeQuery}`,
+    `region.ilike.${ilikeQuery}`,
+    `country.ilike.${ilikeQuery}`,
+    `sport.ilike.${ilikeQuery}`,
+  ];
+  if (table === 'athletes_view') {
+    orParts.push(`role.ilike.${ilikeQuery}`);
+  }
+
+  query = query.or(orParts.join(','));
 
   return query;
 }
@@ -124,7 +128,7 @@ async function fetchProfileResults(params: {
   const to = from + limit - 1;
 
   const table = kind === 'players' ? 'athletes_view' : 'clubs_view';
-  const select = 'id, user_id, display_name, full_name, avatar_url, city, province, region, country, sport, role';
+  const select = table === 'athletes_view' ? ATHLETES_SELECT : CLUBS_SELECT;
   const query = buildProfileQuery(supabase, table, ilikeQuery, select, { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(from, to);
