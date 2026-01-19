@@ -194,10 +194,10 @@ export default function ProfileMiniCard() {
         className="block h-10 w-10 text-[var(--brand)] leading-none"
       >
         <text
-          x="12"
-          y="16"
+          x="8"
+          y="18"
           textAnchor="middle"
-          fontSize="16"
+          fontSize="22"
           fontWeight="700"
           fontFamily="var(--font-righteous), 'Righteous', system-ui, -apple-system, 'Segoe UI', sans-serif"
           fill="currentColor"
