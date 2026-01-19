@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useFollow } from '@/components/follow/FollowProvider';
@@ -28,13 +28,9 @@ type Suggestion = {
   isVerified?: boolean | null;
 };
 
-type SuggestionsState = {
-  visible: Suggestion[];
-  queue: Suggestion[];
-};
-
 const VISIBLE_COUNT = 3;
 const PREFETCH_LIMIT = 6;
+const REQUEST_TIMEOUT_MS = 8000;
 
 function targetHref(item: Suggestion) {
   return item.kind === 'club' ? `/clubs/${item.id}` : `/players/${item.id}`;
@@ -121,68 +117,96 @@ export default function WhoToFollow() {
   const { role: contextRole } = useCurrentProfileContext();
   const { toggleFollow, ensureState, isFollowing, pending, currentProfileId } = useFollow();
   const [role, setRole] = useState<ProfileRole>('guest');
-  const [suggestions, setSuggestions] = useState<SuggestionsState>({ visible: [], queue: [] });
-  const [loading, setLoading] = useState(true);
+  const [visible, setVisible] = useState<Suggestion[]>([]);
+  const [queue, setQueue] = useState<Suggestion[]>([]);
+  const [booting, setBooting] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [localPending, setLocalPending] = useState<Set<string>>(new Set());
   const seenIds = useRef<Set<string>>(new Set());
+  const inFlight = useRef(false);
 
-  const normalizeSuggestions = useCallback((rawItems: any[]): Suggestion[] => (
-    rawItems.map((item: any) => ({
-      id: item.id,
-      display_name: item.display_name ?? item.name ?? null,
-      full_name: item.full_name ?? item.name ?? null,
-      kind:
-        item.kind ??
-        (item.account_type === 'club' || item.type === 'CLUB' ? 'club' : item.account_type || item.type ? 'player' : null),
-      type: item.type ?? null,
-      category: item.category ?? null,
-      location: item.location ?? null,
-      city: item.city ?? null,
-      country: item.country ?? null,
-      sport: item.sport ?? null,
-      role: item.role ?? null,
-      avatar_url: item.avatar_url ?? null,
-      is_verified: item.is_verified ?? item.isVerified ?? null,
-      isVerified: item.isVerified ?? null,
-    })) as Suggestion[]
-  ), []);
+  const normalizeSuggestions = useCallback(
+    (rawItems: any[]): Suggestion[] => (
+      rawItems.map((item: any) => ({
+        id: item.id,
+        display_name: item.display_name ?? item.name ?? null,
+        full_name: item.full_name ?? item.name ?? null,
+        kind:
+          item.kind ??
+          (item.account_type === 'club' || item.type === 'CLUB'
+            ? 'club'
+            : item.account_type || item.type
+              ? 'player'
+              : null),
+        type: item.type ?? null,
+        category: item.category ?? null,
+        location: item.location ?? null,
+        city: item.city ?? null,
+        country: item.country ?? null,
+        sport: item.sport ?? null,
+        role: item.role ?? null,
+        avatar_url: item.avatar_url ?? null,
+        is_verified: item.is_verified ?? item.isVerified ?? null,
+        isVerified: item.isVerified ?? null,
+      })) as Suggestion[]
+    ),
+    [],
+  );
 
-  const fetchSuggestions = useCallback(async (limit: number) => {
-    const res = await fetch(`/api/follows/suggestions?limit=${limit}`, {
-      credentials: 'include',
-      cache: 'no-store',
-      next: { revalidate: 0 },
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || data?.ok === false) {
-      const message =
-        data?.message || (res.status ? `Errore server (HTTP ${res.status}).` : 'Impossibile caricare i suggerimenti.');
-      throw new Error(message);
-    }
-    const rawItems = Array.isArray(data?.items)
-      ? data.items
-      : Array.isArray(data?.data)
-      ? data.data
-      : Array.isArray(data?.suggestions)
-      ? data.suggestions
-      : [];
-    const normalized = normalizeSuggestions(rawItems);
-    const ids = normalized.map((item) => item.id).filter(Boolean);
-    if (ids.length) {
-      await ensureState(ids);
-    }
-    return {
-      role: (data?.role as ProfileRole) || contextRole || 'guest',
-      suggestions: normalized.filter((item) => {
-        if (!item.id) return false;
-        if (item.id === currentProfileId) return false;
-        if (seenIds.current.has(item.id)) return false;
-        if (isFollowing(item.id)) return false;
-        return true;
-      }),
-    };
-  }, [contextRole, currentProfileId, ensureState, isFollowing, normalizeSuggestions]);
+  const fetchSuggestions = useCallback(
+    async (limit: number) => {
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+      try {
+        const res = await fetch(`/api/follows/suggestions?limit=${limit}`, {
+          credentials: 'include',
+          cache: 'no-store',
+          next: { revalidate: 0 },
+          signal: controller.signal,
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data?.ok === false) {
+          const message =
+            data?.message || (res.status ? `Errore server (HTTP ${res.status}).` : 'Impossibile caricare i suggerimenti.');
+          if (process.env.NODE_ENV !== 'production') {
+            console.error('[who-to-follow] response error', { status: res.status, body: data });
+          }
+          throw new Error(message);
+        }
+        const rawItems = Array.isArray(data?.items)
+          ? data.items
+          : Array.isArray(data?.data)
+            ? data.data
+            : Array.isArray(data?.suggestions)
+              ? data.suggestions
+              : [];
+        const normalized = normalizeSuggestions(rawItems);
+        const ids = normalized.map((item) => item.id).filter(Boolean);
+        if (ids.length) {
+          await ensureState(ids);
+        }
+        return {
+          role: (data?.role as ProfileRole) || contextRole || 'guest',
+          suggestions: normalized.filter((item) => {
+            if (!item.id) return false;
+            if (item.id === currentProfileId) return false;
+            if (seenIds.current.has(item.id)) return false;
+            if (isFollowing(item.id)) return false;
+            return true;
+          }),
+        };
+      } catch (err) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.error('[who-to-follow] fetch error', err);
+        }
+        throw err;
+      } finally {
+        window.clearTimeout(timeout);
+      }
+    },
+    [contextRole, currentProfileId, ensureState, isFollowing, normalizeSuggestions],
+  );
 
   const markSeen = useCallback((items: Suggestion[]) => {
     items.forEach((item) => {
@@ -191,54 +215,51 @@ export default function WhoToFollow() {
   }, []);
 
   const loadInitial = useCallback(async () => {
-    setLoading(true);
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setBooting(true);
     setError(null);
     seenIds.current = new Set();
     try {
       const { role: resolvedRole, suggestions: nextSuggestions } = await fetchSuggestions(PREFETCH_LIMIT);
       setRole(resolvedRole);
       markSeen(nextSuggestions);
-      setSuggestions({
-        visible: nextSuggestions.slice(0, VISIBLE_COUNT),
-        queue: nextSuggestions.slice(VISIBLE_COUNT),
-      });
+      setVisible(nextSuggestions.slice(0, VISIBLE_COUNT));
+      setQueue(nextSuggestions.slice(VISIBLE_COUNT));
       setError(null);
     } catch (err) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.error('[who-to-follow] load error', err);
-      }
-      setSuggestions({ visible: [], queue: [] });
+      setVisible([]);
+      setQueue([]);
       setRole(contextRole || 'guest');
       setError(err instanceof Error ? err.message : 'Impossibile caricare i suggerimenti.');
     } finally {
-      setLoading(false);
+      setBooting(false);
+      setLoadingMore(false);
+      inFlight.current = false;
     }
   }, [contextRole, fetchSuggestions, markSeen]);
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      await loadInitial();
-      if (cancelled) return;
-    })();
-    return () => {
-      cancelled = true;
-    };
+    void loadInitial();
   }, [loadInitial]);
 
   const refillQueue = useCallback(async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setLoadingMore(true);
     try {
       const { suggestions: nextSuggestions } = await fetchSuggestions(PREFETCH_LIMIT);
       if (!nextSuggestions.length) return;
       markSeen(nextSuggestions);
-      setSuggestions((prev) => ({
-        visible: prev.visible,
-        queue: [...prev.queue, ...nextSuggestions],
-      }));
+      setQueue((prev) => [...prev, ...nextSuggestions]);
     } catch (err) {
       if (process.env.NODE_ENV !== 'production') {
         console.error('[who-to-follow] refill error', err);
       }
+      setError(err instanceof Error ? err.message : 'Impossibile caricare i suggerimenti.');
+    } finally {
+      setLoadingMore(false);
+      inFlight.current = false;
     }
   }, [fetchSuggestions, markSeen]);
 
@@ -250,19 +271,22 @@ export default function WhoToFollow() {
     try {
       await toggleFollow(cleanId);
       let shouldRefill = false;
-      setSuggestions((prev) => {
-        const nextVisible = prev.visible.filter((item) => item.id !== cleanId);
-        const [nextItem, ...restQueue] = prev.queue;
+      let nextVisibleLength = 0;
+      setVisible((prevVisible) => {
+        const nextVisible = prevVisible.filter((item) => item.id !== cleanId);
+        nextVisibleLength = nextVisible.length;
+        return nextVisible;
+      });
+      setQueue((prevQueue) => {
+        const [nextItem, ...restQueue] = prevQueue;
         if (nextItem) {
-          return {
-            visible: [...nextVisible, nextItem],
-            queue: restQueue,
-          };
+          setVisible((prevVisible) => [...prevVisible, nextItem]);
+          return restQueue;
         }
-        if (restQueue.length === 0 && nextVisible.length < VISIBLE_COUNT) {
+        if (restQueue.length === 0 && nextVisibleLength < VISIBLE_COUNT) {
           shouldRefill = true;
         }
-        return { visible: nextVisible, queue: restQueue };
+        return restQueue;
       });
       if (shouldRefill) {
         await refillQueue();
@@ -280,7 +304,13 @@ export default function WhoToFollow() {
     }
   }, [localPending, pending, refillQueue, toggleFollow]);
 
-  if (loading) {
+  const queueSize = queue.length;
+  const showEmpty = useMemo(
+    () => !booting && !error && visible.length === 0 && queueSize === 0,
+    [booting, error, queueSize, visible.length],
+  );
+
+  if (booting) {
     return (
       <div className="space-y-3">
         <div className="flex items-center justify-between">
@@ -307,7 +337,7 @@ export default function WhoToFollow() {
 
   const heading = 'Chi seguire';
   const subtitle = 'Suggeriti per te';
-  const itemsToShow = suggestions.visible;
+  const itemsToShow = visible;
 
   return (
     <div className="space-y-3">
@@ -320,7 +350,25 @@ export default function WhoToFollow() {
       <div className="text-xs text-zinc-500">{subtitle}</div>
       {error ? (
         <div className="rounded-lg border border-dashed p-4 text-center text-sm text-zinc-500 dark:border-zinc-800">
-          {error}
+          <p>Impossibile caricare i suggerimenti.</p>
+          <button
+            type="button"
+            onClick={loadInitial}
+            className="mt-3 inline-flex items-center justify-center rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-800 hover:bg-neutral-50"
+          >
+            Riprova
+          </button>
+        </div>
+      ) : showEmpty ? (
+        <div className="rounded-lg border border-dashed p-4 text-center text-sm text-zinc-500 dark:border-zinc-800">
+          <p>Nessun suggerimento al momento.</p>
+          <button
+            type="button"
+            onClick={loadInitial}
+            className="mt-3 inline-flex items-center justify-center rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-800 hover:bg-neutral-50"
+          >
+            Ricarica
+          </button>
         </div>
       ) : itemsToShow.length > 0 ? (
         <ul className="space-y-3">
@@ -409,7 +457,7 @@ export default function WhoToFollow() {
         </ul>
       ) : (
         <div className="rounded-lg border border-dashed p-4 text-center text-sm text-zinc-500 dark:border-zinc-800">
-          Nessun suggerimento al momento.
+          {loadingMore ? 'Caricamento suggerimenti...' : 'Nessun suggerimento al momento.'}
         </div>
       )}
     </div>
