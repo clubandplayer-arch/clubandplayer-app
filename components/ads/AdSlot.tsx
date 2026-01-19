@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { isAdsEnabled } from '@/lib/env/features';
 import { useAdsServeCoordinator, type DedupeMode } from '@/components/ads/AdsServeCoordinator';
+import { normalizeExternalUrl } from '@/lib/utils/normalizeExternalUrl';
 
 const ADS_ENDPOINT = '/api/ads/serve';
 const ADS_CLICK_ENDPOINT = '/api/ads/click';
@@ -122,42 +123,73 @@ export default function AdSlot({ slot, page, imageAspect = 'landscape', dedupeMo
 
   if (!adsEnabled || !creative) return null;
 
+  const href = normalizeExternalUrl(creative.targetUrl);
+
   return (
     <div className="w-full">
       <div className="rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur">
         <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Sponsored</div>
-        <a
-          href={creative.targetUrl}
-          onClick={handleClick}
-          className="mt-2 flex flex-col gap-3 text-left"
-          rel="sponsored noopener noreferrer"
-          target="_blank"
-        >
-          {creative.imageUrl ? (
-            <div
-              className={`relative w-full ${imageAspectClass} overflow-hidden rounded-xl border border-slate-100 bg-slate-50`}
-              data-ad-slot={slot}
-              data-ad-aspect={imageAspect ?? 'landscape'}
-            >
-              <Image
-                src={creative.imageUrl}
-                alt=""
-                fill
-                sizes={computedSizes}
-                quality={90}
-                className="object-cover"
-              />
+        {href ? (
+          <a
+            href={href}
+            onClick={handleClick}
+            className="mt-2 flex flex-col gap-3 text-left"
+            rel="sponsored noopener noreferrer"
+            target="_blank"
+          >
+            {creative.imageUrl ? (
+              <div
+                className={`relative w-full ${imageAspectClass} overflow-hidden rounded-xl border border-slate-100 bg-slate-50`}
+                data-ad-slot={slot}
+                data-ad-aspect={imageAspect ?? 'landscape'}
+              >
+                <Image
+                  src={creative.imageUrl}
+                  alt=""
+                  fill
+                  sizes={computedSizes}
+                  quality={90}
+                  className="object-cover"
+                />
+              </div>
+            ) : null}
+            <div>
+              {creative.title ? (
+                <p className="text-sm font-semibold text-slate-900 line-clamp-2">{creative.title}</p>
+              ) : null}
+              {creative.body ? (
+                <p className="mt-1 text-xs text-slate-500 line-clamp-3">{creative.body}</p>
+              ) : null}
             </div>
-          ) : null}
-          <div>
-            {creative.title ? (
-              <p className="text-sm font-semibold text-slate-900 line-clamp-2">{creative.title}</p>
+          </a>
+        ) : (
+          <div className="mt-2 flex cursor-not-allowed flex-col gap-3 text-left">
+            {creative.imageUrl ? (
+              <div
+                className={`relative w-full ${imageAspectClass} overflow-hidden rounded-xl border border-slate-100 bg-slate-50`}
+                data-ad-slot={slot}
+                data-ad-aspect={imageAspect ?? 'landscape'}
+              >
+                <Image
+                  src={creative.imageUrl}
+                  alt=""
+                  fill
+                  sizes={computedSizes}
+                  quality={90}
+                  className="object-cover"
+                />
+              </div>
             ) : null}
-            {creative.body ? (
-              <p className="mt-1 text-xs text-slate-500 line-clamp-3">{creative.body}</p>
-            ) : null}
+            <div>
+              {creative.title ? (
+                <p className="text-sm font-semibold text-slate-900 line-clamp-2">{creative.title}</p>
+              ) : null}
+              {creative.body ? (
+                <p className="mt-1 text-xs text-slate-500 line-clamp-3">{creative.body}</p>
+              ) : null}
+            </div>
           </div>
-        </a>
+        )}
       </div>
     </div>
   );

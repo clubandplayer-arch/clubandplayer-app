@@ -3,6 +3,7 @@ import { withAuth, jsonError } from '@/lib/api/auth';
 import { isAdminUser } from '@/lib/api/admin';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 import { isAdSlotValue } from '@/lib/ads/slots';
+import { normalizeExternalUrl } from '@/lib/utils/normalizeExternalUrl';
 
 export const runtime = 'nodejs';
 
@@ -53,8 +54,8 @@ export const POST = withAuth(async (req, { supabase, user }) => {
   const slot = typeof body?.slot === 'string' ? body.slot.trim() : '';
   if (!isAdSlotValue(slot)) return jsonError('Slot non valido', 400);
 
-  const targetUrl = toNullableText(body?.target_url);
-  if (!targetUrl) return jsonError('target_url obbligatorio', 400);
+  const targetUrl = normalizeExternalUrl(body?.target_url);
+  if (!targetUrl) return jsonError('target_url obbligatorio o non valido', 400);
 
   const payload = {
     campaign_id: campaignId,
