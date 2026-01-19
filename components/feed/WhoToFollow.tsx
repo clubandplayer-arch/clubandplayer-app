@@ -31,6 +31,7 @@ type Suggestion = {
 const VISIBLE_COUNT = 3;
 const PREFETCH_LIMIT = 6;
 const REQUEST_TIMEOUT_MS = 8000;
+const VERSION_BADGE = 'v2026-01-18c';
 
 function targetHref(item: Suggestion) {
   return item.kind === 'club' ? `/clubs/${item.id}` : `/players/${item.id}`;
@@ -156,23 +157,25 @@ export default function WhoToFollow() {
 
   const fetchSuggestions = useCallback(
     async (limit: number) => {
+      const url = `/api/follows/suggestions?limit=${limit}`;
       const controller = new AbortController();
       const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
       try {
-        const res = await fetch(`/api/follows/suggestions?limit=${limit}`, {
+        const res = await fetch(url, {
           credentials: 'include',
           cache: 'no-store',
           next: { revalidate: 0 },
           signal: controller.signal,
         });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || data?.ok === false) {
-          const message =
-            data?.message || (res.status ? `Errore server (HTTP ${res.status}).` : 'Impossibile caricare i suggerimenti.');
-          if (process.env.NODE_ENV !== 'production') {
-            console.error('[who-to-follow] response error', { status: res.status, body: data });
-          }
-          throw new Error(message);
+        const textBody = await res.text().catch(() => '');
+        if (!res.ok) {
+          console.error('[WhoToFollow] fetch failed', { url, status: res.status, body: textBody });
+          throw new Error(`HTTP ${res.status}`);
+        }
+        const data = textBody ? JSON.parse(textBody) : {};
+        if (data?.ok === false) {
+          console.error('[WhoToFollow] fetch failed', { url, status: res.status, body: textBody });
+          throw new Error('Impossibile caricare i suggerimenti');
         }
         const rawItems = Array.isArray(data?.items)
           ? data.items
@@ -197,9 +200,7 @@ export default function WhoToFollow() {
           }),
         };
       } catch (err) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.error('[who-to-follow] fetch error', err);
-        }
+        console.error('[WhoToFollow] fetch error', err);
         throw err;
       } finally {
         window.clearTimeout(timeout);
@@ -240,7 +241,15 @@ export default function WhoToFollow() {
   }, [contextRole, fetchSuggestions, markSeen]);
 
   useEffect(() => {
-    void loadInitial();
+    const timeout = window.setTimeout(() => {
+      if (!inFlight.current) return;
+      setBooting(false);
+      setError('Timeout caricamento suggerimenti');
+      setLoadingMore(false);
+      inFlight.current = false;
+    }, REQUEST_TIMEOUT_MS);
+    void loadInitial().finally(() => window.clearTimeout(timeout));
+    return () => window.clearTimeout(timeout);
   }, [loadInitial]);
 
   const refillQueue = useCallback(async () => {
@@ -314,7 +323,12 @@ export default function WhoToFollow() {
     return (
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Chi seguire</div>
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+            <span>Chi seguire</span>
+            <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-zinc-500">
+              {VERSION_BADGE}
+            </span>
+          </div>
           <Link href="/discover" className="text-xs font-semibold text-[var(--brand)] hover:underline">
             Vedi tutti
           </Link>
@@ -342,7 +356,12 @@ export default function WhoToFollow() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{heading}</div>
+        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+          <span>{heading}</span>
+          <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-zinc-500">
+            {VERSION_BADGE}
+          </span>
+        </div>
         <Link href="/discover" className="text-xs font-semibold text-[var(--brand)] hover:underline">
           Vedi tutti
         </Link>
