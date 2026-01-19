@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import FollowButton from '@/components/common/FollowButton';
-import CertifiedClubMark from '@/components/ui/CertifiedClubMark';
+import CertifiedCMark from '@/components/badges/CertifiedCMark';
 import useIsClub from '@/hooks/useIsClub';
 import { buildProfileDisplayName } from '@/lib/displayName';
 
@@ -88,7 +88,7 @@ function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, 
                 <span>{initials}</span>
               )}
             </div>
-            {isCertified ? <CertifiedClubMark size="sm" className="absolute -top-1 -right-1" /> : null}
+            {isCertified ? <CertifiedCMark className="absolute -top-1 -right-1 scale-75" /> : null}
           </div>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-1">
