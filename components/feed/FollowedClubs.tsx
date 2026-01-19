@@ -6,7 +6,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentProfileContext';
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
 import { CountryFlag } from '@/components/ui/CountryFlag';
-import CertifiedCMark from '@/components/badges/CertifiedCMark';
+import CertifiedCMarkSidebar from '@/components/badges/CertifiedCMarkSidebar';
 
 type FollowedItem = {
   id: string;
@@ -168,7 +168,7 @@ export default function FollowedClubs() {
                     alt={item.name}
                     className="h-9 w-9 rounded-full object-cover ring-1 ring-zinc-200 dark:ring-zinc-800"
                   />
-                  {isCertified ? <CertifiedCMark className="absolute -top-2 -right-2 scale-[0.75]" /> : null}
+                  {isCertified ? <CertifiedCMarkSidebar className="absolute -top-2 -right-2 scale-[0.75]" /> : null}
                 </Link>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
