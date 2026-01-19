@@ -21,11 +21,8 @@ export type NotificationRow = {
 export type NotificationWithActor = NotificationRow & {
   actor?: {
     id: string;
-    display_name: string | null;
-    full_name?: string | null;
+    public_name: string | null;
     avatar_url: string | null;
     account_type: string | null;
-    city?: string | null;
-    country?: string | null;
   } | null;
 };

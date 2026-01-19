@@ -27,19 +27,68 @@ export const GET = withAuth(async (req, { supabase, user }) => {
     if (error) return jsonError(error.message, 500);
 
     const actorIds = Array.from(new Set((data ?? []).map((n) => n.actor_profile_id).filter(Boolean))) as string[];
-    const { data: actors } = actorIds.length
+    const { data: actors, error: actorsError } = actorIds.length
       ? await supabase
           .from('profiles')
-          .select('id, display_name, full_name, avatar_url, account_type, city, country')
+          .select('id, display_name, full_name, avatar_url, account_type')
           .in('id', actorIds)
-      : { data: [] as any[] };
+      : { data: [] as any[], error: null };
+    if (actorsError) {
+      console.error('[notifications/list] actor profiles error', actorsError);
+    }
 
-    const actorMap = Object.fromEntries((actors ?? []).map((p: any) => [p.id, p]));
+    const baseActorMap = new Map<string, any>((actors ?? []).map((p: any) => [String(p.id), p]));
+    const athleteIds = (actors ?? [])
+      .filter((p: any) => (p.account_type ?? '').toLowerCase() === 'athlete')
+      .map((p: any) => p.id);
+    const clubIds = (actors ?? [])
+      .filter((p: any) => (p.account_type ?? '').toLowerCase() === 'club')
+      .map((p: any) => p.id);
 
-    const items: NotificationWithActor[] = (data ?? []).map((row) => ({
-      ...row,
-      actor: row.actor_profile_id ? actorMap[row.actor_profile_id] ?? null : null,
-    }));
+    const [athletesRes, clubsRes] = await Promise.all([
+      athleteIds.length
+        ? supabase.from('athletes_view').select('id, display_name, full_name').in('id', athleteIds)
+        : Promise.resolve({ data: [] as any[], error: null }),
+      clubIds.length
+        ? supabase.from('clubs_view').select('id, display_name').in('id', clubIds)
+        : Promise.resolve({ data: [] as any[], error: null }),
+    ]);
+
+    if (athletesRes.error) console.error('[notifications/list] athletes_view error', athletesRes.error);
+    if (clubsRes.error) console.error('[notifications/list] clubs_view error', clubsRes.error);
+
+    const athleteNameMap = new Map<string, any>();
+    (athletesRes.data ?? []).forEach((row: any) => row?.id && athleteNameMap.set(String(row.id), row));
+    const clubNameMap = new Map<string, any>();
+    (clubsRes.data ?? []).forEach((row: any) => row?.id && clubNameMap.set(String(row.id), row));
+
+    const items: NotificationWithActor[] = (data ?? []).map((row) => {
+      if (!row.actor_profile_id) {
+        return { ...row, actor: null };
+      }
+      const base = baseActorMap.get(String(row.actor_profile_id));
+      if (!base) {
+        return { ...row, actor: null };
+      }
+      const kind = (base.account_type ?? '').toLowerCase();
+      const viewRow =
+        kind === 'athlete'
+          ? athleteNameMap.get(String(base.id))
+          : kind === 'club'
+          ? clubNameMap.get(String(base.id))
+          : null;
+      const publicName =
+        (viewRow?.display_name || viewRow?.full_name || base.full_name || base.display_name || null) as string | null;
+      return {
+        ...row,
+        actor: {
+          id: String(base.id),
+          account_type: base.account_type ?? null,
+          avatar_url: base.avatar_url ?? null,
+          public_name: publicName,
+        },
+      };
+    });
 
     if (!debugMode) {
       return successResponse({ data: items });

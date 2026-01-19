@@ -2,7 +2,6 @@ import type { NextRequest } from 'next/server';
 
 import { dbError, invalidPayload, rateLimited, successResponse, unknownError } from '@/lib/api/standardResponses';
 import { rateLimit } from '@/lib/api/rateLimit';
-import { buildProfileDisplayName } from '@/lib/displayName';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
@@ -46,6 +45,7 @@ const DEFAULT_LIMIT = 10;
 const ALL_PREVIEW_LIMIT = 3;
 
 const SUPPORTED_TYPES: SearchType[] = ['all', 'opportunities', 'clubs', 'players', 'posts', 'events'];
+const ATHLETES_SELECT = 'id, full_name, avatar_url, city, province, region, country, sport, role';
 
 function clamp(n: number, min: number, max: number) {
   return Math.min(Math.max(n, min), max);
@@ -62,10 +62,6 @@ function buildLocationFrom(parts: Array<string | null | undefined>) {
 
 function buildLocation(row: Record<string, any>) {
   return buildLocationFrom([row.city, row.province, row.region, row.country]);
-}
-
-function buildInterestLocation(row: Record<string, any>) {
-  return buildLocationFrom([row.interest_city, row.interest_province, row.interest_region, row.interest_country]);
 }
 
 function normalizeType(raw?: string | null): SearchType {
@@ -93,35 +89,24 @@ function emptyCounts(): CountsByKind {
 
 function buildProfileQuery(
   supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>,
-  kind: 'clubs' | 'players',
+  table: 'athletes_view' | 'clubs_view',
   ilikeQuery: string,
   select: string,
   options?: { count?: 'exact'; head?: boolean },
 ) {
-  let query = supabase.from('profiles').select(select, options).eq('status', 'active').neq('is_admin', true);
+  let query = supabase.from(table).select(select, options).eq('status', 'active');
 
-  if (kind === 'clubs') {
-    query = query.or('account_type.eq.club,type.eq.club');
-  } else {
-    query = query.or('account_type.eq.athlete,type.eq.athlete,type.eq.player');
-  }
+  const commonOr = [
+    `city.ilike.${ilikeQuery}`,
+    `province.ilike.${ilikeQuery}`,
+    `region.ilike.${ilikeQuery}`,
+    `country.ilike.${ilikeQuery}`,
+    `sport.ilike.${ilikeQuery}`,
+  ];
+  const athleteOr = [`full_name.ilike.${ilikeQuery}`, ...commonOr, `role.ilike.${ilikeQuery}`];
+  const clubOr = [`display_name.ilike.${ilikeQuery}`, ...commonOr];
 
-  query = query.or(
-    [
-      `display_name.ilike.${ilikeQuery}`,
-      `full_name.ilike.${ilikeQuery}`,
-      `city.ilike.${ilikeQuery}`,
-      `province.ilike.${ilikeQuery}`,
-      `region.ilike.${ilikeQuery}`,
-      `country.ilike.${ilikeQuery}`,
-      `interest_city.ilike.${ilikeQuery}`,
-      `interest_province.ilike.${ilikeQuery}`,
-      `interest_region.ilike.${ilikeQuery}`,
-      `interest_country.ilike.${ilikeQuery}`,
-      `sport.ilike.${ilikeQuery}`,
-      `role.ilike.${ilikeQuery}`,
-    ].join(','),
-  );
+  query = query.or((table === 'athletes_view' ? athleteOr : clubOr).join(','));
 
   return query;
 }
@@ -137,9 +122,53 @@ async function fetchProfileResults(params: {
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
-  const select =
-    'id, user_id, display_name, full_name, avatar_url, city, province, region, country, interest_city, interest_province, interest_region, interest_country, sport, role, account_type, type';
-  const query = buildProfileQuery(supabase, kind, ilikeQuery, select, { count: 'exact' })
+  if (kind === 'clubs') {
+    const { data, count, error } = await supabase
+      .from('clubs_view')
+      .select('id, display_name', { count: 'exact' })
+      .ilike('display_name', ilikeQuery)
+      .order('display_name', { ascending: true })
+      .range(from, to);
+    if (error) throw new Error(error.message);
+
+    const rows = Array.isArray(data) ? (data as any[]) : [];
+    const clubIds = rows.map((row) => row.id).filter(Boolean);
+    let extrasMap = new Map<
+      string,
+      { avatar_url?: string | null; city?: string | null; province?: string | null; region?: string | null; country?: string | null; sport?: string | null }
+    >();
+
+    if (clubIds.length) {
+      const { data: extras, error: extrasError } = await supabase
+        .from('profiles')
+        .select('id, avatar_url, city, province, region, country, sport')
+        .in('id', clubIds);
+      if (extrasError) throw new Error(extrasError.message);
+      extrasMap = new Map(
+        (extras ?? []).map((row) => [String(row.id), row as { avatar_url?: string | null; city?: string | null; province?: string | null; region?: string | null; country?: string | null; sport?: string | null }]),
+      );
+    }
+
+    const results: SearchResult[] = rows.map((row) => {
+      const displayName = (row.display_name || '').trim();
+      const extras = extrasMap.get(String(row.id));
+      const location = buildLocation(extras ?? {});
+      const subtitle = [extras?.sport, location].filter(Boolean).join(' · ');
+      return {
+        id: String(row.id),
+        title: displayName || 'Club',
+        subtitle: subtitle || null,
+        image_url: extras?.avatar_url ?? null,
+        href: `/clubs/${row.id}`,
+        kind,
+      };
+    });
+
+    return { results, count: count ?? 0 };
+  }
+
+  const table = 'athletes_view';
+  const query = buildProfileQuery(supabase, table, ilikeQuery, ATHLETES_SELECT, { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(from, to);
 
@@ -147,45 +176,18 @@ async function fetchProfileResults(params: {
   if (error) throw new Error(error.message);
 
   const rows = Array.isArray(data) ? (data as any[]) : [];
-  const userIds = rows.map((row) => row.user_id).filter(Boolean);
-  let athletesByUserId = new Map<string, { full_name?: string | null; display_name?: string | null }>();
-
-  if (kind === 'players' && userIds.length) {
-    const { data: athletes } = await supabase
-      .from('athletes_view')
-      .select('user_id, full_name, display_name')
-      .in('user_id', userIds);
-
-    if (Array.isArray(athletes)) {
-      const nextMap = new Map<string, { full_name?: string | null; display_name?: string | null }>();
-      athletes.forEach((row) => {
-        if (row.user_id) {
-          nextMap.set(String(row.user_id), { full_name: row.full_name, display_name: row.display_name });
-        }
-      });
-      athletesByUserId = nextMap;
-    }
-  }
 
   const results: SearchResult[] = rows.map((row) => {
-    const athlete = kind === 'players' && row.user_id ? athletesByUserId.get(String(row.user_id)) : null;
-    const displayName =
-      (athlete?.full_name || athlete?.display_name || row.full_name || row.display_name || '').trim();
-    const title = displayName || buildProfileDisplayName(row.full_name, row.display_name, 'Profilo');
+    const title = (row.full_name || '').trim() || 'Player';
     const details = [row.role, row.sport].filter(Boolean).join(' · ');
     const location = buildLocation(row);
-    const interestLocation = buildInterestLocation(row);
-    const interestLabel =
-      interestLocation && interestLocation !== location ? `Interesse: ${interestLocation}` : null;
-    const subtitle = [details, location, interestLabel].filter(Boolean).join(' · ');
-    const href = kind === 'clubs' ? `/clubs/${row.id}` : `/players/${row.id}`;
-
+    const subtitle = [details, location].filter(Boolean).join(' · ');
     return {
       id: String(row.id),
       title,
       subtitle: subtitle || null,
       image_url: row.avatar_url || null,
-      href,
+      href: `/players/${row.id}`,
       kind,
     };
   });
@@ -199,7 +201,15 @@ async function fetchProfileCount(params: {
   ilikeQuery: string;
 }) {
   const { supabase, kind, ilikeQuery } = params;
-  const query = buildProfileQuery(supabase, kind, ilikeQuery, 'id', { count: 'exact', head: true });
+  if (kind === 'clubs') {
+    const { count, error } = await supabase
+      .from('clubs_view')
+      .select('id', { count: 'exact', head: true })
+      .ilike('display_name', ilikeQuery);
+    if (error) throw new Error(error.message);
+    return count ?? 0;
+  }
+  const query = buildProfileQuery(supabase, 'athletes_view', ilikeQuery, 'id', { count: 'exact', head: true });
   const { count, error } = await query;
   if (error) throw new Error(error.message);
   return count ?? 0;

@@ -172,6 +172,12 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   if (updates.country) updates.country = updates.country.toString().trim().toUpperCase();
   if (updates.interest_country) updates.interest_country = updates.interest_country.toString().trim().toUpperCase();
   if (updates.birth_country) updates.birth_country = updates.birth_country.toString().trim().toUpperCase();
+  if ('full_name' in updates && !('display_name' in updates)) {
+    updates.display_name = updates.full_name;
+  }
+  if ('display_name' in updates && !('full_name' in updates)) {
+    updates.full_name = updates.display_name;
+  }
 
   const shouldResolveInterestLabels =
     updates.interest_country === 'IT' &&
