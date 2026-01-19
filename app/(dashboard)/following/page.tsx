@@ -69,8 +69,8 @@ function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, 
   const feedLogoSizePx = 140;
   const feedCSizePx = 40;
   const feedOffsetPx = 8;
-  const cSizePx = Math.round(logoSizePx * (feedCSizePx / feedLogoSizePx));
-  const offsetPx = Math.round(logoSizePx * (feedOffsetPx / feedLogoSizePx));
+  const cSizePx = Math.round(logoSizePx * (feedCSizePx / feedLogoSizePx) * 1.15);
+  const offsetPx = Math.round(logoSizePx * (feedOffsetPx / feedLogoSizePx) * 1.6);
 
   const handleToggle = () => {
     if (!onToggleRoster || toggleDisabled) return;
