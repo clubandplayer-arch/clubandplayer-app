@@ -152,7 +152,6 @@ export function ReadOnlyPostCard({ post }: ReadOnlyPostCardProps) {
           postId={post.id}
           mediaUrl={post.media_url}
           mediaType={post.media_type}
-          aspect={post.media_aspect ?? null}
           alt={isEvent ? eventDetails?.title ?? "Locandina dell'evento" : 'Media del post'}
         />
 
