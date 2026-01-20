@@ -4,7 +4,6 @@ import {
   dbError,
   invalidPayload,
   notAuthenticated,
-  notAuthorized,
   notFoundResponse,
   rlsDenied,
   successResponse,
@@ -38,21 +37,17 @@ export async function POST(req: NextRequest) {
 
   if (resourceType === 'post') {
     const { data: post, error } = await supabase
-      .from('feed_posts')
-      .select('id, author_id')
+      .from('posts')
+      .select('id')
       .eq('id', resourceId)
       .maybeSingle();
 
     if (error) {
-      return dbError('Errore nel caricamento del post', { message: error.message });
+      return dbError('Impossibile creare il link di condivisione', { message: error.message });
     }
 
     if (!post) {
       return notFoundResponse('Post non trovato');
-    }
-
-    if (post.author_id !== auth.user.id) {
-      return notAuthorized('Non sei autorizzato a condividere questo contenuto');
     }
   }
 
