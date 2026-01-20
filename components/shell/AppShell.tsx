@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut, Search, Users } from 'lucide-react';
+import { LogOut, Search, UserPlus, Users } from 'lucide-react';
 import useIsClub from '@/hooks/useIsClub';
 import { ToastProvider } from '@/components/common/ToastProvider';
 import { FollowProvider } from '@/components/follow/FollowProvider';
@@ -217,6 +217,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
     if (role !== 'guest') {
       items.push({ key: 'following', label: 'Seguiti', href: '/following', icon: <Users size={16} aria-hidden /> });
+      items.push({ key: 'who-to-follow', label: 'Chi seguire', href: '/who-to-follow', icon: <UserPlus size={16} aria-hidden /> });
     }
     if (isClub) {
       items.push({ key: 'roster', label: 'Rosa', href: '/club/roster', icon: <MaterialIcon name="following" fontSize={16} /> });

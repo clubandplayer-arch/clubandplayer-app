@@ -108,8 +108,16 @@ function detailLine(suggestion: Suggestion, viewerRole: ProfileRole): ReactNode 
   return location || sportRole || '';
 }
 
-const VISIBLE_LIMIT = 3;
-const PREFETCH_LIMIT = 9;
+type WhoToFollowVariant = 'sidebar' | 'page';
+
+type WhoToFollowProps = {
+  variant?: WhoToFollowVariant;
+  visibleLimit?: number;
+  prefetchLimit?: number;
+};
+
+const DEFAULT_VISIBLE_LIMIT = 3;
+const DEFAULT_PREFETCH_LIMIT = 9;
 const REFILL_LIMIT = 6;
 const REFILL_THRESHOLD = 3;
 const REMOVE_DELAY_MS = 200;
@@ -135,8 +143,14 @@ function normalizeSuggestions(rawItems: any[]): Suggestion[] {
   })) as Suggestion[];
 }
 
-export default function WhoToFollow() {
+export default function WhoToFollow({
+  variant = 'sidebar',
+  visibleLimit = DEFAULT_VISIBLE_LIMIT,
+  prefetchLimit = DEFAULT_PREFETCH_LIMIT,
+}: WhoToFollowProps) {
   const { role: contextRole } = useCurrentProfileContext();
+  const isSidebar = variant === 'sidebar';
+  const skeletonCount = Math.min(visibleLimit, 6);
   const [role, setRole] = useState<ProfileRole>('guest');
   const [visible, setVisible] = useState<Suggestion[]>([]);
   const [queue, setQueue] = useState<Suggestion[]>([]);
@@ -207,8 +221,8 @@ export default function WhoToFollow() {
       hadDataRef.current = true;
       setIsEmpty(false);
       setRole((data?.role as ProfileRole) || contextRoleRef.current || 'guest');
-      setVisible(filtered.slice(0, VISIBLE_LIMIT));
-      setQueue(filtered.slice(VISIBLE_LIMIT));
+      setVisible(filtered.slice(0, visibleLimit));
+      setQueue(filtered.slice(visibleLimit));
       return filtered.length;
     } catch (err) {
       if (myReqId !== reqIdRef.current || !isMountedRef.current) return 0;
@@ -224,7 +238,7 @@ export default function WhoToFollow() {
         setLoading(false);
       }
     }
-  }, []);
+  }, [visibleLimit]);
 
   const refillSuggestions = useCallback(async (limit: number) => {
     try {
@@ -268,12 +282,12 @@ export default function WhoToFollow() {
 
   useEffect(() => {
     isMountedRef.current = true;
-    void loadSuggestions(PREFETCH_LIMIT);
+    void loadSuggestions(prefetchLimit);
     return () => {
       isMountedRef.current = false;
       abortRef.current?.abort();
     };
-  }, [loadSuggestions]);
+  }, [loadSuggestions, prefetchLimit]);
 
   useEffect(() => {
     if (loading || error || !canRefillRef.current) return;
@@ -292,14 +306,16 @@ export default function WhoToFollow() {
   if (loading) {
     return (
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Chi seguire</div>
-          <Link href="/discover" className="text-xs font-semibold text-[var(--brand)] hover:underline">
-            Vedi tutti
-          </Link>
-        </div>
+        {isSidebar ? (
+          <div className="flex items-center justify-between">
+            <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Chi seguire</div>
+            <Link href="/discover" className="text-xs font-semibold text-[var(--brand)] hover:underline">
+              Vedi tutti
+            </Link>
+          </div>
+        ) : null}
         <ul className="space-y-3">
-          {Array.from({ length: 3 }).map((_, i) => (
+          {Array.from({ length: skeletonCount }).map((_, i) => (
             <li key={i} className="flex items-center gap-3">
               <div className="h-10 w-10 animate-pulse rounded-full bg-zinc-200 dark:bg-zinc-800" />
               <div className="flex-1">
@@ -313,9 +329,6 @@ export default function WhoToFollow() {
       </div>
     );
   }
-
-  const heading = 'Chi seguire';
-  const subtitle = 'Suggeriti per te';
 
   const handleFollow = async (item: Suggestion) => {
     const id = (item.id || '').trim();
@@ -332,7 +345,7 @@ export default function WhoToFollow() {
         if (nextIndex === -1) return prevQ;
         const nextReplacement = prevQ[nextIndex];
         replacementRef.current.set(id, nextReplacement);
-        setVisible((prev) => [...prev, nextReplacement].slice(0, VISIBLE_LIMIT));
+        setVisible((prev) => [...prev, nextReplacement].slice(0, visibleLimit));
         return prevQ.filter((_, index) => index !== nextIndex);
       });
       removingIdsRef.current.delete(id);
@@ -348,7 +361,7 @@ export default function WhoToFollow() {
       setVisible((prev) => {
         if (prev.some((current) => current.id === id)) return prev;
         const nextVisible = [item, ...prev];
-        if (nextVisible.length > VISIBLE_LIMIT) {
+        if (nextVisible.length > visibleLimit) {
           const removed = nextVisible.pop();
           if (removed) {
             setQueue((prevQ) => [removed, ...prevQ]);
@@ -370,19 +383,23 @@ export default function WhoToFollow() {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{heading}</div>
-        <Link href="/discover" className="text-xs font-semibold text-[var(--brand)] hover:underline">
-          Vedi tutti
-        </Link>
-      </div>
-      <div className="text-xs text-zinc-500">{subtitle}</div>
+      {isSidebar ? (
+        <>
+          <div className="flex items-center justify-between">
+            <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Chi seguire</div>
+            <Link href="/discover" className="text-xs font-semibold text-[var(--brand)] hover:underline">
+              Vedi tutti
+            </Link>
+          </div>
+          <div className="text-xs text-zinc-500">Suggeriti per te</div>
+        </>
+      ) : null}
       {error ? (
         <div className="rounded-lg border border-dashed p-4 text-center text-sm text-zinc-500 dark:border-zinc-800">
           <p>{error}</p>
           <button
             type="button"
-            onClick={() => loadSuggestions(PREFETCH_LIMIT)}
+            onClick={() => loadSuggestions(prefetchLimit)}
             className="mt-3 inline-flex items-center justify-center rounded-md border border-zinc-200 px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-900"
           >
             Riprova
