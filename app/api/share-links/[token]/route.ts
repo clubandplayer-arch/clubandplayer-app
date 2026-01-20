@@ -1,6 +1,7 @@
 import { type NextRequest } from 'next/server';
 import {
   dbError,
+  goneResponse,
   invalidPayload,
   notAuthenticated,
   notFoundResponse,
@@ -156,13 +157,10 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
     return dbError('Service role non configurato');
   }
 
-  const nowIso = new Date().toISOString();
   const { data: shareLink, error: shareError } = await admin
     .from('share_links')
     .select('token, resource_type, resource_id, revoked_at, expires_at')
     .eq('token', token)
-    .is('revoked_at', null)
-    .or(`expires_at.is.null,expires_at.gt.${nowIso}`)
     .maybeSingle();
 
   if (shareError) {
@@ -170,7 +168,18 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
   }
 
   if (!shareLink || shareLink.resource_type !== 'post') {
-    return notFoundResponse('Link non valido o scaduto');
+    return notFoundResponse('Link non valido');
+  }
+
+  if (shareLink.revoked_at) {
+    return goneResponse('Link scaduto o revocato');
+  }
+
+  if (shareLink.expires_at) {
+    const expiresAt = new Date(shareLink.expires_at);
+    if (!Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() <= Date.now()) {
+      return goneResponse('Link scaduto o revocato');
+    }
   }
 
   const { data: postRow, error: postError } = await loadPost(admin, String(shareLink.resource_id));

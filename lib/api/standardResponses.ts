@@ -5,6 +5,7 @@ export type ApiErrorCode =
   | 'NOT_AUTHENTICATED'
   | 'NOT_AUTHORIZED'
   | 'NOT_FOUND'
+  | 'GONE'
   | 'RLS_DENIED'
   | 'DB_ERROR'
   | 'RATE_LIMITED'
@@ -30,6 +31,8 @@ function statusFromCode(code: ApiErrorCode): number {
       return 403;
     case 'NOT_FOUND':
       return 404;
+    case 'GONE':
+      return 410;
     case 'RATE_LIMITED':
       return 429;
     case 'DB_ERROR':
@@ -60,6 +63,8 @@ export const notAuthorized = (message = 'Operazione non consentita') =>
   errorResponse('NOT_AUTHORIZED', message);
 
 export const notFoundResponse = (message = 'Risorsa non trovata') => errorResponse('NOT_FOUND', message);
+
+export const goneResponse = (message = 'Risorsa non disponibile') => errorResponse('GONE', message);
 
 export const rlsDenied = (message = 'Accesso negato dalle policy RLS') => errorResponse('RLS_DENIED', message);
 

@@ -28,7 +28,13 @@ async function fetchSharedPost(token: string): Promise<ShareApiResponse> {
   const res = await fetch(`${baseUrl}/api/share-links/${token}`, { cache: 'no-store' });
   const json = await res.json().catch(() => ({}));
   if (!res.ok || !json?.ok) {
-    return { ok: false, message: json?.message || 'Link non valido o scaduto' };
+    if (res.status === 410) {
+      return { ok: false, message: 'Link scaduto o revocato.' };
+    }
+    if (res.status === 404 || res.status === 400) {
+      return { ok: false, message: 'Link non valido.' };
+    }
+    return { ok: false, message: 'Errore temporaneo. Riprova più tardi.' };
   }
   return json as ShareApiResponse;
 }
