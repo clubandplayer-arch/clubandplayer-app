@@ -8,6 +8,7 @@ import { CommentsSection } from '@/components/feed/CommentsSection';
 import { PostIconDelete, PostIconEdit, PostIconShare } from '@/components/icons/PostActionIcons';
 import { PostMedia } from '@/components/feed/PostMedia';
 import { QuotedPostCard } from '@/components/feed/QuotedPostCard';
+import CertifiedCMarkSidebar from '@/components/badges/CertifiedCMarkSidebar';
 import { createPostShareLink } from '@/lib/share';
 import { buildClubDisplayName, buildProfileDisplayName } from '@/lib/displayName';
 import ShareModal from '@/components/feed/ShareModal';
@@ -88,6 +89,7 @@ export function PostCard({
   const description = isEvent ? baseDescription || eventDetails?.description || '' : baseDescription;
   const authorProfile = post.author_profile ?? null;
   const authorAccountType = authorProfile?.account_type ?? authorProfile?.type ?? null;
+  const isCertifiedClub = authorAccountType === 'club' && Boolean(authorProfile?.is_verified);
   const fallbackAuthorLabel =
     (post as any).author_display_name ??
     (post as any).author_full_name ??
@@ -227,7 +229,7 @@ export function PostCard({
             <Link
               href={profileHref}
               aria-label={`Apri profilo ${authorLabel || 'autore post'}`}
-              className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-sm font-semibold text-slate-600"
+              className="relative flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-sm font-semibold text-slate-600"
             >
               {avatarUrl ? (
                 <Image
@@ -240,9 +242,12 @@ export function PostCard({
               ) : (
                 <span aria-hidden>{authorLabel ? authorLabel.charAt(0) : '✦'}</span>
               )}
+              {isCertifiedClub ? (
+                <CertifiedCMarkSidebar className="absolute -top-2 -right-2 scale-[0.75]" />
+              ) : null}
             </Link>
           ) : (
-            <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-sm font-semibold text-slate-600">
+            <div className="relative flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-sm font-semibold text-slate-600">
               {avatarUrl ? (
                 <Image
                   src={avatarUrl}
@@ -254,6 +259,9 @@ export function PostCard({
               ) : (
                 <span aria-hidden>{authorLabel ? authorLabel.charAt(0) : '✦'}</span>
               )}
+              {isCertifiedClub ? (
+                <CertifiedCMarkSidebar className="absolute -top-2 -right-2 scale-[0.75]" />
+              ) : null}
             </div>
           )}
           <div className="space-y-0.5">

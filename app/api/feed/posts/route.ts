@@ -83,6 +83,7 @@ type ProfileRow = {
   avatar_url?: string | null;
   account_type?: string | null;
   type?: string | null;
+  is_verified?: boolean | null;
 };
 
 function normalizeProfileRow(raw: any): ProfileRow | null {
@@ -95,6 +96,7 @@ function normalizeProfileRow(raw: any): ProfileRow | null {
     avatar_url: (raw as any)?.avatar_url ?? null,
     account_type: (raw as any)?.account_type ?? (raw as any)?.type ?? null,
     type: (raw as any)?.type ?? (raw as any)?.account_type ?? null,
+    is_verified: (raw as any)?.is_verified ?? (raw as any)?.isVerified ?? null,
   };
 }
 
@@ -461,7 +463,7 @@ function isKindConstraintError(err: any) {
   );
 }
 
-const PROFILE_FIELDS = 'id, user_id, full_name, display_name, avatar_url, account_type, type';
+const PROFILE_FIELDS = 'id, user_id, full_name, display_name, avatar_url, account_type, type, is_verified';
 
 const SELECT_WITH_MEDIA =
   'id, author_id, content, created_at, media_url, media_type, media_aspect, kind, event_payload, quoted_post_id';
