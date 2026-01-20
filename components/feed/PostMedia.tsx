@@ -59,7 +59,7 @@ export function PostMedia({ postId, mediaUrl, mediaType, aspect, alt }: Props) {
               <video
                 ref={videoRef}
                 src={mediaUrl ?? undefined}
-                className="h-full w-full object-cover"
+                className="h-full w-full object-contain object-center"
                 onPlay={handlePlay}
                 onPause={handlePause}
                 onEnded={handleEnded}
