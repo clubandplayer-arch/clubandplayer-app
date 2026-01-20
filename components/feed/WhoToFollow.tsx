@@ -142,6 +142,7 @@ export default function WhoToFollow() {
   const [queue, setQueue] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isEmpty, setIsEmpty] = useState(false);
   const removingIdsRef = useRef(new Set<string>());
   const [removingIdsVersion, setRemovingIdsVersion] = useState(0);
   const inFlightFollowRef = useRef(new Set<string>());
@@ -150,78 +151,127 @@ export default function WhoToFollow() {
   const refillInFlightRef = useRef(false);
   const canRefillRef = useRef(true);
   const isMountedRef = useRef(true);
+  const reqIdRef = useRef(0);
+  const abortRef = useRef<AbortController | null>(null);
+  const hadDataRef = useRef(false);
+  const contextRoleRef = useRef<ProfileRole>('guest');
 
-  const loadSuggestions = useCallback(
-    async (limit: number, options: { append?: boolean } = {}) => {
-      const { append = false } = options;
-      if (!append) {
-        setLoading(true);
-        setError(null);
-        canRefillRef.current = true;
-        seenRef.current.clear();
+  const loadSuggestions = useCallback(async (limit: number) => {
+    const myReqId = ++reqIdRef.current;
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setLoading(true);
+    setError(null);
+    setIsEmpty(false);
+    canRefillRef.current = true;
+    seenRef.current.clear();
+    try {
+      const res = await fetch(`/api/follows/suggestions?limit=${limit}`, {
+        credentials: 'include',
+        cache: 'no-store',
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        console.error('[WhoToFollow] suggestions failed', { status: res.status, body });
+        throw new Error(`HTTP ${res.status}`);
       }
-      try {
-        const res = await fetch(`/api/follows/suggestions?limit=${limit}`, {
-          credentials: 'include',
-          cache: 'no-store',
-          next: { revalidate: 0 },
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || data?.ok === false) {
-          const message =
-            data?.message || (res.status ? `Errore server (HTTP ${res.status}).` : 'Impossibile caricare i suggerimenti.');
-          throw new Error(message);
-        }
-        const rawItems = Array.isArray(data?.items)
-          ? data.items
-          : Array.isArray(data?.data)
-          ? data.data
-          : Array.isArray(data?.suggestions)
-          ? data.suggestions
-          : [];
-        const suggestions = normalizeSuggestions(rawItems);
-        const filtered: Suggestion[] = [];
-        suggestions.forEach((item) => {
-          const id = (item.id || '').trim();
-          if (!id || seenRef.current.has(id)) return;
-          seenRef.current.add(id);
-          filtered.push(item);
-        });
-        if (!isMountedRef.current) return 0;
-        setRole((data?.role as ProfileRole) || contextRole || 'guest');
-        if (append) {
-          setQueue((prev) => [...prev, ...filtered]);
-        } else {
-          setVisible(filtered.slice(0, VISIBLE_LIMIT));
-          setQueue(filtered.slice(VISIBLE_LIMIT));
-        }
-        return filtered.length;
-      } catch (err) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.error('[who-to-follow] load error', err);
-        }
-        if (!isMountedRef.current) return 0;
-        if (!append) {
+      const data = await res.json().catch(() => ({}));
+      if (myReqId !== reqIdRef.current || !isMountedRef.current) return 0;
+      const rawItems = Array.isArray(data?.items)
+        ? data.items
+        : Array.isArray(data?.data)
+        ? data.data
+        : Array.isArray(data?.suggestions)
+        ? data.suggestions
+        : [];
+      const suggestions = normalizeSuggestions(rawItems);
+      const filtered: Suggestion[] = [];
+      suggestions.forEach((item) => {
+        const id = (item.id || '').trim();
+        if (!id || seenRef.current.has(id)) return;
+        seenRef.current.add(id);
+        filtered.push(item);
+      });
+      if (filtered.length === 0) {
+        if (!hadDataRef.current) {
           setVisible([]);
           setQueue([]);
-          setRole(contextRole || 'guest');
-          setError(err instanceof Error ? err.message : 'Impossibile caricare i suggerimenti.');
+          setIsEmpty(true);
+        } else {
+          console.warn('[WhoToFollow] empty response ignored because we already had data');
         }
         return 0;
-      } finally {
-        if (!append && isMountedRef.current) {
-          setLoading(false);
-        }
       }
-    },
-    [contextRole]
-  );
+      hadDataRef.current = true;
+      setIsEmpty(false);
+      setRole((data?.role as ProfileRole) || contextRoleRef.current || 'guest');
+      setVisible(filtered.slice(0, VISIBLE_LIMIT));
+      setQueue(filtered.slice(VISIBLE_LIMIT));
+      return filtered.length;
+    } catch (err) {
+      if (myReqId !== reqIdRef.current || !isMountedRef.current) return 0;
+      if ((err as Error)?.name === 'AbortError') return 0;
+      console.error('[WhoToFollow] load error', err);
+      setError(err instanceof Error ? err.message : 'Errore caricamento suggerimenti');
+      if (!hadDataRef.current) {
+        setVisible([]);
+      }
+      return 0;
+    } finally {
+      if (myReqId === reqIdRef.current && isMountedRef.current) {
+        setLoading(false);
+      }
+    }
+  }, []);
+
+  const refillSuggestions = useCallback(async (limit: number) => {
+    try {
+      const res = await fetch(`/api/follows/suggestions?limit=${limit}`, {
+        credentials: 'include',
+        cache: 'no-store',
+      });
+      if (!res.ok) return 0;
+      const data = await res.json().catch(() => ({}));
+      const rawItems = Array.isArray(data?.items)
+        ? data.items
+        : Array.isArray(data?.data)
+        ? data.data
+        : Array.isArray(data?.suggestions)
+        ? data.suggestions
+        : [];
+      const suggestions = normalizeSuggestions(rawItems);
+      const filtered: Suggestion[] = [];
+      suggestions.forEach((item) => {
+        const id = (item.id || '').trim();
+        if (!id || seenRef.current.has(id)) return;
+        seenRef.current.add(id);
+        filtered.push(item);
+      });
+      if (!isMountedRef.current) return 0;
+      if (filtered.length) {
+        setQueue((prev) => [...prev, ...filtered]);
+      }
+      return filtered.length;
+    } catch (err) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('[WhoToFollow] refill error', err);
+      }
+      return 0;
+    }
+  }, []);
+
+  useEffect(() => {
+    contextRoleRef.current = contextRole || 'guest';
+  }, [contextRole]);
 
   useEffect(() => {
     isMountedRef.current = true;
     void loadSuggestions(PREFETCH_LIMIT);
     return () => {
       isMountedRef.current = false;
+      abortRef.current?.abort();
     };
   }, [loadSuggestions]);
 
@@ -230,14 +280,14 @@ export default function WhoToFollow() {
     if (queue.length >= REFILL_THRESHOLD) return;
     if (refillInFlightRef.current) return;
     refillInFlightRef.current = true;
-    void loadSuggestions(REFILL_LIMIT, { append: true }).then((added) => {
+    void refillSuggestions(REFILL_LIMIT).then((added) => {
       if (added === 0) {
         canRefillRef.current = false;
       }
     }).finally(() => {
       refillInFlightRef.current = false;
     });
-  }, [error, loadSuggestions, loading, queue.length]);
+  }, [error, loading, queue.length, refillSuggestions]);
 
   if (loading) {
     return (
@@ -406,11 +456,11 @@ export default function WhoToFollow() {
             );
           })}
         </ul>
-      ) : (
+      ) : isEmpty ? (
         <div className="rounded-lg border border-dashed p-4 text-center text-sm text-zinc-500 dark:border-zinc-800">
           Nessun suggerimento al momento.
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
