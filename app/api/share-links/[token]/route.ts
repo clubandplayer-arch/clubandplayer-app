@@ -92,9 +92,9 @@ async function revokeShareLink(req: NextRequest, { params }: RouteParams) {
 
 const PROFILE_FIELDS = 'id, user_id, full_name, display_name, avatar_url, account_type, type';
 const POST_SELECT_WITH_STORAGE =
-  'id, author_id, content, created_at, media_url, media_type, media_aspect, media_path, media_bucket, link_url, link_title, link_description, link_image, kind, event_payload, quoted_post_id';
+  'id, author_id, content, created_at, media_url, media_type, media_aspect, media_path, media_bucket, link_url, link_description, link_image, kind, event_payload, quoted_post_id';
 const POST_SELECT_BASE =
-  'id, author_id, content, created_at, media_url, media_type, media_aspect, link_url, link_title, link_description, link_image, kind, event_payload, quoted_post_id';
+  'id, author_id, content, created_at, media_url, media_type, media_aspect, link_url, link_description, link_image, kind, event_payload, quoted_post_id';
 const DEFAULT_POSTS_BUCKET = process.env.NEXT_PUBLIC_POSTS_BUCKET || 'posts';
 
 function isTokenValid(token: string) {
