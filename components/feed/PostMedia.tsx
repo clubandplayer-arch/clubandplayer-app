@@ -1,8 +1,7 @@
 'use client';
 
-/* eslint-disable @next/next/no-img-element */
-
-import { useEffect, useMemo, useState } from 'react';
+import Image from 'next/image';
+import { useMemo, useState } from 'react';
 import { Lightbox, type LightboxItem } from '@/components/media/Lightbox';
 import { useExclusiveVideoPlayback } from '@/hooks/useExclusiveVideoPlayback';
 
@@ -14,9 +13,8 @@ type Props = {
   alt?: string | null;
 };
 
-export function PostMedia({ postId, mediaUrl, mediaType, aspect, alt }: Props) {
+export function PostMedia({ postId, mediaUrl, mediaType, aspect: _aspect, alt }: Props) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-  const [measuredAspect, setMeasuredAspect] = useState<number | null>(null);
   const aria = alt || (mediaType === 'video' ? "Guarda il video" : "Apri il media");
   const { videoRef, handleEnded, handlePause, handlePlay } = useExclusiveVideoPlayback(postId);
 
@@ -31,26 +29,9 @@ export function PostMedia({ postId, mediaUrl, mediaType, aspect, alt }: Props) {
     ];
   }, [alt, mediaType, mediaUrl]);
 
-  useEffect(() => {
-    setMeasuredAspect(null);
-  }, [mediaType, mediaUrl]);
-
-  const aspectRatio = useMemo(() => {
-    if (aspect === '16:9') return 16 / 9;
-    if (aspect === '9:16') return 9 / 16;
-    if (measuredAspect) return measuredAspect;
-    return null;
-  }, [aspect, measuredAspect]);
-
   if (!mediaUrl || !mediaType) return null;
 
-  const frameStyle = aspectRatio ? { aspectRatio } : undefined;
-  const frameClassName = aspectRatio
-    ? 'relative w-full overflow-hidden rounded-xl bg-black/5 max-h-[520px]'
-    : 'relative w-full overflow-hidden rounded-xl bg-black/5';
-  const mediaClassName = aspectRatio
-    ? 'h-full w-full object-contain object-center'
-    : 'h-auto w-full object-contain object-center';
+  const aspectClass = 'aspect-video';
 
   return (
     <div className="mt-4 flex w-full justify-center px-1 md:px-2">
@@ -62,39 +43,27 @@ export function PostMedia({ postId, mediaUrl, mediaType, aspect, alt }: Props) {
           className="group relative w-full"
         >
           <div
-            className={frameClassName}
-            style={frameStyle}
+            className={`relative w-full ${aspectClass} overflow-hidden rounded-xl bg-slate-50`}
           >
             {mediaType === 'video' ? (
               <video
                 ref={videoRef}
                 src={mediaUrl ?? undefined}
-                className={mediaClassName}
+                className="absolute inset-0 h-full w-full object-contain object-center"
                 onPlay={handlePlay}
                 onPause={handlePause}
                 onEnded={handleEnded}
-                onLoadedMetadata={(event) => {
-                  const { videoWidth, videoHeight } = event.currentTarget;
-                  if (videoWidth && videoHeight) {
-                    setMeasuredAspect(videoWidth / videoHeight);
-                  }
-                }}
                 playsInline
                 muted
                 preload="metadata"
               />
             ) : (
-              <img
+              <Image
                 src={mediaUrl}
                 alt={aria}
-                className={mediaClassName}
-                onLoad={(event) => {
-                  const { naturalWidth, naturalHeight } = event.currentTarget;
-                  if (naturalWidth && naturalHeight) {
-                    setMeasuredAspect(naturalWidth / naturalHeight);
-                  }
-                }}
-                loading="lazy"
+                fill
+                sizes="(min-width: 1280px) 640px, (min-width: 768px) 560px, 100vw"
+                className="object-contain object-center"
               />
             )}
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/10 via-black/0 to-black/20 opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
