@@ -12,13 +12,14 @@ import { getSupabaseServerClient } from '@/lib/supabase/server';
 export const runtime = 'nodejs';
 
 type RouteParams = {
-  params: {
+  params: Promise<{
     token?: string;
-  };
+  }>;
 };
 
 async function revokeShareLink(req: NextRequest, { params }: RouteParams) {
-  const token = params.token?.trim();
+  const { token: rawToken } = await params;
+  const token = rawToken?.trim();
   if (!token) {
     return invalidPayload('Token non valido');
   }
