@@ -8,7 +8,7 @@ import { CommentsSection } from '@/components/feed/CommentsSection';
 import { PostIconDelete, PostIconEdit, PostIconShare } from '@/components/icons/PostActionIcons';
 import { PostMedia } from '@/components/feed/PostMedia';
 import { QuotedPostCard } from '@/components/feed/QuotedPostCard';
-import { getPostPermalink } from '@/lib/share';
+import { createPostShareLink } from '@/lib/share';
 import { buildClubDisplayName, buildProfileDisplayName } from '@/lib/displayName';
 import ShareModal from '@/components/feed/ShareModal';
 import {
@@ -111,6 +111,8 @@ export function PostCard({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
+  const [shareLoading, setShareLoading] = useState(false);
   const linkUrl = post.link_url ?? firstUrl(description);
   const linkTitle = post.link_title ?? null;
   const linkDescription = post.link_description ?? null;
@@ -121,33 +123,38 @@ export function PostCard({
   const eventDateLabel = eventDetails?.date ? formatEventDate(eventDetails.date) : null;
   const [commentSignal, setCommentSignal] = useState(0);
 
-  const shareUrl = useMemo(() => {
-    if (typeof window === 'undefined') return '';
-    const origin = window.location.origin;
-    return getPostPermalink(origin, String(post.id));
-  }, [post.id]);
-
   const shareTitle = isEvent ? eventDetails?.title ?? 'Evento del club' : 'Post del feed';
   const shareMessage = useMemo(() => {
     if (isEvent) return eventDetails?.title ?? description;
     return description || shareTitle;
   }, [description, eventDetails?.title, isEvent, shareTitle]);
-  const shareText = useMemo(() => {
-    if (!shareUrl) return '';
-    return `${shareMessage}\n${shareUrl}`;
-  }, [shareMessage, shareUrl]);
+
+  const ensureShareUrl = useCallback(async () => {
+    if (shareUrl) return shareUrl;
+    setShareLoading(true);
+    setError(null);
+    try {
+      const url = await createPostShareLink(String(post.id));
+      setShareUrl(url);
+      return url;
+    } catch (err: any) {
+      setError(err?.message || 'Impossibile creare il link di condivisione');
+      return '';
+    } finally {
+      setShareLoading(false);
+    }
+  }, [post.id, shareUrl]);
 
   const handleShare = useCallback(async () => {
-    if (!shareUrl) {
-      setShareOpen(true);
-      return;
-    }
+    const url = await ensureShareUrl();
+    if (!url) return;
     const isMobile =
       typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const shareText = `${shareMessage}\n${url}`;
 
     if (isMobile && typeof navigator !== 'undefined' && 'share' in navigator) {
       try {
-        await navigator.share({ title: shareTitle, text: shareText || undefined });
+        await navigator.share({ title: shareTitle, text: shareText, url });
         return;
       } catch (err: any) {
         if (err?.name === 'AbortError') {
@@ -157,7 +164,7 @@ export function PostCard({
     }
 
     setShareOpen(true);
-  }, [shareText, shareTitle, shareUrl]);
+  }, [ensureShareUrl, shareMessage, shareTitle]);
 
   const reactionSummaryParts = REACTION_ORDER.filter((key) => (reaction.counts[key] || 0) > 0).map(
     (key) => `${REACTION_EMOJI[key]} ${reaction.counts[key]}`,
@@ -297,6 +304,7 @@ export function PostCard({
             onClick={handleShare}
             aria-label={isEvent ? 'Condividi questo evento' : 'Condividi questo post'}
             className="rounded-full p-2 transition hover:bg-neutral-100 hover:text-neutral-900"
+            disabled={shareLoading}
           >
             <PostIconShare className={actionIconClass} aria-hidden />
           </button>

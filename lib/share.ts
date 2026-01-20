@@ -10,6 +10,25 @@ export function getPostPermalink(origin: string, postId: string) {
   return `${base}/posts/${postId}`;
 }
 
+export async function createPostShareLink(postId: string): Promise<string> {
+  const res = await fetch('/api/share-links', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ resourceType: 'post', resourceId: postId }),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || !json?.ok) {
+    const message = json?.message || json?.error || 'Impossibile creare il link di condivisione';
+    throw new Error(message);
+  }
+  const url = json?.shareLink?.url;
+  if (typeof url !== 'string' || !url) {
+    throw new Error('Link di condivisione non disponibile');
+  }
+  return url;
+}
+
 export type ShareCapableNavigator = Navigator & {
   share?: (data: ShareData) => Promise<void>;
 };
