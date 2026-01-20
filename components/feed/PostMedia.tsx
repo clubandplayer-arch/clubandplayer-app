@@ -1,7 +1,6 @@
 'use client';
 
-/* eslint-disable @next/next/no-img-element */
-
+import Image from 'next/image';
 import { useMemo, useState } from 'react';
 import { Lightbox, type LightboxItem } from '@/components/media/Lightbox';
 import { useExclusiveVideoPlayback } from '@/hooks/useExclusiveVideoPlayback';
@@ -10,18 +9,10 @@ type Props = {
   postId: string;
   mediaUrl?: string | null;
   mediaType?: 'image' | 'video' | null;
-  aspect?: '16:9' | '9:16' | null;
   alt?: string | null;
 };
 
-function frameAspect(mediaType?: 'image' | 'video' | null, aspect?: '16:9' | '9:16' | null) {
-  if (aspect === '9:16') return 'aspect-[9/16]';
-  if (aspect === '16:9') return 'aspect-video';
-  if (mediaType === 'video') return 'aspect-video md:aspect-[4/3]';
-  return 'aspect-[4/5] md:aspect-[4/3]';
-}
-
-export function PostMedia({ postId, mediaUrl, mediaType, aspect, alt }: Props) {
+export function PostMedia({ postId, mediaUrl, mediaType, alt }: Props) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const aria = alt || (mediaType === 'video' ? "Guarda il video" : "Apri il media");
   const { videoRef, handleEnded, handlePause, handlePlay } = useExclusiveVideoPlayback(postId);
@@ -39,27 +30,21 @@ export function PostMedia({ postId, mediaUrl, mediaType, aspect, alt }: Props) {
 
   if (!mediaUrl || !mediaType) return null;
 
-  const aspectClass = frameAspect(mediaType, aspect);
-
   return (
     <div className="mt-4 flex w-full justify-center px-1 md:px-2">
-      <div className="mx-auto flex w-full max-w-2xl justify-center overflow-hidden rounded-xl bg-neutral-50 shadow-sm ring-1 ring-slate-100">
+      <div className="mx-auto w-full max-w-2xl">
         <button
           type="button"
           aria-label={aria}
           onClick={() => setLightboxIndex(0)}
           className="group relative w-full"
         >
-          <div
-            className={`relative h-[360px] w-full overflow-hidden rounded-xl bg-black/5 md:h-[420px] ${
-              aspectClass ? aspectClass : ''
-            }`}
-          >
+          <div className="relative w-full overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 aspect-video">
             {mediaType === 'video' ? (
               <video
                 ref={videoRef}
                 src={mediaUrl ?? undefined}
-                className="h-full w-full object-cover"
+                className="h-full w-full object-contain object-center"
                 onPlay={handlePlay}
                 onPause={handlePause}
                 onEnded={handleEnded}
@@ -68,11 +53,12 @@ export function PostMedia({ postId, mediaUrl, mediaType, aspect, alt }: Props) {
                 preload="metadata"
               />
             ) : (
-              <img
+              <Image
                 src={mediaUrl}
                 alt={aria}
-                className="h-full w-full object-cover"
-                loading="lazy"
+                fill
+                sizes="(min-width: 1280px) 560px, (min-width: 1024px) 520px, (min-width: 768px) 560px, 100vw"
+                className="object-contain object-center"
               />
             )}
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/10 via-black/0 to-black/20 opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
