@@ -91,19 +91,10 @@ async function revokeShareLink(req: NextRequest, { params }: RouteParams) {
 }
 
 const PROFILE_FIELDS = 'id, user_id, full_name, display_name, avatar_url, account_type, type';
-const POST_SELECT_WITH_STORAGE =
-  'id, author_id, content, created_at, media_url, media_type, media_aspect, media_path, media_bucket, link_url, link_description, link_image, kind, event_payload, quoted_post_id';
-const POST_SELECT_BASE =
-  'id, author_id, content, created_at, media_url, media_type, media_aspect, link_url, link_description, link_image, kind, event_payload, quoted_post_id';
 const DEFAULT_POSTS_BUCKET = process.env.NEXT_PUBLIC_POSTS_BUCKET || 'posts';
 
 function isTokenValid(token: string) {
   return /^[A-Za-z0-9_-]{20,128}$/.test(token);
-}
-
-function isMissingStorageColumns(err: any) {
-  const msg = String(err?.message || '').toLowerCase();
-  return msg.includes('column') && (msg.includes('media_path') || msg.includes('media_bucket'));
 }
 
 async function loadProfile(admin: NonNullable<ReturnType<typeof getSupabaseAdminClientOrNull>>, authorId: string) {
@@ -118,12 +109,7 @@ async function loadPost(
   admin: NonNullable<ReturnType<typeof getSupabaseAdminClientOrNull>>,
   postId: string,
 ) {
-  let data: any = null;
-  let error: any = null;
-  ({ data, error } = await admin.from('posts').select(POST_SELECT_WITH_STORAGE).eq('id', postId).maybeSingle());
-  if (error && isMissingStorageColumns(error)) {
-    ({ data, error } = await admin.from('posts').select(POST_SELECT_BASE).eq('id', postId).maybeSingle());
-  }
+  const { data, error } = await admin.from('posts').select('*').eq('id', postId).maybeSingle();
   return { data, error };
 }
 
@@ -227,9 +213,16 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
     }
   }
 
+  const linkTitle = (postRow as any).link_title ?? null;
+  const linkDescription = (postRow as any).link_description ?? null;
+  const linkUrl = (postRow as any).link_url ?? null;
+
   const post = normalizePost({
     ...postRow,
     media_url: mediaUrl,
+    link_title: linkTitle,
+    link_description: linkDescription,
+    link_url: linkUrl,
     event_payload: eventPayload,
     quoted_post: quotedPost,
     author_profile: authorProfile ?? null,
