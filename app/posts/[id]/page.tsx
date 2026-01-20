@@ -19,6 +19,27 @@ export default async function PostPage({ params }: { params: { id: string } }) {
   const { supabase, user } = await getUserAndRole();
   const currentUserId = user?.id ?? null;
 
+  if (!currentUserId) {
+    return (
+      <div className="mx-auto max-w-3xl p-4">
+        <div className="glass-panel space-y-2 p-4 text-sm text-neutral-700">
+          <p>Per vedere questo post devi accedere.</p>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/login"
+              className="rounded-md border px-3 py-1.5 text-sm font-semibold text-[var(--brand)] hover:bg-neutral-50"
+            >
+              Accedi
+            </Link>
+            <Link href="/signup" className="rounded-md border px-3 py-1.5 text-sm hover:bg-neutral-50">
+              Registrati
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const admin = getSupabaseAdminClientOrNull();
   const { data: adminData, error: adminError } = admin
     ? await admin.from('posts').select('id, author_id').eq('id', params.id).maybeSingle()
