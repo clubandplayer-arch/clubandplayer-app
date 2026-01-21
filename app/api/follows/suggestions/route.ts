@@ -55,6 +55,14 @@ export async function GET(req: NextRequest) {
     error?: unknown;
   }) {
     const { code, message, status = 500, error } = params;
+    if (debugMode && error) {
+      console.error('[follows/suggestions] debug error', {
+        message: error instanceof Error ? error.message : (error as any)?.message ?? null,
+        details: (error as any)?.details ?? null,
+        hint: (error as any)?.hint ?? null,
+        code: (error as any)?.code ?? null,
+      });
+    }
     const details = debugMode
       ? {
           endpointVersion: ENDPOINT_VERSION,
@@ -67,8 +75,16 @@ export async function GET(req: NextRequest) {
           ...debugInfo,
         }
       : undefined;
+    const errorDebug = debugMode
+      ? {
+          message: error instanceof Error ? error.message : (error as any)?.message ?? null,
+          details: (error as any)?.details ?? null,
+          hint: (error as any)?.hint ?? null,
+          code: (error as any)?.code ?? null,
+        }
+      : undefined;
     return NextResponse.json(
-      { ok: false, code, message, ...(details ? { details } : {}) },
+      { ok: false, code, message, ...(details ? { details } : {}), ...(errorDebug ? { error: errorDebug } : {}) },
       { status },
     );
   }
@@ -142,7 +158,7 @@ export async function GET(req: NextRequest) {
     alreadyFollowing.add(profileId);
 
     const baseSelect =
-      'id, account_type, type, full_name, display_name, role, city, province, region, country, sport, avatar_url, status, updated_at, is_verified';
+      'id, account_type, type, full_name, display_name, role, city, province, region, country, sport, avatar_url, status, updated_at';
 
     const normalizeAccountType = (value?: string | null) => {
       const cleaned = typeof value === 'string' ? value.toLowerCase().trim() : '';
@@ -341,26 +357,58 @@ export async function GET(req: NextRequest) {
 
     let clubVerificationMap = new Map<string, boolean>();
     if (clubIds.length) {
-      const { data: verificationRows, error: verificationError } = await supabase
-        .from('club_verification_requests_view')
-        .select('club_id, is_verified, created_at')
-        .in('club_id', clubIds)
-        .order('created_at', { ascending: false });
-      if (verificationError) throw verificationError;
-      const nextMap = new Map<string, boolean>();
-      (verificationRows ?? []).forEach((row: any) => {
-        if (!row?.club_id || nextMap.has(String(row.club_id))) return;
-        nextMap.set(String(row.club_id), row.is_verified === true);
-      });
-      clubVerificationMap = nextMap;
+      try {
+        const { data: verificationRows, error: verificationError } = await supabase
+          .from('club_verification_requests_view')
+          .select('club_id, is_verified, created_at')
+          .in('club_id', clubIds)
+          .order('created_at', { ascending: false });
+        if (verificationError) throw verificationError;
+        const nextMap = new Map<string, boolean>();
+        (verificationRows ?? []).forEach((row: any) => {
+          if (!row?.club_id || nextMap.has(String(row.club_id))) return;
+          nextMap.set(String(row.club_id), row.is_verified === true);
+        });
+        clubVerificationMap = nextMap;
+      } catch (error) {
+        console.error('[follows/suggestions] club verification lookup failed', {
+          message: error instanceof Error ? error.message : (error as any)?.message ?? null,
+          details: (error as any)?.details ?? null,
+          hint: (error as any)?.hint ?? null,
+          code: (error as any)?.code ?? null,
+        });
+      }
+    }
+
+    let profileVerificationMap = new Map<string, boolean>();
+    if (clubIds.length) {
+      try {
+        const { data: profileRows, error: profileError } = await supabase
+          .from('profiles')
+          .select('id, is_verified')
+          .in('id', clubIds);
+        if (profileError) throw profileError;
+        const nextMap = new Map<string, boolean>();
+        (profileRows ?? []).forEach((row: any) => {
+          if (!row?.id) return;
+          nextMap.set(String(row.id), row.is_verified === true);
+        });
+        profileVerificationMap = nextMap;
+      } catch (error) {
+        console.error('[follows/suggestions] profile is_verified lookup failed', {
+          message: error instanceof Error ? error.message : (error as any)?.message ?? null,
+          details: (error as any)?.details ?? null,
+          hint: (error as any)?.hint ?? null,
+          code: (error as any)?.code ?? null,
+        });
+      }
     }
 
     const items = rawResults.map((row) => {
       const isClub = normalizeAccountType(row?.account_type ?? row?.type) === 'club';
-      const directVerified = typeof row?.is_verified === 'boolean' ? row.is_verified : null;
       return {
         ...mapSuggestion(row, athleteMap.get(String(row.id))),
-        is_verified: isClub ? (directVerified ?? clubVerificationMap.get(String(row.id)) ?? null) : null,
+        is_verified: isClub ? (profileVerificationMap.get(String(row.id)) ?? clubVerificationMap.get(String(row.id)) ?? false) : null,
       };
     });
 
