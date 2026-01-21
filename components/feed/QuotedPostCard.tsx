@@ -34,6 +34,7 @@ export function QuotedPostCard({ post, onRemove, missingText = 'Questo post non 
 
           <PostMedia
             postId={post.id}
+            media={post.media}
             mediaUrl={post.media_url}
             mediaType={post.media_type}
             alt={post.content || 'Media del post citato'}

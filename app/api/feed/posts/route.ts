@@ -28,6 +28,18 @@ const LAST_POST_TS_COOKIE = 'feed_last_post_ts';
 type Role = 'club' | 'athlete';
 type PostKind = 'normal' | 'event';
 type DbPostKind = 'normal' | 'event';
+type PostMediaType = 'image' | 'video';
+type PostMediaItem = {
+  id: string | null;
+  url: string;
+  media_type: PostMediaType;
+  mediaType: PostMediaType;
+  poster_url: string | null;
+  posterUrl: string | null;
+  width: number | null;
+  height: number | null;
+  position: number;
+};
 
 function normRole(v: unknown): Role | null {
   const s = typeof v === 'string' ? v.trim().toLowerCase() : '';
@@ -123,6 +135,7 @@ function normalizeRow(row: any, quotedMap?: Map<string, any>, depth = 0): any {
   const authorRole = normRole(authorProfile?.account_type ?? authorProfile?.type) ?? null;
   const authorProfileId = (authorProfile?.id as string | undefined) ?? null;
   const authorUserId = (authorProfile?.user_id as string | undefined) ?? null;
+  const media = Array.isArray((row as any)?.media) ? (row as any).media : [];
 
   return {
     id: row.id,
@@ -152,6 +165,7 @@ function normalizeRow(row: any, quotedMap?: Map<string, any>, depth = 0): any {
     author_profile_id: authorProfileId,
     author_profile: authorProfile,
     author_user_id: authorUserId,
+    media,
   };
 }
 
@@ -364,6 +378,7 @@ export async function GET(req: NextRequest) {
     await buildAuthorProfileMaps(supabase, authorIds);
 
   let quotedMap: Map<string, any> | null = null;
+  let postMediaMap = new Map<string, PostMediaItem[]>();
 
   const quotedIds = Array.from(
     new Set(
@@ -373,6 +388,19 @@ export async function GET(req: NextRequest) {
     ),
   );
 
+  try {
+    postMediaMap = await fetchPostMediaMap(
+      supabase,
+      Array.from(new Set((data ?? []).map((row) => row?.id).filter(Boolean) as string[])),
+    );
+  } catch (mediaError: any) {
+    reportApiError({
+      endpoint: '/api/feed/posts',
+      error: mediaError,
+      context: { stage: 'select_post_media', method: 'GET' },
+    });
+  }
+
   if (quotedIds.length) {
     const { data: quotedRows, error: quotedError } = await supabase
       .from('posts')
@@ -380,18 +408,40 @@ export async function GET(req: NextRequest) {
       .in('id', quotedIds);
 
     if (!quotedError && Array.isArray(quotedRows)) {
+      let quotedMediaMap = new Map<string, PostMediaItem[]>();
+      try {
+        quotedMediaMap = await fetchPostMediaMap(
+          supabase,
+          Array.from(new Set(quotedRows.map((row) => row?.id).filter(Boolean) as string[])),
+        );
+      } catch (mediaError: any) {
+        reportApiError({
+          endpoint: '/api/feed/posts',
+          error: mediaError,
+          context: { stage: 'select_quoted_post_media', method: 'GET' },
+        });
+      }
       const quotedMaps = await buildAuthorProfileMaps(
         supabase,
         Array.from(new Set(quotedRows.map((r) => r?.author_id).filter(Boolean) as string[])),
       );
-      const enrichedQuotedRows = quotedRows.map((row) => attachAuthorProfile(row, quotedMaps));
+      const enrichedQuotedRows = quotedRows.map((row) => {
+        const media = quotedMediaMap.get(String(row.id)) ?? buildFallbackMedia(row);
+        return attachAuthorProfile({ ...row, media }, quotedMaps);
+      });
       quotedMap = new Map(enrichedQuotedRows.map((row) => [row.id, row]));
     }
   }
 
   const rows =
     (data ?? [])
-      .map((r) => attachAuthorProfile(r, { byUserId: authorProfileMapByUserId, byProfileId: authorProfileMapByProfileId }))
+      .map((r) => {
+        const media = postMediaMap.get(String(r.id)) ?? buildFallbackMedia(r);
+        return { ...r, media };
+      })
+      .map((r) =>
+        attachAuthorProfile(r, { byUserId: authorProfileMapByUserId, byProfileId: authorProfileMapByProfileId }),
+      )
       .map((r) => normalizeRow(r, quotedMap ?? undefined)) || [];
   const postsCountAfterJoin = rows.length;
 
@@ -425,6 +475,11 @@ export async function GET(req: NextRequest) {
 function isMissingMediaColumns(err: any) {
   const msg = err?.message || '';
   return /column .*media_/i.test(msg);
+}
+
+function isMissingPostMediaTable(err: any) {
+  const msg = err?.message || '';
+  return /post_media/i.test(msg) && /does not exist|relation/i.test(msg);
 }
 
 function isMissingLinkColumns(err: any) {
@@ -517,9 +572,119 @@ function normalizeLinkUrl(raw: unknown): string | null {
   }
 }
 
+function normalizeMediaUrl(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  try {
+    const u = new URL(raw.trim());
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+    return u.toString();
+  } catch {
+    return null;
+  }
+}
+
+function normalizePostMediaRow(row: any): PostMediaItem | null {
+  if (!row || typeof row !== 'object') return null;
+  const mediaType = typeof row.media_type === 'string' ? row.media_type.trim().toLowerCase() : '';
+  if (mediaType !== 'image' && mediaType !== 'video') return null;
+  const url = typeof row.url === 'string' ? row.url.trim() : '';
+  if (!url) return null;
+  return {
+    id: row.id ?? null,
+    url,
+    media_type: mediaType,
+    mediaType: mediaType,
+    poster_url: typeof row.poster_url === 'string' ? row.poster_url : null,
+    posterUrl: typeof row.poster_url === 'string' ? row.poster_url : null,
+    width: Number.isFinite(row.width) ? Number(row.width) : null,
+    height: Number.isFinite(row.height) ? Number(row.height) : null,
+    position: Number.isFinite(row.position) ? Number(row.position) : 0,
+  };
+}
+
+function buildFallbackMedia(row: any): PostMediaItem[] {
+  const url = typeof row?.media_url === 'string' ? row.media_url.trim() : '';
+  const mediaType = typeof row?.media_type === 'string' ? row.media_type.trim().toLowerCase() : '';
+  if (!url || (mediaType !== 'image' && mediaType !== 'video')) return [];
+  return [
+    {
+      id: null,
+      url,
+      media_type: mediaType,
+      mediaType: mediaType,
+      poster_url: null,
+      posterUrl: null,
+      width: null,
+      height: null,
+      position: 0,
+    },
+  ];
+}
+
+type IncomingPostMedia = {
+  media_type: PostMediaType;
+  url: string;
+  poster_url: string | null;
+  width: number | null;
+  height: number | null;
+  position: number;
+};
+
+function normalizeIncomingMediaList(raw: unknown): IncomingPostMedia[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((item, index) => {
+      if (!item || typeof item !== 'object') return null;
+      const rawType = (item as any).media_type ?? (item as any).mediaType;
+      const mediaType = typeof rawType === 'string' ? rawType.trim().toLowerCase() : '';
+      if (mediaType !== 'image' && mediaType !== 'video') return null;
+      const url = normalizeMediaUrl((item as any).url);
+      if (!url) return null;
+      const rawPoster = (item as any).poster_url ?? (item as any).posterUrl ?? null;
+      const posterUrl = normalizeMediaUrl(rawPoster) || null;
+      const width = Number.isFinite((item as any).width) ? Number((item as any).width) : null;
+      const height = Number.isFinite((item as any).height) ? Number((item as any).height) : null;
+      const positionRaw = (item as any).position;
+      const position =
+        Number.isFinite(positionRaw) && Number(positionRaw) >= 0 ? Math.trunc(Number(positionRaw)) : index;
+      return {
+        media_type: mediaType,
+        url,
+        poster_url: posterUrl,
+        width,
+        height,
+        position,
+      };
+    })
+    .filter(Boolean) as IncomingPostMedia[];
+}
+
 type ServerClient = Awaited<ReturnType<typeof getSupabaseServerClient>>;
 type AdminClient = NonNullable<ReturnType<typeof getSupabaseAdminClientOrNull>>;
 type InsertClient = ServerClient | AdminClient;
+
+async function fetchPostMediaMap(client: ServerClient, postIds: string[]) {
+  const map = new Map<string, PostMediaItem[]>();
+  if (!postIds.length) return map;
+  const { data, error } = await client
+    .from('post_media')
+    .select('id, post_id, media_type, url, poster_url, width, height, position')
+    .in('post_id', postIds)
+    .order('position', { ascending: true });
+  if (error) {
+    if (isMissingPostMediaTable(error)) return map;
+    throw error;
+  }
+  (data ?? []).forEach((row: any) => {
+    const normalized = normalizePostMediaRow(row);
+    const postId = row?.post_id ? String(row.post_id) : null;
+    if (!normalized || !postId) return;
+    const list = map.get(postId) ?? [];
+    list.push(normalized);
+    map.set(postId, list);
+  });
+  return map;
+}
 
 // POST: inserimento autenticato con rate-limit via cookie
 export async function POST(req: NextRequest) {
@@ -569,6 +734,7 @@ export async function POST(req: NextRequest) {
         : typeof body?.mediaAspect === 'string'
           ? body.mediaAspect
           : '';
+    const rawMediaItems = Array.isArray(body?.media) ? body.media : [];
     const rawLinkUrl =
       typeof body?.link_url === 'string'
         ? body.link_url
@@ -592,8 +758,21 @@ export async function POST(req: NextRequest) {
     const linkImage = normalizeLinkUrl(rawLinkImage);
     const quotedPostId = (body.quoted_post_id ?? body.quotedPostId ?? null) || null;
     const isEvent = requestedKind === 'event';
+    const normalizedMediaItems = normalizeIncomingMediaList(rawMediaItems);
 
-    if (!isEvent && !text && !mediaUrl && !normalizedMediaPath && !linkUrl && !quotedPostId) {
+    if (rawMediaItems.length && normalizedMediaItems.length !== rawMediaItems.length) {
+      return validationError('Almeno un allegato media non è valido.', { error: 'invalid_media_items' });
+    }
+
+    if (
+      !isEvent &&
+      !text &&
+      !mediaUrl &&
+      !normalizedMediaItems.length &&
+      !normalizedMediaPath &&
+      !linkUrl &&
+      !quotedPostId
+    ) {
       return validationError('Scrivi un testo, un link o allega un media.', { error: 'empty' });
     }
     if (text.length > MAX_CHARS) {
@@ -645,6 +824,14 @@ export async function POST(req: NextRequest) {
       }
 
       quotedRootId = quoted.quoted_post_id ?? quoted.id;
+    }
+
+    if (!mediaUrl && normalizedMediaItems.length) {
+      mediaUrl = normalizedMediaItems[0]?.url ?? null;
+    }
+
+    if (!mediaType && normalizedMediaItems.length) {
+      mediaType = normalizedMediaItems[0]?.media_type ?? null;
     }
 
     if (!mediaUrl && normalizedMediaPath) {
@@ -758,8 +945,51 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    let mediaItems: PostMediaItem[] = [];
+    if (normalizedMediaItems.length) {
+      const insertRows = normalizedMediaItems.map((item) => ({
+        post_id: data.id,
+        media_type: item.media_type,
+        url: item.url,
+        poster_url: item.poster_url,
+        width: item.width,
+        height: item.height,
+        position: item.position,
+      }));
+      let insertedMedia: any[] | null = null;
+      let mediaError: any = null;
+      ({ data: insertedMedia, error: mediaError } = await supabase
+        .from('post_media')
+        .insert(insertRows)
+        .select('id, post_id, media_type, url, poster_url, width, height, position'));
+      if (mediaError && admin && isRlsError(mediaError)) {
+        ({ data: insertedMedia, error: mediaError } = await admin
+          .from('post_media')
+          .insert(insertRows)
+          .select('id, post_id, media_type, url, poster_url, width, height, position'));
+      }
+      if (mediaError && !isMissingPostMediaTable(mediaError)) {
+        reportApiError({
+          endpoint: '/api/feed/posts',
+          error: mediaError,
+          context: { stage: 'insert_post_media', method: 'POST' },
+        });
+        return dbError('Inserimento media non riuscito', {
+          error: 'insert_media_failed',
+          message: mediaError?.message,
+        });
+      }
+      mediaItems = (insertedMedia ?? [])
+        .map((row) => normalizePostMediaRow(row))
+        .filter(Boolean) as PostMediaItem[];
+    }
+
+    if (!mediaItems.length) {
+      mediaItems = buildFallbackMedia({ ...data, media_url: mediaUrl, media_type: mediaType });
+    }
+
     const authorMaps = await buildAuthorProfileMaps(supabase, data?.author_id ? [String(data.author_id)] : []);
-    const enrichedRow = attachAuthorProfile(data, authorMaps);
+    const enrichedRow = attachAuthorProfile({ ...data, media: mediaItems }, authorMaps);
 
     const res = successResponse({ item: normalizeRow(enrichedRow) }, { status: 201 });
     res.cookies.set(LAST_POST_TS_COOKIE, String(now), {

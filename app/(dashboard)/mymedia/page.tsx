@@ -11,6 +11,7 @@ import { ShareButton } from '@/components/media/ShareButton';
 import { ShareSectionButton } from '@/components/media/ShareSectionButton';
 import { MediaEmptyState } from '@/components/media/MediaEmptyState';
 import { MaterialIcon } from '@/components/icons/MaterialIcon';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 
 const shortDateFormatter = new Intl.DateTimeFormat('it-IT', {
   day: 'numeric',
@@ -27,10 +28,12 @@ type MediaPost = {
   id: string;
   created_at?: string | null;
   media_url?: string | null;
+  poster_url?: string | null;
   media_type?: MediaType;
   media_aspect?: '16:9' | '9:16' | null;
   content?: string | null;
   link_url?: string | null;
+  post_id?: string | null;
 };
 
 function normalizeMediaType(raw?: string | null): MediaType {
@@ -78,14 +81,21 @@ function normalizePost(p: any): MediaPost {
     id: p.id,
     created_at: p.created_at ?? p.createdAt ?? null,
     media_url: p.media_url ?? null,
+    poster_url: p.poster_url ?? null,
     media_type: mediaType,
     media_aspect: normalizeAspect(p.media_aspect) ?? aspectFromUrl(p.media_url) ?? null,
     content: p.content ?? p.text ?? null,
     link_url: p.link_url ?? null,
+    post_id: p.post_id ?? null,
   };
 }
 
-async function fetchMyMedia({ signal, authorId }: { signal?: AbortSignal; authorId?: string | null }): Promise<MediaPost[]> {
+function isMissingPostMediaTable(err: any) {
+  const msg = err?.message || '';
+  return /post_media/i.test(msg) && /does not exist|relation/i.test(msg);
+}
+
+async function fetchLegacyMedia({ signal, authorId }: { signal?: AbortSignal; authorId?: string | null }): Promise<MediaPost[]> {
   const params = new URLSearchParams({ limit: String(DEFAULT_LIMIT) });
   if (authorId) {
     params.set('authorId', authorId);
@@ -115,6 +125,69 @@ async function fetchMyMedia({ signal, authorId }: { signal?: AbortSignal; author
   });
   console.info('[mymedia] total posts fetched', arr.length);
   return arr.map(normalizePost);
+}
+
+async function fetchMyMedia({ signal, authorId }: { signal?: AbortSignal; authorId?: string | null }): Promise<MediaPost[]> {
+  const supabase = getSupabaseBrowserClient();
+  let resolvedAuthorId = authorId ?? null;
+
+  if (!resolvedAuthorId) {
+    const { data: auth, error: authErr } = await supabase.auth.getUser();
+    if (authErr || !auth?.user?.id) {
+      throw new Error('Impossibile caricare i tuoi media');
+    }
+    resolvedAuthorId = auth.user.id;
+  }
+
+  const { data, error } = await supabase
+    .from('post_media')
+    .select(
+      `
+        id,
+        media_type,
+        url,
+        poster_url,
+        width,
+        height,
+        position,
+        created_at,
+        post:posts!inner(
+          id,
+          created_at,
+          content,
+          author_id,
+          link_url
+        )
+      `,
+    )
+    .eq('post.author_id', resolvedAuthorId)
+    .order('created_at', { foreignTable: 'post', ascending: false })
+    .order('position', { ascending: true })
+    .limit(DEFAULT_LIMIT)
+    .abortSignal(signal ?? null);
+
+  if (error) {
+    if (isMissingPostMediaTable(error)) {
+      return fetchLegacyMedia({ signal, authorId: resolvedAuthorId });
+    }
+    console.error('[mymedia] post_media fetch failed', error);
+    throw new Error('Impossibile caricare i tuoi media');
+  }
+
+  const rows = Array.isArray(data) ? data : [];
+  console.info('[mymedia] post_media rows fetched', rows.length);
+  return rows.map((row: any) =>
+    normalizePost({
+      id: row.id,
+      created_at: row.post?.created_at ?? row.created_at ?? null,
+      media_url: row.url ?? null,
+      poster_url: row.poster_url ?? null,
+      media_type: row.media_type ?? null,
+      content: row.post?.content ?? null,
+      link_url: row.post?.link_url ?? null,
+      post_id: row.post?.id ?? null,
+    }),
+  );
 }
 
 function resolveMediaType(post: MediaPost): MediaType {
@@ -356,7 +429,12 @@ function MediaSection({
                         onClick={(e) => onVideoClick?.(item, e.currentTarget)}
                         aria-label="Riproduci video"
                       >
-                        <VideoPlayer url={item.media_url} aspect={item.media_aspect} title={item.content ?? undefined} />
+                        <VideoPlayer
+                          url={item.media_url}
+                          posterUrl={item.poster_url ?? null}
+                          aspect={item.media_aspect}
+                          title={item.content ?? undefined}
+                        />
                       </button>
                     ) : (
                       <button
@@ -431,10 +509,12 @@ function MediaSection({
 
 function VideoPlayer({
   url,
+  posterUrl,
   aspect,
   title,
 }: {
   url?: string | null;
+  posterUrl?: string | null;
   aspect?: '16:9' | '9:16' | null;
   title?: string;
 }) {
@@ -444,6 +524,7 @@ function VideoPlayer({
     <div className={`${aspectClass} relative w-full overflow-hidden bg-black`}>
       <video
         src={url ?? undefined}
+        poster={posterUrl ?? undefined}
         muted
         playsInline
         className="absolute inset-0 h-full w-full object-cover"

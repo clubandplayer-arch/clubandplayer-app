@@ -33,6 +33,17 @@ const EventPayloadSchema = z.object({
   poster_bucket: z.string().trim().optional().nullable(),
 });
 
+const PostMediaSchema = z.object({
+  mediaType: z.enum(['image', 'video']).optional(),
+  media_type: z.enum(['image', 'video']).optional(),
+  url: z.string().trim().url().max(2048),
+  posterUrl: z.string().trim().url().max(2048).optional().nullable(),
+  poster_url: z.string().trim().url().max(2048).optional().nullable(),
+  width: z.number().int().positive().optional().nullable(),
+  height: z.number().int().positive().optional().nullable(),
+  position: z.number().int().min(0).optional(),
+});
+
 export const FeedPostsQuerySchema = z.object({
   page: numberFromParam(0, 0, 10_000),
   limit: numberFromParam(50, 1, 200),
@@ -66,6 +77,7 @@ export const CreatePostSchema = z
     mediaMime: z.string().trim().max(255).optional(),
     media_aspect: z.enum(['16:9', '9:16']).optional(),
     mediaAspect: z.enum(['16:9', '9:16']).optional(),
+    media: z.array(PostMediaSchema).optional(),
     link_url: z.string().trim().url().max(2048).optional(),
     linkUrl: z.string().trim().url().max(2048).optional(),
     link_title: z.string().trim().max(500).optional(),
