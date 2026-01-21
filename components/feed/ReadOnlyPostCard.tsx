@@ -150,6 +150,7 @@ export function ReadOnlyPostCard({ post }: ReadOnlyPostCardProps) {
 
         <PostMedia
           postId={post.id}
+          media={post.media}
           mediaUrl={post.media_url}
           mediaType={post.media_type}
           alt={isEvent ? eventDetails?.title ?? "Locandina dell'evento" : 'Media del post'}
