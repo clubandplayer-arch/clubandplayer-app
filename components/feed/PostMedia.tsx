@@ -100,7 +100,7 @@ export function PostMedia({ postId, media, mediaUrl, mediaType, alt }: Props) {
             onClick={() => setLightboxIndex(0)}
             className="group relative w-full"
           >
-            <div className="relative w-full overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 aspect-video">
+            <div className="relative w-full overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 aspect-[4/5] lg:aspect-video">
               {(() => {
                 const item = itemsSource[0];
                 const backdropUrl =
@@ -131,7 +131,7 @@ export function PostMedia({ postId, media, mediaUrl, mediaType, alt }: Props) {
             </div>
           </button>
         ) : (
-          <div className="relative w-full overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 aspect-video">
+          <div className="relative w-full overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 aspect-[4/5] lg:aspect-video">
             <div
               className={`grid h-full w-full gap-[2px] bg-white ${
                 mediaCount === 2
