@@ -142,7 +142,7 @@ export async function GET(req: NextRequest) {
     alreadyFollowing.add(profileId);
 
     const baseSelect =
-      'id, account_type, type, full_name, display_name, role, city, province, region, country, sport, avatar_url, status, updated_at';
+      'id, user_id, account_type, type, full_name, display_name, role, city, province, region, country, sport, avatar_url, status, updated_at';
 
     const normalizeAccountType = (value?: string | null) => {
       const cleaned = typeof value === 'string' ? value.toLowerCase().trim() : '';
@@ -334,34 +334,54 @@ export async function GET(req: NextRequest) {
       athleteMap = nextMap;
     }
 
-    const clubIds = rawResults
-      .filter((row) => normalizeAccountType(row?.account_type ?? row?.type) === 'club')
-      .map((row) => row.id)
-      .filter(Boolean);
+    const clubRows = rawResults.filter((row) => normalizeAccountType(row?.account_type ?? row?.type) === 'club');
+    const clubIds = clubRows.map((row) => row.id).filter(Boolean);
+    const clubUserIds = clubRows.map((row) => row.user_id ?? row.userId).filter(Boolean);
 
-    let clubVerificationMap = new Map<string, boolean>();
-    if (clubIds.length) {
-      const { data: verificationRows, error: verificationError } = await supabase
-        .from('club_verification_requests_view')
-        .select('club_id, is_verified, created_at')
-        .in('club_id', clubIds)
-        .order('created_at', { ascending: false });
-      if (verificationError) throw verificationError;
-      const nextMap = new Map<string, boolean>();
-      (verificationRows ?? []).forEach((row: any) => {
-        if (!row?.club_id || nextMap.has(String(row.club_id))) return;
-        nextMap.set(String(row.club_id), row.is_verified === true);
-      });
-      clubVerificationMap = nextMap;
+    const [byId, byUserId] = await Promise.all([
+      clubIds.length
+        ? supabase.from('profiles').select('id, is_verified').in('id', clubIds)
+        : Promise.resolve({ data: [], error: null }),
+      clubUserIds.length
+        ? supabase.from('profiles').select('user_id, is_verified').in('user_id', clubUserIds)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+
+    if (byId.error) {
+      console.error('[follows/suggestions] profiles lookup failed (id)', byId.error);
+    }
+    if (byUserId.error) {
+      console.error('[follows/suggestions] profiles lookup failed (user_id)', byUserId.error);
     }
 
-    const items = rawResults.map((row) => ({
-      ...mapSuggestion(row, athleteMap.get(String(row.id))),
-      is_verified:
-        normalizeAccountType(row?.account_type ?? row?.type) === 'club'
-          ? clubVerificationMap.get(String(row.id)) ?? null
-          : null,
-    }));
+    const verById = new Map<string, boolean>();
+    (byId.data ?? []).forEach((row: any) => {
+      if (row?.id) {
+        verById.set(String(row.id), row.is_verified === true);
+      }
+    });
+
+    const verByUserId = new Map<string, boolean>();
+    (byUserId.data ?? []).forEach((row: any) => {
+      if (row?.user_id) {
+        verByUserId.set(String(row.user_id), row.is_verified === true);
+      }
+    });
+
+    const items = rawResults.map((row) => {
+      const accountType = normalizeAccountType(row?.account_type ?? row?.type);
+      const isClub = accountType === 'club';
+      const profileId = row?.id ? String(row.id) : '';
+      const userId = row?.user_id ?? row?.userId;
+      const verified =
+        isClub && profileId
+          ? Boolean(verById.get(profileId) ?? (userId ? verByUserId.get(String(userId)) : undefined) ?? false)
+          : false;
+      return {
+        ...mapSuggestion(row, athleteMap.get(String(row.id))),
+        is_verified: isClub ? verified : false,
+      };
+    });
 
     return successResponse({
       items,
