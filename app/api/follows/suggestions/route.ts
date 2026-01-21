@@ -11,6 +11,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-
 
 type Suggestion = {
   id: string;
+  user_id?: string | null;
   name: string;
   kind: 'club' | 'player';
   location?: string | null;
@@ -158,7 +159,7 @@ export async function GET(req: NextRequest) {
     alreadyFollowing.add(profileId);
 
     const baseSelect =
-      'id, account_type, type, full_name, display_name, role, city, province, region, country, sport, avatar_url, status, updated_at';
+      'id, user_id, account_type, type, full_name, display_name, role, city, province, region, country, sport, avatar_url, status, updated_at';
 
     const normalizeAccountType = (value?: string | null) => {
       const cleaned = typeof value === 'string' ? value.toLowerCase().trim() : '';
@@ -217,6 +218,7 @@ export async function GET(req: NextRequest) {
 
       return {
         id: row.id,
+        user_id: row.user_id ?? null,
         name,
         kind,
         location: buildLocation(row) || null,
@@ -354,6 +356,10 @@ export async function GET(req: NextRequest) {
       .filter((row) => normalizeAccountType(row?.account_type ?? row?.type) === 'club')
       .map((row) => row.id)
       .filter(Boolean);
+    const clubUserIds = rawResults
+      .filter((row) => normalizeAccountType(row?.account_type ?? row?.type) === 'club')
+      .map((row) => row.user_id)
+      .filter(Boolean);
 
     let clubVerificationMap = new Map<string, boolean>();
     if (clubIds.length) {
@@ -404,11 +410,42 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    let profileUserVerificationMap = new Map<string, boolean>();
+    if (clubUserIds.length) {
+      try {
+        const { data: profileRows, error: profileError } = await supabase
+          .from('profiles')
+          .select('user_id, is_verified')
+          .in('user_id', clubUserIds);
+        if (profileError) throw profileError;
+        const nextMap = new Map<string, boolean>();
+        (profileRows ?? []).forEach((row: any) => {
+          if (!row?.user_id) return;
+          nextMap.set(String(row.user_id), row.is_verified === true);
+        });
+        profileUserVerificationMap = nextMap;
+      } catch (error) {
+        console.error('[follows/suggestions] profile user_id is_verified lookup failed', {
+          message: error instanceof Error ? error.message : (error as any)?.message ?? null,
+          details: (error as any)?.details ?? null,
+          hint: (error as any)?.hint ?? null,
+          code: (error as any)?.code ?? null,
+        });
+      }
+    }
+
     const items = rawResults.map((row) => {
       const isClub = normalizeAccountType(row?.account_type ?? row?.type) === 'club';
+      const profileKey = row?.profile_id ?? row?.id ?? null;
+      const userKey = row?.user_id ?? null;
       return {
         ...mapSuggestion(row, athleteMap.get(String(row.id))),
-        is_verified: isClub ? (profileVerificationMap.get(String(row.id)) ?? clubVerificationMap.get(String(row.id)) ?? false) : null,
+        is_verified: isClub
+          ? (profileVerificationMap.get(String(profileKey)) ??
+            profileUserVerificationMap.get(String(userKey)) ??
+            clubVerificationMap.get(String(row.id)) ??
+            false)
+          : null,
       };
     });
 
