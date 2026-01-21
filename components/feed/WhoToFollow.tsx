@@ -14,8 +14,7 @@ type Suggestion = {
   id: string;
   display_name?: string | null;
   full_name?: string | null;
-  accountType?: string | null;
-  account_type?: string | null;
+  accountType: 'club' | 'athlete';
   kind?: 'club' | 'player' | null;
   type?: string | null;
   category?: string | null;
@@ -129,8 +128,7 @@ function normalizeSuggestions(rawItems: any[]): Suggestion[] {
     id: item.id,
     display_name: item.display_name ?? item.name ?? null,
     full_name: item.full_name ?? item.name ?? null,
-    accountType: item.accountType ?? item.account_type ?? null,
-    account_type: item.account_type ?? null,
+    accountType: item.account_type === 'club' ? 'club' : 'athlete',
     kind:
       item.kind ??
       (item.account_type === 'club' || item.type === 'CLUB' ? 'club' : item.account_type || item.type ? 'player' : null),
@@ -143,7 +141,7 @@ function normalizeSuggestions(rawItems: any[]): Suggestion[] {
     role: item.role ?? null,
     avatar_url: item.avatar_url ?? null,
     is_verified: item.is_verified ?? item.isVerified ?? null,
-    isVerified: item.is_verified ?? item.isVerified ?? false,
+    isVerified: item.is_verified ?? item.isVerified ?? null,
   })) as Suggestion[];
 }
 
@@ -415,9 +413,7 @@ export default function WhoToFollow({
             const isRemoving = removingIdsRef.current.has(it.id) && removingIdsVersion >= 0;
             const name = displayName(it);
             const href = targetHref(it);
-            const rawType = String(it.accountType ?? it.account_type ?? it.type ?? it.kind ?? '').toLowerCase();
-            const isClub = rawType === 'club';
-            const isCertified = isClub && Boolean(it.is_verified ?? it.isVerified ?? false);
+            const isCertified = it.accountType === 'club' && Boolean(it.isVerified);
             return (
               <li
                 key={it.id}
