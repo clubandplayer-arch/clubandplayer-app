@@ -14,7 +14,7 @@ type Suggestion = {
   id: string;
   display_name?: string | null;
   full_name?: string | null;
-  accountType: string;
+  accountType: 'club' | 'athlete';
   kind?: 'club' | 'player' | null;
   type?: string | null;
   category?: string | null;
@@ -128,7 +128,7 @@ function normalizeSuggestions(rawItems: any[]): Suggestion[] {
     id: item.id,
     display_name: item.display_name ?? item.name ?? null,
     full_name: item.full_name ?? item.name ?? null,
-    accountType: String(item.account_type ?? item.accountType ?? '').toLowerCase(),
+    accountType: item.account_type === 'club' ? 'club' : 'athlete',
     kind:
       item.kind ??
       (item.account_type === 'club' || item.type === 'CLUB' ? 'club' : item.account_type || item.type ? 'player' : null),
@@ -413,7 +413,7 @@ export default function WhoToFollow({
             const isRemoving = removingIdsRef.current.has(it.id) && removingIdsVersion >= 0;
             const name = displayName(it);
             const href = targetHref(it);
-            const isCertified = it.accountType === 'club' && Boolean(it.isVerified ?? it.is_verified);
+            const isCertified = it.accountType === 'club' && Boolean(it.isVerified);
             return (
               <li
                 key={it.id}
