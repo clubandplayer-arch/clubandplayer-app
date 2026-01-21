@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import Link from 'next/link';
 import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentProfileContext';
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
-import CertifiedClubMark from '@/components/ui/CertifiedClubMark';
+import CertifiedCMarkSidebar from '@/components/badges/CertifiedCMarkSidebar';
 import { CountryFlag } from '@/components/ui/CountryFlag';
 import { toggleFollow } from '@/lib/services/follow';
 
@@ -16,6 +16,8 @@ type Suggestion = {
   full_name?: string | null;
   kind?: 'club' | 'player' | null;
   type?: string | null;
+  account_type?: string | null;
+  accountType?: string | null;
   category?: string | null;
   location?: string | null;
   city?: string | null;
@@ -131,6 +133,8 @@ function normalizeSuggestions(rawItems: any[]): Suggestion[] {
       item.kind ??
       (item.account_type === 'club' || item.type === 'CLUB' ? 'club' : item.account_type || item.type ? 'player' : null),
     type: item.type ?? null,
+    account_type: item.account_type ?? item.accountType ?? null,
+    accountType: item.accountType ?? item.account_type ?? null,
     category: item.category ?? null,
     location: item.location ?? null,
     city: item.city ?? null,
@@ -411,8 +415,9 @@ export default function WhoToFollow({
             const isRemoving = removingIdsRef.current.has(it.id) && removingIdsVersion >= 0;
             const name = displayName(it);
             const href = targetHref(it);
-            const itemType = it.type ?? (it.kind === 'club' ? 'CLUB' : it.kind === 'player' ? 'PLAYER' : null);
-            const isCertified = itemType === 'CLUB' && Boolean((it as any).is_verified ?? (it as any).isVerified ?? false);
+            const accountType = String(it.account_type ?? it.accountType ?? it.type ?? it.kind ?? '').toLowerCase();
+            const isVerified = Boolean(it.is_verified ?? it.isVerified ?? false);
+            const isCertified = accountType === 'club' && isVerified;
             return (
               <li
                 key={it.id}
@@ -427,14 +432,12 @@ export default function WhoToFollow({
                 />
                 <div className="relative z-20 flex min-w-0 flex-1 items-center gap-3 pointer-events-none">
                   <div className="relative">
-                    <div className="h-10 w-10 overflow-hidden rounded-full ring-1 ring-zinc-200 dark:ring-zinc-800">
-                      <img
-                        src={it.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`}
-                        alt={name}
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
-                    {isCertified ? <CertifiedClubMark size="sm" className="absolute -top-1 -right-1" /> : null}
+                    <img
+                      src={it.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`}
+                      alt={name}
+                      className="h-10 w-10 rounded-full object-cover ring-1 ring-zinc-200 dark:ring-zinc-800"
+                    />
+                    {isCertified ? <CertifiedCMarkSidebar className="absolute -top-2 -right-2 scale-[0.75]" /> : null}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-1">
