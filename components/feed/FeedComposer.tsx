@@ -17,13 +17,11 @@ type Props = {
 };
 
 const MAX_CHARS = 500;
+const MAX_MEDIA = 10;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
-const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
-const ACCEPT = 'image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime';
+const MAX_VIDEO_BYTES = 80 * 1024 * 1024;
+const ACCEPT = 'image/*,video/*';
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-const VIDEO_TYPES = ['video/mp4', 'video/quicktime'];
-
-type VideoAspect = '16:9' | '9:16';
 
 type MediaType = 'image' | 'video';
 
@@ -40,7 +38,20 @@ type UploadedMedia = {
   media_path: string;
   media_bucket: string;
   media_mime: string | null;
-  media_aspect?: VideoAspect;
+  poster_url?: string | null;
+  width?: number | null;
+  height?: number | null;
+};
+
+type MediaAttachment = {
+  id: string;
+  file: File;
+  kind: MediaType;
+  previewUrl: string;
+  width?: number;
+  height?: number;
+  posterBlob?: Blob;
+  posterPreviewUrl?: string;
 };
 
 const POSTS_BUCKET = process.env.NEXT_PUBLIC_POSTS_BUCKET || 'posts';
@@ -66,10 +77,7 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
   const [sending, setSending] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [mediaErr, setMediaErr] = useState<string | null>(null);
-  const [mediaFile, setMediaFile] = useState<File | null>(null);
-  const [mediaType, setMediaType] = useState<MediaType | null>(null);
-  const [mediaPreview, setMediaPreview] = useState<string | null>(null);
-  const [videoAspect, setVideoAspect] = useState<VideoAspect>('16:9');
+  const [mediaItems, setMediaItems] = useState<MediaAttachment[]>([]);
   const [linkUrl, setLinkUrl] = useState<string | null>(null);
   const [linkPreview, setLinkPreview] = useState<LinkPreview | null>(null);
   const [linkErr, setLinkErr] = useState<string | null>(null);
@@ -87,8 +95,9 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const eventFileInputRef = useRef<HTMLInputElement | null>(null);
   const linkAbortRef = useRef<AbortController | null>(null);
+  const mediaItemsRef = useRef<MediaAttachment[]>([]);
   const canSend =
-    (text.trim().length > 0 || Boolean(mediaFile) || Boolean(linkUrl) || Boolean(quotedPost)) && !sending;
+    (text.trim().length > 0 || mediaItems.length > 0 || Boolean(linkUrl) || Boolean(quotedPost)) && !sending;
   const isClub = accountType === 'club';
 
   const textareaId = 'feed-composer-input';
@@ -118,10 +127,17 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
   }, []);
 
   useEffect(() => {
+    mediaItemsRef.current = mediaItems;
+  }, [mediaItems]);
+
+  useEffect(() => {
     return () => {
-      if (mediaPreview) URL.revokeObjectURL(mediaPreview);
+      mediaItemsRef.current.forEach((item) => {
+        URL.revokeObjectURL(item.previewUrl);
+        if (item.posterPreviewUrl) URL.revokeObjectURL(item.posterPreviewUrl);
+      });
     };
-  }, [mediaPreview]);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -130,11 +146,11 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
   }, [eventPosterPreview]);
 
   function resetMedia() {
-    if (mediaPreview) URL.revokeObjectURL(mediaPreview);
-    setMediaPreview(null);
-    setMediaFile(null);
-    setMediaType(null);
-    setVideoAspect('16:9');
+    mediaItems.forEach((item) => {
+      URL.revokeObjectURL(item.previewUrl);
+      if (item.posterPreviewUrl) URL.revokeObjectURL(item.posterPreviewUrl);
+    });
+    setMediaItems([]);
     setMediaErr(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   }
@@ -164,9 +180,86 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
     setEventErr(null);
   }
 
+  function removeMediaItem(id: string) {
+    setMediaItems((prev) => {
+      const target = prev.find((item) => item.id === id);
+      if (target) {
+        URL.revokeObjectURL(target.previewUrl);
+        if (target.posterPreviewUrl) URL.revokeObjectURL(target.posterPreviewUrl);
+      }
+      return prev.filter((item) => item.id !== id);
+    });
+  }
+
   function findFirstUrl(value: string): string | null {
     const match = value.match(/https?:\/\/[^\s]+/i);
     return match ? match[0] : null;
+  }
+
+  function createMediaId() {
+    return typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  }
+
+  async function loadImageDimensions(url: string) {
+    const img = new Image();
+    img.decoding = 'async';
+    const loaded = new Promise<{ width: number; height: number }>((resolve, reject) => {
+      img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+      img.onerror = () => reject(new Error('Impossibile leggere le dimensioni immagine.'));
+    });
+    img.src = url;
+    return loaded;
+  }
+
+  async function generateVideoPoster(file: File) {
+    const videoUrl = URL.createObjectURL(file);
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.src = videoUrl;
+    video.muted = true;
+    const metadata = await new Promise<{ width: number; height: number; duration: number }>((resolve, reject) => {
+      video.onloadedmetadata = () =>
+        resolve({ width: video.videoWidth, height: video.videoHeight, duration: video.duration || 0 });
+      video.onerror = () => reject(new Error('Impossibile leggere i metadata del video.'));
+    });
+    const seekTime = metadata.duration ? Math.min(0.1, metadata.duration / 2) : 0;
+    await new Promise<void>((resolve, reject) => {
+      video.onseeked = () => resolve();
+      video.onerror = () => reject(new Error('Impossibile estrarre il frame del video.'));
+      video.currentTime = seekTime;
+    });
+    const canvas = document.createElement('canvas');
+    canvas.width = metadata.width || 1;
+    canvas.height = metadata.height || 1;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      URL.revokeObjectURL(videoUrl);
+      throw new Error('Impossibile generare il poster.');
+    }
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const posterBlob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            reject(new Error('Impossibile generare il poster.'));
+            return;
+          }
+          resolve(blob);
+        },
+        'image/jpeg',
+        0.85,
+      );
+    });
+    URL.revokeObjectURL(videoUrl);
+    const posterPreviewUrl = URL.createObjectURL(posterBlob);
+    return {
+      posterBlob,
+      posterPreviewUrl,
+      width: metadata.width,
+      height: metadata.height,
+    };
   }
 
   async function fetchLinkPreview(url: string) {
@@ -220,35 +313,75 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
     }
   }
 
-  function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+  async function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = '';
     setMediaErr(null);
-    if (!file) {
-      resetMedia();
-      return;
+    if (!files.length) return;
+
+    const nextItems: MediaAttachment[] = [];
+    let errorMessage: string | null = null;
+    let remainingSlots = Math.max(0, MAX_MEDIA - mediaItems.length);
+
+    for (const file of files) {
+      if (remainingSlots <= 0) {
+        errorMessage = `Puoi caricare al massimo ${MAX_MEDIA} file.`;
+        break;
+      }
+      const kind: MediaType | null = file.type.startsWith('video/')
+        ? 'video'
+        : file.type.startsWith('image/')
+          ? 'image'
+          : null;
+      if (!kind) {
+        errorMessage = 'Formato non supportato. Seleziona immagini o video.';
+        continue;
+      }
+      const limit = kind === 'image' ? MAX_IMAGE_BYTES : MAX_VIDEO_BYTES;
+      if (file.size > limit) {
+        errorMessage = `Il file supera il limite di ${Math.round(limit / (1024 * 1024))}MB.`;
+        continue;
+      }
+      const previewUrl = URL.createObjectURL(file);
+      const item: MediaAttachment = {
+        id: createMediaId(),
+        file,
+        kind,
+        previewUrl,
+      };
+      if (kind === 'image') {
+        try {
+          const dimensions = await loadImageDimensions(previewUrl);
+          item.width = dimensions.width;
+          item.height = dimensions.height;
+        } catch {
+          URL.revokeObjectURL(previewUrl);
+          errorMessage = 'Impossibile leggere l\'immagine selezionata.';
+          continue;
+        }
+      } else {
+        try {
+          const poster = await generateVideoPoster(file);
+          item.posterBlob = poster.posterBlob;
+          item.posterPreviewUrl = poster.posterPreviewUrl;
+          item.width = poster.width;
+          item.height = poster.height;
+        } catch {
+          URL.revokeObjectURL(previewUrl);
+          errorMessage = 'Impossibile generare il poster del video.';
+          continue;
+        }
+      }
+      nextItems.push(item);
+      remainingSlots -= 1;
     }
-    const kind: MediaType | null = file.type.startsWith('video/') ? 'video' : file.type.startsWith('image/') ? 'image' : null;
-    if (!kind) {
-      setMediaErr('Formato non supportato. Usa JPEG/PNG/WebP o MP4.');
-      e.target.value = '';
-      return;
+
+    if (nextItems.length) {
+      setMediaItems((prev) => [...prev, ...nextItems]);
     }
-    const allowedList = kind === 'image' ? IMAGE_TYPES : VIDEO_TYPES;
-    if (!allowedList.includes(file.type)) {
-      setMediaErr('Formato non supportato. Usa JPEG/PNG/WebP o MP4.');
-      e.target.value = '';
-      return;
+    if (errorMessage) {
+      setMediaErr(errorMessage);
     }
-    const limit = kind === 'image' ? MAX_IMAGE_BYTES : MAX_VIDEO_BYTES;
-    if (file.size > limit) {
-      setMediaErr(`Il file supera il limite di ${Math.round(limit / (1024 * 1024))}MB.`);
-      e.target.value = '';
-      return;
-    }
-    if (mediaPreview) URL.revokeObjectURL(mediaPreview);
-    setMediaFile(file);
-    setMediaType(kind);
-    setMediaPreview(kind === 'image' ? URL.createObjectURL(file) : null);
   }
 
   function handleEventPosterChange(e: ChangeEvent<HTMLInputElement>) {
@@ -273,42 +406,27 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
     setEventPosterPreview(URL.createObjectURL(file));
   }
 
-  async function uploadMedia(): Promise<UploadedMedia | null> {
-    if (!mediaFile || !mediaType) return null;
-    setMediaErr(null);
-    const supabase = getSupabaseBrowserClient();
-    const { data: auth, error: authErr } = await supabase.auth.getUser();
-    if (authErr || !auth?.user) {
-      const fallback = 'Effettua il login per allegare media.';
-      setMediaErr(fallback);
-      throw new FeedUploadError(fallback);
-    }
-
-    const allowedList = mediaType === 'image' ? IMAGE_TYPES : VIDEO_TYPES;
-    if (!allowedList.includes(mediaFile.type)) {
-      const fallback =
-        mediaType === 'image'
-          ? 'Formato immagine non supportato. Usa JPEG/PNG/WebP/GIF.'
-          : 'Formato video non supportato. Usa un file MP4.';
-      setMediaErr(fallback);
-      throw new FeedUploadError(fallback);
-    }
-
-    const limit = mediaType === 'image' ? MAX_IMAGE_BYTES : MAX_VIDEO_BYTES;
-    if (mediaFile.size > limit) {
+  async function uploadMediaItem(item: MediaAttachment, userId: string, supabase = getSupabaseBrowserClient()) {
+    const limit = item.kind === 'image' ? MAX_IMAGE_BYTES : MAX_VIDEO_BYTES;
+    if (item.file.size > limit) {
       const fallback = `Il file supera il limite di ${Math.round(limit / (1024 * 1024))}MB.`;
       setMediaErr(fallback);
       throw new FeedUploadError(fallback);
     }
 
-    const safeName = sanitizeFileName(mediaFile.name);
-    const objectPath = `${auth.user.id}/${Date.now()}-${safeName}`;
-    const bucket = POSTS_BUCKET;
+    if (item.kind === 'video' && !item.posterBlob) {
+      const fallback = 'Poster video mancante.';
+      setMediaErr(fallback);
+      throw new FeedUploadError(fallback);
+    }
 
-    const { data, error } = await supabase.storage.from(bucket).upload(objectPath, mediaFile, {
+    const safeName = sanitizeFileName(item.file.name);
+    const objectPath = `${userId}/${Date.now()}-${safeName}`;
+    const bucket = POSTS_BUCKET;
+    const { data, error } = await supabase.storage.from(bucket).upload(objectPath, item.file, {
       cacheControl: '3600',
       upsert: false,
-      contentType: mediaFile.type || undefined,
+      contentType: item.file.type || undefined,
     });
 
     if (error || !data) {
@@ -318,19 +436,46 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
     }
 
     const publicInfo = supabase.storage.from(bucket).getPublicUrl(data.path);
-    let url = publicInfo?.data?.publicUrl ?? null;
-    if (url && mediaType === 'video') {
-      const glue = url.includes('?') ? '&' : '?';
-      url = `${url}${glue}aspect=${videoAspect.replace(':', '-')}`;
+    const url = publicInfo?.data?.publicUrl ?? null;
+    if (!url) {
+      const fallback = 'Impossibile ottenere l\'URL del media.';
+      setMediaErr(fallback);
+      throw new FeedUploadError(fallback);
+    }
+
+    let posterUrl: string | null = null;
+    if (item.kind === 'video' && item.posterBlob) {
+      const posterPath = `${userId}/posters/${Date.now()}-${safeName}.jpg`;
+      const posterUpload = await supabase.storage.from(bucket).upload(posterPath, item.posterBlob, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: 'image/jpeg',
+      });
+      if (posterUpload.error || !posterUpload.data) {
+        const fallback = posterUpload.error?.message
+          ? `Upload poster non riuscito: ${posterUpload.error.message}`
+          : 'Upload poster fallito';
+        setMediaErr(fallback);
+        throw new FeedUploadError(fallback);
+      }
+      const posterInfo = supabase.storage.from(bucket).getPublicUrl(posterUpload.data.path);
+      posterUrl = posterInfo?.data?.publicUrl ?? null;
+      if (!posterUrl) {
+        const fallback = 'Impossibile ottenere l\'URL del poster.';
+        setMediaErr(fallback);
+        throw new FeedUploadError(fallback);
+      }
     }
 
     return {
       media_url: url,
-      media_type: mediaType,
+      media_type: item.kind,
       media_path: data.path,
       media_bucket: bucket,
-      media_mime: mediaFile.type || null,
-      ...(mediaType === 'video' ? { media_aspect: videoAspect } : {}),
+      media_mime: item.file.type || null,
+      poster_url: posterUrl,
+      width: item.width ?? null,
+      height: item.height ?? null,
     };
   }
 
@@ -390,22 +535,32 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
     setSending(true);
     setErr(null);
     try {
-      let mediaPayload: UploadedMedia | null = null;
-      if (mediaFile) {
-        mediaPayload = await uploadMedia();
+      const mediaPayloads: UploadedMedia[] = [];
+      if (mediaItems.length) {
+        const supabase = getSupabaseBrowserClient();
+        const { data: auth, error: authErr } = await supabase.auth.getUser();
+        if (authErr || !auth?.user) {
+          const fallback = 'Effettua il login per allegare media.';
+          setMediaErr(fallback);
+          throw new FeedUploadError(fallback);
+        }
+        for (const item of mediaItems) {
+          const uploaded = await uploadMediaItem(item, auth.user.id, supabase);
+          mediaPayloads.push(uploaded);
+        }
       }
 
       const trimmed = text.trim();
       const payload: Record<string, any> = { content: trimmed };
-      if (mediaPayload) {
-        payload.media_url = mediaPayload.media_url;
-        payload.media_type = mediaPayload.media_type;
-        payload.media_path = mediaPayload.media_path;
-        payload.media_bucket = mediaPayload.media_bucket;
-        payload.media_mime = mediaPayload.media_mime;
-        if (mediaPayload.media_type === 'video') {
-          payload.media_aspect = videoAspect;
-        }
+      if (mediaPayloads.length) {
+        payload.media = mediaPayloads.map((item, index) => ({
+          mediaType: item.media_type,
+          url: item.media_url,
+          posterUrl: item.poster_url ?? null,
+          width: item.width ?? null,
+          height: item.height ?? null,
+          position: index,
+        }));
       }
       if (linkUrl) {
         payload.link_url = linkUrl;
@@ -417,7 +572,7 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
         payload.quotedPostId = quotedPost.id;
       }
 
-      if (!trimmed && !mediaPayload && !linkUrl && !quotedPost) {
+      if (!trimmed && mediaPayloads.length === 0 && !linkUrl && !quotedPost) {
         setErr('Scrivi un testo o allega un media/link.');
         return;
       }
@@ -567,55 +722,12 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
             >
               Allega foto/video
             </button>
-            {mediaFile ? (
-              <span className="text-gray-700">
-                {mediaFile.name} ({mediaType === 'image' ? 'immagine' : 'video'})
-              </span>
+            {mediaItems.length ? (
+              <span className="text-gray-700">Allegati: {mediaItems.length}/{MAX_MEDIA}</span>
             ) : (
-              <span>Immagini (max 8MB) o video MP4 (max 80MB)</span>
+              <span>Immagini (max 8MB) o video (max 80MB)</span>
             )}
           </div>
-          {mediaFile && mediaType === 'video' ? (
-            <div
-              className="flex items-center gap-3 text-xs text-gray-700"
-              aria-live="polite"
-              role="radiogroup"
-              aria-label="Formato video"
-            >
-              <span className="font-semibold">Formato:</span>
-              {(
-                [
-                  { value: '16:9' as VideoAspect, label: '16:9', shape: 'h-6 w-10' },
-                  { value: '9:16' as VideoAspect, label: '9:16', shape: 'h-10 w-6' },
-                ] as const
-              ).map((option) => {
-                const isActive = videoAspect === option.value;
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    role="radio"
-                    aria-checked={isActive}
-                    aria-pressed={isActive}
-                    tabIndex={isActive ? 0 : -1}
-                    disabled={sending}
-                    onClick={() => setVideoAspect(option.value)}
-                    className={`flex items-center gap-2 rounded-lg border px-3 py-2 font-semibold transition focus-visible:outline focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-600 ${
-                      isActive
-                        ? 'border-gray-900 bg-gray-900 text-white shadow-sm'
-                        : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    <span
-                      aria-hidden="true"
-                      className={`flex items-center justify-center rounded-md border border-current bg-black/10 ${option.shape}`}
-                    />
-                    <span>{option.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          ) : null}
           {isClub ? (
             <button
               type="button"
@@ -652,33 +764,36 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
             {sending ? 'Invio…' : 'Pubblica'}
           </button>
         </div>
-
-        {mediaPreview && (
-          <div className="mt-3 overflow-hidden rounded-xl border bg-neutral-50">
-            <img src={mediaPreview} alt="Anteprima immagine" className="w-full max-h-80 object-cover" />
-            <button
-              type="button"
-              onClick={resetMedia}
-              className="block w-full border-t px-3 py-2 text-left text-xs hover:bg-gray-50"
-              disabled={sending}
-            >
-              Rimuovi immagine
-            </button>
+        {mediaItems.length ? (
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {mediaItems.map((item) => (
+              <div key={item.id} className="relative overflow-hidden rounded-xl border bg-neutral-50">
+                {item.kind === 'image' ? (
+                  <img src={item.previewUrl} alt="Anteprima immagine" className="h-36 w-full object-cover" />
+                ) : (
+                  <img
+                    src={item.posterPreviewUrl || item.previewUrl}
+                    alt="Anteprima video"
+                    className="h-36 w-full object-cover"
+                  />
+                )}
+                {item.kind === 'video' ? (
+                  <span className="absolute left-2 top-2 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold text-white">
+                    VIDEO
+                  </span>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => removeMediaItem(item.id)}
+                  className="absolute right-2 top-2 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-gray-700 shadow"
+                  disabled={sending}
+                >
+                  Rimuovi
+                </button>
+              </div>
+            ))}
           </div>
-        )}
-        {mediaFile && mediaType === 'video' && (
-          <div className="mt-3 rounded-xl border px-3 py-2 text-xs text-gray-600">
-            File video pronto all'upload: {mediaFile.name}
-            <button
-              type="button"
-              onClick={resetMedia}
-              className="ml-2 underline"
-              disabled={sending}
-            >
-              Rimuovi
-            </button>
-          </div>
-        )}
+        ) : null}
         {mediaErr && (
           <div className="text-xs text-red-600" role="status">
             {mediaErr}
@@ -697,6 +812,7 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
         accept={ACCEPT}
         className="hidden"
         onChange={handleFileChange}
+        multiple
       />
       <input
         ref={eventFileInputRef}
