@@ -142,7 +142,7 @@ export async function GET(req: NextRequest) {
     alreadyFollowing.add(profileId);
 
     const baseSelect =
-      'id, account_type, type, full_name, display_name, role, city, province, region, country, sport, avatar_url, status, updated_at';
+      'id, account_type, type, full_name, display_name, role, city, province, region, country, sport, avatar_url, status, updated_at, is_verified';
 
     const normalizeAccountType = (value?: string | null) => {
       const cleaned = typeof value === 'string' ? value.toLowerCase().trim() : '';
@@ -355,13 +355,14 @@ export async function GET(req: NextRequest) {
       clubVerificationMap = nextMap;
     }
 
-    const items = rawResults.map((row) => ({
-      ...mapSuggestion(row, athleteMap.get(String(row.id))),
-      is_verified:
-        normalizeAccountType(row?.account_type ?? row?.type) === 'club'
-          ? clubVerificationMap.get(String(row.id)) ?? null
-          : null,
-    }));
+    const items = rawResults.map((row) => {
+      const isClub = normalizeAccountType(row?.account_type ?? row?.type) === 'club';
+      const directVerified = typeof row?.is_verified === 'boolean' ? row.is_verified : null;
+      return {
+        ...mapSuggestion(row, athleteMap.get(String(row.id))),
+        is_verified: isClub ? (directVerified ?? clubVerificationMap.get(String(row.id)) ?? null) : null,
+      };
+    });
 
     return successResponse({
       items,
