@@ -101,6 +101,24 @@ export function PostMedia({ postId, media, mediaUrl, mediaType, alt }: Props) {
             className="group relative w-full"
           >
             <div className="relative w-full overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 aspect-video">
+              {(() => {
+                const item = itemsSource[0];
+                const backdropUrl =
+                  item.media_type === 'video' ? item.poster_url ?? item.posterUrl ?? null : item.url;
+                if (!backdropUrl) return null;
+                return (
+                  <div className="pointer-events-none absolute inset-0 select-none" aria-hidden="true">
+                    <Image
+                      src={backdropUrl}
+                      alt=""
+                      fill
+                      sizes="(min-width: 1280px) 560px, (min-width: 1024px) 520px, (min-width: 768px) 560px, 100vw"
+                      className="object-cover scale-110 blur-2xl opacity-90"
+                    />
+                    <div className="absolute inset-0 bg-white/20" />
+                  </div>
+                );
+              })()}
               {renderPreview(itemsSource[0], 'h-full w-full object-contain')}
               <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/10 via-black/0 to-black/20 opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
               {itemsSource[0].media_type === 'video' ? (
