@@ -38,6 +38,18 @@ export type EventPayload = {
   poster_bucket?: string | null;
 };
 
+export type PostMediaItem = {
+  id: string | null;
+  url: string;
+  media_type: 'image' | 'video';
+  mediaType: 'image' | 'video';
+  poster_url: string | null;
+  posterUrl: string | null;
+  width: number | null;
+  height: number | null;
+  position: number;
+};
+
 export type FeedPost = {
   id: string;
   content?: string;
@@ -55,6 +67,7 @@ export type FeedPost = {
   media_url?: string | null;
   media_type?: 'image' | 'video' | null;
   media_aspect?: '16:9' | '9:16' | null;
+  media?: PostMediaItem[];
   link_url?: string | null;
   link_title?: string | null;
   link_description?: string | null;
@@ -165,6 +178,23 @@ export function normalizePost(p: any, depth = 0): FeedPost {
     p?.author ??
     null;
   const authorAvatarUrl = authorProfile?.avatar_url ?? p?.author_avatar_url ?? p?.author?.avatar_url ?? null;
+  const mediaList = Array.isArray(p?.media) ? (p.media as PostMediaItem[]) : [];
+  const fallbackMedia =
+    !mediaList.length && p?.media_url && p?.media_type
+      ? [
+          {
+            id: null,
+            url: p.media_url,
+            media_type: p.media_type,
+            mediaType: p.media_type,
+            poster_url: null,
+            posterUrl: null,
+            width: null,
+            height: null,
+            position: 0,
+          } as PostMediaItem,
+        ]
+      : [];
   return {
     id: p.id,
     content: p.content ?? p.text ?? '',
@@ -173,6 +203,7 @@ export function normalizePost(p: any, depth = 0): FeedPost {
     media_url: p.media_url ?? null,
     media_type: p.media_type ?? null,
     media_aspect: normalizeAspect(p.media_aspect) ?? aspect ?? null,
+    media: mediaList.length ? mediaList : fallbackMedia,
     link_url: p.link_url ?? p.linkUrl ?? firstUrl(p.content ?? p.text ?? null),
     link_title: p.link_title ?? p.linkTitle ?? null,
     link_description: p.link_description ?? p.linkDescription ?? null,

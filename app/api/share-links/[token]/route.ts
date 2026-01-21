@@ -14,6 +14,19 @@ import { normalizePost, type FeedPost } from '@/components/feed/postShared';
 
 export const runtime = 'nodejs';
 
+type PostMediaType = 'image' | 'video';
+type PostMediaItem = {
+  id: string | null;
+  url: string;
+  media_type: PostMediaType;
+  mediaType: PostMediaType;
+  poster_url: string | null;
+  posterUrl: string | null;
+  width: number | null;
+  height: number | null;
+  position: number;
+};
+
 type RouteParams = {
   params: Promise<{
     token?: string;
@@ -131,6 +144,65 @@ function normalizeEventPayloadWithPoster(eventPayload: any, posterUrl: string | 
   };
 }
 
+function normalizePostMediaRow(row: any): PostMediaItem | null {
+  if (!row || typeof row !== 'object') return null;
+  const mediaType = typeof row.media_type === 'string' ? row.media_type.trim().toLowerCase() : '';
+  if (mediaType !== 'image' && mediaType !== 'video') return null;
+  const url = typeof row.url === 'string' ? row.url.trim() : '';
+  if (!url) return null;
+  return {
+    id: row.id ?? null,
+    url,
+    media_type: mediaType,
+    mediaType: mediaType,
+    poster_url: typeof row.poster_url === 'string' ? row.poster_url : null,
+    posterUrl: typeof row.poster_url === 'string' ? row.poster_url : null,
+    width: Number.isFinite(row.width) ? Number(row.width) : null,
+    height: Number.isFinite(row.height) ? Number(row.height) : null,
+    position: Number.isFinite(row.position) ? Number(row.position) : 0,
+  };
+}
+
+function buildFallbackMedia(row: any): PostMediaItem[] {
+  const url = typeof row?.media_url === 'string' ? row.media_url.trim() : '';
+  const mediaType = typeof row?.media_type === 'string' ? row.media_type.trim().toLowerCase() : '';
+  if (!url || (mediaType !== 'image' && mediaType !== 'video')) return [];
+  return [
+    {
+      id: null,
+      url,
+      media_type: mediaType,
+      mediaType: mediaType,
+      poster_url: null,
+      posterUrl: null,
+      width: null,
+      height: null,
+      position: 0,
+    },
+  ];
+}
+
+function isMissingPostMediaTable(err: any) {
+  const msg = err?.message || '';
+  return /post_media/i.test(msg) && /does not exist|relation/i.test(msg);
+}
+
+async function loadPostMedia(
+  admin: NonNullable<ReturnType<typeof getSupabaseAdminClientOrNull>>,
+  postId: string,
+) {
+  const { data, error } = await admin
+    .from('post_media')
+    .select('id, post_id, media_type, url, poster_url, width, height, position')
+    .eq('post_id', postId)
+    .order('position', { ascending: true });
+  if (error) {
+    if (isMissingPostMediaTable(error)) return [];
+    throw error;
+  }
+  return (data ?? []).map((row) => normalizePostMediaRow(row)).filter(Boolean) as PostMediaItem[];
+}
+
 export async function GET(_req: NextRequest, { params }: RouteParams) {
   const { token: rawToken } = await params;
   const token = rawToken?.trim() ?? '';
@@ -190,6 +262,16 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
     if (signed) mediaUrl = signed;
   }
 
+  let mediaItems: PostMediaItem[] = [];
+  try {
+    mediaItems = await loadPostMedia(admin, String(postRow.id));
+  } catch (mediaError: any) {
+    return dbError('Errore nel caricamento dei media', { message: mediaError?.message });
+  }
+  if (!mediaItems.length) {
+    mediaItems = buildFallbackMedia({ ...postRow, media_url: mediaUrl });
+  }
+
   const rawEventPayload = postRow.event_payload ?? null;
   let eventPayload = rawEventPayload;
   if (rawEventPayload?.poster_path) {
@@ -228,6 +310,7 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
     author_profile: authorProfile ?? null,
     author_display_name: authorProfile?.full_name ?? null,
     author_avatar_url: authorProfile?.avatar_url ?? null,
+    media: mediaItems,
   }) as FeedPost;
 
   return successResponse({ post });
