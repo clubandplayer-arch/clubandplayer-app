@@ -162,13 +162,18 @@ export async function GET(req: NextRequest) {
     };
 
     const applyExclusions = (query: any) => {
-      if (alreadyFollowing.size) {
-        const values = Array.from(alreadyFollowing).join(',');
-        const inClause = `(${values})`;
-        debugInfo.inClause = inClause;
-        return query.not('id', 'in', inClause);
-      }
-      return query;
+      if (!alreadyFollowing.size) return query;
+
+      const values = Array.from(alreadyFollowing)
+        .filter((id) => UUID_RE.test(id))
+        .map((id) => `"${id}"`)
+        .join(',');
+
+      if (!values) return query;
+
+      const inClause = `(${values})`;
+      debugInfo.inClause = inClause;
+      return query.not('id', 'in', inClause);
     };
 
     async function runQuery(accountType: 'club' | 'athlete', filters: Array<(q: any) => any>, max: number) {
