@@ -13,6 +13,7 @@ export type FeedAuthorProfile = {
   avatar_url?: string | null;
   account_type?: string | null;
   type?: string | null;
+  is_verified?: boolean | null;
 };
 
 function normalizeAuthorProfile(raw: any): FeedAuthorProfile | null {
@@ -25,6 +26,7 @@ function normalizeAuthorProfile(raw: any): FeedAuthorProfile | null {
     avatar_url: (raw as any)?.avatar_url ?? null,
     account_type: (raw as any)?.account_type ?? (raw as any)?.type ?? null,
     type: (raw as any)?.type ?? (raw as any)?.account_type ?? null,
+    is_verified: (raw as any)?.is_verified ?? null,
   };
 }
 

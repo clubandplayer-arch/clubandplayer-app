@@ -8,6 +8,7 @@ import { CommentsSection } from '@/components/feed/CommentsSection';
 import { PostIconDelete, PostIconEdit, PostIconShare } from '@/components/icons/PostActionIcons';
 import { PostMedia } from '@/components/feed/PostMedia';
 import { QuotedPostCard } from '@/components/feed/QuotedPostCard';
+import CertifiedCMarkSidebar from '@/components/badges/CertifiedCMarkSidebar';
 import { createPostShareLink } from '@/lib/share';
 import { buildClubDisplayName, buildProfileDisplayName } from '@/lib/displayName';
 import ShareModal from '@/components/feed/ShareModal';
@@ -106,6 +107,7 @@ export function PostCard({
   const authorId = authorProfile?.id ?? post.authorId ?? null;
   const profileHref = authorId ? (authorAccountType === 'club' ? `/clubs/${authorId}` : `/players/${authorId}`) : null;
   const avatarUrl = authorProfile?.avatar_url ?? (post as any).author_avatar_url ?? null;
+  const showCertifiedBadge = authorProfile?.is_verified === true;
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(description);
   const [saving, setSaving] = useState(false);
@@ -223,39 +225,46 @@ export function PostCard({
     <article className="relative mb-4 overflow-hidden rounded-xl border border-slate-100 bg-white p-4 shadow-sm transition-shadow hover:shadow-md md:p-5">
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-3">
-          {profileHref ? (
-            <Link
-              href={profileHref}
-              aria-label={`Apri profilo ${authorLabel || 'autore post'}`}
-              className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-sm font-semibold text-slate-600"
-            >
-              {avatarUrl ? (
-                <Image
-                  src={avatarUrl}
-                  alt={authorLabel || 'Avatar'}
-                  width={44}
-                  height={44}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <span aria-hidden>{authorLabel ? authorLabel.charAt(0) : '✦'}</span>
-              )}
-            </Link>
-          ) : (
-            <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-sm font-semibold text-slate-600">
-              {avatarUrl ? (
-                <Image
-                  src={avatarUrl}
-                  alt={authorLabel || 'Avatar'}
-                  width={44}
-                  height={44}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <span aria-hidden>{authorLabel ? authorLabel.charAt(0) : '✦'}</span>
-              )}
-            </div>
-          )}
+          <div className="relative shrink-0">
+            {profileHref ? (
+              <Link
+                href={profileHref}
+                aria-label={`Apri profilo ${authorLabel || 'autore post'}`}
+                className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-sm font-semibold text-slate-600"
+              >
+                {avatarUrl ? (
+                  <Image
+                    src={avatarUrl}
+                    alt={authorLabel || 'Avatar'}
+                    width={44}
+                    height={44}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <span aria-hidden>{authorLabel ? authorLabel.charAt(0) : '✦'}</span>
+                )}
+              </Link>
+            ) : (
+              <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-sm font-semibold text-slate-600">
+                {avatarUrl ? (
+                  <Image
+                    src={avatarUrl}
+                    alt={authorLabel || 'Avatar'}
+                    width={44}
+                    height={44}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <span aria-hidden>{authorLabel ? authorLabel.charAt(0) : '✦'}</span>
+                )}
+              </div>
+            )}
+            {showCertifiedBadge ? (
+              <span className="absolute -top-1 -right-1 text-[var(--brand)]" aria-label="Club certificato">
+                <CertifiedCMarkSidebar />
+              </span>
+            ) : null}
+          </div>
           <div className="space-y-0.5">
             {profileHref ? (
               <Link href={profileHref} className="text-sm font-semibold text-slate-900 hover:underline">
