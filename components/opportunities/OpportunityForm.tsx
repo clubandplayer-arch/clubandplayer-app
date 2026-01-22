@@ -551,14 +551,14 @@ export default function OpportunityForm({
             <select
               className="w-full rounded-xl border px-3 py-2"
               value={ageBracket}
-              onChange={(e) => setAgeBracket(e.target.value as AgeBracket)}
+              onChange={(e) => setAgeBracket(e.target.value as AgeBracket | '')}
             >
-              <option value="">—</option>
               {AGE_BRACKETS.map((b: string) => (
                 <option key={b} value={b}>
                   {b}
                 </option>
               ))}
+              <option value="">Indifferente</option>
             </select>
           </div>
         </div>
