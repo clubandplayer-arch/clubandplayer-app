@@ -13,6 +13,7 @@ type Suggestion = {
   id: string;
   name: string;
   kind: 'club' | 'player';
+  type?: 'CLUB' | 'PLAYER' | null;
   location?: string | null;
   category?: string | null;
   full_name?: string | null;
@@ -203,6 +204,7 @@ export async function GET(req: NextRequest) {
         id: row.id,
         name,
         kind,
+        type: kind === 'club' ? 'CLUB' : 'PLAYER',
         location: buildLocation(row) || null,
         category: row.sport || null,
         city: row.city || null,
