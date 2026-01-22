@@ -1,8 +1,8 @@
 // app/api/follows/suggestions/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { successResponse, validationError } from '@/lib/api/feedFollowStandardWrapper';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 import { FollowSuggestionsQuerySchema, type FollowSuggestionsQueryInput } from '@/lib/validation/follow';
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
 
@@ -12,6 +12,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-
 
 type Suggestion = {
   id: string;
+  user_id?: string | null;
   name: string;
   kind: 'club' | 'player';
   location?: string | null;
@@ -31,13 +32,6 @@ type Suggestion = {
   account_type?: string | null;
   is_verified?: boolean | null;
 };
-
-function getSupabaseServiceRoleClient() {
-  const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
-  if (!url || !serviceKey) return null;
-  return createClient(url, serviceKey, { auth: { persistSession: false } });
-}
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
@@ -63,6 +57,14 @@ export async function GET(req: NextRequest) {
     error?: unknown;
   }) {
     const { code, message, status = 500, error } = params;
+    if (debugMode && error) {
+      console.error('[follows/suggestions] debug error', {
+        message: error instanceof Error ? error.message : (error as any)?.message ?? null,
+        details: (error as any)?.details ?? null,
+        hint: (error as any)?.hint ?? null,
+        code: (error as any)?.code ?? null,
+      });
+    }
     const details = debugMode
       ? {
           endpointVersion: ENDPOINT_VERSION,
@@ -75,8 +77,16 @@ export async function GET(req: NextRequest) {
           ...debugInfo,
         }
       : undefined;
+    const errorDebug = debugMode
+      ? {
+          message: error instanceof Error ? error.message : (error as any)?.message ?? null,
+          details: (error as any)?.details ?? null,
+          hint: (error as any)?.hint ?? null,
+          code: (error as any)?.code ?? null,
+        }
+      : undefined;
     return NextResponse.json(
-      { ok: false, code, message, ...(details ? { details } : {}) },
+      { ok: false, code, message, ...(details ? { details } : {}), ...(errorDebug ? { error: errorDebug } : {}) },
       { status },
     );
   }
@@ -84,7 +94,6 @@ export async function GET(req: NextRequest) {
   try {
     step = 'auth';
     const supabase = await getSupabaseServerClient();
-    const serviceRoleClient = getSupabaseServiceRoleClient();
     const { data: userRes, error: authError } = await supabase.auth.getUser();
 
     if (authError) {
@@ -151,7 +160,7 @@ export async function GET(req: NextRequest) {
     alreadyFollowing.add(profileId);
 
     const baseSelect =
-      'id, account_type, type, full_name, display_name, role, city, province, region, country, sport, avatar_url, status, updated_at';
+      'id, user_id, account_type, type, full_name, display_name, role, city, province, region, country, sport, avatar_url, status, updated_at';
 
     const normalizeAccountType = (value?: string | null) => {
       const cleaned = typeof value === 'string' ? value.toLowerCase().trim() : '';
@@ -161,6 +170,7 @@ export async function GET(req: NextRequest) {
       return null;
     };
 
+    // ✅ FIX: quota gli UUID nell’inClause per evitare parse error (HTTP 500)
     const applyExclusions = (query: any) => {
       if (!alreadyFollowing.size) return query;
 
@@ -215,6 +225,7 @@ export async function GET(req: NextRequest) {
 
       return {
         id: row.id,
+        user_id: row.user_id ?? null,
         name,
         kind,
         location: buildLocation(row) || null,
@@ -355,34 +366,41 @@ export async function GET(req: NextRequest) {
 
     let clubVerificationMap = new Map<string, boolean>();
     if (clubIds.length) {
-      const verificationClient = serviceRoleClient ?? supabase;
-      const { data: verificationRows, error: verificationError } = await verificationClient
-        .from('club_verification_requests')
-        .select('club_id, approved, paid, waived, verified_until, created_at')
-        .in('club_id', clubIds)
-        .order('created_at', { ascending: false });
-      if (verificationError) throw verificationError;
-      const nextMap = new Map<string, boolean>();
-      const now = new Date();
-      (verificationRows ?? []).forEach((row: any) => {
-        if (!row?.club_id || nextMap.has(String(row.club_id))) return;
-        const verifiedUntil = row.verified_until ? new Date(row.verified_until) : null;
-        const isVerified =
-          row.approved === true &&
-          (row.paid === true || row.waived === true) &&
-          Boolean(verifiedUntil && verifiedUntil > now);
-        nextMap.set(String(row.club_id), isVerified);
-      });
-      clubVerificationMap = nextMap;
+      try {
+        const adminClient = getSupabaseAdminClientOrNull();
+        const verificationClient = adminClient ?? supabase;
+        const { data: verificationRows, error: verificationError } = await verificationClient
+          .from('club_verification_requests')
+          .select('club_id, status, payment_status, verified_until, created_at')
+          .in('club_id', clubIds)
+          .eq('status', 'approved')
+          .in('payment_status', ['paid', 'waived'])
+          .gt('verified_until', new Date().toISOString())
+          .order('created_at', { ascending: false });
+        if (verificationError) throw verificationError;
+        const nextMap = new Map<string, boolean>();
+        (verificationRows ?? []).forEach((row: any) => {
+          if (!row?.club_id || nextMap.has(String(row.club_id))) return;
+          nextMap.set(String(row.club_id), true);
+        });
+        clubVerificationMap = nextMap;
+      } catch (error) {
+        console.error('[follows/suggestions] club verification lookup failed', {
+          message: error instanceof Error ? error.message : (error as any)?.message ?? null,
+          details: (error as any)?.details ?? null,
+          hint: (error as any)?.hint ?? null,
+          code: (error as any)?.code ?? null,
+        });
+      }
     }
 
-    const items = rawResults.map((row) => ({
-      ...mapSuggestion(row, athleteMap.get(String(row.id))),
-      is_verified:
-        normalizeAccountType(row?.account_type ?? row?.type) === 'club'
-          ? clubVerificationMap.get(String(row.id)) ?? null
-          : null,
-    }));
+    const items = rawResults.map((row) => {
+      const isClub = normalizeAccountType(row?.account_type ?? row?.type) === 'club';
+      return {
+        ...mapSuggestion(row, athleteMap.get(String(row.id))),
+        is_verified: isClub ? clubVerificationMap.get(String(row.id)) ?? false : null,
+      };
+    });
 
     return successResponse({
       items,

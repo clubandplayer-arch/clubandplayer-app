@@ -14,6 +14,7 @@ type Suggestion = {
   id: string;
   display_name?: string | null;
   full_name?: string | null;
+  accountType: 'club' | 'athlete';
   kind?: 'club' | 'player' | null;
   type?: string | null;
   category?: string | null;
@@ -127,6 +128,7 @@ function normalizeSuggestions(rawItems: any[]): Suggestion[] {
     id: item.id,
     display_name: item.display_name ?? item.name ?? null,
     full_name: item.full_name ?? item.name ?? null,
+    accountType: item.account_type === 'club' ? 'club' : 'athlete',
     kind:
       item.kind ??
       (item.account_type === 'club' || item.type === 'CLUB' ? 'club' : item.account_type || item.type ? 'player' : null),
@@ -139,7 +141,7 @@ function normalizeSuggestions(rawItems: any[]): Suggestion[] {
     role: item.role ?? null,
     avatar_url: item.avatar_url ?? null,
     is_verified: item.is_verified ?? item.isVerified ?? null,
-    isVerified: item.isVerified ?? null,
+    isVerified: item.is_verified ?? item.isVerified ?? false,
   })) as Suggestion[];
 }
 
@@ -411,8 +413,7 @@ export default function WhoToFollow({
             const isRemoving = removingIdsRef.current.has(it.id) && removingIdsVersion >= 0;
             const name = displayName(it);
             const href = targetHref(it);
-            const itemType = it.type ?? (it.kind === 'club' ? 'CLUB' : it.kind === 'player' ? 'PLAYER' : null);
-            const isCertified = itemType === 'CLUB' && Boolean((it as any).is_verified ?? (it as any).isVerified ?? false);
+            const isCertified = it.accountType === 'club' && Boolean(it.isVerified);
             return (
               <li
                 key={it.id}
@@ -434,7 +435,7 @@ export default function WhoToFollow({
                         className="h-full w-full object-cover"
                       />
                     </div>
-                    {isCertified ? <CertifiedCMarkSidebar className="absolute -top-1 -right-1 scale-[0.4]" /> : null}
+                    {isCertified ? <CertifiedCMarkSidebar className="absolute -top-2 -right-2 scale-[0.75]" /> : null}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-1">
