@@ -1,5 +1,6 @@
 // app/api/follows/suggestions/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { successResponse, validationError } from '@/lib/api/feedFollowStandardWrapper';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { FollowSuggestionsQuerySchema, type FollowSuggestionsQueryInput } from '@/lib/validation/follow';
@@ -30,6 +31,13 @@ type Suggestion = {
   account_type?: string | null;
   is_verified?: boolean | null;
 };
+
+function getSupabaseServiceRoleClient() {
+  const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
+  if (!url || !serviceKey) return null;
+  return createClient(url, serviceKey, { auth: { persistSession: false } });
+}
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
@@ -76,6 +84,7 @@ export async function GET(req: NextRequest) {
   try {
     step = 'auth';
     const supabase = await getSupabaseServerClient();
+    const serviceRoleClient = getSupabaseServiceRoleClient();
     const { data: userRes, error: authError } = await supabase.auth.getUser();
 
     if (authError) {
@@ -341,16 +350,23 @@ export async function GET(req: NextRequest) {
 
     let clubVerificationMap = new Map<string, boolean>();
     if (clubIds.length) {
-      const { data: verificationRows, error: verificationError } = await supabase
-        .from('club_verification_requests_view')
-        .select('club_id, is_verified, created_at')
+      const verificationClient = serviceRoleClient ?? supabase;
+      const { data: verificationRows, error: verificationError } = await verificationClient
+        .from('club_verification_requests')
+        .select('club_id, approved, paid, waived, verified_until, created_at')
         .in('club_id', clubIds)
         .order('created_at', { ascending: false });
       if (verificationError) throw verificationError;
       const nextMap = new Map<string, boolean>();
+      const now = new Date();
       (verificationRows ?? []).forEach((row: any) => {
         if (!row?.club_id || nextMap.has(String(row.club_id))) return;
-        nextMap.set(String(row.club_id), row.is_verified === true);
+        const verifiedUntil = row.verified_until ? new Date(row.verified_until) : null;
+        const isVerified =
+          row.approved === true &&
+          (row.paid === true || row.waived === true) &&
+          Boolean(verifiedUntil && verifiedUntil > now);
+        nextMap.set(String(row.club_id), isVerified);
       });
       clubVerificationMap = nextMap;
     }

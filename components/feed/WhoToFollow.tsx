@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import Link from 'next/link';
 import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentProfileContext';
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
-import CertifiedClubMark from '@/components/ui/CertifiedClubMark';
+import CertifiedCMarkSidebar from '@/components/badges/CertifiedCMarkSidebar';
 import { CountryFlag } from '@/components/ui/CountryFlag';
 import { toggleFollow } from '@/lib/services/follow';
 
@@ -434,7 +434,7 @@ export default function WhoToFollow({
                         className="h-full w-full object-cover"
                       />
                     </div>
-                    {isCertified ? <CertifiedClubMark size="sm" className="absolute -top-1 -right-1" /> : null}
+                    {isCertified ? <CertifiedCMarkSidebar className="absolute -top-1 -right-1 scale-[0.4]" /> : null}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-1">
