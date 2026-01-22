@@ -95,6 +95,7 @@ type ProfileRow = {
   avatar_url?: string | null;
   account_type?: string | null;
   type?: string | null;
+  is_verified?: boolean | null;
 };
 
 function normalizeProfileRow(raw: any): ProfileRow | null {
@@ -107,6 +108,7 @@ function normalizeProfileRow(raw: any): ProfileRow | null {
     avatar_url: (raw as any)?.avatar_url ?? null,
     account_type: (raw as any)?.account_type ?? (raw as any)?.type ?? null,
     type: (raw as any)?.type ?? (raw as any)?.account_type ?? null,
+    is_verified: (raw as any)?.is_verified ?? null,
   };
 }
 
@@ -226,6 +228,64 @@ function attachAuthorProfile(row: any, maps: AuthorProfileMaps): any {
     return next;
   }
   return row;
+}
+
+async function attachVerifiedFlags(rows: any[]): Promise<any[]> {
+  if (!Array.isArray(rows) || rows.length === 0) return rows;
+
+  const candidateIds = new Set<string>();
+
+  rows.forEach((post) => {
+    const author = post?.author_profile ?? (post as any)?.author ?? null;
+    const authorId = author?.id ?? post?.author_profile_id ?? null;
+    if (!authorId) return;
+    const rawAccountType = author?.account_type ?? author?.type ?? null;
+    const accountType = typeof rawAccountType === 'string' ? rawAccountType.trim().toLowerCase() : null;
+    if (!accountType) {
+      candidateIds.add(String(authorId));
+      return;
+    }
+    if (accountType === 'club') {
+      candidateIds.add(String(authorId));
+    }
+  });
+
+  let verifiedSet = new Set<string>();
+
+  if (candidateIds.size > 0) {
+    const admin = getSupabaseAdminClientOrNull();
+    if (!admin) {
+      console.warn('[certified] verification lookup failed', 'missing admin client');
+    } else {
+      try {
+        const { data, error } = await admin
+          .from('club_verification_requests')
+          .select('club_id')
+          .in('club_id', Array.from(candidateIds))
+          .eq('status', 'approved')
+          .in('payment_status', ['paid', 'waived'])
+          .gt('verified_until', new Date().toISOString());
+
+        if (error) throw error;
+
+        verifiedSet = new Set((data ?? []).map((row) => String((row as any)?.club_id)));
+      } catch (error) {
+        console.warn('[certified] verification lookup failed', error);
+      }
+    }
+  }
+
+  return rows.map((post) => {
+    const author = post?.author_profile ?? (post as any)?.author ?? null;
+    if (!author || typeof author !== 'object') return post;
+    const authorId = author?.id ?? post?.author_profile_id ?? null;
+    if (!authorId) return post;
+    const isVerified = verifiedSet.has(String(authorId));
+    const nextAuthor = { ...(author as any), is_verified: isVerified };
+    const nextPost = { ...post, author_profile: nextAuthor };
+    if ((post as any)?.author) nextPost.author = nextAuthor;
+    return nextPost;
+  });
 }
 
 // GET: lettura autenticata, filtra i post per ruolo dell'autore
@@ -433,7 +493,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const rows =
+  let rows =
     (data ?? [])
       .map((r) => {
         const media = postMediaMap.get(String(r.id)) ?? buildFallbackMedia(r);
@@ -443,6 +503,7 @@ export async function GET(req: NextRequest) {
         attachAuthorProfile(r, { byUserId: authorProfileMapByUserId, byProfileId: authorProfileMapByProfileId }),
       )
       .map((r) => normalizeRow(r, quotedMap ?? undefined)) || [];
+  rows = await attachVerifiedFlags(rows);
   const postsCountAfterJoin = rows.length;
 
   const debugPayload = buildDebug({
