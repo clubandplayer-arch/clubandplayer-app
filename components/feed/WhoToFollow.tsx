@@ -123,14 +123,20 @@ const REFILL_THRESHOLD = 3;
 const REMOVE_DELAY_MS = 200;
 
 function normalizeSuggestions(rawItems: any[]): Suggestion[] {
+  const normalizeType = (value?: string | null) =>
+    typeof value === 'string' && value.trim() ? value.trim().toLowerCase() : null;
   return rawItems.map((item: any) => ({
     id: item.id,
     display_name: item.display_name ?? item.name ?? null,
     full_name: item.full_name ?? item.name ?? null,
+    type: item.type ?? null,
     kind:
       item.kind ??
-      (item.account_type === 'club' || item.type === 'CLUB' ? 'club' : item.account_type || item.type ? 'player' : null),
-    type: item.type ?? null,
+      (item.account_type === 'club' || normalizeType(item.type) === 'club'
+        ? 'club'
+        : item.account_type || item.type
+        ? 'player'
+        : null),
     category: item.category ?? null,
     location: item.location ?? null,
     city: item.city ?? null,
@@ -411,8 +417,16 @@ export default function WhoToFollow({
             const isRemoving = removingIdsRef.current.has(it.id) && removingIdsVersion >= 0;
             const name = displayName(it);
             const href = targetHref(it);
-            const itemType = it.type ?? (it.kind === 'club' ? 'CLUB' : it.kind === 'player' ? 'PLAYER' : null);
-            const isCertified = itemType === 'CLUB' && Boolean((it as any).is_verified ?? (it as any).isVerified ?? false);
+            const itemType =
+              (typeof it.type === 'string' && it.type.trim()
+                ? it.type.trim()
+                : it.kind === 'club'
+                ? 'CLUB'
+                : it.kind === 'player'
+                ? 'PLAYER'
+                : '') || '';
+            const isCertified =
+              itemType.toUpperCase() === 'CLUB' && Boolean((it as any).is_verified ?? (it as any).isVerified ?? false);
             return (
               <li
                 key={it.id}
