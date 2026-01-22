@@ -2,6 +2,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { successResponse, validationError } from '@/lib/api/feedFollowStandardWrapper';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 import { FollowSuggestionsQuerySchema, type FollowSuggestionsQueryInput } from '@/lib/validation/follow';
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
 
@@ -11,6 +12,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-
 
 type Suggestion = {
   id: string;
+  user_id?: string | null;
   name: string;
   kind: 'club' | 'player';
   location?: string | null;
@@ -55,6 +57,14 @@ export async function GET(req: NextRequest) {
     error?: unknown;
   }) {
     const { code, message, status = 500, error } = params;
+    if (debugMode && error) {
+      console.error('[follows/suggestions] debug error', {
+        message: error instanceof Error ? error.message : (error as any)?.message ?? null,
+        details: (error as any)?.details ?? null,
+        hint: (error as any)?.hint ?? null,
+        code: (error as any)?.code ?? null,
+      });
+    }
     const details = debugMode
       ? {
           endpointVersion: ENDPOINT_VERSION,
@@ -67,8 +77,16 @@ export async function GET(req: NextRequest) {
           ...debugInfo,
         }
       : undefined;
+    const errorDebug = debugMode
+      ? {
+          message: error instanceof Error ? error.message : (error as any)?.message ?? null,
+          details: (error as any)?.details ?? null,
+          hint: (error as any)?.hint ?? null,
+          code: (error as any)?.code ?? null,
+        }
+      : undefined;
     return NextResponse.json(
-      { ok: false, code, message, ...(details ? { details } : {}) },
+      { ok: false, code, message, ...(details ? { details } : {}), ...(errorDebug ? { error: errorDebug } : {}) },
       { status },
     );
   }
@@ -142,7 +160,7 @@ export async function GET(req: NextRequest) {
     alreadyFollowing.add(profileId);
 
     const baseSelect =
-      'id, account_type, type, full_name, display_name, role, city, province, region, country, sport, avatar_url, status, updated_at';
+      'id, user_id, account_type, type, full_name, display_name, role, city, province, region, country, sport, avatar_url, status, updated_at';
 
     const normalizeAccountType = (value?: string | null) => {
       const cleaned = typeof value === 'string' ? value.toLowerCase().trim() : '';
@@ -152,14 +170,20 @@ export async function GET(req: NextRequest) {
       return null;
     };
 
+    // ✅ FIX: quota gli UUID nell’inClause per evitare parse error (HTTP 500)
     const applyExclusions = (query: any) => {
-      if (alreadyFollowing.size) {
-        const values = Array.from(alreadyFollowing).join(',');
-        const inClause = `(${values})`;
-        debugInfo.inClause = inClause;
-        return query.not('id', 'in', inClause);
-      }
-      return query;
+      if (!alreadyFollowing.size) return query;
+
+      const values = Array.from(alreadyFollowing)
+        .filter((id) => UUID_RE.test(id))
+        .map((id) => `"${id}"`)
+        .join(',');
+
+      if (!values) return query;
+
+      const inClause = `(${values})`;
+      debugInfo.inClause = inClause;
+      return query.not('id', 'in', inClause);
     };
 
     async function runQuery(accountType: 'club' | 'athlete', filters: Array<(q: any) => any>, max: number) {
@@ -201,6 +225,7 @@ export async function GET(req: NextRequest) {
 
       return {
         id: row.id,
+        user_id: row.user_id ?? null,
         name,
         kind,
         location: buildLocation(row) || null,
@@ -341,27 +366,41 @@ export async function GET(req: NextRequest) {
 
     let clubVerificationMap = new Map<string, boolean>();
     if (clubIds.length) {
-      const { data: verificationRows, error: verificationError } = await supabase
-        .from('club_verification_requests_view')
-        .select('club_id, is_verified, created_at')
-        .in('club_id', clubIds)
-        .order('created_at', { ascending: false });
-      if (verificationError) throw verificationError;
-      const nextMap = new Map<string, boolean>();
-      (verificationRows ?? []).forEach((row: any) => {
-        if (!row?.club_id || nextMap.has(String(row.club_id))) return;
-        nextMap.set(String(row.club_id), row.is_verified === true);
-      });
-      clubVerificationMap = nextMap;
+      try {
+        const adminClient = getSupabaseAdminClientOrNull();
+        const verificationClient = adminClient ?? supabase;
+        const { data: verificationRows, error: verificationError } = await verificationClient
+          .from('club_verification_requests')
+          .select('club_id, status, payment_status, verified_until, created_at')
+          .in('club_id', clubIds)
+          .eq('status', 'approved')
+          .in('payment_status', ['paid', 'waived'])
+          .gt('verified_until', new Date().toISOString())
+          .order('created_at', { ascending: false });
+        if (verificationError) throw verificationError;
+        const nextMap = new Map<string, boolean>();
+        (verificationRows ?? []).forEach((row: any) => {
+          if (!row?.club_id || nextMap.has(String(row.club_id))) return;
+          nextMap.set(String(row.club_id), true);
+        });
+        clubVerificationMap = nextMap;
+      } catch (error) {
+        console.error('[follows/suggestions] club verification lookup failed', {
+          message: error instanceof Error ? error.message : (error as any)?.message ?? null,
+          details: (error as any)?.details ?? null,
+          hint: (error as any)?.hint ?? null,
+          code: (error as any)?.code ?? null,
+        });
+      }
     }
 
-    const items = rawResults.map((row) => ({
-      ...mapSuggestion(row, athleteMap.get(String(row.id))),
-      is_verified:
-        normalizeAccountType(row?.account_type ?? row?.type) === 'club'
-          ? clubVerificationMap.get(String(row.id)) ?? null
-          : null,
-    }));
+    const items = rawResults.map((row) => {
+      const isClub = normalizeAccountType(row?.account_type ?? row?.type) === 'club';
+      return {
+        ...mapSuggestion(row, athleteMap.get(String(row.id))),
+        is_verified: isClub ? clubVerificationMap.get(String(row.id)) ?? false : null,
+      };
+    });
 
     return successResponse({
       items,
