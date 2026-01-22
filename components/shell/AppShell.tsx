@@ -224,23 +224,39 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }
 
     items.push(
-      ...navItems.map((item) => ({
-        key: item.href,
-        label: item.label,
-        href: item.href,
-        icon:
-          item.href === '/messages' ? (
-            <MaterialIcon name={item.icon} fontSize={16} className="text-amber-600 hover:text-amber-700" />
-          ) : (
-            <MaterialIcon name={item.icon} fontSize={16} />
-          ),
-        badge:
-          item.href === '/notifications'
-            ? unreadNotifications
-            : item.href === '/messages'
-              ? unreadDirectThreads
-              : undefined,
-      })),
+      ...navItems.flatMap((item) => {
+        const mappedItem: MobileMenuItem = {
+          key: item.href,
+          label: item.label,
+          href: item.href,
+          icon:
+            item.href === '/messages' ? (
+              <MaterialIcon name={item.icon} fontSize={16} className="text-amber-600 hover:text-amber-700" />
+            ) : (
+              <MaterialIcon name={item.icon} fontSize={16} />
+            ),
+          badge:
+            item.href === '/notifications'
+              ? unreadNotifications
+              : item.href === '/messages'
+                ? unreadDirectThreads
+                : undefined,
+        };
+
+        if (item.href === '/opportunities' && isClub) {
+          return [
+            mappedItem,
+            {
+              key: 'create-opportunity',
+              label: 'Crea opportunità',
+              href: '/opportunities/new',
+              icon: <MaterialIcon name="opportunities" fontSize={16} />,
+            },
+          ];
+        }
+
+        return [mappedItem];
+      }),
     );
 
     return items;
