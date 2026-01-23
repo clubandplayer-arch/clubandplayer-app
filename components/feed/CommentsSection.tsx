@@ -122,9 +122,29 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
     const button = emojiButtonRef.current;
     if (!button) return;
     const rect = button.getBoundingClientRect();
-    const top = rect.bottom + 8;
-    const left = rect.right;
+    const popoverHeight = 360;
+    const viewportPadding = 16;
+    const top = Math.min(rect.bottom + 8, window.innerHeight - popoverHeight - viewportPadding);
+    const left = Math.min(rect.right, window.innerWidth - viewportPadding);
     setPopoverStyle({ top, left });
+  }, [emojiOpen, isDesktop]);
+
+  useEffect(() => {
+    if (!emojiOpen || !isDesktop) return;
+    function handleScroll() {
+      setEmojiOpen(false);
+    }
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [emojiOpen, isDesktop]);
+
+  useEffect(() => {
+    if (!emojiOpen || isDesktop) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
+    };
   }, [emojiOpen, isDesktop]);
 
   useEffect(() => {
@@ -242,13 +262,9 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
   }
 
   const displayed = expanded ? comments : preview;
-  const emojiPicker = (
-    <div
-      ref={emojiPopoverRef}
-      className="fixed inset-x-0 bottom-0 z-[9999] max-h-[60vh] rounded-t-2xl border border-neutral-200 bg-white p-3 shadow-lg sm:inset-auto sm:bottom-auto sm:w-[320px] sm:max-h-[320px] sm:rounded-2xl sm:-translate-x-full"
-      style={isDesktop ? popoverStyle : undefined}
-    >
-      <div className="flex items-center gap-2">
+  const emojiPickerContent = (
+    <>
+      <div className="flex items-center gap-2 border-b border-neutral-100 pb-3">
         <input
           type="text"
           value={emojiQuery}
@@ -267,23 +283,53 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
           Chiudi
         </button>
       </div>
-      <div className="mt-3 grid max-h-[45vh] grid-cols-8 gap-2 overflow-y-auto text-lg sm:max-h-[220px] sm:grid-cols-7">
-        {filteredEmojis.map((emoji) => (
-          <button
-            key={emoji}
-            type="button"
-            className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-neutral-100"
-            onClick={() => {
-              insertEmoji(emoji);
-              setEmojiOpen(false);
-            }}
-          >
-            {emoji}
-          </button>
-        ))}
-        {filteredEmojis.length === 0 ? (
-          <div className="col-span-full text-xs text-neutral-500">Nessuna emoji trovata</div>
-        ) : null}
+      <div className="mt-3 h-full overflow-y-auto">
+        <div className="grid grid-cols-8 gap-2 text-lg sm:grid-cols-7">
+          {filteredEmojis.map((emoji) => (
+            <button
+              key={emoji}
+              type="button"
+              className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-neutral-100"
+              onClick={() => {
+                insertEmoji(emoji);
+                setEmojiOpen(false);
+              }}
+            >
+              {emoji}
+            </button>
+          ))}
+          {filteredEmojis.length === 0 ? (
+            <div className="col-span-full text-xs text-neutral-500">Nessuna emoji trovata</div>
+          ) : null}
+        </div>
+      </div>
+    </>
+  );
+
+  const emojiPicker = isDesktop ? (
+    <div
+      ref={emojiPopoverRef}
+      className="fixed z-[9999] w-[340px] rounded-2xl border border-neutral-200 bg-white p-3 shadow-xl"
+      style={{
+        ...popoverStyle,
+        transform: 'translateX(-100%)',
+      }}
+    >
+      <div className="h-[360px] overflow-hidden">{emojiPickerContent}</div>
+    </div>
+  ) : (
+    <div className="fixed inset-0 z-[9999]">
+      <button
+        type="button"
+        className="absolute inset-0 h-full w-full bg-black/30"
+        aria-label="Chiudi emoji picker"
+        onClick={() => setEmojiOpen(false)}
+      />
+      <div
+        ref={emojiPopoverRef}
+        className="absolute inset-x-0 bottom-0 rounded-t-2xl border border-neutral-200 bg-white p-4 shadow-2xl"
+      >
+        <div className="h-[60vh] overflow-hidden">{emojiPickerContent}</div>
       </div>
     </div>
   );
