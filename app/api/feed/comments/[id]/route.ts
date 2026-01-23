@@ -120,3 +120,57 @@ export async function PATCH(req: NextRequest, ctx: RouteCtx) {
     },
   });
 }
+
+export async function DELETE(_req: NextRequest, ctx: RouteCtx) {
+  const { id } = await ctx.params;
+
+  const supabase = await getSupabaseServerClient();
+  const { data: auth, error: authErr } = await supabase.auth.getUser();
+  if (authErr || !auth?.user) {
+    return notAuthenticated('Utente non autenticato');
+  }
+
+  const { data: existing, error: existingErr } = await supabase
+    .from('post_comments')
+    .select('id, author_id')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (existingErr) {
+    const code = (existingErr as any)?.code as string | undefined;
+    if (code === '42501' || code === '42P01' || code === 'PGRST204') {
+      return notReady('Commenti non pronti');
+    }
+    return unknownError({
+      endpoint: '/api/feed/comments/[id]',
+      error: existingErr,
+      context: { method: 'DELETE', stage: 'select', id },
+    });
+  }
+
+  if (!existing) {
+    return NextResponse.json(
+      { ok: false, code: 'NOT_FOUND', message: 'Commento non trovato' },
+      { status: 404 },
+    );
+  }
+
+  if (String(existing.author_id) !== String(auth.user.id)) {
+    return NextResponse.json(
+      { ok: false, code: 'FORBIDDEN', message: 'Non puoi eliminare questo commento' },
+      { status: 403 },
+    );
+  }
+
+  const { error: deleteErr } = await supabase.from('post_comments').delete().eq('id', id);
+
+  if (deleteErr) {
+    const code = (deleteErr as any)?.code as string | undefined;
+    if (code === '42501' || code === '42P01') {
+      return notReady('Commenti non pronti');
+    }
+    return dbError('Errore nella cancellazione del commento', { message: deleteErr.message });
+  }
+
+  return successResponse({ ok: true });
+}

@@ -55,6 +55,7 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
   const [draftText, setDraftText] = useState('');
   const [editError, setEditError] = useState<string | null>(null);
   const [editSaving, setEditSaving] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const emojiPopoverRef = useRef<HTMLDivElement | null>(null);
@@ -277,6 +278,42 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
     [draftText],
   );
 
+  const deleteComment = useCallback(
+    async (commentId: string) => {
+      const confirmed = window.confirm('Vuoi eliminare questo commento?');
+      if (!confirmed) return;
+      setDeleteError(null);
+      try {
+        const res = await fetch(`/api/feed/comments/${commentId}`, {
+          method: 'DELETE',
+          credentials: 'include',
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || !json?.ok) {
+          throw new Error(json?.error || json?.message || 'Impossibile eliminare il commento');
+        }
+        setComments((curr) => curr.filter((item) => item.id !== commentId));
+        setCount((c) => {
+          const next = Math.max(0, c - 1);
+          onCountChange?.(next);
+          return next;
+        });
+        if (editingId === commentId) {
+          setEditingId(null);
+          setDraftText('');
+        }
+      } catch (e: any) {
+        const msg = String(e?.message || 'Errore');
+        if (msg.toLowerCase().includes('autentic')) {
+          setError('Accedi per eliminare il commento.');
+        } else {
+          setDeleteError(msg);
+        }
+      }
+    },
+    [editingId, onCountChange],
+  );
+
   const displayed = expanded ? comments : preview;
   const emojiPickerContent = (
     <EmojiPicker
@@ -327,6 +364,7 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
         const ageMs = createdAt ? now - createdAt : null;
         const isOwner = Boolean(currentUserId && c.author_id === currentUserId);
         const canEdit = Boolean(isOwner && ageMs !== null && ageMs <= 60_000);
+        const canDelete = isOwner;
         const isEditing = editingId === c.id;
         return (
           <div key={c.id} className="rounded-lg border border-neutral-200 bg-neutral-50 p-2">
@@ -388,12 +426,23 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
                       Modifica
                     </button>
                   ) : null}
+                  {canDelete ? (
+                    <button
+                      type="button"
+                      className="font-semibold text-red-600 hover:underline"
+                      onClick={() => deleteComment(c.id)}
+                    >
+                      Elimina
+                    </button>
+                  ) : null}
                 </div>
               </>
             )}
           </div>
         );
       })}
+
+      {deleteError ? <div className="text-xs text-red-600">{deleteError}</div> : null}
 
       {count === 0 && !loading ? (
         <div className="text-sm text-neutral-500">Nessun commento</div>
