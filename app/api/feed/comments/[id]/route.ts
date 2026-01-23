@@ -8,6 +8,7 @@ import {
   validationError,
 } from '@/lib/api/feedFollowStandardWrapper';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 import { UpdateCommentSchema, type UpdateCommentInput } from '@/lib/validation/feed';
 
 export const runtime = 'nodejs';
@@ -19,6 +20,37 @@ function sanitizeBody(raw: unknown) {
   const text = typeof raw === 'string' ? raw.trim() : '';
   if (!text) return null;
   return text.slice(0, MAX_LEN);
+}
+
+async function buildClubVerificationMap(supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>, clubIds: string[]) {
+  if (!clubIds.length) return new Map<string, boolean>();
+  try {
+    const admin = getSupabaseAdminClientOrNull();
+    const verificationClient = admin ?? supabase;
+    const { data, error } = await verificationClient
+      .from('club_verification_requests')
+      .select('club_id, status, payment_status, verified_until, created_at')
+      .in('club_id', clubIds)
+      .eq('status', 'approved')
+      .in('payment_status', ['paid', 'waived'])
+      .gt('verified_until', new Date().toISOString())
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    const map = new Map<string, boolean>();
+    (data ?? []).forEach((row: any) => {
+      if (!row?.club_id || map.has(String(row.club_id))) return;
+      map.set(String(row.club_id), true);
+    });
+    return map;
+  } catch (error) {
+    console.error('[api/feed/comments] club verification lookup failed', {
+      message: error instanceof Error ? error.message : (error as any)?.message ?? null,
+      details: (error as any)?.details ?? null,
+      hint: (error as any)?.hint ?? null,
+      code: (error as any)?.code ?? null,
+    });
+    return new Map<string, boolean>();
+  }
 }
 
 type RouteCtx = { params: Promise<{ id: string }> };
@@ -113,10 +145,16 @@ export async function PATCH(req: NextRequest, ctx: RouteCtx) {
     .eq('user_id', updated.author_id)
     .maybeSingle();
 
+  const verificationMap = profile?.id ? await buildClubVerificationMap(supabase, [String(profile.id)]) : new Map();
+  const isClub = profile?.account_type === 'club';
+  const profileWithVerification = profile
+    ? { ...profile, is_verified: isClub ? verificationMap.get(String(profile.id)) ?? false : null }
+    : null;
+
   return successResponse({
     comment: {
       ...updated,
-      author: profile ?? null,
+      author: profileWithVerification,
     },
   });
 }
