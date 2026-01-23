@@ -2,52 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import EmojiPicker from '@/components/feed/EmojiPicker';
 import { MaterialIcon } from '@/components/icons/MaterialIcon';
 import { buildProfileDisplayName } from '@/lib/displayName';
-
-const EMOJI_OPTIONS = [
-  '😀',
-  '😁',
-  '😂',
-  '🤣',
-  '😊',
-  '😍',
-  '😘',
-  '😎',
-  '🤩',
-  '😇',
-  '😜',
-  '🤪',
-  '🤗',
-  '🥳',
-  '😴',
-  '😮',
-  '😢',
-  '😭',
-  '😤',
-  '😡',
-  '👍',
-  '👎',
-  '👏',
-  '🙌',
-  '🙏',
-  '💪',
-  '👀',
-  '🔥',
-  '✨',
-  '🎉',
-  '🎯',
-  '🏆',
-  '⚽',
-  '🏀',
-  '🎵',
-  '❤️',
-  '💙',
-  '💚',
-  '💛',
-  '💜',
-  '🖤',
-];
 
 function useOutsideClick(ref: React.RefObject<HTMLDivElement | null>, onClose: () => void) {
   useEffect(() => {
@@ -97,7 +54,6 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
   const emojiPopoverRef = useRef<HTMLDivElement | null>(null);
   const emojiButtonRef = useRef<HTMLButtonElement | null>(null);
   const [emojiOpen, setEmojiOpen] = useState(false);
-  const [emojiQuery, setEmojiQuery] = useState('');
   const [mounted, setMounted] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
   const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties>({});
@@ -153,11 +109,6 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
 
   const preview = useMemo(() => comments.slice(0, 2), [comments]);
   const remaining = Math.max(0, count - preview.length);
-  const filteredEmojis = useMemo(() => {
-    const query = emojiQuery.trim();
-    if (!query) return EMOJI_OPTIONS;
-    return EMOJI_OPTIONS.filter((emoji) => emoji.includes(query));
-  }, [emojiQuery]);
 
   const ensureLoaded = useCallback(async () => {
     if (loadedRef.current || loading) return;
@@ -205,7 +156,6 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
   const closeComments = useCallback(() => {
     setExpanded(false);
     setEmojiOpen(false);
-    setEmojiQuery('');
   }, []);
 
   const insertEmoji = useCallback((emoji: string) => {
@@ -237,7 +187,6 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
         throw new Error(json?.error || 'Impossibile pubblicare commento');
       }
       setNewBody('');
-      setEmojiQuery('');
       setEmojiOpen(false);
       setComments((curr) => [...curr, json.comment]);
       setCount((c) => {
@@ -263,47 +212,13 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
 
   const displayed = expanded ? comments : preview;
   const emojiPickerContent = (
-    <>
-      <div className="flex items-center gap-2 border-b border-neutral-100 pb-3">
-        <input
-          type="text"
-          value={emojiQuery}
-          onChange={(e) => setEmojiQuery(e.target.value)}
-          placeholder="Cerca emoji"
-          className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
-        />
-        <button
-          type="button"
-          className="text-xs font-semibold text-neutral-500"
-          onClick={() => {
-            setEmojiOpen(false);
-            setEmojiQuery('');
-          }}
-        >
-          Chiudi
-        </button>
-      </div>
-      <div className="mt-3 h-full overflow-y-auto">
-        <div className="grid grid-cols-8 gap-2 text-lg sm:grid-cols-7">
-          {filteredEmojis.map((emoji) => (
-            <button
-              key={emoji}
-              type="button"
-              className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-neutral-100"
-              onClick={() => {
-                insertEmoji(emoji);
-                setEmojiOpen(false);
-              }}
-            >
-              {emoji}
-            </button>
-          ))}
-          {filteredEmojis.length === 0 ? (
-            <div className="col-span-full text-xs text-neutral-500">Nessuna emoji trovata</div>
-          ) : null}
-        </div>
-      </div>
-    </>
+    <EmojiPicker
+      onSelect={(emoji) => {
+        insertEmoji(emoji);
+        setEmojiOpen(false);
+      }}
+      onClose={() => setEmojiOpen(false)}
+    />
   );
 
   const emojiPicker = isDesktop ? (
