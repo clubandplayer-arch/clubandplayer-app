@@ -20,7 +20,8 @@ export type MaterialIconName =
   | 'photo'
   | 'video'
   | 'refresh'
-  | 'send';
+  | 'send'
+  | 'sentiment_satisfied';
 
 const glyphs: Record<MaterialIconName, string> = {
   home: 'home',
@@ -43,6 +44,7 @@ const glyphs: Record<MaterialIconName, string> = {
   video: 'videocam',
   refresh: 'refresh',
   send: 'send',
+  sentiment_satisfied: 'sentiment_satisfied',
 };
 
 type MaterialIconFontSize = 'inherit' | 'small' | 'medium' | 'large';
