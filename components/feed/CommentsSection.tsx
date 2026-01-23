@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { MaterialIcon } from '@/components/icons/MaterialIcon';
 import { buildProfileDisplayName } from '@/lib/displayName';
 
@@ -94,13 +95,37 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
   const [newBody, setNewBody] = useState('');
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const emojiPopoverRef = useRef<HTMLDivElement | null>(null);
+  const emojiButtonRef = useRef<HTMLButtonElement | null>(null);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [emojiQuery, setEmojiQuery] = useState('');
+  const [mounted, setMounted] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
+  const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties>({});
   const [count, setCount] = useState(initialCount);
   const lastExpandRef = useRef<number | null>(null);
   const loadedRef = useRef(false);
 
   useOutsideClick(emojiPopoverRef, () => setEmojiOpen(false));
+
+  useEffect(() => {
+    setMounted(true);
+    setIsDesktop(window.innerWidth >= 640);
+    function handleResize() {
+      setIsDesktop(window.innerWidth >= 640);
+    }
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    if (!emojiOpen || !isDesktop) return;
+    const button = emojiButtonRef.current;
+    if (!button) return;
+    const rect = button.getBoundingClientRect();
+    const top = rect.bottom + 8;
+    const left = rect.right;
+    setPopoverStyle({ top, left });
+  }, [emojiOpen, isDesktop]);
 
   useEffect(() => {
     setCount(initialCount);
@@ -217,6 +242,51 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
   }
 
   const displayed = expanded ? comments : preview;
+  const emojiPicker = (
+    <div
+      ref={emojiPopoverRef}
+      className="fixed inset-x-0 bottom-0 z-[9999] max-h-[60vh] rounded-t-2xl border border-neutral-200 bg-white p-3 shadow-lg sm:inset-auto sm:bottom-auto sm:w-[320px] sm:max-h-[320px] sm:rounded-2xl sm:-translate-x-full"
+      style={isDesktop ? popoverStyle : undefined}
+    >
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={emojiQuery}
+          onChange={(e) => setEmojiQuery(e.target.value)}
+          placeholder="Cerca emoji"
+          className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
+        />
+        <button
+          type="button"
+          className="text-xs font-semibold text-neutral-500"
+          onClick={() => {
+            setEmojiOpen(false);
+            setEmojiQuery('');
+          }}
+        >
+          Chiudi
+        </button>
+      </div>
+      <div className="mt-3 grid max-h-[45vh] grid-cols-8 gap-2 overflow-y-auto text-lg sm:max-h-[220px] sm:grid-cols-7">
+        {filteredEmojis.map((emoji) => (
+          <button
+            key={emoji}
+            type="button"
+            className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-neutral-100"
+            onClick={() => {
+              insertEmoji(emoji);
+              setEmojiOpen(false);
+            }}
+          >
+            {emoji}
+          </button>
+        ))}
+        {filteredEmojis.length === 0 ? (
+          <div className="col-span-full text-xs text-neutral-500">Nessuna emoji trovata</div>
+        ) : null}
+      </div>
+    </div>
+  );
 
   return (
     <div className="mt-3 space-y-2">
@@ -302,57 +372,18 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
                 className="w-full rounded-lg border border-neutral-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
                 placeholder="Scrivi un commento..."
               />
-              <div className="relative" ref={emojiPopoverRef}>
+              <div className="relative">
                 <button
                   type="button"
                   className="flex h-10 w-10 items-center justify-center rounded-full border border-neutral-200 text-neutral-600 transition hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
                   onClick={() => setEmojiOpen((prev) => !prev)}
                   aria-expanded={emojiOpen}
                   aria-label="Aggiungi emoji"
+                  ref={emojiButtonRef}
                 >
                   <MaterialIcon name="sentiment_satisfied" fontSize="small" />
                 </button>
-                {emojiOpen ? (
-                  <div className="fixed inset-x-0 bottom-0 z-50 max-h-[60vh] rounded-t-2xl border border-neutral-200 bg-white p-3 shadow-lg sm:absolute sm:inset-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[320px] sm:max-h-[320px] sm:rounded-2xl">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={emojiQuery}
-                        onChange={(e) => setEmojiQuery(e.target.value)}
-                        placeholder="Cerca emoji"
-                        className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
-                      />
-                      <button
-                        type="button"
-                        className="text-xs font-semibold text-neutral-500"
-                        onClick={() => {
-                          setEmojiOpen(false);
-                          setEmojiQuery('');
-                        }}
-                      >
-                        Chiudi
-                      </button>
-                    </div>
-                    <div className="mt-3 grid max-h-[45vh] grid-cols-8 gap-2 overflow-y-auto text-lg sm:max-h-[220px] sm:grid-cols-7">
-                      {filteredEmojis.map((emoji) => (
-                        <button
-                          key={emoji}
-                          type="button"
-                          className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-neutral-100"
-                          onClick={() => {
-                            insertEmoji(emoji);
-                            setEmojiOpen(false);
-                          }}
-                        >
-                          {emoji}
-                        </button>
-                      ))}
-                      {filteredEmojis.length === 0 ? (
-                        <div className="col-span-full text-xs text-neutral-500">Nessuna emoji trovata</div>
-                      ) : null}
-                    </div>
-                  </div>
-                ) : null}
+                {emojiOpen && mounted ? createPortal(emojiPicker, document.body) : null}
               </div>
             </div>
             <div className="flex items-center gap-2">
