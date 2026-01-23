@@ -1,7 +1,22 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import EmojiPicker from '@/components/feed/EmojiPicker';
+import { MaterialIcon } from '@/components/icons/MaterialIcon';
 import { buildProfileDisplayName } from '@/lib/displayName';
+
+function useOutsideClick(ref: React.RefObject<HTMLDivElement | null>, onClose: () => void) {
+  useEffect(() => {
+    function handle(event: MouseEvent) {
+      if (ref.current && !ref.current.contains(event.target as Node)) {
+        onClose();
+      }
+    }
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, [onClose, ref]);
+}
 
 export type CommentAuthor = {
   id: string;
@@ -36,9 +51,57 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
   const [error, setError] = useState<string | null>(null);
   const [newBody, setNewBody] = useState('');
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  const emojiPopoverRef = useRef<HTMLDivElement | null>(null);
+  const emojiButtonRef = useRef<HTMLButtonElement | null>(null);
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
+  const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties>({});
   const [count, setCount] = useState(initialCount);
   const lastExpandRef = useRef<number | null>(null);
   const loadedRef = useRef(false);
+
+  useOutsideClick(emojiPopoverRef, () => setEmojiOpen(false));
+
+  useEffect(() => {
+    setMounted(true);
+    setIsDesktop(window.innerWidth >= 640);
+    function handleResize() {
+      setIsDesktop(window.innerWidth >= 640);
+    }
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    if (!emojiOpen || !isDesktop) return;
+    const button = emojiButtonRef.current;
+    if (!button) return;
+    const rect = button.getBoundingClientRect();
+    const popoverHeight = 360;
+    const viewportPadding = 16;
+    const top = Math.min(rect.bottom + 8, window.innerHeight - popoverHeight - viewportPadding);
+    const left = Math.min(rect.right, window.innerWidth - viewportPadding);
+    setPopoverStyle({ top, left });
+  }, [emojiOpen, isDesktop]);
+
+  useEffect(() => {
+    if (!emojiOpen || !isDesktop) return;
+    function handleScroll() {
+      setEmojiOpen(false);
+    }
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [emojiOpen, isDesktop]);
+
+  useEffect(() => {
+    if (!emojiOpen || isDesktop) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [emojiOpen, isDesktop]);
 
   useEffect(() => {
     setCount(initialCount);
@@ -92,6 +155,20 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
 
   const closeComments = useCallback(() => {
     setExpanded(false);
+    setEmojiOpen(false);
+  }, []);
+
+  const insertEmoji = useCallback((emoji: string) => {
+    const input = inputRef.current;
+    if (!input) return;
+    const start = input.selectionStart ?? input.value.length;
+    const end = input.selectionEnd ?? input.value.length;
+    setNewBody((prev) => `${prev.slice(0, start)}${emoji}${prev.slice(end)}`);
+    requestAnimationFrame(() => {
+      input.focus();
+      const nextPos = start + emoji.length;
+      input.setSelectionRange(nextPos, nextPos);
+    });
   }, []);
 
   async function submitComment() {
@@ -110,6 +187,7 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
         throw new Error(json?.error || 'Impossibile pubblicare commento');
       }
       setNewBody('');
+      setEmojiOpen(false);
       setComments((curr) => [...curr, json.comment]);
       setCount((c) => {
         const next = c + 1;
@@ -133,6 +211,43 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
   }
 
   const displayed = expanded ? comments : preview;
+  const emojiPickerContent = (
+    <EmojiPicker
+      onSelect={(emoji) => {
+        insertEmoji(emoji);
+        setEmojiOpen(false);
+      }}
+      onClose={() => setEmojiOpen(false)}
+    />
+  );
+
+  const emojiPicker = isDesktop ? (
+    <div
+      ref={emojiPopoverRef}
+      className="fixed z-[9999] w-[340px] rounded-2xl border border-neutral-200 bg-white p-3 shadow-xl"
+      style={{
+        ...popoverStyle,
+        transform: 'translateX(-100%)',
+      }}
+    >
+      <div className="h-[360px] overflow-hidden">{emojiPickerContent}</div>
+    </div>
+  ) : (
+    <div className="fixed inset-0 z-[9999]">
+      <button
+        type="button"
+        className="absolute inset-0 h-full w-full bg-black/30"
+        aria-label="Chiudi emoji picker"
+        onClick={() => setEmojiOpen(false)}
+      />
+      <div
+        ref={emojiPopoverRef}
+        className="absolute inset-x-0 bottom-0 rounded-t-2xl border border-neutral-200 bg-white p-4 shadow-2xl"
+      >
+        <div className="h-[60vh] overflow-hidden">{emojiPickerContent}</div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="mt-3 space-y-2">
@@ -208,15 +323,30 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
             <label htmlFor={`comment-${postId}`} className="text-xs font-semibold text-neutral-700">
               Aggiungi un commento
             </label>
-            <textarea
-              id={`comment-${postId}`}
-              ref={inputRef}
-              value={newBody}
-              onChange={(e) => setNewBody(e.target.value)}
-              rows={3}
-              className="w-full rounded-lg border border-neutral-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
-              placeholder="Scrivi un commento..."
-            />
+            <div className="flex items-end gap-2">
+              <textarea
+                id={`comment-${postId}`}
+                ref={inputRef}
+                value={newBody}
+                onChange={(e) => setNewBody(e.target.value)}
+                rows={3}
+                className="w-full rounded-lg border border-neutral-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
+                placeholder="Scrivi un commento..."
+              />
+              <div className="relative">
+                <button
+                  type="button"
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-neutral-200 text-neutral-600 transition hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
+                  onClick={() => setEmojiOpen((prev) => !prev)}
+                  aria-expanded={emojiOpen}
+                  aria-label="Aggiungi emoji"
+                  ref={emojiButtonRef}
+                >
+                  <MaterialIcon name="sentiment_satisfied" fontSize="small" />
+                </button>
+                {emojiOpen && mounted ? createPortal(emojiPicker, document.body) : null}
+              </div>
+            </div>
             <div className="flex items-center gap-2">
               <button
                 type="button"
