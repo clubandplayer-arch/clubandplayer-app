@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import EmojiPicker from '@/components/feed/EmojiPicker';
 import { MaterialIcon } from '@/components/icons/MaterialIcon';
 import { buildProfileDisplayName } from '@/lib/displayName';
+import CertifiedCMarkSidebar from '@/components/badges/CertifiedCMarkSidebar';
 
 function useOutsideClick(ref: React.RefObject<HTMLDivElement | null>, onClose: () => void) {
   useEffect(() => {
@@ -26,6 +27,7 @@ export type CommentAuthor = {
   avatar_url?: string | null;
   account_type?: string | null;
   status?: string | null;
+  is_verified?: boolean | null;
 };
 
 export type PostComment = {
@@ -366,18 +368,24 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
         const canEdit = Boolean(isOwner && ageMs !== null && ageMs <= 60_000);
         const canDelete = isOwner;
         const isEditing = editingId === c.id;
+        const isCertified = author?.account_type === 'club' && Boolean(author?.is_verified);
         return (
           <div key={c.id} className="rounded-lg border border-neutral-200 bg-neutral-50 p-2">
             <div className="flex items-center gap-2">
-              <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-neutral-200">
-                {author?.avatar_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={author.avatar_url}
-                    alt="Avatar"
-                    className="h-full w-full object-cover"
-                    loading="lazy"
-                  />
+              <div className="relative shrink-0">
+                <div className="h-8 w-8 overflow-hidden rounded-full bg-neutral-200">
+                  {author?.avatar_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={author.avatar_url}
+                      alt="Avatar"
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                    />
+                  ) : null}
+                </div>
+                {isCertified ? (
+                  <CertifiedCMarkSidebar className="absolute -top-2 -right-2 scale-[0.75]" />
                 ) : null}
               </div>
               <div className="text-sm font-semibold text-neutral-800">{name}</div>
