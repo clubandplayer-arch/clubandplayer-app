@@ -1,7 +1,64 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { MaterialIcon } from '@/components/icons/MaterialIcon';
 import { buildProfileDisplayName } from '@/lib/displayName';
+
+const EMOJI_OPTIONS = [
+  '😀',
+  '😁',
+  '😂',
+  '🤣',
+  '😊',
+  '😍',
+  '😘',
+  '😎',
+  '🤩',
+  '😇',
+  '😜',
+  '🤪',
+  '🤗',
+  '🥳',
+  '😴',
+  '😮',
+  '😢',
+  '😭',
+  '😤',
+  '😡',
+  '👍',
+  '👎',
+  '👏',
+  '🙌',
+  '🙏',
+  '💪',
+  '👀',
+  '🔥',
+  '✨',
+  '🎉',
+  '🎯',
+  '🏆',
+  '⚽',
+  '🏀',
+  '🎵',
+  '❤️',
+  '💙',
+  '💚',
+  '💛',
+  '💜',
+  '🖤',
+];
+
+function useOutsideClick(ref: React.RefObject<HTMLDivElement | null>, onClose: () => void) {
+  useEffect(() => {
+    function handle(event: MouseEvent) {
+      if (ref.current && !ref.current.contains(event.target as Node)) {
+        onClose();
+      }
+    }
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, [onClose, ref]);
+}
 
 export type CommentAuthor = {
   id: string;
@@ -36,9 +93,14 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
   const [error, setError] = useState<string | null>(null);
   const [newBody, setNewBody] = useState('');
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  const emojiPopoverRef = useRef<HTMLDivElement | null>(null);
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const [emojiQuery, setEmojiQuery] = useState('');
   const [count, setCount] = useState(initialCount);
   const lastExpandRef = useRef<number | null>(null);
   const loadedRef = useRef(false);
+
+  useOutsideClick(emojiPopoverRef, () => setEmojiOpen(false));
 
   useEffect(() => {
     setCount(initialCount);
@@ -46,6 +108,11 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
 
   const preview = useMemo(() => comments.slice(0, 2), [comments]);
   const remaining = Math.max(0, count - preview.length);
+  const filteredEmojis = useMemo(() => {
+    const query = emojiQuery.trim();
+    if (!query) return EMOJI_OPTIONS;
+    return EMOJI_OPTIONS.filter((emoji) => emoji.includes(query));
+  }, [emojiQuery]);
 
   const ensureLoaded = useCallback(async () => {
     if (loadedRef.current || loading) return;
@@ -92,6 +159,21 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
 
   const closeComments = useCallback(() => {
     setExpanded(false);
+    setEmojiOpen(false);
+    setEmojiQuery('');
+  }, []);
+
+  const insertEmoji = useCallback((emoji: string) => {
+    const input = inputRef.current;
+    if (!input) return;
+    const start = input.selectionStart ?? input.value.length;
+    const end = input.selectionEnd ?? input.value.length;
+    setNewBody((prev) => `${prev.slice(0, start)}${emoji}${prev.slice(end)}`);
+    requestAnimationFrame(() => {
+      input.focus();
+      const nextPos = start + emoji.length;
+      input.setSelectionRange(nextPos, nextPos);
+    });
   }, []);
 
   async function submitComment() {
@@ -110,6 +192,8 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
         throw new Error(json?.error || 'Impossibile pubblicare commento');
       }
       setNewBody('');
+      setEmojiQuery('');
+      setEmojiOpen(false);
       setComments((curr) => [...curr, json.comment]);
       setCount((c) => {
         const next = c + 1;
@@ -208,15 +292,69 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
             <label htmlFor={`comment-${postId}`} className="text-xs font-semibold text-neutral-700">
               Aggiungi un commento
             </label>
-            <textarea
-              id={`comment-${postId}`}
-              ref={inputRef}
-              value={newBody}
-              onChange={(e) => setNewBody(e.target.value)}
-              rows={3}
-              className="w-full rounded-lg border border-neutral-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
-              placeholder="Scrivi un commento..."
-            />
+            <div className="flex items-end gap-2">
+              <textarea
+                id={`comment-${postId}`}
+                ref={inputRef}
+                value={newBody}
+                onChange={(e) => setNewBody(e.target.value)}
+                rows={3}
+                className="w-full rounded-lg border border-neutral-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
+                placeholder="Scrivi un commento..."
+              />
+              <div className="relative" ref={emojiPopoverRef}>
+                <button
+                  type="button"
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-neutral-200 text-neutral-600 transition hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
+                  onClick={() => setEmojiOpen((prev) => !prev)}
+                  aria-expanded={emojiOpen}
+                  aria-label="Aggiungi emoji"
+                >
+                  <MaterialIcon name="sentiment_satisfied" fontSize="small" />
+                </button>
+                {emojiOpen ? (
+                  <div className="fixed inset-x-0 bottom-0 z-50 max-h-[60vh] rounded-t-2xl border border-neutral-200 bg-white p-3 shadow-lg sm:absolute sm:inset-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[320px] sm:max-h-[320px] sm:rounded-2xl">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={emojiQuery}
+                        onChange={(e) => setEmojiQuery(e.target.value)}
+                        placeholder="Cerca emoji"
+                        className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
+                      />
+                      <button
+                        type="button"
+                        className="text-xs font-semibold text-neutral-500"
+                        onClick={() => {
+                          setEmojiOpen(false);
+                          setEmojiQuery('');
+                        }}
+                      >
+                        Chiudi
+                      </button>
+                    </div>
+                    <div className="mt-3 grid max-h-[45vh] grid-cols-8 gap-2 overflow-y-auto text-lg sm:max-h-[220px] sm:grid-cols-7">
+                      {filteredEmojis.map((emoji) => (
+                        <button
+                          key={emoji}
+                          type="button"
+                          className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-neutral-100"
+                          onClick={() => {
+                            insertEmoji(emoji);
+                            setEmojiOpen(false);
+                          }}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                      {filteredEmojis.length === 0 ? (
+                        <div className="col-span-full text-xs text-neutral-500">Nessuna emoji trovata</div>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </div>
             <div className="flex items-center gap-2">
               <button
                 type="button"
