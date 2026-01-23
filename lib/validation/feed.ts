@@ -126,6 +126,10 @@ export const CreateCommentSchema = z
   })
   .passthrough();
 
+export const UpdateCommentSchema = z.object({
+  body: z.string().min(1).max(800),
+});
+
 export const CommentsQuerySchema = z.object({
   postId: z.string().trim().min(1, 'postId obbligatorio'),
   limit: numberFromParam(30, 1, 100),
@@ -144,6 +148,7 @@ export const CommentCountsQuerySchema = z.object({
 export type CreatePostInput = z.infer<typeof CreatePostSchema>;
 export type CreateReactionInput = z.infer<typeof CreateReactionSchema>;
 export type CreateCommentInput = z.infer<typeof CreateCommentSchema>;
+export type UpdateCommentInput = z.infer<typeof UpdateCommentSchema>;
 export type PatchPostInput = z.infer<typeof PatchPostSchema>;
 export type FeedPostsQueryInput = z.infer<typeof FeedPostsQuerySchema>;
 export type ReactionCountsQueryInput = z.infer<typeof ReactionCountsQuerySchema>;
