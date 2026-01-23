@@ -472,6 +472,7 @@ export function PostCard({
         initialCount={commentCount}
         expandSignal={commentSignal}
         onCountChange={onCommentCountChange}
+        currentUserId={currentUserId}
       />
       {error ? (
         <div id={errorId} className="mt-2 text-xs text-red-600" role="status">

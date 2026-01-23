@@ -126,6 +126,12 @@ export const CreateCommentSchema = z
   })
   .passthrough();
 
+export const PatchCommentSchema = z
+  .object({
+    body: z.string().trim().min(1, 'Testo obbligatorio').max(800, 'Max 800 caratteri'),
+  })
+  .passthrough();
+
 export const CommentsQuerySchema = z.object({
   postId: z.string().trim().min(1, 'postId obbligatorio'),
   limit: numberFromParam(30, 1, 100),
@@ -144,6 +150,7 @@ export const CommentCountsQuerySchema = z.object({
 export type CreatePostInput = z.infer<typeof CreatePostSchema>;
 export type CreateReactionInput = z.infer<typeof CreateReactionSchema>;
 export type CreateCommentInput = z.infer<typeof CreateCommentSchema>;
+export type PatchCommentInput = z.infer<typeof PatchCommentSchema>;
 export type PatchPostInput = z.infer<typeof PatchPostSchema>;
 export type FeedPostsQueryInput = z.infer<typeof FeedPostsQuerySchema>;
 export type ReactionCountsQueryInput = z.infer<typeof ReactionCountsQuerySchema>;

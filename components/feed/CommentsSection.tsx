@@ -42,14 +42,20 @@ type Props = {
   initialCount?: number;
   onCountChange?: (next: number) => void;
   expandSignal?: number;
+  currentUserId?: string | null;
 };
 
-export function CommentsSection({ postId, initialCount = 0, onCountChange, expandSignal }: Props) {
+export function CommentsSection({ postId, initialCount = 0, onCountChange, expandSignal, currentUserId }: Props) {
   const [comments, setComments] = useState<PostComment[]>([]);
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [newBody, setNewBody] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draftText, setDraftText] = useState('');
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const emojiPopoverRef = useRef<HTMLDivElement | null>(null);
   const emojiButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -71,6 +77,11 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
     }
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -210,6 +221,62 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
     }
   }
 
+  const startEdit = useCallback((comment: PostComment) => {
+    setEditingId(comment.id);
+    setDraftText(comment.body ?? '');
+    setEditError(null);
+  }, []);
+
+  const cancelEdit = useCallback(() => {
+    setEditingId(null);
+    setDraftText('');
+    setEditError(null);
+  }, []);
+
+  const saveEdit = useCallback(
+    async (commentId: string) => {
+      const payload = draftText.trim();
+      if (!payload) {
+        setEditError('Il commento non può essere vuoto.');
+        return;
+      }
+      setEditSaving(true);
+      setEditError(null);
+      try {
+        const res = await fetch(`/api/feed/comments/${commentId}`, {
+          method: 'PATCH',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ body: payload }),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || !json?.ok || !json?.comment) {
+          throw new Error(json?.error || json?.message || 'Impossibile aggiornare il commento');
+        }
+        setComments((curr) =>
+          curr.map((item) =>
+            item.id === commentId ? { ...item, ...json.comment, author: item.author } : item,
+          ),
+        );
+        setEditingId(null);
+        setDraftText('');
+      } catch (e: any) {
+        const msg = String(e?.message || 'Errore');
+        if (msg === 'EDIT_WINDOW_EXPIRED') {
+          setEditError('Tempo per la modifica scaduto.');
+          setEditingId(null);
+        } else if (msg.toLowerCase().includes('autentic')) {
+          setError('Accedi per modificare il commento.');
+        } else {
+          setEditError(msg);
+        }
+      } finally {
+        setEditSaving(false);
+      }
+    },
+    [draftText],
+  );
+
   const displayed = expanded ? comments : preview;
   const emojiPickerContent = (
     <EmojiPicker
@@ -256,6 +323,11 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
       {displayed.map((c) => {
         const author = c.author;
         const name = buildProfileDisplayName(author?.full_name, author?.display_name, 'Profilo');
+        const createdAt = c.created_at ? new Date(c.created_at).getTime() : null;
+        const ageMs = createdAt ? now - createdAt : null;
+        const isOwner = Boolean(currentUserId && c.author_id === currentUserId);
+        const canEdit = Boolean(isOwner && ageMs !== null && ageMs <= 60_000);
+        const isEditing = editingId === c.id;
         return (
           <div key={c.id} className="rounded-lg border border-neutral-200 bg-neutral-50 p-2">
             <div className="flex items-center gap-2">
@@ -272,15 +344,53 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
               </div>
               <div className="text-sm font-semibold text-neutral-800">{name}</div>
             </div>
-            <p className="mt-1 whitespace-pre-wrap text-sm text-neutral-800">{c.body}</p>
-            {c.created_at ? (
-              <div className="text-[10px] text-neutral-500">
-                {new Intl.DateTimeFormat('it-IT', {
-                  dateStyle: 'short',
-                  timeStyle: 'short',
-                }).format(new Date(c.created_at))}
+            {isEditing ? (
+              <div className="mt-2 space-y-2">
+                <textarea
+                  value={draftText}
+                  onChange={(e) => setDraftText(e.target.value)}
+                  rows={3}
+                  className="w-full rounded-lg border border-neutral-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
+                />
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="rounded-full bg-[var(--brand)] px-3 py-1.5 text-sm font-semibold text-white hover:bg-[var(--brand)]/90 disabled:opacity-60"
+                    onClick={() => saveEdit(c.id)}
+                    disabled={editSaving}
+                  >
+                    Salva
+                  </button>
+                  <button type="button" className="text-sm text-neutral-600 underline" onClick={cancelEdit}>
+                    Annulla
+                  </button>
+                </div>
+                {editError ? <div className="text-xs text-red-600">{editError}</div> : null}
               </div>
-            ) : null}
+            ) : (
+              <>
+                <p className="mt-1 whitespace-pre-wrap text-sm text-neutral-800">{c.body}</p>
+                <div className="mt-1 flex items-center gap-2 text-[10px] text-neutral-500">
+                  {c.created_at ? (
+                    <span>
+                      {new Intl.DateTimeFormat('it-IT', {
+                        dateStyle: 'short',
+                        timeStyle: 'short',
+                      }).format(new Date(c.created_at))}
+                    </span>
+                  ) : null}
+                  {canEdit ? (
+                    <button
+                      type="button"
+                      className="font-semibold text-[var(--brand)] hover:underline"
+                      onClick={() => startEdit(c)}
+                    >
+                      Modifica
+                    </button>
+                  ) : null}
+                </div>
+              </>
+            )}
           </div>
         );
       })}
