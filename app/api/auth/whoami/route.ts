@@ -24,7 +24,7 @@ function mergeCookies(from: NextResponse, into: NextResponse) {
 }
 
 type Role = 'guest' | 'athlete' | 'club';
-type ProfileStatus = 'pending' | 'active' | 'rejected';
+type ProfileStatus = 'active' | 'rejected';
 
 function normRole(v: unknown): 'club' | 'athlete' | null {
   const s = (typeof v === 'string' ? v : '').trim().toLowerCase();
@@ -35,8 +35,8 @@ function normRole(v: unknown): 'club' | 'athlete' | null {
 
 function normStatus(v: unknown): ProfileStatus {
   const s = (typeof v === 'string' ? v : '').trim().toLowerCase();
-  if (s === 'active' || s === 'rejected') return s;
-  return 'pending';
+  if (s === 'rejected') return 'rejected';
+  return 'active';
 }
 
 export async function GET(req: NextRequest) {
@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
   // 1) profiles.account_type (nuovo), 2) profiles.type (legacy)
   let accountType: 'club' | 'athlete' | null = null;
   let legacyType: string | null = null;
-  let status: ProfileStatus = 'pending';
+  let status: ProfileStatus = 'active';
 
   let profileExists = false;
 
@@ -121,7 +121,7 @@ export async function GET(req: NextRequest) {
 
   // 5) Auto-attivazione per email pre-approvate e creazione profilo se manca
   try {
-    if (!status || typeof status !== 'string') status = 'pending';
+    if (!status || typeof status !== 'string') status = 'active';
 
     // crea il profilo se non esiste
     if (!profileExists) {
