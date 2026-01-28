@@ -57,7 +57,7 @@ export default function OpportunityActions({
         <ShareButton
           onClick={handleShare}
           ariaLabel="Condividi opportunità"
-          className="h-10 w-10 rounded-full border text-slate-700 hover:bg-slate-50"
+          className="h-10 w-10 rounded-full p-0 text-slate-700 hover:bg-slate-50"
         />
       </div>
 
