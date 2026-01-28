@@ -42,22 +42,28 @@ export default function OpportunityActions({
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-3">
-        {showApply && <ApplyCTA oppId={opportunityId} />}
+      <div className="flex flex-nowrap items-center gap-2 whitespace-nowrap overflow-x-auto">
+        {showApply && (
+          <div className="shrink-0">
+            <ApplyCTA oppId={opportunityId} />
+          </div>
+        )}
 
         {clubProfileId && !hideClubLink && (
-          <Link
-            href={`/clubs/${clubProfileId}`}
-            className="rounded-xl border px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50"
-          >
-            Visita club
-          </Link>
+          <div className="shrink-0">
+            <Link
+              href={`/clubs/${clubProfileId}`}
+              className="rounded-xl border px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50"
+            >
+              Visita club
+            </Link>
+          </div>
         )}
 
         <ShareButton
           onClick={handleShare}
           ariaLabel="Condividi opportunità"
-          className="h-10 w-10 rounded-full p-0 text-slate-700 hover:bg-slate-50"
+          className="h-10 w-10 shrink-0 rounded-full p-0 text-slate-700 hover:bg-slate-50"
         />
       </div>
 

@@ -89,8 +89,8 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
       <div className="space-y-4">
         <section className="space-y-4">
           <header className="rounded-2xl border bg-white/80 p-4 shadow-sm">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div className="order-2 min-w-0 space-y-2 sm:order-1">
+            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+              <div className="min-w-0 space-y-2">
                 <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-wide text-gray-500">
                   {opp.status && <span className="rounded-full border px-2 py-1">{opp.status}</span>}
                   <span>Pubblicata il {published}</span>
@@ -105,7 +105,7 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
                 </div>
               </div>
 
-              <div className="order-1 flex items-center gap-2 self-end sm:order-2">
+              <div className="justify-self-end self-start">
                 <OpportunityActions
                   opportunityId={opp.id}
                   title={opp.title}
