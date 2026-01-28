@@ -154,7 +154,7 @@ export default function SignupPage() {
             {/* Google first */}
             {oauthReady && (
               <>
-                <SocialLogin />
+                <SocialLogin label="Registrati con Google" />
                 <div className="my-3 flex items-center gap-3 text-xs text-gray-500">
                   <span className="h-px flex-1 bg-gray-200" />
                   <span>oppure</span>
