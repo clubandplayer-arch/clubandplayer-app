@@ -107,6 +107,8 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
 
               <OpportunityActions
                 opportunityId={opp.id}
+                title={opp.title}
+                description={opp.description}
                 clubProfileId={clubProfileId}
                 showApply={!isOwner}
                 hideClubLink={isOwnerProfile}
