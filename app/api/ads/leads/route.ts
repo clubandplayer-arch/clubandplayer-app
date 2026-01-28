@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { Resend } from 'resend'
+import { getSupabaseServerClient } from '@/lib/supabase/server'
+import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -16,6 +18,27 @@ const getClientIp = (req: NextRequest) => {
   const forwarded = req.headers.get('x-forwarded-for')
   if (forwarded) return forwarded.split(',')[0]?.trim() || 'unknown'
   return req.headers.get('x-real-ip') || 'unknown'
+}
+
+const getProfileId = async () => {
+  try {
+    const supabase = await getSupabaseServerClient()
+    const { data } = await supabase.auth.getUser()
+    const user = data?.user
+    if (!user?.id) return null
+
+    const { data: profileByUserId } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle()
+    if (profileByUserId?.id) return profileByUserId.id as string
+
+    const { data: profileById } = await supabase.from('profiles').select('id').eq('id', user.id).maybeSingle()
+    return profileById?.id ?? null
+  } catch {
+    return null
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -53,6 +76,38 @@ export async function POST(req: NextRequest) {
     rateLimitByIp.set(ip, Date.now())
   }
 
+  const adminClient = getSupabaseAdminClientOrNull()
+  if (!adminClient) {
+    return NextResponse.json(
+      { ok: false, error: 'Database non configurato.' },
+      { status: 500, headers: noStoreHeaders }
+    )
+  }
+
+  const profileId = await getProfileId()
+  const { data: leadRow, error: leadError } = await adminClient
+    .from('ad_leads')
+    .insert({
+      name: fullName,
+      company,
+      email,
+      phone: phone || null,
+      location: location || null,
+      budget: budget || null,
+      message,
+      source: 'sponsor',
+      profile_id: profileId,
+    })
+    .select('id,status')
+    .single()
+
+  if (leadError || !leadRow) {
+    return NextResponse.json(
+      { ok: false, error: 'Errore durante il salvataggio del lead.' },
+      { status: 500, headers: noStoreHeaders }
+    )
+  }
+
   const apiKey = process.env.RESEND_API_KEY
   const toAddress = process.env.ADS_LEADS_TO
   const fromAddress = process.env.ADS_LEADS_FROM
@@ -72,6 +127,8 @@ export async function POST(req: NextRequest) {
   const userAgent = req.headers.get('user-agent') ?? 'unknown'
 
   const text = [
+    `Lead ID: ${leadRow.id}`,
+    `Status: ${leadRow.status ?? 'new'}`,
     `Nome e Cognome: ${fullName}`,
     `Azienda: ${company}`,
     `Email: ${email}`,
@@ -101,5 +158,8 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  return NextResponse.json({ ok: true, id: sendRes.data?.id ?? null }, { headers: noStoreHeaders })
+  return NextResponse.json(
+    { ok: true, id: sendRes.data?.id ?? null, lead_id: leadRow.id, status: leadRow.status ?? 'new' },
+    { headers: noStoreHeaders }
+  )
 }
