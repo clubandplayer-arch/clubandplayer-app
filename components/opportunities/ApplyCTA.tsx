@@ -26,7 +26,7 @@ export default function ApplyCTA({ oppId, initialApplied, onApplied, size = 'md'
 
   const loadExisting = useCallback(async (signal?: AbortSignal) => {
     try {
-      const r = await fetch(`/api/applications/mine?opportunityId=${encodeURIComponent(oppId)}`, {
+      const r = await fetch(`/api/applications/mine?status=all&opportunityId=${encodeURIComponent(oppId)}`, {
         credentials: 'include',
         cache: 'no-store',
         signal,

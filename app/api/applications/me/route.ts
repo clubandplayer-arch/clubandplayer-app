@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 const parseStatuses = (param: string | null) => {
   const raw = (param || '').toLowerCase();
@@ -31,7 +32,9 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   if (error) return jsonError(error.message, 400);
 
   const apps = data ?? [];
-  if (!apps.length) return NextResponse.json({ data: [] });
+  if (!apps.length) {
+    return NextResponse.json({ data: [] }, { headers: { 'Cache-Control': 'no-store' } });
+  }
 
   const oppIds = Array.from(new Set(apps.map((a) => a.opportunity_id).filter(Boolean) as string[]));
   const { data: opps, error: oppErr } = await supabase
@@ -46,5 +49,5 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
     opportunity: oppMap.get(a.opportunity_id) ?? null,
   }));
 
-  return NextResponse.json({ data: enriched });
+  return NextResponse.json({ data: enriched }, { headers: { 'Cache-Control': 'no-store' } });
 });

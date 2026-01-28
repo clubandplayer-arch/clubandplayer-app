@@ -50,7 +50,7 @@ export default function ApplyCell({
 
         // Ha già applicato?
         try {
-          const r = await fetch(`/api/applications/mine?opportunityId=${encodeURIComponent(opportunityId)}`, {
+          const r = await fetch(`/api/applications/mine?status=all&opportunityId=${encodeURIComponent(opportunityId)}`, {
             credentials: 'include',
             cache: 'no-store',
           });
