@@ -11,7 +11,7 @@ import { ShareButton } from '@/components/media/ShareButton';
 import { ShareSectionButton } from '@/components/media/ShareSectionButton';
 import { MediaEmptyState } from '@/components/media/MediaEmptyState';
 import { MaterialIcon } from '@/components/icons/MaterialIcon';
-import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { normalizePost as normalizeFeedPost, type FeedPost } from '@/components/feed/postShared';
 
 const shortDateFormatter = new Intl.DateTimeFormat('it-IT', {
   day: 'numeric',
@@ -73,7 +73,7 @@ function aspectFromUrl(url?: string | null): '16:9' | '9:16' | null {
   }
 }
 
-function normalizePost(p: any): MediaPost {
+function normalizeMediaPost(p: any): MediaPost {
   const mediaType =
     normalizeMediaType(p.media_type ?? p.mediaType ?? p.media_mime ?? p.mediaMime ?? null) ??
     inferMediaTypeFromUrl(p.media_url);
@@ -90,12 +90,13 @@ function normalizePost(p: any): MediaPost {
   };
 }
 
-function isMissingPostMediaTable(err: any) {
-  const msg = err?.message || '';
-  return /post_media/i.test(msg) && /does not exist|relation/i.test(msg);
-}
-
-async function fetchLegacyMedia({ signal, authorId }: { signal?: AbortSignal; authorId?: string | null }): Promise<MediaPost[]> {
+async function fetchLegacyMedia({
+  signal,
+  authorId,
+}: {
+  signal?: AbortSignal;
+  authorId?: string | null;
+}): Promise<MediaPost[]> {
   const params = new URLSearchParams({ limit: String(DEFAULT_LIMIT) });
   if (authorId) {
     params.set('authorId', authorId);
@@ -124,70 +125,70 @@ async function fetchLegacyMedia({ signal, authorId }: { signal?: AbortSignal; au
     itemsLength: arr.length,
   });
   console.info('[mymedia] total posts fetched', arr.length);
-  return arr.map(normalizePost);
+  return arr.map(normalizeMediaPost);
+}
+
+function buildMediaFromPosts(posts: FeedPost[]): MediaPost[] {
+  return posts.flatMap((post) => {
+    const normalizedPost = normalizeFeedPost(post);
+    const createdAt = normalizedPost.createdAt ?? normalizedPost.created_at ?? null;
+    const content = normalizedPost.content ?? normalizedPost.text ?? null;
+    const linkUrl = normalizedPost.link_url ?? null;
+    const mediaList = Array.isArray(normalizedPost.media) ? normalizedPost.media : [];
+
+    return mediaList.map((media, index) =>
+      normalizeMediaPost({
+        id: media.id ?? `${normalizedPost.id}-${media.position ?? index}`,
+        created_at: createdAt,
+        media_url: media.url ?? null,
+        poster_url: media.poster_url ?? media.posterUrl ?? null,
+        media_type: media.media_type ?? media.mediaType ?? null,
+        content,
+        link_url: linkUrl,
+        post_id: normalizedPost.id,
+      }),
+    );
+  });
 }
 
 async function fetchMyMedia({ signal, authorId }: { signal?: AbortSignal; authorId?: string | null }): Promise<MediaPost[]> {
-  const supabase = getSupabaseBrowserClient();
-  let resolvedAuthorId = authorId ?? null;
-
-  if (!resolvedAuthorId) {
-    const { data: auth, error: authErr } = await supabase.auth.getUser();
-    if (authErr || !auth?.user?.id) {
-      throw new Error('Impossibile caricare i tuoi media');
-    }
-    resolvedAuthorId = auth.user.id;
+  const params = new URLSearchParams({ limit: String(DEFAULT_LIMIT) });
+  if (authorId) {
+    params.set('authorId', authorId);
+  } else {
+    params.set('mine', 'true');
   }
 
-  const { data, error } = await supabase
-    .from('post_media')
-    .select(
-      `
-        id,
-        media_type,
-        url,
-        poster_url,
-        width,
-        height,
-        position,
-        created_at,
-        post:posts!inner(
-          id,
-          created_at,
-          content,
-          author_id,
-          link_url
-        )
-      `,
-    )
-    .eq('post.author_id', resolvedAuthorId)
-    .order('created_at', { foreignTable: 'post', ascending: false })
-    .order('position', { ascending: true })
-    .limit(DEFAULT_LIMIT)
-    .abortSignal(signal ?? null);
+  const res = await fetch(`/api/feed/posts?${params.toString()}`, {
+    credentials: 'include',
+    cache: 'no-store',
+    signal,
+  });
 
-  if (error) {
-    if (isMissingPostMediaTable(error)) {
-      return fetchLegacyMedia({ signal, authorId: resolvedAuthorId });
-    }
-    console.error('[mymedia] post_media fetch failed', error);
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    console.error('[mymedia] fetch failed', res.status, body);
     throw new Error('Impossibile caricare i tuoi media');
   }
 
-  const rows = Array.isArray(data) ? data : [];
-  console.info('[mymedia] post_media rows fetched', rows.length);
-  return rows.map((row: any) =>
-    normalizePost({
-      id: row.id,
-      created_at: row.post?.created_at ?? row.created_at ?? null,
-      media_url: row.url ?? null,
-      poster_url: row.poster_url ?? null,
-      media_type: row.media_type ?? null,
-      content: row.post?.content ?? null,
-      link_url: row.post?.link_url ?? null,
-      post_id: row.post?.id ?? null,
-    }),
-  );
+  const j = await res.json().catch(() => ({} as any));
+  const arr = Array.isArray(j?.items ?? j?.data) ? (j.items ?? j.data) : [];
+  console.info('[mymedia] response', {
+    status: res.status,
+    ok: res.ok,
+    apiOk: j?.ok ?? null,
+    code: j?.code ?? null,
+    message: j?.message ?? null,
+    itemsLength: arr.length,
+  });
+
+  const mediaItems = buildMediaFromPosts(arr);
+
+  if (mediaItems.length === 0 && arr.length > 0) {
+    return fetchLegacyMedia({ signal, authorId: authorId ?? null });
+  }
+
+  return mediaItems;
 }
 
 function resolveMediaType(post: MediaPost): MediaType {
