@@ -336,8 +336,19 @@ export default function SponsorPage() {
       });
 
       if (!res.ok) {
-        const txt = await res.text().catch(() => "");
-        throw new Error(txt || "Invio fallito.");
+        let msg = "Invio fallito.";
+        try {
+          const data = await res.json();
+          if (typeof data?.error === "string" && data.error.trim()) {
+            msg = data.error.trim();
+          }
+        } catch {
+          const txt = await res.text().catch(() => "");
+          if (txt.trim()) {
+            msg = txt.trim();
+          }
+        }
+        throw new Error(msg);
       }
 
       setStatus("success");
