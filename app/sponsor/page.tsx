@@ -2,6 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  CITIES_BY_PROVINCE,
+  ITALY_REGIONS,
+  PROVINCES_BY_REGION,
+} from "@/lib/opps/geo";
 
 type PackageId = "starter" | "growth" | "performance";
 type TargetId = "it_national" | "it_region" | "it_province" | "it_city";
@@ -117,13 +122,9 @@ function buildLeadSummary(params: {
     `Pacchetto: ${PACKAGES[pkg].label}`,
     `Posizionamenti: ${PACKAGES[pkg].placements.join(" • ")}`,
     `Target: ${targetLabel}`,
-    ...(target !== "it_national"
-      ? [
-          `Regione: ${region.trim() || "-"}`,
-          `Provincia: ${province.trim() || "-"}`,
-          `Città: ${city.trim() || "-"}`,
-        ]
-      : []),
+    `Regione: ${region.trim() || "-"}`,
+    `Provincia: ${province.trim() || "-"}`,
+    `Città: ${city.trim() || "-"}`,
     `Durata: ${duration} giorni`,
     `Obiettivo: ${OBJECTIVES[objective]}`,
     `Esclusiva di categoria: ${exclusive ? "Sì (+40%)" : "No"}`,
@@ -186,6 +187,16 @@ export default function SponsorPage() {
     [pkg, target, region, province, city, objective, duration, exclusive, estimate]
   );
 
+  const availableRegions = useMemo(() => [...ITALY_REGIONS], []);
+  const availableProvinces = useMemo(
+    () => (region ? PROVINCES_BY_REGION[region] ?? [] : []),
+    [region]
+  );
+  const availableCities = useMemo(
+    () => (province ? CITIES_BY_PROVINCE[province] ?? [] : []),
+    [province]
+  );
+
   useEffect(() => {
     if (cooldownSeconds <= 0) return;
     const t = setInterval(() => {
@@ -242,15 +253,13 @@ export default function SponsorPage() {
     }
 
     let targetLabel = TARGETS[target].label;
-    if (target !== "it_national") {
-      const suffix =
-        (target === "it_region" && region.trim()) ||
-        (target === "it_province" && province.trim()) ||
-        (target === "it_city" && city.trim()) ||
-        "";
-      if (suffix) {
-        targetLabel = `${targetLabel} — ${suffix}`;
-      }
+    const suffix =
+      (target === "it_region" && region.trim()) ||
+      (target === "it_province" && province.trim()) ||
+      (target === "it_city" && city.trim()) ||
+      "";
+    if (suffix) {
+      targetLabel = `${targetLabel} — ${suffix}`;
     }
 
     // Messaggio finale: include preventivo + messaggio libero
@@ -424,39 +433,65 @@ export default function SponsorPage() {
               <label className="text-xs font-medium text-muted-foreground">
                 Regione (opzionale)
               </label>
-              <input
+              <select
                 className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-                placeholder="Es. Lazio"
                 value={region}
-                onChange={(e) => setRegion(e.target.value)}
+                onChange={(e) => {
+                  const nextRegion = e.target.value;
+                  setRegion(nextRegion);
+                  setProvince("");
+                  setCity("");
+                }}
                 disabled={target === "it_national"}
-              />
+              >
+                <option value="">Seleziona regione (opzionale)</option>
+                {availableRegions.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>
               <label className="text-xs font-medium text-muted-foreground">
                 Provincia (opzionale)
               </label>
-              <input
+              <select
                 className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-                placeholder="Es. Roma (RM)"
                 value={province}
-                onChange={(e) => setProvince(e.target.value)}
+                onChange={(e) => {
+                  setProvince(e.target.value);
+                  setCity("");
+                }}
                 disabled={target === "it_national" || target === "it_region"}
-              />
+              >
+                <option value="">Seleziona provincia (opzionale)</option>
+                {availableProvinces.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>
               <label className="text-xs font-medium text-muted-foreground">
                 Città (opzionale)
               </label>
-              <input
+              <select
                 className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-                placeholder="Es. Affile"
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
                 disabled={target !== "it_city"}
-              />
+              >
+                <option value="">Seleziona città (opzionale)</option>
+                {availableCities.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>
