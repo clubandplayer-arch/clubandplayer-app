@@ -9,7 +9,6 @@ import {
 } from "@/lib/opps/geo";
 
 type PackageId = "starter" | "growth" | "performance";
-type TargetId = "it_national" | "it_region" | "it_province" | "it_city";
 type ObjectiveId = "visibility" | "leads" | "both";
 type DurationId = 30 | 60 | 90;
 
@@ -44,33 +43,6 @@ const PACKAGES: Record<
   },
 };
 
-const TARGETS: Record<
-  TargetId,
-  { label: string; multiplier: number; helper?: string }
-> = {
-  it_national: {
-    label: "Tutta Italia",
-    multiplier: 1,
-    helper: "Targeting nazionale su Club & Player.",
-  },
-  it_region: {
-    label: "Regione",
-    multiplier: 0.7,
-    helper: "Prezzo indicativo: la regione specifica verrà confermata in fase di contatto.",
-  },
-  it_province: {
-    label: "Provincia",
-    multiplier: 0.5,
-    helper:
-      "Prezzo indicativo: la provincia specifica verrà confermata in fase di contatto.",
-  },
-  it_city: {
-    label: "Città",
-    multiplier: 0.35,
-    helper: "Prezzo indicativo: la città specifica verrà confermata in fase di contatto.",
-  },
-};
-
 const OBJECTIVES: Record<ObjectiveId, string> = {
   visibility: "Visibilità (brand)",
   leads: "Contatti (lead)",
@@ -94,7 +66,6 @@ function euro(amount: number) {
 
 function buildLeadSummary(params: {
   pkg: PackageId;
-  target: TargetId;
   region: string;
   province: string;
   city: string;
@@ -105,7 +76,6 @@ function buildLeadSummary(params: {
 }) {
   const {
     pkg,
-    target,
     region,
     province,
     city,
@@ -115,13 +85,11 @@ function buildLeadSummary(params: {
     estimate,
   } = params;
 
-  const targetLabel = TARGETS[target].label;
-
   const lines = [
     "=== Richiesta Sponsorizzazione (Club & Player) ===",
     `Pacchetto: ${PACKAGES[pkg].label}`,
     `Posizionamenti: ${PACKAGES[pkg].placements.join(" • ")}`,
-    `Target: ${targetLabel}`,
+    "Target: Italia",
     `Regione: ${region.trim() || "-"}`,
     `Provincia: ${province.trim() || "-"}`,
     `Città: ${city.trim() || "-"}`,
@@ -137,7 +105,6 @@ function buildLeadSummary(params: {
 export default function SponsorPage() {
   // configuratore
   const [pkg, setPkg] = useState<PackageId>("performance");
-  const [target, setTarget] = useState<TargetId>("it_national");
   const [region, setRegion] = useState<string>("");
   const [province, setProvince] = useState<string>("");
   const [city, setCity] = useState<string>("");
@@ -165,17 +132,16 @@ export default function SponsorPage() {
 
   const estimate = useMemo(() => {
     const base = PACKAGES[pkg].basePriceProvince30d;
-    const t = TARGETS[target].multiplier;
+    const t = 1;
     const d = DURATION_MULTIPLIER[duration];
     const ex = exclusive ? 1.4 : 1;
     return base * t * d * ex;
-  }, [pkg, target, duration, exclusive]);
+  }, [pkg, duration, exclusive]);
 
   const leadSummary = useMemo(
     () =>
       buildLeadSummary({
         pkg,
-        target,
         region,
         province,
         city,
@@ -184,7 +150,7 @@ export default function SponsorPage() {
         exclusive,
         estimate,
       }),
-    [pkg, target, region, province, city, objective, duration, exclusive, estimate]
+    [pkg, region, province, city, objective, duration, exclusive, estimate]
   );
 
   const availableRegions = useMemo(() => [...ITALY_REGIONS], []);
@@ -204,23 +170,6 @@ export default function SponsorPage() {
     }, 1000);
     return () => clearInterval(t);
   }, [cooldownSeconds]);
-
-  useEffect(() => {
-    if (target === "it_national") {
-      setRegion("");
-      setProvince("");
-      setCity("");
-      return;
-    }
-    if (target === "it_region") {
-      setProvince("");
-      setCity("");
-      return;
-    }
-    if (target === "it_province") {
-      setCity("");
-    }
-  }, [target]);
 
   function scrollToPreventivo() {
     preventivoRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -252,15 +201,7 @@ export default function SponsorPage() {
       return;
     }
 
-    let targetLabel = TARGETS[target].label;
-    const suffix =
-      (target === "it_region" && region.trim()) ||
-      (target === "it_province" && province.trim()) ||
-      (target === "it_city" && city.trim()) ||
-      "";
-    if (suffix) {
-      targetLabel = `${targetLabel} — ${suffix}`;
-    }
+    const targetLabel = "Italia";
 
     // Messaggio finale: include preventivo + messaggio libero
     const finalMessage =
@@ -414,19 +355,13 @@ export default function SponsorPage() {
               <label className="text-xs font-medium text-muted-foreground">
                 Target
               </label>
-              <select
-                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-                value={target}
-                onChange={(e) => setTarget(e.target.value as TargetId)}
-              >
-                <option value="it_national">Tutta Italia</option>
-                <option value="it_region">Regione</option>
-                <option value="it_province">Provincia</option>
-                <option value="it_city">Città</option>
-              </select>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {TARGETS[target].helper}
-              </p>
+              <div className="mt-1 rounded-lg border px-3 py-2 text-sm">
+                <p className="font-medium">Italia</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Target nazionale su Club &amp; Player. (Opzionale: restringi con
+                  Regione/Provincia/Città)
+                </p>
+              </div>
             </div>
 
             <div>
@@ -442,7 +377,7 @@ export default function SponsorPage() {
                   setProvince("");
                   setCity("");
                 }}
-                disabled={target === "it_national"}
+                disabled={false}
               >
                 <option value="">Seleziona regione (opzionale)</option>
                 {availableRegions.map((item) => (
@@ -464,7 +399,7 @@ export default function SponsorPage() {
                   setProvince(e.target.value);
                   setCity("");
                 }}
-                disabled={target === "it_national" || target === "it_region"}
+                disabled={!region}
               >
                 <option value="">Seleziona provincia (opzionale)</option>
                 {availableProvinces.map((item) => (
@@ -483,7 +418,7 @@ export default function SponsorPage() {
                 className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
-                disabled={target !== "it_city"}
+                disabled={!province}
               >
                 <option value="">Seleziona città (opzionale)</option>
                 {availableCities.map((item) => (
