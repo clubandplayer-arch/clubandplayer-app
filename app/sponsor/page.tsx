@@ -3,14 +3,12 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
-import {
-  fetchLocationChildren,
-  LocationOption,
-} from "@/lib/geo/location";
+import { fetchLocationChildren } from "@/lib/geo/location";
 
 type PackageId = "starter" | "growth" | "performance";
 type ObjectiveId = "visibility" | "leads" | "both";
 type DurationId = 30 | 60 | 90;
+type LocationOptionString = { id: string; name: string };
 
 const BRAND_BLUE = "#036f9a";
 
@@ -105,12 +103,12 @@ function buildLeadSummary(params: {
 export default function SponsorPage() {
   // configuratore
   const [pkg, setPkg] = useState<PackageId>("performance");
-  const [regionId, setRegionId] = useState<number | null>(null);
-  const [provinceId, setProvinceId] = useState<number | null>(null);
-  const [cityId, setCityId] = useState<number | null>(null);
-  const [regions, setRegions] = useState<LocationOption[]>([]);
-  const [provinces, setProvinces] = useState<LocationOption[]>([]);
-  const [cities, setCities] = useState<LocationOption[]>([]);
+  const [regionId, setRegionId] = useState<string>("");
+  const [provinceId, setProvinceId] = useState<string>("");
+  const [cityId, setCityId] = useState<string>("");
+  const [regions, setRegions] = useState<LocationOptionString[]>([]);
+  const [provinces, setProvinces] = useState<LocationOptionString[]>([]);
+  const [cities, setCities] = useState<LocationOptionString[]>([]);
   const [objective, setObjective] = useState<ObjectiveId>("both");
   const [duration, setDuration] = useState<DurationId>(30);
   const [exclusive, setExclusive] = useState<boolean>(false);
@@ -186,7 +184,12 @@ export default function SponsorPage() {
     (async () => {
       const nextRegions = await fetchLocationChildren(supabase, "region", null);
       if (active) {
-        setRegions(nextRegions);
+        setRegions(
+          nextRegions.map((item) => ({
+            id: String(item.id),
+            name: item.name,
+          }))
+        );
       }
     })();
 
@@ -198,11 +201,11 @@ export default function SponsorPage() {
   useEffect(() => {
     let active = true;
 
-    if (regionId == null) {
+    if (!regionId) {
       setProvinces([]);
       setCities([]);
-      setProvinceId(null);
-      setCityId(null);
+      setProvinceId("");
+      setCityId("");
       return () => {
         active = false;
       };
@@ -215,9 +218,14 @@ export default function SponsorPage() {
         regionId
       );
       if (active) {
-        setProvinces(nextProvinces);
-        setProvinceId(null);
-        setCityId(null);
+        setProvinces(
+          nextProvinces.map((item) => ({
+            id: String(item.id),
+            name: item.name,
+          }))
+        );
+        setProvinceId("");
+        setCityId("");
       }
     })();
 
@@ -229,9 +237,9 @@ export default function SponsorPage() {
   useEffect(() => {
     let active = true;
 
-    if (provinceId == null) {
+    if (!provinceId) {
       setCities([]);
-      setCityId(null);
+      setCityId("");
       return () => {
         active = false;
       };
@@ -244,8 +252,13 @@ export default function SponsorPage() {
         provinceId
       );
       if (active) {
-        setCities(nextCities);
-        setCityId(null);
+        setCities(
+          nextCities.map((item) => ({
+            id: String(item.id),
+            name: item.name,
+          }))
+        );
+        setCityId("");
       }
     })();
 
@@ -461,10 +474,9 @@ export default function SponsorPage() {
               </label>
               <select
                 className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-                value={regionId ?? ""}
+                value={regionId}
                 onChange={(e) => {
-                  const nextId = e.target.value ? Number(e.target.value) : null;
-                  setRegionId(nextId);
+                  setRegionId(e.target.value);
                 }}
               >
                 <option value="">Seleziona regione (opzionale)</option>
@@ -482,12 +494,11 @@ export default function SponsorPage() {
               </label>
               <select
                 className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-                value={provinceId ?? ""}
+                value={provinceId}
                 onChange={(e) => {
-                  const nextId = e.target.value ? Number(e.target.value) : null;
-                  setProvinceId(nextId);
+                  setProvinceId(e.target.value);
                 }}
-                disabled={regionId == null}
+                disabled={!regionId}
               >
                 <option value="">Seleziona provincia (opzionale)</option>
                 {provinces.map((item) => (
@@ -504,12 +515,11 @@ export default function SponsorPage() {
               </label>
               <select
                 className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-                value={cityId ?? ""}
+                value={cityId}
                 onChange={(e) => {
-                  const nextId = e.target.value ? Number(e.target.value) : null;
-                  setCityId(nextId);
+                  setCityId(e.target.value);
                 }}
-                disabled={provinceId == null}
+                disabled={!provinceId}
               >
                 <option value="">Seleziona città (opzionale)</option>
                 {cities.map((item) => (
