@@ -104,6 +104,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdWebsite) }}
         />
+        {/* Privacy-friendly analytics by Plausible */}
+        <script async src="https://plausible.io/js/pa-HXeQN5y875CNhL53TjafY.js"></script>
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              'window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};plausible.init()',
+          }}
+        />
         {/* Font Material Symbols global (via Google Fonts) */}
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}
         <link
