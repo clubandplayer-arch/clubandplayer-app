@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { supabaseBrowser } from "@/lib/supabaseBrowser";
 import {
-  CITIES_BY_PROVINCE,
-  ITALY_REGIONS,
-  PROVINCES_BY_REGION,
-} from "@/lib/opps/geo";
+  fetchLocationChildren,
+  LocationOption,
+} from "@/lib/geo/location";
 
 type PackageId = "starter" | "growth" | "performance";
 type ObjectiveId = "visibility" | "leads" | "both";
@@ -66,9 +66,9 @@ function euro(amount: number) {
 
 function buildLeadSummary(params: {
   pkg: PackageId;
-  region: string;
-  province: string;
-  city: string;
+  regionName: string;
+  provinceName: string;
+  cityName: string;
   objective: ObjectiveId;
   duration: DurationId;
   exclusive: boolean;
@@ -76,9 +76,9 @@ function buildLeadSummary(params: {
 }) {
   const {
     pkg,
-    region,
-    province,
-    city,
+    regionName,
+    provinceName,
+    cityName,
     objective,
     duration,
     exclusive,
@@ -90,9 +90,9 @@ function buildLeadSummary(params: {
     `Pacchetto: ${PACKAGES[pkg].label}`,
     `Posizionamenti: ${PACKAGES[pkg].placements.join(" • ")}`,
     "Target: Italia",
-    `Regione: ${region.trim() || "-"}`,
-    `Provincia: ${province.trim() || "-"}`,
-    `Città: ${city.trim() || "-"}`,
+    `Regione: ${regionName || "-"}`,
+    `Provincia: ${provinceName || "-"}`,
+    `Città: ${cityName || "-"}`,
     `Durata: ${duration} giorni`,
     `Obiettivo: ${OBJECTIVES[objective]}`,
     `Esclusiva di categoria: ${exclusive ? "Sì (+40%)" : "No"}`,
@@ -105,9 +105,12 @@ function buildLeadSummary(params: {
 export default function SponsorPage() {
   // configuratore
   const [pkg, setPkg] = useState<PackageId>("performance");
-  const [region, setRegion] = useState<string>("");
-  const [province, setProvince] = useState<string>("");
-  const [city, setCity] = useState<string>("");
+  const [regionId, setRegionId] = useState<number | null>(null);
+  const [provinceId, setProvinceId] = useState<number | null>(null);
+  const [cityId, setCityId] = useState<number | null>(null);
+  const [regions, setRegions] = useState<LocationOption[]>([]);
+  const [provinces, setProvinces] = useState<LocationOption[]>([]);
+  const [cities, setCities] = useState<LocationOption[]>([]);
   const [objective, setObjective] = useState<ObjectiveId>("both");
   const [duration, setDuration] = useState<DurationId>(30);
   const [exclusive, setExclusive] = useState<boolean>(false);
@@ -142,26 +145,104 @@ export default function SponsorPage() {
     () =>
       buildLeadSummary({
         pkg,
-        region,
-        province,
-        city,
+        regionName: regions.find((item) => item.id === regionId)?.name ?? "",
+        provinceName: provinces.find((item) => item.id === provinceId)?.name ?? "",
+        cityName: cities.find((item) => item.id === cityId)?.name ?? "",
         objective,
         duration,
         exclusive,
         estimate,
       }),
-    [pkg, region, province, city, objective, duration, exclusive, estimate]
+    [
+      pkg,
+      regionId,
+      provinceId,
+      cityId,
+      regions,
+      provinces,
+      cities,
+      objective,
+      duration,
+      exclusive,
+      estimate,
+    ]
   );
 
-  const availableRegions = useMemo(() => [...ITALY_REGIONS], []);
-  const availableProvinces = useMemo(
-    () => (region ? PROVINCES_BY_REGION[region] ?? [] : []),
-    [region]
-  );
-  const availableCities = useMemo(
-    () => (province ? CITIES_BY_PROVINCE[province] ?? [] : []),
-    [province]
-  );
+  const supabase = useMemo(() => supabaseBrowser(), []);
+
+  useEffect(() => {
+    let active = true;
+
+    (async () => {
+      const nextRegions = await fetchLocationChildren(supabase, "region", null);
+      if (active) {
+        setRegions(nextRegions);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [supabase]);
+
+  useEffect(() => {
+    let active = true;
+
+    if (regionId == null) {
+      setProvinces([]);
+      setCities([]);
+      setProvinceId(null);
+      setCityId(null);
+      return () => {
+        active = false;
+      };
+    }
+
+    (async () => {
+      const nextProvinces = await fetchLocationChildren(
+        supabase,
+        "province",
+        regionId
+      );
+      if (active) {
+        setProvinces(nextProvinces);
+        setProvinceId(null);
+        setCityId(null);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [regionId, supabase]);
+
+  useEffect(() => {
+    let active = true;
+
+    if (provinceId == null) {
+      setCities([]);
+      setCityId(null);
+      return () => {
+        active = false;
+      };
+    }
+
+    (async () => {
+      const nextCities = await fetchLocationChildren(
+        supabase,
+        "municipality",
+        provinceId
+      );
+      if (active) {
+        setCities(nextCities);
+        setCityId(null);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [provinceId, supabase]);
 
   useEffect(() => {
     if (cooldownSeconds <= 0) return;
@@ -370,19 +451,16 @@ export default function SponsorPage() {
               </label>
               <select
                 className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-                value={region}
+                value={regionId ?? ""}
                 onChange={(e) => {
-                  const nextRegion = e.target.value;
-                  setRegion(nextRegion);
-                  setProvince("");
-                  setCity("");
+                  const nextId = e.target.value ? Number(e.target.value) : null;
+                  setRegionId(nextId);
                 }}
-                disabled={false}
               >
                 <option value="">Seleziona regione (opzionale)</option>
-                {availableRegions.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
+                {regions.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
                   </option>
                 ))}
               </select>
@@ -394,17 +472,17 @@ export default function SponsorPage() {
               </label>
               <select
                 className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-                value={province}
+                value={provinceId ?? ""}
                 onChange={(e) => {
-                  setProvince(e.target.value);
-                  setCity("");
+                  const nextId = e.target.value ? Number(e.target.value) : null;
+                  setProvinceId(nextId);
                 }}
-                disabled={!region}
+                disabled={regionId == null}
               >
                 <option value="">Seleziona provincia (opzionale)</option>
-                {availableProvinces.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
+                {provinces.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
                   </option>
                 ))}
               </select>
@@ -416,14 +494,17 @@ export default function SponsorPage() {
               </label>
               <select
                 className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                disabled={!province}
+                value={cityId ?? ""}
+                onChange={(e) => {
+                  const nextId = e.target.value ? Number(e.target.value) : null;
+                  setCityId(nextId);
+                }}
+                disabled={provinceId == null}
               >
                 <option value="">Seleziona città (opzionale)</option>
-                {availableCities.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
+                {cities.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
                   </option>
                 ))}
               </select>
