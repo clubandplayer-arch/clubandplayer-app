@@ -90,22 +90,40 @@ function euro(amount: number) {
 function buildLeadSummary(params: {
   pkg: PackageId;
   target: TargetId;
+  region: string;
+  province: string;
   city: string;
   objective: ObjectiveId;
   duration: DurationId;
   exclusive: boolean;
   estimate: number;
 }) {
-  const { pkg, target, city, objective, duration, exclusive, estimate } = params;
+  const {
+    pkg,
+    target,
+    region,
+    province,
+    city,
+    objective,
+    duration,
+    exclusive,
+    estimate,
+  } = params;
 
-  const targetLabel =
-    TARGETS[target].label + (city.trim() ? ` — ${city.trim()}` : "");
+  const targetLabel = TARGETS[target].label;
 
   const lines = [
     "=== Richiesta Sponsorizzazione (Club & Player) ===",
     `Pacchetto: ${PACKAGES[pkg].label}`,
     `Posizionamenti: ${PACKAGES[pkg].placements.join(" • ")}`,
     `Target: ${targetLabel}`,
+    ...(target !== "it_national"
+      ? [
+          `Regione: ${region.trim() || "-"}`,
+          `Provincia: ${province.trim() || "-"}`,
+          `Città: ${city.trim() || "-"}`,
+        ]
+      : []),
     `Durata: ${duration} giorni`,
     `Obiettivo: ${OBJECTIVES[objective]}`,
     `Esclusiva di categoria: ${exclusive ? "Sì (+40%)" : "No"}`,
@@ -119,7 +137,9 @@ export default function SponsorPage() {
   // configuratore
   const [pkg, setPkg] = useState<PackageId>("performance");
   const [target, setTarget] = useState<TargetId>("it_national");
-  const [area, setArea] = useState<string>("");
+  const [region, setRegion] = useState<string>("");
+  const [province, setProvince] = useState<string>("");
+  const [city, setCity] = useState<string>("");
   const [objective, setObjective] = useState<ObjectiveId>("both");
   const [duration, setDuration] = useState<DurationId>(30);
   const [exclusive, setExclusive] = useState<boolean>(false);
@@ -155,13 +175,15 @@ export default function SponsorPage() {
       buildLeadSummary({
         pkg,
         target,
-        city: area,
+        region,
+        province,
+        city,
         objective,
         duration,
         exclusive,
         estimate,
       }),
-    [pkg, target, area, objective, duration, exclusive, estimate]
+    [pkg, target, region, province, city, objective, duration, exclusive, estimate]
   );
 
   useEffect(() => {
@@ -171,6 +193,23 @@ export default function SponsorPage() {
     }, 1000);
     return () => clearInterval(t);
   }, [cooldownSeconds]);
+
+  useEffect(() => {
+    if (target === "it_national") {
+      setRegion("");
+      setProvince("");
+      setCity("");
+      return;
+    }
+    if (target === "it_region") {
+      setProvince("");
+      setCity("");
+      return;
+    }
+    if (target === "it_province") {
+      setCity("");
+    }
+  }, [target]);
 
   function scrollToPreventivo() {
     preventivoRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -202,8 +241,17 @@ export default function SponsorPage() {
       return;
     }
 
-    const targetLabel =
-      TARGETS[target].label + (area.trim() ? ` — ${area.trim()}` : "");
+    let targetLabel = TARGETS[target].label;
+    if (target !== "it_national") {
+      const suffix =
+        (target === "it_region" && region.trim()) ||
+        (target === "it_province" && province.trim()) ||
+        (target === "it_city" && city.trim()) ||
+        "";
+      if (suffix) {
+        targetLabel = `${targetLabel} — ${suffix}`;
+      }
+    }
 
     // Messaggio finale: include preventivo + messaggio libero
     const finalMessage =
@@ -286,7 +334,7 @@ export default function SponsorPage() {
               <div
                 key={id}
                 className={[
-                  "rounded-xl border p-4",
+                  "rounded-xl border p-4 h-full flex flex-col",
                   active ? "border-black/30" : "border-black/10",
                 ].join(" ")}
               >
@@ -302,20 +350,24 @@ export default function SponsorPage() {
                   </div>
                 </div>
 
-                <div className="mt-3 text-xs text-muted-foreground">
-                  <p className="font-medium text-foreground">Posizionamenti</p>
-                  <ul className="mt-1 list-disc pl-4">
-                    {p.placements.map((x) => (
-                      <li key={x}>{x}</li>
-                    ))}
-                  </ul>
+                <div className="mt-3 flex-1 text-xs text-muted-foreground">
+                  <div className="min-h-[84px]">
+                    <p className="font-medium text-foreground">Posizionamenti</p>
+                    <ul className="mt-1 list-disc pl-4">
+                      {p.placements.map((x) => (
+                        <li key={x}>{x}</li>
+                      ))}
+                    </ul>
+                  </div>
 
-                  <p className="mt-3 font-medium text-foreground">Include</p>
-                  <ul className="mt-1 list-disc pl-4">
-                    {p.includes.map((x) => (
-                      <li key={x}>{x}</li>
-                    ))}
-                  </ul>
+                  <div className="mt-3">
+                    <p className="font-medium text-foreground">Include</p>
+                    <ul className="mt-1 list-disc pl-4">
+                      {p.includes.map((x) => (
+                        <li key={x}>{x}</li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
 
                 <button
@@ -370,17 +422,41 @@ export default function SponsorPage() {
 
             <div>
               <label className="text-xs font-medium text-muted-foreground">
-                Area (opzionale)
+                Regione (opzionale)
               </label>
               <input
                 className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-                placeholder="Es. Sicilia, Siracusa (SR), Carlentini…"
-                value={area}
-                onChange={(e) => setArea(e.target.value)}
+                placeholder="Es. Lazio"
+                value={region}
+                onChange={(e) => setRegion(e.target.value)}
+                disabled={target === "it_national"}
               />
-              <p className="mt-1 text-xs text-muted-foreground">
-                Se scegli Regione/Provincia/Città, scrivi qui l’area.
-              </p>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">
+                Provincia (opzionale)
+              </label>
+              <input
+                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                placeholder="Es. Roma (RM)"
+                value={province}
+                onChange={(e) => setProvince(e.target.value)}
+                disabled={target === "it_national" || target === "it_region"}
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">
+                Città (opzionale)
+              </label>
+              <input
+                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                placeholder="Es. Affile"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                disabled={target !== "it_city"}
+              />
             </div>
 
             <div>
