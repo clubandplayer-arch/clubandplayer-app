@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 type PackageId = "starter" | "growth" | "performance";
-type TargetId = "sr_province" | "sr_city";
+type TargetId = "it_national" | "it_region" | "it_province" | "it_city";
 type ObjectiveId = "visibility" | "leads" | "both";
 type DurationId = 30 | 60 | 90;
 
@@ -20,19 +20,19 @@ const PACKAGES: Record<
   }
 > = {
   starter: {
-    label: "Starter SR",
+    label: "Starter",
     basePriceProvince30d: 79,
     placements: ["Sidebar Bottom", "Left Bottom (rotazione)"],
     includes: ["Report base (impression + click)"],
   },
   growth: {
-    label: "Growth SR",
+    label: "Growth",
     basePriceProvince30d: 149,
     placements: ["Sidebar Top", "Left Top"],
     includes: ["Report settimanale", "1 cambio creatività gratuito (a metà mese)"],
   },
   performance: {
-    label: "Performance SR",
+    label: "Performance",
     basePriceProvince30d: 249,
     placements: ["Infeed (ogni ~3 post)"],
     includes: ["Report settimanale", "Ottimizzazione (1 cambio creatività/settimana)"],
@@ -43,14 +43,25 @@ const TARGETS: Record<
   TargetId,
   { label: string; multiplier: number; helper?: string }
 > = {
-  sr_province: {
-    label: "Provincia di Siracusa (SR)",
+  it_national: {
+    label: "Tutta Italia",
     multiplier: 1,
-    helper: "Targeting su tutta la provincia (SR).",
+    helper: "Targeting nazionale su Club & Player.",
   },
-  sr_city: {
-    label: "Singola città in SR",
-    multiplier: 0.75,
+  it_region: {
+    label: "Regione",
+    multiplier: 0.7,
+    helper: "Prezzo indicativo: la regione specifica verrà confermata in fase di contatto.",
+  },
+  it_province: {
+    label: "Provincia",
+    multiplier: 0.5,
+    helper:
+      "Prezzo indicativo: la provincia specifica verrà confermata in fase di contatto.",
+  },
+  it_city: {
+    label: "Città",
+    multiplier: 0.35,
     helper: "Prezzo indicativo: la città specifica verrà confermata in fase di contatto.",
   },
 };
@@ -107,8 +118,8 @@ function buildLeadSummary(params: {
 export default function SponsorPage() {
   // configuratore
   const [pkg, setPkg] = useState<PackageId>("performance");
-  const [target, setTarget] = useState<TargetId>("sr_province");
-  const [city, setCity] = useState<string>("");
+  const [target, setTarget] = useState<TargetId>("it_national");
+  const [area, setArea] = useState<string>("");
   const [objective, setObjective] = useState<ObjectiveId>("both");
   const [duration, setDuration] = useState<DurationId>(30);
   const [exclusive, setExclusive] = useState<boolean>(false);
@@ -144,13 +155,13 @@ export default function SponsorPage() {
       buildLeadSummary({
         pkg,
         target,
-        city,
+        city: area,
         objective,
         duration,
         exclusive,
         estimate,
       }),
-    [pkg, target, city, objective, duration, exclusive, estimate]
+    [pkg, target, area, objective, duration, exclusive, estimate]
   );
 
   useEffect(() => {
@@ -192,7 +203,7 @@ export default function SponsorPage() {
     }
 
     const targetLabel =
-      TARGETS[target].label + (city.trim() ? ` — ${city.trim()}` : "");
+      TARGETS[target].label + (area.trim() ? ` — ${area.trim()}` : "");
 
     // Messaggio finale: include preventivo + messaggio libero
     const finalMessage =
@@ -249,15 +260,15 @@ export default function SponsorPage() {
         <h1 className="text-2xl font-semibold">Sponsorizza la tua attività</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Raggiungi club e player in{" "}
-          <span className="font-medium">Provincia di Siracusa</span> con annunci
-          mirati su Club &amp; Player.
+          <span className="font-medium">tutta Italia</span> con annunci mirati su
+          Club &amp; Player.
         </p>
       </div>
 
       {/* PACCHETTI */}
       <section className="mb-10">
         <div className="mb-3 flex items-end justify-between gap-3">
-          <h2 className="text-lg font-semibold">Pacchetti (Beta) — SR</h2>
+          <h2 className="text-lg font-semibold">Pacchetti (Beta) — Italia</h2>
           <Link
             href="/feed"
             className="text-sm font-medium underline underline-offset-4"
@@ -347,8 +358,10 @@ export default function SponsorPage() {
                 value={target}
                 onChange={(e) => setTarget(e.target.value as TargetId)}
               >
-                <option value="sr_province">Provincia di Siracusa (SR)</option>
-                <option value="sr_city">Singola città in SR</option>
+                <option value="it_national">Tutta Italia</option>
+                <option value="it_region">Regione</option>
+                <option value="it_province">Provincia</option>
+                <option value="it_city">Città</option>
               </select>
               <p className="mt-1 text-xs text-muted-foreground">
                 {TARGETS[target].helper}
@@ -357,17 +370,16 @@ export default function SponsorPage() {
 
             <div>
               <label className="text-xs font-medium text-muted-foreground">
-                Città (opzionale)
+                Area (opzionale)
               </label>
               <input
                 className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-                placeholder="Es. Siracusa, Augusta, Avola…"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
+                placeholder="Es. Sicilia, Siracusa (SR), Carlentini…"
+                value={area}
+                onChange={(e) => setArea(e.target.value)}
               />
               <p className="mt-1 text-xs text-muted-foreground">
-                Se scegli “Singola città”, inseriscila qui (aiuta a qualificare
-                la richiesta).
+                Se scegli Regione/Provincia/Città, scrivi qui l’area.
               </p>
             </div>
 
