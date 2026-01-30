@@ -141,13 +141,26 @@ export default function SponsorPage() {
     return base * t * d * ex;
   }, [pkg, duration, exclusive]);
 
+  const selectedRegionName = useMemo(
+    () => regions.find((item) => item.id === regionId)?.name ?? "",
+    [regions, regionId]
+  );
+  const selectedProvinceName = useMemo(
+    () => provinces.find((item) => item.id === provinceId)?.name ?? "",
+    [provinces, provinceId]
+  );
+  const selectedCityName = useMemo(
+    () => cities.find((item) => item.id === cityId)?.name ?? "",
+    [cities, cityId]
+  );
+
   const leadSummary = useMemo(
     () =>
       buildLeadSummary({
         pkg,
-        regionName: regions.find((item) => item.id === regionId)?.name ?? "",
-        provinceName: provinces.find((item) => item.id === provinceId)?.name ?? "",
-        cityName: cities.find((item) => item.id === cityId)?.name ?? "",
+        regionName: selectedRegionName,
+        provinceName: selectedProvinceName,
+        cityName: selectedCityName,
         objective,
         duration,
         exclusive,
@@ -155,12 +168,9 @@ export default function SponsorPage() {
       }),
     [
       pkg,
-      regionId,
-      provinceId,
-      cityId,
-      regions,
-      provinces,
-      cities,
+      selectedRegionName,
+      selectedProvinceName,
+      selectedCityName,
       objective,
       duration,
       exclusive,
