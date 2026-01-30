@@ -353,6 +353,24 @@ export default function FeedPage() {
           <h1 id={headingId} className="sr-only">
             Bacheca feed
           </h1>
+          <div className="mb-3 w-full rounded-xl border bg-[#036f9a] px-4 py-3 text-white flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold">
+                Sei un’attività e vuoi farti conoscere da club e player?
+              </p>
+              <p className="mt-0.5 text-xs leading-5 text-white/90">
+                Sponsorizza su Club &amp; Player: richiedi informazioni in 30 secondi.
+              </p>
+            </div>
+
+            <Link
+              href="/sponsor"
+              aria-label="Vai alla pagina sponsor"
+              className="shrink-0 inline-flex items-center justify-center rounded-lg bg-white px-3 py-2 text-sm font-semibold text-[#036f9a] hover:bg-white/95 transition-colors"
+            >
+              Richiedi info
+            </Link>
+          </div>
           <div className="glass-panel flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm font-semibold text-neutral-700">
             <div className="text-xs font-medium uppercase tracking-wide text-neutral-500">Visibilità</div>
             <div
