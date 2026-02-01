@@ -137,10 +137,26 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const apiKey = process.env.RESEND_API_KEY
-  const toAddress = process.env.ADS_LEADS_TO
-  const fromAddress = process.env.ADS_LEADS_FROM
-  if (!apiKey || !toAddress || !fromAddress) {
+  const resendKey = process.env.RESEND_API_KEY
+  const toAddress =
+    process.env.ADS_LEADS_TO ||
+    process.env.LEADS_TO ||
+    process.env.LEAD_TO ||
+    process.env.ADS_LEAD_TO
+  const fromAddress =
+    process.env.ADS_LEADS_FROM ||
+    process.env.LEADS_FROM ||
+    process.env.LEAD_FROM ||
+    process.env.ADS_LEAD_FROM
+
+  const hasValidTo = !!toAddress && toAddress.includes('@')
+  const hasValidFrom = !!fromAddress && fromAddress.includes('@')
+  if (!resendKey || !hasValidTo || !hasValidFrom) {
+    console.error('[ads/leads] missing email env', {
+      hasResendKey: !!resendKey,
+      hasTo: !!toAddress,
+      hasFrom: !!fromAddress,
+    })
     return NextResponse.json(
       { ok: false, error: 'Configurazione email mancante.' },
       { status: 500, headers: noStoreHeaders }
@@ -171,7 +187,7 @@ export async function POST(req: NextRequest) {
     `User-Agent: ${userAgent}`,
   ].join('\n')
 
-  const resend = new Resend(apiKey)
+  const resend = new Resend(resendKey)
   const sendRes = await resend.emails.send({
     from: fromAddress,
     to: toAddress,
