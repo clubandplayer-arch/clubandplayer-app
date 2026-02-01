@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import AppleAuthButton from '@/components/auth/AppleAuthButton';
 import GoogleAuthButton from '@/components/auth/GoogleAuthButton';
 
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -11,12 +12,25 @@ const HAS_ENV = Boolean(SUPA_URL && SUPA_ANON);
 
 type SocialLoginProps = {
   label?: string;
+  provider?: 'google' | 'apple';
 };
 
-export default function SocialLogin({ label = 'Continua con Google' }: SocialLoginProps) {
+const providerLabels = {
+  google: 'Continua con Google',
+  apple: 'Continua con Apple',
+};
+
+const providerErrors = {
+  google: 'Accesso con Google non riuscito.',
+  apple: 'Accesso con Apple non riuscito.',
+};
+
+export default function SocialLogin({ label, provider = 'google' }: SocialLoginProps) {
   const [loading, setLoading] = useState(false);
 
-  async function signInWithGoogle() {
+  const AuthButton = provider === 'apple' ? AppleAuthButton : GoogleAuthButton;
+
+  async function signInWithProvider() {
     try {
       setLoading(true);
 
@@ -33,7 +47,7 @@ export default function SocialLogin({ label = 'Continua con Google' }: SocialLog
       const redirectTo = `${origin}/auth/callback`;
 
       const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
+        provider,
         options: {
           redirectTo, // torna sempre qui
           // scopes: 'email profile', // opzionale
@@ -42,18 +56,18 @@ export default function SocialLogin({ label = 'Continua con Google' }: SocialLog
       if (error) throw error; // il browser ora viene rediretto
     } catch (e) {
       console.error(e);
-      alert('Accesso con Google non riuscito.');
+      alert(providerErrors[provider]);
     } finally {
       setLoading(false);
     }
   }
 
-  const buttonLabel = loading ? 'Attendere…' : label;
+  const buttonLabel = loading ? 'Attendere…' : label ?? providerLabels[provider];
 
   return (
-    <GoogleAuthButton
+    <AuthButton
       label={buttonLabel}
-      onClick={signInWithGoogle}
+      onClick={signInWithProvider}
       disabled={loading || !HAS_ENV}
     />
   );
