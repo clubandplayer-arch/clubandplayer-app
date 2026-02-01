@@ -148,6 +148,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY`}
         {oauthReady ? (
           <div className="space-y-3">
             <SocialLogin />
+            <SocialLogin label="Continua con Apple" provider="apple" />
             <div className="flex items-center gap-3 text-xs text-gray-500">
               <span className="h-px flex-1 bg-gray-200" />
               <span>oppure</span>

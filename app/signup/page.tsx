@@ -153,14 +153,15 @@ export default function SignupPage() {
 
             {/* Google first */}
             {oauthReady && (
-              <>
+              <div className="space-y-3">
                 <SocialLogin label="Registrati con Google" />
-                <div className="my-3 flex items-center gap-3 text-xs text-gray-500">
+                <SocialLogin label="Registrati con Apple" provider="apple" />
+                <div className="flex items-center gap-3 text-xs text-gray-500">
                   <span className="h-px flex-1 bg-gray-200" />
                   <span>oppure</span>
                   <span className="h-px flex-1 bg-gray-200" />
                 </div>
-              </>
+              </div>
             )}
 
             {/* Scelta ruolo spostata subito dopo il separatore */}
