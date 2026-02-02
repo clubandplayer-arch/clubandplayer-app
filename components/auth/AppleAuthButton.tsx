@@ -23,7 +23,7 @@ export default function AppleAuthButton({
       className="inline-flex h-11 w-full items-center justify-start gap-3 rounded-xl border border-slate-200 bg-white px-3 text-slate-900 hover:bg-slate-50 disabled:opacity-60"
     >
       <span className="flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 bg-white">
-        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden>
+        <svg className="h-8 w-8" width="24" height="24" viewBox="0 0 24 24" aria-hidden>
           <path
             fill="currentColor"
             d="M16.68 12.57c.02 2.52 2.2 3.36 2.22 3.37-.02.06-.35 1.2-1.16 2.37-.7 1.01-1.43 2.02-2.58 2.04-1.13.02-1.49-.66-2.78-.66-1.3 0-1.69.64-2.76.68-1.12.04-1.97-1.12-2.68-2.12-1.45-2.09-2.56-5.9-1.07-8.47.74-1.28 2.06-2.08 3.49-2.1 1.09-.02 2.12.71 2.78.71.66 0 1.9-.88 3.2-.75.54.02 2.07.22 3.05 1.67-.08.05-1.82 1.06-1.8 3.26z"
