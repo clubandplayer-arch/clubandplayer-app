@@ -88,6 +88,23 @@ export default function PrivacyPage() {
         </p>
       </section>
 
+      <section className="mt-8 space-y-3 text-sm text-neutral-700 dark:text-neutral-200">
+        <h2 className="text-lg font-semibold">Eliminazione dell’account</h2>
+        <p>
+          Gli utenti possono richiedere l’eliminazione del proprio account Club &amp; Player e dei dati personali associati inviando
+          una richiesta all’indirizzo email:
+        </p>
+        <p>support@clubandplayer.com</p>
+        <p>
+          Nella richiesta è necessario indicare l’indirizzo email utilizzato per la registrazione. La richiesta verrà elaborata entro
+          un periodo di tempo ragionevole.
+        </p>
+        <p>
+          Alcuni dati potrebbero essere conservati esclusivamente per obblighi legali o amministrativi, in conformità alle normative
+          vigenti.
+        </p>
+      </section>
+
       <section className="mt-8 space-y-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
         <h2 className="text-lg font-semibold">Programma Beta privata</h2>
         <p>
