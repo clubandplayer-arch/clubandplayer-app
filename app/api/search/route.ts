@@ -394,11 +394,37 @@ async function fetchPosts(params: {
     ] as Array<{ id?: string | null; user_id?: string | null; full_name?: string | null; display_name?: string | null; avatar_url?: string | null }>;
     const nextMap = new Map<string, { name?: string | null; avatar?: string | null }>();
     combined.forEach((row) => {
-      const key = row.user_id ?? row.id;
-      if (key) {
+      const keyCandidates = [row.user_id, row.id].filter(Boolean);
+      keyCandidates.forEach((key) => {
         nextMap.set(String(key), { name: row.full_name || row.display_name, avatar: row.avatar_url });
-      }
+      });
     });
+
+    const unresolvedAuthorIds = authorIds.filter((authorId) => !nextMap.has(String(authorId)));
+
+    if (unresolvedAuthorIds.length) {
+      const [clubsFallback, athletesFallback] = await Promise.all([
+        supabase.from('clubs_view').select('id, display_name, avatar_url').in('id', unresolvedAuthorIds),
+        supabase.from('athletes_view').select('id, full_name, avatar_url').in('id', unresolvedAuthorIds),
+      ]);
+
+      const fallbackRows = [
+        ...((clubsFallback.data || []) as Array<{ id?: string | null; display_name?: string | null; full_name?: string | null; avatar_url?: string | null }>),
+        ...((athletesFallback.data || []) as Array<{ id?: string | null; display_name?: string | null; full_name?: string | null; avatar_url?: string | null }>),
+      ];
+
+      fallbackRows.forEach((row) => {
+        if (!row.id) return;
+        const key = String(row.id);
+        const existing = nextMap.get(key);
+        const name = existing?.name || row.full_name || row.display_name || null;
+        const avatar = existing?.avatar || row.avatar_url || null;
+        if (name || avatar) {
+          nextMap.set(key, { name, avatar });
+        }
+      });
+    }
+
     authorMap = nextMap;
   }
 
