@@ -8,9 +8,9 @@ import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 export const dynamic = 'force-dynamic';
 
 const POST_SELECT_FULL =
-  'id, content, created_at, author_id, media_url, media_type, media_aspect, link_url, link_title, link_description, link_image, kind, event_payload, quoted_post_id';
+  'id, content, created_at, author_id, media_url, media_type, media_aspect, link_url, kind, event_payload, quoted_post_id';
 const POST_SELECT_FALLBACK =
-  'id, content, created_at, author_id, media_url, media_type, link_url, link_title, link_description, link_image, kind, event_payload, quoted_post_id';
+  'id, content, created_at, author_id, media_url, media_type, link_url, kind, event_payload, quoted_post_id';
 
 const IS_PRODUCTION = process.env.VERCEL_ENV === 'production';
 
@@ -199,7 +199,7 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
   const supabase = await getSupabaseServerClient();
   const { data, error } = await supabase
     .from('posts')
-    .select('content, event_payload, media_url, media_type, link_image')
+    .select('content, event_payload, media_url, media_type, link_url')
     .eq('id', params.id)
     .maybeSingle();
 
@@ -214,7 +214,7 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
     const { data: adminData, error: adminMetaError } = admin
       ? await admin
           .from('posts')
-          .select('content, event_payload, media_url, media_type, link_image')
+          .select('content, event_payload, media_url, media_type, link_url')
           .eq('id', params.id)
           .maybeSingle()
       : { data: null, error: null };
@@ -228,7 +228,7 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
 
   const title = postMeta?.event_payload?.title || postMeta?.content || 'Post';
   const description = postMeta?.content ? postMeta.content.slice(0, 140) : undefined;
-  const image = postMeta?.link_image || postMeta?.media_url || undefined;
+  const image = postMeta?.media_url || undefined;
   const ogImageUrl = image ? `${baseUrl()}/api/posts/${params.id}/og-image` : undefined;
 
   return {
