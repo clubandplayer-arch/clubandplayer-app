@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { PostClient } from './PostClient';
 import { normalizePost, type FeedPost } from '@/components/feed/postShared';
 import { getUserAndRole } from '@/lib/auth/role';
@@ -74,6 +73,27 @@ async function fetchPostWithFallback(
   return fallback;
 }
 
+async function fetchPostWithFallbackAdmin(
+  admin: NonNullable<ReturnType<typeof getSupabaseAdminClientOrNull>>,
+  id: string,
+  stepPrefix: 'main' | 'quoted',
+) {
+  const full = await admin.from('posts').select(POST_SELECT_FULL).eq('id', id).maybeSingle();
+  if (full.error) {
+    logSupabaseError({ id, step: `${stepPrefix}:admin_select_full`, error: full.error as SupabaseLikeError });
+  } else {
+    return full;
+  }
+
+  const fallback = await admin.from('posts').select(POST_SELECT_FALLBACK).eq('id', id).maybeSingle();
+  if (fallback.error) {
+    logSupabaseError({ id, step: `${stepPrefix}:admin_select_fallback`, error: fallback.error as SupabaseLikeError });
+    return full;
+  }
+
+  return fallback;
+}
+
 function baseUrl() {
   const raw =
     process.env.NEXT_PUBLIC_SITE_URL ||
@@ -105,7 +125,9 @@ export default async function PostPage({ params }: { params: { id: string } }) {
     );
   }
 
-  const { data, error } = await fetchPostWithFallback(supabase, params.id, 'main');
+  const { data, error } = !currentUserId && admin
+    ? await fetchPostWithFallbackAdmin(admin, params.id, 'main')
+    : await fetchPostWithFallback(supabase, params.id, 'main');
 
   if (error) {
     return <ErrorPanel debug={debugLine(error as SupabaseLikeError)} />;
@@ -115,21 +137,7 @@ export default async function PostPage({ params }: { params: { id: string } }) {
     return (
       <div className="mx-auto max-w-3xl p-4">
         <div className="glass-panel space-y-2 p-4 text-sm text-neutral-700">
-          {!currentUserId ? (
-            <>
-              <p>Per vedere questo post devi accedere.</p>
-              <div className="flex flex-wrap gap-2">
-                <Link href="/login" className="rounded-md border px-3 py-1.5 text-sm font-semibold text-[var(--brand)] hover:bg-neutral-50">
-                  Accedi
-                </Link>
-                <Link href="/signup" className="rounded-md border px-3 py-1.5 text-sm hover:bg-neutral-50">
-                  Registrati
-                </Link>
-              </div>
-            </>
-          ) : (
-            <p>Non hai i permessi per visualizzare questo post.</p>
-          )}
+          <p>Non hai i permessi per visualizzare questo post.</p>
         </div>
       </div>
     );
@@ -139,7 +147,7 @@ export default async function PostPage({ params }: { params: { id: string } }) {
     ? await admin
         .from('profiles')
         .select('full_name, avatar_url, account_type, type')
-        .eq('id', data.author_id ?? adminData.author_id ?? '')
+        .eq('user_id', data.author_id ?? adminData.author_id ?? '')
         .maybeSingle()
     : { data: null, error: null };
 
@@ -149,7 +157,9 @@ export default async function PostPage({ params }: { params: { id: string } }) {
 
   let quotedPost: FeedPost | null = null;
   if (data.quoted_post_id) {
-    const { data: quoted, error: quotedError } = await fetchPostWithFallback(supabase, String(data.quoted_post_id), 'quoted');
+    const { data: quoted, error: quotedError } = !currentUserId && admin
+      ? await fetchPostWithFallbackAdmin(admin, String(data.quoted_post_id), 'quoted')
+      : await fetchPostWithFallback(supabase, String(data.quoted_post_id), 'quoted');
     if (quotedError) {
       logSupabaseError({ id: params.id, step: 'quoted:optional', error: quotedError as SupabaseLikeError });
     } else {
