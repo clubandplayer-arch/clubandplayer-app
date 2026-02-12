@@ -88,7 +88,7 @@ export function PostCard({
   const baseDescription = post.content ?? post.text ?? '';
   const description = isEvent ? baseDescription || eventDetails?.description || '' : baseDescription;
   const authorProfile = post.author_profile ?? null;
-  const authorAccountType = authorProfile?.account_type ?? authorProfile?.type ?? null;
+  const authorAccountType = authorProfile?.account_type ?? authorProfile?.type ?? post.author_account_type ?? null;
   const fallbackAuthorLabel =
     (post as any).author_display_name ??
     (post as any).author_full_name ??
@@ -104,8 +104,9 @@ export function PostCard({
           fallbackAuthorLabel ?? 'Profilo',
         )
     : fallbackAuthorLabel;
-  const authorId = authorProfile?.id ?? post.authorId ?? null;
-  const profileHref = authorId ? (authorAccountType === 'club' ? `/clubs/${authorId}` : `/players/${authorId}`) : null;
+  const authorId = authorProfile?.id ?? post.author_profile_id ?? post.authorId ?? null;
+  const isClubAuthor = authorAccountType === 'club';
+  const profileHref = authorId ? (isClubAuthor ? `/clubs/${authorId}` : `/players/${authorId}`) : null;
   const avatarUrl = authorProfile?.avatar_url ?? (post as any).author_avatar_url ?? null;
   const showCertifiedBadge = authorProfile?.is_verified === true;
   const [editing, setEditing] = useState(false);

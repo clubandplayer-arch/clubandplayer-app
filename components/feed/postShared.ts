@@ -64,6 +64,7 @@ export type FeedPost = {
   author_avatar_url?: string | null;
   author_profile_id?: string | null;
   author_user_id?: string | null;
+  author_account_type?: string | null;
   author_role?: 'club' | 'athlete' | null;
   author_profile?: FeedAuthorProfile | null;
   media_url?: string | null;
@@ -218,6 +219,7 @@ export function normalizePost(p: any, depth = 0): FeedPost {
     author_avatar_url: authorAvatarUrl,
     author_profile_id: authorProfileId,
     author_user_id: authorUserId,
+    author_account_type: p.author_account_type ?? authorProfile?.account_type ?? authorProfile?.type ?? null,
     author_profile: authorProfile,
   };
 }

@@ -383,22 +383,55 @@ async function fetchPosts(params: {
   let authorMap = new Map<string, { name?: string | null; avatar?: string | null }>();
 
   if (authorIds.length) {
-    const [byUserId, byProfileId] = await Promise.all([
-      supabase.from('profiles').select('user_id, display_name, full_name, avatar_url').in('user_id', authorIds),
-      supabase.from('profiles').select('id, display_name, full_name, avatar_url').in('id', authorIds),
-    ]);
+    const toAuthorPayload = (row: {
+      full_name?: string | null;
+      display_name?: string | null;
+      avatar_url?: string | null;
+    }) => {
+      const name = row.full_name || row.display_name || null;
+      const avatar = row.avatar_url || null;
+      return { name, avatar };
+    };
 
-    const combined = [
-      ...(byUserId.data || []),
-      ...(byProfileId.data || []),
-    ] as Array<{ id?: string | null; user_id?: string | null; full_name?: string | null; display_name?: string | null; avatar_url?: string | null }>;
+    const isGhostProfile = (row: {
+      full_name?: string | null;
+      display_name?: string | null;
+      avatar_url?: string | null;
+    }) => !row.full_name && !row.display_name && !row.avatar_url;
+
     const nextMap = new Map<string, { name?: string | null; avatar?: string | null }>();
-    combined.forEach((row) => {
-      const key = row.user_id ?? row.id;
-      if (key) {
-        nextMap.set(String(key), { name: row.full_name || row.display_name, avatar: row.avatar_url });
-      }
-    });
+
+    const { data: byUserId } = await supabase
+      .from('profiles')
+      .select('user_id, display_name, full_name, avatar_url')
+      .in('user_id', authorIds);
+
+    (byUserId || [])
+      .filter((row) => row?.user_id)
+      .filter((row) => !isGhostProfile(row))
+      .forEach((row) => {
+        nextMap.set(String(row.user_id), toAuthorPayload(row));
+      });
+
+    const unresolvedAuthorIds = authorIds.filter((authorId) => !nextMap.has(String(authorId)));
+
+    if (unresolvedAuthorIds.length) {
+      const { data: byProfileId } = await supabase
+        .from('profiles')
+        .select('id, display_name, full_name, avatar_url')
+        .in('id', unresolvedAuthorIds);
+
+      (byProfileId || [])
+        .filter((row) => row?.id)
+        .filter((row) => !isGhostProfile(row))
+        .forEach((row) => {
+          const key = String(row.id);
+          if (!nextMap.has(key)) {
+            nextMap.set(key, toAuthorPayload(row));
+          }
+        });
+    }
+
     authorMap = nextMap;
   }
 
