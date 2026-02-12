@@ -12,14 +12,66 @@ const POST_SELECT_FULL =
 const POST_SELECT_FALLBACK =
   'id, content, created_at, author_id, media_url, media_type, link_url, link_title, link_description, link_image, kind, event_payload, quoted_post_id';
 
-async function fetchPostWithFallback(supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>, id: string) {
+const IS_PRODUCTION = process.env.VERCEL_ENV === 'production';
+
+type SupabaseLikeError = {
+  message?: string;
+  details?: string | null;
+  hint?: string | null;
+  code?: string | null;
+} | null;
+
+function logSupabaseError(params: { id: string; step: string; error: SupabaseLikeError }) {
+  const { id, step, error } = params;
+  if (!error) return;
+  console.error('[posts/:id] supabase error', {
+    id,
+    step,
+    message: error.message,
+    details: error.details,
+    hint: error.hint,
+    code: error.code,
+  });
+}
+
+function debugLine(error: SupabaseLikeError) {
+  if (IS_PRODUCTION || !error) return null;
+  const code = error.code ?? '';
+  const message = error.message ?? '';
+  const line = `${code} ${message}`.trim();
+  return line || null;
+}
+
+function ErrorPanel({ debug }: { debug?: string | null }) {
+  return (
+    <div className="mx-auto max-w-3xl p-4">
+      <div className="glass-panel space-y-2 p-4 text-sm text-neutral-700">
+        <p>Si è verificato un errore nel caricamento del post. Riprova più tardi.</p>
+        {debug ? <p className="text-xs text-neutral-500">{debug}</p> : null}
+      </div>
+    </div>
+  );
+}
+
+async function fetchPostWithFallback(
+  supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>,
+  id: string,
+  stepPrefix: 'main' | 'quoted',
+) {
   const full = await supabase.from('posts').select(POST_SELECT_FULL).eq('id', id).maybeSingle();
-  if (!full.error) return full;
+  if (full.error) {
+    logSupabaseError({ id, step: `${stepPrefix}:select_full`, error: full.error as SupabaseLikeError });
+  } else {
+    return full;
+  }
 
   const fallback = await supabase.from('posts').select(POST_SELECT_FALLBACK).eq('id', id).maybeSingle();
-  if (!fallback.error) return fallback;
+  if (fallback.error) {
+    logSupabaseError({ id, step: `${stepPrefix}:select_fallback`, error: fallback.error as SupabaseLikeError });
+    return full;
+  }
 
-  return full;
+  return fallback;
 }
 
 function baseUrl() {
@@ -61,13 +113,8 @@ export default async function PostPage({ params }: { params: { id: string } }) {
     : { data: null, error: null };
 
   if (adminError) {
-    return (
-      <div className="mx-auto max-w-3xl p-4">
-        <div className="glass-panel space-y-2 p-4 text-sm text-neutral-700">
-          <p>Si è verificato un errore nel caricamento del post. Riprova più tardi.</p>
-        </div>
-      </div>
-    );
+    logSupabaseError({ id: params.id, step: 'admin:post_exists', error: adminError as SupabaseLikeError });
+    return <ErrorPanel debug={debugLine(adminError as SupabaseLikeError)} />;
   }
 
   if (!adminData) {
@@ -78,16 +125,10 @@ export default async function PostPage({ params }: { params: { id: string } }) {
     );
   }
 
-  const { data, error } = await fetchPostWithFallback(supabase, params.id);
+  const { data, error } = await fetchPostWithFallback(supabase, params.id, 'main');
 
   if (error) {
-    return (
-      <div className="mx-auto max-w-3xl p-4">
-        <div className="glass-panel space-y-2 p-4 text-sm text-neutral-700">
-          <p>Si è verificato un errore nel caricamento del post. Riprova più tardi.</p>
-        </div>
-      </div>
-    );
+    return <ErrorPanel debug={debugLine(error as SupabaseLikeError)} />;
   }
 
   if (!data) {
@@ -114,18 +155,26 @@ export default async function PostPage({ params }: { params: { id: string } }) {
     );
   }
 
-  const { data: authorProfile } = admin
+  const { data: authorProfile, error: authorError } = admin
     ? await admin
         .from('profiles')
         .select('full_name, avatar_url, account_type, type')
         .eq('id', data.author_id ?? adminData.author_id ?? '')
         .maybeSingle()
-    : { data: null };
+    : { data: null, error: null };
+
+  if (authorError) {
+    logSupabaseError({ id: params.id, step: 'author:profile_by_id', error: authorError as SupabaseLikeError });
+  }
 
   let quotedPost: FeedPost | null = null;
   if (data.quoted_post_id) {
-    const { data: quoted } = await fetchPostWithFallback(supabase, String(data.quoted_post_id));
-    quotedPost = quoted ? normalizePost(quoted) : null;
+    const { data: quoted, error: quotedError } = await fetchPostWithFallback(supabase, String(data.quoted_post_id), 'quoted');
+    if (quotedError) {
+      logSupabaseError({ id: params.id, step: 'quoted:optional', error: quotedError as SupabaseLikeError });
+    } else {
+      quotedPost = quoted ? normalizePost(quoted) : null;
+    }
   }
 
   const normalized = {
@@ -148,23 +197,32 @@ export default async function PostPage({ params }: { params: { id: string } }) {
 
 export async function generateMetadata({ params }: { params: { id: string } }) {
   const supabase = await getSupabaseServerClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('posts')
     .select('content, event_payload, media_url, media_type, link_image')
     .eq('id', params.id)
     .maybeSingle();
 
+  if (error) {
+    logSupabaseError({ id: params.id, step: 'metadata:main', error: error as SupabaseLikeError });
+  }
+
   let postMeta = data ?? null;
 
   if (!postMeta) {
     const admin = getSupabaseAdminClientOrNull();
-    const { data: adminData } = admin
+    const { data: adminData, error: adminMetaError } = admin
       ? await admin
           .from('posts')
           .select('content, event_payload, media_url, media_type, link_image')
           .eq('id', params.id)
           .maybeSingle()
-      : { data: null };
+      : { data: null, error: null };
+
+    if (adminMetaError) {
+      logSupabaseError({ id: params.id, step: 'metadata:admin', error: adminMetaError as SupabaseLikeError });
+    }
+
     postMeta = adminData ?? null;
   }
 
