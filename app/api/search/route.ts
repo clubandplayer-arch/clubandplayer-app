@@ -400,7 +400,10 @@ async function fetchPosts(params: {
       });
     });
 
-    const unresolvedAuthorIds = authorIds.filter((authorId) => !nextMap.has(String(authorId)));
+    const unresolvedAuthorIds = authorIds.filter((authorId) => {
+      const resolved = nextMap.get(String(authorId));
+      return !resolved || !resolved.name || !resolved.avatar;
+    });
 
     if (unresolvedAuthorIds.length) {
       const [clubsFallback, athletesFallback] = await Promise.all([

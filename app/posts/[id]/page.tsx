@@ -7,6 +7,21 @@ import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
 
+const POST_SELECT_FULL =
+  'id, content, created_at, author_id, media_url, media_type, media_aspect, link_url, link_title, link_description, link_image, kind, event_payload, quoted_post_id';
+const POST_SELECT_FALLBACK =
+  'id, content, created_at, author_id, media_url, media_type, link_url, link_title, link_description, link_image, kind, event_payload, quoted_post_id';
+
+async function fetchPostWithFallback(supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>, id: string) {
+  const full = await supabase.from('posts').select(POST_SELECT_FULL).eq('id', id).maybeSingle();
+  if (!full.error) return full;
+
+  const fallback = await supabase.from('posts').select(POST_SELECT_FALLBACK).eq('id', id).maybeSingle();
+  if (!fallback.error) return fallback;
+
+  return full;
+}
+
 function baseUrl() {
   const raw =
     process.env.NEXT_PUBLIC_SITE_URL ||
@@ -63,13 +78,7 @@ export default async function PostPage({ params }: { params: { id: string } }) {
     );
   }
 
-  const { data, error } = await supabase
-    .from('posts')
-    .select(
-      `id, content, created_at, author_id, media_url, media_type, media_aspect, link_url, link_title, link_description, link_image, kind, event_payload, quoted_post_id`,
-    )
-    .eq('id', params.id)
-    .maybeSingle();
+  const { data, error } = await fetchPostWithFallback(supabase, params.id);
 
   if (error) {
     return (
@@ -115,13 +124,7 @@ export default async function PostPage({ params }: { params: { id: string } }) {
 
   let quotedPost: FeedPost | null = null;
   if (data.quoted_post_id) {
-    const { data: quoted } = await supabase
-      .from('posts')
-      .select(
-        'id, content, created_at, author_id, media_url, media_type, media_aspect, link_url, link_title, link_description, link_image, kind, event_payload',
-      )
-      .eq('id', data.quoted_post_id)
-      .maybeSingle();
+    const { data: quoted } = await fetchPostWithFallback(supabase, String(data.quoted_post_id));
     quotedPost = quoted ? normalizePost(quoted) : null;
   }
 
