@@ -146,7 +146,7 @@ export default async function PostPage({ params }: { params: { id: string } }) {
   const { data: authorProfile, error: authorError } = admin
     ? await admin
         .from('profiles')
-        .select('full_name, avatar_url, account_type, type')
+        .select('id, full_name, avatar_url, account_type, type')
         .eq('user_id', data.author_id ?? adminData.author_id ?? '')
         .maybeSingle()
     : { data: null, error: null };
@@ -170,6 +170,8 @@ export default async function PostPage({ params }: { params: { id: string } }) {
   const normalized = {
     ...data,
     quoted_post: quotedPost,
+    author_profile_id: authorProfile?.id ?? null,
+    author_account_type: authorProfile?.account_type ?? null,
     author_name: authorProfile?.full_name ?? null,
     author_display_name: authorProfile?.full_name ?? null,
     author_avatar_url: authorProfile?.avatar_url ?? null,
