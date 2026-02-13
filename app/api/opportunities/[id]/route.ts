@@ -16,7 +16,121 @@ function getSupabase() {
 }
 
 const SELECT =
-  'id,title,description,owner_id,created_at,country,region,province,city,sport,role,category,required_category,age_min,age_max,club_name,gender';
+  'id,title,description,owner_id,created_by,club_id,created_at,country,region,province,city,sport,role,category,required_category,age_min,age_max,club_name,gender';
+
+type ClubInfo = {
+  club_profile_id: string | null;
+  club_display_name: string | null;
+  club_city: string | null;
+  club_province: string | null;
+  club_region: string | null;
+};
+
+async function findClubById(supabase: ReturnType<typeof getSupabase>, id: string) {
+  const { data, error } = await supabase
+    .from('clubs_view')
+    .select('id,display_name,city,province,region')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) return null;
+  return data;
+}
+
+async function findClubByUserId(supabase: ReturnType<typeof getSupabase>, userId: string) {
+  const { data, error } = await supabase
+    .from('clubs_view')
+    .select('id,display_name,city,province,region,user_id')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) return null;
+  return data;
+}
+
+async function resolveClubInfo(
+  supabase: ReturnType<typeof getSupabase>,
+  row: Record<string, unknown>
+): Promise<ClubInfo> {
+  const candidates = [row.club_id, row.owner_id, row.created_by]
+    .map((v) => (typeof v === 'string' && v ? v : null))
+    .filter((v): v is string => !!v);
+
+  for (const candidate of [...new Set(candidates)]) {
+    const clubById = await findClubById(supabase, candidate);
+    if (clubById?.id) {
+      return {
+        club_profile_id: clubById.id ?? null,
+        club_display_name: (clubById as any).display_name ?? null,
+        club_city: (clubById as any).city ?? null,
+        club_province: (clubById as any).province ?? null,
+        club_region: (clubById as any).region ?? null,
+      };
+    }
+  }
+
+  for (const candidate of [...new Set(candidates)]) {
+    const clubByUser = await findClubByUserId(supabase, candidate);
+    if (clubByUser?.id) {
+      return {
+        club_profile_id: clubByUser.id ?? null,
+        club_display_name: (clubByUser as any).display_name ?? null,
+        club_city: (clubByUser as any).city ?? null,
+        club_province: (clubByUser as any).province ?? null,
+        club_region: (clubByUser as any).region ?? null,
+      };
+    }
+  }
+
+  for (const candidate of [...new Set(candidates)]) {
+    const { data: profileById } = await supabase
+      .from('profiles')
+      .select('id,user_id')
+      .eq('id', candidate)
+      .maybeSingle();
+
+    const { data: profileByUser } = await supabase
+      .from('profiles')
+      .select('id,user_id')
+      .eq('user_id', candidate)
+      .maybeSingle();
+
+    const profileId = (profileById as any)?.id ?? (profileByUser as any)?.id ?? null;
+    const userId = (profileById as any)?.user_id ?? (profileByUser as any)?.user_id ?? null;
+
+    if (profileId) {
+      const clubByProfileId = await findClubById(supabase, profileId);
+      if (clubByProfileId?.id) {
+        return {
+          club_profile_id: clubByProfileId.id ?? null,
+          club_display_name: (clubByProfileId as any).display_name ?? null,
+          club_city: (clubByProfileId as any).city ?? null,
+          club_province: (clubByProfileId as any).province ?? null,
+          club_region: (clubByProfileId as any).region ?? null,
+        };
+      }
+    }
+
+    if (userId) {
+      const clubByProfileUser = await findClubByUserId(supabase, userId);
+      if (clubByProfileUser?.id) {
+        return {
+          club_profile_id: clubByProfileUser.id ?? null,
+          club_display_name: (clubByProfileUser as any).display_name ?? null,
+          club_city: (clubByProfileUser as any).city ?? null,
+          club_province: (clubByProfileUser as any).province ?? null,
+          club_region: (clubByProfileUser as any).region ?? null,
+        };
+      }
+    }
+  }
+
+  return {
+    club_profile_id: null,
+    club_display_name: null,
+    club_city: null,
+    club_province: null,
+    club_region: null,
+  };
+}
 
 function extractId(req: NextRequest): string | null {
   const pathname = new URL(req.url).pathname;
@@ -67,7 +181,8 @@ export async function GET(
     if (error) return jsonError(error.message, 500);
     if (!data) return jsonError('Not found', 404);
 
-    return NextResponse.json({ data });
+    const clubInfo = await resolveClubInfo(supabase, data as Record<string, unknown>);
+    return NextResponse.json({ data: { ...data, ...clubInfo } });
   } catch (err: any) {
     return jsonError(err?.message || 'Unexpected error', 500);
   }
