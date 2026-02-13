@@ -29,17 +29,17 @@ type ClubInfo = {
 async function findClubById(supabase: ReturnType<typeof getSupabase>, id: string) {
   const { data, error } = await supabase
     .from('clubs_view')
-    .select('id,display_name,city,province,region')
+    .select('id,display_name,city')
     .eq('id', id)
     .maybeSingle();
   if (error) return null;
   return data;
 }
 
-async function findClubByUserId(supabase: ReturnType<typeof getSupabase>, userId: string) {
+async function findProfileByUserId(supabase: ReturnType<typeof getSupabase>, userId: string) {
   const { data, error } = await supabase
-    .from('clubs_view')
-    .select('id,display_name,city,province,region,user_id')
+    .from('profiles')
+    .select('id,display_name,full_name,user_id,profile_type,account_type')
     .eq('user_id', userId)
     .maybeSingle();
   if (error) return null;
@@ -50,83 +50,42 @@ async function resolveClubInfo(
   supabase: ReturnType<typeof getSupabase>,
   row: Record<string, unknown>
 ): Promise<ClubInfo> {
-  const candidates = [row.club_id, row.owner_id, row.created_by]
-    .map((v) => (typeof v === 'string' && v ? v : null))
-    .filter((v): v is string => !!v);
+  const oppClubId = typeof row.club_id === 'string' && row.club_id ? row.club_id : null;
+  const userIdCandidate =
+    (typeof row.created_by === 'string' && row.created_by) ||
+    (typeof row.owner_id === 'string' && row.owner_id) ||
+    null;
 
-  for (const candidate of [...new Set(candidates)]) {
-    const clubById = await findClubById(supabase, candidate);
-    if (clubById?.id) {
-      return {
-        club_profile_id: clubById.id ?? null,
-        club_display_name: (clubById as any).display_name ?? null,
-        club_city: (clubById as any).city ?? null,
-        club_province: (clubById as any).province ?? null,
-        club_region: (clubById as any).region ?? null,
-      };
-    }
+  let clubProfileId: string | null = oppClubId;
+  let profileDisplayName: string | null = null;
+  let profileFullName: string | null = null;
+
+  if (!clubProfileId && userIdCandidate) {
+    const profile = await findProfileByUserId(supabase, userIdCandidate);
+    clubProfileId = (profile as any)?.id ?? null;
+    profileDisplayName = (profile as any)?.display_name ?? null;
+    profileFullName = (profile as any)?.full_name ?? null;
   }
 
-  for (const candidate of [...new Set(candidates)]) {
-    const clubByUser = await findClubByUserId(supabase, candidate);
-    if (clubByUser?.id) {
-      return {
-        club_profile_id: clubByUser.id ?? null,
-        club_display_name: (clubByUser as any).display_name ?? null,
-        club_city: (clubByUser as any).city ?? null,
-        club_province: (clubByUser as any).province ?? null,
-        club_region: (clubByUser as any).region ?? null,
-      };
-    }
+  let clubView: Record<string, unknown> | null = null;
+  if (clubProfileId) {
+    clubView = (await findClubById(supabase, clubProfileId)) as Record<string, unknown> | null;
   }
 
-  for (const candidate of [...new Set(candidates)]) {
-    const { data: profileById } = await supabase
-      .from('profiles')
-      .select('id,user_id')
-      .eq('id', candidate)
-      .maybeSingle();
-
-    const { data: profileByUser } = await supabase
-      .from('profiles')
-      .select('id,user_id')
-      .eq('user_id', candidate)
-      .maybeSingle();
-
-    const profileId = (profileById as any)?.id ?? (profileByUser as any)?.id ?? null;
-    const userId = (profileById as any)?.user_id ?? (profileByUser as any)?.user_id ?? null;
-
-    if (profileId) {
-      const clubByProfileId = await findClubById(supabase, profileId);
-      if (clubByProfileId?.id) {
-        return {
-          club_profile_id: clubByProfileId.id ?? null,
-          club_display_name: (clubByProfileId as any).display_name ?? null,
-          club_city: (clubByProfileId as any).city ?? null,
-          club_province: (clubByProfileId as any).province ?? null,
-          club_region: (clubByProfileId as any).region ?? null,
-        };
-      }
-    }
-
-    if (userId) {
-      const clubByProfileUser = await findClubByUserId(supabase, userId);
-      if (clubByProfileUser?.id) {
-        return {
-          club_profile_id: clubByProfileUser.id ?? null,
-          club_display_name: (clubByProfileUser as any).display_name ?? null,
-          club_city: (clubByProfileUser as any).city ?? null,
-          club_province: (clubByProfileUser as any).province ?? null,
-          club_region: (clubByProfileUser as any).region ?? null,
-        };
-      }
-    }
-  }
+  const clubDisplayName =
+    (typeof clubView?.display_name === 'string' && clubView.display_name) ||
+    profileDisplayName ||
+    profileFullName ||
+    (typeof row.club_name === 'string' && row.club_name) ||
+    null;
 
   return {
-    club_profile_id: null,
-    club_display_name: null,
-    club_city: null,
+    club_profile_id:
+      (typeof clubView?.id === 'string' && clubView.id) ||
+      clubProfileId ||
+      null,
+    club_display_name: clubDisplayName,
+    club_city: (typeof clubView?.city === 'string' && clubView.city) || null,
     club_province: null,
     club_region: null,
   };
