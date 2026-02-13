@@ -16,7 +16,80 @@ function getSupabase() {
 }
 
 const SELECT =
-  'id,title,description,owner_id,created_at,country,region,province,city,sport,role,category,required_category,age_min,age_max,club_name,gender';
+  'id,title,description,owner_id,created_by,club_id,created_at,country,region,province,city,sport,role,category,required_category,age_min,age_max,club_name,gender';
+
+type ClubInfo = {
+  club_profile_id: string | null;
+  club_display_name: string | null;
+  club_city: string | null;
+  club_province: string | null;
+  club_region: string | null;
+};
+
+async function findClubById(supabase: ReturnType<typeof getSupabase>, id: string) {
+  const { data, error } = await supabase
+    .from('clubs_view')
+    .select('id,display_name,city')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) return null;
+  return data;
+}
+
+async function findProfileByUserId(supabase: ReturnType<typeof getSupabase>, userId: string) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id,display_name,full_name,user_id,profile_type,account_type')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) return null;
+  return data;
+}
+
+async function resolveClubInfo(
+  supabase: ReturnType<typeof getSupabase>,
+  row: Record<string, unknown>
+): Promise<ClubInfo> {
+  const oppClubId = typeof row.club_id === 'string' && row.club_id ? row.club_id : null;
+  const userIdCandidate =
+    (typeof row.created_by === 'string' && row.created_by) ||
+    (typeof row.owner_id === 'string' && row.owner_id) ||
+    null;
+
+  let clubProfileId: string | null = oppClubId;
+  let profileDisplayName: string | null = null;
+  let profileFullName: string | null = null;
+
+  if (!clubProfileId && userIdCandidate) {
+    const profile = await findProfileByUserId(supabase, userIdCandidate);
+    clubProfileId = (profile as any)?.id ?? null;
+    profileDisplayName = (profile as any)?.display_name ?? null;
+    profileFullName = (profile as any)?.full_name ?? null;
+  }
+
+  let clubView: Record<string, unknown> | null = null;
+  if (clubProfileId) {
+    clubView = (await findClubById(supabase, clubProfileId)) as Record<string, unknown> | null;
+  }
+
+  const clubDisplayName =
+    (typeof clubView?.display_name === 'string' && clubView.display_name) ||
+    profileDisplayName ||
+    profileFullName ||
+    (typeof row.club_name === 'string' && row.club_name) ||
+    null;
+
+  return {
+    club_profile_id:
+      (typeof clubView?.id === 'string' && clubView.id) ||
+      clubProfileId ||
+      null,
+    club_display_name: clubDisplayName,
+    club_city: (typeof clubView?.city === 'string' && clubView.city) || null,
+    club_province: null,
+    club_region: null,
+  };
+}
 
 function extractId(req: NextRequest): string | null {
   const pathname = new URL(req.url).pathname;
@@ -67,7 +140,8 @@ export async function GET(
     if (error) return jsonError(error.message, 500);
     if (!data) return jsonError('Not found', 404);
 
-    return NextResponse.json({ data });
+    const clubInfo = await resolveClubInfo(supabase, data as Record<string, unknown>);
+    return NextResponse.json({ data: { ...data, ...clubInfo } });
   } catch (err: any) {
     return jsonError(err?.message || 'Unexpected error', 500);
   }
