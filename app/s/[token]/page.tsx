@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { headers } from 'next/headers';
+import type { Metadata } from 'next';
 import { ReadOnlyPostCard } from '@/components/feed/ReadOnlyPostCard';
 import type { FeedPost } from '@/components/feed/postShared';
 
@@ -23,6 +24,34 @@ type ShareApiResponse =
   | { ok: true; post: FeedPost }
   | { ok: false; message?: string };
 
+const FALLBACK_OG_IMAGE = '/og.jpg';
+const DEFAULT_OG_TITLE = 'Club & Player';
+const DEFAULT_OG_DESCRIPTION = 'Club & Player App';
+
+function asAbsoluteUrl(base: string, value: string) {
+  if (/^https?:\/\//i.test(value)) return value;
+  if (value.startsWith('/')) return `${base}${value}`;
+  return `${base}/${value}`;
+}
+
+function excerpt(text?: string | null, max = 180) {
+  if (!text) return DEFAULT_OG_DESCRIPTION;
+  const compact = text.replace(/\s+/g, ' ').trim();
+  if (!compact) return DEFAULT_OG_DESCRIPTION;
+  if (compact.length <= max) return compact;
+  return `${compact.slice(0, max - 1).trimEnd()}…`;
+}
+
+function hasImageMedia(post: FeedPost) {
+  if (post.media_type === 'image') return true;
+  return Array.isArray(post.media) && post.media.some((item) => item?.media_type === 'image');
+}
+
+function metadataTitle(post: FeedPost) {
+  const author = post.author_display_name?.trim();
+  return author ? `Post condiviso — ${author}` : 'Post condiviso — Club & Player';
+}
+
 async function fetchSharedPost(token: string): Promise<ShareApiResponse> {
   const baseUrl = await resolveBaseUrl();
   const res = await fetch(`${baseUrl}/api/share-links/${token}`, { cache: 'no-store' });
@@ -37,6 +66,76 @@ async function fetchSharedPost(token: string): Promise<ShareApiResponse> {
     return { ok: false, message: 'Errore temporaneo. Riprova più tardi.' };
   }
   return json as ShareApiResponse;
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ token?: string }> }): Promise<Metadata> {
+  const { token: rawToken } = await params;
+  const token = rawToken?.trim();
+  const baseUrl = await resolveBaseUrl();
+  const url = token ? `${baseUrl}/s/${token}` : `${baseUrl}/s`;
+  const fallbackImage = asAbsoluteUrl(baseUrl, FALLBACK_OG_IMAGE);
+
+  if (!token) {
+    return {
+      title: DEFAULT_OG_TITLE,
+      description: DEFAULT_OG_DESCRIPTION,
+      openGraph: {
+        title: DEFAULT_OG_TITLE,
+        description: DEFAULT_OG_DESCRIPTION,
+        url,
+        images: [{ url: fallbackImage }],
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title: DEFAULT_OG_TITLE,
+        description: DEFAULT_OG_DESCRIPTION,
+        images: [fallbackImage],
+      },
+    };
+  }
+
+  const data = await fetchSharedPost(token);
+  if (!data.ok) {
+    return {
+      title: DEFAULT_OG_TITLE,
+      description: DEFAULT_OG_DESCRIPTION,
+      openGraph: {
+        title: DEFAULT_OG_TITLE,
+        description: DEFAULT_OG_DESCRIPTION,
+        url,
+        images: [{ url: fallbackImage }],
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title: DEFAULT_OG_TITLE,
+        description: DEFAULT_OG_DESCRIPTION,
+        images: [fallbackImage],
+      },
+    };
+  }
+
+  const post = data.post;
+  const title = metadataTitle(post);
+  const description = excerpt(post.content ?? post.event_payload?.description ?? null);
+  const ogImage = hasImageMedia(post) && post.id ? `${baseUrl}/api/posts/${post.id}/og-image` : fallbackImage;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      url,
+      type: 'article',
+      images: [{ url: ogImage }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [ogImage],
+    },
+  };
 }
 
 export default async function SharedPostPage({ params }: { params: Promise<{ token?: string }> }) {
