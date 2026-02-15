@@ -4,6 +4,7 @@ export type NotificationKind =
   | 'message'
   | 'new_opportunity'
   | 'application_status'
+  | 'application_received'
   | 'system';
 
 export type NotificationRow = {

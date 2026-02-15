@@ -28,20 +28,20 @@ type Props = {
   compact?: boolean;
 };
 
-function renderContent(notification: NotificationWithActor) {
+function renderContent(notification: NotificationWithActor): { title: string; body?: string } {
   const kind = (notification.kind || '').toString();
   const payload = notification.payload || {};
   const actorName = notification.actor?.public_name ?? 'Un utente';
 
   switch (kind) {
     case 'new_follower':
-      return `${actorName} ha iniziato a seguirti`;
+      return { title: `${actorName} ha iniziato a seguirti` };
     case 'new_message':
     case 'message':
-      return `${actorName} ti ha inviato un messaggio`;
+      return { title: `${actorName} ti ha inviato un messaggio` };
     case 'new_opportunity': {
       const title = typeof payload?.title === 'string' ? payload.title : 'nuova opportunità';
-      return `${actorName || 'Un club'} ha pubblicato ${title}`;
+      return { title: `${actorName || 'Un club'} ha pubblicato ${title}` };
     }
     case 'application_status': {
       const title =
@@ -56,10 +56,31 @@ function renderContent(notification: NotificationWithActor) {
         : rawStatus === 'rejected'
         ? 'rifiutata'
         : 'aggiornata';
-      return `Candidatura ${statusLabel} per ${title}`;
+      return { title: `Candidatura ${statusLabel} per ${title}` };
+    }
+    case 'application_received': {
+      const playerName =
+        notification.actor?.public_name ??
+        (typeof payload?.athlete_name === 'string' ? payload.athlete_name : null) ??
+        'Un player';
+      const opportunityTitle =
+        typeof payload?.opportunity_title === 'string'
+          ? payload.opportunity_title
+          : typeof payload?.title === 'string'
+          ? payload.title
+          : null;
+      return {
+        title: 'Nuova candidatura ricevuta',
+        body: opportunityTitle
+          ? `${playerName} si è candidato a ${opportunityTitle}`
+          : `${playerName} ha inviato una candidatura`,
+      };
     }
     default:
-      return payload?.title ? String(payload.title) : 'Nuova notifica';
+      return {
+        title: payload?.title ? String(payload.title) : 'Nuova notifica',
+        body: typeof payload?.preview === 'string' ? payload.preview : undefined,
+      };
   }
 }
 
@@ -96,8 +117,16 @@ export default function NotificationItem({ notification, onClick, compact }: Pro
     if (notification.kind === 'application_status' && typeof payload.opportunity_id === 'string') {
       return `/opportunities/${payload.opportunity_id}`;
     }
+    if (notification.kind === 'application_received') {
+      if (typeof payload.opportunity_id === 'string') {
+        return `/club/applications?opportunity_id=${encodeURIComponent(payload.opportunity_id)}`;
+      }
+      return '/club/applications';
+    }
     return '/notifications';
   };
+
+  const content = renderContent(notification);
 
   return (
     <Link
@@ -109,8 +138,10 @@ export default function NotificationItem({ notification, onClick, compact }: Pro
     >
       {notification.actor ? <Avatar notification={notification} /> : null}
       <div className="flex-1 space-y-1">
-        <div className="font-semibold text-neutral-800">{renderContent(notification)}</div>
-        {notification.payload?.preview ? (
+        <div className="font-semibold text-neutral-800">{content.title}</div>
+        {content.body ? (
+          <p className="text-neutral-600 line-clamp-2">{content.body}</p>
+        ) : notification.payload?.preview ? (
           <p className="text-neutral-600 line-clamp-2">{String(notification.payload.preview)}</p>
         ) : null}
         <div className="text-xs text-neutral-500">
