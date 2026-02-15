@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 async function resolveBaseUrl() {
   const headerList = await headers();
   const host = headerList.get('host');
-  const proto = headerList.get('x-forwarded-proto') ?? 'http';
+  const proto = headerList.get('x-forwarded-proto') ?? 'https';
   if (host) {
     return `${proto}://${host}`;
   }
@@ -68,8 +68,8 @@ async function fetchSharedPost(token: string): Promise<ShareApiResponse> {
   return json as ShareApiResponse;
 }
 
-export async function generateMetadata({ params }: { params: Promise<{ token?: string }> }): Promise<Metadata> {
-  const { token: rawToken } = await params;
+export async function generateMetadata({ params }: { params: { token?: string } }): Promise<Metadata> {
+  const { token: rawToken } = params;
   const token = rawToken?.trim();
   const baseUrl = await resolveBaseUrl();
   const url = token ? `${baseUrl}/s/${token}` : `${baseUrl}/s`;
@@ -138,8 +138,8 @@ export async function generateMetadata({ params }: { params: Promise<{ token?: s
   };
 }
 
-export default async function SharedPostPage({ params }: { params: Promise<{ token?: string }> }) {
-  const { token: rawToken } = await params;
+export default async function SharedPostPage({ params }: { params: { token?: string } }) {
+  const { token: rawToken } = params;
   const token = rawToken?.trim();
   if (!token) {
     return (
