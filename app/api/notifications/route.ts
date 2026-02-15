@@ -6,6 +6,28 @@ import type { NotificationWithActor } from '@/types/notifications';
 export const runtime = 'nodejs';
 const ENDPOINT_VERSION = 'notifications@2026-01-05a';
 
+const isEmailLike = (value: unknown): value is string =>
+  typeof value === 'string' && /@/.test(value);
+
+const cleanName = (value: unknown): string | null => {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed || isEmailLike(trimmed)) return null;
+  return trimmed;
+};
+
+const resolveActorPublicName = (params: { viewRow: any; base: any }) => {
+  const { viewRow, base } = params;
+  const fallback = (base?.account_type ?? '').toLowerCase() === 'club' ? 'Club' : 'Player';
+  return (
+    cleanName(viewRow?.display_name) ||
+    cleanName(viewRow?.full_name) ||
+    cleanName(base?.full_name) ||
+    cleanName(base?.display_name) ||
+    fallback
+  );
+};
+
 export const GET = withAuth(async (req, { supabase, user }) => {
   try {
     const url = new URL(req.url);
@@ -77,8 +99,7 @@ export const GET = withAuth(async (req, { supabase, user }) => {
           : kind === 'club'
           ? clubNameMap.get(String(base.id))
           : null;
-      const publicName =
-        (viewRow?.display_name || viewRow?.full_name || base.full_name || base.display_name || null) as string | null;
+      const publicName = resolveActorPublicName({ viewRow, base });
       return {
         ...row,
         actor: {
