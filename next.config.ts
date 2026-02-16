@@ -20,8 +20,23 @@ const nextConfig: NextConfig = {
 
   // ✅ Usa domains per compatibilità + remotePatterns per bucket Supabase Storage
   images: {
-    domains: ['api.dicebear.com', 'via.placeholder.com', ...(supaHost ? [supaHost] : [])],
+    // ✅ necessario per consentire a Next Image optimizer di ottimizzare URL first-party:
+    // https://www.clubandplayer.com/storage/...
+    domains: [
+      'api.dicebear.com',
+      'via.placeholder.com',
+      'www.clubandplayer.com',
+      ...(supaHost ? [supaHost] : []),
+    ],
     remotePatterns: [
+      // ✅ first-party storage (rewrite Vercel -> Supabase)
+      {
+        protocol: 'https' as const,
+        hostname: 'www.clubandplayer.com',
+        pathname: '/storage/**',
+      },
+
+      // ✅ Supabase public storage (già usato nel resto dell'app)
       ...(supaHost
         ? [
             {
@@ -31,6 +46,7 @@ const nextConfig: NextConfig = {
             },
           ]
         : []),
+
       {
         protocol: 'https' as const,
         hostname: 'flagcdn.com',
