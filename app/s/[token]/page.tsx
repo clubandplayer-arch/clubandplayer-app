@@ -29,6 +29,8 @@ const DEFAULT_OG_TITLE = 'Club & Player';
 const DEFAULT_OG_DESCRIPTION = 'Club & Player App';
 const PUBLIC_SITE_URL = 'https://www.clubandplayer.com';
 const SUPABASE_PUBLIC_STORAGE_PATH = '/storage/v1/object/public/';
+const OG_IMAGE_OPTIMIZER_WIDTH = 1200;
+const OG_IMAGE_OPTIMIZER_QUALITY = 60;
 
 function asAbsoluteUrl(base: string, value: string) {
   if (/^https?:\/\//i.test(value)) return value;
@@ -90,6 +92,11 @@ function resolveOgImage(post: FeedPost, publicBaseUrl: string, fallbackImage: st
   }
 
   return fallbackImage;
+}
+
+function toOptimizedOgImageUrl(base: string, sourceUrl: string) {
+  const encodedSourceUrl = encodeURIComponent(sourceUrl);
+  return `${base}/_next/image?url=${encodedSourceUrl}&w=${OG_IMAGE_OPTIMIZER_WIDTH}&q=${OG_IMAGE_OPTIMIZER_QUALITY}`;
 }
 
 function metadataTitle(post: FeedPost) {
@@ -162,7 +169,9 @@ export async function generateMetadata({ params }: { params: { token?: string } 
   const post = data.post;
   const title = metadataTitle(post);
   const description = excerpt(post.content ?? post.event_payload?.description ?? null);
-  const ogImage = resolveOgImage(post, publicBaseUrl, fallbackImage);
+  const originalOgImage = resolveOgImage(post, publicBaseUrl, fallbackImage);
+  const isVideoPost = post.media?.[0]?.media_type === 'video';
+  const ogImage = isVideoPost ? toOptimizedOgImageUrl(publicBaseUrl, originalOgImage) : originalOgImage;
 
   return {
     title,
