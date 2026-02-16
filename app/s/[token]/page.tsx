@@ -59,6 +59,12 @@ function resolveOgImage(post: FeedPost, publicBaseUrl: string, fallbackImage: st
     if (poster && isImageUrl(poster)) {
       return asAbsoluteUrl(publicBaseUrl, poster);
     }
+
+    const authorAvatar = post.author_avatar_url;
+    if (authorAvatar && isImageUrl(authorAvatar)) {
+      return asAbsoluteUrl(publicBaseUrl, authorAvatar);
+    }
+
     return fallbackImage;
   }
 
