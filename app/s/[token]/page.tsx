@@ -27,6 +27,7 @@ type ShareApiResponse =
 const FALLBACK_OG_IMAGE = '/og.jpg';
 const DEFAULT_OG_TITLE = 'Club & Player';
 const DEFAULT_OG_DESCRIPTION = 'Club & Player App';
+const PUBLIC_SITE_URL = 'https://www.clubandplayer.com';
 
 function asAbsoluteUrl(base: string, value: string) {
   if (/^https?:\/\//i.test(value)) return value;
@@ -42,9 +43,39 @@ function excerpt(text?: string | null, max = 180) {
   return `${compact.slice(0, max - 1).trimEnd()}…`;
 }
 
-function hasImageMedia(post: FeedPost) {
-  if (post.media_type === 'image') return true;
-  return Array.isArray(post.media) && post.media.some((item) => item?.media_type === 'image');
+
+function isImageUrl(value?: string | null) {
+  if (!value) return false;
+  const pathname = value.split('?')[0]?.toLowerCase() ?? '';
+  return /\.(jpg|jpeg|png|webp|gif|avif)$/.test(pathname);
+}
+
+function resolveOgImage(post: FeedPost, publicBaseUrl: string, fallbackImage: string) {
+  const firstMedia = post.media?.[0] ?? null;
+  if (!firstMedia) return fallbackImage;
+
+  if (firstMedia.media_type === 'video') {
+    const poster = firstMedia.poster_url ?? firstMedia.posterUrl;
+    if (poster && isImageUrl(poster)) {
+      return asAbsoluteUrl(publicBaseUrl, poster);
+    }
+
+    const authorAvatar = post.author_avatar_url;
+    if (authorAvatar && isImageUrl(authorAvatar)) {
+      return asAbsoluteUrl(publicBaseUrl, authorAvatar);
+    }
+
+    return fallbackImage;
+  }
+
+  if (firstMedia.media_type === 'image') {
+    const imageCandidate = firstMedia.url ?? firstMedia.poster_url ?? firstMedia.posterUrl;
+    if (imageCandidate && isImageUrl(imageCandidate)) {
+      return asAbsoluteUrl(publicBaseUrl, imageCandidate);
+    }
+  }
+
+  return fallbackImage;
 }
 
 function metadataTitle(post: FeedPost) {
@@ -71,9 +102,9 @@ async function fetchSharedPost(token: string): Promise<ShareApiResponse> {
 export async function generateMetadata({ params }: { params: { token?: string } }): Promise<Metadata> {
   const { token: rawToken } = params;
   const token = rawToken?.trim();
-  const baseUrl = await resolveBaseUrl();
-  const url = token ? `${baseUrl}/s/${token}` : `${baseUrl}/s`;
-  const fallbackImage = asAbsoluteUrl(baseUrl, FALLBACK_OG_IMAGE);
+  const publicBaseUrl = PUBLIC_SITE_URL;
+  const url = token ? `${publicBaseUrl}/s/${token}` : `${publicBaseUrl}/s`;
+  const fallbackImage = asAbsoluteUrl(publicBaseUrl, FALLBACK_OG_IMAGE);
 
   if (!token) {
     return {
@@ -117,7 +148,7 @@ export async function generateMetadata({ params }: { params: { token?: string } 
   const post = data.post;
   const title = metadataTitle(post);
   const description = excerpt(post.content ?? post.event_payload?.description ?? null);
-  const ogImage = hasImageMedia(post) && post.id ? `${baseUrl}/api/posts/${post.id}/og-image` : fallbackImage;
+  const ogImage = resolveOgImage(post, publicBaseUrl, fallbackImage);
 
   return {
     title,
