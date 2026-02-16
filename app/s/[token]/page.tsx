@@ -28,11 +28,25 @@ const FALLBACK_OG_IMAGE = '/og.jpg';
 const DEFAULT_OG_TITLE = 'Club & Player';
 const DEFAULT_OG_DESCRIPTION = 'Club & Player App';
 const PUBLIC_SITE_URL = 'https://www.clubandplayer.com';
+const SUPABASE_PUBLIC_STORAGE_PATH = '/storage/v1/object/public/';
 
 function asAbsoluteUrl(base: string, value: string) {
   if (/^https?:\/\//i.test(value)) return value;
   if (value.startsWith('/')) return `${base}${value}`;
   return `${base}/${value}`;
+}
+
+function toFirstPartyStorageUrl(base: string, value: string) {
+  const absolute = asAbsoluteUrl(base, value);
+  const marker = `${SUPABASE_PUBLIC_STORAGE_PATH}`;
+  const storageIndex = absolute.toLowerCase().indexOf(marker);
+  if (storageIndex === -1) return absolute;
+
+  const assetWithQuery = absolute.slice(storageIndex + marker.length);
+  const [publicAssetPath, query = ''] = assetWithQuery.split('?');
+  if (!publicAssetPath) return absolute;
+
+  return `${base}/storage/${publicAssetPath}${query ? `?${query}` : ''}`;
 }
 
 function excerpt(text?: string | null, max = 180) {
@@ -57,12 +71,12 @@ function resolveOgImage(post: FeedPost, publicBaseUrl: string, fallbackImage: st
   if (firstMedia.media_type === 'video') {
     const poster = firstMedia.poster_url ?? firstMedia.posterUrl;
     if (poster && isImageUrl(poster)) {
-      return asAbsoluteUrl(publicBaseUrl, poster);
+      return toFirstPartyStorageUrl(publicBaseUrl, poster);
     }
 
     const authorAvatar = post.author_avatar_url;
     if (authorAvatar && isImageUrl(authorAvatar)) {
-      return asAbsoluteUrl(publicBaseUrl, authorAvatar);
+      return toFirstPartyStorageUrl(publicBaseUrl, authorAvatar);
     }
 
     return fallbackImage;
@@ -71,7 +85,7 @@ function resolveOgImage(post: FeedPost, publicBaseUrl: string, fallbackImage: st
   if (firstMedia.media_type === 'image') {
     const imageCandidate = firstMedia.url ?? firstMedia.poster_url ?? firstMedia.posterUrl;
     if (imageCandidate && isImageUrl(imageCandidate)) {
-      return asAbsoluteUrl(publicBaseUrl, imageCandidate);
+      return toFirstPartyStorageUrl(publicBaseUrl, imageCandidate);
     }
   }
 
