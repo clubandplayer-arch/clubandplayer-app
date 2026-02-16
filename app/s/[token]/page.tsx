@@ -59,7 +59,6 @@ function excerpt(text?: string | null, max = 180) {
   return `${compact.slice(0, max - 1).trimEnd()}…`;
 }
 
-
 function isImageUrl(value?: string | null) {
   if (!value) return false;
   const pathname = value.split('?')[0]?.toLowerCase() ?? '';
@@ -95,7 +94,11 @@ function resolveOgImage(post: FeedPost, publicBaseUrl: string, fallbackImage: st
 }
 
 function toOptimizedOgImageUrl(base: string, sourceUrl: string) {
-  const encodedSourceUrl = encodeURIComponent(sourceUrl);
+  // IMPORTANT:
+  // `sourceUrl` MUST be absolute here because `/storage/*` is served via Vercel rewrite.
+  // Next Image optimizer can't reliably fetch a rewritten internal path.
+  const absolute = asAbsoluteUrl(base, sourceUrl);
+  const encodedSourceUrl = encodeURIComponent(absolute);
   return `${base}/_next/image?url=${encodedSourceUrl}&w=${OG_IMAGE_OPTIMIZER_WIDTH}&q=${OG_IMAGE_OPTIMIZER_QUALITY}`;
 }
 
@@ -169,9 +172,14 @@ export async function generateMetadata({ params }: { params: { token?: string } 
   const post = data.post;
   const title = metadataTitle(post);
   const description = excerpt(post.content ?? post.event_payload?.description ?? null);
+
   const originalOgImage = resolveOgImage(post, publicBaseUrl, fallbackImage);
   const isVideoPost = post.media?.[0]?.media_type === 'video';
-  const ogImage = isVideoPost ? toOptimizedOgImageUrl(publicBaseUrl, originalOgImage) : originalOgImage;
+
+  // Optimize ONLY for first-party storage images.
+  // This avoids optimizing avatars, /og.jpg, etc.
+  const canOptimize = isVideoPost && originalOgImage.startsWith(`${publicBaseUrl}/storage/`);
+  const ogImage = canOptimize ? toOptimizedOgImageUrl(publicBaseUrl, originalOgImage) : originalOgImage;
 
   return {
     title,
