@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.clubandplayer.app",
+      "sha256_cert_fingerprints": [
+        "9A:E7:CC:83:6E:08:67:CF:B6:A3:9D:52:77:50:03:E3:00:AB:B3:E5:14:6E:68:79:4D:E3:F0:20:2E:82:65:6B"
+      ]
+    }
+  }
+]
