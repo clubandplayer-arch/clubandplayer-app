@@ -161,6 +161,85 @@ export async function POST(req: NextRequest) {
         .insert({ post_id: postId, user_id: userRes.user.id, reaction: validReaction });
 
       if (insErr) throw insErr;
+
+      try {
+        const admin = getSupabaseAdminClientOrNull();
+        const notificationsClient = admin ?? supabase;
+
+        const { data: postRow } = await notificationsClient
+          .from('posts')
+          .select('id, author_id')
+          .eq('id', postId)
+          .maybeSingle();
+
+        const postAuthorId = postRow?.author_id ? String(postRow.author_id) : null;
+
+        let recipientUserId: string | null = null;
+        let recipientProfileId: string | null = null;
+
+        if (postAuthorId) {
+          const { data: ownerByUser } = await notificationsClient
+            .from('profiles')
+            .select('id, user_id')
+            .eq('user_id', postAuthorId)
+            .maybeSingle();
+
+          if (ownerByUser?.id) {
+            recipientProfileId = String(ownerByUser.id);
+            recipientUserId = ownerByUser.user_id ? String(ownerByUser.user_id) : postAuthorId;
+          } else {
+            const { data: ownerById } = await notificationsClient
+              .from('profiles')
+              .select('id, user_id')
+              .eq('id', postAuthorId)
+              .maybeSingle();
+
+            if (ownerById?.id) {
+              recipientProfileId = String(ownerById.id);
+              recipientUserId = ownerById.user_id ? String(ownerById.user_id) : null;
+            }
+          }
+        }
+
+        const { data: actorByUser } = await notificationsClient
+          .from('profiles')
+          .select('id')
+          .eq('user_id', userRes.user.id)
+          .maybeSingle();
+
+        const actorProfileId = actorByUser?.id ? String(actorByUser.id) : null;
+
+        const isSelfByUser = !!recipientUserId && recipientUserId === userRes.user.id;
+        const isSelfByProfile = !!recipientProfileId && !!actorProfileId && recipientProfileId === actorProfileId;
+
+        if (recipientUserId && recipientProfileId && !isSelfByUser && !isSelfByProfile) {
+          const { error: notificationError } = await notificationsClient.from('notifications').insert({
+            user_id: recipientUserId,
+            recipient_profile_id: recipientProfileId,
+            actor_profile_id: actorProfileId,
+            kind: 'new_reaction',
+            payload: {
+              post_id: postId,
+              reaction: validReaction,
+            },
+            read: false,
+          });
+
+          if (notificationError) {
+            console.warn('[feed/reactions][POST] failed to insert notification', {
+              postId,
+              recipientUserId,
+              message: notificationError.message,
+            });
+          }
+        }
+      } catch (notificationErr: any) {
+        console.warn('[feed/reactions][POST] notification flow failed', {
+          postId,
+          reaction: validReaction,
+          message: notificationErr?.message,
+        });
+      }
     }
 
     let rows: Array<{ post_id: string; reaction: ReactionType; user_id?: string }> = [];

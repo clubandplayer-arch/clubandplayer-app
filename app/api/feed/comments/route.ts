@@ -173,6 +173,86 @@ export async function POST(req: NextRequest) {
     return dbError('Errore nel salvataggio del commento', { message: error?.message });
   }
 
+  try {
+    const admin = getSupabaseAdminClientOrNull();
+    const notificationsClient = admin ?? supabase;
+
+    const { data: postRow } = await notificationsClient
+      .from('posts')
+      .select('id, author_id')
+      .eq('id', postId)
+      .maybeSingle();
+
+    const postAuthorId = postRow?.author_id ? String(postRow.author_id) : null;
+
+    let recipientUserId: string | null = null;
+    let recipientProfileId: string | null = null;
+
+    if (postAuthorId) {
+      const { data: ownerByUser } = await notificationsClient
+        .from('profiles')
+        .select('id, user_id')
+        .eq('user_id', postAuthorId)
+        .maybeSingle();
+
+      if (ownerByUser?.id) {
+        recipientProfileId = String(ownerByUser.id);
+        recipientUserId = ownerByUser.user_id ? String(ownerByUser.user_id) : postAuthorId;
+      } else {
+        const { data: ownerById } = await notificationsClient
+          .from('profiles')
+          .select('id, user_id')
+          .eq('id', postAuthorId)
+          .maybeSingle();
+
+        if (ownerById?.id) {
+          recipientProfileId = String(ownerById.id);
+          recipientUserId = ownerById.user_id ? String(ownerById.user_id) : null;
+        }
+      }
+    }
+
+    const { data: actorByUser } = await notificationsClient
+      .from('profiles')
+      .select('id')
+      .eq('user_id', auth.user.id)
+      .maybeSingle();
+
+    const actorProfileId = actorByUser?.id ? String(actorByUser.id) : null;
+
+    const isSelfByUser = !!recipientUserId && recipientUserId === auth.user.id;
+    const isSelfByProfile = !!recipientProfileId && !!actorProfileId && recipientProfileId === actorProfileId;
+
+    if (recipientUserId && recipientProfileId && !isSelfByUser && !isSelfByProfile) {
+      const { error: notificationError } = await notificationsClient.from('notifications').insert({
+        user_id: recipientUserId,
+        recipient_profile_id: recipientProfileId,
+        actor_profile_id: actorProfileId,
+        kind: 'new_comment',
+        payload: {
+          post_id: postId,
+          comment_id: data.id,
+        },
+        read: false,
+      });
+
+      if (notificationError) {
+        console.warn('[api/feed/comments][POST] failed to insert notification', {
+          postId,
+          commentId: data.id,
+          recipientUserId,
+          message: notificationError.message,
+        });
+      }
+    }
+  } catch (notificationErr: any) {
+    console.warn('[api/feed/comments][POST] notification flow failed', {
+      postId,
+      commentId: data.id,
+      message: notificationErr?.message,
+    });
+  }
+
   const { data: profile } = await supabase
     .from('profiles')
     .select('id, user_id, full_name, display_name, avatar_url, account_type, status')
