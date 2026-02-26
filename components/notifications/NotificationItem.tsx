@@ -39,6 +39,18 @@ function renderContent(notification: NotificationWithActor): { title: string; bo
     case 'new_message':
     case 'message':
       return { title: `${actorName} ti ha inviato un messaggio` };
+    case 'new_comment': {
+      if (typeof payload.post_id !== 'string' || !payload.post_id.trim()) {
+        return { title: 'Nuova notifica' };
+      }
+      return { title: `${actorName} ha commentato un tuo post` };
+    }
+    case 'new_reaction': {
+      if (typeof payload.post_id !== 'string' || !payload.post_id.trim()) {
+        return { title: 'Nuova notifica' };
+      }
+      return { title: `${actorName} ha reagito a un tuo post` };
+    }
     case 'new_opportunity': {
       const title = typeof payload?.title === 'string' ? payload.title : 'nuova opportunità';
       return { title: `${actorName || 'Un club'} ha pubblicato ${title}` };
@@ -111,6 +123,12 @@ export default function NotificationItem({ notification, onClick, compact }: Pro
     if (notification.kind === 'new_follower' && typeof payload.follower_profile_id === 'string') {
       return `/profiles/${payload.follower_profile_id}`;
     }
+    if (notification.kind === 'new_comment' && typeof payload.post_id === 'string' && payload.post_id.trim()) {
+      return `/posts/${payload.post_id}`;
+    }
+    if (notification.kind === 'new_reaction' && typeof payload.post_id === 'string' && payload.post_id.trim()) {
+      return `/posts/${payload.post_id}`;
+    }
     if (notification.kind === 'new_opportunity' && typeof payload.opportunity_id === 'string') {
       return `/opportunities/${payload.opportunity_id}`;
     }
@@ -123,18 +141,40 @@ export default function NotificationItem({ notification, onClick, compact }: Pro
       }
       return '/club/applications';
     }
-    return '/notifications';
+    return null;
   };
 
   const content = renderContent(notification);
+  const href = hrefFromPayload();
+  const className = `flex items-start gap-3 rounded-lg border p-3 text-sm transition hover:bg-neutral-50 ${
+    notification.read_at ? 'opacity-75' : 'bg-blue-50/40'
+  } ${compact ? '!border-transparent' : ''}`;
+
+  if (!href) {
+    return (
+      <div onClick={onClick} className={className}>
+        {notification.actor ? <Avatar notification={notification} /> : null}
+        <div className="flex-1 space-y-1">
+          <div className="font-semibold text-neutral-800">{content.title}</div>
+          {content.body ? (
+            <p className="text-neutral-600 line-clamp-2">{content.body}</p>
+          ) : notification.payload?.preview ? (
+            <p className="text-neutral-600 line-clamp-2">{String(notification.payload.preview)}</p>
+          ) : null}
+          <div className="text-xs text-neutral-500">
+            {formatRelative(notification.created_at)}
+          </div>
+        </div>
+        {!notification.read_at && <span className="mt-1 h-2 w-2 rounded-full bg-blue-500" aria-label="Non letta" />}
+      </div>
+    );
+  }
 
   return (
     <Link
-      href={hrefFromPayload()}
+      href={href}
       onClick={onClick}
-      className={`flex items-start gap-3 rounded-lg border p-3 text-sm transition hover:bg-neutral-50 ${
-        notification.read_at ? 'opacity-75' : 'bg-blue-50/40'
-      } ${compact ? '!border-transparent' : ''}`}
+      className={className}
     >
       {notification.actor ? <Avatar notification={notification} /> : null}
       <div className="flex-1 space-y-1">
