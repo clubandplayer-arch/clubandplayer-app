@@ -84,6 +84,7 @@ export function DirectMessageThread({
   const [editingContent, setEditingContent] = useState('');
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const lastMessageRef = useRef<HTMLDivElement | null>(null);
+  const didMarkReadRef = useRef(false);
   const thread = useMemo(() => messages || [], [messages]);
   const isDock = layout === 'dock';
 
@@ -173,7 +174,13 @@ export function DirectMessageThread({
   }, [reloadThread]);
 
   useEffect(() => {
+    didMarkReadRef.current = false;
+  }, [targetProfileId]);
+
+  useEffect(() => {
     if (loading || error) return;
+    if (didMarkReadRef.current) return;
+    didMarkReadRef.current = true;
     let cancelled = false;
 
     const markRead = async () => {
@@ -190,7 +197,7 @@ export function DirectMessageThread({
     return () => {
       cancelled = true;
     };
-  }, [error, loading, targetProfileId, thread.length]);
+  }, [error, loading, targetProfileId]);
 
   useEffect(() => {
     scrollMessagesToBottom();
