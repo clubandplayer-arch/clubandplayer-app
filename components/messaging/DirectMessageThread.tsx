@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -103,33 +103,74 @@ export function DirectMessageThread({
     return Date.now() - created <= 30_000;
   };
 
+  const reloadThread = useCallback(async () => {
+    setError(null);
+    try {
+      const threadData = await getDirectThread(targetProfileId);
+      setMessages(threadData.messages || []);
+      setCurrentProfileId(threadData.currentProfileId ?? null);
+      setPeerAccountType(threadData.peer?.account_type ?? targetAccountType ?? null);
+    } catch (err: any) {
+      const message = err?.message || 'Errore caricamento messaggi';
+      console.error('[direct-messages] thread load failed', { error: err, targetProfileId });
+      setError(message);
+      show(message, { variant: 'error' });
+    }
+  }, [show, targetAccountType, targetProfileId]);
+
   useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
+    let mounted = true;
+
+    const startPolling = () => {
+      if (!mounted || typeof document === 'undefined' || document.visibilityState !== 'visible') return;
+      return window.setInterval(() => {
+        void reloadThread();
+      }, 3000);
+    };
+
+    let intervalId: number | undefined;
+
+    const loadOnMount = async () => {
       setLoading(true);
-      setError(null);
-      try {
-        const threadData = await getDirectThread(targetProfileId);
-        if (cancelled) return;
-        setMessages(threadData.messages || []);
-        setCurrentProfileId(threadData.currentProfileId ?? null);
-        setPeerAccountType(threadData.peer?.account_type ?? targetAccountType ?? null);
-      } catch (err: any) {
-        if (cancelled) return;
-        const message = err?.message || 'Errore caricamento messaggi';
-        console.error('[direct-messages] thread load failed', { error: err, targetProfileId });
-        setError(message);
-        show(message, { variant: 'error' });
-      } finally {
-        if (!cancelled) setLoading(false);
+      await reloadThread();
+      if (mounted) {
+        setLoading(false);
+        intervalId = startPolling();
       }
     };
 
-    void load();
-    return () => {
-      cancelled = true;
+    const stopPolling = () => {
+      if (typeof intervalId === 'number') {
+        window.clearInterval(intervalId);
+        intervalId = undefined;
+      }
     };
-  }, [show, targetAccountType, targetProfileId]);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void reloadThread();
+        stopPolling();
+        intervalId = startPolling();
+        return;
+      }
+      stopPolling();
+    };
+
+    const handleFocus = () => {
+      void reloadThread();
+    };
+
+    void loadOnMount();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      mounted = false;
+      stopPolling();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [reloadThread]);
 
   useEffect(() => {
     if (loading || error) return;
@@ -160,9 +201,9 @@ export function DirectMessageThread({
     if (!trimmed || sending) return;
     setSending(true);
     try {
-      const newMessage = await sendDirectMessage(targetProfileId, { text: trimmed });
-      setMessages((prev) => [...prev, newMessage].filter(Boolean));
+      await sendDirectMessage(targetProfileId, { text: trimmed });
       setContent('');
+      await reloadThread();
     } catch (err: any) {
       const message = err?.message || 'Errore invio messaggio';
       console.error('[direct-messages] send message failed', { error: err, targetProfileId });
