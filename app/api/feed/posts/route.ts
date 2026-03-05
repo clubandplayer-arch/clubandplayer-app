@@ -112,6 +112,16 @@ function normalizeProfileRow(raw: any): ProfileRow | null {
   };
 }
 
+function resolveAuthorName(profile: ProfileRow | null | undefined): string {
+  const full = profile?.full_name?.trim();
+  if (full) return full;
+
+  const display = profile?.display_name?.trim();
+  if (display && !display.includes('@')) return display;
+
+  return 'Utente';
+}
+
 function normalizeRow(row: any, quotedMap?: Map<string, any>, depth = 0): any {
   const aspectFromUrl = inferAspectFromUrl(row.media_url);
   const quotedRaw: any = row.quoted_post_id ? quotedMap?.get(row.quoted_post_id) : null;
@@ -130,9 +140,10 @@ function normalizeRow(row: any, quotedMap?: Map<string, any>, depth = 0): any {
       ? buildProfileDisplayName(
           authorProfile.full_name ?? undefined,
           authorProfile.display_name ?? undefined,
-          fallbackAuthorDisplayName ?? 'Profilo',
+          fallbackAuthorDisplayName ?? 'Utente',
         )
       : fallbackAuthorDisplayName;
+  const authorResolvedName = authorProfile ? resolveAuthorName(authorProfile) : authorDisplayName ?? 'Utente';
   const authorAvatarUrl = authorProfile?.avatar_url ?? (row as any)?.author_avatar_url ?? null;
   const authorRole = normRole(authorProfile?.account_type ?? authorProfile?.type) ?? null;
   const authorProfileId = (authorProfile?.id as string | undefined) ?? null;
@@ -167,6 +178,13 @@ function normalizeRow(row: any, quotedMap?: Map<string, any>, depth = 0): any {
     author_profile_id: authorProfileId,
     author_profile: authorProfile,
     author_user_id: authorUserId,
+    author: {
+      id: authorProfileId,
+      full_name: authorResolvedName,
+      display_name: authorProfile?.display_name ?? null,
+      avatar_url: authorAvatarUrl,
+      account_type: authorProfile?.account_type ?? authorProfile?.type ?? null,
+    },
     media,
   };
 }
