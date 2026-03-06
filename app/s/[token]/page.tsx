@@ -65,21 +65,37 @@ function isImageUrl(value?: string | null) {
   return /\.(jpg|jpeg|png|webp|gif|avif)$/.test(pathname);
 }
 
+function collectVideoImageCandidates(media: NonNullable<FeedPost['media']>[number] | null | undefined) {
+  if (!media) return [];
+  const item = media as Record<string, unknown>;
+  return [
+    item.poster_url,
+    item.posterUrl,
+    item.thumbnail_url,
+    item.thumbnailUrl,
+    item.frame_url,
+    item.frameUrl,
+    item.preview_image,
+    item.previewImage,
+    item.snapshot_url,
+    item.snapshotUrl,
+    item.url,
+  ]
+    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    .map((value) => value.trim());
+}
+
 function resolveOgImage(post: FeedPost, publicBaseUrl: string, fallbackImage: string) {
   const firstMedia = post.media?.[0] ?? null;
   if (!firstMedia) return fallbackImage;
 
   if (firstMedia.media_type === 'video') {
-    const poster = firstMedia.poster_url ?? firstMedia.posterUrl;
-    if (poster && isImageUrl(poster)) {
-      return toFirstPartyStorageUrl(publicBaseUrl, poster);
+    const candidates = collectVideoImageCandidates(firstMedia);
+    for (const candidate of candidates) {
+      if (isImageUrl(candidate)) {
+        return toFirstPartyStorageUrl(publicBaseUrl, candidate);
+      }
     }
-
-    const authorAvatar = post.author_avatar_url;
-    if (authorAvatar && isImageUrl(authorAvatar)) {
-      return toFirstPartyStorageUrl(publicBaseUrl, authorAvatar);
-    }
-
     return fallbackImage;
   }
 
@@ -175,15 +191,23 @@ export async function generateMetadata({ params }: { params: { token?: string } 
 
   const originalOgImage = resolveOgImage(post, publicBaseUrl, fallbackImage);
   const isVideoPost = post.media?.[0]?.media_type === 'video';
+  const hasMedia = Boolean(post.media?.length);
+  const isTextOnlyPost = !hasMedia;
+  const textOnlyOgImage = `${publicBaseUrl}/s/${token}/opengraph-image`;
 
   // Optimize ONLY for first-party storage images.
   // This avoids optimizing avatars, /og.jpg, etc.
   const canOptimize = isVideoPost && originalOgImage.startsWith(`${publicBaseUrl}/storage/`);
-  const ogImage = canOptimize ? toOptimizedOgImageUrl(publicBaseUrl, originalOgImage) : originalOgImage;
+  const ogImage = isTextOnlyPost
+    ? textOnlyOgImage
+    : canOptimize
+      ? toOptimizedOgImageUrl(publicBaseUrl, originalOgImage)
+      : originalOgImage;
 
   return {
     title,
     description,
+    alternates: { canonical: url },
     openGraph: {
       title,
       description,
