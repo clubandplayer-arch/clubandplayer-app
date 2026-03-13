@@ -170,8 +170,11 @@ async function fetchProfileResults(params: {
 
   if (kind === 'clubs') {
     let clubsQuery = supabase
-      .from('clubs_view')
-      .select('id, display_name, city, province, region, country', { count: 'exact' })
+      .from('profiles')
+      .select('id, display_name, full_name, avatar_url, city, province, region, country, sport', { count: 'exact' })
+      .eq('status', 'active')
+      .neq('is_admin', true)
+      .or('account_type.eq.club,type.eq.club')
       .order('display_name', { ascending: true })
       .range(from, to);
 
@@ -180,10 +183,12 @@ async function fetchProfileResults(params: {
       clubsQuery = clubsQuery.or(
         [
           `display_name.ilike.${ilikeQuery}`,
+          `full_name.ilike.${ilikeQuery}`,
           `city.ilike.${ilikeQuery}`,
           `province.ilike.${ilikeQuery}`,
           `region.ilike.${ilikeQuery}`,
           `country.ilike.${ilikeQuery}`,
+          `sport.ilike.${ilikeQuery}`,
         ].join(','),
       );
     }
@@ -192,33 +197,16 @@ async function fetchProfileResults(params: {
     if (error) throw new Error(error.message);
 
     const rows = Array.isArray(data) ? (data as any[]) : [];
-    const clubIds = rows.map((row) => row.id).filter(Boolean);
-    let extrasMap = new Map<
-      string,
-      { avatar_url?: string | null; city?: string | null; province?: string | null; region?: string | null; country?: string | null; sport?: string | null }
-    >();
-
-    if (clubIds.length) {
-      const { data: extras, error: extrasError } = await supabase
-        .from('profiles')
-        .select('id, avatar_url, city, province, region, country, sport')
-        .in('id', clubIds);
-      if (extrasError) throw new Error(extrasError.message);
-      extrasMap = new Map(
-        (extras ?? []).map((row) => [String(row.id), row as { avatar_url?: string | null; city?: string | null; province?: string | null; region?: string | null; country?: string | null; sport?: string | null }]),
-      );
-    }
 
     const results: SearchResult[] = rows.map((row) => {
-      const displayName = (row.display_name || '').trim();
-      const extras = extrasMap.get(String(row.id));
-      const location = buildLocation(extras ?? {});
-      const subtitle = [extras?.sport, location].filter(Boolean).join(' · ');
+      const displayName = (row.display_name || row.full_name || '').trim();
+      const location = buildLocation(row);
+      const subtitle = [row.sport, location].filter(Boolean).join(' · ');
       return {
         id: String(row.id),
         title: displayName || 'Club',
         subtitle: subtitle || null,
-        image_url: extras?.avatar_url ?? null,
+        image_url: row.avatar_url ?? null,
         href: `/clubs/${row.id}`,
         kind,
       };
@@ -264,18 +252,23 @@ async function fetchProfileCount(params: {
   const { supabase, kind, ilikeQuery, geo } = params;
   if (kind === 'clubs') {
     let clubsCountQuery = supabase
-      .from('clubs_view')
-      .select('id', { count: 'exact', head: true });
+      .from('profiles')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'active')
+      .neq('is_admin', true)
+      .or('account_type.eq.club,type.eq.club');
 
     clubsCountQuery = applyGeoFilters(clubsCountQuery, geo);
     if (ilikeQuery) {
       clubsCountQuery = clubsCountQuery.or(
         [
           `display_name.ilike.${ilikeQuery}`,
+          `full_name.ilike.${ilikeQuery}`,
           `city.ilike.${ilikeQuery}`,
           `province.ilike.${ilikeQuery}`,
           `region.ilike.${ilikeQuery}`,
           `country.ilike.${ilikeQuery}`,
+          `sport.ilike.${ilikeQuery}`,
         ].join(','),
       );
     }
