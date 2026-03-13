@@ -33,6 +33,13 @@ type CountsByKind = {
   events: number;
 };
 
+type GeoFilters = {
+  country: string | null;
+  region: string | null;
+  province: string | null;
+  city: string | null;
+};
+
 const EMPTY_RESULTS: SearchResultsByKind = {
   opportunities: [],
   clubs: [],
@@ -64,6 +71,40 @@ function buildLocation(row: Record<string, any>) {
   return buildLocationFrom([row.city, row.province, row.region, row.country]);
 }
 
+function parseGeoFilters(url: URL): GeoFilters {
+  const clean = (key: keyof GeoFilters) => {
+    const raw = url.searchParams.get(key);
+    if (!raw) return null;
+    const trimmed = raw.trim();
+    return trimmed ? trimmed : null;
+  };
+
+  return {
+    country: clean('country'),
+    region: clean('region'),
+    province: clean('province'),
+    city: clean('city'),
+  };
+}
+
+function hasGeoFilters(geo: GeoFilters) {
+  return Boolean(geo.country || geo.region || geo.province || geo.city);
+}
+
+function applyGeoFilters<T>(query: T, geo: GeoFilters): T {
+  let next: any = query;
+
+  if (geo.country) {
+    const normalizedCountry = geo.country.trim().toUpperCase();
+    next = normalizedCountry.length <= 3 ? next.eq('country', normalizedCountry) : next.ilike('country', toIlikePattern(geo.country));
+  }
+  if (geo.region) next = next.ilike('region', toIlikePattern(geo.region));
+  if (geo.province) next = next.ilike('province', toIlikePattern(geo.province));
+  if (geo.city) next = next.ilike('city', toIlikePattern(geo.city));
+
+  return next;
+}
+
 function normalizeType(raw?: string | null): SearchType {
   const cleaned = (raw || '').toLowerCase().trim();
   const aliases: Record<string, SearchType> = {
@@ -90,11 +131,13 @@ function emptyCounts(): CountsByKind {
 function buildProfileQuery(
   supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>,
   table: 'athletes_view' | 'clubs_view',
-  ilikeQuery: string,
+  ilikeQuery: string | null,
+  geo: GeoFilters,
   select: string,
   options?: { count?: 'exact'; head?: boolean },
 ) {
   let query = supabase.from(table).select(select, options).eq('status', 'active');
+  query = applyGeoFilters(query, geo);
 
   const commonOr = [
     `city.ilike.${ilikeQuery}`,
@@ -106,7 +149,9 @@ function buildProfileQuery(
   const athleteOr = [`full_name.ilike.${ilikeQuery}`, ...commonOr, `role.ilike.${ilikeQuery}`];
   const clubOr = [`display_name.ilike.${ilikeQuery}`, ...commonOr];
 
-  query = query.or((table === 'athletes_view' ? athleteOr : clubOr).join(','));
+  if (ilikeQuery) {
+    query = query.or((table === 'athletes_view' ? athleteOr : clubOr).join(','));
+  }
 
   return query;
 }
@@ -114,21 +159,36 @@ function buildProfileQuery(
 async function fetchProfileResults(params: {
   supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>;
   kind: 'clubs' | 'players';
-  ilikeQuery: string;
+  ilikeQuery: string | null;
+  geo: GeoFilters;
   limit: number;
   page: number;
 }) {
-  const { supabase, kind, ilikeQuery, limit, page } = params;
+  const { supabase, kind, ilikeQuery, geo, limit, page } = params;
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
   if (kind === 'clubs') {
-    const { data, count, error } = await supabase
+    let clubsQuery = supabase
       .from('clubs_view')
-      .select('id, display_name', { count: 'exact' })
-      .ilike('display_name', ilikeQuery)
+      .select('id, display_name, city, province, region, country', { count: 'exact' })
       .order('display_name', { ascending: true })
       .range(from, to);
+
+    clubsQuery = applyGeoFilters(clubsQuery, geo);
+    if (ilikeQuery) {
+      clubsQuery = clubsQuery.or(
+        [
+          `display_name.ilike.${ilikeQuery}`,
+          `city.ilike.${ilikeQuery}`,
+          `province.ilike.${ilikeQuery}`,
+          `region.ilike.${ilikeQuery}`,
+          `country.ilike.${ilikeQuery}`,
+        ].join(','),
+      );
+    }
+
+    const { data, count, error } = await clubsQuery;
     if (error) throw new Error(error.message);
 
     const rows = Array.isArray(data) ? (data as any[]) : [];
@@ -168,7 +228,7 @@ async function fetchProfileResults(params: {
   }
 
   const table = 'athletes_view';
-  const query = buildProfileQuery(supabase, table, ilikeQuery, ATHLETES_SELECT, { count: 'exact' })
+  const query = buildProfileQuery(supabase, table, ilikeQuery, geo, ATHLETES_SELECT, { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(from, to);
 
@@ -198,18 +258,33 @@ async function fetchProfileResults(params: {
 async function fetchProfileCount(params: {
   supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>;
   kind: 'clubs' | 'players';
-  ilikeQuery: string;
+  ilikeQuery: string | null;
+  geo: GeoFilters;
 }) {
-  const { supabase, kind, ilikeQuery } = params;
+  const { supabase, kind, ilikeQuery, geo } = params;
   if (kind === 'clubs') {
-    const { count, error } = await supabase
+    let clubsCountQuery = supabase
       .from('clubs_view')
-      .select('id', { count: 'exact', head: true })
-      .ilike('display_name', ilikeQuery);
+      .select('id', { count: 'exact', head: true });
+
+    clubsCountQuery = applyGeoFilters(clubsCountQuery, geo);
+    if (ilikeQuery) {
+      clubsCountQuery = clubsCountQuery.or(
+        [
+          `display_name.ilike.${ilikeQuery}`,
+          `city.ilike.${ilikeQuery}`,
+          `province.ilike.${ilikeQuery}`,
+          `region.ilike.${ilikeQuery}`,
+          `country.ilike.${ilikeQuery}`,
+        ].join(','),
+      );
+    }
+
+    const { count, error } = await clubsCountQuery;
     if (error) throw new Error(error.message);
     return count ?? 0;
   }
-  const query = buildProfileQuery(supabase, 'athletes_view', ilikeQuery, 'id', { count: 'exact', head: true });
+  const query = buildProfileQuery(supabase, 'athletes_view', ilikeQuery, geo, 'id', { count: 'exact', head: true });
   const { count, error } = await query;
   if (error) throw new Error(error.message);
   return count ?? 0;
@@ -217,15 +292,17 @@ async function fetchProfileCount(params: {
 
 function buildOpportunityQuery(
   supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>,
-  ilikeQuery: string,
+  ilikeQuery: string | null,
+  geo: GeoFilters,
   select: string,
   options?: { count?: 'exact'; head?: boolean },
   status?: string | null,
 ) {
-  let query = supabase
-    .from('opportunities')
-    .select(select, options)
-    .or(
+  let query = supabase.from('opportunities').select(select, options);
+  query = applyGeoFilters(query, geo);
+
+  if (ilikeQuery) {
+    query = query.or(
       [
         `title.ilike.${ilikeQuery}`,
         `description.ilike.${ilikeQuery}`,
@@ -237,6 +314,7 @@ function buildOpportunityQuery(
         `role.ilike.${ilikeQuery}`,
       ].join(','),
     );
+  }
   if (status) {
     query = query.eq('status', status);
   }
@@ -245,18 +323,20 @@ function buildOpportunityQuery(
 
 async function fetchOpportunityResults(params: {
   supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>;
-  ilikeQuery: string;
+  ilikeQuery: string | null;
+  geo: GeoFilters;
   limit: number;
   page: number;
   status?: string | null;
 }) {
-  const { supabase, ilikeQuery, limit, page, status } = params;
+  const { supabase, ilikeQuery, geo, limit, page, status } = params;
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
   const { data, count, error } = await buildOpportunityQuery(
     supabase,
     ilikeQuery,
+    geo,
     'id, title, description, city, province, region, country, club_id, club_name, created_by, owner_id',
     { count: 'exact' },
     status,
@@ -319,11 +399,12 @@ async function fetchOpportunityResults(params: {
 
 async function fetchOpportunityCount(params: {
   supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>;
-  ilikeQuery: string;
+  ilikeQuery: string | null;
+  geo: GeoFilters;
   status?: string | null;
 }) {
-  const { supabase, ilikeQuery, status } = params;
-  const { count, error } = await buildOpportunityQuery(supabase, ilikeQuery, 'id', {
+  const { supabase, ilikeQuery, geo, status } = params;
+  const { count, error } = await buildOpportunityQuery(supabase, ilikeQuery, geo, 'id', {
     count: 'exact',
     head: true,
   }, status);
@@ -487,6 +568,8 @@ export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const raw = url.searchParams.get('q') ?? url.searchParams.get('query') ?? url.searchParams.get('keywords') ?? '';
   const query = raw.trim();
+  const geo = parseGeoFilters(url);
+  const geoActive = hasGeoFilters(geo);
   const type = normalizeType(url.searchParams.get('type'));
   const page = clamp(Number(url.searchParams.get('page') || '1'), 1, 1000);
   const limit = clamp(Number(url.searchParams.get('limit') || String(DEFAULT_LIMIT)), 1, 50);
@@ -494,11 +577,15 @@ export async function GET(req: NextRequest) {
   const allowedStatuses = new Set(['open', 'closed', 'archived', 'draft']);
   const status = rawStatus && allowedStatuses.has(rawStatus) ? rawStatus : null;
 
-  if (query.length < 2) {
+  if (query && query.length < 2) {
     return invalidPayload('La query deve contenere almeno 2 caratteri.');
   }
 
-  const ilikeQuery = toIlikePattern(query);
+  if (!query && !geoActive) {
+    return invalidPayload('Inserisci almeno una query testuale o un filtro geografico.');
+  }
+
+  const ilikeQuery = query ? toIlikePattern(query) : null;
 
   try {
     const supabase = await getSupabaseServerClient();
@@ -509,11 +596,15 @@ export async function GET(req: NextRequest) {
       const previewLimit = Math.min(ALL_PREVIEW_LIMIT, limit);
 
       const [clubs, players, opportunities, posts, events] = await Promise.all([
-        fetchProfileResults({ supabase, kind: 'clubs', ilikeQuery, limit: previewLimit, page: 1 }),
-        fetchProfileResults({ supabase, kind: 'players', ilikeQuery, limit: previewLimit, page: 1 }),
-        fetchOpportunityResults({ supabase, ilikeQuery, limit: previewLimit, page: 1, status }),
-        fetchPosts({ supabase, ilikeQuery, limit: previewLimit, page: 1, kind: 'normal' }),
-        fetchPosts({ supabase, ilikeQuery, limit: previewLimit, page: 1, kind: 'event' }),
+        fetchProfileResults({ supabase, kind: 'clubs', ilikeQuery, geo, limit: previewLimit, page: 1 }),
+        fetchProfileResults({ supabase, kind: 'players', ilikeQuery, geo, limit: previewLimit, page: 1 }),
+        fetchOpportunityResults({ supabase, ilikeQuery, geo, limit: previewLimit, page: 1, status }),
+        geoActive || !ilikeQuery
+          ? Promise.resolve({ results: [], count: 0 })
+          : fetchPosts({ supabase, ilikeQuery, limit: previewLimit, page: 1, kind: 'normal' }),
+        geoActive || !ilikeQuery
+          ? Promise.resolve({ results: [], count: 0 })
+          : fetchPosts({ supabase, ilikeQuery, limit: previewLimit, page: 1, kind: 'event' }),
       ]);
 
       results.clubs = clubs.results;
@@ -531,36 +622,38 @@ export async function GET(req: NextRequest) {
       };
     } else {
       const countPromises = Promise.all([
-        fetchProfileCount({ supabase, kind: 'clubs', ilikeQuery }),
-        fetchProfileCount({ supabase, kind: 'players', ilikeQuery }),
-        fetchOpportunityCount({ supabase, ilikeQuery, status }),
-        fetchPostsCount({ supabase, ilikeQuery, kind: 'normal' }),
-        fetchPostsCount({ supabase, ilikeQuery, kind: 'event' }),
+        fetchProfileCount({ supabase, kind: 'clubs', ilikeQuery, geo }),
+        fetchProfileCount({ supabase, kind: 'players', ilikeQuery, geo }),
+        fetchOpportunityCount({ supabase, ilikeQuery, geo, status }),
+        geoActive || !ilikeQuery ? Promise.resolve(0) : fetchPostsCount({ supabase, ilikeQuery, kind: 'normal' }),
+        geoActive || !ilikeQuery ? Promise.resolve(0) : fetchPostsCount({ supabase, ilikeQuery, kind: 'event' }),
       ]);
 
       const resultsPromise = (() => {
         switch (type) {
           case 'clubs':
-            return fetchProfileResults({ supabase, kind: 'clubs', ilikeQuery, limit, page }).then((payload) => {
+            return fetchProfileResults({ supabase, kind: 'clubs', ilikeQuery, geo, limit, page }).then((payload) => {
               results.clubs = payload.results;
               return payload;
             });
           case 'players':
-            return fetchProfileResults({ supabase, kind: 'players', ilikeQuery, limit, page }).then((payload) => {
+            return fetchProfileResults({ supabase, kind: 'players', ilikeQuery, geo, limit, page }).then((payload) => {
               results.players = payload.results;
               return payload;
             });
           case 'opportunities':
-            return fetchOpportunityResults({ supabase, ilikeQuery, limit, page, status }).then((payload) => {
+            return fetchOpportunityResults({ supabase, ilikeQuery, geo, limit, page, status }).then((payload) => {
               results.opportunities = payload.results;
               return payload;
             });
           case 'posts':
+            if (geoActive || !ilikeQuery) return Promise.resolve({ results: [], count: 0 });
             return fetchPosts({ supabase, ilikeQuery, limit, page, kind: 'normal' }).then((payload) => {
               results.posts = payload.results;
               return payload;
             });
           case 'events':
+            if (geoActive || !ilikeQuery) return Promise.resolve({ results: [], count: 0 });
             return fetchPosts({ supabase, ilikeQuery, limit, page, kind: 'event' }).then((payload) => {
               results.events = payload.results;
               return payload;
@@ -604,6 +697,7 @@ export async function GET(req: NextRequest) {
 
     return successResponse({
       query,
+      geo,
       type,
       page,
       limit,
