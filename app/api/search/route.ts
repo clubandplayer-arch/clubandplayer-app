@@ -133,31 +133,86 @@ async function fetchClubResults(params: { supabase: Awaited<ReturnType<typeof ge
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
-  let query = supabase.from('clubs_view').select('id, display_name, avatar_url, city, province, region, country, sport, status', { count: 'exact' }).eq('status', 'active');
-  query = applyGeoFilters(query, filters);
-  if (filters.sport) query = query.ilike('sport', filters.sport);
+  // clubs_view is schema-volatile across environments; keep only stable columns.
+  const geoOrSportActive = isGeoActive(filters) || Boolean(filters.sport);
+  let scopedClubIds: string[] | null = null;
+
+  if (geoOrSportActive) {
+    let profileIdQuery = supabase.from('profiles').select('id');
+    profileIdQuery = applyGeoFilters(profileIdQuery, filters);
+    if (filters.sport) profileIdQuery = profileIdQuery.ilike('sport', filters.sport);
+
+    const { data: profileIds, error: profileIdsError } = await profileIdQuery;
+    if (profileIdsError) throw new Error(profileIdsError.message);
+
+    scopedClubIds = (profileIds ?? []).map((row) => String(row.id)).filter(Boolean);
+    if (scopedClubIds.length === 0) {
+      return { count: 0, results: [] as SearchResult[] };
+    }
+  }
+
+  let query = supabase.from('clubs_view').select('id, display_name', { count: 'exact' });
+
+  if (scopedClubIds) {
+    query = query.in('id', scopedClubIds);
+  }
 
   if (isTextActive(filters)) {
     const q = toIlikePattern(filters.q);
-    query = query.or([`display_name.ilike.${q}`, `city.ilike.${q}`, `province.ilike.${q}`, `region.ilike.${q}`, `country.ilike.${q}`, `sport.ilike.${q}`].join(','));
+    query = query.or(`display_name.ilike.${q}`);
   }
 
   const { data, count, error } = await query.order('display_name', { ascending: true }).range(from, to);
   if (error) throw new Error(error.message);
-  const rows = Array.isArray(data) ? data : [];
+
+  const rows = Array.isArray(data) ? (data as Array<{ id: string; display_name: string | null }>) : [];
+  const clubIds = rows.map((row) => row.id).filter(Boolean);
+
+  let profileMap = new Map<string, {
+    avatar_url?: string | null;
+    city?: string | null;
+    province?: string | null;
+    region?: string | null;
+    country?: string | null;
+    sport?: string | null;
+  }>();
+
+  if (clubIds.length) {
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, avatar_url, city, province, region, country, sport')
+      .in('id', clubIds);
+
+    if (profilesError) throw new Error(profilesError.message);
+
+    profileMap = new Map(
+      (profiles ?? []).map((profile) => [String(profile.id), {
+        avatar_url: profile.avatar_url ?? null,
+        city: profile.city ?? null,
+        province: profile.province ?? null,
+        region: profile.region ?? null,
+        country: profile.country ?? null,
+        sport: profile.sport ?? null,
+      }]),
+    );
+  }
 
   return {
     count: count ?? 0,
-    results: rows.map((row: any) => ({
+    results: rows.map((row) => ({
       id: String(row.id),
       title: row.display_name?.trim() || 'Club',
-      subtitle: buildLocationFrom([row.sport, buildLocation(row)]) || null,
-      image_url: row.avatar_url || null,
+      subtitle: buildLocationFrom([
+        profileMap.get(String(row.id))?.sport,
+        buildLocation(profileMap.get(String(row.id)) ?? {}),
+      ]) || null,
+      image_url: profileMap.get(String(row.id))?.avatar_url ?? null,
       href: `/clubs/${row.id}`,
       kind: 'clubs' as const,
     })),
   };
 }
+
 
 async function fetchPlayerResults(params: { supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>; filters: SearchFilters; limit: number; page: number; }) {
   const { supabase, filters, limit, page } = params;
