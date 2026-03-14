@@ -140,7 +140,7 @@ async function fetchClubResults(params: { supabase: Awaited<ReturnType<typeof ge
   if (geoOrSportActive) {
     let profileIdQuery = supabase.from('profiles').select('id');
     profileIdQuery = applyGeoFilters(profileIdQuery, filters);
-    if (filters.sport) profileIdQuery = profileIdQuery.ilike('sport', filters.sport);
+    if (filters.sport) profileIdQuery = profileIdQuery.eq('sport', filters.sport);
 
     const { data: profileIds, error: profileIdsError } = await profileIdQuery;
     if (profileIdsError) throw new Error(profileIdsError.message);
@@ -221,12 +221,12 @@ async function fetchPlayerResults(params: { supabase: Awaited<ReturnType<typeof 
 
   let query = supabase.from('athletes_view').select('id, full_name, avatar_url, city, province, region, country, sport, role, status', { count: 'exact' }).eq('status', 'active');
   query = applyGeoFilters(query, filters);
-  if (filters.sport) query = query.ilike('sport', filters.sport);
-  if (filters.role) query = query.ilike('role', filters.role);
+  if (filters.sport) query = query.eq('sport', filters.sport);
+  if (filters.role) query = query.eq('role', filters.role);
 
   if (isTextActive(filters)) {
     const q = toIlikePattern(filters.q);
-    query = query.or([`full_name.ilike.${q}`, `role.ilike.${q}`, `sport.ilike.${q}`, `city.ilike.${q}`, `province.ilike.${q}`, `region.ilike.${q}`, `country.ilike.${q}`].join(','));
+    query = query.or([`full_name.ilike.${q}`, `city.ilike.${q}`, `province.ilike.${q}`, `region.ilike.${q}`, `country.ilike.${q}`].join(','));
   }
 
   const { data, count, error } = await query.order('created_at', { ascending: false }).range(from, to);
@@ -253,13 +253,13 @@ async function fetchOpportunityResults(params: { supabase: Awaited<ReturnType<ty
 
   let query = supabase.from('opportunities').select('id, title, description, city, province, region, country, sport, role, category, required_category, club_id, club_name, created_by, owner_id', { count: 'exact' });
   query = applyGeoFilters(query, filters);
-  if (filters.sport) query = query.ilike('sport', filters.sport);
-  if (filters.role) query = query.ilike('role', filters.role);
-  if (filters.category) query = query.or(`category.ilike.${filters.category},required_category.ilike.${filters.category}`);
+  if (filters.sport) query = query.eq('sport', filters.sport);
+  if (filters.role) query = query.eq('role', filters.role);
+  if (filters.category) query = query.or(`category.eq.${filters.category},required_category.eq.${filters.category}`);
 
   if (isTextActive(filters)) {
     const q = toIlikePattern(filters.q);
-    query = query.or([`title.ilike.${q}`, `description.ilike.${q}`, `city.ilike.${q}`, `province.ilike.${q}`, `region.ilike.${q}`, `country.ilike.${q}`, `sport.ilike.${q}`, `role.ilike.${q}`, `category.ilike.${q}`, `required_category.ilike.${q}`, `club_name.ilike.${q}`].join(','));
+    query = query.or([`title.ilike.${q}`, `description.ilike.${q}`, `city.ilike.${q}`, `province.ilike.${q}`, `region.ilike.${q}`, `country.ilike.${q}`, `club_name.ilike.${q}`].join(','));
   }
 
   const { data, count, error } = await query.order('created_at', { ascending: false }).range(from, to);
