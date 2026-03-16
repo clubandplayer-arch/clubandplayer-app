@@ -96,13 +96,13 @@ begin
   -- 2) Sorgente Campania validata
   create temp table tmp_campania_source on commit drop as
   select distinct
-    btrim(regione) as regione,
-    btrim(provincia) as provincia,
-    btrim(comune) as comune
+    btrim(region) as regione,
+    btrim(province) as provincia,
+    btrim(name) as comune
   from public.it_locations_stage
-  where btrim(regione) = 'Campania'
-    and coalesce(btrim(provincia), '') <> ''
-    and coalesce(btrim(comune), '') <> '';
+  where btrim(region) = 'Campania'
+    and coalesce(btrim(province), '') <> ''
+    and coalesce(btrim(name), '') <> '';
 
   select count(*) into source_rows from tmp_campania_source;
   if source_rows = 0 then
