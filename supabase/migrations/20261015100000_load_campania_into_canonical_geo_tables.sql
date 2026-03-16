@@ -127,7 +127,11 @@ begin
   end if;
 
   -- 4) Province campane attese (idempotente)
-  create temp table tmp_expected_provinces(name text) on commit drop as
+  create temp table tmp_expected_provinces (
+    name text
+  ) on commit drop;
+
+  insert into tmp_expected_provinces (name)
   values
     ('Avellino'),
     ('Benevento'),
