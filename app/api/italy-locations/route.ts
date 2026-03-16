@@ -19,10 +19,12 @@ type SourceConfig = {
   cityKey: string;
 };
 
-const SOURCES: SourceConfig[] = [
-  { table: 'it_locations_stage', regionKey: 'regione', provinceKey: 'provincia', cityKey: 'comune' },
-  { table: 'italy_locations_simple', regionKey: 'region', provinceKey: 'province', cityKey: 'city' },
-];
+const SOURCE: SourceConfig = {
+  table: 'it_locations_stage',
+  regionKey: 'regione',
+  provinceKey: 'provincia',
+  cityKey: 'comune',
+};
 
 function sortAlpha(values: Iterable<string>) {
   return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b, 'it', { sensitivity: 'base' }));
@@ -43,36 +45,19 @@ function normalizeRow(row: RawRow, config: SourceConfig): LocationRow | null {
 
 async function loadLocations() {
   const supabase = await getSupabaseServerClient();
-  let lastError: Error | null = null;
+  const { data, error } = await supabase
+    .from(SOURCE.table)
+    .select(`${SOURCE.regionKey},${SOURCE.provinceKey},${SOURCE.cityKey}`)
+    .order(SOURCE.regionKey, { ascending: true, nullsFirst: false })
+    .order(SOURCE.provinceKey, { ascending: true, nullsFirst: false })
+    .order(SOURCE.cityKey, { ascending: true, nullsFirst: false });
 
-  for (const source of SOURCES) {
-    const { data, error } = await supabase
-      .from(source.table)
-      .select(`${source.regionKey},${source.provinceKey},${source.cityKey}`)
-      .order(source.regionKey, { ascending: true, nullsFirst: false })
-      .order(source.provinceKey, { ascending: true, nullsFirst: false })
-      .order(source.cityKey, { ascending: true, nullsFirst: false });
+  if (error) throw error;
 
-    if (error) {
-      lastError = error as Error;
-      continue;
-    }
-
-    const rows = Array.isArray(data) ? data : [];
-    const normalized = rows
-      .map((row) => (isRawRow(row) ? normalizeRow(row, source) : null))
-      .filter((row): row is LocationRow => !!row);
-
-    if (normalized.length > 0) {
-      return normalized;
-    }
-  }
-
-  if (lastError) {
-    throw lastError;
-  }
-
-  return [] as LocationRow[];
+  const rows = Array.isArray(data) ? data : [];
+  return rows
+    .map((row) => (isRawRow(row) ? normalizeRow(row, SOURCE) : null))
+    .filter((row): row is LocationRow => !!row);
 }
 
 export async function GET(_req: NextRequest) {
@@ -111,6 +96,7 @@ export async function GET(_req: NextRequest) {
     }
 
     return NextResponse.json({
+      source: SOURCE.table,
       regions,
       provincesByRegion: provinces,
       citiesByProvince: cities,
