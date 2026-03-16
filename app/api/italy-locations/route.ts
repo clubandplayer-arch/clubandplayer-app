@@ -10,6 +10,9 @@ export async function GET() {
     .from('it_locations_stage')
     .select('name, province, region');
 
+  console.log('GEO rows:', data?.length);
+  console.log('GEO sample:', data?.slice(0, 5));
+
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
