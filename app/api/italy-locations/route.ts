@@ -15,19 +15,29 @@ type LocationRow = {
 
 type SourceConfig = {
   table: string;
-  countryKey: string;
+  countryKey?: string;
   regionKey: string;
   provinceKey: string;
   cityKey: string;
 };
 
-const SOURCE: SourceConfig = {
-  table: 'it_locations_stage',
-  countryKey: 'country',
-  regionKey: 'region',
-  provinceKey: 'province',
-  cityKey: 'city',
-};
+const SOURCES: SourceConfig[] = [
+  {
+    table: 'it_locations_stage',
+    countryKey: 'country',
+    regionKey: 'region',
+    provinceKey: 'province',
+    cityKey: 'city',
+  },
+  {
+    table: 'it_locations_stage',
+    regionKey: 'regione',
+    provinceKey: 'provincia',
+    cityKey: 'comune',
+  },
+];
+
+const DEFAULT_COUNTRY = 'IT';
 
 function sortAlpha(values: Iterable<string>) {
   return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b, 'it', { sensitivity: 'base' }));
@@ -39,7 +49,7 @@ function isRawRow(row: unknown): row is RawRow {
 }
 
 function normalizeRow(row: RawRow, config: SourceConfig): LocationRow | null {
-  const country = String(row[config.countryKey] ?? '').trim();
+  const country = String(config.countryKey ? row[config.countryKey] ?? '' : DEFAULT_COUNTRY).trim();
   const region = String(row[config.regionKey] ?? '').trim();
   const province = String(row[config.provinceKey] ?? '').trim();
   const city = String(row[config.cityKey] ?? '').trim();
@@ -49,24 +59,40 @@ function normalizeRow(row: RawRow, config: SourceConfig): LocationRow | null {
 
 async function loadLocations() {
   const supabase = await getSupabaseServerClient();
-  const { data, error } = await supabase
-    .from(SOURCE.table)
-    .select(`${SOURCE.countryKey},${SOURCE.regionKey},${SOURCE.provinceKey},${SOURCE.cityKey}`)
-    .order(SOURCE.regionKey, { ascending: true, nullsFirst: false })
-    .order(SOURCE.provinceKey, { ascending: true, nullsFirst: false })
-    .order(SOURCE.cityKey, { ascending: true, nullsFirst: false });
+  let lastError: unknown = null;
 
-  if (error) throw error;
+  for (const source of SOURCES) {
+    const selectColumns = [source.countryKey, source.regionKey, source.provinceKey, source.cityKey].filter(Boolean).join(',');
+    const { data, error } = await supabase
+      .from(source.table)
+      .select(selectColumns)
+      .order(source.regionKey, { ascending: true, nullsFirst: false })
+      .order(source.provinceKey, { ascending: true, nullsFirst: false })
+      .order(source.cityKey, { ascending: true, nullsFirst: false });
 
-  const rows = Array.isArray(data) ? data : [];
-  return rows
-    .map((row) => (isRawRow(row) ? normalizeRow(row, SOURCE) : null))
-    .filter((row): row is LocationRow => !!row);
+    if (error) {
+      lastError = error;
+      continue;
+    }
+
+    const rows = Array.isArray(data) ? data : [];
+    const normalized = rows
+      .map((row) => (isRawRow(row) ? normalizeRow(row, source) : null))
+      .filter((row): row is LocationRow => !!row);
+
+    if (normalized.length > 0) {
+      return { source, rows: normalized };
+    }
+  }
+
+  if (lastError) throw lastError;
+  return { source: SOURCES[0], rows: [] as LocationRow[] };
 }
 
 export async function GET(_req: NextRequest) {
   try {
-    const rows = await loadLocations();
+    const loaded = await loadLocations();
+    const rows = loaded.rows;
 
     const countriesSet = new Set<string>();
     const regionsSet = new Set<string>();
@@ -114,7 +140,7 @@ export async function GET(_req: NextRequest) {
     }
 
     return NextResponse.json({
-      source: SOURCE.table,
+      source: loaded.source.table,
       countries,
       regionsByCountry: byCountry,
       regions,
