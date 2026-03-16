@@ -147,7 +147,7 @@ async function fetchClubResults(params: { supabase: Awaited<ReturnType<typeof ge
   let scopedClubIds: string[] | null = null;
 
   if (geoOrSportActive) {
-    let profileIdQuery = supabase.from('profiles').select('id');
+    let profileIdQuery = supabase.from('profiles').select('id').eq('account_type', 'club');
     profileIdQuery = applyGeoFilters(profileIdQuery, filters);
     if (filters.sport) profileIdQuery = profileIdQuery.eq('sport', filters.sport);
 
