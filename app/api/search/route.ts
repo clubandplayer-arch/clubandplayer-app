@@ -118,6 +118,15 @@ function applyGeoFilters<T>(query: T, filters: SearchFilters) {
   return next as T;
 }
 
+function applyInterestGeoFilters<T>(query: T, filters: SearchFilters) {
+  let next = query as any;
+  if (filters.country) next = next.ilike('interest_country', filters.country);
+  if (filters.region) next = next.ilike('interest_region', filters.region);
+  if (filters.province) next = next.ilike('interest_province', filters.province);
+  if (filters.city) next = next.ilike('interest_city', filters.city);
+  return next as T;
+}
+
 function safeClubLabel(values: Array<string | null | undefined>) {
   for (const value of values) {
     const text = (value || '').trim();
@@ -219,14 +228,26 @@ async function fetchPlayerResults(params: { supabase: Awaited<ReturnType<typeof 
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
-  let query = supabase.from('athletes_view').select('id, full_name, avatar_url, city, province, region, country, sport, role, status', { count: 'exact' }).eq('status', 'active');
-  query = applyGeoFilters(query, filters);
+  let query = supabase
+    .from('profiles')
+    .select('id, full_name, display_name, avatar_url, country, region, province, city, interest_country, interest_region, interest_province, interest_city, sport, role, status, account_type, created_at', { count: 'exact' })
+    .eq('account_type', 'athlete')
+    .eq('status', 'active');
+
+  query = applyInterestGeoFilters(query, filters);
   if (filters.sport) query = query.eq('sport', filters.sport);
   if (filters.role) query = query.eq('role', filters.role);
 
   if (isTextActive(filters)) {
     const q = toIlikePattern(filters.q);
-    query = query.or([`full_name.ilike.${q}`, `city.ilike.${q}`, `province.ilike.${q}`, `region.ilike.${q}`, `country.ilike.${q}`].join(','));
+    query = query.or([
+      `full_name.ilike.${q}`,
+      `display_name.ilike.${q}`,
+      `interest_city.ilike.${q}`,
+      `interest_province.ilike.${q}`,
+      `interest_region.ilike.${q}`,
+      `interest_country.ilike.${q}`,
+    ].join(','));
   }
 
   const { data, count, error } = await query.order('created_at', { ascending: false }).range(from, to);
@@ -235,14 +256,17 @@ async function fetchPlayerResults(params: { supabase: Awaited<ReturnType<typeof 
 
   return {
     count: count ?? 0,
-    results: rows.map((row: any) => ({
-      id: String(row.id),
-      title: row.full_name?.trim() || 'Player',
-      subtitle: buildLocationFrom([row.role, row.sport, buildLocation(row)]) || null,
-      image_url: row.avatar_url || null,
-      href: `/players/${row.id}`,
-      kind: 'players' as const,
-    })),
+    results: rows.map((row: any) => {
+      const displayName = safeClubLabel([row.full_name, row.display_name]) || 'Player';
+      return {
+        id: String(row.id),
+        title: displayName,
+        subtitle: buildLocationFrom([row.role, row.sport, buildLocationFrom([row.interest_city, row.interest_province, row.interest_region, row.interest_country])]) || null,
+        image_url: row.avatar_url || null,
+        href: `/players/${row.id}`,
+        kind: 'players' as const,
+      };
+    }),
   };
 }
 
