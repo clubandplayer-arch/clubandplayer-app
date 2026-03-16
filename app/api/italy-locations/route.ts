@@ -16,6 +16,7 @@ type LocationRow = {
 
 const SOURCE_TABLE = 'it_locations_stage';
 const COUNTRY_CODE = 'IT';
+const PAGE_SIZE = 1000;
 
 type ApiResponse = {
   source: string;
@@ -48,6 +49,33 @@ function normalizeRow(row: RawRow): LocationRow | null {
   return { country: COUNTRY_CODE, region, province, city };
 }
 
+
+async function fetchAllRows(client: Awaited<ReturnType<typeof getSupabaseServerClient>>) {
+  const rows: RawRow[] = [];
+  let from = 0;
+
+  while (true) {
+    const to = from + PAGE_SIZE - 1;
+    const { data, error } = await client
+      .from(SOURCE_TABLE)
+      .select('name, province, region')
+      .order('region', { ascending: true, nullsFirst: false })
+      .order('province', { ascending: true, nullsFirst: false })
+      .order('name', { ascending: true, nullsFirst: false })
+      .range(from, to);
+
+    if (error) throw error;
+
+    const batch = Array.isArray(data) ? (data as RawRow[]) : [];
+    rows.push(...batch.filter(isRawRow));
+
+    if (batch.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+
+  return rows;
+}
+
 async function loadLocations() {
   const server = await getSupabaseServerClient();
   const admin = getSupabaseAdminClientOrNull();
@@ -55,24 +83,16 @@ async function loadLocations() {
   let lastError: unknown = null;
 
   for (const client of clients) {
-    const { data, error } = await client
-      .from(SOURCE_TABLE)
-      .select('name, province, region')
-      .order('region', { ascending: true, nullsFirst: false })
-      .order('province', { ascending: true, nullsFirst: false })
-      .order('name', { ascending: true, nullsFirst: false });
+    try {
+      const rawRows = await fetchAllRows(client);
+      const normalized = rawRows
+        .map((row) => normalizeRow(row))
+        .filter((row): row is LocationRow => !!row);
 
-    if (error) {
+      if (normalized.length > 0) return normalized;
+    } catch (error) {
       lastError = error;
-      continue;
     }
-
-    const rows = Array.isArray(data) ? data : [];
-    const normalized = rows
-      .map((row) => (isRawRow(row) ? normalizeRow(row) : null))
-      .filter((row): row is LocationRow => !!row);
-
-    if (normalized.length > 0) return normalized;
   }
 
   if (lastError) throw lastError;
@@ -116,7 +136,10 @@ export async function GET(_req: NextRequest) {
       cities[province] = sortAlpha(items);
     }
 
-    const response: ApiResponse = {
+    const totalProvinces = Object.values(provinces).reduce((acc, items) => acc + items.length, 0);
+    const totalCities = Object.values(cities).reduce((acc, items) => acc + items.length, 0);
+
+    const response: ApiResponse & { stats: { totalRows: number; totalRegions: number; totalProvinces: number; totalCities: number } } = {
       source: SOURCE_TABLE,
       sourceColumns: {
         country: COUNTRY_CODE,
@@ -129,6 +152,12 @@ export async function GET(_req: NextRequest) {
       regions,
       provincesByRegion: provinces,
       citiesByProvince: cities,
+      stats: {
+        totalRows: rows.length,
+        totalRegions: regions.length,
+        totalProvinces,
+        totalCities,
+      },
     };
 
     return NextResponse.json(response);
