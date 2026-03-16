@@ -8,8 +8,8 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('it_locations_stage')
-    .select('name, province, region', { count: 'exact' })
-    .limit(10000);
+    .select('name, province, region')
+    .range(0, 10000);
 
   console.log('GEO rows:', data?.length);
   console.log('GEO sample:', data?.slice(0, 5));
