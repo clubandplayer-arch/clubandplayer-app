@@ -10,7 +10,7 @@ In questo ambiente non è disponibile connessione diretta a Supabase/Postgres, q
 
 ### Fonte centralizzata già presente
 - Endpoint: `GET /api/italy-locations`
-- Hook: `useItalyLocations`
+- Hook: `useItalyLocations` (senza fallback statico hardcoded per region/province/city)
 - Consumatori principali:
   - Search web (`/search`)
   - Opportunità dashboard filter/form lato client
@@ -54,9 +54,11 @@ In questo ambiente non è disponibile connessione diretta a Supabase/Postgres, q
 - **Unico metodo consigliato**: hook `useItalyLocations` (cache + fallback).
 
 ## Prima unificazione implementata in questa PR
-1. `/api/italy-locations` ora legge **solo** da `it_locations_stage`.
-2. Rimosso fallback a tabella alternativa `italy_locations_simple` per evitare doppio backend dataset.
-3. Endpoint espone metadato `source` per audit osservabile lato client/log.
+1. `/api/italy-locations` ora legge **solo** da `it_locations_stage` con colonne canonical `country/region/province/city`.
+2. Rimosso fallback a tabella alternativa (`italy_locations_simple`) per evitare doppio backend dataset.
+3. Endpoint espone metadati `source`, `countries`, `regionsByCountry`, oltre a `regions/provincesByRegion/citiesByProvince`.
+4. `components/opportunities/OpportunityForm.tsx` usa ora `useItalyLocations` invece di query dirette a `regions/provinces/municipalities`.
+5. `useItalyLocations` non usa più fallback statico hardcoded per località italiane.
 
 ## Legacy da rimuovere nelle prossime PR
 1. Migrare `components/opportunities/OpportunityForm.tsx` da query dirette `regions/provinces/municipalities` a `useItalyLocations`.

@@ -7,6 +7,7 @@ export const runtime = 'nodejs';
 type RawRow = Record<string, unknown>;
 
 type LocationRow = {
+  country: string;
   region: string;
   province: string;
   city: string;
@@ -14,6 +15,7 @@ type LocationRow = {
 
 type SourceConfig = {
   table: string;
+  countryKey: string;
   regionKey: string;
   provinceKey: string;
   cityKey: string;
@@ -21,9 +23,10 @@ type SourceConfig = {
 
 const SOURCE: SourceConfig = {
   table: 'it_locations_stage',
-  regionKey: 'regione',
-  provinceKey: 'provincia',
-  cityKey: 'comune',
+  countryKey: 'country',
+  regionKey: 'region',
+  provinceKey: 'province',
+  cityKey: 'city',
 };
 
 function sortAlpha(values: Iterable<string>) {
@@ -36,18 +39,19 @@ function isRawRow(row: unknown): row is RawRow {
 }
 
 function normalizeRow(row: RawRow, config: SourceConfig): LocationRow | null {
+  const country = String(row[config.countryKey] ?? '').trim();
   const region = String(row[config.regionKey] ?? '').trim();
   const province = String(row[config.provinceKey] ?? '').trim();
   const city = String(row[config.cityKey] ?? '').trim();
-  if (!region || !province || !city) return null;
-  return { region, province, city };
+  if (!country || !region || !province || !city) return null;
+  return { country, region, province, city };
 }
 
 async function loadLocations() {
   const supabase = await getSupabaseServerClient();
   const { data, error } = await supabase
     .from(SOURCE.table)
-    .select(`${SOURCE.regionKey},${SOURCE.provinceKey},${SOURCE.cityKey}`)
+    .select(`${SOURCE.countryKey},${SOURCE.regionKey},${SOURCE.provinceKey},${SOURCE.cityKey}`)
     .order(SOURCE.regionKey, { ascending: true, nullsFirst: false })
     .order(SOURCE.provinceKey, { ascending: true, nullsFirst: false })
     .order(SOURCE.cityKey, { ascending: true, nullsFirst: false });
@@ -64,14 +68,22 @@ export async function GET(_req: NextRequest) {
   try {
     const rows = await loadLocations();
 
+    const countriesSet = new Set<string>();
     const regionsSet = new Set<string>();
+    const regionsByCountry = new Map<string, Set<string>>();
     const provincesByRegion = new Map<string, Set<string>>();
     const citiesByProvince = new Map<string, Set<string>>();
 
     for (const row of rows) {
-      const { region, province, city } = row;
+      const { country, region, province, city } = row;
 
+      countriesSet.add(country);
       regionsSet.add(region);
+
+      if (!regionsByCountry.has(country)) {
+        regionsByCountry.set(country, new Set());
+      }
+      regionsByCountry.get(country)!.add(region);
 
       if (!provincesByRegion.has(region)) {
         provincesByRegion.set(region, new Set());
@@ -84,7 +96,13 @@ export async function GET(_req: NextRequest) {
       citiesByProvince.get(province)!.add(city);
     }
 
+    const countries = sortAlpha(countriesSet);
     const regions = sortAlpha(regionsSet);
+    const byCountry: Record<string, string[]> = {};
+    for (const [country, items] of regionsByCountry.entries()) {
+      byCountry[country] = sortAlpha(items);
+    }
+
     const provinces: Record<string, string[]> = {};
     for (const [region, items] of provincesByRegion.entries()) {
       provinces[region] = sortAlpha(items);
@@ -97,6 +115,8 @@ export async function GET(_req: NextRequest) {
 
     return NextResponse.json({
       source: SOURCE.table,
+      countries,
+      regionsByCountry: byCountry,
       regions,
       provincesByRegion: provinces,
       citiesByProvince: cities,
