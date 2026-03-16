@@ -39,6 +39,13 @@ const SOURCES: SourceConfig[] = [
 
 const DEFAULT_COUNTRY = 'IT';
 
+function normalizeCountry(raw: string) {
+  const value = raw.trim();
+  const upper = value.toUpperCase();
+  if (upper === 'IT' || upper === 'ITALIA' || upper === 'ITALY') return 'IT';
+  return value;
+}
+
 function sortAlpha(values: Iterable<string>) {
   return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b, 'it', { sensitivity: 'base' }));
 }
@@ -49,7 +56,7 @@ function isRawRow(row: unknown): row is RawRow {
 }
 
 function normalizeRow(row: RawRow, config: SourceConfig): LocationRow | null {
-  const country = String(config.countryKey ? row[config.countryKey] ?? '' : DEFAULT_COUNTRY).trim();
+  const country = normalizeCountry(String(config.countryKey ? row[config.countryKey] ?? '' : DEFAULT_COUNTRY));
   const region = String(row[config.regionKey] ?? '').trim();
   const province = String(row[config.provinceKey] ?? '').trim();
   const city = String(row[config.cityKey] ?? '').trim();
