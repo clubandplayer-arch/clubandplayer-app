@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { jsonError } from '@/lib/api/auth';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
 
@@ -66,29 +67,33 @@ function normalizeRow(row: RawRow, config: SourceConfig): LocationRow | null {
 
 async function loadLocations() {
   const supabase = await getSupabaseServerClient();
+  const admin = getSupabaseAdminClientOrNull();
+  const clients = [admin, supabase].filter(Boolean) as Array<typeof supabase>;
   let lastError: unknown = null;
 
   for (const source of SOURCES) {
-    const selectColumns = [source.countryKey, source.regionKey, source.provinceKey, source.cityKey].filter(Boolean).join(',');
-    const { data, error } = await supabase
-      .from(source.table)
-      .select(selectColumns)
-      .order(source.regionKey, { ascending: true, nullsFirst: false })
-      .order(source.provinceKey, { ascending: true, nullsFirst: false })
-      .order(source.cityKey, { ascending: true, nullsFirst: false });
+    for (const client of clients) {
+      const selectColumns = [source.countryKey, source.regionKey, source.provinceKey, source.cityKey].filter(Boolean).join(',');
+      const { data, error } = await client
+        .from(source.table)
+        .select(selectColumns)
+        .order(source.regionKey, { ascending: true, nullsFirst: false })
+        .order(source.provinceKey, { ascending: true, nullsFirst: false })
+        .order(source.cityKey, { ascending: true, nullsFirst: false });
 
-    if (error) {
-      lastError = error;
-      continue;
-    }
+      if (error) {
+        lastError = error;
+        continue;
+      }
 
-    const rows = Array.isArray(data) ? data : [];
-    const normalized = rows
-      .map((row) => (isRawRow(row) ? normalizeRow(row, source) : null))
-      .filter((row): row is LocationRow => !!row);
+      const rows = Array.isArray(data) ? data : [];
+      const normalized = rows
+        .map((row) => (isRawRow(row) ? normalizeRow(row, source) : null))
+        .filter((row): row is LocationRow => !!row);
 
-    if (normalized.length > 0) {
-      return { source, rows: normalized };
+      if (normalized.length > 0) {
+        return { source, rows: normalized };
+      }
     }
   }
 
@@ -148,6 +153,12 @@ export async function GET(_req: NextRequest) {
 
     return NextResponse.json({
       source: loaded.source.table,
+      sourceColumns: {
+        country: loaded.source.countryKey ?? DEFAULT_COUNTRY,
+        region: loaded.source.regionKey,
+        province: loaded.source.provinceKey,
+        city: loaded.source.cityKey,
+      },
       countries,
       regionsByCountry: byCountry,
       regions,
