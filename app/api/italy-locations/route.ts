@@ -21,7 +21,7 @@ export async function GET(_req: NextRequest) {
     const supabase = await getSupabaseServerClient();
     const { data, error } = await supabase
       .from('it_locations_stage')
-      .select('name,province,region')
+      .select('name, province, region')
       .order('region', { ascending: true, nullsFirst: false })
       .order('province', { ascending: true, nullsFirst: false })
       .order('name', { ascending: true, nullsFirst: false });
@@ -37,8 +37,8 @@ export async function GET(_req: NextRequest) {
     for (const row of rows) {
       const region = String(row.region ?? '').trim();
       const province = String(row.province ?? '').trim();
-      const city = String(row.name ?? '').trim();
-      if (!region || !province || !city) continue;
+      const locationName = String(row.name ?? '').trim();
+      if (!region || !province || !locationName) continue;
 
       regionsSet.add(region);
 
@@ -50,7 +50,7 @@ export async function GET(_req: NextRequest) {
       if (!citiesByProvince.has(province)) {
         citiesByProvince.set(province, new Set());
       }
-      citiesByProvince.get(province)!.add(city);
+      citiesByProvince.get(province)!.add(locationName);
     }
 
     const regions = sortAlpha(regionsSet);
