@@ -633,6 +633,16 @@ export default function ProfileEditForm() {
         });
       }
 
+      console.debug('[ProfileEditForm][club-geo-debug] PATCH payload', {
+        account_type: profile?.account_type ?? null,
+        id: (profile as any)?.id ?? null,
+        user_id: (profile as any)?.user_id ?? null,
+        country: basePayload.country ?? null,
+        region: basePayload.region ?? null,
+        province: basePayload.province ?? null,
+        city: basePayload.city ?? null,
+      });
+
       const r = await fetch('/api/profiles/me', {
         method: 'PATCH',
         credentials: 'include',
@@ -640,10 +650,31 @@ export default function ProfileEditForm() {
         body: JSON.stringify(basePayload),
       });
 
+      const patchBody = await r.json().catch(() => ({}));
+      console.debug('[ProfileEditForm][club-geo-debug] PATCH response', {
+        status: r.status,
+        ok: r.ok,
+        body: patchBody,
+      });
+
       if (!r.ok) {
-        const j = await r.json().catch(() => ({}));
-        throw new Error(j?.error ?? 'Salvataggio non riuscito');
+        throw new Error((patchBody as any)?.error ?? 'Salvataggio non riuscito');
       }
+
+      const rereadRes = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
+      const rereadRaw = await rereadRes.json().catch(() => ({}));
+      const rereadData = pickData<any>(rereadRaw) || {};
+      console.debug('[ProfileEditForm][club-geo-debug] GET /api/profiles/me after save', {
+        status: rereadRes.status,
+        ok: rereadRes.ok,
+        account_type: rereadData?.account_type ?? null,
+        id: rereadData?.id ?? null,
+        user_id: rereadData?.user_id ?? null,
+        country: rereadData?.country ?? null,
+        region: rereadData?.region ?? null,
+        province: rereadData?.province ?? null,
+        city: rereadData?.city ?? null,
+      });
 
       await loadProfile();
       setMessage('Profilo aggiornato correttamente.');
