@@ -509,16 +509,16 @@ export default function ProfileEditForm() {
           : clubLocation.cityName || clubLocationFallback.city || null;
 
       const interestRegionName =
-        (isClub ? clubLocation : interestLocation).regionName ||
-        (isClub ? clubLocationFallback : interestFallback).region ||
+        interestLocation.regionName ||
+        interestFallback.region ||
         null;
       const interestProvinceName =
-        (isClub ? clubLocation : interestLocation).provinceName ||
-        (isClub ? clubLocationFallback : interestFallback).province ||
+        interestLocation.provinceName ||
+        interestFallback.province ||
         null;
       const interestCityName =
-        (isClub ? clubLocation : interestLocation).cityName ||
-        (isClub ? clubLocationFallback : interestFallback).city ||
+        interestLocation.cityName ||
+        interestFallback.city ||
         null;
 
       const residenceRegionName = residenceLocation.regionName || residenceFallback.region || null;
@@ -536,31 +536,27 @@ export default function ProfileEditForm() {
         avatar_url: avatarUrl || null,
 
         // interesse
-        interest_country: isClub ? normalizedCountry : normalizedInterestCountry,
+        interest_country: normalizedInterestCountry,
         interest_region_id:
-          (isClub ? normalizedCountry : normalizedInterestCountry) === 'IT'
-            ? (isClub ? clubLocation.regionId : interestLocation.regionId)
+          normalizedInterestCountry === 'IT'
+            ? interestLocation.regionId
             : null,
         interest_province_id:
-          (isClub ? normalizedCountry : normalizedInterestCountry) === 'IT'
-            ? (isClub ? clubLocation.provinceId : interestLocation.provinceId)
+          normalizedInterestCountry === 'IT'
+            ? interestLocation.provinceId
             : null,
         interest_municipality_id:
-          (isClub ? normalizedCountry : normalizedInterestCountry) === 'IT'
-            ? (isClub ? clubLocation.municipalityId : interestLocation.municipalityId)
+          normalizedInterestCountry === 'IT'
+            ? interestLocation.municipalityId
             : null,
         interest_region:
-          (isClub ? normalizedCountry : normalizedInterestCountry) === 'IT'
-            ? interestRegionName
-            : interestRegionName,
+          interestRegionName,
         interest_province:
-          (isClub ? normalizedCountry : normalizedInterestCountry) === 'IT'
+          normalizedInterestCountry === 'IT'
             ? interestProvinceName
             : null,
         interest_city:
-          (isClub ? normalizedCountry : normalizedInterestCountry) === 'IT'
-            ? interestCityName
-            : interestCityName,
+          interestCityName,
 
         // social & notifiche
         links,
@@ -637,6 +633,16 @@ export default function ProfileEditForm() {
         });
       }
 
+      console.debug('[ProfileEditForm][club-geo-debug] PATCH payload', {
+        account_type: profile?.account_type ?? null,
+        id: (profile as any)?.id ?? null,
+        user_id: (profile as any)?.user_id ?? null,
+        country: basePayload.country ?? null,
+        region: basePayload.region ?? null,
+        province: basePayload.province ?? null,
+        city: basePayload.city ?? null,
+      });
+
       const r = await fetch('/api/profiles/me', {
         method: 'PATCH',
         credentials: 'include',
@@ -644,10 +650,31 @@ export default function ProfileEditForm() {
         body: JSON.stringify(basePayload),
       });
 
+      const patchBody = await r.json().catch(() => ({}));
+      console.debug('[ProfileEditForm][club-geo-debug] PATCH response', {
+        status: r.status,
+        ok: r.ok,
+        body: patchBody,
+      });
+
       if (!r.ok) {
-        const j = await r.json().catch(() => ({}));
-        throw new Error(j?.error ?? 'Salvataggio non riuscito');
+        throw new Error((patchBody as any)?.error ?? 'Salvataggio non riuscito');
       }
+
+      const rereadRes = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
+      const rereadRaw = await rereadRes.json().catch(() => ({}));
+      const rereadData = pickData<any>(rereadRaw) || {};
+      console.debug('[ProfileEditForm][club-geo-debug] GET /api/profiles/me after save', {
+        status: rereadRes.status,
+        ok: rereadRes.ok,
+        account_type: rereadData?.account_type ?? null,
+        id: rereadData?.id ?? null,
+        user_id: rereadData?.user_id ?? null,
+        country: rereadData?.country ?? null,
+        region: rereadData?.region ?? null,
+        province: rereadData?.province ?? null,
+        city: rereadData?.city ?? null,
+      });
 
       await loadProfile();
       setMessage('Profilo aggiornato correttamente.');
@@ -1065,10 +1092,9 @@ export default function ProfileEditForm() {
           </section>
         )}
 
-        {/* Zona di interesse (atleta) */}
-        {!isClub && (
-          <section className="rounded-2xl border p-4 md:p-5">
-            <h2 className="mb-3 text-lg font-semibold">Zona di interesse</h2>
+        {/* Zona di interesse */}
+        <section className="rounded-2xl border p-4 md:p-5">
+          <h2 className="mb-3 text-lg font-semibold">Zona di interesse</h2>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
               <div className="flex min-w-0 flex-col gap-1">
                 <label className="text-sm text-gray-600">Paese</label>
@@ -1094,7 +1120,6 @@ export default function ProfileEditForm() {
               />
             </div>
           </section>
-        )}
 
         {/* Social */}
         <section className="rounded-2xl border p-4 md:p-5">

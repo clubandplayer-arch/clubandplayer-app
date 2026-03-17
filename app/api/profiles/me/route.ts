@@ -148,6 +148,13 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   }
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+  console.debug('[api/profiles/me][club-geo-debug] PATCH body received', {
+    account_type: body?.account_type ?? null,
+    country: body?.country ?? null,
+    region: body?.region ?? null,
+    province: body?.province ?? null,
+    city: body?.city ?? null,
+  });
 
   const updates: Record<string, any> = {};
   const collapseText = new Set(['city', 'interest_city', 'region', 'province', 'interest_region', 'interest_province']);
@@ -225,12 +232,30 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
     updates.role = 'Club';
   }
 
+  console.debug('[api/profiles/me][club-geo-debug] PATCH updates built', {
+    account_type: updates?.account_type ?? null,
+    country: updates?.country ?? null,
+    region: updates?.region ?? null,
+    province: updates?.province ?? null,
+    city: updates?.city ?? null,
+  });
+
   const { data, error } = await supabase
     .from('profiles')
     .update({ ...updates, updated_at: new Date().toISOString() })
     .eq('user_id', user.id)
     .select('*')
     .maybeSingle();
+
+  console.debug('[api/profiles/me][club-geo-debug] PATCH update result', {
+    hasError: Boolean(error),
+    errorMessage: error?.message ?? null,
+    account_type: data?.account_type ?? null,
+    country: data?.country ?? null,
+    region: data?.region ?? null,
+    province: data?.province ?? null,
+    city: data?.city ?? null,
+  });
 
   if (!data && !error) {
     const up = await supabase

@@ -101,13 +101,26 @@ export default function ProfileMiniCard() {
         const j = (raw && typeof raw === 'object' && 'data' in raw ? (raw as any).data : raw) || {};
         setP(j || {});
 
-        const countryCode = (j?.interest_country || j?.country || '').trim() || null;
+        const isClubProfile = j?.account_type === 'club';
+        const countryCode = (
+          isClubProfile
+            ? (j?.country || '')
+            : (j?.interest_country || j?.country || '')
+        ).trim() || null;
         const countryName = resolveCountryName(countryCode) || getCountryDisplay(countryCode).label || '';
 
-        let cityName = (j?.interest_city || '').trim();
-        let regionName = (j?.interest_region || j?.interest_province || '').trim();
+        let cityName = (
+          isClubProfile
+            ? (j?.city || '')
+            : (j?.interest_city || '')
+        ).trim();
+        let regionName = (
+          isClubProfile
+            ? (j?.region || j?.province || '')
+            : (j?.interest_region || j?.interest_province || '')
+        ).trim();
 
-        if (j?.interest_municipality_id || j?.interest_province_id || j?.interest_region_id) {
+        if (!isClubProfile && (j?.interest_municipality_id || j?.interest_province_id || j?.interest_region_id)) {
           const [mun, prov, reg] = await Promise.all([
             j?.interest_municipality_id
               ? supabase.from('municipalities').select('id,name').eq('id', j.interest_municipality_id).maybeSingle()
