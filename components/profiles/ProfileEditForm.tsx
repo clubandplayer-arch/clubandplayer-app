@@ -509,16 +509,16 @@ export default function ProfileEditForm() {
           : clubLocation.cityName || clubLocationFallback.city || null;
 
       const interestRegionName =
-        (isClub ? clubLocation : interestLocation).regionName ||
-        (isClub ? clubLocationFallback : interestFallback).region ||
+        interestLocation.regionName ||
+        interestFallback.region ||
         null;
       const interestProvinceName =
-        (isClub ? clubLocation : interestLocation).provinceName ||
-        (isClub ? clubLocationFallback : interestFallback).province ||
+        interestLocation.provinceName ||
+        interestFallback.province ||
         null;
       const interestCityName =
-        (isClub ? clubLocation : interestLocation).cityName ||
-        (isClub ? clubLocationFallback : interestFallback).city ||
+        interestLocation.cityName ||
+        interestFallback.city ||
         null;
 
       const residenceRegionName = residenceLocation.regionName || residenceFallback.region || null;
@@ -536,31 +536,27 @@ export default function ProfileEditForm() {
         avatar_url: avatarUrl || null,
 
         // interesse
-        interest_country: isClub ? normalizedCountry : normalizedInterestCountry,
+        interest_country: normalizedInterestCountry,
         interest_region_id:
-          (isClub ? normalizedCountry : normalizedInterestCountry) === 'IT'
-            ? (isClub ? clubLocation.regionId : interestLocation.regionId)
+          normalizedInterestCountry === 'IT'
+            ? interestLocation.regionId
             : null,
         interest_province_id:
-          (isClub ? normalizedCountry : normalizedInterestCountry) === 'IT'
-            ? (isClub ? clubLocation.provinceId : interestLocation.provinceId)
+          normalizedInterestCountry === 'IT'
+            ? interestLocation.provinceId
             : null,
         interest_municipality_id:
-          (isClub ? normalizedCountry : normalizedInterestCountry) === 'IT'
-            ? (isClub ? clubLocation.municipalityId : interestLocation.municipalityId)
+          normalizedInterestCountry === 'IT'
+            ? interestLocation.municipalityId
             : null,
         interest_region:
-          (isClub ? normalizedCountry : normalizedInterestCountry) === 'IT'
-            ? interestRegionName
-            : interestRegionName,
+          interestRegionName,
         interest_province:
-          (isClub ? normalizedCountry : normalizedInterestCountry) === 'IT'
+          normalizedInterestCountry === 'IT'
             ? interestProvinceName
             : null,
         interest_city:
-          (isClub ? normalizedCountry : normalizedInterestCountry) === 'IT'
-            ? interestCityName
-            : interestCityName,
+          interestCityName,
 
         // social & notifiche
         links,
@@ -1065,10 +1061,9 @@ export default function ProfileEditForm() {
           </section>
         )}
 
-        {/* Zona di interesse (atleta) */}
-        {!isClub && (
-          <section className="rounded-2xl border p-4 md:p-5">
-            <h2 className="mb-3 text-lg font-semibold">Zona di interesse</h2>
+        {/* Zona di interesse */}
+        <section className="rounded-2xl border p-4 md:p-5">
+          <h2 className="mb-3 text-lg font-semibold">Zona di interesse</h2>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
               <div className="flex min-w-0 flex-col gap-1">
                 <label className="text-sm text-gray-600">Paese</label>
@@ -1094,7 +1089,6 @@ export default function ProfileEditForm() {
               />
             </div>
           </section>
-        )}
 
         {/* Social */}
         <section className="rounded-2xl border p-4 md:p-5">
