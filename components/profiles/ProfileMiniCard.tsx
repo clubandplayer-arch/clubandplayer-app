@@ -150,10 +150,7 @@ export default function ProfileMiniCard() {
   const name = p?.full_name || p?.display_name || (isClub ? 'Il tuo club' : 'Benvenuto!');
   const interestLabel = [interest.city, interest.region, interest.country].filter(Boolean).join(', ');
   const sportLabel = normalizeSport(p?.sport ?? null) ?? p?.sport ?? null;
-  const clubCountryLabel = resolveCountryName((p?.country || '').trim()) || getCountryDisplay((p?.country || '').trim()).label || (p?.country || '').trim();
-  const clubGeoLabel = isClub
-    ? [p?.city?.trim(), p?.province?.trim(), p?.region?.trim(), clubCountryLabel].filter(Boolean).join(', ')
-    : '';
+  const clubGeoLabel = isClub ? interestLabel : '';
 
   // nazionalità con bandiera
   const rawCountry = (p?.country ?? '').trim();
