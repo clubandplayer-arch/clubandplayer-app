@@ -148,6 +148,10 @@ export default function ProfileMiniCard() {
   const name = p?.full_name || p?.display_name || (isClub ? 'Il tuo club' : 'Benvenuto!');
   const interestLabel = [interest.city, interest.region, interest.country].filter(Boolean).join(', ');
   const sportLabel = normalizeSport(p?.sport ?? null) ?? p?.sport ?? null;
+  const clubCountryLabel = resolveCountryName((p?.country || '').trim()) || getCountryDisplay((p?.country || '').trim()).label || (p?.country || '').trim();
+  const clubGeoLabel = isClub
+    ? [p?.city?.trim(), p?.province?.trim(), p?.region?.trim(), clubCountryLabel].filter(Boolean).join(', ')
+    : '';
 
   // nazionalità con bandiera
   const rawCountry = (p?.country ?? '').trim();
@@ -240,8 +244,16 @@ export default function ProfileMiniCard() {
             </div>
           )}
 
+          {isClub && clubGeoLabel ? (
+            <p className="text-sm font-medium text-gray-800">{clubGeoLabel}</p>
+          ) : null}
+
           {isClub && p?.club_motto ? (
             <p className="text-xs italic text-gray-600">{p.club_motto}</p>
+          ) : null}
+
+          {isClub && p?.club_foundation_year ? (
+            <p className="text-xs text-gray-600">Anno di fondazione: {p.club_foundation_year}</p>
           ) : null}
         </div>
       </div>
