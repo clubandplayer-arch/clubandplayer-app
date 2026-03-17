@@ -24,6 +24,8 @@ type P = {
   bio?: string | null;
   birth_year?: number | null;
   city?: string | null;            // residenza libera (estero)
+  province?: string | null;
+  region?: string | null;
   country?: string | null;         // nazionalità ISO2 o testo
 
   role?: string | null;
@@ -124,8 +126,10 @@ export default function ProfileMiniCard() {
           const pr = (prov as any)?.data as Row | null;
           const re = (reg as any)?.data as Row | null;
 
-          cityName = cityName || m?.name || '';
-          regionName = regionName || pr?.name || re?.name || '';
+          // Se sono presenti ID geografici, usiamo sempre i nomi risolti dagli ID
+          // per evitare mismatch con eventuali label testuali stale nel profilo.
+          cityName = m?.name || cityName || '';
+          regionName = pr?.name || re?.name || regionName || '';
         }
 
         setInterest({
@@ -148,6 +152,7 @@ export default function ProfileMiniCard() {
   const name = p?.full_name || p?.display_name || (isClub ? 'Il tuo club' : 'Benvenuto!');
   const interestLabel = [interest.city, interest.region, interest.country].filter(Boolean).join(', ');
   const sportLabel = normalizeSport(p?.sport ?? null) ?? p?.sport ?? null;
+  const clubGeoLabel = isClub ? interestLabel : '';
 
   // nazionalità con bandiera
   const rawCountry = (p?.country ?? '').trim();
@@ -240,11 +245,16 @@ export default function ProfileMiniCard() {
             </div>
           )}
 
-          {isClub && interestLabel ? (
-            <p className="text-sm font-medium text-gray-800">{interestLabel}</p>
+          {isClub && clubGeoLabel ? (
+            <p className="text-sm font-medium text-gray-800">{clubGeoLabel}</p>
           ) : null}
+
           {isClub && p?.club_motto ? (
             <p className="text-xs italic text-gray-600">{p.club_motto}</p>
+          ) : null}
+
+          {isClub && p?.club_foundation_year ? (
+            <p className="text-xs text-gray-600">Anno di fondazione: {p.club_foundation_year}</p>
           ) : null}
         </div>
       </div>
