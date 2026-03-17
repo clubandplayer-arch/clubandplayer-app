@@ -47,7 +47,6 @@ export default function OpportunitiesClient() {
   const selectedSport = sp.get('sport') ?? '';
   const normalizedSelectedSport = normalizeSport(selectedSport) ?? selectedSport;
   const selectedRole = sp.get('role') ?? '';
-  const selectedStatus = sp.get('status') ?? '';
 
   useEffect(() => {
     setCountryCode(sp.get('country') ?? '');
@@ -186,17 +185,6 @@ export default function OpportunitiesClient() {
     });
   }
 
-  const statusOptions = useMemo(
-    () => [
-      { value: '', label: 'Tutte' },
-      { value: 'open', label: 'Aperte' },
-      { value: 'closed', label: 'Chiuse' },
-      { value: 'archived', label: 'Archiviate' },
-      { value: 'draft', label: 'Bozza' },
-    ],
-    [],
-  );
-
   // Costruisci i filtri base dai parametri URL
   const urlFilters = useMemo(() => {
     const p = new URLSearchParams();
@@ -204,7 +192,7 @@ export default function OpportunitiesClient() {
       'q', 'page', 'pageSize', 'sort',
       'country', 'region', 'province', 'city', 'club',
       'clubId', 'club_id',
-      'sport', 'role', 'age', 'status',
+      'sport', 'role', 'age',
       'category', 'required_category',
       'owner', 'owner_id', 'created_by',
     ]) {
@@ -452,7 +440,7 @@ export default function OpportunitiesClient() {
 
       {/* Barra filtri */}
       <div className="space-y-4 rounded-2xl border p-4 bg-white/70 shadow-sm">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-2">
           <input
             placeholder="Cerca per titolo/descrizione…"
             defaultValue={sp.get('q') ?? ''}
@@ -599,18 +587,6 @@ export default function OpportunitiesClient() {
             ))}
           </select>
 
-          <select
-            value={selectedStatus}
-            onChange={(e) => setParam('status', e.target.value)}
-            className="w-full rounded-xl border px-3 py-2"
-          >
-            <option value="">Tipo opportunità</option>
-            {statusOptions.map((s) => (
-              <option key={s.value || 'all'} value={s.value}>
-                {s.label}
-              </option>
-            ))}
-          </select>
         </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
