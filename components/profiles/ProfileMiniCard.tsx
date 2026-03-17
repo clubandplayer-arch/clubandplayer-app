@@ -24,6 +24,8 @@ type P = {
   bio?: string | null;
   birth_year?: number | null;
   city?: string | null;            // residenza libera (estero)
+  province?: string | null;
+  region?: string | null;
   country?: string | null;         // nazionalità ISO2 o testo
 
   role?: string | null;
@@ -147,6 +149,16 @@ export default function ProfileMiniCard() {
   const age = !isClub && p?.birth_year ? Math.max(0, year - p.birth_year) : null;
   const name = p?.full_name || p?.display_name || (isClub ? 'Il tuo club' : 'Benvenuto!');
   const interestLabel = [interest.city, interest.region, interest.country].filter(Boolean).join(', ');
+  const clubCountryCode = (p?.country || '').trim();
+  const clubCountryLabel = resolveCountryName(clubCountryCode) || getCountryDisplay(clubCountryCode).label || clubCountryCode;
+  const clubLocationLabel = [
+    (p?.city || '').trim(),
+    (p?.province || '').trim(),
+    (p?.region || '').trim(),
+    (clubCountryLabel || '').trim(),
+  ]
+    .filter(Boolean)
+    .join(', ');
   const sportLabel = normalizeSport(p?.sport ?? null) ?? p?.sport ?? null;
 
   // nazionalità con bandiera
@@ -240,8 +252,8 @@ export default function ProfileMiniCard() {
             </div>
           )}
 
-          {isClub && interestLabel ? (
-            <p className="text-sm font-medium text-gray-800">{interestLabel}</p>
+          {isClub ? (
+            <p className="text-sm font-medium text-gray-800">{clubLocationLabel || '—'}</p>
           ) : null}
           {isClub && p?.club_motto ? (
             <p className="text-xs italic text-gray-600">{p.club_motto}</p>
