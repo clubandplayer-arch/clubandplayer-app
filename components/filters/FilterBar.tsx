@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useCallback, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-import { COUNTRIES } from "@/lib/opps/geo";
+import { COUNTRIES } from "@/lib/geo/countries";
 
 export type Scope = "clubs" | "opportunities";
 

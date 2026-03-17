@@ -1,9 +1,9 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Profile } from '@/types/profile';
-import { COUNTRIES } from '@/lib/opps/geo';
-import { useItalyLocations } from '@/hooks/useItalyLocations';
+import { COUNTRIES } from '@/lib/geo/countries';
+import { useGeo } from '@/hooks/useGeo';
 
 export default function ProfileForm({
   initial,
@@ -17,6 +17,8 @@ export default function ProfileForm({
   const [headline, setHeadline] = useState(initial?.headline ?? '');
   const [bio, setBio] = useState(initial?.bio ?? '');
 
+  const { regions, getProvinces, getMunicipalities } = useGeo();
+
   const [countryCode, setCountryCode] = useState<string>(
     COUNTRIES.find((c) => c.label === initial?.country)?.code ?? 'IT'
   );
@@ -27,15 +29,12 @@ export default function ProfileForm({
   const [region, setRegion] = useState(initial?.region ?? '');
   const [province, setProvince] = useState(initial?.province ?? '');
   const [city, setCity] = useState(initial?.city ?? '');
-  const { data: italyLocations } = useItalyLocations();
-  const provinces = useMemo(
-    () => (countryCode === 'IT' ? italyLocations.provincesByRegion[region] ?? [] : []),
-    [countryCode, region, italyLocations]
-  );
-  const cities = useMemo(
-    () => (countryCode === 'IT' ? italyLocations.citiesByProvince[province] ?? [] : []),
-    [countryCode, province, italyLocations]
-  );
+
+  const [regionId, setRegionId] = useState<number | null>(null);
+  const [provinceId, setProvinceId] = useState<number | null>(null);
+  const [municipalityId, setMunicipalityId] = useState<number | null>(null);
+  const [provinces, setProvinces] = useState<Array<{ id: number; name: string }>>([]);
+  const [cities, setCities] = useState<Array<{ id: number; name: string }>>([]);
 
   const [avatarUrl, setAvatarUrl] = useState(initial?.avatar_url ?? '');
   const [links, setLinks] = useState({
@@ -49,6 +48,69 @@ export default function ProfileForm({
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  const availableRegions = useMemo(() => (countryCode === 'IT' ? regions : []), [countryCode, regions]);
+
+  useEffect(() => {
+    if (countryCode !== 'IT' || !regionId) {
+      setProvinces([]);
+      return;
+    }
+    let active = true;
+    (async () => {
+      const rows = await getProvinces(regionId).catch(() => []);
+      if (!active) return;
+      setProvinces(rows.map((r) => ({ id: Number(r.id), name: r.name })));
+    })();
+    return () => {
+      active = false;
+    };
+  }, [countryCode, regionId, getProvinces]);
+
+  useEffect(() => {
+    if (countryCode !== 'IT' || !provinceId) {
+      setCities([]);
+      return;
+    }
+    let active = true;
+    (async () => {
+      const rows = await getMunicipalities(provinceId).catch(() => []);
+      if (!active) return;
+      setCities(rows.map((r) => ({ id: Number(r.id), name: r.name })));
+    })();
+    return () => {
+      active = false;
+    };
+  }, [countryCode, provinceId, getMunicipalities]);
+
+  useEffect(() => {
+    if (countryCode !== 'IT') {
+      setRegionId(null);
+      setProvinceId(null);
+      setMunicipalityId(null);
+      return;
+    }
+    if (region && !regionId && availableRegions.length) {
+      const matched = availableRegions.find((r) => r.name === region);
+      if (matched) setRegionId(matched.id);
+    }
+  }, [countryCode, region, regionId, availableRegions]);
+
+  useEffect(() => {
+    if (countryCode !== 'IT') return;
+    if (province && !provinceId && provinces.length) {
+      const matched = provinces.find((p) => p.name === province);
+      if (matched) setProvinceId(matched.id);
+    }
+  }, [countryCode, province, provinceId, provinces]);
+
+  useEffect(() => {
+    if (countryCode !== 'IT') return;
+    if (city && !municipalityId && cities.length) {
+      const matched = cities.find((m) => m.name === city);
+      if (matched) setMunicipalityId(matched.id);
+    }
+  }, [countryCode, city, municipalityId, cities]);
+
   function effectiveCountry(): string | null {
     if (countryCode === 'OTHER') return countryFree.trim() || null;
     const found = COUNTRIES.find((c) => c.code === countryCode);
@@ -57,20 +119,12 @@ export default function ProfileForm({
   function onChangeCountry(code: string) {
     setCountryCode(code);
     setCountryFree('');
-    if (code !== 'IT') {
-      setRegion('');
-      setProvince('');
-      setCity('');
-    }
-  }
-  function onChangeRegion(r: string) {
-    setRegion(r);
+    setRegion('');
     setProvince('');
     setCity('');
-  }
-  function onChangeProvince(p: string) {
-    setProvince(p);
-    setCity('');
+    setRegionId(null);
+    setProvinceId(null);
+    setMunicipalityId(null);
   }
 
   async function submit(e: React.FormEvent) {
@@ -170,10 +224,23 @@ export default function ProfileForm({
           <div>
             <label className="block text-sm font-medium mb-1">Regione</label>
             {countryCode === 'IT' ? (
-              <select className="w-full rounded-xl border px-3 py-2" value={region} onChange={(e)=>onChangeRegion(e.target.value)}>
+              <select
+                className="w-full rounded-xl border px-3 py-2"
+                value={regionId ? String(regionId) : ''}
+                onChange={(e)=>{
+                  const id = e.target.value ? Number(e.target.value) : null;
+                  const name = id ? (availableRegions.find((r) => r.id === id)?.name ?? '') : '';
+                  setRegionId(id);
+                  setRegion(name);
+                  setProvinceId(null);
+                  setMunicipalityId(null);
+                  setProvince('');
+                  setCity('');
+                }}
+              >
                 <option value="">—</option>
-                {italyLocations.regions.map((r: string)=>(
-                  <option key={r} value={r}>{r}</option>
+                {availableRegions.map((r)=>(
+                  <option key={r.id} value={String(r.id)}>{r.name}</option>
                 ))}
               </select>
             ) : (
@@ -184,10 +251,21 @@ export default function ProfileForm({
           <div>
             <label className="block text-sm font-medium mb-1">Provincia</label>
             {countryCode === 'IT' && (provinces.length > 0) ? (
-              <select className="w-full rounded-xl border px-3 py-2" value={province} onChange={(e)=>onChangeProvince(e.target.value)}>
+              <select
+                className="w-full rounded-xl border px-3 py-2"
+                value={provinceId ? String(provinceId) : ''}
+                onChange={(e)=>{
+                  const id = e.target.value ? Number(e.target.value) : null;
+                  const name = id ? (provinces.find((p) => p.id === id)?.name ?? '') : '';
+                  setProvinceId(id);
+                  setProvince(name);
+                  setMunicipalityId(null);
+                  setCity('');
+                }}
+              >
                 <option value="">—</option>
-                {provinces.map((p: string)=>(
-                  <option key={p} value={p}>{p}</option>
+                {provinces.map((p)=>(
+                  <option key={p.id} value={String(p.id)}>{p.name}</option>
                 ))}
               </select>
             ) : (
@@ -198,10 +276,19 @@ export default function ProfileForm({
           <div>
             <label className="block text-sm font-medium mb-1">Città</label>
             {countryCode === 'IT' && (cities.length > 0) ? (
-              <select className="w-full rounded-xl border px-3 py-2" value={city} onChange={(e)=>setCity(e.target.value)}>
+              <select
+                className="w-full rounded-xl border px-3 py-2"
+                value={municipalityId ? String(municipalityId) : ''}
+                onChange={(e)=>{
+                  const id = e.target.value ? Number(e.target.value) : null;
+                  const name = id ? (cities.find((c) => c.id === id)?.name ?? '') : '';
+                  setMunicipalityId(id);
+                  setCity(name);
+                }}
+              >
                 <option value="">—</option>
-                {cities.map((c: string)=>(
-                  <option key={c} value={c}>{c}</option>
+                {cities.map((c)=>(
+                  <option key={c.id} value={String(c.id)}>{c.name}</option>
                 ))}
               </select>
             ) : (
