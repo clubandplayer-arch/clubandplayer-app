@@ -24,6 +24,8 @@ type P = {
   bio?: string | null;
   birth_year?: number | null;
   city?: string | null;            // residenza libera (estero)
+  province?: string | null;
+  region?: string | null;
   country?: string | null;         // nazionalità ISO2 o testo
 
   role?: string | null;
