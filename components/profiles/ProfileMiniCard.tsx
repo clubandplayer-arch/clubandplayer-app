@@ -252,8 +252,8 @@ export default function ProfileMiniCard() {
             </div>
           )}
 
-          {isClub && (clubLocationLabel || interestLabel) ? (
-            <p className="text-sm font-medium text-gray-800">{clubLocationLabel || interestLabel}</p>
+          {isClub ? (
+            <p className="text-sm font-medium text-gray-800">{clubLocationLabel || '—'}</p>
           ) : null}
           {isClub && p?.club_motto ? (
             <p className="text-xs italic text-gray-600">{p.club_motto}</p>
