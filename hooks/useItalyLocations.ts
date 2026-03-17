@@ -9,25 +9,6 @@ type FetchResponse = {
   citiesByProvince?: Record<string, string[]>;
 };
 
-function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((item) => typeof item === 'string');
-}
-
-function normalizeRecordOfStringArrays(
-  value: unknown,
-  fallback: Record<string, string[]>,
-): Record<string, string[]> {
-  if (!value || typeof value !== 'object') return fallback;
-
-  const normalizedEntries = Object.entries(value as Record<string, unknown>).filter(([, list]) => isStringArray(list)) as Array<
-    [string, string[]]
-  >;
-
-  if (normalizedEntries.length === 0) return fallback;
-
-  return Object.fromEntries(normalizedEntries);
-}
-
 let cached: ItalyLocations | null = null;
 let inflight: Promise<ItalyLocations> | null = null;
 
@@ -43,11 +24,8 @@ async function fetchLocations(force = false): Promise<ItalyLocations> {
       }
       const json = (await res.json().catch(() => ({}))) as FetchResponse;
       const regions = Array.isArray(json.regions) && json.regions.length > 0 ? json.regions : FALLBACK_ITALY_LOCATIONS.regions;
-      const provinces = normalizeRecordOfStringArrays(
-        json.provincesByRegion,
-        FALLBACK_ITALY_LOCATIONS.provincesByRegion,
-      );
-      const cities = normalizeRecordOfStringArrays(json.citiesByProvince, FALLBACK_ITALY_LOCATIONS.citiesByProvince);
+      const provinces = json.provincesByRegion ?? FALLBACK_ITALY_LOCATIONS.provincesByRegion;
+      const cities = json.citiesByProvince ?? FALLBACK_ITALY_LOCATIONS.citiesByProvince;
       return {
         regions,
         provincesByRegion: provinces,
