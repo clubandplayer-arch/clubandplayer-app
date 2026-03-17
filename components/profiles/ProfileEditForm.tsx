@@ -383,14 +383,14 @@ export default function ProfileEditForm() {
       regionId: p.interest_region_id ?? null,
       provinceId: p.interest_province_id ?? null,
       municipalityId: p.interest_municipality_id ?? null,
-      regionName: p.region ?? null,
-      provinceName: p.province ?? null,
-      cityName: p.city ?? null,
+      regionName: p.interest_region || p.region || null,
+      provinceName: p.interest_province || p.province || null,
+      cityName: p.interest_city || p.city || null,
     });
     setClubLocationFallback({
-      region: p.region ?? null,
-      province: p.province ?? null,
-      city: p.city ?? null,
+      region: p.interest_region || p.region || null,
+      province: p.interest_province || p.province || null,
+      city: p.interest_city || p.city || null,
     });
 
     setResidenceLocation({

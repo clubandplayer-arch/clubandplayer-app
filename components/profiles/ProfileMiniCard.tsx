@@ -126,8 +126,10 @@ export default function ProfileMiniCard() {
           const pr = (prov as any)?.data as Row | null;
           const re = (reg as any)?.data as Row | null;
 
-          cityName = cityName || m?.name || '';
-          regionName = regionName || pr?.name || re?.name || '';
+          // Se sono presenti ID geografici, usiamo sempre i nomi risolti dagli ID
+          // per evitare mismatch con eventuali label testuali stale nel profilo.
+          cityName = m?.name || cityName || '';
+          regionName = pr?.name || re?.name || regionName || '';
         }
 
         setInterest({
