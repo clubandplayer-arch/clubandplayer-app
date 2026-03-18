@@ -160,43 +160,32 @@ function buildProfileQuery(
 }
 
 
-async function fetchFilteredClubIds(params: {
-  supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>;
-  filters: SearchFilters;
-}) {
-  const { supabase, filters } = params;
-
-  if (!filters.country && !filters.region && !filters.province && !filters.city && !filters.sport) {
-    return null;
-  }
-
-  let query = supabase
-    .from('profiles')
-    .select('id')
-    .or('account_type.eq.club,type.eq.club')
-    .or('status.eq.active,status.is.null');
-  query = applyCommonFilters(query, filters, { allowRegion: true, allowProvince: true, allowSport: true, allowRole: false });
-
-  const { data, error } = await query;
-  if (error) throw new Error(error.message);
-
-  const ids = Array.from(new Set((data ?? []).map((row) => String(row.id)).filter(Boolean)));
-  return ids;
-}
-
 function buildClubQuery(
   supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>,
   ilikeQuery: string,
-  clubIds: string[] | null,
+  select: string,
+  filters: SearchFilters,
   options?: { count?: 'exact'; head?: boolean },
 ) {
-  let query = supabase.from('clubs').select('id, name, display_name', options);
+  let query = supabase
+    .from('profiles')
+    .select(select, options)
+    .or('account_type.eq.club,type.eq.club')
+    .or('status.eq.active,status.is.null');
 
-  query = query.or(`name.ilike.${ilikeQuery},display_name.ilike.${ilikeQuery}`);
+  query = query.or(
+    [
+      `display_name.ilike.${ilikeQuery}`,
+      `full_name.ilike.${ilikeQuery}`,
+      `city.ilike.${ilikeQuery}`,
+      `province.ilike.${ilikeQuery}`,
+      `region.ilike.${ilikeQuery}`,
+      `country.ilike.${ilikeQuery}`,
+      `sport.ilike.${ilikeQuery}`,
+    ].join(','),
+  );
 
-  if (clubIds?.length) {
-    query = query.in('id', clubIds);
-  }
+  query = applyCommonFilters(query, filters, { allowRegion: true, allowProvince: true, allowSport: true, allowRole: false });
 
   return query;
 }
@@ -214,44 +203,28 @@ async function fetchProfileResults(params: {
   const to = from + limit - 1;
 
   if (kind === 'clubs') {
-    const clubIds = await fetchFilteredClubIds({ supabase, filters });
-    if (clubIds && clubIds.length === 0) {
-      return { results: [], count: 0 };
-    }
-
-    const { data, count, error } = await buildClubQuery(supabase, ilikeQuery, clubIds, { count: 'exact' })
+    const { data, count, error } = await buildClubQuery(
+      supabase,
+      ilikeQuery,
+      'id, full_name, display_name, avatar_url, city, province, region, country, sport',
+      filters,
+      { count: 'exact' },
+    )
       .order('display_name', { ascending: true })
       .range(from, to);
     if (error) throw new Error(error.message);
 
     const rows = Array.isArray(data) ? (data as any[]) : [];
-    const resultClubIds = rows.map((row) => row.id).filter(Boolean);
-    let extrasMap = new Map<
-      string,
-      { avatar_url?: string | null; city?: string | null; province?: string | null; region?: string | null; country?: string | null; sport?: string | null }
-    >();
-
-    if (resultClubIds.length) {
-      const { data: extras, error: extrasError } = await supabase
-        .from('profiles')
-        .select('id, avatar_url, city, province, region, country, sport')
-        .in('id', resultClubIds);
-      if (extrasError) throw new Error(extrasError.message);
-      extrasMap = new Map(
-        (extras ?? []).map((row) => [String(row.id), row as { avatar_url?: string | null; city?: string | null; province?: string | null; region?: string | null; country?: string | null; sport?: string | null }]),
-      );
-    }
 
     const results: SearchResult[] = rows.map((row) => {
-      const displayName = (row.display_name || row.name || '').trim();
-      const extras = extrasMap.get(String(row.id));
-      const location = buildLocation(extras ?? {});
-      const subtitle = [extras?.sport, location].filter(Boolean).join(' · ');
+      const displayName = (row.display_name || row.full_name || '').trim();
+      const location = buildLocation(row);
+      const subtitle = [row.sport, location].filter(Boolean).join(' · ');
       return {
         id: String(row.id),
         title: displayName || 'Club',
         subtitle: subtitle || null,
-        image_url: extras?.avatar_url ?? null,
+        image_url: row.avatar_url || null,
         href: `/clubs/${row.id}`,
         kind,
       };
@@ -295,12 +268,7 @@ async function fetchProfileCount(params: {
 }) {
   const { supabase, kind, ilikeQuery, filters } = params;
   if (kind === 'clubs') {
-    const clubIds = await fetchFilteredClubIds({ supabase, filters });
-    if (clubIds && clubIds.length === 0) {
-      return 0;
-    }
-
-    const query = buildClubQuery(supabase, ilikeQuery, clubIds, { count: 'exact', head: true });
+    const query = buildClubQuery(supabase, ilikeQuery, 'id', filters, { count: 'exact', head: true });
     const { count, error } = await query;
     if (error) throw new Error(error.message);
     return count ?? 0;
