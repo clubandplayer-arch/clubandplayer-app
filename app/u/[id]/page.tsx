@@ -13,6 +13,8 @@ import { buildPlayerDisplayName } from '@/lib/displayName'
 import { buildEndorsedSet, normalizeProfileSkills, normalizeSkillName } from '@/lib/profiles/skills'
 import { ProfileSkill } from '@/types/profile'
 import { getCountryName } from '@/lib/geo/countries'
+import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations'
+import { useProvinceAbbreviations } from '@/hooks/useProvinceAbbreviations'
 
 type Profile = {
   id: string
@@ -53,9 +55,9 @@ function buildTagline(p: Profile): string {
   return `${role} · ${sport}`
 }
 
-function buildLocation(p: Profile): string | null {
+function buildLocation(p: Profile, provinceAbbreviations: Record<string, string>): string | null {
   const countryLabel = getCountryName(p.country) ?? (p.country ?? '')
-  const parts = [p.city, p.province, p.region, countryLabel]
+  const parts = [p.city, provinceDisplayValue(p.province, provinceAbbreviations), p.region, countryLabel]
     .map((part) => (part ?? '').trim())
     .filter(Boolean)
   return parts.length ? parts.join(' · ') : null
@@ -73,6 +75,7 @@ export default function PublicAthleteProfile() {
   const [msg, setMsg] = useState<string>('')
   const [meId, setMeId] = useState<string | null>(null)
   const [endorsingSkill, setEndorsingSkill] = useState<string | null>(null)
+  const provinceAbbreviations = useProvinceAbbreviations()
 
   const isClubProfile = useMemo(() => {
     const kind = (profile?.account_type || profile?.type || '').toString().toLowerCase()
@@ -241,7 +244,7 @@ export default function PublicAthleteProfile() {
             accountType="athlete"
             avatarUrl={profile.avatar_url}
             subtitle={buildTagline(profile)}
-            locationLabel={buildLocation(profile)}
+            locationLabel={buildLocation(profile, provinceAbbreviations)}
             showMessageButton
             showFollowButton={!(meId && (meId === profile.id || meId === profile.user_id))}
             messageLabel="Messaggia"

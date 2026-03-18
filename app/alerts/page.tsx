@@ -6,6 +6,8 @@ export const fetchCache = 'default-no-store';
 
 import { useEffect, useState, useCallback } from 'react'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
+import { useProvinceAbbreviations } from '@/hooks/useProvinceAbbreviations'
+import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations'
 
 type AlertRow = {
   id: string
@@ -22,6 +24,7 @@ export default function AlertsPage() {
   const [rows, setRows] = useState<AlertRow[]>([])
   const [loading, setLoading] = useState(true)
   const [msg, setMsg] = useState<string>('')
+  const provinceAbbreviations = useProvinceAbbreviations()
 
   const load = useCallback(async () => {
     setLoading(true); setMsg('')
@@ -57,7 +60,7 @@ export default function AlertsPage() {
             <div style={{display:'flex', justifyContent:'space-between', gap:12}}>
               <div>
                 <div style={{fontWeight:600}}>
-                  {a.sport}{a.role ? ` · ${a.role}` : ''} {a.city ? ` · ${a.city}` : a.province ? ` · ${a.province}` : a.region ? ` · ${a.region}` : ''}
+                  {a.sport}{a.role ? ` · ${a.role}` : ''} {a.city ? ` · ${a.city}` : a.province ? ` · ${provinceDisplayValue(a.province, provinceAbbreviations)}` : a.region ? ` · ${a.region}` : ''}
                 </div>
                 <div style={{fontSize:12, opacity:.7}}>Creato: {new Date(a.created_at).toLocaleString()}</div>
               </div>

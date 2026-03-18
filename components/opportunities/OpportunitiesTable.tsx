@@ -5,6 +5,8 @@ import { useMemo } from 'react';
 import ApplyCell from '@/components/opportunities/ApplyCell';
 import FollowButton from '@/components/common/FollowButton';
 import type { Opportunity } from '@/types/opportunity';
+import { useProvinceAbbreviations } from '@/hooks/useProvinceAbbreviations';
+import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
 
 type Role = 'athlete' | 'club' | 'guest';
 
@@ -41,6 +43,7 @@ export default function OpportunitiesTable({
   onDelete?: (opp: Opportunity) => void;
 }) {
   const ownerNameMap = useMemo(() => clubNames ?? {}, [clubNames]);
+  const provinceAbbreviations = useProvinceAbbreviations();
 
   if (!items.length) {
     return (
@@ -56,7 +59,7 @@ export default function OpportunitiesTable({
         const ownerId = o.created_by ?? o.owner_id ?? null;
         const profileOwnerId = (o as any).club_id ?? ownerId;
         const canEdit = !!currentUserId && (ownerId === currentUserId || o.created_by === currentUserId || o.owner_id === currentUserId);
-        const place = [o.city, o.province, o.region, o.country].filter(Boolean).join(', ');
+        const place = [o.city, provinceDisplayValue(o.province, provinceAbbreviations), o.region, o.country].filter(Boolean).join(', ');
         const showApply = userRole === 'athlete' && !canEdit;
         const showFollow = userRole === 'athlete' && !!profileOwnerId;
         const isMyClub = !!myProfileId && !!profileOwnerId && myProfileId === profileOwnerId;

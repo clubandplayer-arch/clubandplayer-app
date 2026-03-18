@@ -5,6 +5,7 @@ import { rateLimit } from '@/lib/api/rateLimit';
 import { getCountryName } from '@/lib/geo/countries';
 import { normalizeSport } from '@/lib/opps/constants';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { getProvinceAbbreviationsServer, provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
 
 export const runtime = 'nodejs';
 
@@ -71,8 +72,8 @@ function buildLocationFrom(parts: Array<string | null | undefined>) {
   return parts.map((part) => (typeof part === 'string' ? part.trim() : part)).filter(Boolean).join(' · ');
 }
 
-function buildLocation(row: Record<string, any>) {
-  return buildLocationFrom([row.city, row.province, row.region, row.country]);
+function buildLocation(row: Record<string, any>, provinceAbbreviations: Record<string, string>) {
+  return buildLocationFrom([row.city, provinceDisplayValue(row.province, provinceAbbreviations), row.region, row.country]);
 }
 
 function normalizeType(raw?: string | null): SearchType {
@@ -199,6 +200,7 @@ async function fetchProfileResults(params: {
   filters: SearchFilters;
 }) {
   const { supabase, kind, ilikeQuery, limit, page, filters } = params;
+  const provinceAbbreviations = await getProvinceAbbreviationsServer();
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
@@ -218,7 +220,7 @@ async function fetchProfileResults(params: {
 
     const results: SearchResult[] = rows.map((row) => {
       const displayName = (row.display_name || row.full_name || '').trim();
-      const location = buildLocation(row);
+      const location = buildLocation(row, provinceAbbreviations);
       const subtitle = [row.sport, location].filter(Boolean).join(' · ');
       return {
         id: String(row.id),
@@ -245,7 +247,7 @@ async function fetchProfileResults(params: {
   const results: SearchResult[] = rows.map((row) => {
     const title = (row.full_name || '').trim() || 'Player';
     const details = [row.role, row.sport].filter(Boolean).join(' · ');
-    const location = buildLocation(row);
+    const location = buildLocation(row, provinceAbbreviations);
     const subtitle = [details, location].filter(Boolean).join(' · ');
     return {
       id: String(row.id),
@@ -318,6 +320,7 @@ async function fetchOpportunityResults(params: {
   status?: string | null;
 }) {
   const { supabase, ilikeQuery, limit, page, filters, status } = params;
+  const provinceAbbreviations = await getProvinceAbbreviationsServer();
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
@@ -372,7 +375,7 @@ async function fetchOpportunityResults(params: {
     const clubId = row.club_id || row.created_by || row.owner_id || '';
     const clubProfile = clubProfileMap.get(String(clubId));
     const title = row.title?.trim() || 'Opportunità';
-    const location = buildLocation(row);
+    const location = buildLocation(row, provinceAbbreviations);
     const subtitle = [row.club_name || clubProfile?.name, location].filter(Boolean).join(' · ');
 
     return {

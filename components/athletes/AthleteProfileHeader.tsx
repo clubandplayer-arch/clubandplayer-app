@@ -4,6 +4,8 @@ import Image from 'next/image';
 import FollowButton from '@/components/clubs/FollowButton';
 import { MessageButton } from '@/components/messaging/MessageButton';
 import { normalizeSport } from '@/lib/opps/constants';
+import { useProvinceAbbreviations } from '@/hooks/useProvinceAbbreviations';
+import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
 
 type AthleteProfile = {
   id: string;
@@ -30,6 +32,7 @@ export default function AthleteProfileHeader({
   profile: AthleteProfile;
   isMe: boolean;
 }) {
+  const provinceAbbreviations = useProvinceAbbreviations();
   const name = resolveName(profile);
 
   const subtitle = (() => {
@@ -40,7 +43,7 @@ export default function AthleteProfileHeader({
 
   const headline = (profile.headline || '').trim();
 
-  const location = [profile.city, profile.province, profile.region, profile.country]
+  const location = [profile.city, provinceDisplayValue(profile.province, provinceAbbreviations), profile.region, profile.country]
     .filter(Boolean)
     .join(' · ');
 

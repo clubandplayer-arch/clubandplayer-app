@@ -6,6 +6,8 @@ import { useMemo, useState } from 'react';
 
 import { buildPlayerDisplayName } from '@/lib/displayName';
 import { useRouter } from 'next/navigation';
+import { useProvinceAbbreviations } from '@/hooks/useProvinceAbbreviations';
+import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
 
 type AthleteSummary = {
   id: string;
@@ -51,6 +53,7 @@ export default function ApplicationsTable({
 }) {
   const router = useRouter();
   const [savingId, setSavingId] = useState<string | null>(null);
+  const provinceAbbreviations = useProvinceAbbreviations();
 
   const headers = useMemo(
     () => [
@@ -145,7 +148,7 @@ export default function ApplicationsTable({
       null;
     const location =
       r.player_location ||
-      [r.athlete?.city, r.athlete?.province, r.athlete?.region].filter(Boolean).join(' · ') ||
+      [r.athlete?.city, provinceDisplayValue(r.athlete?.province, provinceAbbreviations), r.athlete?.region].filter(Boolean).join(' · ') ||
       '';
 
     return athleteId ? (
