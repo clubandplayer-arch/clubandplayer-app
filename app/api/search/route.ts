@@ -2,6 +2,8 @@ import type { NextRequest } from 'next/server';
 
 import { dbError, invalidPayload, rateLimited, successResponse, unknownError } from '@/lib/api/standardResponses';
 import { rateLimit } from '@/lib/api/rateLimit';
+import { getCountryName } from '@/lib/geo/countries';
+import { normalizeSport } from '@/lib/opps/constants';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
@@ -31,6 +33,15 @@ type CountsByKind = {
   players: number;
   posts: number;
   events: number;
+};
+
+type SearchFilters = {
+  country: string | null;
+  region: string | null;
+  province: string | null;
+  city: string | null;
+  sport: string | null;
+  role: string | null;
 };
 
 const EMPTY_RESULTS: SearchResultsByKind = {
@@ -87,11 +98,47 @@ function emptyCounts(): CountsByKind {
   return { opportunities: 0, clubs: 0, players: 0, posts: 0, events: 0 };
 }
 
+function normalizeTextFilter(raw?: string | null) {
+  const value = raw?.trim();
+  return value ? value : null;
+}
+
+function readFilters(url: URL): SearchFilters {
+  const countryRaw = normalizeTextFilter(url.searchParams.get('country'));
+  const countryCode = countryRaw?.toUpperCase() ?? null;
+  return {
+    country: countryCode,
+    region: normalizeTextFilter(url.searchParams.get('region')),
+    province: normalizeTextFilter(url.searchParams.get('province')),
+    city: normalizeTextFilter(url.searchParams.get('city')),
+    sport: normalizeSport(url.searchParams.get('sport')),
+    role: normalizeTextFilter(url.searchParams.get('role')),
+  };
+}
+
+function applyCommonFilters<T>(query: T, filters: SearchFilters, options?: { allowRegion?: boolean; allowProvince?: boolean; allowSport?: boolean; allowRole?: boolean }) {
+  let nextQuery: any = query;
+
+  if (filters.country) {
+    const countryLabel = getCountryName(filters.country);
+    if (countryLabel) nextQuery = nextQuery.or(`country.eq.${filters.country},country.ilike.${toIlikePattern(countryLabel)}`);
+    else nextQuery = nextQuery.eq('country', filters.country);
+  }
+  if (options?.allowRegion && filters.region) nextQuery = nextQuery.ilike('region', toIlikePattern(filters.region));
+  if (options?.allowProvince && filters.province) nextQuery = nextQuery.ilike('province', toIlikePattern(filters.province));
+  if (filters.city) nextQuery = nextQuery.ilike('city', toIlikePattern(filters.city));
+  if (options?.allowSport && filters.sport) nextQuery = nextQuery.ilike('sport', toIlikePattern(filters.sport));
+  if (options?.allowRole && filters.role) nextQuery = nextQuery.ilike('role', toIlikePattern(filters.role));
+
+  return nextQuery as T;
+}
+
 function buildProfileQuery(
   supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>,
   table: 'athletes_view' | 'clubs_view',
   ilikeQuery: string,
   select: string,
+  filters: SearchFilters,
   options?: { count?: 'exact'; head?: boolean },
 ) {
   let query = supabase.from(table).select(select, options).eq('status', 'active');
@@ -107,6 +154,38 @@ function buildProfileQuery(
   const clubOr = [`display_name.ilike.${ilikeQuery}`, ...commonOr];
 
   query = query.or((table === 'athletes_view' ? athleteOr : clubOr).join(','));
+  query = applyCommonFilters(query, filters, { allowRegion: table === 'athletes_view', allowProvince: table === 'athletes_view', allowSport: table === 'athletes_view', allowRole: table === 'athletes_view' });
+
+  return query;
+}
+
+
+function buildClubQuery(
+  supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>,
+  ilikeQuery: string,
+  select: string,
+  filters: SearchFilters,
+  options?: { count?: 'exact'; head?: boolean },
+) {
+  let query = supabase
+    .from('profiles')
+    .select(select, options)
+    .or('account_type.eq.club,type.eq.club')
+    .or('status.eq.active,status.is.null');
+
+  query = query.or(
+    [
+      `display_name.ilike.${ilikeQuery}`,
+      `full_name.ilike.${ilikeQuery}`,
+      `city.ilike.${ilikeQuery}`,
+      `province.ilike.${ilikeQuery}`,
+      `region.ilike.${ilikeQuery}`,
+      `country.ilike.${ilikeQuery}`,
+      `sport.ilike.${ilikeQuery}`,
+    ].join(','),
+  );
+
+  query = applyCommonFilters(query, filters, { allowRegion: true, allowProvince: true, allowSport: true, allowRole: false });
 
   return query;
 }
@@ -117,48 +196,35 @@ async function fetchProfileResults(params: {
   ilikeQuery: string;
   limit: number;
   page: number;
+  filters: SearchFilters;
 }) {
-  const { supabase, kind, ilikeQuery, limit, page } = params;
+  const { supabase, kind, ilikeQuery, limit, page, filters } = params;
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
   if (kind === 'clubs') {
-    const { data, count, error } = await supabase
-      .from('clubs_view')
-      .select('id, display_name', { count: 'exact' })
-      .ilike('display_name', ilikeQuery)
+    const { data, count, error } = await buildClubQuery(
+      supabase,
+      ilikeQuery,
+      'id, full_name, display_name, avatar_url, city, province, region, country, sport',
+      filters,
+      { count: 'exact' },
+    )
       .order('display_name', { ascending: true })
       .range(from, to);
     if (error) throw new Error(error.message);
 
     const rows = Array.isArray(data) ? (data as any[]) : [];
-    const clubIds = rows.map((row) => row.id).filter(Boolean);
-    let extrasMap = new Map<
-      string,
-      { avatar_url?: string | null; city?: string | null; province?: string | null; region?: string | null; country?: string | null; sport?: string | null }
-    >();
-
-    if (clubIds.length) {
-      const { data: extras, error: extrasError } = await supabase
-        .from('profiles')
-        .select('id, avatar_url, city, province, region, country, sport')
-        .in('id', clubIds);
-      if (extrasError) throw new Error(extrasError.message);
-      extrasMap = new Map(
-        (extras ?? []).map((row) => [String(row.id), row as { avatar_url?: string | null; city?: string | null; province?: string | null; region?: string | null; country?: string | null; sport?: string | null }]),
-      );
-    }
 
     const results: SearchResult[] = rows.map((row) => {
-      const displayName = (row.display_name || '').trim();
-      const extras = extrasMap.get(String(row.id));
-      const location = buildLocation(extras ?? {});
-      const subtitle = [extras?.sport, location].filter(Boolean).join(' · ');
+      const displayName = (row.display_name || row.full_name || '').trim();
+      const location = buildLocation(row);
+      const subtitle = [row.sport, location].filter(Boolean).join(' · ');
       return {
         id: String(row.id),
         title: displayName || 'Club',
         subtitle: subtitle || null,
-        image_url: extras?.avatar_url ?? null,
+        image_url: row.avatar_url || null,
         href: `/clubs/${row.id}`,
         kind,
       };
@@ -167,8 +233,7 @@ async function fetchProfileResults(params: {
     return { results, count: count ?? 0 };
   }
 
-  const table = 'athletes_view';
-  const query = buildProfileQuery(supabase, table, ilikeQuery, ATHLETES_SELECT, { count: 'exact' })
+  const query = buildProfileQuery(supabase, 'athletes_view', ilikeQuery, ATHLETES_SELECT, filters, { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(from, to);
 
@@ -199,17 +264,16 @@ async function fetchProfileCount(params: {
   supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>;
   kind: 'clubs' | 'players';
   ilikeQuery: string;
+  filters: SearchFilters;
 }) {
-  const { supabase, kind, ilikeQuery } = params;
+  const { supabase, kind, ilikeQuery, filters } = params;
   if (kind === 'clubs') {
-    const { count, error } = await supabase
-      .from('clubs_view')
-      .select('id', { count: 'exact', head: true })
-      .ilike('display_name', ilikeQuery);
+    const query = buildClubQuery(supabase, ilikeQuery, 'id', filters, { count: 'exact', head: true });
+    const { count, error } = await query;
     if (error) throw new Error(error.message);
     return count ?? 0;
   }
-  const query = buildProfileQuery(supabase, 'athletes_view', ilikeQuery, 'id', { count: 'exact', head: true });
+  const query = buildProfileQuery(supabase, 'athletes_view', ilikeQuery, 'id', filters, { count: 'exact', head: true });
   const { count, error } = await query;
   if (error) throw new Error(error.message);
   return count ?? 0;
@@ -219,6 +283,7 @@ function buildOpportunityQuery(
   supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>,
   ilikeQuery: string,
   select: string,
+  filters: SearchFilters,
   options?: { count?: 'exact'; head?: boolean },
   status?: string | null,
 ) {
@@ -240,6 +305,7 @@ function buildOpportunityQuery(
   if (status) {
     query = query.eq('status', status);
   }
+  query = applyCommonFilters(query, filters, { allowRegion: true, allowProvince: true, allowSport: true, allowRole: true });
   return query;
 }
 
@@ -248,9 +314,10 @@ async function fetchOpportunityResults(params: {
   ilikeQuery: string;
   limit: number;
   page: number;
+  filters: SearchFilters;
   status?: string | null;
 }) {
-  const { supabase, ilikeQuery, limit, page, status } = params;
+  const { supabase, ilikeQuery, limit, page, filters, status } = params;
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
@@ -258,6 +325,7 @@ async function fetchOpportunityResults(params: {
     supabase,
     ilikeQuery,
     'id, title, description, city, province, region, country, club_id, club_name, created_by, owner_id',
+    filters,
     { count: 'exact' },
     status,
   )
@@ -283,10 +351,13 @@ async function fetchOpportunityResults(params: {
       supabase.from('profiles').select('user_id, display_name, full_name, avatar_url').in('user_id', clubIds),
     ]);
 
-    const combined = [
-      ...(byProfileId.data || []),
-      ...(byUserId.data || []),
-    ] as Array<{ id?: string | null; user_id?: string | null; full_name?: string | null; display_name?: string | null; avatar_url?: string | null }>;
+    const combined = [...(byProfileId.data || []), ...(byUserId.data || [])] as Array<{
+      id?: string | null;
+      user_id?: string | null;
+      full_name?: string | null;
+      display_name?: string | null;
+      avatar_url?: string | null;
+    }>;
     const nextMap = new Map<string, { name?: string | null; avatar?: string | null }>();
     combined.forEach((row) => {
       const key = row.id ?? row.user_id;
@@ -320,15 +391,53 @@ async function fetchOpportunityResults(params: {
 async function fetchOpportunityCount(params: {
   supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>;
   ilikeQuery: string;
+  filters: SearchFilters;
   status?: string | null;
 }) {
-  const { supabase, ilikeQuery, status } = params;
-  const { count, error } = await buildOpportunityQuery(supabase, ilikeQuery, 'id', {
-    count: 'exact',
-    head: true,
-  }, status);
+  const { supabase, ilikeQuery, filters, status } = params;
+  const { count, error } = await buildOpportunityQuery(
+    supabase,
+    ilikeQuery,
+    'id',
+    filters,
+    { count: 'exact', head: true },
+    status,
+  );
   if (error) throw new Error(error.message);
   return count ?? 0;
+}
+
+function hasProfileFilters(filters: SearchFilters) {
+  return Boolean(filters.country || filters.region || filters.province || filters.city || filters.sport || filters.role);
+}
+
+async function fetchFilteredAuthorIds(params: {
+  supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>;
+  filters: SearchFilters;
+}) {
+  const { supabase, filters } = params;
+
+  if (!hasProfileFilters(filters)) {
+    return null;
+  }
+
+  let query = supabase
+    .from('profiles')
+    .select('id, user_id')
+    .or('status.eq.active,status.is.null');
+
+  query = applyCommonFilters(query, filters, { allowRegion: true, allowProvince: true, allowSport: true, allowRole: true });
+
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+
+  return Array.from(
+    new Set(
+      (data ?? [])
+        .flatMap((row) => [row.id, row.user_id])
+        .filter((value): value is string => Boolean(value)),
+    ),
+  );
 }
 
 function buildPostsQuery(
@@ -336,9 +445,14 @@ function buildPostsQuery(
   ilikeQuery: string,
   kind: 'normal' | 'event',
   select: string,
+  authorIds: string[] | null,
   options?: { count?: 'exact'; head?: boolean },
 ) {
-  const query = supabase.from('posts').select(select, options).eq('kind', kind);
+  let query = supabase.from('posts').select(select, options).eq('kind', kind);
+
+  if (authorIds && authorIds.length > 0) {
+    query = query.in('author_id', authorIds);
+  }
 
   if (kind === 'event') {
     return query.or(
@@ -360,16 +474,23 @@ async function fetchPosts(params: {
   limit: number;
   page: number;
   kind: 'normal' | 'event';
+  filters: SearchFilters;
 }) {
-  const { supabase, ilikeQuery, limit, page, kind } = params;
+  const { supabase, ilikeQuery, limit, page, kind, filters } = params;
   const from = (page - 1) * limit;
   const to = from + limit - 1;
+
+  const authorIds = await fetchFilteredAuthorIds({ supabase, filters });
+  if (authorIds && authorIds.length === 0) {
+    return { results: [], count: 0 };
+  }
 
   const { data, count, error } = await buildPostsQuery(
     supabase,
     ilikeQuery,
     kind,
     'id, author_id, content, created_at, kind, event_payload, media_url',
+    authorIds,
     { count: 'exact' },
   )
     .order('created_at', { ascending: false })
@@ -378,11 +499,11 @@ async function fetchPosts(params: {
   if (error) throw new Error(error.message);
 
   const rows = Array.isArray(data) ? (data as any[]) : [];
-  const authorIds = Array.from(new Set(rows.map((row) => row.author_id).filter(Boolean)));
+  const rowAuthorIds = Array.from(new Set(rows.map((row) => row.author_id).filter(Boolean)));
 
   let authorMap = new Map<string, { name?: string | null; avatar?: string | null }>();
 
-  if (authorIds.length) {
+  if (rowAuthorIds.length) {
     const toAuthorPayload = (row: {
       full_name?: string | null;
       display_name?: string | null;
@@ -404,7 +525,7 @@ async function fetchPosts(params: {
     const { data: byUserId } = await supabase
       .from('profiles')
       .select('user_id, display_name, full_name, avatar_url')
-      .in('user_id', authorIds);
+      .in('user_id', rowAuthorIds);
 
     (byUserId || [])
       .filter((row) => row?.user_id)
@@ -413,7 +534,7 @@ async function fetchPosts(params: {
         nextMap.set(String(row.user_id), toAuthorPayload(row));
       });
 
-    const unresolvedAuthorIds = authorIds.filter((authorId) => !nextMap.has(String(authorId)));
+    const unresolvedAuthorIds = rowAuthorIds.filter((authorId) => !nextMap.has(String(authorId)));
 
     if (unresolvedAuthorIds.length) {
       const { data: byProfileId } = await supabase
@@ -445,10 +566,7 @@ async function fetchPosts(params: {
 
     const isEvent = kind === 'event';
     const title = isEvent ? eventPayload?.title?.trim() || content || 'Evento' : content || 'Post';
-    const subtitle =
-      isEvent
-        ? [eventPayload?.location, author?.name].filter(Boolean).join(' · ')
-        : author?.name || null;
+    const subtitle = isEvent ? [eventPayload?.location, author?.name].filter(Boolean).join(' · ') : author?.name || null;
 
     return {
       id: String(row.id),
@@ -467,9 +585,15 @@ async function fetchPostsCount(params: {
   supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>;
   ilikeQuery: string;
   kind: 'normal' | 'event';
+  filters: SearchFilters;
 }) {
-  const { supabase, ilikeQuery, kind } = params;
-  const { count, error } = await buildPostsQuery(supabase, ilikeQuery, kind, 'id', {
+  const { supabase, ilikeQuery, kind, filters } = params;
+  const authorIds = await fetchFilteredAuthorIds({ supabase, filters });
+  if (authorIds && authorIds.length === 0) {
+    return 0;
+  }
+
+  const { count, error } = await buildPostsQuery(supabase, ilikeQuery, kind, 'id', authorIds, {
     count: 'exact',
     head: true,
   });
@@ -493,6 +617,7 @@ export async function GET(req: NextRequest) {
   const rawStatus = (url.searchParams.get('status') || '').trim().toLowerCase();
   const allowedStatuses = new Set(['open', 'closed', 'archived', 'draft']);
   const status = rawStatus && allowedStatuses.has(rawStatus) ? rawStatus : null;
+  const filters = readFilters(url);
 
   if (query.length < 2) {
     return invalidPayload('La query deve contenere almeno 2 caratteri.');
@@ -509,11 +634,11 @@ export async function GET(req: NextRequest) {
       const previewLimit = Math.min(ALL_PREVIEW_LIMIT, limit);
 
       const [clubs, players, opportunities, posts, events] = await Promise.all([
-        fetchProfileResults({ supabase, kind: 'clubs', ilikeQuery, limit: previewLimit, page: 1 }),
-        fetchProfileResults({ supabase, kind: 'players', ilikeQuery, limit: previewLimit, page: 1 }),
-        fetchOpportunityResults({ supabase, ilikeQuery, limit: previewLimit, page: 1, status }),
-        fetchPosts({ supabase, ilikeQuery, limit: previewLimit, page: 1, kind: 'normal' }),
-        fetchPosts({ supabase, ilikeQuery, limit: previewLimit, page: 1, kind: 'event' }),
+        fetchProfileResults({ supabase, kind: 'clubs', ilikeQuery, limit: previewLimit, page: 1, filters }),
+        fetchProfileResults({ supabase, kind: 'players', ilikeQuery, limit: previewLimit, page: 1, filters }),
+        fetchOpportunityResults({ supabase, ilikeQuery, limit: previewLimit, page: 1, filters, status }),
+        fetchPosts({ supabase, ilikeQuery, limit: previewLimit, page: 1, kind: 'normal', filters }),
+        fetchPosts({ supabase, ilikeQuery, limit: previewLimit, page: 1, kind: 'event', filters }),
       ]);
 
       results.clubs = clubs.results;
@@ -531,37 +656,37 @@ export async function GET(req: NextRequest) {
       };
     } else {
       const countPromises = Promise.all([
-        fetchProfileCount({ supabase, kind: 'clubs', ilikeQuery }),
-        fetchProfileCount({ supabase, kind: 'players', ilikeQuery }),
-        fetchOpportunityCount({ supabase, ilikeQuery, status }),
-        fetchPostsCount({ supabase, ilikeQuery, kind: 'normal' }),
-        fetchPostsCount({ supabase, ilikeQuery, kind: 'event' }),
+        fetchProfileCount({ supabase, kind: 'clubs', ilikeQuery, filters }),
+        fetchProfileCount({ supabase, kind: 'players', ilikeQuery, filters }),
+        fetchOpportunityCount({ supabase, ilikeQuery, filters, status }),
+        fetchPostsCount({ supabase, ilikeQuery, kind: 'normal', filters }),
+        fetchPostsCount({ supabase, ilikeQuery, kind: 'event', filters }),
       ]);
 
       const resultsPromise = (() => {
         switch (type) {
           case 'clubs':
-            return fetchProfileResults({ supabase, kind: 'clubs', ilikeQuery, limit, page }).then((payload) => {
+            return fetchProfileResults({ supabase, kind: 'clubs', ilikeQuery, limit, page, filters }).then((payload) => {
               results.clubs = payload.results;
               return payload;
             });
           case 'players':
-            return fetchProfileResults({ supabase, kind: 'players', ilikeQuery, limit, page }).then((payload) => {
+            return fetchProfileResults({ supabase, kind: 'players', ilikeQuery, limit, page, filters }).then((payload) => {
               results.players = payload.results;
               return payload;
             });
           case 'opportunities':
-            return fetchOpportunityResults({ supabase, ilikeQuery, limit, page, status }).then((payload) => {
+            return fetchOpportunityResults({ supabase, ilikeQuery, limit, page, filters, status }).then((payload) => {
               results.opportunities = payload.results;
               return payload;
             });
           case 'posts':
-            return fetchPosts({ supabase, ilikeQuery, limit, page, kind: 'normal' }).then((payload) => {
+            return fetchPosts({ supabase, ilikeQuery, limit, page, kind: 'normal', filters }).then((payload) => {
               results.posts = payload.results;
               return payload;
             });
           case 'events':
-            return fetchPosts({ supabase, ilikeQuery, limit, page, kind: 'event' }).then((payload) => {
+            return fetchPosts({ supabase, ilikeQuery, limit, page, kind: 'event', filters }).then((payload) => {
               results.events = payload.results;
               return payload;
             });
@@ -607,6 +732,7 @@ export async function GET(req: NextRequest) {
       type,
       page,
       limit,
+      filters,
       counts,
       results,
     });
