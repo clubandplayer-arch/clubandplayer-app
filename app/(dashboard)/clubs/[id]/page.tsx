@@ -2,7 +2,6 @@
 import { notFound } from 'next/navigation';
 
 import ProfileHeader from '@/components/profiles/ProfileHeader';
-import { CountryFlag } from '@/components/ui/CountryFlag';
 import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
 import { getProvinceAbbreviationsServer } from '@/lib/geo/provinceAbbreviations.server';
 import ClubOpenOpportunitiesWidget from '@/components/clubs/ClubOpenOpportunitiesWidget';
@@ -168,33 +167,6 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
   const subtitle =
     [profileWithVerification.club_league_category, sportLabel].filter(Boolean).join(' · ') || '—';
   const location = locationLabel(profileWithVerification, provinceAbbreviations) || undefined;
-  const rawCountry = (profileWithVerification.country ?? '').trim();
-  const matchCountry = rawCountry.match(/^([A-Za-z]{2})(?:\s+(.+))?$/);
-  const iso2 = matchCountry ? matchCountry[1].trim().toUpperCase() : null;
-  const countryLabel = getCountryName(iso2 ?? rawCountry) ?? rawCountry;
-  const state = resolveStateName(
-    profileWithVerification.country || null,
-    profileWithVerification.region || profileWithVerification.province || '',
-  );
-  const locationParts = [
-    profileWithVerification.city,
-    provinceDisplayValue(profileWithVerification.province, provinceAbbreviations),
-    state,
-  ]
-    .filter(Boolean)
-    .join(' · ');
-  const locationContent = (
-    <span className="flex flex-wrap items-center gap-2">
-      {locationParts ? <span>{locationParts}</span> : null}
-      {countryLabel ? (
-        <span className="inline-flex items-center gap-1">
-          <CountryFlag iso2={iso2} />
-          <span>{countryLabel}</span>
-        </span>
-      ) : null}
-    </span>
-  );
-
   return (
     <div className="mx-auto min-w-0 max-w-5xl space-y-6 p-4 md:p-6">
       <ProfileHeader
@@ -204,7 +176,6 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
         avatarUrl={profileWithVerification.avatar_url}
         subtitle={subtitle}
         locationLabel={location}
-        locationContent={locationContent}
         showMessageButton
         showFollowButton={!isMe}
         isVerified={profileWithVerification.is_verified}

@@ -79,7 +79,7 @@ export default function AthleteProfileHeader({
         <div className="flex flex-1 flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="space-y-2">
             <div className="flex flex-col gap-1">
-              <h1 className="text-2xl font-semibold leading-tight text-neutral-900 md:text-3xl">{name}</h1>
+              <h1 className="font-logo text-2xl font-normal leading-tight text-neutral-900 md:text-3xl">{name}</h1>
               <p className="text-sm font-medium text-neutral-700 md:text-base">{subtitle}</p>
             </div>
             {headline ? <p className="text-sm text-neutral-600">{headline}</p> : null}
