@@ -166,11 +166,11 @@ async function fetchFilteredClubIds(params: {
 }) {
   const { supabase, filters } = params;
 
-  if (!filters.region && !filters.province && !filters.sport) {
+  if (!filters.sport) {
     return null;
   }
 
-  let query = supabase.from('profiles').select('id').eq('account_type', 'club');
+  let query = supabase.from('profiles').select('id').eq('account_type', 'club').eq('status', 'active');
   query = applyCommonFilters(query, filters, { allowRegion: true, allowProvince: true, allowSport: true, allowRole: false });
 
   const { data, error } = await query;
@@ -187,10 +187,10 @@ function buildClubQuery(
   clubIds: string[] | null,
   options?: { count?: 'exact'; head?: boolean },
 ) {
-  let query = supabase.from('clubs').select('id, display_name, city, country', options).eq('status', 'active');
+  let query = supabase.from('clubs').select('id, display_name, city, province, region, country', options);
 
-  query = query.or([`display_name.ilike.${ilikeQuery}`, `city.ilike.${ilikeQuery}`, `country.ilike.${ilikeQuery}`].join(','));
-  query = applyCommonFilters(query, filters, { allowRegion: false, allowProvince: false, allowSport: false, allowRole: false });
+  query = query.or([`display_name.ilike.${ilikeQuery}`, `city.ilike.${ilikeQuery}`, `province.ilike.${ilikeQuery}`, `region.ilike.${ilikeQuery}`, `country.ilike.${ilikeQuery}`].join(','));
+  query = applyCommonFilters(query, filters, { allowRegion: true, allowProvince: true, allowSport: false, allowRole: false });
 
   if (clubIds) {
     if (clubIds.length === 0) {
