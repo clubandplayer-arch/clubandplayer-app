@@ -166,7 +166,7 @@ async function fetchFilteredClubIds(params: {
 }) {
   const { supabase, filters } = params;
 
-  if (!filters.sport) {
+  if (!filters.country && !filters.region && !filters.province && !filters.city && !filters.sport) {
     return null;
   }
 
@@ -183,14 +183,12 @@ async function fetchFilteredClubIds(params: {
 function buildClubQuery(
   supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>,
   ilikeQuery: string,
-  filters: SearchFilters,
   clubIds: string[] | null,
   options?: { count?: 'exact'; head?: boolean },
 ) {
-  let query = supabase.from('clubs').select('id, display_name, city, province, region, country', options);
+  let query = supabase.from('clubs').select('id, display_name', options);
 
-  query = query.or([`display_name.ilike.${ilikeQuery}`, `city.ilike.${ilikeQuery}`, `province.ilike.${ilikeQuery}`, `region.ilike.${ilikeQuery}`, `country.ilike.${ilikeQuery}`].join(','));
-  query = applyCommonFilters(query, filters, { allowRegion: true, allowProvince: true, allowSport: false, allowRole: false });
+  query = query.ilike('display_name', ilikeQuery);
 
   if (clubIds) {
     if (clubIds.length === 0) {
@@ -217,7 +215,7 @@ async function fetchProfileResults(params: {
 
   if (kind === 'clubs') {
     const clubIds = await fetchFilteredClubIds({ supabase, filters });
-    const { data, count, error } = await buildClubQuery(supabase, ilikeQuery, filters, clubIds, { count: 'exact' })
+    const { data, count, error } = await buildClubQuery(supabase, ilikeQuery, clubIds, { count: 'exact' })
       .order('display_name', { ascending: true })
       .range(from, to);
     if (error) throw new Error(error.message);
@@ -294,7 +292,7 @@ async function fetchProfileCount(params: {
   const { supabase, kind, ilikeQuery, filters } = params;
   if (kind === 'clubs') {
     const clubIds = await fetchFilteredClubIds({ supabase, filters });
-    const query = buildClubQuery(supabase, ilikeQuery, filters, clubIds, { count: 'exact', head: true });
+    const query = buildClubQuery(supabase, ilikeQuery, clubIds, { count: 'exact', head: true });
     const { count, error } = await query;
     if (error) throw new Error(error.message);
     return count ?? 0;
