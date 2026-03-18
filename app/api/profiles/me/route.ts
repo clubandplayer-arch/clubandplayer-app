@@ -181,9 +181,9 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   const shouldResolveInterestLabels =
     updates.interest_country === 'IT' &&
-    ((updates.interest_municipality_id && !updates.interest_city) ||
-      (updates.interest_province_id && !updates.interest_province) ||
-      (updates.interest_region_id && !updates.interest_region));
+    ('interest_municipality_id' in updates ||
+      'interest_province_id' in updates ||
+      'interest_region_id' in updates);
 
   if (shouldResolveInterestLabels) {
     const [municipalityRes, provinceRes, regionRes] = await Promise.all([
@@ -198,14 +198,14 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
         : Promise.resolve({ data: null, error: null }),
     ]);
 
-    if (!updates.interest_city && municipalityRes.data?.name) {
-      updates.interest_city = municipalityRes.data.name;
+    if ('interest_municipality_id' in updates) {
+      updates.interest_city = municipalityRes.data?.name ?? null;
     }
-    if (!updates.interest_province && provinceRes.data?.name) {
-      updates.interest_province = provinceRes.data.name;
+    if ('interest_province_id' in updates) {
+      updates.interest_province = provinceRes.data?.name ?? null;
     }
-    if (!updates.interest_region && regionRes.data?.name) {
-      updates.interest_region = regionRes.data.name;
+    if ('interest_region_id' in updates) {
+      updates.interest_region = regionRes.data?.name ?? null;
     }
   }
 

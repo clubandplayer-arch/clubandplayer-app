@@ -6,7 +6,7 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import type { Opportunity } from '@/types/opportunity';
 import { AGE_BRACKETS, type AgeBracket, normalizeSport, SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
 import { CATEGORIES_BY_SPORT } from '@/lib/opps/categories';
-import { COUNTRIES } from '@/lib/opps/geo';
+import { COUNTRIES } from '@/lib/geo/countries';
 import {
   OPPORTUNITY_GENDER_LABELS,
   normalizeOpportunityGender,

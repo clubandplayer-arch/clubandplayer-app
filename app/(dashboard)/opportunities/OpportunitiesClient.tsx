@@ -8,10 +8,10 @@ import Modal from '@/components/ui/Modal';
 import OpportunityForm from '@/components/opportunities/OpportunityForm';
 import type { OpportunitiesApiResponse, Opportunity } from '@/types/opportunity';
 
-import { COUNTRIES } from '@/lib/opps/geo';
+import { COUNTRIES } from '@/lib/geo/countries';
 import { AGE_BRACKETS, normalizeSport, SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
 import { CATEGORIES_BY_SPORT } from '@/lib/opps/categories';
-import { useItalyLocations } from '@/hooks/useItalyLocations';
+import { useGeo } from '@/hooks/useGeo';
 
 type Role = 'athlete' | 'club' | 'guest';
 
@@ -33,7 +33,12 @@ export default function OpportunitiesClient() {
   const [openCreate, setOpenCreate] = useState(false);
   const [editItem, setEditItem] = useState<Opportunity | null>(null);
   const [deleteItem, setDeleteItem] = useState<Opportunity | null>(null);
-  const { data: italyLocations } = useItalyLocations();
+  const { regions, getProvinces, getMunicipalities } = useGeo();
+  const [regionId, setRegionId] = useState<number | null>(null);
+  const [provinceId, setProvinceId] = useState<number | null>(null);
+  const [municipalityId, setMunicipalityId] = useState<number | null>(null);
+  const [availableProvinces, setAvailableProvinces] = useState<Array<{ id: number; name: string }>>([]);
+  const [availableMunicipalities, setAvailableMunicipalities] = useState<Array<{ id: number; name: string }>>([]);
   const [countryCode, setCountryCode] = useState(() => sp.get('country') ?? '');
   const [region, setRegion] = useState(() => sp.get('region') ?? '');
   const [province, setProvince] = useState(() => sp.get('province') ?? '');
@@ -42,27 +47,79 @@ export default function OpportunitiesClient() {
   const selectedSport = sp.get('sport') ?? '';
   const normalizedSelectedSport = normalizeSport(selectedSport) ?? selectedSport;
   const selectedRole = sp.get('role') ?? '';
-  const selectedStatus = sp.get('status') ?? '';
 
   useEffect(() => {
     setCountryCode(sp.get('country') ?? '');
     setRegion(sp.get('region') ?? '');
     setProvince(sp.get('province') ?? '');
     setCity(sp.get('city') ?? '');
+    setRegionId(null);
+    setProvinceId(null);
+    setMunicipalityId(null);
   }, [sp]);
 
-  const availableRegions = useMemo(
-    () => (countryCode === 'IT' ? italyLocations.regions : []),
-    [countryCode, italyLocations],
-  );
-  const availableProvinces = useMemo(
-    () => (countryCode === 'IT' ? italyLocations.provincesByRegion[region] ?? [] : []),
-    [countryCode, italyLocations, region],
-  );
-  const availableCities = useMemo(
-    () => (countryCode === 'IT' ? italyLocations.citiesByProvince[province] ?? [] : []),
-    [countryCode, italyLocations, province],
-  );
+  const availableRegions = useMemo(() => (countryCode === 'IT' ? regions : []), [countryCode, regions]);
+
+  useEffect(() => {
+    if (countryCode !== 'IT' || !regionId) {
+      setAvailableProvinces([]);
+      return;
+    }
+    let active = true;
+    (async () => {
+      const rows = await getProvinces(regionId).catch(() => []);
+      if (!active) return;
+      setAvailableProvinces(rows.map((r) => ({ id: Number(r.id), name: r.name })));
+    })();
+    return () => {
+      active = false;
+    };
+  }, [countryCode, regionId, getProvinces]);
+
+  useEffect(() => {
+    if (countryCode !== 'IT' || !provinceId) {
+      setAvailableMunicipalities([]);
+      return;
+    }
+    let active = true;
+    (async () => {
+      const rows = await getMunicipalities(provinceId).catch(() => []);
+      if (!active) return;
+      setAvailableMunicipalities(rows.map((r) => ({ id: Number(r.id), name: r.name })));
+    })();
+    return () => {
+      active = false;
+    };
+  }, [countryCode, provinceId, getMunicipalities]);
+
+  useEffect(() => {
+    if (countryCode !== 'IT') {
+      setRegionId(null);
+      setProvinceId(null);
+      setMunicipalityId(null);
+      return;
+    }
+    if (region && !regionId && availableRegions.length) {
+      const matched = availableRegions.find((r) => r.name === region);
+      if (matched) setRegionId(matched.id);
+    }
+  }, [countryCode, region, regionId, availableRegions]);
+
+  useEffect(() => {
+    if (countryCode !== 'IT') return;
+    if (province && !provinceId && availableProvinces.length) {
+      const matched = availableProvinces.find((p) => p.name === province);
+      if (matched) setProvinceId(matched.id);
+    }
+  }, [countryCode, province, provinceId, availableProvinces]);
+
+  useEffect(() => {
+    if (countryCode !== 'IT') return;
+    if (city && !municipalityId && availableMunicipalities.length) {
+      const matched = availableMunicipalities.find((m) => m.name === city);
+      if (matched) setMunicipalityId(matched.id);
+    }
+  }, [countryCode, city, municipalityId, availableMunicipalities]);
 
   const updateParams = useCallback((mutator: (params: URLSearchParams) => void, options?: { resetPage?: boolean }) => {
     const base = new URLSearchParams(sp.toString());
@@ -128,17 +185,6 @@ export default function OpportunitiesClient() {
     });
   }
 
-  const statusOptions = useMemo(
-    () => [
-      { value: '', label: 'Tutte' },
-      { value: 'open', label: 'Aperte' },
-      { value: 'closed', label: 'Chiuse' },
-      { value: 'archived', label: 'Archiviate' },
-      { value: 'draft', label: 'Bozza' },
-    ],
-    [],
-  );
-
   // Costruisci i filtri base dai parametri URL
   const urlFilters = useMemo(() => {
     const p = new URLSearchParams();
@@ -146,7 +192,7 @@ export default function OpportunitiesClient() {
       'q', 'page', 'pageSize', 'sort',
       'country', 'region', 'province', 'city', 'club',
       'clubId', 'club_id',
-      'sport', 'role', 'age', 'status',
+      'sport', 'role', 'age',
       'category', 'required_category',
       'owner', 'owner_id', 'created_by',
     ]) {
@@ -394,7 +440,7 @@ export default function OpportunitiesClient() {
 
       {/* Barra filtri */}
       <div className="space-y-4 rounded-2xl border p-4 bg-white/70 shadow-sm">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-2">
           <input
             placeholder="Cerca per titolo/descrizione…"
             defaultValue={sp.get('q') ?? ''}
@@ -419,6 +465,9 @@ export default function OpportunitiesClient() {
               setRegion('');
               setProvince('');
               setCity('');
+              setRegionId(null);
+              setProvinceId(null);
+              setMunicipalityId(null);
               updateParams((p) => {
                 if (nextCode) p.set('country', nextCode);
                 else p.delete('country');
@@ -438,14 +487,18 @@ export default function OpportunitiesClient() {
           </select>
 
           <select
-            value={region}
+            value={regionId ? String(regionId) : ''}
             onChange={(e) => {
-              const nextRegion = e.target.value;
-              setRegion(nextRegion);
+              const nextRegionId = e.target.value ? Number(e.target.value) : null;
+              const nextRegionName = nextRegionId ? (availableRegions.find((r) => r.id === nextRegionId)?.name ?? '') : '';
+              setRegionId(nextRegionId);
+              setRegion(nextRegionName);
+              setProvinceId(null);
+              setMunicipalityId(null);
               setProvince('');
               setCity('');
               updateParams((p) => {
-                if (nextRegion) p.set('region', nextRegion);
+                if (nextRegionName) p.set('region', nextRegionName);
                 else p.delete('region');
                 p.delete('province');
                 p.delete('city');
@@ -455,48 +508,53 @@ export default function OpportunitiesClient() {
             disabled={!countryCode || countryCode !== 'IT'}
           >
             <option value="">Regione</option>
-            {availableRegions.map((r: string) => (
-              <option key={r} value={r}>{r}</option>
+            {availableRegions.map((r) => (
+              <option key={r.id} value={String(r.id)}>{r.name}</option>
             ))}
           </select>
 
           <select
-            value={province}
+            value={provinceId ? String(provinceId) : ''}
             onChange={(e) => {
-              const nextProvince = e.target.value;
-              setProvince(nextProvince);
+              const nextProvinceId = e.target.value ? Number(e.target.value) : null;
+              const nextProvinceName = nextProvinceId ? (availableProvinces.find((p) => p.id === nextProvinceId)?.name ?? '') : '';
+              setProvinceId(nextProvinceId);
+              setProvince(nextProvinceName);
+              setMunicipalityId(null);
               setCity('');
               updateParams((p) => {
-                if (nextProvince) p.set('province', nextProvince);
+                if (nextProvinceName) p.set('province', nextProvinceName);
                 else p.delete('province');
                 p.delete('city');
               });
             }}
             className="w-full rounded-xl border px-3 py-2"
-            disabled={!region || countryCode !== 'IT'}
+            disabled={!regionId || countryCode !== 'IT'}
           >
             <option value="">Provincia</option>
-            {availableProvinces.map((p: string) => (
-              <option key={p} value={p}>{p}</option>
+            {availableProvinces.map((p) => (
+              <option key={p.id} value={String(p.id)}>{p.name}</option>
             ))}
           </select>
 
           <select
-            value={city}
+            value={municipalityId ? String(municipalityId) : ''}
             onChange={(e) => {
-              const nextCity = e.target.value;
-              setCity(nextCity);
+              const nextMunicipalityId = e.target.value ? Number(e.target.value) : null;
+              const nextCityName = nextMunicipalityId ? (availableMunicipalities.find((c) => c.id === nextMunicipalityId)?.name ?? '') : '';
+              setMunicipalityId(nextMunicipalityId);
+              setCity(nextCityName);
               updateParams((p) => {
-                if (nextCity) p.set('city', nextCity);
+                if (nextCityName) p.set('city', nextCityName);
                 else p.delete('city');
               });
             }}
             className="w-full rounded-xl border px-3 py-2"
-            disabled={!province || countryCode !== 'IT'}
+            disabled={!provinceId || countryCode !== 'IT'}
           >
             <option value="">Città</option>
-            {availableCities.map((c: string) => (
-              <option key={c} value={c}>{c}</option>
+            {availableMunicipalities.map((c) => (
+              <option key={c.id} value={String(c.id)}>{c.name}</option>
             ))}
           </select>
         </div>
@@ -529,18 +587,6 @@ export default function OpportunitiesClient() {
             ))}
           </select>
 
-          <select
-            value={selectedStatus}
-            onChange={(e) => setParam('status', e.target.value)}
-            className="w-full rounded-xl border px-3 py-2"
-          >
-            <option value="">Tipo opportunità</option>
-            {statusOptions.map((s) => (
-              <option key={s.value || 'all'} value={s.value}>
-                {s.label}
-              </option>
-            ))}
-          </select>
         </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">

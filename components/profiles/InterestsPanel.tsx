@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { SPORTS } from '@/lib/opps/constants';
-import { COUNTRIES } from '@/lib/opps/geo';
-import { useItalyLocations } from '@/hooks/useItalyLocations';
+import { COUNTRIES } from '@/lib/geo/countries';
+import { useGeo } from '@/hooks/useGeo';
 
 export type Interests = {
   sports: string[];
@@ -54,13 +54,17 @@ function writeInterests(next: Interests) {
 
 export default function InterestsPanel({ onChange }: Props) {
   const [state, setState] = useState<Interests>({ sports: [] });
-  const { data: italyLocations } = useItalyLocations();
+  const { regions, getProvinces, getMunicipalities } = useGeo();
+  const [regionId, setRegionId] = useState<number | null>(null);
+  const [provinceId, setProvinceId] = useState<number | null>(null);
+  const [municipalityId, setMunicipalityId] = useState<number | null>(null);
+  const [provinces, setProvinces] = useState<Array<{ id: number; name: string }>>([]);
+  const [cities, setCities] = useState<Array<{ id: number; name: string }>>([]);
 
   // carica iniziale
   useEffect(() => {
     const init = readInterests();
     setState(init);
-    // opzionale: notifica subito chi ascolta
     onChange?.(init);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -71,29 +75,88 @@ export default function InterestsPanel({ onChange }: Props) {
     return found?.code ?? (state.country || 'IT');
   }, [state.country]);
 
-  const provinces = useMemo(
-    () => (countryCode === 'IT' ? italyLocations.provincesByRegion[state.region ?? ''] ?? [] : []),
-    [countryCode, state.region, italyLocations]
-  );
-  const cities = useMemo(
-    () => (countryCode === 'IT' ? italyLocations.citiesByProvince[state.province ?? ''] ?? [] : []),
-    [countryCode, state.province, italyLocations]
-  );
+  const availableRegions = useMemo(() => (countryCode === 'IT' ? regions : []), [countryCode, regions]);
+
+  useEffect(() => {
+    if (countryCode !== 'IT' || !regionId) {
+      setProvinces([]);
+      return;
+    }
+    let active = true;
+    (async () => {
+      const rows = await getProvinces(regionId).catch(() => []);
+      if (!active) return;
+      setProvinces(rows.map((r) => ({ id: Number(r.id), name: r.name })));
+    })();
+    return () => {
+      active = false;
+    };
+  }, [countryCode, regionId, getProvinces]);
+
+  useEffect(() => {
+    if (countryCode !== 'IT' || !provinceId) {
+      setCities([]);
+      return;
+    }
+    let active = true;
+    (async () => {
+      const rows = await getMunicipalities(provinceId).catch(() => []);
+      if (!active) return;
+      setCities(rows.map((r) => ({ id: Number(r.id), name: r.name })));
+    })();
+    return () => {
+      active = false;
+    };
+  }, [countryCode, provinceId, getMunicipalities]);
+
+  useEffect(() => {
+    if (countryCode !== 'IT') {
+      setRegionId(null);
+      setProvinceId(null);
+      setMunicipalityId(null);
+      return;
+    }
+    if (state.region && !regionId && availableRegions.length) {
+      const matched = availableRegions.find((r) => r.name === state.region);
+      if (matched) setRegionId(matched.id);
+    }
+  }, [countryCode, state.region, regionId, availableRegions]);
+
+  useEffect(() => {
+    if (countryCode !== 'IT') return;
+    if (state.province && !provinceId && provinces.length) {
+      const matched = provinces.find((p) => p.name === state.province);
+      if (matched) setProvinceId(matched.id);
+    }
+  }, [countryCode, state.province, provinceId, provinces]);
+
+  useEffect(() => {
+    if (countryCode !== 'IT') return;
+    if (state.city && !municipalityId && cities.length) {
+      const matched = cities.find((m) => m.name === state.city);
+      if (matched) setMunicipalityId(matched.id);
+    }
+  }, [countryCode, state.city, municipalityId, cities]);
 
   function set<K extends keyof Interests>(k: K, v: Interests[K]) {
     const next: Interests = { ...state, [k]: v };
-    // reset a cascata
     if (k === 'country') {
       next.region = undefined;
       next.province = undefined;
       next.city = undefined;
+      setRegionId(null);
+      setProvinceId(null);
+      setMunicipalityId(null);
     }
     if (k === 'region') {
       next.province = undefined;
       next.city = undefined;
+      setProvinceId(null);
+      setMunicipalityId(null);
     }
     if (k === 'province') {
       next.city = undefined;
+      setMunicipalityId(null);
     }
     setState(next);
     writeInterests(next);
@@ -139,12 +202,17 @@ export default function InterestsPanel({ onChange }: Props) {
           {countryCode === 'IT' ? (
             <select
               className="w-full rounded-lg border px-3 py-2 text-sm"
-              value={state.region ?? ''}
-              onChange={(e) => set('region', e.target.value || undefined)}
+              value={regionId ? String(regionId) : ''}
+              onChange={(e) => {
+                const id = e.target.value ? Number(e.target.value) : null;
+                const name = id ? (availableRegions.find((r) => r.id === id)?.name ?? undefined) : undefined;
+                setRegionId(id);
+                set('region', name);
+              }}
             >
               <option value="">—</option>
-              {italyLocations.regions.map((r) => (
-                <option key={r} value={r}>{r}</option>
+              {availableRegions.map((r) => (
+                <option key={r.id} value={String(r.id)}>{r.name}</option>
               ))}
             </select>
           ) : (
@@ -161,12 +229,17 @@ export default function InterestsPanel({ onChange }: Props) {
           {countryCode === 'IT' && provinces.length > 0 ? (
             <select
               className="w-full rounded-lg border px-3 py-2 text-sm"
-              value={state.province ?? ''}
-              onChange={(e) => set('province', e.target.value || undefined)}
+              value={provinceId ? String(provinceId) : ''}
+              onChange={(e) => {
+                const id = e.target.value ? Number(e.target.value) : null;
+                const name = id ? (provinces.find((p) => p.id === id)?.name ?? undefined) : undefined;
+                setProvinceId(id);
+                set('province', name);
+              }}
             >
               <option value="">—</option>
               {provinces.map((p) => (
-                <option key={p} value={p}>{p}</option>
+                <option key={p.id} value={String(p.id)}>{p.name}</option>
               ))}
             </select>
           ) : (
@@ -183,12 +256,17 @@ export default function InterestsPanel({ onChange }: Props) {
           {countryCode === 'IT' && cities.length > 0 ? (
             <select
               className="w-full rounded-lg border px-3 py-2 text-sm"
-              value={state.city ?? ''}
-              onChange={(e) => set('city', e.target.value || undefined)}
+              value={municipalityId ? String(municipalityId) : ''}
+              onChange={(e) => {
+                const id = e.target.value ? Number(e.target.value) : null;
+                const name = id ? (cities.find((c) => c.id === id)?.name ?? undefined) : undefined;
+                setMunicipalityId(id);
+                set('city', name);
+              }}
             >
               <option value="">—</option>
               {cities.map((c) => (
-                <option key={c} value={c}>{c}</option>
+                <option key={c.id} value={String(c.id)}>{c.name}</option>
               ))}
             </select>
           ) : (
@@ -207,6 +285,9 @@ export default function InterestsPanel({ onChange }: Props) {
             onClick={() => {
               const next: Interests = { sports: [] };
               setState(next);
+              setRegionId(null);
+              setProvinceId(null);
+              setMunicipalityId(null);
               writeInterests(next);
               onChange?.(next);
             }}
