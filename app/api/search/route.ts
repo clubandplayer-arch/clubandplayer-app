@@ -407,14 +407,52 @@ async function fetchOpportunityCount(params: {
   return count ?? 0;
 }
 
+function hasProfileFilters(filters: SearchFilters) {
+  return Boolean(filters.country || filters.region || filters.province || filters.city || filters.sport || filters.role);
+}
+
+async function fetchFilteredAuthorIds(params: {
+  supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>;
+  filters: SearchFilters;
+}) {
+  const { supabase, filters } = params;
+
+  if (!hasProfileFilters(filters)) {
+    return null;
+  }
+
+  let query = supabase
+    .from('profiles')
+    .select('id, user_id')
+    .or('status.eq.active,status.is.null');
+
+  query = applyCommonFilters(query, filters, { allowRegion: true, allowProvince: true, allowSport: true, allowRole: true });
+
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+
+  return Array.from(
+    new Set(
+      (data ?? [])
+        .flatMap((row) => [row.id, row.user_id])
+        .filter((value): value is string => Boolean(value)),
+    ),
+  );
+}
+
 function buildPostsQuery(
   supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>,
   ilikeQuery: string,
   kind: 'normal' | 'event',
   select: string,
+  authorIds: string[] | null,
   options?: { count?: 'exact'; head?: boolean },
 ) {
-  const query = supabase.from('posts').select(select, options).eq('kind', kind);
+  let query = supabase.from('posts').select(select, options).eq('kind', kind);
+
+  if (authorIds && authorIds.length > 0) {
+    query = query.in('author_id', authorIds);
+  }
 
   if (kind === 'event') {
     return query.or(
@@ -436,16 +474,23 @@ async function fetchPosts(params: {
   limit: number;
   page: number;
   kind: 'normal' | 'event';
+  filters: SearchFilters;
 }) {
-  const { supabase, ilikeQuery, limit, page, kind } = params;
+  const { supabase, ilikeQuery, limit, page, kind, filters } = params;
   const from = (page - 1) * limit;
   const to = from + limit - 1;
+
+  const authorIds = await fetchFilteredAuthorIds({ supabase, filters });
+  if (authorIds && authorIds.length === 0) {
+    return { results: [], count: 0 };
+  }
 
   const { data, count, error } = await buildPostsQuery(
     supabase,
     ilikeQuery,
     kind,
     'id, author_id, content, created_at, kind, event_payload, media_url',
+    authorIds,
     { count: 'exact' },
   )
     .order('created_at', { ascending: false })
@@ -454,11 +499,11 @@ async function fetchPosts(params: {
   if (error) throw new Error(error.message);
 
   const rows = Array.isArray(data) ? (data as any[]) : [];
-  const authorIds = Array.from(new Set(rows.map((row) => row.author_id).filter(Boolean)));
+  const rowAuthorIds = Array.from(new Set(rows.map((row) => row.author_id).filter(Boolean)));
 
   let authorMap = new Map<string, { name?: string | null; avatar?: string | null }>();
 
-  if (authorIds.length) {
+  if (rowAuthorIds.length) {
     const toAuthorPayload = (row: {
       full_name?: string | null;
       display_name?: string | null;
@@ -480,7 +525,7 @@ async function fetchPosts(params: {
     const { data: byUserId } = await supabase
       .from('profiles')
       .select('user_id, display_name, full_name, avatar_url')
-      .in('user_id', authorIds);
+      .in('user_id', rowAuthorIds);
 
     (byUserId || [])
       .filter((row) => row?.user_id)
@@ -489,7 +534,7 @@ async function fetchPosts(params: {
         nextMap.set(String(row.user_id), toAuthorPayload(row));
       });
 
-    const unresolvedAuthorIds = authorIds.filter((authorId) => !nextMap.has(String(authorId)));
+    const unresolvedAuthorIds = rowAuthorIds.filter((authorId) => !nextMap.has(String(authorId)));
 
     if (unresolvedAuthorIds.length) {
       const { data: byProfileId } = await supabase
@@ -540,9 +585,15 @@ async function fetchPostsCount(params: {
   supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>;
   ilikeQuery: string;
   kind: 'normal' | 'event';
+  filters: SearchFilters;
 }) {
-  const { supabase, ilikeQuery, kind } = params;
-  const { count, error } = await buildPostsQuery(supabase, ilikeQuery, kind, 'id', {
+  const { supabase, ilikeQuery, kind, filters } = params;
+  const authorIds = await fetchFilteredAuthorIds({ supabase, filters });
+  if (authorIds && authorIds.length === 0) {
+    return 0;
+  }
+
+  const { count, error } = await buildPostsQuery(supabase, ilikeQuery, kind, 'id', authorIds, {
     count: 'exact',
     head: true,
   });
@@ -586,8 +637,8 @@ export async function GET(req: NextRequest) {
         fetchProfileResults({ supabase, kind: 'clubs', ilikeQuery, limit: previewLimit, page: 1, filters }),
         fetchProfileResults({ supabase, kind: 'players', ilikeQuery, limit: previewLimit, page: 1, filters }),
         fetchOpportunityResults({ supabase, ilikeQuery, limit: previewLimit, page: 1, filters, status }),
-        fetchPosts({ supabase, ilikeQuery, limit: previewLimit, page: 1, kind: 'normal' }),
-        fetchPosts({ supabase, ilikeQuery, limit: previewLimit, page: 1, kind: 'event' }),
+        fetchPosts({ supabase, ilikeQuery, limit: previewLimit, page: 1, kind: 'normal', filters }),
+        fetchPosts({ supabase, ilikeQuery, limit: previewLimit, page: 1, kind: 'event', filters }),
       ]);
 
       results.clubs = clubs.results;
@@ -608,8 +659,8 @@ export async function GET(req: NextRequest) {
         fetchProfileCount({ supabase, kind: 'clubs', ilikeQuery, filters }),
         fetchProfileCount({ supabase, kind: 'players', ilikeQuery, filters }),
         fetchOpportunityCount({ supabase, ilikeQuery, filters, status }),
-        fetchPostsCount({ supabase, ilikeQuery, kind: 'normal' }),
-        fetchPostsCount({ supabase, ilikeQuery, kind: 'event' }),
+        fetchPostsCount({ supabase, ilikeQuery, kind: 'normal', filters }),
+        fetchPostsCount({ supabase, ilikeQuery, kind: 'event', filters }),
       ]);
 
       const resultsPromise = (() => {
@@ -630,12 +681,12 @@ export async function GET(req: NextRequest) {
               return payload;
             });
           case 'posts':
-            return fetchPosts({ supabase, ilikeQuery, limit, page, kind: 'normal' }).then((payload) => {
+            return fetchPosts({ supabase, ilikeQuery, limit, page, kind: 'normal', filters }).then((payload) => {
               results.posts = payload.results;
               return payload;
             });
           case 'events':
-            return fetchPosts({ supabase, ilikeQuery, limit, page, kind: 'event' }).then((payload) => {
+            return fetchPosts({ supabase, ilikeQuery, limit, page, kind: 'event', filters }).then((payload) => {
               results.events = payload.results;
               return payload;
             });
