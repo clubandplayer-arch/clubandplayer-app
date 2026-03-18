@@ -4,7 +4,8 @@ import { dbError, rateLimited, successResponse, unknownError } from '@/lib/api/s
 import { rateLimit } from '@/lib/api/rateLimit';
 import { buildProfileDisplayName } from '@/lib/displayName';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
-import { getProvinceAbbreviationsServer, provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
+import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
+import { getProvinceAbbreviationsServer } from '@/lib/geo/provinceAbbreviations.server';
 
 export const runtime = 'nodejs';
 

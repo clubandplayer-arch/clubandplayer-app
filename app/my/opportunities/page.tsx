@@ -1,7 +1,8 @@
 // app/my/opportunities/page.tsx
 import { redirect } from 'next/navigation';
 import { getUserAndRole } from '@/lib/auth/role';
-import { getProvinceAbbreviationsServer, provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
+import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
+import { getProvinceAbbreviationsServer } from '@/lib/geo/provinceAbbreviations.server';
 
 export const dynamic = 'force-dynamic';
 

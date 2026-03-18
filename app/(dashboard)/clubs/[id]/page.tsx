@@ -3,7 +3,8 @@ import { notFound } from 'next/navigation';
 
 import ProfileHeader from '@/components/profiles/ProfileHeader';
 import { CountryFlag } from '@/components/ui/CountryFlag';
-import { getProvinceAbbreviationsServer, provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
+import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
+import { getProvinceAbbreviationsServer } from '@/lib/geo/provinceAbbreviations.server';
 import ClubOpenOpportunitiesWidget from '@/components/clubs/ClubOpenOpportunitiesWidget';
 import PublicClubRosterSection from '@/components/clubs/PublicClubRosterSection';
 import PublicAuthorFeed from '@/components/feed/PublicAuthorFeed';

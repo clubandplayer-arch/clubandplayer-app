@@ -4,7 +4,8 @@ import OpportunityActions from '@/components/opportunities/OpportunityActions';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { opportunityGenderLabel } from '@/lib/opps/gender';
 import { getCountryName } from '@/lib/geo/countries';
-import { getProvinceAbbreviationsServer, provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
+import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
+import { getProvinceAbbreviationsServer } from '@/lib/geo/provinceAbbreviations.server';
 
 function formatDateHuman(date: string | null | undefined) {
   if (!date) return '—';

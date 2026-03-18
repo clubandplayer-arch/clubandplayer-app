@@ -2,7 +2,8 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
-import { getProvinceAbbreviationsServer, provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
+import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
+import { getProvinceAbbreviationsServer } from '@/lib/geo/provinceAbbreviations.server';
 
 export const runtime = 'nodejs';
 

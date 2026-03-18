@@ -5,7 +5,8 @@ import { rateLimit } from '@/lib/api/rateLimit';
 import { getCountryName } from '@/lib/geo/countries';
 import { normalizeSport } from '@/lib/opps/constants';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
-import { getProvinceAbbreviationsServer, provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
+import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
+import { getProvinceAbbreviationsServer } from '@/lib/geo/provinceAbbreviations.server';
 
 export const runtime = 'nodejs';
 
