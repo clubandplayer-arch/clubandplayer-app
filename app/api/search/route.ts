@@ -116,7 +116,7 @@ function readFilters(url: URL): SearchFilters {
   };
 }
 
-function applyCommonFilters<T>(query: T, filters: SearchFilters) {
+function applyCommonFilters<T>(query: T, filters: SearchFilters, options?: { allowRegion?: boolean; allowProvince?: boolean; allowSport?: boolean; allowRole?: boolean }) {
   let nextQuery: any = query;
 
   if (filters.country) {
@@ -124,11 +124,11 @@ function applyCommonFilters<T>(query: T, filters: SearchFilters) {
     if (countryLabel) nextQuery = nextQuery.or(`country.eq.${filters.country},country.ilike.${toIlikePattern(countryLabel)}`);
     else nextQuery = nextQuery.eq('country', filters.country);
   }
-  if (filters.region) nextQuery = nextQuery.ilike('region', toIlikePattern(filters.region));
-  if (filters.province) nextQuery = nextQuery.ilike('province', toIlikePattern(filters.province));
+  if (options?.allowRegion && filters.region) nextQuery = nextQuery.ilike('region', toIlikePattern(filters.region));
+  if (options?.allowProvince && filters.province) nextQuery = nextQuery.ilike('province', toIlikePattern(filters.province));
   if (filters.city) nextQuery = nextQuery.ilike('city', toIlikePattern(filters.city));
-  if (filters.sport) nextQuery = nextQuery.ilike('sport', toIlikePattern(filters.sport));
-  if (filters.role) nextQuery = nextQuery.ilike('role', toIlikePattern(filters.role));
+  if (options?.allowSport && filters.sport) nextQuery = nextQuery.ilike('sport', toIlikePattern(filters.sport));
+  if (options?.allowRole && filters.role) nextQuery = nextQuery.ilike('role', toIlikePattern(filters.role));
 
   return nextQuery as T;
 }
@@ -154,7 +154,51 @@ function buildProfileQuery(
   const clubOr = [`display_name.ilike.${ilikeQuery}`, ...commonOr];
 
   query = query.or((table === 'athletes_view' ? athleteOr : clubOr).join(','));
-  query = applyCommonFilters(query, filters);
+  query = applyCommonFilters(query, filters, { allowRegion: table === 'athletes_view', allowProvince: table === 'athletes_view', allowSport: table === 'athletes_view', allowRole: table === 'athletes_view' });
+
+  return query;
+}
+
+
+async function fetchFilteredClubIds(params: {
+  supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>;
+  filters: SearchFilters;
+}) {
+  const { supabase, filters } = params;
+
+  if (!filters.region && !filters.province && !filters.sport) {
+    return null;
+  }
+
+  let query = supabase.from('profiles').select('id').eq('account_type', 'club');
+  query = applyCommonFilters(query, filters, { allowRegion: true, allowProvince: true, allowSport: true, allowRole: false });
+
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+
+  const ids = Array.from(new Set((data ?? []).map((row) => String(row.id)).filter(Boolean)));
+  return ids;
+}
+
+function buildClubQuery(
+  supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>,
+  ilikeQuery: string,
+  filters: SearchFilters,
+  clubIds: string[] | null,
+  options?: { count?: 'exact'; head?: boolean },
+) {
+  let query = supabase.from('clubs').select('id, display_name, city, country', options).eq('status', 'active');
+
+  query = query.or([`display_name.ilike.${ilikeQuery}`, `city.ilike.${ilikeQuery}`, `country.ilike.${ilikeQuery}`].join(','));
+  query = applyCommonFilters(query, filters, { allowRegion: false, allowProvince: false, allowSport: false, allowRole: false });
+
+  if (clubIds) {
+    if (clubIds.length === 0) {
+      query = query.in('id', ['__no_match__']);
+    } else {
+      query = query.in('id', clubIds);
+    }
+  }
 
   return query;
 }
@@ -172,23 +216,24 @@ async function fetchProfileResults(params: {
   const to = from + limit - 1;
 
   if (kind === 'clubs') {
-    const { data, count, error } = await buildProfileQuery(supabase, 'clubs_view', ilikeQuery, 'id, display_name', filters, { count: 'exact' })
+    const clubIds = await fetchFilteredClubIds({ supabase, filters });
+    const { data, count, error } = await buildClubQuery(supabase, ilikeQuery, filters, clubIds, { count: 'exact' })
       .order('display_name', { ascending: true })
       .range(from, to);
     if (error) throw new Error(error.message);
 
     const rows = Array.isArray(data) ? (data as any[]) : [];
-    const clubIds = rows.map((row) => row.id).filter(Boolean);
+    const resultClubIds = rows.map((row) => row.id).filter(Boolean);
     let extrasMap = new Map<
       string,
       { avatar_url?: string | null; city?: string | null; province?: string | null; region?: string | null; country?: string | null; sport?: string | null }
     >();
 
-    if (clubIds.length) {
+    if (resultClubIds.length) {
       const { data: extras, error: extrasError } = await supabase
         .from('profiles')
         .select('id, avatar_url, city, province, region, country, sport')
-        .in('id', clubIds);
+        .in('id', resultClubIds);
       if (extrasError) throw new Error(extrasError.message);
       extrasMap = new Map(
         (extras ?? []).map((row) => [String(row.id), row as { avatar_url?: string | null; city?: string | null; province?: string | null; region?: string | null; country?: string | null; sport?: string | null }]),
@@ -248,7 +293,8 @@ async function fetchProfileCount(params: {
 }) {
   const { supabase, kind, ilikeQuery, filters } = params;
   if (kind === 'clubs') {
-    const query = buildProfileQuery(supabase, 'clubs_view', ilikeQuery, 'id', filters, { count: 'exact', head: true });
+    const clubIds = await fetchFilteredClubIds({ supabase, filters });
+    const query = buildClubQuery(supabase, ilikeQuery, filters, clubIds, { count: 'exact', head: true });
     const { count, error } = await query;
     if (error) throw new Error(error.message);
     return count ?? 0;
@@ -285,7 +331,7 @@ function buildOpportunityQuery(
   if (status) {
     query = query.eq('status', status);
   }
-  query = applyCommonFilters(query, filters);
+  query = applyCommonFilters(query, filters, { allowRegion: true, allowProvince: true, allowSport: true, allowRole: true });
   return query;
 }
 
