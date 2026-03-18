@@ -24,6 +24,13 @@ type CountsByKind = {
   events: number;
 };
 
+type GeoFilters = {
+  country: string;
+  region: string;
+  province: string;
+  city: string;
+};
+
 const EMPTY_RESULTS: SearchResultsByKind = {
   opportunities: [],
   clubs: [],
@@ -70,13 +77,28 @@ function resultsForType(results: SearchResultsByKind, type: SearchType) {
   return results[type];
 }
 
+function getGeoFilters(searchParams: { get: (key: string) => string | null }): GeoFilters {
+  return {
+    country: (searchParams.get('country') || '').trim(),
+    region: (searchParams.get('region') || '').trim(),
+    province: (searchParams.get('province') || '').trim(),
+    city: (searchParams.get('city') || '').trim(),
+  };
+}
+
+function hasGeoFilters(filters: GeoFilters) {
+  return Boolean(filters.country || filters.region || filters.province || filters.city);
+}
+
 export default function SearchPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryParam = (searchParams.get('q') || '').trim();
   const type = normalizeType(searchParams.get('type'));
+  const geoFromUrl = getGeoFilters(searchParams);
 
   const [inputValue, setInputValue] = useState(queryParam);
+  const [geoFilters, setGeoFilters] = useState<GeoFilters>(geoFromUrl);
   const [results, setResults] = useState<SearchResultsByKind>(EMPTY_RESULTS);
   const [counts, setCounts] = useState<CountsByKind | null>(null);
   const [loading, setLoading] = useState(false);
@@ -85,24 +107,35 @@ export default function SearchPage() {
 
   useEffect(() => {
     setInputValue(queryParam);
-  }, [queryParam]);
+    setGeoFilters({
+      country: geoFromUrl.country,
+      region: geoFromUrl.region,
+      province: geoFromUrl.province,
+      city: geoFromUrl.city,
+    });
+  }, [queryParam, geoFromUrl.country, geoFromUrl.region, geoFromUrl.province, geoFromUrl.city]);
 
   useEffect(() => {
     setPage(1);
-  }, [queryParam, type]);
+  }, [queryParam, type, geoFromUrl.country, geoFromUrl.region, geoFromUrl.province, geoFromUrl.city]);
+
+  const hasGeo = useMemo(
+    () => hasGeoFilters({ country: geoFromUrl.country, region: geoFromUrl.region, province: geoFromUrl.province, city: geoFromUrl.city }),
+    [geoFromUrl.country, geoFromUrl.region, geoFromUrl.province, geoFromUrl.city],
+  );
 
   useEffect(() => {
-    if (!queryParam) {
+    if (!queryParam && !hasGeo) {
       setResults(EMPTY_RESULTS);
       setCounts(null);
       setError(null);
       return;
     }
 
-    if (queryParam.length < 2) {
+    if (queryParam && queryParam.length < 2) {
       setResults(EMPTY_RESULTS);
       setCounts(null);
-      setError('Inserisci almeno 2 caratteri per avviare la ricerca.');
+      setError('Inserisci almeno 2 caratteri per la ricerca testuale.');
       return;
     }
 
@@ -114,11 +147,17 @@ export default function SearchPage() {
 
       try {
         const params = new URLSearchParams({
-          q: queryParam,
           type,
           page: String(page),
           limit: String(PAGE_LIMIT),
         });
+
+        if (queryParam) params.set('q', queryParam);
+        if (geoFromUrl.country) params.set('country', geoFromUrl.country);
+        if (geoFromUrl.region) params.set('region', geoFromUrl.region);
+        if (geoFromUrl.province) params.set('province', geoFromUrl.province);
+        if (geoFromUrl.city) params.set('city', geoFromUrl.city);
+
         const res = await fetch(`/api/search?${params.toString()}`, {
           credentials: 'include',
           cache: 'no-store',
@@ -154,7 +193,7 @@ export default function SearchPage() {
     fetchResults();
 
     return () => controller.abort();
-  }, [queryParam, type, page]);
+  }, [queryParam, type, page, hasGeo, geoFromUrl.country, geoFromUrl.region, geoFromUrl.province, geoFromUrl.city]);
 
   const activeResults = useMemo(() => resultsForType(results, type), [results, type]);
   const hasMore = useMemo(() => {
@@ -162,39 +201,98 @@ export default function SearchPage() {
     return activeResults.length < counts[type];
   }, [activeResults.length, counts, type]);
 
+  const pushSearch = (nextType: SearchType, nextQuery: string, nextGeo: GeoFilters) => {
+    const params = new URLSearchParams({ type: nextType });
+    if (nextQuery) params.set('q', nextQuery);
+    if (nextGeo.country) params.set('country', nextGeo.country);
+    if (nextGeo.region) params.set('region', nextGeo.region);
+    if (nextGeo.province) params.set('province', nextGeo.province);
+    if (nextGeo.city) params.set('city', nextGeo.city);
+    router.push(`/search?${params.toString()}`);
+  };
+
   const handleTabChange = (next: SearchType) => {
-    if (!queryParam) return;
-    router.push(`/search?q=${encodeURIComponent(queryParam)}&type=${next}`);
+    if (!queryParam && !hasGeo) return;
+    pushSearch(next, queryParam, geoFromUrl);
   };
 
   const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const trimmed = inputValue.trim();
-    if (!trimmed) return;
-    router.push(`/search?q=${encodeURIComponent(trimmed)}&type=all`);
+    const nextGeo = {
+      country: geoFilters.country.trim(),
+      region: geoFilters.region.trim(),
+      province: geoFilters.province.trim(),
+      city: geoFilters.city.trim(),
+    };
+
+    if (!trimmed && !hasGeoFilters(nextGeo)) return;
+    pushSearch('all', trimmed, nextGeo);
+  };
+
+  const clearGeoFilters = () => {
+    const nextGeo = { country: '', region: '', province: '', city: '' };
+    setGeoFilters(nextGeo);
+    pushSearch(type, queryParam, nextGeo);
   };
 
   return (
     <div className="page-shell space-y-6">
       <div className="space-y-4">
-        <form onSubmit={handleSearchSubmit} className="flex flex-col gap-3 md:flex-row md:items-center">
-          <div className="relative w-full md:max-w-xl">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <form onSubmit={handleSearchSubmit} className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center">
+            <div className="relative w-full md:max-w-xl">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                type="search"
+                value={inputValue}
+                onChange={(event) => setInputValue(event.target.value)}
+                placeholder="Affina con testo (es. Buccinasco)"
+                aria-label="Cerca"
+                className="h-11 w-full rounded-full border border-slate-200 bg-white px-10 text-sm text-slate-700 shadow-sm transition focus:border-[var(--brand)] focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/20"
+              />
+            </div>
+            <button
+              type="submit"
+              className="inline-flex items-center justify-center rounded-full border border-[var(--brand)] bg-[var(--brand)] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+            >
+              Cerca
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
             <input
-              type="search"
-              value={inputValue}
-              onChange={(event) => setInputValue(event.target.value)}
-              placeholder="Cerca club, player, opportunità, post, eventi…"
-              aria-label="Cerca"
-              className="h-11 w-full rounded-full border border-slate-200 bg-white px-10 text-sm text-slate-700 shadow-sm transition focus:border-[var(--brand)] focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/20"
+              value={geoFilters.country}
+              onChange={(e) => setGeoFilters((prev) => ({ ...prev, country: e.target.value }))}
+              placeholder="Paese (es. IT o Italia)"
+              className="h-10 rounded-lg border border-slate-200 px-3 text-sm"
+            />
+            <input
+              value={geoFilters.region}
+              onChange={(e) => setGeoFilters((prev) => ({ ...prev, region: e.target.value }))}
+              placeholder="Regione"
+              className="h-10 rounded-lg border border-slate-200 px-3 text-sm"
+            />
+            <input
+              value={geoFilters.province}
+              onChange={(e) => setGeoFilters((prev) => ({ ...prev, province: e.target.value }))}
+              placeholder="Provincia"
+              className="h-10 rounded-lg border border-slate-200 px-3 text-sm"
+            />
+            <input
+              value={geoFilters.city}
+              onChange={(e) => setGeoFilters((prev) => ({ ...prev, city: e.target.value }))}
+              placeholder="Città"
+              className="h-10 rounded-lg border border-slate-200 px-3 text-sm"
             />
           </div>
-          <button
-            type="submit"
-            className="inline-flex items-center justify-center rounded-full border border-[var(--brand)] bg-[var(--brand)] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
-          >
-            Cerca
-          </button>
+
+          <div className="flex items-center justify-between text-xs text-slate-500">
+            <span>La geografia restringe prima i risultati, poi il testo li affina.</span>
+            <button type="button" onClick={clearGeoFilters} className="font-medium text-slate-600 hover:underline">
+              Pulisci filtri geo
+            </button>
+          </div>
         </form>
 
         <div className="flex flex-wrap gap-2">
@@ -229,13 +327,13 @@ export default function SearchPage() {
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
       )}
 
-      {!error && !queryParam && (
+      {!error && !queryParam && !hasGeo && (
         <div className="rounded-lg border border-dashed border-slate-200 bg-white px-4 py-6 text-sm text-slate-600">
-          Inizia a digitare per cercare club, player, opportunità, post ed eventi.
+          Imposta almeno un filtro geografico oppure una query testuale.
         </div>
       )}
 
-      {!error && queryParam && queryParam.length >= 2 && (
+      {!error && (queryParam || hasGeo) && (
         <div className="space-y-8">
           {type === 'all' ? (
             <div className="space-y-8">
