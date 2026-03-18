@@ -1,4 +1,9 @@
+'use client';
+
 import Link from 'next/link';
+
+import { useProvinceAbbreviations } from '@/hooks/useProvinceAbbreviations';
+import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
 
 type OpportunityItem = {
   id: string;
@@ -18,8 +23,8 @@ type Props = {
   clubName?: string | null;
 };
 
-function formatLocation(opp: OpportunityItem) {
-  const parts = [opp.city, opp.province, opp.region, opp.country].filter(Boolean);
+function formatLocation(opp: OpportunityItem, provinceAbbreviations: Record<string, string>) {
+  const parts = [opp.city, provinceDisplayValue(opp.province, provinceAbbreviations), opp.region, opp.country].filter(Boolean);
   return parts.join(' · ') || 'Località non indicata';
 }
 
@@ -34,6 +39,7 @@ function isNew(dateIso: string | null | undefined) {
 }
 
 export default function ClubOpenOpportunitiesWidget({ items, clubId, clubName }: Props) {
+  const provinceAbbreviations = useProvinceAbbreviations();
   const hasItems = items.length > 0;
   const viewAllHref = `/opportunities?clubId=${clubId}`;
 
@@ -46,7 +52,7 @@ export default function ClubOpenOpportunitiesWidget({ items, clubId, clubName }:
           {items.map((opp) => (
             <li key={opp.id} className="rounded-xl border border-neutral-200 p-3">
               <div className="font-semibold text-neutral-900">{opp.title || 'Annuncio senza titolo'}</div>
-              <div className="text-sm text-neutral-700">{formatLocation(opp)}</div>
+              <div className="text-sm text-neutral-700">{formatLocation(opp, provinceAbbreviations)}</div>
               <div className="flex items-center gap-2 text-xs text-neutral-500">
                 <span>Pubblicato il {opp.created_at ? new Date(opp.created_at).toLocaleDateString('it-IT') : '—'}</span>
                 {isNew(opp.created_at) && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-700">Nuova</span>}

@@ -2,6 +2,8 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
+import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
+import { getProvinceAbbreviationsServer } from '@/lib/geo/provinceAbbreviations.server';
 
 export const runtime = 'nodejs';
 
@@ -138,6 +140,9 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
       athletes = athData;
     }
   }
+  const provinceAbbreviations = await getProvinceAbbreviationsServer();
+
+
   const athleteByUserId = new Map<string, any>(
     athletes.map((a) => [String(a.user_id), a]),
   );
@@ -151,7 +156,7 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
       (profile as any)?.display_name?.trim?.() ||
       null;
 
-    const location = [profile?.city, profile?.province, profile?.region].filter(Boolean).join(' · ');
+    const location = [profile?.city, provinceDisplayValue(profile?.province, provinceAbbreviations), profile?.region].filter(Boolean).join(' · ');
     const headline = [profile?.role, profile?.sport].filter(Boolean).join(' · ');
 
     return {

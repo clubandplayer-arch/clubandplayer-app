@@ -6,6 +6,8 @@ import FollowButton from '@/components/clubs/FollowButton';
 import ApplyCell from '@/components/opportunities/ApplyCell';
 import type { Opportunity } from '@/types/opportunity';
 import { opportunityGenderLabel } from '@/lib/opps/gender';
+import { useProvinceAbbreviations } from '@/hooks/useProvinceAbbreviations';
+import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
 
 type Role = 'athlete' | 'club' | 'guest';
 type ApiOne<T> = { data?: T; [k: string]: any };
@@ -113,6 +115,7 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
   }, [meId, opp]);
 
   const showApply = role === 'athlete' && !isOwner;
+  const provinceAbbreviations = useProvinceAbbreviations();
 
   if (loading) return <div className="p-4">Caricamento…</div>;
   if (err) return <div className="p-4 text-red-700 bg-red-50 border rounded-xl">{err}</div>;
@@ -120,7 +123,7 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
 
   // Normalizzazioni lato UI (camelCase ➜ legacy fallback)
   const city = opp.city ?? null;
-  const province = opp.province ?? null;
+  const province = provinceDisplayValue(opp.province ?? null, provinceAbbreviations) || null;
   const region = opp.region ?? null;
   const country = opp.country ?? null;
   const place = [city, province, region, country].filter(Boolean).join(', ');

@@ -14,6 +14,8 @@ import ProfileHeader from '@/components/profiles/ProfileHeader';
 import { CountryFlag } from '@/components/ui/CountryFlag';
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
 import { normalizeSport } from '@/lib/opps/constants';
+import { useProvinceAbbreviations } from '@/hooks/useProvinceAbbreviations';
+import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 type AthleteProfileRow = {
@@ -307,23 +309,24 @@ export default function PlayerPublicProfilePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id]);
 
+  const provinceAbbreviations = useProvinceAbbreviations();
   const isMe = useMemo(() => !!meId && !!profile && (meId === profile.user_id || meId === profile.id), [meId, profile]);
 
   const profileLocation = useMemo(() => {
     if (!profile) return '';
-    const parts = [profile.city, profile.province, profile.region, profile.country]
+    const parts = [profile.city, provinceDisplayValue(profile.province, provinceAbbreviations), profile.region, profile.country]
       .map((part) => (part ?? '').trim())
       .filter(Boolean);
     return parts.join(' · ');
-  }, [profile]);
+  }, [profile, provinceAbbreviations]);
 
   const profileLocationBase = useMemo(() => {
     if (!profile) return '';
-    const parts = [profile.city, profile.province, profile.region]
+    const parts = [profile.city, provinceDisplayValue(profile.province, provinceAbbreviations), profile.region]
       .map((part) => (part ?? '').trim())
       .filter(Boolean);
     return parts.join(' · ');
-  }, [profile]);
+  }, [profile, provinceAbbreviations]);
 
   const headerDisplayName = useMemo(() => {
     if (!profile) return 'Player';

@@ -3,6 +3,9 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 
+import { useProvinceAbbreviations } from '@/hooks/useProvinceAbbreviations';
+import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
+
 const STATUS_LABELS: Record<string, string> = {
   pending: 'In attesa',
   active: 'Attivo',
@@ -32,6 +35,7 @@ export default function AdminUsersPage() {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<'pending' | 'active' | 'rejected' | 'orphan'>('pending');
   const [error, setError] = useState<string | null>(null);
+  const provinceAbbreviations = useProvinceAbbreviations();
 
   const load = async (status: 'pending' | 'active' | 'rejected' | 'orphan') => {
     setLoading(true);
@@ -71,7 +75,7 @@ export default function AdminUsersPage() {
   };
 
   const formatLocation = (r: ProfileRow) => {
-    const parts = [r.city, r.province, r.region, r.country].filter(Boolean);
+    const parts = [r.city, provinceDisplayValue(r.province, provinceAbbreviations), r.region, r.country].filter(Boolean);
     return parts.join(', ');
   };
 

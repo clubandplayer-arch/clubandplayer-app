@@ -4,6 +4,8 @@ import OpportunityActions from '@/components/opportunities/OpportunityActions';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { opportunityGenderLabel } from '@/lib/opps/gender';
 import { getCountryName } from '@/lib/geo/countries';
+import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
+import { getProvinceAbbreviationsServer } from '@/lib/geo/provinceAbbreviations.server';
 
 function formatDateHuman(date: string | null | undefined) {
   if (!date) return '—';
@@ -20,9 +22,9 @@ function formatAge(min?: number | null, max?: number | null) {
   return '—';
 }
 
-function buildLocationLabel(city?: string | null, province?: string | null, region?: string | null, country?: string | null) {
+function buildLocationLabel(city?: string | null, province?: string | null, region?: string | null, country?: string | null, provinceAbbreviations: Record<string, string> = {}) {
   const countryLabel = getCountryName(country) ?? (country || '');
-  const parts = [city, province, region, countryLabel].map((p) => (p ?? '').trim()).filter(Boolean);
+  const parts = [city, provinceDisplayValue(province, provinceAbbreviations), region, countryLabel].map((p) => (p ?? '').trim()).filter(Boolean);
   return parts.length ? parts.join(', ') : null;
 }
 
@@ -59,6 +61,7 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
     );
   }
 
+  const provinceAbbreviations = await getProvinceAbbreviationsServer();
   const ownerId = (opp as any).owner_id ?? (opp as any).created_by ?? null;
   const clubId = (opp as any).club_id ?? null;
 
@@ -71,8 +74,8 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
     : { data: null };
 
   const clubProfileId = clubProfile?.id ?? clubId;
-  const placeLabel = buildLocationLabel(opp.city, opp.province, opp.region, opp.country);
-  const place = placeLabel || [opp.city, opp.province, opp.region, opp.country].filter(Boolean).join(', ');
+  const placeLabel = buildLocationLabel(opp.city, opp.province, opp.region, opp.country, provinceAbbreviations);
+  const place = placeLabel || [opp.city, provinceDisplayValue(opp.province, provinceAbbreviations), opp.region, opp.country].filter(Boolean).join(', ');
   const categoryLabel = (opp as any).category ?? (opp as any).required_category ?? null;
   const genderLabel = opportunityGenderLabel((opp as any).gender) ?? undefined;
   const ageLabel = formatAge((opp as any).age_min, (opp as any).age_max);

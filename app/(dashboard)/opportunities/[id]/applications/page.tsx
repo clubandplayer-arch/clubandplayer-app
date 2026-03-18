@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from 'react';
 
+import { useProvinceAbbreviations } from '@/hooks/useProvinceAbbreviations';
+import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
+
 type Application = {
   id: string;
   athlete_id: string;
@@ -37,6 +40,7 @@ export default function OpportunityApplicationsPage({ params }: { params: { id: 
   const [apps, setApps] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+  const provinceAbbreviations = useProvinceAbbreviations();
 
   useEffect(() => {
     let cancelled = false;
@@ -122,7 +126,7 @@ export default function OpportunityApplicationsPage({ params }: { params: { id: 
                       {a.athlete?.headline || [a.athlete?.role, a.athlete?.sport].filter(Boolean).join(' · ') || 'Profilo atleta'}
                     </div>
                     <div className="text-xs text-gray-500">
-                      {[a.athlete?.city, a.athlete?.province, a.athlete?.region]
+                      {[a.athlete?.city, provinceDisplayValue(a.athlete?.province, provinceAbbreviations), a.athlete?.region]
                         .filter(Boolean)
                         .join(' · ') || a.athlete?.account_type || 'Player'}
                     </div>

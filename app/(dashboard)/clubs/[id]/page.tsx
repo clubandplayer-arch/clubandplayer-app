@@ -2,7 +2,8 @@
 import { notFound } from 'next/navigation';
 
 import ProfileHeader from '@/components/profiles/ProfileHeader';
-import { CountryFlag } from '@/components/ui/CountryFlag';
+import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
+import { getProvinceAbbreviationsServer } from '@/lib/geo/provinceAbbreviations.server';
 import ClubOpenOpportunitiesWidget from '@/components/clubs/ClubOpenOpportunitiesWidget';
 import PublicClubRosterSection from '@/components/clubs/PublicClubRosterSection';
 import PublicAuthorFeed from '@/components/feed/PublicAuthorFeed';
@@ -124,10 +125,10 @@ async function loadClubVerificationStatus(clubId: string) {
   return Boolean(data);
 }
 
-function locationLabel(row: ClubProfileRow): string {
+function locationLabel(row: ClubProfileRow, provinceAbbreviations: Record<string, string>): string {
   const state = resolveStateName(row.country || null, row.region || row.province || '');
   const countryLabel = getCountryName(row.country || undefined) ?? (row.country || '');
-  return [row.city, row.province, state, countryLabel]
+  return [row.city, provinceDisplayValue(row.province, provinceAbbreviations), state, countryLabel]
     .filter(Boolean)
     .join(' · ');
 }
@@ -144,6 +145,7 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
   const profileWithVerification = { ...profile, is_verified: isVerified };
 
   const aboutText = profile.bio || 'Nessuna descrizione disponibile.';
+  const provinceAbbreviations = await getProvinceAbbreviationsServer();
   const clubProfileId = profile.id;
 
   const opportunities: ClubOpportunityRow[] = (
@@ -164,34 +166,7 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
   const sportLabel = normalizeSport(profileWithVerification.sport ?? null) ?? profileWithVerification.sport ?? null;
   const subtitle =
     [profileWithVerification.club_league_category, sportLabel].filter(Boolean).join(' · ') || '—';
-  const location = locationLabel(profileWithVerification) || undefined;
-  const rawCountry = (profileWithVerification.country ?? '').trim();
-  const matchCountry = rawCountry.match(/^([A-Za-z]{2})(?:\s+(.+))?$/);
-  const iso2 = matchCountry ? matchCountry[1].trim().toUpperCase() : null;
-  const countryLabel = getCountryName(iso2 ?? rawCountry) ?? rawCountry;
-  const state = resolveStateName(
-    profileWithVerification.country || null,
-    profileWithVerification.region || profileWithVerification.province || '',
-  );
-  const locationParts = [
-    profileWithVerification.city,
-    profileWithVerification.province,
-    state,
-  ]
-    .filter(Boolean)
-    .join(' · ');
-  const locationContent = (
-    <span className="flex flex-wrap items-center gap-2">
-      {locationParts ? <span>{locationParts}</span> : null}
-      {countryLabel ? (
-        <span className="inline-flex items-center gap-1">
-          <CountryFlag iso2={iso2} />
-          <span>{countryLabel}</span>
-        </span>
-      ) : null}
-    </span>
-  );
-
+  const location = locationLabel(profileWithVerification, provinceAbbreviations) || undefined;
   return (
     <div className="mx-auto min-w-0 max-w-5xl space-y-6 p-4 md:p-6">
       <ProfileHeader
@@ -201,7 +176,6 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
         avatarUrl={profileWithVerification.avatar_url}
         subtitle={subtitle}
         locationLabel={location}
-        locationContent={locationContent}
         showMessageButton
         showFollowButton={!isMe}
         isVerified={profileWithVerification.is_verified}
@@ -213,7 +187,7 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
           <div className="mt-3 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <div className="text-xs font-semibold tracking-wide text-muted-foreground">Sede</div>
-              <div className="mt-1 font-medium text-neutral-900">{locationLabel(profile) || '—'}</div>
+              <div className="mt-1 font-medium text-neutral-900">{locationLabel(profile, provinceAbbreviations) || '—'}</div>
             </div>
             <div>
               <div className="text-xs font-semibold tracking-wide text-muted-foreground">Sport principale</div>

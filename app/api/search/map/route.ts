@@ -4,6 +4,8 @@ import { dbError, rateLimited, successResponse, unknownError } from '@/lib/api/s
 import { rateLimit } from '@/lib/api/rateLimit';
 import { buildProfileDisplayName } from '@/lib/displayName';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
+import { getProvinceAbbreviationsServer } from '@/lib/geo/provinceAbbreviations.server';
 
 export const runtime = 'nodejs';
 
@@ -103,6 +105,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const supabase = await getSupabaseServerClient();
+    const provinceAbbreviations = await getProvinceAbbreviationsServer();
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -313,7 +316,7 @@ export async function GET(req: NextRequest) {
       if (oppErr) return dbError(oppErr.message);
 
       const rows = (opps ?? []).map((o: any) => {
-        const locationLabel = [o.city, o.province, o.region, o.country].filter(Boolean).join(' · ');
+        const locationLabel = [o.city, provinceDisplayValue(o.province, provinceAbbreviations), o.region, o.country].filter(Boolean).join(' · ');
         return {
           id: o.id,
           profile_id: o.id,

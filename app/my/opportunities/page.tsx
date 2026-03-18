@@ -1,6 +1,8 @@
 // app/my/opportunities/page.tsx
 import { redirect } from 'next/navigation';
 import { getUserAndRole } from '@/lib/auth/role';
+import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
+import { getProvinceAbbreviationsServer } from '@/lib/geo/provinceAbbreviations.server';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,6 +14,8 @@ export default async function Page() {
   if (role !== 'club') {
     redirect('/applications/sent');
   }
+
+  const provinceAbbreviations = await getProvinceAbbreviationsServer();
 
   const { data: ops, error: _error } = await supabase
     .from('opportunities')
@@ -52,7 +56,7 @@ export default async function Page() {
                 <tr key={o.id} className="border-t">
                   <td className="px-3 py-2">{o.title ?? '—'}</td>
                   <td className="px-3 py-2">
-                    {[o.city, o.province, o.region, o.country]
+                    {[o.city, provinceDisplayValue(o.province, provinceAbbreviations), o.region, o.country]
                       .filter(Boolean)
                       .join(', ') || '—'}
                   </td>

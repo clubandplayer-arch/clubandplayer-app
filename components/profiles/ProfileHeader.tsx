@@ -72,7 +72,7 @@ export default function ProfileHeader({
         <div className="flex flex-1 flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-semibold leading-tight text-neutral-900 md:text-3xl">{name}</h1>
+              <h1 className="font-logo text-2xl font-normal leading-tight text-neutral-900 md:text-3xl">{name}</h1>
               <span
                 className={`${
                   isClub

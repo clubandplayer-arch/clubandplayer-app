@@ -10,6 +10,8 @@ import { SearchMapProfile } from '@/lib/services/search';
 import { buildProfileDisplayName } from '@/lib/displayName';
 import { getCountryName } from '@/lib/geo/countries';
 import { normalizeSport } from '@/lib/opps/constants';
+import { useProvinceAbbreviations } from '@/hooks/useProvinceAbbreviations';
+import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
 
 export type SearchResultsListProps = {
   results: SearchMapProfile[];
@@ -83,9 +85,9 @@ function Avatar({ profile }: { profile: SearchMapProfile }) {
   );
 }
 
-function locationLabel(profile: SearchMapProfile) {
+function locationLabel(profile: SearchMapProfile, provinceAbbreviations: Record<string, string>) {
   const countryLabel = getCountryName(profile.country || null) ?? (profile.country || '');
-  return [profile.city, profile.province, profile.region, countryLabel].filter(Boolean).join(' · ');
+  return [profile.city, provinceDisplayValue(profile.province, provinceAbbreviations), profile.region, countryLabel].filter(Boolean).join(' · ');
 }
 
 function detailsLabel(profile: SearchMapProfile) {
@@ -172,6 +174,7 @@ export default function SearchResultsList({
   className,
 }: SearchResultsListProps) {
   const hasResults = results.length > 0;
+  const provinceAbbreviations = useProvinceAbbreviations();
   const cleanQuery = query?.trim() ?? '';
 
   const content = useMemo(() => {
@@ -265,7 +268,7 @@ export default function SearchResultsList({
             const profileId = resolveProfileId(profile);
             const href = resolvePublicHref(profile);
             const isActive = selectedId === profileId;
-            const location = locationLabel(profile);
+            const location = locationLabel(profile, provinceAbbreviations);
             const details = detailsLabel(profile);
             const canMessage = !!profileId;
             const lowerType = (profile.type || profile.account_type || '').toLowerCase();

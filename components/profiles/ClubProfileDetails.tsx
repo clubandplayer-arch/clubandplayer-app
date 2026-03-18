@@ -6,6 +6,8 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 import { resolveCountryName, resolveStateName } from '@/lib/geodata/countryStateCityDataset';
 import { normalizeSport } from '@/lib/opps/constants';
+import { useProvinceAbbreviations } from '@/hooks/useProvinceAbbreviations';
+import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
 
 type Profile = {
   account_type?: string | null;
@@ -91,6 +93,7 @@ export default function ClubProfileDetails() {
     };
   }, []);
 
+  const provinceAbbreviations = useProvinceAbbreviations();
   const isClub = profile?.account_type === 'club';
 
   const displayName = useMemo(
@@ -106,11 +109,11 @@ export default function ClubProfileDetails() {
 
   const cityLine = useMemo(() => {
     const city = profile?.city || location.municipality;
-    const parts = [city, location.province, resolveStateName(profile?.country || null, location.region), country]
+    const parts = [city, provinceDisplayValue(location.province, provinceAbbreviations), resolveStateName(profile?.country || null, location.region), country]
       .filter(Boolean)
       .map((p) => String(p));
     return parts.join(' · ');
-  }, [country, location.municipality, location.province, location.region, profile?.city, profile?.country]);
+  }, [country, location.municipality, location.province, location.region, profile?.city, profile?.country, provinceAbbreviations]);
 
   if (loading) {
     return (

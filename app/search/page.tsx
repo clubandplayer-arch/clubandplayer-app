@@ -543,7 +543,7 @@ export default function SearchPage() {
                 key={tab.value}
                 type="button"
                 onClick={() => handleTabChange(tab.value)}
-                className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
+                className={`font-logo rounded-full border px-4 py-2 text-sm font-normal transition ${
                   isActive
                     ? 'border-[var(--brand)] bg-[var(--brand)]/10 text-[var(--brand)]'
                     : 'border-slate-200 text-slate-600 hover:bg-slate-50'
@@ -585,7 +585,7 @@ export default function SearchPage() {
                 return (
                   <section key={section.key} className="space-y-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <h2 className="text-lg font-semibold text-slate-900">{section.label}</h2>
+                      <h2 className="font-logo text-lg font-normal text-slate-900 md:text-xl">{section.label}</h2>
                       <button
                         type="button"
                         className="text-sm font-medium text-[var(--brand)] hover:underline"

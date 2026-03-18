@@ -5,6 +5,8 @@ import Image from 'next/image';
 import FollowButton from '@/components/clubs/FollowButton';
 import { MessageButton } from '@/components/messaging/MessageButton';
 import { normalizeSport } from '@/lib/opps/constants';
+import { useProvinceAbbreviations } from '@/hooks/useProvinceAbbreviations';
+import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
 
 type ClubProfile = {
   id: string;
@@ -19,8 +21,8 @@ type ClubProfile = {
   country: string | null;
 };
 
-function formatLocation(profile: ClubProfile) {
-  return [profile.city, profile.province, profile.region, profile.country].filter(Boolean).join(' · ');
+function formatLocation(profile: ClubProfile, provinceAbbreviations: Record<string, string>) {
+  return [profile.city, provinceDisplayValue(profile.province, provinceAbbreviations), profile.region, profile.country].filter(Boolean).join(' · ');
 }
 
 function initialsFromName(name: string) {
@@ -34,8 +36,9 @@ function initialsFromName(name: string) {
 }
 
 export default function ClubProfileHeader({ profile }: { profile: ClubProfile }) {
+  const provinceAbbreviations = useProvinceAbbreviations();
   const name = profile.display_name || profile.full_name || 'Club';
-  const location = formatLocation(profile);
+  const location = formatLocation(profile, provinceAbbreviations);
   const sportLabel = normalizeSport(profile.sport ?? null) ?? profile.sport ?? null;
 
   return (
@@ -60,7 +63,7 @@ export default function ClubProfileHeader({ profile }: { profile: ClubProfile })
         <div className="flex flex-1 flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="space-y-2">
             <div className="flex flex-col gap-1">
-              <h1 className="text-2xl font-semibold leading-tight text-neutral-900 md:text-3xl">{name}</h1>
+              <h1 className="font-logo text-2xl font-normal leading-tight text-neutral-900 md:text-3xl">{name}</h1>
               <p className="text-sm font-medium text-neutral-700 md:text-base">
                 {[profile.club_league_category, sportLabel].filter(Boolean).join(' · ') || '—'}
               </p>

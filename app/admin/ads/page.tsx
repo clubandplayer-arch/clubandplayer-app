@@ -2,6 +2,8 @@
 
 import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useProvinceAbbreviations } from '@/hooks/useProvinceAbbreviations';
+import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
 import { SPORTS } from '@/lib/opps/constants';
 import { AD_SLOT_VALUES } from '@/lib/ads/slots';
 import { normalizeExternalUrl } from '@/lib/utils/normalizeExternalUrl';
@@ -61,6 +63,7 @@ export default function AdminAdsPage() {
   const [campaigns, setCampaigns] = useState<CampaignRow[]>([]);
   const [selectedId, setSelectedId] = useState<string>('');
   const [targets, setTargets] = useState<TargetRow[]>([]);
+  const provinceAbbreviations = useProvinceAbbreviations();
   const [creatives, setCreatives] = useState<CreativeRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -724,7 +727,7 @@ export default function AdminAdsPage() {
                           <tr key={target.id} className="border-t">
                             <td className="px-3 py-2">{target.country ?? '—'}</td>
                             <td className="px-3 py-2">{target.region ?? '—'}</td>
-                            <td className="px-3 py-2">{target.province ?? '—'}</td>
+                            <td className="px-3 py-2">{provinceDisplayValue(target.province, provinceAbbreviations) || '—'}</td>
                             <td className="px-3 py-2">{target.city ?? '—'}</td>
                             <td className="px-3 py-2">{target.sport ?? '—'}</td>
                             <td className="px-3 py-2">{target.audience ?? '—'}</td>

@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import ApplyCTA from '@/components/opportunities/ApplyCTA';
+import { useProvinceAbbreviations } from '@/hooks/useProvinceAbbreviations';
+import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
 import { opportunityGenderLabel } from '@/lib/opps/gender';
 import type { Opportunity } from '@/types/opportunity';
 
@@ -22,7 +24,8 @@ export default function OpportunityCard({
   alreadyApplied,
   onApplied,
 }: Props) {
-  const place = [opp.city, opp.province, opp.region, opp.country].filter(Boolean).join(', ');
+  const provinceAbbreviations = useProvinceAbbreviations();
+  const place = [opp.city, provinceDisplayValue(opp.province, provinceAbbreviations), opp.region, opp.country].filter(Boolean).join(', ');
 
   const genderLabel = opportunityGenderLabel((opp as any).gender) ?? undefined;
 

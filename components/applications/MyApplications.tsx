@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { Opportunity } from '@/types/opportunity';
+import { useProvinceAbbreviations } from '@/hooks/useProvinceAbbreviations';
+import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
 
 type Application = {
   id: string;
@@ -73,6 +75,7 @@ export default function MyApplications() {
   }, []);
 
   const hasItems = useMemo(() => items && items.length > 0, [items]);
+  const provinceAbbreviations = useProvinceAbbreviations();
 
   async function handleWithdraw(appl: Application) {
     if (!appl?.id) return;
@@ -130,7 +133,7 @@ export default function MyApplications() {
       {items.map((appl) => {
         const opp = appl.opportunity;
         const oppId = opp?.id || appl.opportunity_id || '';
-        const place = [opp?.city, opp?.province, opp?.region, opp?.country].filter(Boolean).join(', ');
+        const place = [opp?.city, provinceDisplayValue(opp?.province, provinceAbbreviations), opp?.region, opp?.country].filter(Boolean).join(', ');
         const canWithdraw = WITHDRAW_ALLOWED.has((appl.status || 'inviata').toLowerCase());
 
         return (
