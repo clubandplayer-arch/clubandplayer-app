@@ -12,6 +12,7 @@ import { CountryFlag } from '@/components/ui/CountryFlag';
 import { resolveCountryName, resolveStateName } from '@/lib/geodata/countryStateCityDataset';
 import { normalizeSport } from '@/lib/opps/constants';
 import { getCountryDisplay } from '@/lib/utils/countryDisplay';
+import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
 
 type P = {
   id?: string | null;
@@ -85,6 +86,7 @@ const supabase = createSupabaseClient(
 
 type InterestGeo = {
   city: string;
+  province: string;
   region: string;
   country: string;
 };
@@ -93,7 +95,7 @@ type InterestGeo = {
 
 export default function ProfileMiniCard() {
   const [p, setP] = useState<P | null>(null);
-  const [interest, setInterest] = useState<InterestGeo>({ city: '—', region: '', country: '' });
+  const [interest, setInterest] = useState<InterestGeo>({ city: '—', province: '', region: '', country: '' });
 
   useEffect(() => {
     (async () => {
@@ -107,7 +109,8 @@ export default function ProfileMiniCard() {
         const countryName = resolveCountryName(countryCode) || getCountryDisplay(countryCode).label || '';
 
         let cityName = (j?.interest_city || '').trim();
-        let regionName = (j?.interest_region || j?.interest_province || '').trim();
+        let provinceName = (j?.interest_province || '').trim();
+        let regionName = (j?.interest_region || '').trim();
 
         if (j?.interest_municipality_id || j?.interest_province_id || j?.interest_region_id) {
           const [mun, prov, reg] = await Promise.all([
@@ -129,11 +132,13 @@ export default function ProfileMiniCard() {
           // Se sono presenti ID geografici, usiamo sempre i nomi risolti dagli ID
           // per evitare mismatch con eventuali label testuali stale nel profilo.
           cityName = m?.name || cityName || '';
-          regionName = pr?.name || re?.name || regionName || '';
+          provinceName = pr?.name || provinceName || '';
+          regionName = re?.name || regionName || '';
         }
 
         setInterest({
           city: cityName || '—',
+          province: provinceDisplayValue(provinceName),
           region: resolveStateName(countryCode, regionName),
           country: countryName || '—',
         });
@@ -150,7 +155,7 @@ export default function ProfileMiniCard() {
   const year = new Date().getFullYear();
   const age = !isClub && p?.birth_year ? Math.max(0, year - p.birth_year) : null;
   const name = p?.full_name || p?.display_name || (isClub ? 'Il tuo club' : 'Benvenuto!');
-  const interestLabel = [interest.city, interest.region, interest.country].filter(Boolean).join(', ');
+  const interestLabel = [interest.city, interest.province, interest.country].filter(Boolean).join(', ');
   const sportLabel = normalizeSport(p?.sport ?? null) ?? p?.sport ?? null;
   const clubGeoLabel = isClub ? interestLabel : '';
 
@@ -226,7 +231,7 @@ export default function ProfileMiniCard() {
 
         <div className="w-full space-y-1">
           <div className="flex flex-wrap items-center justify-center gap-1">
-            <div className="break-words text-base font-semibold">{name}</div>
+            <div className="font-logo break-words text-base font-normal">{name}</div>
           </div>
 
           {/* righe info */}
