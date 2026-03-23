@@ -11,6 +11,7 @@ import AthleteMediaHighlightsSection, {
 import AthleteOpenToOpportunitiesPanel from '@/components/athletes/AthleteOpenToOpportunitiesPanel';
 import PublicAuthorFeed from '@/components/feed/PublicAuthorFeed';
 import ProfileHeader from '@/components/profiles/ProfileHeader';
+import type { ProfileLinks } from '@/types/profile';
 import { CountryFlag } from '@/components/ui/CountryFlag';
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
 import { normalizeSport } from '@/lib/opps/constants';
@@ -31,7 +32,15 @@ type AthleteProfileRow = {
   region: string | null;
   province: string | null;
   city: string | null;
+  interest_country: string | null;
+  interest_region: string | null;
+  interest_province: string | null;
+  interest_city: string | null;
+  interest_region_id: number | null;
+  interest_province_id: number | null;
+  interest_municipality_id: number | null;
   avatar_url: string | null;
+  links: ProfileLinks;
   account_type: string | null;
   status: string | null;
   matches_played: number | null;
@@ -69,6 +78,13 @@ type ClubMembershipRow = {
   status: string | null;
 };
 
+type ResolvedLocation = {
+  country: string | null;
+  region: string | null;
+  province: string | null;
+  city: string | null;
+};
+
 type ClubProfileSummary = {
   id: string;
   full_name: string | null;
@@ -102,6 +118,7 @@ export default function PlayerPublicProfilePage() {
   const [meId, setMeId] = useState<string | null>(null);
   const [profile, setProfile] = useState<AthleteProfileRow | null>(null);
   const [clubOfBelonging, setClubOfBelonging] = useState<ClubProfileSummary | null>(null);
+  const [resolvedLocation, setResolvedLocation] = useState<ResolvedLocation | null>(null);
   const [apps, setApps] = useState<ApplicationRow[]>([]);
   const [media, setMedia] = useState<AthleteMediaItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -123,7 +140,7 @@ export default function PlayerPublicProfilePage() {
       setMeId(currentUserId);
 
       const { data: profileRow, error } = await supabase
-        .from('players_view')
+        .from('profiles')
         .select(
           [
             'id',
@@ -138,7 +155,15 @@ export default function PlayerPublicProfilePage() {
             'region',
             'province',
             'city',
+            'interest_country',
+            'interest_region',
+            'interest_province',
+            'interest_city',
+            'interest_region_id',
+            'interest_province_id',
+            'interest_municipality_id',
             'avatar_url',
+            'links',
             'account_type',
             'status',
             'matches_played',
@@ -177,6 +202,13 @@ export default function PlayerPublicProfilePage() {
       const normalizedProfile: AthleteProfileRow = {
         ...profileState,
         user_id: profileState.user_id ?? null,
+        interest_country: profileState.interest_country ?? null,
+        interest_region: profileState.interest_region ?? null,
+        interest_province: profileState.interest_province ?? null,
+        interest_city: profileState.interest_city ?? null,
+        interest_region_id: profileState.interest_region_id ?? null,
+        interest_province_id: profileState.interest_province_id ?? null,
+        interest_municipality_id: profileState.interest_municipality_id ?? null,
         matches_played: profileState.matches_played ?? null,
         goals_scored: profileState.goals_scored ?? null,
         assists: profileState.assists ?? null,
@@ -185,6 +217,34 @@ export default function PlayerPublicProfilePage() {
       };
 
       setProfile(normalizedProfile);
+
+      try {
+        const [municipalityRes, provinceRes, regionRes] = await Promise.all([
+          normalizedProfile.interest_municipality_id
+            ? supabase.from('municipalities').select('name').eq('id', normalizedProfile.interest_municipality_id).maybeSingle()
+            : Promise.resolve({ data: null, error: null }),
+          normalizedProfile.interest_province_id
+            ? supabase.from('provinces').select('name').eq('id', normalizedProfile.interest_province_id).maybeSingle()
+            : Promise.resolve({ data: null, error: null }),
+          normalizedProfile.interest_region_id
+            ? supabase.from('regions').select('name').eq('id', normalizedProfile.interest_region_id).maybeSingle()
+            : Promise.resolve({ data: null, error: null }),
+        ]);
+
+        setResolvedLocation({
+          country: normalizedProfile.interest_country ?? normalizedProfile.country ?? null,
+          region: regionRes.data?.name ?? normalizedProfile.interest_region ?? normalizedProfile.region ?? null,
+          province: provinceRes.data?.name ?? normalizedProfile.interest_province ?? normalizedProfile.province ?? null,
+          city: municipalityRes.data?.name ?? normalizedProfile.interest_city ?? normalizedProfile.city ?? null,
+        });
+      } catch {
+        setResolvedLocation({
+          country: normalizedProfile.interest_country ?? normalizedProfile.country ?? null,
+          region: normalizedProfile.interest_region ?? normalizedProfile.region ?? null,
+          province: normalizedProfile.interest_province ?? normalizedProfile.province ?? null,
+          city: normalizedProfile.interest_city ?? normalizedProfile.city ?? null,
+        });
+      }
 
       try {
         const { data: rosterRows, error: rosterError } = await supabase
@@ -314,19 +374,30 @@ export default function PlayerPublicProfilePage() {
 
   const profileLocation = useMemo(() => {
     if (!profile) return '';
-    const parts = [profile.city, provinceDisplayValue(profile.province, provinceAbbreviations), profile.region, profile.country]
+    const location = resolvedLocation ?? {
+      city: profile.interest_city ?? profile.city,
+      province: profile.interest_province ?? profile.province,
+      region: profile.interest_region ?? profile.region,
+      country: profile.interest_country ?? profile.country,
+    };
+    const parts = [location.city, provinceDisplayValue(location.province, provinceAbbreviations), location.region, location.country]
       .map((part) => (part ?? '').trim())
       .filter(Boolean);
     return parts.join(' · ');
-  }, [profile, provinceAbbreviations]);
+  }, [profile, provinceAbbreviations, resolvedLocation]);
 
   const profileLocationBase = useMemo(() => {
     if (!profile) return '';
-    const parts = [profile.city, provinceDisplayValue(profile.province, provinceAbbreviations), profile.region]
+    const location = resolvedLocation ?? {
+      city: profile.interest_city ?? profile.city,
+      province: profile.interest_province ?? profile.province,
+      region: profile.interest_region ?? profile.region,
+    };
+    const parts = [location.city, provinceDisplayValue(location.province, provinceAbbreviations), location.region]
       .map((part) => (part ?? '').trim())
       .filter(Boolean);
     return parts.join(' · ');
-  }, [profile, provinceAbbreviations]);
+  }, [profile, provinceAbbreviations, resolvedLocation]);
 
   const headerDisplayName = useMemo(() => {
     if (!profile) return 'Player';
@@ -362,13 +433,13 @@ export default function PlayerPublicProfilePage() {
   }, [clubOfBelonging?.country]);
 
   const headerCountry = useMemo(() => {
-    const raw = (profile?.country ?? '').trim();
+    const raw = (resolvedLocation?.country ?? profile?.interest_country ?? profile?.country ?? '').trim();
     if (!raw) return { iso2: null, label: '' };
     const match = raw.match(/^([A-Za-z]{2})(?:\s+(.+))?$/);
     const iso2 = match ? match[1].trim().toUpperCase() : raw.toUpperCase();
     const label = (match ? (match[2]?.trim() || iso2 || '') : raw) || '';
     return { iso2, label };
-  }, [profile?.country]);
+  }, [profile?.country, profile?.interest_country, resolvedLocation?.country]);
 
   const headerLocationContent = useMemo(() => {
     const rawLocation = profileLocationBase.trim();
@@ -401,6 +472,7 @@ export default function PlayerPublicProfilePage() {
             subtitle={headerSubtitle}
             locationLabel={profileLocation}
             locationContent={headerLocationContent}
+            socialLinks={profile.links}
             showMessageButton
             showFollowButton={!isMe}
             messageLabel="Messaggia"

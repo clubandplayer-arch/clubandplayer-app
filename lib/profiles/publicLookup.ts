@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 import { buildEndorsedSet, normalizeProfileSkills, normalizeSkillName } from '@/lib/profiles/skills';
-import { ProfileSkill } from '@/types/profile';
+import type { ProfileLinks, ProfileSkill } from '@/types/profile';
 
 export type PublicProfileSummary = {
   id: string;
@@ -21,6 +21,7 @@ export type PublicProfileSummary = {
   city: string | null;
   avatar_url: string | null;
   account_type: string | null;
+  links?: ProfileLinks;
   skills?: ProfileSkill[] | null;
 };
 
@@ -41,6 +42,7 @@ const SELECT_FIELDS = [
   'city',
   'avatar_url',
   'account_type',
+  'links',
   'skills',
 ].join(',');
 
@@ -151,6 +153,7 @@ function normalizeRow(row: Record<string, any>): PublicProfileSummary | null {
     city: typeof row.city === 'string' ? row.city : null,
     avatar_url: typeof row.avatar_url === 'string' ? row.avatar_url : null,
     account_type: typeof row.account_type === 'string' ? row.account_type : null,
+    links: row.links && typeof row.links === 'object' ? (row.links as ProfileLinks) : null,
     skills,
   };
 }

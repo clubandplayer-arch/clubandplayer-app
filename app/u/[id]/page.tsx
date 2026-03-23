@@ -11,7 +11,7 @@ import { supabaseBrowser } from '@/lib/supabaseBrowser'
 import ProfileHeader from '@/components/profiles/ProfileHeader'
 import { buildPlayerDisplayName } from '@/lib/displayName'
 import { buildEndorsedSet, normalizeProfileSkills, normalizeSkillName } from '@/lib/profiles/skills'
-import { ProfileSkill } from '@/types/profile'
+import { ProfileLinks, ProfileSkill } from '@/types/profile'
 import { getCountryName } from '@/lib/geo/countries'
 import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations'
 import { useProvinceAbbreviations } from '@/hooks/useProvinceAbbreviations'
@@ -30,6 +30,7 @@ type Profile = {
   province: string | null
   city: string | null
   avatar_url?: string | null
+  links?: ProfileLinks
   skills?: ProfileSkill[] | null
   account_type?: string | null
   type?: string | null
@@ -137,18 +138,21 @@ export default function PublicAthleteProfile() {
       const auth = await supabase.auth.getUser()
       setMeId(auth?.data?.user?.id ?? null)
 
-      // 1) profilo pubblico (le policy permettono SELECT a tutti)
-      const { data: profs, error: perr } = await supabase
-        .from('profiles')
-        .select(
-          'id, user_id, display_name, full_name, headline, bio, sport, role, country, region, province, city, avatar_url, skills, account_type, type'
-        )
-        .eq('id', athleteId)
-        .limit(1)
+      // 1) profilo pubblico via lookup server-side condiviso (allineato al club public profile)
+      const publicProfileRes = await fetch(`/api/profiles/public?ids=${encodeURIComponent(athleteId)}`, {
+        cache: 'no-store',
+        credentials: 'include',
+      })
+      const publicProfileJson = await publicProfileRes.json().catch(() => ({ data: [] }))
+      const profs = Array.isArray(publicProfileJson?.data) ? publicProfileJson.data : []
 
       if (cancelled) return
-      if (perr) { setMsg(`Errore profilo: ${perr.message}`); setLoading(false); return }
-      if (!profs || profs.length === 0) { setMsg('Profilo non trovato.'); setLoading(false); return }
+      if (!publicProfileRes.ok) {
+        setMsg(publicProfileJson?.error || 'Errore profilo')
+        setLoading(false)
+        return
+      }
+      if (profs.length === 0) { setMsg('Profilo non trovato.'); setLoading(false); return }
 
       const p = profs[0] as Profile
       setProfile(p)
@@ -245,6 +249,7 @@ export default function PublicAthleteProfile() {
             avatarUrl={profile.avatar_url}
             subtitle={buildTagline(profile)}
             locationLabel={buildLocation(profile, provinceAbbreviations)}
+            socialLinks={profile.links}
             showMessageButton
             showFollowButton={!(meId && (meId === profile.id || meId === profile.user_id))}
             messageLabel="Messaggia"
