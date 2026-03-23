@@ -171,6 +171,20 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
   const subtitle =
     [profileWithVerification.club_league_category, sportLabel].filter(Boolean).join(' · ') || '—';
   const location = locationLabel(profileWithVerification, provinceAbbreviations) || undefined;
+  const headerLocationContent = (
+    <div className="space-y-1">
+      {location ? <p>{location}</p> : <p className="text-neutral-400">Località —</p>}
+      {profileWithVerification.club_motto ? (
+        <p className="text-sm italic text-neutral-700">“{profileWithVerification.club_motto}”</p>
+      ) : null}
+      {profileWithVerification.club_foundation_year ? (
+        <p className="text-xs font-medium text-neutral-600">
+          Anno di fondazione: {profileWithVerification.club_foundation_year}
+        </p>
+      ) : null}
+    </div>
+  );
+
   return (
     <div className="mx-auto min-w-0 max-w-5xl space-y-6 p-4 md:p-6">
       <ProfileHeader
@@ -179,7 +193,7 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
         accountType="club"
         avatarUrl={profileWithVerification.avatar_url}
         subtitle={subtitle}
-        locationLabel={location}
+        locationContent={headerLocationContent}
         socialLinks={profileWithVerification.links}
         showMessageButton
         showFollowButton={!isMe}
