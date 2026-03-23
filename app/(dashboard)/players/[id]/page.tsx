@@ -11,6 +11,7 @@ import AthleteMediaHighlightsSection, {
 import AthleteOpenToOpportunitiesPanel from '@/components/athletes/AthleteOpenToOpportunitiesPanel';
 import PublicAuthorFeed from '@/components/feed/PublicAuthorFeed';
 import ProfileHeader from '@/components/profiles/ProfileHeader';
+import type { ProfileLinks } from '@/types/profile';
 import { CountryFlag } from '@/components/ui/CountryFlag';
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
 import { normalizeSport } from '@/lib/opps/constants';
@@ -32,6 +33,7 @@ type AthleteProfileRow = {
   province: string | null;
   city: string | null;
   avatar_url: string | null;
+  links: ProfileLinks;
   account_type: string | null;
   status: string | null;
   matches_played: number | null;
@@ -139,6 +141,7 @@ export default function PlayerPublicProfilePage() {
             'province',
             'city',
             'avatar_url',
+            'links',
             'account_type',
             'status',
             'matches_played',
@@ -401,6 +404,7 @@ export default function PlayerPublicProfilePage() {
             subtitle={headerSubtitle}
             locationLabel={profileLocation}
             locationContent={headerLocationContent}
+            socialLinks={profile.links}
             showMessageButton
             showFollowButton={!isMe}
             messageLabel="Messaggia"
