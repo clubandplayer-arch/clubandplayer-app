@@ -1,6 +1,8 @@
 // app/clubs/[id]/page.tsx
 import { notFound } from 'next/navigation';
 
+import type { ProfileLinks } from '@/types/profile';
+
 import ProfileHeader from '@/components/profiles/ProfileHeader';
 import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
 import { getProvinceAbbreviationsServer } from '@/lib/geo/provinceAbbreviations.server';
@@ -28,6 +30,7 @@ type ClubProfileRow = {
   province: string | null;
   city: string | null;
   avatar_url: string | null;
+  links: ProfileLinks;
   sport: string | null;
   club_league_category: string | null;
   club_foundation_year: number | null;
@@ -74,6 +77,7 @@ async function loadClubProfile(id: string): Promise<ClubProfileRow | null> {
     'province',
     'city',
     'avatar_url',
+    'links',
     'sport',
     'club_league_category',
     'club_foundation_year',
@@ -176,6 +180,7 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
         avatarUrl={profileWithVerification.avatar_url}
         subtitle={subtitle}
         locationLabel={location}
+        socialLinks={profileWithVerification.links}
         showMessageButton
         showFollowButton={!isMe}
         isVerified={profileWithVerification.is_verified}

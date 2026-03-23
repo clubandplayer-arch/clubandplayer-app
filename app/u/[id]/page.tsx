@@ -11,7 +11,7 @@ import { supabaseBrowser } from '@/lib/supabaseBrowser'
 import ProfileHeader from '@/components/profiles/ProfileHeader'
 import { buildPlayerDisplayName } from '@/lib/displayName'
 import { buildEndorsedSet, normalizeProfileSkills, normalizeSkillName } from '@/lib/profiles/skills'
-import { ProfileSkill } from '@/types/profile'
+import { ProfileLinks, ProfileSkill } from '@/types/profile'
 import { getCountryName } from '@/lib/geo/countries'
 import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations'
 import { useProvinceAbbreviations } from '@/hooks/useProvinceAbbreviations'
@@ -30,6 +30,7 @@ type Profile = {
   province: string | null
   city: string | null
   avatar_url?: string | null
+  links?: ProfileLinks
   skills?: ProfileSkill[] | null
   account_type?: string | null
   type?: string | null
@@ -141,7 +142,7 @@ export default function PublicAthleteProfile() {
       const { data: profs, error: perr } = await supabase
         .from('profiles')
         .select(
-          'id, user_id, display_name, full_name, headline, bio, sport, role, country, region, province, city, avatar_url, skills, account_type, type'
+          'id, user_id, display_name, full_name, headline, bio, sport, role, country, region, province, city, avatar_url, links, skills, account_type, type'
         )
         .eq('id', athleteId)
         .limit(1)
@@ -245,6 +246,7 @@ export default function PublicAthleteProfile() {
             avatarUrl={profile.avatar_url}
             subtitle={buildTagline(profile)}
             locationLabel={buildLocation(profile, provinceAbbreviations)}
+            socialLinks={profile.links}
             showMessageButton
             showFollowButton={!(meId && (meId === profile.id || meId === profile.user_id))}
             messageLabel="Messaggia"
