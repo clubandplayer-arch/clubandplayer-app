@@ -50,7 +50,7 @@ export async function GET() {
     .maybeSingle();
 
   const role =
-    (profile?.account_type === 'club' || profile?.account_type === 'athlete'
+    (profile?.account_type === 'club' || profile?.account_type === 'athlete' || profile?.account_type === 'fan'
       ? profile.account_type
       : 'guest') || 'guest';
 
@@ -65,7 +65,9 @@ export async function GET() {
 
   let opportunities: any[] = [];
 
-  if (role === 'club' && profileId) {
+  if (role === 'fan') {
+    opportunities = [];
+  } else if (role === 'club' && profileId) {
     const latest = await getLatestOpenOpportunitiesByClub(profileId, 3);
     opportunities = latest.map((row) => ({
       ...row,

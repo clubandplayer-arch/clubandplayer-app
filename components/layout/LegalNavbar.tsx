@@ -7,7 +7,7 @@ import { NavCloseIcon, NavMenuIcon } from '@/components/icons/NavToggleIcons';
 import { MaterialIcon, type MaterialIconName } from '@/components/icons/MaterialIcon';
 import BrandLogo from '@/components/brand/BrandLogo';
 
-type Role = 'athlete' | 'club' | null;
+type Role = 'athlete' | 'club' | 'fan' | null;
 
 type NavItem = { label: string; href: string; icon: MaterialIconName };
 
@@ -21,16 +21,20 @@ export default function LegalNavbar({ role }: Props) {
 
   const profileHref = role === 'club' ? '/club/profile' : '/player/profile';
 
-  const navItems = useMemo<NavItem[]>(
-    () => [
+  const navItems = useMemo<NavItem[]>(() => {
+    const items: NavItem[] = [
       { label: 'Feed', href: '/feed', icon: 'home' },
       { label: 'Cerca', href: '/search-map', icon: 'globe' },
-      { label: 'Opportunità', href: '/opportunities', icon: 'opportunities' },
       { label: 'Messaggi', href: '/messages', icon: 'mail' },
       { label: 'Profilo', href: profileHref, icon: 'person' },
-    ],
-    [profileHref],
-  );
+    ];
+
+    if (role !== 'fan') {
+      items.splice(2, 0, { label: 'Opportunità', href: '/opportunities', icon: 'opportunities' });
+    }
+
+    return items;
+  }, [profileHref, role]);
 
   const isActive = (href: string) => pathname === href || (!!pathname && pathname.startsWith(`${href}/`));
 

@@ -41,7 +41,7 @@ export async function GET() {
     .maybeSingle();
 
   const role =
-    (profile?.account_type === 'club' || profile?.account_type === 'athlete'
+    (profile?.account_type === 'club' || profile?.account_type === 'athlete' || profile?.account_type === 'fan'
       ? profile.account_type
       : 'guest') || 'guest';
 
@@ -53,6 +53,10 @@ export async function GET() {
 
   const baseSelect =
     'id,title,description,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name,gender,club_id,owner_id,created_by,status';
+
+  if (role === 'fan') {
+    return NextResponse.json({ items: [], role, profileId, viewAllHref: '/feed' });
+  }
 
   if (role === 'club') {
     const latest = await getLatestOpenOpportunitiesByClub(profileId, 3);
