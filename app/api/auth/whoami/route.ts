@@ -23,13 +23,14 @@ function mergeCookies(from: NextResponse, into: NextResponse) {
   if (set) into.headers.append('set-cookie', set);
 }
 
-type Role = 'guest' | 'athlete' | 'club';
+type Role = 'guest' | 'athlete' | 'club' | 'fan';
 type ProfileStatus = 'active' | 'rejected';
 
-function normRole(v: unknown): 'club' | 'athlete' | null {
+function normRole(v: unknown): 'club' | 'athlete' | 'fan' | null {
   const s = (typeof v === 'string' ? v : '').trim().toLowerCase();
   if (s === 'club') return 'club';
   if (s === 'athlete') return 'athlete';
+  if (s === 'fan') return 'fan';
   return null;
 }
 
@@ -72,7 +73,7 @@ export async function GET(req: NextRequest) {
   }
 
   // 1) profiles.account_type (nuovo), 2) profiles.type (legacy)
-  let accountType: 'club' | 'athlete' | null = null;
+  let accountType: 'club' | 'athlete' | 'fan' | null = null;
   let legacyType: string | null = null;
   let status: ProfileStatus = 'active';
 
