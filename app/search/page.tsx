@@ -159,6 +159,7 @@ export default function SearchPage() {
   }, []);
 
   const isFanViewer = viewerRole === 'fan';
+  const effectiveType: SearchType = isFanViewer && type === 'opportunities' ? 'all' : type;
 
   const selectedCountry = filters.country || '';
   const isItalySelected = !selectedCountry || selectedCountry === DEFAULT_COUNTRY;
@@ -332,7 +333,6 @@ export default function SearchPage() {
     return () => controller.abort();
   }, [queryParam, effectiveType, page, filters]);
 
-  const effectiveType: SearchType = isFanViewer && type === 'opportunities' ? 'all' : type;
   const visibleTabItems = useMemo(() => BASE_TAB_ITEMS.filter((tab) => !(isFanViewer && tab.value === 'opportunities')), [isFanViewer]);
   const activeResults = useMemo(() => resultsForType(results, effectiveType), [results, effectiveType]);
   const hasMore = useMemo(() => {
