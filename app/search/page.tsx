@@ -287,7 +287,7 @@ export default function SearchPage() {
       try {
         const params = new URLSearchParams({
           q: queryParam,
-          type,
+          type: effectiveType,
           page: String(page),
           limit: String(PAGE_LIMIT),
         });
@@ -312,12 +312,12 @@ export default function SearchPage() {
         setCounts(nextCounts ?? null);
 
         setResults((prev) => {
-          if (type === 'all' || page === 1) {
+          if (effectiveType === 'all' || page === 1) {
             return nextResults;
           }
           return {
             ...prev,
-            [type]: [...(prev[type] || []), ...(nextResults[type] || [])],
+            [effectiveType]: [...(prev[effectiveType] || []), ...(nextResults[effectiveType] || [])],
           } as SearchResultsByKind;
         });
       } catch (err) {
