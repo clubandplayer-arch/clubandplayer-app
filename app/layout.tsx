@@ -145,18 +145,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </div>
 
         <footer className="border-t border-neutral-200 bg-white/90 py-6 text-sm text-neutral-600">
-          <div className="container mx-auto flex max-w-5xl flex-col gap-2 px-4 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs uppercase tracking-wide text-neutral-500">
-              © {new Date().getFullYear()} Club &amp; Player
-            </p>
-            <nav className="flex flex-wrap gap-4">
-              {FOOTER_LINKS.map((link) => (
-                <a key={link.href} href={link.href} className="hover:text-neutral-900 underline-offset-2 hover:underline">
-                  {link.label}
-                </a>
-              ))}
-            </nav>
-            <p className="pt-2 text-xs leading-relaxed text-neutral-500 sm:basis-full sm:pt-1">
+          <div className="container mx-auto max-w-5xl px-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-xs uppercase tracking-wide text-neutral-500">
+                © {new Date().getFullYear()} Club &amp; Player
+              </p>
+              <nav className="flex flex-wrap gap-4">
+                {FOOTER_LINKS.map((link) => (
+                  <a key={link.href} href={link.href} className="hover:text-neutral-900 underline-offset-2 hover:underline">
+                    {link.label}
+                  </a>
+                ))}
+              </nav>
+            </div>
+            <p className="pt-3 text-xs leading-relaxed text-neutral-500">
               Club &amp; Player non garantisce la completezza, l’accuratezza o l’affidabilità dei contenuti pubblicati. I dati
               vengono monitorati, ma ogni utente è responsabile delle informazioni che inserisce.
             </p>
