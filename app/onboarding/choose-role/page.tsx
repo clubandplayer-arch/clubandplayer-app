@@ -11,7 +11,7 @@ type SelectedRole = ApiRole | null;
 const ROLE_TARGET: Record<ApiRole, string> = {
   club: '/club/profile',
   athlete: '/player/profile',
-  fan: '/feed',
+  fan: '/fan/profile',
 };
 
 export default function ChooseRolePage() {

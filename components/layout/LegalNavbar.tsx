@@ -19,7 +19,7 @@ export default function LegalNavbar({ role }: Props) {
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const profileHref = role === 'club' ? '/club/profile' : '/player/profile';
+  const profileHref = role === 'club' ? '/club/profile' : role === 'fan' ? '/fan/profile' : '/player/profile';
 
   const navItems = useMemo<NavItem[]>(() => {
     const items: NavItem[] = [
