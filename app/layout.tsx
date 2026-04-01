@@ -156,6 +156,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </a>
               ))}
             </nav>
+            <p className="text-xs leading-relaxed text-neutral-500 sm:basis-full">
+              Club &amp; Player non garantisce la completezza, l’accuratezza o l’affidabilità dei contenuti pubblicati. I dati
+              vengono monitorati, ma ogni utente è responsabile delle informazioni che inserisce.
+            </p>
           </div>
         </footer>
 
