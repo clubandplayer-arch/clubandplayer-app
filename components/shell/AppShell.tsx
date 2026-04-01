@@ -194,6 +194,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [isSearchOverlayOpen]);
 
+  const searchPlaceholder = role === 'fan' ? 'Cerca club, player, post, eventi…' : 'Cerca club, player, opportunità, post, eventi…';
+
   const profileInitials = useMemo(() => {
     const trimmed = profileName.trim();
     if (!trimmed) return 'CP';
@@ -304,7 +306,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                       setIsSearchOverlayOpen(true);
                       searchInputRef.current?.blur();
                     }}
-                    placeholder="Cerca club, player, opportunità, post, eventi…"
+                    placeholder={searchPlaceholder}
                     aria-label="Cerca"
                     className="h-10 w-full min-w-0 rounded-full border border-slate-200 bg-white/90 pl-10 pr-4 text-sm text-slate-700 shadow-sm transition focus:border-[var(--brand)] focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/20"
                   />

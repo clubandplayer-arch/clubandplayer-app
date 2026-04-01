@@ -9,6 +9,7 @@ import { COUNTRIES, getCountryName } from '@/lib/geo/countries';
 import { SPORTS, SPORTS_ROLES, normalizeSport } from '@/lib/opps/constants';
 
 type SearchType = 'all' | 'opportunities' | 'clubs' | 'players' | 'posts' | 'events';
+type ViewerRole = 'guest' | 'club' | 'athlete' | 'fan';
 type LocationOption = { id: number; name: string };
 
 type SearchResultsByKind = {
@@ -35,7 +36,7 @@ const EMPTY_RESULTS: SearchResultsByKind = {
   events: [],
 };
 
-const TAB_ITEMS: Array<{ label: string; value: SearchType }> = [
+const BASE_TAB_ITEMS: Array<{ label: string; value: SearchType }> = [
   { label: 'Tutti', value: 'all' },
   { label: 'Opportunità', value: 'opportunities' },
   { label: 'Club', value: 'clubs' },
@@ -108,8 +109,8 @@ function readFilters(searchParams: URLSearchParams | ReturnType<typeof useSearch
   };
 }
 
-function hasActiveFilters(filters: SearchFilters) {
-  return Boolean(filters.country || filters.region || filters.province || filters.city || filters.sport || filters.role);
+function hasActiveFilters(filters: SearchFilters, includeRole = true) {
+  return Boolean(filters.country || filters.region || filters.province || filters.city || filters.sport || (includeRole ? filters.role : ''));
 }
 
 export default function SearchPage() {
@@ -125,6 +126,7 @@ export default function SearchPage() {
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState<SearchFilters>(() => readFilters(searchParams));
+  const [viewerRole, setViewerRole] = useState<ViewerRole>('guest');
   const [regions, setRegions] = useState<LocationOption[]>([]);
   const [provinces, setProvinces] = useState<LocationOption[]>([]);
   const [cities, setCities] = useState<LocationOption[]>([]);
@@ -137,12 +139,34 @@ export default function SearchPage() {
     setFilters(readFilters(searchParams));
   }, [searchParams]);
 
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' });
+        const json = await res.json().catch(() => ({}));
+        const rawRole = (json?.role ?? '').toString().toLowerCase();
+        const nextRole: ViewerRole = rawRole === 'club' || rawRole === 'athlete' || rawRole === 'fan' ? rawRole : 'guest';
+        if (!cancelled) setViewerRole(nextRole);
+      } catch {
+        if (!cancelled) setViewerRole('guest');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const isFanViewer = viewerRole === 'fan';
+
   const selectedCountry = filters.country || '';
   const isItalySelected = !selectedCountry || selectedCountry === DEFAULT_COUNTRY;
   const availableRoles = useMemo(() => {
+    if (isFanViewer) return [];
     const sport = normalizeSport(filters.sport);
     return sport ? (SPORTS_ROLES[sport] ?? []) : [];
-  }, [filters.sport]);
+  }, [filters.sport, isFanViewer]);
 
   useEffect(() => {
     setPage(1);
@@ -306,20 +330,24 @@ export default function SearchPage() {
     fetchResults();
 
     return () => controller.abort();
-  }, [queryParam, type, page, filters]);
+  }, [queryParam, effectiveType, page, filters]);
 
-  const activeResults = useMemo(() => resultsForType(results, type), [results, type]);
+  const effectiveType: SearchType = isFanViewer && type === 'opportunities' ? 'all' : type;
+  const visibleTabItems = useMemo(() => BASE_TAB_ITEMS.filter((tab) => !(isFanViewer && tab.value === 'opportunities')), [isFanViewer]);
+  const activeResults = useMemo(() => resultsForType(results, effectiveType), [results, effectiveType]);
   const hasMore = useMemo(() => {
-    if (type === 'all' || !counts) return false;
-    return activeResults.length < counts[type];
-  }, [activeResults.length, counts, type]);
+    if (effectiveType === 'all' || !counts) return false;
+    return activeResults.length < counts[effectiveType];
+  }, [activeResults.length, counts, effectiveType]);
 
   const applySearch = (nextQuery: string, nextType: SearchType, nextFilters: SearchFilters) => {
+    const sanitizedType: SearchType = isFanViewer && nextType === 'opportunities' ? 'all' : nextType;
+    const sanitizedFilters: SearchFilters = isFanViewer ? { ...nextFilters, role: '' } : nextFilters;
     const params = new URLSearchParams();
     if (nextQuery) params.set('q', nextQuery);
-    params.set('type', nextType);
+    params.set('type', sanitizedType);
 
-    Object.entries(nextFilters).forEach(([key, value]) => {
+    Object.entries(sanitizedFilters).forEach(([key, value]) => {
       if (value) params.set(key, value);
     });
 
@@ -372,13 +400,13 @@ export default function SearchPage() {
 
   const applyFilters = () => {
     if (!queryParam) return;
-    applySearch(queryParam, type, filters);
+    applySearch(queryParam, effectiveType, filters);
   };
 
   const clearFilters = () => {
     setFilters(EMPTY_FILTERS);
     if (!queryParam) return;
-    applySearch(queryParam, type, EMPTY_FILTERS);
+    applySearch(queryParam, effectiveType, { ...EMPTY_FILTERS, role: isFanViewer ? '' : EMPTY_FILTERS.role });
   };
 
   return (
@@ -391,7 +419,7 @@ export default function SearchPage() {
               type="search"
               value={inputValue}
               onChange={(event) => setInputValue(event.target.value)}
-              placeholder="Cerca club, player, opportunità, post, eventi…"
+              placeholder={isFanViewer ? 'Cerca club, player, post, eventi…' : 'Cerca club, player, opportunità, post, eventi…'}
               aria-label="Cerca"
               className="h-11 w-full rounded-full border border-slate-200 bg-white px-10 text-sm text-slate-700 shadow-sm transition focus:border-[var(--brand)] focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/20"
             />
@@ -490,8 +518,9 @@ export default function SearchPage() {
               </select>
             </label>
 
-            <label className="space-y-2 text-sm text-slate-700">
-              <span className="font-medium">Ruolo</span>
+            {!isFanViewer ? (
+              <label className="space-y-2 text-sm text-slate-700">
+                <span className="font-medium">Ruolo</span>
               <select
                 value={filters.role}
                 onChange={(event) => updateFilter('role', event.target.value)}
@@ -505,8 +534,9 @@ export default function SearchPage() {
                   </option>
                 ))}
               </select>
-              <p className="text-xs text-slate-500">I ruoli mostrati dipendono dallo sport scelto.</p>
-            </label>
+                <p className="text-xs text-slate-500">I ruoli mostrati dipendono dallo sport scelto.</p>
+              </label>
+            ) : null}
           </div>
 
           <div className="mt-4 flex flex-wrap gap-3">
@@ -521,7 +551,7 @@ export default function SearchPage() {
             <button
               type="button"
               onClick={clearFilters}
-              disabled={!hasActiveFilters(filters)}
+              disabled={!hasActiveFilters(filters, !isFanViewer)}
               className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Reset filtri
@@ -530,8 +560,8 @@ export default function SearchPage() {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          {TAB_ITEMS.map((tab) => {
-            const isActive = tab.value === type;
+          {visibleTabItems.map((tab) => {
+            const isActive = tab.value === effectiveType;
             const countLabel =
               tab.value === 'all'
                 ? null
@@ -563,22 +593,31 @@ export default function SearchPage() {
 
       {!error && !queryParam && (
         <div className="rounded-lg border border-dashed border-slate-200 bg-white px-4 py-6 text-sm text-slate-600">
-          Inizia a digitare per cercare club, player, opportunità, post ed eventi.
+          {isFanViewer
+            ? 'Inizia a digitare per cercare club, player, post ed eventi.'
+            : 'Inizia a digitare per cercare club, player, opportunità, post ed eventi.'}
         </div>
       )}
 
       {!error && queryParam && queryParam.length >= 2 && (
         <div className="space-y-8">
-          {type === 'all' ? (
+          {effectiveType === 'all' ? (
             <div className="space-y-8">
               {(
-                [
-                  { key: 'opportunities', label: 'Opportunità' },
-                  { key: 'clubs', label: 'Club' },
-                  { key: 'players', label: 'Player' },
-                  { key: 'posts', label: 'Post' },
-                  { key: 'events', label: 'Eventi' },
-                ] as Array<{ key: Exclude<SearchType, 'all'>; label: string }>
+                (isFanViewer
+                  ? [
+                      { key: 'clubs', label: 'Club' },
+                      { key: 'players', label: 'Player' },
+                      { key: 'posts', label: 'Post' },
+                      { key: 'events', label: 'Eventi' },
+                    ]
+                  : [
+                      { key: 'opportunities', label: 'Opportunità' },
+                      { key: 'clubs', label: 'Club' },
+                      { key: 'players', label: 'Player' },
+                      { key: 'posts', label: 'Post' },
+                      { key: 'events', label: 'Eventi' },
+                    ]) as Array<{ key: Exclude<SearchType, 'all'>; label: string }>
               ).map((section) => {
                 const items = results[section.key];
                 const total = counts?.[section.key] ?? null;
@@ -614,7 +653,7 @@ export default function SearchPage() {
               {activeResults.length ? (
                 <div className="space-y-3">
                   {activeResults.map((item) => (
-                    <SearchResultRow key={`${type}-${item.id}`} result={item} />
+                    <SearchResultRow key={`${effectiveType}-${item.id}`} result={item} />
                   ))}
                 </div>
               ) : !loading ? (
