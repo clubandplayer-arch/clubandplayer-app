@@ -144,13 +144,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Suspense fallback={null}>{children}</Suspense>
         </div>
 
-        <div className="border-t border-neutral-200 bg-white/80 py-3 text-xs leading-relaxed text-neutral-500">
-          <div className="container mx-auto max-w-5xl px-4">
-            Club &amp; Player non garantisce la completezza, l’accuratezza o l’affidabilità dei contenuti pubblicati. I dati
-            vengono monitorati, ma ogni utente è responsabile delle informazioni che inserisce.
-          </div>
-        </div>
-
         <footer className="border-t border-neutral-200 bg-white/90 py-6 text-sm text-neutral-600">
           <div className="container mx-auto flex max-w-5xl flex-col gap-2 px-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs uppercase tracking-wide text-neutral-500">
@@ -163,6 +156,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </a>
               ))}
             </nav>
+            <p className="pt-2 text-xs leading-relaxed text-neutral-500 sm:basis-full sm:pt-1">
+              Club &amp; Player non garantisce la completezza, l’accuratezza o l’affidabilità dei contenuti pubblicati. I dati
+              vengono monitorati, ma ogni utente è responsabile delle informazioni che inserisce.
+            </p>
           </div>
         </footer>
 
