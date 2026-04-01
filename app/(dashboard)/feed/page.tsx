@@ -78,7 +78,8 @@ export default function FeedPage() {
   } = useFeed();
   const posts = feedPosts;
   const errorMessage = error?.message ?? null;
-  const canCreatePost = Boolean(currentUserId) && _profile?.account_type !== 'fan';
+  const isFanUser = _profile?.account_type === 'fan';
+  const canCreatePost = Boolean(currentUserId) && !isFanUser;
   const shouldShowEmptyState = !isInitialLoading && !errorMessage && posts.length === 0;
 
   useInfiniteScroll<HTMLDivElement>(loadMoreSentinelRef, {
@@ -339,7 +340,7 @@ export default function FeedPage() {
             {/* Se esiste, il componente reale rimpiazzerà questo blocco via dynamic() */}
             <ProfileMiniCard />
           </div>
-          <MyMediaHub currentUserId={currentUserId} />
+          {!isFanUser ? <MyMediaHub currentUserId={currentUserId} /> : null}
           <div className="space-y-4 md:sticky md:top-16" data-ads-sticky="left">
             <AdSlot slot="left_top" page={pathname} imageAspect="landscape" />
             <AdSlot slot="left_extra" page={pathname} imageAspect="landscape" />

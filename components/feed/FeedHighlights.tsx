@@ -5,7 +5,7 @@ import Link from 'next/link';
 
 import type { Opportunity } from '@/types/opportunity';
 
-type Role = 'club' | 'athlete' | 'guest';
+type Role = 'club' | 'athlete' | 'fan' | 'guest';
 
 type HighlightItem = Opportunity & {
   created_at?: string | null;
@@ -40,7 +40,7 @@ export default function FeedHighlights() {
         const res = await fetch('/api/feed/highlights', { credentials: 'include', cache: 'no-store' });
         const data: Partial<HighlightsResponse> = await res.json().catch(() => ({} as HighlightsResponse));
         const nextRole: Role =
-          data?.role === 'club' || data?.role === 'athlete' ? data.role : 'guest';
+          data?.role === 'club' || data?.role === 'athlete' || data?.role === 'fan' ? data.role : 'guest';
         const rows: HighlightItem[] = Array.isArray(data?.items)
           ? (data.items as HighlightItem[])
           : [];
@@ -60,6 +60,8 @@ export default function FeedHighlights() {
       ? 'Non hai ancora creato opportunità.'
       : 'Non ci sono opportunità in evidenza nella tua zona.';
   const subtitle = role === 'club' ? 'Le tue ultime opportunità' : 'Opportunità vicino a te';
+
+  if (role === 'fan') return null;
 
   if (loading) {
     return (
