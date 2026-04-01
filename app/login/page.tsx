@@ -99,12 +99,20 @@ export default function LoginPage() {
         throw new Error(j?.error || 'Sync cookie fallito');
       }
 
-      // Se abbiamo un redirect_to valido, andiamo lì, altrimenti home
+      const whoamiRes = await fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' });
+      const whoamiJson = await whoamiRes.json().catch(() => ({}));
+
+      if (!whoamiJson?.profile?.account_type) {
+        router.replace('/onboarding/choose-role');
+        return;
+      }
+
+      // Se abbiamo un redirect_to valido, andiamo lì, altrimenti feed
       let target: string | null = null;
       try {
         target = sanitizeRedirect(sessionStorage.getItem('auth:redirect_to'), window.location.origin);
       } catch {}
-      router.replace(target || '/');
+      router.replace(target || '/feed');
     } catch (err: any) {
       setErrorMsg(err?.message ?? 'Errore login');
     } finally {

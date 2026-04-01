@@ -18,7 +18,7 @@ type P = {
   id?: string | null;
   user_id?: string | null;
 
-  account_type?: 'club' | 'athlete' | null;
+  account_type?: 'club' | 'athlete' | 'fan' | null;
 
   full_name?: string | null;
   display_name?: string | null;
@@ -149,6 +149,7 @@ export default function ProfileMiniCard() {
   }, []);
 
   const isClub = p?.account_type === 'club';
+  const isFan = p?.account_type === 'fan';
   const targetId = p?.id ? String(p.id) : p?.user_id ? String(p.user_id) : '';
   const isSelf =
     !!targetId && ((!!p?.id && targetId === String(p.id)) || (!!p?.user_id && targetId === String(p.user_id)));
@@ -348,39 +349,56 @@ export default function ProfileMiniCard() {
           ) : null}
 
           <div className="space-y-1 text-center">
-            <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Dettagli player</div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">{isFan ? 'Dettagli fan' : 'Dettagli player'}</div>
           </div>
 
-          <dl className="grid grid-cols-2 gap-3 rounded-xl bg-white/70 p-3 text-sm text-gray-800 shadow-sm ring-1 ring-gray-100">
-            <div className="flex flex-col gap-0.5">
-              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Età</dt>
-              <dd className="font-medium text-gray-900">{age ?? '—'}</dd>
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Altezza</dt>
-              <dd className="font-medium text-gray-900">{p?.height_cm ? `${p.height_cm} cm` : '—'}</dd>
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Peso</dt>
-              <dd className="font-medium text-gray-900">{p?.weight_kg ? `${p.weight_kg} kg` : '—'}</dd>
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Piede</dt>
-              <dd className="font-medium text-gray-900">{p?.foot || '—'}</dd>
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Sport</dt>
-              <dd className="font-medium text-gray-900">{p?.sport || '—'}</dd>
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Ruolo</dt>
-              <dd className="font-medium text-gray-900">{p?.role || '—'}</dd>
-            </div>
-            <div className="flex flex-col gap-0.5 col-span-2">
-              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Città / Paese</dt>
-              <dd className="font-medium text-gray-900">{p?.city || interestLabel || '—'}</dd>
-            </div>
-          </dl>
+          {isFan ? (
+            <dl className="grid grid-cols-2 gap-3 rounded-xl bg-white/70 p-3 text-sm text-gray-800 shadow-sm ring-1 ring-gray-100">
+              <div className="flex flex-col gap-0.5">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Età</dt>
+                <dd className="font-medium text-gray-900">{age ?? '—'}</dd>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Sport che segui</dt>
+                <dd className="font-medium text-gray-900">{p?.sport || '—'}</dd>
+              </div>
+              <div className="flex flex-col gap-0.5 col-span-2">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Città / Paese</dt>
+                <dd className="font-medium text-gray-900">{p?.city || interestLabel || '—'}</dd>
+              </div>
+            </dl>
+          ) : (
+            <dl className="grid grid-cols-2 gap-3 rounded-xl bg-white/70 p-3 text-sm text-gray-800 shadow-sm ring-1 ring-gray-100">
+              <div className="flex flex-col gap-0.5">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Età</dt>
+                <dd className="font-medium text-gray-900">{age ?? '—'}</dd>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Altezza</dt>
+                <dd className="font-medium text-gray-900">{p?.height_cm ? `${p.height_cm} cm` : '—'}</dd>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Peso</dt>
+                <dd className="font-medium text-gray-900">{p?.weight_kg ? `${p.weight_kg} kg` : '—'}</dd>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Piede</dt>
+                <dd className="font-medium text-gray-900">{p?.foot || '—'}</dd>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Sport</dt>
+                <dd className="font-medium text-gray-900">{p?.sport || '—'}</dd>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Ruolo</dt>
+                <dd className="font-medium text-gray-900">{p?.role || '—'}</dd>
+              </div>
+              <div className="flex flex-col gap-0.5 col-span-2">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Città / Paese</dt>
+                <dd className="font-medium text-gray-900">{p?.city || interestLabel || '—'}</dd>
+              </div>
+            </dl>
+          )}
 
           {p?.bio ? (
             <div className="rounded-xl bg-white/70 p-3 text-sm text-gray-700 shadow-sm ring-1 ring-gray-100">

@@ -17,7 +17,7 @@ import BrandLogo from '@/components/brand/BrandLogo';
 import { buildProfileDisplayName } from '@/lib/displayName';
 import MobileSearchOverlay from '@/components/search/MobileSearchOverlay';
 
-type Role = 'athlete' | 'club' | 'guest';
+type Role = 'athlete' | 'club' | 'fan' | 'guest';
 
 type NavItem = { label: string; href: string; icon: MaterialIconName };
 
@@ -80,7 +80,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        setRole(rawRole === 'club' || rawRole === 'athlete' ? (rawRole as Role) : 'guest');
+        setRole(rawRole === 'club' || rawRole === 'athlete' || rawRole === 'fan' ? (rawRole as Role) : 'guest');
         setAvatarUrl(typeof profile?.avatar_url === 'string' ? profile.avatar_url : null);
         setProfileName(buildProfileDisplayName(profile?.full_name, profile?.display_name, 'Profilo'));
 
@@ -117,19 +117,29 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [pathname, router]);
 
-  const profileHref = role === 'club' ? '/club/profile' : '/player/profile';
+  const profileHref = role === 'club' ? '/club/profile' : role === 'fan' ? '/fan/profile' : '/player/profile';
   const applicationsHref = role === 'club' ? '/club/applications' : '/applications';
+  const canSeeOpportunities = role !== 'fan';
+  const canSeeApplications = role === 'club' || role === 'athlete';
 
-  const navItems = useMemo<NavItem[]>(
-    () => [
-      { label: 'Feed', href: '/feed', icon: 'home' },
-      { label: 'Opportunità', href: '/opportunities', icon: 'opportunities' },
-      { label: 'Candidature', href: applicationsHref, icon: 'applications' },
+  const navItems = useMemo<NavItem[]>(() => {
+    const items: NavItem[] = [{ label: 'Feed', href: '/feed', icon: 'home' }];
+
+    if (canSeeOpportunities) {
+      items.push({ label: 'Opportunità', href: '/opportunities', icon: 'opportunities' });
+    }
+
+    if (canSeeApplications) {
+      items.push({ label: 'Candidature', href: applicationsHref, icon: 'applications' });
+    }
+
+    items.push(
       { label: 'Messaggi', href: '/messages', icon: 'mail' },
       { label: 'Notifiche', href: '/notifications', icon: 'notifications' },
-    ],
-    [applicationsHref],
-  );
+    );
+
+    return items;
+  }, [applicationsHref, canSeeApplications, canSeeOpportunities]);
 
   const isActive = (href: string) => pathname === href || (!!pathname && pathname.startsWith(href + '/'));
 
@@ -183,6 +193,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isSearchOverlayOpen]);
+
+  const searchPlaceholder = role === 'fan' ? 'Cerca club, player, post, eventi…' : 'Cerca club, player, opportunità, post, eventi…';
 
   const profileInitials = useMemo(() => {
     const trimmed = profileName.trim();
@@ -294,7 +306,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                       setIsSearchOverlayOpen(true);
                       searchInputRef.current?.blur();
                     }}
-                    placeholder="Cerca club, player, opportunità, post, eventi…"
+                    placeholder={searchPlaceholder}
                     aria-label="Cerca"
                     className="h-10 w-full min-w-0 rounded-full border border-slate-200 bg-white/90 pl-10 pr-4 text-sm text-slate-700 shadow-sm transition focus:border-[var(--brand)] focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/20"
                   />

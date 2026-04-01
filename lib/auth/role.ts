@@ -2,7 +2,7 @@
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import type { User } from '@supabase/supabase-js';
 
-export type UserRole = 'athlete' | 'club' | null;
+export type UserRole = 'athlete' | 'club' | 'fan' | null;
 
 // Deriva il tipo del client dal factory, così evitiamo mismatch tra generics
 type SupaClient = Awaited<ReturnType<typeof getSupabaseServerClient>>;
@@ -25,13 +25,12 @@ export async function getUserAndRole(): GetUserAndRole {
   // Leggi il profilo per determinare il ruolo
   const { data: prof } = await supabase
     .from('profiles')
-    .select('type')
+    .select('account_type,type')
     .eq('user_id', user.id)
     .maybeSingle();
 
-  const role = prof?.type
-    ? (String(prof.type).toLowerCase() as UserRole)
-    : null;
+  const rawRole = String((prof as any)?.account_type ?? (prof as any)?.type ?? '').toLowerCase();
+  const role: UserRole = rawRole === 'club' || rawRole === 'athlete' || rawRole === 'fan' ? rawRole : null;
 
   return { user, role, supabase };
 }

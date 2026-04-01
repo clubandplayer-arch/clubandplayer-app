@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-export type ProfileRole = 'guest' | 'athlete' | 'club';
+export type ProfileRole = 'guest' | 'athlete' | 'club' | 'fan';
 
 export type CurrentProfileContext = {
   id: string | null;
@@ -29,7 +29,7 @@ export function useCurrentProfileContext() {
         const who = await fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' });
         const whoJson = await who.json().catch(() => ({}));
         const nextRole: ProfileRole =
-          whoJson?.role === 'club' || whoJson?.role === 'athlete' ? whoJson.role : 'guest';
+          whoJson?.role === 'club' || whoJson?.role === 'athlete' || whoJson?.role === 'fan' ? whoJson.role : 'guest';
         if (!active) return;
         setRole(nextRole);
 
