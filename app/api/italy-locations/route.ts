@@ -1,121 +1,70 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { jsonError } from '@/lib/api/auth';
+import { NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
-export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
-type RawRow = Record<string, unknown>;
-
-type LocationRow = {
-  region: string;
-  province: string;
-  city: string;
-};
-
-type SourceConfig = {
-  table: string;
-  regionKey: string;
-  provinceKey: string;
-  cityKey: string;
-};
-
-const SOURCES: SourceConfig[] = [
-  { table: 'it_locations_stage', regionKey: 'regione', provinceKey: 'provincia', cityKey: 'comune' },
-  { table: 'italy_locations_simple', regionKey: 'region', provinceKey: 'province', cityKey: 'city' },
-];
-
-function sortAlpha(values: Iterable<string>) {
-  return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b, 'it', { sensitivity: 'base' }));
-}
-
-function isRawRow(row: unknown): row is RawRow {
-  if (!row || typeof row !== 'object') return false;
-  return !('error' in (row as Record<string, unknown>));
-}
-
-function normalizeRow(row: RawRow, config: SourceConfig): LocationRow | null {
-  const region = String(row[config.regionKey] ?? '').trim();
-  const province = String(row[config.provinceKey] ?? '').trim();
-  const city = String(row[config.cityKey] ?? '').trim();
-  if (!region || !province || !city) return null;
-  return { region, province, city };
-}
-
-async function loadLocations() {
+export async function GET() {
   const supabase = await getSupabaseServerClient();
-  let lastError: Error | null = null;
 
-  for (const source of SOURCES) {
-    const { data, error } = await supabase
-      .from(source.table)
-      .select(`${source.regionKey},${source.provinceKey},${source.cityKey}`)
-      .order(source.regionKey, { ascending: true, nullsFirst: false })
-      .order(source.provinceKey, { ascending: true, nullsFirst: false })
-      .order(source.cityKey, { ascending: true, nullsFirst: false });
+  const { data, error } = await supabase
+    .from('it_locations_stage')
+    .select('name, province, region')
+    .range(0, 10000);
 
-    if (error) {
-      lastError = error as Error;
-      continue;
-    }
+  console.log('GEO rows:', data?.length);
+  console.log('GEO sample:', data?.slice(0, 5));
 
-    const rows = Array.isArray(data) ? data : [];
-    const normalized = rows
-      .map((row) => (isRawRow(row) ? normalizeRow(row, source) : null))
-      .filter((row): row is LocationRow => !!row);
-
-    if (normalized.length > 0) {
-      return normalized;
-    }
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  if (lastError) {
-    throw lastError;
+  const regionsSet = new Set<string>();
+  const provincesByRegionSets: Record<string, Set<string>> = {};
+  const citiesByProvinceSets: Record<string, Set<string>> = {};
+
+  for (const row of data ?? []) {
+    const city = row.name?.trim();
+    const province = row.province?.trim();
+    const region = row.region?.trim();
+
+    if (!city || !province || !region) continue;
+
+    regionsSet.add(region);
+
+    if (!provincesByRegionSets[region]) {
+      provincesByRegionSets[region] = new Set<string>();
+    }
+    provincesByRegionSets[region].add(province);
+
+    if (!citiesByProvinceSets[province]) {
+      citiesByProvinceSets[province] = new Set<string>();
+    }
+    citiesByProvinceSets[province].add(city);
   }
 
-  return [] as LocationRow[];
-}
+  const regions = [...regionsSet].sort((a, b) => a.localeCompare(b));
 
-export async function GET(_req: NextRequest) {
-  try {
-    const rows = await loadLocations();
+  const provincesByRegion = Object.fromEntries(
+    Object.entries(provincesByRegionSets)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([region, provinces]) => [
+        region,
+        [...provinces].sort((a, b) => a.localeCompare(b)),
+      ]),
+  );
 
-    const regionsSet = new Set<string>();
-    const provincesByRegion = new Map<string, Set<string>>();
-    const citiesByProvince = new Map<string, Set<string>>();
+  const citiesByProvince = Object.fromEntries(
+    Object.entries(citiesByProvinceSets)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([province, cities]) => [
+        province,
+        [...cities].sort((a, b) => a.localeCompare(b)),
+      ]),
+  );
 
-    for (const row of rows) {
-      const { region, province, city } = row;
-
-      regionsSet.add(region);
-
-      if (!provincesByRegion.has(region)) {
-        provincesByRegion.set(region, new Set());
-      }
-      provincesByRegion.get(region)!.add(province);
-
-      if (!citiesByProvince.has(province)) {
-        citiesByProvince.set(province, new Set());
-      }
-      citiesByProvince.get(province)!.add(city);
-    }
-
-    const regions = sortAlpha(regionsSet);
-    const provinces: Record<string, string[]> = {};
-    for (const [region, items] of provincesByRegion.entries()) {
-      provinces[region] = sortAlpha(items);
-    }
-
-    const cities: Record<string, string[]> = {};
-    for (const [province, items] of citiesByProvince.entries()) {
-      cities[province] = sortAlpha(items);
-    }
-
-    return NextResponse.json({
-      regions,
-      provincesByRegion: provinces,
-      citiesByProvince: cities,
-    });
-  } catch (err: any) {
-    return jsonError(err?.message || 'Unexpected error', 500);
-  }
+  return NextResponse.json({
+    regions,
+    provincesByRegion,
+    citiesByProvince,
+  });
 }
