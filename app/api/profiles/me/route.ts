@@ -3,6 +3,7 @@ import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
 import { normalizeSport } from '@/lib/opps/constants';
 import { MAX_SKILLS, parseSkillsInput } from '@/lib/profiles/skills';
+import { ensureSingleProfileRowForUser, inferAccountType } from '@/lib/server/profileIntegrity';
 
 export const runtime = 'nodejs';
 
@@ -115,6 +116,12 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   } catch {
     return jsonError('Too Many Requests', 429);
   }
+
+  await ensureSingleProfileRowForUser(supabase, user.id, {
+    authRoleHint: user.user_metadata?.role,
+    accountTypeHint: inferAccountType(user.user_metadata?.role),
+    displayNameHint: user.user_metadata?.full_name || user.email || null,
+  });
 
   const { data, error } = await supabase
     .from('profiles')
@@ -233,9 +240,22 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
     .maybeSingle();
 
   if (!data && !error) {
+    const inferredType = inferAccountType(
+      updates.account_type,
+      user.user_metadata?.role,
+      currentProfile?.account_type,
+    );
     const up = await supabase
       .from('profiles')
-      .upsert({ user_id: user.id, ...updates }, { onConflict: 'user_id' })
+      .upsert(
+        {
+          user_id: user.id,
+          account_type: inferredType ?? null,
+          type: inferredType ?? null,
+          ...updates,
+        },
+        { onConflict: 'user_id' },
+      )
       .select('*')
       .maybeSingle();
 
