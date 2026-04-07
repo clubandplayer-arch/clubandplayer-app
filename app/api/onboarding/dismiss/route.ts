@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 import { jsonError, withAuth } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
+import { ensureSingleProfileRowForUser, inferAccountType } from '@/lib/server/profileIntegrity';
 
 export const runtime = 'nodejs';
 
@@ -11,6 +12,13 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   } catch {
     return jsonError('Too Many Requests', 429);
   }
+
+  const inferredType = inferAccountType(user.user_metadata?.role);
+  await ensureSingleProfileRowForUser(supabase, user.id, {
+    accountTypeHint: inferredType,
+    authRoleHint: user.user_metadata?.role,
+    displayNameHint: user.user_metadata?.full_name || user.email || null,
+  });
 
   const { data: profile, error } = await supabase
     .from('profiles')
@@ -28,6 +36,8 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     .upsert(
       {
         user_id: user.id,
+        account_type: inferredType ?? null,
+        type: inferredType ?? null,
         onboarding_dismiss_count: next,
         updated_at: new Date().toISOString(),
       },

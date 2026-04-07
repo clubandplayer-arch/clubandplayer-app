@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { ensureSingleProfileRowForUser, inferAccountType } from '@/lib/server/profileIntegrity';
 
 function mergeCookies(from: NextResponse, into: NextResponse) {
   for (const c of from.cookies.getAll()) into.cookies.set(c);
@@ -39,6 +40,19 @@ export async function POST(req: NextRequest) {
     return out;
   }
 
+  const metaRole = (user.user_metadata?.role ?? '').toString().toLowerCase();
+  const inferredType = inferAccountType(metaRole);
+  const displayName =
+    (user.user_metadata?.full_name as string) ||
+    (user.user_metadata?.name as string) ||
+    (user.email?.split('@')[0] ?? null);
+
+  await ensureSingleProfileRowForUser(supabase, user.id, {
+    accountTypeHint: inferredType,
+    authRoleHint: metaRole,
+    displayNameHint: displayName,
+  });
+
   // 1) prova a leggere il profilo
   const { data: existing, error: readErr } = await supabase
     .from('profiles')
@@ -59,15 +73,12 @@ export async function POST(req: NextRequest) {
   }
 
   // 2) se non esiste, crealo (upsert by user_id)
-  const displayName =
-    (user.user_metadata?.full_name as string) ||
-    (user.user_metadata?.name as string) ||
-    (user.email?.split('@')[0] ?? null);
-
   const insertPayload: Record<string, any> = {
     user_id: user.id,
     full_name: displayName,
     display_name: displayName,
+    account_type: inferredType,
+    type: inferredType,
     interest_country: 'IT', // default coerente
   };
 

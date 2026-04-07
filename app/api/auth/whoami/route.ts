@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { isAdminUser, isClubsAdminUser } from '@/lib/api/admin';
+import { ensureSingleProfileRowForUser, inferAccountType } from '@/lib/server/profileIntegrity';
 
 function resolveEnv() {
   const url =
@@ -23,14 +24,11 @@ function mergeCookies(from: NextResponse, into: NextResponse) {
   if (set) into.headers.append('set-cookie', set);
 }
 
-type Role = 'guest' | 'athlete' | 'club';
+type Role = 'guest' | 'athlete' | 'club' | 'fan';
 type ProfileStatus = 'active' | 'rejected';
 
-function normRole(v: unknown): 'club' | 'athlete' | null {
-  const s = (typeof v === 'string' ? v : '').trim().toLowerCase();
-  if (s === 'club') return 'club';
-  if (s === 'athlete') return 'athlete';
-  return null;
+function normRole(v: unknown): 'club' | 'athlete' | 'fan' | null {
+  return inferAccountType(v);
 }
 
 function normStatus(v: unknown): ProfileStatus {
@@ -71,8 +69,16 @@ export async function GET(req: NextRequest) {
     return out;
   }
 
+  const metaRole = (user.user_metadata?.role ?? '').toString().toLowerCase();
+
+  await ensureSingleProfileRowForUser(supabase, user.id, {
+    accountTypeHint: metaRole,
+    authRoleHint: metaRole,
+    displayNameHint: user.user_metadata?.full_name || user.email || 'Profilo',
+  });
+
   // 1) profiles.account_type (nuovo), 2) profiles.type (legacy)
-  let accountType: 'club' | 'athlete' | null = null;
+  let accountType: 'club' | 'athlete' | 'fan' | null = null;
   let legacyType: string | null = null;
   let status: ProfileStatus = 'active';
 
@@ -100,10 +106,7 @@ export async function GET(req: NextRequest) {
 
   // 3) Fallback: metadati auth
   if (!accountType) {
-    const meta = (user.user_metadata?.role ?? '')
-      .toString()
-      .toLowerCase();
-    accountType = normRole(meta);
+    accountType = normRole(metaRole);
   }
 
   // 4) Fallback: se ha creato opportunità => club (legacy su created_by)
@@ -132,6 +135,7 @@ export async function GET(req: NextRequest) {
             user_id: user.id,
             display_name: user.user_metadata?.full_name || user.email || 'Profilo',
             account_type: accountType ?? null,
+            type: accountType ?? null,
             role: accountType === 'club' ? 'Club' : null,
           },
           { onConflict: 'user_id' }

@@ -40,6 +40,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   const payload: any = {
     user_id: user.id,
+    account_type: type,
     type,
     display_name,
     headline: norm((body as any).headline),
