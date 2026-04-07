@@ -1,90 +1,139 @@
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { MaterialIcon } from '@/components/icons/MaterialIcon';
+import RoleCard from '@/components/onboarding/RoleCard';
 
-type Role = 'club' | 'athlete';
+type ApiRole = 'club' | 'athlete' | 'fan';
+type SelectedRole = ApiRole | null;
+
+const ROLE_TARGET: Record<ApiRole, string> = {
+  club: '/club/profile',
+  athlete: '/player/profile',
+  fan: '/fan/profile',
+};
 
 export default function ChooseRolePage() {
   const router = useRouter();
-  const sp = useSearchParams();
-  const [saving, setSaving] = useState<Role | null>(null);
+  const [selectedRole, setSelectedRole] = useState<SelectedRole>(null);
+  const [saving, setSaving] = useState(false);
+  const [checkingAccess, setCheckingAccess] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const next = sp.get('next') || '/feed';
+  useEffect(() => {
+    let active = true;
 
-  async function choose(role: Role) {
-    setSaving(role);
+    (async () => {
+      try {
+        const res = await fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' });
+        const json = await res.json().catch(() => ({}));
+        if (!active) return;
+
+        if (!json?.user?.id) {
+          router.replace('/login?next=%2Fonboarding%2Fchoose-role');
+          return;
+        }
+
+        if (json?.profile?.account_type) {
+          router.replace('/feed');
+          return;
+        }
+
+        setCheckingAccess(false);
+      } catch {
+        if (!active) return;
+        router.replace('/login?next=%2Fonboarding%2Fchoose-role');
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [router]);
+
+  async function handleContinue() {
+    if (!selectedRole || saving) return;
+    setSaving(true);
     setError(null);
+
     try {
-      const r = await fetch('/api/profiles/me', {
-        method: 'PATCH',
+      const response = await fetch('/api/auth/set-role', {
+        method: 'POST',
         credentials: 'include',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ account_type: role }),
+        body: JSON.stringify({ account_type: selectedRole }),
       });
-      if (!r.ok) {
-        const j = await r.json().catch(() => ({}));
-        throw new Error(j?.error ?? 'Salvataggio non riuscito');
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload?.error ?? 'Salvataggio ruolo non riuscito.');
       }
-      router.replace(next);
-    } catch (e: any) {
-      setError(e?.message || 'Errore imprevisto');
-      setSaving(null);
+
+      router.replace(ROLE_TARGET[selectedRole]);
+    } catch (err: any) {
+      setError(err?.message ?? 'Errore imprevisto durante il salvataggio del ruolo.');
+      setSaving(false);
     }
   }
 
+  if (checkingAccess) {
+    return (
+      <main className="mx-auto flex min-h-[70vh] w-full max-w-5xl items-center justify-center px-4">
+        <p className="text-sm text-slate-600">Verifica account in corso…</p>
+      </main>
+    );
+  }
+
   return (
-    <main className="container mx-auto max-w-3xl px-4 py-10">
-      <h1 className="mb-2 text-2xl font-bold">Scegli il tuo ruolo</h1>
-      <p className="mb-8 text-neutral-600">
-        Per personalizzare l’esperienza, indica se stai usando Club&Player come <strong>Club</strong> o come <strong>Player</strong>.
-        Potrai cambiarlo in seguito dalle impostazioni.
-      </p>
+    <main className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-6xl flex-col justify-center px-4 py-10">
+      <header className="mx-auto mb-10 max-w-2xl text-center">
+        <h1 className="text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">
+          Scegli come vuoi usare Club &amp; Player
+        </h1>
+        <p className="mt-3 text-base text-slate-600">Ogni ruolo offre un’esperienza diversa</p>
+      </header>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Card Club */}
-        <button
-          className="group rounded-2xl border p-5 text-left transition hover:shadow-md focus:outline-none focus:ring-2"
-          onClick={() => choose('club')}
-          disabled={!!saving}
-        >
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Sono un Club</h2>
-            <span className="rounded-full border px-3 py-1 text-xs">Seleziona</span>
-          </div>
-          <p className="text-sm text-neutral-600">
-            Pubblica opportunità, ricevi candidature, scopri e contatta atleti.
-          </p>
-          <div className="mt-4 text-sm text-blue-700">
-            {saving === 'club' ? 'Salvataggio…' : 'Continua come Club'}
-          </div>
-        </button>
+      <section className="grid gap-4 md:grid-cols-3 md:gap-6" aria-label="Selezione ruolo utente">
+        <RoleCard
+          title="CLUB"
+          description="Gestisci il tuo club, pubblica contenuti e crea opportunità"
+          icon={<MaterialIcon name="opportunities" fontSize={22} />}
+          selected={selectedRole === 'club'}
+          onClick={() => setSelectedRole('club')}
+        />
+        <RoleCard
+          title="PLAYER"
+          description="Vivi il tuo sport, crea il tuo profilo e trova opportunità"
+          icon={<MaterialIcon name="person" fontSize={22} />}
+          selected={selectedRole === 'athlete'}
+          onClick={() => setSelectedRole('athlete')}
+        />
+        <RoleCard
+          title="FAN"
+          description="Segui, vivi e sostieni Club e Player, dentro e fuori dal campo"
+          icon={<MaterialIcon name="following" fontSize={22} />}
+          selected={selectedRole === 'fan'}
+          onClick={() => setSelectedRole('fan')}
+        />
+      </section>
 
-        {/* Card Player */}
+      <div className="mt-8 flex justify-center">
         <button
-          className="group rounded-2xl border p-5 text-left transition hover:shadow-md focus:outline-none focus:ring-2"
-          onClick={() => choose('athlete')}
-          disabled={!!saving}
+          type="button"
+          onClick={handleContinue}
+          disabled={!selectedRole || saving}
+          className="inline-flex h-11 min-w-40 items-center justify-center rounded-xl bg-[#036f9a] px-6 text-sm font-semibold text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Sono un Player</h2>
-            <span className="rounded-full border px-3 py-1 text-xs">Seleziona</span>
-          </div>
-          <p className="text-sm text-neutral-600">
-            Crea il profilo sportivo, trova opportunità e candidati direttamente.
-          </p>
-          <div className="mt-4 text-sm text-blue-700">
-            {saving === 'athlete' ? 'Salvataggio…' : 'Continua come Player'}
-          </div>
+          {saving ? 'Salvataggio…' : 'Continua'}
         </button>
       </div>
 
-      {error && <div className="mt-6 rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-
-      <div className="mt-8 text-sm text-neutral-600">
-        Hai un dubbio? Puoi cambiare ruolo più avanti dalla pagina <strong>Impostazioni</strong>.
-      </div>
+      {error ? (
+        <p className="mx-auto mt-4 w-full max-w-xl rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </p>
+      ) : null}
     </main>
   );
 }

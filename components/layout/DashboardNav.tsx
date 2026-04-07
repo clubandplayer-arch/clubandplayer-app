@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-type Role = 'athlete' | 'club' | null;
+type Role = 'athlete' | 'club' | 'fan' | null;
 
 function cx(
   ...cls: Array<string | false | null | undefined>
@@ -51,6 +51,8 @@ export default function DashboardNav() {
             if (t.includes('club')) setRole('club');
             else if (t.includes('athlete') || t.includes('atlet'))
               setRole('athlete');
+            else if (t.includes('fan'))
+              setRole('fan');
           }
         }
       } catch {
@@ -119,7 +121,7 @@ export default function DashboardNav() {
     (href !== '/' && pathname.startsWith(href));
 
   const profileHref =
-    role === 'club' ? '/club/profile' : '/player/profile';
+    role === 'club' ? '/club/profile' : role === 'fan' ? '/fan/profile' : '/player/profile';
 
   return (
     <nav className="w-full border-b bg-gray-50">
@@ -138,7 +140,8 @@ export default function DashboardNav() {
             href={profileHref}
             className={pill(
               isActive('/player/profile') ||
-                isActive('/club/profile')
+                isActive('/club/profile') ||
+                isActive('/fan/profile')
             )}
           >
             Profilo
@@ -175,6 +178,8 @@ export default function DashboardNav() {
               ? 'Accesso CLUB'
               : role === 'athlete'
               ? 'Accesso ATLETA'
+              : role === 'fan'
+              ? 'Accesso FAN'
               : 'Utente non profilato'
             : 'Caricamento...'}
         </div>

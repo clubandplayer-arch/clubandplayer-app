@@ -12,7 +12,7 @@ import { buildProfileDisplayName } from '@/lib/displayName'
 
 type ProfileRow = {
   id: string
-  account_type: 'athlete' | 'club' | null
+  account_type: 'athlete' | 'club' | 'fan' | null
   is_admin: boolean | null
   avatar_url: string | null
   full_name: string | null
@@ -23,7 +23,7 @@ export default function Navbar() {
   const pathname = usePathname()
   const supabase = useMemo(() => supabaseBrowser(), [])
   const [sessionUserId, setSessionUserId] = useState<string | null>(null)
-  const [accountType, setAccountType] = useState<'athlete' | 'club' | null>(null)
+  const [accountType, setAccountType] = useState<'athlete' | 'club' | 'fan' | null>(null)
   const [isAdmin, setIsAdmin] = useState<boolean>(false)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [profileName, setProfileName] = useState<string>('')
@@ -75,7 +75,7 @@ export default function Navbar() {
 
   const isOnboardingNeeded = sessionUserId !== null && accountType == null
   const isClub = accountType === 'club'
-  const profileHref = isClub ? '/club/profile' : '/player/profile'
+  const profileHref = isClub ? '/club/profile' : accountType === 'fan' ? '/fan/profile' : '/player/profile'
 
   const profileInitials = useMemo(() => {
     const trimmed = profileName.trim()

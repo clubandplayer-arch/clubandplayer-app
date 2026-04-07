@@ -6,7 +6,7 @@ import { MaterialIcon, type MaterialIconName } from '@/components/icons/Material
 import type { Profile } from '@/types/profile';
 import { isProfileComplete } from '@/lib/profile/completion';
 
-const steps: Array<{
+const baseSteps: Array<{
   title: string;
   description: string;
   href: string;
@@ -42,6 +42,28 @@ export function FirstStepsCard({ profile }: { profile?: Profile | null }) {
   }, [profile]);
 
   const reachedLimit = useMemo(() => dismissCount >= 3, [dismissCount]);
+
+  const profileType = profile?.account_type ?? null;
+  const steps = useMemo(() => {
+    const profileHref = profileType === 'club' ? '/club/profile' : profileType === 'fan' ? '/fan/profile' : '/player/profile';
+    const primary = {
+      ...baseSteps[0],
+      href: profileHref,
+      description:
+        profileType === 'fan'
+          ? 'Aggiungi bio, sport che segui e interessi per personalizzare la tua esperienza.'
+          : baseSteps[0].description,
+    };
+
+    if (profileType === 'fan') {
+      return [
+        primary,
+        baseSteps[1],
+      ];
+    }
+
+    return [primary, baseSteps[1], baseSteps[2]];
+  }, [profileType]);
 
   async function handleDismiss() {
     setHidden(true);

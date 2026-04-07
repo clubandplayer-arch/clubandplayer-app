@@ -78,7 +78,8 @@ export default function FeedPage() {
   } = useFeed();
   const posts = feedPosts;
   const errorMessage = error?.message ?? null;
-  const canCreatePost = Boolean(currentUserId);
+  const isFanUser = _profile?.account_type === 'fan';
+  const canCreatePost = Boolean(currentUserId) && !isFanUser;
   const shouldShowEmptyState = !isInitialLoading && !errorMessage && posts.length === 0;
 
   useInfiniteScroll<HTMLDivElement>(loadMoreSentinelRef, {
@@ -88,7 +89,7 @@ export default function FeedPage() {
     onLoadMore: loadMore,
   });
   const userRole =
-    _profile?.account_type === 'club' || _profile?.account_type === 'athlete'
+    _profile?.account_type === 'club' || _profile?.account_type === 'athlete' || _profile?.account_type === 'fan'
       ? _profile.account_type
       : 'guest';
   const shouldShowStarterPack = !isInitialLoading && !errorMessage && posts.length < 3;
@@ -339,7 +340,7 @@ export default function FeedPage() {
             {/* Se esiste, il componente reale rimpiazzerà questo blocco via dynamic() */}
             <ProfileMiniCard />
           </div>
-          <MyMediaHub currentUserId={currentUserId} />
+          {!isFanUser ? <MyMediaHub currentUserId={currentUserId} /> : null}
           <div className="space-y-4 md:sticky md:top-16" data-ads-sticky="left">
             <AdSlot slot="left_top" page={pathname} imageAspect="landscape" />
             <AdSlot slot="left_extra" page={pathname} imageAspect="landscape" />
@@ -396,7 +397,7 @@ export default function FeedPage() {
               </button>
             </div>
           </div>
-          <FeedComposer onPosted={handleRefresh} />
+          {canCreatePost ? <FeedComposer onPosted={handleRefresh} /> : null}
 
           <div className="space-y-4" aria-live="polite" aria-busy={isInitialLoading}>
             {isInitialLoading && (
@@ -702,42 +703,44 @@ function StarterPackSection({
   error: string | null;
   opportunities: Opportunity[];
   profiles: StarterProfile[];
-  userRole: 'club' | 'athlete' | 'guest';
+  userRole: 'club' | 'athlete' | 'fan' | 'guest';
   currentUserId: string | null;
 }) {
   return (
     <div className="space-y-4">
-      <div className="glass-panel p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h2 className="text-sm font-semibold text-neutral-900">Opportunità consigliate</h2>
-            <p className="text-xs text-neutral-500">Una selezione veloce per riempire il feed.</p>
+      {userRole !== 'fan' ? (
+        <div className="glass-panel p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-semibold text-neutral-900">Opportunità consigliate</h2>
+              <p className="text-xs text-neutral-500">Una selezione veloce per riempire il feed.</p>
+            </div>
+            <Link href="/opportunities" className="text-xs font-semibold text-blue-700 hover:underline">
+              Vedi tutte →
+            </Link>
           </div>
-          <Link href="/opportunities" className="text-xs font-semibold text-blue-700 hover:underline">
-            Vedi tutte →
-          </Link>
+          {loading ? (
+            <div className="mt-4 space-y-3">
+              {Array.from({ length: 2 }).map((_, index) => (
+                <div key={index} className="h-24 rounded-xl bg-neutral-100 animate-pulse" />
+              ))}
+            </div>
+          ) : opportunities.length > 0 ? (
+            <div className="mt-4 space-y-3">
+              {opportunities.map((opp) => (
+                <OpportunityCard
+                  key={opp.id}
+                  opp={opp}
+                  _currentUserId={currentUserId}
+                  userRole={userRole}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="mt-4 text-sm text-neutral-600">Nessuna opportunità consigliata al momento.</div>
+          )}
         </div>
-        {loading ? (
-          <div className="mt-4 space-y-3">
-            {Array.from({ length: 2 }).map((_, index) => (
-              <div key={index} className="h-24 rounded-xl bg-neutral-100 animate-pulse" />
-            ))}
-          </div>
-        ) : opportunities.length > 0 ? (
-          <div className="mt-4 space-y-3">
-            {opportunities.map((opp) => (
-              <OpportunityCard
-                key={opp.id}
-                opp={opp}
-                _currentUserId={currentUserId}
-                userRole={userRole}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="mt-4 text-sm text-neutral-600">Nessuna opportunità consigliata al momento.</div>
-        )}
-      </div>
+      ) : null}
 
       <div className="glass-panel p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
