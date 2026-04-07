@@ -34,7 +34,7 @@ export default function PostPage() {
     const check = async () => {
       const { data: u } = await supabase.auth.getUser()
       if (!u.user) { setMsg('Devi accedere.'); setCanPost(false); return }
-      const { data: prof } = await supabase.from('profiles').select('account_type').eq('id', u.user.id).limit(1)
+      const { data: prof } = await supabase.from('profiles').select('account_type').eq('user_id', u.user.id).limit(1)
       const t = prof && prof[0] ? (prof[0] as {account_type: string | null}).account_type : null
       if (t !== 'club') {
         setMsg('Solo i club possono creare annunci. Vai in Onboarding e scegli "Squadra / Club".')

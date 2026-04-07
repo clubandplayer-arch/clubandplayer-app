@@ -3,6 +3,8 @@ import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 import { buildEndorsedSet, normalizeProfileSkills, normalizeSkillName } from '@/lib/profiles/skills';
 import type { ProfileLinks, ProfileSkill } from '@/types/profile';
 
+// TODO(db): aggiungere unique partial index su public.profiles(user_id) where user_id is not null.
+
 export type PublicProfileSummary = {
   id: string;
   profile_id: string | null;
@@ -122,6 +124,9 @@ function normalizeRow(row: Record<string, any>): PublicProfileSummary | null {
   const profileId = row.id ? String(row.id) : null;
   const userId = row.user_id ? String(row.user_id) : null;
   if (!profileId && !userId) return null;
+  if (profileId && !userId && process.env.NODE_ENV !== 'production') {
+    console.warn('[profiles] inconsistent row: profile without user_id', { profileId });
+  }
 
   const skills: ProfileSkill[] | null = Array.isArray(row.skills) ? normalizeProfileSkills(row.skills) : null;
 
@@ -138,7 +143,7 @@ function normalizeRow(row: Record<string, any>): PublicProfileSummary | null {
     // Conserviamo l'id del profilo come identificativo principale
     id: profileId ?? userId ?? '',
     profile_id: profileId,
-    user_id: userId ?? profileId,
+    user_id: userId,
     first_name: first || null,
     last_name: last || null,
     display_name: displayName,

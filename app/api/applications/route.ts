@@ -35,17 +35,6 @@ async function notifyClubApplicationReceived(params: {
   if (profileByUser?.id) {
     recipientProfileId = profileByUser.id as string;
     recipientUserId = (profileByUser.user_id as string | null) ?? ownerId;
-  } else {
-    const { data: profileById } = await admin
-      .from('profiles')
-      .select('id, user_id')
-      .eq('id', ownerId)
-      .maybeSingle();
-
-    if (profileById?.id) {
-      recipientProfileId = profileById.id as string;
-      recipientUserId = (profileById.user_id as string | null) ?? null;
-    }
   }
 
   if (!recipientUserId || recipientUserId === athleteUserId) return;
@@ -57,13 +46,7 @@ async function notifyClubApplicationReceived(params: {
       .eq('user_id', athleteUserId)
       .maybeSingle();
     if (actorByUser?.id) return actorByUser.id as string;
-
-    const { data: actorById } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('id', athleteUserId)
-      .maybeSingle();
-    return (actorById?.id as string | undefined) ?? null;
+    return null;
   })();
 
   const notificationPayload = {

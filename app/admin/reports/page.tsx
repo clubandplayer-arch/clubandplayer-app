@@ -56,7 +56,7 @@ export default function AdminReportsPage() {
       const { data } = await supabase
         .from('profiles')
         .select('id, is_admin')
-        .eq('id', user.id)
+        .eq('user_id', user.id)
         .maybeSingle()
       if (!active) return
       setMe((data as Profile) ?? null)

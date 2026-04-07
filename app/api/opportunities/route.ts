@@ -189,15 +189,12 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   const metaRole = String(user.user_metadata?.role ?? '').toLowerCase();
   let isClub = metaRole === 'club';
   if (!isClub) {
-    const tryBy = async (col: 'id' | 'user_id') => {
-      const { data } = await supabase
-        .from('profiles')
-        .select('account_type')
-        .eq(col, user.id)
-        .maybeSingle();
-      return data?.account_type as string | null | undefined;
-    };
-    const acct = (await tryBy('id')) ?? (await tryBy('user_id'));
+    const { data } = await supabase
+      .from('profiles')
+      .select('account_type')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    const acct = data?.account_type as string | null | undefined;
     isClub = String(acct ?? '').toLowerCase() === 'club';
   }
   if (!isClub) return notAuthorized('forbidden_not_club');
@@ -208,15 +205,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     .eq('user_id', user.id)
     .maybeSingle();
 
-  const { data: profileById } = profileByUser
-    ? { data: null }
-    : await supabase
-        .from('profiles')
-        .select('id, user_id, display_name, full_name')
-        .eq('id', user.id)
-        .maybeSingle();
-
-  const clubProfile = profileByUser ?? profileById ?? null;
+  const clubProfile = profileByUser ?? null;
   if (!clubProfile) return invalidPayload('club_profile_not_found');
 
   const clubId = clubProfile.id;
