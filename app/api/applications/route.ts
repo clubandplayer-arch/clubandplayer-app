@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
+import { getProfileByUserId } from '@/lib/api/profile';
 
 export const runtime = 'nodejs';
 
@@ -26,28 +27,17 @@ async function notifyClubApplicationReceived(params: {
   let recipientUserId: string | null = ownerId;
   let recipientProfileId: string | null = null;
 
-  const { data: profileByUser } = await admin
-    .from('profiles')
-    .select('id, user_id')
-    .eq('user_id', ownerId)
-    .maybeSingle();
+  const profileByUser = await getProfileByUserId(admin, ownerId, { activeOnly: true });
 
-  if (profileByUser?.id) {
+  if (profileByUser?.id && profileByUser.user_id) {
     recipientProfileId = profileByUser.id as string;
-    recipientUserId = (profileByUser.user_id as string | null) ?? ownerId;
+    recipientUserId = profileByUser.user_id;
   }
 
   if (!recipientUserId || recipientUserId === athleteUserId) return;
 
-  const actorProfileId = await (async () => {
-    const { data: actorByUser } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('user_id', athleteUserId)
-      .maybeSingle();
-    if (actorByUser?.id) return actorByUser.id as string;
-    return null;
-  })();
+  const actorByUser = await getProfileByUserId(supabase, athleteUserId, { activeOnly: true });
+  const actorProfileId = actorByUser?.id ?? null;
 
   const notificationPayload = {
     user_id: recipientUserId,
@@ -64,6 +54,16 @@ async function notifyClubApplicationReceived(params: {
     read: false,
   };
 
+  console.info('[applications][notifyClubApplicationReceived] notification resolution', {
+    athleteUserId,
+    ownerId,
+    recipientUserId,
+    recipientProfileId,
+    actorProfileId,
+    applicationId,
+    opportunityId,
+  });
+
   let { error: nErr } = await admin.from('notifications').insert(notificationPayload);
 
   if (nErr && missingReadColumn(nErr.message)) {
@@ -74,6 +74,7 @@ async function notifyClubApplicationReceived(params: {
   if (nErr) {
     console.warn('notifyClubApplicationReceived: notifications insert failed', {
       error: nErr.message,
+      notificationPayload,
       recipientUserId,
       applicationId,
       opportunityId,
