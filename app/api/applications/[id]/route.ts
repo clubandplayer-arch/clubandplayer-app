@@ -2,18 +2,14 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
+import { getProfileByUserId } from '@/lib/api/profile';
 
 export const runtime = 'nodejs';
 
 async function getProfileIdByUser(client: any, userId: string | null | undefined) {
   if (!userId) return null;
-  const { data } = await client
-    .from('profiles')
-    .select('id')
-    .eq('user_id', userId)
-    .limit(1)
-    .maybeSingle();
-  return data?.id ?? null;
+  const profile = await getProfileByUserId(client, userId, { activeOnly: true });
+  return profile?.id ?? null;
 }
 
 async function notifyApplicantStatus(params: {
@@ -34,7 +30,7 @@ async function notifyApplicantStatus(params: {
       getProfileIdByUser(admin, actorUserId),
     ]);
 
-    await admin.from('notifications').insert({
+    const notificationPayload = {
       user_id: athleteId,
       recipient_profile_id: recipientProfileId,
       actor_profile_id: actorProfileId,
@@ -46,7 +42,25 @@ async function notifyApplicantStatus(params: {
         status,
       },
       read: false,
+    };
+
+    console.info('[applications/:id][notifyApplicantStatus] notification resolution', {
+      athleteId,
+      actorUserId,
+      recipientProfileId,
+      actorProfileId,
+      applicationId,
+      opportunityId,
+      status,
     });
+
+    const { error } = await admin.from('notifications').insert(notificationPayload);
+    if (error) {
+      console.warn('[applications/:id][notifyApplicantStatus] notifications insert failed', {
+        message: error.message,
+        notificationPayload,
+      });
+    }
   } catch (err) {
     console.warn('notifyApplicantStatus failed', err);
   }

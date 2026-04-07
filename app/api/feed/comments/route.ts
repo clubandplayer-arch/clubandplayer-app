@@ -15,6 +15,7 @@ import {
   type CreateCommentInput,
 } from '@/lib/validation/feed';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
+import { getProfileByUserId } from '@/lib/api/profile';
 
 export const runtime = 'nodejs';
 
@@ -189,15 +190,11 @@ export async function POST(req: NextRequest) {
     let recipientProfileId: string | null = null;
 
     if (postAuthorId) {
-      const { data: ownerByUser } = await notificationsClient
-        .from('profiles')
-        .select('id, user_id')
-        .eq('user_id', postAuthorId)
-        .maybeSingle();
+      const ownerByUser = await getProfileByUserId(notificationsClient, postAuthorId, { activeOnly: true });
 
-      if (ownerByUser?.id) {
+      if (ownerByUser?.id && ownerByUser.user_id) {
         recipientProfileId = String(ownerByUser.id);
-        recipientUserId = ownerByUser.user_id ? String(ownerByUser.user_id) : postAuthorId;
+        recipientUserId = String(ownerByUser.user_id);
       } else {
         const { data: ownerById } = await notificationsClient
           .from('profiles')
@@ -212,19 +209,24 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const { data: actorByUser } = await notificationsClient
-      .from('profiles')
-      .select('id')
-      .eq('user_id', auth.user.id)
-      .maybeSingle();
-
+    const actorByUser = await getProfileByUserId(notificationsClient, auth.user.id, { activeOnly: true });
     const actorProfileId = actorByUser?.id ? String(actorByUser.id) : null;
 
     const isSelfByUser = !!recipientUserId && recipientUserId === auth.user.id;
     const isSelfByProfile = !!recipientProfileId && !!actorProfileId && recipientProfileId === actorProfileId;
+    console.info('[api/feed/comments][POST] notification resolution', {
+      postId,
+      commentId: data.id,
+      postAuthorId,
+      recipientUserId,
+      recipientProfileId,
+      actorProfileId,
+      isSelfByUser,
+      isSelfByProfile,
+    });
 
     if (recipientUserId && recipientProfileId && !isSelfByUser && !isSelfByProfile) {
-      const { error: notificationError } = await notificationsClient.from('notifications').insert({
+      const notificationPayload = {
         user_id: recipientUserId,
         recipient_profile_id: recipientProfileId,
         actor_profile_id: actorProfileId,
@@ -234,13 +236,17 @@ export async function POST(req: NextRequest) {
           comment_id: data.id,
         },
         read: false,
-      });
+      };
+      const { error: notificationError } = await notificationsClient.from('notifications').insert(notificationPayload);
 
       if (notificationError) {
         console.warn('[api/feed/comments][POST] failed to insert notification', {
           postId,
           commentId: data.id,
           recipientUserId,
+          recipientProfileId,
+          actorProfileId,
+          notificationPayload,
           message: notificationError.message,
         });
       }
