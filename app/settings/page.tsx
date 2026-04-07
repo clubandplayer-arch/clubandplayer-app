@@ -46,7 +46,7 @@ export default function SettingsPage() {
       const { data, error } = await supabase
         .from('profiles')
         .select('id, account_type, notify_email_new_message')
-        .eq('id', user.id)
+        .eq('user_id', user.id)
         .maybeSingle()
 
       if (error) {
@@ -73,7 +73,7 @@ export default function SettingsPage() {
       .update({
         notify_email_new_message: notifyEmailNewMessage,
       })
-      .eq('id', userId)
+      .eq('user_id', userId)
 
     setSaving(false)
     if (error) {

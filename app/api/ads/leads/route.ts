@@ -48,9 +48,7 @@ const getProfileId = async () => {
       .eq('user_id', user.id)
       .maybeSingle()
     if (profileByUserId?.id) return profileByUserId.id as string
-
-    const { data: profileById } = await supabase.from('profiles').select('id').eq('id', user.id).maybeSingle()
-    return profileById?.id ?? null
+    return null
   } catch {
     return null
   }
