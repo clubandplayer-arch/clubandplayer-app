@@ -2,7 +2,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
 export const config = {
-  matcher: ['/login', '/signup', '/onboarding', '/club/:path*'],
+  matcher: ['/login', '/signup', '/onboarding/:path*', '/club/:path*'],
 };
 
 export async function middleware(req: NextRequest) {
@@ -25,9 +25,19 @@ export async function middleware(req: NextRequest) {
     // guest
   }
 
-  // Già loggato su /login o /signup? Vai in bacheca
+  // Già loggato su /login o /signup?
+  // - con ruolo assegnato => bacheca
+  // - senza ruolo => onboarding scelta ruolo obbligatoria
   if (authenticated && (pathname === '/login' || pathname === '/signup')) {
-    return NextResponse.redirect(new URL('/feed', url));
+    const target = role === 'guest' ? '/onboarding/choose-role' : '/feed';
+    return NextResponse.redirect(new URL(target, url));
+  }
+
+  // Utente autenticato senza ruolo: onboarding obbligatorio su qualunque path /onboarding/*
+  if (authenticated && role === 'guest' && pathname.startsWith('/onboarding/')) {
+    if (pathname !== '/onboarding/choose-role') {
+      return NextResponse.redirect(new URL('/onboarding/choose-role', url));
+    }
   }
 
   // Rotte /club/* solo per club
@@ -35,6 +45,5 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL('/feed', url));
   }
 
-  // (opzionale) /onboarding -> qui lasciamo passare sempre per ora.
   return NextResponse.next();
 }
