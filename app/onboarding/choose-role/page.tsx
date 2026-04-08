@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 
-type Role = 'club' | 'athlete';
+type Role = 'club' | 'athlete' | 'fan';
 
 export default function ChooseRolePage() {
   const router = useRouter();
@@ -11,7 +11,7 @@ export default function ChooseRolePage() {
   const [saving, setSaving] = useState<Role | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const next = sp.get('next') || '/feed';
+  const next = sp.get('next');
 
   async function choose(role: Role) {
     setSaving(role);
@@ -27,7 +27,15 @@ export default function ChooseRolePage() {
         const j = await r.json().catch(() => ({}));
         throw new Error(j?.error ?? 'Salvataggio non riuscito');
       }
-      router.replace(next);
+      if (role === 'club') {
+        router.replace('/club/profile');
+        return;
+      }
+      if (role === 'athlete') {
+        router.replace('/player/profile');
+        return;
+      }
+      router.replace(next || '/feed');
     } catch (e: any) {
       setError(e?.message || 'Errore imprevisto');
       setSaving(null);
@@ -38,11 +46,11 @@ export default function ChooseRolePage() {
     <main className="container mx-auto max-w-3xl px-4 py-10">
       <h1 className="mb-2 text-2xl font-bold">Scegli il tuo ruolo</h1>
       <p className="mb-8 text-neutral-600">
-        Per personalizzare l’esperienza, indica se stai usando Club&Player come <strong>Club</strong> o come <strong>Player</strong>.
+        Per personalizzare l’esperienza, indica se stai usando Club&Player come <strong>Club</strong>, <strong>Player</strong> o <strong>Fan</strong>.
         Potrai cambiarlo in seguito dalle impostazioni.
       </p>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-3">
         {/* Card Club */}
         <button
           className="group rounded-2xl border p-5 text-left transition hover:shadow-md focus:outline-none focus:ring-2"
@@ -76,6 +84,24 @@ export default function ChooseRolePage() {
           </p>
           <div className="mt-4 text-sm text-blue-700">
             {saving === 'athlete' ? 'Salvataggio…' : 'Continua come Player'}
+          </div>
+        </button>
+
+        {/* Card Fan */}
+        <button
+          className="group rounded-2xl border p-5 text-left transition hover:shadow-md focus:outline-none focus:ring-2"
+          onClick={() => choose('fan')}
+          disabled={!!saving}
+        >
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Sono un Fan</h2>
+            <span className="rounded-full border px-3 py-1 text-xs">Seleziona</span>
+          </div>
+          <p className="text-sm text-neutral-600">
+            Segui, vivi e sostieni Club e Player, dentro e fuori dal campo.
+          </p>
+          <div className="mt-4 text-sm text-blue-700">
+            {saving === 'fan' ? 'Salvataggio…' : 'Continua come Fan'}
           </div>
         </button>
       </div>

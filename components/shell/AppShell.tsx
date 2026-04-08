@@ -17,7 +17,7 @@ import BrandLogo from '@/components/brand/BrandLogo';
 import { buildProfileDisplayName } from '@/lib/displayName';
 import MobileSearchOverlay from '@/components/search/MobileSearchOverlay';
 
-type Role = 'athlete' | 'club' | 'guest';
+type Role = 'athlete' | 'club' | 'fan' | 'guest';
 
 type NavItem = { label: string; href: string; icon: MaterialIconName };
 
@@ -80,7 +80,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        setRole(rawRole === 'club' || rawRole === 'athlete' ? (rawRole as Role) : 'guest');
+        setRole(rawRole === 'club' || rawRole === 'athlete' || rawRole === 'fan' ? (rawRole as Role) : 'guest');
         setAvatarUrl(typeof profile?.avatar_url === 'string' ? profile.avatar_url : null);
         setProfileName(buildProfileDisplayName(profile?.full_name, profile?.display_name, 'Profilo'));
 
@@ -117,6 +117,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [pathname, router]);
 
+  const isFan = role === 'fan';
   const profileHref = role === 'club' ? '/club/profile' : '/player/profile';
   const applicationsHref = role === 'club' ? '/club/applications' : '/applications';
 
@@ -124,11 +125,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     () => [
       { label: 'Feed', href: '/feed', icon: 'home' },
       { label: 'Opportunità', href: '/opportunities', icon: 'opportunities' },
-      { label: 'Candidature', href: applicationsHref, icon: 'applications' },
+      ...(isFan ? [] : [{ label: 'Candidature', href: applicationsHref, icon: 'applications' as const }]),
       { label: 'Messaggi', href: '/messages', icon: 'mail' },
       { label: 'Notifiche', href: '/notifications', icon: 'notifications' },
     ],
-    [applicationsHref],
+    [applicationsHref, isFan],
   );
 
   const isActive = (href: string) => pathname === href || (!!pathname && pathname.startsWith(href + '/'));
@@ -208,7 +209,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       );
 
-      items.push({ key: 'profile', label: 'Profilo', href: profileHref, icon: profileIcon });
+      if (!isFan) {
+        items.push({ key: 'profile', label: 'Profilo', href: profileHref, icon: profileIcon });
+      }
       if (isClub) {
         items.push({ key: 'verification', label: 'Verifica profilo', href: '/club/verification' });
       }
@@ -260,7 +263,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
 
     return items;
-  }, [avatarUrl, isClub, navItems, profileHref, profileInitials, role, unreadDirectThreads, unreadNotifications]);
+  }, [avatarUrl, isClub, isFan, navItems, profileHref, profileInitials, role, unreadDirectThreads, unreadNotifications]);
 
   return (
     <ToastProvider>
@@ -417,14 +420,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                             Crea opportunità
                           </Link>
                         )}
-                        <Link
-                          href={profileHref}
-                          role="menuitem"
-                          onClick={() => setIsProfileMenuOpen(false)}
-                          className="block rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
-                        >
-                          Modifica profilo
-                        </Link>
+                        {!isFan && (
+                          <Link
+                            href={profileHref}
+                            role="menuitem"
+                            onClick={() => setIsProfileMenuOpen(false)}
+                            className="block rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
+                          >
+                            Modifica profilo
+                          </Link>
+                        )}
                         {isClub && (
                           <Link
                             href="/club/verification"

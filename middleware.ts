@@ -9,7 +9,7 @@ export async function middleware(req: NextRequest) {
   const url = new URL(req.url);
   const pathname = url.pathname;
 
-  let role: 'club' | 'athlete' | 'guest' = 'guest';
+  let role: 'club' | 'athlete' | 'fan' | 'guest' = 'guest';
   let authenticated = false;
 
   try {
@@ -20,7 +20,7 @@ export async function middleware(req: NextRequest) {
     const j = await r.json().catch(() => ({}));
     authenticated = !!j?.user?.id;
     const raw = (j?.role ?? '').toString().toLowerCase();
-    if (raw === 'club' || raw === 'athlete') role = raw;
+    if (raw === 'club' || raw === 'athlete' || raw === 'fan') role = raw;
   } catch {
     // guest
   }

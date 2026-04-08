@@ -82,7 +82,7 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
   const [linkPreview, setLinkPreview] = useState<LinkPreview | null>(null);
   const [linkErr, setLinkErr] = useState<string | null>(null);
   const [linkLoading, setLinkLoading] = useState(false);
-  const [accountType, setAccountType] = useState<'club' | 'athlete' | null>(null);
+  const [accountType, setAccountType] = useState<'club' | 'athlete' | 'fan' | null>(null);
   const [eventModalOpen, setEventModalOpen] = useState(false);
   const [eventTitle, setEventTitle] = useState('');
   const [eventDate, setEventDate] = useState('');
@@ -97,7 +97,9 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
   const linkAbortRef = useRef<AbortController | null>(null);
   const mediaItemsRef = useRef<MediaAttachment[]>([]);
   const canSend =
-    (text.trim().length > 0 || mediaItems.length > 0 || Boolean(linkUrl) || Boolean(quotedPost)) && !sending;
+    accountType !== 'fan' &&
+    (text.trim().length > 0 || mediaItems.length > 0 || Boolean(linkUrl) || Boolean(quotedPost)) &&
+    !sending;
   const isClub = accountType === 'club';
 
   const textareaId = 'feed-composer-input';
@@ -120,6 +122,7 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
         const role = (data?.account_type || data?.type || '').toString().toLowerCase();
         if (role === 'club') setAccountType('club');
         else if (role === 'athlete') setAccountType('athlete');
+        else if (role === 'fan') setAccountType('fan');
       } catch {
         setAccountType(null);
       }
@@ -674,6 +677,11 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
   return (
     <div className="glass-panel p-4" aria-live="polite">
       <div className="mt-4 space-y-3">
+        {accountType === 'fan' ? (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            Con l’account Fan non puoi creare post.
+          </div>
+        ) : null}
         <label htmlFor={textareaId} className="sr-only">
           Scrivi un aggiornamento per la community
         </label>
@@ -684,7 +692,7 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
           placeholder="Condividi un pensiero…"
           value={text}
           onChange={(e) => handleTextChange(e.target.value)}
-          disabled={sending}
+          disabled={sending || accountType === 'fan'}
           maxLength={MAX_CHARS}
           aria-describedby={describedBy}
           aria-invalid={Boolean(err)}
@@ -718,7 +726,7 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
               type="button"
               className="rounded-lg border px-3 py-1 text-sm hover:bg-gray-50"
               onClick={() => fileInputRef.current?.click()}
-              disabled={sending}
+              disabled={sending || accountType === 'fan'}
             >
               Allega foto/video
             </button>

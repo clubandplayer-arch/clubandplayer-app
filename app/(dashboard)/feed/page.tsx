@@ -78,7 +78,7 @@ export default function FeedPage() {
   } = useFeed();
   const posts = feedPosts;
   const errorMessage = error?.message ?? null;
-  const canCreatePost = Boolean(currentUserId);
+  const canCreatePost = Boolean(currentUserId) && _profile?.account_type !== 'fan';
   const shouldShowEmptyState = !isInitialLoading && !errorMessage && posts.length === 0;
 
   useInfiniteScroll<HTMLDivElement>(loadMoreSentinelRef, {
@@ -396,7 +396,13 @@ export default function FeedPage() {
               </button>
             </div>
           </div>
-          <FeedComposer onPosted={handleRefresh} />
+          {canCreatePost ? (
+            <FeedComposer onPosted={handleRefresh} />
+          ) : (
+            <div className="glass-panel p-4 text-sm text-neutral-600">
+              Con l’account Fan puoi interagire con i contenuti, ma non puoi creare post.
+            </div>
+          )}
 
           <div className="space-y-4" aria-live="polite" aria-busy={isInitialLoading}>
             {isInitialLoading && (

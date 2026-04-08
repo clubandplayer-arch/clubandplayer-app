@@ -25,7 +25,7 @@ const MAX_CHARS = 500;
 const RATE_LIMIT_MS = 5_000;
 const LAST_POST_TS_COOKIE = 'feed_last_post_ts';
 
-type Role = 'club' | 'athlete';
+type Role = 'club' | 'athlete' | 'fan';
 type PostKind = 'normal' | 'event';
 type DbPostKind = 'normal' | 'event';
 type PostMediaType = 'image' | 'video';
@@ -857,10 +857,13 @@ export async function POST(req: NextRequest) {
         .maybeSingle();
       actorRole =
         normRole((profile as any)?.account_type) ||
-        normRole((profile as any)?.type) ||
-        normRole(auth.user.user_metadata?.role);
+        normRole((profile as any)?.type);
     } catch {
       actorRole = null;
+    }
+
+    if (actorRole !== 'club' && actorRole !== 'athlete') {
+      return notAuthorized('Con questo account non puoi creare post.');
     }
 
     if (isEvent && actorRole !== 'club') {
