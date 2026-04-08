@@ -18,7 +18,7 @@ type P = {
   id?: string | null;
   user_id?: string | null;
 
-  account_type?: 'club' | 'athlete' | null;
+  account_type?: 'club' | 'athlete' | 'fan' | null;
 
   full_name?: string | null;
   display_name?: string | null;
@@ -149,6 +149,7 @@ export default function ProfileMiniCard() {
   }, []);
 
   const isClub = p?.account_type === 'club';
+  const isFan = p?.account_type === 'fan';
   const targetId = p?.id ? String(p.id) : p?.user_id ? String(p.user_id) : '';
   const isSelf =
     !!targetId && ((!!p?.id && targetId === String(p.id)) || (!!p?.user_id && targetId === String(p.user_id)));
@@ -333,7 +334,7 @@ export default function ProfileMiniCard() {
           ) : null}
 
         </div>
-      ) : (
+      ) : isFan ? null : (
         <div className="space-y-3">
           {targetId && !isSelf ? (
             <div className="flex justify-center">
@@ -392,7 +393,7 @@ export default function ProfileMiniCard() {
         </div>
       )}
 
-      {isClub
+      {isClub || isFan
         ? null
         : (socials.instagram || socials.facebook || socials.tiktok || socials.x) && (
             <div className="mt-3 flex items-center gap-2">

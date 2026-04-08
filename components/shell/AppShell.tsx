@@ -124,7 +124,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const navItems = useMemo<NavItem[]>(
     () => [
       { label: 'Feed', href: '/feed', icon: 'home' },
-      { label: 'Opportunità', href: '/opportunities', icon: 'opportunities' },
+      ...(isFan ? [] : [{ label: 'Opportunità', href: '/opportunities', icon: 'opportunities' as const }]),
       ...(isFan ? [] : [{ label: 'Candidature', href: applicationsHref, icon: 'applications' as const }]),
       { label: 'Messaggi', href: '/messages', icon: 'mail' },
       { label: 'Notifiche', href: '/notifications', icon: 'notifications' },
@@ -209,9 +209,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       );
 
-      if (!isFan) {
-        items.push({ key: 'profile', label: 'Profilo', href: profileHref, icon: profileIcon });
-      }
+      items.push({ key: 'profile', label: 'Profilo', href: profileHref, icon: profileIcon });
       if (isClub) {
         items.push({ key: 'verification', label: 'Verifica profilo', href: '/club/verification' });
       }
@@ -263,7 +261,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
 
     return items;
-  }, [avatarUrl, isClub, isFan, navItems, profileHref, profileInitials, role, unreadDirectThreads, unreadNotifications]);
+  }, [avatarUrl, isClub, navItems, profileHref, profileInitials, role, unreadDirectThreads, unreadNotifications]);
 
   return (
     <ToastProvider>
@@ -420,16 +418,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                             Crea opportunità
                           </Link>
                         )}
-                        {!isFan && (
-                          <Link
-                            href={profileHref}
-                            role="menuitem"
-                            onClick={() => setIsProfileMenuOpen(false)}
-                            className="block rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
-                          >
-                            Modifica profilo
-                          </Link>
-                        )}
+                        <Link
+                          href={profileHref}
+                          role="menuitem"
+                          onClick={() => setIsProfileMenuOpen(false)}
+                          className="block rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
+                        >
+                          Modifica profilo
+                        </Link>
                         {isClub && (
                           <Link
                             href="/club/verification"
