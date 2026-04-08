@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 
 const WhoToFollow = dynamic(() => import('@/components/feed/WhoToFollow'), {
@@ -19,6 +20,28 @@ const FeedHighlights = dynamic(() => import('@/components/feed/FeedHighlights'),
 });
 
 export default function RightSidebarA() {
+  const [isFan, setIsFan] = useState(false);
+  const [roleResolved, setRoleResolved] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' });
+        const json = await res.json().catch(() => ({}));
+        if (cancelled) return;
+        const role = (json?.role ?? '').toString().toLowerCase();
+        setIsFan(role === 'fan');
+      } finally {
+        if (!cancelled) setRoleResolved(true);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <aside className="hidden xl:block min-w-0 pb-24">
       <div className="sticky top-16 self-start space-y-4">
@@ -30,9 +53,11 @@ export default function RightSidebarA() {
           <FollowedClubs />
         </SidebarCard>
 
-        <SidebarCard>
-          <FeedHighlights />
-        </SidebarCard>
+        {roleResolved && !isFan ? (
+          <SidebarCard>
+            <FeedHighlights />
+          </SidebarCard>
+        ) : null}
       </div>
     </aside>
   );
