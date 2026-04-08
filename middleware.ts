@@ -2,7 +2,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
 export const config = {
-  matcher: ['/login', '/signup', '/onboarding/:path*', '/club/:path*', '/opportunities/:path*'],
+  matcher: ['/login', '/signup', '/onboarding/:path*', '/club/:path*', '/opportunities/:path*', '/fan/:path*'],
 };
 
 export async function middleware(req: NextRequest) {
@@ -48,6 +48,13 @@ export async function middleware(req: NextRequest) {
   // Rotte opportunità non disponibili per i fan
   if (pathname.startsWith('/opportunities') && role === 'fan') {
     return NextResponse.redirect(new URL('/feed', url));
+  }
+
+  // Rotte /fan/* solo per fan
+  if (pathname.startsWith('/fan/') && role !== 'fan') {
+    if (role === 'club') return NextResponse.redirect(new URL('/club/profile', url));
+    if (role === 'athlete') return NextResponse.redirect(new URL('/player/profile', url));
+    return NextResponse.redirect(new URL('/login?next=%2Ffan%2Fprofile', url));
   }
 
   return NextResponse.next();

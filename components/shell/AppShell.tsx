@@ -118,7 +118,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [pathname, router]);
 
   const isFan = role === 'fan';
-  const profileHref = role === 'club' ? '/club/profile' : '/player/profile';
+  const profileHref = role === 'club' ? '/club/profile' : role === 'fan' ? '/fan/profile' : '/player/profile';
   const applicationsHref = role === 'club' ? '/club/applications' : '/applications';
 
   const navItems = useMemo<NavItem[]>(
