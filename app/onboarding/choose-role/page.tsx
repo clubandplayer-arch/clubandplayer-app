@@ -2,19 +2,21 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
+import { MaterialIcon, type MaterialIconName } from '@/components/icons/MaterialIcon';
 
-type Role = 'club' | 'athlete';
+type Role = 'club' | 'athlete' | 'fan';
 
 export default function ChooseRolePage() {
   const router = useRouter();
   const sp = useSearchParams();
-  const [saving, setSaving] = useState<Role | null>(null);
+  const [selectedRole, setSelectedRole] = useState<Role | null>(null);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const next = sp.get('next') || '/feed';
+  const next = sp.get('next');
 
   async function choose(role: Role) {
-    setSaving(role);
+    setSaving(true);
     setError(null);
     try {
       const r = await fetch('/api/profiles/me', {
@@ -27,63 +29,90 @@ export default function ChooseRolePage() {
         const j = await r.json().catch(() => ({}));
         throw new Error(j?.error ?? 'Salvataggio non riuscito');
       }
-      router.replace(next);
+      if (role === 'club') {
+        router.replace('/club/profile');
+        return;
+      }
+      if (role === 'athlete') {
+        router.replace('/player/profile');
+        return;
+      }
+      router.replace(next || '/feed');
     } catch (e: any) {
       setError(e?.message || 'Errore imprevisto');
-      setSaving(null);
+      setSaving(false);
     }
   }
 
+  const roleCards: Array<{
+    role: Role;
+    title: string;
+    description: string;
+    icon: MaterialIconName;
+  }> = [
+    {
+      role: 'club',
+      title: 'CLUB',
+      description: 'Gestisci il tuo club, pubblica contenuti e crea opportunità',
+      icon: 'opportunities',
+    },
+    {
+      role: 'athlete',
+      title: 'PLAYER',
+      description: 'Vivi il tuo sport, crea il tuo profilo e trova opportunità',
+      icon: 'person',
+    },
+    {
+      role: 'fan',
+      title: 'FAN',
+      description: 'Segui, vivi e sostieni Club e Player, dentro e fuori dal campo',
+      icon: 'following',
+    },
+  ];
+
   return (
-    <main className="container mx-auto max-w-3xl px-4 py-10">
-      <h1 className="mb-2 text-2xl font-bold">Scegli il tuo ruolo</h1>
-      <p className="mb-8 text-neutral-600">
-        Per personalizzare l’esperienza, indica se stai usando Club&Player come <strong>Club</strong> o come <strong>Player</strong>.
-        Potrai cambiarlo in seguito dalle impostazioni.
-      </p>
-
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Card Club */}
-        <button
-          className="group rounded-2xl border p-5 text-left transition hover:shadow-md focus:outline-none focus:ring-2"
-          onClick={() => choose('club')}
-          disabled={!!saving}
-        >
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Sono un Club</h2>
-            <span className="rounded-full border px-3 py-1 text-xs">Seleziona</span>
-          </div>
-          <p className="text-sm text-neutral-600">
-            Pubblica opportunità, ricevi candidature, scopri e contatta atleti.
-          </p>
-          <div className="mt-4 text-sm text-blue-700">
-            {saving === 'club' ? 'Salvataggio…' : 'Continua come Club'}
-          </div>
-        </button>
-
-        {/* Card Player */}
-        <button
-          className="group rounded-2xl border p-5 text-left transition hover:shadow-md focus:outline-none focus:ring-2"
-          onClick={() => choose('athlete')}
-          disabled={!!saving}
-        >
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Sono un Player</h2>
-            <span className="rounded-full border px-3 py-1 text-xs">Seleziona</span>
-          </div>
-          <p className="text-sm text-neutral-600">
-            Crea il profilo sportivo, trova opportunità e candidati direttamente.
-          </p>
-          <div className="mt-4 text-sm text-blue-700">
-            {saving === 'athlete' ? 'Salvataggio…' : 'Continua come Player'}
-          </div>
-        </button>
+    <main className="mx-auto w-full max-w-6xl px-4 py-12 md:py-16">
+      <div className="mx-auto max-w-3xl text-center">
+        <h1 className="text-4xl font-semibold tracking-tight text-[#0b5477] md:text-5xl">
+          Scegli come vuoi usare Club &amp; Player
+        </h1>
+        <p className="mt-4 text-2xl text-neutral-600">Ogni ruolo offre un&apos;esperienza diversa</p>
       </div>
 
-      {error && <div className="mt-6 rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+      <div className="mx-auto mt-10 grid max-w-6xl gap-5 md:grid-cols-3">
+        {roleCards.map(({ role, title, description, icon }) => {
+          const active = selectedRole === role;
+          return (
+            <button
+              key={role}
+              type="button"
+              onClick={() => setSelectedRole(role)}
+              disabled={saving}
+              className={`rounded-3xl border bg-white p-7 text-left shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0b5477]/40 ${
+                active ? 'border-[#6da9c2] ring-2 ring-[#6da9c2]/40' : 'border-neutral-200 hover:border-[#b9d5e1]'
+              }`}
+            >
+              <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-[#e7f1f6] text-[#1a7aa6]">
+                <MaterialIcon name={icon} fontSize={22} />
+              </div>
+              <h2 className="mt-6 text-4xl font-semibold text-[#0f172a]">{title}</h2>
+              <p className="mt-3 text-3xl leading-10 text-neutral-600">{description}</p>
+            </button>
+          );
+        })}
+      </div>
 
-      <div className="mt-8 text-sm text-neutral-600">
-        Hai un dubbio? Puoi cambiare ruolo più avanti dalla pagina <strong>Impostazioni</strong>.
+      {error && <div className="mx-auto mt-6 max-w-xl rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+
+      <div className="mt-10 flex justify-center">
+        <button
+          type="button"
+          disabled={!selectedRole || saving}
+          onClick={() => selectedRole && choose(selectedRole)}
+          className="min-w-[220px] rounded-2xl bg-[#7db0c5] px-8 py-4 text-2xl font-semibold text-white transition hover:bg-[#6ca4bb] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {saving ? 'Salvataggio…' : 'Continua'}
+        </button>
       </div>
     </main>
   );

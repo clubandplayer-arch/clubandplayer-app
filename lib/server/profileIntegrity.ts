@@ -8,7 +8,6 @@ function normalizeAccountType(value: unknown): AccountType | null {
 
 function roleToAccountType(role: unknown): AccountType | null {
   const normalized = String(role ?? '').trim().toLowerCase();
-  if (normalized === 'player') return 'athlete';
   if (normalized === 'athlete' || normalized === 'club' || normalized === 'fan') return normalized;
   return null;
 }
@@ -73,10 +72,10 @@ export async function ensureSingleProfileRowForUser(
       .from('profiles')
       .update({
         user_id: userId,
-        account_type: accountType ?? dirtyById.account_type ?? inferAccountType(dirtyById.role),
-        type: accountType ?? dirtyById.type ?? inferAccountType(dirtyById.role),
+        account_type: accountType ?? dirtyById.account_type ?? null,
+        type: accountType ?? dirtyById.type ?? null,
         role:
-          (accountType ?? inferAccountType(dirtyById.role)) === 'club'
+          (accountType ?? dirtyById.account_type ?? dirtyById.type) === 'club'
             ? 'Club'
             : dirtyById.role,
         display_name: dirtyById.display_name ?? displayName,

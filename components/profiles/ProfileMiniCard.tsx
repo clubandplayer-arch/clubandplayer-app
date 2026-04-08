@@ -18,7 +18,7 @@ type P = {
   id?: string | null;
   user_id?: string | null;
 
-  account_type?: 'club' | 'athlete' | null;
+  account_type?: 'club' | 'athlete' | 'fan' | null;
 
   full_name?: string | null;
   display_name?: string | null;
@@ -95,6 +95,7 @@ type InterestGeo = {
 
 export default function ProfileMiniCard() {
   const [p, setP] = useState<P | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const [interest, setInterest] = useState<InterestGeo>({ city: '—', province: '', region: '', country: '' });
 
   useEffect(() => {
@@ -144,11 +145,16 @@ export default function ProfileMiniCard() {
         });
       } catch {
         setP({});
+      } finally {
+        setLoaded(true);
       }
     })();
   }, []);
 
-  const isClub = p?.account_type === 'club';
+  const accountType = p?.account_type ?? null;
+  const isClub = accountType === 'club';
+  const isFan = accountType === 'fan';
+  const isAthlete = accountType === 'athlete';
   const targetId = p?.id ? String(p.id) : p?.user_id ? String(p.user_id) : '';
   const isSelf =
     !!targetId && ((!!p?.id && targetId === String(p.id)) || (!!p?.user_id && targetId === String(p.user_id)));
@@ -333,7 +339,7 @@ export default function ProfileMiniCard() {
           ) : null}
 
         </div>
-      ) : (
+      ) : loaded && isAthlete ? (
         <div className="space-y-3">
           {targetId && !isSelf ? (
             <div className="flex justify-center">
@@ -390,9 +396,9 @@ export default function ProfileMiniCard() {
           ) : null}
 
         </div>
-      )}
+      ) : null}
 
-      {isClub
+      {isClub || isFan
         ? null
         : (socials.instagram || socials.facebook || socials.tiktok || socials.x) && (
             <div className="mt-3 flex items-center gap-2">

@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
-import { ensureSingleProfileRowForUser, inferAccountType } from '@/lib/server/profileIntegrity';
+import { ensureSingleProfileRowForUser } from '@/lib/server/profileIntegrity';
 
 function mergeCookies(from: NextResponse, into: NextResponse) {
   for (const c of from.cookies.getAll()) into.cookies.set(c);
@@ -40,16 +40,13 @@ export async function POST(req: NextRequest) {
     return out;
   }
 
-  const metaRole = (user.user_metadata?.role ?? '').toString().toLowerCase();
-  const inferredType = inferAccountType(metaRole);
+  const inferredType = null;
   const displayName =
     (user.user_metadata?.full_name as string) ||
     (user.user_metadata?.name as string) ||
     (user.email?.split('@')[0] ?? null);
 
   await ensureSingleProfileRowForUser(supabase, user.id, {
-    accountTypeHint: inferredType,
-    authRoleHint: metaRole,
     displayNameHint: displayName,
   });
 

@@ -19,7 +19,7 @@ import { ProfileSkill } from '@/types/profile';
 import { CATEGORIES_BY_SPORT, CLUB_SPORT_OPTIONS, DEFAULT_CLUB_CATEGORIES } from '@/lib/opps/categories';
 import { iso2ToFlagEmoji } from '@/lib/utils/flags';
 
-type AccountType   = 'club' | 'athlete' | null;
+type AccountType = 'club' | 'athlete' | 'fan' | null;
 
 type Links = {
   instagram?: string | null;
@@ -158,6 +158,7 @@ export default function ProfileEditForm() {
   const [error, setError] = useState<string | null>(null);
 
   const isClub = profile?.account_type === 'club';
+  const isFan = profile?.account_type === 'fan';
 
   // Anagrafica base
   const [fullName, setFullName] = useState('');
@@ -598,6 +599,36 @@ export default function ProfileEditForm() {
           weight_kg: null,
           role: null,
         });
+      } else if (isFan) {
+        Object.assign(basePayload, {
+          bio: null,
+          links: null,
+          skills: [],
+          sport: null,
+          role: null,
+          birth_year: null,
+          birth_place: null,
+          residence_region_id: null,
+          residence_province_id: null,
+          residence_municipality_id: null,
+          birth_country: null,
+          birth_region_id: null,
+          birth_province_id: null,
+          birth_municipality_id: null,
+          foot: null,
+          height_cm: null,
+          weight_kg: null,
+          club_league_category: null,
+          club_foundation_year: null,
+          club_stadium: null,
+          club_stadium_address: null,
+          club_stadium_lat: null,
+          club_stadium_lng: null,
+          club_motto: null,
+          region: null,
+          province: null,
+          city: null,
+        });
       } else {
         // PLAYER
         Object.assign(basePayload, {
@@ -877,6 +908,7 @@ export default function ProfileEditForm() {
                 />
               </div>
 
+              {!isFan && (
               <div className="flex min-w-0 flex-col gap-1">
                 <label className="text-sm text-gray-600">Anno di nascita</label>
                 <input
@@ -892,6 +924,7 @@ export default function ProfileEditForm() {
                   placeholder="Es. 2002"
                 />
               </div>
+              )}
 
               <div className="flex min-w-0 flex-col gap-1">
                 <label className="text-sm text-gray-600">Nazionalità</label>
@@ -911,6 +944,7 @@ export default function ProfileEditForm() {
                 )}
               </div>
 
+              {!isFan && (
               <div className="md:col-span-2 grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="flex min-w-0 flex-col gap-1">
                   <label className="text-sm text-gray-600">Sport</label>
@@ -944,7 +978,9 @@ export default function ProfileEditForm() {
                   <p className="text-xs text-gray-500">I ruoli mostrati dipendono dallo sport scelto.</p>
                 </div>
               </div>
+              )}
 
+              {!isFan && (
               <div className="md:col-span-2 flex min-w-0 flex-col gap-1">
                 <label className="text-sm text-gray-600">Biografia</label>
                 <textarea
@@ -955,7 +991,9 @@ export default function ProfileEditForm() {
                   placeholder="Racconta in breve ruolo, caratteristiche, esperienze…"
                 />
               </div>
+              )}
 
+              {!isFan && (
               <div className="md:col-span-2 grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div className="flex min-w-0 flex-col gap-1">
                   <label className="text-sm text-gray-600">Piede preferito</label>
@@ -1001,11 +1039,12 @@ export default function ProfileEditForm() {
                   />
                 </div>
               </div>
+              )}
             </div>
           )}
         </section>
 
-        {!isClub && (
+        {!isClub && !isFan && (
           <section className="rounded-2xl border bg-white p-4 md:p-5 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-1">
@@ -1097,6 +1136,7 @@ export default function ProfileEditForm() {
         )}
 
         {/* Social */}
+        {!isFan && (
         <section className="rounded-2xl border p-4 md:p-5">
           <h2 className="mb-3 text-lg font-semibold">Profili social</h2>
           <p className="mb-3 text-xs text-gray-500">
@@ -1141,8 +1181,10 @@ export default function ProfileEditForm() {
             </div>
           </div>
         </section>
+        )}
 
         {/* Notifiche */}
+        {!isFan && (
         <section className="rounded-2xl border p-4 md:p-5">
           <h2 className="mb-3 text-lg font-semibold">Notifiche</h2>
           <label className="flex items-center gap-3">
@@ -1155,6 +1197,7 @@ export default function ProfileEditForm() {
             <span className="text-sm">Email per nuovi messaggi</span>
           </label>
         </section>
+        )}
 
         <div className="flex items-center gap-3">
           <button

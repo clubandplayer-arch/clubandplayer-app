@@ -69,11 +69,7 @@ export async function GET(req: NextRequest) {
     return out;
   }
 
-  const metaRole = (user.user_metadata?.role ?? '').toString().toLowerCase();
-
   await ensureSingleProfileRowForUser(supabase, user.id, {
-    accountTypeHint: metaRole,
-    authRoleHint: metaRole,
     displayNameHint: user.user_metadata?.full_name || user.email || 'Profilo',
   });
 
@@ -104,12 +100,7 @@ export async function GET(req: NextRequest) {
     // ignore
   }
 
-  // 3) Fallback: metadati auth
-  if (!accountType) {
-    accountType = normRole(metaRole);
-  }
-
-  // 4) Fallback: se ha creato opportunità => club (legacy su created_by)
+  // 3) Fallback: se ha creato opportunità => club (legacy su created_by)
   if (!accountType) {
     try {
       const { count } = await supabase
@@ -122,7 +113,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // 5) Auto-attivazione per email pre-approvate e creazione profilo se manca
+  // 4) Auto-attivazione per email pre-approvate e creazione profilo se manca
   try {
     if (!status || typeof status !== 'string') status = 'active';
 

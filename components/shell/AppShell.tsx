@@ -17,7 +17,7 @@ import BrandLogo from '@/components/brand/BrandLogo';
 import { buildProfileDisplayName } from '@/lib/displayName';
 import MobileSearchOverlay from '@/components/search/MobileSearchOverlay';
 
-type Role = 'athlete' | 'club' | 'guest';
+type Role = 'athlete' | 'club' | 'fan' | 'guest';
 
 type NavItem = { label: string; href: string; icon: MaterialIconName };
 
@@ -80,7 +80,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        setRole(rawRole === 'club' || rawRole === 'athlete' ? (rawRole as Role) : 'guest');
+        setRole(rawRole === 'club' || rawRole === 'athlete' || rawRole === 'fan' ? (rawRole as Role) : 'guest');
         setAvatarUrl(typeof profile?.avatar_url === 'string' ? profile.avatar_url : null);
         setProfileName(buildProfileDisplayName(profile?.full_name, profile?.display_name, 'Profilo'));
 
@@ -117,18 +117,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [pathname, router]);
 
-  const profileHref = role === 'club' ? '/club/profile' : '/player/profile';
+  const isFan = role === 'fan';
+  const profileHref = role === 'club' ? '/club/profile' : role === 'fan' ? '/fan/profile' : '/player/profile';
   const applicationsHref = role === 'club' ? '/club/applications' : '/applications';
 
   const navItems = useMemo<NavItem[]>(
     () => [
       { label: 'Feed', href: '/feed', icon: 'home' },
-      { label: 'Opportunità', href: '/opportunities', icon: 'opportunities' },
-      { label: 'Candidature', href: applicationsHref, icon: 'applications' },
+      ...(isFan ? [] : [{ label: 'Opportunità', href: '/opportunities', icon: 'opportunities' as const }]),
+      ...(isFan ? [] : [{ label: 'Candidature', href: applicationsHref, icon: 'applications' as const }]),
       { label: 'Messaggi', href: '/messages', icon: 'mail' },
       { label: 'Notifiche', href: '/notifications', icon: 'notifications' },
     ],
-    [applicationsHref],
+    [applicationsHref, isFan],
   );
 
   const isActive = (href: string) => pathname === href || (!!pathname && pathname.startsWith(href + '/'));

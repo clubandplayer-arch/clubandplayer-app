@@ -12,43 +12,6 @@ import { supabaseBrowser } from '@/lib/supabaseBrowser';
 import SocialLogin from '@/components/auth/SocialLogin';
 import BrandLogo from '@/components/brand/BrandLogo';
 
-type Role = 'athlete' | 'club';
-
-const PlayerIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    className="h-4 w-4"
-    aria-hidden
-  >
-    <circle cx="7" cy="8" r="3" />
-    <circle cx="17" cy="8" r="3" />
-    <path d="M4 20v-1a4 4 0 0 1 4-4h0" />
-    <path d="M20 20v-1a4 4 0 0 0-4-4h0" />
-    <path d="M9.5 20v-1.5a2.5 2.5 0 0 1 5 0V20" />
-  </svg>
-);
-
-const ClubIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    className="h-4 w-4"
-    aria-hidden
-  >
-    <path d="M4 21h16" />
-    <path d="M6 21V9l6-4 6 4v12" />
-    <path d="M9 21v-5h6v5" />
-    <path d="M9 13h6" />
-  </svg>
-);
-
 // env presenti?
 const HAS_ENV = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -62,19 +25,20 @@ export default function SignupPage() {
   const [name, setName] = useState('');
   const [pwd1, setPwd1] = useState('');
   const [pwd2, setPwd2] = useState('');
-  const [role, setRole] = useState<Role>('athlete');
 
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
 
-  // se già loggato → vai alla feed
+  // se già loggato → lascia che sia il middleware a instradare:
+  // - account_type mancante => /onboarding/choose-role
+  // - account_type presente => /feed
   useEffect(() => {
     (async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (user) router.replace('/feed');
+      if (user) router.replace('/');
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -102,7 +66,6 @@ export default function SignupPage() {
         options: {
           data: {
             ...(name ? { full_name: name } : {}),
-            role,
           },
           emailRedirectTo,
         },
@@ -132,7 +95,7 @@ export default function SignupPage() {
             </h3>
             <p className="text-lg leading-relaxed text-slate-800">
               Connettiti con club e player, pubblica opportunità, costruisci la tua carriera. Iscriviti in pochi
-              secondi: scegli se sei un <b>Club</b> o un <b>Player</b>.
+              secondi.
             </p>
             <ul className="mt-4 space-y-3 text-base text-slate-800">
               <li>• Scopri e pubblica <b>opportunità</b> reali</li>
@@ -163,37 +126,6 @@ export default function SignupPage() {
                 </div>
               </div>
             )}
-
-            {/* Scelta ruolo spostata subito dopo il separatore */}
-            <fieldset className="mb-4 rounded-lg border border-gray-200 px-3 py-2 dark:border-neutral-700">
-              <legend className="px-1 text-sm font-semibold text-gray-700 dark:text-gray-200">
-                Che tipo di account vuoi creare?
-              </legend>
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <label className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 hover:bg-gray-50 dark:border-neutral-700 dark:hover:bg-neutral-800">
-                  <input
-                    type="radio"
-                    name="role"
-                    checked={role === 'athlete'}
-                    onChange={() => setRole('athlete')}
-                    className="accent-primary"
-                  />
-                  <PlayerIcon />
-                  <span>Player</span>
-                </label>
-                <label className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 hover:bg-gray-50 dark:border-neutral-700 dark:hover:bg-neutral-800">
-                  <input
-                    type="radio"
-                    name="role"
-                    checked={role === 'club'}
-                    onChange={() => setRole('club')}
-                    className="accent-primary"
-                  />
-                  <ClubIcon />
-                  <span>Club</span>
-                </label>
-              </div>
-            </fieldset>
 
             {err && (
               <p className="rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700">
