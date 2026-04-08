@@ -78,7 +78,9 @@ export default function FeedPage() {
   } = useFeed();
   const posts = feedPosts;
   const errorMessage = error?.message ?? null;
-  const canCreatePost = Boolean(currentUserId) && _profile?.account_type !== 'fan';
+  const canCreatePost =
+    Boolean(currentUserId) &&
+    (_profile?.account_type === 'club' || _profile?.account_type === 'athlete');
   const shouldShowEmptyState = !isInitialLoading && !errorMessage && posts.length === 0;
 
   useInfiniteScroll<HTMLDivElement>(loadMoreSentinelRef, {
