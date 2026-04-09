@@ -42,6 +42,14 @@ function mapAccountType(value: string | null | undefined): AccountType {
   return value === 'club' ? 'club' : 'athlete';
 }
 
+function normalizeRoleLabel(value: string | null | undefined): string | null {
+  const text = typeof value === 'string' ? value.trim() : '';
+  if (!text) return null;
+  const normalized = text.toLowerCase();
+  if (normalized === 'athlete' || normalized === 'player' || normalized === 'club') return null;
+  return text;
+}
+
 function getInitials(value: string) {
   const clean = value.trim();
   if (!clean) return 'PR';
@@ -60,7 +68,7 @@ type FollowCardProps = {
 
 function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, onToggleRoster }: FollowCardProps) {
   const href = type === 'club' ? `/c/${profile.id}` : `/u/${profile.id}`;
-  const meta = [profile.city, profile.sport, profile.role].filter(Boolean).join(' · ');
+  const meta = [profile.city, profile.sport, normalizeRoleLabel(profile.role)].filter(Boolean).join(' · ');
   const initials = getInitials(profile.name || 'Profilo');
   const toggleDisabled = rosterPending || !onToggleRoster;
   const avatarUrl = profile.avatar_url ? profile.avatar_url.trim() : '';
