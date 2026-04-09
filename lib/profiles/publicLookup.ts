@@ -23,6 +23,14 @@ export type PublicProfileSummary = {
   city: string | null;
   avatar_url: string | null;
   account_type: string | null;
+  birth_date?: string | null;
+  height_cm?: number | null;
+  weight_kg?: number | null;
+  foot?: string | null;
+  interest_country?: string | null;
+  interest_region?: string | null;
+  interest_province?: string | null;
+  interest_city?: string | null;
   links?: ProfileLinks;
   skills?: ProfileSkill[] | null;
 };
@@ -44,6 +52,14 @@ const SELECT_FIELDS = [
   'city',
   'avatar_url',
   'account_type',
+  'birth_date',
+  'height_cm',
+  'weight_kg',
+  'foot',
+  'interest_country',
+  'interest_region',
+  'interest_province',
+  'interest_city',
   'links',
   'skills',
 ].join(',');
@@ -158,6 +174,14 @@ function normalizeRow(row: Record<string, any>): PublicProfileSummary | null {
     city: typeof row.city === 'string' ? row.city : null,
     avatar_url: typeof row.avatar_url === 'string' ? row.avatar_url : null,
     account_type: typeof row.account_type === 'string' ? row.account_type : null,
+    birth_date: typeof row.birth_date === 'string' ? row.birth_date : null,
+    height_cm: typeof row.height_cm === 'number' ? row.height_cm : null,
+    weight_kg: typeof row.weight_kg === 'number' ? row.weight_kg : null,
+    foot: typeof row.foot === 'string' ? row.foot : null,
+    interest_country: typeof row.interest_country === 'string' ? row.interest_country : null,
+    interest_region: typeof row.interest_region === 'string' ? row.interest_region : null,
+    interest_province: typeof row.interest_province === 'string' ? row.interest_province : null,
+    interest_city: typeof row.interest_city === 'string' ? row.interest_city : null,
     links: row.links && typeof row.links === 'object' ? (row.links as ProfileLinks) : null,
     skills,
   };
@@ -250,6 +274,14 @@ async function fillFromPlayersView(
         city: typeof row.city === 'string' ? row.city : null,
         avatar_url: typeof row.avatar_url === 'string' ? row.avatar_url : null,
         account_type: 'athlete',
+        birth_date: null,
+        height_cm: null,
+        weight_kg: null,
+        foot: null,
+        interest_country: null,
+        interest_region: null,
+        interest_province: null,
+        interest_city: null,
         links: null,
         skills: null,
       };
