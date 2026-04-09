@@ -209,6 +209,67 @@ async function fillFromClient(
   }
 }
 
+async function fillFromPlayersView(
+  target: Map<string, PublicProfileSummary>,
+  missing: Set<string>,
+  client: GenericClient | null,
+  column: 'id' | 'user_id',
+  ids: string[],
+): Promise<void> {
+  if (!client || !ids.length) return;
+
+  try {
+    const { data, error } = await client
+      .from('players_view')
+      .select('id,user_id,display_name,full_name,sport,role,country,region,province,city,avatar_url')
+      .in(column, ids);
+
+    if (error) throw error;
+
+    for (const raw of data ?? []) {
+      const row = raw as Record<string, any>;
+      const profileId = row.id ? String(row.id) : null;
+      const userId = row.user_id ? String(row.user_id) : null;
+      if (!profileId && !userId) continue;
+
+      const summary: PublicProfileSummary = {
+        id: profileId ?? userId ?? '',
+        profile_id: profileId,
+        user_id: userId,
+        first_name: null,
+        last_name: null,
+        display_name: typeof row.display_name === 'string' ? row.display_name : null,
+        full_name: typeof row.full_name === 'string' ? row.full_name : null,
+        headline: null,
+        bio: null,
+        sport: typeof row.sport === 'string' ? row.sport : null,
+        role: typeof row.role === 'string' ? row.role : null,
+        country: typeof row.country === 'string' ? row.country : null,
+        region: typeof row.region === 'string' ? row.region : null,
+        province: typeof row.province === 'string' ? row.province : null,
+        city: typeof row.city === 'string' ? row.city : null,
+        avatar_url: typeof row.avatar_url === 'string' ? row.avatar_url : null,
+        account_type: 'athlete',
+        links: null,
+        skills: null,
+      };
+
+      const keys = new Set<string>();
+      if (profileId) keys.add(profileId);
+      if (userId) keys.add(userId);
+
+      for (const key of keys) {
+        if (!target.has(key)) target.set(key, summary);
+        if (missing.has(key)) missing.delete(key);
+      }
+    }
+  } catch (err) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn(`[profiles] players_view query ${column} failed`, err);
+    }
+  }
+}
+
 function sanitizeIds(ids: string[]): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
@@ -245,6 +306,12 @@ export async function getPublicProfilesMap(
     await fillFromClient(result, missing, client, 'id', Array.from(missing));
     if (missing.size) {
       await fillFromClient(result, missing, client, 'user_id', Array.from(missing));
+    }
+    if (missing.size) {
+      await fillFromPlayersView(result, missing, client, 'id', Array.from(missing));
+    }
+    if (missing.size) {
+      await fillFromPlayersView(result, missing, client, 'user_id', Array.from(missing));
     }
     if (!missing.size) break;
   }

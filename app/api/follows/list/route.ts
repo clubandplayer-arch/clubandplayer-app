@@ -11,6 +11,14 @@ function normalizeAccountType(value?: string | null) {
   return typeof value === 'string' ? value.toLowerCase() : null;
 }
 
+function normalizeRoleLabel(value: unknown): string | null {
+  const text = typeof value === 'string' ? value.trim() : '';
+  if (!text) return null;
+  const normalized = text.toLowerCase();
+  if (normalized === 'athlete' || normalized === 'player' || normalized === 'club') return null;
+  return text;
+}
+
 export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
   try {
     const me = await getActiveProfile(supabase, user.id);
@@ -104,7 +112,7 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
         city: p.city,
         country: p.country,
         sport: p.sport,
-        role: p.role,
+        role: normalizeRoleLabel(p.role),
         avatar_url: avatarUrl,
         is_verified:
           normalizeAccountType(accountType) === 'club'
