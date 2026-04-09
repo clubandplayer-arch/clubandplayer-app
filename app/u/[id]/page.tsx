@@ -30,6 +30,14 @@ type Profile = {
   province: string | null
   city: string | null
   avatar_url?: string | null
+  birth_date?: string | null
+  height_cm?: number | null
+  weight_kg?: number | null
+  foot?: string | null
+  interest_country?: string | null
+  interest_region?: string | null
+  interest_province?: string | null
+  interest_city?: string | null
   links?: ProfileLinks
   skills?: ProfileSkill[] | null
   account_type?: string | null
@@ -57,11 +65,32 @@ function buildTagline(p: Profile): string {
 }
 
 function buildLocation(p: Profile, provinceAbbreviations: Record<string, string>): string | null {
-  const countryLabel = getCountryName(p.country) ?? (p.country ?? '')
-  const parts = [p.city, provinceDisplayValue(p.province, provinceAbbreviations), p.region, countryLabel]
+  const countryCode = p.interest_country ?? p.country
+  const countryLabel = getCountryName(countryCode) ?? (countryCode ?? '')
+  const parts = [
+    p.interest_city ?? p.city,
+    provinceDisplayValue(p.interest_province ?? p.province, provinceAbbreviations),
+    p.interest_region ?? p.region,
+    countryLabel,
+  ]
     .map((part) => (part ?? '').trim())
     .filter(Boolean)
   return parts.length ? parts.join(' · ') : null
+}
+
+function getAgeLabel(birthDate?: string | null): string {
+  const raw = (birthDate ?? '').trim()
+  if (!raw) return '—'
+  const date = new Date(raw)
+  if (Number.isNaN(date.getTime())) return '—'
+
+  const now = new Date()
+  let age = now.getUTCFullYear() - date.getUTCFullYear()
+  const hasBirthdayPassed =
+    now.getUTCMonth() > date.getUTCMonth() ||
+    (now.getUTCMonth() === date.getUTCMonth() && now.getUTCDate() >= date.getUTCDate())
+  if (!hasBirthdayPassed) age -= 1
+  return age >= 0 ? `${age}` : '—'
 }
 
 export default function PublicAthleteProfile() {
@@ -263,12 +292,39 @@ export default function PublicAthleteProfile() {
           </section>
 
           <section className="mt-4 rounded-2xl border bg-white p-5 shadow-sm">
-            <h2 className="text-lg font-semibold text-neutral-900">Panoramica</h2>
-            <ul className="mt-3 space-y-2 text-sm text-neutral-800">
-              <li><b>Sport:</b> {profile.sport ?? '—'}</li>
-              <li><b>Ruolo:</b> {profile.role ?? '—'}</li>
-              <li><b>Città:</b> {profile.city ?? '—'}</li>
-            </ul>
+            <h2 className="text-lg font-semibold text-neutral-900">Dati player</h2>
+            <dl className="mt-3 grid grid-cols-1 gap-3 text-sm text-neutral-800 sm:grid-cols-2">
+              <div>
+                <dt className="text-neutral-500">Età</dt>
+                <dd className="font-semibold text-neutral-900">{getAgeLabel(profile.birth_date)}</dd>
+              </div>
+              <div>
+                <dt className="text-neutral-500">Altezza</dt>
+                <dd className="font-semibold text-neutral-900">{profile.height_cm ? `${profile.height_cm} cm` : '—'}</dd>
+              </div>
+              <div>
+                <dt className="text-neutral-500">Peso</dt>
+                <dd className="font-semibold text-neutral-900">{profile.weight_kg ? `${profile.weight_kg} kg` : '—'}</dd>
+              </div>
+              <div>
+                <dt className="text-neutral-500">Piede</dt>
+                <dd className="font-semibold text-neutral-900">{profile.foot ?? '—'}</dd>
+              </div>
+              <div>
+                <dt className="text-neutral-500">Sport</dt>
+                <dd className="font-semibold text-neutral-900">{profile.sport ?? '—'}</dd>
+              </div>
+              <div>
+                <dt className="text-neutral-500">Ruolo</dt>
+                <dd className="font-semibold text-neutral-900">{profile.role ?? '—'}</dd>
+              </div>
+              <div className="sm:col-span-2">
+                <dt className="text-neutral-500">Zona di interesse</dt>
+                <dd className="font-semibold text-neutral-900">
+                  {buildLocation(profile, provinceAbbreviations) ?? '—'}
+                </dd>
+              </div>
+            </dl>
           </section>
 
         {!isClubProfile && (
