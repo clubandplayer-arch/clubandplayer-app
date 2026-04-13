@@ -28,5 +28,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // legal
     { url: `${site}/legal/privacy`, lastModified: now, changeFrequency: 'yearly', priority: 0.2 },
     { url: `${site}/legal/terms`,   lastModified: now, changeFrequency: 'yearly', priority: 0.2 },
+    { url: `${site}/legal/child-safety`, lastModified: now, changeFrequency: 'yearly', priority: 0.2 },
   ];
 }

@@ -72,6 +72,7 @@ const FOOTER_LINKS = [
   { href: '/legal/privacy', label: 'Privacy' },
   { href: '/legal/terms', label: 'Termini' },
   { href: '/legal/beta', label: 'Informativa Beta' },
+  { href: '/legal/child-safety', label: 'Child Safety' },
 ];
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
