@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   description: 'Standard di sicurezza dei minori applicati da Club & Player e contatti per segnalazioni.',
 };
 
-const SAFETY_EMAIL = 'clubandplayer@gmail.com';
+const SAFETY_EMAIL = 'support@clubandplayer.com';
 
 export default function ChildSafetyPage() {
   return (
