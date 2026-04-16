@@ -32,6 +32,7 @@ export default function LoginPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [currentEmail, setCurrentEmail] = useState<string | null>(null);
+  const [linkRequiredMsg, setLinkRequiredMsg] = useState<string | null>(null);
   const emailId = 'login-email';
   const passwordId = 'login-password';
   const errorId = errorMsg ? 'login-error' : undefined;
@@ -52,6 +53,16 @@ export default function LoginPage() {
       } else {
         // se non valido, puliamo
         sessionStorage.removeItem('auth:redirect_to');
+      }
+
+      if (params.get('link_required') === '1') {
+        const provider = (params.get('provider') ?? 'social').toLowerCase();
+        const email = params.get('email') ?? '';
+        const providerLabel = provider === 'apple' ? 'Apple' : provider === 'google' ? 'Google' : 'social';
+        setLinkRequiredMsg(
+          `Abbiamo trovato un account già esistente${email ? ` per ${email}` : ''}. ` +
+            `Per sicurezza accedi prima con il metodo già usato, poi collega ${providerLabel} dal login autenticato.`,
+        );
       }
     } catch {
       // ignora
@@ -164,6 +175,12 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY`}
         {errorMsg && (
           <p id={errorId} className="rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700" role="alert">
             {errorMsg}
+          </p>
+        )}
+
+        {linkRequiredMsg && (
+          <p className="rounded-md border border-amber-300 bg-amber-50 p-2 text-sm text-amber-800" role="status">
+            {linkRequiredMsg}
           </p>
         )}
 
