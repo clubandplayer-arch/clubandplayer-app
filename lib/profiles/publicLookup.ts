@@ -24,6 +24,7 @@ export type PublicProfileSummary = {
   avatar_url: string | null;
   account_type: string | null;
   birth_date?: string | null;
+  birth_year?: number | null;
   height_cm?: number | null;
   weight_kg?: number | null;
   foot?: string | null;
@@ -53,6 +54,7 @@ const SELECT_FIELDS = [
   'avatar_url',
   'account_type',
   'birth_date',
+  'birth_year',
   'height_cm',
   'weight_kg',
   'foot',
@@ -155,6 +157,28 @@ function normalizeRow(row: Record<string, any>): PublicProfileSummary | null {
     fullName ||
     null;
 
+  const birthYearRaw = row.birth_year;
+  const birthYear =
+    typeof birthYearRaw === 'number'
+      ? birthYearRaw
+      : typeof birthYearRaw === 'string' && birthYearRaw.trim() !== ''
+        ? Number(birthYearRaw)
+        : null;
+  const heightRaw = row.height_cm;
+  const heightCm =
+    typeof heightRaw === 'number'
+      ? heightRaw
+      : typeof heightRaw === 'string' && heightRaw.trim() !== ''
+        ? Number(heightRaw)
+        : null;
+  const weightRaw = row.weight_kg;
+  const weightKg =
+    typeof weightRaw === 'number'
+      ? weightRaw
+      : typeof weightRaw === 'string' && weightRaw.trim() !== ''
+        ? Number(weightRaw)
+        : null;
+
   return {
     // Conserviamo l'id del profilo come identificativo principale
     id: profileId ?? userId ?? '',
@@ -175,8 +199,9 @@ function normalizeRow(row: Record<string, any>): PublicProfileSummary | null {
     avatar_url: typeof row.avatar_url === 'string' ? row.avatar_url : null,
     account_type: typeof row.account_type === 'string' ? row.account_type : null,
     birth_date: typeof row.birth_date === 'string' ? row.birth_date : null,
-    height_cm: typeof row.height_cm === 'number' ? row.height_cm : null,
-    weight_kg: typeof row.weight_kg === 'number' ? row.weight_kg : null,
+    birth_year: Number.isFinite(birthYear) ? birthYear : null,
+    height_cm: Number.isFinite(heightCm) ? heightCm : null,
+    weight_kg: Number.isFinite(weightKg) ? weightKg : null,
     foot: typeof row.foot === 'string' ? row.foot : null,
     interest_country: typeof row.interest_country === 'string' ? row.interest_country : null,
     interest_region: typeof row.interest_region === 'string' ? row.interest_region : null,
@@ -245,7 +270,7 @@ async function fillFromPlayersView(
   try {
     const { data, error } = await client
       .from('players_view')
-      .select('id,user_id,display_name,full_name,sport,role,country,region,province,city,avatar_url')
+      .select('id,user_id,display_name,full_name,headline,bio,sport,role,country,region,province,city,avatar_url,links')
       .in(column, ids);
 
     if (error) throw error;
@@ -264,8 +289,8 @@ async function fillFromPlayersView(
         last_name: null,
         display_name: typeof row.display_name === 'string' ? row.display_name : null,
         full_name: typeof row.full_name === 'string' ? row.full_name : null,
-        headline: null,
-        bio: null,
+        headline: typeof row.headline === 'string' ? row.headline : null,
+        bio: typeof row.bio === 'string' ? row.bio : null,
         sport: typeof row.sport === 'string' ? row.sport : null,
         role: typeof row.role === 'string' ? row.role : null,
         country: typeof row.country === 'string' ? row.country : null,
@@ -275,6 +300,7 @@ async function fillFromPlayersView(
         avatar_url: typeof row.avatar_url === 'string' ? row.avatar_url : null,
         account_type: 'athlete',
         birth_date: null,
+        birth_year: null,
         height_cm: null,
         weight_kg: null,
         foot: null,
@@ -282,7 +308,7 @@ async function fillFromPlayersView(
         interest_region: null,
         interest_province: null,
         interest_city: null,
-        links: null,
+        links: row.links && typeof row.links === 'object' ? (row.links as ProfileLinks) : null,
         skills: null,
       };
 

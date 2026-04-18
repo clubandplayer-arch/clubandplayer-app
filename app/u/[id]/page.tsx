@@ -30,6 +30,7 @@ type Profile = {
   city: string | null
   avatar_url?: string | null
   birth_date?: string | null
+  birth_year?: number | null
   height_cm?: number | null
   weight_kg?: number | null
   foot?: string | null
@@ -76,7 +77,13 @@ function buildLocation(p: Profile, provinceAbbreviations: Record<string, string>
   return parts.length ? parts.join(' · ') : null
 }
 
-function getAgeLabel(birthDate?: string | null): string {
+function getAgeLabel(birthDate?: string | null, birthYear?: number | null): string {
+  if (typeof birthYear === 'number' && Number.isFinite(birthYear) && birthYear > 1900) {
+    const nowYear = new Date().getUTCFullYear()
+    const age = nowYear - birthYear
+    return age >= 0 ? `${age}` : '—'
+  }
+
   const raw = (birthDate ?? '').trim()
   if (!raw) return '—'
   const date = new Date(raw)
@@ -201,7 +208,7 @@ export default function PublicAthleteProfile() {
             <dl className="mt-3 grid grid-cols-1 gap-3 text-sm text-neutral-800 sm:grid-cols-2">
               <div>
                 <dt className="text-neutral-500">Età</dt>
-                <dd className="font-semibold text-neutral-900">{getAgeLabel(profile.birth_date)}</dd>
+                <dd className="font-semibold text-neutral-900">{getAgeLabel(profile.birth_date, profile.birth_year)}</dd>
               </div>
               <div>
                 <dt className="text-neutral-500">Altezza</dt>
