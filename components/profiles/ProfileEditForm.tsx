@@ -1044,7 +1044,7 @@ export default function ProfileEditForm() {
               {!isFan && (
               <div className="md:col-span-2 grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div className="flex min-w-0 flex-col gap-1">
-                  <label className="text-sm text-gray-600">Piede preferito</label>
+                  <label className="text-sm text-gray-600">Mano/Piede preferito</label>
                   <select
                     className="w-full min-w-0 rounded-lg border p-2"
                     value={foot}
