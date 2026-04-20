@@ -43,6 +43,9 @@ const EMPTY_PAST_EXPERIENCE: PastExperience = {
   category: '',
 };
 
+const PLAYER_BIO_MAX_LENGTH = 300;
+const PLAYER_BIO_WARNING_THRESHOLD = 20;
+
 type Profile = {
   account_type: AccountType;
 
@@ -467,6 +470,7 @@ export default function ProfileEditForm() {
   const normalizedCountry = normalizeCountryCode(country);
   const normalizedResidenceCountry = normalizeCountryCode(residenceCountry);
   const normalizedInterestCountry = normalizeCountryCode(interestCountry || 'IT') || 'IT';
+  const playerBioRemaining = PLAYER_BIO_MAX_LENGTH - bio.length;
 
   function normalizeSocial(kind: keyof Links, value: string): string | null {
     const v = (value || '').trim();
@@ -1026,10 +1030,14 @@ export default function ProfileEditForm() {
                 <textarea
                   className="w-full min-w-0 rounded-lg border p-2"
                   rows={4}
+                  maxLength={PLAYER_BIO_MAX_LENGTH}
                   value={bio}
-                  onChange={(e) => setBio(e.target.value)}
+                  onChange={(e) => setBio(e.target.value.slice(0, PLAYER_BIO_MAX_LENGTH))}
                   placeholder="Racconta in breve ruolo, caratteristiche, esperienze…"
                 />
+                <p className={`text-xs ${playerBioRemaining <= PLAYER_BIO_WARNING_THRESHOLD ? 'text-red-600' : 'text-gray-500'}`}>
+                  Caratteri rimanenti: {playerBioRemaining}
+                </p>
               </div>
               )}
 
