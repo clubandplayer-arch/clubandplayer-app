@@ -9,6 +9,7 @@ import AthleteMediaHighlightsSection, {
   type AthleteMediaItem,
 } from '@/components/athletes/AthleteMediaHighlightsSection';
 import AthleteOpenToOpportunitiesPanel from '@/components/athletes/AthleteOpenToOpportunitiesPanel';
+import AthleteExperiencesSection from '@/components/athletes/AthleteExperiencesSection';
 import PublicAuthorFeed from '@/components/feed/PublicAuthorFeed';
 import ProfileHeader from '@/components/profiles/ProfileHeader';
 import type { ProfileLinks } from '@/types/profile';
@@ -78,6 +79,18 @@ type ClubMembershipRow = {
   status: string | null;
 };
 
+type AthleteExperience = {
+  id: string;
+  club_name: string | null;
+  sport: string | null;
+  role: string | null;
+  category: string | null;
+  start_year: number | null;
+  end_year: number | null;
+  is_current: boolean | null;
+  description: string | null;
+};
+
 type ResolvedLocation = {
   country: string | null;
   region: string | null;
@@ -120,6 +133,7 @@ export default function PlayerPublicProfilePage() {
   const [clubOfBelonging, setClubOfBelonging] = useState<ClubProfileSummary | null>(null);
   const [resolvedLocation, setResolvedLocation] = useState<ResolvedLocation | null>(null);
   const [apps, setApps] = useState<ApplicationRow[]>([]);
+  const [experiences, setExperiences] = useState<AthleteExperience[]>([]);
   const [media, setMedia] = useState<AthleteMediaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState<string>('');
@@ -128,6 +142,7 @@ export default function PlayerPublicProfilePage() {
     const load = async () => {
       setLoading(true);
       setMsg('');
+      setExperiences([]);
 
       const athleteId = params.id;
       if (!athleteId) {
@@ -217,6 +232,17 @@ export default function PlayerPublicProfilePage() {
       };
 
       setProfile(normalizedProfile);
+
+      const { data: experiencesData, error: experiencesError } = await supabase
+        .from('athlete_experiences')
+        .select('id, club_name, sport, role, category, start_year, end_year, is_current, description')
+        .eq('profile_id', normalizedProfile.id);
+
+      if (experiencesError) {
+        setExperiences([]);
+      } else {
+        setExperiences((experiencesData ?? []) as AthleteExperience[]);
+      }
 
       try {
         const [municipalityRes, provinceRes, regionRes] = await Promise.all([
@@ -527,6 +553,8 @@ export default function PlayerPublicProfilePage() {
               {profile.bio && profile.bio.trim().length > 0 ? profile.bio : 'Nessuna bio disponibile.'}
             </p>
           </section>
+
+          <AthleteExperiencesSection experiences={experiences} />
 
           <AthleteMediaHighlightsSection items={media} />
 
