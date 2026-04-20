@@ -42,7 +42,7 @@ function avatarSrc(name: string, url?: string | null) {
 }
 
 function profileHref(id: string, type: AccountType) {
-  return type === 'club' ? `/c/${id}` : `/u/${id}`;
+  return type === 'club' ? `/clubs/${id}` : `/players/${id}`;
 }
 
 function mapAccountType(value: string | null | undefined): AccountType {

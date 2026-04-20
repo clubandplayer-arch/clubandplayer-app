@@ -46,7 +46,7 @@ export default function AthleteExperiencesSection({ experiences }: Props) {
 
   return (
     <section className="rounded-2xl border bg-white p-5 shadow-sm">
-      <h2 className="heading-h2 text-xl">Esperienze sportive</h2>
+      <h2 className="heading-h2 text-xl">Esperienze passate</h2>
       {!ordered.length && <p className="mt-3 text-sm text-neutral-700">Nessuna esperienza inserita.</p>}
       {!!ordered.length && (
         <ul className="mt-4 space-y-4">

@@ -17,6 +17,15 @@ import { WORLD_COUNTRY_OPTIONS } from '@/lib/geo/countries';
 import { ProfileSkill } from '@/types/profile';
 import { CATEGORIES_BY_SPORT, CLUB_SPORT_OPTIONS, DEFAULT_CLUB_CATEGORIES } from '@/lib/opps/categories';
 import { iso2ToFlagEmoji } from '@/lib/utils/flags';
+import {
+  ensurePastExperienceCategory,
+  getPastExperienceCategoriesBySport,
+  getSeasonOptions,
+  isPastExperienceComplete,
+  isPastExperienceEmpty,
+  sanitizePastExperience,
+  type PastExperience,
+} from '@/lib/profiles/pastExperiences';
 
 type AccountType = 'club' | 'athlete' | 'fan' | null;
 
@@ -26,6 +35,16 @@ type Links = {
   tiktok?: string | null;
   x?: string | null;
 };
+
+const EMPTY_PAST_EXPERIENCE: PastExperience = {
+  season: '',
+  club: '',
+  sport: '',
+  category: '',
+};
+
+const PLAYER_BIO_MAX_LENGTH = 300;
+const PLAYER_BIO_WARNING_THRESHOLD = 20;
 
 type Profile = {
   account_type: AccountType;
@@ -214,6 +233,7 @@ export default function ProfileEditForm() {
   const [weightKg, setWeightKg] = useState<number | ''>('');
   const [athleteSport, setAthleteSport] = useState('Calcio');
   const [athleteRole, setAthleteRole] = useState('');
+  const [pastExperiences, setPastExperiences] = useState<PastExperience[]>([{ ...EMPTY_PAST_EXPERIENCE }]);
   const [notifyEmail, setNotifyEmail] = useState(true);
 
   // Social
@@ -253,6 +273,19 @@ export default function ProfileEditForm() {
       setAthleteRole('');
     }
   }, [athleteRole, athleteRoles]);
+
+  const seasonOptions = useMemo(() => getSeasonOptions(), []);
+
+  async function loadPastExperiences() {
+    const response = await fetch('/api/profiles/me/experiences', { credentials: 'include', cache: 'no-store' });
+    if (!response.ok) throw new Error('Impossibile leggere le esperienze passate');
+    const raw = await response.json().catch(() => ({}));
+    const list = Array.isArray(raw?.data) ? raw.data : [];
+    const normalized = list
+      .map((value: unknown) => ensurePastExperienceCategory(sanitizePastExperience((value || {}) as Record<string, unknown>)))
+      .filter((item: PastExperience) => !isPastExperienceEmpty(item));
+    setPastExperiences(normalized.length > 0 ? normalized : [{ ...EMPTY_PAST_EXPERIENCE }]);
+  }
 
   async function loadProfile() {
     const r = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
@@ -408,6 +441,12 @@ export default function ProfileEditForm() {
     setStadiumLat(p.club_stadium_lat ?? null);
     setStadiumLng(p.club_stadium_lng ?? null);
     setClubMotto(p.club_motto || '');
+
+    if (p.account_type === 'athlete') {
+      await loadPastExperiences();
+    } else {
+      setPastExperiences([{ ...EMPTY_PAST_EXPERIENCE }]);
+    }
   }
 
   // prima load
@@ -423,6 +462,7 @@ export default function ProfileEditForm() {
         setLoading(false);
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const canSave = useMemo(() => !saving && profile != null, [saving, profile]);
@@ -430,6 +470,7 @@ export default function ProfileEditForm() {
   const normalizedCountry = normalizeCountryCode(country);
   const normalizedResidenceCountry = normalizeCountryCode(residenceCountry);
   const normalizedInterestCountry = normalizeCountryCode(interestCountry || 'IT') || 'IT';
+  const playerBioRemaining = PLAYER_BIO_MAX_LENGTH - bio.length;
 
   function normalizeSocial(kind: keyof Links, value: string): string | null {
     const v = (value || '').trim();
@@ -454,6 +495,17 @@ export default function ProfileEditForm() {
     setMessage(null);
 
     try {
+      const normalizedPastExperiences = pastExperiences
+        .map((experience) => ensurePastExperienceCategory(sanitizePastExperience(experience)))
+        .filter((experience) => !isPastExperienceEmpty(experience));
+
+      if (!isClub && !isFan) {
+        const partialIndex = normalizedPastExperiences.findIndex((experience) => !isPastExperienceComplete(experience));
+        if (partialIndex >= 0) {
+          throw new Error(`Completa tutti i campi in "Esperienze passate" alla riga ${partialIndex + 1}.`);
+        }
+      }
+
       const links: Links = {
         instagram: normalizeSocial('instagram', instagram) ?? undefined,
         facebook:  normalizeSocial('facebook',  facebook)  ?? undefined,
@@ -638,6 +690,19 @@ export default function ProfileEditForm() {
         throw new Error(j?.error ?? 'Salvataggio non riuscito');
       }
 
+      if (!isClub && !isFan) {
+        const experiencesRes = await fetch('/api/profiles/me/experiences', {
+          method: 'PATCH',
+          credentials: 'include',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ experiences: normalizedPastExperiences }),
+        });
+        if (!experiencesRes.ok) {
+          const j = await experiencesRes.json().catch(() => ({}));
+          throw new Error(j?.error ?? 'Salvataggio esperienze non riuscito');
+        }
+      }
+
       await loadProfile();
       setMessage('Profilo aggiornato correttamente.');
       router.refresh();
@@ -655,6 +720,27 @@ export default function ProfileEditForm() {
   if (!profile) return null;
 
   const countryPreview = country ? [iso2ToFlagEmoji(country), countryName(country)].filter(Boolean).join(' ') : '';
+
+  const updatePastExperience = (index: number, patch: Partial<PastExperience>) => {
+    setPastExperiences((prev) =>
+      prev.map((experience, currentIndex) => {
+        if (currentIndex !== index) return experience;
+        const next = ensurePastExperienceCategory({ ...experience, ...patch });
+        return next;
+      }),
+    );
+  };
+
+  const addPastExperience = () => {
+    setPastExperiences((prev) => [...prev, { ...EMPTY_PAST_EXPERIENCE }]);
+  };
+
+  const removePastExperience = (index: number) => {
+    setPastExperiences((prev) => {
+      const next = prev.filter((_, currentIndex) => currentIndex !== index);
+      return next.length > 0 ? next : [{ ...EMPTY_PAST_EXPERIENCE }];
+    });
+  };
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
@@ -944,17 +1030,21 @@ export default function ProfileEditForm() {
                 <textarea
                   className="w-full min-w-0 rounded-lg border p-2"
                   rows={4}
+                  maxLength={PLAYER_BIO_MAX_LENGTH}
                   value={bio}
-                  onChange={(e) => setBio(e.target.value)}
+                  onChange={(e) => setBio(e.target.value.slice(0, PLAYER_BIO_MAX_LENGTH))}
                   placeholder="Racconta in breve ruolo, caratteristiche, esperienze…"
                 />
+                <p className={`text-xs ${playerBioRemaining <= PLAYER_BIO_WARNING_THRESHOLD ? 'text-red-600' : 'text-gray-500'}`}>
+                  Caratteri rimanenti: {playerBioRemaining}
+                </p>
               </div>
               )}
 
               {!isFan && (
               <div className="md:col-span-2 grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div className="flex min-w-0 flex-col gap-1">
-                  <label className="text-sm text-gray-600">Piede preferito</label>
+                  <label className="text-sm text-gray-600">Mano/Piede preferito</label>
                   <select
                     className="w-full min-w-0 rounded-lg border p-2"
                     value={foot}
@@ -1001,6 +1091,101 @@ export default function ProfileEditForm() {
             </div>
           )}
         </section>
+
+        {!isClub && !isFan && (
+          <section className="rounded-2xl border p-4 md:p-5">
+            <h2 className="mb-3 text-lg font-semibold">Esperienze passate</h2>
+            <div className="space-y-3">
+              {pastExperiences.map((experience, index) => {
+                const categoryOptions = getPastExperienceCategoriesBySport(experience.sport);
+                return (
+                  <div key={`past-experience-${index}`} className="rounded-xl border border-gray-200 p-3">
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+                      <div className="flex min-w-0 flex-col gap-1">
+                        <label className="text-sm text-gray-600">Stagione</label>
+                        <select
+                          className="w-full min-w-0 rounded-lg border p-2"
+                          value={experience.season}
+                          onChange={(e) => updatePastExperience(index, { season: e.target.value })}
+                        >
+                          <option value="">— Seleziona —</option>
+                          {seasonOptions.map((season) => (
+                            <option key={season} value={season}>
+                              {season}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="flex min-w-0 flex-col gap-1">
+                        <label className="text-sm text-gray-600">Club</label>
+                        <input
+                          className="w-full min-w-0 rounded-lg border p-2"
+                          value={experience.club}
+                          onChange={(e) => updatePastExperience(index, { club: e.target.value })}
+                          placeholder="Es. ASD Carlentini"
+                        />
+                      </div>
+
+                      <div className="flex min-w-0 flex-col gap-1">
+                        <label className="text-sm text-gray-600">Sport</label>
+                        <select
+                          className="w-full min-w-0 rounded-lg border p-2"
+                          value={experience.sport}
+                          onChange={(e) => updatePastExperience(index, { sport: e.target.value })}
+                        >
+                          <option value="">— Seleziona —</option>
+                          {CLUB_SPORT_OPTIONS.map((sportOption) => (
+                            <option key={sportOption} value={sportOption}>
+                              {sportOption}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="flex min-w-0 flex-col gap-1">
+                        <label className="text-sm text-gray-600">Categoria</label>
+                        <select
+                          className="w-full min-w-0 rounded-lg border p-2"
+                          value={experience.category}
+                          onChange={(e) => updatePastExperience(index, { category: e.target.value })}
+                          disabled={!experience.sport}
+                        >
+                          <option value="">— Seleziona —</option>
+                          {categoryOptions.map((category) => (
+                            <option key={category} value={category}>
+                              {category}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {pastExperiences.length > 1 && (
+                      <div className="mt-3 flex justify-end">
+                        <button
+                          type="button"
+                          className="text-sm font-medium text-red-600 hover:underline"
+                          onClick={() => removePastExperience(index)}
+                        >
+                          Rimuovi esperienza
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              <button
+                type="button"
+                className="text-sm font-semibold text-blue-700 hover:underline"
+                onClick={addPastExperience}
+              >
+                + aggiungi esperienza
+              </button>
+            </div>
+          </section>
+        )}
 
         {/* Zona di interesse (atleta) */}
         {!isClub && (

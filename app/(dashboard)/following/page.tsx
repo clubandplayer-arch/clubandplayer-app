@@ -67,7 +67,7 @@ type FollowCardProps = {
 };
 
 function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, onToggleRoster }: FollowCardProps) {
-  const href = type === 'club' ? `/c/${profile.id}` : `/u/${profile.id}`;
+  const href = type === 'club' ? `/clubs/${profile.id}` : `/players/${profile.id}`;
   const meta = [profile.city, profile.sport, normalizeRoleLabel(profile.role)].filter(Boolean).join(' · ');
   const initials = getInitials(profile.name || 'Profilo');
   const toggleDisabled = rosterPending || !onToggleRoster;
