@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import FollowButton from '@/components/common/FollowButton';
 import CertifiedCMarkFollowing from '@/components/badges/CertifiedCMarkFollowing';
+import { CountryFlag } from '@/components/ui/CountryFlag';
 import useIsClub from '@/hooks/useIsClub';
 import { buildProfileDisplayName } from '@/lib/displayName';
 
@@ -16,6 +17,7 @@ type FollowedProfile = {
   type?: string | null;
   avatar_url?: string | null;
   city: string | null;
+  country: string | null;
   sport: string | null;
   role: string | null;
   is_verified?: boolean | null;
@@ -37,6 +39,12 @@ type ApiResponse = {
 };
 
 type AccountType = 'club' | 'athlete';
+type TabKey = 'club' | 'player';
+
+const TABS: Array<{ key: TabKey; label: string }> = [
+  { key: 'club', label: 'Club' },
+  { key: 'player', label: 'Player' },
+];
 
 function mapAccountType(value: string | null | undefined): AccountType {
   return value === 'club' ? 'club' : 'athlete';
@@ -57,6 +65,23 @@ function getInitials(value: string) {
   return parts.slice(0, 2).map((p) => p[0]).join('').toUpperCase();
 }
 
+function extractIso2(text?: string | null) {
+  const raw = (text ?? '').trim();
+  if (!raw) return null;
+  const match = raw.match(/([A-Za-z]{2})\s*$/);
+  return match ? match[1].toUpperCase() : null;
+}
+
+function getCountryLabel(text?: string | null, iso2?: string | null) {
+  const raw = (text ?? '').trim();
+  if (!raw) return iso2 ?? '';
+  const match = raw.match(/^([A-Za-z]{2})(?:\s+(.+))?$/);
+  if (match) {
+    return match[2]?.trim() || match[1].toUpperCase();
+  }
+  return raw;
+}
+
 type FollowCardProps = {
   profile: FollowedProfile;
   type: AccountType;
@@ -69,6 +94,8 @@ type FollowCardProps = {
 function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, onToggleRoster }: FollowCardProps) {
   const href = type === 'club' ? `/clubs/${profile.id}` : `/players/${profile.id}`;
   const meta = [profile.city, profile.sport, normalizeRoleLabel(profile.role)].filter(Boolean).join(' · ');
+  const playerIso2 = type === 'athlete' ? extractIso2(profile.country) : null;
+  const playerCountryLabel = type === 'athlete' ? getCountryLabel(profile.country, playerIso2) : '';
   const initials = getInitials(profile.name || 'Profilo');
   const toggleDisabled = rosterPending || !onToggleRoster;
   const avatarUrl = profile.avatar_url ? profile.avatar_url.trim() : '';
@@ -112,9 +139,12 @@ function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, 
             <div className="flex flex-wrap items-center gap-1">
               <p className="text-sm font-semibold text-neutral-900 dark:text-white truncate">{profile.name}</p>
             </div>
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
-              <span className="uppercase tracking-wide">{type === 'club' ? 'Club' : 'Player'}</span>
-            </div>
+            {type === 'athlete' && (playerIso2 || playerCountryLabel) ? (
+              <div className="mt-1 flex items-center gap-1 text-xs text-neutral-500 dark:text-neutral-400">
+                {playerIso2 ? <CountryFlag iso2={playerIso2} /> : null}
+                <span>{playerCountryLabel}</span>
+              </div>
+            ) : null}
             {meta && <p className="text-xs text-neutral-600 dark:text-neutral-300 truncate">{meta}</p>}
           </div>
         </Link>
@@ -152,6 +182,7 @@ function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, 
 
 export default function FollowingPage() {
   const [items, setItems] = useState<FollowedProfile[]>([]);
+  const [activeTab, setActiveTab] = useState<TabKey>('club');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [rosterIds, setRosterIds] = useState<Set<string>>(new Set());
@@ -177,6 +208,7 @@ export default function FollowingPage() {
               account_type: row.account_type ?? null,
               type: (row as any)?.type ?? null,
               city: row.city ?? null,
+              country: row.country ?? null,
               sport: row.sport ?? null,
               role: row.role ?? null,
               avatar_url: row.avatar_url ?? null,
@@ -286,6 +318,10 @@ export default function FollowingPage() {
 
   const clubFollows = useMemo(() => items.filter((p) => mapAccountType(p.account_type) === 'club'), [items]);
   const playerFollows = useMemo(() => items.filter((p) => mapAccountType(p.account_type) === 'athlete'), [items]);
+  const activeItems = useMemo(
+    () => (activeTab === 'club' ? clubFollows : playerFollows),
+    [activeTab, clubFollows, playerFollows],
+  );
   const showRosterControls = isClub && !roleLoading;
 
   return (
@@ -295,6 +331,23 @@ export default function FollowingPage() {
         <p className="text-sm text-neutral-600 dark:text-neutral-300">
           Una panoramica di tutti i profili che hai deciso di seguire. {showRosterControls ? 'Come club puoi usare il toggle “In Rosa” per attivare la rosa dei player.' : ''}
         </p>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {TABS.map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            onClick={() => setActiveTab(tab.key)}
+            className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
+              activeTab === tab.key
+                ? 'border-[var(--brand)] bg-[var(--brand)]/10 text-[var(--brand)]'
+                : 'border-neutral-200 text-neutral-600 hover:bg-neutral-50'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
@@ -308,41 +361,32 @@ export default function FollowingPage() {
         </div>
       ) : null}
 
-      {clubFollows.length > 0 && (
-        <section className="space-y-2">
-          <h2 className="heading-h2 text-xl">Club che segui</h2>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3">
-            {clubFollows.map((profile) => (
-              <FollowCard
-                key={profile.id}
-                profile={profile}
-                type="club"
-                showRosterToggle={false}
-                inRoster={false}
-              />
-            ))}
-          </div>
-        </section>
-      )}
+      {!loading && !error && items.length > 0 && activeItems.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-neutral-200 bg-white/70 p-4 text-sm text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900/60 dark:text-neutral-300">
+          {activeTab === 'club'
+            ? 'Non stai seguendo nessun club al momento.'
+            : 'Non stai seguendo nessun player al momento.'}
+        </div>
+      ) : null}
 
-      {playerFollows.length > 0 && (
-        <section className="space-y-2">
-          <h2 className="heading-h2 text-xl">Player che segui</h2>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3">
-            {playerFollows.map((profile) => (
+      {activeItems.length > 0 ? (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3">
+          {activeItems.map((profile) => {
+            const type: AccountType = activeTab === 'club' ? 'club' : 'athlete';
+            return (
               <FollowCard
                 key={profile.id}
                 profile={profile}
-                type="athlete"
+                type={type}
                 showRosterToggle={showRosterControls}
                 inRoster={rosterIds.has(profile.id)}
                 rosterPending={pendingRoster.has(profile.id)}
                 onToggleRoster={showRosterControls ? handleToggleRoster : undefined}
               />
-            ))}
-          </div>
-        </section>
-      )}
+            );
+          })}
+        </div>
+      ) : null}
     </div>
   );
 }
