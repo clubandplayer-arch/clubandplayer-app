@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import FollowButton from '@/components/common/FollowButton';
-import CertifiedClubMark from '@/components/ui/CertifiedClubMark';
+import CertifiedCMarkFollowing from '@/components/badges/CertifiedCMarkFollowing';
 import { CountryFlag } from '@/components/ui/CountryFlag';
 import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentProfileContext';
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
@@ -59,26 +59,15 @@ function getCountryLabel(text?: string | null, iso2?: string | null) {
   return raw;
 }
 
-function clubDetailLine(suggestion: Suggestion) {
-  const locationText = (suggestion.location || [suggestion.city, suggestion.country].filter(Boolean).join(', ')).trim();
-  const iso2 = extractIso2(suggestion.country || locationText);
-  const region = iso2 ? locationText.replace(new RegExp(`[\\s,]*${iso2}$`, 'i'), '').trim() : locationText;
-
-  return (
-    <div className="flex min-w-0 items-center gap-1 text-xs text-neutral-500">
-      {region ? <span className="truncate">{region}</span> : null}
-      {iso2 ? (
-        <>
-          {region ? <span>·</span> : null}
-          <CountryFlag iso2={iso2} />
-          <span>{iso2}</span>
-        </>
-      ) : null}
-    </div>
-  );
+function normalizeRoleLabel(value?: string | null) {
+  const text = (value ?? '').trim();
+  if (!text) return null;
+  const normalized = text.toLowerCase();
+  if (normalized === 'athlete' || normalized === 'player' || normalized === 'club') return null;
+  return text;
 }
 
-function playerDetailLine(suggestion: Suggestion) {
+function playerCountryLine(suggestion: Suggestion) {
   const iso2 = extractIso2(suggestion.country);
   const label = getCountryLabel(suggestion.country, iso2);
   if (!iso2 && !label) return null;
@@ -90,20 +79,16 @@ function playerDetailLine(suggestion: Suggestion) {
   );
 }
 
-function detailLine(suggestion: Suggestion, viewerRole: ProfileRole, tab: TabKey): ReactNode {
-  if (tab === 'club') return clubDetailLine(suggestion);
-  if (tab === 'player') return playerDetailLine(suggestion);
-  const location = suggestion.location || [suggestion.city, suggestion.country].filter(Boolean).join(', ');
-  const sportRole = [suggestion.category || suggestion.sport, suggestion.role].filter(Boolean).join(' · ');
-  if (viewerRole === 'club') {
-    return sportRole || location;
-  }
-  return location || sportRole;
+function secondaryMetaLine(suggestion: Suggestion): ReactNode {
+  const meta = [suggestion.city, suggestion.category || suggestion.sport, normalizeRoleLabel(suggestion.role)]
+    .filter(Boolean)
+    .join(' · ');
+  if (!meta) return <span className="text-xs text-neutral-500">—</span>;
+  return <p className="text-xs text-neutral-600 truncate">{meta}</p>;
 }
 
 export default function DiscoverPage() {
   const { role: contextRole } = useCurrentProfileContext();
-  const [role, setRole] = useState<ProfileRole>('guest');
   const [activeTab, setActiveTab] = useState<TabKey>('club');
   const [items, setItems] = useState<Record<TabKey, Suggestion[]>>({ club: [], player: [] });
   const [loading, setLoading] = useState(true);
@@ -157,7 +142,6 @@ export default function DiscoverPage() {
         const [clubs, players] = await Promise.all([fetchSuggestions('club'), fetchSuggestions('player')]);
         if (cancelled) return;
         setItems({ club: clubs.suggestions, player: players.suggestions });
-        setRole(clubs.role || players.role || contextRole || 'guest');
       } catch (err) {
         if (cancelled) return;
         setError(err instanceof Error ? err.message : 'Impossibile caricare i suggerimenti.');
@@ -214,27 +198,41 @@ export default function DiscoverPage() {
             const name = displayName(item);
             const href = targetHref(item);
             const isCertified = item.kind === 'club' && Boolean((item as any).is_verified ?? (item as any).isVerified ?? false);
+            const logoSizePx = 44;
+            const feedLogoSizePx = 140;
+            const feedCSizePx = 40;
+            const feedOffsetPx = 8;
+            const cSizePx = Math.round(logoSizePx * (feedCSizePx / feedLogoSizePx) * 1.15);
+            const offsetPx = Math.round(logoSizePx * (feedOffsetPx / feedLogoSizePx) * 1.6);
             return (
-              <li key={item.id} className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-                <div className="flex items-start justify-between gap-3">
-                  <Link href={href} className="flex min-w-0 items-center gap-3">
+              <li key={item.id} className="flex h-full flex-col gap-3 rounded-2xl border border-neutral-200 bg-white/70 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                <div className="flex flex-wrap items-start gap-3">
+                  <Link href={href} className="flex min-w-0 flex-1 gap-3">
                     <div className="relative">
-                      <div className="h-11 w-11 overflow-hidden rounded-full ring-1 ring-neutral-200">
+                      <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[var(--brand)]/20 to-[var(--brand)]/40 text-sm font-semibold uppercase text-[var(--brand)] aspect-square">
                         <img
                           src={item.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`}
                           alt={name}
                           className="h-full w-full object-cover"
                         />
                       </div>
-                      {isCertified ? <CertifiedClubMark size="sm" className="absolute -top-1 -right-1" /> : null}
+                      {isCertified ? (
+                        <span className="absolute" style={{ width: cSizePx, height: cSizePx, right: -offsetPx, top: -offsetPx }}>
+                          <CertifiedCMarkFollowing className="h-full w-full [&_svg]:h-full [&_svg]:w-full" />
+                        </span>
+                      ) : null}
                     </div>
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-1">
                         <span className="truncate text-sm font-semibold text-neutral-900">{name}</span>
                       </div>
-                      {detailLine(item, role, activeTab) || <span className="text-xs text-neutral-500">—</span>}
+                      {activeTab === 'player' ? playerCountryLine(item) : null}
+                      {secondaryMetaLine(item)}
                     </div>
                   </Link>
+                </div>
+                <div className="mt-auto flex items-center justify-between gap-3">
+                  <div className="min-h-[24px]" aria-hidden="true" />
                   <div
                     className="shrink-0"
                     onClick={(event) => {
@@ -246,7 +244,7 @@ export default function DiscoverPage() {
                       event.stopPropagation();
                     }}
                   >
-                    <FollowButton targetProfileId={item.id} size="sm" />
+                    <FollowButton targetProfileId={item.id} size="sm" className="min-w-[96px] shrink-0" />
                   </div>
                 </div>
               </li>
