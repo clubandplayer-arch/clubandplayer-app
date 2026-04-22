@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import FollowButton from '@/components/common/FollowButton';
 import CertifiedCMarkFollowing from '@/components/badges/CertifiedCMarkFollowing';
+import { CountryFlag } from '@/components/ui/CountryFlag';
 import useIsClub from '@/hooks/useIsClub';
 import { buildProfileDisplayName } from '@/lib/displayName';
 
@@ -16,6 +17,7 @@ type FollowedProfile = {
   type?: string | null;
   avatar_url?: string | null;
   city: string | null;
+  country: string | null;
   sport: string | null;
   role: string | null;
   is_verified?: boolean | null;
@@ -57,6 +59,23 @@ function getInitials(value: string) {
   return parts.slice(0, 2).map((p) => p[0]).join('').toUpperCase();
 }
 
+function extractIso2(text?: string | null) {
+  const raw = (text ?? '').trim();
+  if (!raw) return null;
+  const match = raw.match(/([A-Za-z]{2})\s*$/);
+  return match ? match[1].toUpperCase() : null;
+}
+
+function getCountryLabel(text?: string | null, iso2?: string | null) {
+  const raw = (text ?? '').trim();
+  if (!raw) return iso2 ?? '';
+  const match = raw.match(/^([A-Za-z]{2})(?:\s+(.+))?$/);
+  if (match) {
+    return match[2]?.trim() || match[1].toUpperCase();
+  }
+  return raw;
+}
+
 type FollowCardProps = {
   profile: FollowedProfile;
   type: AccountType;
@@ -69,6 +88,8 @@ type FollowCardProps = {
 function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, onToggleRoster }: FollowCardProps) {
   const href = type === 'club' ? `/clubs/${profile.id}` : `/players/${profile.id}`;
   const meta = [profile.city, profile.sport, normalizeRoleLabel(profile.role)].filter(Boolean).join(' · ');
+  const playerIso2 = type === 'athlete' ? extractIso2(profile.country) : null;
+  const playerCountryLabel = type === 'athlete' ? getCountryLabel(profile.country, playerIso2) : '';
   const initials = getInitials(profile.name || 'Profilo');
   const toggleDisabled = rosterPending || !onToggleRoster;
   const avatarUrl = profile.avatar_url ? profile.avatar_url.trim() : '';
@@ -112,9 +133,12 @@ function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, 
             <div className="flex flex-wrap items-center gap-1">
               <p className="text-sm font-semibold text-neutral-900 dark:text-white truncate">{profile.name}</p>
             </div>
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
-              <span className="uppercase tracking-wide">{type === 'club' ? 'Club' : 'Player'}</span>
-            </div>
+            {type === 'athlete' && (playerIso2 || playerCountryLabel) ? (
+              <div className="mt-1 flex items-center gap-1 text-xs text-neutral-500 dark:text-neutral-400">
+                {playerIso2 ? <CountryFlag iso2={playerIso2} /> : null}
+                <span>{playerCountryLabel}</span>
+              </div>
+            ) : null}
             {meta && <p className="text-xs text-neutral-600 dark:text-neutral-300 truncate">{meta}</p>}
           </div>
         </Link>
@@ -177,6 +201,7 @@ export default function FollowingPage() {
               account_type: row.account_type ?? null,
               type: (row as any)?.type ?? null,
               city: row.city ?? null,
+              country: row.country ?? null,
               sport: row.sport ?? null,
               role: row.role ?? null,
               avatar_url: row.avatar_url ?? null,
