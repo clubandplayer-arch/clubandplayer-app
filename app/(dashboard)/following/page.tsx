@@ -105,7 +105,7 @@ function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, 
   const feedCSizePx = 40;
   const feedOffsetPx = 8;
   const cSizePx = Math.round(logoSizePx * (feedCSizePx / feedLogoSizePx) * 1.15);
-  const offsetPx = Math.round(logoSizePx * (feedOffsetPx / feedLogoSizePx) * 1.6);
+  const offsetPx = Math.max(1, Math.round(logoSizePx * (feedOffsetPx / feedLogoSizePx) * 0.6));
 
   const handleToggle = () => {
     if (!onToggleRoster || toggleDisabled) return;
@@ -135,9 +135,9 @@ function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, 
               </span>
             ) : null}
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-1">
-              <p className="text-sm font-semibold text-neutral-900 dark:text-white truncate">{profile.name}</p>
+              <p className="break-words text-sm font-semibold leading-tight text-neutral-900 dark:text-white">{profile.name}</p>
             </div>
             {type === 'athlete' && (playerIso2 || playerCountryLabel) ? (
               <div className="mt-1 flex items-center gap-1 text-xs text-neutral-500 dark:text-neutral-400">
