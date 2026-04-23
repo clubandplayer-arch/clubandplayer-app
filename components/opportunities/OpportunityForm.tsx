@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { useEffect, useMemo, useState } from 'react';
+import { useItalyLocations } from '@/hooks/useItalyLocations';
 
 import type { Opportunity } from '@/types/opportunity';
 import { AGE_BRACKETS, type AgeBracket, normalizeSport, SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
@@ -12,49 +12,6 @@ import {
   normalizeOpportunityGender,
   type OpportunityGenderCode,
 } from '@/lib/opps/gender';
-
-type LocationLevel = 'region' | 'province' | 'municipality';
-type LocationRow = { id: number; name: string };
-
-const supabase = createSupabaseClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-);
-
-async function fetchLocationChildren(level: LocationLevel, parent: number | null): Promise<LocationRow[]> {
-  try {
-    const { data, error } = await supabase.rpc('location_children', { level, parent });
-    if (!error && Array.isArray(data)) {
-      return (data as LocationRow[]).map((row) => ({ id: Number(row.id), name: row.name }))
-        .sort((a, b) => a.name.localeCompare(b.name, 'it', { sensitivity: 'accent' }));
-    }
-  } catch (err) {
-    console.warn('location_children rpc failed', err);
-  }
-
-  if (level === 'region') {
-    const { data } = await supabase.from('regions').select('id,name').order('name', { ascending: true });
-    return (data ?? []).map((row: any) => ({ id: Number(row.id), name: row.name as string }));
-  }
-
-  if (level === 'province') {
-    if (parent == null) return [];
-    const { data } = await supabase
-      .from('provinces')
-      .select('id,name')
-      .eq('region_id', parent)
-      .order('name', { ascending: true });
-    return (data ?? []).map((row: any) => ({ id: Number(row.id), name: row.name as string }));
-  }
-
-  if (parent == null) return [];
-  const { data } = await supabase
-    .from('municipalities')
-    .select('id,name')
-    .eq('province_id', parent)
-    .order('name', { ascending: true });
-  return (data ?? []).map((row: any) => ({ id: Number(row.id), name: row.name as string }));
-}
 
 const GENDERS = (Object.entries(OPPORTUNITY_GENDER_LABELS) as Array<[
   OpportunityGenderCode,
@@ -116,14 +73,19 @@ export default function OpportunityForm({
   const [region, setRegion] = useState<string>(initial?.region ?? '');
   const [province, setProvince] = useState<string>(initial?.province ?? '');
   const [city, setCity] = useState<string>(initial?.city ?? '');
-  const [regions, setRegions] = useState<LocationRow[]>([]);
-  const [regionId, setRegionId] = useState<number | null>(null);
-  const [provinces, setProvinces] = useState<LocationRow[]>([]);
-  const [provinceId, setProvinceId] = useState<number | null>(null);
-  const [cities, setCities] = useState<string[]>([]);
-  const regionsLoadedRef = useRef(false);
-  const provincesLoadedRef = useRef(false);
-  const citiesLoadedRef = useRef(false);
+  const { data: italyLocations } = useItalyLocations();
+  const regions = useMemo(
+    () => (countryCode ? italyLocations.regionsByCountry[countryCode] ?? [] : []),
+    [countryCode, italyLocations],
+  );
+  const provinces = useMemo(
+    () => (countryCode === 'IT' ? italyLocations.provincesByRegion[region] ?? [] : []),
+    [countryCode, italyLocations, region],
+  );
+  const cities = useMemo(
+    () => (countryCode === 'IT' ? italyLocations.citiesByProvince[province] ?? [] : []),
+    [countryCode, italyLocations, province],
+  );
 
   // Sport/ruolo/categoria
   const [sport, setSport] = useState<string>(normalizeSport(initial?.sport) || 'Calcio');
@@ -148,108 +110,23 @@ export default function OpportunityForm({
   const isEdit = Boolean(initial?.id);
 
   useEffect(() => {
-    regionsLoadedRef.current = false;
-    if (countryCode !== 'IT') {
-      setRegions([]);
-      setRegionId(null);
-      return;
-    }
-
-    let cancelled = false;
-    (async () => {
-      const rows = await fetchLocationChildren('region', null);
-      if (cancelled) return;
-      setRegions(rows);
-      regionsLoadedRef.current = true;
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [countryCode]);
-
-  useEffect(() => {
-    if (countryCode !== 'IT') {
-      setRegionId(null);
-      return;
-    }
-    if (!regionsLoadedRef.current) return;
-    const match = regions.find((r) => r.name === region);
-    if (!match && region) {
+    if (!region) return;
+    if (!regions.includes(region)) {
       setRegion('');
-      setRegionId(null);
       setProvince('');
-      setProvinceId(null);
       setCity('');
-      setCities([]);
-      return;
     }
-    setRegionId(match?.id ?? null);
   }, [countryCode, region, regions]);
 
   useEffect(() => {
-    provincesLoadedRef.current = false;
-    if (countryCode !== 'IT' || regionId == null) {
-      setProvinces([]);
-      setProvinceId(null);
-      setCities([]);
-      return;
-    }
-
-    let cancelled = false;
-    (async () => {
-      const rows = await fetchLocationChildren('province', regionId);
-      if (cancelled) return;
-      setProvinces(rows);
-      provincesLoadedRef.current = true;
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [countryCode, regionId]);
-
-  useEffect(() => {
-    if (countryCode !== 'IT') {
-      setProvinceId(null);
-      return;
-    }
-    if (!provincesLoadedRef.current) return;
-    const match = provinces.find((p) => p.name === province);
-    if (!match && province) {
+    if (!province) return;
+    if (!provinces.includes(province)) {
       setProvince('');
-      setProvinceId(null);
       setCity('');
-      setCities([]);
-      return;
     }
-    setProvinceId(match?.id ?? null);
   }, [countryCode, province, provinces]);
 
   useEffect(() => {
-    citiesLoadedRef.current = false;
-    if (countryCode !== 'IT' || provinceId == null) {
-      setCities([]);
-      return;
-    }
-
-    let cancelled = false;
-    (async () => {
-      const rows = await fetchLocationChildren('municipality', provinceId);
-      if (cancelled) return;
-      const names = rows.map((row) => row.name).sort((a, b) => a.localeCompare(b, 'it', { sensitivity: 'accent' }));
-      setCities(names);
-      citiesLoadedRef.current = true;
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [countryCode, provinceId]);
-
-  useEffect(() => {
-    if (countryCode !== 'IT') return;
-    if (!citiesLoadedRef.current) return;
     if (city && !cities.includes(city)) {
       setCity('');
     }
@@ -315,26 +192,17 @@ export default function OpportunityForm({
     setCountryFree('');
     if (code !== 'IT') {
       setRegion('');
-      setRegionId(null);
       setProvince('');
-      setProvinceId(null);
       setCity('');
-      setCities([]);
     }
   }
   function onChangeRegion(r: string) {
     setRegion(r);
-    const match = regions.find((row) => row.name === r);
-    setRegionId(match?.id ?? null);
     setProvince('');
-    setProvinceId(null);
     setCity('');
-    setCities([]);
   }
   function onChangeProvince(p: string) {
     setProvince(p);
-    const match = provinces.find((row) => row.name === p);
-    setProvinceId(match?.id ?? null);
     setCity('');
   }
 
@@ -394,8 +262,8 @@ export default function OpportunityForm({
               >
                 <option value="">—</option>
                 {regions.map((r) => (
-                  <option key={r.id} value={r.name}>
-                    {r.name}
+                  <option key={r} value={r}>
+                    {r}
                   </option>
                 ))}
               </select>
@@ -405,7 +273,6 @@ export default function OpportunityForm({
                 value={region ?? ''}
                 onChange={(e) => {
                   setRegion(e.target.value);
-                  setRegionId(null);
                 }}
               />
             )}
@@ -421,8 +288,8 @@ export default function OpportunityForm({
               >
                 <option value="">—</option>
                 {provinces.map((p) => (
-                  <option key={p.id} value={p.name}>
-                    {p.name}
+                  <option key={p} value={p}>
+                    {p}
                   </option>
                 ))}
               </select>
@@ -432,7 +299,6 @@ export default function OpportunityForm({
                 value={province ?? ''}
                 onChange={(e) => {
                   setProvince(e.target.value);
-                  setProvinceId(null);
                 }}
               />
             )}
