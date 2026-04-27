@@ -1,5 +1,6 @@
 // lib/supabase/server.ts
 import { createServerClient } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 
 /**
@@ -40,4 +41,21 @@ export async function getSupabaseServerClient() {
   });
 
   return supabase;
+}
+
+export function getSupabaseServerClientWithAccessToken(accessToken: string) {
+  const { url, anon } = resolveEnv();
+
+  return createClient(url, anon, {
+    global: {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  });
 }

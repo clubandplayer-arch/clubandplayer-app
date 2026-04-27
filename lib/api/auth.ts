@@ -2,7 +2,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import type { User } from '@supabase/supabase-js';
-import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { getSupabaseServerClient, getSupabaseServerClientWithAccessToken } from '@/lib/supabase/server';
 
 // Alias tipato sul client server-side che usi davvero
 type ServerSupabase = Awaited<ReturnType<typeof getSupabaseServerClient>>;
@@ -39,20 +39,21 @@ export async function requireAuth(req: NextRequest): Promise<
   | { ctx: AuthContext }
   | { res: NextResponse<{ error: string }> }
 > {
-  const supabase = await getSupabaseServerClient();
+  const cookieSupabase = await getSupabaseServerClient();
 
-  const byCookie = await supabase.auth.getUser();
+  const byCookie = await cookieSupabase.auth.getUser();
   const cookieUser = byCookie.data?.user ?? null;
   if (!byCookie.error && cookieUser) {
-    return { ctx: { supabase, user: cookieUser } };
+    return { ctx: { supabase: cookieSupabase, user: cookieUser } };
   }
 
   const bearerToken = resolveBearerToken(req);
   if (bearerToken) {
-    const byBearer = await supabase.auth.getUser(bearerToken);
+    const bearerSupabase = getSupabaseServerClientWithAccessToken(bearerToken);
+    const byBearer = await bearerSupabase.auth.getUser();
     const bearerUser = byBearer.data?.user ?? null;
     if (!byBearer.error && bearerUser) {
-      return { ctx: { supabase, user: bearerUser } };
+      return { ctx: { supabase: bearerSupabase as unknown as ServerSupabase, user: bearerUser } };
     }
   }
 
