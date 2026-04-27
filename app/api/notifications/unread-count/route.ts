@@ -1,6 +1,5 @@
 import { withAuth } from '@/lib/api/auth';
 import { dbError, successResponse, unknownError } from '@/lib/api/standardResponses';
-import { buildBellExcludedKindsInClause } from '@/lib/notifications/bell';
 
 export const runtime = 'nodejs';
 
@@ -10,7 +9,6 @@ export const GET = withAuth(async (_req, { supabase, user }) => {
       .from('notifications')
       .select('id', { count: 'exact', head: true })
       .eq('user_id', user.id)
-      .not('kind', 'in', buildBellExcludedKindsInClause())
       .or('read_at.is.null,read.eq.false');
 
     if (error) return dbError(error.message);
