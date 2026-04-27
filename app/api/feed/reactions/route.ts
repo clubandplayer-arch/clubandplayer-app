@@ -10,6 +10,7 @@ import {
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 import { getProfileByUserId } from '@/lib/api/profile';
+import { sendPushForNotificationBestEffort } from '@/lib/push/sendExpoPush';
 import {
   CreateReactionSchema,
   ReactionCountsQuerySchema,
@@ -226,7 +227,11 @@ export async function POST(req: NextRequest) {
             },
             read: false,
           };
-          const { error: notificationError } = await notificationsClient.from('notifications').insert(notificationPayload);
+          const { data: insertedNotification, error: notificationError } = await notificationsClient
+            .from('notifications')
+            .insert(notificationPayload)
+            .select('id')
+            .maybeSingle();
 
           if (notificationError) {
             console.warn('[feed/reactions][POST] failed to insert notification', {
@@ -236,6 +241,23 @@ export async function POST(req: NextRequest) {
               actorProfileId,
               notificationPayload,
               message: notificationError.message,
+            });
+          } else if (insertedNotification?.id) {
+            const pushSummary = await sendPushForNotificationBestEffort({
+              supabase: notificationsClient,
+              userId: recipientUserId,
+              notificationId: String(insertedNotification.id),
+              kind: 'new_reaction',
+              payload: {
+                post_id: postId,
+                reaction: validReaction,
+              },
+            });
+            console.info('[feed/reactions][POST] push dispatch summary', {
+              postId,
+              recipientUserId,
+              notificationId: insertedNotification.id,
+              pushSummary,
             });
           }
         }

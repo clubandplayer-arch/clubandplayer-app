@@ -3,6 +3,7 @@ import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 import { getProfileByUserId } from '@/lib/api/profile';
+import { sendPushForNotificationBestEffort } from '@/lib/push/sendExpoPush';
 
 export const runtime = 'nodejs';
 
@@ -54,11 +55,34 @@ async function notifyApplicantStatus(params: {
       status,
     });
 
-    const { error } = await admin.from('notifications').insert(notificationPayload);
+    const { data: insertedNotification, error } = await admin
+      .from('notifications')
+      .insert(notificationPayload)
+      .select('id')
+      .maybeSingle();
     if (error) {
       console.warn('[applications/:id][notifyApplicantStatus] notifications insert failed', {
         message: error.message,
         notificationPayload,
+      });
+    } else if (insertedNotification?.id) {
+      const pushSummary = await sendPushForNotificationBestEffort({
+        supabase: admin,
+        userId: athleteId,
+        notificationId: String(insertedNotification.id),
+        kind: 'application_status',
+        payload: {
+          application_id: applicationId,
+          opportunity_id: opportunityId,
+          opportunity_title: opportunityTitle ?? null,
+          status,
+        },
+      });
+      console.info('[applications/:id][notifyApplicantStatus] push dispatch summary', {
+        athleteId,
+        applicationId,
+        notificationId: insertedNotification.id,
+        pushSummary,
       });
     }
   } catch (err) {

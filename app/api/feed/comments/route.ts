@@ -16,6 +16,7 @@ import {
 } from '@/lib/validation/feed';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 import { getProfileByUserId } from '@/lib/api/profile';
+import { sendPushForNotificationBestEffort } from '@/lib/push/sendExpoPush';
 
 export const runtime = 'nodejs';
 
@@ -237,7 +238,11 @@ export async function POST(req: NextRequest) {
         },
         read: false,
       };
-      const { error: notificationError } = await notificationsClient.from('notifications').insert(notificationPayload);
+      const { data: insertedNotification, error: notificationError } = await notificationsClient
+        .from('notifications')
+        .insert(notificationPayload)
+        .select('id')
+        .maybeSingle();
 
       if (notificationError) {
         console.warn('[api/feed/comments][POST] failed to insert notification', {
@@ -248,6 +253,25 @@ export async function POST(req: NextRequest) {
           actorProfileId,
           notificationPayload,
           message: notificationError.message,
+        });
+      } else if (insertedNotification?.id) {
+        const pushSummary = await sendPushForNotificationBestEffort({
+          supabase: notificationsClient,
+          userId: recipientUserId,
+          notificationId: String(insertedNotification.id),
+          kind: 'new_comment',
+          payload: {
+            post_id: postId,
+            comment_id: data.id,
+            body,
+          },
+        });
+        console.info('[api/feed/comments][POST] push dispatch summary', {
+          postId,
+          commentId: data.id,
+          notificationId: insertedNotification.id,
+          recipientUserId,
+          pushSummary,
         });
       }
     }
