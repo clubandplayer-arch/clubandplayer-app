@@ -1,6 +1,7 @@
 import { jsonError, withAuth } from '@/lib/api/auth';
 import { successResponse } from '@/lib/api/standardResponses';
 import { getActiveProfile } from '@/lib/api/profile';
+import { buildBellExcludedKindsInClause } from '@/lib/notifications/bell';
 import type { NotificationWithActor } from '@/types/notifications';
 
 export const runtime = 'nodejs';
@@ -41,6 +42,7 @@ export const GET = withAuth(async (req, { supabase, user }) => {
       .from('notifications')
       .select('id, kind, payload, created_at, updated_at, read_at, read, actor_profile_id, recipient_profile_id')
       .eq('user_id', user.id)
+      .not('kind', 'in', buildBellExcludedKindsInClause())
       .order('created_at', { ascending: false });
 
     const paginated = all ? base.range((page - 1) * limit, page * limit - 1) : base.limit(limit);
@@ -119,7 +121,8 @@ export const GET = withAuth(async (req, { supabase, user }) => {
     const { count, error: countError } = await supabase
       .from('notifications')
       .select('id', { count: 'exact', head: true })
-      .eq('user_id', user.id);
+      .eq('user_id', user.id)
+      .not('kind', 'in', buildBellExcludedKindsInClause());
     if (countError) {
       return jsonError('Errore conteggio notifiche', 500, {
         endpointVersion: ENDPOINT_VERSION,
