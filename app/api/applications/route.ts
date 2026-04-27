@@ -3,6 +3,7 @@ import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 import { getProfileByUserId } from '@/lib/api/profile';
+import { sendPushForNotificationBestEffort } from '@/lib/push/sendExpoPush';
 
 export const runtime = 'nodejs';
 
@@ -64,11 +65,19 @@ async function notifyClubApplicationReceived(params: {
     opportunityId,
   });
 
-  let { error: nErr } = await admin.from('notifications').insert(notificationPayload);
+  let { data: insertedNotification, error: nErr } = await admin
+    .from('notifications')
+    .insert(notificationPayload)
+    .select('id')
+    .maybeSingle();
 
   if (nErr && missingReadColumn(nErr.message)) {
     const { read: _read, ...fallbackPayload } = notificationPayload;
-    ({ error: nErr } = await admin.from('notifications').insert(fallbackPayload));
+    ({ data: insertedNotification, error: nErr } = await admin
+      .from('notifications')
+      .insert(fallbackPayload)
+      .select('id')
+      .maybeSingle());
   }
 
   if (nErr) {
@@ -78,6 +87,25 @@ async function notifyClubApplicationReceived(params: {
       recipientUserId,
       applicationId,
       opportunityId,
+    });
+  } else if (insertedNotification?.id) {
+    const pushSummary = await sendPushForNotificationBestEffort({
+      supabase: admin,
+      userId: recipientUserId,
+      notificationId: String(insertedNotification.id),
+      kind: 'application_received',
+      payload: {
+        application_id: applicationId,
+        opportunity_id: opportunityId,
+        opportunity_title: opportunityTitle ?? null,
+        status: 'submitted',
+      },
+    });
+    console.info('[applications][notifyClubApplicationReceived] push dispatch summary', {
+      recipientUserId,
+      applicationId,
+      notificationId: insertedNotification.id,
+      pushSummary,
     });
   }
 }
