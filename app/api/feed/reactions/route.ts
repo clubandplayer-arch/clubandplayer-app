@@ -22,6 +22,42 @@ export const runtime = 'nodejs';
 
 type ReactionType = 'like' | 'love' | 'care' | 'angry';
 
+function cleanName(value: unknown) {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim();
+  return normalized.length ? normalized : null;
+}
+
+async function resolveActorPublicName(client: any, actorProfileId: string | null, actorProfile?: any) {
+  if (!actorProfileId) return 'Qualcuno';
+
+  const baseProfile = actorProfile?.id ? actorProfile : null;
+  const baseName = cleanName(baseProfile?.display_name) || cleanName(baseProfile?.full_name);
+  const accountType = String(baseProfile?.account_type ?? '').toLowerCase();
+
+  if (accountType === 'club') {
+    const { data: club } = await client.from('clubs_view').select('display_name').eq('id', actorProfileId).maybeSingle();
+    return cleanName(club?.display_name) || baseName || 'Qualcuno';
+  }
+
+  if (accountType === 'athlete') {
+    const { data: athlete } = await client
+      .from('athletes_view')
+      .select('display_name, full_name')
+      .eq('id', actorProfileId)
+      .maybeSingle();
+    return cleanName(athlete?.display_name) || cleanName(athlete?.full_name) || baseName || 'Qualcuno';
+  }
+
+  if (baseName) return baseName;
+  const { data: profile } = await client
+    .from('profiles')
+    .select('display_name, full_name')
+    .eq('id', actorProfileId)
+    .maybeSingle();
+  return cleanName(profile?.display_name) || cleanName(profile?.full_name) || 'Qualcuno';
+}
+
 function isMissingTable(err?: any) {
   const msg = (err?.message || '').toString();
   return /post_reactions/.test(msg) && /does not exist/i.test(msg);
@@ -201,6 +237,7 @@ export async function POST(req: NextRequest) {
 
         const actorByUser = await getProfileByUserId(notificationsClient, userRes.user.id, { activeOnly: true });
         const actorProfileId = actorByUser?.id ? String(actorByUser.id) : null;
+        const actorName = await resolveActorPublicName(notificationsClient, actorProfileId, actorByUser);
 
         const isSelfByUser = !!recipientUserId && recipientUserId === userRes.user.id;
         const isSelfByProfile = !!recipientProfileId && !!actorProfileId && recipientProfileId === actorProfileId;
@@ -251,6 +288,7 @@ export async function POST(req: NextRequest) {
               payload: {
                 post_id: postId,
                 reaction: validReaction,
+                actor_name: actorName,
               },
             });
             console.info('[feed/reactions][POST] push dispatch summary', {
