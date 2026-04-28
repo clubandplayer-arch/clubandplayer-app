@@ -10,6 +10,7 @@ import {
 } from '@/lib/api/standardResponses';
 import { withAuth } from '@/lib/api/auth';
 import { getActiveProfile, getProfileById } from '@/lib/api/profile';
+import { sendPushForNotificationBestEffort } from '@/lib/push/sendExpoPush';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
@@ -45,21 +46,40 @@ async function notifyDirectMessage(params: {
     .maybeSingle();
 
   if (!recipient?.user_id) return;
+  const recipientUserId = String(recipient.user_id);
 
-  await admin.from('notifications').insert({
-    user_id: recipient.user_id,
-    recipient_profile_id: recipientProfileId,
-    actor_profile_id: senderProfileId,
-    kind: 'message',
-    payload: {
-      sender_profile_id: senderProfileId,
-      thread_id: senderProfileId,
+  const { data: insertedNotification } = await admin
+    .from('notifications')
+    .insert({
+      user_id: recipientUserId,
       recipient_profile_id: recipientProfileId,
-      message_id: messageId,
-      preview,
-    },
-    read: false,
-  });
+      actor_profile_id: senderProfileId,
+      kind: 'message',
+      payload: {
+        sender_profile_id: senderProfileId,
+        thread_id: senderProfileId,
+        recipient_profile_id: recipientProfileId,
+        message_id: messageId,
+        preview,
+      },
+      read: false,
+    })
+    .select('id')
+    .maybeSingle();
+
+  if (insertedNotification?.id) {
+    await sendPushForNotificationBestEffort({
+      supabase: admin,
+      userId: recipientUserId,
+      notificationId: String(insertedNotification.id),
+      kind: 'message',
+      payload: {
+        message_id: messageId,
+        thread_id: senderProfileId,
+        preview,
+      },
+    });
+  }
 }
 
 export const GET = withAuth(async (_req: NextRequest, { supabase, user }, routeContext) => {
