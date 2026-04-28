@@ -5,6 +5,7 @@ import type { NotificationWithActor } from '@/types/notifications';
 
 export const runtime = 'nodejs';
 const ENDPOINT_VERSION = 'notifications@2026-01-05a';
+const MESSAGE_NOTIFICATION_KINDS = ['new_message', 'message'] as const;
 
 const isEmailLike = (value: unknown): value is string =>
   typeof value === 'string' && /@/.test(value);
@@ -41,6 +42,7 @@ export const GET = withAuth(async (req, { supabase, user }) => {
       .from('notifications')
       .select('id, kind, payload, created_at, updated_at, read_at, read, actor_profile_id, recipient_profile_id')
       .eq('user_id', user.id)
+      .not('kind', 'in', `(${MESSAGE_NOTIFICATION_KINDS.map((kind) => `"${kind}"`).join(',')})`)
       .order('created_at', { ascending: false });
 
     const paginated = all ? base.range((page - 1) * limit, page * limit - 1) : base.limit(limit);
