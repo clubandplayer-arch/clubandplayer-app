@@ -29,6 +29,53 @@ function isMissingHiddenThreadsTable(error: any) {
     : error?.code === '42P01';
 }
 
+function cleanText(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim();
+  return normalized.length ? normalized : null;
+}
+
+function toPushPreview(value: unknown) {
+  return cleanText(value)?.slice(0, 120) ?? '';
+}
+
+async function resolveSenderName(admin: any, senderProfileId: string) {
+  const { data: sender } = await admin
+    .from('profiles')
+    .select('id, display_name, full_name, account_type')
+    .eq('id', senderProfileId)
+    .maybeSingle();
+
+  if (!sender?.id) return 'un utente';
+
+  const senderAccountType = String(sender.account_type ?? '').toLowerCase();
+  if (senderAccountType === 'club') {
+    const { data: club } = await admin
+      .from('clubs_view')
+      .select('display_name')
+      .eq('id', senderProfileId)
+      .maybeSingle();
+    return cleanText(club?.display_name) || cleanText(sender.display_name) || cleanText(sender.full_name) || 'un utente';
+  }
+
+  if (senderAccountType === 'athlete') {
+    const { data: athlete } = await admin
+      .from('athletes_view')
+      .select('display_name, full_name')
+      .eq('id', senderProfileId)
+      .maybeSingle();
+    return (
+      cleanText(athlete?.display_name) ||
+      cleanText(athlete?.full_name) ||
+      cleanText(sender.display_name) ||
+      cleanText(sender.full_name) ||
+      'un utente'
+    );
+  }
+
+  return cleanText(sender.display_name) || cleanText(sender.full_name) || 'un utente';
+}
+
 async function notifyDirectMessage(params: {
   recipientProfileId: string;
   senderProfileId: string;
@@ -47,6 +94,8 @@ async function notifyDirectMessage(params: {
 
   if (!recipient?.user_id) return;
   const recipientUserId = String(recipient.user_id);
+  const normalizedPreview = toPushPreview(preview);
+  const senderName = await resolveSenderName(admin, senderProfileId);
 
   const { data: insertedNotification } = await admin
     .from('notifications')
@@ -60,7 +109,7 @@ async function notifyDirectMessage(params: {
         thread_id: senderProfileId,
         recipient_profile_id: recipientProfileId,
         message_id: messageId,
-        preview,
+        preview: normalizedPreview,
       },
       read: false,
     })
@@ -76,7 +125,10 @@ async function notifyDirectMessage(params: {
       payload: {
         message_id: messageId,
         thread_id: senderProfileId,
-        preview,
+        sender_profile_id: senderProfileId,
+        recipient_profile_id: recipientProfileId,
+        sender_name: senderName,
+        preview: normalizedPreview,
       },
     });
   }
@@ -226,7 +278,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }, routeC
         recipientProfileId: peer.id,
         senderProfileId: me.id,
         messageId: inserted.id as string,
-        preview: content.slice(0, 140),
+        preview: content,
       });
     }
 

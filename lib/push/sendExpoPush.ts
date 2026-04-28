@@ -33,8 +33,21 @@ function toExpoToken(value: unknown): string | null {
   return null;
 }
 
-function buildTitle(kind: string) {
-  if (kind === 'message' || kind === 'new_message') return 'Nuovo messaggio';
+function sanitizePreview(value: unknown) {
+  if (typeof value !== 'string') return '';
+  return value.trim().slice(0, 120);
+}
+
+function sanitizeSenderName(value: unknown) {
+  if (typeof value !== 'string') return '';
+  return value.trim().slice(0, 80);
+}
+
+function buildTitle(kind: string, payload?: Record<string, any> | null) {
+  if (kind === 'message' || kind === 'new_message') {
+    const senderName = sanitizeSenderName(payload?.sender_name);
+    return senderName ? `Nuovo messaggio da ${senderName}` : 'Nuovo messaggio';
+  }
   if (kind === 'new_comment') return 'Nuovo commento';
   if (kind === 'new_reaction') return 'Nuova reazione';
   if (kind === 'application_received') return 'Nuova candidatura';
@@ -43,6 +56,11 @@ function buildTitle(kind: string) {
 }
 
 function buildBody(kind: string, payload?: Record<string, any> | null) {
+  if (kind === 'message' || kind === 'new_message') {
+    const preview = sanitizePreview(payload?.preview ?? payload?.body);
+    return preview || 'Hai ricevuto un nuovo messaggio.';
+  }
+
   const textFromPayload = [
     payload?.comment_preview,
     payload?.body,
@@ -55,7 +73,6 @@ function buildBody(kind: string, payload?: Record<string, any> | null) {
     return textFromPayload.trim().slice(0, 140);
   }
 
-  if (kind === 'message' || kind === 'new_message') return 'Hai ricevuto un nuovo messaggio.';
   if (kind === 'new_comment') return 'Hai ricevuto un nuovo commento.';
   if (kind === 'new_reaction') return 'Hai ricevuto una nuova reazione.';
   if (kind === 'application_received') return 'Hai ricevuto una nuova candidatura.';
@@ -99,7 +116,7 @@ export async function sendPushForNotificationBestEffort(params: SendPushParams):
       return createSummary({ skipped: 1 });
     }
 
-    const title = buildTitle(kind);
+    const title = buildTitle(kind, payload);
     const body = buildBody(kind, payload);
 
     let sent = 0;
