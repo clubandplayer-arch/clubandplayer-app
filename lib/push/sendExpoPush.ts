@@ -13,7 +13,7 @@ type SendPushParams = {
   payload?: Record<string, any> | null;
 };
 
-const EXCLUDED_KINDS = new Set<string>();
+const EXCLUDED_KINDS = new Set<string>([]);
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
 
 function createSummary(partial?: Partial<PushSummary>): PushSummary {
