@@ -10,6 +10,7 @@ import {
 } from '@/lib/api/standardResponses';
 import { withAuth } from '@/lib/api/auth';
 import { getActiveProfile, getProfileById } from '@/lib/api/profile';
+import { sendPushForNotificationBestEffort } from '@/lib/push/sendExpoPush';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
@@ -26,6 +27,53 @@ function isMissingHiddenThreadsTable(error: any) {
     ? error.message.includes('direct_message_hidden_threads') ||
         error.message.includes('relation "direct_message_hidden_threads"')
     : error?.code === '42P01';
+}
+
+function cleanText(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim();
+  return normalized.length ? normalized : null;
+}
+
+function toPushPreview(value: unknown) {
+  return cleanText(value)?.slice(0, 120) ?? '';
+}
+
+async function resolveSenderName(admin: any, senderProfileId: string) {
+  const { data: sender } = await admin
+    .from('profiles')
+    .select('id, display_name, full_name, account_type')
+    .eq('id', senderProfileId)
+    .maybeSingle();
+
+  if (!sender?.id) return 'un utente';
+
+  const senderAccountType = String(sender.account_type ?? '').toLowerCase();
+  if (senderAccountType === 'club') {
+    const { data: club } = await admin
+      .from('clubs_view')
+      .select('display_name')
+      .eq('id', senderProfileId)
+      .maybeSingle();
+    return cleanText(club?.display_name) || cleanText(sender.display_name) || cleanText(sender.full_name) || 'un utente';
+  }
+
+  if (senderAccountType === 'athlete') {
+    const { data: athlete } = await admin
+      .from('athletes_view')
+      .select('display_name, full_name')
+      .eq('id', senderProfileId)
+      .maybeSingle();
+    return (
+      cleanText(athlete?.display_name) ||
+      cleanText(athlete?.full_name) ||
+      cleanText(sender.display_name) ||
+      cleanText(sender.full_name) ||
+      'un utente'
+    );
+  }
+
+  return cleanText(sender.display_name) || cleanText(sender.full_name) || 'un utente';
 }
 
 async function notifyDirectMessage(params: {
@@ -45,21 +93,45 @@ async function notifyDirectMessage(params: {
     .maybeSingle();
 
   if (!recipient?.user_id) return;
+  const recipientUserId = String(recipient.user_id);
+  const normalizedPreview = toPushPreview(preview);
+  const senderName = await resolveSenderName(admin, senderProfileId);
 
-  await admin.from('notifications').insert({
-    user_id: recipient.user_id,
-    recipient_profile_id: recipientProfileId,
-    actor_profile_id: senderProfileId,
-    kind: 'message',
-    payload: {
-      sender_profile_id: senderProfileId,
-      thread_id: senderProfileId,
+  const { data: insertedNotification } = await admin
+    .from('notifications')
+    .insert({
+      user_id: recipientUserId,
       recipient_profile_id: recipientProfileId,
-      message_id: messageId,
-      preview,
-    },
-    read: false,
-  });
+      actor_profile_id: senderProfileId,
+      kind: 'message',
+      payload: {
+        sender_profile_id: senderProfileId,
+        thread_id: senderProfileId,
+        recipient_profile_id: recipientProfileId,
+        message_id: messageId,
+        preview: normalizedPreview,
+      },
+      read: false,
+    })
+    .select('id')
+    .maybeSingle();
+
+  if (insertedNotification?.id) {
+    await sendPushForNotificationBestEffort({
+      supabase: admin,
+      userId: recipientUserId,
+      notificationId: String(insertedNotification.id),
+      kind: 'message',
+      payload: {
+        message_id: messageId,
+        thread_id: senderProfileId,
+        sender_profile_id: senderProfileId,
+        recipient_profile_id: recipientProfileId,
+        sender_name: senderName,
+        preview: normalizedPreview,
+      },
+    });
+  }
 }
 
 export const GET = withAuth(async (_req: NextRequest, { supabase, user }, routeContext) => {
@@ -206,7 +278,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }, routeC
         recipientProfileId: peer.id,
         senderProfileId: me.id,
         messageId: inserted.id as string,
-        preview: content.slice(0, 140),
+        preview: content,
       });
     }
 

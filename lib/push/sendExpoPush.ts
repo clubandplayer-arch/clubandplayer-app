@@ -13,7 +13,7 @@ type SendPushParams = {
   payload?: Record<string, any> | null;
 };
 
-const EXCLUDED_KINDS = new Set(['message', 'new_message']);
+const EXCLUDED_KINDS = new Set<string>();
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
 
 function createSummary(partial?: Partial<PushSummary>): PushSummary {
@@ -33,29 +33,66 @@ function toExpoToken(value: unknown): string | null {
   return null;
 }
 
-function buildTitle(kind: string) {
-  if (kind === 'new_comment') return 'Nuovo commento';
-  if (kind === 'new_reaction') return 'Nuova reazione';
+function sanitizePreview(value: unknown) {
+  if (typeof value !== 'string') return '';
+  return value.trim().slice(0, 120);
+}
+
+function sanitizeSenderName(value: unknown) {
+  if (typeof value !== 'string') return '';
+  return value.trim().slice(0, 80);
+}
+
+function toReactionLabel(value: unknown) {
+  const normalized = typeof value === 'string' ? value.trim().toLowerCase() : '';
+  if (normalized === 'like') return 'Like';
+  if (normalized === 'love') return 'Love';
+  if (normalized === 'care') return 'Supporto';
+  if (normalized === 'angry') return 'Arrabbiato';
+  return 'Reazione';
+}
+
+function buildTitle(kind: string, payload?: Record<string, any> | null) {
+  if (kind === 'message' || kind === 'new_message') {
+    const senderName = sanitizeSenderName(payload?.sender_name);
+    return senderName ? `Nuovo messaggio da ${senderName}` : 'Nuovo messaggio';
+  }
+  if (kind === 'new_comment') {
+    const actorName = sanitizeSenderName(payload?.actor_name) || 'Qualcuno';
+    return `${actorName} ha commentato il tuo post`;
+  }
+  if (kind === 'new_reaction') {
+    const actorName = sanitizeSenderName(payload?.actor_name) || 'Qualcuno';
+    return `${actorName} ha reagito al tuo post`;
+  }
   if (kind === 'application_received') return 'Nuova candidatura';
   if (kind === 'application_status') return 'Aggiornamento candidatura';
   return 'Nuova notifica';
 }
 
 function buildBody(kind: string, payload?: Record<string, any> | null) {
+  if (kind === 'message' || kind === 'new_message') {
+    const preview = sanitizePreview(payload?.preview ?? payload?.body);
+    return preview || 'Hai ricevuto un nuovo messaggio.';
+  }
+  if (kind === 'new_comment') {
+    const preview = sanitizePreview(payload?.comment_preview ?? payload?.preview ?? payload?.body);
+    return preview || 'Hai ricevuto un nuovo commento.';
+  }
+  if (kind === 'new_reaction') {
+    return toReactionLabel(payload?.reaction);
+  }
+
   const textFromPayload = [
-    payload?.comment_preview,
     payload?.body,
     payload?.opportunity_title,
     payload?.status,
-    payload?.reaction,
   ].find((value) => typeof value === 'string' && value.trim().length > 0);
 
   if (typeof textFromPayload === 'string' && textFromPayload.trim()) {
     return textFromPayload.trim().slice(0, 140);
   }
 
-  if (kind === 'new_comment') return 'Hai ricevuto un nuovo commento.';
-  if (kind === 'new_reaction') return 'Hai ricevuto una nuova reazione.';
   if (kind === 'application_received') return 'Hai ricevuto una nuova candidatura.';
   if (kind === 'application_status') return 'Lo stato della candidatura è stato aggiornato.';
   return 'Apri l’app per vedere i dettagli.';
@@ -97,7 +134,7 @@ export async function sendPushForNotificationBestEffort(params: SendPushParams):
       return createSummary({ skipped: 1 });
     }
 
-    const title = buildTitle(kind);
+    const title = buildTitle(kind, payload);
     const body = buildBody(kind, payload);
 
     let sent = 0;

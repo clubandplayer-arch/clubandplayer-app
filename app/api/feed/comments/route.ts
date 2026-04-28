@@ -28,6 +28,47 @@ function sanitizeBody(raw: unknown) {
   return text.slice(0, MAX_LEN);
 }
 
+function cleanName(value: unknown) {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim();
+  return normalized.length ? normalized : null;
+}
+
+function toPushPreview(value: unknown) {
+  if (typeof value !== 'string') return '';
+  return value.trim().slice(0, 120);
+}
+
+async function resolveActorPublicName(client: any, actorProfileId: string | null, actorProfile?: any) {
+  if (!actorProfileId) return 'Qualcuno';
+
+  const baseProfile = actorProfile?.id ? actorProfile : null;
+  const baseName = cleanName(baseProfile?.display_name) || cleanName(baseProfile?.full_name);
+  const accountType = String(baseProfile?.account_type ?? '').toLowerCase();
+
+  if (accountType === 'club') {
+    const { data: club } = await client.from('clubs_view').select('display_name').eq('id', actorProfileId).maybeSingle();
+    return cleanName(club?.display_name) || baseName || 'Qualcuno';
+  }
+
+  if (accountType === 'athlete') {
+    const { data: athlete } = await client
+      .from('athletes_view')
+      .select('display_name, full_name')
+      .eq('id', actorProfileId)
+      .maybeSingle();
+    return cleanName(athlete?.display_name) || cleanName(athlete?.full_name) || baseName || 'Qualcuno';
+  }
+
+  if (baseName) return baseName;
+  const { data: profile } = await client
+    .from('profiles')
+    .select('display_name, full_name')
+    .eq('id', actorProfileId)
+    .maybeSingle();
+  return cleanName(profile?.display_name) || cleanName(profile?.full_name) || 'Qualcuno';
+}
+
 async function buildClubVerificationMap(supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>, clubIds: string[]) {
   if (!clubIds.length) return new Map<string, boolean>();
   try {
@@ -212,6 +253,8 @@ export async function POST(req: NextRequest) {
 
     const actorByUser = await getProfileByUserId(notificationsClient, auth.user.id, { activeOnly: true });
     const actorProfileId = actorByUser?.id ? String(actorByUser.id) : null;
+    const actorName = await resolveActorPublicName(notificationsClient, actorProfileId, actorByUser);
+    const commentPreview = toPushPreview(body);
 
     const isSelfByUser = !!recipientUserId && recipientUserId === auth.user.id;
     const isSelfByProfile = !!recipientProfileId && !!actorProfileId && recipientProfileId === actorProfileId;
@@ -263,7 +306,9 @@ export async function POST(req: NextRequest) {
           payload: {
             post_id: postId,
             comment_id: data.id,
-            body,
+            actor_name: actorName,
+            comment_preview: commentPreview,
+            preview: commentPreview,
           },
         });
         console.info('[api/feed/comments][POST] push dispatch summary', {
