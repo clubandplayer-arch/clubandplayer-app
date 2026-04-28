@@ -13,7 +13,7 @@ type SendPushParams = {
   payload?: Record<string, any> | null;
 };
 
-const EXCLUDED_KINDS = new Set(['message', 'new_message']);
+const EXCLUDED_KINDS = new Set<string>();
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
 
 function createSummary(partial?: Partial<PushSummary>): PushSummary {
@@ -34,6 +34,7 @@ function toExpoToken(value: unknown): string | null {
 }
 
 function buildTitle(kind: string) {
+  if (kind === 'message' || kind === 'new_message') return 'Nuovo messaggio';
   if (kind === 'new_comment') return 'Nuovo commento';
   if (kind === 'new_reaction') return 'Nuova reazione';
   if (kind === 'application_received') return 'Nuova candidatura';
@@ -54,6 +55,7 @@ function buildBody(kind: string, payload?: Record<string, any> | null) {
     return textFromPayload.trim().slice(0, 140);
   }
 
+  if (kind === 'message' || kind === 'new_message') return 'Hai ricevuto un nuovo messaggio.';
   if (kind === 'new_comment') return 'Hai ricevuto un nuovo commento.';
   if (kind === 'new_reaction') return 'Hai ricevuto una nuova reazione.';
   if (kind === 'application_received') return 'Hai ricevuto una nuova candidatura.';
