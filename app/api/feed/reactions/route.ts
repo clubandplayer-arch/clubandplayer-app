@@ -287,7 +287,7 @@ export async function POST(req: NextRequest) {
               kind: 'new_reaction',
               postId,
               actorName: actorName || 'Qualcuno',
-              latestNotificationId: String(insertedNotification.id),
+              latestNotificationId: Number(insertedNotification.id),
               body: validReaction,
             });
             console.info('[feed/reactions][POST] grouped push queued', {

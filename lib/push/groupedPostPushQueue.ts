@@ -42,7 +42,7 @@ function buildPayload(params: {
 }
 
 export async function enqueueGroupedPostPush(params: {
-  client: any; recipientUserId: string; kind: 'new_comment' | 'new_reaction'; postId: string; actorName: string; latestNotificationId: string; body?: string;
+  client: any; recipientUserId: string; kind: 'new_comment' | 'new_reaction'; postId: string; actorName: string; latestNotificationId: number | string; body?: string;
 }) {
   const { client, recipientUserId, kind, postId, actorName, latestNotificationId, body } = params;
   const nowIso = new Date().toISOString();
@@ -121,7 +121,7 @@ export async function flushGroupedPostPushes(client: any) {
     const summary = await sendPushForNotificationBestEffort({
       supabase: client,
       userId: row.recipient_user_id,
-      notificationId: row.latest_notification_id,
+      notificationId: String(row.latest_notification_id),
       kind: row.kind,
       payload: row.payload,
     });

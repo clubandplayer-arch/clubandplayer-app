@@ -3,7 +3,7 @@ create table if not exists public.grouped_push_queue (
   recipient_user_id uuid not null references auth.users(id) on delete cascade,
   kind text not null check (kind in ('new_comment', 'new_reaction')),
   post_id text not null,
-  latest_notification_id uuid not null references public.notifications(id) on delete cascade,
+  latest_notification_id bigint not null references public.notifications(id) on delete cascade,
   group_count integer not null default 1 check (group_count > 0),
   actors text[] not null default '{}',
   payload jsonb not null default '{}'::jsonb,

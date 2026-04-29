@@ -309,7 +309,7 @@ export async function POST(req: NextRequest) {
           kind: 'new_comment',
           postId,
           actorName: actorName || 'Qualcuno',
-          latestNotificationId: String(insertedNotification.id),
+          latestNotificationId: Number(insertedNotification.id),
           body: commentPreview,
         });
         console.info('[api/feed/comments][POST] grouped push queued', {
