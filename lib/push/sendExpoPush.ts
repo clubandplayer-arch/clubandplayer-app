@@ -98,6 +98,20 @@ function buildBody(kind: string, payload?: Record<string, any> | null) {
   return 'Apri l’app per vedere i dettagli.';
 }
 
+function resolvePostIdFromPayload(payload?: Record<string, any> | null): string | null {
+  const raw = payload?.post_id ?? payload?.postId ?? payload?.target_id ?? payload?.targetId;
+  if (typeof raw !== 'string') return null;
+  const normalized = raw.trim();
+  return normalized || null;
+}
+
+function buildCollapseId(kind: string, payload?: Record<string, any> | null): string | null {
+  if (kind !== 'new_comment' && kind !== 'new_reaction') return null;
+  const postId = resolvePostIdFromPayload(payload);
+  if (!postId) return null;
+  return `${kind}:post:${postId}`;
+}
+
 export async function sendPushForNotificationBestEffort(params: SendPushParams): Promise<PushSummary> {
   const { supabase, userId, notificationId, kind, payload } = params;
 
@@ -136,6 +150,8 @@ export async function sendPushForNotificationBestEffort(params: SendPushParams):
 
     const title = buildTitle(kind, payload);
     const body = buildBody(kind, payload);
+    const collapseId = buildCollapseId(kind, payload);
+    const threadId = collapseId || undefined;
 
     let sent = 0;
     let failed = 0;
@@ -153,9 +169,11 @@ export async function sendPushForNotificationBestEffort(params: SendPushParams):
             to: token,
             title,
             body,
+            ...(collapseId ? { collapseId } : {}),
             data: {
               kind,
               notificationId,
+              ...(threadId ? { threadId } : {}),
               ...(payload ?? {}),
             },
           }),
