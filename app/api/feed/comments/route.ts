@@ -285,6 +285,10 @@ export async function POST(req: NextRequest) {
   const postId = payload.postId;
   const body = sanitizeBody(payload.body);
 
+  if (!body) {
+    return validationError('Commento vuoto');
+  }
+
   const { data, error } = await supabase
     .from('post_comments')
     .insert({ post_id: postId, body, author_id: auth.user.id })

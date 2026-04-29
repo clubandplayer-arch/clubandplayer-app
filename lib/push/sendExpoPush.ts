@@ -43,6 +43,11 @@ function sanitizeSenderName(value: unknown) {
   return value.trim().slice(0, 80);
 }
 
+function sanitizeTitle(value: unknown) {
+  if (typeof value !== 'string') return '';
+  return value.trim().slice(0, 140);
+}
+
 function toReactionLabel(value: unknown) {
   const normalized = typeof value === 'string' ? value.trim().toLowerCase() : '';
   if (normalized === 'like') return 'Like';
@@ -53,6 +58,9 @@ function toReactionLabel(value: unknown) {
 }
 
 function buildTitle(kind: string, payload?: Record<string, any> | null) {
+  const payloadTitle = sanitizeTitle(payload?.title);
+  if (payloadTitle) return payloadTitle;
+
   if (kind === 'message' || kind === 'new_message') {
     const senderName = sanitizeSenderName(payload?.sender_name);
     return senderName ? `Nuovo messaggio da ${senderName}` : 'Nuovo messaggio';
@@ -71,6 +79,9 @@ function buildTitle(kind: string, payload?: Record<string, any> | null) {
 }
 
 function buildBody(kind: string, payload?: Record<string, any> | null) {
+  const payloadBody = sanitizePreview(payload?.body);
+  if (payloadBody) return payloadBody;
+
   if (kind === 'message' || kind === 'new_message') {
     const preview = sanitizePreview(payload?.preview ?? payload?.body);
     return preview || 'Hai ricevuto un nuovo messaggio.';
