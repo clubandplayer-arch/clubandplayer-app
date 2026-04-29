@@ -63,6 +63,97 @@ function isMissingTable(err?: any) {
   return /post_reactions/.test(msg) && /does not exist/i.test(msg);
 }
 
+const GROUPING_WINDOW_MINUTES = 10;
+
+function extractNotificationPostId(payload: any): string | null {
+  const postId = payload?.post_id ?? payload?.postId ?? payload?.target_id ?? payload?.targetId;
+  if (typeof postId !== 'string') return null;
+  const normalized = postId.trim();
+  return normalized.length ? normalized : null;
+}
+
+function buildGroupedTitle(kind: 'new_reaction' | 'new_comment', actorName: string, groupCount: number) {
+  const suffix = kind === 'new_comment' ? 'commentato il tuo post' : 'reagito al tuo post';
+  if (groupCount <= 1) return `${actorName} ha ${suffix}`;
+  if (groupCount === 2) return `${actorName} e un altro hanno ${suffix}`;
+  return `${actorName} e altri ${groupCount - 1} hanno ${suffix}`;
+}
+
+async function getGroupedMeta(params: {
+  client: any;
+  recipientUserId: string;
+  postId: string;
+  kind: 'new_reaction' | 'new_comment';
+  actorName: string;
+}) {
+  const { client, recipientUserId, postId, kind, actorName } = params;
+  const createdAt = new Date().toISOString();
+  const windowStart = new Date(Date.now() - GROUPING_WINDOW_MINUTES * 60_000).toISOString();
+  const { data } = await client
+    .from('notifications')
+    .select('payload, actor_profile_id, created_at')
+    .eq('user_id', recipientUserId)
+    .eq('kind', kind)
+    .eq('read', false)
+    .gte('created_at', windowStart)
+    .order('created_at', { ascending: false })
+    .limit(30);
+
+  const matching = (data ?? []).filter((row: any) => extractNotificationPostId(row?.payload) === postId);
+  const actorProfileIds = Array.from(
+    new Set(matching.map((row: any) => (row?.actor_profile_id ? String(row.actor_profile_id) : null)).filter(Boolean)),
+  ) as string[];
+
+  let actorNames: string[] = [];
+  if (actorProfileIds.length) {
+    const { data: profiles } = await client
+      .from('profiles')
+      .select('id, display_name, full_name')
+      .in('id', actorProfileIds);
+    actorNames = (profiles ?? [])
+      .map((p: any) => cleanName(p?.display_name) || cleanName(p?.full_name))
+      .filter((name: string | null): name is string => !!name);
+  }
+  if (actorName) actorNames.unshift(actorName);
+  const uniqueActorNames = Array.from(new Set(actorNames)).slice(0, 5);
+  const groupCount = Math.max(1, matching.length);
+  return { createdAt, groupCount, actors: uniqueActorNames, title: buildGroupedTitle(kind, actorName, groupCount) };
+}
+
+function buildGroupedPostPushPayload(params: {
+  kind: 'new_reaction' | 'new_comment';
+  postId: string;
+  title: string;
+  priority: 'low' | 'default';
+  actorName?: string;
+  body?: string;
+  createdAt: string;
+  groupCount: number;
+  actors: string[];
+}) {
+  const { kind, postId, title, priority, actorName, body, createdAt, groupCount, actors } = params;
+  return {
+    kind,
+    type: kind,
+    title,
+    ...(body ? { body } : {}),
+    targetType: 'post',
+    target_type: 'post',
+    targetId: postId,
+    target_id: postId,
+    postId,
+    post_id: postId,
+    actorName: actorName || undefined,
+    actor_name: actorName || undefined,
+    createdAt,
+    created_at: createdAt,
+    priority,
+    grouped: true,
+    group_count: groupCount,
+    actors,
+  };
+}
+
 function buildCounts(rows: Array<{ post_id: string; reaction: ReactionType; user_id?: string }>) {
   const countsMap = new Map<string, { post_id: string; reaction: ReactionType; count: number }>();
   for (const row of rows) {
@@ -280,16 +371,29 @@ export async function POST(req: NextRequest) {
               message: notificationError.message,
             });
           } else if (insertedNotification?.id) {
+            const groupedMeta = await getGroupedMeta({
+              client: notificationsClient,
+              recipientUserId,
+              postId,
+              kind: 'new_reaction',
+              actorName: actorName || 'Qualcuno',
+            });
             const pushSummary = await sendPushForNotificationBestEffort({
               supabase: notificationsClient,
               userId: recipientUserId,
               notificationId: String(insertedNotification.id),
               kind: 'new_reaction',
-              payload: {
-                post_id: postId,
-                reaction: validReaction,
-                actor_name: actorName,
-              },
+              payload: buildGroupedPostPushPayload({
+                kind: 'new_reaction',
+                postId,
+                title: groupedMeta.title,
+                priority: 'low',
+                actorName,
+                body: validReaction,
+                createdAt: groupedMeta.createdAt,
+                groupCount: groupedMeta.groupCount,
+                actors: groupedMeta.actors,
+              }),
             });
             console.info('[feed/reactions][POST] push dispatch summary', {
               postId,
