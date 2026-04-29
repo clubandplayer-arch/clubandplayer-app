@@ -63,6 +63,37 @@ function isMissingTable(err?: any) {
   return /post_reactions/.test(msg) && /does not exist/i.test(msg);
 }
 
+function buildGroupedPostPushPayload(params: {
+  kind: 'new_reaction' | 'new_comment';
+  postId: string;
+  title: string;
+  priority: 'low' | 'default';
+  actorName?: string;
+  body?: string;
+}) {
+  const { kind, postId, title, priority, actorName, body } = params;
+  return {
+    kind,
+    type: kind,
+    title,
+    ...(body ? { body } : {}),
+    targetType: 'post',
+    target_type: 'post',
+    targetId: postId,
+    target_id: postId,
+    postId,
+    post_id: postId,
+    actorName: actorName || undefined,
+    actor_name: actorName || undefined,
+    createdAt: new Date().toISOString(),
+    created_at: new Date().toISOString(),
+    priority,
+    grouped: true,
+    group_count: 1,
+    actors: actorName ? [actorName] : [],
+  };
+}
+
 function buildCounts(rows: Array<{ post_id: string; reaction: ReactionType; user_id?: string }>) {
   const countsMap = new Map<string, { post_id: string; reaction: ReactionType; count: number }>();
   for (const row of rows) {
@@ -285,11 +316,14 @@ export async function POST(req: NextRequest) {
               userId: recipientUserId,
               notificationId: String(insertedNotification.id),
               kind: 'new_reaction',
-              payload: {
-                post_id: postId,
-                reaction: validReaction,
-                actor_name: actorName,
-              },
+              payload: buildGroupedPostPushPayload({
+                kind: 'new_reaction',
+                postId,
+                title: `${actorName || 'Qualcuno'} ha reagito al tuo post`,
+                priority: 'low',
+                actorName,
+                body: validReaction,
+              }),
             });
             console.info('[feed/reactions][POST] push dispatch summary', {
               postId,

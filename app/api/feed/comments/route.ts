@@ -39,6 +39,37 @@ function toPushPreview(value: unknown) {
   return value.trim().slice(0, 120);
 }
 
+function buildGroupedPostPushPayload(params: {
+  postId: string;
+  actorName?: string;
+  preview?: string;
+}) {
+  const { postId, actorName, preview } = params;
+  const createdAt = new Date().toISOString();
+  return {
+    kind: 'new_comment' as const,
+    type: 'new_comment' as const,
+    title: `${actorName || 'Qualcuno'} ha commentato il tuo post`,
+    ...(preview ? { body: preview } : {}),
+    targetType: 'post',
+    target_type: 'post',
+    targetId: postId,
+    target_id: postId,
+    postId,
+    post_id: postId,
+    conversationId: undefined,
+    conversation_id: undefined,
+    actorName: actorName || undefined,
+    actor_name: actorName || undefined,
+    createdAt,
+    created_at: createdAt,
+    priority: 'default' as const,
+    grouped: true,
+    group_count: 1,
+    actors: actorName ? [actorName] : [],
+  };
+}
+
 async function resolveActorPublicName(client: any, actorProfileId: string | null, actorProfile?: any) {
   if (!actorProfileId) return 'Qualcuno';
 
@@ -303,13 +334,11 @@ export async function POST(req: NextRequest) {
           userId: recipientUserId,
           notificationId: String(insertedNotification.id),
           kind: 'new_comment',
-          payload: {
-            post_id: postId,
-            comment_id: data.id,
-            actor_name: actorName,
-            comment_preview: commentPreview,
+          payload: buildGroupedPostPushPayload({
+            postId,
+            actorName,
             preview: commentPreview,
-          },
+          }),
         });
         console.info('[api/feed/comments][POST] push dispatch summary', {
           postId,
