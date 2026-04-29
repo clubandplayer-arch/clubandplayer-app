@@ -3,6 +3,7 @@ import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 import { flushGroupedPostPushes } from '@/lib/push/groupedPostPushQueue';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 function isAuthorized(req: NextRequest) {
   const expected = process.env.CRON_SECRET?.trim();
@@ -12,7 +13,7 @@ function isAuthorized(req: NextRequest) {
   return token === expected;
 }
 
-export async function POST(req: NextRequest) {
+async function handleFlush(req: NextRequest) {
   if (!isAuthorized(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -24,4 +25,12 @@ export async function POST(req: NextRequest) {
 
   const results = await flushGroupedPostPushes(admin);
   return NextResponse.json({ ok: true, processed: results.length, results });
+}
+
+export async function GET(req: NextRequest) {
+  return handleFlush(req);
+}
+
+export async function POST(req: NextRequest) {
+  return handleFlush(req);
 }

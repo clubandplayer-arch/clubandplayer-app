@@ -6,5 +6,11 @@
       "source": "/storage/:path*",
       "destination": "https://izzfjrcabtixxsrnkzro.supabase.co/storage/v1/object/public/:path*"
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/notifications/flush-grouped-pushes",
+      "schedule": "* * * * *"
+    }
   ]
 }
