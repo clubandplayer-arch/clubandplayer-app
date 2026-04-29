@@ -39,17 +39,69 @@ function toPushPreview(value: unknown) {
   return value.trim().slice(0, 120);
 }
 
+const GROUPING_WINDOW_MINUTES = 10;
+
+function extractNotificationPostId(payload: any): string | null {
+  const postId = payload?.post_id ?? payload?.postId ?? payload?.target_id ?? payload?.targetId;
+  if (typeof postId !== 'string') return null;
+  const normalized = postId.trim();
+  return normalized.length ? normalized : null;
+}
+
+function buildGroupedTitle(actorName: string, groupCount: number) {
+  if (groupCount <= 1) return `${actorName} ha commentato il tuo post`;
+  if (groupCount === 2) return `${actorName} e un altro hanno commentato il tuo post`;
+  return `${actorName} e altri ${groupCount - 1} hanno commentato il tuo post`;
+}
+
+async function getGroupedMeta(params: { client: any; recipientUserId: string; postId: string; actorName: string }) {
+  const { client, recipientUserId, postId, actorName } = params;
+  const createdAt = new Date().toISOString();
+  const windowStart = new Date(Date.now() - GROUPING_WINDOW_MINUTES * 60_000).toISOString();
+  const { data } = await client
+    .from('notifications')
+    .select('payload, actor_profile_id, created_at')
+    .eq('user_id', recipientUserId)
+    .eq('kind', 'new_comment')
+    .eq('read', false)
+    .gte('created_at', windowStart)
+    .order('created_at', { ascending: false })
+    .limit(30);
+
+  const matching = (data ?? []).filter((row: any) => extractNotificationPostId(row?.payload) === postId);
+  const actorProfileIds = Array.from(
+    new Set(matching.map((row: any) => (row?.actor_profile_id ? String(row.actor_profile_id) : null)).filter(Boolean)),
+  ) as string[];
+  let actorNames: string[] = [];
+  if (actorProfileIds.length) {
+    const { data: profiles } = await client
+      .from('profiles')
+      .select('id, display_name, full_name')
+      .in('id', actorProfileIds);
+    actorNames = (profiles ?? [])
+      .map((p: any) => cleanName(p?.display_name) || cleanName(p?.full_name))
+      .filter((name: string | null): name is string => !!name);
+  }
+  if (actorName) actorNames.unshift(actorName);
+  const uniqueActorNames = Array.from(new Set(actorNames)).slice(0, 5);
+  const groupCount = Math.max(1, matching.length);
+  return { createdAt, groupCount, actors: uniqueActorNames, title: buildGroupedTitle(actorName, groupCount) };
+}
+
 function buildGroupedPostPushPayload(params: {
   postId: string;
   actorName?: string;
   preview?: string;
+  title: string;
+  createdAt: string;
+  groupCount: number;
+  actors: string[];
 }) {
-  const { postId, actorName, preview } = params;
-  const createdAt = new Date().toISOString();
+  const { postId, actorName, preview, title, createdAt, groupCount, actors } = params;
   return {
     kind: 'new_comment' as const,
     type: 'new_comment' as const,
-    title: `${actorName || 'Qualcuno'} ha commentato il tuo post`,
+    title,
     ...(preview ? { body: preview } : {}),
     targetType: 'post',
     target_type: 'post',
@@ -65,8 +117,8 @@ function buildGroupedPostPushPayload(params: {
     created_at: createdAt,
     priority: 'default' as const,
     grouped: true,
-    group_count: 1,
-    actors: actorName ? [actorName] : [],
+    group_count: groupCount,
+    actors,
   };
 }
 
@@ -329,6 +381,12 @@ export async function POST(req: NextRequest) {
           message: notificationError.message,
         });
       } else if (insertedNotification?.id) {
+        const groupedMeta = await getGroupedMeta({
+          client: notificationsClient,
+          recipientUserId,
+          postId,
+          actorName: actorName || 'Qualcuno',
+        });
         const pushSummary = await sendPushForNotificationBestEffort({
           supabase: notificationsClient,
           userId: recipientUserId,
@@ -338,6 +396,10 @@ export async function POST(req: NextRequest) {
             postId,
             actorName,
             preview: commentPreview,
+            title: groupedMeta.title,
+            createdAt: groupedMeta.createdAt,
+            groupCount: groupedMeta.groupCount,
+            actors: groupedMeta.actors,
           }),
         });
         console.info('[api/feed/comments][POST] push dispatch summary', {
