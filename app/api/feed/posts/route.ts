@@ -503,6 +503,21 @@ export async function GET(req: NextRequest) {
         attachAuthorProfile(r, { byUserId: authorProfileMapByUserId, byProfileId: authorProfileMapByProfileId }),
       )
       .map((r) => normalizeRow(r, quotedMap ?? undefined)) || [];
+
+  if (currentProfileId) {
+    const { data: blockedRows } = await supabase
+      .from('profile_blocks')
+      .select('blocked_profile_id')
+      .eq('blocker_profile_id', currentProfileId);
+    const blockedSet = new Set((blockedRows ?? []).map((row: any) => String(row.blocked_profile_id)).filter(Boolean));
+    if (blockedSet.size > 0) {
+      rows = rows.filter((row: any) => {
+        const authorProfileId = row?.author_profile?.id ?? row?.author_profile_id ?? null;
+        return !authorProfileId || !blockedSet.has(String(authorProfileId));
+      });
+    }
+  }
+
   rows = await attachVerifiedFlags(rows);
   const postsCountAfterJoin = rows.length;
 

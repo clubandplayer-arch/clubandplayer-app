@@ -64,6 +64,7 @@ export default function FeedPage() {
   } | null>(null);
   const [starterPackLoading, setStarterPackLoading] = useState(false);
   const [starterPackError, setStarterPackError] = useState<string | null>(null);
+  const [blockedProfileIds, setBlockedProfileIds] = useState<Set<string>>(new Set());
 
   const {
     posts: feedPosts,
@@ -78,7 +79,14 @@ export default function FeedPage() {
     updatePost,
     removePost,
   } = useFeed();
-  const posts = feedPosts;
+  const posts = useMemo(
+    () =>
+      feedPosts.filter((post) => {
+        const authorProfileId = post.author_profile?.id ?? post.author_profile_id ?? null;
+        return !authorProfileId || !blockedProfileIds.has(String(authorProfileId));
+      }),
+    [feedPosts, blockedProfileIds],
+  );
   const errorMessage = error?.message ?? null;
   const canCreatePost =
     Boolean(currentUserId) &&
@@ -342,6 +350,14 @@ export default function FeedPage() {
     removePost(id);
   }
 
+  function onAuthorBlocked(blockedProfileId: string) {
+    setBlockedProfileIds((curr) => {
+      const next = new Set(curr);
+      next.add(String(blockedProfileId));
+      return next;
+    });
+  }
+
   return (
     <div className="pb-6" aria-labelledby={headingId}>
       {/* layout a 2 colonne: sx (minicard) / centro (composer + post) */}
@@ -450,6 +466,7 @@ export default function FeedPage() {
                     currentUserId={currentUserId}
                     onUpdated={onPostUpdated}
                     onDeleted={onPostDeleted}
+                    onAuthorBlocked={onAuthorBlocked}
                     reaction={reactions[String(p.id)] ?? createDefaultReaction()}
                     commentCount={commentCounts[String(p.id)] ?? 0}
                     pickerOpen={pickerFor === String(p.id)}

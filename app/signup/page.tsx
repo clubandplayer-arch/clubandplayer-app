@@ -88,7 +88,7 @@ export default function SignupPage() {
           <BrandLogo variant="signup" unlinked />
           <div className="space-y-4">
             <h2 className="text-3xl font-bold leading-tight text-[#00527a] sm:text-4xl">
-              <em>entra a far parte di questo nuovo progetto!</em>
+              entra a far parte di questo nuovo progetto!
             </h2>
             <p className="text-lg leading-relaxed text-slate-800">
               Registrati come <b>CLUB</b> o come <b>PLAYER</b>, pubblica opportunità, costruisci la tua carriera.
@@ -195,6 +195,20 @@ export default function SignupPage() {
             </form>
 
             <p className="mt-6 text-center text-base font-semibold text-gray-700 dark:text-gray-200">
+              <span className="block">Registrandoti accetti</span>
+              <span className="block">
+                <a href="/legal/terms" className="underline underline-offset-4" target="_blank" rel="noreferrer">
+                  Termini di utilizzo
+                </a>{' '}
+                e la{' '}
+                <a href="/legal/privacy" className="underline underline-offset-4" target="_blank" rel="noreferrer">
+                  Privacy Policy
+                </a>
+                .
+              </span>
+            </p>
+
+            <p className="text-center text-base font-semibold text-gray-700 dark:text-gray-200">
               Hai già un account?{' '}
               <a href="/login" className="link underline underline-offset-4">
                 Accedi

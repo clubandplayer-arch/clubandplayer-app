@@ -37,6 +37,16 @@ export default function TermsPage() {
         </p>
       </section>
 
+      <section className="mt-8 space-y-3 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+        <h2 className="text-lg font-semibold">Tolleranza zero per contenuti offensivi o utenti abusivi</h2>
+        <ul className="list-disc space-y-2 pl-6">
+          <li>Non sono tollerati contenuti offensivi, abusivi, discriminatori, minacciosi, spam o illegali.</li>
+          <li>Gli utenti possono segnalare contenuti e profili tramite le funzioni di segnalazione disponibili nella piattaforma.</li>
+          <li>Gli utenti possono bloccare altri utenti per non visualizzarne più i contenuti nel proprio feed.</li>
+          <li>Club &amp; Player può rimuovere contenuti e/o sospendere account che violano queste regole o i presenti Termini.</li>
+        </ul>
+      </section>
+
       <section className="mt-8 space-y-3 text-sm text-neutral-700 dark:text-neutral-200">
         <h2 className="text-lg font-semibold">Limitazione di responsabilità</h2>
         <p>
