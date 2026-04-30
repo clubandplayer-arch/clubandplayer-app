@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { XMLParser } from 'fast-xml-parser';
@@ -16,6 +16,15 @@ const UNIQUE_CSV_PATH = path.join(OUTPUT_DIR, 'teams_unique.csv');
 type RawTeamRow = {
   originalName: string;
   url: string;
+};
+
+type CliOptions = {
+  sitemapFile?: string;
+};
+
+type FetchResult = {
+  text: string | null;
+  status: number | null;
 };
 
 const xmlParser = new XMLParser({
@@ -53,25 +62,40 @@ function asArray<T>(value: T | T[] | undefined): T[] {
   return Array.isArray(value) ? value : [value];
 }
 
-async function fetchTextWithHandling(url: string): Promise<string | null> {
+async function fetchTextWithHandling(url: string): Promise<FetchResult> {
   try {
     const response = await rateLimitedFetch(url);
 
     if (response.status === 403) {
       console.warn(`[WARN] 403 Forbidden su: ${url}`);
-      return null;
+      return { text: null, status: 403 };
     }
 
     if (!response.ok) {
       console.warn(`[WARN] HTTP ${response.status} su: ${url}`);
-      return null;
+      return { text: null, status: response.status };
     }
 
-    return await response.text();
+    return { text: await response.text(), status: response.status };
   } catch (error) {
     console.warn(`[WARN] Errore rete su ${url}:`, error);
-    return null;
+    return { text: null, status: null };
   }
+}
+
+function parseCliOptions(argv: string[]): CliOptions {
+  const options: CliOptions = {};
+
+  for (const arg of argv) {
+    if (arg.startsWith('--sitemap-file=')) {
+      const value = arg.split('=').slice(1).join('=').trim();
+      if (value) {
+        options.sitemapFile = value;
+      }
+    }
+  }
+
+  return options;
 }
 
 function extractSitemapUrlsFromXml(xmlText: string): string[] {
@@ -179,22 +203,41 @@ function escapeCsv(value: string): string {
 async function main(): Promise<void> {
   await mkdir(OUTPUT_DIR, { recursive: true });
 
-  console.log(`[INFO] Download sitemap index: ${SITEMAP_INDEX_URL}`);
-  const sitemapIndexXml = await fetchTextWithHandling(SITEMAP_INDEX_URL);
+  const options = parseCliOptions(process.argv.slice(2));
+
+  let sitemapIndexXml: string | null = null;
+  if (options.sitemapFile) {
+    const sitemapPath = path.resolve(process.cwd(), options.sitemapFile);
+    console.log(`[INFO] Lettura sitemap index da file locale: ${sitemapPath}`);
+    sitemapIndexXml = await readFile(sitemapPath, 'utf8');
+  } else {
+    console.log(`[INFO] Download sitemap index: ${SITEMAP_INDEX_URL}`);
+    const sitemapIndexResponse = await fetchTextWithHandling(SITEMAP_INDEX_URL);
+    sitemapIndexXml = sitemapIndexResponse.text;
+  }
+
   if (!sitemapIndexXml) {
-    throw new Error('Impossibile scaricare la sitemap index iniziale.');
+    throw new Error('Impossibile ottenere la sitemap index iniziale.');
   }
 
   const childSitemapUrls = extractSitemapUrlsFromXml(sitemapIndexXml);
   console.log(`[INFO] Sitemap figlie trovate: ${childSitemapUrls.length}`);
 
   const candidateUrls = new Set<string>();
+  let childSitemapsRead = 0;
+  const blockedChildSitemaps: string[] = [];
 
   for (const sitemapUrl of childSitemapUrls) {
-    const sitemapXml = await fetchTextWithHandling(sitemapUrl);
-    if (!sitemapXml) continue;
+    const sitemapResponse = await fetchTextWithHandling(sitemapUrl);
+    if (!sitemapResponse.text) {
+      if (sitemapResponse.status === 403) {
+        blockedChildSitemaps.push(sitemapUrl);
+      }
+      continue;
+    }
 
-    const urls = extractPageUrlsFromSitemap(sitemapXml);
+    childSitemapsRead += 1;
+    const urls = extractPageUrlsFromSitemap(sitemapResponse.text);
     for (const url of urls) {
       if (isLikelyTeamUrl(url)) {
         candidateUrls.add(url);
@@ -207,10 +250,10 @@ async function main(): Promise<void> {
   const rawRows: RawTeamRow[] = [];
 
   for (const url of candidateUrls) {
-    const html = await fetchTextWithHandling(url);
-    if (!html) continue;
+    const pageResponse = await fetchTextWithHandling(url);
+    if (!pageResponse.text) continue;
 
-    const originalName = extractTeamNameFromHtml(html);
+    const originalName = extractTeamNameFromHtml(pageResponse.text);
     if (!originalName) continue;
 
     rawRows.push({ originalName, url });
@@ -244,10 +287,20 @@ async function main(): Promise<void> {
   await writeFile(RAW_CSV_PATH, `${rawCsvLines.join('\n')}\n`, 'utf8');
   await writeFile(UNIQUE_CSV_PATH, `${uniqueCsvLines.join('\n')}\n`, 'utf8');
 
+  if (blockedChildSitemaps.length > 0) {
+    console.log('[WARN] Sitemap figlie bloccate (403):');
+    for (const blockedSitemap of blockedChildSitemaps) {
+      console.log(` - ${blockedSitemap}`);
+    }
+  }
+
   console.log('--- RISULTATO ---');
-  console.log(`totale URL sitemap letti: ${candidateUrls.size}`);
-  console.log(`totale squadre raw: ${rawRows.length}`);
-  console.log(`totale squadre unique: ${uniqueTeams.length}`);
+  console.log(`sitemap figlie trovate: ${childSitemapUrls.length}`);
+  console.log(`sitemap figlie lette correttamente: ${childSitemapsRead}`);
+  console.log(`sitemap figlie bloccate 403: ${blockedChildSitemaps.length}`);
+  console.log(`URL candidati: ${candidateUrls.size}`);
+  console.log(`squadre raw: ${rawRows.length}`);
+  console.log(`squadre unique: ${uniqueTeams.length}`);
   console.log(`CSV raw: ${RAW_CSV_PATH}`);
   console.log(`CSV unique: ${UNIQUE_CSV_PATH}`);
 }

@@ -11,7 +11,8 @@
     "dev:check": "pnpm lint && pnpm typecheck",
     "ci:check": "pnpm lint && pnpm typecheck && pnpm run build",
     "test:e2e": "node --test tests/e2e/**/*.test.mjs",
-    "extract:tuttocampo": "tsx scripts/extract-tuttocampo-teams.ts"
+    "extract:tuttocampo": "tsx scripts/extract-tuttocampo-teams.ts",
+    "extract:tuttocampo:local": "tsx scripts/extract-tuttocampo-teams.ts --sitemap-file=data/tuttocampo/Index2025_26.xml"
   },
   "dependencies": {
     "@react-email/render": "^1.3.1",
