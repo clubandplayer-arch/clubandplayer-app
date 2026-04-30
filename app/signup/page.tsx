@@ -195,6 +195,18 @@ export default function SignupPage() {
             </form>
 
             <p className="mt-6 text-center text-base font-semibold text-gray-700 dark:text-gray-200">
+              Registrandoti accetti i{' '}
+              <a href="/legal/terms" className="underline underline-offset-4" target="_blank" rel="noreferrer">
+                Termini di utilizzo
+              </a>{' '}
+              e la{' '}
+              <a href="/legal/privacy" className="underline underline-offset-4" target="_blank" rel="noreferrer">
+                Privacy Policy
+              </a>
+              .
+            </p>
+
+            <p className="text-center text-base font-semibold text-gray-700 dark:text-gray-200">
               Hai già un account?{' '}
               <a href="/login" className="link underline underline-offset-4">
                 Accedi

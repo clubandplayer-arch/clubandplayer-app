@@ -63,6 +63,12 @@ export default function OnboardingPage() {
       <p className="text-gray-600">
         Completa il tuo profilo per iniziare.
       </p>
+      <p className="text-sm text-gray-600">
+        Proseguendo accetti i{' '}
+        <a href="/legal/terms" className="underline" target="_blank" rel="noreferrer">Termini di utilizzo</a>{' '}
+        e la{' '}
+        <a href="/legal/privacy" className="underline" target="_blank" rel="noreferrer">Privacy Policy</a>.
+      </p>
       {/* …il tuo form di onboarding… */}
     </div>
   )

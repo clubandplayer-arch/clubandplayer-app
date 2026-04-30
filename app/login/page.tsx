@@ -231,6 +231,18 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY`}
           </button>
         </form>
 
+        <p className="text-center text-xs text-gray-600">
+          Accedendo accetti i{' '}
+          <a href="/legal/terms" className="underline" target="_blank" rel="noreferrer">
+            Termini di utilizzo
+          </a>{' '}
+          e la{' '}
+          <a href="/legal/privacy" className="underline" target="_blank" rel="noreferrer">
+            Privacy Policy
+          </a>
+          .
+        </p>
+
         {currentEmail && (
           <div className="mt-2 text-center text-xs text-gray-600">
             Sei loggato come <strong>{currentEmail}</strong>.{' '}

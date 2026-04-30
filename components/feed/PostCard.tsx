@@ -68,6 +68,7 @@ export type PostCardProps = {
   onCommentCountChange?: (next: number) => void;
   onUpdated?: (next: FeedPost) => void;
   onDeleted?: (id: string) => void;
+  onAuthorBlocked?: (blockedProfileId: string) => void;
 };
 
 export function PostCard({
@@ -82,6 +83,7 @@ export function PostCard({
   onClosePicker,
   onToggleReaction,
   onCommentCountChange,
+  onAuthorBlocked,
 }: PostCardProps) {
   const LONG_PRESS_MS = 500;
   const isEvent = (post.kind ?? 'normal') === 'event';
@@ -117,6 +119,7 @@ export function PostCard({
   const [shareOpen, setShareOpen] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
   const [shareLoading, setShareLoading] = useState(false);
+  const [moderationLoading, setModerationLoading] = useState(false);
   const linkUrl = post.link_url ?? firstUrl(description);
   const linkTitle = post.link_title ?? null;
   const linkDescription = post.link_description ?? null;
@@ -236,6 +239,52 @@ export function PostCard({
     }
   }
 
+  async function reportPost() {
+    if (!confirm('Vuoi segnalare questo contenuto?')) return;
+    setModerationLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/reports', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetType: 'post', targetId: String(post.id) }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json?.ok) throw new Error(json?.error || 'Segnalazione non inviata');
+    } catch (e: any) {
+      setError(e?.message || 'Errore');
+    } finally {
+      setModerationLoading(false);
+    }
+  }
+
+  async function blockAuthor() {
+    const blockedProfileId = authorProfile?.id ?? post.author_profile_id ?? null;
+    if (!blockedProfileId) {
+      setError('Profilo autore non disponibile');
+      return;
+    }
+    if (!confirm('Bloccare questo autore? I suoi contenuti spariranno subito dal tuo feed.')) return;
+    setModerationLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/blocks', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ blockedProfileId }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json?.ok) throw new Error(json?.error || 'Blocco non riuscito');
+      onAuthorBlocked?.(String(blockedProfileId));
+    } catch (e: any) {
+      setError(e?.message || 'Errore');
+    } finally {
+      setModerationLoading(false);
+    }
+  }
+
   return (
     <article className="relative mb-4 overflow-hidden rounded-xl border border-slate-100 bg-white p-4 shadow-sm transition-shadow hover:shadow-md md:p-5">
       <div className="flex items-start justify-between gap-4">
@@ -332,6 +381,26 @@ export function PostCard({
           >
             <PostIconShare className={actionIconClass} aria-hidden />
           </button>
+          {!isOwner ? (
+            <>
+              <button
+                type="button"
+                onClick={reportPost}
+                className="rounded-full px-2 py-1 text-xs transition hover:bg-neutral-100 hover:text-neutral-900"
+                disabled={moderationLoading}
+              >
+                Segnala
+              </button>
+              <button
+                type="button"
+                onClick={blockAuthor}
+                className="rounded-full px-2 py-1 text-xs transition hover:bg-neutral-100 hover:text-neutral-900"
+                disabled={moderationLoading}
+              >
+                Blocca autore
+              </button>
+            </>
+          ) : null}
         </div>
       </div>
       {editing ? (
