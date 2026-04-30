@@ -423,7 +423,6 @@ export function PostCard({
 
       <div
         className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 text-sm font-semibold text-neutral-700"
-        onMouseLeave={onClosePicker}
       >
         <div className="relative inline-flex items-center gap-2">
           <button
@@ -472,7 +471,12 @@ export function PostCard({
           </button>
 
           {pickerOpen && (
-            <div className="absolute left-0 top-full z-10 mt-1 flex gap-2 rounded-full border border-slate-100 bg-white px-2 py-1 shadow-lg">
+            <div
+              className="absolute left-0 top-full z-10 pt-1"
+              onMouseLeave={onClosePicker}
+              onMouseEnter={onOpenPicker}
+            >
+              <div className="flex gap-2 rounded-full border border-slate-100 bg-white px-2 py-1 shadow-lg">
               {REACTION_ORDER.map((r) => (
                 <button
                   key={r}
@@ -489,6 +493,7 @@ export function PostCard({
                   <span className="sr-only">{r}</span>
                 </button>
               ))}
+              </div>
             </div>
           )}
         </div>
