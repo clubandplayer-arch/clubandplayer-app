@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import type React from 'react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CommentsSection } from '@/components/feed/CommentsSection';
 import { PostIconDelete, PostIconEdit, PostIconShare } from '@/components/icons/PostActionIcons';
 import { PostMedia } from '@/components/feed/PostMedia';
@@ -83,6 +83,7 @@ export function PostCard({
   onToggleReaction,
   onCommentCountChange,
 }: PostCardProps) {
+  const LONG_PRESS_MS = 500;
   const isEvent = (post.kind ?? 'normal') === 'event';
   const eventDetails = post.event_payload;
   const baseDescription = post.content ?? post.text ?? '';
@@ -125,6 +126,15 @@ export function PostCard({
   const errorId = error ? `post-error-${post.id}` : undefined;
   const eventDateLabel = eventDetails?.date ? formatEventDate(eventDetails.date) : null;
   const [commentSignal, setCommentSignal] = useState(0);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressTriggeredRef = useRef(false);
+
+  function clearLongPressTimer() {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }
 
   const shareTitle = isEvent ? eventDetails?.title ?? 'Evento del club' : 'Post del feed';
   const shareMessage = useMemo(() => {
@@ -180,6 +190,10 @@ export function PostCard({
   useEffect(() => {
     if (!editing) setText(description);
   }, [description, editing, post]);
+
+  useEffect(() => {
+    return () => clearLongPressTimer();
+  }, []);
 
   async function saveEdit() {
     const payload = text.trim();
@@ -409,13 +423,33 @@ export function PostCard({
 
       <div
         className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 text-sm font-semibold text-neutral-700"
-        onMouseLeave={onClosePicker}
       >
         <div className="relative inline-flex items-center gap-2">
           <button
             type="button"
-            onClick={() => onToggleReaction('like')}
+            onClick={() => {
+              if (longPressTriggeredRef.current) {
+                longPressTriggeredRef.current = false;
+                return;
+              }
+              onToggleReaction('like');
+            }}
             onMouseEnter={onOpenPicker}
+            onTouchStart={() => {
+              longPressTriggeredRef.current = false;
+              clearLongPressTimer();
+              longPressTimerRef.current = setTimeout(() => {
+                longPressTriggeredRef.current = true;
+                onOpenPicker();
+              }, LONG_PRESS_MS);
+            }}
+            onTouchEnd={() => {
+              clearLongPressTimer();
+            }}
+            onTouchCancel={() => {
+              clearLongPressTimer();
+              longPressTriggeredRef.current = false;
+            }}
             className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 transition ${
               reaction.mine
                 ? 'bg-[var(--brand)]/10 text-[var(--brand)] shadow-inner'
@@ -437,7 +471,12 @@ export function PostCard({
           </button>
 
           {pickerOpen && (
-            <div className="absolute left-0 top-full z-10 mt-1 flex gap-2 rounded-full border border-slate-100 bg-white px-2 py-1 shadow-lg">
+            <div
+              className="absolute left-0 top-full z-10 pt-1"
+              onMouseLeave={onClosePicker}
+              onMouseEnter={onOpenPicker}
+            >
+              <div className="flex gap-2 rounded-full border border-slate-100 bg-white px-2 py-1 shadow-lg">
               {REACTION_ORDER.map((r) => (
                 <button
                   key={r}
@@ -454,6 +493,7 @@ export function PostCard({
                   <span className="sr-only">{r}</span>
                 </button>
               ))}
+              </div>
             </div>
           )}
         </div>

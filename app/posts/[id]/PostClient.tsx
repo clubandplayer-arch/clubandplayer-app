@@ -1,9 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { PostCard } from '@/components/feed/PostCard';
 import {
   computeOptimistic,
+  computeNextMine,
   createDefaultReaction,
   REACTION_ORDER,
   type FeedPost,
@@ -23,6 +24,7 @@ export function PostClient({ post, currentUserId }: Props) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [deleted, setDeleted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const reactionRef = useRef(reaction);
 
   useEffect(() => {
     const id = String(item.id);
@@ -77,13 +79,17 @@ export function PostClient({ post, currentUserId }: Props) {
 
   const toggleReaction = useCallback(
     async (type: ReactionType) => {
-      setReaction((prev) => computeOptimistic(prev, prev.mine === type ? null : type));
+      const prev = reactionRef.current;
+      const nextMine = computeNextMine(prev.mine, type);
+      const optimistic = computeOptimistic(prev, nextMine);
+      reactionRef.current = optimistic;
+      setReaction(optimistic);
       try {
         const res = await fetch('/api/feed/reactions', {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ postId: item.id, reaction: reaction.mine === type ? null : type }),
+          body: JSON.stringify({ postId: item.id, reaction: nextMine }),
         });
         const json = await res.json().catch(() => ({}));
         if (!res.ok || !json?.ok) throw new Error(json?.error || 'reaction_error');
@@ -96,13 +102,21 @@ export function PostClient({ post, currentUserId }: Props) {
           }
         });
         const mineReaction = REACTION_ORDER.includes(json?.mine as ReactionType) ? (json.mine as ReactionType) : null;
-        setReaction({ ...next, mine: mineReaction });
+        const settled = { ...next, mine: mineReaction };
+        reactionRef.current = settled;
+        setReaction(settled);
       } catch (e: any) {
+        reactionRef.current = prev;
+        setReaction(prev);
         setError(e?.message || 'Reazioni non disponibili');
       }
     },
-    [item.id, reaction.mine],
+    [item.id],
   );
+
+  useEffect(() => {
+    reactionRef.current = reaction;
+  }, [reaction]);
 
   if (deleted) {
     return <div className="glass-panel p-4 text-sm text-neutral-700">Post eliminato o non disponibile.</div>;

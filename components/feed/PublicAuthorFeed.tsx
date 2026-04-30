@@ -1,11 +1,12 @@
 // components/feed/PublicAuthorFeed.tsx
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { PostCard } from '@/components/feed/PostCard';
 import {
   REACTION_ORDER,
   computeOptimistic,
+  computeNextMine,
   createDefaultReaction,
   defaultReactionState,
   normalizePost,
@@ -28,6 +29,7 @@ export default function PublicAuthorFeed({ authorId, fallbackAuthorIds = [] }: P
   const [pickerFor, setPickerFor] = useState<string | null>(null);
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
   const [reactionError, setReactionError] = useState<string | null>(null);
+  const reactionsRef = useRef<Record<string, ReactionState>>({});
 
   const loadReactions = useCallback(async (ids: string[]) => {
     if (!ids.length) return;
@@ -134,9 +136,10 @@ export default function PublicAuthorFeed({ authorId, fallbackAuthorIds = [] }: P
   }, [authorId, fallbackAuthorIds, loadCommentCounts, loadReactions]);
 
   async function toggleReaction(postId: string, type: ReactionType) {
-    const prev = reactions[postId] ?? createDefaultReaction();
-    const nextMine = prev.mine === type ? null : type;
+    const prev = reactionsRef.current[postId] ?? createDefaultReaction();
+    const nextMine = computeNextMine(prev.mine, type);
     const next = computeOptimistic(prev, nextMine);
+    reactionsRef.current = { ...reactionsRef.current, [postId]: next };
     setReactions((curr) => ({ ...curr, [postId]: next }));
     try {
       const res = await fetch('/api/feed/reactions', {
@@ -158,8 +161,11 @@ export default function PublicAuthorFeed({ authorId, fallbackAuthorIds = [] }: P
       const mineReaction = REACTION_ORDER.includes(json.mine as ReactionType)
         ? (json.mine as ReactionType)
         : null;
-      setReactions((curr) => ({ ...curr, [postId]: { counts, mine: mineReaction } }));
+      const settled = { counts, mine: mineReaction };
+      reactionsRef.current = { ...reactionsRef.current, [postId]: settled };
+      setReactions((curr) => ({ ...curr, [postId]: settled }));
     } catch (err: any) {
+      reactionsRef.current = { ...reactionsRef.current, [postId]: prev };
       setReactions((curr) => ({ ...curr, [postId]: prev }));
       if (String(err?.message || '').includes('not_authenticated')) {
         setReactionError('Accedi per reagire ai post.');
@@ -168,6 +174,10 @@ export default function PublicAuthorFeed({ authorId, fallbackAuthorIds = [] }: P
       }
     }
   }
+
+  useEffect(() => {
+    reactionsRef.current = reactions;
+  }, [reactions]);
 
   return (
     <div className="space-y-3">

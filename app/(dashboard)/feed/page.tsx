@@ -14,6 +14,7 @@ import AdSlot from '@/components/ads/AdSlot';
 import OpportunityCard from '@/components/opportunities/OpportunityCard';
 import {
   computeOptimistic,
+  computeNextMine,
   createDefaultReaction,
   defaultReactionState,
   REACTION_ORDER,
@@ -53,6 +54,7 @@ export default function FeedPage() {
   const [reactionError, setReactionError] = useState<string | null>(null);
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
   const [pickerFor, setPickerFor] = useState<string | null>(null);
+  const reactionsRef = useRef<Record<string, ReactionState>>({});
   const seenPostIds = useRef<Set<string>>(new Set());
   const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
   const headingId = 'feed-heading';
@@ -181,9 +183,10 @@ export default function FeedPage() {
   const toggleReaction = useCallback(
     async (postId: string, type: ReactionType) => {
       const key = String(postId);
-      const prev = reactions[key] ?? createDefaultReaction();
-      const nextMine = prev.mine === type ? null : type;
+      const prev = reactionsRef.current[key] ?? createDefaultReaction();
+      const nextMine = computeNextMine(prev.mine, type);
       const next = computeOptimistic(prev, nextMine);
+      reactionsRef.current = { ...reactionsRef.current, [key]: next };
       setReactions((curr) => ({ ...curr, [key]: next }));
       setReactionError(null);
 
@@ -211,9 +214,12 @@ export default function FeedPage() {
           ? (json.mine as ReactionType)
           : null;
 
-        setReactions((curr) => ({ ...curr, [key]: { counts, mine: mineReaction } }));
+        const settled = { counts, mine: mineReaction };
+        reactionsRef.current = { ...reactionsRef.current, [key]: settled };
+        setReactions((curr) => ({ ...curr, [key]: settled }));
       } catch (error: any) {
         console.warn('toggleReaction failed', error);
+        reactionsRef.current = { ...reactionsRef.current, [key]: prev };
         setReactions((curr) => ({ ...curr, [key]: prev }));
         if (String(error?.message || '').includes('missing_table_post_reactions')) {
           setReactionError('Aggiungi la tabella post_reactions (vedi supabase/migrations/20251018_fix_notifications_follows_post_reactions.sql).');
@@ -224,8 +230,12 @@ export default function FeedPage() {
         }
       }
     },
-    [reactions],
+    [],
   );
+
+  useEffect(() => {
+    reactionsRef.current = reactions;
+  }, [reactions]);
 
   useEffect(() => {
     setReactions({});
