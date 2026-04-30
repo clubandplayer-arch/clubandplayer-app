@@ -10,11 +10,10 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
-import InterestAreaForm from '@/components/profiles/InterestAreaForm'
 
 type Profile = {
   id: string
-  account_type: 'athlete' | 'club' | null
+  account_type: 'athlete' | 'club' | 'fan' | null
   notify_email_new_message: boolean | null
 }
 
@@ -30,7 +29,7 @@ export default function SettingsPage() {
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
 
   const [userId, setUserId] = useState<string | null>(null)
-  const [accountType, setAccountType] = useState<'athlete' | 'club' | null>(null)
+  const [accountType, setAccountType] = useState<'athlete' | 'club' | 'fan' | null>(null)
   const [notifyEmailNewMessage, setNotifyEmailNewMessage] = useState<boolean>(false)
 
   useEffect(() => {
@@ -135,6 +134,14 @@ export default function SettingsPage() {
     else router.push('/feed')
   }
 
+  const accountTypeLabel = accountType === 'athlete'
+    ? 'Player'
+    : accountType === 'club'
+      ? 'Club'
+      : accountType === 'fan'
+        ? 'Fan'
+        : '—'
+
   return (
     <main style={{ maxWidth: 820, margin: '0 auto', padding: 24 }}>
       {/* Action bar: back + link al feed */}
@@ -171,16 +178,11 @@ export default function SettingsPage() {
           <section style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 16 }}>
             <h2 style={{ marginTop: 0 }}>Profilo</h2>
             <p style={{ margin: '8px 0' }}>
-              Tipo account: <b>{accountType ?? '—'}</b>
+              Tipo account: <b>{accountTypeLabel}</b>
             </p>
             <p style={{ margin: '8px 0' }}>
               Profilo pubblico: <Link href="/u/me">/u/me</Link>
             </p>
-          </section>
-
-          <section style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 16 }}>
-            <h2 style={{ marginTop: 0 }}>Zona di interesse</h2>
-            <InterestAreaForm />
           </section>
 
           <section style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 16 }}>
