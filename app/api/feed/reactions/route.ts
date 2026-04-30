@@ -11,6 +11,7 @@ import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 import { getProfileByUserId } from '@/lib/api/profile';
 import { enqueueGroupedPostPush } from '@/lib/push/groupedPostPushQueue';
+import { sendPushForNotificationBestEffort } from '@/lib/push/sendExpoPush';
 import {
   CreateReactionSchema,
   ReactionCountsQuerySchema,
@@ -19,6 +20,7 @@ import {
 } from '@/lib/validation/feed';
 
 export const runtime = 'nodejs';
+const GROUPED_PUSH_DEBOUNCE_ENABLED = process.env.GROUPED_PUSH_DEBOUNCE_ENABLED === 'true';
 
 type ReactionType = 'like' | 'love' | 'care' | 'angry';
 
@@ -281,20 +283,36 @@ export async function POST(req: NextRequest) {
               message: notificationError.message,
             });
           } else if (insertedNotification?.id) {
-            await enqueueGroupedPostPush({
-              client: notificationsClient,
-              recipientUserId,
-              kind: 'new_reaction',
-              postId,
-              actorName: actorName || 'Qualcuno',
-              latestNotificationId: Number(insertedNotification.id),
-              body: validReaction,
-            });
-            console.info('[feed/reactions][POST] grouped push queued', {
-              postId,
-              recipientUserId,
-              notificationId: insertedNotification.id,
-            });
+            if (GROUPED_PUSH_DEBOUNCE_ENABLED) {
+              await enqueueGroupedPostPush({
+                client: notificationsClient,
+                recipientUserId,
+                kind: 'new_reaction',
+                postId,
+                actorName: actorName || 'Qualcuno',
+                latestNotificationId: Number(insertedNotification.id),
+                body: validReaction,
+              });
+              console.info('[feed/reactions][POST] grouped push queued', {
+                postId,
+                recipientUserId,
+                notificationId: insertedNotification.id,
+              });
+            } else {
+              const immediateSummary = await sendPushForNotificationBestEffort({
+                supabase: notificationsClient,
+                userId: recipientUserId,
+                notificationId: String(insertedNotification.id),
+                kind: 'new_reaction',
+                payload: notificationPayload.payload,
+              });
+              console.info('[feed/reactions][POST] immediate push sent (debounce disabled)', {
+                postId,
+                recipientUserId,
+                notificationId: insertedNotification.id,
+                immediateSummary,
+              });
+            }
           }
         }
       } catch (notificationErr: any) {
