@@ -57,12 +57,13 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     });
     if (insertError) throw insertError;
 
-    let notificationCreated = false;
-    let notificationErrorMessage: string | undefined;
     const notificationClient = admin ?? supabase;
 
     if (!target.user_id) {
-      notificationErrorMessage = 'target_user_id_null';
+      console.warn('[api/follows/toggle] follow notification skipped: missing target user_id', {
+        targetProfileId: target.id,
+        actorProfileId: me.id,
+      });
     } else {
       const { error: notificationError } = await notificationClient.from('notifications').insert({
         user_id: target.user_id,
@@ -76,7 +77,6 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
         },
       });
       if (notificationError) {
-        notificationErrorMessage = notificationError.message;
         console.warn('[api/follows/toggle] follow notification insert failed', {
           targetProfileId: target.id,
           actorProfileId: me.id,
@@ -84,20 +84,10 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
           usedAdminClient: Boolean(admin),
           message: notificationError.message,
         });
-      } else {
-        notificationCreated = true;
       }
     }
 
-    return successResponse({
-      isFollowing: true,
-      targetProfileId: target.id,
-      notificationCreated,
-      notificationErrorMessage,
-      targetUserId: target.user_id ?? null,
-      actorProfileId: me.id,
-      followedProfileId: target.id,
-    });
+    return successResponse({ isFollowing: true, targetProfileId: target.id });
   } catch (error: any) {
     console.error('[api/follows/toggle] errore', { error, targetProfileId });
     return unknownError({ endpoint: '/api/follows/toggle', error, context: { targetProfileId } });
