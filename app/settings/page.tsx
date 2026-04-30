@@ -10,11 +10,10 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
-import InterestAreaForm from '@/components/profiles/InterestAreaForm'
 
 type Profile = {
   id: string
-  account_type: 'athlete' | 'club' | null
+  account_type: 'athlete' | 'club' | 'fan' | null
   notify_email_new_message: boolean | null
 }
 
@@ -24,10 +23,13 @@ export default function SettingsPage() {
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [msg, setMsg] = useState<string>('')
+  const [deleteMsg, setDeleteMsg] = useState<string>('')
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
 
   const [userId, setUserId] = useState<string | null>(null)
-  const [accountType, setAccountType] = useState<'athlete' | 'club' | null>(null)
+  const [accountType, setAccountType] = useState<'athlete' | 'club' | 'fan' | null>(null)
   const [notifyEmailNewMessage, setNotifyEmailNewMessage] = useState<boolean>(false)
 
   useEffect(() => {
@@ -88,11 +90,57 @@ export default function SettingsPage() {
     window.location.href = '/'
   }
 
+  const deleteAccount = async () => {
+    if (deleting) return
+    setDeleteMsg('')
+
+    const firstConfirm = window.confirm(
+      'Questa azione è definitiva. Verranno eliminati il tuo account, il profilo e i dati collegati. Non potrai recuperarlo.'
+    )
+    if (!firstConfirm) return
+
+    if (deleteConfirmText.trim().toUpperCase() !== 'ELIMINA') {
+      setDeleteMsg('Per confermare devi digitare esattamente ELIMINA.')
+      return
+    }
+
+    const secondConfirm = window.confirm('Conferma finale: vuoi eliminare definitivamente il tuo account Club & Player?')
+    if (!secondConfirm) return
+
+    setDeleting(true)
+    try {
+      const res = await fetch('/api/account/delete', {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+      const body = await res.json().catch(() => null)
+      if (!res.ok || !body?.ok) {
+        setDeleteMsg(body?.error || 'Errore durante eliminazione account. Riprova.')
+        setDeleting(false)
+        return
+      }
+
+      await supabase.auth.signOut()
+      window.location.href = '/login'
+    } catch {
+      setDeleteMsg('Errore di rete durante eliminazione account. Riprova.')
+      setDeleting(false)
+    }
+  }
+
   const goBack = () => {
     // se non c'è history (es. aperto da link diretto), vai al feed
     if (typeof window !== 'undefined' && window.history.length > 1) router.back()
     else router.push('/feed')
   }
+
+  const accountTypeLabel = accountType === 'athlete'
+    ? 'Player'
+    : accountType === 'club'
+      ? 'Club'
+      : accountType === 'fan'
+        ? 'Fan'
+        : '—'
 
   return (
     <main style={{ maxWidth: 820, margin: '0 auto', padding: 24 }}>
@@ -130,16 +178,11 @@ export default function SettingsPage() {
           <section style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 16 }}>
             <h2 style={{ marginTop: 0 }}>Profilo</h2>
             <p style={{ margin: '8px 0' }}>
-              Tipo account: <b>{accountType ?? '—'}</b>
+              Tipo account: <b>{accountTypeLabel}</b>
             </p>
             <p style={{ margin: '8px 0' }}>
               Profilo pubblico: <Link href="/u/me">/u/me</Link>
             </p>
-          </section>
-
-          <section style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 16 }}>
-            <h2 style={{ marginTop: 0 }}>Zona di interesse</h2>
-            <InterestAreaForm />
           </section>
 
           <section style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 16 }}>
@@ -184,6 +227,51 @@ export default function SettingsPage() {
             >
               Logout
             </button>
+          </section>
+
+          <section style={{ border: '1px solid #fecaca', borderRadius: 12, padding: 16, background: '#fff7f7' }}>
+            <h2 style={{ marginTop: 0, color: '#991b1b' }}>Zona pericolosa</h2>
+            <p style={{ margin: '8px 0', color: '#7f1d1d' }}>
+              Eliminando l&apos;account perderai definitivamente accesso a profilo e dati collegati. Questa azione non è reversibile.
+            </p>
+            <label style={{ display: 'grid', gap: 6, marginTop: 12 }}>
+              <span style={{ fontSize: 14, color: '#7f1d1d' }}>
+                Digita <b>ELIMINA</b> per abilitare la cancellazione:
+              </span>
+              <input
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder="ELIMINA"
+                autoComplete="off"
+                style={{
+                  padding: '8px 10px',
+                  borderRadius: 8,
+                  border: '1px solid #fecaca',
+                  background: '#fff',
+                }}
+              />
+            </label>
+            {!!deleteMsg && (
+              <p style={{ marginTop: 10, color: '#b91c1c' }}>
+                {deleteMsg}
+              </p>
+            )}
+            <div style={{ marginTop: 12 }}>
+              <button
+                onClick={deleteAccount}
+                disabled={deleting}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: 8,
+                  border: '1px solid #dc2626',
+                  background: '#dc2626',
+                  color: '#fff',
+                  cursor: 'pointer',
+                }}
+              >
+                {deleting ? 'Eliminazione…' : 'Elimina account'}
+              </button>
+            </div>
           </section>
         </div>
       )}

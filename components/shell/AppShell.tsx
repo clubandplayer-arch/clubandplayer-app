@@ -426,6 +426,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                         >
                           Modifica profilo
                         </Link>
+                        <Link
+                          href="/settings"
+                          role="menuitem"
+                          onClick={() => setIsProfileMenuOpen(false)}
+                          className="block rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
+                        >
+                          Impostazioni
+                        </Link>
                         {isClub && (
                           <Link
                             href="/club/verification"
