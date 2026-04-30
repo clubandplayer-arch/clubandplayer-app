@@ -50,10 +50,10 @@ export async function getActiveProfile(
 export async function getProfileById(
   supabase: SupabaseClient<any, "public", any>,
   profileId: string
-): Promise<{ id: string; display_name: string | null; full_name: string | null; account_type: string | null; avatar_url: string | null } | null> {
+): Promise<{ id: string; user_id: string | null; display_name: string | null; full_name: string | null; account_type: string | null; avatar_url: string | null } | null> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, display_name, full_name, account_type, avatar_url, status')
+    .select('id, user_id, display_name, full_name, account_type, avatar_url, status')
     .eq('id', profileId)
     .maybeSingle();
   if (error) throw error;
