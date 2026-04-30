@@ -9,6 +9,7 @@ import {
 } from '@/lib/api/feedFollowStandardWrapper';
 import { getActiveProfile, getProfileById } from '@/lib/api/profile';
 import { ToggleFollowSchema, type ToggleFollowInput } from '@/lib/validation/follow';
+import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
 
@@ -23,6 +24,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   const targetProfileId = body.targetProfileId;
   
   try {
+    const admin = getSupabaseAdminClientOrNull();
     const me = await getActiveProfile(supabase, user.id);
     if (!me) return notAuthorized('Profilo non trovato');
     const meProfile = await getProfileById(supabase, me.id);
@@ -55,8 +57,14 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     });
     if (insertError) throw insertError;
 
-    if (target.user_id) {
-      const { error: notificationError } = await supabase.from('notifications').insert({
+    let notificationCreated = false;
+    let notificationErrorMessage: string | undefined;
+    const notificationClient = admin ?? supabase;
+
+    if (!target.user_id) {
+      notificationErrorMessage = 'target_user_id_null';
+    } else {
+      const { error: notificationError } = await notificationClient.from('notifications').insert({
         user_id: target.user_id,
         recipient_profile_id: target.id,
         actor_profile_id: me.id,
@@ -68,15 +76,28 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
         },
       });
       if (notificationError) {
+        notificationErrorMessage = notificationError.message;
         console.warn('[api/follows/toggle] follow notification insert failed', {
           targetProfileId: target.id,
           actorProfileId: me.id,
+          targetUserId: target.user_id,
+          usedAdminClient: Boolean(admin),
           message: notificationError.message,
         });
+      } else {
+        notificationCreated = true;
       }
     }
 
-    return successResponse({ isFollowing: true, targetProfileId: target.id });
+    return successResponse({
+      isFollowing: true,
+      targetProfileId: target.id,
+      notificationCreated,
+      notificationErrorMessage,
+      targetUserId: target.user_id ?? null,
+      actorProfileId: me.id,
+      followedProfileId: target.id,
+    });
   } catch (error: any) {
     console.error('[api/follows/toggle] errore', { error, targetProfileId });
     return unknownError({ endpoint: '/api/follows/toggle', error, context: { targetProfileId } });
