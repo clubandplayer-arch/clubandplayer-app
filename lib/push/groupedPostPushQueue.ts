@@ -50,7 +50,7 @@ export async function enqueueGroupedPostPush(params: {
   const safeActorName = cleanName(actorName) || 'Qualcuno';
   const safeBody = typeof body === 'string' ? body.trim().slice(0, 120) : '';
 
-  const { data: existing } = await client
+  const { data: existing, error: existingError } = await client
     .from('grouped_push_queue')
     .select('id, group_count, actors, payload')
     .eq('recipient_user_id', recipientUserId)
@@ -58,6 +58,14 @@ export async function enqueueGroupedPostPush(params: {
     .eq('post_id', postId)
     .is('sent_at', null)
     .maybeSingle();
+  if (existingError) {
+    console.warn('[push/groupedPostPushQueue] failed to read existing queue row', {
+      recipientUserId,
+      kind,
+      postId,
+      message: existingError.message,
+    });
+  }
 
   const existingActors = Array.isArray(existing?.actors) ? existing.actors : [];
   const actors = Array.from(new Set([safeActorName, ...existingActors].filter((v) => typeof v === 'string' && v.trim()))).slice(0, 8);
@@ -65,7 +73,7 @@ export async function enqueueGroupedPostPush(params: {
   const payload = buildPayload({ kind, postId, actorName: safeActorName, groupCount, actors, body: safeBody || undefined });
 
   if (existing?.id) {
-    await client
+    const { error: updateError } = await client
       .from('grouped_push_queue')
       .update({
         latest_notification_id: latestNotificationId,
@@ -77,10 +85,21 @@ export async function enqueueGroupedPostPush(params: {
       })
       .eq('id', existing.id)
       .is('sent_at', null);
+    if (updateError) {
+      console.warn('[push/groupedPostPushQueue] failed to update queue row', {
+        id: existing.id,
+        recipientUserId,
+        kind,
+        postId,
+        message: updateError.message,
+      });
+      throw updateError;
+    }
+    console.info('[push/groupedPostPushQueue] queue row updated', { id: existing.id, recipientUserId, kind, postId, groupCount });
     return;
   }
 
-  await client.from('grouped_push_queue').insert({
+  const { error: insertError } = await client.from('grouped_push_queue').insert({
     recipient_user_id: recipientUserId,
     kind,
     post_id: postId,
@@ -90,13 +109,23 @@ export async function enqueueGroupedPostPush(params: {
     payload,
     scheduled_at: scheduledAt,
   });
+  if (insertError) {
+    console.warn('[push/groupedPostPushQueue] failed to insert queue row', {
+      recipientUserId,
+      kind,
+      postId,
+      message: insertError.message,
+    });
+    throw insertError;
+  }
+  console.info('[push/groupedPostPushQueue] queue row inserted', { recipientUserId, kind, postId, groupCount: 1 });
 }
 
 export async function flushGroupedPostPushes(client: any) {
   const lockTs = new Date().toISOString();
   const nowIso = new Date().toISOString();
 
-  const { data: rows } = await client
+  const { data: rows, error: pendingError } = await client
     .from('grouped_push_queue')
     .select('*')
     .is('sent_at', null)
@@ -104,10 +133,14 @@ export async function flushGroupedPostPushes(client: any) {
     .lte('scheduled_at', nowIso)
     .order('scheduled_at', { ascending: true })
     .limit(100);
+  if (pendingError) {
+    console.warn('[push/groupedPostPushQueue] failed to fetch pending rows', { message: pendingError.message });
+    throw pendingError;
+  }
 
   const results: any[] = [];
   for (const row of rows ?? []) {
-    const { data: locked } = await client
+    const { data: locked, error: lockError } = await client
       .from('grouped_push_queue')
       .update({ locked_at: lockTs })
       .eq('id', row.id)
@@ -115,24 +148,40 @@ export async function flushGroupedPostPushes(client: any) {
       .is('locked_at', null)
       .select('id')
       .maybeSingle();
+    if (lockError) {
+      results.push({ id: row.id, skipped: true, reason: 'lock_error', message: lockError.message });
+      continue;
+    }
 
     if (!locked?.id) continue;
 
-    const summary = await sendPushForNotificationBestEffort({
-      supabase: client,
-      userId: row.recipient_user_id,
-      notificationId: String(row.latest_notification_id),
-      kind: row.kind,
-      payload: row.payload,
-    });
+    try {
+      const summary = await sendPushForNotificationBestEffort({
+        supabase: client,
+        userId: row.recipient_user_id,
+        notificationId: String(row.latest_notification_id),
+        kind: row.kind,
+        payload: row.payload,
+      });
 
-    await client
-      .from('grouped_push_queue')
-      .update({ sent_at: new Date().toISOString(), locked_at: null, last_result: summary })
-      .eq('id', row.id)
-      .is('sent_at', null);
+      await client
+        .from('grouped_push_queue')
+        .update({ sent_at: new Date().toISOString(), locked_at: null, last_result: summary })
+        .eq('id', row.id)
+        .is('sent_at', null);
 
-    results.push({ id: row.id, kind: row.kind, userId: row.recipient_user_id, summary });
+      results.push({ id: row.id, kind: row.kind, userId: row.recipient_user_id, summary });
+    } catch (error: any) {
+      await client
+        .from('grouped_push_queue')
+        .update({
+          locked_at: null,
+          last_result: { error: error?.message ?? 'unknown_error', failed_at: new Date().toISOString() },
+        })
+        .eq('id', row.id)
+        .is('sent_at', null);
+      results.push({ id: row.id, kind: row.kind, userId: row.recipient_user_id, error: error?.message ?? 'unknown_error' });
+    }
   }
 
   return results;

@@ -17,8 +17,10 @@ import {
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 import { getProfileByUserId } from '@/lib/api/profile';
 import { enqueueGroupedPostPush } from '@/lib/push/groupedPostPushQueue';
+import { sendPushForNotificationBestEffort } from '@/lib/push/sendExpoPush';
 
 export const runtime = 'nodejs';
+const GROUPED_PUSH_DEBOUNCE_ENABLED = process.env.GROUPED_PUSH_DEBOUNCE_ENABLED === 'true';
 
 const MAX_LEN = 800;
 
@@ -303,21 +305,38 @@ export async function POST(req: NextRequest) {
           message: notificationError.message,
         });
       } else if (insertedNotification?.id) {
-        await enqueueGroupedPostPush({
-          client: notificationsClient,
-          recipientUserId,
-          kind: 'new_comment',
-          postId,
-          actorName: actorName || 'Qualcuno',
-          latestNotificationId: Number(insertedNotification.id),
-          body: commentPreview,
-        });
-        console.info('[api/feed/comments][POST] grouped push queued', {
-          postId,
-          commentId: data.id,
-          notificationId: insertedNotification.id,
-          recipientUserId,
-        });
+        if (GROUPED_PUSH_DEBOUNCE_ENABLED) {
+          await enqueueGroupedPostPush({
+            client: notificationsClient,
+            recipientUserId,
+            kind: 'new_comment',
+            postId,
+            actorName: actorName || 'Qualcuno',
+            latestNotificationId: Number(insertedNotification.id),
+            body: commentPreview,
+          });
+          console.info('[api/feed/comments][POST] grouped push queued', {
+            postId,
+            commentId: data.id,
+            notificationId: insertedNotification.id,
+            recipientUserId,
+          });
+        } else {
+          const immediateSummary = await sendPushForNotificationBestEffort({
+            supabase: notificationsClient,
+            userId: recipientUserId,
+            notificationId: String(insertedNotification.id),
+            kind: 'new_comment',
+            payload: notificationPayload.payload,
+          });
+          console.info('[api/feed/comments][POST] immediate push sent (debounce disabled)', {
+            postId,
+            commentId: data.id,
+            notificationId: insertedNotification.id,
+            recipientUserId,
+            immediateSummary,
+          });
+        }
       }
     }
   } catch (notificationErr: any) {
