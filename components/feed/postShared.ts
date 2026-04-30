@@ -105,6 +105,10 @@ export function computeOptimistic(prev: ReactionState, nextMine: ReactionType | 
   return { counts, mine: nextMine };
 }
 
+export function computeNextMine(currentMine: ReactionType | null, selected: ReactionType): ReactionType | null {
+  return currentMine === selected ? null : selected;
+}
+
 export function firstUrl(text?: string | null): string | null {
   if (!text) return null;
   const match = text.match(/https?:\/\/[^\s]+/i);
