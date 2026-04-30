@@ -88,20 +88,21 @@ export default function SignupPage() {
           <BrandLogo variant="signup" unlinked />
           <div className="space-y-4">
             <h2 className="text-3xl font-bold leading-tight text-[#00527a] sm:text-4xl">
-              Ti diamo il benvenuto nella più grande community sportiva.
-            </h2>
-            <h3 className="text-xl font-bold leading-tight text-[#0b6c9c] sm:text-2xl">
               <em>entra a far parte di questo nuovo progetto!</em>
-            </h3>
+            </h2>
             <p className="text-lg leading-relaxed text-slate-800">
-              Connettiti con club e player, pubblica opportunità, costruisci la tua carriera. Iscriviti in pochi
-              secondi.
+              Registrati come <b>CLUB</b> o come <b>PLAYER</b>, pubblica opportunità, costruisci la tua carriera.
+              Iscriviti in pochi secondi.
             </p>
             <ul className="mt-4 space-y-3 text-base text-slate-800">
-              <li>• Scopri e pubblica <b>opportunità</b> reali</li>
-              <li>• Crea un <b>profilo</b> chiaro e aggiornato</li>
-              <li>• Ricevi <b>candidature</b> e messaggi in app</li>
+              <li>• Scopri e pubblica opportunità reali</li>
+              <li>• Crea un profilo chiaro e aggiornato</li>
+              <li>• Ricevi candidature e messaggi in app</li>
             </ul>
+            <p className="text-lg leading-relaxed text-slate-800">
+              Oppure registrati e connettiti come <b>FAN</b> e segui i tuoi Club o Player preferiti e interagisci con
+              loro
+            </p>
           </div>
         </section>
 
