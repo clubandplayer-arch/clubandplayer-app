@@ -58,7 +58,7 @@ function FeedLinkCard({
 
 function IconReport({ className = 'h-5 w-5' }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className} aria-hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.4" className={className} aria-hidden>
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4" />
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 16h.01" />
       <path strokeLinecap="round" strokeLinejoin="round" d="M10.3 3.6 2.8 16.4A2 2 0 0 0 4.5 19h15a2 2 0 0 0 1.7-2.6L13.7 3.6a2 2 0 0 0-3.4 0Z" />
@@ -68,7 +68,7 @@ function IconReport({ className = 'h-5 w-5' }: { className?: string }) {
 
 function IconBlock({ className = 'h-5 w-5' }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className} aria-hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="#B0262D" strokeWidth="2.4" className={className} aria-hidden>
       <circle cx="12" cy="12" r="8" />
       <path strokeLinecap="round" strokeLinejoin="round" d="m8.5 8.5 7 7" />
     </svg>
@@ -397,19 +397,19 @@ export function PostCard({
                 type="button"
                 onClick={reportPost}
                 aria-label="Segnala questo post"
-                className="rounded-full p-2 text-slate-500 transition hover:bg-neutral-100 hover:text-neutral-900"
+                className="rounded-full p-2 transition hover:bg-neutral-100"
                 disabled={moderationLoading}
               >
-                <IconReport className={actionIconClass} />
+                <IconReport className="h-5 w-5" />
               </button>
               <button
                 type="button"
                 onClick={blockAuthor}
                 aria-label="Blocca autore"
-                className="rounded-full p-2 text-red-700 transition hover:bg-red-50 hover:text-red-800"
+                className="rounded-full p-2 transition hover:bg-red-50"
                 disabled={moderationLoading}
               >
-                <IconBlock className={actionIconClass} />
+                <IconBlock className="h-5 w-5" />
               </button>
             </>
           ) : null}
