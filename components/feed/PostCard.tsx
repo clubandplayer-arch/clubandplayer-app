@@ -56,6 +56,25 @@ function FeedLinkCard({
   );
 }
 
+function IconReport({ className = 'h-5 w-5' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.4" className={className} aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 16h.01" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M10.3 3.6 2.8 16.4A2 2 0 0 0 4.5 19h15a2 2 0 0 0 1.7-2.6L13.7 3.6a2 2 0 0 0-3.4 0Z" />
+    </svg>
+  );
+}
+
+function IconBlock({ className = 'h-5 w-5' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="#B0262D" strokeWidth="2.4" className={className} aria-hidden>
+      <circle cx="12" cy="12" r="8" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="m8.5 8.5 7 7" />
+    </svg>
+  );
+}
+
 export type PostCardProps = {
   post: FeedPost;
   currentUserId: string | null;
@@ -372,6 +391,28 @@ export function PostCard({
             </>
           ) : null}
 
+          {!isOwner ? (
+            <>
+              <button
+                type="button"
+                onClick={reportPost}
+                aria-label="Segnala questo post"
+                className="rounded-full p-2 transition hover:bg-neutral-100"
+                disabled={moderationLoading}
+              >
+                <IconReport className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                onClick={blockAuthor}
+                aria-label="Blocca autore"
+                className="rounded-full p-2 transition hover:bg-red-50"
+                disabled={moderationLoading}
+              >
+                <IconBlock className="h-5 w-5" />
+              </button>
+            </>
+          ) : null}
           <button
             type="button"
             onClick={handleShare}
@@ -381,26 +422,6 @@ export function PostCard({
           >
             <PostIconShare className={actionIconClass} aria-hidden />
           </button>
-          {!isOwner ? (
-            <>
-              <button
-                type="button"
-                onClick={reportPost}
-                className="rounded-full px-2 py-1 text-xs transition hover:bg-neutral-100 hover:text-neutral-900"
-                disabled={moderationLoading}
-              >
-                Segnala
-              </button>
-              <button
-                type="button"
-                onClick={blockAuthor}
-                className="rounded-full px-2 py-1 text-xs transition hover:bg-neutral-100 hover:text-neutral-900"
-                disabled={moderationLoading}
-              >
-                Blocca autore
-              </button>
-            </>
-          ) : null}
         </div>
       </div>
       {editing ? (
