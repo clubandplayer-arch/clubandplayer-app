@@ -97,7 +97,7 @@ export function ReadOnlyPostCard({ post }: ReadOnlyPostCardProps) {
                 type="button"
                 onClick={() => setAvatarOpen(true)}
                 aria-label={`Apri avatar ${authorLabel || 'autore post'}`}
-                className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-sm font-semibold text-slate-600 transition hover:opacity-90"
+                className="relative z-10 flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-sm font-semibold text-slate-600 transition hover:opacity-90"
               >
                 <Image
                   src={avatarUrl}
@@ -113,7 +113,7 @@ export function ReadOnlyPostCard({ post }: ReadOnlyPostCardProps) {
               </div>
             )}
             {showCertifiedBadge ? (
-              <span className="absolute -top-1 -right-1 text-[var(--brand)]" aria-label="Club certificato">
+              <span className="pointer-events-none absolute -top-1 -right-1 text-[var(--brand)]" aria-label="Club certificato">
                 <CertifiedCMarkSidebar />
               </span>
             ) : null}
