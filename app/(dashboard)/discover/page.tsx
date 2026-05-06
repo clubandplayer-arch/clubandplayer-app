@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import FollowButton from '@/components/common/FollowButton';
 import CertifiedCMarkFollowing from '@/components/badges/CertifiedCMarkFollowing';
+import { Lightbox } from '@/components/media/Lightbox';
 import { CountryFlag } from '@/components/ui/CountryFlag';
 import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentProfileContext';
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
@@ -93,6 +94,7 @@ export default function DiscoverPage() {
   const [items, setItems] = useState<Record<TabKey, Suggestion[]>>({ club: [], player: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<{ url: string; alt: string } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -207,21 +209,31 @@ export default function DiscoverPage() {
             return (
               <li key={item.id} className="flex h-full flex-col gap-3 rounded-2xl border border-neutral-200 bg-white/70 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
                 <div className="flex flex-wrap items-start gap-3">
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setAvatarPreview({
+                          url: item.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`,
+                          alt: name,
+                        })
+                      }
+                      aria-label={`Apri avatar ${name}`}
+                      className="relative z-10 flex h-11 w-11 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[var(--brand)]/20 to-[var(--brand)]/40 text-sm font-semibold uppercase text-[var(--brand)] aspect-square"
+                    >
+                      <img
+                        src={item.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`}
+                        alt={name}
+                        className="h-full w-full object-cover"
+                      />
+                    </button>
+                    {isCertified ? (
+                      <span className="pointer-events-none absolute" style={{ width: cSizePx, height: cSizePx, right: -offsetPx, top: -offsetPx }}>
+                        <CertifiedCMarkFollowing className="h-full w-full [&_svg]:h-full [&_svg]:w-full" />
+                      </span>
+                    ) : null}
+                  </div>
                   <Link href={href} className="flex min-w-0 flex-1 gap-3">
-                    <div className="relative">
-                      <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[var(--brand)]/20 to-[var(--brand)]/40 text-sm font-semibold uppercase text-[var(--brand)] aspect-square">
-                        <img
-                          src={item.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`}
-                          alt={name}
-                          className="h-full w-full object-cover"
-                        />
-                      </div>
-                      {isCertified ? (
-                        <span className="absolute" style={{ width: cSizePx, height: cSizePx, right: -offsetPx, top: -offsetPx }}>
-                          <CertifiedCMarkFollowing className="h-full w-full [&_svg]:h-full [&_svg]:w-full" />
-                        </span>
-                      ) : null}
-                    </div>
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-1">
                         <span className="truncate text-sm font-semibold text-neutral-900">{name}</span>
@@ -252,6 +264,13 @@ export default function DiscoverPage() {
           })}
         </ul>
       )}
+      {avatarPreview ? (
+        <Lightbox
+          items={[{ url: avatarPreview.url, type: 'image', alt: avatarPreview.alt }]}
+          index={0}
+          onClose={() => setAvatarPreview(null)}
+        />
+      ) : null}
     </div>
   );
 }

@@ -3,9 +3,11 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import type React from 'react';
+import { useState } from 'react';
 import { buildClubDisplayName, buildProfileDisplayName } from '@/lib/displayName';
 import { PostMedia } from '@/components/feed/PostMedia';
 import { QuotedPostCard } from '@/components/feed/QuotedPostCard';
+import { Lightbox } from '@/components/media/Lightbox';
 import CertifiedCMarkSidebar from '@/components/badges/CertifiedCMarkSidebar';
 import {
   type FeedPost,
@@ -52,6 +54,7 @@ type ReadOnlyPostCardProps = {
 };
 
 export function ReadOnlyPostCard({ post }: ReadOnlyPostCardProps) {
+  const [avatarOpen, setAvatarOpen] = useState(false);
   const isEvent = (post.kind ?? 'normal') === 'event';
   const eventDetails = post.event_payload;
   const baseDescription = post.content ?? post.text ?? '';
@@ -89,41 +92,28 @@ export function ReadOnlyPostCard({ post }: ReadOnlyPostCardProps) {
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="relative shrink-0">
-            {profileHref ? (
-              <Link
-                href={profileHref}
-                aria-label={`Apri profilo ${authorLabel || 'autore post'}`}
-                className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-sm font-semibold text-slate-600"
+            {avatarUrl ? (
+              <button
+                type="button"
+                onClick={() => setAvatarOpen(true)}
+                aria-label={`Apri avatar ${authorLabel || 'autore post'}`}
+                className="relative z-10 flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-sm font-semibold text-slate-600 transition hover:opacity-90"
               >
-                {avatarUrl ? (
-                  <Image
-                    src={avatarUrl}
-                    alt={authorLabel || 'Avatar'}
-                    width={44}
-                    height={44}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <span aria-hidden>{authorLabel ? authorLabel.charAt(0) : '✦'}</span>
-                )}
-              </Link>
+                <Image
+                  src={avatarUrl}
+                  alt={authorLabel || 'Avatar'}
+                  width={44}
+                  height={44}
+                  className="h-full w-full object-cover"
+                />
+              </button>
             ) : (
               <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-sm font-semibold text-slate-600">
-                {avatarUrl ? (
-                  <Image
-                    src={avatarUrl}
-                    alt={authorLabel || 'Avatar'}
-                    width={44}
-                    height={44}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <span aria-hidden>{authorLabel ? authorLabel.charAt(0) : '✦'}</span>
-                )}
+                <span aria-hidden>{authorLabel ? authorLabel.charAt(0) : '✦'}</span>
               </div>
             )}
             {showCertifiedBadge ? (
-              <span className="absolute -top-1 -right-1 text-[var(--brand)]" aria-label="Club certificato">
+              <span className="pointer-events-none absolute -top-1 -right-1 text-[var(--brand)]" aria-label="Club certificato">
                 <CertifiedCMarkSidebar />
               </span>
             ) : null}
@@ -176,6 +166,13 @@ export function ReadOnlyPostCard({ post }: ReadOnlyPostCardProps) {
           </div>
         ) : null}
       </div>
+      {avatarOpen && avatarUrl ? (
+        <Lightbox
+          items={[{ url: avatarUrl, type: 'image', alt: authorLabel || 'Avatar autore' }]}
+          index={0}
+          onClose={() => setAvatarOpen(false)}
+        />
+      ) : null}
     </article>
   );
 }

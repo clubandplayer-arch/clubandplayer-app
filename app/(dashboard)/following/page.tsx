@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import FollowButton from '@/components/common/FollowButton';
 import CertifiedCMarkFollowing from '@/components/badges/CertifiedCMarkFollowing';
+import { Lightbox } from '@/components/media/Lightbox';
 import { CountryFlag } from '@/components/ui/CountryFlag';
 import useIsClub from '@/hooks/useIsClub';
 import { buildProfileDisplayName } from '@/lib/displayName';
@@ -92,6 +93,7 @@ type FollowCardProps = {
 };
 
 function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, onToggleRoster }: FollowCardProps) {
+  const [avatarOpen, setAvatarOpen] = useState(false);
   const href = type === 'club' ? `/clubs/${profile.id}` : `/players/${profile.id}`;
   const meta = [profile.city, profile.sport, normalizeRoleLabel(profile.role)].filter(Boolean).join(' · ');
   const playerIso2 = type === 'athlete' ? extractIso2(profile.country) : null;
@@ -115,26 +117,28 @@ function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, 
   return (
     <div className="flex h-full flex-col gap-3 rounded-2xl border border-neutral-200 bg-white/70 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900/60">
       <div className="flex flex-wrap items-start gap-3">
-        <Link href={href} className="flex flex-1 gap-3">
-          <div className="relative">
+        <div className="relative">
+          {avatarUrl ? (
+            <button
+              type="button"
+              onClick={() => setAvatarOpen(true)}
+              aria-label={`Apri avatar ${profile.name || 'profilo'}`}
+              className="relative z-10 flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[var(--brand)]/20 to-[var(--brand)]/40 text-sm font-semibold uppercase text-[var(--brand)] aspect-square"
+            >
+              <img src={avatarUrl} alt={profile.name || 'Profilo'} className="h-full w-full object-cover" loading="lazy" />
+            </button>
+          ) : (
             <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[var(--brand)]/20 to-[var(--brand)]/40 text-sm font-semibold uppercase text-[var(--brand)] aspect-square">
-              {avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt={profile.name || 'Profilo'}
-                  className="h-full w-full object-cover"
-                  loading="lazy"
-                />
-              ) : (
-                <span>{initials}</span>
-              )}
+              <span>{initials}</span>
             </div>
-            {isCertified ? (
-              <span className="absolute" style={{ width: cSizePx, height: cSizePx, right: -offsetPx, top: -offsetPx }}>
-                <CertifiedCMarkFollowing className="h-full w-full [&_svg]:h-full [&_svg]:w-full" />
-              </span>
-            ) : null}
-          </div>
+          )}
+          {isCertified ? (
+            <span className="pointer-events-none absolute" style={{ width: cSizePx, height: cSizePx, right: -offsetPx, top: -offsetPx }}>
+              <CertifiedCMarkFollowing className="h-full w-full [&_svg]:h-full [&_svg]:w-full" />
+            </span>
+          ) : null}
+        </div>
+        <Link href={href} className="flex flex-1 gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-1">
               <p className="break-words text-sm font-semibold leading-tight text-neutral-900 dark:text-white">{profile.name}</p>
@@ -149,6 +153,9 @@ function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, 
           </div>
         </Link>
       </div>
+      {avatarOpen && avatarUrl ? (
+        <Lightbox items={[{ url: avatarUrl, type: 'image', alt: profile.name || 'Avatar' }]} index={0} onClose={() => setAvatarOpen(false)} />
+      ) : null}
 
       <div className={`mt-auto flex items-center justify-between gap-3 ${showRosterToggle && type === 'athlete' ? 'rounded-lg border border-pink-100 bg-pink-50 px-3 py-2' : ''}`}>
         {showRosterToggle && type === 'athlete' ? (
