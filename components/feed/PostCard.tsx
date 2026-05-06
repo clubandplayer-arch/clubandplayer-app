@@ -8,6 +8,7 @@ import { CommentsSection } from '@/components/feed/CommentsSection';
 import { PostIconDelete, PostIconEdit, PostIconShare } from '@/components/icons/PostActionIcons';
 import { PostMedia } from '@/components/feed/PostMedia';
 import { QuotedPostCard } from '@/components/feed/QuotedPostCard';
+import { Lightbox } from '@/components/media/Lightbox';
 import CertifiedCMarkSidebar from '@/components/badges/CertifiedCMarkSidebar';
 import { createPostShareLink } from '@/lib/share';
 import { buildClubDisplayName, buildProfileDisplayName } from '@/lib/displayName';
@@ -135,6 +136,7 @@ export function PostCard({
   const [text, setText] = useState(description);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [avatarOpen, setAvatarOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
   const [shareLoading, setShareLoading] = useState(false);
@@ -309,37 +311,24 @@ export function PostCard({
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="relative shrink-0">
-            {profileHref ? (
-              <Link
-                href={profileHref}
-                aria-label={`Apri profilo ${authorLabel || 'autore post'}`}
-                className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-sm font-semibold text-slate-600"
+            {avatarUrl ? (
+              <button
+                type="button"
+                onClick={() => setAvatarOpen(true)}
+                aria-label={`Apri avatar ${authorLabel || 'autore post'}`}
+                className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-sm font-semibold text-slate-600 transition hover:opacity-90"
               >
-                {avatarUrl ? (
-                  <Image
-                    src={avatarUrl}
-                    alt={authorLabel || 'Avatar'}
-                    width={44}
-                    height={44}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <span aria-hidden>{authorLabel ? authorLabel.charAt(0) : '✦'}</span>
-                )}
-              </Link>
+                <Image
+                  src={avatarUrl}
+                  alt={authorLabel || 'Avatar'}
+                  width={44}
+                  height={44}
+                  className="h-full w-full object-cover"
+                />
+              </button>
             ) : (
               <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-sm font-semibold text-slate-600">
-                {avatarUrl ? (
-                  <Image
-                    src={avatarUrl}
-                    alt={authorLabel || 'Avatar'}
-                    width={44}
-                    height={44}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <span aria-hidden>{authorLabel ? authorLabel.charAt(0) : '✦'}</span>
-                )}
+                <span aria-hidden>{authorLabel ? authorLabel.charAt(0) : '✦'}</span>
               </div>
             )}
             {showCertifiedBadge ? (
@@ -609,6 +598,13 @@ export function PostCard({
         <div id={errorId} className="mt-2 text-xs text-red-600" role="status">
           {error}
         </div>
+      ) : null}
+      {avatarOpen && avatarUrl ? (
+        <Lightbox
+          items={[{ url: avatarUrl, type: 'image', alt: authorLabel || 'Avatar autore' }]}
+          index={0}
+          onClose={() => setAvatarOpen(false)}
+        />
       ) : null}
       <ShareModal
         open={shareOpen}
