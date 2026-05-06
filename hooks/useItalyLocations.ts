@@ -1,12 +1,21 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { COUNTRIES, FALLBACK_ITALY_LOCATIONS, type ItalyLocations } from '@/lib/opps/geo';
+import { COUNTRIES, type ItalyLocations } from '@/lib/opps/geo';
 
 type FetchResponse = {
-  regions?: string[];
+  countries?: string[];
+  regionsByCountry?: Record<string, string[]>;
   provincesByRegion?: Record<string, string[]>;
   citiesByProvince?: Record<string, string[]>;
+  regions?: string[];
+};
+
+const EMPTY_LOCATIONS: ItalyLocations = {
+  regions: [],
+  regionsByCountry: {},
+  provincesByRegion: {},
+  citiesByProvince: {},
 };
 
 let cached: ItalyLocations | null = null;
@@ -23,18 +32,15 @@ async function fetchLocations(force = false): Promise<ItalyLocations> {
         throw new Error(text || `HTTP ${res.status}`);
       }
       const json = (await res.json().catch(() => ({}))) as FetchResponse;
-      const regions = Array.isArray(json.regions) && json.regions.length > 0 ? json.regions : FALLBACK_ITALY_LOCATIONS.regions;
-      const provinces = json.provincesByRegion ?? FALLBACK_ITALY_LOCATIONS.provincesByRegion;
-      const cities = json.citiesByProvince ?? FALLBACK_ITALY_LOCATIONS.citiesByProvince;
+      const regionsByCountry = json.regionsByCountry ?? {};
+      const italyRegions = regionsByCountry.IT ?? (Array.isArray(json.regions) ? json.regions : []);
+
       return {
-        regions,
-        provincesByRegion: provinces,
-        citiesByProvince: cities,
+        regions: italyRegions,
+        regionsByCountry,
+        provincesByRegion: json.provincesByRegion ?? {},
+        citiesByProvince: json.citiesByProvince ?? {},
       } satisfies ItalyLocations;
-    })
-    .catch((err) => {
-      if (!force) cached = FALLBACK_ITALY_LOCATIONS;
-      throw err;
     })
     .finally(() => {
       inflight = null;
@@ -47,7 +53,7 @@ async function fetchLocations(force = false): Promise<ItalyLocations> {
 }
 
 export function useItalyLocations() {
-  const [data, setData] = useState<ItalyLocations>(cached ?? FALLBACK_ITALY_LOCATIONS);
+  const [data, setData] = useState<ItalyLocations>(cached ?? EMPTY_LOCATIONS);
   const [loading, setLoading] = useState(!cached);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,8 +66,8 @@ export function useItalyLocations() {
       return result;
     } catch (err: any) {
       setError(err?.message || 'Impossibile caricare le località');
-      setData(FALLBACK_ITALY_LOCATIONS);
-      return FALLBACK_ITALY_LOCATIONS;
+      setData(EMPTY_LOCATIONS);
+      return EMPTY_LOCATIONS;
     } finally {
       setLoading(false);
     }
@@ -85,7 +91,7 @@ export function useItalyLocations() {
       } catch (err: any) {
         if (!cancelled) {
           setError(err?.message || 'Impossibile caricare le località');
-          setData(FALLBACK_ITALY_LOCATIONS);
+          setData(EMPTY_LOCATIONS);
         }
       } finally {
         if (!cancelled) setLoading(false);
