@@ -568,13 +568,13 @@ export default function OpportunityForm({
               required={sport === 'Calcio'}
             >
               <option value="">—</option>
-              <option value="" disabled>──────── PLAYER ────────</option>
+              <option value="__group_player" disabled>──────── PLAYER ────────</option>
               {roleOptions.map((r: string) => (
                 <option key={r} value={r}>
                   {r}
                 </option>
               ))}
-              <option value="" disabled>──────── STAFF ────────</option>
+              <option value="__group_staff" disabled>──────── STAFF ────────</option>
               {STAFF_ROLES.map((r) => (
                 <option key={r} value={r}>
                   {r}
