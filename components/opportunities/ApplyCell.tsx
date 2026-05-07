@@ -11,7 +11,7 @@ export default function ApplyCell({
   ownerId: string | null | undefined;
 }) {
   const [loading, setLoading] = useState(true);
-  const [isAthlete, setIsAthlete] = useState<boolean | null>(null); // null finché non sappiamo
+  const [canApplyRole, setCanApplyRole] = useState<boolean | null>(null); // athlete/staff
   const [meId, setMeId] = useState<string | null>(null);
   const [applied, setApplied] = useState<boolean>(false);
 
@@ -26,26 +26,17 @@ export default function ApplyCell({
         try {
           const meR = await fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' });
           const meJ = await meR.json().catch(() => null);
-          if (!cancelled) setMeId(meJ?.id ?? null);
-        } catch {
-          if (!cancelled) setMeId(null);
-        }
-
-        // Tipo profilo
-        try {
-          const pr = await fetch('/api/profiles/me', { credentials: 'include', cache: 'no-store' });
-          const pj = await pr.json().catch(() => ({}));
-          const pt = (pj?.data?.profile_type ?? '').toString().toLowerCase();
-
-          if (pt.includes('club') || pt.includes('soc') || pt.includes('owner')) {
-            if (!cancelled) setIsAthlete(false);
-          } else if (pt.includes('atlet')) {
-            if (!cancelled) setIsAthlete(true);
-          } else {
-            if (!cancelled) setIsAthlete(true); // fallback ragionevole
+          if (!cancelled) {
+            setMeId(meJ?.user?.id ?? null);
+            const rawRole = String(meJ?.role ?? '').toLowerCase();
+            if (rawRole === 'athlete' || rawRole === 'staff') setCanApplyRole(true);
+            else if (rawRole === 'club' || rawRole === 'fan' || rawRole === 'guest') setCanApplyRole(false);
           }
         } catch {
-          if (!cancelled) setIsAthlete(true); // fallback ragionevole
+          if (!cancelled) {
+            setMeId(null);
+            setCanApplyRole(false);
+          }
         }
 
         // Ha già applicato?
@@ -93,16 +84,16 @@ export default function ApplyCell({
   }
 
   // --- rendering ---
-  if (loading || isAthlete === null) return <span className="text-gray-400">…</span>;
+  if (loading || canApplyRole === null) return <span className="text-gray-400">…</span>;
 
   // Club → blocco sempre
-  if (!isAthlete) {
-    return <span className="text-xs text-gray-500 border rounded px-2 py-1">Solo atleti</span>;
+  if (!canApplyRole) {
+    return <span className="text-xs text-gray-500 border rounded px-2 py-1">Solo Player/Staff</span>;
   }
 
   // Proprietario dell’annuncio → blocco
   if (meId && ownerId && meId === ownerId) {
-    return <span className="text-xs text-gray-500 border rounded px-2 py-1">Solo atleti</span>;
+    return <span className="text-xs text-gray-500 border rounded px-2 py-1">Solo Player/Staff</span>;
   }
 
   // Già applicato → badge

@@ -125,6 +125,16 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }: any) =
       : null;
   const status = 'submitted';
 
+  // applicant gate: solo athlete/player o staff (fan/club esclusi)
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('account_type,type')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  const accountType = String((profile as any)?.account_type ?? (profile as any)?.type ?? '').trim().toLowerCase();
+  const isApplicant = accountType === 'athlete' || accountType === 'player' || accountType === 'staff';
+  if (!isApplicant) return jsonError('Only player/staff can apply', 403);
+
   // verifica exist e che non sia tua
   const { data: opp, error: oppErr } = await supabase
     .from('opportunities')

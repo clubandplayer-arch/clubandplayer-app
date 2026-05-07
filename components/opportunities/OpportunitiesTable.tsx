@@ -64,7 +64,7 @@ export default function OpportunitiesTable({
         const profileOwnerId = (o as any).club_id ?? ownerId;
         const canEdit = !!currentUserId && (ownerId === currentUserId || o.created_by === currentUserId || o.owner_id === currentUserId);
         const place = [o.city, provinceDisplayValue(o.province, provinceAbbreviations), o.region, o.country].filter(Boolean).join(', ');
-        const showApply = userRole === 'athlete' && !canEdit;
+        const showApply = (userRole === 'athlete' || userRole === 'staff') && !canEdit;
         const showFollow = userRole === 'athlete' && !!profileOwnerId;
         const isMyClub = !!myProfileId && !!profileOwnerId && myProfileId === profileOwnerId;
         const showVisitClub = !!profileOwnerId && !isMyClub;

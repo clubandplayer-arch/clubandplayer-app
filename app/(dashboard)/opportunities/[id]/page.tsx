@@ -39,7 +39,7 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
   const currentProfile = authUser?.user
     ? await supabase
         .from('profiles')
-        .select('id')
+        .select('id, account_type, type')
         .eq('user_id', authUser.user.id)
         .maybeSingle()
     : { data: null };
@@ -87,6 +87,8 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
   const published = formatDateHuman((opp as any).created_at);
   const isOwner = !!authUser?.user && !!ownerId && authUser.user.id === ownerId;
   const isOwnerProfile = !!currentProfile.data?.id && !!clubProfileId && currentProfile.data.id === clubProfileId;
+  const viewerRole = String((currentProfile.data as any)?.account_type ?? (currentProfile.data as any)?.type ?? '').toLowerCase();
+  const canApplyViewer = viewerRole === 'athlete' || viewerRole === 'staff';
 
   return (
     <div className="page-shell space-y-4">
@@ -120,7 +122,7 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
                   title={opp.title}
                   description={opp.description}
                   clubProfileId={clubProfileId}
-                  showApply={!isOwner}
+                  showApply={!isOwner && canApplyViewer}
                   hideClubLink={isOwnerProfile}
                 />
               </div>
