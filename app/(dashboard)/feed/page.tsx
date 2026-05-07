@@ -90,7 +90,7 @@ export default function FeedPage() {
   const errorMessage = error?.message ?? null;
   const canCreatePost =
     Boolean(currentUserId) &&
-    (_profile?.account_type === 'club' || _profile?.account_type === 'athlete');
+    (_profile?.account_type === 'club' || _profile?.account_type === 'athlete' || _profile?.account_type === 'staff');
   const isFan = _profile?.account_type === 'fan';
   const shouldShowEmptyState = !isInitialLoading && !errorMessage && posts.length === 0;
 
@@ -101,7 +101,7 @@ export default function FeedPage() {
     onLoadMore: loadMore,
   });
   const userRole =
-    _profile?.account_type === 'club' || _profile?.account_type === 'athlete'
+    _profile?.account_type === 'club' || _profile?.account_type === 'athlete' || _profile?.account_type === 'staff'
       ? _profile.account_type
       : 'guest';
   const shouldShowStarterPack = !isInitialLoading && !errorMessage && posts.length < 3;
@@ -427,11 +427,11 @@ export default function FeedPage() {
           </div>
           {canCreatePost ? (
             <FeedComposer onPosted={handleRefresh} />
-          ) : (
+          ) : isFan ? (
             <div className="glass-panel p-4 text-sm text-neutral-600">
               Con l’account Fan puoi interagire con i contenuti, ma non puoi creare post.
             </div>
-          )}
+          ) : null}
 
           <div className="space-y-4" aria-live="polite" aria-busy={isInitialLoading}>
             {isInitialLoading && (
