@@ -4,6 +4,7 @@ import type { Opportunity } from '@/types/opportunity';
 export type OppFilters = {
   q?: string;
   role?: string;
+  role_group?: 'player' | 'staff' | string;
   country?: string;
   region?: string;
   province?: string;
@@ -26,6 +27,12 @@ const SELECT_FIELDS =
 function normalizeRoleGroup(value: unknown): 'player' | 'staff' {
   const normalized = String(value ?? '').trim().toLowerCase();
   return normalized === 'staff' ? 'staff' : 'player';
+}
+
+function parseRoleGroupFilter(value: unknown): 'player' | 'staff' | null {
+  const normalized = String(value ?? '').trim().toLowerCase();
+  if (normalized === 'player' || normalized === 'staff') return normalized;
+  return null;
 }
 
 function sanitizeLike(value: string) {
@@ -98,6 +105,10 @@ export const OpportunitiesRepo = {
     const role = filters.role?.trim();
     if (role) {
       query = query.eq('role', role);
+    }
+    const roleGroup = parseRoleGroupFilter(filters.role_group);
+    if (roleGroup) {
+      query = query.eq('role_group', roleGroup);
     }
 
     const sport = filters.sport?.trim();

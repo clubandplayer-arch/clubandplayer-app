@@ -89,6 +89,8 @@ export async function GET(req: NextRequest) {
   const clubId = (url.searchParams.get('clubId') || url.searchParams.get('club_id') || '').trim();
   const sport = normalizeSport((url.searchParams.get('sport') || '').trim()) ?? '';
   const role = (url.searchParams.get('role') || '').trim();
+  const roleGroupParam = url.searchParams.get('role_group') || url.searchParams.get('roleGroup');
+  const roleGroup = parseRoleGroup(roleGroupParam);
   const ageB = (url.searchParams.get('age') || '').trim();
   const category = (url.searchParams.get('category') || url.searchParams.get('required_category') || '').trim();
   const rawStatus = (url.searchParams.get('status') || '').trim().toLowerCase();
@@ -118,6 +120,7 @@ export async function GET(req: NextRequest) {
   if (club) query = query.ilike('club_name', `%${club}%`);
   if (sport) query = query.eq('sport', sport);
   if (role) query = query.eq('role', role);
+  if (roleGroup) query = query.eq('role_group', roleGroup);
   if (category) query = query.eq('category', category);
   if (rawStatus && allowedStatuses.has(rawStatus)) {
     query = query.eq('status', rawStatus);
