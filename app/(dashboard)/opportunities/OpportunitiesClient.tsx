@@ -13,7 +13,7 @@ import { AGE_BRACKETS, normalizeSport, SPORTS, SPORTS_ROLES } from '@/lib/opps/c
 import { CATEGORIES_BY_SPORT } from '@/lib/opps/categories';
 import { useGeo } from '@/hooks/useGeo';
 
-type Role = 'athlete' | 'club' | 'guest';
+type Role = 'athlete' | 'club' | 'staff' | 'fan' | 'guest';
 
 export default function OpportunitiesClient() {
   const router = useRouter();
@@ -223,7 +223,7 @@ export default function OpportunitiesClient() {
         if (cancelled) return;
         setMeId(j?.user?.id ?? null);
         const raw = (j?.role ?? '').toString().toLowerCase();
-        if (raw === 'club' || raw === 'athlete') setRole(raw as Role);
+        if (raw === 'club' || raw === 'athlete' || raw === 'staff' || raw === 'fan') setRole(raw as Role);
         else setRole('guest');
       } catch {
         if (!cancelled) setRole('guest');

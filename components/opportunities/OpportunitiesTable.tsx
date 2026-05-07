@@ -8,7 +8,7 @@ import type { Opportunity } from '@/types/opportunity';
 import { useProvinceAbbreviations } from '@/hooks/useProvinceAbbreviations';
 import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
 
-type Role = 'athlete' | 'club' | 'guest';
+type Role = 'athlete' | 'club' | 'staff' | 'fan' | 'guest';
 
 function formatBracket(min: number | null | undefined, max: number | null | undefined) {
   if (min == null && max == null) return '—';
