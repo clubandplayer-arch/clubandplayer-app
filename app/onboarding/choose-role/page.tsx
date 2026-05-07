@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { MaterialIcon, type MaterialIconName } from '@/components/icons/MaterialIcon';
 
-type Role = 'club' | 'athlete' | 'fan';
+type Role = 'club' | 'athlete' | 'staff' | 'fan';
 
 export default function ChooseRolePage() {
   const router = useRouter();
@@ -33,7 +33,7 @@ export default function ChooseRolePage() {
         router.replace('/club/profile');
         return;
       }
-      if (role === 'athlete') {
+      if (role === 'athlete' || role === 'staff') {
         router.replace('/player/profile');
         return;
       }
@@ -63,6 +63,12 @@ export default function ChooseRolePage() {
       icon: 'person',
     },
     {
+      role: 'staff',
+      title: 'STAFF',
+      description: 'Lavora nello sport, crea il tuo profilo professionale e trova nuove opportunità',
+      icon: 'group',
+    },
+    {
       role: 'fan',
       title: 'FAN',
       description: 'Segui, vivi e sostieni Club e Player, dentro e fuori dal campo',
@@ -79,7 +85,7 @@ export default function ChooseRolePage() {
         <p className="mt-4 text-2xl text-neutral-600">Ogni ruolo offre un&apos;esperienza diversa</p>
       </div>
 
-      <div className="mx-auto mt-10 grid max-w-6xl gap-5 md:grid-cols-3">
+      <div className="mx-auto mt-10 grid max-w-6xl gap-5 md:grid-cols-4">
         {roleCards.map(({ role, title, description, icon }) => {
           const active = selectedRole === role;
           return (
