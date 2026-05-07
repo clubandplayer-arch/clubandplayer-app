@@ -30,6 +30,11 @@ type MobileMenuItem = {
   badge?: number;
 };
 
+function hasValidAccountType(profile: any): boolean {
+  const value = String(profile?.account_type ?? profile?.type ?? '').toLowerCase().trim();
+  return value === 'club' || value === 'athlete' || value === 'staff' || value === 'fan';
+}
+
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -70,7 +75,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        if (!profile?.account_type) {
+        if (!hasValidAccountType(profile)) {
           router.replace(`/onboarding/choose-role?next=${encodeURIComponent(nextUrl)}`);
           return;
         }
