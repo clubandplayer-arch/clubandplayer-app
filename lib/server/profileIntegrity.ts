@@ -1,14 +1,14 @@
-type AccountType = 'athlete' | 'club' | 'fan';
+type AccountType = 'athlete' | 'club' | 'fan' | 'staff';
 
 function normalizeAccountType(value: unknown): AccountType | null {
   const normalized = String(value ?? '').trim().toLowerCase();
-  if (normalized === 'athlete' || normalized === 'club' || normalized === 'fan') return normalized;
+  if (normalized === 'athlete' || normalized === 'club' || normalized === 'fan' || normalized === 'staff') return normalized;
   return null;
 }
 
 function roleToAccountType(role: unknown): AccountType | null {
   const normalized = String(role ?? '').trim().toLowerCase();
-  if (normalized === 'athlete' || normalized === 'club' || normalized === 'fan') return normalized;
+  if (normalized === 'athlete' || normalized === 'club' || normalized === 'fan' || normalized === 'staff') return normalized;
   return null;
 }
 
