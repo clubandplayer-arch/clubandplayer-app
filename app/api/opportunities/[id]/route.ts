@@ -222,7 +222,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   const { data: opp, error: fetchError } = await supabase
     .from('opportunities')
-    .select('id, owner_id, created_by, sport')
+    .select('id, owner_id, created_by, sport, role_group')
     .eq('id', id)
     .maybeSingle();
 
@@ -259,8 +259,12 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
     normalizeSport((update.sport as string | null | undefined) ?? null) ??
     normalizeSport((opp.sport as string | null | undefined) ?? null) ??
     null;
+  const nextRoleGroup =
+    parseRoleGroup((update.role_group as string | null | undefined) ?? null) ??
+    parseRoleGroup((opp as any).role_group) ??
+    'player';
 
-  if (nextSport === 'Calcio') {
+  if (nextSport === 'Calcio' && nextRoleGroup === 'player') {
     const candidate = requiredCandidate ?? roleHuman;
     if (candidate) {
       const en = normalizeToEN(candidate);

@@ -250,9 +250,14 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   const genderDb = resolveGender((body as any).gender);
   if (!genderDb) return invalidPayload('invalid_gender');
 
-  // required_category → EN (solo Calcio)
+  const roleGroupRaw = (body as any).role_group ?? (body as any).roleGroup ?? null;
+  const roleGroup = parseRoleGroup(roleGroupRaw);
+  if (roleGroupRaw != null && !roleGroup) return invalidPayload('invalid_role_group');
+  const effectiveRoleGroup = roleGroup ?? 'player';
+
+  // required_category → EN (solo Calcio + role_group player legacy)
   let required_category: string | null = null;
-  if (sport === 'Calcio') {
+  if (sport === 'Calcio' && effectiveRoleGroup === 'player') {
     const candidate =
       norm((body as any).required_category) ??
       norm((body as any).requiredCategory) ??
@@ -265,12 +270,16 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
       return invalidPayload('invalid_required_category', { allowed_en: PLAYING_CATEGORY_EN });
     }
     required_category = en;
+  } else {
+    required_category =
+      norm((body as any).required_category) ??
+      norm((body as any).requiredCategory) ??
+      norm((body as any).playing_category) ??
+      norm((body as any).playingCategory) ??
+      null;
   }
 
   const category = norm((body as any).category);
-  const roleGroupRaw = (body as any).role_group ?? (body as any).roleGroup ?? null;
-  const roleGroup = parseRoleGroup(roleGroupRaw);
-  if (roleGroupRaw != null && !roleGroup) return invalidPayload('invalid_role_group');
 
   const basePayload: Record<string, unknown> = {
     title,
@@ -284,7 +293,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     city,
     sport,
     role: roleHuman,
-    role_group: roleGroup ?? 'player',
+    role_group: effectiveRoleGroup,
     category,
     required_category,
     age_min,
