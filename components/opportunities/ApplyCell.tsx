@@ -86,9 +86,9 @@ export default function ApplyCell({
   // --- rendering ---
   if (loading || canApplyRole === null) return <span className="text-gray-400">…</span>;
 
-  // Club → blocco sempre
+  // Fan/club/guest → non mostrare nulla
   if (!canApplyRole) {
-    return <span className="text-xs text-gray-500 border rounded px-2 py-1">Solo Player/Staff</span>;
+    return null;
   }
 
   // Proprietario dell’annuncio → blocco
