@@ -740,7 +740,7 @@ function StarterPackSection({
   error: string | null;
   opportunities: Opportunity[];
   profiles: StarterProfile[];
-  userRole: 'club' | 'athlete' | 'guest';
+  userRole: 'club' | 'athlete' | 'staff' | 'guest';
   currentUserId: string | null;
   showOpportunities: boolean;
 }) {

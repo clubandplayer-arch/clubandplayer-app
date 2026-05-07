@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import OpportunityCard from '@/components/opportunities/OpportunityCard';
 import type { Opportunity } from '@/types/opportunity';
 
-type Role = 'athlete' | 'club' | 'guest';
+type Role = 'athlete' | 'staff' | 'club' | 'guest';
 
 export default function FeedOpportunities() {
   const [role, setRole] = useState<Role>('guest');
@@ -26,7 +26,7 @@ export default function FeedOpportunities() {
         if (cancelled) return;
         setMeId(j?.user?.id ?? null);
         const raw = (j?.role ?? '').toString().toLowerCase();
-        if (raw === 'club' || raw === 'athlete') setRole(raw as Role);
+        if (raw === 'club' || raw === 'athlete' || raw === 'staff') setRole(raw as Role);
         else setRole('guest');
       } catch {
         if (!cancelled) setRole('guest');
@@ -68,9 +68,9 @@ export default function FeedOpportunities() {
     };
   }, []);
 
-  // se atleta -> carica candidature per popolare "già candidato"
+  // se atleta/staff -> carica candidature per popolare "già candidato"
   useEffect(() => {
-    if (role !== 'athlete') return;
+    if (role !== 'athlete' && role !== 'staff') return;
     let cancelled = false;
     (async () => {
       try {
