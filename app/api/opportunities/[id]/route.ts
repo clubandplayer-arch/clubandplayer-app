@@ -16,7 +16,14 @@ function getSupabase() {
 }
 
 const SELECT =
-  'id,title,description,owner_id,created_by,club_id,created_at,country,region,province,city,sport,role,category,required_category,age_min,age_max,club_name,gender';
+  'id,title,description,owner_id,created_by,club_id,created_at,country,region,province,city,sport,role,role_group,category,required_category,age_min,age_max,club_name,gender';
+
+function parseRoleGroup(value: unknown): 'player' | 'staff' | null {
+  if (value == null) return null;
+  const normalized = String(value).trim().toLowerCase();
+  if (normalized === 'player' || normalized === 'staff') return normalized;
+  return null;
+}
 
 type ClubInfo = {
   club_profile_id: string | null;
@@ -141,7 +148,8 @@ export async function GET(
     if (!data) return jsonError('Not found', 404);
 
     const clubInfo = await resolveClubInfo(supabase, data as Record<string, unknown>);
-    return NextResponse.json({ data: { ...data, ...clubInfo } });
+    const roleGroup = parseRoleGroup((data as any).role_group) ?? 'player';
+    return NextResponse.json({ data: { ...data, role_group: roleGroup, roleGroup, ...clubInfo } });
   } catch (err: any) {
     return jsonError(err?.message || 'Unexpected error', 500);
   }
@@ -176,6 +184,12 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
     norm((body as any).roleValue);
   const clubName = norm((body as any).club_name);
   const category = norm((body as any).category);
+  const hasRoleGroupField =
+    Object.prototype.hasOwnProperty.call(body, 'role_group') ||
+    Object.prototype.hasOwnProperty.call(body, 'roleGroup');
+  const roleGroupRaw = (body as any).role_group ?? (body as any).roleGroup ?? null;
+  const roleGroup = hasRoleGroupField ? parseRoleGroup(roleGroupRaw) : null;
+  if (hasRoleGroupField && !roleGroup) return jsonError('invalid_role_group', 400);
 
   const hasRequiredField =
     Object.prototype.hasOwnProperty.call(body, 'required_category') ||
@@ -236,6 +250,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   }
   if (Object.prototype.hasOwnProperty.call(body, 'club_name')) update.club_name = clubName;
   if (Object.prototype.hasOwnProperty.call(body, 'category')) update.category = category;
+  if (hasRoleGroupField) update.role_group = roleGroup;
   if (hasGenderField) update.gender = genderDb;
   if (hasAgeMin) update.age_min = ageMin ?? null;
   if (hasAgeMax) update.age_max = ageMax ?? null;
@@ -269,7 +284,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   }
 
   if (Object.keys(update).length === 0) {
-    return NextResponse.json({ data: opp });
+    return NextResponse.json({ data: { ...opp, role_group: parseRoleGroup((opp as any).role_group) ?? 'player', roleGroup: parseRoleGroup((opp as any).role_group) ?? 'player' } });
   }
 
   const { data, error } = await supabase
@@ -280,7 +295,8 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
     .maybeSingle();
 
   if (error) return jsonError(error.message, 400);
-  return NextResponse.json({ data });
+  const normalizedData = data ? { ...data, role_group: parseRoleGroup((data as any).role_group) ?? 'player', roleGroup: parseRoleGroup((data as any).role_group) ?? 'player' } : data;
+  return NextResponse.json({ data: normalizedData });
 });
 
 export const DELETE = withAuth(async (req: NextRequest, { supabase, user }) => {

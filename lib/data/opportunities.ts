@@ -21,7 +21,12 @@ export type Page = { page: number; limit: number };
 export type OppResult = { items: Opportunity[]; total: number; hasMore: boolean };
 
 const SELECT_FIELDS =
-  'id,title,description,owner_id,created_by,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,status,club_name';
+  'id,title,description,owner_id,created_by,created_at,country,region,province,city,sport,role,role_group,required_category,age_min,age_max,status,club_name';
+
+function normalizeRoleGroup(value: unknown): 'player' | 'staff' {
+  const normalized = String(value ?? '').trim().toLowerCase();
+  return normalized === 'staff' ? 'staff' : 'player';
+}
 
 function sanitizeLike(value: string) {
   return value.replace(/[%_]/g, (char) => `\\${char}`);
@@ -47,6 +52,8 @@ function normalizeRow(row: Record<string, any>): Opportunity {
     city: row.city ?? null,
     sport: row.sport ?? null,
     role: row.role ?? null,
+    role_group: normalizeRoleGroup(row.role_group),
+    roleGroup: normalizeRoleGroup(row.role_group),
     required_category: row.required_category ?? null,
     age_min: row.age_min ?? null,
     age_max: row.age_max ?? null,
@@ -205,7 +212,7 @@ export async function getLatestOpenOpportunitiesByClub(
     const { data, error } = await supabase
       .from('opportunities')
       .select(
-        'id,title,city,province,region,country,created_at,status,club_id,owner_id,created_by,club_name',
+        'id,title,city,province,region,country,created_at,status,club_id,owner_id,created_by,club_name,role_group',
       )
       .or(`club_id.eq.${clubProfileId},owner_id.eq.${clubProfileId},created_by.eq.${clubProfileId}`)
       .order('created_at', { ascending: false })
