@@ -66,7 +66,7 @@ export default function ChooseRolePage() {
       role: 'staff',
       title: 'STAFF',
       description: 'Lavora nello sport, crea il tuo profilo professionale e trova nuove opportunità',
-      icon: 'group',
+      icon: 'network',
     },
     {
       role: 'fan',
