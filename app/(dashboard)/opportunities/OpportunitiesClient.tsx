@@ -47,6 +47,7 @@ export default function OpportunitiesClient() {
   const selectedSport = sp.get('sport') ?? '';
   const normalizedSelectedSport = normalizeSport(selectedSport) ?? selectedSport;
   const selectedRole = sp.get('role') ?? '';
+  const selectedRoleGroup = sp.get('role_group') ?? sp.get('roleGroup') ?? '';
 
   useEffect(() => {
     setCountryCode(sp.get('country') ?? '');
@@ -193,6 +194,7 @@ export default function OpportunitiesClient() {
       'country', 'region', 'province', 'city', 'club',
       'clubId', 'club_id',
       'sport', 'role', 'age',
+      'role_group',
       'category', 'required_category',
       'owner', 'owner_id', 'created_by',
     ]) {
@@ -367,7 +369,8 @@ export default function OpportunitiesClient() {
     if (!Array.isArray(arr)) return [];
     return arr.map((row: any) => {
       const ownerId = row?.owner_id ?? row?.created_by ?? null;
-      return { ...row, owner_id: ownerId, created_by: ownerId } as Opportunity;
+      const roleGroup = (row?.role_group ?? row?.roleGroup) === 'staff' ? 'staff' : 'player';
+      return { ...row, owner_id: ownerId, created_by: ownerId, role_group: roleGroup, roleGroup } as Opportunity;
     });
   }, [data]);
 
@@ -585,6 +588,16 @@ export default function OpportunitiesClient() {
                 {r}
               </option>
             ))}
+          </select>
+
+          <select
+            value={selectedRoleGroup}
+            onChange={(e) => setParam('role_group', e.target.value)}
+            className="w-full rounded-xl border px-3 py-2"
+          >
+            <option value="">Gruppo ruolo: Tutte</option>
+            <option value="player">Player</option>
+            <option value="staff">Staff</option>
           </select>
 
         </div>

@@ -28,6 +28,10 @@ function buildLocationLabel(city?: string | null, province?: string | null, regi
   return parts.length ? parts.join(', ') : null;
 }
 
+function roleGroupLabel(value: unknown): 'Player' | 'Staff' {
+  return String(value ?? '').trim().toLowerCase() === 'staff' ? 'Staff' : 'Player';
+}
+
 export default async function OpportunityDetailPage({ params }: { params: { id: string } }) {
   const supabase = await getSupabaseServerClient();
   const { data: authUser } = await supabase.auth.getUser();
@@ -43,7 +47,7 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
   const { data: opp, error } = await supabase
     .from('opportunities')
     .select(
-      'id,title,description,sport,role,category,country,region,province,city,created_at,status,owner_id,created_by,club_name,club_id,required_category,age_min,age_max,gender',
+      'id,title,description,sport,role,role_group,category,country,region,province,city,created_at,status,owner_id,created_by,club_name,club_id,required_category,age_min,age_max,gender',
     )
     .eq('id', params.id)
     .maybeSingle();
@@ -77,6 +81,7 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
   const placeLabel = buildLocationLabel(opp.city, opp.province, opp.region, opp.country, provinceAbbreviations);
   const place = placeLabel || [opp.city, provinceDisplayValue(opp.province, provinceAbbreviations), opp.region, opp.country].filter(Boolean).join(', ');
   const categoryLabel = (opp as any).category ?? (opp as any).required_category ?? null;
+  const groupLabel = roleGroupLabel((opp as any).role_group);
   const genderLabel = opportunityGenderLabel((opp as any).gender) ?? undefined;
   const ageLabel = formatAge((opp as any).age_min, (opp as any).age_max);
   const published = formatDateHuman((opp as any).created_at);
@@ -101,6 +106,7 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
                 <h1 className="text-2xl md:text-3xl font-semibold leading-tight">{opp.title}</h1>
                 <div className="flex flex-wrap items-center gap-2 text-sm text-gray-700">
                   {opp.sport && <span className="rounded-full bg-gray-100 px-3 py-1">{opp.sport}</span>}
+                  <span className="rounded-full bg-blue-50 px-3 py-1 text-blue-800">[{groupLabel.toUpperCase()}]</span>
                   {opp.role && <span className="rounded-full bg-gray-100 px-3 py-1">{opp.role}</span>}
                   <span className="rounded-full bg-gray-100 px-3 py-1">Età: {ageLabel}</span>
                   {genderLabel && <span className="rounded-full bg-gray-100 px-3 py-1">{genderLabel}</span>}
@@ -136,7 +142,7 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
           <section className="rounded-2xl border bg-white/80 p-4 shadow-sm space-y-3">
             <h3 className="text-lg font-semibold">Requisiti e preferenze</h3>
             <ul className="list-disc space-y-1 pl-5 text-sm text-gray-800">
-              <li>Sport e ruolo richiesti: {opp.sport || '—'} • {opp.role || '—'}</li>
+              <li>Sport e ruolo richiesti: {opp.sport || '—'} • [{groupLabel.toUpperCase()}] {opp.role || '—'}</li>
               <li>Età target: {ageLabel}</li>
               <li>{place ? `Località: ${place}` : 'Località non specificata'}</li>
               <li>Categoria richiesta: {categoryLabel ?? '—'}{genderLabel ? ` • ${genderLabel}` : ''}</li>

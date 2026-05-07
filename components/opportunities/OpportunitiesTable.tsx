@@ -25,6 +25,10 @@ function fmtDateHuman(s?: string | null) {
   return d.toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric' });
 }
 
+function roleGroupLabel(value: unknown): 'Player' | 'Staff' {
+  return String(value ?? '').trim().toLowerCase() === 'staff' ? 'Staff' : 'Player';
+}
+
 export default function OpportunitiesTable({
   items,
   currentUserId,
@@ -64,6 +68,7 @@ export default function OpportunitiesTable({
         const showFollow = userRole === 'athlete' && !!profileOwnerId;
         const isMyClub = !!myProfileId && !!profileOwnerId && myProfileId === profileOwnerId;
         const showVisitClub = !!profileOwnerId && !isMyClub;
+        const groupLabel = roleGroupLabel((o as any).role_group ?? (o as any).roleGroup);
         const clubLabel = (() => {
           const explicit = (o as any).clubName || o.club_name;
           if (explicit) return explicit;
@@ -92,6 +97,7 @@ export default function OpportunitiesTable({
 
                 <div className="flex flex-wrap items-center gap-2 text-sm text-gray-700">
                   {o.sport && <span className="rounded-full bg-gray-100 px-2.5 py-1">{o.sport}</span>}
+                  <span className="rounded-full bg-blue-50 text-blue-800 px-2.5 py-1">[{groupLabel.toUpperCase()}]</span>
                   {o.role && <span className="rounded-full bg-gray-100 px-2.5 py-1">{o.role}</span>}
                   {o.category && <span className="rounded-full bg-gray-100 px-2.5 py-1">{o.category}</span>}
                   <span className="rounded-full bg-gray-100 px-2.5 py-1">Età: {formatBracket(o.age_min as any, o.age_max as any)}</span>
