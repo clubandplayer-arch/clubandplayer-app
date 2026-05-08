@@ -8,13 +8,14 @@ import SearchResultRow, { type SearchResult } from '@/components/search/SearchRe
 import { COUNTRIES, getCountryName } from '@/lib/geo/countries';
 import { SPORTS, SPORTS_ROLES, normalizeSport } from '@/lib/opps/constants';
 
-type SearchType = 'all' | 'opportunities' | 'clubs' | 'players' | 'posts' | 'events';
+type SearchType = 'all' | 'opportunities' | 'clubs' | 'players' | 'staff' | 'posts' | 'events';
 type LocationOption = { id: number; name: string };
 
 type SearchResultsByKind = {
   opportunities: SearchResult[];
   clubs: SearchResult[];
   players: SearchResult[];
+  staff: SearchResult[];
   posts: SearchResult[];
   events: SearchResult[];
 };
@@ -23,6 +24,7 @@ type CountsByKind = {
   opportunities: number;
   clubs: number;
   players: number;
+  staff: number;
   posts: number;
   events: number;
 };
@@ -31,6 +33,7 @@ const EMPTY_RESULTS: SearchResultsByKind = {
   opportunities: [],
   clubs: [],
   players: [],
+  staff: [],
   posts: [],
   events: [],
 };
@@ -40,6 +43,7 @@ const TAB_ITEMS: Array<{ label: string; value: SearchType }> = [
   { label: 'Opportunità', value: 'opportunities' },
   { label: 'Club', value: 'clubs' },
   { label: 'Player', value: 'players' },
+  { label: 'Staff', value: 'staff' },
   { label: 'Post', value: 'posts' },
   { label: 'Eventi', value: 'events' },
 ];
@@ -80,13 +84,14 @@ function normalizeType(raw?: string | null): SearchType {
     clubs: 'clubs',
     player: 'players',
     players: 'players',
+    staff: 'staff',
     post: 'posts',
     posts: 'posts',
     event: 'events',
     events: 'events',
   };
   const resolved = aliases[value] ?? value;
-  if (resolved === 'opportunities' || resolved === 'clubs' || resolved === 'players' || resolved === 'posts' || resolved === 'events') {
+  if (resolved === 'opportunities' || resolved === 'clubs' || resolved === 'players' || resolved === 'staff' || resolved === 'posts' || resolved === 'events') {
     return resolved;
   }
   return 'all';
@@ -576,6 +581,7 @@ export default function SearchPage() {
                   { key: 'opportunities', label: 'Opportunità' },
                   { key: 'clubs', label: 'Club' },
                   { key: 'players', label: 'Player' },
+                  { key: 'staff', label: 'Staff' },
                   { key: 'posts', label: 'Post' },
                   { key: 'events', label: 'Eventi' },
                 ] as Array<{ key: Exclude<SearchType, 'all'>; label: string }>
