@@ -26,11 +26,12 @@ type Suggestion = {
   is_verified?: boolean | null;
 };
 
-type TabKey = 'club' | 'player';
+type TabKey = 'club' | 'player' | 'staff';
 
 const TABS: Array<{ key: TabKey; label: string }> = [
   { key: 'club', label: 'Club' },
   { key: 'player', label: 'Player' },
+  { key: 'staff', label: 'Staff' },
 ];
 
 function targetHref(item: Suggestion) {
@@ -91,7 +92,7 @@ function secondaryMetaLine(suggestion: Suggestion): ReactNode {
 export default function DiscoverPage() {
   const { role: contextRole } = useCurrentProfileContext();
   const [activeTab, setActiveTab] = useState<TabKey>('club');
-  const [items, setItems] = useState<Record<TabKey, Suggestion[]>>({ club: [], player: [] });
+  const [items, setItems] = useState<Record<TabKey, Suggestion[]>>({ club: [], player: [], staff: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<{ url: string; alt: string } | null>(null);
@@ -143,7 +144,9 @@ export default function DiscoverPage() {
       try {
         const [clubs, players] = await Promise.all([fetchSuggestions('club'), fetchSuggestions('player')]);
         if (cancelled) return;
-        setItems({ club: clubs.suggestions, player: players.suggestions });
+        const staffSuggestions = players.suggestions.filter((item) => (item.role ?? '').trim().toLowerCase() === 'staff');
+        const playerSuggestions = players.suggestions.filter((item) => (item.role ?? '').trim().toLowerCase() !== 'staff');
+        setItems({ club: clubs.suggestions, player: playerSuggestions, staff: staffSuggestions });
       } catch (err) {
         if (cancelled) return;
         setError(err instanceof Error ? err.message : 'Impossibile caricare i suggerimenti.');
