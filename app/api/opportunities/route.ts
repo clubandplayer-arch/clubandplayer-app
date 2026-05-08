@@ -56,6 +56,13 @@ function resolveGender(value: unknown): string | null {
   return normalized ? toOpportunityDbValue(normalized, 'canonical') : null;
 }
 
+function parseRoleGroup(value: unknown): 'player' | 'staff' | null {
+  if (value == null) return null;
+  const normalized = String(value).trim().toLowerCase();
+  if (normalized === 'player' || normalized === 'staff') return normalized;
+  return null;
+}
+
 /** GET /api/opportunities — pubblico */
 export async function GET(req: NextRequest) {
   try {
@@ -82,6 +89,8 @@ export async function GET(req: NextRequest) {
   const clubId = (url.searchParams.get('clubId') || url.searchParams.get('club_id') || '').trim();
   const sport = normalizeSport((url.searchParams.get('sport') || '').trim()) ?? '';
   const role = (url.searchParams.get('role') || '').trim();
+  const roleGroupParam = url.searchParams.get('role_group') || url.searchParams.get('roleGroup');
+  const roleGroup = parseRoleGroup(roleGroupParam);
   const ageB = (url.searchParams.get('age') || '').trim();
   const category = (url.searchParams.get('category') || url.searchParams.get('required_category') || '').trim();
   const rawStatus = (url.searchParams.get('status') || '').trim().toLowerCase();
@@ -93,7 +102,7 @@ export async function GET(req: NextRequest) {
   let query = supabase
     .from('opportunities')
     .select(
-      'id,title,description,created_by,created_at,country,region,province,city,sport,role,category,required_category,age_min,age_max,club_name,gender,owner_id,club_id,status',
+      'id,title,description,created_by,created_at,country,region,province,city,sport,role,role_group,category,required_category,age_min,age_max,club_name,gender,owner_id,club_id,status',
       { count: 'exact' },
     )
     .order('created_at', { ascending: sort === 'oldest' })
@@ -111,6 +120,7 @@ export async function GET(req: NextRequest) {
   if (club) query = query.ilike('club_name', `%${club}%`);
   if (sport) query = query.eq('sport', sport);
   if (role) query = query.eq('role', role);
+  if (roleGroup) query = query.eq('role_group', roleGroup);
   if (category) query = query.eq('category', category);
   if (rawStatus && allowedStatuses.has(rawStatus)) {
     query = query.eq('status', rawStatus);
@@ -163,7 +173,17 @@ export async function GET(req: NextRequest) {
     const ownerId = row.created_by ?? row.owner_id ?? null;
     const clubIdValue = row.club_id ?? ownerId;
     const clubName = row.club_name ?? (clubIdValue ? clubNameMap[clubIdValue] : ownerId ? clubNameMap[ownerId] : null) ?? null;
-    return { ...row, owner_id: ownerId, created_by: ownerId, club_id: row.club_id ?? ownerId ?? null, club_name: clubName, clubName };
+    const roleGroup = parseRoleGroup(row.role_group) ?? 'player';
+    return {
+      ...row,
+      owner_id: ownerId,
+      created_by: ownerId,
+      club_id: row.club_id ?? ownerId ?? null,
+      role_group: roleGroup,
+      roleGroup,
+      club_name: clubName,
+      clubName,
+    };
   });
 
   return successResponse({
@@ -230,9 +250,14 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   const genderDb = resolveGender((body as any).gender);
   if (!genderDb) return invalidPayload('invalid_gender');
 
-  // required_category → EN (solo Calcio)
+  const roleGroupRaw = (body as any).role_group ?? (body as any).roleGroup ?? null;
+  const roleGroup = parseRoleGroup(roleGroupRaw);
+  if (roleGroupRaw != null && !roleGroup) return invalidPayload('invalid_role_group');
+  const effectiveRoleGroup = roleGroup ?? 'player';
+
+  // required_category → EN (solo Calcio + role_group player legacy)
   let required_category: string | null = null;
-  if (sport === 'Calcio') {
+  if (sport === 'Calcio' && effectiveRoleGroup === 'player') {
     const candidate =
       norm((body as any).required_category) ??
       norm((body as any).requiredCategory) ??
@@ -245,6 +270,13 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
       return invalidPayload('invalid_required_category', { allowed_en: PLAYING_CATEGORY_EN });
     }
     required_category = en;
+  } else {
+    required_category =
+      norm((body as any).required_category) ??
+      norm((body as any).requiredCategory) ??
+      norm((body as any).playing_category) ??
+      norm((body as any).playingCategory) ??
+      null;
   }
 
   const category = norm((body as any).category);
@@ -261,6 +293,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     city,
     sport,
     role: roleHuman,
+    role_group: effectiveRoleGroup,
     category,
     required_category,
     age_min,
@@ -274,7 +307,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
       .from('opportunities')
       .insert(payload)
       .select(
-        'id,title,description,created_by,created_at,country,region,province,city,sport,role,category,required_category,age_min,age_max,club_name,gender,club_id',
+        'id,title,description,created_by,created_at,country,region,province,city,sport,role,role_group,category,required_category,age_min,age_max,club_name,gender,club_id',
       )
       .single();
 
@@ -288,5 +321,6 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   }
 
   if (error) return dbError(error.message);
-  return successResponse({ data }, { status: 201 });
+  const normalizedData = data ? { ...data, role_group: parseRoleGroup((data as any).role_group) ?? 'player', roleGroup: parseRoleGroup((data as any).role_group) ?? 'player' } : data;
+  return successResponse({ data: normalizedData }, { status: 201 });
 });

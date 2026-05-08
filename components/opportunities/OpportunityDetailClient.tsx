@@ -9,7 +9,7 @@ import { opportunityGenderLabel } from '@/lib/opps/gender';
 import { useProvinceAbbreviations } from '@/hooks/useProvinceAbbreviations';
 import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
 
-type Role = 'athlete' | 'club' | 'guest';
+type Role = 'athlete' | 'club' | 'staff' | 'fan' | 'guest';
 type ApiOne<T> = { data?: T; [k: string]: any };
 
 /** Estensione locale per tollerare campi legacy snake_case arrivati dall'API */
@@ -62,7 +62,7 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
         const j = await r.json().catch(() => ({}));
         if (cancelled) return;
         const raw = (j?.role ?? '').toString().toLowerCase();
-        setRole(raw === 'athlete' || raw === 'club' ? raw : 'guest');
+        setRole(raw === 'athlete' || raw === 'club' || raw === 'staff' || raw === 'fan' ? raw : 'guest');
         setMeId(j?.user?.id ?? null);
       } catch {
         if (!cancelled) {
@@ -114,7 +114,7 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
     return Boolean(createdBy && createdBy === meId);
   }, [meId, opp]);
 
-  const showApply = role === 'athlete' && !isOwner;
+  const showApply = (role === 'athlete' || role === 'staff') && !isOwner;
   const provinceAbbreviations = useProvinceAbbreviations();
 
   if (loading) return <div className="p-4">Caricamento…</div>;

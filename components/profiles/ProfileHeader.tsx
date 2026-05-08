@@ -7,7 +7,7 @@ import { MessageButton } from '@/components/messaging/MessageButton';
 import CertifiedCMarkClubProfile from '@/components/badges/CertifiedCMarkClubProfile';
 import type { ProfileLinks } from '@/types/profile';
 
-type AccountType = 'club' | 'athlete' | 'player';
+type AccountType = 'club' | 'athlete' | 'staff' | 'player';
 
 type ProfileHeaderProps = {
   profileId: string;
@@ -146,7 +146,7 @@ export default function ProfileHeader({
   const subtitleText = subtitle?.trim();
   const locationText = locationLabel?.trim();
   const isClub = accountType === 'club';
-  const badgeLabel = isClub ? 'Club' : 'Giocatore';
+  const badgeLabel = isClub ? 'Club' : accountType === 'staff' ? 'Staff' : 'Giocatore';
   const hasActions = showMessageButton || showFollowButton;
 
   return (

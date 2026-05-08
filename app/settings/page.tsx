@@ -13,7 +13,7 @@ import { supabaseBrowser } from '@/lib/supabaseBrowser'
 
 type Profile = {
   id: string
-  account_type: 'athlete' | 'club' | 'fan' | null
+  account_type: 'athlete' | 'club' | 'fan' | 'staff' | null
   notify_email_new_message: boolean | null
 }
 
@@ -22,7 +22,7 @@ type BlockedItem = {
   display_name: string | null
   full_name: string | null
   avatar_url: string | null
-  account_type: 'athlete' | 'club' | 'fan' | null
+  account_type: 'athlete' | 'club' | 'fan' | 'staff' | null
 }
 
 export default function SettingsPage() {
@@ -37,7 +37,8 @@ export default function SettingsPage() {
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
 
   const [userId, setUserId] = useState<string | null>(null)
-  const [accountType, setAccountType] = useState<'athlete' | 'club' | 'fan' | null>(null)
+  const [profileId, setProfileId] = useState<string | null>(null)
+  const [accountType, setAccountType] = useState<'athlete' | 'club' | 'fan' | 'staff' | null>(null)
   const [notifyEmailNewMessage, setNotifyEmailNewMessage] = useState<boolean>(false)
   const [blockedUsers, setBlockedUsers] = useState<BlockedItem[]>([])
   const [blockedLoading, setBlockedLoading] = useState(false)
@@ -70,6 +71,7 @@ export default function SettingsPage() {
       }
 
       const p = (data ?? null) as Profile | null
+      setProfileId(p?.id ?? null)
       setAccountType(p?.account_type ?? null)
       setNotifyEmailNewMessage(!!p?.notify_email_new_message)
       setLoading(false)
@@ -187,7 +189,14 @@ export default function SettingsPage() {
       ? 'Club'
       : accountType === 'fan'
         ? 'Fan'
+        : accountType === 'staff'
+          ? 'Staff'
         : '—'
+  const publicProfileHref = accountType === 'club' && profileId
+    ? `/clubs/${profileId}`
+    : (accountType === 'athlete' || accountType === 'staff') && profileId
+      ? `/players/${profileId}`
+      : null
 
   return (
     <main style={{ maxWidth: 820, margin: '0 auto', padding: 24 }}>
@@ -228,7 +237,12 @@ export default function SettingsPage() {
               Tipo account: <b>{accountTypeLabel}</b>
             </p>
             <p style={{ margin: '8px 0' }}>
-              Profilo pubblico: <Link href="/u/me">/u/me</Link>
+              Profilo pubblico:{' '}
+              {publicProfileHref ? (
+                <Link href={publicProfileHref}>{publicProfileHref}</Link>
+              ) : (
+                <span> non disponibile per questo tipo account</span>
+              )}
             </p>
           </section>
 
@@ -286,7 +300,7 @@ export default function SettingsPage() {
               <ul style={{ display: 'grid', gap: 10, margin: 0, padding: 0, listStyle: 'none' }}>
                 {blockedUsers.map((item) => {
                   const label = item.display_name || item.full_name || item.blocked_profile_id
-                  const typeLabel = item.account_type === 'athlete' ? 'Player' : item.account_type === 'club' ? 'Club' : item.account_type === 'fan' ? 'Fan' : '—'
+                  const typeLabel = item.account_type === 'athlete' ? 'Player' : item.account_type === 'club' ? 'Club' : item.account_type === 'fan' ? 'Fan' : item.account_type === 'staff' ? 'Staff' : '—'
                   return (
                     <li key={item.blocked_profile_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, border: '1px solid #e5e7eb', borderRadius: 10, padding: 10 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

@@ -14,6 +14,7 @@ export type OpportunityRole =
 
 /** Sport (superset string per compatibilità) */
 export type OpportunitySport = 'football' | (string & {});
+export type OpportunityRoleGroup = 'player' | 'staff';
 
 /** Genere target (opzionale) */
 export type OpportunityGender =
@@ -61,6 +62,8 @@ export type Opportunity = {
   /** Dati sportivi */
   sport?: OpportunitySport | null;
   role?: OpportunityRole | null;
+  role_group?: OpportunityRoleGroup | null;
+  roleGroup?: OpportunityRoleGroup;
   category?: string | null; // livello/lega dell'opportunità
   required_category?: string | null; // es. "U17", "Eccellenza", ecc.
   age_min?: number | null;

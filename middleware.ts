@@ -9,7 +9,7 @@ export async function middleware(req: NextRequest) {
   const url = new URL(req.url);
   const pathname = url.pathname;
 
-  let role: 'club' | 'athlete' | 'fan' | 'guest' = 'guest';
+  let role: 'club' | 'athlete' | 'staff' | 'fan' | 'guest' = 'guest';
   let authenticated = false;
 
   try {
@@ -20,7 +20,7 @@ export async function middleware(req: NextRequest) {
     const j = await r.json().catch(() => ({}));
     authenticated = !!j?.user?.id;
     const raw = (j?.role ?? '').toString().toLowerCase();
-    if (raw === 'club' || raw === 'athlete' || raw === 'fan') role = raw;
+    if (raw === 'club' || raw === 'athlete' || raw === 'staff' || raw === 'fan') role = raw;
   } catch {
     // guest
   }
@@ -53,7 +53,7 @@ export async function middleware(req: NextRequest) {
   // Rotte /fan/* solo per fan
   if (pathname.startsWith('/fan/') && role !== 'fan') {
     if (role === 'club') return NextResponse.redirect(new URL('/club/profile', url));
-    if (role === 'athlete') return NextResponse.redirect(new URL('/player/profile', url));
+    if (role === 'athlete' || role === 'staff') return NextResponse.redirect(new URL('/player/profile', url));
     return NextResponse.redirect(new URL('/login?next=%2Ffan%2Fprofile', url));
   }
 

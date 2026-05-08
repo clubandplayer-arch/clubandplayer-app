@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { MaterialIcon, type MaterialIconName } from '@/components/icons/MaterialIcon';
 
-type Role = 'club' | 'athlete' | 'fan';
+type Role = 'club' | 'athlete' | 'staff' | 'fan';
 
 export default function ChooseRolePage() {
   const router = useRouter();
@@ -33,7 +33,7 @@ export default function ChooseRolePage() {
         router.replace('/club/profile');
         return;
       }
-      if (role === 'athlete') {
+      if (role === 'athlete' || role === 'staff') {
         router.replace('/player/profile');
         return;
       }
@@ -63,6 +63,12 @@ export default function ChooseRolePage() {
       icon: 'person',
     },
     {
+      role: 'staff',
+      title: 'STAFF',
+      description: 'Lavora nello sport, crea il tuo profilo professionale e trova nuove opportunità',
+      icon: 'network',
+    },
+    {
       role: 'fan',
       title: 'FAN',
       description: 'Segui, vivi e sostieni Club e Player, dentro e fuori dal campo',
@@ -71,15 +77,15 @@ export default function ChooseRolePage() {
   ];
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-12 md:py-16">
+    <main className="mx-auto w-full max-w-6xl px-4 py-10 md:py-14">
       <div className="mx-auto max-w-3xl text-center">
-        <h1 className="text-4xl font-semibold tracking-tight text-[#0b5477] md:text-5xl">
+        <h1 className="text-3xl font-semibold tracking-tight text-[#0b5477] md:text-4xl">
           Scegli come vuoi usare Club &amp; Player
         </h1>
-        <p className="mt-4 text-2xl text-neutral-600">Ogni ruolo offre un&apos;esperienza diversa</p>
+        <p className="mt-3 text-base text-neutral-600 md:text-lg">Ogni ruolo offre un&apos;esperienza diversa</p>
       </div>
 
-      <div className="mx-auto mt-10 grid max-w-6xl gap-5 md:grid-cols-3">
+      <div className="mx-auto mt-8 grid max-w-6xl gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {roleCards.map(({ role, title, description, icon }) => {
           const active = selectedRole === role;
           return (
@@ -88,15 +94,15 @@ export default function ChooseRolePage() {
               type="button"
               onClick={() => setSelectedRole(role)}
               disabled={saving}
-              className={`rounded-3xl border bg-white p-7 text-left shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0b5477]/40 ${
+              className={`flex min-h-[230px] flex-col rounded-2xl border bg-white p-5 text-left shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0b5477]/40 md:min-h-[250px] ${
                 active ? 'border-[#6da9c2] ring-2 ring-[#6da9c2]/40' : 'border-neutral-200 hover:border-[#b9d5e1]'
               }`}
             >
               <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-[#e7f1f6] text-[#1a7aa6]">
                 <MaterialIcon name={icon} fontSize={22} />
               </div>
-              <h2 className="mt-6 text-4xl font-semibold text-[#0f172a]">{title}</h2>
-              <p className="mt-3 text-3xl leading-10 text-neutral-600">{description}</p>
+              <h2 className="mt-5 text-2xl font-semibold text-[#0f172a] md:text-3xl">{title}</h2>
+              <p className="mt-2 text-sm leading-6 text-neutral-600 md:text-base">{description}</p>
             </button>
           );
         })}

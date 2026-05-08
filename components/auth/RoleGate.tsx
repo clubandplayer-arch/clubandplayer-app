@@ -5,6 +5,11 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 type Me = { account_type?: string | null; status?: string | null };
 
+function hasValidAccountType(profile: any): boolean {
+  const value = String(profile?.account_type ?? profile?.type ?? '').toLowerCase().trim();
+  return value === 'club' || value === 'athlete' || value === 'staff' || value === 'fan';
+}
+
 // Pagine che non devono essere bloccate dal gate (evita loop)
 const EXCLUDE_PREFIXES = [
   '/onboarding/choose-role',
@@ -55,7 +60,7 @@ export default function RoleGate({ children }: { children: React.ReactNode }) {
         }
 
         // Se manca account_type → vai alla scelta ruolo
-        if (!data?.account_type) {
+        if (!hasValidAccountType(data)) {
           router.replace(`/onboarding/choose-role?next=${encodeURIComponent(next)}`);
           return;
         }

@@ -90,7 +90,7 @@ export default function FeedPage() {
   const errorMessage = error?.message ?? null;
   const canCreatePost =
     Boolean(currentUserId) &&
-    (_profile?.account_type === 'club' || _profile?.account_type === 'athlete');
+    (_profile?.account_type === 'club' || _profile?.account_type === 'athlete' || _profile?.account_type === 'staff');
   const isFan = _profile?.account_type === 'fan';
   const shouldShowEmptyState = !isInitialLoading && !errorMessage && posts.length === 0;
 
@@ -101,7 +101,7 @@ export default function FeedPage() {
     onLoadMore: loadMore,
   });
   const userRole =
-    _profile?.account_type === 'club' || _profile?.account_type === 'athlete'
+    _profile?.account_type === 'club' || _profile?.account_type === 'athlete' || _profile?.account_type === 'staff'
       ? _profile.account_type
       : 'guest';
   const shouldShowStarterPack = !isInitialLoading && !errorMessage && posts.length < 3;
@@ -112,14 +112,6 @@ export default function FeedPage() {
     seenPostIds.current = new Set();
     await refresh();
   }, [refresh]);
-
-  const handleFocusComposer = useCallback(() => {
-    if (typeof document === 'undefined') return;
-    const input = document.getElementById('feed-composer-input') as HTMLTextAreaElement | null;
-    if (!input) return;
-    input.focus();
-    input.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, []);
 
   const loadReactions = useCallback(async (ids: Array<string | number>) => {
     if (!ids.length) return;
@@ -427,11 +419,11 @@ export default function FeedPage() {
           </div>
           {canCreatePost ? (
             <FeedComposer onPosted={handleRefresh} />
-          ) : (
+          ) : isFan ? (
             <div className="glass-panel p-4 text-sm text-neutral-600">
               Con l’account Fan puoi interagire con i contenuti, ma non puoi creare post.
             </div>
-          )}
+          ) : null}
 
           <div className="space-y-4" aria-live="polite" aria-busy={isInitialLoading}>
             {isInitialLoading && (
@@ -449,11 +441,7 @@ export default function FeedPage() {
                 title="Il feed è ancora vuoto"
                 description="Inizia pubblicando un post o scopri club e player nella tua zona."
                 actions={[
-                  { label: 'Cerca su mappa', href: '/search-map', variant: 'primary' },
-                  { label: 'Scopri opportunità', href: '/opportunities', variant: 'secondary' },
-                  ...(canCreatePost
-                    ? [{ label: 'Crea un post', onClick: handleFocusComposer, variant: 'secondary' as const }]
-                    : []),
+                  { label: 'Scopri profili', href: '/discover', variant: 'primary' },
                 ]}
               />
             )}
@@ -740,7 +728,7 @@ function StarterPackSection({
   error: string | null;
   opportunities: Opportunity[];
   profiles: StarterProfile[];
-  userRole: 'club' | 'athlete' | 'guest';
+  userRole: 'club' | 'athlete' | 'staff' | 'guest';
   currentUserId: string | null;
   showOpportunities: boolean;
 }) {
@@ -780,29 +768,14 @@ function StarterPackSection({
         </div>
       ) : null}
 
-      <div className="glass-panel p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h2 className="text-sm font-semibold text-neutral-900">Profili consigliati</h2>
-            <p className="text-xs text-neutral-500">Club e player in linea con il tuo profilo.</p>
+      {!loading && profiles.length > 0 ? (
+        <div className="glass-panel p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-semibold text-neutral-900">Profili consigliati</h2>
+              <p className="text-xs text-neutral-500">Club e player in linea con il tuo profilo.</p>
+            </div>
           </div>
-          <Link href="/search-map" className="text-xs font-semibold text-blue-700 hover:underline">
-            Cerca su mappa →
-          </Link>
-        </div>
-        {loading ? (
-          <div className="mt-4 space-y-3">
-            {Array.from({ length: 3 }).map((_, index) => (
-              <div key={index} className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white p-3">
-                <div className="h-10 w-10 rounded-full bg-neutral-100 animate-pulse" />
-                <div className="flex-1 space-y-2">
-                  <div className="h-3 w-1/3 rounded bg-neutral-100 animate-pulse" />
-                  <div className="h-3 w-1/2 rounded bg-neutral-100 animate-pulse" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : profiles.length > 0 ? (
           <ul className="mt-4 space-y-3">
             {profiles.map((profile) => {
               const name = profile.full_name?.trim() || profile.display_name?.trim() || 'Profilo';
@@ -832,10 +805,8 @@ function StarterPackSection({
               );
             })}
           </ul>
-        ) : (
-          <div className="mt-4 text-sm text-neutral-600">Nessun profilo consigliato al momento.</div>
-        )}
-      </div>
+        </div>
+      ) : null}
 
       {error ? <div className="text-xs text-red-600">{error}</div> : null}
     </div>

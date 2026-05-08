@@ -7,7 +7,7 @@ import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
 import { opportunityGenderLabel } from '@/lib/opps/gender';
 import type { Opportunity } from '@/types/opportunity';
 
-type Role = 'athlete' | 'club' | 'guest';
+type Role = 'athlete' | 'staff' | 'club' | 'guest';
 
 type Props = {
   opp: Opportunity;
@@ -38,7 +38,7 @@ export default function OpportunityCard({
       ? `≤${opp.age_max}`
       : undefined;
 
-  const canApply = userRole === 'athlete';
+  const canApply = userRole === 'athlete' || userRole === 'staff';
 
   return (
     <article className="bg-white rounded-xl border p-4">

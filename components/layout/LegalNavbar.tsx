@@ -6,8 +6,9 @@ import { usePathname } from 'next/navigation';
 import { NavCloseIcon, NavMenuIcon } from '@/components/icons/NavToggleIcons';
 import { MaterialIcon, type MaterialIconName } from '@/components/icons/MaterialIcon';
 import BrandLogo from '@/components/brand/BrandLogo';
+import type { UserRole } from '@/lib/auth/role';
 
-type Role = 'athlete' | 'club' | null;
+type Role = UserRole;
 
 type NavItem = { label: string; href: string; icon: MaterialIconName };
 

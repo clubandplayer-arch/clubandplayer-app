@@ -24,10 +24,10 @@ function mergeCookies(from: NextResponse, into: NextResponse) {
   if (set) into.headers.append('set-cookie', set);
 }
 
-type Role = 'guest' | 'athlete' | 'club' | 'fan';
+type Role = 'guest' | 'athlete' | 'club' | 'fan' | 'staff';
 type ProfileStatus = 'active' | 'rejected';
 
-function normRole(v: unknown): 'club' | 'athlete' | 'fan' | null {
+function normRole(v: unknown): 'club' | 'athlete' | 'fan' | 'staff' | null {
   return inferAccountType(v);
 }
 
@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
   });
 
   // 1) profiles.account_type (nuovo), 2) profiles.type (legacy)
-  let accountType: 'club' | 'athlete' | 'fan' | null = null;
+  let accountType: 'club' | 'athlete' | 'fan' | 'staff' | null = null;
   let legacyType: string | null = null;
   let status: ProfileStatus = 'active';
 

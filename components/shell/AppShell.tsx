@@ -17,7 +17,7 @@ import BrandLogo from '@/components/brand/BrandLogo';
 import { buildProfileDisplayName } from '@/lib/displayName';
 import MobileSearchOverlay from '@/components/search/MobileSearchOverlay';
 
-type Role = 'athlete' | 'club' | 'fan' | 'guest';
+type Role = 'athlete' | 'club' | 'staff' | 'fan' | 'guest';
 
 type NavItem = { label: string; href: string; icon: MaterialIconName };
 
@@ -29,6 +29,11 @@ type MobileMenuItem = {
   tone?: 'danger';
   badge?: number;
 };
+
+function hasValidAccountType(profile: any): boolean {
+  const value = String(profile?.account_type ?? profile?.type ?? '').toLowerCase().trim();
+  return value === 'club' || value === 'athlete' || value === 'staff' || value === 'fan';
+}
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -70,7 +75,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        if (!profile?.account_type) {
+        if (!hasValidAccountType(profile)) {
           router.replace(`/onboarding/choose-role?next=${encodeURIComponent(nextUrl)}`);
           return;
         }
@@ -80,7 +85,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        setRole(rawRole === 'club' || rawRole === 'athlete' || rawRole === 'fan' ? (rawRole as Role) : 'guest');
+        setRole(rawRole === 'club' || rawRole === 'athlete' || rawRole === 'staff' || rawRole === 'fan' ? (rawRole as Role) : 'guest');
         setAvatarUrl(typeof profile?.avatar_url === 'string' ? profile.avatar_url : null);
         setProfileName(buildProfileDisplayName(profile?.full_name, profile?.display_name, 'Profilo'));
 

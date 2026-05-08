@@ -108,9 +108,9 @@ function formatRelative(dateStr: string) {
 export default function NotificationItem({ notification, onClick, compact }: Props) {
   const profileHref = (profileId: string, accountType?: string | null) => {
     const normalized = (accountType || '').toLowerCase();
-    if (normalized === 'player' || normalized === 'athlete') return `/players/${profileId}`;
+    if (normalized === 'player' || normalized === 'athlete' || normalized === 'staff') return `/players/${profileId}`;
     if (normalized === 'club') return `/clubs/${profileId}`;
-    return `/profiles/${profileId}`;
+    return null;
   };
 
   const hrefFromPayload = () => {
@@ -133,7 +133,7 @@ export default function NotificationItem({ notification, onClick, compact }: Pro
           ? payload.follower_profile_id
           : notification.actor_profile_id;
       if (typeof followerProfileId === 'string' && followerProfileId.trim()) {
-        return profileHref(followerProfileId, notification.actor?.account_type);
+        return profileHref(followerProfileId, notification.actor?.account_type ?? (notification.actor as any)?.type);
       }
     }
     if (notification.kind === 'new_comment' && typeof payload.post_id === 'string' && payload.post_id.trim()) {

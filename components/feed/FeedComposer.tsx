@@ -82,7 +82,7 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
   const [linkPreview, setLinkPreview] = useState<LinkPreview | null>(null);
   const [linkErr, setLinkErr] = useState<string | null>(null);
   const [linkLoading, setLinkLoading] = useState(false);
-  const [accountType, setAccountType] = useState<'club' | 'athlete' | 'fan' | null>(null);
+  const [accountType, setAccountType] = useState<'club' | 'athlete' | 'staff' | 'fan' | null>(null);
   const [eventModalOpen, setEventModalOpen] = useState(false);
   const [eventTitle, setEventTitle] = useState('');
   const [eventDate, setEventDate] = useState('');
@@ -122,6 +122,7 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
         const role = (data?.account_type || data?.type || '').toString().toLowerCase();
         if (role === 'club') setAccountType('club');
         else if (role === 'athlete') setAccountType('athlete');
+        else if (role === 'staff') setAccountType('staff');
         else if (role === 'fan') setAccountType('fan');
       } catch {
         setAccountType(null);

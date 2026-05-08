@@ -228,6 +228,9 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   const effectiveAccountType = ((updates.account_type as string | null | undefined) ?? currentProfile?.account_type ?? null) as
     | string
     | null;
+  if (Object.prototype.hasOwnProperty.call(updates, 'account_type')) {
+    updates.type = updates.account_type ?? null;
+  }
   if (effectiveAccountType === 'club') {
     updates.role = 'Club';
   }

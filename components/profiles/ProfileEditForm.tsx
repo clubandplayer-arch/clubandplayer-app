@@ -27,7 +27,7 @@ import {
   type PastExperience,
 } from '@/lib/profiles/pastExperiences';
 
-type AccountType = 'club' | 'athlete' | 'fan' | null;
+type AccountType = 'club' | 'athlete' | 'staff' | 'fan' | null;
 
 type Links = {
   instagram?: string | null;
@@ -45,6 +45,34 @@ const EMPTY_PAST_EXPERIENCE: PastExperience = {
 
 const PLAYER_BIO_MAX_LENGTH = 300;
 const PLAYER_BIO_WARNING_THRESHOLD = 20;
+const STAFF_ROLES = [
+  'Presidente',
+  'Vicepresidente',
+  'Direttore Sportivo',
+  'Direttore Generale',
+  'Segretario',
+  'Team Manager',
+  'Dirigente Accompagnatore',
+  'Allenatore',
+  'Vice Allenatore',
+  'Collaboratore Tecnico',
+  'Match Analyst',
+  'Video Analyst',
+  'Preparatore Atletico',
+  'Preparatore Portieri',
+  'Medico Sociale',
+  'Fisioterapista',
+  'Osteopata',
+  'Massaggiatore',
+  'Mental Coach',
+  'Nutrizionista',
+  'Scout',
+  'Talent Scout',
+  'Addetto Stampa',
+  'Social Media Manager',
+  'Fotografo',
+  'Content Creator',
+] as const;
 
 type Profile = {
   account_type: AccountType;
@@ -177,6 +205,7 @@ export default function ProfileEditForm() {
 
   const isClub = profile?.account_type === 'club';
   const isFan = profile?.account_type === 'fan';
+  const isStaff = profile?.account_type === 'staff';
 
   // Anagrafica base
   const [fullName, setFullName] = useState('');
@@ -263,10 +292,10 @@ export default function ProfileEditForm() {
     }
   }, [sport, sportCategories, clubCategory]);
 
-  const athleteRoles = useMemo(
-    () => SPORTS_ROLES[normalizedAthleteSport] ?? SPORTS_ROLES.Calcio ?? [],
-    [normalizedAthleteSport],
-  );
+  const athleteRoles = useMemo(() => {
+    if (isStaff) return [...STAFF_ROLES];
+    return SPORTS_ROLES[normalizedAthleteSport] ?? SPORTS_ROLES.Calcio ?? [];
+  }, [isStaff, normalizedAthleteSport]);
 
   useEffect(() => {
     if (athleteRole && !athleteRoles.includes(athleteRole)) {
@@ -1019,7 +1048,11 @@ export default function ProfileEditForm() {
                       </option>
                     ))}
                   </select>
-                  <p className="text-xs text-gray-500">I ruoli mostrati dipendono dallo sport scelto.</p>
+                  <p className="text-xs text-gray-500">
+                    {isStaff
+                      ? 'Per i profili Staff i ruoli sono trasversali e non dipendono dallo sport.'
+                      : 'I ruoli mostrati dipendono dallo sport scelto.'}
+                  </p>
                 </div>
               </div>
               )}
@@ -1041,7 +1074,7 @@ export default function ProfileEditForm() {
               </div>
               )}
 
-              {!isFan && (
+              {!isFan && !isStaff && (
               <div className="md:col-span-2 grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div className="flex min-w-0 flex-col gap-1">
                   <label className="text-sm text-gray-600">Mano/Piede preferito</label>

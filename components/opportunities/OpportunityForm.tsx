@@ -15,6 +15,7 @@ import {
 
 type LocationLevel = 'region' | 'province' | 'municipality';
 type LocationRow = { id: number; name: string };
+type RoleGroup = 'player' | 'staff';
 
 const supabase = createSupabaseClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -60,6 +61,39 @@ const GENDERS = (Object.entries(OPPORTUNITY_GENDER_LABELS) as Array<[
   OpportunityGenderCode,
   string,
 ]>).map(([value, label]) => ({ value, label }));
+
+const STAFF_ROLES = [
+  'Presidente',
+  'Vicepresidente',
+  'Direttore Sportivo',
+  'Direttore Generale',
+  'Segretario',
+  'Team Manager',
+  'Dirigente Accompagnatore',
+  'Allenatore',
+  'Vice Allenatore',
+  'Collaboratore Tecnico',
+  'Match Analyst',
+  'Video Analyst',
+  'Preparatore Atletico',
+  'Preparatore Portieri',
+  'Medico Sociale',
+  'Fisioterapista',
+  'Osteopata',
+  'Massaggiatore',
+  'Mental Coach',
+  'Nutrizionista',
+  'Scout',
+  'Talent Scout',
+  'Addetto Stampa',
+  'Social Media Manager',
+  'Fotografo',
+  'Content Creator',
+] as const;
+
+function normalizeRoleGroup(value: unknown): RoleGroup {
+  return String(value ?? '').trim().toLowerCase() === 'staff' ? 'staff' : 'player';
+}
 
 function rangeFromBracket(b: AgeBracket | '' | undefined): { age_min: number | null; age_max: number | null } {
   if (!b) return { age_min: null, age_max: null };
@@ -128,6 +162,7 @@ export default function OpportunityForm({
   // Sport/ruolo/categoria
   const [sport, setSport] = useState<string>(normalizeSport(initial?.sport) || 'Calcio');
   const [role, setRole] = useState<string>(initial?.role ?? '');
+  const [roleGroup, setRoleGroup] = useState<RoleGroup>(() => normalizeRoleGroup(initial?.role_group ?? initial?.roleGroup));
   const [category, setCategory] = useState<string>(initial?.category ?? '');
   const normalizedSport = normalizeSport(sport) ?? sport;
   const roleOptions = useMemo(() => SPORTS_ROLES[normalizedSport] ?? [], [normalizedSport]);
@@ -284,6 +319,7 @@ export default function OpportunityForm({
         city: (city || '').trim() || null,
         sport,
         role: role || null,
+        role_group: role ? roleGroup : 'player',
         category: category || null,
         gender: normalizedGender,
         age_bracket: ageBracket || undefined,
@@ -475,7 +511,10 @@ export default function OpportunityForm({
               onChange={(e) => {
                 const nextSport = e.target.value;
                 setSport(nextSport);
-                setRole('');
+                if (roleGroup === 'player') {
+                  const nextPlayerRoles = SPORTS_ROLES[nextSport] ?? [];
+                  if (role && !nextPlayerRoles.includes(role)) setRole('');
+                }
                 const allowedCategories = CATEGORIES_BY_SPORT[nextSport] ?? [];
                 if (!allowedCategories.includes(category)) setCategory('');
               }}
@@ -511,11 +550,32 @@ export default function OpportunityForm({
             <select
               className="w-full rounded-xl border px-3 py-2"
               value={role ?? ''}
-              onChange={(e) => setRole(e.target.value)}
+              onChange={(e) => {
+                const nextRole = e.target.value;
+                setRole(nextRole);
+                if (!nextRole) {
+                  setRoleGroup('player');
+                  return;
+                }
+                if (roleOptions.includes(nextRole)) {
+                  setRoleGroup('player');
+                  return;
+                }
+                if (STAFF_ROLES.includes(nextRole as (typeof STAFF_ROLES)[number])) {
+                  setRoleGroup('staff');
+                }
+              }}
               required={sport === 'Calcio'}
             >
               <option value="">—</option>
+              <option value="__group_player" disabled>──────── PLAYER ────────</option>
               {roleOptions.map((r: string) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+              <option value="__group_staff" disabled>──────── STAFF ────────</option>
+              {STAFF_ROLES.map((r) => (
                 <option key={r} value={r}>
                   {r}
                 </option>
