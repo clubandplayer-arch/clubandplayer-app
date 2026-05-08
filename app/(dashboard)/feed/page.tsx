@@ -768,29 +768,14 @@ function StarterPackSection({
         </div>
       ) : null}
 
-      <div className="glass-panel p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h2 className="text-sm font-semibold text-neutral-900">Profili consigliati</h2>
-            <p className="text-xs text-neutral-500">Club e player in linea con il tuo profilo.</p>
+      {!loading && profiles.length > 0 ? (
+        <div className="glass-panel p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-semibold text-neutral-900">Profili consigliati</h2>
+              <p className="text-xs text-neutral-500">Club e player in linea con il tuo profilo.</p>
+            </div>
           </div>
-          <Link href="/search-map" className="text-xs font-semibold text-blue-700 hover:underline">
-            Cerca su mappa →
-          </Link>
-        </div>
-        {loading ? (
-          <div className="mt-4 space-y-3">
-            {Array.from({ length: 3 }).map((_, index) => (
-              <div key={index} className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white p-3">
-                <div className="h-10 w-10 rounded-full bg-neutral-100 animate-pulse" />
-                <div className="flex-1 space-y-2">
-                  <div className="h-3 w-1/3 rounded bg-neutral-100 animate-pulse" />
-                  <div className="h-3 w-1/2 rounded bg-neutral-100 animate-pulse" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : profiles.length > 0 ? (
           <ul className="mt-4 space-y-3">
             {profiles.map((profile) => {
               const name = profile.full_name?.trim() || profile.display_name?.trim() || 'Profilo';
@@ -820,10 +805,8 @@ function StarterPackSection({
               );
             })}
           </ul>
-        ) : (
-          <div className="mt-4 text-sm text-neutral-600">Nessun profilo consigliato al momento.</div>
-        )}
-      </div>
+        </div>
+      ) : null}
 
       {error ? <div className="text-xs text-red-600">{error}</div> : null}
     </div>
