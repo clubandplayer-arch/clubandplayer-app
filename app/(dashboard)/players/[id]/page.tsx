@@ -43,6 +43,7 @@ type AthleteProfileRow = {
   avatar_url: string | null;
   links: ProfileLinks;
   account_type: string | null;
+  type: string | null;
   status: string | null;
   matches_played: number | null;
   goals_scored: number | null;
@@ -180,6 +181,7 @@ export default function PlayerPublicProfilePage() {
             'avatar_url',
             'links',
             'account_type',
+            'type',
             'status',
             'matches_played',
             'goals_scored',
@@ -207,8 +209,8 @@ export default function PlayerPublicProfilePage() {
         return;
       }
 
-      const accountType = (profileState.account_type || '').toLowerCase();
-      if (accountType !== 'athlete') {
+      const accountType = String(profileState.account_type ?? profileState.type ?? '').toLowerCase();
+      if (accountType !== 'athlete' && accountType !== 'staff') {
         setMsg('Profilo non trovato.');
         setLoading(false);
         return;
@@ -493,7 +495,7 @@ export default function PlayerPublicProfilePage() {
           <ProfileHeader
             profileId={profile.id}
             displayName={headerDisplayName}
-            accountType="player"
+            accountType={String(profile.account_type ?? profile.type ?? '').toLowerCase() === 'staff' ? 'staff' : 'player'}
             avatarUrl={profile.avatar_url}
             subtitle={headerSubtitle}
             locationLabel={profileLocation}

@@ -37,6 +37,7 @@ export default function SettingsPage() {
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
 
   const [userId, setUserId] = useState<string | null>(null)
+  const [profileId, setProfileId] = useState<string | null>(null)
   const [accountType, setAccountType] = useState<'athlete' | 'club' | 'fan' | 'staff' | null>(null)
   const [notifyEmailNewMessage, setNotifyEmailNewMessage] = useState<boolean>(false)
   const [blockedUsers, setBlockedUsers] = useState<BlockedItem[]>([])
@@ -70,6 +71,7 @@ export default function SettingsPage() {
       }
 
       const p = (data ?? null) as Profile | null
+      setProfileId(p?.id ?? null)
       setAccountType(p?.account_type ?? null)
       setNotifyEmailNewMessage(!!p?.notify_email_new_message)
       setLoading(false)
@@ -190,6 +192,11 @@ export default function SettingsPage() {
         : accountType === 'staff'
           ? 'Staff'
         : '—'
+  const publicProfileHref = accountType === 'club' && profileId
+    ? `/clubs/${profileId}`
+    : (accountType === 'athlete' || accountType === 'staff') && profileId
+      ? `/players/${profileId}`
+      : null
 
   return (
     <main style={{ maxWidth: 820, margin: '0 auto', padding: 24 }}>
@@ -230,7 +237,12 @@ export default function SettingsPage() {
               Tipo account: <b>{accountTypeLabel}</b>
             </p>
             <p style={{ margin: '8px 0' }}>
-              Profilo pubblico: <Link href="/u/me">/u/me</Link>
+              Profilo pubblico:{' '}
+              {publicProfileHref ? (
+                <Link href={publicProfileHref}>{publicProfileHref}</Link>
+              ) : (
+                <span> non disponibile per questo tipo account</span>
+              )}
             </p>
           </section>
 
