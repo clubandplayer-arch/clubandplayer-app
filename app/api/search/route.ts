@@ -695,8 +695,10 @@ export async function GET(req: NextRequest) {
               return payload;
             });
           case 'staff':
-            counts.staff = activePayload.count;
-            break;
+            return fetchProfileResults({ supabase, kind: 'staff', ilikeQuery, limit, page, filters }).then((payload) => {
+              results.staff = payload.results;
+              return payload;
+            });
           case 'opportunities':
             return fetchOpportunityResults({ supabase, ilikeQuery, limit, page, filters, status }).then((payload) => {
               results.opportunities = payload.results;

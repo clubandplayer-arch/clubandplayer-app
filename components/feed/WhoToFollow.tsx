@@ -15,7 +15,7 @@ type Suggestion = {
   display_name?: string | null;
   full_name?: string | null;
   accountType: 'club' | 'athlete';
-  kind?: 'club' | 'player' | null;
+  kind?: 'club' | 'player' | 'staff' | null;
   type?: string | null;
   category?: string | null;
   location?: string | null;
@@ -131,7 +131,13 @@ function normalizeSuggestions(rawItems: any[]): Suggestion[] {
     accountType: item.account_type === 'club' ? 'club' : 'athlete',
     kind:
       item.kind ??
-      (item.account_type === 'club' || item.type === 'CLUB' ? 'club' : item.account_type || item.type ? 'player' : null),
+      (item.account_type === 'club' || item.type === 'CLUB'
+        ? 'club'
+        : item.account_type === 'staff' || String(item.role ?? '').toLowerCase().includes('staff')
+          ? 'staff'
+          : item.account_type || item.type
+            ? 'player'
+            : null),
     type: item.type ?? null,
     category: item.category ?? null,
     location: item.location ?? null,
