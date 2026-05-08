@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 
-type SearchKind = 'opportunities' | 'clubs' | 'players' | 'posts' | 'events';
+type SearchKind = 'opportunities' | 'clubs' | 'players' | 'staff' | 'posts' | 'events';
 
 export type SearchResult = {
   id: string;
@@ -18,6 +18,7 @@ const KIND_LABELS: Record<SearchKind, string> = {
   opportunities: 'Opportunità',
   clubs: 'Club',
   players: 'Player',
+  staff: 'Staff',
   posts: 'Post',
   events: 'Eventi',
 };
@@ -26,6 +27,7 @@ const KIND_STYLES: Record<SearchKind, string> = {
   opportunities: 'bg-amber-50 text-amber-700 border-amber-200',
   clubs: 'bg-blue-50 text-blue-700 border-blue-200',
   players: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  staff: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200',
   posts: 'bg-slate-50 text-slate-600 border-slate-200',
   events: 'bg-purple-50 text-purple-700 border-purple-200',
 };

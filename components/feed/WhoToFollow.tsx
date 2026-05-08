@@ -447,7 +447,7 @@ export default function WhoToFollow({
 
                 {it.kind ? (
                   <span className="relative z-20 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-600 pointer-events-none">
-                    {it.kind === 'club' ? 'CLUB' : 'PLAYER'}
+                    {it.kind === 'club' ? 'CLUB' : it.kind === 'staff' ? 'STAFF' : 'PLAYER'}
                   </span>
                 ) : null}
                 <div
