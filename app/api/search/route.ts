@@ -695,10 +695,8 @@ export async function GET(req: NextRequest) {
               return payload;
             });
           case 'staff':
-            return fetchProfileResults({ supabase, kind: 'staff', ilikeQuery, limit, page, filters }).then((payload) => {
-              results.staff = payload.results;
-              return payload;
-            });
+            counts.staff = activePayload.count;
+            break;
           case 'opportunities':
             return fetchOpportunityResults({ supabase, ilikeQuery, limit, page, filters, status }).then((payload) => {
               results.opportunities = payload.results;
@@ -738,10 +736,8 @@ export async function GET(req: NextRequest) {
             counts.players = activePayload.count;
             break;
           case 'staff':
-            return fetchProfileResults({ supabase, kind: 'staff', ilikeQuery, limit, page, filters }).then((payload) => {
-              results.staff = payload.results;
-              return payload;
-            });
+            counts.staff = activePayload.count;
+            break;
           case 'opportunities':
             counts.opportunities = activePayload.count;
             break;
