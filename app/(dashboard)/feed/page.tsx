@@ -113,14 +113,6 @@ export default function FeedPage() {
     await refresh();
   }, [refresh]);
 
-  const handleFocusComposer = useCallback(() => {
-    if (typeof document === 'undefined') return;
-    const input = document.getElementById('feed-composer-input') as HTMLTextAreaElement | null;
-    if (!input) return;
-    input.focus();
-    input.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, []);
-
   const loadReactions = useCallback(async (ids: Array<string | number>) => {
     if (!ids.length) return;
     try {
@@ -449,11 +441,7 @@ export default function FeedPage() {
                 title="Il feed è ancora vuoto"
                 description="Inizia pubblicando un post o scopri club e player nella tua zona."
                 actions={[
-                  { label: 'Cerca su mappa', href: '/search-map', variant: 'primary' },
-                  { label: 'Scopri opportunità', href: '/opportunities', variant: 'secondary' },
-                  ...(canCreatePost
-                    ? [{ label: 'Crea un post', onClick: handleFocusComposer, variant: 'secondary' as const }]
-                    : []),
+                  { label: 'Scopri profili', href: '/discover', variant: 'primary' },
                 ]}
               />
             )}
