@@ -144,10 +144,10 @@ export default function SearchPage() {
 
   const selectedCountry = filters.country || '';
   const isItalySelected = !selectedCountry || selectedCountry === DEFAULT_COUNTRY;
-  const availableRoles = useMemo(() => {
+  const playerRoles = useMemo(() => {
     const sport = normalizeSport(filters.sport);
     if (!sport) return [];
-    return [...(SPORTS_ROLES[sport] ?? []), ...STAFF_ROLES];
+    return SPORTS_ROLES[sport] ?? [];
   }, [filters.sport]);
 
   useEffect(() => {
@@ -505,13 +505,20 @@ export default function SearchPage() {
                 className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-[var(--brand)] focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/20 disabled:bg-slate-100 disabled:text-slate-400"
               >
                 <option value="">Tutti i ruoli</option>
-                {availableRoles.map((role) => (
+                <option value="__group_player" disabled>──────── PLAYER ────────</option>
+                {playerRoles.map((role) => (
+                  <option key={role} value={role}>
+                    {role}
+                  </option>
+                ))}
+                <option value="__group_staff" disabled>──────── STAFF ────────</option>
+                {STAFF_ROLES.map((role) => (
                   <option key={role} value={role}>
                     {role}
                   </option>
                 ))}
               </select>
-              <p className="text-xs text-slate-500">I ruoli mostrati dipendono dallo sport scelto.</p>
+              <p className="text-xs text-slate-500">Ruoli player per lo sport selezionato + ruoli staff trasversali.</p>
             </label>
           </div>
 
