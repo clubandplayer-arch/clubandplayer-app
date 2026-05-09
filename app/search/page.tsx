@@ -6,15 +6,16 @@ import { Search } from 'lucide-react';
 
 import SearchResultRow, { type SearchResult } from '@/components/search/SearchResultRow';
 import { COUNTRIES, getCountryName } from '@/lib/geo/countries';
-import { SPORTS, SPORTS_ROLES, normalizeSport } from '@/lib/opps/constants';
+import { SPORTS, SPORTS_ROLES, STAFF_ROLES, normalizeSport } from '@/lib/opps/constants';
 
-type SearchType = 'all' | 'opportunities' | 'clubs' | 'players' | 'posts' | 'events';
+type SearchType = 'all' | 'opportunities' | 'clubs' | 'players' | 'staff' | 'posts' | 'events';
 type LocationOption = { id: number; name: string };
 
 type SearchResultsByKind = {
   opportunities: SearchResult[];
   clubs: SearchResult[];
   players: SearchResult[];
+  staff: SearchResult[];
   posts: SearchResult[];
   events: SearchResult[];
 };
@@ -23,6 +24,7 @@ type CountsByKind = {
   opportunities: number;
   clubs: number;
   players: number;
+  staff: number;
   posts: number;
   events: number;
 };
@@ -31,6 +33,7 @@ const EMPTY_RESULTS: SearchResultsByKind = {
   opportunities: [],
   clubs: [],
   players: [],
+  staff: [],
   posts: [],
   events: [],
 };
@@ -40,6 +43,7 @@ const TAB_ITEMS: Array<{ label: string; value: SearchType }> = [
   { label: 'Opportunità', value: 'opportunities' },
   { label: 'Club', value: 'clubs' },
   { label: 'Player', value: 'players' },
+  { label: 'Staff', value: 'staff' },
   { label: 'Post', value: 'posts' },
   { label: 'Eventi', value: 'events' },
 ];
@@ -80,13 +84,14 @@ function normalizeType(raw?: string | null): SearchType {
     clubs: 'clubs',
     player: 'players',
     players: 'players',
+    staff: 'staff',
     post: 'posts',
     posts: 'posts',
     event: 'events',
     events: 'events',
   };
   const resolved = aliases[value] ?? value;
-  if (resolved === 'opportunities' || resolved === 'clubs' || resolved === 'players' || resolved === 'posts' || resolved === 'events') {
+  if (resolved === 'opportunities' || resolved === 'clubs' || resolved === 'players' || resolved === 'staff' || resolved === 'posts' || resolved === 'events') {
     return resolved;
   }
   return 'all';
@@ -139,9 +144,10 @@ export default function SearchPage() {
 
   const selectedCountry = filters.country || '';
   const isItalySelected = !selectedCountry || selectedCountry === DEFAULT_COUNTRY;
-  const availableRoles = useMemo(() => {
+  const playerRoles = useMemo(() => {
     const sport = normalizeSport(filters.sport);
-    return sport ? (SPORTS_ROLES[sport] ?? []) : [];
+    if (!sport) return [];
+    return SPORTS_ROLES[sport] ?? [];
   }, [filters.sport]);
 
   useEffect(() => {
@@ -361,7 +367,7 @@ export default function SearchPage() {
       if (key === 'sport') {
         const normalized = normalizeSport(value) ?? '';
         next.sport = normalized;
-        if (prev.role && !(SPORTS_ROLES[normalized] ?? []).includes(prev.role)) {
+        if (prev.role && !([...(SPORTS_ROLES[normalized] ?? []), ...STAFF_ROLES] as string[]).includes(prev.role)) {
           next.role = '';
         }
       }
@@ -499,13 +505,20 @@ export default function SearchPage() {
                 className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-[var(--brand)] focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/20 disabled:bg-slate-100 disabled:text-slate-400"
               >
                 <option value="">Tutti i ruoli</option>
-                {availableRoles.map((role) => (
+                <option value="__group_player" disabled>──────── PLAYER ────────</option>
+                {playerRoles.map((role) => (
+                  <option key={role} value={role}>
+                    {role}
+                  </option>
+                ))}
+                <option value="__group_staff" disabled>──────── STAFF ────────</option>
+                {STAFF_ROLES.map((role) => (
                   <option key={role} value={role}>
                     {role}
                   </option>
                 ))}
               </select>
-              <p className="text-xs text-slate-500">I ruoli mostrati dipendono dallo sport scelto.</p>
+              <p className="text-xs text-slate-500">Ruoli player per lo sport selezionato + ruoli staff trasversali.</p>
             </label>
           </div>
 
@@ -576,6 +589,7 @@ export default function SearchPage() {
                   { key: 'opportunities', label: 'Opportunità' },
                   { key: 'clubs', label: 'Club' },
                   { key: 'players', label: 'Player' },
+                  { key: 'staff', label: 'Staff' },
                   { key: 'posts', label: 'Post' },
                   { key: 'events', label: 'Eventi' },
                 ] as Array<{ key: Exclude<SearchType, 'all'>; label: string }>

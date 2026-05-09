@@ -18,7 +18,8 @@ type FollowedItem = {
   sport: string | null;
   avatarUrl?: string | null;
   isVerified?: boolean | null;
-  accountType: 'club' | 'athlete';
+  accountType: 'club' | 'athlete' | 'staff';
+  role?: string | null;
 };
 
 function targetHref(item: FollowedItem) {
@@ -83,7 +84,14 @@ export default function FollowedClubs() {
         const rows: FollowedItem[] = Array.isArray(data?.items)
           ? (data.items as any[])
               .map((item) => {
-                const accountType: 'club' | 'athlete' = item.account_type === 'club' ? 'club' : 'athlete';
+                const normalizedAccountType = String(item.account_type ?? '').trim().toLowerCase();
+                const normalizedRole = String(item.role ?? '').trim().toLowerCase();
+                const accountType: 'club' | 'athlete' | 'staff' =
+                  normalizedAccountType === 'club'
+                    ? 'club'
+                    : normalizedAccountType === 'staff' || normalizedRole === 'staff'
+                      ? 'staff'
+                      : 'athlete';
                 const fullName = item.full_name ?? item.fullName ?? null;
                 const displayName = item.display_name ?? item.displayName ?? null;
                 const safeName =
@@ -101,6 +109,7 @@ export default function FollowedClubs() {
                   avatarUrl: item.avatar_url ?? item.avatarUrl ?? null,
                   isVerified: item.is_verified ?? item.isVerified ?? null,
                   accountType,
+                  role: item.role ?? null,
                 };
               })
               .filter((item) => !profile?.id || item.id !== profile.id)
@@ -179,7 +188,7 @@ export default function FollowedClubs() {
                       {item.name}
                     </Link>
                     <span className="rounded-full border border-zinc-200 bg-zinc-100 px-2 py-[1px] text-[10px] font-semibold uppercase tracking-wide text-zinc-700">
-                      {item.accountType === 'club' ? 'Club' : 'Player'}
+                      {item.accountType === 'club' ? 'Club' : item.accountType === 'staff' ? 'Staff' : 'Player'}
                     </span>
                   </div>
                   <div className="truncate text-xs text-zinc-500">{subtitle(item, role)}</div>

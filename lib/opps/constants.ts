@@ -19,6 +19,34 @@ export const SPORTS_ROLES: Record<string, string[]> = {
 };
 
 export const SPORTS = Object.keys(SPORTS_ROLES);
+export const STAFF_ROLES = [
+  'Presidente',
+  'Vicepresidente',
+  'Direttore Sportivo',
+  'Direttore Generale',
+  'Segretario',
+  'Team manager',
+  'Dirigente Accompagnatore',
+  'Allenatore',
+  'Vice Allenatore',
+  'Collaboratore Tecnico',
+  'Match Analyst',
+  'Video Analyst',
+  'Preparatore Atletico',
+  'Preparatore Portieri',
+  'Medico Sociale',
+  'Fisioterapista',
+  'Osteopata',
+  'Massaggiatore',
+  'Mental Coach',
+  'Nutrizionista',
+  'Scout',
+  'Talent Scout',
+  'Addetto Stampa',
+  'Social Media Manager',
+  'Fotografo',
+  'Content Creator',
+] as const;
 
 export const SPORT_ALIASES: Record<string, string> = {
   Pallavolo: 'Volley',
