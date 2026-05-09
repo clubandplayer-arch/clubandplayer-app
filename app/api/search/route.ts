@@ -291,7 +291,7 @@ async function fetchProfileResults(params: {
   const rows = Array.isArray(data) ? (data as any[]) : [];
 
   const results: SearchResult[] = rows.map((row) => {
-    const title = (row.full_name || '').trim() || (kind === 'staff' ? 'Staff' : 'Player');
+    const title = (row.full_name || '').trim() || 'Player';
     const details = [row.role, row.sport].filter(Boolean).join(' · ');
     const location = buildLocation(row, provinceAbbreviations);
     const subtitle = [details, location].filter(Boolean).join(' · ');
