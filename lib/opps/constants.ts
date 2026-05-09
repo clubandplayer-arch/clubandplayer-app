@@ -19,6 +19,20 @@ export const SPORTS_ROLES: Record<string, string[]> = {
 };
 
 export const SPORTS = Object.keys(SPORTS_ROLES);
+export const STAFF_ROLES = [
+  'Allenatore',
+  'Vice allenatore',
+  'Preparatore atletico',
+  'Preparatore dei portieri',
+  'Match analyst',
+  'Medico sportivo',
+  'Fisioterapista',
+  'Nutrizionista',
+  'Psicologo sportivo',
+  'Team manager',
+  'Direttore sportivo',
+  'Scout',
+] as const;
 
 export const SPORT_ALIASES: Record<string, string> = {
   Pallavolo: 'Volley',

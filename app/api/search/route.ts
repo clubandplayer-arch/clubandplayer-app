@@ -10,7 +10,7 @@ import { getProvinceAbbreviationsServer } from '@/lib/geo/provinceAbbreviations.
 
 export const runtime = 'nodejs';
 
-type SearchType = 'all' | 'opportunities' | 'clubs' | 'players' | 'posts' | 'events';
+type SearchType = 'all' | 'opportunities' | 'clubs' | 'players' | 'staff' | 'posts' | 'events';
 
 type SearchResult = {
   id: string;
@@ -25,6 +25,7 @@ type SearchResultsByKind = {
   opportunities: SearchResult[];
   clubs: SearchResult[];
   players: SearchResult[];
+  staff: SearchResult[];
   posts: SearchResult[];
   events: SearchResult[];
 };
@@ -33,6 +34,7 @@ type CountsByKind = {
   opportunities: number;
   clubs: number;
   players: number;
+  staff: number;
   posts: number;
   events: number;
 };
@@ -50,6 +52,7 @@ const EMPTY_RESULTS: SearchResultsByKind = {
   opportunities: [],
   clubs: [],
   players: [],
+  staff: [],
   posts: [],
   events: [],
 };
@@ -57,7 +60,7 @@ const EMPTY_RESULTS: SearchResultsByKind = {
 const DEFAULT_LIMIT = 10;
 const ALL_PREVIEW_LIMIT = 3;
 
-const SUPPORTED_TYPES: SearchType[] = ['all', 'opportunities', 'clubs', 'players', 'posts', 'events'];
+const SUPPORTED_TYPES: SearchType[] = ['all', 'opportunities', 'clubs', 'players', 'staff', 'posts', 'events'];
 const ATHLETES_SELECT = 'id, full_name, avatar_url, city, province, region, country, sport, role';
 
 function clamp(n: number, min: number, max: number) {
@@ -87,6 +90,7 @@ function normalizeType(raw?: string | null): SearchType {
     clubs: 'clubs',
     player: 'players',
     players: 'players',
+    staff: 'staff',
     post: 'posts',
     posts: 'posts',
     event: 'events',
@@ -97,7 +101,7 @@ function normalizeType(raw?: string | null): SearchType {
 }
 
 function emptyCounts(): CountsByKind {
-  return { opportunities: 0, clubs: 0, players: 0, posts: 0, events: 0 };
+  return { opportunities: 0, clubs: 0, players: 0, staff: 0, posts: 0, events: 0 };
 }
 
 function normalizeTextFilter(raw?: string | null) {
@@ -194,7 +198,7 @@ function buildClubQuery(
 
 async function fetchProfileResults(params: {
   supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>;
-  kind: 'clubs' | 'players';
+  kind: 'clubs' | 'players' | 'staff';
   ilikeQuery: string;
   limit: number;
   page: number;
@@ -236,7 +240,9 @@ async function fetchProfileResults(params: {
     return { results, count: count ?? 0 };
   }
 
-  const query = buildProfileQuery(supabase, 'athletes_view', ilikeQuery, ATHLETES_SELECT, filters, { count: 'exact' })
+  const query = (kind === 'players'
+    ? buildProfileQuery(supabase, 'athletes_view', ilikeQuery, ATHLETES_SELECT, filters, { count: 'exact' }).not('role', 'ilike', 'staff')
+    : buildProfileQuery(supabase, 'athletes_view', ilikeQuery, ATHLETES_SELECT, filters, { count: 'exact' }).ilike('role', 'staff'))
     .order('created_at', { ascending: false })
     .range(from, to);
 
@@ -246,7 +252,7 @@ async function fetchProfileResults(params: {
   const rows = Array.isArray(data) ? (data as any[]) : [];
 
   const results: SearchResult[] = rows.map((row) => {
-    const title = (row.full_name || '').trim() || 'Player';
+    const title = (row.full_name || '').trim() || (kind === 'staff' ? 'Staff' : 'Player');
     const details = [row.role, row.sport].filter(Boolean).join(' · ');
     const location = buildLocation(row, provinceAbbreviations);
     const subtitle = [details, location].filter(Boolean).join(' · ');
@@ -265,7 +271,7 @@ async function fetchProfileResults(params: {
 
 async function fetchProfileCount(params: {
   supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>;
-  kind: 'clubs' | 'players';
+  kind: 'clubs' | 'players' | 'staff';
   ilikeQuery: string;
   filters: SearchFilters;
 }) {
@@ -276,7 +282,9 @@ async function fetchProfileCount(params: {
     if (error) throw new Error(error.message);
     return count ?? 0;
   }
-  const query = buildProfileQuery(supabase, 'athletes_view', ilikeQuery, 'id', filters, { count: 'exact', head: true });
+  const query = kind === 'players'
+    ? buildProfileQuery(supabase, 'athletes_view', ilikeQuery, 'id', filters, { count: 'exact', head: true }).not('role', 'ilike', 'staff')
+    : buildProfileQuery(supabase, 'athletes_view', ilikeQuery, 'id', filters, { count: 'exact', head: true }).ilike('role', 'staff');
   const { count, error } = await query;
   if (error) throw new Error(error.message);
   return count ?? 0;
@@ -637,9 +645,10 @@ export async function GET(req: NextRequest) {
     if (type === 'all') {
       const previewLimit = Math.min(ALL_PREVIEW_LIMIT, limit);
 
-      const [clubs, players, opportunities, posts, events] = await Promise.all([
+      const [clubs, players, staff, opportunities, posts, events] = await Promise.all([
         fetchProfileResults({ supabase, kind: 'clubs', ilikeQuery, limit: previewLimit, page: 1, filters }),
         fetchProfileResults({ supabase, kind: 'players', ilikeQuery, limit: previewLimit, page: 1, filters }),
+        fetchProfileResults({ supabase, kind: 'staff', ilikeQuery, limit: previewLimit, page: 1, filters }),
         fetchOpportunityResults({ supabase, ilikeQuery, limit: previewLimit, page: 1, filters, status }),
         fetchPosts({ supabase, ilikeQuery, limit: previewLimit, page: 1, kind: 'normal', filters }),
         fetchPosts({ supabase, ilikeQuery, limit: previewLimit, page: 1, kind: 'event', filters }),
@@ -647,6 +656,7 @@ export async function GET(req: NextRequest) {
 
       results.clubs = clubs.results;
       results.players = players.results;
+      results.staff = staff.results;
       results.opportunities = opportunities.results;
       results.posts = posts.results;
       results.events = events.results;
@@ -654,6 +664,7 @@ export async function GET(req: NextRequest) {
       counts = {
         clubs: clubs.count,
         players: players.count,
+        staff: staff.count,
         opportunities: opportunities.count,
         posts: posts.count,
         events: events.count,
@@ -662,6 +673,7 @@ export async function GET(req: NextRequest) {
       const countPromises = Promise.all([
         fetchProfileCount({ supabase, kind: 'clubs', ilikeQuery, filters }),
         fetchProfileCount({ supabase, kind: 'players', ilikeQuery, filters }),
+        fetchProfileCount({ supabase, kind: 'staff', ilikeQuery, filters }),
         fetchOpportunityCount({ supabase, ilikeQuery, filters, status }),
         fetchPostsCount({ supabase, ilikeQuery, kind: 'normal', filters }),
         fetchPostsCount({ supabase, ilikeQuery, kind: 'event', filters }),
@@ -677,6 +689,11 @@ export async function GET(req: NextRequest) {
           case 'players':
             return fetchProfileResults({ supabase, kind: 'players', ilikeQuery, limit, page, filters }).then((payload) => {
               results.players = payload.results;
+              return payload;
+            });
+          case 'staff':
+            return fetchProfileResults({ supabase, kind: 'staff', ilikeQuery, limit, page, filters }).then((payload) => {
+              results.staff = payload.results;
               return payload;
             });
           case 'opportunities':
@@ -703,9 +720,10 @@ export async function GET(req: NextRequest) {
       counts = {
         clubs: countsResult[0],
         players: countsResult[1],
-        opportunities: countsResult[2],
-        posts: countsResult[3],
-        events: countsResult[4],
+        staff: countsResult[2],
+        opportunities: countsResult[3],
+        posts: countsResult[4],
+        events: countsResult[5],
       };
 
       if (activePayload?.count != null) {
@@ -715,6 +733,9 @@ export async function GET(req: NextRequest) {
             break;
           case 'players':
             counts.players = activePayload.count;
+            break;
+          case 'staff':
+            counts.staff = activePayload.count;
             break;
           case 'opportunities':
             counts.opportunities = activePayload.count;
