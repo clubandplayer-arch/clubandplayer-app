@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { MaterialIcon } from '@/components/icons/MaterialIcon';
 import useIsClub from '@/hooks/useIsClub';
@@ -36,12 +36,40 @@ type StaffMember = {
   bio: string | null;
 };
 
+type StaffCategory = {
+  title: string;
+  roles: string[];
+};
+
+const STAFF_CATEGORIES: StaffCategory[] = [
+  {
+    title: 'Dirigenza e Amministrazione',
+    roles: ['Presidente', 'Vicepresidente', 'Direttore Sportivo', 'Direttore Generale', 'Segretario'],
+  },
+  {
+    title: 'Staff Tecnico e Campo',
+    roles: ['Team Manager', 'Dirigente Accompagnatore', 'Allenatore', 'Vice Allenatore', 'Collaboratore Tecnico', 'Match Analyst', 'Video Analyst', 'Scout', 'Talent Scout'],
+  },
+  {
+    title: 'Staff Medico e Performance',
+    roles: ['Preparatore Atletico', 'Preparatore Portieri', 'Medico Sociale', 'Fisioterapista', 'Osteopata', 'Massaggiatore', 'Mental Coach', 'Nutrizionista'],
+  },
+  {
+    title: 'Comunicazione e Media',
+    roles: ['Addetto Stampa', 'Social Media Manager', 'Fotografo', 'Content Creator'],
+  },
+];
+
 function getInitials(name: string) {
   const trimmed = name.trim();
   if (!trimmed) return 'ST';
   const parts = trimmed.split(' ').filter(Boolean);
   const initials = parts.slice(0, 2).map((p) => p[0]).join('');
   return initials.toUpperCase().padEnd(2, 'S');
+}
+
+function normalizeRole(value: string | null | undefined) {
+  return (value ?? '').trim().toLowerCase();
 }
 
 export default function ClubStaffPage() {
@@ -96,6 +124,39 @@ export default function ClubStaffPage() {
     void loadStaff();
   }, [isClub, loading, loadStaff]);
 
+  const categorized = useMemo(() => {
+    const knownRoleToCategory = new Map<string, string>();
+    STAFF_CATEGORIES.forEach((category) => {
+      category.roles.forEach((role) => knownRoleToCategory.set(normalizeRole(role), category.title));
+    });
+
+    const grouped: Record<string, StaffMember[]> = {};
+    STAFF_CATEGORIES.forEach((category) => {
+      grouped[category.title] = [];
+    });
+    grouped['Altro Staff'] = [];
+
+    staff.forEach((member) => {
+      const normalized = normalizeRole(member.staffRole);
+      const title = knownRoleToCategory.get(normalized) ?? 'Altro Staff';
+      grouped[title].push(member);
+    });
+
+    STAFF_CATEGORIES.forEach((category) => {
+      const roleOrder = new Map(category.roles.map((role, index) => [normalizeRole(role), index]));
+      grouped[category.title].sort((a, b) => {
+        const aIndex = roleOrder.get(normalizeRole(a.staffRole)) ?? 999;
+        const bIndex = roleOrder.get(normalizeRole(b.staffRole)) ?? 999;
+        if (aIndex !== bIndex) return aIndex - bIndex;
+        return a.name.localeCompare(b.name, 'it');
+      });
+    });
+
+    grouped['Altro Staff'].sort((a, b) => a.name.localeCompare(b.name, 'it'));
+
+    return grouped;
+  }, [staff]);
+
   if (loading) return <div className="p-6 text-sm text-neutral-600">Verifica permessi…</div>;
 
   if (!isClub) {
@@ -132,10 +193,39 @@ export default function ClubStaffPage() {
       ) : null}
 
       {!loadingStaff && staff.length > 0 ? (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {staff.map((member) => (
-            <StaffCard key={member.id} member={member} onRemoved={loadStaff} />
-          ))}
+        <div className="space-y-5">
+          {STAFF_CATEGORIES.map((category) => {
+            const members = categorized[category.title] ?? [];
+            if (members.length === 0) return null;
+
+            return (
+              <section key={category.title} className="rounded-2xl border border-fuchsia-100 bg-white/80 p-4 shadow-sm">
+                <div className="mb-3 flex items-center gap-3">
+                  <h2 className="text-sm font-bold uppercase tracking-wide text-fuchsia-800">{category.title}</h2>
+                  <div className="h-px flex-1 bg-fuchsia-200" />
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {members.map((member) => (
+                    <StaffCard key={member.id} member={member} onRemoved={loadStaff} />
+                  ))}
+                </div>
+              </section>
+            );
+          })}
+
+          {(categorized['Altro Staff'] ?? []).length > 0 ? (
+            <section className="rounded-2xl border border-neutral-200 bg-white/80 p-4 shadow-sm">
+              <div className="mb-3 flex items-center gap-3">
+                <h2 className="text-sm font-bold uppercase tracking-wide text-neutral-700">Altro Staff</h2>
+                <div className="h-px flex-1 bg-neutral-200" />
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {categorized['Altro Staff'].map((member) => (
+                  <StaffCard key={member.id} member={member} onRemoved={loadStaff} />
+                ))}
+              </div>
+            </section>
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -145,7 +235,6 @@ export default function ClubStaffPage() {
 function StaffCard({ member, onRemoved }: { member: StaffMember; onRemoved: () => void }) {
   const initials = getInitials(member.name);
   const [removing, setRemoving] = useState(false);
-  const location = [member.city, member.province, member.region].filter(Boolean).join(' · ');
 
   const handleRemove = async () => {
     if (removing) return;
@@ -164,7 +253,7 @@ function StaffCard({ member, onRemoved }: { member: StaffMember; onRemoved: () =
   };
 
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-neutral-200 bg-white/70 p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+    <div className="flex items-start gap-3 rounded-xl border border-neutral-200 bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
       <Link href={`/u/${member.id}`} className="flex min-w-0 flex-1 items-start gap-3">
         {member.avatarUrl ? (
           <img src={member.avatarUrl} alt={member.name} className="h-12 w-12 rounded-full object-cover" referrerPolicy="no-referrer" />
@@ -172,14 +261,13 @@ function StaffCard({ member, onRemoved }: { member: StaffMember; onRemoved: () =
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-fuchsia-100 text-sm font-semibold text-fuchsia-700">{initials}</div>
         )}
         <div className="min-w-0 flex-1 space-y-1">
+          {member.staffRole ? <p className="text-xs font-semibold text-fuchsia-700">{member.staffRole}</p> : null}
           <p className="truncate text-sm font-semibold text-neutral-900">{member.name}</p>
-          {member.staffRole ? <p className="text-xs text-neutral-700">{member.staffRole}</p> : null}
-          {member.sport ? <p className="text-xs text-neutral-600">Sport: {member.sport}</p> : null}
-          {location ? <p className="text-xs text-neutral-600">{location}</p> : null}
-          {member.bio ? <p className="line-clamp-3 whitespace-pre-wrap text-xs text-neutral-700">{member.bio}</p> : null}
+          {member.sport ? <p className="text-xs text-neutral-600">{member.sport}</p> : null}
+          {member.bio ? <p className="line-clamp-2 whitespace-pre-wrap text-xs text-neutral-700">{member.bio}</p> : null}
         </div>
       </Link>
-      <button type="button" onClick={handleRemove} disabled={removing} className="text-xs font-semibold text-fuchsia-700 hover:underline disabled:opacity-60">
+      <button type="button" onClick={handleRemove} disabled={removing} className="rounded-md border border-fuchsia-200 px-2 py-1 text-xs font-semibold text-fuchsia-700 hover:bg-fuchsia-50 disabled:opacity-60">
         {removing ? 'Rimozione…' : 'Rimuovi'}
       </button>
     </div>
