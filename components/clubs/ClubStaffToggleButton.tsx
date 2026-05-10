@@ -76,7 +76,7 @@ export default function ClubStaffToggleButton({ staffProfileId, visible }: Props
         onClick={handleToggle}
         disabled={loading || pending}
         className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
-          inStaff ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' : 'bg-pink-600 text-white hover:bg-pink-500'
+          inStaff ? 'bg-fuchsia-100 text-fuchsia-800 hover:bg-fuchsia-200' : 'bg-fuchsia-600 text-white hover:bg-fuchsia-500'
         } disabled:cursor-not-allowed disabled:opacity-60`}
       >
         {loading ? 'Verifica staff…' : pending ? 'Aggiornamento…' : inStaff ? 'Nello Staff' : 'Aggiungi allo Staff'}

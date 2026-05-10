@@ -237,11 +237,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           label: item.label,
           href: item.href,
           icon:
-            item.href === '/messages' ? (
-              <MaterialIcon name={item.icon} fontSize={16} className="text-amber-600 hover:text-amber-700" />
-            ) : (
-              <MaterialIcon name={item.icon} fontSize={16} />
-            ),
+            <MaterialIcon name={item.icon} fontSize={16} />,
           badge:
             item.href === '/notifications'
               ? unreadNotifications
@@ -377,13 +373,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                           active ? 'bg-[var(--brand)] text-white shadow-sm' : 'text-neutral-600 hover:bg-neutral-100'
                         }`}
                       >
-                        <MaterialIcon
-                          name={item.icon}
-                          fontSize="small"
-                          className={
-                            item.href === '/messages' && !active ? 'text-amber-600 hover:text-amber-700' : undefined
-                          }
-                        />
+                        <MaterialIcon name={item.icon} fontSize="small" />
                         <span className="sr-only">{item.label}</span>
                         {item.href === '/messages' && unreadDirectThreads > 0 && (
                           <span className="absolute -right-1 -top-1 inline-flex min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-semibold text-white">
