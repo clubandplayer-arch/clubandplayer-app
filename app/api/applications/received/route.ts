@@ -139,6 +139,21 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
     if (!athErr && Array.isArray(athData)) {
       athletes = athData;
     }
+
+    const missingUserIds = athleteUserIds.filter(
+      (userId) => !athletes.some((ath) => String(ath?.user_id ?? '') === userId),
+    );
+
+    if (missingUserIds.length) {
+      const { data: profileData, error: profileErr } = await client
+        .from('profiles')
+        .select('id, user_id, full_name, display_name, role, sport, city, province, region')
+        .in('user_id', missingUserIds);
+
+      if (!profileErr && Array.isArray(profileData)) {
+        athletes = athletes.concat(profileData);
+      }
+    }
   }
   const provinceAbbreviations = await getProvinceAbbreviationsServer();
 
