@@ -227,7 +227,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }
     if (isClub) {
       items.push({ key: 'roster', label: 'Rosa', href: '/club/roster', icon: <MaterialIcon name="following" fontSize={16} /> });
-      items.push({ key: 'staff', label: 'Staff', href: '/club/staff', icon: <MaterialIcon name="groups" fontSize={16} /> });
+      items.push({ key: 'staff', label: 'Staff', href: '/club/staff', icon: <MaterialIcon name="network" fontSize={16} /> });
     }
 
     items.push(
@@ -347,7 +347,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                           isActive('/club/staff') ? 'bg-fuchsia-100 text-fuchsia-700 shadow-sm' : 'hover:bg-fuchsia-50'
                         }`}
                       >
-                        <MaterialIcon name="groups" fontSize="small" />
+                        <MaterialIcon name="network" fontSize="small" />
                         <span className="sr-only">Staff</span>
                       </Link>
                     </>

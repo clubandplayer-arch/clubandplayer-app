@@ -110,7 +110,7 @@ export default function ClubStaffPage() {
     <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-6">
       <header className="space-y-2">
         <div className="inline-flex items-center gap-2 rounded-full bg-fuchsia-50 px-3 py-1 text-sm font-semibold text-fuchsia-700">
-          <MaterialIcon name="groups" fontSize={16} />
+          <MaterialIcon name="network" fontSize={16} />
           <span>Staff</span>
         </div>
         <h1 className="heading-h1">Staff</h1>
