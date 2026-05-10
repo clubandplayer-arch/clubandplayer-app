@@ -142,11 +142,13 @@ export default function DiscoverPage() {
       setLoading(true);
       setError(null);
       try {
-        const [clubs, players] = await Promise.all([fetchSuggestions('club'), fetchSuggestions('player')]);
+        const [clubs, players, staff] = await Promise.all([
+          fetchSuggestions('club'),
+          fetchSuggestions('player'),
+          fetchSuggestions('staff'),
+        ]);
         if (cancelled) return;
-        const staffSuggestions = players.suggestions.filter((item) => (item.role ?? '').trim().toLowerCase() === 'staff');
-        const playerSuggestions = players.suggestions.filter((item) => (item.role ?? '').trim().toLowerCase() !== 'staff');
-        setItems({ club: clubs.suggestions, player: playerSuggestions, staff: staffSuggestions });
+        setItems({ club: clubs.suggestions, player: players.suggestions, staff: staff.suggestions });
       } catch (err) {
         if (cancelled) return;
         setError(err instanceof Error ? err.message : 'Impossibile caricare i suggerimenti.');
@@ -241,7 +243,12 @@ export default function DiscoverPage() {
                       <div className="flex flex-wrap items-center gap-1">
                         <span className="truncate text-sm font-semibold text-neutral-900">{name}</span>
                       </div>
-                      {activeTab === 'player' ? playerCountryLine(item) : null}
+                      {activeTab === 'staff' ? (
+                        <span className="inline-flex rounded-full border border-fuchsia-200 bg-fuchsia-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-fuchsia-700">
+                          Staff
+                        </span>
+                      ) : null}
+                      {(activeTab === 'player' || activeTab === 'staff') ? playerCountryLine(item) : null}
                       {secondaryMetaLine(item)}
                     </div>
                   </Link>
