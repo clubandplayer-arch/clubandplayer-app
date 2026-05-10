@@ -339,8 +339,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                         aria-label="Staff"
                         aria-current={isActive('/club/staff') ? 'page' : undefined}
                         title="Staff"
-                        className={`relative flex h-10 w-10 items-center justify-center rounded-xl text-fuchsia-600 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
-                          isActive('/club/staff') ? 'bg-fuchsia-100 text-fuchsia-700 shadow-sm' : 'hover:bg-fuchsia-50'
+                        className={`relative flex h-10 w-10 items-center justify-center rounded-xl text-emerald-700 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
+                          isActive('/club/staff') ? 'bg-emerald-100 text-emerald-800 shadow-sm' : 'hover:bg-emerald-50'
                         }`}
                       >
                         <MaterialIcon name="network" fontSize="small" />
