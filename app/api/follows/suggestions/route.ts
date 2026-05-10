@@ -14,7 +14,7 @@ type Suggestion = {
   id: string;
   user_id?: string | null;
   name: string;
-  kind: 'club' | 'player';
+  kind: 'club' | 'player' | 'staff';
   location?: string | null;
   category?: string | null;
   full_name?: string | null;
@@ -122,7 +122,7 @@ export async function GET(req: NextRequest) {
       .maybeSingle();
 
     const role =
-      (profile?.account_type === 'athlete' || profile?.account_type === 'club'
+      (profile?.account_type === 'athlete' || profile?.account_type === 'club' || profile?.account_type === 'staff'
         ? profile.account_type
         : 'guest') || 'guest';
 
@@ -167,6 +167,7 @@ export async function GET(req: NextRequest) {
       if (!cleaned) return null;
       if (cleaned === 'club') return 'club';
       if (cleaned === 'athlete' || cleaned === 'player') return 'athlete';
+      if (cleaned === 'staff') return 'staff';
       return null;
     };
 
@@ -186,11 +187,18 @@ export async function GET(req: NextRequest) {
       return query.not('id', 'in', inClause);
     };
 
-    async function runQuery(accountType: 'club' | 'athlete', filters: Array<(q: any) => any>, max: number) {
+    async function runQuery(accountType: 'club' | 'athlete' | 'staff', filters: Array<(q: any) => any>, max: number) {
       let query = supabase
         .from('profiles')
-        .select(baseSelect)
-        .eq('account_type', accountType)
+        .select(baseSelect);
+
+      if (accountType === 'staff') {
+        query = query.or('account_type.eq.staff,type.eq.staff');
+      } else {
+        query = query.eq('account_type', accountType);
+      }
+
+      query = query
         .eq('status', 'active')
         .neq('id', profile?.id ?? '');
 
@@ -292,8 +300,8 @@ export async function GET(req: NextRequest) {
     const clubFilters = buildFilters();
     const playerFilters = buildFilters();
 
-    if (kind === 'club' || kind === 'player') {
-      const accountType = kind === 'club' ? 'club' : 'athlete';
+    if (kind === 'club' || kind === 'player' || kind === 'staff') {
+      const accountType = kind === 'club' ? 'club' : kind === 'staff' ? 'staff' : 'athlete';
       const filters = kind === 'club' ? clubFilters : playerFilters;
       for (const filterGroup of filters) {
         if (results.length >= limit) break;
