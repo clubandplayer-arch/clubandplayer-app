@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
+import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
 
@@ -156,8 +157,11 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   const targetType = String((targetProfile as any).account_type ?? (targetProfile as any).type ?? '').toLowerCase();
   if (targetType !== 'staff') return jsonError('Il profilo selezionato non è staff', 400);
 
+  const admin = getSupabaseAdminClientOrNull();
+  const writeClient = admin ?? supabase;
+
   if (inStaff) {
-    const { error: upsertError } = await supabase
+    const { error: upsertError } = await writeClient
       .from('club_staff_members')
       .upsert(
         {
@@ -175,7 +179,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     return NextResponse.json({ ok: true, inStaff: true, staffProfileId, staffRole: staffRole ?? null });
   }
 
-  const { error: updateError } = await supabase
+  const { error: updateError } = await writeClient
     .from('club_staff_members')
     .update({ status: 'inactive' })
     .eq('club_profile_id', clubProfile.id)
