@@ -227,6 +227,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }
     if (isClub) {
       items.push({ key: 'roster', label: 'Rosa', href: '/club/roster', icon: <MaterialIcon name="following" fontSize={16} /> });
+      items.push({ key: 'staff', label: 'Staff', href: '/club/staff', icon: <MaterialIcon name="network" fontSize={16} /> });
     }
 
     items.push(
@@ -236,11 +237,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           label: item.label,
           href: item.href,
           icon:
-            item.href === '/messages' ? (
-              <MaterialIcon name={item.icon} fontSize={16} className="text-amber-600 hover:text-amber-700" />
-            ) : (
-              <MaterialIcon name={item.icon} fontSize={16} />
-            ),
+            <MaterialIcon name={item.icon} fontSize={16} />,
           badge:
             item.href === '/notifications'
               ? unreadNotifications
@@ -324,18 +321,32 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     </Link>
                   )}
                   {isClub && (
-                    <Link
-                      href="/club/roster"
-                      aria-label="Rosa"
-                      aria-current={isActive('/club/roster') ? 'page' : undefined}
-                      title="Rosa"
-                      className={`relative flex h-10 w-10 items-center justify-center rounded-xl text-pink-600 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
-                        isActive('/club/roster') ? 'bg-pink-100 text-pink-700 shadow-sm' : 'hover:bg-pink-50'
-                      }`}
-                    >
-                      <MaterialIcon name="following" fontSize="small" />
-                      <span className="sr-only">Rosa</span>
-                    </Link>
+                    <>
+                      <Link
+                        href="/club/roster"
+                        aria-label="Rosa"
+                        aria-current={isActive('/club/roster') ? 'page' : undefined}
+                        title="Rosa"
+                        className={`relative flex h-10 w-10 items-center justify-center rounded-xl text-pink-600 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
+                          isActive('/club/roster') ? 'bg-pink-100 text-pink-700 shadow-sm' : 'hover:bg-pink-50'
+                        }`}
+                      >
+                        <MaterialIcon name="following" fontSize="small" />
+                        <span className="sr-only">Rosa</span>
+                      </Link>
+                      <Link
+                        href="/club/staff"
+                        aria-label="Staff"
+                        aria-current={isActive('/club/staff') ? 'page' : undefined}
+                        title="Staff"
+                        className={`relative flex h-10 w-10 items-center justify-center rounded-xl text-fuchsia-600 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
+                          isActive('/club/staff') ? 'bg-fuchsia-100 text-fuchsia-700 shadow-sm' : 'hover:bg-fuchsia-50'
+                        }`}
+                      >
+                        <MaterialIcon name="network" fontSize="small" />
+                        <span className="sr-only">Staff</span>
+                      </Link>
+                    </>
                   )}
                   {navItems.map((item) => {
                     const active = isActive(item.href);
@@ -362,13 +373,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                           active ? 'bg-[var(--brand)] text-white shadow-sm' : 'text-neutral-600 hover:bg-neutral-100'
                         }`}
                       >
-                        <MaterialIcon
-                          name={item.icon}
-                          fontSize="small"
-                          className={
-                            item.href === '/messages' && !active ? 'text-amber-600 hover:text-amber-700' : undefined
-                          }
-                        />
+                        <MaterialIcon name={item.icon} fontSize="small" />
                         <span className="sr-only">{item.label}</span>
                         {item.href === '/messages' && unreadDirectThreads > 0 && (
                           <span className="absolute -right-1 -top-1 inline-flex min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-semibold text-white">

@@ -12,6 +12,7 @@ import AthleteOpenToOpportunitiesPanel from '@/components/athletes/AthleteOpenTo
 import AthleteExperiencesSection from '@/components/athletes/AthleteExperiencesSection';
 import PublicAuthorFeed from '@/components/feed/PublicAuthorFeed';
 import ProfileHeader from '@/components/profiles/ProfileHeader';
+import ClubStaffToggleButton from '@/components/clubs/ClubStaffToggleButton';
 import type { ProfileLinks } from '@/types/profile';
 import { CountryFlag } from '@/components/ui/CountryFlag';
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
@@ -19,6 +20,7 @@ import { normalizeSport } from '@/lib/opps/constants';
 import { useProvinceAbbreviations } from '@/hooks/useProvinceAbbreviations';
 import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
+import { useRole } from '@/lib/auth/useRole';
 
 type AthleteProfileRow = {
   id: string;
@@ -138,6 +140,7 @@ export default function PlayerPublicProfilePage() {
   const [media, setMedia] = useState<AthleteMediaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState<string>('');
+  const { role: viewerRole } = useRole();
 
   useEffect(() => {
     const load = async () => {
@@ -486,6 +489,9 @@ export default function PlayerPublicProfilePage() {
     );
   }, [headerCountry.iso2, headerCountry.label, profileLocationBase]);
 
+  const viewedAccountType = String(profile?.account_type ?? profile?.type ?? '').toLowerCase();
+  const canManageStaff = viewerRole === 'club' && viewedAccountType === 'staff' && !isMe;
+
   return (
     <main className="mx-auto min-w-0 max-w-5xl space-y-6 px-4 py-6">
       {loading && <p>Caricamento…</p>}
@@ -505,6 +511,15 @@ export default function PlayerPublicProfilePage() {
             showFollowButton={!isMe}
             messageLabel="Messaggia"
           />
+
+          {canManageStaff ? (
+            <section className="rounded-2xl border bg-white p-4 shadow-sm">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Gestione staff</h2>
+              <div className="mt-3">
+                <ClubStaffToggleButton staffProfileId={profile.id} visible={canManageStaff} />
+              </div>
+            </section>
+          ) : null}
 
           {clubOfBelonging && clubDisplayName ? (
             <section className="rounded-2xl border bg-white p-4 shadow-sm">

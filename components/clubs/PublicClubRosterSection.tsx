@@ -22,9 +22,34 @@ type PublicRosterResponse = {
   roster?: PublicRosterPlayer[];
 };
 
+type PublicStaffMember = {
+  id: string;
+  profileId: string;
+  fullName: string | null;
+  displayName: string | null;
+  avatarUrl: string | null;
+  staffRole: string | null;
+  location: {
+    city: string | null;
+    province: string | null;
+    region: string | null;
+    country: string | null;
+  };
+  sport: string | null;
+  certified: boolean | null;
+  bio: string | null;
+};
+
+type PublicStaffResponse = {
+  ok?: boolean;
+  staff?: PublicStaffMember[];
+};
+
 type Props = {
   clubId: string;
 };
+
+type ActiveTab = 'roster' | 'staff';
 
 function useCountryDisplay(player: PublicRosterPlayer) {
   return useMemo(() => {
@@ -92,7 +117,56 @@ function RosterCard({ player }: { player: PublicRosterPlayer }) {
   );
 }
 
-function RosterSkeleton() {
+function StaffCard({ member }: { member: PublicStaffMember }) {
+  const displayName = buildProfileDisplayName(member.fullName, member.displayName, 'Staff');
+  const initials = displayName
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('');
+
+  const locationLabel = [
+    member.location.city,
+    member.location.province,
+    member.location.region,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+  return (
+    <div className="flex items-start gap-3 rounded-xl border border-neutral-200 bg-white/80 p-3 shadow-sm">
+      <Link href={`/u/${member.profileId}`} className="group flex min-w-0 flex-1 items-start gap-3">
+        {member.avatarUrl ? (
+          <Image
+            src={member.avatarUrl}
+            alt={displayName}
+            width={48}
+            height={48}
+            className="h-12 w-12 rounded-full object-cover"
+            referrerPolicy="no-referrer"
+            unoptimized
+          />
+        ) : (
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-fuchsia-100 text-sm font-semibold text-fuchsia-700">
+            {initials || '—'}
+          </div>
+        )}
+        <div className="min-w-0 flex-1 space-y-1">
+          <p className="truncate text-sm font-semibold text-neutral-900 transition group-hover:text-pink-700">
+            {displayName}
+          </p>
+          {member.staffRole ? <p className="text-xs font-medium text-neutral-700">{member.staffRole}</p> : null}
+          {locationLabel ? <p className="text-xs text-neutral-600">{locationLabel}</p> : null}
+          {member.sport ? <p className="text-xs text-neutral-600">Sport: {member.sport}</p> : null}
+          {member.bio ? <p className="line-clamp-3 whitespace-pre-wrap text-xs text-neutral-700">{member.bio}</p> : null}
+        </div>
+      </Link>
+    </div>
+  );
+}
+
+function ListSkeleton() {
   return (
     <div className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white/70 p-3">
       <div className="h-12 w-12 animate-pulse rounded-full bg-neutral-200" />
@@ -105,38 +179,54 @@ function RosterSkeleton() {
 }
 
 export default function PublicClubRosterSection({ clubId }: Props) {
-  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<ActiveTab>('roster');
+
+  const [rosterLoading, setRosterLoading] = useState(true);
   const [players, setPlayers] = useState<PublicRosterPlayer[]>([]);
-  const [error, setError] = useState(false);
+  const [rosterError, setRosterError] = useState(false);
+
+  const [staffLoading, setStaffLoading] = useState(true);
+  const [staffMembers, setStaffMembers] = useState<PublicStaffMember[]>([]);
+  const [staffError, setStaffError] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     const controller = new AbortController();
 
-    async function loadRoster() {
-      try {
-        setLoading(true);
-        const res = await fetch(`/api/clubs/${clubId}/roster`, {
-          cache: 'no-store',
-          signal: controller.signal,
-        });
-        if (!res.ok) throw new Error('Roster fetch failed');
-        const data = (await res.json().catch(() => ({}))) as PublicRosterResponse;
-        if (!cancelled) {
-          setPlayers(Array.isArray(data.roster) ? data.roster : []);
-          setError(false);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setPlayers([]);
-          setError(true);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
+    async function loadData() {
+      setRosterLoading(true);
+      setStaffLoading(true);
+
+      const [rosterResult, staffResult] = await Promise.allSettled([
+        fetch(`/api/clubs/${clubId}/roster`, { cache: 'no-store', signal: controller.signal }),
+        fetch(`/api/clubs/${clubId}/staff`, { cache: 'no-store', signal: controller.signal }),
+      ]);
+
+      if (cancelled) return;
+
+      if (rosterResult.status === 'fulfilled' && rosterResult.value.ok) {
+        const data = (await rosterResult.value.json().catch(() => ({}))) as PublicRosterResponse;
+        setPlayers(Array.isArray(data.roster) ? data.roster : []);
+        setRosterError(false);
+      } else {
+        setPlayers([]);
+        setRosterError(true);
       }
+
+      if (staffResult.status === 'fulfilled' && staffResult.value.ok) {
+        const data = (await staffResult.value.json().catch(() => ({}))) as PublicStaffResponse;
+        setStaffMembers(Array.isArray(data.staff) ? data.staff : []);
+        setStaffError(false);
+      } else {
+        setStaffMembers([]);
+        setStaffError(true);
+      }
+
+      setRosterLoading(false);
+      setStaffLoading(false);
     }
 
-    loadRoster();
+    loadData();
 
     return () => {
       cancelled = true;
@@ -144,31 +234,81 @@ export default function PublicClubRosterSection({ clubId }: Props) {
     };
   }, [clubId]);
 
+  const isRosterTab = activeTab === 'roster';
+
   return (
-    <section className="space-y-3 rounded-2xl border bg-white p-5 shadow-sm">
-      <div>
-        <h2 className="heading-h2 text-xl">Rosa</h2>
-        <p className="text-sm text-neutral-600">Giocatori in rosa</p>
+    <section className="space-y-4 rounded-2xl border bg-white p-5 shadow-sm">
+      <div className="space-y-2">
+        <h2 className="heading-h2 text-xl">Rosa e Staff</h2>
+        <div className="inline-flex rounded-xl border border-neutral-200 bg-neutral-50 p-1">
+          <button
+            type="button"
+            onClick={() => setActiveTab('roster')}
+            className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
+              isRosterTab ? 'bg-white text-pink-700 shadow-sm' : 'text-neutral-600 hover:text-neutral-900'
+            }`}
+            aria-pressed={isRosterTab}
+          >
+            Rosa
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('staff')}
+            className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
+              !isRosterTab ? 'bg-white text-pink-700 shadow-sm' : 'text-neutral-600 hover:text-neutral-900'
+            }`}
+            aria-pressed={!isRosterTab}
+          >
+            Staff
+          </button>
+        </div>
       </div>
 
-      {loading ? (
-        <div className="space-y-2">
-          <RosterSkeleton />
-          <RosterSkeleton />
-        </div>
-      ) : null}
+      {isRosterTab ? (
+        <>
+          <p className="text-sm text-neutral-600">Giocatori in rosa</p>
+          {rosterLoading ? (
+            <div className="space-y-2">
+              <ListSkeleton />
+              <ListSkeleton />
+            </div>
+          ) : null}
 
-      {!loading && (!players.length || error) ? (
-        <p className="text-sm text-neutral-600">Nessun giocatore in rosa.</p>
-      ) : null}
+          {!rosterLoading && (!players.length || rosterError) ? (
+            <p className="text-sm text-neutral-600">Nessun giocatore in rosa.</p>
+          ) : null}
 
-      {!loading && players.length ? (
-        <div className="grid gap-3 md:grid-cols-2">
-          {players.map((player) => (
-            <RosterCard key={player.player_id} player={player} />
-          ))}
-        </div>
-      ) : null}
+          {!rosterLoading && players.length ? (
+            <div className="grid gap-3 md:grid-cols-2">
+              {players.map((player) => (
+                <RosterCard key={player.player_id} player={player} />
+              ))}
+            </div>
+          ) : null}
+        </>
+      ) : (
+        <>
+          <p className="text-sm text-neutral-600">Membri staff del club</p>
+          {staffLoading ? (
+            <div className="space-y-2">
+              <ListSkeleton />
+              <ListSkeleton />
+            </div>
+          ) : null}
+
+          {!staffLoading && (!staffMembers.length || staffError) ? (
+            <p className="text-sm text-neutral-600">Nessun membro dello staff ancora aggiunto.</p>
+          ) : null}
+
+          {!staffLoading && staffMembers.length ? (
+            <div className="grid gap-3 md:grid-cols-2">
+              {staffMembers.map((member) => (
+                <StaffCard key={member.id} member={member} />
+              ))}
+            </div>
+          ) : null}
+        </>
+      )}
     </section>
   );
 }
