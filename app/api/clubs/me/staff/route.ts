@@ -82,7 +82,7 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   if (staffIds.length) {
     const { data: profiles, error: staffErr } = await supabase
       .from('profiles')
-      .select('id, full_name, display_name, avatar_url, bio, city, province, region, country, sport, account_type, type, status')
+      .select('id, full_name, display_name, avatar_url, bio, city, province, region, country, sport, role, account_type, type, status')
       .in('id', staffIds);
 
     if (staffErr) return jsonError(staffErr.message, 400);
@@ -100,7 +100,7 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
         relationId: row.id as string,
         staffProfileId: row.staff_profile_id as string,
         status: row.status as string,
-        staffRole: row.staff_role ?? null,
+        staffRole: row.staff_role ?? profile.role ?? null,
         createdAt: row.created_at ?? null,
         staff: {
           id: profile.id as string,

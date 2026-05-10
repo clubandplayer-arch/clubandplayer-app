@@ -21,6 +21,7 @@ type ApiStaffMember = {
     province?: string | null;
     region?: string | null;
     sport?: string | null;
+    role?: string | null;
   };
 };
 
@@ -99,7 +100,7 @@ export default function ClubStaffPage() {
             id: String(id),
             name,
             avatarUrl: profile.avatarUrl ?? null,
-            staffRole: row.staffRole?.trim() || null,
+            staffRole: row.staffRole?.trim() || profile.role?.trim() || null,
             sport: profile.sport?.trim() || null,
             city: profile.city?.trim() || null,
             province: profile.province?.trim() || null,
