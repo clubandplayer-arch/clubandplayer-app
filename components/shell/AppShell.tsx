@@ -227,6 +227,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }
     if (isClub) {
       items.push({ key: 'roster', label: 'Rosa', href: '/club/roster', icon: <MaterialIcon name="following" fontSize={16} /> });
+      items.push({ key: 'staff', label: 'Staff', href: '/club/staff', icon: <MaterialIcon name="groups" fontSize={16} /> });
     }
 
     items.push(
@@ -324,18 +325,32 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     </Link>
                   )}
                   {isClub && (
-                    <Link
-                      href="/club/roster"
-                      aria-label="Rosa"
-                      aria-current={isActive('/club/roster') ? 'page' : undefined}
-                      title="Rosa"
-                      className={`relative flex h-10 w-10 items-center justify-center rounded-xl text-pink-600 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
-                        isActive('/club/roster') ? 'bg-pink-100 text-pink-700 shadow-sm' : 'hover:bg-pink-50'
-                      }`}
-                    >
-                      <MaterialIcon name="following" fontSize="small" />
-                      <span className="sr-only">Rosa</span>
-                    </Link>
+                    <>
+                      <Link
+                        href="/club/roster"
+                        aria-label="Rosa"
+                        aria-current={isActive('/club/roster') ? 'page' : undefined}
+                        title="Rosa"
+                        className={`relative flex h-10 w-10 items-center justify-center rounded-xl text-pink-600 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
+                          isActive('/club/roster') ? 'bg-pink-100 text-pink-700 shadow-sm' : 'hover:bg-pink-50'
+                        }`}
+                      >
+                        <MaterialIcon name="following" fontSize="small" />
+                        <span className="sr-only">Rosa</span>
+                      </Link>
+                      <Link
+                        href="/club/staff"
+                        aria-label="Staff"
+                        aria-current={isActive('/club/staff') ? 'page' : undefined}
+                        title="Staff"
+                        className={`relative flex h-10 w-10 items-center justify-center rounded-xl text-fuchsia-600 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
+                          isActive('/club/staff') ? 'bg-fuchsia-100 text-fuchsia-700 shadow-sm' : 'hover:bg-fuchsia-50'
+                        }`}
+                      >
+                        <MaterialIcon name="groups" fontSize="small" />
+                        <span className="sr-only">Staff</span>
+                      </Link>
+                    </>
                   )}
                   {navItems.map((item) => {
                     const active = isActive(item.href);
