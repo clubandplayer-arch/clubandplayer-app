@@ -29,6 +29,7 @@ export default function SignupPage() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
+  const [signupStats, setSignupStats] = useState<{ clubs: number; players: number; fans: number } | null>(null);
 
   // se già loggato → lascia che sia il middleware a instradare:
   // - account_type mancante => /onboarding/choose-role
@@ -46,6 +47,35 @@ export default function SignupPage() {
   // mostra il bottone Google solo quando ha senso
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const oauthReady = useMemo(() => HAS_ENV && Boolean(origin), [origin]);
+
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadStats = async () => {
+      try {
+        const response = await fetch('/api/public/signup-stats', { cache: 'no-store' });
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!mounted) return;
+        setSignupStats({
+          clubs: Number(data?.clubs ?? 0),
+          players: Number(data?.players ?? 0),
+          fans: Number(data?.fans ?? 0),
+        });
+      } catch {
+        // fallback silenzioso: non blocchiamo la pagina signup
+      }
+    };
+
+    loadStats();
+    const timer = window.setInterval(loadStats, 3000);
+
+    return () => {
+      mounted = false;
+      window.clearInterval(timer);
+    };
+  }, []);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,9 +130,15 @@ export default function SignupPage() {
               <li>• Ricevi candidature e messaggi in app</li>
             </ul>
             <p className="text-lg leading-relaxed text-slate-800">
-              Oppure registrati e connettiti come <b>FAN</b> e segui i tuoi Club o Player preferiti e interagisci con
-              loro
+              Oppure registrati e connettiti come <b>FAN</b> e segui i tuoi <b>CLUB</b> o <b>PLAYER</b> preferiti e
+              interagisci con loro
             </p>
+            <div className="rounded-2xl border border-[#00527a1f] bg-white/70 p-4 text-sm text-slate-800">
+              <p className="font-semibold text-[#00527a]">Community in crescita</p>
+              <p>Club iscritti: {signupStats ? signupStats.clubs : '—'}</p>
+              <p>Player iscritti: {signupStats ? signupStats.players : '—'}</p>
+              <p>Fan iscritti: {signupStats ? signupStats.fans : '—'}</p>
+            </div>
           </div>
         </section>
 
