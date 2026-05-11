@@ -104,7 +104,7 @@ export default function FeedPage() {
     _profile?.account_type === 'club' || _profile?.account_type === 'athlete' || _profile?.account_type === 'staff'
       ? _profile.account_type
       : 'guest';
-  const shouldShowStarterPack = !isInitialLoading && !errorMessage && posts.length < 3;
+  const shouldShowStarterPack = !isInitialLoading && !errorMessage && posts.length > 0 && posts.length < 3;
 
   const handleRefresh = useCallback(async () => {
     setReactions({});
