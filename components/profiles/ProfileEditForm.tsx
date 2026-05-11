@@ -992,7 +992,7 @@ export default function ProfileEditForm() {
                   onChange={(e) =>
                     setBirthYear(e.target.value === '' ? '' : Number(e.target.value))
                   }
-                  min={1950}
+                  min={1930}
                   max={new Date().getFullYear() - 5}
                   placeholder="Es. 2002"
                 />
