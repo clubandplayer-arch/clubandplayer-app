@@ -73,50 +73,23 @@ function normalizeSocialHref(value: string, platform: 'instagram' | 'facebook' |
 }
 
 function ProfileSocialLinks({ socialLinks }: { socialLinks?: ProfileLinks }) {
-  const items = [
-    socialLinks?.instagram
-      ? {
-          key: 'instagram',
-          href: normalizeSocialHref(socialLinks.instagram, 'instagram'),
-          label: 'Instagram',
-          className: 'border-[#E1306C]/30 text-[#E1306C]',
-          icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3H7zm5 3a5 5 0 1 1 0 10 5 5 0 0 1 0-10zm0 2a3 3 0 1 0 .001 6.001A3 3 0 0 0 12 9zm4.5-3a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3z"/></svg>,
-        }
-      : null,
-    socialLinks?.facebook
-      ? {
-          key: 'facebook',
-          href: normalizeSocialHref(socialLinks.facebook, 'facebook'),
-          label: 'Facebook',
-          className: 'border-[#1877F2]/30 text-[#1877F2]',
-          icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12a10 10 0 1 0-11.6 9.9v-7h-2.4V12h2.4V9.8c0-2.4 1.4-3.7 3.6-3.7 1 0 2 .2 2 .2v2.2h-1.1c-1.1 0-1.5.7-1.5 1.5V12h2.6l-.4 2.9h-2.2v7A10 10 0 0 0 22 12z"/></svg>,
-        }
-      : null,
-    socialLinks?.tiktok
-      ? {
-          key: 'tiktok',
-          href: normalizeSocialHref(socialLinks.tiktok, 'tiktok'),
-          label: 'TikTok',
-          className: 'border-black/20 text-black',
-          icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M16 3c.6 2.2 2.2 4 4.3 4.7V11a8.3 8.3 0 0 1-4.3-1.3v6.1a5.9 5.9 0 1 1-5.9-5.9c.5 0 1 .1 1.5.2v2.7a3.2 3.2 0 1 0 2.2 3V3h2.2z"/></svg>,
-        }
-      : null,
-    socialLinks?.x
-      ? {
-          key: 'x',
-          href: normalizeSocialHref(socialLinks.x, 'x'),
-          label: 'X',
-          className: 'border-black/20 text-black',
-          icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h4.6l4.1 5.8L16.8 3H21l-7.2 9.1L21.5 21h-4.6l-4.6-6.4L7.2 21H3l7.6-9.6L3 3z"/></svg>,
-        }
-      : null,
-  ].filter((item): item is {
+  type SocialItem = {
     key: string;
     href: string;
     label: string;
     className: string;
     icon: ReactNode;
-  } => Boolean(item?.href));
+  };
+
+  const items: SocialItem[] = [];
+  const instagramHref = socialLinks?.instagram ? normalizeSocialHref(socialLinks.instagram, 'instagram') : null;
+  if (instagramHref) items.push({ key: 'instagram', href: instagramHref, label: 'Instagram', className: 'border-[#E1306C]/30 text-[#E1306C]', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3H7zm5 3a5 5 0 1 1 0 10 5 5 0 0 1 0-10zm0 2a3 3 0 1 0 .001 6.001A3 3 0 0 0 12 9zm4.5-3a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3z"/></svg> });
+  const facebookHref = socialLinks?.facebook ? normalizeSocialHref(socialLinks.facebook, 'facebook') : null;
+  if (facebookHref) items.push({ key: 'facebook', href: facebookHref, label: 'Facebook', className: 'border-[#1877F2]/30 text-[#1877F2]', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12a10 10 0 1 0-11.6 9.9v-7h-2.4V12h2.4V9.8c0-2.4 1.4-3.7 3.6-3.7 1 0 2 .2 2 .2v2.2h-1.1c-1.1 0-1.5.7-1.5 1.5V12h2.6l-.4 2.9h-2.2v7A10 10 0 0 0 22 12z"/></svg> });
+  const tiktokHref = socialLinks?.tiktok ? normalizeSocialHref(socialLinks.tiktok, 'tiktok') : null;
+  if (tiktokHref) items.push({ key: 'tiktok', href: tiktokHref, label: 'TikTok', className: 'border-black/20 text-black', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M16 3c.6 2.2 2.2 4 4.3 4.7V11a8.3 8.3 0 0 1-4.3-1.3v6.1a5.9 5.9 0 1 1-5.9-5.9c.5 0 1 .1 1.5.2v2.7a3.2 3.2 0 1 0 2.2 3V3h2.2z"/></svg> });
+  const xHref = socialLinks?.x ? normalizeSocialHref(socialLinks.x, 'x') : null;
+  if (xHref) items.push({ key: 'x', href: xHref, label: 'X', className: 'border-black/20 text-black', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h4.6l4.1 5.8L16.8 3H21l-7.2 9.1L21.5 21h-4.6l-4.6-6.4L7.2 21H3l7.6-9.6L3 3z"/></svg> });
 
   if (!items.length) return null;
 
