@@ -179,11 +179,22 @@ export default function ProfileMiniCard() {
       ? `https://www.google.com/maps/embed/v1/view?key=${mapsKey}&center=${p?.club_stadium_lat},${p?.club_stadium_lng}&zoom=15&maptype=roadmap`
       : null;
 
+  const normalizeSocialHref = (value: string, platform: 'instagram' | 'facebook' | 'tiktok' | 'x') => {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    if (/^https?:\/\//i.test(trimmed)) return trimmed;
+    const handle = trimmed.replace(/^@/, '');
+    if (platform === 'instagram') return `https://instagram.com/${handle}`;
+    if (platform === 'facebook') return `https://facebook.com/${handle}`;
+    if (platform === 'tiktok') return `https://tiktok.com/@${handle}`;
+    return `https://twitter.com/${handle}`;
+  };
+
   const socials = {
-    instagram: p?.links?.instagram,
-    facebook: p?.links?.facebook,
-    tiktok: p?.links?.tiktok,
-    x: p?.links?.x,
+    instagram: p?.links?.instagram ? normalizeSocialHref(p.links.instagram, 'instagram') : null,
+    facebook: p?.links?.facebook ? normalizeSocialHref(p.links.facebook, 'facebook') : null,
+    tiktok: p?.links?.tiktok ? normalizeSocialHref(p.links.tiktok, 'tiktok') : null,
+    x: p?.links?.x ? normalizeSocialHref(p.links.x, 'x') : null,
   };
 
   const IconWrap = ({ href, label, children, className = '' }: any) => (
