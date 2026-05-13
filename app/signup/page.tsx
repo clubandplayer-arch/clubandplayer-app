@@ -7,6 +7,7 @@ export const fetchCache = 'default-no-store';
 ;
 
 import { useEffect, useMemo, useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 import SocialLogin from '@/components/auth/SocialLogin';
@@ -103,6 +104,44 @@ export default function SignupPage() {
               Oppure registrati e connettiti come <b>FAN</b> e segui i tuoi Club o Player preferiti e interagisci con
               loro
             </p>
+
+            <div className="pt-2">
+              <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-700">Scarica l’app</p>
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                <a
+                  href="https://apps.apple.com/app/club-player/id6758587330"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex h-[56px] w-[190px] overflow-hidden rounded-xl transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00527a] focus-visible:ring-offset-2"
+                  aria-label="Scarica Club & Player su App Store"
+                >
+                  <Image
+                    src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg"
+                    alt="Download on the App Store"
+                    width={190}
+                    height={56}
+                    className="h-full w-full"
+                    unoptimized
+                  />
+                </a>
+                <a
+                  href="https://play.google.com/store/apps/details?id=com.clubandplayer.app"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex h-[56px] w-[190px] overflow-hidden rounded-xl transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00527a] focus-visible:ring-offset-2"
+                  aria-label="Disponibile su Google Play"
+                >
+                  <Image
+                    src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg"
+                    alt="Get it on Google Play"
+                    width={190}
+                    height={56}
+                    className="h-full w-full"
+                    unoptimized
+                  />
+                </a>
+              </div>
+            </div>
           </div>
         </section>
 
