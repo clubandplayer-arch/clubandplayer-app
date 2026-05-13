@@ -103,6 +103,30 @@ export default function SignupPage() {
               Oppure registrati e connettiti come <b>FAN</b> e segui i tuoi Club o Player preferiti e interagisci con
               loro
             </p>
+
+            <div className="pt-2">
+              <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-700">Scarica l’app</p>
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                <a
+                  href="https://apps.apple.com/app/club-player/id6758587330"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex min-h-14 items-center justify-center rounded-xl border-2 border-slate-300 bg-black px-5 py-3 text-center text-white transition hover:opacity-90"
+                  aria-label="Scarica Club & Player su App Store"
+                >
+                  <span className="text-lg font-semibold">Scarica su App Store</span>
+                </a>
+                <a
+                  href="https://play.google.com/store/apps/details?id=com.clubandplayer.app"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex min-h-14 items-center justify-center rounded-xl border-2 border-slate-300 bg-black px-5 py-3 text-center text-white transition hover:opacity-90"
+                  aria-label="Disponibile su Google Play"
+                >
+                  <span className="text-lg font-semibold">Disponibile su Google Play</span>
+                </a>
+              </div>
+            </div>
           </div>
         </section>
 
