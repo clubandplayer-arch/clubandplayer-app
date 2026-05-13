@@ -7,6 +7,7 @@ export const fetchCache = 'default-no-store';
 ;
 
 import { useEffect, useMemo, useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 import SocialLogin from '@/components/auth/SocialLogin';
@@ -111,19 +112,33 @@ export default function SignupPage() {
                   href="https://apps.apple.com/app/club-player/id6758587330"
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex min-h-14 items-center justify-center rounded-xl border-2 border-slate-300 bg-black px-5 py-3 text-center text-white transition hover:opacity-90"
+                  className="inline-flex h-[56px] w-[190px] overflow-hidden rounded-xl transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00527a] focus-visible:ring-offset-2"
                   aria-label="Scarica Club & Player su App Store"
                 >
-                  <span className="text-lg font-semibold">Scarica su App Store</span>
+                  <Image
+                    src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg"
+                    alt="Download on the App Store"
+                    width={190}
+                    height={56}
+                    className="h-full w-full"
+                    unoptimized
+                  />
                 </a>
                 <a
                   href="https://play.google.com/store/apps/details?id=com.clubandplayer.app"
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex min-h-14 items-center justify-center rounded-xl border-2 border-slate-300 bg-black px-5 py-3 text-center text-white transition hover:opacity-90"
+                  className="inline-flex h-[56px] w-[190px] overflow-hidden rounded-xl transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00527a] focus-visible:ring-offset-2"
                   aria-label="Disponibile su Google Play"
                 >
-                  <span className="text-lg font-semibold">Disponibile su Google Play</span>
+                  <Image
+                    src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg"
+                    alt="Get it on Google Play"
+                    width={190}
+                    height={56}
+                    className="h-full w-full"
+                    unoptimized
+                  />
                 </a>
               </div>
             </div>
