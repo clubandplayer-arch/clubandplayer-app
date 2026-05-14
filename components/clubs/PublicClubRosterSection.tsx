@@ -30,6 +30,7 @@ type PublicStaffMember = {
   displayName: string | null;
   avatarUrl: string | null;
   staffRole: string | null;
+  profileRole: string | null;
   location: {
     city: string | null;
     province: string | null;
@@ -49,6 +50,7 @@ type PublicStaffResponse = {
 type Props = {
   clubId: string;
   clubSport?: string | null;
+  clubCity?: string | null;
 };
 
 type ActiveTab = 'roster' | 'staff';
@@ -130,7 +132,7 @@ function RosterCard({ player }: { player: PublicRosterPlayer }) {
   );
 }
 
-function StaffCard({ member }: { member: PublicStaffMember }) {
+function StaffCard({ member, fallbackCity }: { member: PublicStaffMember; fallbackCity?: string | null }) {
   const displayName = buildProfileDisplayName(member.fullName, member.displayName, 'Staff');
   const initials = displayName
     .split(' ')
@@ -143,6 +145,8 @@ function StaffCard({ member }: { member: PublicStaffMember }) {
   const matchCountry = rawCountry.match(/^([A-Za-z]{2})(?:\s+(.+))?$/);
   const iso2 = matchCountry ? matchCountry[1].trim().toUpperCase() : null;
   const countryLabel = (matchCountry ? matchCountry[2]?.trim() || iso2 || '' : rawCountry) || '';
+  const roleLabel = member.staffRole || member.profileRole;
+  const cityLabel = member.location.city || fallbackCity || member.location.province || member.location.region;
 
   return (
     <div className="flex items-start gap-3 rounded-xl border border-neutral-200 bg-white/80 p-3 shadow-sm">
@@ -166,8 +170,8 @@ function StaffCard({ member }: { member: PublicStaffMember }) {
           <p className="truncate text-sm font-semibold text-neutral-900 transition group-hover:text-pink-700">
             {displayName}
           </p>
-          {member.staffRole ? <p className="text-xs text-neutral-600">{member.staffRole}</p> : null}
-          {member.location.city ? <p className="text-xs text-neutral-600">{member.location.city}</p> : null}
+          {roleLabel ? <p className="text-xs text-neutral-600">{roleLabel}</p> : null}
+          {cityLabel ? <p className="text-xs text-neutral-600">{cityLabel}</p> : null}
           {countryLabel ? (
             <p className="flex items-center gap-1 text-xs text-neutral-600">
               {iso2 ? <CountryFlag iso2={iso2} /> : null}
@@ -192,7 +196,7 @@ function ListSkeleton() {
   );
 }
 
-export default function PublicClubRosterSection({ clubId, clubSport }: Props) {
+export default function PublicClubRosterSection({ clubId, clubSport, clubCity }: Props) {
   const [activeTab, setActiveTab] = useState<ActiveTab>('roster');
 
   const [rosterLoading, setRosterLoading] = useState(true);
@@ -266,8 +270,8 @@ export default function PublicClubRosterSection({ clubId, clubSport }: Props) {
   const sortedStaff = useMemo(() => {
     const roleIndex = new Map(STAFF_ROLES.map((role, index) => [normalizeKey(role), index]));
     return [...staffMembers].sort((a, b) => {
-      const aIdx = roleIndex.get(normalizeKey(a.staffRole ?? '')) ?? 9999;
-      const bIdx = roleIndex.get(normalizeKey(b.staffRole ?? '')) ?? 9999;
+      const aIdx = roleIndex.get(normalizeKey(a.staffRole ?? a.profileRole ?? '')) ?? 9999;
+      const bIdx = roleIndex.get(normalizeKey(b.staffRole ?? b.profileRole ?? '')) ?? 9999;
       if (aIdx !== bIdx) return aIdx - bIdx;
       return compareNames(
         buildProfileDisplayName(a.fullName, a.displayName, 'Staff'),
@@ -343,7 +347,7 @@ export default function PublicClubRosterSection({ clubId, clubSport }: Props) {
           {!staffLoading && sortedStaff.length ? (
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {sortedStaff.map((member) => (
-                <StaffCard key={member.id} member={member} />
+                <StaffCard key={member.id} member={member} fallbackCity={clubCity} />
               ))}
             </div>
           ) : null}
