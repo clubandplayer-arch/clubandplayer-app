@@ -238,7 +238,7 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
         clubName={displayName}
       />
 
-      <PublicClubRosterSection clubId={clubProfileId} />
+      <PublicClubRosterSection clubId={clubProfileId} clubSport={profile.sport} />
 
       <section className="space-y-3 rounded-2xl border bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between gap-3">
