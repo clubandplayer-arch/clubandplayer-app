@@ -9,6 +9,7 @@ type PublicClubStaffMember = {
   displayName: string | null;
   avatarUrl: string | null;
   staffRole: string | null;
+  profileRole: string | null;
   location: {
     city: string | null;
     province: string | null;
@@ -69,7 +70,7 @@ export const GET = withAuth(async (req: NextRequest, { supabase }, routeContext)
 
   const { data: staffProfiles, error: staffProfilesError } = await supabase
     .from('profiles')
-    .select('id,full_name,display_name,avatar_url,bio,sport,city,province,region,country,account_type,type,status')
+    .select('id,full_name,display_name,avatar_url,bio,sport,role,city,province,region,country,account_type,type,status')
     .in('id', staffIds);
 
   if (staffProfilesError) return jsonError(staffProfilesError.message, 400);
@@ -96,6 +97,7 @@ export const GET = withAuth(async (req: NextRequest, { supabase }, routeContext)
         displayName: profile.display_name ?? null,
         avatarUrl: profile.avatar_url ?? null,
         staffRole: row.staff_role ?? null,
+        profileRole: profile.role ?? null,
         location: {
           city: profile.city ?? null,
           province: profile.province ?? null,

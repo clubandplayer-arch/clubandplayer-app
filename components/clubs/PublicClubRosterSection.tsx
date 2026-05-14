@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { CountryFlag } from '@/components/ui/CountryFlag';
 import { buildProfileDisplayName } from '@/lib/displayName';
+import { normalizeSport, SPORTS_ROLES, STAFF_ROLES } from '@/lib/opps/constants';
 
 type PublicRosterPlayer = {
   player_id: string;
@@ -29,6 +30,7 @@ type PublicStaffMember = {
   displayName: string | null;
   avatarUrl: string | null;
   staffRole: string | null;
+  profileRole: string | null;
   location: {
     city: string | null;
     province: string | null;
@@ -47,6 +49,8 @@ type PublicStaffResponse = {
 
 type Props = {
   clubId: string;
+  clubSport?: string | null;
+  clubCity?: string | null;
 };
 
 type ActiveTab = 'roster' | 'staff';
@@ -62,6 +66,17 @@ function useCountryDisplay(player: PublicRosterPlayer) {
       (matchCountry ? matchCountry[2]?.trim() || iso2 || '' : rawCountry) || '';
     return { iso2, label };
   }, [player]);
+}
+
+function normalizeKey(value: string): string {
+  return value.trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+function compareNames(a: string, b: string) {
+  return a
+    .trim()
+    .toLocaleLowerCase('it')
+    .localeCompare(b.trim().toLocaleLowerCase('it'), 'it', { sensitivity: 'base' });
 }
 
 function RosterCard({ player }: { player: PublicRosterPlayer }) {
@@ -117,7 +132,7 @@ function RosterCard({ player }: { player: PublicRosterPlayer }) {
   );
 }
 
-function StaffCard({ member }: { member: PublicStaffMember }) {
+function StaffCard({ member, fallbackCity }: { member: PublicStaffMember; fallbackCity?: string | null }) {
   const displayName = buildProfileDisplayName(member.fullName, member.displayName, 'Staff');
   const initials = displayName
     .split(' ')
@@ -126,13 +141,12 @@ function StaffCard({ member }: { member: PublicStaffMember }) {
     .map((part) => part[0]?.toUpperCase())
     .join('');
 
-  const locationLabel = [
-    member.location.city,
-    member.location.province,
-    member.location.region,
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  const rawCountry = (member.location.country ?? '').trim();
+  const matchCountry = rawCountry.match(/^([A-Za-z]{2})(?:\s+(.+))?$/);
+  const iso2 = matchCountry ? matchCountry[1].trim().toUpperCase() : null;
+  const countryLabel = (matchCountry ? matchCountry[2]?.trim() || iso2 || '' : rawCountry) || '';
+  const roleLabel = member.staffRole || member.profileRole;
+  const cityLabel = member.location.city || fallbackCity || member.location.province || member.location.region;
 
   return (
     <div className="flex items-start gap-3 rounded-xl border border-neutral-200 bg-white/80 p-3 shadow-sm">
@@ -156,10 +170,14 @@ function StaffCard({ member }: { member: PublicStaffMember }) {
           <p className="truncate text-sm font-semibold text-neutral-900 transition group-hover:text-pink-700">
             {displayName}
           </p>
-          {member.staffRole ? <p className="text-xs font-medium text-neutral-700">{member.staffRole}</p> : null}
-          {locationLabel ? <p className="text-xs text-neutral-600">{locationLabel}</p> : null}
-          {member.sport ? <p className="text-xs text-neutral-600">Sport: {member.sport}</p> : null}
-          {member.bio ? <p className="line-clamp-3 whitespace-pre-wrap text-xs text-neutral-700">{member.bio}</p> : null}
+          {roleLabel ? <p className="text-xs text-neutral-600">{roleLabel}</p> : null}
+          {cityLabel ? <p className="text-xs text-neutral-600">{cityLabel}</p> : null}
+          {countryLabel ? (
+            <p className="flex items-center gap-1 text-xs text-neutral-600">
+              {iso2 ? <CountryFlag iso2={iso2} /> : null}
+              <span>{countryLabel}</span>
+            </p>
+          ) : null}
         </div>
       </Link>
     </div>
@@ -178,7 +196,7 @@ function ListSkeleton() {
   );
 }
 
-export default function PublicClubRosterSection({ clubId }: Props) {
+export default function PublicClubRosterSection({ clubId, clubSport, clubCity }: Props) {
   const [activeTab, setActiveTab] = useState<ActiveTab>('roster');
 
   const [rosterLoading, setRosterLoading] = useState(true);
@@ -235,6 +253,32 @@ export default function PublicClubRosterSection({ clubId }: Props) {
   }, [clubId]);
 
   const isRosterTab = activeTab === 'roster';
+  const sortedPlayers = useMemo(() => {
+    const roleList = SPORTS_ROLES[normalizeSport(clubSport) ?? ''] ?? [];
+    const roleIndex = new Map(roleList.map((role, index) => [normalizeKey(role), index]));
+    return [...players].sort((a, b) => {
+      const aIdx = roleIndex.get(normalizeKey(a.role ?? '')) ?? 9999;
+      const bIdx = roleIndex.get(normalizeKey(b.role ?? '')) ?? 9999;
+      if (aIdx !== bIdx) return aIdx - bIdx;
+      return compareNames(
+        buildProfileDisplayName(a.full_name, a.display_name, 'Profilo'),
+        buildProfileDisplayName(b.full_name, b.display_name, 'Profilo'),
+      );
+    });
+  }, [clubSport, players]);
+
+  const sortedStaff = useMemo(() => {
+    const roleIndex = new Map(STAFF_ROLES.map((role, index) => [normalizeKey(role), index]));
+    return [...staffMembers].sort((a, b) => {
+      const aIdx = roleIndex.get(normalizeKey(a.staffRole ?? a.profileRole ?? '')) ?? 9999;
+      const bIdx = roleIndex.get(normalizeKey(b.staffRole ?? b.profileRole ?? '')) ?? 9999;
+      if (aIdx !== bIdx) return aIdx - bIdx;
+      return compareNames(
+        buildProfileDisplayName(a.fullName, a.displayName, 'Staff'),
+        buildProfileDisplayName(b.fullName, b.displayName, 'Staff'),
+      );
+    });
+  }, [staffMembers]);
 
   return (
     <section className="space-y-4 rounded-2xl border bg-white p-5 shadow-sm">
@@ -278,9 +322,9 @@ export default function PublicClubRosterSection({ clubId }: Props) {
             <p className="text-sm text-neutral-600">Nessun giocatore in rosa.</p>
           ) : null}
 
-          {!rosterLoading && players.length ? (
-            <div className="grid gap-3 md:grid-cols-2">
-              {players.map((player) => (
+          {!rosterLoading && sortedPlayers.length ? (
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {sortedPlayers.map((player) => (
                 <RosterCard key={player.player_id} player={player} />
               ))}
             </div>
@@ -300,10 +344,10 @@ export default function PublicClubRosterSection({ clubId }: Props) {
             <p className="text-sm text-neutral-600">Nessun membro dello staff ancora aggiunto.</p>
           ) : null}
 
-          {!staffLoading && staffMembers.length ? (
-            <div className="grid gap-3 md:grid-cols-2">
-              {staffMembers.map((member) => (
-                <StaffCard key={member.id} member={member} />
+          {!staffLoading && sortedStaff.length ? (
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {sortedStaff.map((member) => (
+                <StaffCard key={member.id} member={member} fallbackCity={clubCity} />
               ))}
             </div>
           ) : null}
