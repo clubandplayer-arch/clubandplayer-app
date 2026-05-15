@@ -27,6 +27,8 @@ type Suggestion = {
 };
 
 type TabKey = 'club' | 'player' | 'staff';
+type GeoScope = 'country' | 'region' | 'province' | 'city';
+type SportScope = 'mine' | 'all';
 
 const TABS: Array<{ key: TabKey; label: string }> = [
   { key: 'club', label: 'Club' },
@@ -96,13 +98,15 @@ export default function DiscoverPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<{ url: string; alt: string } | null>(null);
+  const [geoScope, setGeoScope] = useState<GeoScope>('province');
+  const [sportScope, setSportScope] = useState<SportScope>('mine');
 
   useEffect(() => {
     let cancelled = false;
     const controller = new AbortController();
 
     const fetchSuggestions = async (kind: TabKey) => {
-      const params = new URLSearchParams({ kind, limit: '50' });
+      const params = new URLSearchParams({ kind, limit: '50', geoScope, sportScope });
       const res = await fetch(`/api/follows/suggestions?${params.toString()}`, {
         credentials: 'include',
         cache: 'no-store',
@@ -161,7 +165,7 @@ export default function DiscoverPage() {
       cancelled = true;
       controller.abort();
     };
-  }, [contextRole]);
+  }, [contextRole, geoScope, sportScope]);
 
   const activeItems = useMemo(() => items[activeTab] || [], [items, activeTab]);
 
@@ -190,6 +194,34 @@ export default function DiscoverPage() {
           </button>
         ))}
       </div>
+      <section className="rounded-2xl border border-neutral-200 bg-white/70 p-4 shadow-sm">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <label className="flex flex-col gap-2 text-sm font-medium text-neutral-700">
+            Ambito geografico
+            <select
+              value={geoScope}
+              onChange={(event) => setGeoScope(event.target.value as GeoScope)}
+              className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 outline-none ring-[var(--brand)] focus:ring-2"
+            >
+              <option value="country">Tutta Italia</option>
+              <option value="region">Regione di interesse</option>
+              <option value="province">Provincia di interesse</option>
+              <option value="city">Città di interesse</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-2 text-sm font-medium text-neutral-700">
+            Sport
+            <select
+              value={sportScope}
+              onChange={(event) => setSportScope(event.target.value as SportScope)}
+              className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 outline-none ring-[var(--brand)] focus:ring-2"
+            >
+              <option value="mine">Solo il mio sport</option>
+              <option value="all">Tutti gli sport</option>
+            </select>
+          </label>
+        </div>
+      </section>
 
       {loading ? (
         <div className="rounded-xl border border-dashed p-6 text-sm text-neutral-600">Caricamento suggerimenti…</div>

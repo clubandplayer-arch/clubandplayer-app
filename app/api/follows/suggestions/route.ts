@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
   if (!parsed.success) {
     return validationError('Parametri non validi', parsed.error.flatten());
   }
-  const { limit, kind }: FollowSuggestionsQueryInput = parsed.data;
+  const { limit, kind, geoScope = 'province', sportScope = 'mine' }: FollowSuggestionsQueryInput = parsed.data;
   const debugMode = url.searchParams.get('debug') === '1';
   let step = 'init';
   const debugInfo = {
@@ -160,7 +160,7 @@ export async function GET(req: NextRequest) {
     alreadyFollowing.add(profileId);
 
     const baseSelect =
-      'id, user_id, account_type, type, full_name, display_name, role, city, province, region, country, sport, avatar_url, status, updated_at';
+      'id, user_id, account_type, type, full_name, display_name, role, city, province, region, country, interest_city, interest_province, interest_region, interest_country, sport, avatar_url, status, updated_at';
 
     const normalizeAccountType = (value?: string | null) => {
       const cleaned = typeof value === 'string' ? value.toLowerCase().trim() : '';
@@ -276,24 +276,45 @@ export async function GET(req: NextRequest) {
     };
 
     step = 'candidates';
-    const locationPriority: Array<{ field: 'city' | 'province' | 'region'; value: string | null }> = [
-      { field: 'city', value: viewerCity || null },
-      { field: 'province', value: viewerProvince || null },
-      { field: 'region', value: viewerRegion || null },
-    ];
+    const escapeLike = (value: string) => value.replace(/[%_]/g, (token) => `\\${token}`);
 
     const buildFilters = () => {
       const filters: Array<Array<(q: any) => any>> = [];
-      locationPriority.forEach((loc) => {
-        if (loc.value) filters.push([(q) => q.eq(loc.field, loc.value)]);
-      });
-      if (viewerCountry) {
-        filters.push([(q) => q.eq('country', viewerCountry)]);
+      const geoFilter: Array<(q: any) => any> = [];
+      const sportFilter: Array<(q: any) => any> = [];
+
+      if (geoScope === 'city' && viewerCity) {
+        const value = escapeLike(viewerCity);
+        geoFilter.push((q) => q.or(`interest_city.ilike.${value},city.ilike.${value}`));
       }
-      if (profile.sport) {
-        filters.push([(q) => q.eq('sport', profile.sport)]);
+      if (geoScope === 'province' && viewerProvince) {
+        const value = escapeLike(viewerProvince);
+        geoFilter.push((q) => q.or(`interest_province.ilike.${value},province.ilike.${value}`));
       }
-      filters.push([]);
+      if (geoScope === 'region' && viewerRegion) {
+        const value = escapeLike(viewerRegion);
+        geoFilter.push((q) => q.or(`interest_region.ilike.${value},region.ilike.${value}`));
+      }
+      if (geoScope === 'country' && viewerCountry) {
+        const value = escapeLike(viewerCountry);
+        geoFilter.push((q) => q.or(`interest_country.ilike.${value},country.ilike.${value}`));
+      }
+
+      if (sportScope === 'mine' && profile.sport) {
+        const value = `%${escapeLike(profile.sport.trim())}%`;
+        sportFilter.push((q) => q.ilike('sport', value));
+      }
+
+      const strictFilters = [...geoFilter, ...sportFilter];
+      if (strictFilters.length) {
+        filters.push(strictFilters);
+      }
+
+      const shouldAllowFallbackAll =
+        geoScope === 'country' && sportScope === 'all';
+      if (!strictFilters.length || shouldAllowFallbackAll) {
+        filters.push([]);
+      }
       return filters;
     };
 
