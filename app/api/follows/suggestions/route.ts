@@ -160,7 +160,7 @@ export async function GET(req: NextRequest) {
     alreadyFollowing.add(profileId);
 
     const baseSelect =
-      'id, user_id, account_type, type, full_name, display_name, role, city, province, region, country, sport, avatar_url, status, updated_at';
+      'id, user_id, account_type, type, full_name, display_name, role, city, province, region, country, interest_city, interest_province, interest_region, interest_country, sport, avatar_url, status, updated_at';
 
     const normalizeAccountType = (value?: string | null) => {
       const cleaned = typeof value === 'string' ? value.toLowerCase().trim() : '';
@@ -276,17 +276,34 @@ export async function GET(req: NextRequest) {
     };
 
     step = 'candidates';
+    const escapeLike = (value: string) => value.replace(/[%_]/g, (token) => `\\${token}`);
+
     const buildFilters = () => {
       const filters: Array<Array<(q: any) => any>> = [];
       const geoFilter: Array<(q: any) => any> = [];
       const sportFilter: Array<(q: any) => any> = [];
 
-      if (geoScope === 'city' && viewerCity) geoFilter.push((q) => q.eq('city', viewerCity));
-      if (geoScope === 'province' && viewerProvince) geoFilter.push((q) => q.eq('province', viewerProvince));
-      if (geoScope === 'region' && viewerRegion) geoFilter.push((q) => q.eq('region', viewerRegion));
-      if (geoScope === 'country' && viewerCountry) geoFilter.push((q) => q.eq('country', viewerCountry));
+      if (geoScope === 'city' && viewerCity) {
+        const value = escapeLike(viewerCity);
+        geoFilter.push((q) => q.or(`interest_city.ilike.${value},city.ilike.${value}`));
+      }
+      if (geoScope === 'province' && viewerProvince) {
+        const value = escapeLike(viewerProvince);
+        geoFilter.push((q) => q.or(`interest_province.ilike.${value},province.ilike.${value}`));
+      }
+      if (geoScope === 'region' && viewerRegion) {
+        const value = escapeLike(viewerRegion);
+        geoFilter.push((q) => q.or(`interest_region.ilike.${value},region.ilike.${value}`));
+      }
+      if (geoScope === 'country' && viewerCountry) {
+        const value = escapeLike(viewerCountry);
+        geoFilter.push((q) => q.or(`interest_country.ilike.${value},country.ilike.${value}`));
+      }
 
-      if (sportScope === 'mine' && profile.sport) sportFilter.push((q) => q.eq('sport', profile.sport));
+      if (sportScope === 'mine' && profile.sport) {
+        const value = `%${escapeLike(profile.sport.trim())}%`;
+        sportFilter.push((q) => q.ilike('sport', value));
+      }
 
       if (geoFilter.length || sportFilter.length) {
         filters.push([...geoFilter, ...sportFilter]);
