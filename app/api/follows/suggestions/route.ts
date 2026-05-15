@@ -305,10 +305,16 @@ export async function GET(req: NextRequest) {
         sportFilter.push((q) => q.ilike('sport', value));
       }
 
-      if (geoFilter.length || sportFilter.length) {
-        filters.push([...geoFilter, ...sportFilter]);
+      const strictFilters = [...geoFilter, ...sportFilter];
+      if (strictFilters.length) {
+        filters.push(strictFilters);
       }
-      filters.push([]);
+
+      const shouldAllowFallbackAll =
+        geoScope === 'country' && sportScope === 'all';
+      if (!strictFilters.length || shouldAllowFallbackAll) {
+        filters.push([]);
+      }
       return filters;
     };
 
