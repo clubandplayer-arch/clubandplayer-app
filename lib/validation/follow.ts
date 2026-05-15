@@ -25,6 +25,8 @@ export const FollowSuggestionsQuerySchema = z.object({
   kind: z
     .enum(['club', 'player', 'staff'])
     .optional(),
+  geoScope: z.enum(['country', 'region', 'province', 'city']).optional(),
+  sportScope: z.enum(['mine', 'all']).optional(),
 });
 
 export type ToggleFollowInput = z.infer<typeof ToggleFollowSchema>;

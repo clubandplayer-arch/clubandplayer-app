@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
   if (!parsed.success) {
     return validationError('Parametri non validi', parsed.error.flatten());
   }
-  const { limit, kind }: FollowSuggestionsQueryInput = parsed.data;
+  const { limit, kind, geoScope = 'province', sportScope = 'mine' }: FollowSuggestionsQueryInput = parsed.data;
   const debugMode = url.searchParams.get('debug') === '1';
   let step = 'init';
   const debugInfo = {
@@ -276,22 +276,20 @@ export async function GET(req: NextRequest) {
     };
 
     step = 'candidates';
-    const locationPriority: Array<{ field: 'city' | 'province' | 'region'; value: string | null }> = [
-      { field: 'city', value: viewerCity || null },
-      { field: 'province', value: viewerProvince || null },
-      { field: 'region', value: viewerRegion || null },
-    ];
-
     const buildFilters = () => {
       const filters: Array<Array<(q: any) => any>> = [];
-      locationPriority.forEach((loc) => {
-        if (loc.value) filters.push([(q) => q.eq(loc.field, loc.value)]);
-      });
-      if (viewerCountry) {
-        filters.push([(q) => q.eq('country', viewerCountry)]);
-      }
-      if (profile.sport) {
-        filters.push([(q) => q.eq('sport', profile.sport)]);
+      const geoFilter: Array<(q: any) => any> = [];
+      const sportFilter: Array<(q: any) => any> = [];
+
+      if (geoScope === 'city' && viewerCity) geoFilter.push((q) => q.eq('city', viewerCity));
+      if (geoScope === 'province' && viewerProvince) geoFilter.push((q) => q.eq('province', viewerProvince));
+      if (geoScope === 'region' && viewerRegion) geoFilter.push((q) => q.eq('region', viewerRegion));
+      if (geoScope === 'country' && viewerCountry) geoFilter.push((q) => q.eq('country', viewerCountry));
+
+      if (sportScope === 'mine' && profile.sport) sportFilter.push((q) => q.eq('sport', profile.sport));
+
+      if (geoFilter.length || sportFilter.length) {
+        filters.push([...geoFilter, ...sportFilter]);
       }
       filters.push([]);
       return filters;
