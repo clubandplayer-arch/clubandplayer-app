@@ -25,45 +25,9 @@ export async function GET(req: NextRequest) {
     const province = searchParams.get("province")?.trim() || "";
     const sport = searchParams.get("sport")?.trim() || "";
 
-    let allowedClubIds: string[] | null = null;
-
-    if (sport) {
-      const { data: disciplineRows, error: disciplineError } = await supabase
-        .from("registry_club_disciplines")
-        .select("registry_club_id")
-        .eq("clubandplayer_sport", sport)
-        .limit(1000);
-
-      if (disciplineError) {
-        console.error(disciplineError);
-
-        return NextResponse.json(
-          {
-            ok: false,
-            error: disciplineError.message,
-          },
-          {
-            status: 500,
-          }
-        );
-      }
-
-      allowedClubIds = Array.from(
-        new Set(
-          (disciplineRows || [])
-            .map((row) => row.registry_club_id)
-            .filter(Boolean)
-        )
-      );
-
-      if (allowedClubIds.length === 0) {
-        return NextResponse.json({
-          ok: true,
-          count: 0,
-          items: [],
-        });
-      }
-    }
+    const disciplineSelect = sport
+      ? "registry_club_disciplines!inner ( clubandplayer_sport, discipline_raw )"
+      : "registry_club_disciplines ( clubandplayer_sport, discipline_raw )";
 
     let query = supabase
       .from("registry_clubs")
@@ -77,10 +41,7 @@ export async function GET(req: NextRequest) {
         province,
         municipality,
         claim_status,
-        registry_club_disciplines (
-          clubandplayer_sport,
-          discipline_raw
-        )
+        ${disciplineSelect}
       `)
       .limit(50);
 
@@ -96,8 +57,11 @@ export async function GET(req: NextRequest) {
       query = query.eq("province", province);
     }
 
-    if (allowedClubIds) {
-      query = query.in("id", allowedClubIds);
+    if (sport) {
+      query = query.eq(
+        "registry_club_disciplines.clubandplayer_sport",
+        sport
+      );
     }
 
     const { data, error } = await query;
