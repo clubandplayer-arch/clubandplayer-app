@@ -257,10 +257,10 @@ export default function AdminRegistryPage() {
 
                       <button
                         type="button"
-                        disabled
-                        className="rounded-xl border border-neutral-700 px-4 py-2 text-sm text-neutral-400"
+                        onClick={() => alert("Funzione in arrivo: questo pulsante servirà per collegare il tuo profilo Club a questa società del Registro.")}
+                        className="rounded-xl bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-500"
                       >
-                        Claim presto disponibile
+                        Rivendicalo: sono io questo Club.
                       </button>
                     </div>
                   </div>
