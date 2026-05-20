@@ -149,6 +149,7 @@ export default function ClubRegistryClaimPage() {
             );
 
             const isPending = club.claim_status === "claim_pending";
+            const isApproved = club.claim_status === "claimed";
 
             return (
               <article
@@ -176,18 +177,30 @@ export default function ClubRegistryClaimPage() {
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => claimClub(club.id)}
-                    disabled={claimingId === club.id || isPending}
-                    className="rounded-xl bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-500 disabled:opacity-60"
-                  >
-                    {isPending
-                      ? "Richiesta già inviata"
-                      : claimingId === club.id
-                        ? "Invio..."
-                        : "Sono io questo Club"}
-                  </button>
+				  {isApproved ? (
+					  <div className="rounded-xl border border-green-700 bg-green-950/50 px-4 py-3 text-sm text-green-100">
+						<p className="font-semibold">Club verificato</p>
+						<p className="mt-1 text-xs text-green-200/80">
+						  Questa società è collegata al tuo profilo Club.
+						</p>
+					  </div>
+					) : isPending ? (
+					  <div className="rounded-xl border border-yellow-700 bg-yellow-950/50 px-4 py-3 text-sm text-yellow-100">
+						<p className="font-semibold">Verifica in corso</p>
+						<p className="mt-1 text-xs text-yellow-200/80">
+						  Stiamo controllando la tua richiesta.
+						</p>
+					  </div>
+					) : (
+					  <button
+						type="button"
+						onClick={() => claimClub(club.id)}
+						disabled={claimingId === club.id}
+						className="rounded-xl bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-500 disabled:opacity-60"
+					  >
+						{claimingId === club.id ? "Invio..." : "Sono io questo Club"}
+					  </button>
+					)}
                 </div>
               </article>
             );
