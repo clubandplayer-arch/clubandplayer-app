@@ -43,6 +43,18 @@ type ClubProfileRow = {
   is_verified?: boolean | null;
 };
 
+type RegistryClubClaim = {
+  id: string;
+  source: string | null;
+  source_club_id: string | null;
+  name: string | null;
+  fiscal_code: string | null;
+  region: string | null;
+  province: string | null;
+  municipality: string | null;
+  claimed_at: string | null;
+};
+
 type GenericStringError = { message: string };
 
 type ClubProfileState = ClubProfileRow | GenericStringError | null;
@@ -129,6 +141,27 @@ async function loadClubVerificationStatus(clubId: string) {
   return Boolean(data);
 }
 
+async function loadRegistryClubClaim(profileId: string): Promise<RegistryClubClaim | null> {
+  const adminClient = getSupabaseAdminClientOrNull();
+  const supabase = adminClient ?? (await getSupabaseServerClient());
+
+  const { data, error } = await supabase
+    .from('registry_clubs')
+    .select('id, source, source_club_id, name, fiscal_code, region, province, municipality, claimed_at')
+    .eq('claimed_by_profile_id', profileId)
+    .eq('claim_status', 'claimed')
+    .order('claimed_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[registry-club] public profile lookup failed', error);
+    return null;
+  }
+
+  return (data as RegistryClubClaim | null) ?? null;
+}
+
 function locationLabel(row: ClubProfileRow, provinceAbbreviations: Record<string, string>): string {
   const state = resolveStateName(row.country || null, row.region || row.province || '');
   const countryLabel = getCountryName(row.country || undefined) ?? (row.country || '');
@@ -146,6 +179,7 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
   const meId = auth?.user?.id ?? null;
   const isMe = !!meId && (meId === profile.id || meId === profile.user_id);
   const isVerified = await loadClubVerificationStatus(profile.id);
+  const registryClub = await loadRegistryClubClaim(profile.id);
   const profileWithVerification = { ...profile, is_verified: isVerified };
 
   const aboutText = profile.bio || 'Nessuna descrizione disponibile.';
@@ -199,6 +233,36 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
         showFollowButton={!isMe}
         isVerified={profileWithVerification.is_verified}
       />
+
+      {registryClub ? (
+        <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wide text-emerald-700">
+                Registro CONI
+              </p>
+              <h2 className="mt-1 text-lg font-bold text-emerald-950">
+                Registro CONI verificato
+              </h2>
+              <p className="mt-2 text-sm text-emerald-900">
+                Questo Club ha rivendicato e collegato la propria società presente nel Registro CONI.
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm text-emerald-950">
+              <p className="font-semibold">{registryClub.name || displayName}</p>
+              <p className="mt-1 text-xs text-emerald-800">
+                ID CONI: {registryClub.source_club_id || '—'}
+              </p>
+              <p className="mt-1 text-xs text-emerald-800">
+                {[registryClub.region, registryClub.province, registryClub.municipality]
+                  .filter(Boolean)
+                  .join(' · ') || 'Località —'}
+              </p>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       <section className="grid grid-cols-1 gap-4">
         <div className="rounded-2xl border bg-white p-5 shadow-sm">
