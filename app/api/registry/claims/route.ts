@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
       .select("id, account_type")
-      .eq("id", user.id)
+      .eq("user_id", user.id)
       .single();
 
     if (profileError || !profile) {
