@@ -32,14 +32,14 @@ export async function POST(
 
     const authHeader = req.headers.get("authorization");
 
-    if (!authHeader) {
+    if (!authHeader?.startsWith("Bearer ")) {
       return NextResponse.json(
         { ok: false, error: "Unauthorized" },
         { status: 401 }
       );
     }
 
-    const token = authHeader.replace("Bearer ", "");
+    const token = authHeader.replace("Bearer ", "").trim();
 
     const {
       data: { user },
@@ -67,39 +67,81 @@ export async function POST(
 
     const { data: claim, error: claimError } = await supabaseAdmin
       .from("registry_claims")
-      .select(`
-        id,
-        registry_club_id
-      `)
+      .select("id, registry_club_id, claim_status")
       .eq("id", claimId)
-      .single();
+      .maybeSingle();
 
-    if (claimError || !claim) {
+    if (claimError) {
+      console.error("REGISTRY CLAIM REJECT SELECT ERROR", claimError);
+
+      return NextResponse.json(
+        { ok: false, error: claimError.message },
+        { status: 500 }
+      );
+    }
+
+    if (!claim) {
       return NextResponse.json(
         { ok: false, error: "Claim not found" },
         { status: 404 }
       );
     }
 
-    await supabaseAdmin
+    if (!["pending", "in_review"].includes(claim.claim_status)) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: `Claim non rifiutabile nello stato attuale: ${claim.claim_status}`,
+        },
+        { status: 409 }
+      );
+    }
+
+    const now = new Date().toISOString();
+
+    const { data: updatedClaim, error: updateClaimError } = await supabaseAdmin
       .from("registry_claims")
       .update({
         claim_status: "rejected",
-        reviewed_at: new Date().toISOString(),
-        reviewed_by_profile_id: user.id,
+        rejected_at: now,
+        approved_at: null,
+        updated_at: now,
       })
-      .eq("id", claim.id);
+      .eq("id", claim.id)
+      .select("id, registry_club_id, claim_status, rejected_at")
+      .single();
 
-    await supabaseAdmin
+    if (updateClaimError) {
+      console.error("REGISTRY CLAIM REJECT UPDATE CLAIM ERROR", updateClaimError);
+
+      return NextResponse.json(
+        { ok: false, error: updateClaimError.message },
+        { status: 500 }
+      );
+    }
+
+    const { error: updateClubError } = await supabaseAdmin
       .from("registry_clubs")
       .update({
         claim_status: "not_claimed",
+        updated_at: now,
       })
-      .eq("id", claim.registry_club_id);
+      .eq("id", claim.registry_club_id)
+      .neq("claim_status", "claimed");
+
+    if (updateClubError) {
+      console.error("REGISTRY CLAIM REJECT UPDATE CLUB ERROR", updateClubError);
+
+      return NextResponse.json(
+        { ok: false, error: updateClubError.message },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       ok: true,
       rejected: true,
+      claim: updatedClaim,
     });
   } catch (err) {
     console.error("REGISTRY CLAIM REJECT ERROR", err);

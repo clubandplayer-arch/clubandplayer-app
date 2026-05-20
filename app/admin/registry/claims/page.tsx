@@ -48,6 +48,19 @@ function normalizeClaim(claim: Claim): Claim {
   }
 }
 
+function getErrorMessage(value: unknown, fallback: string) {
+  if (
+    value &&
+    typeof value === 'object' &&
+    'error' in value &&
+    typeof value.error === 'string'
+  ) {
+    return value.error
+  }
+
+  return fallback
+}
+
 export default function RegistryClaimsAdminPage() {
   const supabase = useMemo(() => supabaseBrowser(), [])
 
@@ -62,37 +75,64 @@ export default function RegistryClaimsAdminPage() {
     setLoading(true)
     setError('')
 
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
 
-    const token = session?.access_token
+      const token = session?.access_token
 
-    if (!token) {
-      setError('Sessione non disponibile. Effettua nuovamente il login.')
+      if (!token) {
+        setError('Sessione non disponibile. Effettua nuovamente il login.')
+        setClaims([])
+        return
+      }
+
+      const res = await fetch('/api/admin/registry/claims', {
+        cache: 'no-store',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      const json = (await res.json().catch(() => null)) as unknown
+
+      if (!res.ok) {
+        setError(
+          getErrorMessage(
+            json,
+            `Errore caricamento richieste. Status HTTP: ${res.status}`
+          )
+        )
+        setClaims([])
+        return
+      }
+
+      if (
+        !json ||
+        typeof json !== 'object' ||
+        !('ok' in json) ||
+        json.ok !== true
+      ) {
+        setError('Risposta non valida dal server.')
+        setClaims([])
+        return
+      }
+
+      const items = 'items' in json && Array.isArray(json.items) ? json.items : []
+
+      setClaims(
+        (items as Claim[])
+          .map(normalizeClaim)
+          .filter((claim) => ['pending', 'in_review'].includes(claim.claim_status))
+      )
+    } catch (err) {
+      console.error(err)
+      setError('Errore imprevisto durante il caricamento delle richieste.')
       setClaims([])
+    } finally {
       setLoading(false)
-      return
     }
-
-    const res = await fetch('/api/admin/registry/claims', {
-      cache: 'no-store',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-
-    const json = await res.json()
-
-    if (!json.ok) {
-      setError(json.error || 'Errore caricamento richieste.')
-      setClaims([])
-      setLoading(false)
-      return
-    }
-
-    setClaims(((json.items ?? []) as Claim[]).map(normalizeClaim))
-    setLoading(false)
   }, [supabase])
 
   const reviewClaim = async (claimId: string, action: 'approve' | 'reject') => {
@@ -121,18 +161,36 @@ export default function RegistryClaimsAdminPage() {
         `/api/admin/registry/claims/${claimId}/${action}`,
         {
           method: 'POST',
+          cache: 'no-store',
           headers: {
             Authorization: `Bearer ${token}`,
           },
         }
       )
 
-      const json = await res.json()
+      const json = (await res.json().catch(() => null)) as unknown
 
-      if (!json.ok) {
-        setError(json.error || 'Errore aggiornamento richiesta.')
+      if (!res.ok) {
+        setError(
+          getErrorMessage(
+            json,
+            `Errore aggiornamento richiesta. Status HTTP: ${res.status}`
+          )
+        )
         return
       }
+
+      if (
+        !json ||
+        typeof json !== 'object' ||
+        !('ok' in json) ||
+        json.ok !== true
+      ) {
+        setError('Risposta non valida dal server durante l’aggiornamento.')
+        return
+      }
+
+      setClaims((current) => current.filter((claim) => claim.id !== claimId))
 
       await loadClaims()
     } catch (err) {
