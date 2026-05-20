@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 export const fetchCache = 'default-no-store'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
 
@@ -55,7 +55,93 @@ export default function RegistryClaimsAdminPage() {
   const [loadingMe, setLoadingMe] = useState(true)
   const [claims, setClaims] = useState<Claim[]>([])
   const [loading, setLoading] = useState(false)
+  const [savingId, setSavingId] = useState('')
   const [error, setError] = useState('')
+
+  const loadClaims = useCallback(async () => {
+    setLoading(true)
+    setError('')
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+
+    const token = session?.access_token
+
+    if (!token) {
+      setError('Sessione non disponibile. Effettua nuovamente il login.')
+      setClaims([])
+      setLoading(false)
+      return
+    }
+
+    const res = await fetch('/api/admin/registry/claims', {
+      cache: 'no-store',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+
+    const json = await res.json()
+
+    if (!json.ok) {
+      setError(json.error || 'Errore caricamento richieste.')
+      setClaims([])
+      setLoading(false)
+      return
+    }
+
+    setClaims(((json.items ?? []) as Claim[]).map(normalizeClaim))
+    setLoading(false)
+  }, [supabase])
+
+  const reviewClaim = async (claimId: string, action: 'approve' | 'reject') => {
+    const label = action === 'approve' ? 'approvare' : 'rifiutare'
+
+    if (!confirm(`Vuoi davvero ${label} questa richiesta?`)) {
+      return
+    }
+
+    setSavingId(claimId)
+    setError('')
+
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+
+      const token = session?.access_token
+
+      if (!token) {
+        setError('Sessione admin non valida. Effettua nuovamente il login.')
+        return
+      }
+
+      const res = await fetch(
+        `/api/admin/registry/claims/${claimId}/${action}`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+
+      const json = await res.json()
+
+      if (!json.ok) {
+        setError(json.error || 'Errore aggiornamento richiesta.')
+        return
+      }
+
+      await loadClaims()
+    } catch (err) {
+      console.error(err)
+      setError('Errore imprevisto durante l’aggiornamento della richiesta.')
+    } finally {
+      setSavingId('')
+    }
+  }
 
   useEffect(() => {
     let active = true
@@ -96,45 +182,8 @@ export default function RegistryClaimsAdminPage() {
   useEffect(() => {
     if (loadingMe || !me?.is_admin) return
 
-    const loadClaims = async () => {
-      setLoading(true)
-      setError('')
-
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-
-      const token = session?.access_token
-
-      if (!token) {
-        setError('Sessione non disponibile. Effettua nuovamente il login.')
-        setClaims([])
-        setLoading(false)
-        return
-      }
-
-      const res = await fetch('/api/admin/registry/claims', {
-        cache: 'no-store',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      const json = await res.json()
-
-      if (!json.ok) {
-        setError(json.error || 'Errore caricamento richieste.')
-        setClaims([])
-        setLoading(false)
-        return
-      }
-
-      setClaims(((json.items ?? []) as Claim[]).map(normalizeClaim))
-      setLoading(false)
-    }
-
     loadClaims()
-  }, [loadingMe, me?.is_admin, supabase])
+  }, [loadingMe, loadClaims, me?.is_admin])
 
   if (loadingMe) {
     return (
@@ -210,6 +259,7 @@ export default function RegistryClaimsAdminPage() {
           {claims.map((claim) => {
             const club = claim.registry_clubs
             const profile = claim.profiles
+            const saving = savingId === claim.id
 
             return (
               <article
@@ -250,18 +300,20 @@ export default function RegistryClaimsAdminPage() {
                   <div className="flex flex-col gap-3 md:min-w-52">
                     <button
                       type="button"
-                      disabled
-                      className="rounded-xl bg-green-700 px-4 py-2 text-sm font-semibold text-white opacity-60"
+                      disabled={saving}
+                      onClick={() => reviewClaim(claim.id, 'approve')}
+                      className="rounded-xl bg-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-60"
                     >
-                      Approva richiesta
+                      {saving ? 'Salvataggio...' : 'Approva richiesta'}
                     </button>
 
                     <button
                       type="button"
-                      disabled
-                      className="rounded-xl border border-red-700 px-4 py-2 text-sm font-semibold text-red-200 opacity-60"
+                      disabled={saving}
+                      onClick={() => reviewClaim(claim.id, 'reject')}
+                      className="rounded-xl border border-red-700 px-4 py-2 text-sm font-semibold text-red-200 hover:bg-red-950/40 disabled:opacity-60"
                     >
-                      Rifiuta richiesta
+                      {saving ? 'Salvataggio...' : 'Rifiuta richiesta'}
                     </button>
                   </div>
                 </div>
