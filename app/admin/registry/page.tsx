@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+
 type RegistryDiscipline = {
   clubandplayer_sport: string;
   discipline_raw: string;
@@ -261,15 +263,19 @@ export default function AdminRegistryPage() {
 						  type="button"
 						  onClick={async () => {
 							try {
-							  const token = localStorage.getItem(
-								"sb-access-token"
-							  );
+                const supabase = getSupabaseBrowserClient();
 
-							  if (!token) {
-								alert("Effettua login come Club.");
-								return;
-							  }
+                const {
+                data: { session },
+                } = await supabase.auth.getSession();
 
+                const token = session?.access_token;
+
+                if (!token) {
+                alert("Effettua login come Club.");
+                return;
+                }
+                
 							  const res = await fetch(
 								"/api/registry/claims",
 								{
