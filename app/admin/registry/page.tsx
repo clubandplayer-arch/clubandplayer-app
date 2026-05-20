@@ -257,13 +257,55 @@ export default function AdminRegistryPage() {
                         : club.claim_status}
                       </span>
 
-                      <button
-                        type="button"
-                        onClick={() => alert("Funzione in arrivo: questo pulsante servirà per collegare il tuo profilo Club a questa società del Registro.")}
-                        className="rounded-xl bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-500"
-                      >
-                        Rivendicalo: sono io questo Club.
-                      </button>
+					  <button
+						  type="button"
+						  onClick={async () => {
+							try {
+							  const token = localStorage.getItem(
+								"sb-access-token"
+							  );
+
+							  if (!token) {
+								alert("Effettua login come Club.");
+								return;
+							  }
+
+							  const res = await fetch(
+								"/api/registry/claims",
+								{
+								  method: "POST",
+								  headers: {
+									"Content-Type": "application/json",
+									Authorization: `Bearer ${token}`,
+								  },
+								  body: JSON.stringify({
+									registry_club_id: club.id,
+								  }),
+								}
+							  );
+
+							  const json = await res.json();
+
+							  if (!json.ok) {
+								alert(json.error || "Errore richiesta");
+								return;
+							  }
+
+							  alert(
+								"Richiesta inviata correttamente."
+							  );
+
+							  window.location.reload();
+							} catch (err) {
+							  console.error(err);
+
+							  alert("Errore imprevisto.");
+							}
+						  }}
+						  className="rounded-xl bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-500"
+						>
+						  Rivendica: sono io questo Club.
+						</button>					  
                     </div>
                   </div>
                 </article>
