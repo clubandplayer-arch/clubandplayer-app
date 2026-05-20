@@ -1,64 +1,171 @@
-import { createClient } from "@supabase/supabase-js";
+'use client'
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic'
+export const fetchCache = 'default-no-store'
 
-function getSupabaseAdmin() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+import { useEffect, useMemo, useState } from 'react'
 
-  if (!url || !serviceKey) {
-    throw new Error("Missing Supabase server environment variables");
-  }
+import { supabaseBrowser } from '@/lib/supabaseBrowser'
 
-  return createClient(url, serviceKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
+type Claim = {
+  id: string
+  claim_status: string
+  submitted_at: string
+  profile_id: string
+  registry_club_id: string
+  registry_clubs: {
+    name: string
+    source_club_id: string
+    region: string | null
+    province: string | null
+    municipality: string | null
+  } | null
+  profiles: {
+    id: string
+    display_name: string | null
+    account_type: string | null
+  } | null
 }
 
-export default async function RegistryClaimsAdminPage() {
-  const supabase = getSupabaseAdmin();
+type MeProfile = {
+  id: string
+  is_admin: boolean
+}
 
-  const { data: claims, error } = await supabase
-    .from("registry_claims")
-    .select(`
-      id,
-      claim_status,
-      submitted_at,
-      profile_id,
-      registry_club_id,
-      registry_clubs (
-        name,
-        source_club_id,
-        region,
-        province,
-        municipality
-      ),
-      profiles (
-        id,
-        display_name,
-        account_type
-      )
-    `)
-    .eq("claim_status", "pending")
-    .order("submitted_at", { ascending: false });
+export default function RegistryClaimsAdminPage() {
+  const supabase = useMemo(() => supabaseBrowser(), [])
 
-  if (error) {
+  const [me, setMe] = useState<MeProfile | null>(null)
+  const [loadingMe, setLoadingMe] = useState(true)
+
+  const [claims, setClaims] = useState<Claim[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let active = true
+
+    const loadMe = async () => {
+      setLoadingMe(true)
+
+      const { data: userRes } = await supabase.auth.getUser()
+
+      const user = userRes?.user
+
+      if (!active) return
+
+      if (!user) {
+        setMe(null)
+        setLoadingMe(false)
+        return
+      }
+
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, is_admin')
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+      if (!active) return
+
+      setMe((data as MeProfile) ?? null)
+      setLoadingMe(false)
+    }
+
+    loadMe()
+
+    return () => {
+      active = false
+    }
+  }, [supabase])
+
+  useEffect(() => {
+    if (loadingMe || !me?.is_admin) return
+
+    const loadClaims = async () => {
+      setLoading(true)
+
+      const { data, error } = await supabase
+        .from('registry_claims')
+        .select(`
+          id,
+          claim_status,
+          submitted_at,
+          profile_id,
+          registry_club_id,
+          registry_clubs (
+            name,
+            source_club_id,
+            region,
+            province,
+            municipality
+          ),
+          profiles (
+            id,
+            display_name,
+            account_type
+          )
+        `)
+        .eq('claim_status', 'pending')
+        .order('submitted_at', { ascending: false })
+
+      if (error) {
+        console.error(error)
+        setClaims([])
+        setLoading(false)
+        return
+      }
+
+	  const normalizedClaims = (data ?? []).map((claim) => ({
+	  ...claim,
+	  registry_clubs: Array.isArray(claim.registry_clubs)
+	  	? claim.registry_clubs[0] ?? null
+	  	: claim.registry_clubs,
+	  profiles: Array.isArray(claim.profiles)
+	  	? claim.profiles[0] ?? null
+	  	: claim.profiles,
+	  }))
+	  
+	  setClaims(normalizedClaims as unknown as Claim[])
+      setLoading(false)
+    }
+
+    loadClaims()
+  }, [loadingMe, me?.is_admin, supabase])
+
+  if (loadingMe) {
     return (
       <main className="min-h-screen bg-neutral-950 p-6 text-white">
         <div className="mx-auto max-w-6xl">
-          <h1 className="text-3xl font-bold text-red-300">
-            Errore caricamento richieste
-          </h1>
-          <pre className="mt-4 rounded-xl bg-red-950/50 p-4 text-sm text-red-100">
-            {error.message}
-          </pre>
+          <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6">
+            Caricamento...
+          </div>
         </div>
       </main>
-    );
+    )
+  }
+
+  if (!me) {
+    return (
+      <main className="min-h-screen bg-neutral-950 p-6 text-white">
+        <div className="mx-auto max-w-6xl">
+          <div className="rounded-2xl border border-red-800 bg-red-950/40 p-6 text-red-100">
+            Devi essere loggato per accedere a questa pagina.
+          </div>
+        </div>
+      </main>
+    )
+  }
+
+  if (!me.is_admin) {
+    return (
+      <main className="min-h-screen bg-neutral-950 p-6 text-white">
+        <div className="mx-auto max-w-6xl">
+          <div className="rounded-2xl border border-red-800 bg-red-950/40 p-6 text-red-100">
+            Non sei autorizzato ad accedere a questa pagina.
+          </div>
+        </div>
+      </main>
+    )
   }
 
   return (
@@ -77,20 +184,21 @@ export default async function RegistryClaimsAdminPage() {
         </p>
 
         <section className="mt-8 space-y-4">
-          {!claims?.length ? (
+          {loading ? (
+            <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 text-neutral-300">
+              Caricamento richieste...
+            </div>
+          ) : null}
+
+          {!loading && !claims.length ? (
             <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 text-neutral-300">
               Nessuna richiesta in verifica.
             </div>
           ) : null}
 
-          {claims?.map((claim) => {
-            const registryClub = Array.isArray(claim.registry_clubs)
-              ? claim.registry_clubs[0]
-              : claim.registry_clubs;
-
-            const profile = Array.isArray(claim.profiles)
-              ? claim.profiles[0]
-              : claim.profiles;
+          {claims.map((claim) => {
+            const club = claim.registry_clubs
+            const profile = claim.profiles
 
             return (
               <article
@@ -104,14 +212,14 @@ export default async function RegistryClaimsAdminPage() {
                     </span>
 
                     <h2 className="mt-4 text-xl font-bold">
-                      {registryClub?.name || "Società senza nome"}
+                      {club?.name || 'Società senza nome'}
                     </h2>
 
                     <p className="mt-1 text-sm text-neutral-400">
-                      ID CONI: {registryClub?.source_club_id || "-"} •{" "}
-                      {registryClub?.region || "-"} •{" "}
-                      {registryClub?.province || "-"} •{" "}
-                      {registryClub?.municipality || "-"}
+                      ID CONI: {club?.source_club_id || '-'} •{' '}
+                      {club?.region || '-'} •{' '}
+                      {club?.province || '-'} •{' '}
+                      {club?.municipality || '-'}
                     </p>
 
                     <div className="mt-4 rounded-xl border border-neutral-800 bg-neutral-950 p-4">
@@ -120,22 +228,22 @@ export default async function RegistryClaimsAdminPage() {
                       </p>
 
                       <p className="mt-1 font-semibold">
-                        {profile?.display_name || "Profilo senza nome"}
+                        {profile?.display_name || 'Profilo senza nome'}
                       </p>
 
                       <p className="mt-1 text-sm text-neutral-500">
-                        Tipo account: {profile?.account_type || "-"}
+                        Tipo account: {profile?.account_type || '-'}
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex flex-col gap-3 md:min-w-48">
+                  <div className="flex flex-col gap-3 md:min-w-52">
                     <button
                       type="button"
                       disabled
                       className="rounded-xl bg-green-700 px-4 py-2 text-sm font-semibold text-white opacity-60"
                     >
-                      Approva presto
+                      Approva richiesta
                     </button>
 
                     <button
@@ -143,15 +251,15 @@ export default async function RegistryClaimsAdminPage() {
                       disabled
                       className="rounded-xl border border-red-700 px-4 py-2 text-sm font-semibold text-red-200 opacity-60"
                     >
-                      Rifiuta presto
+                      Rifiuta richiesta
                     </button>
                   </div>
                 </div>
               </article>
-            );
+            )
           })}
         </section>
       </div>
     </main>
-  );
+  )
 }
