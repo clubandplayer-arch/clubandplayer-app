@@ -105,7 +105,7 @@ export default function RegistryClaimsAdminPage() {
             account_type
           )
         `)
-        .eq('claim_status', 'pending')
+        .in('claim_status', ['pending', 'claim_pending'])
         .order('submitted_at', { ascending: false })
 
       if (error) {
