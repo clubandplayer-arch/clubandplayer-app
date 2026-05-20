@@ -5,19 +5,26 @@ import { createClient } from "@supabase/supabase-js";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
+function getSupabaseAdmin() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !serviceKey) {
+    throw new Error("Missing Supabase server environment variables");
+  }
+
+  return createClient(url, serviceKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
     },
-  }
-);
+  });
+}
 
 export async function GET(req: NextRequest) {
   try {
+    const supabase = getSupabaseAdmin();
+
     const { searchParams } = new URL(req.url);
 
     const q = searchParams.get("q")?.trim() || "";
