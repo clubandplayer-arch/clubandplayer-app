@@ -25,6 +25,46 @@ export async function GET(req: NextRequest) {
     const province = searchParams.get("province")?.trim() || "";
     const sport = searchParams.get("sport")?.trim() || "";
 
+    let allowedClubIds: string[] | null = null;
+
+    if (sport) {
+      const { data: disciplineRows, error: disciplineError } = await supabase
+        .from("registry_club_disciplines")
+        .select("registry_club_id")
+        .eq("clubandplayer_sport", sport)
+        .limit(1000);
+
+      if (disciplineError) {
+        console.error(disciplineError);
+
+        return NextResponse.json(
+          {
+            ok: false,
+            error: disciplineError.message,
+          },
+          {
+            status: 500,
+          }
+        );
+      }
+
+      allowedClubIds = Array.from(
+        new Set(
+          (disciplineRows || [])
+            .map((row) => row.registry_club_id)
+            .filter(Boolean)
+        )
+      );
+
+      if (allowedClubIds.length === 0) {
+        return NextResponse.json({
+          ok: true,
+          count: 0,
+          items: [],
+        });
+      }
+    }
+
     let query = supabase
       .from("registry_clubs")
       .select(`
@@ -45,9 +85,7 @@ export async function GET(req: NextRequest) {
       .limit(50);
 
     if (q) {
-      query = query.or(
-        `name.ilike.%${q}%,normalized_name.ilike.%${q}%`
-      );
+      query = query.or(`name.ilike.%${q}%,normalized_name.ilike.%${q}%`);
     }
 
     if (region) {
@@ -58,15 +96,8 @@ export async function GET(req: NextRequest) {
       query = query.eq("province", province);
     }
 
-    if (sport) {
-      query = query.contains(
-        "registry_club_disciplines",
-        [
-          {
-            clubandplayer_sport: sport,
-          },
-        ]
-      );
+    if (allowedClubIds) {
+      query = query.in("id", allowedClubIds);
     }
 
     const { data, error } = await query;
