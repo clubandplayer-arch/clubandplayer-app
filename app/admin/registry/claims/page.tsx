@@ -13,18 +13,22 @@ type Claim = {
   submitted_at: string
   profile_id: string
   registry_club_id: string
-  registry_clubs: {
-    name: string
-    source_club_id: string
-    region: string | null
-    province: string | null
-    municipality: string | null
-  } | null
-  profiles: {
-    id: string
-    display_name: string | null
-    account_type: string | null
-  } | null
+  registry_clubs:
+    | {
+        name: string
+        source_club_id: string
+        region: string | null
+        province: string | null
+        municipality: string | null
+      }
+    | null
+  profiles:
+    | {
+        id: string
+        display_name: string | null
+        account_type: string | null
+      }
+    | null
 }
 
 type MeProfile = {
@@ -32,14 +36,26 @@ type MeProfile = {
   is_admin: boolean
 }
 
+function normalizeClaim(claim: Claim): Claim {
+  return {
+    ...claim,
+    registry_clubs: Array.isArray(claim.registry_clubs)
+      ? claim.registry_clubs[0] ?? null
+      : claim.registry_clubs,
+    profiles: Array.isArray(claim.profiles)
+      ? claim.profiles[0] ?? null
+      : claim.profiles,
+  }
+}
+
 export default function RegistryClaimsAdminPage() {
   const supabase = useMemo(() => supabaseBrowser(), [])
 
   const [me, setMe] = useState<MeProfile | null>(null)
   const [loadingMe, setLoadingMe] = useState(true)
-
   const [claims, setClaims] = useState<Claim[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     let active = true
@@ -48,7 +64,6 @@ export default function RegistryClaimsAdminPage() {
       setLoadingMe(true)
 
       const { data: userRes } = await supabase.auth.getUser()
-
       const user = userRes?.user
 
       if (!active) return
@@ -83,49 +98,38 @@ export default function RegistryClaimsAdminPage() {
 
     const loadClaims = async () => {
       setLoading(true)
+      setError('')
 
-      const { data, error } = await supabase
-        .from('registry_claims')
-        .select(`
-          id,
-          claim_status,
-          submitted_at,
-          profile_id,
-          registry_club_id,
-          registry_clubs (
-            name,
-            source_club_id,
-            region,
-            province,
-            municipality
-          ),
-          profiles (
-            id,
-            display_name,
-            account_type
-          )
-        `)
-        .in('claim_status', ['pending', 'claim_pending'])
-        .order('submitted_at', { ascending: false })
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
 
-      if (error) {
-        console.error(error)
+      const token = session?.access_token
+
+      if (!token) {
+        setError('Sessione non disponibile. Effettua nuovamente il login.')
         setClaims([])
         setLoading(false)
         return
       }
 
-	  const normalizedClaims = (data ?? []).map((claim) => ({
-	  ...claim,
-	  registry_clubs: Array.isArray(claim.registry_clubs)
-	  	? claim.registry_clubs[0] ?? null
-	  	: claim.registry_clubs,
-	  profiles: Array.isArray(claim.profiles)
-	  	? claim.profiles[0] ?? null
-	  	: claim.profiles,
-	  }))
-	  
-	  setClaims(normalizedClaims as unknown as Claim[])
+      const res = await fetch('/api/admin/registry/claims', {
+        cache: 'no-store',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      const json = await res.json()
+
+      if (!json.ok) {
+        setError(json.error || 'Errore caricamento richieste.')
+        setClaims([])
+        setLoading(false)
+        return
+      }
+
+      setClaims(((json.items ?? []) as Claim[]).map(normalizeClaim))
       setLoading(false)
     }
 
@@ -180,7 +184,8 @@ export default function RegistryClaimsAdminPage() {
         </h1>
 
         <p className="mt-2 text-neutral-400">
-          Approva o rifiuta le richieste dei Club che vogliono collegarsi al Registro CONI.
+          Approva o rifiuta le richieste dei Club che vogliono collegarsi al
+          Registro CONI.
         </p>
 
         <section className="mt-8 space-y-4">
@@ -190,7 +195,13 @@ export default function RegistryClaimsAdminPage() {
             </div>
           ) : null}
 
-          {!loading && !claims.length ? (
+          {error ? (
+            <div className="rounded-2xl border border-red-800 bg-red-950/40 p-6 text-red-100">
+              {error}
+            </div>
+          ) : null}
+
+          {!loading && !error && !claims.length ? (
             <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 text-neutral-300">
               Nessuna richiesta in verifica.
             </div>
@@ -217,8 +228,7 @@ export default function RegistryClaimsAdminPage() {
 
                     <p className="mt-1 text-sm text-neutral-400">
                       ID CONI: {club?.source_club_id || '-'} •{' '}
-                      {club?.region || '-'} •{' '}
-                      {club?.province || '-'} •{' '}
+                      {club?.region || '-'} • {club?.province || '-'} •{' '}
                       {club?.municipality || '-'}
                     </p>
 
