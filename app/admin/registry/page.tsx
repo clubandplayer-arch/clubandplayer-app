@@ -232,7 +232,7 @@ export default function AdminRegistryPage() {
 
                       <details className="mt-4 text-sm text-neutral-400">
                         <summary className="cursor-pointer text-neutral-300">
-                          Discipline raw
+                          Discipline Club
                         </summary>
 
                         <ul className="mt-2 list-disc space-y-1 pl-5">
@@ -252,7 +252,9 @@ export default function AdminRegistryPage() {
 
                     <div className="flex flex-col gap-3 md:items-end">
                       <span className="rounded-full border border-yellow-700 bg-yellow-950/50 px-3 py-1 text-sm text-yellow-100">
-                        {club.claim_status}
+                        {club.claim_status === "not_claimed"
+                        ? "Da rivendicare"
+                        : club.claim_status}
                       </span>
 
                       <button
