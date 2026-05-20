@@ -32,14 +32,14 @@ export async function POST(
 
     const authHeader = req.headers.get("authorization");
 
-    if (!authHeader) {
+    if (!authHeader?.startsWith("Bearer ")) {
       return NextResponse.json(
         { ok: false, error: "Unauthorized" },
         { status: 401 }
       );
     }
 
-    const token = authHeader.replace("Bearer ", "");
+    const token = authHeader.replace("Bearer ", "").trim();
 
     const {
       data: { user },
@@ -67,50 +67,85 @@ export async function POST(
 
     const { data: claim, error: claimError } = await supabaseAdmin
       .from("registry_claims")
-      .select(`
-        id,
-        profile_id,
-        registry_club_id,
-        claim_status
-      `)
+      .select("id, profile_id, registry_club_id, claim_status")
       .eq("id", claimId)
-      .single();
+      .maybeSingle();
 
-    if (claimError || !claim) {
+    if (claimError) {
+      console.error("REGISTRY CLAIM APPROVE SELECT ERROR", claimError);
+
+      return NextResponse.json(
+        { ok: false, error: claimError.message },
+        { status: 500 }
+      );
+    }
+
+    if (!claim) {
       return NextResponse.json(
         { ok: false, error: "Claim not found" },
         { status: 404 }
       );
     }
 
-    await supabaseAdmin
+    if (!["pending", "in_review"].includes(claim.claim_status)) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: `Claim non approvabile nello stato attuale: ${claim.claim_status}`,
+        },
+        { status: 409 }
+      );
+    }
+
+    const now = new Date().toISOString();
+
+    const { data: updatedClaim, error: updateClaimError } = await supabaseAdmin
       .from("registry_claims")
       .update({
         claim_status: "approved",
-        reviewed_at: new Date().toISOString(),
-        reviewed_by_profile_id: user.id,
+        approved_at: now,
+        rejected_at: null,
+        updated_at: now,
       })
-      .eq("id", claim.id);
+      .eq("id", claim.id)
+      .select("id, profile_id, registry_club_id, claim_status, approved_at")
+      .single();
 
-    await supabaseAdmin
+    if (updateClaimError) {
+      console.error("REGISTRY CLAIM APPROVE UPDATE CLAIM ERROR", updateClaimError);
+
+      return NextResponse.json(
+        { ok: false, error: updateClaimError.message },
+        { status: 500 }
+      );
+    }
+
+    const { data: updatedClub, error: updateClubError } = await supabaseAdmin
       .from("registry_clubs")
       .update({
         claim_status: "claimed",
         claimed_by_profile_id: claim.profile_id,
-        claimed_at: new Date().toISOString(),
+        claimed_at: now,
+        updated_at: now,
       })
-      .eq("id", claim.registry_club_id);
+      .eq("id", claim.registry_club_id)
+      .select("id, claim_status, claimed_by_profile_id, claimed_at")
+      .single();
 
-    await supabaseAdmin
-      .from("profiles")
-      .update({
-        registry_club_id: claim.registry_club_id,
-      })
-      .eq("id", claim.profile_id);
+    if (updateClubError) {
+      console.error("REGISTRY CLAIM APPROVE UPDATE CLUB ERROR", updateClubError);
+
+      return NextResponse.json(
+        { ok: false, error: updateClubError.message },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       ok: true,
       approved: true,
+      claim: updatedClaim,
+      club: updatedClub,
     });
   } catch (err) {
     console.error("REGISTRY CLAIM APPROVE ERROR", err);
