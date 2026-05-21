@@ -12,11 +12,64 @@ type RegistryClub = {
   province: string | null;
   municipality: string | null;
   claim_status: string;
+  claimed_by_profile_id?: string | null;
   registry_club_disciplines: {
     clubandplayer_sport: string;
     discipline_raw: string;
   }[];
 };
+
+type ProfileRow = {
+  id: string;
+  account_type: string | null;
+  type: string | null;
+};
+
+type RegistryClaimRow = {
+  id: string;
+  registry_club_id: string;
+  claim_status: string;
+};
+
+type ClaimedClubOwnershipRow = {
+  id: string;
+  claimed_by_profile_id: string | null;
+};
+
+async function getCurrentClubProfileId() {
+  const supabase = getSupabaseBrowserClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return null;
+
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .select("id, account_type, type")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (error) throw error;
+
+  const row = profile as ProfileRow | null;
+  const accountType = String(row?.account_type || row?.type || "").toLowerCase();
+
+  if (!row?.id || accountType !== "club") return null;
+
+  return row.id;
+}
+
+function normalizeRegistryClub(raw: RegistryClub): RegistryClub {
+  return {
+    ...raw,
+    claimed_by_profile_id: raw.claimed_by_profile_id ?? null,
+    registry_club_disciplines: Array.isArray(raw.registry_club_disciplines)
+      ? raw.registry_club_disciplines
+      : [],
+  };
+}
 
 export default function ClubRegistryClaimPage() {
   const [query, setQuery] = useState("");
@@ -24,6 +77,76 @@ export default function ClubRegistryClaimPage() {
   const [claimingId, setClaimingId] = useState("");
   const [results, setResults] = useState<RegistryClub[]>([]);
   const [message, setMessage] = useState("");
+  const [currentClubProfileId, setCurrentClubProfileId] = useState<string | null>(null);
+
+  async function enrichResultsWithOwnership(items: RegistryClub[]) {
+    const supabase = getSupabaseBrowserClient();
+
+    const profileId = await getCurrentClubProfileId();
+    setCurrentClubProfileId(profileId);
+
+    const normalized = items.map(normalizeRegistryClub);
+
+    const claimedIds = normalized
+      .filter((club) => club.claim_status === "claimed")
+      .map((club) => club.id);
+
+    const pendingIds = normalized.map((club) => club.id);
+
+    let claimedByProfileByClubId = new Map<string, string | null>();
+    let myPendingClaimClubIds = new Set<string>();
+
+    if (claimedIds.length) {
+      const { data: claimedRows, error: claimedError } = await supabase
+        .from("registry_clubs")
+        .select("id, claimed_by_profile_id")
+        .in("id", claimedIds);
+
+      if (claimedError) throw claimedError;
+
+      claimedByProfileByClubId = new Map(
+        ((claimedRows ?? []) as ClaimedClubOwnershipRow[]).map((row) => [
+          String(row.id),
+          row.claimed_by_profile_id ? String(row.claimed_by_profile_id) : null,
+        ])
+      );
+    }
+
+    if (profileId && pendingIds.length) {
+      const { data: pendingRows, error: pendingError } = await supabase
+        .from("registry_claims")
+        .select("id, registry_club_id, claim_status")
+        .eq("profile_id", profileId)
+        .in("registry_club_id", pendingIds)
+        .in("claim_status", ["pending", "in_review"]);
+
+      if (pendingError) throw pendingError;
+
+      myPendingClaimClubIds = new Set(
+        ((pendingRows ?? []) as RegistryClaimRow[]).map((row) =>
+          String(row.registry_club_id)
+        )
+      );
+    }
+
+    return normalized.map((club) => {
+      const claimedByProfileId =
+        claimedByProfileByClubId.get(club.id) ?? club.claimed_by_profile_id ?? null;
+
+      if (myPendingClaimClubIds.has(club.id)) {
+        return {
+          ...club,
+          claim_status: "claim_pending",
+          claimed_by_profile_id: claimedByProfileId,
+        };
+      }
+
+      return {
+        ...club,
+        claimed_by_profile_id: claimedByProfileId,
+      };
+    });
+  }
 
   async function search() {
     setLoading(true);
@@ -33,14 +156,18 @@ export default function ClubRegistryClaimPage() {
       const params = new URLSearchParams();
       if (query.trim()) params.set("q", query.trim());
 
-      const res = await fetch(`/api/registry/clubs/search?${params.toString()}`);
+      const res = await fetch(`/api/registry/clubs/search?${params.toString()}`, {
+        cache: "no-store",
+      });
+
       const json = await res.json();
 
       if (!json.ok) {
         throw new Error(json.error || "Errore ricerca");
       }
 
-      setResults(json.items || []);
+      const enriched = await enrichResultsWithOwnership(json.items || []);
+      setResults(enriched);
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Errore imprevisto");
       setResults([]);
@@ -149,7 +276,12 @@ export default function ClubRegistryClaimPage() {
             );
 
             const isPending = club.claim_status === "claim_pending";
-            const isApproved = club.claim_status === "claimed";
+            const isClaimed = club.claim_status === "claimed";
+            const isClaimedByMe =
+              isClaimed &&
+              !!currentClubProfileId &&
+              club.claimed_by_profile_id === currentClubProfileId;
+            const isClaimedByOther = isClaimed && !isClaimedByMe;
 
             return (
               <article
@@ -177,30 +309,48 @@ export default function ClubRegistryClaimPage() {
                     </div>
                   </div>
 
-				  {isApproved ? (
-					  <div className="rounded-xl border border-green-700 bg-green-950/50 px-4 py-3 text-sm text-green-100">
-						<p className="font-semibold">Club verificato</p>
-						<p className="mt-1 text-xs text-green-200/80">
-						  Questa società è collegata al tuo profilo Club.
-						</p>
-					  </div>
-					) : isPending ? (
-					  <div className="rounded-xl border border-yellow-700 bg-yellow-950/50 px-4 py-3 text-sm text-yellow-100">
-						<p className="font-semibold">Verifica in corso</p>
-						<p className="mt-1 text-xs text-yellow-200/80">
-						  Stiamo controllando la tua richiesta.
-						</p>
-					  </div>
-					) : (
-					  <button
-						type="button"
-						onClick={() => claimClub(club.id)}
-						disabled={claimingId === club.id}
-						className="rounded-xl bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-500 disabled:opacity-60"
-					  >
-						{claimingId === club.id ? "Invio..." : "Sono io questo Club"}
-					  </button>
-					)}
+                  {isClaimedByMe ? (
+                    <div className="rounded-xl border border-green-700 bg-green-950/50 px-4 py-3 text-sm text-green-100 md:max-w-64">
+                      <p className="font-semibold">Club verificato</p>
+                      <p className="mt-1 text-xs text-green-200/80">
+                        Questa società è collegata al tuo profilo Club.
+                      </p>
+                    </div>
+                  ) : isClaimedByOther ? (
+                    <div className="rounded-xl border border-orange-700 bg-orange-950/50 px-4 py-3 text-sm text-orange-100 md:max-w-72">
+                      <p className="font-semibold">Società già rivendicata</p>
+                      <p className="mt-1 text-xs text-orange-200/80">
+                        Questa società risulta già collegata ad un altro profilo Club.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setMessage(
+                            "Funzione reclamo in arrivo: per ora contatta l’assistenza Club & Player indicando ID CONI e nome società."
+                          )
+                        }
+                        className="mt-3 rounded-lg border border-orange-600 px-3 py-1.5 text-xs font-semibold text-orange-100 hover:bg-orange-900/40"
+                      >
+                        Apri reclamo
+                      </button>
+                    </div>
+                  ) : isPending ? (
+                    <div className="rounded-xl border border-yellow-700 bg-yellow-950/50 px-4 py-3 text-sm text-yellow-100 md:max-w-64">
+                      <p className="font-semibold">Verifica in corso</p>
+                      <p className="mt-1 text-xs text-yellow-200/80">
+                        Stiamo controllando la tua richiesta.
+                      </p>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => claimClub(club.id)}
+                      disabled={claimingId === club.id}
+                      className="rounded-xl bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-500 disabled:opacity-60"
+                    >
+                      {claimingId === club.id ? "Invio..." : "Sono io questo Club"}
+                    </button>
+                  )}
                 </div>
               </article>
             );
