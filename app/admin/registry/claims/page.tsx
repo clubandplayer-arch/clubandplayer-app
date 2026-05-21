@@ -31,6 +31,37 @@ type Claim = {
     | null
 }
 
+type RegistryDispute = {
+  id: string
+  reason: string
+  status: string
+  created_at: string
+  admin_notes: string | null
+  registry_clubs:
+    | {
+        name: string
+        source_club_id: string
+        region: string | null
+        province: string | null
+        municipality: string | null
+      }
+    | null
+  claimant_profile:
+    | {
+        id: string
+        display_name: string | null
+        account_type: string | null
+      }
+    | null
+  current_owner_profile:
+    | {
+        id: string
+        display_name: string | null
+        account_type: string | null
+      }
+    | null
+}
+
 type MeProfile = {
   id: string
   is_admin: boolean
@@ -67,20 +98,27 @@ export default function RegistryClaimsAdminPage() {
   const [me, setMe] = useState<MeProfile | null>(null)
   const [loadingMe, setLoadingMe] = useState(true)
   const [claims, setClaims] = useState<Claim[]>([])
+  const [disputes, setDisputes] = useState<RegistryDispute[]>([])
   const [loading, setLoading] = useState(false)
+  const [loadingDisputes, setLoadingDisputes] = useState(false)
   const [savingId, setSavingId] = useState('')
+  const [savingDisputeId, setSavingDisputeId] = useState('')
   const [error, setError] = useState('')
+
+  const getToken = useCallback(async () => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+
+    return session?.access_token ?? ''
+  }, [supabase])
 
   const loadClaims = useCallback(async () => {
     setLoading(true)
     setError('')
 
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-
-      const token = session?.access_token
+      const token = await getToken()
 
       if (!token) {
         setError('Sessione non disponibile. Effettua nuovamente il login.')
@@ -133,7 +171,62 @@ export default function RegistryClaimsAdminPage() {
     } finally {
       setLoading(false)
     }
-  }, [supabase])
+  }, [getToken])
+
+  const loadDisputes = useCallback(async () => {
+    setLoadingDisputes(true)
+    setError('')
+
+    try {
+      const token = await getToken()
+
+      if (!token) {
+        setError('Sessione non disponibile. Effettua nuovamente il login.')
+        setDisputes([])
+        return
+      }
+
+      const res = await fetch('/api/admin/registry/claim-disputes?status=pending', {
+        cache: 'no-store',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      const json = (await res.json().catch(() => null)) as unknown
+
+      if (!res.ok) {
+        setError(
+          getErrorMessage(
+            json,
+            `Errore caricamento reclami. Status HTTP: ${res.status}`
+          )
+        )
+        setDisputes([])
+        return
+      }
+
+      if (
+        !json ||
+        typeof json !== 'object' ||
+        !('ok' in json) ||
+        json.ok !== true
+      ) {
+        setError('Risposta non valida dal server reclami.')
+        setDisputes([])
+        return
+      }
+
+      const items = 'items' in json && Array.isArray(json.items) ? json.items : []
+      setDisputes(items as RegistryDispute[])
+    } catch (err) {
+      console.error(err)
+      setError('Errore imprevisto durante il caricamento dei reclami.')
+      setDisputes([])
+    } finally {
+      setLoadingDisputes(false)
+    }
+  }, [getToken])
 
   const reviewClaim = async (claimId: string, action: 'approve' | 'reject') => {
     const label = action === 'approve' ? 'approvare' : 'rifiutare'
@@ -146,11 +239,7 @@ export default function RegistryClaimsAdminPage() {
     setError('')
 
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-
-      const token = session?.access_token
+      const token = await getToken()
 
       if (!token) {
         setError('Sessione admin non valida. Effettua nuovamente il login.')
@@ -201,6 +290,75 @@ export default function RegistryClaimsAdminPage() {
     }
   }
 
+  const reviewDispute = async (disputeId: string, action: 'accepted' | 'rejected') => {
+    const label = action === 'accepted' ? 'accettare' : 'rifiutare'
+
+    if (!confirm(`Vuoi davvero ${label} questo reclamo?`)) {
+      return
+    }
+
+    setSavingDisputeId(disputeId)
+    setError('')
+
+    try {
+      const token = await getToken()
+
+      if (!token) {
+        setError('Sessione admin non valida. Effettua nuovamente il login.')
+        return
+      }
+
+      const adminNotes =
+        action === 'accepted'
+          ? 'Reclamo accettato. Trasferimento claim da gestire manualmente.'
+          : 'Reclamo rifiutato.'
+
+      const res = await fetch('/api/admin/registry/claim-disputes', {
+        method: 'PATCH',
+        cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          id: disputeId,
+          action,
+          admin_notes: adminNotes,
+        }),
+      })
+
+      const json = (await res.json().catch(() => null)) as unknown
+
+      if (!res.ok) {
+        setError(
+          getErrorMessage(
+            json,
+            `Errore aggiornamento reclamo. Status HTTP: ${res.status}`
+          )
+        )
+        return
+      }
+
+      if (
+        !json ||
+        typeof json !== 'object' ||
+        !('ok' in json) ||
+        json.ok !== true
+      ) {
+        setError('Risposta non valida dal server durante l’aggiornamento reclamo.')
+        return
+      }
+
+      setDisputes((current) => current.filter((dispute) => dispute.id !== disputeId))
+      await loadDisputes()
+    } catch (err) {
+      console.error(err)
+      setError('Errore imprevisto durante l’aggiornamento del reclamo.')
+    } finally {
+      setSavingDisputeId('')
+    }
+  }
+
   useEffect(() => {
     let active = true
 
@@ -241,7 +399,8 @@ export default function RegistryClaimsAdminPage() {
     if (loadingMe || !me?.is_admin) return
 
     loadClaims()
-  }, [loadingMe, loadClaims, me?.is_admin])
+    loadDisputes()
+  }, [loadingMe, loadClaims, loadDisputes, me?.is_admin])
 
   if (loadingMe) {
     return (
@@ -287,28 +446,29 @@ export default function RegistryClaimsAdminPage() {
         </p>
 
         <h1 className="mt-2 text-3xl font-bold">
-          Richieste società in verifica
+          Registro CONI — richieste e reclami
         </h1>
 
         <p className="mt-2 text-neutral-400">
-          Approva o rifiuta le richieste dei Club che vogliono collegarsi al
-          Registro CONI.
+          Approva o rifiuta le richieste Club e gestisci i reclami sulle società già rivendicate.
         </p>
 
+        {error ? (
+          <div className="mt-6 rounded-2xl border border-red-800 bg-red-950/40 p-6 text-red-100">
+            {error}
+          </div>
+        ) : null}
+
         <section className="mt-8 space-y-4">
+          <h2 className="text-xl font-bold">Richieste società in verifica</h2>
+
           {loading ? (
             <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 text-neutral-300">
               Caricamento richieste...
             </div>
           ) : null}
 
-          {error ? (
-            <div className="rounded-2xl border border-red-800 bg-red-950/40 p-6 text-red-100">
-              {error}
-            </div>
-          ) : null}
-
-          {!loading && !error && !claims.length ? (
+          {!loading && !claims.length ? (
             <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 text-neutral-300">
               Nessuna richiesta in verifica.
             </div>
@@ -330,9 +490,9 @@ export default function RegistryClaimsAdminPage() {
                       Verifica in corso
                     </span>
 
-                    <h2 className="mt-4 text-xl font-bold">
+                    <h3 className="mt-4 text-xl font-bold">
                       {club?.name || 'Società senza nome'}
-                    </h2>
+                    </h3>
 
                     <p className="mt-1 text-sm text-neutral-400">
                       ID CONI: {club?.source_club_id || '-'} •{' '}
@@ -341,14 +501,10 @@ export default function RegistryClaimsAdminPage() {
                     </p>
 
                     <div className="mt-4 rounded-xl border border-neutral-800 bg-neutral-950 p-4">
-                      <p className="text-sm text-neutral-400">
-                        Profilo richiedente
-                      </p>
-
+                      <p className="text-sm text-neutral-400">Profilo richiedente</p>
                       <p className="mt-1 font-semibold">
                         {profile?.display_name || 'Profilo senza nome'}
                       </p>
-
                       <p className="mt-1 text-sm text-neutral-500">
                         Tipo account: {profile?.account_type || '-'}
                       </p>
@@ -372,6 +528,97 @@ export default function RegistryClaimsAdminPage() {
                       className="rounded-xl border border-red-700 px-4 py-2 text-sm font-semibold text-red-200 hover:bg-red-950/40 disabled:opacity-60"
                     >
                       {saving ? 'Salvataggio...' : 'Rifiuta richiesta'}
+                    </button>
+                  </div>
+                </div>
+              </article>
+            )
+          })}
+        </section>
+
+        <section className="mt-10 space-y-4">
+          <h2 className="text-xl font-bold">Reclami società già rivendicate</h2>
+
+          {loadingDisputes ? (
+            <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 text-neutral-300">
+              Caricamento reclami...
+            </div>
+          ) : null}
+
+          {!loadingDisputes && !disputes.length ? (
+            <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 text-neutral-300">
+              Nessun reclamo aperto.
+            </div>
+          ) : null}
+
+          {disputes.map((dispute) => {
+            const club = dispute.registry_clubs
+            const claimant = dispute.claimant_profile
+            const owner = dispute.current_owner_profile
+            const saving = savingDisputeId === dispute.id
+
+            return (
+              <article
+                key={dispute.id}
+                className="rounded-2xl border border-orange-800 bg-orange-950/30 p-5"
+              >
+                <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <span className="rounded-full border border-orange-700 bg-orange-950/60 px-3 py-1 text-xs font-semibold text-orange-100">
+                      Reclamo aperto
+                    </span>
+
+                    <h3 className="mt-4 text-xl font-bold">
+                      {club?.name || 'Società senza nome'}
+                    </h3>
+
+                    <p className="mt-1 text-sm text-orange-100/80">
+                      ID CONI: {club?.source_club_id || '-'} •{' '}
+                      {club?.region || '-'} • {club?.province || '-'} •{' '}
+                      {club?.municipality || '-'}
+                    </p>
+
+                    <div className="mt-4 grid gap-3 md:grid-cols-2">
+                      <div className="rounded-xl border border-orange-900 bg-neutral-950 p-4">
+                        <p className="text-sm text-neutral-400">Profilo reclamante</p>
+                        <p className="mt-1 font-semibold">
+                          {claimant?.display_name || 'Profilo senza nome'}
+                        </p>
+                      </div>
+
+                      <div className="rounded-xl border border-orange-900 bg-neutral-950 p-4">
+                        <p className="text-sm text-neutral-400">Profilo attualmente collegato</p>
+                        <p className="mt-1 font-semibold">
+                          {owner?.display_name || 'Profilo senza nome'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 rounded-xl border border-orange-900 bg-neutral-950 p-4">
+                      <p className="text-sm text-neutral-400">Motivazione reclamo</p>
+                      <p className="mt-1 whitespace-pre-wrap text-sm text-neutral-100">
+                        {dispute.reason}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-3 md:min-w-52">
+                    <button
+                      type="button"
+                      disabled={saving}
+                      onClick={() => reviewDispute(dispute.id, 'accepted')}
+                      className="rounded-xl bg-orange-700 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-60"
+                    >
+                      {saving ? 'Salvataggio...' : 'Accetta reclamo'}
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={saving}
+                      onClick={() => reviewDispute(dispute.id, 'rejected')}
+                      className="rounded-xl border border-orange-700 px-4 py-2 text-sm font-semibold text-orange-100 hover:bg-orange-950/40 disabled:opacity-60"
+                    >
+                      {saving ? 'Salvataggio...' : 'Rifiuta reclamo'}
                     </button>
                   </div>
                 </div>
