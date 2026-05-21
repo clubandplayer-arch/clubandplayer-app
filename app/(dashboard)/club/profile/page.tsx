@@ -6,6 +6,9 @@ import { useEffect, useMemo, useState } from 'react';
 import ProfileEditForm from '@/components/profiles/ProfileEditForm';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
+const ENABLE_REGISTRY_CLAIM =
+  process.env.NEXT_PUBLIC_ENABLE_REGISTRY_CLAIM === 'true';
+
 type RegistryClub = {
   id: string;
   source_club_id: string | null;
@@ -178,6 +181,8 @@ export default function ProfilePage() {
   });
 
   useEffect(() => {
+    if (!ENABLE_REGISTRY_CLAIM) return;
+
     let active = true;
 
     async function loadRegistryState() {
@@ -327,7 +332,7 @@ export default function ProfilePage() {
         <ProfileEditForm />
       </section>
 
-      <RegistryConiCard state={registryState} />
+      {ENABLE_REGISTRY_CLAIM ? <RegistryConiCard state={registryState} /> : null}
     </main>
   );
 }

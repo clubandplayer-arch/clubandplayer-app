@@ -1,8 +1,11 @@
-"use client";
+'use client';
 
-import { useState } from "react";
+import { useState } from 'react';
 
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+
+const ENABLE_REGISTRY_CLAIM =
+  process.env.NEXT_PUBLIC_ENABLE_REGISTRY_CLAIM === 'true';
 
 type RegistryClub = {
   id: string;
@@ -46,17 +49,17 @@ async function getCurrentClubProfileId() {
   if (!user) return null;
 
   const { data: profile, error } = await supabase
-    .from("profiles")
-    .select("id, account_type, type")
-    .eq("user_id", user.id)
+    .from('profiles')
+    .select('id, account_type, type')
+    .eq('user_id', user.id)
     .maybeSingle();
 
   if (error) throw error;
 
   const row = profile as ProfileRow | null;
-  const accountType = String(row?.account_type || row?.type || "").toLowerCase();
+  const accountType = String(row?.account_type || row?.type || '').toLowerCase();
 
-  if (!row?.id || accountType !== "club") return null;
+  if (!row?.id || accountType !== 'club') return null;
 
   return row.id;
 }
@@ -71,15 +74,43 @@ function normalizeRegistryClub(raw: RegistryClub): RegistryClub {
   };
 }
 
+function RegistryClaimDisabledPage() {
+  return (
+    <main className="min-h-screen bg-neutral-950 p-6 text-white">
+      <div className="mx-auto max-w-3xl">
+        <p className="text-sm uppercase tracking-wide text-cyan-400">
+          Club Registry
+        </p>
+
+        <h1 className="mt-2 text-3xl font-bold">
+          Funzionalità temporaneamente non disponibile
+        </h1>
+
+        <p className="mt-3 text-neutral-300">
+          La rivendicazione delle società tramite Registro CONI è momentaneamente sospesa.
+        </p>
+
+        <p className="mt-2 text-sm text-neutral-500">
+          Il sistema resta attivo internamente, ma non è esposto pubblicamente in questa fase.
+        </p>
+      </div>
+    </main>
+  );
+}
+
 export default function ClubRegistryClaimPage() {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
-  const [claimingId, setClaimingId] = useState("");
-  const [disputingId, setDisputingId] = useState("");
-  const [disputeReason, setDisputeReason] = useState("");
+  const [claimingId, setClaimingId] = useState('');
+  const [disputingId, setDisputingId] = useState('');
+  const [disputeReason, setDisputeReason] = useState('');
   const [results, setResults] = useState<RegistryClub[]>([]);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState('');
   const [currentClubProfileId, setCurrentClubProfileId] = useState<string | null>(null);
+
+  if (!ENABLE_REGISTRY_CLAIM) {
+    return <RegistryClaimDisabledPage />;
+  }
 
   async function enrichResultsWithOwnership(items: RegistryClub[]) {
     const supabase = getSupabaseBrowserClient();
@@ -90,7 +121,7 @@ export default function ClubRegistryClaimPage() {
     const normalized = items.map(normalizeRegistryClub);
 
     const claimedIds = normalized
-      .filter((club) => club.claim_status === "claimed")
+      .filter((club) => club.claim_status === 'claimed')
       .map((club) => club.id);
 
     const pendingIds = normalized.map((club) => club.id);
@@ -100,9 +131,9 @@ export default function ClubRegistryClaimPage() {
 
     if (claimedIds.length) {
       const { data: claimedRows, error: claimedError } = await supabase
-        .from("registry_clubs")
-        .select("id, claimed_by_profile_id")
-        .in("id", claimedIds);
+        .from('registry_clubs')
+        .select('id, claimed_by_profile_id')
+        .in('id', claimedIds);
 
       if (claimedError) throw claimedError;
 
@@ -116,11 +147,11 @@ export default function ClubRegistryClaimPage() {
 
     if (profileId && pendingIds.length) {
       const { data: pendingRows, error: pendingError } = await supabase
-        .from("registry_claims")
-        .select("id, registry_club_id, claim_status")
-        .eq("profile_id", profileId)
-        .in("registry_club_id", pendingIds)
-        .in("claim_status", ["pending", "in_review"]);
+        .from('registry_claims')
+        .select('id, registry_club_id, claim_status')
+        .eq('profile_id', profileId)
+        .in('registry_club_id', pendingIds)
+        .in('claim_status', ['pending', 'in_review']);
 
       if (pendingError) throw pendingError;
 
@@ -138,7 +169,7 @@ export default function ClubRegistryClaimPage() {
       if (myPendingClaimClubIds.has(club.id)) {
         return {
           ...club,
-          claim_status: "claim_pending",
+          claim_status: 'claim_pending',
           claimed_by_profile_id: claimedByProfileId,
         };
       }
@@ -152,26 +183,26 @@ export default function ClubRegistryClaimPage() {
 
   async function search() {
     setLoading(true);
-    setMessage("");
+    setMessage('');
 
     try {
       const params = new URLSearchParams();
-      if (query.trim()) params.set("q", query.trim());
+      if (query.trim()) params.set('q', query.trim());
 
       const res = await fetch(`/api/registry/clubs/search?${params.toString()}`, {
-        cache: "no-store",
+        cache: 'no-store',
       });
 
       const json = await res.json();
 
       if (!json.ok) {
-        throw new Error(json.error || "Errore ricerca");
+        throw new Error(json.error || 'Errore ricerca');
       }
 
       const enriched = await enrichResultsWithOwnership(json.items || []);
       setResults(enriched);
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Errore imprevisto");
+      setMessage(err instanceof Error ? err.message : 'Errore imprevisto');
       setResults([]);
     } finally {
       setLoading(false);
@@ -180,7 +211,7 @@ export default function ClubRegistryClaimPage() {
 
   async function claimClub(registryClubId: string) {
     setClaimingId(registryClubId);
-    setMessage("");
+    setMessage('');
 
     try {
       const supabase = getSupabaseBrowserClient();
@@ -192,14 +223,14 @@ export default function ClubRegistryClaimPage() {
       const token = session?.access_token;
 
       if (!token) {
-        setMessage("Devi effettuare il login come Club per rivendicare una società.");
+        setMessage('Devi effettuare il login come Club per rivendicare una società.');
         return;
       }
 
-      const res = await fetch("/api/registry/claims", {
-        method: "POST",
+      const res = await fetch('/api/registry/claims', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
@@ -210,26 +241,26 @@ export default function ClubRegistryClaimPage() {
       const json = await res.json();
 
       if (!json.ok) {
-        throw new Error(json.error || "Errore richiesta");
+        throw new Error(json.error || 'Errore richiesta');
       }
 
-      setMessage("Richiesta inviata. Il tuo Club è ora in verifica.");
+      setMessage('Richiesta inviata. Il tuo Club è ora in verifica.');
       await search();
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Errore imprevisto");
+      setMessage(err instanceof Error ? err.message : 'Errore imprevisto');
     } finally {
-      setClaimingId("");
+      setClaimingId('');
     }
   }
 
   async function submitDispute(registryClubId: string) {
-    setMessage("");
+    setMessage('');
 
     try {
       const reason = disputeReason.trim();
 
       if (reason.length < 20) {
-        setMessage("Inserisci una motivazione di almeno 20 caratteri.");
+        setMessage('Inserisci una motivazione di almeno 20 caratteri.');
         return;
       }
 
@@ -242,14 +273,14 @@ export default function ClubRegistryClaimPage() {
       const token = session?.access_token;
 
       if (!token) {
-        setMessage("Devi effettuare il login come Club per aprire un reclamo.");
+        setMessage('Devi effettuare il login come Club per aprire un reclamo.');
         return;
       }
 
-      const res = await fetch("/api/registry/claim-disputes", {
-        method: "POST",
+      const res = await fetch('/api/registry/claim-disputes', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
@@ -261,18 +292,18 @@ export default function ClubRegistryClaimPage() {
       const json = await res.json();
 
       if (!json.ok) {
-        throw new Error(json.error || "Errore apertura reclamo");
+        throw new Error(json.error || 'Errore apertura reclamo');
       }
 
       setMessage(
         json.alreadyExists
-          ? "Hai già un reclamo aperto per questa società."
-          : "Reclamo inviato. Lo staff Club & Player lo prenderà in carico."
+          ? 'Hai già un reclamo aperto per questa società.'
+          : 'Reclamo inviato. Lo staff Club & Player lo prenderà in carico.'
       );
-      setDisputingId("");
-      setDisputeReason("");
+      setDisputingId('');
+      setDisputeReason('');
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Errore imprevisto");
+      setMessage(err instanceof Error ? err.message : 'Errore imprevisto');
     }
   }
 
@@ -308,7 +339,7 @@ export default function ClubRegistryClaimPage() {
               disabled={loading}
               className="rounded-xl bg-cyan-600 px-5 py-3 font-semibold hover:bg-cyan-500 disabled:opacity-60"
             >
-              {loading ? "Ricerca..." : "Cerca"}
+              {loading ? 'Ricerca...' : 'Cerca'}
             </button>
           </div>
 
@@ -329,8 +360,8 @@ export default function ClubRegistryClaimPage() {
               )
             );
 
-            const isPending = club.claim_status === "claim_pending";
-            const isClaimed = club.claim_status === "claimed";
+            const isPending = club.claim_status === 'claim_pending';
+            const isClaimed = club.claim_status === 'claimed';
             const isClaimedByMe =
               isClaimed &&
               !!currentClubProfileId &&
@@ -348,8 +379,8 @@ export default function ClubRegistryClaimPage() {
                     <h2 className="text-xl font-bold">{club.name}</h2>
 
                     <p className="mt-1 text-sm text-neutral-400">
-                      ID CONI: {club.source_club_id} • {club.region || "-"} •{" "}
-                      {club.province || "-"} • {club.municipality || "-"}
+                      ID CONI: {club.source_club_id} • {club.region || '-'} •{' '}
+                      {club.province || '-'} • {club.municipality || '-'}
                     </p>
 
                     <div className="mt-4 flex flex-wrap gap-2">
@@ -397,8 +428,8 @@ export default function ClubRegistryClaimPage() {
                             <button
                               type="button"
                               onClick={() => {
-                                setDisputingId("");
-                                setDisputeReason("");
+                                setDisputingId('');
+                                setDisputeReason('');
                               }}
                               className="rounded-lg border border-orange-700 px-3 py-1.5 text-xs font-semibold text-orange-100 hover:bg-orange-900/40"
                             >
@@ -411,7 +442,7 @@ export default function ClubRegistryClaimPage() {
                           type="button"
                           onClick={() => {
                             setDisputingId(club.id);
-                            setDisputeReason("");
+                            setDisputeReason('');
                           }}
                           className="mt-3 rounded-lg border border-orange-600 px-3 py-1.5 text-xs font-semibold text-orange-100 hover:bg-orange-900/40"
                         >
@@ -433,7 +464,7 @@ export default function ClubRegistryClaimPage() {
                       disabled={claimingId === club.id}
                       className="rounded-xl bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-500 disabled:opacity-60"
                     >
-                      {claimingId === club.id ? "Invio..." : "Sono io questo Club"}
+                      {claimingId === club.id ? 'Invio...' : 'Sono io questo Club'}
                     </button>
                   )}
                 </div>
