@@ -34,6 +34,32 @@ function renderContent(notification: NotificationWithActor): { title: string; bo
   const actorName = notification.actor?.public_name ?? 'Un utente';
 
   switch (kind) {
+    case 'registry_claim_dispute': {
+      const status = typeof payload?.status === 'string' ? payload.status : '';
+      const clubName =
+        typeof payload?.registry_club_name === 'string'
+          ? payload.registry_club_name
+          : 'società Registro CONI';
+
+      if (status === 'accepted') {
+        return {
+          title: 'Reclamo Registro CONI accettato',
+          body: `Il tuo reclamo per ${clubName} è stato accettato.`,
+        };
+      }
+
+      if (status === 'rejected') {
+        return {
+          title: 'Reclamo Registro CONI rifiutato',
+          body: `Il tuo reclamo per ${clubName} è stato rifiutato.`,
+        };
+      }
+
+      return {
+        title: 'Aggiornamento reclamo Registro CONI',
+        body: `Il tuo reclamo per ${clubName} è stato aggiornato.`,
+      };
+    }
     case 'new_follower':
       return { title: `${actorName} ha iniziato a seguirti` };
     case 'new_message':
@@ -115,6 +141,11 @@ export default function NotificationItem({ notification, onClick, compact }: Pro
 
   const hrefFromPayload = () => {
     const payload = notification.payload || {};
+
+    if (notification.kind === 'registry_claim_dispute') {
+      return '/club/registry-claim';
+    }
+
     if (notification.kind === 'new_message' || notification.kind === 'message') {
       if (typeof payload.conversation_id === 'string') {
         return `/messages?conversationId=${payload.conversation_id}`;
