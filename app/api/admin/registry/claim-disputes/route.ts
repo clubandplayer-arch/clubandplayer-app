@@ -7,6 +7,18 @@ import { isAdminUser } from "@/lib/api/admin";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+type ProfileNotificationTarget = {
+  id: string;
+  user_id: string | null;
+  display_name: string | null;
+};
+
+type RegistryClubNotificationTarget = {
+  id: string;
+  source_club_id: string | null;
+  name: string | null;
+};
+
 function getSupabaseAdmin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -96,6 +108,87 @@ async function requireAdmin(req: NextRequest) {
     adminProfileId: adminProfile?.id ? String(adminProfile.id) : null,
     response: null,
   };
+}
+
+async function createDisputeResultNotification({
+  supabaseAdmin,
+  disputeId,
+  action,
+}: {
+  supabaseAdmin: ReturnType<typeof getSupabaseAdmin>;
+  disputeId: string;
+  action: "accepted" | "rejected";
+}) {
+  const { data: dispute, error: disputeError } = await supabaseAdmin
+    .from("registry_claim_disputes")
+    .select("id, registry_club_id, claimant_profile_id, status")
+    .eq("id", disputeId)
+    .maybeSingle();
+
+  if (disputeError) throw disputeError;
+  if (!dispute) return;
+
+  const claimantProfileId = String(dispute.claimant_profile_id);
+  const registryClubId = String(dispute.registry_club_id);
+
+  const { data: claimantProfile, error: claimantError } = await supabaseAdmin
+    .from("profiles")
+    .select("id, user_id, display_name")
+    .eq("id", claimantProfileId)
+    .maybeSingle();
+
+  if (claimantError) throw claimantError;
+
+  const profile = claimantProfile as ProfileNotificationTarget | null;
+
+  if (!profile?.user_id) {
+    console.warn("[registry-claim-disputes] claimant profile has no user_id", {
+      disputeId,
+      claimantProfileId,
+    });
+    return;
+  }
+
+  const { data: registryClub, error: clubError } = await supabaseAdmin
+    .from("registry_clubs")
+    .select("id, source_club_id, name")
+    .eq("id", registryClubId)
+    .maybeSingle();
+
+  if (clubError) throw clubError;
+
+  const club = registryClub as RegistryClubNotificationTarget | null;
+  const clubName = club?.name || "società Registro CONI";
+  const isAccepted = action === "accepted";
+
+  const message = isAccepted
+    ? `Il tuo reclamo Registro CONI per ${clubName} è stato accettato.`
+    : `Il tuo reclamo Registro CONI per ${clubName} è stato rifiutato.`;
+
+  const now = new Date().toISOString();
+
+  const { error: notificationError } = await supabaseAdmin
+    .from("notifications")
+    .insert({
+      user_id: profile.user_id,
+      recipient_profile_id: claimantProfileId,
+      actor_profile_id: null,
+      kind: "registry_claim_dispute",
+      type: "registry_claim_dispute",
+      message,
+      read: false,
+      payload: {
+        dispute_id: disputeId,
+        registry_club_id: registryClubId,
+        registry_club_name: clubName,
+        source_club_id: club?.source_club_id ?? null,
+        status: action,
+      },
+      created_at: now,
+      updated_at: now,
+    });
+
+  if (notificationError) throw notificationError;
 }
 
 export async function GET(req: NextRequest) {
@@ -241,6 +334,12 @@ export async function PATCH(req: NextRequest) {
         { status: 500 }
       );
     }
+
+    await createDisputeResultNotification({
+      supabaseAdmin,
+      disputeId,
+      action: action as "accepted" | "rejected",
+    });
 
     return NextResponse.json({
       ok: true,
