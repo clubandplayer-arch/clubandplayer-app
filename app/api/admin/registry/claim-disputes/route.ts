@@ -31,6 +31,7 @@ async function requireAdmin(req: NextRequest) {
     return {
       supabaseAdmin,
       user: null,
+      adminProfileId: null,
       response: NextResponse.json(
         { ok: false, error: "Unauthorized" },
         { status: 401 }
@@ -49,6 +50,7 @@ async function requireAdmin(req: NextRequest) {
     return {
       supabaseAdmin,
       user: null,
+      adminProfileId: null,
       response: NextResponse.json(
         { ok: false, error: "Invalid session" },
         { status: 401 }
@@ -62,6 +64,7 @@ async function requireAdmin(req: NextRequest) {
     return {
       supabaseAdmin,
       user,
+      adminProfileId: null,
       response: NextResponse.json(
         { ok: false, error: "Forbidden" },
         { status: 403 }
@@ -69,7 +72,30 @@ async function requireAdmin(req: NextRequest) {
     };
   }
 
-  return { supabaseAdmin, user, response: null };
+  const { data: adminProfile, error: adminProfileError } = await supabaseAdmin
+    .from("profiles")
+    .select("id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (adminProfileError) {
+    return {
+      supabaseAdmin,
+      user,
+      adminProfileId: null,
+      response: NextResponse.json(
+        { ok: false, error: adminProfileError.message },
+        { status: 500 }
+      ),
+    };
+  }
+
+  return {
+    supabaseAdmin,
+    user,
+    adminProfileId: adminProfile?.id ? String(adminProfile.id) : null,
+    response: null,
+  };
 }
 
 export async function GET(req: NextRequest) {
@@ -177,7 +203,7 @@ export async function GET(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
-    const { supabaseAdmin, user, response } = await requireAdmin(req);
+    const { supabaseAdmin, adminProfileId, response } = await requireAdmin(req);
     if (response) return response;
 
     const body = await req.json().catch(() => null);
@@ -201,7 +227,7 @@ export async function PATCH(req: NextRequest) {
         status: action,
         admin_notes: adminNotes,
         reviewed_at: now,
-        reviewed_by_profile_id: user?.id ?? null,
+        reviewed_by_profile_id: adminProfileId,
         updated_at: now,
       })
       .eq("id", disputeId)
