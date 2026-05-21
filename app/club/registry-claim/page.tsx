@@ -75,6 +75,8 @@ export default function ClubRegistryClaimPage() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [claimingId, setClaimingId] = useState("");
+  const [disputingId, setDisputingId] = useState("");
+  const [disputeReason, setDisputeReason] = useState("");
   const [results, setResults] = useState<RegistryClub[]>([]);
   const [message, setMessage] = useState("");
   const [currentClubProfileId, setCurrentClubProfileId] = useState<string | null>(null);
@@ -220,6 +222,60 @@ export default function ClubRegistryClaimPage() {
     }
   }
 
+  async function submitDispute(registryClubId: string) {
+    setMessage("");
+
+    try {
+      const reason = disputeReason.trim();
+
+      if (reason.length < 20) {
+        setMessage("Inserisci una motivazione di almeno 20 caratteri.");
+        return;
+      }
+
+      const supabase = getSupabaseBrowserClient();
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const token = session?.access_token;
+
+      if (!token) {
+        setMessage("Devi effettuare il login come Club per aprire un reclamo.");
+        return;
+      }
+
+      const res = await fetch("/api/registry/claim-disputes", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          registry_club_id: registryClubId,
+          reason,
+        }),
+      });
+
+      const json = await res.json();
+
+      if (!json.ok) {
+        throw new Error(json.error || "Errore apertura reclamo");
+      }
+
+      setMessage(
+        json.alreadyExists
+          ? "Hai già un reclamo aperto per questa società."
+          : "Reclamo inviato. Lo staff Club & Player lo prenderà in carico."
+      );
+      setDisputingId("");
+      setDisputeReason("");
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Errore imprevisto");
+    }
+  }
+
   return (
     <main className="min-h-screen bg-neutral-950 p-6 text-white">
       <div className="mx-auto max-w-5xl">
@@ -227,9 +283,7 @@ export default function ClubRegistryClaimPage() {
           Club Registry
         </p>
 
-        <h1 className="mt-2 text-3xl font-bold">
-          Rivendica la tua società
-        </h1>
+        <h1 className="mt-2 text-3xl font-bold">Rivendica la tua società</h1>
 
         <p className="mt-2 text-neutral-400">
           Cerca la tua ASD/SSD nel Registro CONI e collegala al tuo profilo Club.
@@ -282,6 +336,7 @@ export default function ClubRegistryClaimPage() {
               !!currentClubProfileId &&
               club.claimed_by_profile_id === currentClubProfileId;
             const isClaimedByOther = isClaimed && !isClaimedByMe;
+            const isDisputeOpen = disputingId === club.id;
 
             return (
               <article
@@ -289,7 +344,7 @@ export default function ClubRegistryClaimPage() {
                 className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5"
               >
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <h2 className="text-xl font-bold">{club.name}</h2>
 
                     <p className="mt-1 text-sm text-neutral-400">
@@ -317,22 +372,52 @@ export default function ClubRegistryClaimPage() {
                       </p>
                     </div>
                   ) : isClaimedByOther ? (
-                    <div className="rounded-xl border border-orange-700 bg-orange-950/50 px-4 py-3 text-sm text-orange-100 md:max-w-72">
+                    <div className="rounded-xl border border-orange-700 bg-orange-950/50 px-4 py-3 text-sm text-orange-100 md:w-80">
                       <p className="font-semibold">Società già rivendicata</p>
                       <p className="mt-1 text-xs text-orange-200/80">
                         Questa società risulta già collegata ad un altro profilo Club.
                       </p>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setMessage(
-                            "Funzione reclamo in arrivo: per ora contatta l’assistenza Club & Player indicando ID CONI e nome società."
-                          )
-                        }
-                        className="mt-3 rounded-lg border border-orange-600 px-3 py-1.5 text-xs font-semibold text-orange-100 hover:bg-orange-900/40"
-                      >
-                        Apri reclamo
-                      </button>
+
+                      {isDisputeOpen ? (
+                        <div className="mt-3 space-y-2">
+                          <textarea
+                            value={disputeReason}
+                            onChange={(e) => setDisputeReason(e.target.value)}
+                            placeholder="Spiega perché ritieni di avere diritto a rivendicare questa società..."
+                            className="min-h-24 w-full rounded-lg border border-orange-700 bg-neutral-950 px-3 py-2 text-xs text-white outline-none focus:border-orange-400"
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => submitDispute(club.id)}
+                              className="rounded-lg bg-orange-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-orange-500"
+                            >
+                              Invia reclamo
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDisputingId("");
+                                setDisputeReason("");
+                              }}
+                              className="rounded-lg border border-orange-700 px-3 py-1.5 text-xs font-semibold text-orange-100 hover:bg-orange-900/40"
+                            >
+                              Annulla
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDisputingId(club.id);
+                            setDisputeReason("");
+                          }}
+                          className="mt-3 rounded-lg border border-orange-600 px-3 py-1.5 text-xs font-semibold text-orange-100 hover:bg-orange-900/40"
+                        >
+                          Apri reclamo
+                        </button>
+                      )}
                     </div>
                   ) : isPending ? (
                     <div className="rounded-xl border border-yellow-700 bg-yellow-950/50 px-4 py-3 text-sm text-yellow-100 md:max-w-64">
