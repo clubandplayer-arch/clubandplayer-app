@@ -57,6 +57,9 @@ type RegistryClubClaim = {
 
 type GenericStringError = { message: string };
 
+const ENABLE_REGISTRY_CLAIM =
+  process.env.NEXT_PUBLIC_ENABLE_REGISTRY_CLAIM === 'true';
+
 type ClubProfileState = ClubProfileRow | GenericStringError | null;
 
 function isClubProfileRow(row: ClubProfileState): row is ClubProfileRow {
@@ -234,7 +237,7 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
         isVerified={profileWithVerification.is_verified}
       />
 
-      {registryClub ? (
+      {ENABLE_REGISTRY_CLAIM && registryClub ? (
         <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div>
