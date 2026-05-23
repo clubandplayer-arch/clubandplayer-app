@@ -6,7 +6,6 @@ import { supabaseBrowser } from "@/lib/supabaseBrowser";
 import { fetchLocationChildren } from "@/lib/geo/location";
 
 type PackageId = "starter" | "growth" | "performance";
-type ObjectiveId = "visibility" | "leads" | "both";
 type DurationId = 30 | 60 | 90;
 type LocationOptionString = { id: string; name: string };
 
@@ -39,12 +38,6 @@ const PACKAGES: Record<
     placements: ["Infeed (ogni ~3 post)"],
     includes: ["Report settimanale", "Ottimizzazione (1 cambio creatività/settimana)"],
   },
-};
-
-const OBJECTIVES: Record<ObjectiveId, string> = {
-  visibility: "Visibilità (brand)",
-  leads: "Contatti (lead)",
-  both: "Entrambi (brand + contatti)",
 };
 
 const DURATION_MULTIPLIER: Record<DurationId, number> = {
@@ -84,7 +77,6 @@ function buildLeadSummary(params: {
   provinceName: string;
   cityName: string;
   targetLabel: string;
-  objective: ObjectiveId;
   duration: DurationId;
   exclusive: boolean;
   estimate: number;
@@ -95,7 +87,6 @@ function buildLeadSummary(params: {
     provinceName,
     cityName,
     targetLabel,
-    objective,
     duration,
     exclusive,
     estimate,
@@ -110,7 +101,6 @@ function buildLeadSummary(params: {
     `Provincia: ${provinceName || "-"}`,
     `Città: ${cityName || "-"}`,
     `Durata: ${duration} giorni`,
-    `Obiettivo: ${OBJECTIVES[objective]}`,
     `Esclusiva di categoria: ${exclusive ? "Sì (+40%)" : "No"}`,
     `Stima indicativa: ${euro(estimate)} (prezzi beta soggetti a conferma)`,
     "Prezzo calcolato in base a copertura geografica, durata e opzione esclusiva.",
@@ -128,7 +118,6 @@ export default function SponsorPage() {
   const [regions, setRegions] = useState<LocationOptionString[]>([]);
   const [provinces, setProvinces] = useState<LocationOptionString[]>([]);
   const [cities, setCities] = useState<LocationOptionString[]>([]);
-  const [objective, setObjective] = useState<ObjectiveId>("both");
   const [duration, setDuration] = useState<DurationId>(30);
   const [exclusive, setExclusive] = useState<boolean>(false);
 
@@ -185,7 +174,6 @@ export default function SponsorPage() {
         provinceName: selectedProvinceName,
         cityName: selectedCityName,
         targetLabel,
-        objective,
         duration,
         exclusive,
         estimate,
@@ -196,7 +184,6 @@ export default function SponsorPage() {
       selectedProvinceName,
       selectedCityName,
       targetLabel,
-      objective,
       duration,
       exclusive,
       estimate,
@@ -563,21 +550,6 @@ export default function SponsorPage() {
                     {item.name}
                   </option>
                 ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">
-                Obiettivo
-              </label>
-              <select
-                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-                value={objective}
-                onChange={(e) => setObjective(e.target.value as ObjectiveId)}
-              >
-                <option value="visibility">Visibilità (brand)</option>
-                <option value="leads">Contatti (lead)</option>
-                <option value="both">Entrambi (brand + contatti)</option>
               </select>
             </div>
 
