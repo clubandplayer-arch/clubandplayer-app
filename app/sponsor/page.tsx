@@ -16,26 +16,26 @@ const PACKAGES: Record<
   PackageId,
   {
     label: string;
-    basePriceProvince30d: number;
+    basePriceNational30d: number;
     placements: string[];
     includes: string[];
   }
 > = {
   starter: {
     label: "Starter",
-    basePriceProvince30d: 79,
+    basePriceNational30d: 149,
     placements: ["Sidebar Bottom", "Left Bottom (rotazione)"],
     includes: ["Report base (impression + click)"],
   },
   growth: {
     label: "Growth",
-    basePriceProvince30d: 149,
+    basePriceNational30d: 249,
     placements: ["Sidebar Top", "Left Top"],
     includes: ["Report settimanale", "1 cambio creatività gratuito (a metà mese)"],
   },
   performance: {
     label: "Performance",
-    basePriceProvince30d: 249,
+    basePriceNational30d: 399,
     placements: ["Infeed (ogni ~3 post)"],
     includes: ["Report settimanale", "Ottimizzazione (1 cambio creatività/settimana)"],
   },
@@ -49,9 +49,25 @@ const OBJECTIVES: Record<ObjectiveId, string> = {
 
 const DURATION_MULTIPLIER: Record<DurationId, number> = {
   30: 1,
-  60: 1.85,
-  90: 2.7,
+  60: 1.75,
+  90: 2.45,
 };
+
+const GEO_MULTIPLIER = {
+  national: 1,
+  regional: 0.8,
+  provincial: 0.65,
+  city: 0.58,
+} as const;
+
+type GeoLevel = keyof typeof GEO_MULTIPLIER;
+
+function getGeoLevel(params: { regionId: string; provinceId: string; cityId: string }): GeoLevel {
+  if (params.cityId) return "city";
+  if (params.provinceId) return "provincial";
+  if (params.regionId) return "regional";
+  return "national";
+}
 
 function euro(amount: number) {
   const rounded = Math.round(amount);
@@ -67,6 +83,7 @@ function buildLeadSummary(params: {
   regionName: string;
   provinceName: string;
   cityName: string;
+  targetLabel: string;
   objective: ObjectiveId;
   duration: DurationId;
   exclusive: boolean;
@@ -77,6 +94,7 @@ function buildLeadSummary(params: {
     regionName,
     provinceName,
     cityName,
+    targetLabel,
     objective,
     duration,
     exclusive,
@@ -87,7 +105,7 @@ function buildLeadSummary(params: {
     "=== Richiesta Sponsorizzazione (Club & Player) ===",
     `Pacchetto: ${PACKAGES[pkg].label}`,
     `Posizionamenti: ${PACKAGES[pkg].placements.join(" • ")}`,
-    "Target: Italia",
+    `Target: ${targetLabel}`,
     `Regione: ${regionName || "-"}`,
     `Provincia: ${provinceName || "-"}`,
     `Città: ${cityName || "-"}`,
@@ -95,6 +113,7 @@ function buildLeadSummary(params: {
     `Obiettivo: ${OBJECTIVES[objective]}`,
     `Esclusiva di categoria: ${exclusive ? "Sì (+40%)" : "No"}`,
     `Stima indicativa: ${euro(estimate)} (prezzi beta soggetti a conferma)`,
+    "Prezzo calcolato in base a copertura geografica, durata e opzione esclusiva.",
   ];
 
   return lines.join("\n");
@@ -132,12 +151,12 @@ export default function SponsorPage() {
   const preventivoRef = useRef<HTMLDivElement | null>(null);
 
   const estimate = useMemo(() => {
-    const base = PACKAGES[pkg].basePriceProvince30d;
-    const t = 1;
+    const base = PACKAGES[pkg].basePriceNational30d;
+    const geo = GEO_MULTIPLIER[getGeoLevel({ regionId, provinceId, cityId })];
     const d = DURATION_MULTIPLIER[duration];
     const ex = exclusive ? 1.4 : 1;
-    return base * t * d * ex;
-  }, [pkg, duration, exclusive]);
+    return base * geo * d * ex;
+  }, [pkg, regionId, provinceId, cityId, duration, exclusive]);
 
   const selectedRegionName = useMemo(
     () => regions.find((item) => item.id === regionId)?.name ?? "",
@@ -151,6 +170,12 @@ export default function SponsorPage() {
     () => cities.find((item) => item.id === cityId)?.name ?? "",
     [cities, cityId]
   );
+  const targetLabel = useMemo(() => {
+    if (cityId) return `Città: ${selectedCityName}`;
+    if (provinceId) return `Provincia: ${selectedProvinceName}`;
+    if (regionId) return `Regione: ${selectedRegionName}`;
+    return "Italia";
+  }, [cityId, provinceId, regionId, selectedCityName, selectedProvinceName, selectedRegionName]);
 
   const leadSummary = useMemo(
     () =>
@@ -159,6 +184,7 @@ export default function SponsorPage() {
         regionName: selectedRegionName,
         provinceName: selectedProvinceName,
         cityName: selectedCityName,
+        targetLabel,
         objective,
         duration,
         exclusive,
@@ -169,6 +195,7 @@ export default function SponsorPage() {
       selectedRegionName,
       selectedProvinceName,
       selectedCityName,
+      targetLabel,
       objective,
       duration,
       exclusive,
@@ -305,8 +332,6 @@ export default function SponsorPage() {
       return;
     }
 
-    const targetLabel = "Italia";
-
     // Messaggio finale: include preventivo + messaggio libero
     const finalMessage =
       leadSummary +
@@ -407,7 +432,7 @@ export default function SponsorPage() {
                   <div>
                     <p className="text-sm font-semibold">{p.label}</p>
                     <p className="mt-1 text-2xl font-semibold">
-                      {euro(p.basePriceProvince30d)}
+                      {euro(p.basePriceNational30d)}
                       <span className="ml-1 text-xs font-medium text-muted-foreground">
                         /30g
                       </span>
