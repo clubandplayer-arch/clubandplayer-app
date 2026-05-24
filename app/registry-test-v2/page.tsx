@@ -17,7 +17,7 @@ export default function RegistryTestV2Page() {
   const [clubs, setClubs] = useState<RegistryClub[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const debouncedQuery = useMemo(() => query.trim(), [query]);
+  const debouncedQuery = query.trim();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -51,7 +51,14 @@ export default function RegistryTestV2Page() {
       }
     }
 
-    search();
+    const timeout = setTimeout(() => {
+  search();
+}, 300);
+
+return () => {
+  controller.abort();
+  clearTimeout(timeout);
+};
 
     return () => controller.abort();
   }, [debouncedQuery]);
