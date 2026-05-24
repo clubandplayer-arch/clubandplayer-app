@@ -263,6 +263,7 @@ export default function ProfileEditForm() {
   const [athleteSport, setAthleteSport] = useState('Calcio');
   const [athleteRole, setAthleteRole] = useState('');
   const [pastExperiences, setPastExperiences] = useState<PastExperience[]>([{ ...EMPTY_PAST_EXPERIENCE }]);
+  const [pastExperienceClubOptions, setPastExperienceClubOptions] = useState<string[]>([]);
   const [notifyEmail, setNotifyEmail] = useState(true);
 
   // Social
@@ -764,6 +765,33 @@ export default function ProfileEditForm() {
     setPastExperiences((prev) => [...prev, { ...EMPTY_PAST_EXPERIENCE }]);
   };
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('account_type', 'club')
+        .not('full_name', 'is', null)
+        .order('full_name', { ascending: true, nullsFirst: false })
+        .limit(4);
+
+      if (cancelled || error) return;
+      const options = Array.from(
+        new Set(
+          (data ?? [])
+            .map((row) => String((row as { full_name?: string | null }).full_name ?? '').trim())
+            .filter((name) => !!name),
+        ),
+      );
+      setPastExperienceClubOptions(options);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const removePastExperience = (index: number) => {
     setPastExperiences((prev) => {
       const next = prev.filter((_, currentIndex) => currentIndex !== index);
@@ -1157,6 +1185,8 @@ export default function ProfileEditForm() {
                           value={experience.club}
                           onChange={(e) => updatePastExperience(index, { club: e.target.value })}
                           placeholder="Es. ASD Carlentini"
+                          list="past-experience-club-options"
+                          autoComplete="off"
                         />
                       </div>
 
@@ -1217,6 +1247,11 @@ export default function ProfileEditForm() {
                 + aggiungi esperienza
               </button>
             </div>
+            <datalist id="past-experience-club-options">
+              {pastExperienceClubOptions.map((clubName) => (
+                <option key={clubName} value={clubName} />
+              ))}
+            </datalist>
           </section>
         )}
 
