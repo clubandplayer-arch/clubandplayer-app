@@ -745,12 +745,6 @@ export default function ProfileEditForm() {
     }
   }
 
-  if (loading) return <div className="rounded-xl border p-4 text-sm text-gray-600">Caricamento profilo…</div>;
-  if (error)   return <div className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-800">{error}</div>;
-  if (!profile) return null;
-
-  const countryPreview = country ? [iso2ToFlagEmoji(country), countryName(country)].filter(Boolean).join(' ') : '';
-
   const updatePastExperience = (index: number, patch: Partial<PastExperience>) => {
     setPastExperiences((prev) =>
       prev.map((experience, currentIndex) => {
@@ -798,6 +792,12 @@ export default function ProfileEditForm() {
       return next.length > 0 ? next : [{ ...EMPTY_PAST_EXPERIENCE }];
     });
   };
+
+  if (loading) return <div className="rounded-xl border p-4 text-sm text-gray-600">Caricamento profilo…</div>;
+  if (error)   return <div className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-800">{error}</div>;
+  if (!profile) return null;
+
+  const countryPreview = country ? [iso2ToFlagEmoji(country), countryName(country)].filter(Boolean).join(' ') : '';
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
