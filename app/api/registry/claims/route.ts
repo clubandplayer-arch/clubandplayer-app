@@ -21,6 +21,10 @@ function getSupabaseAdmin() {
   });
 }
 
+function clean(value: unknown) {
+  return String(value || "").trim();
+}
+
 export async function POST(req: NextRequest) {
   try {
     const supabaseAdmin = getSupabaseAdmin();
@@ -49,18 +53,19 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const registryClubId = String(body.registry_club_id || "");
+    const registryMasterId =
+      clean(body.registry_master_id) || clean(body.registry_club_id);
 
-    if (!registryClubId) {
+    if (!registryMasterId) {
       return NextResponse.json(
-        { ok: false, error: "Missing registry_club_id" },
+        { ok: false, error: "Missing registry_master_id" },
         { status: 400 }
       );
     }
 
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
-      .select("id, account_type")
+      .select("id, account_type, type")
       .eq("user_id", user.id)
       .single();
 
@@ -74,7 +79,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (profile.account_type !== "club") {
+    const accountType = String(
+      profile.account_type || profile.type || ""
+    ).toLowerCase();
+
+    if (accountType !== "club") {
       return NextResponse.json(
         {
           ok: false,
@@ -84,10 +93,36 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const { data: registryClub, error: registryClubError } = await supabaseAdmin
+      .from("registry_clubs_master")
+      .select("master_id, is_claimed")
+      .eq("master_id", registryMasterId)
+      .maybeSingle();
+
+    if (registryClubError || !registryClub) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: registryClubError?.message || "Società non trovata.",
+        },
+        { status: 404 }
+      );
+    }
+
+    if (registryClub.is_claimed) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Questa società risulta già rivendicata.",
+        },
+        { status: 409 }
+      );
+    }
+
     const { data: existingClaim } = await supabaseAdmin
       .from("registry_claims")
       .select("id, claim_status")
-      .eq("registry_club_id", registryClubId)
+      .eq("registry_master_id", registryMasterId)
       .eq("profile_id", profile.id)
       .maybeSingle();
 
@@ -102,12 +137,13 @@ export async function POST(req: NextRequest) {
     const { data: claim, error: claimError } = await supabaseAdmin
       .from("registry_claims")
       .insert({
-        registry_club_id: registryClubId,
+        registry_master_id: registryMasterId,
+        registry_club_id: null,
         profile_id: profile.id,
         claim_status: "pending",
         claim_method: "self_service",
       })
-      .select("id, claim_status, submitted_at")
+      .select("id, claim_status, submitted_at, registry_master_id")
       .single();
 
     if (claimError) {
@@ -116,14 +152,6 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
-
-    await supabaseAdmin
-      .from("registry_clubs")
-      .update({
-        claim_status: "claim_pending",
-      })
-      .eq("id", registryClubId)
-      .eq("claim_status", "not_claimed");
 
     return NextResponse.json({
       ok: true,

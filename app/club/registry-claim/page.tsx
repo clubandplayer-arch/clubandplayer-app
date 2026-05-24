@@ -7,19 +7,23 @@ import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 const ENABLE_REGISTRY_CLAIM =
   process.env.NEXT_PUBLIC_ENABLE_REGISTRY_CLAIM === 'true';
 
+type RegistryDiscipline = {
+  clubandplayer_sport: string;
+  discipline_raw: string;
+};
+
 type RegistryClub = {
   id: string;
-  source_club_id: string;
+  registry_master_id?: string;
+  master_id?: string;
+  source_club_id?: string;
   name: string;
   region: string | null;
   province: string | null;
   municipality: string | null;
   claim_status: string;
   claimed_by_profile_id?: string | null;
-  registry_club_disciplines: {
-    clubandplayer_sport: string;
-    discipline_raw: string;
-  }[];
+  registry_club_disciplines: RegistryDiscipline[];
 };
 
 type ProfileRow = {
@@ -30,13 +34,9 @@ type ProfileRow = {
 
 type RegistryClaimRow = {
   id: string;
-  registry_club_id: string;
+  registry_master_id: string | null;
+  registry_club_id: string | null;
   claim_status: string;
-};
-
-type ClaimedClubOwnershipRow = {
-  id: string;
-  claimed_by_profile_id: string | null;
 };
 
 async function getCurrentClubProfileId() {
@@ -64,9 +64,15 @@ async function getCurrentClubProfileId() {
   return row.id;
 }
 
+function getRegistryMasterId(club: RegistryClub) {
+  return String(club.registry_master_id || club.master_id || club.id || '').trim();
+}
+
 function normalizeRegistryClub(raw: RegistryClub): RegistryClub {
   return {
     ...raw,
+    id: getRegistryMasterId(raw),
+    registry_master_id: getRegistryMasterId(raw),
     claimed_by_profile_id: raw.claimed_by_profile_id ?? null,
     registry_club_disciplines: Array.isArray(raw.registry_club_disciplines)
       ? raw.registry_club_disciplines
@@ -87,7 +93,7 @@ function RegistryClaimDisabledPage() {
         </h1>
 
         <p className="mt-3 text-neutral-300">
-          La rivendicazione delle società tramite Registro CONI è momentaneamente sospesa.
+          La rivendicazione delle società è momentaneamente sospesa.
         </p>
 
         <p className="mt-2 text-sm text-neutral-500">
@@ -102,8 +108,6 @@ export default function ClubRegistryClaimPage() {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [claimingId, setClaimingId] = useState('');
-  const [disputingId, setDisputingId] = useState('');
-  const [disputeReason, setDisputeReason] = useState('');
   const [results, setResults] = useState<RegistryClub[]>([]);
   const [message, setMessage] = useState('');
   const [currentClubProfileId, setCurrentClubProfileId] = useState<string | null>(null);
@@ -119,65 +123,48 @@ export default function ClubRegistryClaimPage() {
     setCurrentClubProfileId(profileId);
 
     const normalized = items.map(normalizeRegistryClub);
+    const masterIds = normalized.map((club) => getRegistryMasterId(club)).filter(Boolean);
 
-    const claimedIds = normalized
-      .filter((club) => club.claim_status === 'claimed')
-      .map((club) => club.id);
+    let myClaimByMasterId = new Map<string, RegistryClaimRow>();
 
-    const pendingIds = normalized.map((club) => club.id);
-
-    let claimedByProfileByClubId = new Map<string, string | null>();
-    let myPendingClaimClubIds = new Set<string>();
-
-    if (claimedIds.length) {
-      const { data: claimedRows, error: claimedError } = await supabase
-        .from('registry_clubs')
-        .select('id, claimed_by_profile_id')
-        .in('id', claimedIds);
-
-      if (claimedError) throw claimedError;
-
-      claimedByProfileByClubId = new Map(
-        ((claimedRows ?? []) as ClaimedClubOwnershipRow[]).map((row) => [
-          String(row.id),
-          row.claimed_by_profile_id ? String(row.claimed_by_profile_id) : null,
-        ])
-      );
-    }
-
-    if (profileId && pendingIds.length) {
-      const { data: pendingRows, error: pendingError } = await supabase
+    if (profileId && masterIds.length) {
+      const { data: claimRows, error: claimError } = await supabase
         .from('registry_claims')
-        .select('id, registry_club_id, claim_status')
+        .select('id, registry_master_id, registry_club_id, claim_status')
         .eq('profile_id', profileId)
-        .in('registry_club_id', pendingIds)
-        .in('claim_status', ['pending', 'in_review']);
+        .in('registry_master_id', masterIds)
+        .in('claim_status', ['pending', 'in_review', 'approved']);
 
-      if (pendingError) throw pendingError;
+      if (claimError) throw claimError;
 
-      myPendingClaimClubIds = new Set(
-        ((pendingRows ?? []) as RegistryClaimRow[]).map((row) =>
-          String(row.registry_club_id)
-        )
+      myClaimByMasterId = new Map(
+        ((claimRows ?? []) as RegistryClaimRow[])
+          .filter((row) => row.registry_master_id)
+          .map((row) => [String(row.registry_master_id), row])
       );
     }
 
     return normalized.map((club) => {
-      const claimedByProfileId =
-        claimedByProfileByClubId.get(club.id) ?? club.claimed_by_profile_id ?? null;
+      const registryMasterId = getRegistryMasterId(club);
+      const myClaim = myClaimByMasterId.get(registryMasterId);
 
-      if (myPendingClaimClubIds.has(club.id)) {
+      if (myClaim?.claim_status === 'approved') {
         return {
           ...club,
-          claim_status: 'claim_pending',
-          claimed_by_profile_id: claimedByProfileId,
+          claim_status: 'claimed',
+          claimed_by_profile_id: profileId,
         };
       }
 
-      return {
-        ...club,
-        claimed_by_profile_id: claimedByProfileId,
-      };
+      if (myClaim?.claim_status === 'pending' || myClaim?.claim_status === 'in_review') {
+        return {
+          ...club,
+          claim_status: 'claim_pending',
+          claimed_by_profile_id: null,
+        };
+      }
+
+      return club;
     });
   }
 
@@ -209,8 +196,8 @@ export default function ClubRegistryClaimPage() {
     }
   }
 
-  async function claimClub(registryClubId: string) {
-    setClaimingId(registryClubId);
+  async function claimClub(registryMasterId: string) {
+    setClaimingId(registryMasterId);
     setMessage('');
 
     try {
@@ -234,7 +221,7 @@ export default function ClubRegistryClaimPage() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          registry_club_id: registryClubId,
+          registry_master_id: registryMasterId,
         }),
       });
 
@@ -253,60 +240,6 @@ export default function ClubRegistryClaimPage() {
     }
   }
 
-  async function submitDispute(registryClubId: string) {
-    setMessage('');
-
-    try {
-      const reason = disputeReason.trim();
-
-      if (reason.length < 20) {
-        setMessage('Inserisci una motivazione di almeno 20 caratteri.');
-        return;
-      }
-
-      const supabase = getSupabaseBrowserClient();
-
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      const token = session?.access_token;
-
-      if (!token) {
-        setMessage('Devi effettuare il login come Club per aprire un reclamo.');
-        return;
-      }
-
-      const res = await fetch('/api/registry/claim-disputes', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          registry_club_id: registryClubId,
-          reason,
-        }),
-      });
-
-      const json = await res.json();
-
-      if (!json.ok) {
-        throw new Error(json.error || 'Errore apertura reclamo');
-      }
-
-      setMessage(
-        json.alreadyExists
-          ? 'Hai già un reclamo aperto per questa società.'
-          : 'Reclamo inviato. Lo staff Club & Player lo prenderà in carico.'
-      );
-      setDisputingId('');
-      setDisputeReason('');
-    } catch (err) {
-      setMessage(err instanceof Error ? err.message : 'Errore imprevisto');
-    }
-  }
-
   return (
     <main className="min-h-screen bg-neutral-950 p-6 text-white">
       <div className="mx-auto max-w-5xl">
@@ -317,7 +250,7 @@ export default function ClubRegistryClaimPage() {
         <h1 className="mt-2 text-3xl font-bold">Rivendica la tua società</h1>
 
         <p className="mt-2 text-neutral-400">
-          Cerca la tua ASD/SSD nel Registro CONI e collegala al tuo profilo Club.
+          Cerca la tua ASD/SSD e collegala al tuo profilo Club.
         </p>
 
         <section className="mt-8 rounded-2xl border border-neutral-800 bg-neutral-900 p-5">
@@ -352,11 +285,13 @@ export default function ClubRegistryClaimPage() {
 
         <section className="mt-8 space-y-4">
           {results.map((club) => {
+            const registryMasterId = getRegistryMasterId(club);
+
             const sports = Array.from(
               new Set(
-                club.registry_club_disciplines.map(
-                  (discipline) => discipline.clubandplayer_sport
-                )
+                club.registry_club_disciplines
+                  .map((discipline) => discipline.clubandplayer_sport)
+                  .filter(Boolean)
               )
             );
 
@@ -367,11 +302,10 @@ export default function ClubRegistryClaimPage() {
               !!currentClubProfileId &&
               club.claimed_by_profile_id === currentClubProfileId;
             const isClaimedByOther = isClaimed && !isClaimedByMe;
-            const isDisputeOpen = disputingId === club.id;
 
             return (
               <article
-                key={club.id}
+                key={registryMasterId}
                 className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5"
               >
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -379,8 +313,8 @@ export default function ClubRegistryClaimPage() {
                     <h2 className="text-xl font-bold">{club.name}</h2>
 
                     <p className="mt-1 text-sm text-neutral-400">
-                      ID CONI: {club.source_club_id} • {club.region || '-'} •{' '}
-                      {club.province || '-'} • {club.municipality || '-'}
+                      {club.region || '-'} • {club.province || '-'} •{' '}
+                      {club.municipality || '-'}
                     </p>
 
                     <div className="mt-4 flex flex-wrap gap-2">
@@ -408,47 +342,6 @@ export default function ClubRegistryClaimPage() {
                       <p className="mt-1 text-xs text-orange-200/80">
                         Questa società risulta già collegata ad un altro profilo Club.
                       </p>
-
-                      {isDisputeOpen ? (
-                        <div className="mt-3 space-y-2">
-                          <textarea
-                            value={disputeReason}
-                            onChange={(e) => setDisputeReason(e.target.value)}
-                            placeholder="Spiega perché ritieni di avere diritto a rivendicare questa società..."
-                            className="min-h-24 w-full rounded-lg border border-orange-700 bg-neutral-950 px-3 py-2 text-xs text-white outline-none focus:border-orange-400"
-                          />
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => submitDispute(club.id)}
-                              className="rounded-lg bg-orange-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-orange-500"
-                            >
-                              Invia reclamo
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setDisputingId('');
-                                setDisputeReason('');
-                              }}
-                              className="rounded-lg border border-orange-700 px-3 py-1.5 text-xs font-semibold text-orange-100 hover:bg-orange-900/40"
-                            >
-                              Annulla
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setDisputingId(club.id);
-                            setDisputeReason('');
-                          }}
-                          className="mt-3 rounded-lg border border-orange-600 px-3 py-1.5 text-xs font-semibold text-orange-100 hover:bg-orange-900/40"
-                        >
-                          Apri reclamo
-                        </button>
-                      )}
                     </div>
                   ) : isPending ? (
                     <div className="rounded-xl border border-yellow-700 bg-yellow-950/50 px-4 py-3 text-sm text-yellow-100 md:max-w-64">
@@ -460,11 +353,11 @@ export default function ClubRegistryClaimPage() {
                   ) : (
                     <button
                       type="button"
-                      onClick={() => claimClub(club.id)}
-                      disabled={claimingId === club.id}
+                      onClick={() => claimClub(registryMasterId)}
+                      disabled={claimingId === registryMasterId}
                       className="rounded-xl bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-500 disabled:opacity-60"
                     >
-                      {claimingId === club.id ? 'Invio...' : 'Sono io questo Club'}
+                      {claimingId === registryMasterId ? 'Invio...' : 'Sono io questo Club'}
                     </button>
                   )}
                 </div>

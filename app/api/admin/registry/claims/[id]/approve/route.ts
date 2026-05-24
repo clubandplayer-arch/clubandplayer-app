@@ -67,7 +67,7 @@ export async function POST(
 
     const { data: claim, error: claimError } = await supabaseAdmin
       .from("registry_claims")
-      .select("id, profile_id, registry_club_id, claim_status")
+      .select("id, profile_id, registry_club_id, registry_master_id, claim_status")
       .eq("id", claimId)
       .maybeSingle();
 
@@ -87,13 +87,23 @@ export async function POST(
       );
     }
 
-    if (!["pending", "in_review"].includes(claim.claim_status)) {
+    if (!["pending", "in_review", "claim_pending"].includes(claim.claim_status)) {
       return NextResponse.json(
         {
           ok: false,
           error: `Claim non approvabile nello stato attuale: ${claim.claim_status}`,
         },
         { status: 409 }
+      );
+    }
+
+    if (!claim.registry_master_id) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Claim senza registry_master_id. Impossibile approvare sul Registry V2.",
+        },
+        { status: 400 }
       );
     }
 
@@ -108,7 +118,7 @@ export async function POST(
         updated_at: now,
       })
       .eq("id", claim.id)
-      .select("id, profile_id, registry_club_id, claim_status, approved_at")
+      .select("id, profile_id, registry_club_id, registry_master_id, claim_status, approved_at")
       .single();
 
     if (updateClaimError) {
@@ -121,19 +131,18 @@ export async function POST(
     }
 
     const { data: updatedClub, error: updateClubError } = await supabaseAdmin
-      .from("registry_clubs")
+      .from("registry_clubs_master")
       .update({
-        claim_status: "claimed",
-        claimed_by_profile_id: claim.profile_id,
-        claimed_at: now,
+        is_claimed: true,
+        claimed_profile_id: claim.profile_id,
         updated_at: now,
       })
-      .eq("id", claim.registry_club_id)
-      .select("id, claim_status, claimed_by_profile_id, claimed_at")
+      .eq("master_id", claim.registry_master_id)
+      .select("master_id, is_claimed, claimed_profile_id, updated_at")
       .single();
 
     if (updateClubError) {
-      console.error("REGISTRY CLAIM APPROVE UPDATE CLUB ERROR", updateClubError);
+      console.error("REGISTRY CLAIM APPROVE UPDATE MASTER CLUB ERROR", updateClubError);
 
       return NextResponse.json(
         { ok: false, error: updateClubError.message },

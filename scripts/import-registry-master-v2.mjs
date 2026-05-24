@@ -12,20 +12,13 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   );
 }
 
-const supabase = createClient(
-  SUPABASE_URL,
-  SUPABASE_SERVICE_ROLE_KEY,
-  {
-    auth: {
-      persistSession: false,
-    },
-  }
-);
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  auth: {
+    persistSession: false,
+  },
+});
 
-const CSV_PATH = path.resolve(
-  "imports/registry/registry_clubs_master_geo.csv"
-);
-
+const CSV_PATH = path.resolve("imports/registry/registry_clubs_master_geo.csv");
 const CHUNK_SIZE = 500;
 
 function clean(value) {
@@ -34,28 +27,39 @@ function clean(value) {
 
 async function importChunk(chunk, index) {
   if (!chunk.length) {
-    return;
+    return 0;
   }
 
-const uniqueMap = new Map();
+  const uniqueMap = new Map();
 
-for (const row of chunk) {
-  const item = {
-    master_id: clean(row.master_id),
-    codice_fiscale: clean(row.codice_fiscale) || null,
-    denominazione: clean(row.denominazione),
-    regione: clean(row.regione_normalizzata),
-    provincia: clean(row.provincia_normalizzata),
-    comune: clean(row.comune_normalizzato),
-    sport_normalizzati: clean(row.sport_normalizzati),
-    organisms: clean(row.organisms),
-    source_count: Number(row.source_count || 1),
-  };
+  for (const row of chunk) {
+    const masterId = clean(row.master_id);
 
-  uniqueMap.set(item.master_id, item);
-}
+    if (!masterId) {
+      continue;
+    }
 
-const payload = Array.from(uniqueMap.values());
+    const item = {
+      master_id: masterId,
+      codice_fiscale: clean(row.codice_fiscale) || null,
+      denominazione: clean(row.denominazione),
+      regione: clean(row.regione_normalizzata),
+      provincia: clean(row.provincia_normalizzata),
+      comune: clean(row.comune_normalizzato),
+      sport_normalizzati: clean(row.sport_normalizzati),
+      organisms: clean(row.organisms),
+      source_count: Number(row.source_count || 1),
+    };
+
+    uniqueMap.set(item.master_id, item);
+  }
+
+  const payload = Array.from(uniqueMap.values());
+
+  if (!payload.length) {
+    console.warn(`Chunk ${index} saltato: nessun master_id valido`);
+    return 0;
+  }
 
   const { error } = await supabase
     .from("registry_clubs_master")
@@ -68,9 +72,8 @@ const payload = Array.from(uniqueMap.values());
     throw error;
   }
 
-  console.log(
-    `Chunk ${index} importato (${payload.length} record)`
-  );
+  console.log(`Chunk ${index} importato (${payload.length} record)`);
+  return payload.length;
 }
 
 async function main() {
@@ -85,27 +88,41 @@ async function main() {
 
   await new Promise((resolve, reject) => {
     fs.createReadStream(CSV_PATH)
-      .pipe(csv())
-      .on("data", (data) => rows.push(data))
+      .pipe(
+        csv({
+          mapHeaders: ({ header }) =>
+            String(header || "")
+              .replace(/^\uFEFF/, "")
+              .trim(),
+        })
+      )
+      .on("data", (data) => {
+        const masterId = clean(data.master_id);
+
+        if (!masterId) {
+          return;
+        }
+
+        rows.push(data);
+      })
       .on("end", resolve)
       .on("error", reject);
   });
 
-  console.log("RIGHE LETTE:", rows.length);
+  console.log("RIGHE VALIDE LETTE:", rows.length);
+  console.log("PRIMA RIGA:");
+  console.log(rows[0]);
 
   let imported = 0;
   let chunkIndex = 1;
 
   for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
     const chunk = rows.slice(i, i + CHUNK_SIZE);
+    const importedInChunk = await importChunk(chunk, chunkIndex);
 
-    await importChunk(chunk, chunkIndex);
+    imported += importedInChunk;
 
-    imported += chunk.length;
-
-    console.log(
-      `PROGRESS: ${imported}/${rows.length}`
-    );
+    console.log(`PROGRESS: ${imported}/${rows.length}`);
 
     chunkIndex += 1;
   }
