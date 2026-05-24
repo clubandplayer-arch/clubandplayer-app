@@ -4,9 +4,6 @@ import { useState } from 'react';
 
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 
-const ENABLE_REGISTRY_CLAIM =
-  process.env.NEXT_PUBLIC_ENABLE_REGISTRY_CLAIM === 'true';
-
 type RegistryDiscipline = {
   clubandplayer_sport: string;
   discipline_raw: string;
@@ -78,30 +75,6 @@ function normalizeRegistryClub(raw: RegistryClub): RegistryClub {
       ? raw.registry_club_disciplines
       : [],
   };
-}
-
-function RegistryClaimDisabledPage() {
-  return (
-    <main className="min-h-screen bg-neutral-950 p-6 text-white">
-      <div className="mx-auto max-w-3xl">
-        <p className="text-sm uppercase tracking-wide text-cyan-400">
-          Club Registry
-        </p>
-
-        <h1 className="mt-2 text-3xl font-bold">
-          Funzionalità temporaneamente non disponibile
-        </h1>
-
-        <p className="mt-3 text-neutral-300">
-          La rivendicazione delle società è momentaneamente sospesa.
-        </p>
-
-        <p className="mt-2 text-sm text-neutral-500">
-          Il sistema resta attivo internamente, ma non è esposto pubblicamente in questa fase.
-        </p>
-      </div>
-    </main>
-  );
 }
 
 export default function ClubRegistryClaimPage() {
