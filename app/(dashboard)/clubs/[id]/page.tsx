@@ -242,20 +242,20 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div>
               <p className="text-xs font-bold uppercase tracking-wide text-emerald-700">
-                Registro CONI
+                Registro Nazionale
               </p>
               <h2 className="mt-1 text-lg font-bold text-emerald-950">
-                Registro CONI verificato
+                Registro Nazionale verificato
               </h2>
               <p className="mt-2 text-sm text-emerald-900">
-                Questo Club ha rivendicato e collegato la propria società presente nel Registro CONI.
+                Questo Club ha rivendicato e collegato la propria società presente nel Registro Nazionale.
               </p>
             </div>
 
             <div className="rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm text-emerald-950">
               <p className="font-semibold">{registryClub.name || displayName}</p>
               <p className="mt-1 text-xs text-emerald-800">
-                ID CONI: {registryClub.source_club_id || '—'}
+                ID Nazionale: {registryClub.source_club_id || '—'}
               </p>
               <p className="mt-1 text-xs text-emerald-800">
                 {[registryClub.region, registryClub.province, registryClub.municipality]

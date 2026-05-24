@@ -261,13 +261,13 @@ async function createDisputeResultNotifications({
     : null;
   const registryClub = await getRegistryClubDisplay(supabaseAdmin, dispute);
 
-  const clubName = registryClub?.name || "società Registro CONI";
+  const clubName = registryClub?.name || "società Registro Nazionale";
   const isAccepted = action === "accepted";
 
   if (claimantProfile?.user_id) {
     const claimantMessage = isAccepted
-      ? `Il tuo reclamo Registro CONI per ${clubName} è stato accettato.`
-      : `Il tuo reclamo Registro CONI per ${clubName} è stato rifiutato.`;
+      ? `Il tuo reclamo Registro Nazionale per ${clubName} è stato accettato.`
+      : `Il tuo reclamo Registro Nazionale per ${clubName} è stato rifiutato.`;
 
     await insertNotification({
       supabaseAdmin,
@@ -277,8 +277,8 @@ async function createDisputeResultNotifications({
       message: claimantMessage,
       payload: {
         title: isAccepted
-          ? "Reclamo Registro CONI accettato"
-          : "Reclamo Registro CONI rifiutato",
+          ? "Reclamo Registro Nazionale accettato"
+          : "Reclamo Registro Nazionale rifiutato",
         preview: claimantMessage,
         dispute_id: dispute.id,
         registry_club_id: dispute.registry_club_id,
@@ -291,7 +291,7 @@ async function createDisputeResultNotifications({
   }
 
   if (isAccepted && previousOwnerProfile?.user_id) {
-    const ownerMessage = `La società Registro CONI ${clubName} è stata trasferita ad un altro profilo Club dopo revisione reclamo.`;
+    const ownerMessage = `La società Registro Nazionale ${clubName} è stata trasferita ad un altro profilo Club dopo revisione reclamo.`;
 
     await insertNotification({
       supabaseAdmin,
@@ -300,7 +300,7 @@ async function createDisputeResultNotifications({
       kind: "registry_claim_transfer",
       message: ownerMessage,
       payload: {
-        title: "Società Registro CONI trasferita",
+        title: "Società Registro Nazionale trasferita",
         preview: ownerMessage,
         dispute_id: dispute.id,
         registry_club_id: dispute.registry_club_id,

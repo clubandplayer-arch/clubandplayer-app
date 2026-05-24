@@ -94,7 +94,7 @@ export default function AdminRegistryPage() {
           </p>
 
           <h1 className="mt-2 text-3xl font-bold">
-            Registro Club CONI / FIGC
+            Registro Club Nazionale
           </h1>
 
           <p className="mt-2 text-neutral-400">
@@ -215,7 +215,7 @@ export default function AdminRegistryPage() {
                       </h3>
 
                       <p className="mt-1 text-sm text-neutral-400">
-                        ID CONI: {club.source_club_id} •{" "}
+                        ID Nazionale: {club.source_club_id} •{" "}
                         {club.region || "-"} •{" "}
                         {club.province || "-"} •{" "}
                         {club.municipality || "-"}
