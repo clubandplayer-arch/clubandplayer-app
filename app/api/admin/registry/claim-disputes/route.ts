@@ -39,8 +39,7 @@ type RegistryClubAdminRow = {
 
 type RegistryMasterAdminRow = {
   master_id: string;
-  external_id: string | null;
-  name: string | null;
+  denominazione: string | null;
   comune: string | null;
   provincia: string | null;
   regione: string | null;
@@ -175,22 +174,22 @@ async function getRegistryClubDisplay(
   if (isNonEmptyDbId(dispute.registry_master_id)) {
     const { data, error } = await supabaseAdmin
       .from("registry_clubs_master")
-      .select("master_id, external_id, name")
+      .select("master_id, denominazione")
       .eq("master_id", dispute.registry_master_id)
       .maybeSingle();
 
     if (error) throw error;
 
     const master = data as
-      | { master_id: string; external_id: string | null; name: string | null }
-      | null;
+        | { master_id: string; denominazione: string | null }
+        | null;
 
     if (!master) return null;
 
     return {
       id: String(master.master_id),
-      source_club_id: master.external_id ? String(master.external_id) : null,
-      name: master.name ? String(master.name) : null,
+      source_club_id: null,
+      name: master.denominazione ? String(master.denominazione) : null,
     };
   }
 
@@ -394,7 +393,7 @@ export async function GET(req: NextRequest) {
     if (registryMasterIds.length) {
       const { data: masters, error: mastersError } = await supabaseAdmin
         .from("registry_clubs_master")
-        .select("master_id, external_id, name, comune, provincia, regione")
+        .select("master_id, denominazione, comune, provincia, regione")
         .in("master_id", registryMasterIds);
 
       if (mastersError) {
@@ -407,10 +406,8 @@ export async function GET(req: NextRequest) {
       ((masters ?? []) as RegistryMasterAdminRow[]).forEach((master) =>
         masterById.set(String(master.master_id), {
           id: String(master.master_id),
-          source_club_id: master.external_id
-            ? String(master.external_id)
-            : null,
-          name: master.name ? String(master.name) : null,
+          source_club_id: null,
+          name: master.denominazione ? String(master.denominazione) : null,
           region: master.regione ? String(master.regione) : null,
           province: master.provincia ? String(master.provincia) : null,
           municipality: master.comune ? String(master.comune) : null,
