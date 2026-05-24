@@ -112,9 +112,9 @@ export default function ClubRegistryClaimPage() {
   const [message, setMessage] = useState('');
   const [currentClubProfileId, setCurrentClubProfileId] = useState<string | null>(null);
 
-  if (!ENABLE_REGISTRY_CLAIM) {
-    return <RegistryClaimDisabledPage />;
-  }
+  // if (!ENABLE_REGISTRY_CLAIM) {
+  //   return <RegistryClaimDisabledPage />;
+  // }
 
   async function enrichResultsWithOwnership(items: RegistryClub[]) {
     const supabase = getSupabaseBrowserClient();
