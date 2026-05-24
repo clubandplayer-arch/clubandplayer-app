@@ -21,7 +21,8 @@ type RegistryClubNotificationTarget = {
 
 type RegistryDisputeTransferRow = {
   id: string;
-  registry_club_id: string;
+  registry_club_id: string | null;
+  registry_master_id: string | null;
   claimant_profile_id: string;
   current_claimed_by_profile_id: string | null;
   status: string;
@@ -36,12 +37,30 @@ type RegistryClubAdminRow = {
   municipality: string | null;
 };
 
+type RegistryMasterAdminRow = {
+  master_id: string;
+  external_id: string | null;
+  name: string | null;
+  comune: string | null;
+  provincia: string | null;
+  regione: string | null;
+};
+
 type ProfileAdminRow = {
   id: string;
   display_name: string | null;
   account_type: string | null;
   type: string | null;
 };
+
+function clean(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function isNonEmptyDbId(value: unknown) {
+  const text = clean(value);
+  return Boolean(text && text !== "null" && text !== "undefined");
+}
 
 function getSupabaseAdmin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -149,14 +168,40 @@ async function getProfileById(
   return data as ProfileNotificationTarget | null;
 }
 
-async function getRegistryClubById(
+async function getRegistryClubDisplay(
   supabaseAdmin: ReturnType<typeof getSupabaseAdmin>,
-  registryClubId: string
-) {
+  dispute: RegistryDisputeTransferRow
+): Promise<RegistryClubNotificationTarget | null> {
+  if (isNonEmptyDbId(dispute.registry_master_id)) {
+    const { data, error } = await supabaseAdmin
+      .from("registry_clubs_master")
+      .select("master_id, external_id, name")
+      .eq("master_id", dispute.registry_master_id)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    const master = data as
+      | { master_id: string; external_id: string | null; name: string | null }
+      | null;
+
+    if (!master) return null;
+
+    return {
+      id: String(master.master_id),
+      source_club_id: master.external_id ? String(master.external_id) : null,
+      name: master.name ? String(master.name) : null,
+    };
+  }
+
+  if (!isNonEmptyDbId(dispute.registry_club_id)) {
+    return null;
+  }
+
   const { data, error } = await supabaseAdmin
     .from("registry_clubs")
     .select("id, source_club_id, name")
-    .eq("id", registryClubId)
+    .eq("id", dispute.registry_club_id)
     .maybeSingle();
 
   if (error) throw error;
@@ -210,13 +255,12 @@ async function createDisputeResultNotifications({
   const previousOwnerProfileId = dispute.current_claimed_by_profile_id
     ? String(dispute.current_claimed_by_profile_id)
     : null;
-  const registryClubId = String(dispute.registry_club_id);
 
   const claimantProfile = await getProfileById(supabaseAdmin, claimantProfileId);
   const previousOwnerProfile = previousOwnerProfileId
     ? await getProfileById(supabaseAdmin, previousOwnerProfileId)
     : null;
-  const registryClub = await getRegistryClubById(supabaseAdmin, registryClubId);
+  const registryClub = await getRegistryClubDisplay(supabaseAdmin, dispute);
 
   const clubName = registryClub?.name || "società Registro CONI";
   const isAccepted = action === "accepted";
@@ -238,7 +282,8 @@ async function createDisputeResultNotifications({
           : "Reclamo Registro CONI rifiutato",
         preview: claimantMessage,
         dispute_id: dispute.id,
-        registry_club_id: registryClubId,
+        registry_club_id: dispute.registry_club_id,
+        registry_master_id: dispute.registry_master_id,
         registry_club_name: clubName,
         source_club_id: registryClub?.source_club_id ?? null,
         status: action,
@@ -259,7 +304,8 @@ async function createDisputeResultNotifications({
         title: "Società Registro CONI trasferita",
         preview: ownerMessage,
         dispute_id: dispute.id,
-        registry_club_id: registryClubId,
+        registry_club_id: dispute.registry_club_id,
+        registry_master_id: dispute.registry_master_id,
         registry_club_name: clubName,
         source_club_id: registryClub?.source_club_id ?? null,
         status: "transferred",
@@ -279,7 +325,7 @@ export async function GET(req: NextRequest) {
     const { data: disputes, error: disputesError } = await supabaseAdmin
       .from("registry_claim_disputes")
       .select(
-        "id, registry_club_id, claimant_profile_id, current_claimed_by_profile_id, reason, status, admin_notes, created_at, updated_at, reviewed_at"
+        "id, registry_club_id, registry_master_id, claimant_profile_id, current_claimed_by_profile_id, reason, status, admin_notes, created_at, updated_at, reviewed_at"
       )
       .eq("status", status)
       .order("created_at", { ascending: false });
@@ -294,8 +340,23 @@ export async function GET(req: NextRequest) {
     const rows = (disputes ?? []) as RegistryDisputeTransferRow[];
 
     const registryClubIds = Array.from(
-      new Set(rows.map((row) => String(row.registry_club_id)).filter(Boolean))
+      new Set(
+        rows
+          .map((row) => row.registry_club_id)
+          .filter(isNonEmptyDbId)
+          .map(String)
+      )
     );
+
+    const registryMasterIds = Array.from(
+      new Set(
+        rows
+          .map((row) => row.registry_master_id)
+          .filter(isNonEmptyDbId)
+          .map(String)
+      )
+    );
+
     const profileIds = Array.from(
       new Set(
         rows
@@ -303,12 +364,13 @@ export async function GET(req: NextRequest) {
             row.claimant_profile_id,
             row.current_claimed_by_profile_id,
           ])
-          .map((id) => (id ? String(id) : ""))
-          .filter(Boolean)
+          .filter(isNonEmptyDbId)
+          .map(String)
       )
     );
 
     const clubById = new Map<string, RegistryClubAdminRow>();
+    const masterById = new Map<string, RegistryClubAdminRow>();
     const profileById = new Map<string, ProfileAdminRow>();
 
     if (registryClubIds.length) {
@@ -326,6 +388,33 @@ export async function GET(req: NextRequest) {
 
       ((clubs ?? []) as RegistryClubAdminRow[]).forEach((club) =>
         clubById.set(String(club.id), club)
+      );
+    }
+
+    if (registryMasterIds.length) {
+      const { data: masters, error: mastersError } = await supabaseAdmin
+        .from("registry_clubs_master")
+        .select("master_id, external_id, name, comune, provincia, regione")
+        .in("master_id", registryMasterIds);
+
+      if (mastersError) {
+        return NextResponse.json(
+          { ok: false, error: mastersError.message },
+          { status: 500 }
+        );
+      }
+
+      ((masters ?? []) as RegistryMasterAdminRow[]).forEach((master) =>
+        masterById.set(String(master.master_id), {
+          id: String(master.master_id),
+          source_club_id: master.external_id
+            ? String(master.external_id)
+            : null,
+          name: master.name ? String(master.name) : null,
+          region: master.regione ? String(master.regione) : null,
+          province: master.provincia ? String(master.provincia) : null,
+          municipality: master.comune ? String(master.comune) : null,
+        })
       );
     }
 
@@ -349,7 +438,14 @@ export async function GET(req: NextRequest) {
 
     const items = rows.map((row) => ({
       ...row,
-      registry_clubs: clubById.get(String(row.registry_club_id)) ?? null,
+      registry_clubs:
+        (row.registry_master_id
+          ? masterById.get(String(row.registry_master_id))
+          : null) ??
+        (row.registry_club_id
+          ? clubById.get(String(row.registry_club_id))
+          : null) ??
+        null,
       claimant_profile: profileById.get(String(row.claimant_profile_id)) ?? null,
       current_owner_profile: row.current_claimed_by_profile_id
         ? profileById.get(String(row.current_claimed_by_profile_id)) ?? null
@@ -395,7 +491,7 @@ export async function PATCH(req: NextRequest) {
       await supabaseAdmin
         .from("registry_claim_disputes")
         .select(
-          "id, registry_club_id, claimant_profile_id, current_claimed_by_profile_id, status"
+          "id, registry_club_id, registry_master_id, claimant_profile_id, current_claimed_by_profile_id, status"
         )
         .eq("id", disputeId)
         .eq("status", "pending")
@@ -419,49 +515,110 @@ export async function PATCH(req: NextRequest) {
     const now = new Date().toISOString();
 
     if (action === "accepted") {
-      const { error: transferError } = await supabaseAdmin
-        .from("registry_clubs")
-        .update({
-          claim_status: "claimed",
-          claimed_by_profile_id: disputeRow.claimant_profile_id,
-          claimed_at: now,
-          updated_at: now,
-        })
-        .eq("id", disputeRow.registry_club_id);
+      if (isNonEmptyDbId(disputeRow.registry_master_id)) {
+        const { error: transferMasterError } = await supabaseAdmin
+          .from("registry_clubs_master")
+          .update({
+            is_claimed: true,
+            claimed_profile_id: disputeRow.claimant_profile_id,
+            updated_at: now,
+          })
+          .eq("master_id", disputeRow.registry_master_id);
 
-      if (transferError) {
-        return NextResponse.json(
-          { ok: false, error: transferError.message },
-          { status: 500 }
+        if (transferMasterError) {
+          return NextResponse.json(
+            { ok: false, error: transferMasterError.message },
+            { status: 500 }
+          );
+        }
+
+        await supabaseAdmin
+          .from("registry_claims")
+          .update({
+            claim_status: "rejected",
+            rejected_at: now,
+            approved_at: null,
+            updated_at: now,
+          })
+          .eq("registry_master_id", disputeRow.registry_master_id)
+          .neq("profile_id", disputeRow.claimant_profile_id)
+          .in("claim_status", ["pending", "in_review", "approved"]);
+
+        const { data: existingClaim } = await supabaseAdmin
+          .from("registry_claims")
+          .select("id")
+          .eq("registry_master_id", disputeRow.registry_master_id)
+          .eq("profile_id", disputeRow.claimant_profile_id)
+          .maybeSingle();
+
+        if (existingClaim?.id) {
+          await supabaseAdmin
+            .from("registry_claims")
+            .update({
+              claim_status: "approved",
+              claim_method: "dispute_transfer",
+              approved_at: now,
+              rejected_at: null,
+              updated_at: now,
+            })
+            .eq("id", existingClaim.id);
+        } else {
+          await supabaseAdmin.from("registry_claims").insert({
+            registry_master_id: disputeRow.registry_master_id,
+            registry_club_id: null,
+            profile_id: disputeRow.claimant_profile_id,
+            claim_status: "approved",
+            claim_method: "dispute_transfer",
+            approved_at: now,
+            rejected_at: null,
+            updated_at: now,
+          });
+        }
+      } else if (isNonEmptyDbId(disputeRow.registry_club_id)) {
+        const { error: transferError } = await supabaseAdmin
+          .from("registry_clubs")
+          .update({
+            claim_status: "claimed",
+            claimed_by_profile_id: disputeRow.claimant_profile_id,
+            claimed_at: now,
+            updated_at: now,
+          })
+          .eq("id", disputeRow.registry_club_id);
+
+        if (transferError) {
+          return NextResponse.json(
+            { ok: false, error: transferError.message },
+            { status: 500 }
+          );
+        }
+
+        await supabaseAdmin
+          .from("registry_claims")
+          .update({
+            claim_status: "rejected",
+            rejected_at: now,
+            approved_at: null,
+            updated_at: now,
+          })
+          .eq("registry_club_id", disputeRow.registry_club_id)
+          .neq("profile_id", disputeRow.claimant_profile_id)
+          .in("claim_status", ["pending", "in_review"]);
+
+        await supabaseAdmin.from("registry_claims").upsert(
+          {
+            registry_club_id: disputeRow.registry_club_id,
+            profile_id: disputeRow.claimant_profile_id,
+            claim_status: "approved",
+            claim_method: "dispute_transfer",
+            approved_at: now,
+            rejected_at: null,
+            updated_at: now,
+          },
+          {
+            onConflict: "registry_club_id,profile_id",
+          }
         );
       }
-
-      await supabaseAdmin
-        .from("registry_claims")
-        .update({
-          claim_status: "rejected",
-          rejected_at: now,
-          approved_at: null,
-          updated_at: now,
-        })
-        .eq("registry_club_id", disputeRow.registry_club_id)
-        .neq("profile_id", disputeRow.claimant_profile_id)
-        .in("claim_status", ["pending", "in_review"]);
-
-      await supabaseAdmin.from("registry_claims").upsert(
-        {
-          registry_club_id: disputeRow.registry_club_id,
-          profile_id: disputeRow.claimant_profile_id,
-          claim_status: "approved",
-          claim_method: "dispute_transfer",
-          approved_at: now,
-          rejected_at: null,
-          updated_at: now,
-        },
-        {
-          onConflict: "registry_club_id,profile_id",
-        }
-      );
     }
 
     const { data: dispute, error: updateError } = await supabaseAdmin
