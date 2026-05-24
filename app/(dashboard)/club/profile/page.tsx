@@ -6,26 +6,22 @@ import { useEffect, useMemo, useState } from 'react';
 import ProfileEditForm from '@/components/profiles/ProfileEditForm';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
-const ENABLE_REGISTRY_CLAIM =
-  process.env.NEXT_PUBLIC_ENABLE_REGISTRY_CLAIM === 'true';
-
 type RegistryClub = {
-  id: string;
-  source_club_id: string | null;
-  name: string | null;
-  region: string | null;
-  province: string | null;
-  municipality: string | null;
-  claim_status?: string | null;
-  claimed_at?: string | null;
+  master_id: string;
+  denominazione: string | null;
+  regione: string | null;
+  provincia: string | null;
+  comune: string | null;
+  is_claimed?: boolean | null;
+  claimed_profile_id?: string | null;
+  updated_at?: string | null;
 };
 
 type RegistryClaim = {
   id: string;
   claim_status: string;
   submitted_at: string | null;
-  registry_club_id: string;
-  registry_clubs: RegistryClub | RegistryClub[] | null;
+  registry_master_id: string | null;
 };
 
 type RegistryState =
@@ -60,19 +56,14 @@ type RegistryState =
       error: string;
     };
 
-function normalizeRegistryClub(value: RegistryClub | RegistryClub[] | null): RegistryClub | null {
-  if (Array.isArray(value)) return value[0] ?? null;
-  return value;
-}
-
-function RegistryConiCard({ state }: { state: RegistryState }) {
+function RegistryNationalCard({ state }: { state: RegistryState }) {
   if (state.status === 'loading') {
     return (
       <section className="glass-panel border border-emerald-100 bg-emerald-50/60 p-5 md:p-6">
         <p className="text-xs font-bold uppercase tracking-wide text-emerald-700">
-          Registro CONI
+          Nostro Registro Nazionale
         </p>
-        <h2 className="heading-h2 mt-1 mb-2">Controllo stato Registro CONI...</h2>
+        <h2 className="heading-h2 mt-1 mb-2">Controllo stato verifica...</h2>
         <p className="text-sm text-emerald-950">
           Stiamo verificando se la tua società è già collegata al profilo Club.
         </p>
@@ -84,20 +75,17 @@ function RegistryConiCard({ state }: { state: RegistryState }) {
     return (
       <section className="glass-panel border border-emerald-200 bg-emerald-50/80 p-5 md:p-6">
         <p className="text-xs font-bold uppercase tracking-wide text-emerald-700">
-          Registro CONI
+          Nostro Registro Nazionale
         </p>
-        <h2 className="heading-h2 mt-1 mb-2">Registro CONI verificato</h2>
+        <h2 className="heading-h2 mt-1 mb-2">Società verificata</h2>
         <p className="mb-4 text-sm text-emerald-950">
           La tua società è già stata verificata e collegata al profilo Club.
         </p>
 
         <div className="rounded-xl border border-emerald-200 bg-white p-4 text-sm text-emerald-950">
-          <p className="font-semibold">{state.club.name || 'Società collegata'}</p>
+          <p className="font-semibold">{state.club.denominazione || 'Società collegata'}</p>
           <p className="mt-1 text-xs text-emerald-800">
-            ID CONI: {state.club.source_club_id || '—'}
-          </p>
-          <p className="mt-1 text-xs text-emerald-800">
-            {[state.club.region, state.club.province, state.club.municipality]
+            {[state.club.regione, state.club.provincia, state.club.comune]
               .filter(Boolean)
               .join(' · ') || 'Località —'}
           </p>
@@ -112,7 +100,7 @@ function RegistryConiCard({ state }: { state: RegistryState }) {
     return (
       <section className="glass-panel border border-yellow-200 bg-yellow-50/80 p-5 md:p-6">
         <p className="text-xs font-bold uppercase tracking-wide text-yellow-700">
-          Registro CONI
+          Nostro Registro Nazionale
         </p>
         <h2 className="heading-h2 mt-1 mb-2">Verifica in corso</h2>
         <p className="mb-4 text-sm text-yellow-950">
@@ -120,12 +108,9 @@ function RegistryConiCard({ state }: { state: RegistryState }) {
         </p>
 
         <div className="rounded-xl border border-yellow-200 bg-white p-4 text-sm text-yellow-950">
-          <p className="font-semibold">{club?.name || 'Società in verifica'}</p>
+          <p className="font-semibold">{club?.denominazione || 'Società in verifica'}</p>
           <p className="mt-1 text-xs text-yellow-800">
-            ID CONI: {club?.source_club_id || '—'}
-          </p>
-          <p className="mt-1 text-xs text-yellow-800">
-            {[club?.region, club?.province, club?.municipality]
+            {[club?.regione, club?.provincia, club?.comune]
               .filter(Boolean)
               .join(' · ') || 'Località —'}
           </p>
@@ -138,7 +123,7 @@ function RegistryConiCard({ state }: { state: RegistryState }) {
     return (
       <section className="glass-panel border border-red-200 bg-red-50/80 p-5 md:p-6">
         <p className="text-xs font-bold uppercase tracking-wide text-red-700">
-          Registro CONI
+          Nostro Registro Nazionale
         </p>
         <h2 className="heading-h2 mt-1 mb-2">Stato non disponibile</h2>
         <p className="mb-4 text-sm text-red-950">{state.error}</p>
@@ -146,7 +131,7 @@ function RegistryConiCard({ state }: { state: RegistryState }) {
           href="/club/registry-claim"
           className="inline-flex rounded-xl bg-red-700 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600"
         >
-          Vai alla pagina Registro CONI
+          Vai alla pagina di rivendicazione
         </Link>
       </section>
     );
@@ -155,17 +140,17 @@ function RegistryConiCard({ state }: { state: RegistryState }) {
   return (
     <section className="glass-panel border border-emerald-100 bg-emerald-50/60 p-5 md:p-6">
       <p className="text-xs font-bold uppercase tracking-wide text-emerald-700">
-        Registro CONI
+        Nostro Registro Nazionale
       </p>
       <h2 className="heading-h2 mt-1 mb-2">Rivendica la tua società</h2>
       <p className="mb-4 text-sm text-emerald-950">
-        Cerca la tua ASD/SSD nel Registro CONI e collegala al profilo Club. Dopo l’approvazione admin, sul profilo pubblico apparirà il badge Registro CONI verificato.
+        Cerca la tua ASD/SSD nel nostro Registro Nazionale e collegala al profilo Club. Dopo l’approvazione admin, il tuo Club risulterà verificato.
       </p>
       <Link
         href="/club/registry-claim"
         className="inline-flex rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600"
       >
-        Rivendica società Registro CONI
+        Rivendica società
       </Link>
     </section>
   );
@@ -181,8 +166,6 @@ export default function ProfilePage() {
   });
 
   useEffect(() => {
-    if (!ENABLE_REGISTRY_CLAIM) return;
-
     let active = true;
 
     async function loadRegistryState() {
@@ -231,11 +214,11 @@ export default function ProfilePage() {
         }
 
         const { data: claimedClub, error: claimedClubError } = await supabase
-          .from('registry_clubs')
-          .select('id, source_club_id, name, region, province, municipality, claim_status, claimed_at')
-          .eq('claimed_by_profile_id', profileId)
-          .eq('claim_status', 'claimed')
-          .order('claimed_at', { ascending: false })
+          .from('registry_clubs_master')
+          .select('master_id, denominazione, regione, provincia, comune, is_claimed, claimed_profile_id, updated_at')
+          .eq('claimed_profile_id', profileId)
+          .eq('is_claimed', true)
+          .order('updated_at', { ascending: false })
           .limit(1)
           .maybeSingle();
 
@@ -254,24 +237,10 @@ export default function ProfilePage() {
 
         const { data: pendingClaim, error: pendingClaimError } = await supabase
           .from('registry_claims')
-          .select(
-            `
-            id,
-            claim_status,
-            submitted_at,
-            registry_club_id,
-            registry_clubs (
-              id,
-              source_club_id,
-              name,
-              region,
-              province,
-              municipality
-            )
-          `
-          )
+          .select('id, claim_status, submitted_at, registry_master_id')
           .eq('profile_id', profileId)
-          .in('claim_status', ['pending', 'in_review'])
+          .in('claim_status', ['pending', 'in_review', 'claim_pending'])
+          .not('registry_master_id', 'is', null)
           .order('submitted_at', { ascending: false })
           .limit(1)
           .maybeSingle();
@@ -281,10 +250,24 @@ export default function ProfilePage() {
         if (pendingClaim) {
           const claim = pendingClaim as RegistryClaim;
 
+          let club: RegistryClub | null = null;
+
+          if (claim.registry_master_id) {
+            const { data: masterClub, error: masterClubError } = await supabase
+              .from('registry_clubs_master')
+              .select('master_id, denominazione, regione, provincia, comune, is_claimed, claimed_profile_id, updated_at')
+              .eq('master_id', claim.registry_master_id)
+              .maybeSingle();
+
+            if (masterClubError) throw masterClubError;
+
+            club = (masterClub as RegistryClub | null) ?? null;
+          }
+
           if (!active) return;
           setRegistryState({
             status: 'pending',
-            club: normalizeRegistryClub(claim.registry_clubs),
+            club,
             claim,
             error: '',
           });
@@ -306,7 +289,7 @@ export default function ProfilePage() {
           status: 'error',
           club: null,
           claim: null,
-          error: 'Non è stato possibile recuperare lo stato Registro CONI.',
+          error: 'Non è stato possibile recuperare lo stato della verifica società.',
         });
       }
     }
@@ -332,7 +315,7 @@ export default function ProfilePage() {
         <ProfileEditForm />
       </section>
 
-      {ENABLE_REGISTRY_CLAIM ? <RegistryConiCard state={registryState} /> : null}
+      <RegistryNationalCard state={registryState} />
     </main>
   );
 }
