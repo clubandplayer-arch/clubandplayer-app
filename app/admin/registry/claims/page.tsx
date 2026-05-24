@@ -12,14 +12,16 @@ type Claim = {
   claim_status: string
   submitted_at: string
   profile_id: string
-  registry_club_id: string
+  registry_club_id: string | null
+  registry_master_id: string | null
   registry_clubs:
     | {
         name: string
-        source_club_id: string
+        source_club_id?: string | null
         region: string | null
         province: string | null
         municipality: string | null
+        sport_normalizzati?: string | null
       }
     | null
   profiles:
@@ -40,7 +42,7 @@ type RegistryDispute = {
   registry_clubs:
     | {
         name: string
-        source_club_id: string
+        source_club_id?: string | null
         region: string | null
         province: string | null
         municipality: string | null
@@ -90,6 +92,13 @@ function getErrorMessage(value: unknown, fallback: string) {
   }
 
   return fallback
+}
+
+function splitSports(value: string | null | undefined) {
+  return String(value || '')
+    .split('|')
+    .map((sport) => sport.trim())
+    .filter(Boolean)
 }
 
 export default function RegistryClaimsAdminPage() {
@@ -162,7 +171,7 @@ export default function RegistryClaimsAdminPage() {
       setClaims(
         (items as Claim[])
           .map(normalizeClaim)
-          .filter((claim) => ['pending', 'in_review'].includes(claim.claim_status))
+          .filter((claim) => ['pending', 'in_review', 'claim_pending'].includes(claim.claim_status))
       )
     } catch (err) {
       console.error(err)
@@ -446,11 +455,11 @@ export default function RegistryClaimsAdminPage() {
         </p>
 
         <h1 className="mt-2 text-3xl font-bold">
-          Registro CONI — richieste e reclami
+          Richieste verifica società
         </h1>
 
         <p className="mt-2 text-neutral-400">
-          Approva o rifiuta le richieste Club e gestisci i reclami sulle società già rivendicate.
+          Approva o rifiuta le richieste Club e gestisci eventuali reclami sulle società già rivendicate.
         </p>
 
         {error ? (
@@ -478,6 +487,7 @@ export default function RegistryClaimsAdminPage() {
             const club = claim.registry_clubs
             const profile = claim.profiles
             const saving = savingId === claim.id
+            const sports = splitSports(club?.sport_normalizzati)
 
             return (
               <article
@@ -495,10 +505,22 @@ export default function RegistryClaimsAdminPage() {
                     </h3>
 
                     <p className="mt-1 text-sm text-neutral-400">
-                      ID CONI: {club?.source_club_id || '-'} •{' '}
                       {club?.region || '-'} • {club?.province || '-'} •{' '}
                       {club?.municipality || '-'}
                     </p>
+
+                    {sports.length ? (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {sports.map((sport) => (
+                          <span
+                            key={sport}
+                            className="rounded-full border border-cyan-700 bg-cyan-950/50 px-3 py-1 text-xs text-cyan-100"
+                          >
+                            {sport}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
 
                     <div className="mt-4 rounded-xl border border-neutral-800 bg-neutral-950 p-4">
                       <p className="text-sm text-neutral-400">Profilo richiedente</p>
@@ -573,7 +595,6 @@ export default function RegistryClaimsAdminPage() {
                     </h3>
 
                     <p className="mt-1 text-sm text-orange-100/80">
-                      ID CONI: {club?.source_club_id || '-'} •{' '}
                       {club?.region || '-'} • {club?.province || '-'} •{' '}
                       {club?.municipality || '-'}
                     </p>

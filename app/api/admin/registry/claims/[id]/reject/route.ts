@@ -67,7 +67,7 @@ export async function POST(
 
     const { data: claim, error: claimError } = await supabaseAdmin
       .from("registry_claims")
-      .select("id, registry_club_id, claim_status")
+      .select("id, registry_club_id, registry_master_id, claim_status")
       .eq("id", claimId)
       .maybeSingle();
 
@@ -87,7 +87,7 @@ export async function POST(
       );
     }
 
-    if (!["pending", "in_review"].includes(claim.claim_status)) {
+    if (!["pending", "in_review", "claim_pending"].includes(claim.claim_status)) {
       return NextResponse.json(
         {
           ok: false,
@@ -108,7 +108,7 @@ export async function POST(
         updated_at: now,
       })
       .eq("id", claim.id)
-      .select("id, registry_club_id, claim_status, rejected_at")
+      .select("id, registry_club_id, registry_master_id, claim_status, rejected_at")
       .single();
 
     if (updateClaimError) {
@@ -116,24 +116,6 @@ export async function POST(
 
       return NextResponse.json(
         { ok: false, error: updateClaimError.message },
-        { status: 500 }
-      );
-    }
-
-    const { error: updateClubError } = await supabaseAdmin
-      .from("registry_clubs")
-      .update({
-        claim_status: "not_claimed",
-        updated_at: now,
-      })
-      .eq("id", claim.registry_club_id)
-      .neq("claim_status", "claimed");
-
-    if (updateClubError) {
-      console.error("REGISTRY CLAIM REJECT UPDATE CLUB ERROR", updateClubError);
-
-      return NextResponse.json(
-        { ok: false, error: updateClubError.message },
         { status: 500 }
       );
     }
