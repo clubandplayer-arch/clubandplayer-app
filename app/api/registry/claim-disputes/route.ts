@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
 
     if (!registryClubId && !registryMasterId) {
       return NextResponse.json(
-        { ok: false, error: "Società Registro CONI non valida." },
+        { ok: false, error: "Società Registro Nazionale non valida." },
         { status: 400 }
       );
     }
@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
 
       if (!registryMaster) {
         return NextResponse.json(
-          { ok: false, error: "Società Registro CONI non trovata." },
+          { ok: false, error: "Società Registro Nazionale non trovata." },
           { status: 404 }
         );
       }
@@ -156,7 +156,7 @@ export async function POST(req: NextRequest) {
 
       if (!registryClub) {
         return NextResponse.json(
-          { ok: false, error: "Società Registro CONI non trovata." },
+          { ok: false, error: "Società Registro Nazionale non trovata." },
           { status: 404 }
         );
       }

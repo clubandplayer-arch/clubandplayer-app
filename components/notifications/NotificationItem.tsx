@@ -40,24 +40,24 @@ function renderContent(notification: NotificationWithActor): { title: string; bo
       const clubName =
         typeof payload?.registry_club_name === 'string'
           ? payload.registry_club_name
-          : 'società Registro CONI';
+          : 'società Registro Nazionale';
 
       if (status === 'accepted') {
         return {
-          title: 'Reclamo Registro CONI accettato',
+          title: 'Reclamo Registro Nazionale accettato',
           body: `Il tuo reclamo per ${clubName} è stato accettato.`,
         };
       }
 
       if (status === 'rejected') {
         return {
-          title: 'Reclamo Registro CONI rifiutato',
+          title: 'Reclamo Registro Nazionale rifiutato',
           body: `Il tuo reclamo per ${clubName} è stato rifiutato.`,
         };
       }
 
       return {
-        title: 'Aggiornamento reclamo Registro CONI',
+        title: 'Aggiornamento reclamo Registro Nazionale',
         body: `Il tuo reclamo per ${clubName} è stato aggiornato.`,
       };
     }
@@ -66,10 +66,10 @@ function renderContent(notification: NotificationWithActor): { title: string; bo
       const clubName =
         typeof payload?.registry_club_name === 'string'
           ? payload.registry_club_name
-          : 'società Registro CONI';
+          : 'società Registro Nazionale';
 
       return {
-        title: 'Società Registro CONI trasferita',
+        title: 'Società Registro Nazionale trasferita',
         body: `La società ${clubName} è stata trasferita ad un altro profilo Club dopo revisione reclamo.`,
       };
     }
