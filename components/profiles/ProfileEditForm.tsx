@@ -3,7 +3,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 import AvatarUploader from '@/components/profiles/AvatarUploader';
 import ClubStadiumMapPicker from '@/components/profiles/ClubStadiumMapPicker';
@@ -132,11 +131,6 @@ type Profile = {
   notify_email_new_message: boolean;
 };
 
-const supabase = createSupabaseClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
 /* ---------- helpers ---------- */
 function pickData<T = any>(raw: any): T {
   if (raw && typeof raw === 'object' && 'data' in raw) return (raw as any).data as T;
@@ -264,6 +258,7 @@ export default function ProfileEditForm() {
   const [athleteRole, setAthleteRole] = useState('');
   const [pastExperiences, setPastExperiences] = useState<PastExperience[]>([{ ...EMPTY_PAST_EXPERIENCE }]);
   const [pastExperienceClubOptions, setPastExperienceClubOptions] = useState<string[]>([]);
+  const [pastExperienceClubQuery, setPastExperienceClubQuery] = useState('');
   const [notifyEmail, setNotifyEmail] = useState(true);
 
   // Social
@@ -760,31 +755,48 @@ export default function ProfileEditForm() {
   };
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('full_name')
-        .eq('account_type', 'club')
-        .not('full_name', 'is', null)
-        .order('full_name', { ascending: true, nullsFirst: false })
-        .limit(4);
+    const query = pastExperienceClubQuery.trim();
+    if (query.length < 2) {
+      setPastExperienceClubOptions([]);
+      return;
+    }
 
-      if (cancelled || error) return;
-      const options = Array.from(
-        new Set(
-          (data ?? [])
-            .map((row) => String((row as { full_name?: string | null }).full_name ?? '').trim())
-            .filter((name) => !!name),
-        ),
-      );
-      setPastExperienceClubOptions(options);
-    })();
+    const timer = setTimeout(() => {
+      void (async () => {
+        try {
+          const params = new URLSearchParams({ q: query });
+          const response = await fetch(`/api/registry/clubs/search?${params.toString()}`, {
+            cache: 'no-store',
+          });
+          const json = (await response.json().catch(() => ({}))) as {
+            ok?: boolean;
+            items?: Array<{ name?: string | null }>;
+          };
+          if (!response.ok || !json?.ok) {
+            setPastExperienceClubOptions([]);
+            return;
+          }
+          const options = Array.from(
+            new Set(
+              (json.items ?? [])
+                .map((item) => String(item?.name ?? '').trim())
+                .filter((name) => !!name),
+            ),
+          );
+          setPastExperienceClubOptions(options);
+        } catch {
+          setPastExperienceClubOptions([]);
+        }
+      })();
+    }, 250);
 
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    return () => clearTimeout(timer);
+  }, [pastExperienceClubQuery]);
+
+  const handlePastExperienceClubChange = (index: number, club: string) => {
+    updatePastExperience(index, { club });
+    setPastExperienceClubQuery(club);
+  };
 
   const removePastExperience = (index: number) => {
     setPastExperiences((prev) => {
@@ -1183,7 +1195,7 @@ export default function ProfileEditForm() {
                         <input
                           className="w-full min-w-0 rounded-lg border p-2"
                           value={experience.club}
-                          onChange={(e) => updatePastExperience(index, { club: e.target.value })}
+                          onChange={(e) => handlePastExperienceClubChange(index, e.target.value)}
                           placeholder="Es. ASD Carlentini"
                           list="past-experience-club-options"
                           autoComplete="off"
