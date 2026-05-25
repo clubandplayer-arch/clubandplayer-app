@@ -138,7 +138,7 @@ export async function POST(req: NextRequest) {
       .from("registry_claims")
       .select("id, claim_status, registry_master_id")
       .eq("profile_id", profile.id)
-      .in("claim_status", ["pending", "in_review", "approved"])
+      .in("claim_status", ["pending", "claim_pending", "in_review"])
       .limit(1)
       .maybeSingle();
 
