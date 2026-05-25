@@ -187,6 +187,32 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const { data: activeClaim, error: activeClaimError } = await supabaseAdmin
+      .from("registry_claims")
+      .select("id")
+      .eq("profile_id", profileId)
+      .in("claim_status", ["pending", "in_review", "approved"])
+      .limit(1)
+      .maybeSingle();
+
+    if (activeClaimError) {
+      return NextResponse.json(
+        { ok: false, error: activeClaimError.message },
+        { status: 500 }
+      );
+    }
+
+    if (activeClaim) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "Il tuo Club ha già una rivendicazione attiva. Non puoi aprire contestazioni finché la rivendicazione è in corso.",
+        },
+        { status: 409 }
+      );
+    }
+
     let existingQuery = supabaseAdmin
       .from("registry_claim_disputes")
       .select("id, status")
@@ -213,6 +239,33 @@ export async function POST(req: NextRequest) {
         alreadyExists: true,
         dispute: existing,
       });
+    }
+
+    const { data: activeDisputeForOtherClub, error: activeDisputeError } =
+      await supabaseAdmin
+        .from("registry_claim_disputes")
+        .select("id")
+        .eq("claimant_profile_id", profileId)
+        .eq("status", "pending")
+        .limit(1)
+        .maybeSingle();
+
+    if (activeDisputeError) {
+      return NextResponse.json(
+        { ok: false, error: activeDisputeError.message },
+        { status: 500 }
+      );
+    }
+
+    if (activeDisputeForOtherClub) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "Il tuo Club ha già una contestazione aperta. Puoi avere una sola contestazione alla volta.",
+        },
+        { status: 409 }
+      );
     }
 
     const now = new Date().toISOString();

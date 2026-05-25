@@ -119,19 +119,71 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { data: existingClaim } = await supabaseAdmin
+    const { data: existingClaimForClub } = await supabaseAdmin
       .from("registry_claims")
       .select("id, claim_status")
       .eq("registry_master_id", registryMasterId)
       .eq("profile_id", profile.id)
       .maybeSingle();
 
-    if (existingClaim) {
+    if (existingClaimForClub) {
       return NextResponse.json({
         ok: true,
-        claim: existingClaim,
+        claim: existingClaimForClub,
         already_exists: true,
       });
+    }
+
+    const { data: activeClaim, error: activeClaimError } = await supabaseAdmin
+      .from("registry_claims")
+      .select("id, claim_status, registry_master_id")
+      .eq("profile_id", profile.id)
+      .in("claim_status", ["pending", "in_review", "approved"])
+      .limit(1)
+      .maybeSingle();
+
+    if (activeClaimError) {
+      return NextResponse.json(
+        { ok: false, error: activeClaimError.message },
+        { status: 500 }
+      );
+    }
+
+    if (activeClaim) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "Il tuo Club ha già una rivendicazione attiva. Puoi avere una sola rivendicazione alla volta.",
+        },
+        { status: 409 }
+      );
+    }
+
+    const { data: activeDispute, error: activeDisputeError } = await supabaseAdmin
+      .from("registry_claim_disputes")
+      .select("id")
+      .eq("claimant_profile_id", profile.id)
+      .eq("status", "pending")
+      .limit(1)
+      .maybeSingle();
+
+    if (activeDisputeError) {
+      return NextResponse.json(
+        { ok: false, error: activeDisputeError.message },
+        { status: 500 }
+      );
+    }
+
+    if (activeDispute) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "Il tuo Club ha già una contestazione aperta. Non puoi aprire una rivendicazione finché la contestazione è in corso.",
+        },
+        { status: 409 }
+      );
     }
 
     const { data: claim, error: claimError } = await supabaseAdmin
