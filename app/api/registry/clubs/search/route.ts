@@ -20,6 +20,31 @@ type RegistryClaimRow = {
   claim_status: string | null;
 };
 
+const ALLOWED_SPORTS = [
+  "Calcio",
+  "Futsal",
+  "Volley",
+  "Basket",
+  "Pallanuoto",
+  "Pallamano",
+  "Rugby",
+  "Hockey su prato",
+  "Hockey su ghiaccio",
+  "Baseball",
+  "Softball",
+  "Lacrosse",
+  "Football americano",
+] as const;
+
+const ALLOWED_SPORTS_NORMALIZED = new Set(
+  ALLOWED_SPORTS.map((sport) => sport.toLowerCase())
+);
+
+const SPORT_ALIASES: Record<string, string> = {
+  pallavolo: "Volley",
+  hockey: "Hockey su prato",
+};
+
 function getSupabaseAdmin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -40,11 +65,24 @@ function clean(value: string | null) {
   return String(value || "").trim();
 }
 
+function normalizeSportName(value: string) {
+  const normalized = clean(value).toLowerCase();
+  return SPORT_ALIASES[normalized] ?? value;
+}
+
 function sportsToDisciplines(sportNormalizzati: string | null) {
+  const unique = new Set<string>();
   return clean(sportNormalizzati)
     .split("|")
-    .map((sport) => sport.trim())
+    .map((sport) => normalizeSportName(sport.trim()))
     .filter(Boolean)
+    .filter((sport) => ALLOWED_SPORTS_NORMALIZED.has(sport.toLowerCase()))
+    .filter((sport) => {
+      const key = sport.toLowerCase();
+      if (unique.has(key)) return false;
+      unique.add(key);
+      return true;
+    })
     .map((sport) => ({
       clubandplayer_sport: sport,
       discipline_raw: sport,
@@ -91,7 +129,15 @@ export async function GET(req: NextRequest) {
     }
 
     if (sport) {
-      query = query.ilike("sport_normalizzati", `%${sport}%`);
+      const normalizedSport = normalizeSportName(sport);
+      if (!ALLOWED_SPORTS_NORMALIZED.has(normalizedSport.toLowerCase())) {
+        return NextResponse.json({
+          ok: true,
+          count: 0,
+          items: [],
+        });
+      }
+      query = query.ilike("sport_normalizzati", `%${normalizedSport}%`);
     }
 
     const { data, error } = await query;
@@ -133,10 +179,14 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const items = rows.map((row) => {
+    const items = rows
+      .map((row) => {
       const masterId = row.master_id;
       const isClaimed = Boolean(row.is_claimed);
       const isPending = pendingMasterIds.has(masterId);
+      const disciplines = sportsToDisciplines(row.sport_normalizzati);
+
+      if (disciplines.length === 0) return null;
 
       return {
         id: masterId,
@@ -153,9 +203,10 @@ export async function GET(req: NextRequest) {
           : isPending
             ? "claim_pending"
             : "not_claimed",
-        registry_club_disciplines: sportsToDisciplines(row.sport_normalizzati),
+        registry_club_disciplines: disciplines,
       };
-    });
+    })
+      .filter(Boolean);
 
     return NextResponse.json({
       ok: true,

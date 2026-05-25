@@ -263,6 +263,8 @@ export default function ProfileEditForm() {
   const [athleteSport, setAthleteSport] = useState('Calcio');
   const [athleteRole, setAthleteRole] = useState('');
   const [pastExperiences, setPastExperiences] = useState<PastExperience[]>([{ ...EMPTY_PAST_EXPERIENCE }]);
+  const [pastExperienceClubOptions, setPastExperienceClubOptions] = useState<string[]>([]);
+  const [pastExperienceClubQuery, setPastExperienceClubQuery] = useState('');
   const [notifyEmail, setNotifyEmail] = useState(true);
 
   // Social
@@ -744,12 +746,6 @@ export default function ProfileEditForm() {
     }
   }
 
-  if (loading) return <div className="rounded-xl border p-4 text-sm text-gray-600">Caricamento profilo…</div>;
-  if (error)   return <div className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-800">{error}</div>;
-  if (!profile) return null;
-
-  const countryPreview = country ? [iso2ToFlagEmoji(country), countryName(country)].filter(Boolean).join(' ') : '';
-
   const updatePastExperience = (index: number, patch: Partial<PastExperience>) => {
     setPastExperiences((prev) =>
       prev.map((experience, currentIndex) => {
@@ -764,12 +760,62 @@ export default function ProfileEditForm() {
     setPastExperiences((prev) => [...prev, { ...EMPTY_PAST_EXPERIENCE }]);
   };
 
+  useEffect(() => {
+    const query = pastExperienceClubQuery.trim();
+    if (query.length < 2) {
+      setPastExperienceClubOptions([]);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      void (async () => {
+        try {
+          const params = new URLSearchParams({ q: query });
+          const response = await fetch(`/api/registry/clubs/search?${params.toString()}`, {
+            cache: 'no-store',
+          });
+          const json = (await response.json().catch(() => ({}))) as {
+            ok?: boolean;
+            items?: Array<{ name?: string | null }>;
+          };
+          if (!response.ok || !json?.ok) {
+            setPastExperienceClubOptions([]);
+            return;
+          }
+          const options = Array.from(
+            new Set(
+              (json.items ?? [])
+                .map((item) => String(item?.name ?? '').trim())
+                .filter((name) => !!name),
+            ),
+          );
+          setPastExperienceClubOptions(options);
+        } catch {
+          setPastExperienceClubOptions([]);
+        }
+      })();
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [pastExperienceClubQuery]);
+
+  const handlePastExperienceClubChange = (index: number, club: string) => {
+    updatePastExperience(index, { club });
+    setPastExperienceClubQuery(club);
+  };
+
   const removePastExperience = (index: number) => {
     setPastExperiences((prev) => {
       const next = prev.filter((_, currentIndex) => currentIndex !== index);
       return next.length > 0 ? next : [{ ...EMPTY_PAST_EXPERIENCE }];
     });
   };
+
+  if (loading) return <div className="rounded-xl border p-4 text-sm text-gray-600">Caricamento profilo…</div>;
+  if (error)   return <div className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-800">{error}</div>;
+  if (!profile) return null;
+
+  const countryPreview = country ? [iso2ToFlagEmoji(country), countryName(country)].filter(Boolean).join(' ') : '';
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
@@ -1155,8 +1201,10 @@ export default function ProfileEditForm() {
                         <input
                           className="w-full min-w-0 rounded-lg border p-2"
                           value={experience.club}
-                          onChange={(e) => updatePastExperience(index, { club: e.target.value })}
+                          onChange={(e) => handlePastExperienceClubChange(index, e.target.value)}
                           placeholder="Es. ASD Carlentini"
+                          list="past-experience-club-options"
+                          autoComplete="off"
                         />
                       </div>
 
@@ -1217,6 +1265,11 @@ export default function ProfileEditForm() {
                 + aggiungi esperienza
               </button>
             </div>
+            <datalist id="past-experience-club-options">
+              {pastExperienceClubOptions.map((clubName) => (
+                <option key={clubName} value={clubName} />
+              ))}
+            </datalist>
           </section>
         )}
 
