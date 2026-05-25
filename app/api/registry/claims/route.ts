@@ -138,7 +138,7 @@ export async function POST(req: NextRequest) {
       .from("registry_claims")
       .select("id, claim_status, registry_master_id")
       .eq("profile_id", profile.id)
-      .in("claim_status", ["pending", "claim_pending", "in_review"])
+      .in("claim_status", ["pending", "claim_pending", "in_review", "approved"])
       .limit(1)
       .maybeSingle();
 
@@ -154,7 +154,9 @@ export async function POST(req: NextRequest) {
         {
           ok: false,
           error:
-            "Il tuo Club ha già una rivendicazione attiva. Puoi avere una sola rivendicazione alla volta.",
+            activeClaim.claim_status === "approved"
+              ? "Il tuo Club ha già una società verificata. Non puoi rivendicare altre società."
+              : "Il tuo Club ha già una rivendicazione attiva. Puoi avere una sola rivendicazione alla volta.",
         },
         { status: 409 }
       );
