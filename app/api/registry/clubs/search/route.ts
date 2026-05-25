@@ -13,6 +13,7 @@ type RegistryMasterRow = {
   comune: string | null;
   sport_normalizzati: string | null;
   is_claimed: boolean | null;
+  claimed_profile_id: string | null;
 };
 
 type RegistryClaimRow = {
@@ -110,7 +111,8 @@ export async function GET(req: NextRequest) {
         provincia,
         comune,
         sport_normalizzati,
-        is_claimed
+        is_claimed,
+        claimed_profile_id
       `
       )
       .order("denominazione", { ascending: true })
@@ -203,6 +205,7 @@ export async function GET(req: NextRequest) {
           : isPending
             ? "claim_pending"
             : "not_claimed",
+        claimed_by_profile_id: row.claimed_profile_id ?? null,
         registry_club_disciplines: disciplines,
       };
     })
