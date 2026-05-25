@@ -255,9 +255,6 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
             <div className="rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm text-emerald-950">
               <p className="font-semibold">{registryClub.name || displayName}</p>
               <p className="mt-1 text-xs text-emerald-800">
-                ID Nazionale: {registryClub.source_club_id || '—'}
-              </p>
-              <p className="mt-1 text-xs text-emerald-800">
                 {[registryClub.region, registryClub.province, registryClub.municipality]
                   .filter(Boolean)
                   .join(' · ') || 'Località —'}
