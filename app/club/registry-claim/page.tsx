@@ -204,6 +204,15 @@ export default function ClubRegistryClaimPage() {
     setClaimingId(registryMasterId);
     setMessage('');
 
+    if (
+      ownershipSnapshot.hasApprovedClaim &&
+      ownershipSnapshot.approvedRegistryMasterId !== registryMasterId
+    ) {
+      setMessage('Il tuo Club ha già una società verificata. Non puoi rivendicare altre società.');
+      setClaimingId('');
+      return;
+    }
+
     try {
       const supabase = getSupabaseBrowserClient();
 
@@ -233,6 +242,20 @@ export default function ClubRegistryClaimPage() {
 
       if (!json.ok) {
         throw new Error(json.error || 'Errore richiesta');
+      }
+
+      if (json.already_exists) {
+        const status = String(json.claim?.claim_status || '').toLowerCase();
+
+        if (status === 'approved') {
+          setMessage('Il tuo Club ha già una società verificata. Non puoi rivendicare altre società.');
+          return;
+        }
+
+        if (status === 'pending' || status === 'in_review' || status === 'claim_pending') {
+          setMessage('Hai già una rivendicazione in corso per questa società.');
+          return;
+        }
       }
 
       setMessage('Richiesta inviata. Il tuo Club è ora in verifica.');
