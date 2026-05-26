@@ -44,14 +44,11 @@ type ClubProfileRow = {
 };
 
 type RegistryClubClaim = {
-  id: string;
-  source: string | null;
-  source_club_id: string | null;
-  name: string | null;
-  fiscal_code: string | null;
-  region: string | null;
-  province: string | null;
-  municipality: string | null;
+  master_id: string;
+  denominazione: string | null;
+  regione: string | null;
+  provincia: string | null;
+  comune: string | null;
   claimed_at: string | null;
 };
 
@@ -149,10 +146,10 @@ async function loadRegistryClubClaim(profileId: string): Promise<RegistryClubCla
   const supabase = adminClient ?? (await getSupabaseServerClient());
 
   const { data, error } = await supabase
-    .from('registry_clubs')
-    .select('id, source, source_club_id, name, fiscal_code, region, province, municipality, claimed_at')
+    .from('registry_clubs_master')
+    .select('master_id, denominazione, regione, provincia, comune, claimed_at')
     .eq('claimed_by_profile_id', profileId)
-    .eq('claim_status', 'claimed')
+    .eq('is_claimed', true)
     .order('claimed_at', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -253,9 +250,9 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
             </div>
 
             <div className="rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm text-emerald-950">
-              <p className="font-semibold">{registryClub.name || displayName}</p>
+              <p className="font-semibold">{registryClub.denominazione || displayName}</p>
               <p className="mt-1 text-xs text-emerald-800">
-                {[registryClub.region, registryClub.province, registryClub.municipality]
+                {[registryClub.regione, registryClub.provincia, registryClub.comune]
                   .filter(Boolean)
                   .join(' · ') || 'Località —'}
               </p>
