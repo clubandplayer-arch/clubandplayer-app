@@ -1,9 +1,9 @@
-# Audit tecnico Web → Mobile: Registry / Claim nazionale (Club&Player)
+# Audit forense Web → Mobile: Registry / Claim nazionale (Club&Player)
 
-Data audit: **2026-05-25 (UTC)**  
+Data audit: **2026-05-26 (UTC)**  
 Target: handoff per Codex Mobile con accesso **read-only** alla repo web.
 
-> Obiettivo: permettere alla repo mobile di replicare il comportamento web **1:1**, in più PR, senza introdurre API nuove dove quelle web già esistono.
+> Obiettivo: permettere alla repo mobile di replicare il comportamento web **1:1** (claim + dispute + visibilità profilo), senza introdurre API nuove dove quelle web già esistono.
 
 ---
 
@@ -13,50 +13,58 @@ Target: handoff per Codex Mobile con accesso **read-only** alla repo web.
 - `#461 Feature/registry figc import`
   - crea i pilastri: ricerca club, API claim, pagina club claim.
 - `#465` → `#471`
-  - introduce la gestione admin: lista claim + approve/reject.
+  - introduce gestione admin: lista claim + approve/reject.
 - `#473` → `#474`
-  - stabilizza stati ownership e riflesso dello stato claim lato profilo club.
+  - stabilizza stati ownership e riflesso claim lato profilo club.
 
 ### Fase 2 — passaggio a Registry nazionale V2 (master)
 - `#484 Feature/registry master v2`
-  - migrazione al dataset master nazionale (`registry_clubs_master`) con chiave testuale `registry_master_id` (`reg_...`).
-  - aggiorna API user/admin + UI claim + script import e migrazioni DB.
+  - migrazione a `registry_clubs_master` con chiave testuale `registry_master_id` (`reg_...`).
+  - update API user/admin, UI claim, script import e migrazioni DB.
 
-### Fase 3 — introduzione dispute (contesta rivendicazione)
+### Fase 3 — introduzione dispute
 - `#475 Add registry claim dispute flow`
-  - aggiunge API user/admin dispute e integrazione in UI admin claim.
+  - API user/admin dispute + integrazione UI admin claim.
 - `#476` → `#480`
-  - fix reviewer, notifiche esito dispute, trasferimento ownership se dispute accettata.
+  - fix reviewer, notifiche esito dispute, transfer ownership su dispute accepted.
 - `#486`
-  - UX claim page aggiornata per mostrare “Società già rivendicata” + CTA disputa.
+  - UX claim page: stato “Società già rivendicata” + CTA disputa.
 
 ### Fase 4 — hardening master_id su dispute
 - `#487`, `#488`, `#489`, `#490`
-  - allineamento dispute/admin a `registry_master_id` per evitare passaggio di ID `reg_...` in campi UUID.
+  - allineamento dispute/admin a `registry_master_id` (stop passaggio ID `reg_...` in campi UUID).
 
-### Fase 5 — pulizia testi pubblici (no CONI in UI)
+### Fase 5 — pulizia testi pubblici
 - `#491 Replace CONI labels...`
-  - sostituzione etichette pubbliche con “Registro Nazionale”/“ID Nazionale” in UI/notification/API messages.
+  - sostituisce etichette pubbliche con “Registro Nazionale”/“ID Nazionale”.
 
-### Fase 6 — profilo Club e visibilità card
+### Fase 6 — profilo Club e badge pubblico
 - `#485`
   - card Registro Nazionale ripristinata nel profilo Club dashboard.
 - `#482`
-  - badge pubblico nel profilo `/clubs/[id]` dietro flag `NEXT_PUBLIC_ENABLE_REGISTRY_CLAIM`.
+  - badge pubblico `/clubs/[id]` dietro flag `NEXT_PUBLIC_ENABLE_REGISTRY_CLAIM`.
+
+### Fase 7 — hardening finale stato claim (stato attuale)
+- `#494`
+  - fix ownership detection per club già claimati.
+- `#495`
+  - nasconde **ID Nazionale** nella pagina pubblica quando il club è claimato.
+- `#496`
+  - fix controlli su claim attivo (`pending|in_review`) per evitare stati UI incoerenti.
+- `#497`
+  - blocca claim aggiuntivi da parte dello stesso profilo dopo verifica club già completata.
+- `#498`
+  - allinea stato claim tra pagina pubblica club e profilo-edit (consistenza cross-view).
 
 ---
 
 ## 2) File obbligatori auditati e ruolo
 
 ### Migrazioni + import
-1. `supabase/migrations/202605240001_registry_master_v2.sql`  
-   Crea tabella master nazionale, indici, trigger `updated_at`, RLS safe read-only pubblico.
-2. `supabase/migrations/202605240002_registry_claims_master_id.sql`  
-   Aggiunge `registry_master_id` a `registry_claims` (+ index + unique per profilo).
-3. `scripts/import-registry-master-v2.mjs`  
-   Import CSV in chunk (upsert su `master_id`).
-4. `imports/registry/registry_clubs_master_geo.csv`  
-   Dataset master sorgente (contiene anche colonne non esponibili al pubblico).
+1. `supabase/migrations/202605240001_registry_master_v2.sql`
+2. `supabase/migrations/202605240002_registry_claims_master_id.sql`
+3. `scripts/import-registry-master-v2.mjs`
+4. `imports/registry/registry_clubs_master_geo.csv`
 
 ### API user flow
 5. `app/api/registry/clubs/search/route.ts`
@@ -80,46 +88,40 @@ Target: handoff per Codex Mobile con accesso **read-only** alla repo web.
 
 ## 3) Comportamento reale da replicare 1:1 (mobile)
 
-## 3.1 Ricerca club
+### 3.1 Ricerca club
 - Endpoint: `GET /api/registry/clubs/search?q=<query>[&region=&province=&sport=]`
-- Fonte: `registry_clubs_master`.
-- Risposta item contiene almeno:
-  - `registry_master_id` / `master_id`
-  - nome (`name`), località (`region`,`province`,`municipality`)
-  - discipline (`registry_club_disciplines`)
-  - `claim_status` derivato:
-    - `claimed` se `is_claimed=true`
-    - `claim_pending` se esiste claim `pending|in_review`
-    - `not_claimed` altrimenti
+- Fonte: `registry_clubs_master`
+- `claim_status` derivato:
+  - `claimed` se `is_claimed=true`
+  - `claim_pending` se esiste claim `pending|in_review`
+  - `not_claimed` altrimenti
+- Requisito stato attuale: stato coerente tra tutte le viste che consumano la stessa entità club (fix #498).
 
-## 3.2 Claim “Sono io questo Club”
+### 3.2 Claim “Sono io questo Club”
 - Endpoint: `POST /api/registry/claims`
-- Auth: bearer token obbligatorio.
+- Auth bearer obbligatoria.
 - Vincoli server:
-  1. utente autenticato valido,
+  1. utente autenticato,
   2. profilo esistente,
-  3. `account_type/type` deve essere `club`,
+  3. `account_type/type = club`,
   4. `registry_master_id` valido,
-  5. club non già `is_claimed=true`.
-- Inserimento claim:
-  - `registry_master_id` (testuale)
-  - `registry_club_id: null`
-  - `claim_status: "pending"`
-  - `claim_method: "self_service"`
+  5. club non già `is_claimed=true`,
+  6. nessun claim aggiuntivo ammesso per profilo già verificato (hardening #497),
+  7. gestione corretta claim attivi (`pending|in_review`) (#496).
 
-## 3.3 Dispute “Contesta rivendicazione”
+### 3.3 Dispute “Contesta rivendicazione”
 - Endpoint: `POST /api/registry/claim-disputes`
-- Trigger UX: club già `claimed` da altro profilo.
-- Payload richiesto: `registry_master_id`, `reason`.
-- Server: valida id master, ownership corrente, anti-duplicati dispute pendenti.
+- Trigger UX: club `claimed` da altro profilo.
+- Payload: `registry_master_id`, `reason`.
+- Server: valida master id, ownership corrente, anti-duplicati dispute pendenti.
 
-## 3.4 Decisione admin dispute
-- Endpoint admin: `PATCH /api/admin/registry/claim-disputes` (oltre a `GET` lista)
-- Se `accepted`:
+### 3.4 Decisione admin dispute
+- Endpoint: `PATCH /api/admin/registry/claim-disputes` (+ `GET` lista)
+- `accepted`:
   - transfer ownership su `registry_clubs_master.claimed_profile_id`
   - mantiene `is_claimed=true`
-  - notifica reclamante + precedente owner
-- Se `rejected`:
+  - notifica reclamante + owner precedente
+- `rejected`:
   - nessun transfer
   - notifica reclamante
 
@@ -128,20 +130,20 @@ Target: handoff per Codex Mobile con accesso **read-only** alla repo web.
 ## 4) Schema DB essenziale (attuale)
 
 ### 4.1 `registry_clubs_master`
-- chiave funzionale: `master_id text unique` (formato tipico `reg_...`)
-- dati pubblici usati in UI: `denominazione`, `regione`, `provincia`, `comune`, `sport_normalizzati`
+- chiave funzionale: `master_id text unique` (`reg_...`)
+- dati UI: denominazione, regione, provincia, comune, sport normalizzati
 - ownership: `is_claimed boolean`, `claimed_profile_id uuid`
-- colonne sensibili/tecniche presenti ma da non esporre: `codice_fiscale`, `organisms`, `source_count`
+- colonne sensibili/tecniche da non esporre: `codice_fiscale`, `organisms`, `source_count` (+ metadati sorgente)
 
 ### 4.2 `registry_claims`
-- nuova colonna: `registry_master_id text`
-- legacy: `registry_club_id` ancora presente per compatibilità
-- stato workflow: `claim_status` (`pending`, `in_review`, `approved`, `rejected`, ...)
+- colonna moderna: `registry_master_id text`
+- legacy compat: `registry_club_id` resta presente
+- workflow: `claim_status` (`pending`, `in_review`, `approved`, `rejected`, ...)
 
 ### 4.3 `registry_claim_disputes`
-- supporta `registry_master_id`
-- legacy `registry_club_id` ancora presente
-- campi stato: `status` (`pending|accepted|rejected`), `reason`, `admin_notes`, `reviewed_at`
+- supporto `registry_master_id`
+- legacy `registry_club_id` presente
+- stato: `pending|accepted|rejected`, con `reason/admin_notes/reviewed_at`
 
 ---
 
@@ -152,7 +154,7 @@ Target: handoff per Codex Mobile con accesso **read-only** alla repo web.
 2. `POST /api/registry/claims`
 3. `POST /api/registry/claim-disputes`
 
-### Admin (solo se richiesto in futuro)
+### Admin (solo se richiesto)
 4. `GET /api/admin/registry/claims`
 5. `POST /api/admin/registry/claims/[id]/approve`
 6. `POST /api/admin/registry/claims/[id]/reject`
@@ -161,188 +163,115 @@ Target: handoff per Codex Mobile con accesso **read-only** alla repo web.
 
 ---
 
-## 6) Payload minimi reali (ready-to-use mobile)
+## 6) Mappa stati UI (web → mobile)
 
-### 6.1 Search
-`GET /api/registry/clubs/search?q=marconi`
-
-Response (shape tipica):
-```json
-{
-  "ok": true,
-  "count": 1,
-  "items": [
-    {
-      "registry_master_id": "reg_xxx",
-      "name": "ASD ...",
-      "region": "Lazio",
-      "province": "RM",
-      "municipality": "Roma",
-      "claim_status": "not_claimed",
-      "registry_club_disciplines": [
-        { "clubandplayer_sport": "Calcio", "discipline_raw": "Calcio" }
-      ]
-    }
-  ]
-}
-```
-
-### 6.2 Claim
-`POST /api/registry/claims`
-```json
-{ "registry_master_id": "reg_xxx" }
-```
-
-Response OK:
-```json
-{
-  "ok": true,
-  "claim": {
-    "id": "uuid",
-    "claim_status": "pending",
-    "submitted_at": "...",
-    "registry_master_id": "reg_xxx"
-  }
-}
-```
-
-Error principali:
-- `401` unauthorized/invalid session
-- `403` profilo non Club
-- `404` società non trovata
-- `409` società già rivendicata
-
-### 6.3 Dispute
-`POST /api/registry/claim-disputes`
-```json
-{
-  "registry_master_id": "reg_xxx",
-  "reason": "Testo motivazione"
-}
-```
-
-Response OK: `ok: true` con record disputa creato (shape variabile), oppure risposta di duplicate guard se già pendente.
-
----
-
-## 7) Mappa stati UI (web → mobile)
-
-### 7.1 Stati card ricerca
-- `not_claimed` → mostra bottone **“Sono io questo Club”**
-- `claim_pending` (deriva da claim `pending|in_review`) → box **“Verifica in corso”**
+### 6.1 Stati card ricerca
+- `not_claimed` → bottone **“Sono io questo Club”**
+- `claim_pending` → box **“Verifica in corso”**
 - `claimed`:
-  - se `claimed_by_me` → box **“Club verificato”**
-  - se `claimed_by_other` → box **“Società già rivendicata”** + CTA disputa
+  - `claimed_by_me` → **“Club verificato”**
+  - `claimed_by_other` → **“Società già rivendicata”** + CTA disputa
 
-### 7.2 Stati claim/dispute da documentare lato mobile
+### 6.2 Stati claim/dispute da documentare mobile
 - Claim: `pending`, `in_review`, `approved`, `rejected`, `claimed`
 - Dispute: `pending`, `accepted`, `rejected`
 
----
-
-## 8) Privacy: cosa NON esporre mai in UI mobile
-
-Non mostrare mai pubblicamente:
-- riferimenti testuali a **CONI** o “Registro Sport e Salute”
-- `codice_fiscale`
-- rappresentante legale
-- `organisms`
-- `source_count`
-- `source_ids`
-- codice affiliazione
-- qualsiasi metadato non necessario al claim UX
-
-Nota: possono rimanere occorrenze CONI in file dati/import storici in repo web, ma non devono comparire in UI/runtime utente.
+### 6.3 Vincoli di visibilità (nuovo hardening)
+- Profilo pubblico club: non mostrare ID Nazionale se il club è claimato (#495).
+- Parità stato tra viste pubbliche e viste profilo/edit obbligatoria (#498).
 
 ---
 
-## 9) Flag e comportamento profilo Club
+## 7) Privacy & contenuti vietati in UI mobile
 
-- In `app/(dashboard)/clubs/[id]/page.tsx` il rendering pubblico del badge claim è condizionato da:
-  - `NEXT_PUBLIC_ENABLE_REGISTRY_CLAIM === 'true'`
-- In `app/(dashboard)/club/profile/page.tsx` la card dashboard club legge lo stato reale claim su master table.
+Non esporre mai pubblicamente:
+- riferimenti CONI / Registro Sport e Salute,
+- `codice_fiscale`,
+- rappresentante legale,
+- `organisms`, `source_count`, `source_ids`,
+- codici affiliazione o metadati tecnici di deduplica/import.
 
-Indicazione mobile:
-- replicare la logica business degli stati claim,
-- **non** dipendere da flag web-only se non previsto anche in mobile env.
-
----
-
-## 10) Checklist parity mobile (operativa)
-
-1. Implementare API client con bearer token identico al web.
-2. Bloccare claim/dispute per account non `club`.
-3. Implementare search e mapping card (nome/località/sport/stato).
-4. Implementare CTA condizionali in base a `claim_status`.
-5. Implementare form disputa con validazione motivazione.
-6. Gestire in UI gli HTTP status principali (`401/403/404/409/500`).
-7. Mostrare testi coerenti con web (“Registro Nazionale”, no CONI).
-8. Non esporre campi sensibili del master dataset.
-9. Verificare transizioni stato dopo claim/dispute con refresh query.
-10. Aggiungere telemetria/error logging lato mobile per mismatch stato.
+Nota: eventuali stringhe storiche possono restare nei dati legacy in repo, ma non in runtime UI/API pubblica.
 
 ---
 
-## 11) Edge cases e rischi
+## 8) Checklist parity mobile (operativa aggiornata)
 
-1. **Race condition claim**: due club inviano claim quasi simultaneo.
-2. **Doppia disputa**: utente invia più volte; affidarsi a duplicate guard backend.
-3. **Stati ibridi legacy**: presenza di `registry_club_id` legacy e `registry_master_id` moderno.
-4. **Mismatch claimed state**: `is_claimed` true ma lista claim non aggiornata in cache client.
-5. **Token scaduto**: search può funzionare, claim/dispute no (401).
+1. API client con bearer token come web.
+2. Guard server/UI per account non `club`.
+3. Search + mapping card (nome/località/sport/stato).
+4. CTA condizionali da `claim_status` + ownership.
+5. Form disputa con validazione motivazione.
+6. Gestione HTTP status (`401/403/404/409/500`).
+7. Testi allineati: “Registro Nazionale”, no CONI.
+8. Nessuna esposizione campi sensibili.
+9. Refresh stato post claim/dispute.
+10. Prevenzione claim multipli profilo già verificato.
+11. Coerenza stato tra public/profile/edit.
+12. Regola visibilità ID Nazionale su profilo pubblico claimato.
 
 ---
 
-## 12) Sequenza micro-PR consigliata per Codex Mobile
+## 9) Edge cases e rischi
+
+1. Race claim simultanei sullo stesso club.
+2. Doppia disputa (affidarsi a duplicate guard backend).
+3. Stati ibridi legacy (`registry_club_id`) + moderni (`registry_master_id`).
+4. Cache client stale vs stato ownership attuale.
+5. Token scaduto (search ok, mutate 401).
+6. Stato pending/in_review non uniformato tra viste (regressione coperta da #496/#498).
+
+---
+
+## 10) Sequenza micro-PR consigliata per Codex Mobile
 
 ### PR1 — Networking + tipi
-- aggiunta client endpoint search/claims/disputes
-- modelli dati e mapping status
+- client endpoint search/claim/dispute
+- mapping stato claim centralizzato
 
-### PR2 — Schermata claim base
-- UI ricerca + lista card + stato not_claimed/claim_pending/claimed
+### PR2 — Schermata claim
+- ricerca + card + stati base
 
 ### PR3 — Azione claim
-- submit claim + gestione errori/feedback
+- submit claim + blocchi server-side + feedback errori
 
 ### PR4 — Dispute UX
-- CTA “Contesta rivendicazione” + modal/textarea + submit
+- CTA disputa + modal + submit
 
 ### PR5 — Hardening parity
-- controlli ruolo club, testi finali, privacy safe fields, logging
+- blocco claim multipli profilo verificato
+- coerenza stati cross-view
+- policy visibilità ID Nazionale
 
 ### PR6 — QA finale
-- test manuale e fix edge cases fino a parità 1:1
+- regressioni su stati claim/dispute + privacy
 
 ---
 
-## 13) Cosa NON replicare su mobile
+## 11) Cosa NON replicare su mobile
 
-- Dashboard/admin web completa (se non richiesta).
-- Colonne sensibili/tecniche usate solo per import/deduplica.
-- Flussi legacy basati solo su `registry_club_id` ignorando `registry_master_id`.
-- Qualsiasi testo pubblico CONI/Registro Sport e Salute.
-
----
-
-## 14) Test manuali obbligatori (prima release mobile)
-
-1. Club cerca società non claimata → claim OK → stato “Verifica in corso”.
-2. Club già proprietario → stato “Club verificato”.
-3. Club diverso su società claimata → “Società già rivendicata” + disputa invio OK.
-4. Player/Fan/Staff tenta claim/dispute → errore 403.
-5. Token mancante/scaduto → 401 su endpoint protetti.
-6. Search con query/region/province/sport produce risultati coerenti.
-7. Nessun campo sensibile mostrato in card/dettaglio/notifiche.
-8. Nessuna etichetta CONI visibile in UI notifiche comprese.
+- Admin dashboard completa (se non richiesta).
+- Colonne sensibili/tecniche import.
+- Flussi esclusivamente legacy basati su `registry_club_id`.
+- Testi pubblici CONI/Registro Sport e Salute.
 
 ---
 
-## 15) Conclusione
+## 12) Test manuali obbligatori (release mobile)
 
-La repo web espone già il set API necessario per parity mobile 1:1 del flusso utente Registry Claim/Dispute.  
-La replica corretta richiede soprattutto:
-- uso rigoroso di `registry_master_id`,
-- gestione fedele degli stati UI,
-- rispetto permessi account type `club`,
-- igiene privacy sui dati mostrati.
+1. Club cerca società non claimata → claim OK → “Verifica in corso”.
+2. Club già proprietario → “Club verificato”.
+3. Club diverso su società claimata → disputa invio OK.
+4. Player/Fan/Staff su claim/dispute → `403`.
+5. Token mancante/scaduto → `401` mutate.
+6. Search filtrata produce risultati coerenti.
+7. Nessun campo sensibile in UI/notifiche.
+8. Nessuna etichetta CONI visibile.
+9. Profilo già verificato non può aprire nuovi claim.
+10. Club claimato: ID Nazionale non esposto in pagina pubblica.
+
+---
+
+## 13) Conclusione forense
+
+Lo stato attuale web (fino ai fix `#494 → #498`) è stabile per parity mobile 1:1 sul flusso Registry Claim/Dispute. Requisiti critici: uso rigoroso di `registry_master_id`, controllo ruolo `club`, hardening su claim attivi/multipli, coerenza stati tra viste, e rispetto integrale privacy + policy no-CONI.
