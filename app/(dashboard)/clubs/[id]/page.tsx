@@ -49,7 +49,7 @@ type RegistryClubClaim = {
   regione: string | null;
   provincia: string | null;
   comune: string | null;
-  claimed_at: string | null;
+  updated_at: string | null;
 };
 
 type GenericStringError = { message: string };
@@ -147,10 +147,10 @@ async function loadRegistryClubClaim(profileId: string): Promise<RegistryClubCla
 
   const { data, error } = await supabase
     .from('registry_clubs_master')
-    .select('master_id, denominazione, regione, provincia, comune, claimed_at')
-    .eq('claimed_by_profile_id', profileId)
+    .select('master_id, denominazione, regione, provincia, comune, updated_at')
+    .eq('claimed_profile_id', profileId)
     .eq('is_claimed', true)
-    .order('claimed_at', { ascending: false })
+    .order('updated_at', { ascending: false })
     .limit(1)
     .maybeSingle();
 
