@@ -36,6 +36,11 @@ type RegistryClaimRow = {
   claim_status: string;
 };
 
+type OwnershipSnapshot = {
+  hasApprovedClaim: boolean;
+  approvedRegistryMasterId: string | null;
+};
+
 async function getCurrentClubProfileId() {
   const supabase = getSupabaseBrowserClient();
 
@@ -86,6 +91,10 @@ export default function ClubRegistryClaimPage() {
   const [results, setResults] = useState<RegistryClub[]>([]);
   const [message, setMessage] = useState('');
   const [currentClubProfileId, setCurrentClubProfileId] = useState<string | null>(null);
+  const [ownershipSnapshot, setOwnershipSnapshot] = useState<OwnershipSnapshot>({
+    hasApprovedClaim: false,
+    approvedRegistryMasterId: null,
+  });
 
   async function enrichResultsWithOwnership(items: RegistryClub[]) {
     const supabase = getSupabaseBrowserClient();
@@ -97,6 +106,25 @@ export default function ClubRegistryClaimPage() {
     const masterIds = normalized.map((club) => getRegistryMasterId(club)).filter(Boolean);
 
     let myClaimByMasterId = new Map<string, RegistryClaimRow>();
+    let hasApprovedClaim = false;
+    let approvedRegistryMasterId: string | null = null;
+
+    if (profileId) {
+      const { data: approvedClaimRows, error: approvedClaimError } = await supabase
+        .from('registry_claims')
+        .select('registry_master_id, claim_status')
+        .eq('profile_id', profileId)
+        .eq('claim_status', 'approved')
+        .order('submitted_at', { ascending: false })
+        .limit(1);
+
+      if (approvedClaimError) throw approvedClaimError;
+
+      const approvedClaim = (approvedClaimRows ?? [])[0] as { registry_master_id?: string | null } | undefined;
+
+      hasApprovedClaim = !!approvedClaim;
+      approvedRegistryMasterId = approvedClaim?.registry_master_id ? String(approvedClaim.registry_master_id) : null;
+    }
 
     if (profileId && masterIds.length) {
       const { data: claimRows, error: claimError } = await supabase
@@ -114,6 +142,11 @@ export default function ClubRegistryClaimPage() {
           .map((row) => [String(row.registry_master_id), row])
       );
     }
+
+    setOwnershipSnapshot({
+      hasApprovedClaim,
+      approvedRegistryMasterId,
+    });
 
     return normalized.map((club) => {
       const registryMasterId = getRegistryMasterId(club);
@@ -171,6 +204,15 @@ export default function ClubRegistryClaimPage() {
     setClaimingId(registryMasterId);
     setMessage('');
 
+    if (
+      ownershipSnapshot.hasApprovedClaim &&
+      ownershipSnapshot.approvedRegistryMasterId !== registryMasterId
+    ) {
+      setMessage('Il tuo Club ha già una società verificata. Non puoi rivendicare altre società.');
+      setClaimingId('');
+      return;
+    }
+
     try {
       const supabase = getSupabaseBrowserClient();
 
@@ -200,6 +242,20 @@ export default function ClubRegistryClaimPage() {
 
       if (!json.ok) {
         throw new Error(json.error || 'Errore richiesta');
+      }
+
+      if (json.already_exists) {
+        const status = String(json.claim?.claim_status || '').toLowerCase();
+
+        if (status === 'approved') {
+          setMessage('Il tuo Club ha già una società verificata. Non puoi rivendicare altre società.');
+          return;
+        }
+
+        if (status === 'pending' || status === 'in_review' || status === 'claim_pending') {
+          setMessage('Hai già una rivendicazione in corso per questa società.');
+          return;
+        }
       }
 
       setMessage('Richiesta inviata. Il tuo Club è ora in verifica.');
@@ -330,6 +386,9 @@ export default function ClubRegistryClaimPage() {
               club.claimed_by_profile_id === currentClubProfileId;
             const isClaimedByOther = isClaimed && !isClaimedByMe;
             const isDisputeOpen = disputingId === registryMasterId;
+            const shouldBlockNewClaim =
+              ownershipSnapshot.hasApprovedClaim &&
+              ownershipSnapshot.approvedRegistryMasterId !== registryMasterId;
 
             return (
               <article
@@ -415,6 +474,13 @@ export default function ClubRegistryClaimPage() {
                           Contesta rivendicazione
                         </button>
                       )}
+                    </div>
+                  ) : shouldBlockNewClaim ? (
+                    <div className="rounded-xl border border-green-700 bg-green-950/50 px-4 py-3 text-sm text-green-100 md:max-w-72">
+                      <p className="font-semibold">Club già verificato</p>
+                      <p className="mt-1 text-xs text-green-200/80">
+                        Hai già una società verificata sul tuo profilo. Non puoi rivendicare altre società.
+                      </p>
                     </div>
                   ) : isPending ? (
                     <div className="rounded-xl border border-yellow-700 bg-yellow-950/50 px-4 py-3 text-sm text-yellow-100 md:max-w-64">
