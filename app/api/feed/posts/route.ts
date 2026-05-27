@@ -25,7 +25,7 @@ const MAX_CHARS = 500;
 const RATE_LIMIT_MS = 5_000;
 const LAST_POST_TS_COOKIE = 'feed_last_post_ts';
 
-type Role = 'club' | 'athlete' | 'fan';
+type Role = 'club' | 'athlete' | 'staff' | 'fan';
 type PostKind = 'normal' | 'event';
 type DbPostKind = 'normal' | 'event';
 type PostMediaType = 'image' | 'video';
@@ -45,6 +45,7 @@ function normRole(v: unknown): Role | null {
   const s = typeof v === 'string' ? v.trim().toLowerCase() : '';
   if (s === 'club') return 'club';
   if (s === 'athlete') return 'athlete';
+  if (s === 'staff') return 'staff';
   return null;
 }
 
@@ -877,7 +878,7 @@ export async function POST(req: NextRequest) {
       actorRole = null;
     }
 
-    if (actorRole !== 'club' && actorRole !== 'athlete') {
+    if (actorRole !== 'club' && actorRole !== 'athlete' && actorRole !== 'staff') {
       return notAuthorized('Con questo account non puoi creare post.');
     }
 
