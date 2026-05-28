@@ -19,6 +19,11 @@ const FeedHighlights = dynamic(() => import('@/components/feed/FeedHighlights'),
   loading: () => <SidebarCard title="In evidenza" />,
 });
 
+const FeedFollowingOpportunities = dynamic(() => import('@/components/feed/FeedFollowingOpportunities'), {
+  ssr: false,
+  loading: () => <SidebarCard title="Club che segui" />,
+});
+
 export default function RightSidebarA() {
   const [isFan, setIsFan] = useState(false);
   const [roleResolved, setRoleResolved] = useState(false);
@@ -54,9 +59,14 @@ export default function RightSidebarA() {
         </SidebarCard>
 
         {roleResolved && !isFan ? (
-          <SidebarCard>
-            <FeedHighlights />
-          </SidebarCard>
+          <>
+            <SidebarCard>
+              <FeedFollowingOpportunities />
+            </SidebarCard>
+            <SidebarCard>
+              <FeedHighlights />
+            </SidebarCard>
+          </>
         ) : null}
       </div>
     </aside>
