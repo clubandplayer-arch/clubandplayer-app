@@ -1,39 +1,39 @@
 import type { Metadata } from 'next';
-import { DEFAULT_OG_IMAGE, absoluteUrl } from '@/lib/seo/site';
+import { absoluteUrl, DEFAULT_OG_IMAGE } from '@/lib/seo/site';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 type Props = { params: { id: string } };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const canonical = `/players/${params.id}`;
+  const id = params.id;
+  const canonical = `/clubs/${id}`;
 
   try {
     const supabase = await getSupabaseServerClient();
     const { data } = await supabase
       .from('profiles')
       .select('full_name,display_name,bio,avatar_url,status,account_type,type')
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('status', 'active')
-      .or('account_type.in.(athlete,staff),type.in.(athlete,staff)')
+      .or('account_type.eq.club,type.eq.club')
       .maybeSingle();
 
-    const name = data?.full_name || data?.display_name || 'Player';
-    const title = `${name} · Player`;
-    const description = (data?.bio || 'Profilo pubblico Player su Club & Player.').slice(0, 180);
+    const name = data?.full_name || data?.display_name || 'Club';
+    const description = (data?.bio || 'Profilo pubblico Club su Club & Player.').slice(0, 180);
     const image = data?.avatar_url || DEFAULT_OG_IMAGE;
 
     return {
-      title,
+      title: `${name} · Club`,
       description,
       alternates: { canonical },
+      openGraph: { title: `${name} · Club`, description, url: canonical, type: 'profile', images: [{ url: image }] },
+      twitter: { card: 'summary_large_image', title: `${name} · Club`, description, images: [image] },
       robots: { index: true, follow: true },
-      openGraph: { url: canonical, title, description, images: [{ url: image }], type: 'profile' },
-      twitter: { card: 'summary_large_image', title, description, images: [image] },
     };
   } catch {
     return {
-      title: 'Profilo Player',
-      description: 'Profilo pubblico su Club & Player.',
+      title: 'Profilo Club',
+      description: 'Profilo pubblico Club su Club & Player.',
       alternates: { canonical: absoluteUrl(canonical) },
       robots: { index: true, follow: true },
     };

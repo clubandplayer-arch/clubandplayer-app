@@ -1,18 +1,15 @@
-// app/robots.ts
 import type { MetadataRoute } from 'next';
+import { absoluteUrl } from '@/lib/seo/site';
 
 export default function robots(): MetadataRoute.Robots {
-  const base =
-    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, '') ||
-    'https://clubandplayer.app';
-
   return {
     rules: [
       {
         userAgent: '*',
-        allow: '/',
+        allow: ['/', '/clubs', '/players', '/opportunities', '/legal'],
+        disallow: ['/api/', '/admin/', '/settings', '/login', '/signup', '/onboarding', '/my/', '/messages', '/alerts', '/post', '/reports', '/debug'],
       },
     ],
-    sitemap: [`${base}/sitemap.xml`],
+    sitemap: absoluteUrl('/sitemap.xml'),
   };
 }
