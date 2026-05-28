@@ -148,6 +148,7 @@ export async function generateMetadata({ params }: { params: { token?: string } 
 
   if (!token) {
     return {
+      robots: { index: false, follow: true },
       title: DEFAULT_OG_TITLE,
       description: DEFAULT_OG_DESCRIPTION,
       openGraph: {
@@ -168,6 +169,7 @@ export async function generateMetadata({ params }: { params: { token?: string } 
   const data = await fetchSharedPost(token);
   if (!data.ok) {
     return {
+      robots: { index: false, follow: true },
       title: DEFAULT_OG_TITLE,
       description: DEFAULT_OG_DESCRIPTION,
       openGraph: {
@@ -205,6 +207,7 @@ export async function generateMetadata({ params }: { params: { token?: string } 
       : originalOgImage;
 
   return {
+    robots: { index: false, follow: true },
     title,
     description,
     alternates: { canonical: url },

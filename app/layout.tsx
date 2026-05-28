@@ -9,6 +9,7 @@ import SessionSyncMount from '@/components/auth/SessionSyncMount';
 import CookieConsent from '@/components/misc/CookieConsent';
 import PrivacyAnalytics from '@/components/analytics/PrivacyAnalytics';
 import WebVitalsReporter from '@/components/analytics/WebVitalsReporter';
+import { DEFAULT_OG_IMAGE, SITE_DESCRIPTION, SITE_NAME, getBaseUrl } from '@/lib/seo/site';
 
 const righteous = Righteous({
   subsets: ['latin'],
@@ -21,11 +22,10 @@ const inter = Inter({
   display: 'swap',
 });
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://clubandplayer.com';
-const SITE_NAME = 'Club & Player';
+const BASE_URL = getBaseUrl();
 const DEFAULT_TITLE = SITE_NAME;
-const DEFAULT_DESC = 'Club & Player App';
-const OG_IMAGE = '/og.jpg'; // /public/og.jpg (1200x630)
+const DEFAULT_DESC = SITE_DESCRIPTION;
+const OG_IMAGE = DEFAULT_OG_IMAGE; // /public/og.jpg (1200x630)
 
 // Disabilita la prerenderizzazione statica per evitare errori quando le variabili
 // Supabase non sono disponibili in fase di build.
@@ -34,13 +34,13 @@ export const fetchCache = 'default-no-store';
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
-
   title: {
     default: DEFAULT_TITLE,
     template: `%s | ${SITE_NAME}`,
   },
   description: DEFAULT_DESC,
-
+  applicationName: SITE_NAME,
+  alternates: { canonical: '/' },
   openGraph: {
     type: 'website',
     url: BASE_URL,
@@ -50,13 +50,13 @@ export const metadata: Metadata = {
     images: [{ url: OG_IMAGE, width: 1200, height: 630, alt: SITE_NAME }],
     locale: 'it_IT',
   },
-
   twitter: {
     card: 'summary_large_image',
     title: DEFAULT_TITLE,
     description: DEFAULT_DESC,
     images: [OG_IMAGE],
   },
+  robots: { index: true, follow: true },
 };
 
 // ✅ Next 15: viewport deve essere un export separato (non dentro metadata)
