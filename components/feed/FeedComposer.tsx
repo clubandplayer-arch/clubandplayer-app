@@ -101,6 +101,10 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
     (text.trim().length > 0 || mediaItems.length > 0 || Boolean(linkUrl) || Boolean(quotedPost)) &&
     !sending;
   const isClub = accountType === 'club';
+  const eventDescriptionLength = eventDescription.length;
+  const eventDescriptionRemaining = MAX_CHARS - eventDescriptionLength;
+  const eventDescriptionTooLong = eventDescriptionLength > MAX_CHARS;
+  const canPublishEvent = !eventSending && !eventDescriptionTooLong;
 
   const textareaId = 'feed-composer-input';
   const helperId = 'feed-composer-helper';
@@ -621,6 +625,11 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
       return;
     }
 
+    if (eventDescriptionTooLong) {
+      setEventErr(`La descrizione supera il limite di ${MAX_CHARS} caratteri.`);
+      return;
+    }
+
     setEventSending(true);
     setEventErr(null);
     try {
@@ -884,17 +893,56 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
           </div>
 
           <div className="space-y-1">
-            <label htmlFor="event-description" className="text-xs font-semibold uppercase text-gray-700">
-              Descrizione
-            </label>
+            <div className="flex items-center justify-between gap-3">
+              <label htmlFor="event-description" className="text-xs font-semibold uppercase text-gray-700">
+                Descrizione
+              </label>
+              <span
+                id="event-description-counter"
+                className={`text-xs font-semibold ${
+                  eventDescriptionTooLong
+                    ? 'text-red-600'
+                    : eventDescriptionRemaining <= 50
+                      ? 'text-amber-600'
+                      : 'text-gray-500'
+                }`}
+                aria-live="polite"
+              >
+                {eventDescriptionTooLong
+                  ? `${Math.abs(eventDescriptionRemaining)} caratteri oltre il limite`
+                  : `${eventDescriptionRemaining} caratteri rimanenti`}
+              </span>
+            </div>
             <textarea
               id="event-description"
               value={eventDescription}
               onChange={(e) => setEventDescription(e.target.value)}
               rows={3}
-              className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring"
+              className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring ${
+                eventDescriptionTooLong
+                  ? 'border-red-500 focus:ring-red-200'
+                  : eventDescriptionRemaining <= 50
+                    ? 'border-amber-300 focus:ring-amber-100'
+                    : ''
+              }`}
               placeholder="Dettagli, programma, note…"
+              aria-describedby="event-description-counter event-description-limit"
+              aria-invalid={eventDescriptionTooLong}
             />
+            <p
+              id="event-description-limit"
+              className={`text-xs ${
+                eventDescriptionTooLong
+                  ? 'text-red-600'
+                  : eventDescriptionRemaining <= 50
+                    ? 'text-amber-600'
+                    : 'text-gray-500'
+              }`}
+            >
+              {eventDescriptionTooLong
+                ? `Riduci la descrizione a massimo ${MAX_CHARS} caratteri per pubblicare l'evento.`
+                : `Massimo ${MAX_CHARS} caratteri per la descrizione dell'evento.`}
+            </p>
           </div>
 
           <div className="space-y-2">
@@ -949,8 +997,9 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
             <button
               type="button"
               onClick={handleCreateEvent}
-              className="rounded-lg bg-gray-900 px-4 py-2 font-semibold text-white disabled:opacity-50"
-              disabled={eventSending}
+              className="rounded-lg bg-gray-900 px-4 py-2 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={!canPublishEvent}
+              title={eventDescriptionTooLong ? `Descrizione oltre il limite di ${MAX_CHARS} caratteri` : undefined}
             >
               {eventSending ? 'Creazione…' : 'Pubblica evento'}
             </button>
