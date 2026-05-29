@@ -3,7 +3,9 @@ import { normalizeSport, SPORTS_ROLES } from '@/lib/opps/constants';
 type RosterMember = {
   role?: string | null;
   fullName?: string | null;
+  full_name?: string | null;
   displayName?: string | null;
+  display_name?: string | null;
   name?: string | null;
 };
 
@@ -23,7 +25,7 @@ export function getRoleIndexMap(sportKey?: string | null): Map<string, number> {
 }
 
 function getMemberName(member: RosterMember): string {
-  return (member.fullName || member.displayName || member.name || '').trim();
+  return (member.fullName || member.full_name || member.displayName || member.display_name || member.name || '').trim();
 }
 
 function sortMembersByName<T extends RosterMember>(members: T[]): T[] {

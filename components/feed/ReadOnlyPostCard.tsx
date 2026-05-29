@@ -6,6 +6,7 @@ import type React from 'react';
 import { useState } from 'react';
 import { buildClubDisplayName, buildProfileDisplayName } from '@/lib/displayName';
 import { PostMedia } from '@/components/feed/PostMedia';
+import { EventPostHighlight } from '@/components/feed/EventPostHighlight';
 import { QuotedPostCard } from '@/components/feed/QuotedPostCard';
 import { Lightbox } from '@/components/media/Lightbox';
 import CertifiedCMarkSidebar from '@/components/badges/CertifiedCMarkSidebar';
@@ -88,7 +89,19 @@ export function ReadOnlyPostCard({ post }: ReadOnlyPostCardProps) {
   const eventDateLabel = eventDetails?.date ? formatEventDate(eventDetails.date) : null;
 
   return (
-    <article className="relative overflow-hidden rounded-xl border border-slate-100 bg-white p-4 shadow-sm md:p-5">
+    <article
+      className={
+        isEvent
+          ? 'relative overflow-hidden rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-sky-50 p-4 shadow-[0_18px_50px_rgba(245,158,11,0.16)] ring-1 ring-amber-100 md:p-5'
+          : 'relative overflow-hidden rounded-xl border border-slate-100 bg-white p-4 shadow-sm md:p-5'
+      }
+    >
+      {isEvent ? (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-amber-400 via-orange-500 to-sky-500"
+        />
+      ) : null}
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="relative shrink-0">
@@ -129,7 +142,7 @@ export function ReadOnlyPostCard({ post }: ReadOnlyPostCardProps) {
             <div className="flex items-center gap-2 text-xs text-slate-500">
               <span>{post.createdAt ? new Date(post.createdAt).toLocaleString() : '—'}</span>
               {isEvent && eventDateLabel ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold uppercase text-blue-800">
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold uppercase text-amber-800">
                   <CalendarGlyph className="h-3.5 w-3.5" aria-hidden />
                   <span>{eventDateLabel}</span>
                 </span>
@@ -138,6 +151,14 @@ export function ReadOnlyPostCard({ post }: ReadOnlyPostCardProps) {
           </div>
         </div>
       </div>
+
+      {isEvent ? (
+        <EventPostHighlight
+          title={eventDetails?.title}
+          dateLabel={eventDateLabel}
+          location={eventDetails?.location}
+        />
+      ) : null}
 
       <div className="mt-3 space-y-4 text-base leading-relaxed text-gray-900">
         {description ? (
@@ -158,13 +179,6 @@ export function ReadOnlyPostCard({ post }: ReadOnlyPostCardProps) {
 
         {linkUrl ? <FeedLinkCard url={linkUrl} title={linkTitle} description={linkDescription} image={linkImage} /> : null}
 
-        {isEvent && eventDetails?.location ? (
-          <div className="rounded-lg bg-blue-50 p-3 text-sm text-blue-900">
-            <div className="font-semibold">{eventDetails.title}</div>
-            <div>{eventDetails.location}</div>
-            {eventDateLabel ? <div className="text-xs text-blue-800">{eventDateLabel}</div> : null}
-          </div>
-        ) : null}
       </div>
       {avatarOpen && avatarUrl ? (
         <Lightbox
