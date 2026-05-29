@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
   title: 'Standard di sicurezza dei minori • Club & Player',
   description: 'Standard di sicurezza dei minori applicati da Club & Player e contatti per segnalazioni.',
+  alternates: { canonical: '/legal/child-safety' },
 };
 
 const SAFETY_EMAIL = 'support@clubandplayer.com';

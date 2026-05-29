@@ -1,5 +1,9 @@
-export const metadata = {
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
   title: 'Informativa programma Beta • Club & Player',
+  description: 'Informativa del programma Beta Club & Player: partecipazione, feedback, monitoraggio tecnico e uscita dalla beta.',
+  alternates: { canonical: '/legal/beta' },
 };
 
 const CONTACT = 'beta@clubandplayer.com';
