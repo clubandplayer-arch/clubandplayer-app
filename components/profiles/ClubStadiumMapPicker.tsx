@@ -75,6 +75,7 @@ export default function ClubStadiumMapPicker({ value, onChange }: Props) {
   const [mapsApiAvailable, setMapsApiAvailable] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [locating, setLocating] = useState(false);
 
   const center = useMemo(() => {
     if (value.lat != null && value.lng != null) return { lat: value.lat, lng: value.lng };
@@ -170,6 +171,50 @@ export default function ClubStadiumMapPicker({ value, onChange }: Props) {
     };
   }, [apiKey, center, onChange, value.address, value.name, value.lat, value.lng]);
 
+
+  const useCurrentLocation = () => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      setError('Geolocalizzazione del dispositivo non disponibile.');
+      return;
+    }
+
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        const nextName = value.name || 'Sede / impianto Club';
+        onChange({
+          name: nextName,
+          address: value.address,
+          lat,
+          lng,
+        });
+        if (mapInstance.current) {
+          mapInstance.current.panTo({ lat, lng });
+          mapInstance.current.setZoom(15);
+          if (!markerRef.current && window.google?.maps) {
+            markerRef.current = new window.google.maps.Marker({
+              map: mapInstance.current,
+              position: { lat, lng },
+              title: nextName,
+            });
+          } else {
+            markerRef.current?.setPosition({ lat, lng });
+            markerRef.current?.setTitle(nextName);
+          }
+        }
+        setError(null);
+        setLocating(false);
+      },
+      () => {
+        setError('Non è stato possibile leggere la posizione. Controlla i permessi del browser.');
+        setLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
+    );
+  };
+
   useEffect(() => {
     if (!mapsApiAvailable) return;
     if (value.lat != null && value.lng != null && mapInstance.current) {
@@ -180,15 +225,25 @@ export default function ClubStadiumMapPicker({ value, onChange }: Props) {
 
   return (
     <div className="space-y-3 rounded-xl border border-white/40 bg-white/70 p-3 shadow-sm">
-      <div className="flex flex-col gap-1">
-        <label className="text-sm font-semibold text-gray-800">Cerca stadio o impianto</label>
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <label className="text-sm font-semibold text-gray-800">Cerca sede, stadio o impianto</label>
+          <button
+            type="button"
+            onClick={useCurrentLocation}
+            disabled={locating}
+            className="inline-flex items-center justify-center rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {locating ? 'Rilevamento…' : 'Usa la mia posizione'}
+          </button>
+        </div>
         <input
           ref={inputRef}
           className="rounded-lg border p-2 text-sm"
-          placeholder="Digita nome stadio o indirizzo"
+          placeholder="Digita nome stadio, sede o indirizzo"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          aria-label="Cerca stadio o impianto"
+          aria-label="Cerca sede, stadio o impianto"
         />
         {value.address ? (
           <p className="text-xs text-gray-600">Indirizzo selezionato: {value.address}</p>
@@ -203,7 +258,7 @@ export default function ClubStadiumMapPicker({ value, onChange }: Props) {
         <div>
           <div ref={mapRef} className="h-64 w-full overflow-hidden rounded-lg bg-gray-100" />
           <p className="mt-2 text-xs text-gray-500">
-            Clicca sulla mappa per impostare la posizione. Usa la ricerca per centrare rapidamente lo stadio.
+            Clicca sulla mappa oppure usa la posizione del dispositivo per impostare dove mostrare il logo del Club sulla mappa nazionale.
           </p>
         </div>
       )}
