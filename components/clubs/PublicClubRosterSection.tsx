@@ -5,7 +5,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { CountryFlag } from '@/components/ui/CountryFlag';
 import { buildProfileDisplayName } from '@/lib/displayName';
-import { normalizeSport, SPORTS_ROLES, STAFF_ROLES } from '@/lib/opps/constants';
+import { STAFF_ROLES } from '@/lib/opps/constants';
+import { buildRosterRoleSections } from '@/lib/utils/rosterRoleSort';
 
 type PublicRosterPlayer = {
   player_id: string;
@@ -54,6 +55,49 @@ type Props = {
 };
 
 type ActiveTab = 'roster' | 'staff';
+
+type StaffCategory = {
+  title: string;
+  roles: string[];
+};
+
+const STAFF_CATEGORIES: StaffCategory[] = [
+  {
+    title: 'Dirigenza e Amministrazione',
+    roles: ['Presidente', 'Vicepresidente', 'Direttore Sportivo', 'Direttore Generale', 'Segretario'],
+  },
+  {
+    title: 'Staff Tecnico e Campo',
+    roles: [
+      'Team Manager',
+      'Dirigente Accompagnatore',
+      'Allenatore',
+      'Vice Allenatore',
+      'Collaboratore Tecnico',
+      'Match Analyst',
+      'Video Analyst',
+      'Scout',
+      'Talent Scout',
+    ],
+  },
+  {
+    title: 'Staff Medico e Performance',
+    roles: [
+      'Preparatore Atletico',
+      'Preparatore Portieri',
+      'Medico Sociale',
+      'Fisioterapista',
+      'Osteopata',
+      'Massaggiatore',
+      'Mental Coach',
+      'Nutrizionista',
+    ],
+  },
+  {
+    title: 'Comunicazione e Media',
+    roles: ['Addetto Stampa', 'Social Media Manager', 'Fotografo', 'Content Creator'],
+  },
+];
 
 function useCountryDisplay(player: PublicRosterPlayer) {
   return useMemo(() => {
@@ -253,31 +297,39 @@ export default function PublicClubRosterSection({ clubId, clubSport, clubCity }:
   }, [clubId]);
 
   const isRosterTab = activeTab === 'roster';
-  const sortedPlayers = useMemo(() => {
-    const roleList = SPORTS_ROLES[normalizeSport(clubSport) ?? ''] ?? [];
-    const roleIndex = new Map(roleList.map((role, index) => [normalizeKey(role), index]));
-    return [...players].sort((a, b) => {
-      const aIdx = roleIndex.get(normalizeKey(a.role ?? '')) ?? 9999;
-      const bIdx = roleIndex.get(normalizeKey(b.role ?? '')) ?? 9999;
-      if (aIdx !== bIdx) return aIdx - bIdx;
-      return compareNames(
-        buildProfileDisplayName(a.full_name, a.display_name, 'Profilo'),
-        buildProfileDisplayName(b.full_name, b.display_name, 'Profilo'),
-      );
-    });
-  }, [clubSport, players]);
+  const rosterSections = useMemo(() => buildRosterRoleSections(players, clubSport), [clubSport, players]);
 
-  const sortedStaff = useMemo(() => {
-    const roleIndex = new Map(STAFF_ROLES.map((role, index) => [normalizeKey(role), index]));
-    return [...staffMembers].sort((a, b) => {
-      const aIdx = roleIndex.get(normalizeKey(a.staffRole ?? a.profileRole ?? '')) ?? 9999;
-      const bIdx = roleIndex.get(normalizeKey(b.staffRole ?? b.profileRole ?? '')) ?? 9999;
-      if (aIdx !== bIdx) return aIdx - bIdx;
-      return compareNames(
-        buildProfileDisplayName(a.fullName, a.displayName, 'Staff'),
-        buildProfileDisplayName(b.fullName, b.displayName, 'Staff'),
-      );
+  const staffSections = useMemo(() => {
+    const knownRoleToCategory = new Map<string, string>();
+    STAFF_CATEGORIES.forEach((category) => {
+      category.roles.forEach((role) => knownRoleToCategory.set(normalizeKey(role), category.title));
     });
+
+    const roleOrder = new Map(STAFF_ROLES.map((role, index) => [normalizeKey(role), index]));
+    const grouped = new Map<string, PublicStaffMember[]>();
+    STAFF_CATEGORIES.forEach((category) => grouped.set(category.title, []));
+    grouped.set('Altro Staff', []);
+
+    staffMembers.forEach((member) => {
+      const roleLabel = member.staffRole ?? member.profileRole ?? '';
+      const categoryTitle = knownRoleToCategory.get(normalizeKey(roleLabel)) ?? 'Altro Staff';
+      grouped.get(categoryTitle)?.push(member);
+    });
+
+    return [...STAFF_CATEGORIES.map((category) => category.title), 'Altro Staff']
+      .map((title) => {
+        const members = [...(grouped.get(title) ?? [])].sort((a, b) => {
+          const aIdx = roleOrder.get(normalizeKey(a.staffRole ?? a.profileRole ?? '')) ?? 9999;
+          const bIdx = roleOrder.get(normalizeKey(b.staffRole ?? b.profileRole ?? '')) ?? 9999;
+          if (aIdx !== bIdx) return aIdx - bIdx;
+          return compareNames(
+            buildProfileDisplayName(a.fullName, a.displayName, 'Staff'),
+            buildProfileDisplayName(b.fullName, b.displayName, 'Staff'),
+          );
+        });
+        return { title, members };
+      })
+      .filter((section) => section.members.length > 0);
   }, [staffMembers]);
 
   return (
@@ -322,10 +374,20 @@ export default function PublicClubRosterSection({ clubId, clubSport, clubCity }:
             <p className="text-sm text-neutral-600">Nessun giocatore in rosa.</p>
           ) : null}
 
-          {!rosterLoading && sortedPlayers.length ? (
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {sortedPlayers.map((player) => (
-                <RosterCard key={player.player_id} player={player} />
+          {!rosterLoading && rosterSections.length ? (
+            <div className="space-y-6">
+              {rosterSections.map((section) => (
+                <section key={section.roleLabel} className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-neutral-700">{section.roleLabel}</h3>
+                    <div className="h-px flex-1 bg-neutral-200" />
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    {section.members.map((player) => (
+                      <RosterCard key={player.player_id} player={player} />
+                    ))}
+                  </div>
+                </section>
               ))}
             </div>
           ) : null}
@@ -344,10 +406,20 @@ export default function PublicClubRosterSection({ clubId, clubSport, clubCity }:
             <p className="text-sm text-neutral-600">Nessun membro dello staff ancora aggiunto.</p>
           ) : null}
 
-          {!staffLoading && sortedStaff.length ? (
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {sortedStaff.map((member) => (
-                <StaffCard key={member.id} member={member} fallbackCity={clubCity} />
+          {!staffLoading && staffSections.length ? (
+            <div className="space-y-6">
+              {staffSections.map((section) => (
+                <section key={section.title} className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-neutral-700">{section.title}</h3>
+                    <div className="h-px flex-1 bg-neutral-200" />
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    {section.members.map((member) => (
+                      <StaffCard key={member.id} member={member} fallbackCity={clubCity} />
+                    ))}
+                  </div>
+                </section>
               ))}
             </div>
           ) : null}
