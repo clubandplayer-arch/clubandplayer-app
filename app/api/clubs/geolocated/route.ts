@@ -16,6 +16,22 @@ function toNumber(value: unknown): number | null {
   return null;
 }
 
+function pickCoordinatePair(row: Record<string, unknown>): { latitude: number; longitude: number } | null {
+  const stadiumLatitude = toNumber(row.club_stadium_lat);
+  const stadiumLongitude = toNumber(row.club_stadium_lng);
+  if (stadiumLatitude != null && stadiumLongitude != null) {
+    return { latitude: stadiumLatitude, longitude: stadiumLongitude };
+  }
+
+  const profileLatitude = toNumber(row.latitude);
+  const profileLongitude = toNumber(row.longitude);
+  if (profileLatitude != null && profileLongitude != null) {
+    return { latitude: profileLatitude, longitude: profileLongitude };
+  }
+
+  return null;
+}
+
 export async function GET(req: NextRequest) {
   try {
     await rateLimit(req, { key: 'clubs:geolocated', limit: 120, window: '1m' } as any);
@@ -37,16 +53,15 @@ export async function GET(req: NextRequest) {
 
     const rows = (data ?? [])
       .map((row: any) => {
-        const latitude = toNumber(row.club_stadium_lat) ?? toNumber(row.latitude);
-        const longitude = toNumber(row.club_stadium_lng) ?? toNumber(row.longitude);
+        const coordinates = pickCoordinatePair(row);
         const name = buildProfileDisplayName(row.full_name, row.display_name, 'Club');
 
         return {
           id: typeof row.id === 'string' ? row.id : '',
           name,
           avatar_url: typeof row.avatar_url === 'string' && row.avatar_url.trim() ? row.avatar_url : null,
-          latitude,
-          longitude,
+          latitude: coordinates?.latitude ?? null,
+          longitude: coordinates?.longitude ?? null,
           city: typeof row.city === 'string' && row.city.trim() ? row.city : null,
           province: typeof row.province === 'string' && row.province.trim() ? row.province : null,
           region: typeof row.region === 'string' && row.region.trim() ? row.region : null,
