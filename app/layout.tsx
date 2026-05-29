@@ -9,6 +9,7 @@ import SessionSyncMount from '@/components/auth/SessionSyncMount';
 import CookieConsent from '@/components/misc/CookieConsent';
 import PrivacyAnalytics from '@/components/analytics/PrivacyAnalytics';
 import WebVitalsReporter from '@/components/analytics/WebVitalsReporter';
+import { DEFAULT_OG_IMAGE, getSiteUrl, SITE_NAME } from '@/lib/seo';
 
 const righteous = Righteous({
   subsets: ['latin'],
@@ -21,11 +22,11 @@ const inter = Inter({
   display: 'swap',
 });
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://clubandplayer.com';
-const SITE_NAME = 'Club & Player';
-const DEFAULT_TITLE = SITE_NAME;
-const DEFAULT_DESC = 'Club & Player App';
-const OG_IMAGE = '/og.jpg'; // /public/og.jpg (1200x630)
+const BASE_URL = getSiteUrl();
+const DEFAULT_TITLE = 'Club & Player: network sportivo per club, player, staff e fan';
+const DEFAULT_DESC =
+  'Club & Player connette club, player, staff e fan in una piattaforma sportiva con profili, opportunità, candidature e messaggi riservati agli utenti registrati.';
+const OG_IMAGE = DEFAULT_OG_IMAGE; // /public/og.jpg (1200x630)
 
 // Disabilita la prerenderizzazione statica per evitare errori quando le variabili
 // Supabase non sono disponibili in fase di build.
@@ -40,6 +41,7 @@ export const metadata: Metadata = {
     template: `%s | ${SITE_NAME}`,
   },
   description: DEFAULT_DESC,
+  applicationName: SITE_NAME,
 
   openGraph: {
     type: 'website',

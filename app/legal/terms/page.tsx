@@ -1,5 +1,9 @@
-export const metadata = {
-  title: 'Termini e Condizioni • Club & Player',
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Termini di utilizzo • Club & Player',
+  description: 'Termini di utilizzo di Club & Player per account, contenuti, beta privata, sicurezza e responsabilità.',
+  alternates: { canonical: '/legal/terms' },
 };
 
 export default function TermsPage() {

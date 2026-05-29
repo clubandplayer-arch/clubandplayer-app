@@ -1,5 +1,9 @@
-export const metadata = {
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
   title: 'Privacy Policy • Club & Player',
+  description: 'Informativa privacy di Club & Player: dati trattati, basi giuridiche, fornitori, diritti GDPR e contatti.',
+  alternates: { canonical: '/legal/privacy' },
 };
 
 const LEGAL_EMAIL = 'privacy@clubandplayer.com';
