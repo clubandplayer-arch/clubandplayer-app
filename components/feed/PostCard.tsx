@@ -142,6 +142,9 @@ export function PostCard({
   const [shareUrl, setShareUrl] = useState('');
   const [shareLoading, setShareLoading] = useState(false);
   const [moderationLoading, setModerationLoading] = useState(false);
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
+  const [descriptionCanExpand, setDescriptionCanExpand] = useState(false);
+  const descriptionRef = useRef<HTMLParagraphElement | null>(null);
   const linkUrl = post.link_url ?? firstUrl(description);
   const linkTitle = post.link_title ?? null;
   const linkDescription = post.link_description ?? null;
@@ -215,6 +218,28 @@ export function PostCard({
   useEffect(() => {
     if (!editing) setText(description);
   }, [description, editing, post]);
+
+  useEffect(() => {
+    setDescriptionExpanded(false);
+  }, [description]);
+
+  useEffect(() => {
+    const measureDescription = () => {
+      const element = descriptionRef.current;
+      if (!element) {
+        setDescriptionCanExpand(false);
+        return;
+      }
+
+      if (!descriptionExpanded) {
+        setDescriptionCanExpand(element.scrollHeight > element.clientHeight + 1);
+      }
+    };
+
+    measureDescription();
+    window.addEventListener('resize', measureDescription);
+    return () => window.removeEventListener('resize', measureDescription);
+  }, [description, descriptionExpanded]);
 
   useEffect(() => {
     return () => clearLongPressTimer();
@@ -480,7 +505,26 @@ export function PostCard({
       ) : (
         <div className="mt-3 space-y-4 text-base leading-relaxed text-gray-900">
           {description ? (
-            <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-slate-900 line-clamp-6">{description}</p>
+            <div className="space-y-1">
+              <p
+                ref={descriptionRef}
+                className={`whitespace-pre-wrap text-[15px] leading-relaxed text-slate-900 ${
+                  descriptionExpanded ? '' : 'line-clamp-6'
+                }`}
+              >
+                {description}
+              </p>
+              {(descriptionCanExpand || descriptionExpanded) && (
+                <button
+                  type="button"
+                  onClick={() => setDescriptionExpanded((value) => !value)}
+                  className="text-sm font-semibold text-[var(--brand)] transition hover:text-[var(--brand-dark)] hover:underline"
+                  aria-expanded={descriptionExpanded}
+                >
+                  {descriptionExpanded ? 'Mostra meno' : 'Leggi tutto'}
+                </button>
+              )}
+            </div>
           ) : null}
 
           {post.quoted_post_id ? (
