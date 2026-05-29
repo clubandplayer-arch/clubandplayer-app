@@ -948,8 +948,14 @@ export default function ProfileEditForm() {
                   />
                 </div>
 
-                <div className="flex min-w-0 flex-col gap-1">
-                  <label className="text-sm text-gray-600">Stadio o impianto</label>
+                <div className="flex min-w-0 flex-col gap-2 rounded-2xl border border-blue-100 bg-blue-50/60 p-4 md:col-span-2">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-700">Geolocalizzazione</p>
+                    <h3 className="mt-1 text-lg font-semibold text-slate-950">Posizione del Club sulla mappa nazionale</h3>
+                    <p className="mt-1 text-sm text-slate-600">
+                      Salva la sede o l’impianto principale: sulla mappa dei Club il tuo logo comparirà in questo punto.
+                    </p>
+                  </div>
                   <ClubStadiumMapPicker
                     value={{ name: stadium, address: stadiumAddress, lat: stadiumLat, lng: stadiumLng }}
                     onChange={(val) => {
@@ -981,8 +987,8 @@ export default function ProfileEditForm() {
                 </div>
                 <div>
                   <p className="text-[11px] text-gray-600">
-                    Usa la ricerca o clicca sulla mappa per posizionare il marker: salveremo nome, indirizzo e
-                    coordinate dello stadio.
+                    Usa la ricerca, la posizione del dispositivo o clicca sulla mappa per posizionare il marker:
+                    salveremo nome, indirizzo e coordinate usate dal segnaposto con il logo del Club.
                   </p>
                 </div>
               </div>
