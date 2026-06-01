@@ -39,19 +39,24 @@ export default function SocialLogin({ label, provider = 'google' }: SocialLoginP
         return;
       }
 
-      const supabase = createSupabaseClient(SUPA_URL, SUPA_ANON);
+      const supabase = createSupabaseClient(SUPA_URL, SUPA_ANON, {
+        auth: {
+          flowType: 'pkce',
+          persistSession: true,
+          autoRefreshToken: true,
+        },
+      });
 
       // redirect SUL DOMINIO CORRENTE, sempre
       const origin =
         typeof window !== 'undefined' ? window.location.origin : '';
-      const baseRedirect = `${origin}/auth/callback`;
+      const redirectTo = `${origin}/auth/callback`;
 
       const {
         data: { user },
       } = await supabase.auth.getUser();
 
       if (user) {
-        const redirectTo = `${baseRedirect}?intent=link&provider=${provider}`;
         const { error } = await (supabase.auth as any).linkIdentity({
           provider,
           options: { redirectTo },
@@ -59,8 +64,6 @@ export default function SocialLogin({ label, provider = 'google' }: SocialLoginP
         if (error) throw error;
         return;
       }
-
-      const redirectTo = `${baseRedirect}?intent=signin&provider=${provider}`;
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider,

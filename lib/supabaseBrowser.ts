@@ -11,7 +11,11 @@ let browserClient: SupabaseClient | null = null;
 export function supabaseBrowser() {
   if (!browserClient) {
     browserClient = createClient(url, anon, {
-      auth: { persistSession: true, autoRefreshToken: true },
+      auth: {
+        flowType: 'pkce',
+        persistSession: true,
+        autoRefreshToken: true,
+      },
     });
   }
   return browserClient;

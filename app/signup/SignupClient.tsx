@@ -52,8 +52,7 @@ export default function SignupPage() {
 
     setBusy(true);
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? window.location.origin;
-      const emailRedirectTo = `${baseUrl}/auth/callback`;
+      const emailRedirectTo = `${window.location.origin}/auth/callback`;
 
       const { error } = await supabase.auth.signUp({
         email,

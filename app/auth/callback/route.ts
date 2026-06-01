@@ -24,48 +24,36 @@ async function getServerSupabase() {
   });
 }
 
-function redirectWithError(url: URL, message: string) {
-  const target = new URL('/login', url.origin);
+function relativeRedirect(path: string) {
+  return new NextResponse(null, {
+    status: 302,
+    headers: {
+      Location: path,
+      'cache-control': 'no-store',
+    },
+  });
+}
+
+function redirectWithError(_url: URL, message: string) {
+  const target = new URL('/login', 'http://relative.local');
   const trimmed = message.trim();
   if (trimmed) {
     target.searchParams.set('oauth_error', trimmed.slice(0, 120));
   }
-  return NextResponse.redirect(target, { status: 302 });
+  return relativeRedirect(`${target.pathname}${target.search}`);
 }
 
-function safeRedirect(url: URL, target: string | null) {
-  if (!target) return new URL('/feed', url.origin);
+function safeRedirectPath(target: string | null) {
+  if (!target) return '/feed';
   if (target.startsWith('/')) {
-    return new URL(target, url.origin);
+    try {
+      const parsed = new URL(target, 'http://relative.local');
+      return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    } catch {
+      return '/feed';
+    }
   }
-  return new URL('/feed', url.origin);
-}
-
-function htmlRedirect(target: URL) {
-  const targetUrl = target.toString();
-  const body = `<!doctype html>
-<html lang="it">
-  <head>
-    <meta charset="utf-8" />
-    <meta http-equiv="cache-control" content="no-store" />
-    <meta http-equiv="refresh" content="0;url=${targetUrl}" />
-    <title>Reindirizzamento…</title>
-  </head>
-  <body>
-    <p>Reindirizzamento in corso…</p>
-    <script>
-      window.location.replace(${JSON.stringify(targetUrl)});
-    </script>
-  </body>
-</html>`;
-
-  return new NextResponse(body, {
-    status: 200,
-    headers: {
-      'content-type': 'text/html; charset=utf-8',
-      'cache-control': 'no-store',
-    },
-  });
+  return '/feed';
 }
 
 export async function GET(req: NextRequest) {
@@ -144,16 +132,16 @@ export async function GET(req: NextRequest) {
 
         if ((candidates?.length ?? 0) === 1) {
           await supabase.auth.signOut();
-          const conflict = new URL('/login', url.origin);
+          const conflict = new URL('/login', 'http://relative.local');
           conflict.searchParams.set('link_required', '1');
           conflict.searchParams.set('provider', provider);
           conflict.searchParams.set('email', email);
-          return NextResponse.redirect(conflict, { status: 302 });
+          return relativeRedirect(`${conflict.pathname}${conflict.search}`);
         }
       }
     }
   }
 
   const redirectTo = url.searchParams.get('redirect_to');
-  return htmlRedirect(safeRedirect(url, redirectTo));
+  return relativeRedirect(safeRedirectPath(redirectTo));
 }
