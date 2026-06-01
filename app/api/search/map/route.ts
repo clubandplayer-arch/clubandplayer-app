@@ -142,7 +142,7 @@ export async function GET(req: NextRequest) {
         .select(select, { count: 'exact' })
         .limit(limit)
         .eq('status', 'active')
-        .neq('is_admin', true);
+        .or('is_admin.is.null,is_admin.eq.false');
 
     const applyFilters = (query: ReturnType<typeof baseQuery>) => {
       let filtered = query;
@@ -226,7 +226,7 @@ export async function GET(req: NextRequest) {
         .from('profiles')
         .select('id, latitude, longitude, club_stadium_lat, club_stadium_lng')
         .eq('status', 'active')
-        .neq('is_admin', true)
+        .or('is_admin.is.null,is_admin.eq.false')
         .or('account_type.eq.club,type.eq.club');
 
       if (hasBounds) {
