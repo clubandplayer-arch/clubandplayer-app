@@ -14,6 +14,7 @@ type ClubMapPin = {
   city: string | null;
   province: string | null;
   region: string | null;
+  coordinate_source?: 'stadium' | 'profile' | 'city' | null;
 };
 
 const ITALY_CENTER: [number, number] = [42.7, 12.7];
@@ -208,13 +209,14 @@ export default function ClubMapClient() {
       pins.forEach((pin) => {
         const safeName = escapeHtml(pin.name);
         const location = [pin.city, pin.province, pin.region].filter(Boolean).map(String).join(' · ');
+        const approximateNote = pin.coordinate_source === 'city' ? '<br /><span style="color:#f97316;font-weight:700">Posizione approssimata sulla città</span>' : '';
         const marker = L.marker([pin.latitude, pin.longitude], {
           icon: buildClubIcon(L, pin, size),
           title: pin.name,
         });
         (marker as any).__clubPin = pin;
         marker.bindPopup(
-          `<div style="min-width:170px"><strong>${safeName}</strong>${location ? `<br /><span style="color:#64748b">${escapeHtml(location)}</span>` : ''}<br /><a href="/clubs/${escapeHtml(pin.id)}" style="display:inline-flex;margin-top:8px;border-radius:999px;background:#2563eb;color:white;padding:6px 10px;text-decoration:none;font-weight:700;">Visita Club</a></div>`,
+          `<div style="min-width:170px"><strong>${safeName}</strong>${location ? `<br /><span style="color:#64748b">${escapeHtml(location)}</span>` : ''}${approximateNote}<br /><a href="/clubs/${escapeHtml(pin.id)}" style="display:inline-flex;margin-top:8px;border-radius:999px;background:#2563eb;color:white;padding:6px 10px;text-decoration:none;font-weight:700;">Visita Club</a></div>`,
         );
         marker.addTo(group);
         markersRef.current.push(marker);
