@@ -5,7 +5,7 @@ import Link from 'next/link';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CommentsSection } from '@/components/feed/CommentsSection';
-import { PostIconDelete, PostIconEdit, PostIconShare } from '@/components/icons/PostActionIcons';
+import { PostIconDelete, PostIconEdit, PostIconRepost, PostIconShare } from '@/components/icons/PostActionIcons';
 import { PostMedia } from '@/components/feed/PostMedia';
 import { EventPostHighlight } from '@/components/feed/EventPostHighlight';
 import { QuotedPostCard } from '@/components/feed/QuotedPostCard';
@@ -90,6 +90,7 @@ export type PostCardProps = {
   onUpdated?: (next: FeedPost) => void;
   onDeleted?: (id: string) => void;
   onAuthorBlocked?: (blockedProfileId: string) => void;
+  onRepost?: (post: FeedPost) => void;
 };
 
 export function PostCard({
@@ -105,6 +106,7 @@ export function PostCard({
   onToggleReaction,
   onCommentCountChange,
   onAuthorBlocked,
+  onRepost,
 }: PostCardProps) {
   const LONG_PRESS_MS = 500;
   const isEvent = (post.kind ?? 'normal') === 'event';
@@ -449,6 +451,16 @@ export function PostCard({
           >
             <PostIconShare className={actionIconClass} aria-hidden />
           </button>
+          {onRepost ? (
+            <button
+              type="button"
+              onClick={() => onRepost(post)}
+              aria-label={isEvent ? 'Repost di questo evento' : 'Repost di questo post'}
+              className="rounded-full p-2 transition hover:bg-neutral-100 hover:text-neutral-900"
+            >
+              <PostIconRepost className={actionIconClass} aria-hidden />
+            </button>
+          ) : null}
         </div>
       </div>
 

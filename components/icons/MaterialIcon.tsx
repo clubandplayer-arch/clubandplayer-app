@@ -17,6 +17,7 @@ export type MaterialIconName =
   | 'edit'
   | 'delete'
   | 'share'
+  | 'repost'
   | 'calendar'
   | 'photo'
   | 'video'
@@ -41,6 +42,7 @@ const glyphs: Record<MaterialIconName, string> = {
   edit: 'edit',
   delete: 'delete',
   share: 'share',
+  repost: 'repeat',
   calendar: 'calendar_month',
   photo: 'photo_library',
   video: 'videocam',

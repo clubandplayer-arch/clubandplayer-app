@@ -65,6 +65,8 @@ export default function FeedPage() {
   const [starterPackLoading, setStarterPackLoading] = useState(false);
   const [starterPackError, setStarterPackError] = useState<string | null>(null);
   const [blockedProfileIds, setBlockedProfileIds] = useState<Set<string>>(new Set());
+  const [quotedPost, setQuotedPost] = useState<FeedPost | null>(null);
+  const composerRef = useRef<HTMLDivElement | null>(null);
 
   const {
     posts: feedPosts,
@@ -110,8 +112,16 @@ export default function FeedPage() {
     setReactions({});
     setCommentCounts({});
     seenPostIds.current = new Set();
+    setQuotedPost(null);
     await refresh();
   }, [refresh]);
+
+  const handleRepost = useCallback((post: FeedPost) => {
+    setQuotedPost(post);
+    window.requestAnimationFrame(() => {
+      composerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, []);
 
   const loadReactions = useCallback(async (ids: Array<string | number>) => {
     if (!ids.length) return;
@@ -418,7 +428,13 @@ export default function FeedPage() {
             </div>
           </div>
           {canCreatePost ? (
-            <FeedComposer onPosted={handleRefresh} />
+            <div ref={composerRef}>
+              <FeedComposer
+                onPosted={handleRefresh}
+                quotedPost={quotedPost}
+                onClearQuote={() => setQuotedPost(null)}
+              />
+            </div>
           ) : isFan ? (
             <div className="glass-panel p-4 text-sm text-neutral-600">
               Con l’account Fan puoi interagire con i contenuti, ma non puoi creare post.
@@ -464,6 +480,7 @@ export default function FeedPage() {
                     onCommentCountChange={(next) =>
                       setCommentCounts((curr) => ({ ...curr, [String(p.id)]: next }))
                     }
+                    onRepost={canCreatePost ? handleRepost : undefined}
                   />
                   {(index + 1) % 3 === 0 ? <AdSlot slot="feed_infeed" page={pathname} /> : null}
                 </Fragment>
