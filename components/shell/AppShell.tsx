@@ -419,6 +419,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                         role="menu"
                         className="absolute right-0 z-50 mt-2 w-52 rounded-xl border border-slate-200 bg-white p-1 text-sm shadow-lg"
                       >
+                        <Link
+                          href={profileHref}
+                          role="menuitem"
+                          onClick={() => setIsProfileMenuOpen(false)}
+                          className="block rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
+                        >
+                          Modifica profilo
+                        </Link>
                         {isClub && (
                           <Link
                             href="/opportunities/new"
@@ -429,22 +437,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                             Crea opportunità
                           </Link>
                         )}
-                        <Link
-                          href={profileHref}
-                          role="menuitem"
-                          onClick={() => setIsProfileMenuOpen(false)}
-                          className="block rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
-                        >
-                          Modifica profilo
-                        </Link>
-                        <Link
-                          href="/settings"
-                          role="menuitem"
-                          onClick={() => setIsProfileMenuOpen(false)}
-                          className="block rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
-                        >
-                          Impostazioni
-                        </Link>
                         {isClub && (
                           <Link
                             href="/club/verification"
@@ -455,6 +447,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                             Verifica profilo
                           </Link>
                         )}
+                        <Link
+                          href="/settings"
+                          role="menuitem"
+                          onClick={() => setIsProfileMenuOpen(false)}
+                          className="block rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
+                        >
+                          Impostazioni
+                        </Link>
                         <div className="my-1 h-px bg-slate-200" role="separator" />
                         <Link
                           href="/logout"
