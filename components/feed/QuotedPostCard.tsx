@@ -1,25 +1,67 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { PostIconRepost } from '@/components/icons/PostActionIcons';
 import { PostMedia } from '@/components/feed/PostMedia';
-import { domainFromUrl, firstUrl, type FeedPost } from '@/components/feed/postShared';
+import { domainFromUrl, firstUrl, normalizePost, type FeedPost } from '@/components/feed/postShared';
 import { buildClubDisplayName, buildProfileDisplayName } from '@/lib/displayName';
 
 type Props = {
   post?: FeedPost | null;
+  quotedPostId?: string | null;
   onRemove?: () => void;
   onRepost?: (post: FeedPost) => void;
   missingText?: string;
 };
 
-export function QuotedPostCard({ post, onRemove, onRepost, missingText = 'Questo post non è più disponibile' }: Props) {
-  const createdAt = post?.created_at || post?.createdAt;
-  const linkUrl = post?.link_url || firstUrl(post?.content || post?.text || '') || null;
-  const authorProfile = post?.author_profile ?? null;
-  const authorAccountType = authorProfile?.account_type ?? authorProfile?.type ?? post?.author_account_type ?? null;
-  const fallbackAuthorLabel = post?.author_display_name ?? null;
+export function QuotedPostCard({ post, quotedPostId, onRemove, onRepost, missingText = 'Questo post non è più disponibile' }: Props) {
+  const [fetchedPost, setFetchedPost] = useState<FeedPost | null>(null);
+  const [loadingPost, setLoadingPost] = useState(false);
+  const [fetchFailed, setFetchFailed] = useState(false);
+  const effectivePost = post ?? fetchedPost;
+
+  useEffect(() => {
+    if (post || !quotedPostId) {
+      setFetchedPost(null);
+      setFetchFailed(false);
+      setLoadingPost(false);
+      return;
+    }
+
+    const ctrl = new AbortController();
+    setLoadingPost(true);
+    setFetchFailed(false);
+
+    fetch(`/api/feed/posts/${encodeURIComponent(String(quotedPostId))}`, {
+      credentials: 'include',
+      cache: 'no-store',
+      signal: ctrl.signal,
+    })
+      .then(async (res) => {
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || !json?.ok || !json?.item) throw new Error(json?.error || `HTTP ${res.status}`);
+        setFetchedPost(normalizePost(json.item));
+      })
+      .catch((error) => {
+        if (ctrl.signal.aborted) return;
+        console.warn('Unable to load quoted post fallback', error);
+        setFetchedPost(null);
+        setFetchFailed(true);
+      })
+      .finally(() => {
+        if (!ctrl.signal.aborted) setLoadingPost(false);
+      });
+
+    return () => ctrl.abort();
+  }, [post, quotedPostId]);
+
+  const createdAt = effectivePost?.created_at || effectivePost?.createdAt;
+  const linkUrl = effectivePost?.link_url || firstUrl(effectivePost?.content || effectivePost?.text || '') || null;
+  const authorProfile = effectivePost?.author_profile ?? null;
+  const authorAccountType = authorProfile?.account_type ?? authorProfile?.type ?? effectivePost?.author_account_type ?? null;
+  const fallbackAuthorLabel = effectivePost?.author_display_name ?? null;
   const authorLabel = authorProfile
     ? authorAccountType === 'club'
       ? buildClubDisplayName(authorProfile.full_name, authorProfile.display_name, fallbackAuthorLabel ?? 'Club')
@@ -29,15 +71,15 @@ export function QuotedPostCard({ post, onRemove, onRepost, missingText = 'Questo
           fallbackAuthorLabel ?? 'Profilo',
         )
     : fallbackAuthorLabel ?? 'Autore originale';
-  const authorId = authorProfile?.id ?? post?.author_profile_id ?? null;
+  const authorId = authorProfile?.id ?? effectivePost?.author_profile_id ?? null;
   const isClubAuthor = authorAccountType === 'club';
   const profileHref = authorId ? (isClubAuthor ? `/clubs/${authorId}` : `/players/${authorId}`) : null;
-  const avatarUrl = authorProfile?.avatar_url ?? post?.author_avatar_url ?? null;
+  const avatarUrl = authorProfile?.avatar_url ?? effectivePost?.author_avatar_url ?? null;
 
   return (
     <div className="rounded-xl border border-neutral-200 bg-white/70 p-3">
       <div className="flex items-start justify-between gap-3">
-        {post ? (
+        {effectivePost ? (
           <div className="flex min-w-0 items-center gap-2">
             {avatarUrl ? (
               <Image
@@ -80,16 +122,16 @@ export function QuotedPostCard({ post, onRemove, onRepost, missingText = 'Questo
         ) : null}
       </div>
 
-      {post ? (
+      {effectivePost ? (
         <div className="mt-3 space-y-3 text-sm text-neutral-800">
-          {post.content ? <p className="whitespace-pre-wrap leading-relaxed line-clamp-4">{post.content}</p> : null}
+          {effectivePost.content ? <p className="whitespace-pre-wrap leading-relaxed line-clamp-4">{effectivePost.content}</p> : null}
 
           <PostMedia
-            postId={post.id}
-            media={post.media}
-            mediaUrl={post.media_url}
-            mediaType={post.media_type}
-            alt={post.content || 'Media del post citato'}
+            postId={effectivePost.id}
+            media={effectivePost.media}
+            mediaUrl={effectivePost.media_url}
+            mediaType={effectivePost.media_type}
+            alt={effectivePost.content || 'Media del post citato'}
           />
 
           {linkUrl ? (
@@ -105,7 +147,7 @@ export function QuotedPostCard({ post, onRemove, onRepost, missingText = 'Questo
 
           <div className="flex flex-wrap items-center gap-2 border-t border-neutral-100 pt-2">
             <Link
-              href={`/posts/${post.id}`}
+              href={`/posts/${effectivePost.id}`}
               className="inline-flex items-center rounded-full bg-slate-50 px-3 py-1.5 text-xs font-semibold text-neutral-800 transition hover:bg-slate-100"
             >
               Vedi post originale
@@ -113,7 +155,7 @@ export function QuotedPostCard({ post, onRemove, onRepost, missingText = 'Questo
             {onRepost ? (
               <button
                 type="button"
-                onClick={() => onRepost(post)}
+                onClick={() => onRepost(effectivePost)}
                 className="inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-3 py-1.5 text-xs font-semibold text-neutral-800 transition hover:bg-slate-100"
               >
                 <PostIconRepost className="text-[16px] leading-none" aria-hidden />
@@ -124,7 +166,7 @@ export function QuotedPostCard({ post, onRemove, onRepost, missingText = 'Questo
         </div>
       ) : (
         <div className="mt-2 rounded border border-dashed border-neutral-300 bg-neutral-50 p-2 text-sm text-neutral-500">
-          {missingText}
+          {loadingPost && !fetchFailed ? 'Caricamento post originale…' : missingText}
         </div>
       )}
     </div>

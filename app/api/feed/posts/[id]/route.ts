@@ -10,6 +10,8 @@ import {
 } from '@/lib/api/feedFollowStandardWrapper';
 import { reportApiError } from '@/lib/monitoring/reportApiError';
 import { PatchPostSchema } from '@/lib/validation/feed';
+import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
+import { buildProfileDisplayName } from '@/lib/displayName';
 
 export const runtime = 'nodejs';
 
@@ -82,7 +84,41 @@ async function fetchPostMedia(supabase: any, postId: string) {
   return (data ?? []).map((row: any) => normalizePostMediaRow(row)).filter(Boolean) as PostMediaItem[];
 }
 
+function normalizeProfileRow(raw: any) {
+  if (!raw || typeof raw !== 'object') return null;
+  return {
+    id: raw.id ?? null,
+    user_id: raw.user_id ?? null,
+    full_name: raw.full_name ?? null,
+    display_name: raw.display_name ?? raw.name ?? null,
+    avatar_url: raw.avatar_url ?? null,
+    account_type: raw.account_type ?? raw.type ?? null,
+    type: raw.type ?? raw.account_type ?? null,
+  };
+}
+
+async function fetchAuthorProfile(client: any, authorId?: string | null) {
+  if (!authorId) return null;
+
+  const [{ data: byUserId }, { data: byProfileId }] = await Promise.all([
+    client.from('profiles').select('id, user_id, full_name, display_name, avatar_url, account_type, type').eq('user_id', authorId).maybeSingle(),
+    client.from('profiles').select('id, user_id, full_name, display_name, avatar_url, account_type, type').eq('id', authorId).maybeSingle(),
+  ]);
+
+  return normalizeProfileRow(byUserId ?? byProfileId ?? null);
+}
+
 function normalizeRow(row: any) {
+  const authorProfile = normalizeProfileRow(row.author_profile ?? row.author ?? null);
+  const fallbackAuthorDisplayName = row.author_display_name ?? row.author_full_name ?? row.author_name ?? row.author ?? null;
+  const authorDisplayName = authorProfile
+    ? buildProfileDisplayName(
+        authorProfile.full_name ?? undefined,
+        authorProfile.display_name ?? undefined,
+        fallbackAuthorDisplayName ?? 'Profilo',
+      )
+    : fallbackAuthorDisplayName;
+
   return {
     id: row.id,
     text: row.content ?? '',
@@ -93,12 +129,66 @@ function normalizeRow(row: any) {
     author_id: row.author_id ?? null,
     media_url: row.media_url ?? null,
     media_type: row.media_type ?? null,
+    media_aspect: row.media_aspect ?? null,
+    kind: row.kind ?? 'normal',
+    event_payload: row.event_payload ?? null,
+    link_url: row.link_url ?? null,
+    link_title: row.link_title ?? null,
+    link_description: row.link_description ?? null,
+    link_image: row.link_image ?? null,
     quoted_post_id: row.quoted_post_id ?? null,
     media: row.media ?? [],
+    author_display_name: authorDisplayName,
+    author_avatar_url: authorProfile?.avatar_url ?? row.author_avatar_url ?? null,
+    author_profile_id: authorProfile?.id ?? null,
+    author_user_id: authorProfile?.user_id ?? null,
+    author_account_type: authorProfile?.account_type ?? authorProfile?.type ?? null,
+    author_profile: authorProfile,
   };
 }
 
+const SELECT_FULL =
+  'id, author_id, content, created_at, media_url, media_type, media_aspect, kind, event_payload, link_url, link_title, link_description, link_image, quoted_post_id';
 const SELECT_BASE = 'id, author_id, content, created_at, media_url, media_type, quoted_post_id';
+
+async function fetchPostWithFallback(client: any, id: string) {
+  const full = await client.from('posts').select(SELECT_FULL).eq('id', id).maybeSingle();
+  if (!full.error) return full;
+  if (!/column .* does not exist/i.test(full.error.message || '')) return full;
+  return client.from('posts').select(SELECT_BASE).eq('id', id).maybeSingle();
+}
+
+export const GET = withAuth(async (req: NextRequest, { supabase }) => {
+  const id = req.nextUrl.pathname.split('/').pop();
+  if (!id) return validationError('Id mancante');
+
+  const readClient = getSupabaseAdminClientOrNull() ?? supabase;
+  const { data, error } = await fetchPostWithFallback(readClient, id);
+
+  if (error) {
+    reportApiError({ endpoint: '/api/feed/posts/[id]', error, context: { method: 'GET', stage: 'select' } });
+    return unknownError({ endpoint: '/api/feed/posts/[id]', error, context: { method: 'GET', stage: 'select' } });
+  }
+  if (!data) return notFoundError('Post non trovato');
+
+  let media: PostMediaItem[] = [];
+  try {
+    media = await fetchPostMedia(readClient, id);
+  } catch (mediaError: any) {
+    reportApiError({
+      endpoint: '/api/feed/posts/[id]',
+      error: mediaError,
+      context: { method: 'GET', stage: 'select_post_media' },
+    });
+  }
+  if (!media.length) {
+    media = buildFallbackMedia(data);
+  }
+
+  const authorProfile = await fetchAuthorProfile(readClient, data?.author_id);
+
+  return successResponse({ item: normalizeRow({ ...data, media, author_profile: authorProfile }) });
+});
 
 export const PATCH = withAuth(async (req: NextRequest, { user, supabase }) => {
   const id = req.nextUrl.pathname.split('/').pop();
