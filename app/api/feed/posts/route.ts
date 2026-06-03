@@ -181,6 +181,8 @@ type AuthorProfileMaps = {
   byProfileId: Map<string, ProfileRow> | null;
 };
 
+type FeedSelectClient = Awaited<ReturnType<typeof getSupabaseServerClient>>;
+
 async function buildAuthorProfileMaps(client: ProfileClient, authorIds: string[]): Promise<AuthorProfileMaps> {
   if (!authorIds.length) {
     return { byUserId: null, byProfileId: null };
@@ -287,6 +289,55 @@ async function attachVerifiedFlags(rows: any[]): Promise<any[]> {
     if ((post as any)?.author) nextPost.author = nextAuthor;
     return nextPost;
   });
+}
+
+async function fetchQuotedPostMap(client: FeedSelectClient, quotedIds: string[]): Promise<Map<string, any> | null> {
+  const uniqueQuotedIds = Array.from(
+    new Set(quotedIds.filter((value) => typeof value === 'string' && value.trim().length > 0)),
+  );
+
+  if (!uniqueQuotedIds.length) return null;
+
+  const { data: quotedRows, error: quotedError } = await client
+    .from('posts')
+    .select(SELECT_QUOTED)
+    .in('id', uniqueQuotedIds);
+
+  if (quotedError || !Array.isArray(quotedRows)) {
+    if (quotedError) {
+      reportApiError({
+        endpoint: '/api/feed/posts',
+        error: quotedError,
+        context: { stage: 'select_quoted_posts', method: 'GET' },
+      });
+    }
+    return null;
+  }
+
+  let quotedMediaMap = new Map<string, PostMediaItem[]>();
+  try {
+    quotedMediaMap = await fetchPostMediaMap(
+      client,
+      Array.from(new Set(quotedRows.map((row) => row?.id).filter(Boolean) as string[])),
+    );
+  } catch (mediaError: any) {
+    reportApiError({
+      endpoint: '/api/feed/posts',
+      error: mediaError,
+      context: { stage: 'select_quoted_post_media', method: 'GET' },
+    });
+  }
+
+  const quotedMaps = await buildAuthorProfileMaps(
+    client,
+    Array.from(new Set(quotedRows.map((row) => row?.author_id).filter(Boolean) as string[])),
+  );
+  const enrichedQuotedRows = quotedRows.map((row) => {
+    const media = quotedMediaMap.get(String(row.id)) ?? buildFallbackMedia(row);
+    return attachAuthorProfile({ ...row, media }, quotedMaps);
+  });
+
+  return new Map(enrichedQuotedRows.map((row) => [row.id, row]));
 }
 
 // GET: lettura autenticata, filtra i post per ruolo dell'autore
@@ -462,37 +513,7 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  if (quotedIds.length) {
-    const { data: quotedRows, error: quotedError } = await supabase
-      .from('posts')
-      .select(SELECT_QUOTED)
-      .in('id', quotedIds);
-
-    if (!quotedError && Array.isArray(quotedRows)) {
-      let quotedMediaMap = new Map<string, PostMediaItem[]>();
-      try {
-        quotedMediaMap = await fetchPostMediaMap(
-          supabase,
-          Array.from(new Set(quotedRows.map((row) => row?.id).filter(Boolean) as string[])),
-        );
-      } catch (mediaError: any) {
-        reportApiError({
-          endpoint: '/api/feed/posts',
-          error: mediaError,
-          context: { stage: 'select_quoted_post_media', method: 'GET' },
-        });
-      }
-      const quotedMaps = await buildAuthorProfileMaps(
-        supabase,
-        Array.from(new Set(quotedRows.map((r) => r?.author_id).filter(Boolean) as string[])),
-      );
-      const enrichedQuotedRows = quotedRows.map((row) => {
-        const media = quotedMediaMap.get(String(row.id)) ?? buildFallbackMedia(row);
-        return attachAuthorProfile({ ...row, media }, quotedMaps);
-      });
-      quotedMap = new Map(enrichedQuotedRows.map((row) => [row.id, row]));
-    }
-  }
+  quotedMap = await fetchQuotedPostMap(supabase, quotedIds);
 
   let rows =
     (data ?? [])
@@ -1070,8 +1091,9 @@ export async function POST(req: NextRequest) {
 
     const authorMaps = await buildAuthorProfileMaps(supabase, data?.author_id ? [String(data.author_id)] : []);
     const enrichedRow = attachAuthorProfile({ ...data, media: mediaItems }, authorMaps);
+    const quotedMap = data?.quoted_post_id ? await fetchQuotedPostMap(supabase, [String(data.quoted_post_id)]) : null;
 
-    const res = successResponse({ item: normalizeRow(enrichedRow) }, { status: 201 });
+    const res = successResponse({ item: normalizeRow(enrichedRow, quotedMap ?? undefined) }, { status: 201 });
     res.cookies.set(LAST_POST_TS_COOKIE, String(now), {
       httpOnly: false,
       path: '/',
