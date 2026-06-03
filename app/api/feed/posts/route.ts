@@ -460,7 +460,7 @@ export async function GET(req: NextRequest) {
   const followedProfileIds: string[] = [];
   const followedAuthorIds: string[] = [];
 
-  const shouldLoadFollows = Boolean(currentProfileId && (scope === 'following' || scope === 'all'));
+  const shouldLoadFollows = Boolean(currentProfileId && scope === 'following');
 
   if (shouldLoadFollows) {
     const { data: followRows, error: followError } = await supabase
@@ -499,8 +499,7 @@ export async function GET(req: NextRequest) {
   } else if (scope === 'following') {
     allowedAuthors = Array.from(new Set(followedAuthorIds.filter(Boolean)));
   } else {
-    const base = [selfId, ...followedAuthorIds].filter(Boolean) as string[];
-    allowedAuthors = Array.from(new Set(base));
+    allowedAuthors = null;
   }
 
   const buildDebug = (extra?: Record<string, any>) =>
