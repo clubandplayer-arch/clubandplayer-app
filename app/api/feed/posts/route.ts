@@ -439,6 +439,7 @@ export async function GET(req: NextRequest) {
     await buildAuthorProfileMaps(supabase, authorIds);
 
   let quotedMap: Map<string, any> | null = null;
+  let quotedHydrationDebug: Omit<LoadQuotedPostMapResult, 'quotedMap'> | null = null;
   let postMediaMap = new Map<string, PostMediaItem[]>();
 
   const quotedIds = Array.from(
@@ -463,35 +464,14 @@ export async function GET(req: NextRequest) {
   }
 
   if (quotedIds.length) {
-    const { data: quotedRows, error: quotedError } = await supabase
-      .from('posts')
-      .select(SELECT_QUOTED)
-      .in('id', quotedIds);
-
-    if (!quotedError && Array.isArray(quotedRows)) {
-      let quotedMediaMap = new Map<string, PostMediaItem[]>();
-      try {
-        quotedMediaMap = await fetchPostMediaMap(
-          supabase,
-          Array.from(new Set(quotedRows.map((row) => row?.id).filter(Boolean) as string[])),
-        );
-      } catch (mediaError: any) {
-        reportApiError({
-          endpoint: '/api/feed/posts',
-          error: mediaError,
-          context: { stage: 'select_quoted_post_media', method: 'GET' },
-        });
-      }
-      const quotedMaps = await buildAuthorProfileMaps(
-        supabase,
-        Array.from(new Set(quotedRows.map((r) => r?.author_id).filter(Boolean) as string[])),
-      );
-      const enrichedQuotedRows = quotedRows.map((row) => {
-        const media = quotedMediaMap.get(String(row.id)) ?? buildFallbackMedia(row);
-        return attachAuthorProfile({ ...row, media }, quotedMaps);
-      });
-      quotedMap = new Map(enrichedQuotedRows.map((row) => [row.id, row]));
-    }
+    const quotedResult = await loadQuotedPostMap({
+      supabase,
+      admin: getSupabaseAdminClientOrNull(),
+      quotedIds,
+    });
+    quotedMap = quotedResult.quotedMap;
+    const { quotedMap: _quotedMap, ...rest } = quotedResult;
+    quotedHydrationDebug = rest;
   }
 
   let rows =
@@ -528,6 +508,7 @@ export async function GET(req: NextRequest) {
     postsCountBeforeJoin,
     postsCountAfterJoin,
     scope,
+    ...(quotedHydrationDebug ? { quotedHydration: quotedHydrationDebug } : {}),
   });
 
   if (debugPayload) {
@@ -740,7 +721,7 @@ type ServerClient = Awaited<ReturnType<typeof getSupabaseServerClient>>;
 type AdminClient = NonNullable<ReturnType<typeof getSupabaseAdminClientOrNull>>;
 type InsertClient = ServerClient | AdminClient;
 
-async function fetchPostMediaMap(client: ServerClient, postIds: string[]) {
+async function fetchPostMediaMap(client: ProfileClient, postIds: string[]) {
   const map = new Map<string, PostMediaItem[]>();
   if (!postIds.length) return map;
   const { data, error } = await client
@@ -761,6 +742,181 @@ async function fetchPostMediaMap(client: ServerClient, postIds: string[]) {
     map.set(postId, list);
   });
   return map;
+}
+
+type LoadQuotedPostMapArgs = {
+  supabase: ServerClient;
+  admin?: AdminClient | null;
+  quotedIds: string[];
+};
+
+type LoadQuotedPostMapResult = {
+  quotedMap: Map<string, any>;
+  missingQuotedIds: string[];
+  quotedIdsCount: number;
+  userRowsCount: number;
+  rpcRowsCount: number;
+  adminRowsCount: number;
+};
+
+async function selectQuotedRows(client: ProfileClient, quotedIds: string[], stage: string): Promise<any[]> {
+  if (!quotedIds.length) return [];
+
+  const { data, error } = await client.from('posts').select(SELECT_QUOTED).in('id', quotedIds);
+
+  if (!error) return Array.isArray(data) ? data : [];
+
+  if (isMissingLinkColumns(error)) {
+    const { data: fallbackData, error: fallbackError } = await client
+      .from('posts')
+      .select(SELECT_WITH_MEDIA)
+      .in('id', quotedIds);
+    if (!fallbackError) return Array.isArray(fallbackData) ? fallbackData : [];
+
+    reportApiError({
+      endpoint: '/api/feed/posts',
+      error: fallbackError,
+      context: { stage: `${stage}_fallback_without_links`, method: 'GET', quotedIdsCount: quotedIds.length },
+    });
+    throw fallbackError;
+  }
+
+  reportApiError({
+    endpoint: '/api/feed/posts',
+    error,
+    context: { stage, method: 'GET', quotedIdsCount: quotedIds.length },
+  });
+  throw error;
+}
+
+async function enrichQuotedRows(client: ProfileClient, quotedRows: any[], mediaStage: string): Promise<any[]> {
+  if (!quotedRows.length) return [];
+
+  let quotedMediaMap = new Map<string, PostMediaItem[]>();
+  try {
+    quotedMediaMap = await fetchPostMediaMap(
+      client,
+      Array.from(new Set(quotedRows.map((row) => row?.id).filter(Boolean) as string[])),
+    );
+  } catch (mediaError: any) {
+    reportApiError({
+      endpoint: '/api/feed/posts',
+      error: mediaError,
+      context: { stage: mediaStage, method: 'GET' },
+    });
+  }
+
+  const quotedMaps = await buildAuthorProfileMaps(
+    client,
+    Array.from(new Set(quotedRows.map((r) => r?.author_id).filter(Boolean) as string[])),
+  );
+
+  return quotedRows.map((row) => {
+    const media = quotedMediaMap.get(String(row.id)) ?? buildFallbackMedia(row);
+    return attachAuthorProfile({ ...row, media }, quotedMaps);
+  });
+}
+
+async function loadQuotedPostMap({ supabase, admin, quotedIds }: LoadQuotedPostMapArgs): Promise<LoadQuotedPostMapResult> {
+  const normalizedQuotedIds = Array.from(
+    new Set(quotedIds.map((id) => (typeof id === 'string' ? id.trim() : '')).filter(Boolean)),
+  );
+  const quotedMap = new Map<string, any>();
+
+  const addRows = (rows: any[]) => {
+    rows.forEach((row) => {
+      if (!row?.id) return;
+      quotedMap.set(String(row.id), row);
+    });
+  };
+
+  if (!normalizedQuotedIds.length) {
+    return {
+      quotedMap,
+      missingQuotedIds: [],
+      quotedIdsCount: 0,
+      userRowsCount: 0,
+      rpcRowsCount: 0,
+      adminRowsCount: 0,
+    };
+  }
+
+  let userRowsCount = 0;
+  let rpcRowsCount = 0;
+  let adminRowsCount = 0;
+
+  try {
+    const userRows = await selectQuotedRows(supabase, normalizedQuotedIds, 'select_quoted_posts');
+    userRowsCount = userRows.length;
+    addRows(await enrichQuotedRows(supabase, userRows, 'select_quoted_post_media'));
+  } catch {
+    // Error already reported by selectQuotedRows. Continue with RPC/admin fallbacks below.
+  }
+
+  let missingQuotedIds = normalizedQuotedIds.filter((id) => !quotedMap.has(id));
+
+  if (missingQuotedIds.length) {
+    try {
+      const { data: rpcRows, error: rpcError } = await supabase.rpc('feed_visible_quoted_posts', {
+        quoted_ids: missingQuotedIds,
+      });
+
+      if (rpcError) {
+        if (rpcError.code !== 'PGRST202' && !/feed_visible_quoted_posts/i.test(rpcError.message || '')) {
+          reportApiError({
+            endpoint: '/api/feed/posts',
+            error: rpcError,
+            context: { stage: 'select_quoted_posts_rpc', method: 'GET', quotedIdsCount: missingQuotedIds.length },
+          });
+        }
+      } else if (Array.isArray(rpcRows) && rpcRows.length) {
+        rpcRowsCount = rpcRows.length;
+        addRows(await enrichQuotedRows(supabase, rpcRows, 'select_quoted_post_media_rpc'));
+      }
+    } catch (rpcError: any) {
+      reportApiError({
+        endpoint: '/api/feed/posts',
+        error: rpcError,
+        context: { stage: 'select_quoted_posts_rpc', method: 'GET', quotedIdsCount: missingQuotedIds.length },
+      });
+    }
+  }
+
+  missingQuotedIds = normalizedQuotedIds.filter((id) => !quotedMap.has(id));
+
+  if (missingQuotedIds.length && admin) {
+    try {
+      const adminRows = await selectQuotedRows(admin, missingQuotedIds, 'select_quoted_posts_admin');
+      adminRowsCount = adminRows.length;
+      addRows(await enrichQuotedRows(admin, adminRows, 'select_quoted_post_media_admin'));
+    } catch {
+      // Error already reported by selectQuotedRows. Missing ids remain visible in debug payload.
+    }
+  }
+
+  missingQuotedIds = normalizedQuotedIds.filter((id) => !quotedMap.has(id));
+
+  if (missingQuotedIds.length) {
+    reportApiError({
+      endpoint: '/api/feed/posts',
+      error: new Error('Some quoted posts could not be hydrated'),
+      context: {
+        stage: 'missing_quoted_posts',
+        method: 'GET',
+        quotedIdsCount: normalizedQuotedIds.length,
+        missingQuotedIds,
+      },
+    });
+  }
+
+  return {
+    quotedMap,
+    missingQuotedIds,
+    quotedIdsCount: normalizedQuotedIds.length,
+    userRowsCount,
+    rpcRowsCount,
+    adminRowsCount,
+  };
 }
 
 // POST: inserimento autenticato con rate-limit via cookie
@@ -893,13 +1049,38 @@ export async function POST(req: NextRequest) {
     let quotedRootId: string | null = null;
 
     if (quotedPostId) {
-      const { data: quoted, error: quotedError } = await supabase
+      let { data: quoted, error: quotedError } = await supabase
         .from('posts')
         .select('id, quoted_post_id')
         .eq('id', quotedPostId)
         .maybeSingle();
 
+      if ((quotedError || !quoted) && admin) {
+        if (quotedError) {
+          reportApiError({
+            endpoint: '/api/feed/posts',
+            error: quotedError,
+            context: { stage: 'select_quoted_post_for_create', method: 'POST', quotedPostId },
+          });
+        }
+
+        const adminLookup = await admin
+          .from('posts')
+          .select('id, quoted_post_id')
+          .eq('id', quotedPostId)
+          .maybeSingle();
+        quoted = adminLookup.data;
+        quotedError = adminLookup.error;
+      }
+
       if (quotedError || !quoted) {
+        if (quotedError) {
+          reportApiError({
+            endpoint: '/api/feed/posts',
+            error: quotedError,
+            context: { stage: 'select_quoted_post_for_create_final', method: 'POST', quotedPostId },
+          });
+        }
         return notFoundError('Post originale non trovato o non accessibile');
       }
 
