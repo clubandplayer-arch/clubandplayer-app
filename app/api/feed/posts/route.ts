@@ -24,6 +24,7 @@ export const runtime = 'nodejs';
 const MAX_CHARS = 500;
 const RATE_LIMIT_MS = 5_000;
 const LAST_POST_TS_COOKIE = 'feed_last_post_ts';
+const POST_ID_SELECT_CHUNK_SIZE = 50;
 
 type Role = 'club' | 'athlete' | 'staff' | 'fan';
 type PostKind = 'normal' | 'event';
@@ -291,25 +292,42 @@ async function attachVerifiedFlags(rows: any[]): Promise<any[]> {
   });
 }
 
+function normalizeUniquePostIds(ids: string[]) {
+  return Array.from(
+    new Set(ids.map((value) => (typeof value === 'string' ? value.trim() : '')).filter((value) => value.length > 0)),
+  );
+}
+
+async function selectPostIdChunks(client: FeedSelectClient, select: string, ids: string[]) {
+  const rows: any[] = [];
+
+  for (let start = 0; start < ids.length; start += POST_ID_SELECT_CHUNK_SIZE) {
+    const chunk = ids.slice(start, start + POST_ID_SELECT_CHUNK_SIZE);
+    const { data, error } = await client.from('posts').select(select).in('id', chunk);
+    if (error) return { data: rows, error };
+    rows.push(...(data ?? []));
+  }
+
+  return { data: rows, error: null as any };
+}
+
 async function selectPostsByIdsWithFallback(client: FeedSelectClient, ids: string[]) {
-  const uniqueIds = Array.from(new Set(ids.filter((value) => typeof value === 'string' && value.trim().length > 0)));
+  const uniqueIds = normalizeUniquePostIds(ids);
   if (!uniqueIds.length) return { data: [] as any[], error: null as any };
 
-  const full = await client.from('posts').select(SELECT_QUOTED).in('id', uniqueIds);
-  if (!full.error) return { data: full.data ?? [], error: null };
+  const full = await selectPostIdChunks(client, SELECT_QUOTED, uniqueIds);
+  if (!full.error) return full;
   if (!/column .* does not exist/i.test(full.error.message || '')) return full;
 
-  const withMedia = await client.from('posts').select(SELECT_WITH_MEDIA).in('id', uniqueIds);
-  if (!withMedia.error) return { data: withMedia.data ?? [], error: null };
+  const withMedia = await selectPostIdChunks(client, SELECT_WITH_MEDIA, uniqueIds);
+  if (!withMedia.error) return withMedia;
   if (!/column .* does not exist/i.test(withMedia.error.message || '')) return withMedia;
 
-  return client.from('posts').select(SELECT_BASE).in('id', uniqueIds);
+  return selectPostIdChunks(client, SELECT_BASE, uniqueIds);
 }
 
 async function fetchQuotedPostMap(client: FeedSelectClient, quotedIds: string[]): Promise<Map<string, any> | null> {
-  const requestedQuotedIds = Array.from(
-    new Set(quotedIds.filter((value) => typeof value === 'string' && value.trim().length > 0)),
-  );
+  const requestedQuotedIds = normalizeUniquePostIds(quotedIds);
 
   if (!requestedQuotedIds.length) return null;
 
