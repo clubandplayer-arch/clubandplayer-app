@@ -257,6 +257,11 @@ async function fetchQuotedRowsByIds(client: ProfileClient, quotedIds: string[]) 
   return { data, error, selectUsed };
 }
 
+async function fetchRepostedQuotedRowsByRpc(client: ProfileClient, quotedIds: string[]) {
+  if (!quotedIds.length) return { data: null, error: null };
+  return client.rpc('feed_visible_quoted_posts', { quoted_ids: quotedIds });
+}
+
 async function loadQuotedPostMap({
   supabase,
   admin,
@@ -304,10 +309,37 @@ async function loadQuotedPostMap({
 
   const userMissingQuotedIds = uniqueQuotedIds.filter((id) => !quotedRowsById.has(id));
 
-  if (userMissingQuotedIds.length && admin) {
+  if (userMissingQuotedIds.length) {
+    const { data: rpcQuotedRows, error: rpcQuotedError } = await fetchRepostedQuotedRowsByRpc(
+      supabase,
+      userMissingQuotedIds,
+    );
+
+    if (rpcQuotedError) {
+      reportApiError({
+        endpoint: '/api/feed/posts',
+        error: rpcQuotedError,
+        context: {
+          stage: 'select_quoted_posts_repost_rpc',
+          method: 'GET',
+          missingQuotedIdsCount: userMissingQuotedIds.length,
+        },
+      });
+    }
+
+    if (!rpcQuotedError && Array.isArray(rpcQuotedRows)) {
+      rpcQuotedRows.forEach((row) => {
+        if (row?.id) quotedRowsById.set(String(row.id), row);
+      });
+    }
+  }
+
+  const rpcMissingQuotedIds = uniqueQuotedIds.filter((id) => !quotedRowsById.has(id));
+
+  if (rpcMissingQuotedIds.length && admin) {
     const { data: adminQuotedRows, error: adminQuotedError, selectUsed: adminSelectUsed } = await fetchQuotedRowsByIds(
       admin,
-      userMissingQuotedIds,
+      rpcMissingQuotedIds,
     );
 
     if (adminQuotedError) {
@@ -317,7 +349,7 @@ async function loadQuotedPostMap({
         context: {
           stage: 'select_quoted_posts_admin_fallback',
           method: 'GET',
-          missingQuotedIdsCount: userMissingQuotedIds.length,
+          missingQuotedIdsCount: rpcMissingQuotedIds.length,
           selectUsed: adminSelectUsed,
         },
       });
@@ -436,7 +468,6 @@ export async function GET(req: NextRequest) {
   const to = from + limit - 1;
   const supabase = await getSupabaseServerClient();
   const admin = getSupabaseAdminClientOrNull();
-  const feedReadClient = admin ?? supabase;
 
   // utente corrente + profilo attivo
   let currentUserId: string | null = null;
@@ -528,7 +559,7 @@ export async function GET(req: NextRequest) {
   }
 
   const fetchPosts = async (sel: string) => {
-    let query = feedReadClient
+    let query = supabase
       .from('posts')
       .select(sel)
       .order('created_at', { ascending: false })
@@ -570,7 +601,7 @@ export async function GET(req: NextRequest) {
   ) as string[];
 
   const { byUserId: authorProfileMapByUserId, byProfileId: authorProfileMapByProfileId } =
-    await buildAuthorProfileMaps(feedReadClient, authorIds);
+    await buildAuthorProfileMaps(supabase, authorIds);
 
   let quotedMap: Map<string, any> | null = null;
   let missingQuotedIds: string[] = [];
@@ -587,7 +618,7 @@ export async function GET(req: NextRequest) {
 
   try {
     postMediaMap = await fetchPostMediaMap(
-      feedReadClient,
+      supabase,
       Array.from(new Set((data ?? []).map((row) => row?.id).filter(Boolean) as string[])),
     );
   } catch (mediaError: any) {
@@ -599,12 +630,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (quotedIds.length) {
-    const quotedResult = await loadQuotedPostMap({
-      supabase: feedReadClient,
-      admin,
-      quotedIds,
-      candidateRows: data ?? [],
-    });
+    const quotedResult = await loadQuotedPostMap({ supabase, admin, quotedIds, candidateRows: data ?? [] });
     quotedMap = quotedResult.map;
     missingQuotedIds = quotedResult.missingQuotedIds;
     quotedIdsCount = quotedResult.quotedIdsCount;
