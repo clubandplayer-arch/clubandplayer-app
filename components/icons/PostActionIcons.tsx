@@ -14,3 +14,7 @@ export function PostIconDelete(props: PostActionIconProps) {
 export function PostIconShare(props: PostActionIconProps) {
   return <MaterialIcon name="share" {...props} />;
 }
+
+export function PostIconRepost(props: PostActionIconProps) {
+  return <MaterialIcon name="repost" {...props} />;
+}

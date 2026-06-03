@@ -4,7 +4,7 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import FeedComposer from '@/components/feed/FeedComposer';
 import TrackRetention from '@/components/analytics/TrackRetention';
@@ -26,6 +26,7 @@ import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import useFeed, { type FeedScope } from '@/hooks/useFeed';
 import type { Opportunity } from '@/types/opportunity';
 import type { Profile } from '@/types/profile';
+import { REPOST_SESSION_KEY } from '@/lib/repost';
 
 // carico le sidebar in modo "sicuro" (se il componente esiste lo usa, altrimenti mostra un box vuoto)
 // N.B. ssr: false evita problemi coi Server Components in prod
@@ -48,6 +49,7 @@ type StarterProfile = {
 
 export default function FeedPage() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [_profile, setProfile] = useState<Profile | null>(null);
   const [reactions, setReactions] = useState<Record<string, ReactionState>>({});
@@ -57,6 +59,7 @@ export default function FeedPage() {
   const reactionsRef = useRef<Record<string, ReactionState>>({});
   const seenPostIds = useRef<Set<string>>(new Set());
   const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
+  const consumedRepostIdRef = useRef<string | null>(null);
   const headingId = 'feed-heading';
   const [starterPack, setStarterPack] = useState<{
     opportunities: Opportunity[];
@@ -65,6 +68,8 @@ export default function FeedPage() {
   const [starterPackLoading, setStarterPackLoading] = useState(false);
   const [starterPackError, setStarterPackError] = useState<string | null>(null);
   const [blockedProfileIds, setBlockedProfileIds] = useState<Set<string>>(new Set());
+  const [quotedPost, setQuotedPost] = useState<FeedPost | null>(null);
+  const composerRef = useRef<HTMLDivElement | null>(null);
 
   const {
     posts: feedPosts,
@@ -110,8 +115,36 @@ export default function FeedPage() {
     setReactions({});
     setCommentCounts({});
     seenPostIds.current = new Set();
+    setQuotedPost(null);
     await refresh();
   }, [refresh]);
+
+  const handleRepost = useCallback((post: FeedPost) => {
+    setQuotedPost(post);
+    window.requestAnimationFrame(() => {
+      composerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, []);
+
+  useEffect(() => {
+    const repostId = searchParams.get('repost');
+    if (!repostId || consumedRepostIdRef.current === repostId) return;
+    consumedRepostIdRef.current = repostId;
+
+    const stored = window.sessionStorage.getItem(REPOST_SESSION_KEY);
+    if (!stored) return;
+
+    try {
+      const post = JSON.parse(stored) as FeedPost;
+      if (String(post?.id) === repostId) {
+        handleRepost(post);
+      }
+    } catch (err) {
+      console.warn('Unable to restore repost draft', err);
+    } finally {
+      window.sessionStorage.removeItem(REPOST_SESSION_KEY);
+    }
+  }, [handleRepost, searchParams]);
 
   const loadReactions = useCallback(async (ids: Array<string | number>) => {
     if (!ids.length) return;
@@ -418,7 +451,13 @@ export default function FeedPage() {
             </div>
           </div>
           {canCreatePost ? (
-            <FeedComposer onPosted={handleRefresh} />
+            <div ref={composerRef}>
+              <FeedComposer
+                onPosted={handleRefresh}
+                quotedPost={quotedPost}
+                onClearQuote={() => setQuotedPost(null)}
+              />
+            </div>
           ) : isFan ? (
             <div className="glass-panel p-4 text-sm text-neutral-600">
               Con l’account Fan puoi interagire con i contenuti, ma non puoi creare post.
@@ -464,6 +503,7 @@ export default function FeedPage() {
                     onCommentCountChange={(next) =>
                       setCommentCounts((curr) => ({ ...curr, [String(p.id)]: next }))
                     }
+                    onRepost={canCreatePost ? handleRepost : undefined}
                   />
                   {(index + 1) % 3 === 0 ? <AdSlot slot="feed_infeed" page={pathname} /> : null}
                 </Fragment>

@@ -3,6 +3,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PostCard } from '@/components/feed/PostCard';
+import { openRepostComposer } from '@/lib/repost';
 import {
   REACTION_ORDER,
   computeOptimistic,
@@ -201,6 +202,7 @@ export default function PublicAuthorFeed({ authorId, fallbackAuthorIds = [] }: P
           onCommentCountChange={(next) =>
             setCommentCounts((curr) => ({ ...curr, [String(post.id)]: next }))
           }
+          onRepost={openRepostComposer}
         />
       ))}
 

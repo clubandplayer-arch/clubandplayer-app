@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PostCard } from '@/components/feed/PostCard';
+import { openRepostComposer } from '@/lib/repost';
 import {
   computeOptimistic,
   computeNextMine,
@@ -137,6 +138,7 @@ export function PostClient({ post, currentUserId }: Props) {
         onClosePicker={() => setPickerOpen(false)}
         onToggleReaction={toggleReaction}
         onCommentCountChange={setCommentCount}
+        onRepost={openRepostComposer}
       />
     </div>
   );
