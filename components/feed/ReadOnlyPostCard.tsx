@@ -166,7 +166,7 @@ export function ReadOnlyPostCard({ post }: ReadOnlyPostCardProps) {
         ) : null}
 
         {post.quoted_post_id ? (
-          <QuotedPostCard post={post.quoted_post} missingText="Questo post non è più disponibile" />
+          <QuotedPostCard post={post.quoted_post} quotedPostId={post.quoted_post_id} missingText="Questo post non è più disponibile" />
         ) : null}
 
         <PostMedia

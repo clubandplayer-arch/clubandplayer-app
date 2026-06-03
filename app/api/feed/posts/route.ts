@@ -24,6 +24,7 @@ export const runtime = 'nodejs';
 const MAX_CHARS = 500;
 const RATE_LIMIT_MS = 5_000;
 const LAST_POST_TS_COOKIE = 'feed_last_post_ts';
+const POST_ID_SELECT_CHUNK_SIZE = 50;
 
 type Role = 'club' | 'athlete' | 'staff' | 'fan';
 type PostKind = 'normal' | 'event';
@@ -181,6 +182,8 @@ type AuthorProfileMaps = {
   byProfileId: Map<string, ProfileRow> | null;
 };
 
+type FeedSelectClient = ProfileClient;
+
 async function buildAuthorProfileMaps(client: ProfileClient, authorIds: string[]): Promise<AuthorProfileMaps> {
   if (!authorIds.length) {
     return { byUserId: null, byProfileId: null };
@@ -289,6 +292,125 @@ async function attachVerifiedFlags(rows: any[]): Promise<any[]> {
   });
 }
 
+function normalizeUniquePostIds(ids: string[]) {
+  return Array.from(
+    new Set(ids.map((value) => (typeof value === 'string' ? value.trim() : '')).filter((value) => value.length > 0)),
+  );
+}
+
+async function selectPostIdChunks(client: FeedSelectClient, select: string, ids: string[]) {
+  const rows: any[] = [];
+
+  for (let start = 0; start < ids.length; start += POST_ID_SELECT_CHUNK_SIZE) {
+    const chunk = ids.slice(start, start + POST_ID_SELECT_CHUNK_SIZE);
+    const { data, error } = await client.from('posts').select(select).in('id', chunk);
+    if (error) return { data: rows, error };
+    rows.push(...(data ?? []));
+  }
+
+  return { data: rows, error: null as any };
+}
+
+async function selectPostsByIdsWithFallback(client: FeedSelectClient, ids: string[]) {
+  const uniqueIds = normalizeUniquePostIds(ids);
+  if (!uniqueIds.length) return { data: [] as any[], error: null as any };
+
+  const full = await selectPostIdChunks(client, SELECT_QUOTED, uniqueIds);
+  if (!full.error) return full;
+  if (!/column .* does not exist/i.test(full.error.message || '')) return full;
+
+  const withMedia = await selectPostIdChunks(client, SELECT_WITH_MEDIA, uniqueIds);
+  if (!withMedia.error) return withMedia;
+  if (!/column .* does not exist/i.test(withMedia.error.message || '')) return withMedia;
+
+  return selectPostIdChunks(client, SELECT_BASE, uniqueIds);
+}
+
+async function fetchQuotedPostMap(client: FeedSelectClient, quotedIds: string[]): Promise<Map<string, any> | null> {
+  const requestedQuotedIds = normalizeUniquePostIds(quotedIds);
+
+  if (!requestedQuotedIds.length) return null;
+
+  const readClient = getSupabaseAdminClientOrNull() ?? client;
+  const rowsById = new Map<string, any>();
+  let pendingIds = requestedQuotedIds;
+
+  for (let depth = 0; depth < 5 && pendingIds.length; depth += 1) {
+    const idsToFetch = pendingIds.filter((id) => !rowsById.has(id));
+    if (!idsToFetch.length) break;
+
+    const { data: quotedRows, error: quotedError } = await selectPostsByIdsWithFallback(readClient, idsToFetch);
+
+    if (quotedError || !Array.isArray(quotedRows)) {
+      if (quotedError) {
+        reportApiError({
+          endpoint: '/api/feed/posts',
+          error: quotedError,
+          context: { stage: 'select_quoted_posts', method: 'GET' },
+        });
+      }
+      break;
+    }
+
+    quotedRows.forEach((row) => {
+      if (row?.id) rowsById.set(String(row.id), row);
+    });
+
+    pendingIds = Array.from(
+      new Set(
+        quotedRows
+          .map((row) => row?.quoted_post_id)
+          .filter((value) => typeof value === 'string' && value.trim().length > 0 && !rowsById.has(value)),
+      ),
+    );
+  }
+
+  if (!rowsById.size) return null;
+
+  let quotedMediaMap = new Map<string, PostMediaItem[]>();
+  try {
+    quotedMediaMap = await fetchPostMediaMap(readClient, Array.from(rowsById.keys()));
+  } catch (mediaError: any) {
+    reportApiError({
+      endpoint: '/api/feed/posts',
+      error: mediaError,
+      context: { stage: 'select_quoted_post_media', method: 'GET' },
+    });
+  }
+
+  const quotedMaps = await buildAuthorProfileMaps(
+    readClient,
+    Array.from(new Set(Array.from(rowsById.values()).map((row) => row?.author_id).filter(Boolean) as string[])),
+  );
+  const enrichedRowsById = new Map<string, any>();
+  rowsById.forEach((row, id) => {
+    const media = quotedMediaMap.get(id) ?? buildFallbackMedia(row);
+    enrichedRowsById.set(id, attachAuthorProfile({ ...row, media }, quotedMaps));
+  });
+
+  const resolveRootQuotedPost = (id: string) => {
+    let current = enrichedRowsById.get(id) ?? null;
+    const seen = new Set<string>();
+
+    while (current?.quoted_post_id && !seen.has(String(current.id))) {
+      seen.add(String(current.id));
+      const next = enrichedRowsById.get(String(current.quoted_post_id));
+      if (!next) break;
+      current = next;
+    }
+
+    return current;
+  };
+
+  const quotedMap = new Map<string, any>();
+  requestedQuotedIds.forEach((id) => {
+    const post = resolveRootQuotedPost(id);
+    if (post) quotedMap.set(id, post);
+  });
+
+  return quotedMap.size ? quotedMap : null;
+}
+
 // GET: lettura autenticata, filtra i post per ruolo dell'autore
 export async function GET(req: NextRequest) {
   const searchParams = new URL(req.url).searchParams;
@@ -365,8 +487,7 @@ export async function GET(req: NextRequest) {
   } else if (scope === 'following') {
     allowedAuthors = Array.from(new Set(followedAuthorIds.filter(Boolean)));
   } else {
-    const base = [selfId, ...followedAuthorIds].filter(Boolean) as string[];
-    allowedAuthors = Array.from(new Set(base));
+    allowedAuthors = null;
   }
 
   const buildDebug = (extra?: Record<string, any>) =>
@@ -462,37 +583,7 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  if (quotedIds.length) {
-    const { data: quotedRows, error: quotedError } = await supabase
-      .from('posts')
-      .select(SELECT_QUOTED)
-      .in('id', quotedIds);
-
-    if (!quotedError && Array.isArray(quotedRows)) {
-      let quotedMediaMap = new Map<string, PostMediaItem[]>();
-      try {
-        quotedMediaMap = await fetchPostMediaMap(
-          supabase,
-          Array.from(new Set(quotedRows.map((row) => row?.id).filter(Boolean) as string[])),
-        );
-      } catch (mediaError: any) {
-        reportApiError({
-          endpoint: '/api/feed/posts',
-          error: mediaError,
-          context: { stage: 'select_quoted_post_media', method: 'GET' },
-        });
-      }
-      const quotedMaps = await buildAuthorProfileMaps(
-        supabase,
-        Array.from(new Set(quotedRows.map((r) => r?.author_id).filter(Boolean) as string[])),
-      );
-      const enrichedQuotedRows = quotedRows.map((row) => {
-        const media = quotedMediaMap.get(String(row.id)) ?? buildFallbackMedia(row);
-        return attachAuthorProfile({ ...row, media }, quotedMaps);
-      });
-      quotedMap = new Map(enrichedQuotedRows.map((row) => [row.id, row]));
-    }
-  }
+  quotedMap = await fetchQuotedPostMap(supabase, quotedIds);
 
   let rows =
     (data ?? [])
@@ -1070,8 +1161,9 @@ export async function POST(req: NextRequest) {
 
     const authorMaps = await buildAuthorProfileMaps(supabase, data?.author_id ? [String(data.author_id)] : []);
     const enrichedRow = attachAuthorProfile({ ...data, media: mediaItems }, authorMaps);
+    const quotedMap = data?.quoted_post_id ? await fetchQuotedPostMap(supabase, [String(data.quoted_post_id)]) : null;
 
-    const res = successResponse({ item: normalizeRow(enrichedRow) }, { status: 201 });
+    const res = successResponse({ item: normalizeRow(enrichedRow, quotedMap ?? undefined) }, { status: 201 });
     res.cookies.set(LAST_POST_TS_COOKIE, String(now), {
       httpOnly: false,
       path: '/',
