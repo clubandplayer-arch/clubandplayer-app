@@ -20,11 +20,11 @@
 
 /* === Theme tokens (CSS variables) === */
 :root {
-  /* Palette bandiera norvegese */
-  --brand:  #00527a; /* navy blue brand (logo) */
-  --brand-soft: #3ba3d4; /* variante più chiara per testi secondari/bordi */
-  --brand-border: rgba(0, 82, 122, 0.18); /* bordo soft coerente con il brand */
-  --accent: #EF2B2D; /* red */
+  /* Palette logo Club & Player */
+  --brand:  #0e527b; /* blu logo per "Club" e "Player" */
+  --brand-soft: #036f9a; /* azzurro logo per la "&" */
+  --brand-border: rgba(14, 82, 123, 0.18); /* bordo soft coerente con il brand */
+  --accent: #036f9a; /* azzurro logo */
 
   /* Neutri */
   --bg:     #ffffff;
@@ -42,7 +42,7 @@
 
 /* Base */
 :root {
-  --clubplayer-gradient: linear-gradient(135deg, #e9f4ff 0%, #ffffff 46%, #ffe3c1 100%);
+  --clubplayer-gradient: linear-gradient(135deg, #e7eef2 0%, #ffffff 46%, #d6edf1 100%);
 }
 
 .bg-clubplayer-gradient {
