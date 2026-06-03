@@ -436,6 +436,7 @@ export async function GET(req: NextRequest) {
   const to = from + limit - 1;
   const supabase = await getSupabaseServerClient();
   const admin = getSupabaseAdminClientOrNull();
+  const feedReadClient = admin ?? supabase;
 
   // utente corrente + profilo attivo
   let currentUserId: string | null = null;
@@ -527,7 +528,7 @@ export async function GET(req: NextRequest) {
   }
 
   const fetchPosts = async (sel: string) => {
-    let query = supabase
+    let query = feedReadClient
       .from('posts')
       .select(sel)
       .order('created_at', { ascending: false })
@@ -569,7 +570,7 @@ export async function GET(req: NextRequest) {
   ) as string[];
 
   const { byUserId: authorProfileMapByUserId, byProfileId: authorProfileMapByProfileId } =
-    await buildAuthorProfileMaps(supabase, authorIds);
+    await buildAuthorProfileMaps(feedReadClient, authorIds);
 
   let quotedMap: Map<string, any> | null = null;
   let missingQuotedIds: string[] = [];
@@ -586,7 +587,7 @@ export async function GET(req: NextRequest) {
 
   try {
     postMediaMap = await fetchPostMediaMap(
-      supabase,
+      feedReadClient,
       Array.from(new Set((data ?? []).map((row) => row?.id).filter(Boolean) as string[])),
     );
   } catch (mediaError: any) {
@@ -598,7 +599,12 @@ export async function GET(req: NextRequest) {
   }
 
   if (quotedIds.length) {
-    const quotedResult = await loadQuotedPostMap({ supabase, admin, quotedIds, candidateRows: data ?? [] });
+    const quotedResult = await loadQuotedPostMap({
+      supabase: feedReadClient,
+      admin,
+      quotedIds,
+      candidateRows: data ?? [],
+    });
     quotedMap = quotedResult.map;
     missingQuotedIds = quotedResult.missingQuotedIds;
     quotedIdsCount = quotedResult.quotedIdsCount;
