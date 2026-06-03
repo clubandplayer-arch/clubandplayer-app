@@ -542,6 +542,7 @@ export function PostCard({
           {post.quoted_post_id ? (
             <QuotedPostCard
               post={post.quoted_post}
+              onRepost={onRepost}
               missingText="Questo post non è più disponibile"
             />
           ) : null}

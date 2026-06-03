@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { PostIconRepost } from '@/components/icons/PostActionIcons';
 import { PostMedia } from '@/components/feed/PostMedia';
 import { domainFromUrl, firstUrl, type FeedPost } from '@/components/feed/postShared';
 import { buildClubDisplayName, buildProfileDisplayName } from '@/lib/displayName';
@@ -9,10 +10,11 @@ import { buildClubDisplayName, buildProfileDisplayName } from '@/lib/displayName
 type Props = {
   post?: FeedPost | null;
   onRemove?: () => void;
+  onRepost?: (post: FeedPost) => void;
   missingText?: string;
 };
 
-export function QuotedPostCard({ post, onRemove, missingText = 'Questo post non è più disponibile' }: Props) {
+export function QuotedPostCard({ post, onRemove, onRepost, missingText = 'Questo post non è più disponibile' }: Props) {
   const createdAt = post?.created_at || post?.createdAt;
   const linkUrl = post?.link_url || firstUrl(post?.content || post?.text || '') || null;
   const authorProfile = post?.author_profile ?? null;
@@ -79,7 +81,7 @@ export function QuotedPostCard({ post, onRemove, missingText = 'Questo post non 
       </div>
 
       {post ? (
-        <div className="mt-3 space-y-2 text-sm text-neutral-800">
+        <div className="mt-3 space-y-3 text-sm text-neutral-800">
           {post.content ? <p className="whitespace-pre-wrap leading-relaxed line-clamp-4">{post.content}</p> : null}
 
           <PostMedia
@@ -100,6 +102,25 @@ export function QuotedPostCard({ post, onRemove, missingText = 'Questo post non 
               <span>{domainFromUrl(linkUrl)}</span>
             </a>
           ) : null}
+
+          <div className="flex flex-wrap items-center gap-2 border-t border-neutral-100 pt-2">
+            <Link
+              href={`/posts/${post.id}`}
+              className="inline-flex items-center rounded-full bg-slate-50 px-3 py-1.5 text-xs font-semibold text-neutral-800 transition hover:bg-slate-100"
+            >
+              Vedi post originale
+            </Link>
+            {onRepost ? (
+              <button
+                type="button"
+                onClick={() => onRepost(post)}
+                className="inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-3 py-1.5 text-xs font-semibold text-neutral-800 transition hover:bg-slate-100"
+              >
+                <PostIconRepost className="text-[16px] leading-none" aria-hidden />
+                <span>Repost</span>
+              </button>
+            ) : null}
+          </div>
         </div>
       ) : (
         <div className="mt-2 rounded border border-dashed border-neutral-300 bg-neutral-50 p-2 text-sm text-neutral-500">
