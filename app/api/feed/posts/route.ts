@@ -181,7 +181,7 @@ type AuthorProfileMaps = {
   byProfileId: Map<string, ProfileRow> | null;
 };
 
-type FeedSelectClient = Awaited<ReturnType<typeof getSupabaseServerClient>>;
+type FeedSelectClient = ProfileClient;
 
 async function buildAuthorProfileMaps(client: ProfileClient, authorIds: string[]): Promise<AuthorProfileMaps> {
   if (!authorIds.length) {
@@ -291,35 +291,67 @@ async function attachVerifiedFlags(rows: any[]): Promise<any[]> {
   });
 }
 
+async function selectPostsByIdsWithFallback(client: FeedSelectClient, ids: string[]) {
+  const uniqueIds = Array.from(new Set(ids.filter((value) => typeof value === 'string' && value.trim().length > 0)));
+  if (!uniqueIds.length) return { data: [] as any[], error: null as any };
+
+  const full = await client.from('posts').select(SELECT_QUOTED).in('id', uniqueIds);
+  if (!full.error) return { data: full.data ?? [], error: null };
+  if (!/column .* does not exist/i.test(full.error.message || '')) return full;
+
+  const withMedia = await client.from('posts').select(SELECT_WITH_MEDIA).in('id', uniqueIds);
+  if (!withMedia.error) return { data: withMedia.data ?? [], error: null };
+  if (!/column .* does not exist/i.test(withMedia.error.message || '')) return withMedia;
+
+  return client.from('posts').select(SELECT_BASE).in('id', uniqueIds);
+}
+
 async function fetchQuotedPostMap(client: FeedSelectClient, quotedIds: string[]): Promise<Map<string, any> | null> {
-  const uniqueQuotedIds = Array.from(
+  const requestedQuotedIds = Array.from(
     new Set(quotedIds.filter((value) => typeof value === 'string' && value.trim().length > 0)),
   );
 
-  if (!uniqueQuotedIds.length) return null;
+  if (!requestedQuotedIds.length) return null;
 
-  const { data: quotedRows, error: quotedError } = await client
-    .from('posts')
-    .select(SELECT_QUOTED)
-    .in('id', uniqueQuotedIds);
+  const readClient = getSupabaseAdminClientOrNull() ?? client;
+  const rowsById = new Map<string, any>();
+  let pendingIds = requestedQuotedIds;
 
-  if (quotedError || !Array.isArray(quotedRows)) {
-    if (quotedError) {
-      reportApiError({
-        endpoint: '/api/feed/posts',
-        error: quotedError,
-        context: { stage: 'select_quoted_posts', method: 'GET' },
-      });
+  for (let depth = 0; depth < 5 && pendingIds.length; depth += 1) {
+    const idsToFetch = pendingIds.filter((id) => !rowsById.has(id));
+    if (!idsToFetch.length) break;
+
+    const { data: quotedRows, error: quotedError } = await selectPostsByIdsWithFallback(readClient, idsToFetch);
+
+    if (quotedError || !Array.isArray(quotedRows)) {
+      if (quotedError) {
+        reportApiError({
+          endpoint: '/api/feed/posts',
+          error: quotedError,
+          context: { stage: 'select_quoted_posts', method: 'GET' },
+        });
+      }
+      break;
     }
-    return null;
+
+    quotedRows.forEach((row) => {
+      if (row?.id) rowsById.set(String(row.id), row);
+    });
+
+    pendingIds = Array.from(
+      new Set(
+        quotedRows
+          .map((row) => row?.quoted_post_id)
+          .filter((value) => typeof value === 'string' && value.trim().length > 0 && !rowsById.has(value)),
+      ),
+    );
   }
+
+  if (!rowsById.size) return null;
 
   let quotedMediaMap = new Map<string, PostMediaItem[]>();
   try {
-    quotedMediaMap = await fetchPostMediaMap(
-      client,
-      Array.from(new Set(quotedRows.map((row) => row?.id).filter(Boolean) as string[])),
-    );
+    quotedMediaMap = await fetchPostMediaMap(readClient, Array.from(rowsById.keys()));
   } catch (mediaError: any) {
     reportApiError({
       endpoint: '/api/feed/posts',
@@ -329,15 +361,36 @@ async function fetchQuotedPostMap(client: FeedSelectClient, quotedIds: string[])
   }
 
   const quotedMaps = await buildAuthorProfileMaps(
-    client,
-    Array.from(new Set(quotedRows.map((row) => row?.author_id).filter(Boolean) as string[])),
+    readClient,
+    Array.from(new Set(Array.from(rowsById.values()).map((row) => row?.author_id).filter(Boolean) as string[])),
   );
-  const enrichedQuotedRows = quotedRows.map((row) => {
-    const media = quotedMediaMap.get(String(row.id)) ?? buildFallbackMedia(row);
-    return attachAuthorProfile({ ...row, media }, quotedMaps);
+  const enrichedRowsById = new Map<string, any>();
+  rowsById.forEach((row, id) => {
+    const media = quotedMediaMap.get(id) ?? buildFallbackMedia(row);
+    enrichedRowsById.set(id, attachAuthorProfile({ ...row, media }, quotedMaps));
   });
 
-  return new Map(enrichedQuotedRows.map((row) => [row.id, row]));
+  const resolveRootQuotedPost = (id: string) => {
+    let current = enrichedRowsById.get(id) ?? null;
+    const seen = new Set<string>();
+
+    while (current?.quoted_post_id && !seen.has(String(current.id))) {
+      seen.add(String(current.id));
+      const next = enrichedRowsById.get(String(current.quoted_post_id));
+      if (!next) break;
+      current = next;
+    }
+
+    return current;
+  };
+
+  const quotedMap = new Map<string, any>();
+  requestedQuotedIds.forEach((id) => {
+    const post = resolveRootQuotedPost(id);
+    if (post) quotedMap.set(id, post);
+  });
+
+  return quotedMap.size ? quotedMap : null;
 }
 
 // GET: lettura autenticata, filtra i post per ruolo dell'autore
@@ -416,8 +469,7 @@ export async function GET(req: NextRequest) {
   } else if (scope === 'following') {
     allowedAuthors = Array.from(new Set(followedAuthorIds.filter(Boolean)));
   } else {
-    const base = [selfId, ...followedAuthorIds].filter(Boolean) as string[];
-    allowedAuthors = Array.from(new Set(base));
+    allowedAuthors = null;
   }
 
   const buildDebug = (extra?: Record<string, any>) =>
