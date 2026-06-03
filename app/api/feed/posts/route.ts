@@ -369,6 +369,10 @@ export async function GET(req: NextRequest) {
     allowedAuthors = Array.from(new Set(base));
   }
 
+  const visibleRepostAuthorIds = Array.from(
+    new Set([selfId, currentProfileId, ...followedAuthorIds, ...followedProfileIds].filter(Boolean) as string[]),
+  );
+
   const buildDebug = (extra?: Record<string, any>) =>
     debug && process.env.NODE_ENV !== 'production'
       ? {
@@ -379,6 +383,7 @@ export async function GET(req: NextRequest) {
           followedProfileCount: followedProfileIds.length,
           followedAuthorIdsCount: followedAuthorIds.length,
           allowedAuthorIdsCount: allowedAuthors?.length ?? 0,
+          visibleRepostAuthorIdsCount: visibleRepostAuthorIds.length,
           ...extra,
         }
       : null;
@@ -468,6 +473,7 @@ export async function GET(req: NextRequest) {
       supabase,
       admin: getSupabaseAdminClientOrNull(),
       quotedIds,
+      visibleRepostAuthorIds,
     });
     quotedMap = quotedResult.quotedMap;
     const { quotedMap: _quotedMap, ...rest } = quotedResult;
@@ -748,6 +754,7 @@ type LoadQuotedPostMapArgs = {
   supabase: ServerClient;
   admin?: AdminClient | null;
   quotedIds: string[];
+  visibleRepostAuthorIds?: string[];
 };
 
 type LoadQuotedPostMapResult = {
@@ -757,6 +764,7 @@ type LoadQuotedPostMapResult = {
   userRowsCount: number;
   rpcRowsCount: number;
   adminRowsCount: number;
+  visibleRepostAuthorIdsCount: number;
 };
 
 async function selectQuotedRows(client: ProfileClient, quotedIds: string[], stage: string): Promise<any[]> {
@@ -817,9 +825,61 @@ async function enrichQuotedRows(client: ProfileClient, quotedRows: any[], mediaS
   });
 }
 
-async function loadQuotedPostMap({ supabase, admin, quotedIds }: LoadQuotedPostMapArgs): Promise<LoadQuotedPostMapResult> {
+async function selectQuotedRowsViaRpc(
+  supabase: ServerClient,
+  quotedIds: string[],
+  visibleRepostAuthorIds: string[],
+): Promise<any[]> {
+  if (!quotedIds.length) return [];
+
+  const { data, error } = await supabase.rpc('feed_visible_quoted_posts', {
+    quoted_ids: quotedIds,
+    visible_author_ids: visibleRepostAuthorIds,
+  });
+
+  if (!error) return Array.isArray(data) ? data : [];
+
+  const shouldTryLegacySignature =
+    error.code === 'PGRST202' ||
+    /visible_author_ids|Could not find the function|feed_visible_quoted_posts/i.test(error.message || '');
+
+  if (shouldTryLegacySignature) {
+    const legacyResult = await supabase.rpc('feed_visible_quoted_posts', {
+      quoted_ids: quotedIds,
+    });
+    if (!legacyResult.error) return Array.isArray(legacyResult.data) ? legacyResult.data : [];
+
+    if (legacyResult.error.code === 'PGRST202' || /feed_visible_quoted_posts/i.test(legacyResult.error.message || '')) {
+      return [];
+    }
+
+    reportApiError({
+      endpoint: '/api/feed/posts',
+      error: legacyResult.error,
+      context: { stage: 'select_quoted_posts_rpc_legacy', method: 'GET', quotedIdsCount: quotedIds.length },
+    });
+    return [];
+  }
+
+  reportApiError({
+    endpoint: '/api/feed/posts',
+    error,
+    context: { stage: 'select_quoted_posts_rpc', method: 'GET', quotedIdsCount: quotedIds.length },
+  });
+  return [];
+}
+
+async function loadQuotedPostMap({
+  supabase,
+  admin,
+  quotedIds,
+  visibleRepostAuthorIds = [],
+}: LoadQuotedPostMapArgs): Promise<LoadQuotedPostMapResult> {
   const normalizedQuotedIds = Array.from(
     new Set(quotedIds.map((id) => (typeof id === 'string' ? id.trim() : '')).filter(Boolean)),
+  );
+  const normalizedVisibleRepostAuthorIds = Array.from(
+    new Set(visibleRepostAuthorIds.map((id) => (typeof id === 'string' ? id.trim() : '')).filter(Boolean)),
   );
   const quotedMap = new Map<string, any>();
 
@@ -838,6 +898,7 @@ async function loadQuotedPostMap({ supabase, admin, quotedIds }: LoadQuotedPostM
       userRowsCount: 0,
       rpcRowsCount: 0,
       adminRowsCount: 0,
+      visibleRepostAuthorIdsCount: normalizedVisibleRepostAuthorIds.length,
     };
   }
 
@@ -857,19 +918,8 @@ async function loadQuotedPostMap({ supabase, admin, quotedIds }: LoadQuotedPostM
 
   if (missingQuotedIds.length) {
     try {
-      const { data: rpcRows, error: rpcError } = await supabase.rpc('feed_visible_quoted_posts', {
-        quoted_ids: missingQuotedIds,
-      });
-
-      if (rpcError) {
-        if (rpcError.code !== 'PGRST202' && !/feed_visible_quoted_posts/i.test(rpcError.message || '')) {
-          reportApiError({
-            endpoint: '/api/feed/posts',
-            error: rpcError,
-            context: { stage: 'select_quoted_posts_rpc', method: 'GET', quotedIdsCount: missingQuotedIds.length },
-          });
-        }
-      } else if (Array.isArray(rpcRows) && rpcRows.length) {
+      const rpcRows = await selectQuotedRowsViaRpc(supabase, missingQuotedIds, normalizedVisibleRepostAuthorIds);
+      if (rpcRows.length) {
         rpcRowsCount = rpcRows.length;
         addRows(await enrichQuotedRows(supabase, rpcRows, 'select_quoted_post_media_rpc'));
       }
@@ -916,6 +966,7 @@ async function loadQuotedPostMap({ supabase, admin, quotedIds }: LoadQuotedPostM
     userRowsCount,
     rpcRowsCount,
     adminRowsCount,
+    visibleRepostAuthorIdsCount: normalizedVisibleRepostAuthorIds.length,
   };
 }
 
