@@ -23,6 +23,24 @@ export type UseFeedResult = {
   removePost: (postId: string) => void;
 };
 
+function rememberPostTree(post: FeedPost, cache: Map<string, FeedPost>) {
+  if (!post?.id) return;
+  cache.set(String(post.id), post);
+  if (post.quoted_post) {
+    rememberPostTree(post.quoted_post, cache);
+  }
+}
+
+function hydrateMissingQuotedPosts(items: FeedPost[], cache: Map<string, FeedPost>) {
+  items.forEach((post) => rememberPostTree(post, cache));
+
+  return items.map((post) => {
+    if (post.quoted_post || !post.quoted_post_id) return post;
+    const cachedQuoted = cache.get(String(post.quoted_post_id));
+    return cachedQuoted ? { ...post, quoted_post: cachedQuoted } : post;
+  });
+}
+
 async function fetchPosts(
   params: {
     signal?: AbortSignal;
@@ -67,6 +85,7 @@ export function useFeed(options?: UseFeedOptions): UseFeedResult {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const quotedPostCacheRef = useRef<Map<string, FeedPost>>(new Map());
 
   const abortOngoing = useCallback(() => {
     abortRef.current?.abort();
@@ -93,10 +112,11 @@ export function useFeed(options?: UseFeedOptions): UseFeedResult {
           pageSize,
           signal: signal ?? undefined,
         });
+        const hydratedItems = hydrateMissingQuotedPosts(items, quotedPostCacheRef.current);
         setPosts((curr) => {
-          if (opts?.reset) return items;
+          if (opts?.reset) return hydratedItems;
           const seen = new Set(curr.map((p) => String(p.id)));
-          const fresh = items.filter((p) => !seen.has(String(p.id)));
+          const fresh = hydratedItems.filter((p) => !seen.has(String(p.id)));
           return [...curr, ...fresh];
         });
         setNextPage(apiNext);

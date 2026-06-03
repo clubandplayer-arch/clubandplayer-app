@@ -231,6 +231,171 @@ function attachAuthorProfile(row: any, maps: AuthorProfileMaps): any {
   return row;
 }
 
+type LoadQuotedPostMapResult = {
+  map: Map<string, any>;
+  missingQuotedIds: string[];
+  quotedIdsCount: number;
+};
+
+async function fetchQuotedRowsByIds(client: ProfileClient, quotedIds: string[]) {
+  let data: any[] | null = null;
+  let error: any = null;
+  let selectUsed = SELECT_QUOTED;
+
+  ({ data, error } = await client.from('posts').select(SELECT_QUOTED).in('id', quotedIds));
+
+  if (error && /column .* does not exist/i.test(error.message || '')) {
+    selectUsed = SELECT_WITH_MEDIA;
+    ({ data, error } = await client.from('posts').select(SELECT_WITH_MEDIA).in('id', quotedIds));
+  }
+
+  if (error && /column .* does not exist/i.test(error.message || '')) {
+    selectUsed = SELECT_BASE;
+    ({ data, error } = await client.from('posts').select(SELECT_BASE).in('id', quotedIds));
+  }
+
+  return { data, error, selectUsed };
+}
+
+async function fetchRepostedQuotedRowsByRpc(client: ProfileClient, quotedIds: string[]) {
+  if (!quotedIds.length) return { data: null, error: null };
+  return client.rpc('feed_visible_quoted_posts', { quoted_ids: quotedIds });
+}
+
+async function loadQuotedPostMap({
+  supabase,
+  admin,
+  quotedIds,
+  candidateRows = [],
+}: {
+  supabase: ProfileClient;
+  admin: ProfileClient | null;
+  quotedIds: string[];
+  candidateRows?: any[];
+}): Promise<LoadQuotedPostMapResult> {
+  const uniqueQuotedIds = Array.from(new Set(quotedIds.filter((id) => typeof id === 'string' && id.trim().length > 0)));
+  const quotedRowsById = new Map<string, any>();
+
+  if (!uniqueQuotedIds.length) {
+    return { map: quotedRowsById, missingQuotedIds: [], quotedIdsCount: 0 };
+  }
+
+  const { data: userQuotedRows, error: quotedError, selectUsed: userSelectUsed } = await fetchQuotedRowsByIds(
+    supabase,
+    uniqueQuotedIds,
+  );
+
+  if (quotedError) {
+    reportApiError({
+      endpoint: '/api/feed/posts',
+      error: quotedError,
+      context: { stage: 'select_quoted_posts', method: 'GET', quotedIdsCount: uniqueQuotedIds.length, selectUsed: userSelectUsed },
+    });
+  }
+
+  if (!quotedError && Array.isArray(userQuotedRows)) {
+    userQuotedRows.forEach((row) => {
+      if (row?.id) quotedRowsById.set(String(row.id), row);
+    });
+  }
+
+  candidateRows.forEach((row) => {
+    if (!row?.id) return;
+    const postId = String(row.id);
+    if (uniqueQuotedIds.includes(postId) && !quotedRowsById.has(postId)) {
+      quotedRowsById.set(postId, row);
+    }
+  });
+
+  const userMissingQuotedIds = uniqueQuotedIds.filter((id) => !quotedRowsById.has(id));
+
+  if (userMissingQuotedIds.length) {
+    const { data: rpcQuotedRows, error: rpcQuotedError } = await fetchRepostedQuotedRowsByRpc(
+      supabase,
+      userMissingQuotedIds,
+    );
+
+    if (rpcQuotedError) {
+      reportApiError({
+        endpoint: '/api/feed/posts',
+        error: rpcQuotedError,
+        context: {
+          stage: 'select_quoted_posts_repost_rpc',
+          method: 'GET',
+          missingQuotedIdsCount: userMissingQuotedIds.length,
+        },
+      });
+    }
+
+    if (!rpcQuotedError && Array.isArray(rpcQuotedRows)) {
+      rpcQuotedRows.forEach((row) => {
+        if (row?.id) quotedRowsById.set(String(row.id), row);
+      });
+    }
+  }
+
+  const rpcMissingQuotedIds = uniqueQuotedIds.filter((id) => !quotedRowsById.has(id));
+
+  if (rpcMissingQuotedIds.length && admin) {
+    const { data: adminQuotedRows, error: adminQuotedError, selectUsed: adminSelectUsed } = await fetchQuotedRowsByIds(
+      admin,
+      rpcMissingQuotedIds,
+    );
+
+    if (adminQuotedError) {
+      reportApiError({
+        endpoint: '/api/feed/posts',
+        error: adminQuotedError,
+        context: {
+          stage: 'select_quoted_posts_admin_fallback',
+          method: 'GET',
+          missingQuotedIdsCount: rpcMissingQuotedIds.length,
+          selectUsed: adminSelectUsed,
+        },
+      });
+    }
+
+    if (!adminQuotedError && Array.isArray(adminQuotedRows)) {
+      adminQuotedRows.forEach((row) => {
+        if (row?.id) quotedRowsById.set(String(row.id), row);
+      });
+    }
+  }
+
+  const foundQuotedRows = Array.from(quotedRowsById.values());
+  const enrichmentClient = admin ?? supabase;
+  let quotedMediaMap = new Map<string, PostMediaItem[]>();
+
+  try {
+    quotedMediaMap = await fetchPostMediaMap(
+      enrichmentClient,
+      Array.from(new Set(foundQuotedRows.map((row) => row?.id).filter(Boolean) as string[])),
+    );
+  } catch (mediaError: any) {
+    reportApiError({
+      endpoint: '/api/feed/posts',
+      error: mediaError,
+      context: { stage: 'select_quoted_post_media', method: 'GET' },
+    });
+  }
+
+  const quotedMaps = await buildAuthorProfileMaps(
+    enrichmentClient,
+    Array.from(new Set(foundQuotedRows.map((r) => r?.author_id).filter(Boolean) as string[])),
+  );
+  const enrichedQuotedRows = foundQuotedRows.map((row) => {
+    const media = quotedMediaMap.get(String(row.id)) ?? buildFallbackMedia(row);
+    return attachAuthorProfile({ ...row, media }, quotedMaps);
+  });
+  const enrichedQuotedMap = new Map(enrichedQuotedRows.map((row) => [String(row.id), row]));
+
+  return {
+    map: enrichedQuotedMap,
+    missingQuotedIds: uniqueQuotedIds.filter((id) => !enrichedQuotedMap.has(id)),
+    quotedIdsCount: uniqueQuotedIds.length,
+  };
+}
+
 async function attachVerifiedFlags(rows: any[]): Promise<any[]> {
   if (!Array.isArray(rows) || rows.length === 0) return rows;
 
@@ -302,6 +467,7 @@ export async function GET(req: NextRequest) {
   const from = page * limit;
   const to = from + limit - 1;
   const supabase = await getSupabaseServerClient();
+  const admin = getSupabaseAdminClientOrNull();
 
   // utente corrente + profilo attivo
   let currentUserId: string | null = null;
@@ -326,7 +492,7 @@ export async function GET(req: NextRequest) {
   const followedProfileIds: string[] = [];
   const followedAuthorIds: string[] = [];
 
-  const shouldLoadFollows = Boolean(currentProfileId && (scope === 'following' || scope === 'all'));
+  const shouldLoadFollows = Boolean(currentProfileId && scope === 'following');
 
   if (shouldLoadFollows) {
     const { data: followRows, error: followError } = await supabase
@@ -365,8 +531,7 @@ export async function GET(req: NextRequest) {
   } else if (scope === 'following') {
     allowedAuthors = Array.from(new Set(followedAuthorIds.filter(Boolean)));
   } else {
-    const base = [selfId, ...followedAuthorIds].filter(Boolean) as string[];
-    allowedAuthors = Array.from(new Set(base));
+    allowedAuthors = null;
   }
 
   const buildDebug = (extra?: Record<string, any>) =>
@@ -439,6 +604,8 @@ export async function GET(req: NextRequest) {
     await buildAuthorProfileMaps(supabase, authorIds);
 
   let quotedMap: Map<string, any> | null = null;
+  let missingQuotedIds: string[] = [];
+  let quotedIdsCount = 0;
   let postMediaMap = new Map<string, PostMediaItem[]>();
 
   const quotedIds = Array.from(
@@ -463,35 +630,10 @@ export async function GET(req: NextRequest) {
   }
 
   if (quotedIds.length) {
-    const { data: quotedRows, error: quotedError } = await supabase
-      .from('posts')
-      .select(SELECT_QUOTED)
-      .in('id', quotedIds);
-
-    if (!quotedError && Array.isArray(quotedRows)) {
-      let quotedMediaMap = new Map<string, PostMediaItem[]>();
-      try {
-        quotedMediaMap = await fetchPostMediaMap(
-          supabase,
-          Array.from(new Set(quotedRows.map((row) => row?.id).filter(Boolean) as string[])),
-        );
-      } catch (mediaError: any) {
-        reportApiError({
-          endpoint: '/api/feed/posts',
-          error: mediaError,
-          context: { stage: 'select_quoted_post_media', method: 'GET' },
-        });
-      }
-      const quotedMaps = await buildAuthorProfileMaps(
-        supabase,
-        Array.from(new Set(quotedRows.map((r) => r?.author_id).filter(Boolean) as string[])),
-      );
-      const enrichedQuotedRows = quotedRows.map((row) => {
-        const media = quotedMediaMap.get(String(row.id)) ?? buildFallbackMedia(row);
-        return attachAuthorProfile({ ...row, media }, quotedMaps);
-      });
-      quotedMap = new Map(enrichedQuotedRows.map((row) => [row.id, row]));
-    }
+    const quotedResult = await loadQuotedPostMap({ supabase, admin, quotedIds, candidateRows: data ?? [] });
+    quotedMap = quotedResult.map;
+    missingQuotedIds = quotedResult.missingQuotedIds;
+    quotedIdsCount = quotedResult.quotedIdsCount;
   }
 
   let rows =
@@ -528,6 +670,8 @@ export async function GET(req: NextRequest) {
     postsCountBeforeJoin,
     postsCountAfterJoin,
     scope,
+    quotedIdsCount,
+    missingQuotedIds,
   });
 
   if (debugPayload) {
@@ -740,7 +884,7 @@ type ServerClient = Awaited<ReturnType<typeof getSupabaseServerClient>>;
 type AdminClient = NonNullable<ReturnType<typeof getSupabaseAdminClientOrNull>>;
 type InsertClient = ServerClient | AdminClient;
 
-async function fetchPostMediaMap(client: ServerClient, postIds: string[]) {
+async function fetchPostMediaMap(client: ProfileClient, postIds: string[]) {
   const map = new Map<string, PostMediaItem[]>();
   if (!postIds.length) return map;
   const { data, error } = await client
@@ -893,11 +1037,38 @@ export async function POST(req: NextRequest) {
     let quotedRootId: string | null = null;
 
     if (quotedPostId) {
-      const { data: quoted, error: quotedError } = await supabase
+      let { data: quoted, error: quotedError } = await supabase
         .from('posts')
         .select('id, quoted_post_id')
         .eq('id', quotedPostId)
         .maybeSingle();
+
+      if ((quotedError || !quoted) && admin) {
+        if (quotedError) {
+          reportApiError({
+            endpoint: '/api/feed/posts',
+            error: quotedError,
+            context: { stage: 'select_quoted_post_before_insert', method: 'POST' },
+          });
+        }
+
+        const { data: adminQuoted, error: adminQuotedError } = await admin
+          .from('posts')
+          .select('id, quoted_post_id')
+          .eq('id', quotedPostId)
+          .maybeSingle();
+
+        if (adminQuotedError) {
+          reportApiError({
+            endpoint: '/api/feed/posts',
+            error: adminQuotedError,
+            context: { stage: 'select_quoted_post_before_insert_admin_fallback', method: 'POST' },
+          });
+        }
+
+        quoted = adminQuoted;
+        quotedError = adminQuotedError;
+      }
 
       if (quotedError || !quoted) {
         return notFoundError('Post originale non trovato o non accessibile');
