@@ -3,10 +3,13 @@ export const AGE_BRACKETS = ['17-20','21-25','26-30','31+'] as const;
 export type AgeBracket = typeof AGE_BRACKETS[number];
 
 const FOOTBALL_ROLES = ['Portiere','Difensore centrale','Terzino/Esterno difensivo','Mediano','Centrocampista centrale','Trequartista','Esterno offensivo/Ala','Seconda punta','Punta centrale'];
+const CALCIO_A_8_ROLES = ['Portiere','Difensore Centrale','Esterno Basso','Regista','Centrocampisti Laterali','Punta Centrale'];
+
+const SPORTS_REQUIRING_PLAYER_ROLE = new Set(['Calcio', 'Calcio a 8']);
 
 export const SPORTS_ROLES: Record<string, string[]> = {
   Calcio: FOOTBALL_ROLES,
-  'Calcio a 8': FOOTBALL_ROLES,
+  'Calcio a 8': CALCIO_A_8_ROLES,
   Futsal: ['Portiere','Fixo','Ala','Pivot','Universale'],
   Volley: ['Palleggiatore','Opposto','Schiacciatore','Centrale','Libero'],
   Basket: ['Playmaker (PG)','Guardia (SG)','Ala piccola (SF)','Ala grande (PF)','Centro (C)'],
@@ -60,4 +63,9 @@ export function normalizeSport(input?: string | null): string | null {
   const trimmed = input.trim();
   if (!trimmed) return null;
   return SPORT_ALIASES[trimmed] ?? trimmed;
+}
+
+export function sportRequiresPlayerRole(input?: string | null): boolean {
+  const normalizedSport = normalizeSport(input);
+  return normalizedSport ? SPORTS_REQUIRING_PLAYER_ROLE.has(normalizedSport) : false;
 }
