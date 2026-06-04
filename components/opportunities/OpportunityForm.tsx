@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 import type { Opportunity } from '@/types/opportunity';
-import { AGE_BRACKETS, type AgeBracket, normalizeSport, SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
+import { AGE_BRACKETS, type AgeBracket, normalizeSport, sportRequiresPlayerRole, SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
 import { CATEGORIES_BY_SPORT } from '@/lib/opps/categories';
 import { COUNTRIES } from '@/lib/geo/countries';
 import {
@@ -166,6 +166,7 @@ export default function OpportunityForm({
   const [category, setCategory] = useState<string>(initial?.category ?? '');
   const normalizedSport = normalizeSport(sport) ?? sport;
   const roleOptions = useMemo(() => SPORTS_ROLES[normalizedSport] ?? [], [normalizedSport]);
+  const playerRoleRequired = sportRequiresPlayerRole(normalizedSport);
   const categoryOptions = useMemo(() => CATEGORIES_BY_SPORT[normalizedSport] ?? [], [normalizedSport]);
 
   // Genere (OBBLIGATORIO)
@@ -302,7 +303,7 @@ export default function OpportunityForm({
 
     const t = title.trim();
     if (!t) return setErr('Titolo obbligatorio');
-    if (sport === 'Calcio' && !role) return setErr('Seleziona un ruolo per Calcio');
+    if (playerRoleRequired && roleGroup === 'player' && !role) return setErr(`Seleziona un ruolo per ${sport}`);
     const normalizedGender = normalizeOpportunityGender(gender);
     if (!normalizedGender) return setErr('Seleziona il genere');
 
@@ -545,7 +546,7 @@ export default function OpportunityForm({
 
           <div>
             <label className="block text-sm font-medium mb-1">
-              Ruolo {sport === 'Calcio' && <span className="text-red-600">*</span>}
+              Ruolo {playerRoleRequired && <span className="text-red-600">*</span>}
             </label>
             <select
               className="w-full rounded-xl border px-3 py-2"
@@ -565,7 +566,7 @@ export default function OpportunityForm({
                   setRoleGroup('staff');
                 }
               }}
-              required={sport === 'Calcio'}
+              required={playerRoleRequired}
             >
               <option value="">—</option>
               <option value="__group_player" disabled>──────── PLAYER ────────</option>

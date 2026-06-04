@@ -35,6 +35,15 @@ export const CATEGORIES_BY_SPORT: Record<string, string[]> = {
     'ELITE',
     'Giovanili',
   ],
+  'Calcio a 8': [
+    'Serie A',
+    'Serie A2',
+    'Serie B',
+    'Amatoriale',
+    ...FEDERATION_CATEGORIES,
+    'Giovanili',
+    'Altro',
+  ],
   Futsal: [
     'Serie A',
     'A2',

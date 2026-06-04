@@ -25,6 +25,7 @@ type RegistryClub = {
 const SPORTS = [
   "",
   "Calcio",
+  "Calcio a 8",
   "Futsal",
   "Volley",
   "Basket",
