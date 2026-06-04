@@ -23,6 +23,7 @@ type RegistryClaimRow = {
 
 const ALLOWED_SPORTS = [
   "Calcio",
+  "Calcio a 8",
   "Futsal",
   "Volley",
   "Basket",

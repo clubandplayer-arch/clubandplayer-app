@@ -2,8 +2,11 @@
 export const AGE_BRACKETS = ['17-20','21-25','26-30','31+'] as const;
 export type AgeBracket = typeof AGE_BRACKETS[number];
 
+const FOOTBALL_ROLES = ['Portiere','Difensore centrale','Terzino/Esterno difensivo','Mediano','Centrocampista centrale','Trequartista','Esterno offensivo/Ala','Seconda punta','Punta centrale'];
+
 export const SPORTS_ROLES: Record<string, string[]> = {
-  Calcio: ['Portiere','Difensore centrale','Terzino/Esterno difensivo','Mediano','Centrocampista centrale','Trequartista','Esterno offensivo/Ala','Seconda punta','Punta centrale'],
+  Calcio: FOOTBALL_ROLES,
+  'Calcio a 8': FOOTBALL_ROLES,
   Futsal: ['Portiere','Fixo','Ala','Pivot','Universale'],
   Volley: ['Palleggiatore','Opposto','Schiacciatore','Centrale','Libero'],
   Basket: ['Playmaker (PG)','Guardia (SG)','Ala piccola (SF)','Ala grande (PF)','Centro (C)'],
