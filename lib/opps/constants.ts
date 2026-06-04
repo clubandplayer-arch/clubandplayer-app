@@ -3,7 +3,7 @@ export const AGE_BRACKETS = ['17-20','21-25','26-30','31+'] as const;
 export type AgeBracket = typeof AGE_BRACKETS[number];
 
 const FOOTBALL_ROLES = ['Portiere','Difensore centrale','Terzino/Esterno difensivo','Mediano','Centrocampista centrale','Trequartista','Esterno offensivo/Ala','Seconda punta','Punta centrale'];
-const CALCIO_A_8_ROLES = ['Portiere','Difensore Centrale','Esterno Basso','Regista','Centrocampisti Laterali','Punta Centrale'];
+const CALCIO_A_8_ROLES = ['Portiere','Difensore Centrale','Esterno Basso','Regista','Esterno Alto','Punta Centrale'];
 
 const SPORTS_REQUIRING_PLAYER_ROLE = new Set(['Calcio', 'Calcio a 8']);
 
