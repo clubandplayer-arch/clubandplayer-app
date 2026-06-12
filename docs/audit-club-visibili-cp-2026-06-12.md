@@ -9,6 +9,7 @@ Determinare quante società del master registry sono effettivamente nel perimetr
 ## Fonti e metodo
 
 - Fonte dati: `imports/registry/registry_clubs_master_geo.csv`, colonna `sport_normalizzati`.
+- Colonne disponibili nel master versionato/importato: `master_id`, `codice_fiscale`, `denominazione`, `regione`, `provincia`, `comune`, `regione_normalizzata`, `provincia_normalizzata`, `comune_normalizzato`, `discipline_praticate`, `sport_normalizzati`, `organisms`, `source_ids`, `source_count`.
 - Logica applicativa verificata: `app/api/registry/clubs/search/route.ts` espone solo le discipline che, dopo normalizzazione/alias, sono dentro `ALLOWED_SPORTS` e rimuove le righe senza discipline visibili.
 - Sport C&P considerati nell'audit: Calcio, Calcio a 8, Futsal, Volley, Basket, Pallanuoto, Pallamano, Rugby, Hockey su prato, Hockey su ghiaccio, Baseball, Softball, Lacrosse, Football americano.
 - Nel master importato gli sport sono tokenizzati in modo più aggregato rispetto alla UI. In particolare:
@@ -16,6 +17,7 @@ Determinare quante società del master registry sono effettivamente nel perimetr
   - `hockey` viene trattato dall'API come Hockey su prato tramite alias, anche quando la disciplina originale può essere hockey inline/pista/subacqueo;
   - `baseball` copre il bucket Baseball/Softball.
 - Le forme societarie **ASD/SSD/etc.** sono dedotte dalla `denominazione`, perché il master aggregato non espone una colonna di forma giuridica normalizzata.
+- Il dato sui **tesserati** non è disponibile nei CSV versionati né nello schema `registry_clubs_master` importato in Supabase: se era presente nel file originale allegato, non è stato preservato nel master attuale. Lo script ora rileva automaticamente eventuali colonne candidate (`tesserati`, `numero_tesserati`, `totale_tesserati`, ecc.) qualora il file originale venga ripristinato o aggiunto.
 - Script riproducibile: `node scripts/audit-cp-visible-clubs.mjs`.
 
 ## Risultato principale
@@ -25,6 +27,12 @@ Determinare quante società del master registry sono effettivamente nel perimetr
 | Società nel master registry | 44.411 | 100,0% |
 | Società con almeno uno sport C&P visibile | **18.920** | **42,6%** |
 | Società fuori perimetro C&P | 25.491 | 57,4% |
+
+## Tesserati delle 18.920 società visibili
+
+Con i dati oggi presenti nel repository **non è possibile calcolare il numero totale di tesserati** delle 18.920 società visibili, perché nessuno dei file CSV disponibili contiene una colonna tesserati/iscritti e la tabella importata `registry_clubs_master` non prevede quel campo.
+
+Per ottenere questo numero serve recuperare il file sorgente originale, o una nuova export, che includa un campo numerico come `tesserati`, `numero_tesserati` o equivalente e unirlo al master tramite `master_id`, `codice_fiscale` o `source_ids`.
 
 ## Breakdown per sport/token visibile
 
@@ -79,3 +87,4 @@ Determinare quante società del master registry sono effettivamente nel perimetr
 2. **Il calcio è sovra-aggregato**: il master espone `calcio`, mentre la UI distingue Calcio, Calcio a 8 e Futsal. Per report commerciali o filtri accurati serve mantenere anche una mappatura per disciplina grezza.
 3. **Hockey rischia falsi positivi**: l'API converte il token `hockey` in Hockey su prato, ma il master include discipline come hockey subacqueo, inline e pista. Se C&P vuole solo prato/ghiaccio, va raffinata la normalizzazione.
 4. **ASD/SSD è una stima testuale**: per una certificazione legale/commerciale va importata o normalizzata una colonna di forma giuridica, perché la sola denominazione non basta per distinguere tutti i casi.
+5. **Tesserati non calcolabili dal master attuale**: il dato va recuperato dal file sorgente originale o da una nuova export e poi preservato sia nel CSV master sia nello schema Supabase.

@@ -41,6 +41,19 @@ const EXPLICIT_SSD = /(?:\bS\.?\s*S\.?\s*D\.?\b|SOCIETA'?\s+SPORTIVA\s+DILETTANT
 const COMPANY = /(?:\bS\.?\s*R\.?\s*L\.?\b|\bSRL\b|\bS\.?\s*P\.?\s*A\.?\b|\bSPA\b|COOPERATIVA|\bCOOP\b)/i;
 const ASSOCIATION = /(?:ASSOCIAZIONE|ASSOCIATION|ASS\.|CIRCOLO|CLUB|POLISPORTIVA|CENTRO\s+SPORTIVO|C\.S\.|CUS|C\.U\.S\.)/i;
 
+const MEMBER_COLUMN_CANDIDATES = [
+  "tesserati",
+  "numero_tesserati",
+  "num_tesserati",
+  "totale_tesserati",
+  "tot_tesserati",
+  "n_tesserati",
+  "atleti_tesserati",
+  "tesserati_totali",
+  "registered_members",
+  "members_count",
+];
+
 function normalizeHeader(value) {
   return value.replace(/^\uFEFF/, "");
 }
@@ -77,6 +90,36 @@ function sortEntries(counter) {
   return [...counter.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
 }
 
+function getHeaders(rows) {
+  const firstRow = rows[0] || {};
+  return Object.keys(firstRow);
+}
+
+function findMemberColumn(headers) {
+  const byNormalizedName = new Map(
+    headers.map((header) => [header.trim().toLowerCase(), header])
+  );
+
+  for (const candidate of MEMBER_COLUMN_CANDIDATES) {
+    const header = byNormalizedName.get(candidate);
+    if (header) return header;
+  }
+
+  return null;
+}
+
+function parseInteger(value) {
+  const normalized = String(value || "")
+    .replace(/\./g, "")
+    .replace(/,/g, ".")
+    .trim();
+
+  if (!normalized) return null;
+
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? Math.round(parsed) : null;
+}
+
 async function readRows() {
   return new Promise((resolve, reject) => {
     const rows = [];
@@ -90,12 +133,16 @@ async function readRows() {
 }
 
 const rows = await readRows();
+const headers = getHeaders(rows);
+const memberColumn = findMemberColumn(headers);
 const visibleRows = [];
 const visibleBySport = new Map();
 const allTokens = new Map();
 const legalForms = new Map();
 const regions = new Map();
 const visibleSportTokens = new Set(CP_VISIBLE_SPORT_TOKENS.keys());
+let visibleMemberTotal = 0;
+let visibleRowsWithMemberData = 0;
 
 for (const row of rows) {
   const tokens = parseTokens(row.sport_normalizzati);
@@ -108,6 +155,15 @@ for (const row of rows) {
   if (!matchedTokens.length) continue;
 
   visibleRows.push(row);
+
+  if (memberColumn) {
+    const members = parseInteger(row[memberColumn]);
+    if (members !== null) {
+      visibleMemberTotal += members;
+      visibleRowsWithMemberData += 1;
+    }
+  }
+
   add(legalForms, classifyLegalForm(row.denominazione));
   add(regions, row.regione_normalizzata || row.regione || "Regione non valorizzata");
 
@@ -126,6 +182,16 @@ console.log(`Sport C&P configurati: ${ALL_CP_SPORTS.join(", ")}`);
 console.log(`Totale società nel master: ${total}`);
 console.log(`Società con almeno uno sport visibile C&P: ${visible} (${percent(visible, total)})`);
 console.log(`Società fuori perimetro C&P: ${hidden} (${percent(hidden, total)})`);
+
+console.log("\n## Tesserati");
+if (memberColumn) {
+  console.log(`Colonna tesserati rilevata: ${memberColumn}`);
+  console.log(`Società visibili con dato tesserati: ${visibleRowsWithMemberData}/${visible}`);
+  console.log(`Totale tesserati società visibili: ${visibleMemberTotal}`);
+} else {
+  console.log("Dato tesserati non disponibile nei CSV versionati/importati.");
+  console.log(`Colonne disponibili nel master: ${headers.join(", ")}`);
+}
 
 console.log("\n## Società visibili per sport/token C&P");
 for (const [sport, count] of sortEntries(visibleBySport)) {
