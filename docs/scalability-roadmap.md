@@ -1,0 +1,142 @@
+# Club & Player scalability roadmap status
+
+Tracker delle attività fatte e delle attività residue per rendere l'app più resistente a picchi di iscrizioni, feed, upload e search.
+
+## Stato sintetico
+
+| Area | Stato | Note |
+| --- | --- | --- |
+| Rate limit distribuito | Fatto | Redis/Upstash/KV REST con fallback in-memory. |
+| Indici DB P0 | Fatto | Migrazione con trigram, unique applications e hot-path indexes. |
+| Applications idempotenti | Fatto | Duplicate insert → `409 Already applied`. |
+| Avatar upload hardening | Fatto | Rate limit, MIME allowlist, max size, cache lunga. |
+| Club logo upload hardening | Fatto | Rate limit, MIME allowlist, max size, cache lunga. |
+| Feed media cache | Fatto | Cache lunga per media/poster/event poster immutable. |
+| Listing pagination senza count exact | Fatto | Clubs/opportunities con `limit + 1`, `hasMore`, `totalIsExact: false`. |
+| Search fuzzy min length | Fatto | Soglia minima 2 caratteri per clubs/opportunities/registry. |
+| Feed author lookup optimization | Fatto | Query by `user_id` prima, fallback by `id` solo per mancanti. |
+| Feed enrichment parallelization | Fatto | Author profiles, media e quoted map in parallelo. |
+| Feed club verification cache | Fatto | Cache breve 5 minuti per badge club verificato. |
+| Notifications unread count cache | Fatto | Cache 5 secondi e API usata dalla campanella. |
+| Runbook operativa | Fatto | `docs/scalability-runbook.md`. |
+
+## PR completate
+
+1. **Scalability DB indexes + applications duplicate handling**
+   - Aggiunta migrazione `20261201090000_scalability_p0_indexes.sql`.
+   - Aggiunto unique index su `applications(opportunity_id, athlete_id)`.
+   - Gestione `409 Already applied`.
+
+2. **Distributed rate limiting**
+   - Nuovo `lib/api/rateLimit.ts`.
+   - Supporto Upstash/KV/Redis REST.
+   - Applicato a endpoints hot: applications, comments, follows, avatar, registry search.
+
+3. **Support prefixed Upstash env vars**
+   - Supporto ai nomi generati dall'integrazione Vercel/Upstash con custom prefix.
+
+4. **Avatar upload validation**
+   - MIME allowlist.
+   - Max 3MB.
+   - Errori `413`/`415`.
+   - Cache lunga.
+
+5. **Feed media immutable cache**
+   - Cache lunga per media post, poster video, event poster.
+
+6. **Search/listing no exact count**
+   - Rimozione `count: exact` da clubs/opportunities.
+   - `hasMore` e `totalIsExact: false`.
+
+7. **Minimum fuzzy search length**
+   - Minimo 2 caratteri per query fuzzy.
+   - SearchInput non scrive `q` sotto soglia.
+
+8. **Feed author profile lookup optimization**
+   - Evita doppia query profili quando `author_id` è già risolto da `user_id`.
+
+9. **Feed enrichment parallelization**
+   - Query indipendenti in parallelo.
+
+10. **Feed club verification cache**
+    - Cache 5 minuti per club verification flags.
+
+11. **Notifications unread count cache**
+    - Cache breve per unread count.
+    - Campanella passa dall'API server.
+
+12. **Club logo upload hardening**
+    - Rate limit.
+    - MIME allowlist.
+    - Max size.
+    - Cache lunga.
+
+13. **Scalability operations runbook**
+    - Checklist di deploy, smoke test, monitoraggio e rollback.
+
+## Verifiche già confermate manualmente
+
+- Rate limit avatar: superata soglia → `Too Many Requests`.
+- Upstash/Redis env presenti su Vercel.
+- Avatar upload normale funzionante dopo hardening.
+- Feed media/event poster visualizzati correttamente.
+- Search/listing funzionanti dopo modifiche.
+- Feed rendering corretto dopo ottimizzazioni.
+- Club logo upload verificato senza errori.
+
+## Verifiche consigliate prima di chiudere definitivamente
+
+1. **Notifications bell**
+   - Verificare badge campanella con notifiche non lette.
+   - Marcare notifiche come lette e verificare aggiornamento entro pochi secondi.
+
+2. **Applications duplicate**
+   - Candidarsi una volta a un'opportunità.
+   - Riprovare la stessa candidatura.
+   - Verificare risposta controllata `Already applied` / stato coerente UI.
+
+3. **Club logo unsupported file**
+   - Facoltativo: provare un file non immagine.
+   - Atteso: `unsupported_format`.
+
+4. **Search con 1 carattere**
+   - Verificare che non parta fuzzy search specifica.
+   - Con 2+ caratteri, ricerca normale.
+
+5. **Vercel logs**
+   - Verificare assenza di warning:
+
+```text
+[rateLimit] distributed store unavailable, falling back to memory
+```
+
+## Cosa manca davvero
+
+Non ci sono altri interventi P0/P1 obbligatori emersi finora.
+
+Restano solo attività opzionali o da decidere dopo metriche reali:
+
+| Attività | Priorità | Quando farla |
+| --- | --- | --- |
+| Load test k6/Artillery | P1 opzionale | Prima di una campagna grossa o lancio pubblico. |
+| Queue per notifiche/push/email | P2 | Se application/comment/follow diventano lenti o generano troppe notifiche. |
+| RPC/view denormalizzata feed | P2 | Se `/api/feed/posts` resta collo di bottiglia nelle metriche. |
+| Cache condivisa search | P2 | Se le search più ripetute generano ancora carico alto. |
+| Upgrade temporaneo Supabase compute | Operativo | Durante campagne o spike previsti. |
+| SLO/alerting formalizzato | P1/P2 | Prima di crescita stabile del traffico. |
+
+## Criteri per chiudere il blocco scalabilità
+
+Possiamo chiudere il blocco se:
+
+- Le verifiche manuali residue passano.
+- Nei log Vercel non compaiono warning Redis fallback.
+- Supabase non mostra slow query gravi sulle pagine feed/search/opportunities/clubs.
+- Non aumentano 5xx o errori auth/storage.
+- Il rate limit genera `429` solo nei casi attesi.
+
+## Prossima decisione consigliata
+
+Se le verifiche residue passano, fermarsi qui e monitorare.
+
+Non farei altre PR strutturali senza dati reali di traffico, perché abbiamo già coperto i principali rischi iniziali.
