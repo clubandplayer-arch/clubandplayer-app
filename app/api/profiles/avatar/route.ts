@@ -6,6 +6,12 @@ import { rateLimit } from '@/lib/api/rateLimit';
 export const runtime = 'nodejs';
 
 const BUCKET = process.env.NEXT_PUBLIC_AVATARS_BUCKET || 'avatars';
+const MAX_AVATAR_BYTES = 3 * 1024 * 1024;
+const ALLOWED_AVATAR_TYPES = new Map([
+  ['image/png', 'png'],
+  ['image/jpeg', 'jpg'],
+  ['image/webp', 'webp'],
+]);
 
 export const POST = withAuth(async (req: NextRequest, { user, supabase }) => {
   try {
@@ -22,8 +28,21 @@ export const POST = withAuth(async (req: NextRequest, { user, supabase }) => {
   }
 
   const file = fileEntry as File;
+  const contentType = file.type.toLowerCase();
+  const ext = ALLOWED_AVATAR_TYPES.get(contentType);
 
-  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+  if (!ext) {
+    return jsonError('avatar_type_not_allowed', 415, {
+      allowedTypes: Array.from(ALLOWED_AVATAR_TYPES.keys()),
+    });
+  }
+
+  if (file.size > MAX_AVATAR_BYTES) {
+    return jsonError('avatar_too_large', 413, {
+      maxBytes: MAX_AVATAR_BYTES,
+    });
+  }
+
   const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
   const admin = getSupabaseAdminClientOrNull();
@@ -31,9 +50,9 @@ export const POST = withAuth(async (req: NextRequest, { user, supabase }) => {
 
   async function uploadOnce() {
     return supabase.storage.from(BUCKET).upload(path, buffer, {
-      cacheControl: '3600',
+      cacheControl: '31536000',
       upsert: false,
-      contentType: file.type || undefined,
+      contentType,
     });
   }
 
