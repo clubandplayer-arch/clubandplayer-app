@@ -147,13 +147,14 @@ Non farei altre PR strutturali senza dati reali di traffico, perché abbiamo gi�
 | --- | --- | --- | --- |
 | 2026-06-14 | Consolidamento PR scalabilità già completate | Completato | Le PR tecniche P0/P1 risultano implementate e verificate manualmente nei flussi principali. |
 | 2026-06-14 | Creazione tracker roadmap | Completato | Questo file diventa il registro unico per segnare fatto/mancante prima della chiusura. |
-| 2026-06-14 | Residual check list | Da verificare | Restano solo verifiche manuali leggere su notifications, duplicate applications, logo unsupported, search 1 char e log Vercel. |
+| 2026-06-14 | Residual check list | In corso | Notifications bell verificata; restano duplicate applications, logo unsupported, search 1 char e log Vercel/Supabase. |
+| 2026-06-14 | Notifications bell | Completato | Verificato manualmente: badge/campanella e aggiornamento dopo lettura funzionano correttamente. |
 
 ## Checklist finale da spuntare
 
 Prima di chiudere definitivamente il blocco scalabilità, segnare qui l'esito delle ultime prove:
 
-- [ ] Notifications bell: badge visibile con notifiche non lette e aggiornamento dopo lettura entro pochi secondi.
+- [x] Notifications bell: badge visibile con notifiche non lette e aggiornamento dopo lettura entro pochi secondi.
 - [ ] Applications duplicate: seconda candidatura alla stessa opportunità gestita senza errore generico.
 - [ ] Club logo unsupported file: file non immagine rifiutato con errore controllato `unsupported_format`.
 - [ ] Search 1 carattere: non parte fuzzy search specifica; con 2+ caratteri la ricerca filtra normalmente.
