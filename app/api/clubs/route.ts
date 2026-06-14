@@ -51,11 +51,11 @@ export const GET = withAuth(async (req: NextRequest, { supabase }) => {
   }
 
   const from = offset;
-  const to = offset + limit - 1;
+  const to = offset + limit;
 
   let query = supabase
     .from('clubs')
-    .select('id,name,display_name,city,province,region,country,level,logo_url,bio,owner_id,created_at', { count: 'exact' })
+    .select('id,name,display_name,city,province,region,country,level,logo_url,bio,owner_id,created_at')
     // l'ordinamento discendente sfrutta l'indice idx_clubs_created_at
     .order('created_at', { ascending: false })
     .range(from, to);
@@ -72,21 +72,26 @@ export const GET = withAuth(async (req: NextRequest, { supabase }) => {
   if (region) query = query.ilike('region', `%${region}%`);
   if (country) query = query.ilike('country', `%${country}%`);
 
-  const { data, count, error } = await query;
+  const { data, error } = await query;
   if (error) return jsonError(error.message, 400);
 
-  const total = count ?? 0;
+  const fetchedRows = data ?? [];
+  const hasMore = fetchedRows.length > limit;
+  const rows = hasMore ? fetchedRows.slice(0, limit) : fetchedRows;
   const page = Math.floor(offset / limit) + 1;
   const pageSize = limit;
-  const pageCount = Math.max(1, Math.ceil(total / pageSize));
+  const total = offset + rows.length + (hasMore ? 1 : 0);
+  const pageCount = hasMore ? page + 1 : page;
 
   return NextResponse.json({
-    data: data ?? [],
+    data: rows,
     q,
     total,
     page,
     pageSize,
     pageCount,
+    hasMore,
+    totalIsExact: false,
     pagination: { limit: pageSize, offset },
   });
 });
