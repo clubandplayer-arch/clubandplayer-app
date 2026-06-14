@@ -189,33 +189,33 @@ async function buildAuthorProfileMaps(client: ProfileClient, authorIds: string[]
     return { byUserId: null, byProfileId: null };
   }
 
-  const [{ data: profilesByUserId }, { data: profilesByProfileId }] = await Promise.all([
-    client.from('profiles').select(PROFILE_FIELDS).in('user_id', authorIds),
-    client.from('profiles').select(PROFILE_FIELDS).in('id', authorIds),
-  ]);
+  const { data: profilesByUserId } = await client.from('profiles').select(PROFILE_FIELDS).in('user_id', authorIds);
 
-  const byUserId = profilesByUserId?.length
-    ? new Map(
-        profilesByUserId
-          .map((p) => {
-            const normalized = normalizeProfileRow(p);
-            const key = normalized?.user_id ? String(normalized.user_id) : null;
-            return key ? [key, normalized] : null;
-          })
-          .filter(Boolean) as Array<[string, ProfileRow]>,
-      )
-    : null;
-  const byProfileId = profilesByProfileId?.length
-    ? new Map(
-        profilesByProfileId
-          .map((p) => {
-            const normalized = normalizeProfileRow(p);
-            const key = normalized?.id ? String(normalized.id) : null;
-            return key ? [key, normalized] : null;
-          })
-          .filter(Boolean) as Array<[string, ProfileRow]>,
-      )
-    : null;
+  const byUserIdEntries = (profilesByUserId ?? [])
+    .map((p) => {
+      const normalized = normalizeProfileRow(p);
+      const key = normalized?.user_id ? String(normalized.user_id) : null;
+      return key ? [key, normalized] : null;
+    })
+    .filter(Boolean) as Array<[string, ProfileRow]>;
+
+  const byUserId = byUserIdEntries.length ? new Map(byUserIdEntries) : null;
+  const missingAuthorIds = authorIds.filter((id) => !byUserId?.has(id));
+
+  let byProfileId: Map<string, ProfileRow> | null = null;
+
+  if (missingAuthorIds.length) {
+    const { data: profilesByProfileId } = await client.from('profiles').select(PROFILE_FIELDS).in('id', missingAuthorIds);
+    const byProfileIdEntries = (profilesByProfileId ?? [])
+      .map((p) => {
+        const normalized = normalizeProfileRow(p);
+        const key = normalized?.id ? String(normalized.id) : null;
+        return key ? [key, normalized] : null;
+      })
+      .filter(Boolean) as Array<[string, ProfileRow]>;
+
+    byProfileId = byProfileIdEntries.length ? new Map(byProfileIdEntries) : null;
+  }
 
   return { byUserId, byProfileId };
 }
