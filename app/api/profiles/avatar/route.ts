@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, jsonError } from '@/lib/api/auth';
 import { ensureBucket, getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
+import { rateLimit } from '@/lib/api/rateLimit';
 
 export const runtime = 'nodejs';
 
 const BUCKET = process.env.NEXT_PUBLIC_AVATARS_BUCKET || 'avatars';
 
 export const POST = withAuth(async (req: NextRequest, { user, supabase }) => {
+  try {
+    await rateLimit(req, { key: `avatar:POST:${user.id}`, limit: 5, window: '10m' });
+  } catch (error: any) {
+    return jsonError('Too Many Requests', 429, { retryAfter: error?.headers?.['Retry-After'] ?? null });
+  }
+
   const form = await req.formData();
   const fileEntry = form.get('file');
 

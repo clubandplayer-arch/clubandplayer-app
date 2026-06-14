@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { createClient } from "@supabase/supabase-js";
+import { rateLimit } from "@/lib/api/rateLimit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -93,6 +94,15 @@ function sportsToDisciplines(sportNormalizzati: string | null) {
 
 export async function GET(req: NextRequest) {
   try {
+    try {
+      await rateLimit(req, { key: 'registry:clubs:search', limit: 60, window: '1m' });
+    } catch (error: any) {
+      return NextResponse.json(
+        { ok: false, error: 'Too Many Requests', retryAfter: error?.headers?.['Retry-After'] ?? null },
+        { status: 429 },
+      );
+    }
+
     const supabase = getSupabaseAdmin();
 
     const { searchParams } = new URL(req.url);

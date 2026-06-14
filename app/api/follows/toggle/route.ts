@@ -10,10 +10,20 @@ import {
 import { getActiveProfile, getProfileById } from '@/lib/api/profile';
 import { ToggleFollowSchema, type ToggleFollowInput } from '@/lib/validation/follow';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
+import { rateLimit } from '@/lib/api/rateLimit';
 
 export const runtime = 'nodejs';
 
 export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
+  try {
+    await rateLimit(req, { key: `follows:toggle:${user.id}`, limit: 60, window: '1m' });
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: 'Too Many Requests', retryAfter: error?.headers?.['Retry-After'] ?? null },
+      { status: 429 },
+    );
+  }
+
   const parsedBody = ToggleFollowSchema.safeParse(await req.json().catch(() => ({})));
   if (!parsedBody.success) {
     console.warn('[api/follows/toggle][POST] invalid payload', parsedBody.error.flatten());

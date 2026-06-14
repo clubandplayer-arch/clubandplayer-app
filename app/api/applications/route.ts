@@ -124,7 +124,11 @@ async function notifyClubApplicationReceived(params: {
 
 /** POST /api/applications  Body: { opportunity_id: string, note?: string } */
 export const POST = withAuth(async (req: NextRequest, { supabase, user }: any) => {
-  await rateLimit(req as any, { key: 'apps:POST', limit: 30, window: '1m' } as any);
+  try {
+    await rateLimit(req, { key: `apps:POST:${user.id}`, limit: 30, window: '1m' });
+  } catch (error: any) {
+    return jsonError('Too Many Requests', 429, { retryAfter: error?.headers?.['Retry-After'] ?? null });
+  }
 
   const body = await req.json().catch(() => null);
   if (!body || !body.opportunity_id) return jsonError('Missing opportunity_id', 400);
