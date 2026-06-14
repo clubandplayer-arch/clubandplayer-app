@@ -220,6 +220,9 @@ async function buildAuthorProfileMaps(client: ProfileClient, authorIds: string[]
   return { byUserId, byProfileId };
 }
 
+const CLUB_VERIFICATION_CACHE_TTL_MS = 5 * 60_000;
+const clubVerificationCache = new Map<string, { isVerified: boolean; expiresAt: number }>();
+
 function attachAuthorProfile(row: any, maps: AuthorProfileMaps): any {
   if (!row?.author_id) return row;
   if (row?.author_profile) return row;
@@ -254,9 +257,20 @@ async function attachVerifiedFlags(rows: any[]): Promise<any[]> {
     }
   });
 
-  let verifiedSet = new Set<string>();
+  const now = Date.now();
+  const verifiedSet = new Set<string>();
+  const idsToLookup: string[] = [];
 
-  if (candidateIds.size > 0) {
+  candidateIds.forEach((id) => {
+    const cached = clubVerificationCache.get(id);
+    if (cached && cached.expiresAt > now) {
+      if (cached.isVerified) verifiedSet.add(id);
+      return;
+    }
+    idsToLookup.push(id);
+  });
+
+  if (idsToLookup.length > 0) {
     const admin = getSupabaseAdminClientOrNull();
     if (!admin) {
       console.warn('[certified] verification lookup failed', 'missing admin client');
@@ -265,14 +279,22 @@ async function attachVerifiedFlags(rows: any[]): Promise<any[]> {
         const { data, error } = await admin
           .from('club_verification_requests')
           .select('club_id')
-          .in('club_id', Array.from(candidateIds))
+          .in('club_id', idsToLookup)
           .eq('status', 'approved')
           .in('payment_status', ['paid', 'waived'])
           .gt('verified_until', new Date().toISOString());
 
         if (error) throw error;
 
-        verifiedSet = new Set((data ?? []).map((row) => String((row as any)?.club_id)));
+        const fetchedVerifiedSet = new Set((data ?? []).map((row) => String((row as any)?.club_id)));
+        idsToLookup.forEach((id) => {
+          const isVerified = fetchedVerifiedSet.has(id);
+          if (isVerified) verifiedSet.add(id);
+          clubVerificationCache.set(id, {
+            isVerified,
+            expiresAt: now + CLUB_VERIFICATION_CACHE_TTL_MS,
+          });
+        });
       } catch (error) {
         console.warn('[certified] verification lookup failed', error);
       }
