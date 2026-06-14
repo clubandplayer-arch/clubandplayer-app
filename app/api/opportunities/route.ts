@@ -11,6 +11,8 @@ import { dbError, invalidPayload, notAuthorized, rateLimited, successResponse } 
 
 export const runtime = 'nodejs';
 
+const MIN_FUZZY_SEARCH_CHARS = 2;
+
 function clamp(n: number, min: number, max: number) {
   return Math.min(Math.max(n, min), max);
 }
@@ -107,7 +109,7 @@ export async function GET(req: NextRequest) {
     .order('created_at', { ascending: sort === 'oldest' })
     .range(from, to);
 
-  if (q)
+  if (q.length >= MIN_FUZZY_SEARCH_CHARS)
     query = query.or(
       `title.ilike.%${q}%,description.ilike.%${q}%,city.ilike.%${q}%,region.ilike.%${q}%,province.ilike.%${q}%,country.ilike.%${q}%,sport.ilike.%${q}%,role.ilike.%${q}%`,
     );

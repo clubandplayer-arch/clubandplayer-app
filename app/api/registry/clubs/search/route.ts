@@ -22,6 +22,8 @@ type RegistryClaimRow = {
   claim_status: string | null;
 };
 
+const MIN_FUZZY_SEARCH_CHARS = 2;
+
 const ALLOWED_SPORTS = [
   "Calcio",
   "Calcio a 8",
@@ -129,7 +131,7 @@ export async function GET(req: NextRequest) {
       .order("denominazione", { ascending: true })
       .limit(50);
 
-    if (q) {
+    if (q.length >= MIN_FUZZY_SEARCH_CHARS) {
       query = query.ilike("denominazione", `%${q}%`);
     }
 

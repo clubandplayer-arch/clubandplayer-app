@@ -7,6 +7,8 @@ import { isClubsAdminUser } from '@/lib/api/admin'; // 👈 admin guard
 
 export const runtime = 'nodejs'; // sessione/cookie
 
+const MIN_FUZZY_SEARCH_CHARS = 2;
+
 function clamp(n: number, min: number, max: number) {
   return Math.min(Math.max(n, min), max);
 }
@@ -60,7 +62,7 @@ export const GET = withAuth(async (req: NextRequest, { supabase }) => {
     .order('created_at', { ascending: false })
     .range(from, to);
 
-  if (q) {
+  if (q.length >= MIN_FUZZY_SEARCH_CHARS) {
     const sanitized = q.replace(/,/g, ' ');
     const like = `%${sanitized}%`;
     // usa pg_trgm sugli ilike per ricerche fuzzy su nome/display_name/città
