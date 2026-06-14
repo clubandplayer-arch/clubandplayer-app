@@ -22,6 +22,7 @@ const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const MAX_VIDEO_BYTES = 80 * 1024 * 1024;
 const ACCEPT = 'image/*,video/*';
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const IMMUTABLE_MEDIA_CACHE_CONTROL = '31536000';
 
 type MediaType = 'image' | 'video';
 
@@ -432,7 +433,7 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
     const objectPath = `${userId}/${Date.now()}-${safeName}`;
     const bucket = POSTS_BUCKET;
     const { data, error } = await supabase.storage.from(bucket).upload(objectPath, item.file, {
-      cacheControl: '3600',
+      cacheControl: IMMUTABLE_MEDIA_CACHE_CONTROL,
       upsert: false,
       contentType: item.file.type || undefined,
     });
@@ -455,7 +456,7 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
     if (item.kind === 'video' && item.posterBlob) {
       const posterPath = `${userId}/posters/${Date.now()}-${safeName}.jpg`;
       const posterUpload = await supabase.storage.from(bucket).upload(posterPath, item.posterBlob, {
-        cacheControl: '3600',
+        cacheControl: IMMUTABLE_MEDIA_CACHE_CONTROL,
         upsert: false,
         contentType: 'image/jpeg',
       });
@@ -515,7 +516,7 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
     const bucket = POSTS_BUCKET;
 
     const { data, error } = await supabase.storage.from(bucket).upload(objectPath, eventPoster, {
-      cacheControl: '3600',
+      cacheControl: IMMUTABLE_MEDIA_CACHE_CONTROL,
       upsert: false,
       contentType: eventPoster.type || undefined,
     });
