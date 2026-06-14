@@ -140,3 +140,32 @@ Possiamo chiudere il blocco se:
 Se le verifiche residue passano, fermarsi qui e monitorare.
 
 Non farei altre PR strutturali senza dati reali di traffico, perché abbiamo già coperto i principali rischi iniziali.
+
+## Registro operativo aggiornamenti
+
+| Data | Step | Esito | Note |
+| --- | --- | --- | --- |
+| 2026-06-14 | Consolidamento PR scalabilità già completate | Completato | Le PR tecniche P0/P1 risultano implementate e verificate manualmente nei flussi principali. |
+| 2026-06-14 | Creazione tracker roadmap | Completato | Questo file diventa il registro unico per segnare fatto/mancante prima della chiusura. |
+| 2026-06-14 | Residual check list | Da verificare | Restano solo verifiche manuali leggere su notifications, duplicate applications, logo unsupported, search 1 char e log Vercel. |
+
+## Checklist finale da spuntare
+
+Prima di chiudere definitivamente il blocco scalabilità, segnare qui l'esito delle ultime prove:
+
+- [ ] Notifications bell: badge visibile con notifiche non lette e aggiornamento dopo lettura entro pochi secondi.
+- [ ] Applications duplicate: seconda candidatura alla stessa opportunità gestita senza errore generico.
+- [ ] Club logo unsupported file: file non immagine rifiutato con errore controllato `unsupported_format`.
+- [ ] Search 1 carattere: non parte fuzzy search specifica; con 2+ caratteri la ricerca filtra normalmente.
+- [ ] Vercel logs: nessun warning Redis fallback durante uso normale.
+- [ ] Supabase dashboard: nessuna slow query grave su feed/search/opportunities/clubs dopo smoke test.
+
+## Regola di avanzamento
+
+Da ora in poi ogni nuova PR di scalabilità deve aggiornare questo tracker in tre punti:
+
+1. aggiungere una riga in **PR completate**;
+2. aggiornare lo **Stato sintetico** dell'area toccata;
+3. aggiungere una riga nel **Registro operativo aggiornamenti** con data, step, esito e note.
+
+Se una verifica manuale fallisce, non chiudere il blocco: aprire una PR mirata solo su quel problema, aggiornarla qui e ripetere la verifica.
