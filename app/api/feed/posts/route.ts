@@ -556,12 +556,6 @@ export async function GET(req: NextRequest) {
     new Set((Array.isArray(data) ? data : []).map((r) => r?.author_id).filter(Boolean)),
   ) as string[];
 
-  const { byUserId: authorProfileMapByUserId, byProfileId: authorProfileMapByProfileId } =
-    await buildAuthorProfileMaps(supabase, authorIds);
-
-  let quotedMap: Map<string, any> | null = null;
-  let postMediaMap = new Map<string, PostMediaItem[]>();
-
   const quotedIds = Array.from(
     new Set(
       (Array.isArray(data) ? data : [])
@@ -569,21 +563,22 @@ export async function GET(req: NextRequest) {
         .filter((v) => typeof v === 'string' && v.trim().length > 0),
     ),
   );
+  const postIds = Array.from(new Set((data ?? []).map((row) => row?.id).filter(Boolean) as string[]));
 
-  try {
-    postMediaMap = await fetchPostMediaMap(
-      supabase,
-      Array.from(new Set((data ?? []).map((row) => row?.id).filter(Boolean) as string[])),
-    );
-  } catch (mediaError: any) {
-    reportApiError({
-      endpoint: '/api/feed/posts',
-      error: mediaError,
-      context: { stage: 'select_post_media', method: 'GET' },
-    });
-  }
+  const [authorProfileMaps, postMediaMap, quotedMap] = await Promise.all([
+    buildAuthorProfileMaps(supabase, authorIds),
+    fetchPostMediaMap(supabase, postIds).catch((mediaError: any) => {
+      reportApiError({
+        endpoint: '/api/feed/posts',
+        error: mediaError,
+        context: { stage: 'select_post_media', method: 'GET' },
+      });
+      return new Map<string, PostMediaItem[]>();
+    }),
+    fetchQuotedPostMap(supabase, quotedIds),
+  ]);
 
-  quotedMap = await fetchQuotedPostMap(supabase, quotedIds);
+  const { byUserId: authorProfileMapByUserId, byProfileId: authorProfileMapByProfileId } = authorProfileMaps;
 
   let rows =
     (data ?? [])
