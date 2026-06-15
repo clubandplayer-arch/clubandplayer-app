@@ -139,7 +139,7 @@ Possiamo chiudere il blocco se:
 
 ## Prossima decisione consigliata
 
-Se le verifiche residue passano, fermarsi qui e monitorare.
+Le verifiche residue sono passate: fermarsi qui e monitorare.
 
 Non farei altre PR strutturali senza dati reali di traffico, perché abbiamo già coperto i principali rischi iniziali.
 
@@ -149,14 +149,14 @@ Non farei altre PR strutturali senza dati reali di traffico, perché abbiamo gi�
 | --- | --- | --- | --- |
 | 2026-06-14 | Consolidamento PR scalabilità già completate | Completato | Le PR tecniche P0/P1 risultano implementate e verificate manualmente nei flussi principali. |
 | 2026-06-14 | Creazione tracker roadmap | Completato | Questo file diventa il registro unico per segnare fatto/mancante prima della chiusura. |
-| 2026-06-14 | Residual check list | In corso | Notifications bell e duplicate applications verificate; restano da confermare solo controlli operativi Vercel/Supabase. |
+| 2026-06-14 | Residual check list | Completato | Tutte le verifiche funzionali e operative previste sono state completate. |
 | 2026-06-14 | Notifications bell | Completato | Verificato manualmente: badge/campanella e aggiornamento dopo lettura funzionano correttamente. |
 | 2026-06-14 | Applications duplicate | Completato | Verificato manualmente: la UI impedisce una seconda candidatura e mostra stato coerente `Candidatura inviata`. |
 | 2026-06-14 | Pausa operativa | Sospeso | Chiuso il lavoro della sessione; riprendere dalle verifiche residue: logo unsupported, search 1 char, log Vercel e dashboard Supabase. |
 | 2026-06-15 | Club logo unsupported file | Completato | Confermato manualmente: file non immagine gestito correttamente. |
 | 2026-06-15 | Search con 1 carattere | Completato | Confermato manualmente: con 1 carattere nessun risultato/nessuna fuzzy search utile; con 2+ caratteri ricerca funzionante. |
 | 2026-06-15 | Vercel logs Redis fallback | Completato | Screenshot Vercel: ricerca del warning rateLimit senza risultati, Warning/Error/Fatal a 0 nel periodo visualizzato. |
-| 2026-06-15 | Supabase query performance | In osservazione | Screenshot Supabase: slow queries presenti soprattutto su realtime/system/PostgREST; nessuna query applicativa feed/search/opportunities/clubs chiaramente dominante nello screenshot, ma conviene filtrare i target table prima della chiusura definitiva. |
+| 2026-06-15 | Supabase query performance | Completato | Screenshot filtrati per posts, profiles, clubs, opportunities, applications e notifications: non emergono query hot-path con mean time alto e volume critico; alcune max time isolate/registry vanno solo monitorate. |
 
 ## Checklist finale da spuntare
 
@@ -167,7 +167,7 @@ Prima di chiudere definitivamente il blocco scalabilità, segnare qui l'esito de
 - [x] Club logo unsupported file: file non immagine rifiutato con errore controllato `unsupported_format`.
 - [x] Search 1 carattere: non parte fuzzy search specifica; con 2+ caratteri la ricerca filtra normalmente.
 - [x] Vercel logs: nessun warning Redis fallback durante uso normale.
-- [ ] Supabase dashboard: nessuna slow query grave su feed/search/opportunities/clubs dopo smoke test; screenshot generale ok ma serve filtro mirato sui nomi tabella per chiusura conservativa.
+- [x] Supabase dashboard: nessuna slow query grave su feed/search/opportunities/clubs dopo smoke test; presenti solo max time isolati o query da monitorare.
 
 ## Regola di avanzamento
 
