@@ -178,3 +178,27 @@ Da ora in poi ogni nuova PR di scalabilità deve aggiornare questo tracker in tr
 3. aggiungere una riga nel **Registro operativo aggiornamenti** con data, step, esito e note.
 
 Se una verifica manuale fallisce, non chiudere il blocco: aprire una PR mirata solo su quel problema, aggiornarla qui e ripetere la verifica.
+
+## Chiusura blocco scalabilità iniziale
+
+Data chiusura: 2026-06-15.
+
+Esito: **chiuso**.
+
+Motivo:
+
+- le protezioni P0/P1 contro picchi iniziali sono state implementate;
+- le verifiche funzionali principali sono passate;
+- i controlli operativi Vercel/Supabase non mostrano segnali bloccanti;
+- non sono emersi nuovi rischi concreti che giustifichino ulteriori PR preventive.
+
+Da questo punto non aggiungere altre modifiche strutturali di scalabilità senza almeno uno di questi segnali:
+
+1. aumento reale di errori `5xx`, timeout o duration p95/p99 su Vercel;
+2. comparsa del warning Redis fallback nei log Vercel;
+3. slow query Supabase ripetute con mean time alto su feed/search/opportunities/clubs;
+4. utenti legittimi bloccati dai rate limit;
+5. storage egress/upload errors in crescita;
+6. evidenza da load test o campagna reale.
+
+Prossima fase: **monitoraggio post-deploy e raccolta metriche reali**.
