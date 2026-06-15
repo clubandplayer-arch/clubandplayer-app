@@ -27,6 +27,8 @@ export type ClubsApiResponse = {
   pageSize: number;
   total: number;
   pageCount: number;
+  hasMore?: boolean;
+  totalIsExact?: boolean;
   q: string;
   pagination?: { limit: number; offset: number };
 };

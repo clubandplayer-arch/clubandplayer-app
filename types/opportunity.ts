@@ -87,6 +87,10 @@ export type OpportunitiesApiResponse = {
   items: Opportunity[];
   total: number;
   hasMore: boolean;
+  totalIsExact?: boolean;
+  page?: number;
+  pageSize?: number;
+  pageCount?: number;
 };
 
 export type { Opportunity as default };

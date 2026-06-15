@@ -3,6 +3,8 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
+const MIN_SEARCH_CHARS = 2;
+
 function useDebounced<T>(value: T, delay = 400) {
   const [deb, setDeb] = useState(value);
   useEffect(() => {
@@ -24,8 +26,9 @@ export default function SearchInput({ placeholder = 'Search clubs...' }: { place
 
   useEffect(() => {
     const params = new URLSearchParams(sp);
-    if (deb) {
-      params.set('q', deb);
+    const normalized = deb.trim();
+    if (normalized.length >= MIN_SEARCH_CHARS) {
+      params.set('q', normalized);
       params.set('page', '1'); // reset alla prima pagina quando si cerca
     } else {
       params.delete('q');

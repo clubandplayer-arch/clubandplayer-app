@@ -14,12 +14,14 @@ export default function NotificationsBell() {
       setUnread(0)
       return
     }
-    const { count } = await supabase
-      .from('notifications')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-      .eq('read', false)
-    setUnread(count ?? 0)
+
+    const res = await fetch('/api/notifications/unread-count', {
+      credentials: 'include',
+      cache: 'no-store',
+    })
+    if (!res.ok) return
+    const json = await res.json().catch(() => null)
+    setUnread(Number(json?.count) || 0)
   }, [supabase])
 
   useEffect(() => {

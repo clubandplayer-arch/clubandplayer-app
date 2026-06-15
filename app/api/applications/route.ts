@@ -13,6 +13,18 @@ const missingClubColumn = (msg?: string | null) =>
 const missingReadColumn = (msg?: string | null) =>
   !!msg && /\bread\b/i.test(msg) && (/does not exist/i.test(msg) || /schema cache/i.test(msg));
 
+const isDuplicateApplicationError = (error: any) => {
+  const code = String(error?.code ?? '');
+  const message = String(error?.message ?? '');
+  const details = String(error?.details ?? '');
+  return (
+    code === '23505' ||
+    /applications_unique_opportunity_athlete_idx/i.test(message) ||
+    /applications_unique_opportunity_athlete_idx/i.test(details) ||
+    (/duplicate key/i.test(message) && /applications/i.test(message + details))
+  );
+};
+
 async function notifyClubApplicationReceived(params: {
   supabase: any;
   admin: any;
@@ -112,7 +124,11 @@ async function notifyClubApplicationReceived(params: {
 
 /** POST /api/applications  Body: { opportunity_id: string, note?: string } */
 export const POST = withAuth(async (req: NextRequest, { supabase, user }: any) => {
-  await rateLimit(req as any, { key: 'apps:POST', limit: 30, window: '1m' } as any);
+  try {
+    await rateLimit(req, { key: `apps:POST:${user.id}`, limit: 30, window: '1m' });
+  } catch (error: any) {
+    return jsonError('Too Many Requests', 429, { retryAfter: error?.headers?.['Retry-After'] ?? null });
+  }
 
   const body = await req.json().catch(() => null);
   if (!body || !body.opportunity_id) return jsonError('Missing opportunity_id', 400);
@@ -183,7 +199,12 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }: any) =
     ({ data, error } = await runInsert(admin, insertPayload, 'id, opportunity_id, athlete_id, status, created_at, club_id'));
   }
 
-  if (error) return jsonError(error.message, 400);
+  if (error) {
+    if (isDuplicateApplicationError(error)) {
+      return jsonError('Already applied', 409);
+    }
+    return jsonError(error.message, 400);
+  }
 
   await notifyClubApplicationReceived({
     supabase,

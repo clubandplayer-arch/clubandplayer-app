@@ -189,36 +189,39 @@ async function buildAuthorProfileMaps(client: ProfileClient, authorIds: string[]
     return { byUserId: null, byProfileId: null };
   }
 
-  const [{ data: profilesByUserId }, { data: profilesByProfileId }] = await Promise.all([
-    client.from('profiles').select(PROFILE_FIELDS).in('user_id', authorIds),
-    client.from('profiles').select(PROFILE_FIELDS).in('id', authorIds),
-  ]);
+  const { data: profilesByUserId } = await client.from('profiles').select(PROFILE_FIELDS).in('user_id', authorIds);
 
-  const byUserId = profilesByUserId?.length
-    ? new Map(
-        profilesByUserId
-          .map((p) => {
-            const normalized = normalizeProfileRow(p);
-            const key = normalized?.user_id ? String(normalized.user_id) : null;
-            return key ? [key, normalized] : null;
-          })
-          .filter(Boolean) as Array<[string, ProfileRow]>,
-      )
-    : null;
-  const byProfileId = profilesByProfileId?.length
-    ? new Map(
-        profilesByProfileId
-          .map((p) => {
-            const normalized = normalizeProfileRow(p);
-            const key = normalized?.id ? String(normalized.id) : null;
-            return key ? [key, normalized] : null;
-          })
-          .filter(Boolean) as Array<[string, ProfileRow]>,
-      )
-    : null;
+  const byUserIdEntries = (profilesByUserId ?? [])
+    .map((p) => {
+      const normalized = normalizeProfileRow(p);
+      const key = normalized?.user_id ? String(normalized.user_id) : null;
+      return key ? [key, normalized] : null;
+    })
+    .filter(Boolean) as Array<[string, ProfileRow]>;
+
+  const byUserId = byUserIdEntries.length ? new Map(byUserIdEntries) : null;
+  const missingAuthorIds = authorIds.filter((id) => !byUserId?.has(id));
+
+  let byProfileId: Map<string, ProfileRow> | null = null;
+
+  if (missingAuthorIds.length) {
+    const { data: profilesByProfileId } = await client.from('profiles').select(PROFILE_FIELDS).in('id', missingAuthorIds);
+    const byProfileIdEntries = (profilesByProfileId ?? [])
+      .map((p) => {
+        const normalized = normalizeProfileRow(p);
+        const key = normalized?.id ? String(normalized.id) : null;
+        return key ? [key, normalized] : null;
+      })
+      .filter(Boolean) as Array<[string, ProfileRow]>;
+
+    byProfileId = byProfileIdEntries.length ? new Map(byProfileIdEntries) : null;
+  }
 
   return { byUserId, byProfileId };
 }
+
+const CLUB_VERIFICATION_CACHE_TTL_MS = 5 * 60_000;
+const clubVerificationCache = new Map<string, { isVerified: boolean; expiresAt: number }>();
 
 function attachAuthorProfile(row: any, maps: AuthorProfileMaps): any {
   if (!row?.author_id) return row;
@@ -254,9 +257,20 @@ async function attachVerifiedFlags(rows: any[]): Promise<any[]> {
     }
   });
 
-  let verifiedSet = new Set<string>();
+  const now = Date.now();
+  const verifiedSet = new Set<string>();
+  const idsToLookup: string[] = [];
 
-  if (candidateIds.size > 0) {
+  candidateIds.forEach((id) => {
+    const cached = clubVerificationCache.get(id);
+    if (cached && cached.expiresAt > now) {
+      if (cached.isVerified) verifiedSet.add(id);
+      return;
+    }
+    idsToLookup.push(id);
+  });
+
+  if (idsToLookup.length > 0) {
     const admin = getSupabaseAdminClientOrNull();
     if (!admin) {
       console.warn('[certified] verification lookup failed', 'missing admin client');
@@ -265,14 +279,22 @@ async function attachVerifiedFlags(rows: any[]): Promise<any[]> {
         const { data, error } = await admin
           .from('club_verification_requests')
           .select('club_id')
-          .in('club_id', Array.from(candidateIds))
+          .in('club_id', idsToLookup)
           .eq('status', 'approved')
           .in('payment_status', ['paid', 'waived'])
           .gt('verified_until', new Date().toISOString());
 
         if (error) throw error;
 
-        verifiedSet = new Set((data ?? []).map((row) => String((row as any)?.club_id)));
+        const fetchedVerifiedSet = new Set((data ?? []).map((row) => String((row as any)?.club_id)));
+        idsToLookup.forEach((id) => {
+          const isVerified = fetchedVerifiedSet.has(id);
+          if (isVerified) verifiedSet.add(id);
+          clubVerificationCache.set(id, {
+            isVerified,
+            expiresAt: now + CLUB_VERIFICATION_CACHE_TTL_MS,
+          });
+        });
       } catch (error) {
         console.warn('[certified] verification lookup failed', error);
       }
@@ -556,12 +578,6 @@ export async function GET(req: NextRequest) {
     new Set((Array.isArray(data) ? data : []).map((r) => r?.author_id).filter(Boolean)),
   ) as string[];
 
-  const { byUserId: authorProfileMapByUserId, byProfileId: authorProfileMapByProfileId } =
-    await buildAuthorProfileMaps(supabase, authorIds);
-
-  let quotedMap: Map<string, any> | null = null;
-  let postMediaMap = new Map<string, PostMediaItem[]>();
-
   const quotedIds = Array.from(
     new Set(
       (Array.isArray(data) ? data : [])
@@ -569,21 +585,22 @@ export async function GET(req: NextRequest) {
         .filter((v) => typeof v === 'string' && v.trim().length > 0),
     ),
   );
+  const postIds = Array.from(new Set((data ?? []).map((row) => row?.id).filter(Boolean) as string[]));
 
-  try {
-    postMediaMap = await fetchPostMediaMap(
-      supabase,
-      Array.from(new Set((data ?? []).map((row) => row?.id).filter(Boolean) as string[])),
-    );
-  } catch (mediaError: any) {
-    reportApiError({
-      endpoint: '/api/feed/posts',
-      error: mediaError,
-      context: { stage: 'select_post_media', method: 'GET' },
-    });
-  }
+  const [authorProfileMaps, postMediaMap, quotedMap] = await Promise.all([
+    buildAuthorProfileMaps(supabase, authorIds),
+    fetchPostMediaMap(supabase, postIds).catch((mediaError: any) => {
+      reportApiError({
+        endpoint: '/api/feed/posts',
+        error: mediaError,
+        context: { stage: 'select_post_media', method: 'GET' },
+      });
+      return new Map<string, PostMediaItem[]>();
+    }),
+    fetchQuotedPostMap(supabase, quotedIds),
+  ]);
 
-  quotedMap = await fetchQuotedPostMap(supabase, quotedIds);
+  const { byUserId: authorProfileMapByUserId, byProfileId: authorProfileMapByProfileId } = authorProfileMaps;
 
   let rows =
     (data ?? [])

@@ -11,6 +11,8 @@ import { dbError, invalidPayload, notAuthorized, rateLimited, successResponse } 
 
 export const runtime = 'nodejs';
 
+const MIN_FUZZY_SEARCH_CHARS = 2;
+
 function clamp(n: number, min: number, max: number) {
   return Math.min(Math.max(n, min), max);
 }
@@ -97,18 +99,17 @@ export async function GET(req: NextRequest) {
   const allowedStatuses = new Set(['open', 'closed', 'archived', 'draft']);
   
   const from = (page - 1) * pageSize;
-  const to = from + pageSize - 1;
+  const to = from + pageSize;
 
   let query = supabase
     .from('opportunities')
     .select(
       'id,title,description,created_by,created_at,country,region,province,city,sport,role,role_group,category,required_category,age_min,age_max,club_name,gender,owner_id,club_id,status',
-      { count: 'exact' },
     )
     .order('created_at', { ascending: sort === 'oldest' })
     .range(from, to);
 
-  if (q)
+  if (q.length >= MIN_FUZZY_SEARCH_CHARS)
     query = query.or(
       `title.ilike.%${q}%,description.ilike.%${q}%,city.ilike.%${q}%,region.ilike.%${q}%,province.ilike.%${q}%,country.ilike.%${q}%,sport.ilike.%${q}%,role.ilike.%${q}%`,
     );
@@ -132,10 +133,12 @@ export async function GET(req: NextRequest) {
     if (age_max == null) query = query.is('age_max', null);
   }
 
-  const { data, count, error } = await query;
+  const { data, error } = await query;
   if (error) return dbError(error.message);
 
-  const rows = (data ?? []) as Array<Record<string, any>>;
+  const fetchedRows = (data ?? []) as Array<Record<string, any>>;
+  const hasMore = fetchedRows.length > pageSize;
+  const rows = hasMore ? fetchedRows.slice(0, pageSize) : fetchedRows;
   const ownerIds = Array.from(
     new Set(
       rows
@@ -191,8 +194,10 @@ export async function GET(req: NextRequest) {
     q,
     page,
     pageSize,
-    total: count ?? 0,
-    pageCount: Math.max(1, Math.ceil((count ?? 0) / pageSize)),
+    total: from + enriched.length + (hasMore ? 1 : 0),
+    totalIsExact: false,
+    hasMore,
+    pageCount: hasMore ? page + 1 : page,
     sort,
   });
 }

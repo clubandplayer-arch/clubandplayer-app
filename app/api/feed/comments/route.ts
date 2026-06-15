@@ -3,6 +3,7 @@ import {
   dbError,
   notAuthenticated,
   notReady,
+  rateLimited,
   successResponse,
   unknownError,
   validationError,
@@ -18,6 +19,7 @@ import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 import { getProfileByUserId } from '@/lib/api/profile';
 import { enqueueGroupedPostPush } from '@/lib/push/groupedPostPushQueue';
 import { sendPushForNotificationBestEffort } from '@/lib/push/sendExpoPush';
+import { rateLimit } from '@/lib/api/rateLimit';
 
 export const runtime = 'nodejs';
 const GROUPED_PUSH_DEBOUNCE_ENABLED = process.env.GROUPED_PUSH_DEBOUNCE_ENABLED === 'true';
@@ -192,6 +194,12 @@ export async function POST(req: NextRequest) {
   const { data: auth, error: authErr } = await supabase.auth.getUser();
   if (authErr || !auth?.user) {
     return notAuthenticated('Utente non autenticato');
+  }
+
+  try {
+    await rateLimit(req, { key: `feed:comments:POST:${auth.user.id}`, limit: 30, window: '1m' });
+  } catch (error: any) {
+    return rateLimited('Too Many Requests', { retryAfter: error?.headers?.['Retry-After'] ?? null });
   }
 
   const bodyJson = await req.json().catch(() => ({}));

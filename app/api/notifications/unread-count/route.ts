@@ -1,12 +1,27 @@
 import { withAuth } from '@/lib/api/auth';
-import { dbError, successResponse, unknownError } from '@/lib/api/standardResponses';
+import { rateLimit } from '@/lib/api/rateLimit';
+import { dbError, rateLimited, successResponse, unknownError } from '@/lib/api/standardResponses';
 
 export const runtime = 'nodejs';
 
 const MESSAGE_NOTIFICATION_KINDS = ['new_message', 'message'] as const;
+const UNREAD_COUNT_CACHE_TTL_MS = 5_000;
+const unreadCountCache = new Map<string, { count: number; expiresAt: number }>();
 
-export const GET = withAuth(async (_req, { supabase, user }) => {
+export const GET = withAuth(async (req, { supabase, user }) => {
   try {
+    await rateLimit(req, { key: `notifications:unread-count:${user.id}`, limit: 120, window: '1m' });
+  } catch {
+    return rateLimited('Too Many Requests');
+  }
+
+  try {
+    const now = Date.now();
+    const cached = unreadCountCache.get(user.id);
+    if (cached && cached.expiresAt > now) {
+      return successResponse({ count: cached.count, cached: true });
+    }
+
     const { count, error } = await supabase
       .from('notifications')
       .select('id', { count: 'exact', head: true })
@@ -16,7 +31,13 @@ export const GET = withAuth(async (_req, { supabase, user }) => {
 
     if (error) return dbError(error.message);
 
-    return successResponse({ count: count || 0 });
+    const safeCount = count || 0;
+    unreadCountCache.set(user.id, {
+      count: safeCount,
+      expiresAt: now + UNREAD_COUNT_CACHE_TTL_MS,
+    });
+
+    return successResponse({ count: safeCount, cached: false });
   } catch (e: any) {
     return unknownError({ endpoint: 'notifications/unread-count', error: e, message: e?.message || 'Errore inatteso' });
   }

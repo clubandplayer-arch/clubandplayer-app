@@ -687,7 +687,7 @@ export default function OpportunitiesClient() {
           <div className="rounded-xl border bg-gray-50 p-3">
             <p className="text-xs text-gray-500">Totale risultati</p>
             <p className="text-2xl font-semibold">{items.length}</p>
-            <p className="text-xs text-gray-500">{data?.total ? `${data.total} in database` : 'Vista corrente'}</p>
+            <p className="text-xs text-gray-500">{data?.total ? `${data.totalIsExact === false ? '≥ ' : ''}${data.total} risultati` : 'Vista corrente'}</p>
           </div>
           <div className="rounded-xl border bg-gray-50 p-3">
             <p className="text-xs text-gray-500">Club unici</p>
