@@ -83,6 +83,8 @@ Tracker delle attività fatte e delle attività residue per rendere l'app più r
 - Search/listing funzionanti dopo modifiche.
 - Feed rendering corretto dopo ottimizzazioni.
 - Club logo upload verificato senza errori.
+- Club logo unsupported file verificato: file non immagine rifiutato correttamente.
+- Search con 1 carattere verificata: nessun risultato con 1 carattere, ricerca normale con 2+ caratteri.
 
 ## Verifiche consigliate prima di chiudere definitivamente
 
@@ -147,10 +149,13 @@ Non farei altre PR strutturali senza dati reali di traffico, perché abbiamo gi�
 | --- | --- | --- | --- |
 | 2026-06-14 | Consolidamento PR scalabilità già completate | Completato | Le PR tecniche P0/P1 risultano implementate e verificate manualmente nei flussi principali. |
 | 2026-06-14 | Creazione tracker roadmap | Completato | Questo file diventa il registro unico per segnare fatto/mancante prima della chiusura. |
-| 2026-06-14 | Residual check list | In corso | Notifications bell e duplicate applications verificate; restano logo unsupported, search 1 char e log Vercel/Supabase. |
+| 2026-06-14 | Residual check list | In corso | Notifications bell e duplicate applications verificate; restano da confermare solo controlli operativi Vercel/Supabase. |
 | 2026-06-14 | Notifications bell | Completato | Verificato manualmente: badge/campanella e aggiornamento dopo lettura funzionano correttamente. |
 | 2026-06-14 | Applications duplicate | Completato | Verificato manualmente: la UI impedisce una seconda candidatura e mostra stato coerente `Candidatura inviata`. |
 | 2026-06-14 | Pausa operativa | Sospeso | Chiuso il lavoro della sessione; riprendere dalle verifiche residue: logo unsupported, search 1 char, log Vercel e dashboard Supabase. |
+| 2026-06-15 | Club logo unsupported file | Completato | Confermato manualmente: file non immagine gestito correttamente. |
+| 2026-06-15 | Search con 1 carattere | Completato | Confermato manualmente: con 1 carattere nessun risultato/nessuna fuzzy search utile; con 2+ caratteri ricerca funzionante. |
+| 2026-06-15 | Controlli operativi Vercel/Supabase | Da confermare | Dalle verifiche precedenti risultano env Redis presenti e flussi stabili; manca solo eventuale conferma esplicita di assenza warning fallback Redis e slow query gravi. |
 
 ## Checklist finale da spuntare
 
@@ -158,8 +163,8 @@ Prima di chiudere definitivamente il blocco scalabilità, segnare qui l'esito de
 
 - [x] Notifications bell: badge visibile con notifiche non lette e aggiornamento dopo lettura entro pochi secondi.
 - [x] Applications duplicate: seconda candidatura alla stessa opportunità gestita senza errore generico.
-- [ ] Club logo unsupported file: file non immagine rifiutato con errore controllato `unsupported_format`.
-- [ ] Search 1 carattere: non parte fuzzy search specifica; con 2+ caratteri la ricerca filtra normalmente.
+- [x] Club logo unsupported file: file non immagine rifiutato con errore controllato `unsupported_format`.
+- [x] Search 1 carattere: non parte fuzzy search specifica; con 2+ caratteri la ricerca filtra normalmente.
 - [ ] Vercel logs: nessun warning Redis fallback durante uso normale.
 - [ ] Supabase dashboard: nessuna slow query grave su feed/search/opportunities/clubs dopo smoke test.
 
