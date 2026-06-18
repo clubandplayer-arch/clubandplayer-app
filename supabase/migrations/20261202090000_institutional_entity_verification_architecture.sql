@@ -276,7 +276,16 @@ begin
 
   if to_regclass('public.feed_posts') is not null then
     execute 'drop policy if exists "institutional entities feed publish only when approved" on public.feed_posts';
-    execute 'create policy "institutional entities feed publish only when approved" on public.feed_posts as restrictive for insert to authenticated with check (public.can_user_publish_as_institutional_entity(author_id))';
+
+    if exists (
+      select 1
+      from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'feed_posts'
+        and column_name = 'author_id'
+    ) then
+      execute 'create policy "institutional entities feed publish only when approved" on public.feed_posts as restrictive for insert to authenticated with check (public.can_user_publish_as_institutional_entity(author_id))';
+    end if;
   end if;
 end $$;
 
