@@ -2,7 +2,7 @@
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import type { User } from '@supabase/supabase-js';
 
-export type UserRole = 'athlete' | 'club' | 'fan' | 'staff' | null;
+export type UserRole = 'athlete' | 'club' | 'fan' | 'staff' | 'institutional_entity' | null;
 
 // Deriva il tipo del client dal factory, così evitiamo mismatch tra generics
 type SupaClient = Awaited<ReturnType<typeof getSupabaseServerClient>>;
