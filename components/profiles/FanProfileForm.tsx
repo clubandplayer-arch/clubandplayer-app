@@ -101,6 +101,10 @@ export default function FanProfileForm() {
     setMessage(null);
 
     try {
+      if (!fullName.trim()) {
+        throw new Error('Nome personale o nome gruppo tifoso obbligatorio.');
+      }
+
       const normalizedCountry = normalizeCountryCode(country);
       const normalizedInterestCountry = normalizeCountryCode(interestCountry);
       const isInterestItaly = normalizedInterestCountry === 'IT';

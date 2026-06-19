@@ -526,6 +526,14 @@ export default function ProfileEditForm() {
     setMessage(null);
 
     try {
+      const minimumName = (fullName || '').replace(/\s+/g, ' ').trim();
+      if (isClub && !minimumName) {
+        throw new Error('Nome squadra / nome società obbligatorio.');
+      }
+      if (!isClub && !isFan && minimumName.split(' ').filter(Boolean).length < 2) {
+        throw new Error('Nome e cognome sono obbligatori.');
+      }
+
       const normalizedPastExperiences = pastExperiences
         .map((experience) => ensurePastExperienceCategory(sanitizePastExperience(experience)))
         .filter((experience) => !isPastExperienceEmpty(experience));

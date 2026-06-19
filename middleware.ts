@@ -2,7 +2,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
 export const config = {
-  matcher: ['/login', '/signup', '/onboarding/:path*', '/club/:path*', '/opportunities/:path*', '/fan/:path*'],
+  matcher: ['/login', '/signup', '/onboarding/:path*', '/club/:path*', '/player/:path*', '/staff/:path*', '/fan/:path*', '/feed/:path*', '/search/:path*', '/who-to-follow/:path*', '/opportunities/:path*', '/following/:path*', '/clubs/:path*', '/players/:path*', '/athletes/:path*', '/u/:path*', '/c/:path*', '/post/:path*', '/posts/:path*', '/api/feed/:path*', '/api/follows/:path*', '/api/search/:path*', '/api/opportunities/:path*', '/api/suggestions/:path*', '/api/profiles/public/:path*'],
 };
 
 export async function middleware(req: NextRequest) {
@@ -11,6 +11,8 @@ export async function middleware(req: NextRequest) {
 
   let role: 'club' | 'athlete' | 'staff' | 'fan' | 'guest' = 'guest';
   let authenticated = false;
+  let minimumProfileComplete = true;
+  let minimumProfilePath = '/onboarding/choose-role';
 
   try {
     const r = await fetch(new URL('/api/auth/whoami', url.origin), {
@@ -21,6 +23,8 @@ export async function middleware(req: NextRequest) {
     authenticated = !!j?.user?.id;
     const raw = (j?.role ?? '').toString().toLowerCase();
     if (raw === 'club' || raw === 'athlete' || raw === 'staff' || raw === 'fan') role = raw;
+    minimumProfileComplete = Boolean(j?.profile?.minimum_profile_complete ?? j?.profile?.minimum_complete ?? role === 'guest');
+    minimumProfilePath = (j?.profile?.minimum_profile_path || minimumProfilePath).toString();
   } catch {
     // guest
   }
@@ -38,6 +42,17 @@ export async function middleware(req: NextRequest) {
     if (pathname !== '/onboarding/choose-role') {
       return NextResponse.redirect(new URL('/onboarding/choose-role', url));
     }
+  }
+
+  const minimumProfileAllowedPaths = new Set(['/player/profile', '/club/profile', '/staff/profile', '/fan/profile']);
+  if (authenticated && role !== 'guest' && !minimumProfileComplete && !minimumProfileAllowedPaths.has(pathname)) {
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json(
+        { error: 'Completa il tuo profilo per continuare.', redirectTo: minimumProfilePath },
+        { status: 403 },
+      );
+    }
+    return NextResponse.redirect(new URL(minimumProfilePath, url));
   }
 
   // Rotte /club/* solo per club

@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { isAdminUser, isClubsAdminUser } from '@/lib/api/admin';
 import { ensureSingleProfileRowForUser, inferAccountType } from '@/lib/server/profileIntegrity';
+import { isMinimumProfileComplete, minimumProfilePathForRole } from '@/lib/profile/minimum';
 
 function resolveEnv() {
   const url =
@@ -77,13 +78,15 @@ export async function GET(req: NextRequest) {
   let accountType: 'club' | 'athlete' | 'fan' | 'staff' | null = null;
   let legacyType: string | null = null;
   let status: ProfileStatus = 'active';
+  let minimumProfileComplete = false;
+  let minimumProfilePath = '/onboarding/choose-role';
 
   let profileExists = false;
 
   try {
     const { data: prof } = await supabase
       .from('profiles')
-      .select('account_type,type,status')
+      .select('account_type,type,status,full_name,display_name')
       .eq('user_id', user.id)
       .maybeSingle();
 
@@ -96,6 +99,8 @@ export async function GET(req: NextRequest) {
     status = normStatus((prof as any)?.status);
 
     if (!accountType) accountType = normRole(legacyType);
+    minimumProfileComplete = isMinimumProfileComplete(prof as any);
+    minimumProfilePath = minimumProfilePathForRole(accountType);
   } catch {
     // ignore
   }
@@ -107,7 +112,10 @@ export async function GET(req: NextRequest) {
         .from('opportunities')
         .select('id', { head: true, count: 'exact' })
         .eq('created_by', user.id);
-      if ((count ?? 0) > 0) accountType = 'club';
+      if ((count ?? 0) > 0) {
+        accountType = 'club';
+        minimumProfilePath = minimumProfilePathForRole(accountType);
+      }
     } catch {
       // ignore
     }
@@ -131,7 +139,7 @@ export async function GET(req: NextRequest) {
           },
           { onConflict: 'user_id' }
         )
-        .select('account_type,type,status')
+        .select('account_type,type,status,full_name,display_name')
         .maybeSingle();
 
       if (created) {
@@ -139,6 +147,8 @@ export async function GET(req: NextRequest) {
         legacyType = (created as any)?.type ?? legacyType;
         status = normStatus((created as any)?.status);
         profileExists = true;
+        minimumProfileComplete = isMinimumProfileComplete(created as any);
+        minimumProfilePath = minimumProfilePathForRole(accountType);
       }
     }
 
@@ -159,13 +169,15 @@ export async function GET(req: NextRequest) {
           .from('profiles')
           .update(updates)
           .eq('user_id', user.id)
-          .select('account_type,type,status')
+          .select('account_type,type,status,full_name,display_name')
           .maybeSingle();
 
         if (patched) {
           accountType = normRole((patched as any)?.account_type) || accountType;
           legacyType = (patched as any)?.type ?? legacyType;
           status = normStatus((patched as any)?.status);
+          minimumProfileComplete = isMinimumProfileComplete(patched as any);
+          minimumProfilePath = minimumProfilePathForRole(accountType);
         } else {
           status = 'active';
           if (!accountType && hintedRole) accountType = hintedRole;
@@ -194,7 +206,14 @@ export async function GET(req: NextRequest) {
   const out = NextResponse.json({
     user: { id: user.id, email: user.email ?? undefined },
     role,
-    profile: { account_type: accountType, type: legacyType, status },
+    profile: {
+      account_type: accountType,
+      type: legacyType,
+      status,
+      minimum_complete: minimumProfileComplete,
+      minimum_profile_complete: minimumProfileComplete,
+      minimum_profile_path: minimumProfilePath,
+    },
     clubsAdmin,
     admin,
   });

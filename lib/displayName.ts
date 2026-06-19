@@ -7,7 +7,7 @@ export function isEmailLike(value?: string | null): boolean {
 export function buildPlayerDisplayName(
   fullName?: string | null,
   displayName?: string | null,
-  fallback: string = 'Player',
+  fallback: string = 'Profilo da completare',
 ) {
   return buildProfileDisplayName(fullName, displayName, fallback);
 }
@@ -15,7 +15,7 @@ export function buildPlayerDisplayName(
 export function buildProfileDisplayName(
   fullName?: string | null,
   displayName?: string | null,
-  fallback: string = 'Profilo',
+  fallback: string = 'Profilo da completare',
 ) {
   const safeFullName = fullName?.trim();
   if (safeFullName) return safeFullName;
@@ -29,7 +29,7 @@ export function buildProfileDisplayName(
 export function buildClubDisplayName(
   fullName?: string | null,
   displayName?: string | null,
-  fallback: string = 'Club',
+  fallback: string = 'Profilo da completare',
 ) {
   return buildProfileDisplayName(fullName, displayName, fallback);
 }

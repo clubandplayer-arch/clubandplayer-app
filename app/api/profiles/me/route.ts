@@ -4,6 +4,7 @@ import { rateLimit } from '@/lib/api/rateLimit';
 import { normalizeSport } from '@/lib/opps/constants';
 import { MAX_SKILLS, parseSkillsInput } from '@/lib/profiles/skills';
 import { ensureSingleProfileRowForUser, inferAccountType } from '@/lib/server/profileIntegrity';
+import { getMinimumProfileError } from '@/lib/profile/minimum';
 
 export const runtime = 'nodejs';
 
@@ -123,6 +124,7 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
     displayNameHint: user.user_metadata?.full_name || user.email || null,
   });
 
+
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
@@ -216,10 +218,10 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
     }
   }
 
-  let currentProfile: { account_type: string | null; role: string | null } | null = null;
+  let currentProfile: { account_type: string | null; type?: string | null; role: string | null; full_name?: string | null; display_name?: string | null } | null = null;
   const { data: existingProfile } = await supabase
     .from('profiles')
-    .select('account_type, role')
+    .select('account_type, type, role, full_name, display_name')
     .eq('user_id', user.id)
     .maybeSingle();
 
@@ -234,6 +236,14 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   if (effectiveAccountType === 'club') {
     updates.role = 'Club';
   }
+
+  const minimumProfileError = getMinimumProfileError({
+    ...(currentProfile ?? {}),
+    ...updates,
+    account_type: effectiveAccountType,
+    type: effectiveAccountType,
+  });
+  if (minimumProfileError) return jsonError(minimumProfileError, 400);
 
   const { data, error } = await supabase
     .from('profiles')

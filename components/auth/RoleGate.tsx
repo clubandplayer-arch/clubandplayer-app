@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
-type Me = { account_type?: string | null; status?: string | null };
+type Me = { account_type?: string | null; status?: string | null; minimum_profile_complete?: boolean; minimum_complete?: boolean; minimum_profile_path?: string | null };
 
 function hasValidAccountType(profile: any): boolean {
   const value = String(profile?.account_type ?? profile?.type ?? '').toLowerCase().trim();
@@ -18,6 +18,8 @@ const EXCLUDE_PREFIXES = [
   '/reset-password',
   '/blocked',
 ];
+
+const MINIMUM_PROFILE_PATHS = ['/player/profile', '/club/profile', '/staff/profile', '/fan/profile'];
 
 export default function RoleGate({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
@@ -62,6 +64,13 @@ export default function RoleGate({ children }: { children: React.ReactNode }) {
         // Se manca account_type → vai alla scelta ruolo
         if (!hasValidAccountType(data)) {
           router.replace(`/onboarding/choose-role?next=${encodeURIComponent(next)}`);
+          return;
+        }
+
+        const minimumComplete = Boolean(data.minimum_profile_complete ?? data.minimum_complete);
+        const minimumPath = data.minimum_profile_path || '/player/profile';
+        if (!minimumComplete && !MINIMUM_PROFILE_PATHS.some((p) => pathname.startsWith(p))) {
+          router.replace(minimumPath);
           return;
         }
 

@@ -17,6 +17,7 @@ import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 import { reportApiError } from '@/lib/monitoring/reportApiError';
 import { getActiveProfile } from '@/lib/api/profile';
 import { buildProfileDisplayName } from '@/lib/displayName';
+import { INCOMPLETE_PROFILE_PUBLIC_NAME, isMinimumProfileComplete } from '@/lib/profile/minimum';
 import { CreatePostSchema, FeedPostsQuerySchema, type CreatePostInput, type FeedPostsQueryInput } from '@/lib/validation/feed';
 
 export const runtime = 'nodejs';
@@ -132,7 +133,7 @@ function normalizeRow(row: any, quotedMap?: Map<string, any>, depth = 0): any {
       ? buildProfileDisplayName(
           authorProfile.full_name ?? undefined,
           authorProfile.display_name ?? undefined,
-          fallbackAuthorDisplayName ?? 'Profilo',
+          fallbackAuthorDisplayName ?? INCOMPLETE_PROFILE_PUBLIC_NAME,
         )
       : fallbackAuthorDisplayName;
   const authorAvatarUrl = authorProfile?.avatar_url ?? (row as any)?.author_avatar_url ?? null;
@@ -456,6 +457,9 @@ export async function GET(req: NextRequest) {
       currentUserId = data.user.id;
       const activeProfile = await getActiveProfile(supabase, data.user.id);
       currentProfileId = activeProfile?.id ?? null;
+      if (!isMinimumProfileComplete(activeProfile as any)) {
+        return notAuthorized('Completa il tuo profilo per continuare.');
+      }
     }
   } catch {
     // se qualcosa fallisce, continuiamo senza ruolo
@@ -976,12 +980,15 @@ export async function POST(req: NextRequest) {
     try {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('account_type, type')
+        .select('account_type, type, full_name, display_name')
         .eq('user_id', auth.user.id)
         .maybeSingle();
       actorRole =
         normRole((profile as any)?.account_type) ||
         normRole((profile as any)?.type);
+      if (!isMinimumProfileComplete(profile as any)) {
+        return notAuthorized('Completa il tuo profilo per continuare.');
+      }
     } catch {
       actorRole = null;
     }

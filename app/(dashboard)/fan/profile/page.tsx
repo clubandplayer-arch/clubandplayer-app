@@ -44,7 +44,7 @@ export default function FanProfilePage() {
   return (
     <div className="space-y-4 p-4 md:p-6">
       <h1 className="text-2xl font-semibold">Il mio profilo Fan</h1>
-      <p className="text-sm text-gray-600">Aggiorna i dati principali per personalizzare feed e suggerimenti.</p>
+      <p className="text-sm text-gray-600">Completa il tuo profilo per continuare. Questi dati servono per identificarti correttamente all’interno di Club & Player.</p>
       <FanProfileForm />
     </div>
   );
