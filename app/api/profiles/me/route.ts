@@ -234,6 +234,9 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   }
   if (effectiveAccountType === 'club') {
     updates.role = 'Club';
+    if ('interest_region' in updates) updates.region = updates.interest_region;
+    if ('interest_province' in updates) updates.province = updates.interest_province;
+    if ('interest_city' in updates) updates.city = updates.interest_city;
     if (Object.prototype.hasOwnProperty.call(updates, 'full_name') && updates.full_name) {
       const rawClubName = String(updates.full_name);
       if (!isValidProfileClubName(rawClubName)) {

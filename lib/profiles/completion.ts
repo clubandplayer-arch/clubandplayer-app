@@ -14,6 +14,9 @@ export type ProfileCompletionProfile = {
   region?: string | null;
   province?: string | null;
   city?: string | null;
+  interest_region_id?: number | string | null;
+  interest_province_id?: number | string | null;
+  interest_municipality_id?: number | string | null;
 };
 
 function text(value: unknown) {
@@ -22,6 +25,10 @@ function text(value: unknown) {
 
 function hasText(value: unknown) {
   return text(value).length > 0;
+}
+
+function hasValue(value: unknown) {
+  return value !== null && value !== undefined && text(value).length > 0;
 }
 
 function hasBirthYear(value: unknown) {
@@ -50,9 +57,9 @@ export function getMissingRequiredProfileFields(profile?: ProfileCompletionProfi
     if ((!hasText(profile?.full_name) && !hasText(profile?.display_name)) || !isValidProfileClubName(text(profile?.full_name || profile?.display_name))) missing.push('nome società');
     if (!hasText(profile?.sport)) missing.push('sport principale');
     if (!hasText(profile?.country)) missing.push('nazione');
-    if (!hasText(profile?.region)) missing.push('regione');
-    if (!hasText(profile?.province)) missing.push('provincia');
-    if (!hasText(profile?.city)) missing.push('città');
+    if (!hasText(profile?.region) && !hasValue(profile?.interest_region_id)) missing.push('regione');
+    if (!hasText(profile?.province) && !hasValue(profile?.interest_province_id)) missing.push('provincia');
+    if (!hasText(profile?.city) && !hasValue(profile?.interest_municipality_id)) missing.push('città');
     return missing;
   }
 

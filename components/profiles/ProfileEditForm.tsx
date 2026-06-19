@@ -528,7 +528,10 @@ export default function ProfileEditForm() {
     region: isClub ? (clubLocation.regionName || clubLocationFallback.region || null) : profile?.region ?? null,
     province: isClub ? (clubLocation.provinceName || clubLocationFallback.province || null) : profile?.province ?? null,
     city: isClub ? (clubLocation.cityName || clubLocationFallback.city || null) : profile?.city ?? null,
-  }), [athleteRole, athleteSport, birthYear, clubLocation.cityName, clubLocation.provinceName, clubLocation.regionName, clubLocationFallback.city, clubLocationFallback.province, clubLocationFallback.region, country, fullName, isClub, isFan, profile, sport]);
+    interest_region_id: isClub ? clubLocation.regionId : null,
+    interest_province_id: isClub ? clubLocation.provinceId : null,
+    interest_municipality_id: isClub ? clubLocation.municipalityId : null,
+  }), [athleteRole, athleteSport, birthYear, clubLocation.cityName, clubLocation.provinceName, clubLocation.regionName, clubLocation.municipalityId, clubLocation.provinceId, clubLocation.regionId, clubLocationFallback.city, clubLocationFallback.province, clubLocationFallback.region, country, fullName, isClub, isFan, profile, sport]);
   const missingRequiredFields = useMemo(() => getMissingRequiredProfileFields(requiredPreviewProfile), [requiredPreviewProfile]);
   const canSave = useMemo(() => !saving && profile != null, [saving, profile]);
   const currentYear = new Date().getFullYear();
