@@ -64,8 +64,9 @@ export function getMissingRequiredProfileFields(profile?: ProfileCompletionProfi
   }
 
   if (accountType === 'fan') {
-    if (!hasText(profile?.display_name) && !hasText(profile?.full_name)) {
-      missing.push('nome visualizzato o nome gruppo tifosi');
+    const fanName = text(profile?.display_name || profile?.full_name);
+    if (!hasText(fanName) || !isValidProfilePersonName(fanName)) {
+      missing.push('nome e cognome');
     }
     return missing;
   }

@@ -6,6 +6,12 @@ import AvatarUploader from '@/components/profiles/AvatarUploader';
 import { LocationFallback, LocationFields, LocationSelection } from '@/components/profiles/LocationFields';
 import { WORLD_COUNTRY_OPTIONS } from '@/lib/geo/countries';
 import { iso2ToFlagEmoji } from '@/lib/utils/flags';
+import { getMissingRequiredProfileFields } from '@/lib/profiles/completion';
+import { isValidProfilePersonName, sanitizeProfilePersonName } from '@/lib/profiles/nameValidation';
+
+function RequiredMark() {
+  return <span className="ml-1 font-semibold text-red-600" aria-hidden="true">*</span>;
+}
 
 const supabase = createSupabaseClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -60,7 +66,8 @@ export default function FanProfileForm() {
         const data = raw?.data ?? raw;
         if (!data || cancelled) return;
 
-        setFullName(data.full_name ?? data.display_name ?? '');
+        const loadedName = data.full_name ?? data.display_name ?? '';
+        setFullName(isValidProfilePersonName(loadedName) ? sanitizeProfilePersonName(loadedName) : '');
         setAvatarUrl(data.avatar_url ?? null);
         setCountry(normalizeCountryCode(data.country) ?? 'IT');
         setInterestCountry(normalizeCountryCode(data.interest_country) ?? 'IT');
@@ -89,6 +96,13 @@ export default function FanProfileForm() {
     };
   }, []);
 
+  const requiredPreviewProfile = useMemo(() => ({
+    account_type: 'fan',
+    full_name: fullName,
+    display_name: fullName,
+  }), [fullName]);
+  const missingRequiredFields = useMemo(() => getMissingRequiredProfileFields(requiredPreviewProfile), [requiredPreviewProfile]);
+
   const countryPreview = useMemo(
     () => (country ? [iso2ToFlagEmoji(country), countryName(country)].filter(Boolean).join(' ') : ''),
     [country],
@@ -111,8 +125,8 @@ export default function FanProfileForm() {
       const payload = {
         account_type: 'fan',
         type: 'fan',
-        full_name: fullName.trim() || null,
-        display_name: fullName.trim() || null,
+        full_name: sanitizeProfilePersonName(fullName).trim() || null,
+        display_name: sanitizeProfilePersonName(fullName).trim() || null,
         avatar_url: avatarUrl || null,
         country: normalizedCountry,
         interest_country: normalizedInterestCountry,
@@ -150,6 +164,15 @@ export default function FanProfileForm() {
         club_motto: null,
       };
 
+      const missingFields = getMissingRequiredProfileFields({
+        account_type: 'fan',
+        full_name: payload.full_name,
+        display_name: payload.display_name,
+      });
+      if (missingFields.length > 0) {
+        throw new Error(`Completa i campi obbligatori: ${missingFields.join(', ')}.`);
+      }
+
       const res = await fetch('/api/profiles/me', {
         method: 'PATCH',
         credentials: 'include',
@@ -169,6 +192,13 @@ export default function FanProfileForm() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
+      {missingRequiredFields.length > 0 ? (
+        <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-950 shadow-sm" role="alert">
+          <p className="font-semibold">Completa il tuo profilo per continuare ad utilizzare Club & Player.</p>
+          <p className="mt-2 text-sm">I dati richiesti servono a identificare correttamente utenti, staff e società all'interno della piattaforma.</p>
+          <p className="mt-2 text-sm">Campi mancanti: {missingRequiredFields.join(', ')}.</p>
+        </div>
+      ) : null}
       {error ? <p className="rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-700">{error}</p> : null}
       {message ? <p className="rounded-md border border-green-200 bg-green-50 p-2 text-sm text-green-700">{message}</p> : null}
 
@@ -193,11 +223,11 @@ export default function FanProfileForm() {
           </div>
 
           <div className="flex min-w-0 flex-col gap-1 md:col-span-2">
-            <label className="text-sm text-gray-600">Nome e cognome</label>
+            <label className="text-sm text-gray-600">Nome e cognome<RequiredMark /></label>
             <input
               className="w-full min-w-0 rounded-lg border p-2"
               value={fullName}
-              onChange={(event) => setFullName(event.target.value)}
+              onChange={(event) => setFullName(sanitizeProfilePersonName(event.target.value))}
               placeholder="Es. Mario Rossi"
               disabled={loading}
             />

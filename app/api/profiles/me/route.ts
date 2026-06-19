@@ -245,7 +245,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
       updates.full_name = sanitizeProfileClubName(rawClubName);
       updates.display_name = updates.full_name;
     }
-  } else if ((effectiveAccountType === 'athlete' || effectiveAccountType === 'staff') && Object.prototype.hasOwnProperty.call(updates, 'full_name') && updates.full_name) {
+  } else if ((effectiveAccountType === 'athlete' || effectiveAccountType === 'staff' || effectiveAccountType === 'fan') && Object.prototype.hasOwnProperty.call(updates, 'full_name') && updates.full_name) {
     const rawFullName = String(updates.full_name);
     if (!isValidProfilePersonName(rawFullName)) {
       return jsonError("Il campo Nome e cognome può contenere solo lettere, spazi, apostrofo, punto e trattino", 400);
