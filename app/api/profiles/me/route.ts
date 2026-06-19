@@ -4,6 +4,7 @@ import { rateLimit } from '@/lib/api/rateLimit';
 import { normalizeSport } from '@/lib/opps/constants';
 import { MAX_SKILLS, parseSkillsInput } from '@/lib/profiles/skills';
 import { ensureSingleProfileRowForUser, inferAccountType } from '@/lib/server/profileIntegrity';
+import { isMinimumProfileComplete, resolveMinimalProfileRole } from '@/lib/profile/completion';
 
 export const runtime = 'nodejs';
 
@@ -155,6 +156,9 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   }
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+  const bodyKeys = Object.keys(body);
+  const isRoleSelectionOnlyRequest =
+    bodyKeys.length > 0 && bodyKeys.every((key) => key === 'account_type' || key === 'type');
 
   const updates: Record<string, any> = {};
   const collapseText = new Set(['city', 'interest_city', 'region', 'province', 'interest_region', 'interest_province']);
@@ -175,7 +179,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   }
 
   if (updates.sport) updates.sport = normalizeSport(updates.sport) ?? updates.sport;
-  if (updates.interest_country === undefined) updates.interest_country = 'IT';
+  if (!isRoleSelectionOnlyRequest && updates.interest_country === undefined) updates.interest_country = 'IT';
   if (updates.country) updates.country = updates.country.toString().trim().toUpperCase();
   if (updates.interest_country) updates.interest_country = updates.interest_country.toString().trim().toUpperCase();
   if (updates.birth_country) updates.birth_country = updates.birth_country.toString().trim().toUpperCase();
@@ -216,10 +220,10 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
     }
   }
 
-  let currentProfile: { account_type: string | null; role: string | null } | null = null;
+  let currentProfile: { account_type: string | null; type?: string | null; role: string | null; full_name?: string | null; display_name?: string | null } | null = null;
   const { data: existingProfile } = await supabase
     .from('profiles')
-    .select('account_type, role')
+    .select('account_type, type, role, full_name, display_name')
     .eq('user_id', user.id)
     .maybeSingle();
 
@@ -233,6 +237,18 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   }
   if (effectiveAccountType === 'club') {
     updates.role = 'Club';
+  }
+
+  const isOnlyRoleSelection = isRoleSelectionOnlyRequest;
+  const profileForValidation = { ...currentProfile, ...updates, account_type: effectiveAccountType } as any;
+  const validationRole = resolveMinimalProfileRole(profileForValidation);
+  if (!isOnlyRoleSelection && validationRole && !isMinimumProfileComplete(profileForValidation)) {
+    const message = validationRole === 'club'
+      ? 'Il nome squadra / nome società è obbligatorio.'
+      : validationRole === 'fan'
+        ? 'Il nome personale o nome gruppo tifoso è obbligatorio.'
+        : 'Nome e cognome sono obbligatori.';
+    return jsonError(message, 400);
   }
 
   const { data, error } = await supabase

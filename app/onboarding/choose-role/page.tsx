@@ -1,19 +1,27 @@
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { MaterialIcon, type MaterialIconName } from '@/components/icons/MaterialIcon';
 
 type Role = 'club' | 'athlete' | 'staff' | 'fan';
 
+function profilePathForRole(role: Role) {
+  if (role === 'club') return '/club/profile';
+  if (role === 'fan') return '/fan/profile';
+  return '/player/profile';
+}
+
+function hasSelectedRole(profile: any, role: Role) {
+  const value = String(profile?.account_type ?? profile?.type ?? '').toLowerCase().trim();
+  return value === role;
+}
+
 export default function ChooseRolePage() {
   const router = useRouter();
-  const sp = useSearchParams();
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const next = sp.get('next');
 
   async function choose(role: Role) {
     setSaving(true);
@@ -29,15 +37,18 @@ export default function ChooseRolePage() {
         const j = await r.json().catch(() => ({}));
         throw new Error(j?.error ?? 'Salvataggio non riuscito');
       }
-      if (role === 'club') {
-        router.replace('/club/profile');
-        return;
+      const targetPath = profilePathForRole(role);
+      for (let attempt = 0; attempt < 8; attempt += 1) {
+        const whoami = await fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' });
+        const json = await whoami.json().catch(() => ({}));
+        if (hasSelectedRole(json?.profile, role)) {
+          router.replace(targetPath);
+          return;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 300));
       }
-      if (role === 'athlete' || role === 'staff') {
-        router.replace('/player/profile');
-        return;
-      }
-      router.replace(next || '/feed');
+
+      router.replace(targetPath);
     } catch (e: any) {
       setError(e?.message || 'Errore imprevisto');
       setSaving(false);

@@ -312,6 +312,10 @@ export default function ProfilePage() {
         <p className="mb-4 text-sm text-neutral-600">
           Compila o aggiorna le informazioni principali del club, inclusi foto profilo, località e impianto.
         </p>
+        <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+          <p className="font-semibold">Completa il tuo profilo per continuare.</p>
+          <p>Questi dati servono per identificarti correttamente all&apos;interno di Club &amp; Player.</p>
+        </div>
         <ProfileEditForm />
       </section>
 
