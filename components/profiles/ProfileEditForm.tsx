@@ -16,7 +16,7 @@ import { normalizeSport, SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
 import { WORLD_COUNTRY_OPTIONS } from '@/lib/geo/countries';
 import { ProfileSkill } from '@/types/profile';
 import { getMissingRequiredProfileFields } from '@/lib/profiles/completion';
-import { sanitizeProfilePersonName } from '@/lib/profiles/nameValidation';
+import { sanitizeProfileClubName, sanitizeProfilePersonName } from '@/lib/profiles/nameValidation';
 import { CATEGORIES_BY_SPORT, CLUB_SPORT_OPTIONS, DEFAULT_CLUB_CATEGORIES } from '@/lib/opps/categories';
 import { iso2ToFlagEmoji } from '@/lib/utils/flags';
 import {
@@ -403,13 +403,18 @@ export default function ProfileEditForm() {
 
     // init form fields (normalizzo a ISO2 per sicurezza)
     const loadedFullName = p.full_name || '';
-    const sanitizedFullName = sanitizeProfilePersonName(loadedFullName);
+    const sanitizedPersonFullName = sanitizeProfilePersonName(loadedFullName);
+    const sanitizedClubFullName = sanitizeProfileClubName(loadedFullName);
     setFullName(
-      p.account_type === 'athlete' || p.account_type === 'staff'
-        ? sanitizedFullName === loadedFullName
-          ? sanitizedFullName
+      p.account_type === 'club'
+        ? sanitizedClubFullName === loadedFullName
+          ? sanitizedClubFullName
           : ''
-        : loadedFullName,
+        : p.account_type === 'athlete' || p.account_type === 'staff'
+          ? sanitizedPersonFullName === loadedFullName
+            ? sanitizedPersonFullName
+            : ''
+          : loadedFullName,
     );
     setAvatarUrl(p.avatar_url || null);
     setBio(p.bio || '');
@@ -894,7 +899,7 @@ export default function ProfileEditForm() {
                   <input
                     className="w-full min-w-0 rounded-lg border p-2"
                     value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
+                    onChange={(e) => setFullName(sanitizeProfileClubName(e.target.value))}
                     placeholder="Es. ASD Carlentini"
                   />
                 </div>

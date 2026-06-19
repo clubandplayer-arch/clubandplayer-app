@@ -4,7 +4,7 @@ import { rateLimit } from '@/lib/api/rateLimit';
 import { normalizeSport } from '@/lib/opps/constants';
 import { MAX_SKILLS, parseSkillsInput } from '@/lib/profiles/skills';
 import { ensureSingleProfileRowForUser, inferAccountType } from '@/lib/server/profileIntegrity';
-import { isValidProfilePersonName, sanitizeProfilePersonName } from '@/lib/profiles/nameValidation';
+import { isValidProfileClubName, isValidProfilePersonName, sanitizeProfileClubName, sanitizeProfilePersonName } from '@/lib/profiles/nameValidation';
 
 export const runtime = 'nodejs';
 
@@ -234,6 +234,14 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   }
   if (effectiveAccountType === 'club') {
     updates.role = 'Club';
+    if (Object.prototype.hasOwnProperty.call(updates, 'full_name') && updates.full_name) {
+      const rawClubName = String(updates.full_name);
+      if (!isValidProfileClubName(rawClubName)) {
+        return jsonError("Il campo Nome del club può contenere solo lettere, numeri, spazi, apostrofo, virgola, punto e trattino", 400);
+      }
+      updates.full_name = sanitizeProfileClubName(rawClubName);
+      updates.display_name = updates.full_name;
+    }
   } else if ((effectiveAccountType === 'athlete' || effectiveAccountType === 'staff') && Object.prototype.hasOwnProperty.call(updates, 'full_name') && updates.full_name) {
     const rawFullName = String(updates.full_name);
     if (!isValidProfilePersonName(rawFullName)) {
