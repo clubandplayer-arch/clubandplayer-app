@@ -48,9 +48,10 @@ export default function ProfilePage() {
   return (
     <div className="p-4 md:p-6 space-y-4">
       <h1 className="text-2xl font-semibold">{role === 'staff' ? 'Il mio profilo Staff' : 'Il mio profilo Player'}</h1>
-      <p className="text-sm text-gray-600">
-        Aggiorna i tuoi dati per migliorare il matching con club e opportunità.
-      </p>
+      <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+        <p className="font-semibold">Completa il tuo profilo per continuare.</p>
+        <p>Questi dati servono per identificarti correttamente all&apos;interno di Club &amp; Player.</p>
+      </div>
       <ProfileEditForm />
     </div>
   );

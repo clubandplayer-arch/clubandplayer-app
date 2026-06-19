@@ -85,9 +85,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           return;
         }
 
+        const completionPath = typeof profile?.profileCompletionPath === 'string' ? profile.profileCompletionPath : '/player/profile';
+        const isOnRequiredProfile = pathname === completionPath || pathname.startsWith(`${completionPath}/`);
+        if (profile?.minimumProfileComplete === false && !isOnRequiredProfile) {
+          router.replace(`${completionPath}?complete=1`);
+          return;
+        }
+
         setRole(rawRole === 'club' || rawRole === 'athlete' || rawRole === 'staff' || rawRole === 'fan' ? (rawRole as Role) : 'guest');
         setAvatarUrl(typeof profile?.avatar_url === 'string' ? profile.avatar_url : null);
-        setProfileName(buildProfileDisplayName(profile?.full_name, profile?.display_name, 'Profilo'));
+        setProfileName(buildProfileDisplayName(profile?.full_name, profile?.display_name, 'Profilo da completare'));
 
         if (j?.user?.id) {
           try {
@@ -97,7 +104,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               const detailedProfile = profileJson.data;
               setAvatarUrl(typeof detailedProfile?.avatar_url === 'string' ? detailedProfile.avatar_url : null);
               setProfileName(
-                buildProfileDisplayName(detailedProfile?.full_name, detailedProfile?.display_name, 'Profilo'),
+                buildProfileDisplayName(detailedProfile?.full_name, detailedProfile?.display_name, 'Profilo da completare'),
               );
             }
           } catch {

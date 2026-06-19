@@ -47,6 +47,8 @@ export default function SignupPage() {
     setErr(null);
     setOk(null);
 
+    const normalizedName = name.replace(/\s+/g, ' ').trim();
+    if (!normalizedName) return setErr('Il nome è obbligatorio.');
     if (pwd1.length < 8) return setErr('La password deve contenere almeno 8 caratteri.');
     if (pwd1 !== pwd2) return setErr('Le password non coincidono.');
 
@@ -55,17 +57,18 @@ export default function SignupPage() {
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? window.location.origin;
       const emailRedirectTo = `${baseUrl}/auth/callback`;
 
-      const { error } = await supabase.auth.signUp({
-        email,
-        password: pwd1,
-        options: {
-          data: {
-            ...(name ? { full_name: name } : {}),
-          },
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          password: pwd1,
+          name: normalizedName,
           emailRedirectTo,
-        },
+        }),
       });
-      if (error) throw error;
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload?.error ?? 'Errore durante la registrazione.');
 
       setOk('Registrazione avviata! Controlla la tua email per confermare l’account.');
       setTimeout(() => router.replace('/login'), 1500);
@@ -174,13 +177,14 @@ export default function SignupPage() {
 
             <form onSubmit={onSubmit} className="space-y-3">
               <label className="label">
-                Nome (facoltativo)
+                Nome
                 <input
                   type="text"
                   className="input"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   autoComplete="name"
+                  required
                 />
               </label>
 
@@ -222,7 +226,7 @@ export default function SignupPage() {
                 />
               </label>
 
-              <button type="submit" disabled={busy} className="btn btn-brand w-full">
+              <button type="submit" disabled={busy || !name.trim()} className="btn btn-brand w-full">
                 {busy ? 'Registrazione…' : 'Registrati'}
               </button>
             </form>

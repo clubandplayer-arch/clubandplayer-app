@@ -526,6 +526,13 @@ export default function ProfileEditForm() {
     setMessage(null);
 
     try {
+      const trimmedFullName = fullName.replace(/\s+/g, ' ').trim();
+      if (isClub && !trimmedFullName) throw new Error('Il nome squadra / nome società è obbligatorio.');
+      if (isFan && !trimmedFullName) throw new Error('Il nome personale o nome gruppo tifoso è obbligatorio.');
+      if (!isClub && !isFan && trimmedFullName.split(/\s+/).filter(Boolean).length < 2) {
+        throw new Error('Nome e cognome sono obbligatori.');
+      }
+
       const normalizedPastExperiences = pastExperiences
         .map((experience) => ensurePastExperienceCategory(sanitizePastExperience(experience)))
         .filter((experience) => !isPastExperienceEmpty(experience));
@@ -573,8 +580,8 @@ export default function ProfileEditForm() {
           : residenceLocation.cityName || residenceFallback.city || null;
 
       const basePayload: any = {
-        full_name: (fullName || '').trim() || null,
-        display_name: (fullName || '').trim() || null,
+        full_name: trimmedFullName || null,
+        display_name: trimmedFullName || null,
         bio:       (bio || '').trim() || null,
         country:   normalizedCountry,   // ISO2 sempre
         avatar_url: avatarUrl || null,
@@ -852,6 +859,7 @@ export default function ProfileEditForm() {
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="Es. ASD Carlentini"
+                    required
                   />
                 </div>
               </div>
@@ -1030,6 +1038,7 @@ export default function ProfileEditForm() {
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Es. Mario Rossi"
+                  required
                 />
               </div>
 

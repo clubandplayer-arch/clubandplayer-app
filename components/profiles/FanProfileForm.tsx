@@ -101,6 +101,9 @@ export default function FanProfileForm() {
     setMessage(null);
 
     try {
+      const trimmedFullName = fullName.replace(/\s+/g, ' ').trim();
+      if (!trimmedFullName) throw new Error('Il nome personale o nome gruppo tifoso è obbligatorio.');
+
       const normalizedCountry = normalizeCountryCode(country);
       const normalizedInterestCountry = normalizeCountryCode(interestCountry);
       const isInterestItaly = normalizedInterestCountry === 'IT';
@@ -111,8 +114,8 @@ export default function FanProfileForm() {
       const payload = {
         account_type: 'fan',
         type: 'fan',
-        full_name: fullName.trim() || null,
-        display_name: fullName.trim() || null,
+        full_name: trimmedFullName || null,
+        display_name: trimmedFullName || null,
         avatar_url: avatarUrl || null,
         country: normalizedCountry,
         interest_country: normalizedInterestCountry,
@@ -200,6 +203,7 @@ export default function FanProfileForm() {
               onChange={(event) => setFullName(event.target.value)}
               placeholder="Es. Mario Rossi"
               disabled={loading}
+              required
             />
           </div>
 

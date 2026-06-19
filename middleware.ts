@@ -2,7 +2,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
 export const config = {
-  matcher: ['/login', '/signup', '/onboarding/:path*', '/club/:path*', '/opportunities/:path*', '/fan/:path*'],
+  matcher: ['/login', '/signup', '/onboarding/:path*', '/club/:path*', '/opportunities/:path*', '/fan/:path*', '/feed/:path*', '/search/:path*', '/who-to-follow/:path*', '/following/:path*', '/players/:path*', '/clubs/:path*', '/messages/:path*'],
 };
 
 export async function middleware(req: NextRequest) {
@@ -11,6 +11,8 @@ export async function middleware(req: NextRequest) {
 
   let role: 'club' | 'athlete' | 'staff' | 'fan' | 'guest' = 'guest';
   let authenticated = false;
+  let minimumProfileComplete: boolean | null = null;
+  let profileCompletionPath = '/player/profile';
 
   try {
     const r = await fetch(new URL('/api/auth/whoami', url.origin), {
@@ -21,6 +23,8 @@ export async function middleware(req: NextRequest) {
     authenticated = !!j?.user?.id;
     const raw = (j?.role ?? '').toString().toLowerCase();
     if (raw === 'club' || raw === 'athlete' || raw === 'staff' || raw === 'fan') role = raw;
+    if (typeof j?.profile?.minimumProfileComplete === 'boolean') minimumProfileComplete = j.profile.minimumProfileComplete;
+    if (typeof j?.profile?.profileCompletionPath === 'string') profileCompletionPath = j.profile.profileCompletionPath;
   } catch {
     // guest
   }
@@ -38,6 +42,11 @@ export async function middleware(req: NextRequest) {
     if (pathname !== '/onboarding/choose-role') {
       return NextResponse.redirect(new URL('/onboarding/choose-role', url));
     }
+  }
+
+  if (authenticated && role !== 'guest' && minimumProfileComplete === false) {
+    const allowed = pathname === profileCompletionPath || pathname.startsWith(`${profileCompletionPath}/`) || pathname === '/logout';
+    if (!allowed) return NextResponse.redirect(new URL(`${profileCompletionPath}?complete=1`, url));
   }
 
   // Rotte /club/* solo per club

@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { isAdminUser, isClubsAdminUser } from '@/lib/api/admin';
 import { ensureSingleProfileRowForUser, inferAccountType } from '@/lib/server/profileIntegrity';
+import { getProfileCompletionPath, isMinimumProfileComplete } from '@/lib/profile/completion';
 
 function resolveEnv() {
   const url =
@@ -70,7 +71,7 @@ export async function GET(req: NextRequest) {
   }
 
   await ensureSingleProfileRowForUser(supabase, user.id, {
-    displayNameHint: user.user_metadata?.full_name || user.email || 'Profilo',
+    displayNameHint: user.user_metadata?.full_name || null,
   });
 
   // 1) profiles.account_type (nuovo), 2) profiles.type (legacy)
@@ -79,15 +80,17 @@ export async function GET(req: NextRequest) {
   let status: ProfileStatus = 'active';
 
   let profileExists = false;
+  let profileDetails: Record<string, any> | null = null;
 
   try {
     const { data: prof } = await supabase
       .from('profiles')
-      .select('account_type,type,status')
+      .select('account_type,type,status,full_name,display_name,first_name,last_name')
       .eq('user_id', user.id)
       .maybeSingle();
 
     profileExists = !!prof;
+    profileDetails = (prof as any) ?? null;
     accountType = normRole((prof as any)?.account_type);
     legacyType =
       typeof (prof as any)?.type === 'string'
@@ -124,20 +127,22 @@ export async function GET(req: NextRequest) {
         .upsert(
           {
             user_id: user.id,
-            display_name: user.user_metadata?.full_name || user.email || 'Profilo',
+            display_name: user.user_metadata?.full_name || null,
+            full_name: user.user_metadata?.full_name || null,
             account_type: accountType ?? null,
             type: accountType ?? null,
             role: accountType === 'club' ? 'Club' : null,
           },
           { onConflict: 'user_id' }
         )
-        .select('account_type,type,status')
+        .select('account_type,type,status,full_name,display_name,first_name,last_name')
         .maybeSingle();
 
       if (created) {
         accountType = normRole((created as any)?.account_type) || accountType;
         legacyType = (created as any)?.type ?? legacyType;
         status = normStatus((created as any)?.status);
+        profileDetails = (created as any) ?? profileDetails;
         profileExists = true;
       }
     }
@@ -159,7 +164,7 @@ export async function GET(req: NextRequest) {
           .from('profiles')
           .update(updates)
           .eq('user_id', user.id)
-          .select('account_type,type,status')
+          .select('account_type,type,status,full_name,display_name,first_name,last_name')
           .maybeSingle();
 
         if (patched) {
@@ -191,10 +196,13 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  const minimumProfileComplete = isMinimumProfileComplete({ ...profileDetails, account_type: accountType, type: legacyType } as any);
+  const profileCompletionPath = getProfileCompletionPath(accountType);
+
   const out = NextResponse.json({
     user: { id: user.id, email: user.email ?? undefined },
     role,
-    profile: { account_type: accountType, type: legacyType, status },
+    profile: { ...(profileDetails ?? {}), account_type: accountType, type: legacyType, status, minimumProfileComplete, profileCompletionPath },
     clubsAdmin,
     admin,
   });

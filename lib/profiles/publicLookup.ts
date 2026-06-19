@@ -1,3 +1,4 @@
+import { isEmailLike } from '@/lib/displayName';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 import { buildEndorsedSet, normalizeProfileSkills, normalizeSkillName } from '@/lib/profiles/skills';
@@ -151,11 +152,12 @@ function normalizeRow(row: Record<string, any>): PublicProfileSummary | null {
   const first = typeof row.first_name === 'string' ? row.first_name.trim() : '';
   const last = typeof row.last_name === 'string' ? row.last_name.trim() : '';
   const joined = [first, last].filter(Boolean).join(' ').trim();
-  const fullName = (typeof row.full_name === 'string' ? row.full_name.trim() : '') || joined || null;
-  const displayName =
-    (typeof row.display_name === 'string' ? row.display_name.trim() : '') ||
-    fullName ||
-    null;
+  const rawFullName = typeof row.full_name === 'string' ? row.full_name.trim() : '';
+  const rawDisplayName = typeof row.display_name === 'string' ? row.display_name.trim() : '';
+  const safeFullName = rawFullName && !isEmailLike(rawFullName) ? rawFullName : '';
+  const safeDisplayName = rawDisplayName && !isEmailLike(rawDisplayName) ? rawDisplayName : '';
+  const fullName = safeFullName || joined || null;
+  const displayName = safeDisplayName || fullName || 'Profilo da completare';
 
   const birthYearRaw = row.birth_year;
   const birthYear =
