@@ -46,6 +46,11 @@ const EMPTY_PAST_EXPERIENCE: PastExperience = {
 
 const PLAYER_BIO_MAX_LENGTH = 300;
 const PLAYER_BIO_WARNING_THRESHOLD = 20;
+
+function RequiredMark() {
+  return <span className="ml-1 font-semibold text-red-600" aria-hidden="true">*</span>;
+}
+
 const STAFF_ROLES = [
   'Presidente',
   'Vicepresidente',
@@ -875,7 +880,7 @@ export default function ProfileEditForm() {
                 </div>
 
                 <div className="flex min-w-0 flex-col gap-1 md:col-span-2">
-                  <label className="text-sm text-gray-600">Nome del club</label>
+                  <label className="text-sm text-gray-600">Nome del club<RequiredMark /></label>
                   <input
                     className="w-full min-w-0 rounded-lg border p-2"
                     value={fullName}
@@ -887,7 +892,7 @@ export default function ProfileEditForm() {
 
               <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-4">
                 <div className="flex min-w-0 flex-col gap-1">
-                  <label className="text-sm text-gray-600">Nazione del club</label>
+                  <label className="text-sm text-gray-600">Nazione del club<RequiredMark /></label>
                   <select
                     className="w-full min-w-0 rounded-lg border p-2"
                     value={country}
@@ -915,6 +920,7 @@ export default function ProfileEditForm() {
                     province: 'Provincia del club',
                     city: 'Città del club',
                   }}
+                  required
                 />
               </div>
 
@@ -930,7 +936,7 @@ export default function ProfileEditForm() {
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="flex min-w-0 flex-col gap-1">
-                  <label className="text-sm text-gray-600">Sport del club</label>
+                  <label className="text-sm text-gray-600">Sport del club<RequiredMark /></label>
                   <select
                     className="w-full min-w-0 rounded-lg border p-2"
                     value={sport}
@@ -1053,7 +1059,7 @@ export default function ProfileEditForm() {
               </div>
 
               <div className="flex min-w-0 flex-col gap-1 md:col-span-2">
-                <label className="text-sm text-gray-600">Nome e cognome</label>
+                <label className="text-sm text-gray-600">{isFan ? 'Nome visualizzato / gruppo tifosi' : 'Nome e cognome'}<RequiredMark /></label>
                 <input
                   className="w-full min-w-0 rounded-lg border p-2"
                   value={fullName}
@@ -1064,7 +1070,7 @@ export default function ProfileEditForm() {
 
               {!isFan && (
               <div className="flex min-w-0 flex-col gap-1">
-                <label className="text-sm text-gray-600">Anno di nascita</label>
+                <label className="text-sm text-gray-600">Anno di nascita<RequiredMark /></label>
                 <input
                   type="number"
                   inputMode="numeric"
@@ -1081,7 +1087,7 @@ export default function ProfileEditForm() {
               )}
 
               <div className="flex min-w-0 flex-col gap-1">
-                <label className="text-sm text-gray-600">Nazionalità</label>
+                <label className="text-sm text-gray-600">Nazionalità<RequiredMark /></label>
                 <select
                   className="w-full min-w-0 rounded-lg border p-2"
                   value={country}
@@ -1101,7 +1107,7 @@ export default function ProfileEditForm() {
               {!isFan && (
               <div className="md:col-span-2 grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="flex min-w-0 flex-col gap-1">
-                  <label className="text-sm text-gray-600">Sport</label>
+                  <label className="text-sm text-gray-600">Sport<RequiredMark /></label>
                   <select
                     className="w-full min-w-0 rounded-lg border p-2"
                     value={athleteSport}
@@ -1116,7 +1122,7 @@ export default function ProfileEditForm() {
                 </div>
 
                 <div className="flex min-w-0 flex-col gap-1">
-                  <label className="text-sm text-gray-600">Ruolo</label>
+                  <label className="text-sm text-gray-600">Ruolo<RequiredMark /></label>
                   <select
                     className="w-full min-w-0 rounded-lg border p-2"
                     value={athleteRole}
@@ -1244,7 +1250,7 @@ export default function ProfileEditForm() {
                       </div>
 
                       <div className="flex min-w-0 flex-col gap-1">
-                        <label className="text-sm text-gray-600">Sport</label>
+                        <label className="text-sm text-gray-600">Sport<RequiredMark /></label>
                         <select
                           className="w-full min-w-0 rounded-lg border p-2"
                           value={experience.sport}

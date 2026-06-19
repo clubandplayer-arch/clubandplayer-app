@@ -37,6 +37,7 @@ type Props = {
     city: string;
   };
   disabled?: boolean;
+  required?: boolean;
 };
 
 const defaultLabels = {
@@ -44,6 +45,11 @@ const defaultLabels = {
   province: 'Provincia',
   city: 'Città',
 };
+
+function RequiredMark({ show }: { show?: boolean }) {
+  if (!show) return null;
+  return <span className="ml-1 font-semibold text-red-600" aria-hidden="true">*</span>;
+}
 
 export function LocationFields({
   supabase,
@@ -53,6 +59,7 @@ export function LocationFields({
   onChange,
   labels = defaultLabels,
   disabled = false,
+  required = false,
 }: Props) {
   const [regions, setRegions] = useState<LocationOption[]>([]);
   const [provinces, setProvinces] = useState<LocationOption[]>([]);
@@ -254,7 +261,7 @@ export function LocationFields({
     return (
       <>
         <div className="flex min-w-0 flex-col gap-1">
-          <label className="text-sm text-gray-600">{labels.region}</label>
+          <label className="text-sm text-gray-600">{labels.region}<RequiredMark show={required} /></label>
           <input
             className="w-full min-w-0 rounded-lg border p-2"
             value={regionValue}
@@ -274,7 +281,7 @@ export function LocationFields({
         </div>
 
         <div className="flex min-w-0 flex-col gap-1">
-          <label className="text-sm text-gray-600">{labels.city}</label>
+          <label className="text-sm text-gray-600">{labels.city}<RequiredMark show={required} /></label>
           <input
             className="w-full min-w-0 rounded-lg border p-2"
             value={cityValue}
@@ -301,7 +308,7 @@ export function LocationFields({
   return (
     <>
       <div className="flex min-w-0 flex-col gap-1">
-        <label className="text-sm text-gray-600">{labels.region}</label>
+        <label className="text-sm text-gray-600">{labels.region}<RequiredMark show={required} /></label>
         <select
           className="w-full min-w-0 rounded-lg border p-2"
           value={value.regionId ?? ''}
@@ -318,7 +325,7 @@ export function LocationFields({
       </div>
 
       <div className="flex min-w-0 flex-col gap-1">
-        <label className="text-sm text-gray-600">{labels.province}</label>
+        <label className="text-sm text-gray-600">{labels.province}<RequiredMark show={required} /></label>
         <select
           className="w-full min-w-0 rounded-lg border p-2 disabled:bg-gray-50"
           value={value.provinceId ?? ''}
@@ -335,7 +342,7 @@ export function LocationFields({
       </div>
 
       <div className="flex min-w-0 flex-col gap-1">
-        <label className="text-sm text-gray-600">{labels.city}</label>
+        <label className="text-sm text-gray-600">{labels.city}<RequiredMark show={required} /></label>
         <select
           className="w-full min-w-0 rounded-lg border p-2 disabled:bg-gray-50"
           value={selectedMunicipalityValue}
