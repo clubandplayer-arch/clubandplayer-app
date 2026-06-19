@@ -310,7 +310,7 @@ export default function ProfilePage() {
       <section className="glass-panel p-5 md:p-6">
         <h2 className="heading-h2 mb-2">Dati club</h2>
         <p className="mb-4 text-sm text-neutral-600">
-          Compila o aggiorna le informazioni principali del club, inclusi foto profilo, località e impianto.
+          Completa il tuo profilo per continuare. Questi dati servono per identificarti correttamente all’interno di Club & Player.
         </p>
         <ProfileEditForm />
       </section>

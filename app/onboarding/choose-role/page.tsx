@@ -37,6 +37,10 @@ export default function ChooseRolePage() {
         router.replace('/player/profile');
         return;
       }
+      if (role === 'fan') {
+        router.replace('/fan/profile');
+        return;
+      }
       router.replace(next || '/feed');
     } catch (e: any) {
       setError(e?.message || 'Errore imprevisto');
