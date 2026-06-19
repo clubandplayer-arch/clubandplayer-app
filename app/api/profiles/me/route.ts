@@ -4,6 +4,7 @@ import { rateLimit } from '@/lib/api/rateLimit';
 import { normalizeSport } from '@/lib/opps/constants';
 import { MAX_SKILLS, parseSkillsInput } from '@/lib/profiles/skills';
 import { ensureSingleProfileRowForUser, inferAccountType } from '@/lib/server/profileIntegrity';
+import { isValidProfilePersonName, sanitizeProfilePersonName } from '@/lib/profiles/nameValidation';
 
 export const runtime = 'nodejs';
 
@@ -233,6 +234,12 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   }
   if (effectiveAccountType === 'club') {
     updates.role = 'Club';
+  } else if ((effectiveAccountType === 'athlete' || effectiveAccountType === 'staff') && Object.prototype.hasOwnProperty.call(updates, 'full_name') && updates.full_name) {
+    updates.full_name = sanitizeProfilePersonName(String(updates.full_name));
+    updates.display_name = updates.full_name;
+    if (!isValidProfilePersonName(updates.full_name)) {
+      return jsonError("Il campo Nome e cognome può contenere solo lettere, spazi, apostrofo, punto e trattino", 400);
+    }
   }
 
   const { data, error } = await supabase

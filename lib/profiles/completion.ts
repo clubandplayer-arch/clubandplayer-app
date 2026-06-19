@@ -1,3 +1,5 @@
+import { isValidProfilePersonName } from '@/lib/profiles/nameValidation';
+
 export type ProfileCompletionAccountType = 'athlete' | 'club' | 'staff' | 'fan' | null;
 
 export type ProfileCompletionProfile = {
@@ -62,7 +64,7 @@ export function getMissingRequiredProfileFields(profile?: ProfileCompletionProfi
   }
 
   if (accountType === 'athlete' || accountType === 'staff') {
-    if (!hasText(profile?.full_name)) missing.push('nome e cognome');
+    if (!hasText(profile?.full_name) || !isValidProfilePersonName(text(profile?.full_name))) missing.push('nome e cognome');
     if (!hasBirthYear(profile?.birth_year)) missing.push('anno di nascita');
     if (!hasText(profile?.country)) missing.push('nazionalità');
     if (!hasText(profile?.sport)) missing.push('sport');

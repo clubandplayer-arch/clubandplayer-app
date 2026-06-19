@@ -16,6 +16,7 @@ import { normalizeSport, SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
 import { WORLD_COUNTRY_OPTIONS } from '@/lib/geo/countries';
 import { ProfileSkill } from '@/types/profile';
 import { getMissingRequiredProfileFields } from '@/lib/profiles/completion';
+import { sanitizeProfilePersonName } from '@/lib/profiles/nameValidation';
 import { CATEGORIES_BY_SPORT, CLUB_SPORT_OPTIONS, DEFAULT_CLUB_CATEGORIES } from '@/lib/opps/categories';
 import { iso2ToFlagEmoji } from '@/lib/utils/flags';
 import {
@@ -400,7 +401,7 @@ export default function ProfileEditForm() {
     setProfile(p);
 
     // init form fields (normalizzo a ISO2 per sicurezza)
-    setFullName(p.full_name || '');
+    setFullName(p.account_type === 'athlete' || p.account_type === 'staff' ? sanitizeProfilePersonName(p.full_name || '') : p.full_name || '');
     setAvatarUrl(p.avatar_url || null);
     setBio(p.bio || '');
     setCountry(normalizeCountryCode(p.country) || 'IT');
@@ -1063,7 +1064,7 @@ export default function ProfileEditForm() {
                 <input
                   className="w-full min-w-0 rounded-lg border p-2"
                   value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
+                  onChange={(e) => setFullName(isFan ? e.target.value : sanitizeProfilePersonName(e.target.value))}
                   placeholder="Es. Mario Rossi"
                 />
               </div>
