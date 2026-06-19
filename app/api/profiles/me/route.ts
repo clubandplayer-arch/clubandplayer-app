@@ -237,13 +237,16 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
     updates.role = 'Club';
   }
 
-  const minimumProfileError = getMinimumProfileError({
-    ...(currentProfile ?? {}),
-    ...updates,
-    account_type: effectiveAccountType,
-    type: effectiveAccountType,
-  });
-  if (minimumProfileError) return jsonError(minimumProfileError, 400);
+  const isUpdatingMinimumIdentity = 'full_name' in updates || 'display_name' in updates;
+  if (isUpdatingMinimumIdentity) {
+    const minimumProfileError = getMinimumProfileError({
+      ...(currentProfile ?? {}),
+      ...updates,
+      account_type: effectiveAccountType,
+      type: effectiveAccountType,
+    });
+    if (minimumProfileError) return jsonError(minimumProfileError, 400);
+  }
 
   const { data, error } = await supabase
     .from('profiles')
