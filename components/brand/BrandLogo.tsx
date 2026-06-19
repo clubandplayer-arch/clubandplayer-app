@@ -35,6 +35,7 @@ export default function BrandLogo({
       width={width}
       height={height}
       priority={priority}
+      unoptimized
       className={[
         // sizing di default sensato (poi puoi override via className)
         variant === "signup"
