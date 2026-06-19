@@ -147,7 +147,7 @@ function buildProfileQuery(
   filters: SearchFilters,
   options?: { count?: 'exact'; head?: boolean },
 ) {
-  let query = supabase.from(table).select(select, options).eq('status', 'active');
+  let query = supabase.from(table).select(select, options).eq('status', 'active').not('full_name', 'is', null).neq('full_name', '').not('country', 'is', null).neq('country', '').not('sport', 'is', null).neq('sport', '').not('role', 'is', null).neq('role', '');
 
   const commonOr = [
     `city.ilike.${ilikeQuery}`,
@@ -177,7 +177,18 @@ function buildClubQuery(
     .from('profiles')
     .select(select, options)
     .or('account_type.eq.club,type.eq.club')
-    .or('status.eq.active,status.is.null');
+    .or('status.eq.active,status.is.null')
+    .not('sport', 'is', null)
+    .neq('sport', '')
+    .not('country', 'is', null)
+    .neq('country', '')
+    .not('region', 'is', null)
+    .neq('region', '')
+    .not('province', 'is', null)
+    .neq('province', '')
+    .not('city', 'is', null)
+    .neq('city', '')
+    .or('display_name.not.is.null,full_name.not.is.null');
 
   query = query.or(
     [
@@ -258,6 +269,15 @@ async function fetchProfileResults(params: {
         ].join(','),
       )
       .or('status.eq.active,status.is.null')
+      .not('full_name', 'is', null)
+      .neq('full_name', '')
+      .not('birth_year', 'is', null)
+      .not('country', 'is', null)
+      .neq('country', '')
+      .not('sport', 'is', null)
+      .neq('sport', '')
+      .not('role', 'is', null)
+      .neq('role', '')
       .order('created_at', { ascending: false })
       .range(from, to);
     if (error) throw new Error(error.message);
@@ -338,7 +358,16 @@ async function fetchProfileCount(params: {
           `role.ilike.${ilikeQuery}`,
         ].join(','),
       )
-      .or('status.eq.active,status.is.null');
+      .or('status.eq.active,status.is.null')
+      .not('full_name', 'is', null)
+      .neq('full_name', '')
+      .not('birth_year', 'is', null)
+      .not('country', 'is', null)
+      .neq('country', '')
+      .not('sport', 'is', null)
+      .neq('sport', '')
+      .not('role', 'is', null)
+      .neq('role', '');
     if (error) throw new Error(error.message);
     return count ?? 0;
   }

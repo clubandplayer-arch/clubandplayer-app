@@ -4,6 +4,7 @@ import { rateLimit } from '@/lib/api/rateLimit';
 import { normalizeSport } from '@/lib/opps/constants';
 import { MAX_SKILLS, parseSkillsInput } from '@/lib/profiles/skills';
 import { ensureSingleProfileRowForUser, inferAccountType } from '@/lib/server/profileIntegrity';
+import { isValidProfileClubName, isValidProfilePersonName, sanitizeProfileClubName, sanitizeProfilePersonName } from '@/lib/profiles/nameValidation';
 
 export const runtime = 'nodejs';
 
@@ -233,6 +234,24 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   }
   if (effectiveAccountType === 'club') {
     updates.role = 'Club';
+    if ('interest_region' in updates) updates.region = updates.interest_region;
+    if ('interest_province' in updates) updates.province = updates.interest_province;
+    if ('interest_city' in updates) updates.city = updates.interest_city;
+    if (Object.prototype.hasOwnProperty.call(updates, 'full_name') && updates.full_name) {
+      const rawClubName = String(updates.full_name);
+      if (!isValidProfileClubName(rawClubName)) {
+        return jsonError("Il campo Nome del club può contenere solo lettere, numeri, spazi, apostrofo, virgola, punto e trattino", 400);
+      }
+      updates.full_name = sanitizeProfileClubName(rawClubName);
+      updates.display_name = updates.full_name;
+    }
+  } else if ((effectiveAccountType === 'athlete' || effectiveAccountType === 'staff' || effectiveAccountType === 'fan') && Object.prototype.hasOwnProperty.call(updates, 'full_name') && updates.full_name) {
+    const rawFullName = String(updates.full_name);
+    if (!isValidProfilePersonName(rawFullName)) {
+      return jsonError("Il campo Nome e cognome può contenere solo lettere, spazi, apostrofo, punto e trattino", 400);
+    }
+    updates.full_name = sanitizeProfilePersonName(rawFullName);
+    updates.display_name = updates.full_name;
   }
 
   const { data, error } = await supabase

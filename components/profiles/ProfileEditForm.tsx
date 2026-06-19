@@ -15,6 +15,8 @@ import {
 import { normalizeSport, SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
 import { WORLD_COUNTRY_OPTIONS } from '@/lib/geo/countries';
 import { ProfileSkill } from '@/types/profile';
+import { getMissingRequiredProfileFields } from '@/lib/profiles/completion';
+import { sanitizeProfileClubName, sanitizeProfilePersonName } from '@/lib/profiles/nameValidation';
 import { CATEGORIES_BY_SPORT, CLUB_SPORT_OPTIONS, DEFAULT_CLUB_CATEGORIES } from '@/lib/opps/categories';
 import { iso2ToFlagEmoji } from '@/lib/utils/flags';
 import {
@@ -45,6 +47,11 @@ const EMPTY_PAST_EXPERIENCE: PastExperience = {
 
 const PLAYER_BIO_MAX_LENGTH = 300;
 const PLAYER_BIO_WARNING_THRESHOLD = 20;
+
+function RequiredMark() {
+  return <span className="ml-1 font-semibold text-red-600" aria-hidden="true">*</span>;
+}
+
 const STAFF_ROLES = [
   'Presidente',
   'Vicepresidente',
@@ -202,6 +209,7 @@ export default function ProfileEditForm() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [fatalError, setFatalError] = useState<string | null>(null);
 
   const isClub = profile?.account_type === 'club';
   const isFan = profile?.account_type === 'fan';
@@ -394,7 +402,20 @@ export default function ProfileEditForm() {
     setProfile(p);
 
     // init form fields (normalizzo a ISO2 per sicurezza)
-    setFullName(p.full_name || '');
+    const loadedFullName = p.full_name || '';
+    const sanitizedPersonFullName = sanitizeProfilePersonName(loadedFullName);
+    const sanitizedClubFullName = sanitizeProfileClubName(loadedFullName);
+    setFullName(
+      p.account_type === 'club'
+        ? sanitizedClubFullName === loadedFullName
+          ? sanitizedClubFullName
+          : ''
+        : p.account_type === 'athlete' || p.account_type === 'staff'
+          ? sanitizedPersonFullName === loadedFullName
+            ? sanitizedPersonFullName
+            : ''
+          : loadedFullName,
+    );
     setAvatarUrl(p.avatar_url || null);
     setBio(p.bio || '');
     setCountry(normalizeCountryCode(p.country) || 'IT');
@@ -488,7 +509,7 @@ export default function ProfileEditForm() {
         await loadProfile();
       } catch (e: any) {
         console.error(e);
-        setError(e?.message ?? 'Errore caricamento profilo');
+        setFatalError(e?.message ?? 'Errore caricamento profilo');
       } finally {
         setLoading(false);
       }
@@ -496,6 +517,22 @@ export default function ProfileEditForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const requiredPreviewProfile = useMemo(() => ({
+    account_type: profile?.account_type ?? null,
+    full_name: fullName,
+    display_name: fullName,
+    birth_year: birthYear === '' ? null : birthYear,
+    country: normalizeCountryCode(country),
+    sport: isClub ? sport : athleteSport,
+    role: isClub || isFan ? null : athleteRole,
+    region: isClub ? (clubLocation.regionName || clubLocationFallback.region || null) : profile?.region ?? null,
+    province: isClub ? (clubLocation.provinceName || clubLocationFallback.province || null) : profile?.province ?? null,
+    city: isClub ? (clubLocation.cityName || clubLocationFallback.city || null) : profile?.city ?? null,
+    interest_region_id: isClub ? clubLocation.regionId : null,
+    interest_province_id: isClub ? clubLocation.provinceId : null,
+    interest_municipality_id: isClub ? clubLocation.municipalityId : null,
+  }), [athleteRole, athleteSport, birthYear, clubLocation.cityName, clubLocation.provinceName, clubLocation.regionName, clubLocation.municipalityId, clubLocation.provinceId, clubLocation.regionId, clubLocationFallback.city, clubLocationFallback.province, clubLocationFallback.region, country, fullName, isClub, isFan, profile, sport]);
+  const missingRequiredFields = useMemo(() => getMissingRequiredProfileFields(requiredPreviewProfile), [requiredPreviewProfile]);
   const canSave = useMemo(() => !saving && profile != null, [saving, profile]);
   const currentYear = new Date().getFullYear();
   const normalizedCountry = normalizeCountryCode(country);
@@ -573,6 +610,7 @@ export default function ProfileEditForm() {
           : residenceLocation.cityName || residenceFallback.city || null;
 
       const basePayload: any = {
+        account_type: profile?.account_type ?? null,
         full_name: (fullName || '').trim() || null,
         display_name: (fullName || '').trim() || null,
         bio:       (bio || '').trim() || null,
@@ -709,6 +747,11 @@ export default function ProfileEditForm() {
         });
       }
 
+      const missingFields = getMissingRequiredProfileFields(basePayload);
+      if (missingFields.length > 0) {
+        throw new Error(`Completa i campi obbligatori: ${missingFields.join(', ')}.`);
+      }
+
       const r = await fetch('/api/profiles/me', {
         method: 'PATCH',
         credentials: 'include',
@@ -812,13 +855,22 @@ export default function ProfileEditForm() {
   };
 
   if (loading) return <div className="rounded-xl border p-4 text-sm text-gray-600">Caricamento profilo…</div>;
-  if (error)   return <div className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-800">{error}</div>;
+  if (fatalError) return <div className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-800">{fatalError}</div>;
   if (!profile) return null;
 
   const countryPreview = country ? [iso2ToFlagEmoji(country), countryName(country)].filter(Boolean).join(' ') : '';
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
+        {missingRequiredFields.length > 0 && (
+          <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-950 shadow-sm" role="alert">
+            <p className="font-semibold">Completa il tuo profilo per continuare ad utilizzare Club & Player.</p>
+            <p className="mt-2 text-sm">
+              I dati richiesti servono a identificare correttamente utenti, staff e società all'interno della piattaforma.
+            </p>
+            <p className="mt-2 text-sm">Campi mancanti: {missingRequiredFields.join(', ')}.</p>
+          </div>
+        )}
         {/* Dati personali / club */}
         <section className="rounded-2xl border p-4 md:p-5">
           <h2 className="mb-3 text-lg font-semibold">
@@ -846,11 +898,11 @@ export default function ProfileEditForm() {
                 </div>
 
                 <div className="flex min-w-0 flex-col gap-1 md:col-span-2">
-                  <label className="text-sm text-gray-600">Nome del club</label>
+                  <label className="text-sm text-gray-600">Nome del club<RequiredMark /></label>
                   <input
                     className="w-full min-w-0 rounded-lg border p-2"
                     value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
+                    onChange={(e) => setFullName(sanitizeProfileClubName(e.target.value))}
                     placeholder="Es. ASD Carlentini"
                   />
                 </div>
@@ -858,7 +910,7 @@ export default function ProfileEditForm() {
 
               <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-4">
                 <div className="flex min-w-0 flex-col gap-1">
-                  <label className="text-sm text-gray-600">Nazione del club</label>
+                  <label className="text-sm text-gray-600">Nazione del club<RequiredMark /></label>
                   <select
                     className="w-full min-w-0 rounded-lg border p-2"
                     value={country}
@@ -886,6 +938,7 @@ export default function ProfileEditForm() {
                     province: 'Provincia del club',
                     city: 'Città del club',
                   }}
+                  required
                 />
               </div>
 
@@ -901,7 +954,7 @@ export default function ProfileEditForm() {
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="flex min-w-0 flex-col gap-1">
-                  <label className="text-sm text-gray-600">Sport del club</label>
+                  <label className="text-sm text-gray-600">Sport del club<RequiredMark /></label>
                   <select
                     className="w-full min-w-0 rounded-lg border p-2"
                     value={sport}
@@ -1024,18 +1077,18 @@ export default function ProfileEditForm() {
               </div>
 
               <div className="flex min-w-0 flex-col gap-1 md:col-span-2">
-                <label className="text-sm text-gray-600">Nome e cognome</label>
+                <label className="text-sm text-gray-600">{isFan ? 'Nome visualizzato / gruppo tifosi' : 'Nome e cognome'}<RequiredMark /></label>
                 <input
                   className="w-full min-w-0 rounded-lg border p-2"
                   value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
+                  onChange={(e) => setFullName(isFan ? e.target.value : sanitizeProfilePersonName(e.target.value))}
                   placeholder="Es. Mario Rossi"
                 />
               </div>
 
               {!isFan && (
               <div className="flex min-w-0 flex-col gap-1">
-                <label className="text-sm text-gray-600">Anno di nascita</label>
+                <label className="text-sm text-gray-600">Anno di nascita<RequiredMark /></label>
                 <input
                   type="number"
                   inputMode="numeric"
@@ -1052,7 +1105,7 @@ export default function ProfileEditForm() {
               )}
 
               <div className="flex min-w-0 flex-col gap-1">
-                <label className="text-sm text-gray-600">Nazionalità</label>
+                <label className="text-sm text-gray-600">Nazionalità<RequiredMark /></label>
                 <select
                   className="w-full min-w-0 rounded-lg border p-2"
                   value={country}
@@ -1072,7 +1125,7 @@ export default function ProfileEditForm() {
               {!isFan && (
               <div className="md:col-span-2 grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="flex min-w-0 flex-col gap-1">
-                  <label className="text-sm text-gray-600">Sport</label>
+                  <label className="text-sm text-gray-600">Sport<RequiredMark /></label>
                   <select
                     className="w-full min-w-0 rounded-lg border p-2"
                     value={athleteSport}
@@ -1087,7 +1140,7 @@ export default function ProfileEditForm() {
                 </div>
 
                 <div className="flex min-w-0 flex-col gap-1">
-                  <label className="text-sm text-gray-600">Ruolo</label>
+                  <label className="text-sm text-gray-600">Ruolo<RequiredMark /></label>
                   <select
                     className="w-full min-w-0 rounded-lg border p-2"
                     value={athleteRole}
@@ -1215,7 +1268,7 @@ export default function ProfileEditForm() {
                       </div>
 
                       <div className="flex min-w-0 flex-col gap-1">
-                        <label className="text-sm text-gray-600">Sport</label>
+                        <label className="text-sm text-gray-600">Sport<RequiredMark /></label>
                         <select
                           className="w-full min-w-0 rounded-lg border p-2"
                           value={experience.sport}
