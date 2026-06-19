@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import AvatarUploader from '@/components/profiles/AvatarUploader';
 import { LocationFallback, LocationFields, LocationSelection } from '@/components/profiles/LocationFields';
@@ -37,6 +38,7 @@ function countryName(codeOrText?: string | null) {
 }
 
 export default function FanProfileForm() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -183,6 +185,8 @@ export default function FanProfileForm() {
       if (!res.ok) throw new Error(json?.error || 'Salvataggio non riuscito');
 
       setMessage('Profilo fan aggiornato correttamente.');
+      router.replace('/feed');
+      router.refresh();
     } catch (err: any) {
       setError(err?.message || 'Errore durante il salvataggio.');
     } finally {
