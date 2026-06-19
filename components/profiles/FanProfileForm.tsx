@@ -223,12 +223,12 @@ export default function FanProfileForm() {
           </div>
 
           <div className="flex min-w-0 flex-col gap-1 md:col-span-2">
-            <label className="text-sm text-gray-600">Nome e cognome<RequiredMark /></label>
+            <label className="text-sm text-gray-600">Nome e cognome / Gruppo tifoseria<RequiredMark /></label>
             <input
               className="w-full min-w-0 rounded-lg border p-2"
               value={fullName}
               onChange={(event) => setFullName(sanitizeProfilePersonName(event.target.value))}
-              placeholder="Es. Mario Rossi"
+              placeholder="Es. Mario Rossi / Ultras Curva Sud"
               disabled={loading}
             />
           </div>
