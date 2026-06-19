@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { isAdminUser, isClubsAdminUser } from '@/lib/api/admin';
 import { ensureSingleProfileRowForUser, inferAccountType } from '@/lib/server/profileIntegrity';
+import { getMissingRequiredProfileFields, getProfilePathForAccountType, isProfileComplete } from '@/lib/profiles/completion';
 
 function resolveEnv() {
   const url =
@@ -79,15 +80,17 @@ export async function GET(req: NextRequest) {
   let status: ProfileStatus = 'active';
 
   let profileExists = false;
+  let completionProfile: Record<string, unknown> | null = null;
 
   try {
     const { data: prof } = await supabase
       .from('profiles')
-      .select('account_type,type,status')
+      .select('account_type,type,status,full_name,display_name,birth_year,country,sport,role,region,province,city')
       .eq('user_id', user.id)
       .maybeSingle();
 
     profileExists = !!prof;
+    completionProfile = (prof as any) ?? null;
     accountType = normRole((prof as any)?.account_type);
     legacyType =
       typeof (prof as any)?.type === 'string'
@@ -131,7 +134,7 @@ export async function GET(req: NextRequest) {
           },
           { onConflict: 'user_id' }
         )
-        .select('account_type,type,status')
+        .select('account_type,type,status,full_name,display_name,birth_year,country,sport,role,region,province,city')
         .maybeSingle();
 
       if (created) {
@@ -139,6 +142,7 @@ export async function GET(req: NextRequest) {
         legacyType = (created as any)?.type ?? legacyType;
         status = normStatus((created as any)?.status);
         profileExists = true;
+        completionProfile = { ...(completionProfile || {}), ...(created as any) };
       }
     }
 
@@ -159,13 +163,14 @@ export async function GET(req: NextRequest) {
           .from('profiles')
           .update(updates)
           .eq('user_id', user.id)
-          .select('account_type,type,status')
+          .select('account_type,type,status,full_name,display_name,birth_year,country,sport,role,region,province,city')
           .maybeSingle();
 
         if (patched) {
           accountType = normRole((patched as any)?.account_type) || accountType;
           legacyType = (patched as any)?.type ?? legacyType;
           status = normStatus((patched as any)?.status);
+          completionProfile = { ...(completionProfile || {}), ...(patched as any) };
         } else {
           status = 'active';
           if (!accountType && hintedRole) accountType = hintedRole;
@@ -194,7 +199,7 @@ export async function GET(req: NextRequest) {
   const out = NextResponse.json({
     user: { id: user.id, email: user.email ?? undefined },
     role,
-    profile: { account_type: accountType, type: legacyType, status },
+    profile: { account_type: accountType, type: legacyType, status, is_complete: isProfileComplete(completionProfile as any), missing_required_fields: getMissingRequiredProfileFields(completionProfile as any), completion_path: getProfilePathForAccountType(accountType) },
     clubsAdmin,
     admin,
   });

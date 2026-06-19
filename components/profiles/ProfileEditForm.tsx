@@ -15,6 +15,7 @@ import {
 import { normalizeSport, SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
 import { WORLD_COUNTRY_OPTIONS } from '@/lib/geo/countries';
 import { ProfileSkill } from '@/types/profile';
+import { getMissingRequiredProfileFields } from '@/lib/profiles/completion';
 import { CATEGORIES_BY_SPORT, CLUB_SPORT_OPTIONS, DEFAULT_CLUB_CATEGORIES } from '@/lib/opps/categories';
 import { iso2ToFlagEmoji } from '@/lib/utils/flags';
 import {
@@ -496,6 +497,19 @@ export default function ProfileEditForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const requiredPreviewProfile = useMemo(() => ({
+    account_type: profile?.account_type ?? null,
+    full_name: fullName,
+    display_name: fullName,
+    birth_year: birthYear === '' ? null : birthYear,
+    country: normalizeCountryCode(country),
+    sport: isClub ? sport : athleteSport,
+    role: isClub || isFan ? null : athleteRole,
+    region: isClub ? (clubLocation.regionName || clubLocationFallback.region || null) : profile?.region ?? null,
+    province: isClub ? (clubLocation.provinceName || clubLocationFallback.province || null) : profile?.province ?? null,
+    city: isClub ? (clubLocation.cityName || clubLocationFallback.city || null) : profile?.city ?? null,
+  }), [athleteRole, athleteSport, birthYear, clubLocation.cityName, clubLocation.provinceName, clubLocation.regionName, clubLocationFallback.city, clubLocationFallback.province, clubLocationFallback.region, country, fullName, isClub, isFan, profile, sport]);
+  const missingRequiredFields = useMemo(() => getMissingRequiredProfileFields(requiredPreviewProfile), [requiredPreviewProfile]);
   const canSave = useMemo(() => !saving && profile != null, [saving, profile]);
   const currentYear = new Date().getFullYear();
   const normalizedCountry = normalizeCountryCode(country);
@@ -573,6 +587,7 @@ export default function ProfileEditForm() {
           : residenceLocation.cityName || residenceFallback.city || null;
 
       const basePayload: any = {
+        account_type: profile?.account_type ?? null,
         full_name: (fullName || '').trim() || null,
         display_name: (fullName || '').trim() || null,
         bio:       (bio || '').trim() || null,
@@ -709,6 +724,11 @@ export default function ProfileEditForm() {
         });
       }
 
+      const missingFields = getMissingRequiredProfileFields(basePayload);
+      if (missingFields.length > 0) {
+        throw new Error(`Completa i campi obbligatori: ${missingFields.join(', ')}.`);
+      }
+
       const r = await fetch('/api/profiles/me', {
         method: 'PATCH',
         credentials: 'include',
@@ -819,6 +839,15 @@ export default function ProfileEditForm() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
+        {missingRequiredFields.length > 0 && (
+          <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-950 shadow-sm" role="alert">
+            <p className="font-semibold">Completa il tuo profilo per continuare ad utilizzare Club & Player.</p>
+            <p className="mt-2 text-sm">
+              I dati richiesti servono a identificare correttamente utenti, staff e società all'interno della piattaforma.
+            </p>
+            <p className="mt-2 text-sm">Campi mancanti: {missingRequiredFields.join(', ')}.</p>
+          </div>
+        )}
         {/* Dati personali / club */}
         <section className="rounded-2xl border p-4 md:p-5">
           <h2 className="mb-3 text-lg font-semibold">

@@ -135,10 +135,21 @@ export async function GET() {
       .from('profiles')
       .select('id, account_type, full_name, display_name, role, city, country, sport, avatar_url, created_at')
       .eq('status', 'active')
+      .not('country', 'is', null)
+      .neq('country', '')
+      .not('sport', 'is', null)
+      .neq('sport', '')
+      .or('account_type.eq.fan,full_name.not.is.null,display_name.not.is.null')
       .order('created_at', { ascending: false })
       .limit(12);
 
     if (targetAccountType) query = query.eq('account_type', targetAccountType);
+    if (targetAccountType === 'club') {
+      query = query.not('region', 'is', null).neq('region', '').not('province', 'is', null).neq('province', '').not('city', 'is', null).neq('city', '');
+    }
+    if (targetAccountType === 'athlete') {
+      query = query.not('birth_year', 'is', null).not('role', 'is', null).neq('role', '').not('full_name', 'is', null).neq('full_name', '');
+    }
     if (profileId) query = query.neq('id', profileId);
     if (attempt.sport) query = query.eq('sport', attempt.sport);
     if (attempt.country) query = query.eq('country', attempt.country);

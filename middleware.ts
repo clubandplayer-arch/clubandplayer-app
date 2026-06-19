@@ -2,7 +2,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
 export const config = {
-  matcher: ['/login', '/signup', '/onboarding/:path*', '/club/:path*', '/opportunities/:path*', '/fan/:path*'],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|images|assets).*)'],
 };
 
 export async function middleware(req: NextRequest) {
@@ -11,6 +11,8 @@ export async function middleware(req: NextRequest) {
 
   let role: 'club' | 'athlete' | 'staff' | 'fan' | 'guest' = 'guest';
   let authenticated = false;
+  let profileComplete = true;
+  let completionPath = '/player/profile';
 
   try {
     const r = await fetch(new URL('/api/auth/whoami', url.origin), {
@@ -21,6 +23,8 @@ export async function middleware(req: NextRequest) {
     authenticated = !!j?.user?.id;
     const raw = (j?.role ?? '').toString().toLowerCase();
     if (raw === 'club' || raw === 'athlete' || raw === 'staff' || raw === 'fan') role = raw;
+    profileComplete = j?.profile?.is_complete !== false;
+    completionPath = (j?.profile?.completion_path || '').toString() || completionPath;
   } catch {
     // guest
   }
@@ -40,6 +44,13 @@ export async function middleware(req: NextRequest) {
     }
   }
 
+
+  if (authenticated && role !== 'guest' && !profileComplete) {
+    if (pathname !== completionPath) {
+      return NextResponse.redirect(new URL(completionPath, url));
+    }
+  }
+
   // Rotte /club/* solo per club
   if (pathname.startsWith('/club/') && role !== 'club') {
     return NextResponse.redirect(new URL('/feed', url));
@@ -53,7 +64,8 @@ export async function middleware(req: NextRequest) {
   // Rotte /fan/* solo per fan
   if (pathname.startsWith('/fan/') && role !== 'fan') {
     if (role === 'club') return NextResponse.redirect(new URL('/club/profile', url));
-    if (role === 'athlete' || role === 'staff') return NextResponse.redirect(new URL('/player/profile', url));
+    if (role === 'staff') return NextResponse.redirect(new URL('/staff/profile', url));
+    if (role === 'athlete') return NextResponse.redirect(new URL('/player/profile', url));
     return NextResponse.redirect(new URL('/login?next=%2Ffan%2Fprofile', url));
   }
 
