@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { MaterialIcon, type MaterialIconName } from '@/components/icons/MaterialIcon';
 
@@ -8,12 +8,9 @@ type Role = 'club' | 'athlete' | 'staff' | 'fan';
 
 export default function ChooseRolePage() {
   const router = useRouter();
-  const sp = useSearchParams();
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const next = sp.get('next');
 
   async function choose(role: Role) {
     setSaving(true);
@@ -37,7 +34,7 @@ export default function ChooseRolePage() {
         router.replace('/player/profile');
         return;
       }
-      router.replace(next || '/feed');
+      router.replace('/fan/profile');
     } catch (e: any) {
       setError(e?.message || 'Errore imprevisto');
       setSaving(false);

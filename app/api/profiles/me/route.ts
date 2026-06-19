@@ -156,6 +156,9 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   }
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+  const bodyKeys = Object.keys(body);
+  const isRoleSelectionOnlyRequest =
+    bodyKeys.length > 0 && bodyKeys.every((key) => key === 'account_type' || key === 'type');
 
   const updates: Record<string, any> = {};
   const collapseText = new Set(['city', 'interest_city', 'region', 'province', 'interest_region', 'interest_province']);
@@ -176,7 +179,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   }
 
   if (updates.sport) updates.sport = normalizeSport(updates.sport) ?? updates.sport;
-  if (updates.interest_country === undefined) updates.interest_country = 'IT';
+  if (!isRoleSelectionOnlyRequest && updates.interest_country === undefined) updates.interest_country = 'IT';
   if (updates.country) updates.country = updates.country.toString().trim().toUpperCase();
   if (updates.interest_country) updates.interest_country = updates.interest_country.toString().trim().toUpperCase();
   if (updates.birth_country) updates.birth_country = updates.birth_country.toString().trim().toUpperCase();
@@ -236,7 +239,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
     updates.role = 'Club';
   }
 
-  const isOnlyRoleSelection = Object.keys(updates).every((key) => key === 'account_type' || key === 'type');
+  const isOnlyRoleSelection = isRoleSelectionOnlyRequest;
   const profileForValidation = { ...currentProfile, ...updates, account_type: effectiveAccountType } as any;
   const validationRole = resolveMinimalProfileRole(profileForValidation);
   if (!isOnlyRoleSelection && validationRole && !isMinimumProfileComplete(profileForValidation)) {
