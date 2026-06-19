@@ -209,6 +209,7 @@ export default function ProfileEditForm() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [fatalError, setFatalError] = useState<string | null>(null);
 
   const isClub = profile?.account_type === 'club';
   const isFan = profile?.account_type === 'fan';
@@ -503,7 +504,7 @@ export default function ProfileEditForm() {
         await loadProfile();
       } catch (e: any) {
         console.error(e);
-        setError(e?.message ?? 'Errore caricamento profilo');
+        setFatalError(e?.message ?? 'Errore caricamento profilo');
       } finally {
         setLoading(false);
       }
@@ -846,7 +847,7 @@ export default function ProfileEditForm() {
   };
 
   if (loading) return <div className="rounded-xl border p-4 text-sm text-gray-600">Caricamento profilo…</div>;
-  if (error)   return <div className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-800">{error}</div>;
+  if (fatalError) return <div className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-800">{fatalError}</div>;
   if (!profile) return null;
 
   const countryPreview = country ? [iso2ToFlagEmoji(country), countryName(country)].filter(Boolean).join(' ') : '';
