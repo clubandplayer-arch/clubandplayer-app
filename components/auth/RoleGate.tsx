@@ -46,7 +46,7 @@ export default function RoleGate({ children }: { children: React.ReactNode }) {
           const r = await fetch('/api/auth/whoami', { credentials: 'include', cache: 'no-store' });
           j = await r.json().catch(() => ({}));
           data = (j?.profile as any) ?? {};
-          if (j?.user?.id) break;
+          if (j?.user?.id && hasValidAccountType(data)) break;
           if (attempt < MAX_RETRIES - 1) {
             await delay(RETRY_DELAY_MS);
           }
