@@ -401,7 +401,15 @@ export default function ProfileEditForm() {
     setProfile(p);
 
     // init form fields (normalizzo a ISO2 per sicurezza)
-    setFullName(p.account_type === 'athlete' || p.account_type === 'staff' ? sanitizeProfilePersonName(p.full_name || '') : p.full_name || '');
+    const loadedFullName = p.full_name || '';
+    const sanitizedFullName = sanitizeProfilePersonName(loadedFullName);
+    setFullName(
+      p.account_type === 'athlete' || p.account_type === 'staff'
+        ? sanitizedFullName === loadedFullName
+          ? sanitizedFullName
+          : ''
+        : loadedFullName,
+    );
     setAvatarUrl(p.avatar_url || null);
     setBio(p.bio || '');
     setCountry(normalizeCountryCode(p.country) || 'IT');
