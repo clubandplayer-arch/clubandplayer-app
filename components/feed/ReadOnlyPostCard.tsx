@@ -80,12 +80,15 @@ export function ReadOnlyPostCard({ post }: ReadOnlyPostCardProps) {
   const authorId = authorProfile?.id ?? post.author_profile_id ?? post.authorId ?? null;
   const isClubAuthor = authorAccountType === 'club';
   const isInstitutionAuthor = authorAccountType === 'institution';
+  const isAdminAuthor = authorAccountType === 'admin' || authorProfile?.is_admin === true;
   const profileHref = authorId
     ? isClubAuthor
       ? `/clubs/${authorId}`
       : isInstitutionAuthor
         ? `/institutions/${authorId}`
-        : `/players/${authorId}`
+        : isAdminAuthor
+          ? `/admin/${authorId}`
+          : `/players/${authorId}`
     : null;
   const avatarUrl = authorProfile?.avatar_url ?? (post as any).author_avatar_url ?? null;
   const showCertifiedBadge = authorProfile?.is_verified === true;

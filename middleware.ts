@@ -55,8 +55,10 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  // Rotte /admin/* solo per admin
-  if (pathname.startsWith('/admin/') && role !== 'admin') {
+  const isPublicAdminProfilePath = /^\/admin\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pathname);
+
+  // Rotte /admin/* solo per admin, tranne la pagina pubblica del profilo admin.
+  if (pathname.startsWith('/admin/') && !isPublicAdminProfilePath && role !== 'admin') {
     return NextResponse.redirect(new URL(authenticated ? '/feed' : '/login?next=%2Fadmin%2Fprofile', url));
   }
 

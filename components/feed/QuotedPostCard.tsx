@@ -74,12 +74,15 @@ export function QuotedPostCard({ post, quotedPostId, onRemove, onRepost, missing
   const authorId = authorProfile?.id ?? effectivePost?.author_profile_id ?? null;
   const isClubAuthor = authorAccountType === 'club';
   const isInstitutionAuthor = authorAccountType === 'institution';
+  const isAdminAuthor = authorAccountType === 'admin' || authorProfile?.is_admin === true;
   const profileHref = authorId
     ? isClubAuthor
       ? `/clubs/${authorId}`
       : isInstitutionAuthor
         ? `/institutions/${authorId}`
-        : `/players/${authorId}`
+        : isAdminAuthor
+          ? `/admin/${authorId}`
+          : `/players/${authorId}`
     : null;
   const avatarUrl = authorProfile?.avatar_url ?? effectivePost?.author_avatar_url ?? null;
 

@@ -14,6 +14,7 @@ export type FeedAuthorProfile = {
   account_type?: string | null;
   type?: string | null;
   is_verified?: boolean | null;
+  is_admin?: boolean | null;
 };
 
 function normalizeAuthorProfile(raw: any): FeedAuthorProfile | null {
@@ -27,6 +28,7 @@ function normalizeAuthorProfile(raw: any): FeedAuthorProfile | null {
     account_type: (raw as any)?.account_type ?? (raw as any)?.type ?? null,
     type: (raw as any)?.type ?? (raw as any)?.account_type ?? null,
     is_verified: (raw as any)?.is_verified ?? null,
+    is_admin: (raw as any)?.is_admin ?? null,
   };
 }
 
