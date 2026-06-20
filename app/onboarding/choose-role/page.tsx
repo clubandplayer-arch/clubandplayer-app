@@ -111,7 +111,7 @@ export default function ChooseRolePage() {
               <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-[#e7f1f6] text-[#1a7aa6]">
                 <MaterialIcon name={icon} fontSize={22} />
               </div>
-              <h2 className="mt-5 text-2xl font-semibold text-[#0f172a] md:text-3xl">{title}</h2>
+              <h2 className="mt-5 break-words text-xl font-semibold leading-tight text-[#0f172a] md:text-2xl">{title}</h2>
               <p className="mt-2 text-sm leading-6 text-neutral-600 md:text-base">{description}</p>
             </button>
           );
