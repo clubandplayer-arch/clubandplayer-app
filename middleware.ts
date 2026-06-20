@@ -9,7 +9,7 @@ export async function middleware(req: NextRequest) {
   const url = new URL(req.url);
   const pathname = url.pathname;
 
-  let role: 'club' | 'athlete' | 'staff' | 'fan' | 'guest' = 'guest';
+  let role: 'club' | 'athlete' | 'staff' | 'fan' | 'admin' | 'guest' = 'guest';
   let authenticated = false;
   let profileComplete = true;
   let completionPath = '/player/profile';
@@ -22,7 +22,7 @@ export async function middleware(req: NextRequest) {
     const j = await r.json().catch(() => ({}));
     authenticated = !!j?.user?.id;
     const raw = (j?.role ?? '').toString().toLowerCase();
-    if (raw === 'club' || raw === 'athlete' || raw === 'staff' || raw === 'fan') role = raw;
+    if (raw === 'club' || raw === 'athlete' || raw === 'staff' || raw === 'fan' || raw === 'admin') role = raw;
     profileComplete = j?.profile?.is_complete !== false;
     completionPath = (j?.profile?.completion_path || '').toString() || completionPath;
   } catch {
@@ -38,6 +38,10 @@ export async function middleware(req: NextRequest) {
   }
 
   // Utente autenticato senza ruolo: onboarding obbligatorio su qualunque path /onboarding/*
+  if (authenticated && role !== 'guest' && pathname === '/onboarding/choose-role') {
+    return NextResponse.redirect(new URL('/feed', url));
+  }
+
   if (authenticated && role === 'guest' && pathname.startsWith('/onboarding/')) {
     if (pathname !== '/onboarding/choose-role') {
       return NextResponse.redirect(new URL('/onboarding/choose-role', url));

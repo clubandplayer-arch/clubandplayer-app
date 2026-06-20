@@ -1003,11 +1003,11 @@ export async function POST(req: NextRequest) {
       actorRole = null;
     }
 
-    if (actorRole !== 'club' && actorRole !== 'athlete' && actorRole !== 'staff') {
+    if (actorRole !== 'club' && actorRole !== 'athlete' && actorRole !== 'staff' && actorRole !== 'admin') {
       return notAuthorized('Con questo account non puoi creare post.');
     }
 
-    if (isEvent && actorRole !== 'club') {
+    if (isEvent && actorRole !== 'club' && actorRole !== 'admin') {
       return notAuthorized('Solo i club possono creare eventi.');
     }
 
