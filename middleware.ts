@@ -9,7 +9,7 @@ export async function middleware(req: NextRequest) {
   const url = new URL(req.url);
   const pathname = url.pathname;
 
-  let role: 'club' | 'athlete' | 'staff' | 'fan' | 'admin' | 'guest' = 'guest';
+  let role: 'club' | 'athlete' | 'staff' | 'fan' | 'admin' | 'institution' | 'guest' = 'guest';
   let authenticated = false;
   let profileComplete = true;
   let completionPath = '/player/profile';
@@ -22,7 +22,7 @@ export async function middleware(req: NextRequest) {
     const j = await r.json().catch(() => ({}));
     authenticated = !!j?.user?.id;
     const raw = (j?.role ?? '').toString().toLowerCase();
-    if (raw === 'club' || raw === 'athlete' || raw === 'staff' || raw === 'fan' || raw === 'admin') role = raw;
+    if (raw === 'club' || raw === 'athlete' || raw === 'staff' || raw === 'fan' || raw === 'admin' || raw === 'institution') role = raw;
     profileComplete = j?.profile?.is_complete !== false;
     completionPath = (j?.profile?.completion_path || '').toString() || completionPath;
   } catch {
@@ -62,6 +62,11 @@ export async function middleware(req: NextRequest) {
 
   if (authenticated && role === 'admin' && pathname === '/player/profile') {
     return NextResponse.redirect(new URL('/admin/profile', url));
+  }
+
+  // Rotte /institution/* solo per ente istituzionale
+  if (pathname.startsWith('/institution/') && role !== 'institution') {
+    return NextResponse.redirect(new URL(authenticated ? '/feed' : '/login?next=%2Finstitution%2Fverification', url));
   }
 
   // Rotte /club/* solo per club

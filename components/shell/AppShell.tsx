@@ -17,7 +17,7 @@ import BrandLogo from '@/components/brand/BrandLogo';
 import { buildProfileDisplayName } from '@/lib/displayName';
 import MobileSearchOverlay from '@/components/search/MobileSearchOverlay';
 
-type Role = 'athlete' | 'club' | 'staff' | 'fan' | 'admin' | 'guest';
+type Role = 'athlete' | 'club' | 'staff' | 'fan' | 'admin' | 'institution' | 'guest';
 
 type NavItem = { label: string; href: string; icon: MaterialIconName };
 
@@ -32,7 +32,7 @@ type MobileMenuItem = {
 
 function hasValidAccountType(profile: any): boolean {
   const value = String(profile?.account_type ?? profile?.type ?? '').toLowerCase().trim();
-  return value === 'club' || value === 'athlete' || value === 'staff' || value === 'fan' || value === 'admin';
+  return value === 'club' || value === 'athlete' || value === 'staff' || value === 'fan' || value === 'admin' || value === 'institution';
 }
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -85,7 +85,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        setRole(rawRole === 'club' || rawRole === 'athlete' || rawRole === 'staff' || rawRole === 'fan' || rawRole === 'admin' ? (rawRole as Role) : 'guest');
+        setRole(rawRole === 'club' || rawRole === 'athlete' || rawRole === 'staff' || rawRole === 'fan' || rawRole === 'admin' || rawRole === 'institution' ? (rawRole as Role) : 'guest');
         setAvatarUrl(typeof profile?.avatar_url === 'string' ? profile.avatar_url : null);
         setProfileName(buildProfileDisplayName(profile?.full_name, profile?.display_name, 'Profilo'));
 
@@ -124,7 +124,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const isFan = role === 'fan';
   const profileHref =
-    role === 'admin' ? '/admin/profile' : role === 'club' ? '/club/profile' : role === 'fan' ? '/fan/profile' : '/player/profile';
+    role === 'admin' ? '/admin/profile' : role === 'club' ? '/club/profile' : role === 'institution' ? '/institution/verification' : role === 'fan' ? '/fan/profile' : '/player/profile';
   const applicationsHref = role === 'club' ? '/club/applications' : '/applications';
 
   const navItems = useMemo<NavItem[]>(

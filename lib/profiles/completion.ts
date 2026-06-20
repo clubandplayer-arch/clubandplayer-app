@@ -1,6 +1,6 @@
 import { isValidProfileClubName, isValidProfilePersonName } from '@/lib/profiles/nameValidation';
 
-export type ProfileCompletionAccountType = 'athlete' | 'club' | 'staff' | 'fan' | 'admin' | null;
+export type ProfileCompletionAccountType = 'athlete' | 'club' | 'staff' | 'fan' | 'admin' | 'institution' | null;
 
 export type ProfileCompletionProfile = {
   account_type?: string | null;
@@ -38,7 +38,7 @@ function hasBirthYear(value: unknown) {
 
 export function normalizeCompletionAccountType(profile?: ProfileCompletionProfile | null): ProfileCompletionAccountType {
   const raw = text(profile?.account_type || profile?.type).toLowerCase();
-  if (raw === 'athlete' || raw === 'club' || raw === 'staff' || raw === 'fan' || raw === 'admin') return raw;
+  if (raw === 'athlete' || raw === 'club' || raw === 'staff' || raw === 'fan' || raw === 'admin' || raw === 'institution') return raw;
   return null;
 }
 
@@ -47,6 +47,7 @@ export function getProfilePathForAccountType(accountType: ProfileCompletionAccou
   if (accountType === 'club') return '/club/profile';
   if (accountType === 'staff') return '/staff/profile';
   if (accountType === 'fan') return '/fan/profile';
+  if (accountType === 'institution') return '/institution/verification';
   return '/player/profile';
 }
 
@@ -63,6 +64,10 @@ export function getMissingRequiredProfileFields(profile?: ProfileCompletionProfi
     if (!hasText(profile?.region) && !hasValue(profile?.interest_region_id)) missing.push('regione');
     if (!hasText(profile?.province) && !hasValue(profile?.interest_province_id)) missing.push('provincia');
     if (!hasText(profile?.city) && !hasValue(profile?.interest_municipality_id)) missing.push('città');
+    return missing;
+  }
+
+  if (accountType === 'institution') {
     return missing;
   }
 

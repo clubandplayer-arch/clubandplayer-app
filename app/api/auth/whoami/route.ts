@@ -26,10 +26,10 @@ function mergeCookies(from: NextResponse, into: NextResponse) {
   if (set) into.headers.append('set-cookie', set);
 }
 
-type Role = 'guest' | 'athlete' | 'club' | 'fan' | 'staff' | 'admin';
+type Role = 'guest' | 'athlete' | 'club' | 'fan' | 'staff' | 'admin' | 'institution';
 type ProfileStatus = 'active' | 'rejected';
 
-function normRole(v: unknown): 'club' | 'athlete' | 'fan' | 'staff' | 'admin' | null {
+function normRole(v: unknown): 'club' | 'athlete' | 'fan' | 'staff' | 'admin' | 'institution' | null {
   return inferAccountType(v);
 }
 
@@ -77,7 +77,7 @@ export async function GET(req: NextRequest) {
   });
 
   // 1) profiles.account_type (nuovo), 2) profiles.type (legacy)
-  let accountType: 'club' | 'athlete' | 'fan' | 'staff' | 'admin' | null = null;
+  let accountType: 'club' | 'athlete' | 'fan' | 'staff' | 'admin' | 'institution' | null = null;
   let legacyType: string | null = null;
   let status: ProfileStatus = 'active';
 
@@ -132,7 +132,7 @@ export async function GET(req: NextRequest) {
             display_name: user.user_metadata?.full_name || user.email || 'Profilo',
             account_type: accountType ?? null,
             type: accountType ?? null,
-            role: accountType === PLATFORM_ADMIN_ROLE ? PLATFORM_ADMIN_ROLE_LABEL : accountType === 'club' ? 'Club' : null,
+            role: accountType === PLATFORM_ADMIN_ROLE ? PLATFORM_ADMIN_ROLE_LABEL : accountType === 'club' ? 'Club' : accountType === 'institution' ? 'Ente' : null,
             is_admin: accountType === PLATFORM_ADMIN_ROLE,
           },
           { onConflict: 'user_id' }

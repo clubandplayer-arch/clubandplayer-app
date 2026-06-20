@@ -56,7 +56,7 @@ export default function ChooseRolePage() {
   }> = [
     {
       role: 'institution',
-      title: 'ENTE ISTITUZIONALE',
+      title: 'ENTE',
       description: 'Federazioni, EPS, comitati, delegazioni e leghe con verifica documentale',
       icon: 'globe',
     },
