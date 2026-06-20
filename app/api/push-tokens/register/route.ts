@@ -7,6 +7,7 @@ type RegisterPushTokenBody = {
   token?: unknown;
   platform?: unknown;
   device_id?: unknown;
+  deviceId?: unknown;
 };
 
 function normalizeToken(value: unknown): string | null {
@@ -31,7 +32,7 @@ function normalizeDeviceId(value: unknown): string | null {
   return trimmed.slice(0, 200);
 }
 
-export const POST = withAuth(async (req, { supabase, user }) => {
+export const POST = withAuth(async (req, { supabase }) => {
   try {
     const body = (await req.json().catch(() => ({}))) as RegisterPushTokenBody;
     const token = normalizeToken(body.token);
@@ -40,24 +41,17 @@ export const POST = withAuth(async (req, { supabase, user }) => {
     const platform = normalizePlatform(body.platform);
     if (!platform) return invalidPayload('platform non valida (atteso ios|android)');
 
-    const now = new Date().toISOString();
-    const deviceId = normalizeDeviceId(body.device_id);
+    const rawDeviceId = body.deviceId ?? body.device_id ?? null;
+    const deviceId = normalizeDeviceId(rawDeviceId);
+    if (rawDeviceId != null && !deviceId) return invalidPayload('deviceId/device_id non valido');
 
-    const { data, error } = await supabase
-      .from('push_tokens')
-      .upsert(
-        {
-          user_id: user.id,
-          token,
-          platform,
-          device_id: deviceId,
-          enabled: true,
-          last_seen_at: now,
-        },
-        { onConflict: 'token' }
-      )
-      .select('id, user_id, token, platform, device_id, enabled, created_at, updated_at, last_seen_at')
-      .single();
+    console.log('[push-register] using register_push_token rpc');
+
+    const { data, error } = await supabase.rpc('register_push_token', {
+      p_token: token,
+      p_platform: platform,
+      p_device_id: deviceId,
+    });
 
     if (error) {
       return unknownError({
