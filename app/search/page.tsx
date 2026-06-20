@@ -8,12 +8,13 @@ import SearchResultRow, { type SearchResult } from '@/components/search/SearchRe
 import { COUNTRIES, getCountryName } from '@/lib/geo/countries';
 import { SPORTS, SPORTS_ROLES, STAFF_ROLES, normalizeSport } from '@/lib/opps/constants';
 
-type SearchType = 'all' | 'opportunities' | 'clubs' | 'players' | 'staff' | 'posts' | 'events';
+type SearchType = 'all' | 'opportunities' | 'clubs' | 'institutions' | 'players' | 'staff' | 'posts' | 'events';
 type LocationOption = { id: number; name: string };
 
 type SearchResultsByKind = {
   opportunities: SearchResult[];
   clubs: SearchResult[];
+  institutions: SearchResult[];
   players: SearchResult[];
   staff: SearchResult[];
   posts: SearchResult[];
@@ -23,6 +24,7 @@ type SearchResultsByKind = {
 type CountsByKind = {
   opportunities: number;
   clubs: number;
+  institutions: number;
   players: number;
   staff: number;
   posts: number;
@@ -32,6 +34,7 @@ type CountsByKind = {
 const EMPTY_RESULTS: SearchResultsByKind = {
   opportunities: [],
   clubs: [],
+  institutions: [],
   players: [],
   staff: [],
   posts: [],
@@ -42,6 +45,7 @@ const TAB_ITEMS: Array<{ label: string; value: SearchType }> = [
   { label: 'Tutti', value: 'all' },
   { label: 'Opportunità', value: 'opportunities' },
   { label: 'Club', value: 'clubs' },
+  { label: 'Ente', value: 'institutions' },
   { label: 'Player', value: 'players' },
   { label: 'Staff', value: 'staff' },
   { label: 'Post', value: 'posts' },
@@ -82,6 +86,10 @@ function normalizeType(raw?: string | null): SearchType {
     opportunities: 'opportunities',
     club: 'clubs',
     clubs: 'clubs',
+    institution: 'institutions',
+    institutions: 'institutions',
+    ente: 'institutions',
+    enti: 'institutions',
     player: 'players',
     players: 'players',
     staff: 'staff',
@@ -91,7 +99,7 @@ function normalizeType(raw?: string | null): SearchType {
     events: 'events',
   };
   const resolved = aliases[value] ?? value;
-  if (resolved === 'opportunities' || resolved === 'clubs' || resolved === 'players' || resolved === 'staff' || resolved === 'posts' || resolved === 'events') {
+  if (resolved === 'opportunities' || resolved === 'clubs' || resolved === 'institutions' || resolved === 'players' || resolved === 'staff' || resolved === 'posts' || resolved === 'events') {
     return resolved;
   }
   return 'all';
@@ -397,7 +405,7 @@ export default function SearchPage() {
               type="search"
               value={inputValue}
               onChange={(event) => setInputValue(event.target.value)}
-              placeholder="Cerca club, player, opportunità, post, eventi…"
+              placeholder="Cerca club, enti, player, opportunità, post, eventi…"
               aria-label="Cerca"
               className="h-11 w-full rounded-full border border-slate-200 bg-white px-10 text-sm text-slate-700 shadow-sm transition focus:border-[var(--brand)] focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/20"
             />
@@ -576,7 +584,7 @@ export default function SearchPage() {
 
       {!error && !queryParam && (
         <div className="rounded-lg border border-dashed border-slate-200 bg-white px-4 py-6 text-sm text-slate-600">
-          Inizia a digitare per cercare club, player, opportunità, post ed eventi.
+          Inizia a digitare per cercare club, enti, player, opportunità, post ed eventi.
         </div>
       )}
 
@@ -588,6 +596,7 @@ export default function SearchPage() {
                 [
                   { key: 'opportunities', label: 'Opportunità' },
                   { key: 'clubs', label: 'Club' },
+                  { key: 'institutions', label: 'Ente' },
                   { key: 'players', label: 'Player' },
                   { key: 'staff', label: 'Staff' },
                   { key: 'posts', label: 'Post' },
