@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 
+import { ToastProvider } from '@/components/common/ToastProvider';
 import PublicAuthorFeed from '@/components/feed/PublicAuthorFeed';
 import { buildProfileDisplayName } from '@/lib/displayName';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
@@ -49,7 +50,8 @@ export default async function AdminPublicProfilePage({ params }: PageProps) {
   const aboutText = profile.bio || 'Profilo amministratore della piattaforma Club & Player.';
 
   return (
-    <div className="mx-auto min-w-0 max-w-5xl space-y-6 p-4 md:p-6">
+    <ToastProvider>
+      <div className="mx-auto min-w-0 max-w-5xl space-y-6 p-4 md:p-6">
       <header className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:gap-6">
           <div className="relative h-28 w-28 shrink-0 md:h-32 md:w-32">
@@ -93,6 +95,7 @@ export default async function AdminPublicProfilePage({ params }: PageProps) {
         </div>
         <PublicAuthorFeed authorId={profile.id} fallbackAuthorIds={profile.user_id ? [profile.user_id] : []} />
       </section>
-    </div>
+      </div>
+    </ToastProvider>
   );
 }
