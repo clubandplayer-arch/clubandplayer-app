@@ -89,11 +89,8 @@ export default async function InstitutionProfilePage({ params }: PageProps) {
   const displayName = buildClubDisplayName(profile.full_name, profile.display_name, 'Ente');
   const location = locationLabel(profile, provinceAbbreviations);
   const aboutText = profile.bio || 'Nessuna descrizione disponibile.';
-  const sede = [profile.club_stadium, profile.club_stadium_address].filter(Boolean).join(' · ');
-  const coordinate =
-    profile.club_stadium_lat != null && profile.club_stadium_lng != null
-      ? `${profile.club_stadium_lat.toFixed(5)}, ${profile.club_stadium_lng.toFixed(5)}`
-      : null;
+  const sede = location;
+  const geolocation = [profile.club_stadium, profile.club_stadium_address].filter(Boolean).join(' · ');
 
   const headerLocationContent = (
     <div className="space-y-1">
@@ -125,7 +122,7 @@ export default async function InstitutionProfilePage({ params }: PageProps) {
           <div className="mt-3 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             <div>
               <div className="text-xs font-semibold tracking-wide text-muted-foreground">Sede</div>
-              <div className="mt-1 font-medium text-neutral-900">{sede || location || '—'}</div>
+              <div className="mt-1 font-medium text-neutral-900">{sede || '—'}</div>
             </div>
             <div>
               <div className="text-xs font-semibold tracking-wide text-muted-foreground">Anno di fondazione</div>
@@ -133,8 +130,7 @@ export default async function InstitutionProfilePage({ params }: PageProps) {
             </div>
             <div>
               <div className="text-xs font-semibold tracking-wide text-muted-foreground">Localizzazione</div>
-              <div className="mt-1 font-medium text-neutral-900">{location || '—'}</div>
-              {coordinate ? <div className="text-xs text-neutral-600">Coordinate: {coordinate}</div> : null}
+              <div className="mt-1 font-medium text-neutral-900">{geolocation || '—'}</div>
             </div>
           </div>
         </div>
