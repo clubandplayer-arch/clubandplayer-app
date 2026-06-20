@@ -7,7 +7,7 @@ type Me = { account_type?: string | null; status?: string | null };
 
 function hasValidAccountType(profile: any): boolean {
   const value = String(profile?.account_type ?? profile?.type ?? '').toLowerCase().trim();
-  return value === 'club' || value === 'athlete' || value === 'staff' || value === 'fan';
+  return value === 'club' || value === 'athlete' || value === 'staff' || value === 'fan' || value === 'admin';
 }
 
 // Pagine che non devono essere bloccate dal gate (evita loop)

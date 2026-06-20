@@ -1,14 +1,16 @@
-type AccountType = 'athlete' | 'club' | 'fan' | 'staff';
+import { isPlatformAdminEmail, PLATFORM_ADMIN_ROLE, PLATFORM_ADMIN_ROLE_LABEL } from '@/lib/constants/admin';
+
+type AccountType = 'athlete' | 'club' | 'fan' | 'staff' | 'admin';
 
 function normalizeAccountType(value: unknown): AccountType | null {
   const normalized = String(value ?? '').trim().toLowerCase();
-  if (normalized === 'athlete' || normalized === 'club' || normalized === 'fan' || normalized === 'staff') return normalized;
+  if (normalized === 'athlete' || normalized === 'club' || normalized === 'fan' || normalized === 'staff' || normalized === 'admin') return normalized;
   return null;
 }
 
 function roleToAccountType(role: unknown): AccountType | null {
   const normalized = String(role ?? '').trim().toLowerCase();
-  if (normalized === 'athlete' || normalized === 'club' || normalized === 'fan' || normalized === 'staff') return normalized;
+  if (normalized === 'athlete' || normalized === 'club' || normalized === 'fan' || normalized === 'staff' || normalized === 'admin') return normalized;
   return null;
 }
 
@@ -27,9 +29,11 @@ export async function ensureSingleProfileRowForUser(
     accountTypeHint?: unknown;
     displayNameHint?: unknown;
     authRoleHint?: unknown;
+    emailHint?: unknown;
   },
 ) {
-  const accountType = inferAccountType(opts?.accountTypeHint, opts?.authRoleHint);
+  const adminEmail = typeof opts?.emailHint === 'string' && isPlatformAdminEmail(opts.emailHint);
+  const accountType = adminEmail ? PLATFORM_ADMIN_ROLE : inferAccountType(opts?.accountTypeHint, opts?.authRoleHint);
   const displayName =
     typeof opts?.displayNameHint === 'string' && opts.displayNameHint.trim()
       ? opts.displayNameHint.trim()
@@ -49,14 +53,15 @@ export async function ensureSingleProfileRowForUser(
     .maybeSingle();
 
   if (byUser) {
-    const needsTypePatch = !(byUser.account_type || byUser.type) && accountType;
+    const needsTypePatch = Boolean(accountType) && (adminEmail || !(byUser.account_type || byUser.type));
     if (needsTypePatch) {
       await supabase
         .from('profiles')
         .update({
           account_type: accountType,
           type: accountType,
-          role: accountType === 'club' ? 'Club' : byUser.role,
+          role: accountType === PLATFORM_ADMIN_ROLE ? PLATFORM_ADMIN_ROLE_LABEL : accountType === 'club' ? 'Club' : byUser.role,
+          is_admin: accountType === PLATFORM_ADMIN_ROLE ? true : byUser.is_admin,
           updated_at: new Date().toISOString(),
         })
         .eq('id', byUser.id);
@@ -75,9 +80,12 @@ export async function ensureSingleProfileRowForUser(
         account_type: accountType ?? dirtyById.account_type ?? null,
         type: accountType ?? dirtyById.type ?? null,
         role:
-          (accountType ?? dirtyById.account_type ?? dirtyById.type) === 'club'
-            ? 'Club'
-            : dirtyById.role,
+          (accountType ?? dirtyById.account_type ?? dirtyById.type) === PLATFORM_ADMIN_ROLE
+            ? PLATFORM_ADMIN_ROLE_LABEL
+            : (accountType ?? dirtyById.account_type ?? dirtyById.type) === 'club'
+              ? 'Club'
+              : dirtyById.role,
+        is_admin: (accountType ?? dirtyById.account_type ?? dirtyById.type) === PLATFORM_ADMIN_ROLE ? true : dirtyById.is_admin,
         display_name: dirtyById.display_name ?? displayName,
         full_name: dirtyById.full_name ?? displayName,
         updated_at: new Date().toISOString(),
