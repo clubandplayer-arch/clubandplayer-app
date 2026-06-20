@@ -82,7 +82,8 @@ export async function middleware(req: NextRequest) {
       institutionVerified = false;
     }
 
-    if (!institutionVerified && pathname !== '/institution/verification') {
+    const institutionAllowedPath = pathname === '/institution/verification' || pathname === '/logout';
+    if (!institutionVerified && !institutionAllowedPath) {
       return NextResponse.redirect(new URL('/institution/verification', url));
     }
   }
