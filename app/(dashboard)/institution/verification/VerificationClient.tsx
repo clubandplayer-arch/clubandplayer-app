@@ -11,6 +11,18 @@ const DOCUMENT_TYPES = [
   { value: 'ade_certificate', label: 'Certificato P.IVA o CF rilasciato da AdE' },
 ];
 
+function RequiredMark() {
+  return <span className="ml-1 text-red-600" aria-label="obbligatorio">*</span>;
+}
+
+function normalizeWebsiteInput(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (/^www\./i.test(trimmed)) return `https://${trimmed}`;
+  return trimmed;
+}
+
 export default function InstitutionVerificationClient() {
   const router = useRouter();
   const [form, setForm] = useState({
@@ -33,7 +45,6 @@ export default function InstitutionVerificationClient() {
           setForm((curr) => ({
             ...curr,
             entityName: json.profile.full_name ?? json.profile.display_name ?? curr.entityName,
-            email: json.profile.email ?? curr.email,
           }));
         }
       } else {
@@ -62,7 +73,7 @@ export default function InstitutionVerificationClient() {
         setRequest(uploadJson.request ?? null);
       }
       const res = await fetch('/api/institution/verification/submit', {
-        method: 'POST', credentials: 'include', headers: { 'content-type': 'application/json' }, body: JSON.stringify(form),
+        method: 'POST', credentials: 'include', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...form, website: normalizeWebsiteInput(form.website) }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json?.error ?? 'Invio non riuscito.');
@@ -90,16 +101,16 @@ export default function InstitutionVerificationClient() {
       {error ? <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div> : null}
       {request?.status ? <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Stato richiesta: <b>{request.status}</b></div> : null}
       <form onSubmit={submit} className="grid gap-4 rounded-2xl border bg-white/80 p-5 shadow-sm md:grid-cols-2">
-        <label className="label">Tipologia ente<select className="input" value={form.entityType} onChange={(e) => setField('entityType', e.target.value)} disabled={locked}>{ENTITY_TYPES.map((x) => <option key={x}>{x}</option>)}</select></label>
-        <label className="label">Nome ente<input className="input" required value={form.entityName} onChange={(e) => setField('entityName', e.target.value)} disabled={locked} /></label>
-        <label className="label">CF<input className="input" required value={form.fiscalCode} onChange={(e) => setField('fiscalCode', e.target.value)} disabled={locked} /></label>
-        <label className="label">P.IVA<input className="input" value={form.vatNumber} onChange={(e) => setField('vatNumber', e.target.value)} disabled={locked} /></label>
-        <label className="label">Email<input className="input" type="email" required value={form.email} onChange={(e) => setField('email', e.target.value)} disabled={locked} /></label>
-        <label className="label">PEC<input className="input" type="email" required value={form.pec} onChange={(e) => setField('pec', e.target.value)} disabled={locked} /></label>
-        <label className="label">Sito<input className="input" type="url" value={form.website} onChange={(e) => setField('website', e.target.value)} disabled={locked} /></label>
-        <label className="label">Referente<input className="input" required value={form.representative} onChange={(e) => setField('representative', e.target.value)} disabled={locked} /></label>
-        <label className="label md:col-span-2">Documento<select className="input" value={form.documentType} onChange={(e) => setField('documentType', e.target.value)} disabled={locked}>{DOCUMENT_TYPES.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}</select></label>
-        <label className="label md:col-span-2">Carica PDF<input className="input" type="file" accept="application/pdf" onChange={(e) => setFile(e.target.files?.[0] ?? null)} disabled={locked} /></label>
+        <label className="label">Tipologia ente<RequiredMark /><select className="input" value={form.entityType} onChange={(e) => setField('entityType', e.target.value)} disabled={locked}>{ENTITY_TYPES.map((x) => <option key={x}>{x}</option>)}</select></label>
+        <label className="label">Nome ente<RequiredMark /><input className="input" required value={form.entityName} onChange={(e) => setField('entityName', e.target.value)} disabled={locked} /></label>
+        <label className="label">CF<RequiredMark /><input className="input" required value={form.fiscalCode} onChange={(e) => setField('fiscalCode', e.target.value)} disabled={locked} /></label>
+        <label className="label">P.IVA<RequiredMark /><input className="input" required value={form.vatNumber} onChange={(e) => setField('vatNumber', e.target.value)} disabled={locked} /></label>
+        <label className="label">Email<RequiredMark /><input className="input" type="email" required value={form.email} onChange={(e) => setField('email', e.target.value)} disabled={locked} /></label>
+        <label className="label">PEC<RequiredMark /><input className="input" type="email" required value={form.pec} onChange={(e) => setField('pec', e.target.value)} disabled={locked} /></label>
+        <label className="label">Sito<RequiredMark /><input className="input" type="text" inputMode="url" required value={form.website} onChange={(e) => setField('website', e.target.value)} onBlur={(e) => setField('website', normalizeWebsiteInput(e.target.value))} disabled={locked} /></label>
+        <label className="label">Referente<RequiredMark /><input className="input" required value={form.representative} onChange={(e) => setField('representative', e.target.value)} disabled={locked} /></label>
+        <label className="label md:col-span-2">Documento<RequiredMark /><select className="input" required value={form.documentType} onChange={(e) => setField('documentType', e.target.value)} disabled={locked}>{DOCUMENT_TYPES.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}</select></label>
+        <label className="label md:col-span-2">Carica PDF<RequiredMark /><input className="input" type="file" required={!request?.document_path} accept="application/pdf" onChange={(e) => setFile(e.target.files?.[0] ?? null)} disabled={locked} /></label>
         <div className="md:col-span-2"><button type="submit" disabled={saving || locked} className="btn btn-brand w-full md:w-auto">{saving ? 'Invio…' : locked ? 'Richiesta già inviata' : 'Invia verifica'}</button></div>
       </form>
     </main>

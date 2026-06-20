@@ -64,6 +64,29 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL('/admin/profile', url));
   }
 
+  // Gli enti non verificati possono restare solo nel flusso di verifica documentale.
+  if (authenticated && role === 'institution') {
+    let institutionVerified = false;
+    try {
+      const verificationRes = await fetch(new URL('/api/institution/verification/status', url.origin), {
+        headers: { cookie: req.headers.get('cookie') || '' },
+        cache: 'no-store',
+      });
+      const verificationJson = await verificationRes.json().catch(() => ({}));
+      const request = verificationJson?.request;
+      const verifiedUntil = request?.verified_until ? new Date(String(request.verified_until)) : null;
+      institutionVerified =
+        request?.status === 'approved' &&
+        (!verifiedUntil || Number.isNaN(verifiedUntil.getTime()) || verifiedUntil.getTime() > Date.now());
+    } catch {
+      institutionVerified = false;
+    }
+
+    if (!institutionVerified && pathname !== '/institution/verification') {
+      return NextResponse.redirect(new URL('/institution/verification', url));
+    }
+  }
+
   // Rotte /institution/* solo per ente istituzionale
   if (pathname.startsWith('/institution/') && role !== 'institution') {
     return NextResponse.redirect(new URL(authenticated ? '/feed' : '/login?next=%2Finstitution%2Fverification', url));
