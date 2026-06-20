@@ -1,6 +1,6 @@
 import { isValidProfileClubName, isValidProfilePersonName } from '@/lib/profiles/nameValidation';
 
-export type ProfileCompletionAccountType = 'athlete' | 'club' | 'staff' | 'fan' | null;
+export type ProfileCompletionAccountType = 'athlete' | 'club' | 'staff' | 'fan' | 'admin' | null;
 
 export type ProfileCompletionProfile = {
   account_type?: string | null;
@@ -38,11 +38,12 @@ function hasBirthYear(value: unknown) {
 
 export function normalizeCompletionAccountType(profile?: ProfileCompletionProfile | null): ProfileCompletionAccountType {
   const raw = text(profile?.account_type || profile?.type).toLowerCase();
-  if (raw === 'athlete' || raw === 'club' || raw === 'staff' || raw === 'fan') return raw;
+  if (raw === 'athlete' || raw === 'club' || raw === 'staff' || raw === 'fan' || raw === 'admin') return raw;
   return null;
 }
 
 export function getProfilePathForAccountType(accountType: ProfileCompletionAccountType) {
+  if (accountType === 'admin') return '/feed';
   if (accountType === 'club') return '/club/profile';
   if (accountType === 'staff') return '/staff/profile';
   if (accountType === 'fan') return '/fan/profile';
@@ -52,6 +53,8 @@ export function getProfilePathForAccountType(accountType: ProfileCompletionAccou
 export function getMissingRequiredProfileFields(profile?: ProfileCompletionProfile | null) {
   const accountType = normalizeCompletionAccountType(profile);
   const missing: string[] = [];
+
+  if (accountType === 'admin') return missing;
 
   if (accountType === 'club') {
     if ((!hasText(profile?.full_name) && !hasText(profile?.display_name)) || !isValidProfileClubName(text(profile?.full_name || profile?.display_name))) missing.push('nome società');

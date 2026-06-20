@@ -18,6 +18,7 @@ import { reportApiError } from '@/lib/monitoring/reportApiError';
 import { getActiveProfile } from '@/lib/api/profile';
 import { buildProfileDisplayName } from '@/lib/displayName';
 import { CreatePostSchema, FeedPostsQuerySchema, type CreatePostInput, type FeedPostsQueryInput } from '@/lib/validation/feed';
+import { PLATFORM_ADMIN_ROLE } from '@/lib/constants/admin';
 
 export const runtime = 'nodejs';
 
@@ -26,7 +27,7 @@ const RATE_LIMIT_MS = 5_000;
 const LAST_POST_TS_COOKIE = 'feed_last_post_ts';
 const POST_ID_SELECT_CHUNK_SIZE = 50;
 
-type Role = 'club' | 'athlete' | 'staff' | 'fan';
+type Role = 'club' | 'athlete' | 'staff' | 'fan' | 'admin';
 type PostKind = 'normal' | 'event';
 type DbPostKind = 'normal' | 'event';
 type PostMediaType = 'image' | 'video';
@@ -47,6 +48,7 @@ function normRole(v: unknown): Role | null {
   if (s === 'club') return 'club';
   if (s === 'athlete') return 'athlete';
   if (s === 'staff') return 'staff';
+  if (s === PLATFORM_ADMIN_ROLE) return 'admin';
   return null;
 }
 
@@ -98,6 +100,7 @@ type ProfileRow = {
   account_type?: string | null;
   type?: string | null;
   is_verified?: boolean | null;
+  is_admin?: boolean | null;
 };
 
 function normalizeProfileRow(raw: any): ProfileRow | null {
@@ -111,6 +114,7 @@ function normalizeProfileRow(raw: any): ProfileRow | null {
     account_type: (raw as any)?.account_type ?? (raw as any)?.type ?? null,
     type: (raw as any)?.type ?? (raw as any)?.account_type ?? null,
     is_verified: (raw as any)?.is_verified ?? null,
+    is_admin: (raw as any)?.is_admin ?? null,
   };
 }
 
@@ -469,6 +473,7 @@ export async function GET(req: NextRequest) {
 
   const followedProfileIds: string[] = [];
   const followedAuthorIds: string[] = [];
+  const globalAdminAuthorIds: string[] = [];
 
   const shouldLoadFollows = Boolean(currentProfileId && (scope === 'following' || scope === 'all'));
 
@@ -500,6 +505,18 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  const { data: globalAdminProfiles } = await supabase
+    .from('profiles')
+    .select('id,user_id')
+    .eq('account_type', PLATFORM_ADMIN_ROLE)
+    .eq('is_admin', true)
+    .limit(10);
+
+  (globalAdminProfiles ?? []).forEach((profile: any) => {
+    if (profile?.user_id) globalAdminAuthorIds.push(String(profile.user_id));
+    if (profile?.id) globalAdminAuthorIds.push(String(profile.id));
+  });
+
   let allowedAuthors: string[] | null = null;
 
   if (authorIdFilter) {
@@ -507,7 +524,7 @@ export async function GET(req: NextRequest) {
   } else if (mine) {
     allowedAuthors = selfId ? [selfId] : null;
   } else if (scope === 'following') {
-    allowedAuthors = Array.from(new Set(followedAuthorIds.filter(Boolean)));
+    allowedAuthors = Array.from(new Set([...followedAuthorIds, ...globalAdminAuthorIds].filter(Boolean)));
   } else {
     allowedAuthors = null;
   }
@@ -701,7 +718,7 @@ function isKindConstraintError(err: any) {
   );
 }
 
-const PROFILE_FIELDS = 'id, user_id, full_name, display_name, avatar_url, account_type, type';
+const PROFILE_FIELDS = 'id, user_id, full_name, display_name, avatar_url, account_type, type, is_admin';
 
 const SELECT_WITH_MEDIA =
   'id, author_id, content, created_at, media_url, media_type, media_aspect, kind, event_payload, quoted_post_id';

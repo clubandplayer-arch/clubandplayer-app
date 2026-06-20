@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { isAdminUser, isClubsAdminUser } from '@/lib/api/admin';
+import { isPlatformAdminEmail, PLATFORM_ADMIN_ROLE, PLATFORM_ADMIN_ROLE_LABEL } from '@/lib/constants/admin';
 import { ensureSingleProfileRowForUser, inferAccountType } from '@/lib/server/profileIntegrity';
 import { getMissingRequiredProfileFields, getProfilePathForAccountType, isProfileComplete } from '@/lib/profiles/completion';
 
@@ -25,10 +26,10 @@ function mergeCookies(from: NextResponse, into: NextResponse) {
   if (set) into.headers.append('set-cookie', set);
 }
 
-type Role = 'guest' | 'athlete' | 'club' | 'fan' | 'staff';
+type Role = 'guest' | 'athlete' | 'club' | 'fan' | 'staff' | 'admin';
 type ProfileStatus = 'active' | 'rejected';
 
-function normRole(v: unknown): 'club' | 'athlete' | 'fan' | 'staff' | null {
+function normRole(v: unknown): 'club' | 'athlete' | 'fan' | 'staff' | 'admin' | null {
   return inferAccountType(v);
 }
 
@@ -72,10 +73,11 @@ export async function GET(req: NextRequest) {
 
   await ensureSingleProfileRowForUser(supabase, user.id, {
     displayNameHint: user.user_metadata?.full_name || user.email || 'Profilo',
+    emailHint: user.email,
   });
 
   // 1) profiles.account_type (nuovo), 2) profiles.type (legacy)
-  let accountType: 'club' | 'athlete' | 'fan' | 'staff' | null = null;
+  let accountType: 'club' | 'athlete' | 'fan' | 'staff' | 'admin' | null = null;
   let legacyType: string | null = null;
   let status: ProfileStatus = 'active';
 
@@ -130,7 +132,8 @@ export async function GET(req: NextRequest) {
             display_name: user.user_metadata?.full_name || user.email || 'Profilo',
             account_type: accountType ?? null,
             type: accountType ?? null,
-            role: accountType === 'club' ? 'Club' : null,
+            role: accountType === PLATFORM_ADMIN_ROLE ? PLATFORM_ADMIN_ROLE_LABEL : accountType === 'club' ? 'Club' : null,
+            is_admin: accountType === PLATFORM_ADMIN_ROLE,
           },
           { onConflict: 'user_id' }
         )
@@ -181,6 +184,13 @@ export async function GET(req: NextRequest) {
     // non bloccare whoami
   }
 
+  const platformAdminEmail = isPlatformAdminEmail(user.email);
+  if (platformAdminEmail) {
+    accountType = PLATFORM_ADMIN_ROLE;
+    legacyType = PLATFORM_ADMIN_ROLE;
+    completionProfile = { ...(completionProfile || {}), account_type: PLATFORM_ADMIN_ROLE, type: PLATFORM_ADMIN_ROLE, role: PLATFORM_ADMIN_ROLE_LABEL, is_admin: true };
+  }
+
   const role: Role = accountType ?? 'guest';
   const admin = await isAdminUser(supabase, user);
   const clubsAdmin = admin || (await isClubsAdminUser(supabase, user));
@@ -189,7 +199,7 @@ export async function GET(req: NextRequest) {
     try {
       await supabase
         .from('profiles')
-        .update({ is_admin: true, updated_at: new Date().toISOString() })
+        .update({ account_type: PLATFORM_ADMIN_ROLE, type: PLATFORM_ADMIN_ROLE, role: PLATFORM_ADMIN_ROLE_LABEL, is_admin: true, updated_at: new Date().toISOString() })
         .eq('user_id', user.id);
     } catch {
       // ignora

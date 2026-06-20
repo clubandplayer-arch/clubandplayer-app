@@ -4,6 +4,7 @@ import { rateLimit } from '@/lib/api/rateLimit';
 import { normalizeSport } from '@/lib/opps/constants';
 import { MAX_SKILLS, parseSkillsInput } from '@/lib/profiles/skills';
 import { ensureSingleProfileRowForUser, inferAccountType } from '@/lib/server/profileIntegrity';
+import { isPlatformAdminEmail, PLATFORM_ADMIN_ROLE, PLATFORM_ADMIN_ROLE_LABEL } from '@/lib/constants/admin';
 import { isValidProfileClubName, isValidProfilePersonName, sanitizeProfileClubName, sanitizeProfilePersonName } from '@/lib/profiles/nameValidation';
 
 export const runtime = 'nodejs';
@@ -122,6 +123,7 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
     authRoleHint: user.user_metadata?.role,
     accountTypeHint: inferAccountType(user.user_metadata?.role),
     displayNameHint: user.user_metadata?.full_name || user.email || null,
+    emailHint: user.email,
   });
 
   const { data, error } = await supabase
@@ -226,6 +228,13 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   if (existingProfile) currentProfile = existingProfile;
 
+  if (isPlatformAdminEmail(user.email)) {
+    updates.account_type = PLATFORM_ADMIN_ROLE;
+    updates.type = PLATFORM_ADMIN_ROLE;
+    updates.role = PLATFORM_ADMIN_ROLE_LABEL;
+    updates.is_admin = true;
+  }
+
   const effectiveAccountType = ((updates.account_type as string | null | undefined) ?? currentProfile?.account_type ?? null) as
     | string
     | null;
@@ -262,7 +271,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
     .maybeSingle();
 
   if (!data && !error) {
-    const inferredType = inferAccountType(
+    const inferredType = isPlatformAdminEmail(user.email) ? PLATFORM_ADMIN_ROLE : inferAccountType(
       updates.account_type,
       user.user_metadata?.role,
       currentProfile?.account_type,
