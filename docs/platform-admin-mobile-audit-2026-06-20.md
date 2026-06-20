@@ -40,4 +40,4 @@ Replicare su mobile il ruolo unico `admin`, riservato esclusivamente all'account
 ## Aggiornamento profilo admin web
 - Il web usa `/admin/profile` per la modifica dati del Platform Admin; non usare `/player/profile` o form Player/Club per questo ruolo.
 - La rotta `/admin/profile` è protetta e va resa accessibile solo quando `/api/auth/whoami` restituisce `role = 'admin'`.
-- Campi admin gestiti dal web: `full_name`/`display_name`, `avatar_url`, `birth_year` come anno nascita progetto, `headline` come ruolo pubblico, `bio`.
+- Campi admin gestiti dal web: `full_name`/`display_name`, `avatar_url`, `club_foundation_year` come anno nascita progetto (`birth_year` resta `null` per evitare i vincoli anagrafici Player), `headline` come ruolo pubblico, `bio`.

@@ -10,6 +10,7 @@ type AdminProfile = {
   display_name?: string | null;
   avatar_url?: string | null;
   birth_year?: number | null;
+  club_foundation_year?: number | null;
   headline?: string | null;
   bio?: string | null;
 };
@@ -62,7 +63,7 @@ export default function AdminProfilePage() {
         if (cancelled) return;
         setAvatarUrl(profile.avatar_url ?? null);
         setFullName(profile.full_name ?? profile.display_name ?? '');
-        setProjectYear(toYearInput(profile.birth_year));
+        setProjectYear(toYearInput(profile.club_foundation_year ?? profile.birth_year));
         setHeadline(profile.headline ?? '');
         setBio(profile.bio ?? '');
       } catch (err: any) {
@@ -89,7 +90,8 @@ export default function AdminProfilePage() {
         full_name: fullName,
         display_name: fullName,
         avatar_url: avatarUrl,
-        birth_year: projectYear ? Number(projectYear) : null,
+        birth_year: null,
+        club_foundation_year: projectYear ? Number(projectYear) : null,
         headline,
         bio,
       };
