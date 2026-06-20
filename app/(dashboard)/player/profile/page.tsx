@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ProfileEditForm from '@/components/profiles/ProfileEditForm';
 
-type Role = 'club' | 'athlete' | 'staff' | 'fan' | 'guest';
+type Role = 'club' | 'athlete' | 'staff' | 'fan' | 'admin' | 'guest';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -19,6 +19,11 @@ export default function ProfilePage() {
         const j = await r.json().catch(() => ({}));
         const raw = (j?.role ?? '').toString().toLowerCase();
         if (cancelled) return;
+        if (raw === 'admin') {
+          setRole('admin');
+          router.replace('/admin/profile');
+          return;
+        }
         if (raw === 'club') {
           setRole('club');
           router.replace('/club/profile');
@@ -39,7 +44,7 @@ export default function ProfilePage() {
     };
   }, [router]);
 
-  if (checking || role === 'club' || role === 'fan') {
+  if (checking || role === 'admin' || role === 'club' || role === 'fan') {
     return (
       <div className="p-4 text-sm text-gray-600">Reindirizzamento in corso…</div>
     );

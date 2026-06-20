@@ -43,7 +43,7 @@ export function normalizeCompletionAccountType(profile?: ProfileCompletionProfil
 }
 
 export function getProfilePathForAccountType(accountType: ProfileCompletionAccountType) {
-  if (accountType === 'admin') return '/feed';
+  if (accountType === 'admin') return '/admin/profile';
   if (accountType === 'club') return '/club/profile';
   if (accountType === 'staff') return '/staff/profile';
   if (accountType === 'fan') return '/fan/profile';

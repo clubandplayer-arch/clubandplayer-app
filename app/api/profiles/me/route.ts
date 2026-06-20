@@ -51,6 +51,7 @@ const FIELDS: Record<string, 'text' | 'number' | 'bool' | 'json'> = {
   display_name: 'text',
   avatar_url: 'text',
   bio: 'text',
+  headline: 'text',
   country: 'text', // nazionalità
   region: 'text',
   province: 'text',

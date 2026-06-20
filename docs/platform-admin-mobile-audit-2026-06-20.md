@@ -36,3 +36,8 @@ Replicare su mobile il ruolo unico `admin`, riservato esclusivamente all'account
 2. Login con qualsiasi altra email: anche se il profilo avesse `is_admin = true`, l'app non deve mostrare privilegi admin.
 3. Utente che non segue l'admin: la bacheca following deve includere i post dell'admin.
 4. Update profilo admin: dopo il salvataggio il ruolo resta `admin`, non torna `club`.
+
+## Aggiornamento profilo admin web
+- Il web usa `/admin/profile` per la modifica dati del Platform Admin; non usare `/player/profile` o form Player/Club per questo ruolo.
+- La rotta `/admin/profile` è protetta e va resa accessibile solo quando `/api/auth/whoami` restituisce `role = 'admin'`.
+- Campi admin gestiti dal web: `full_name`/`display_name`, `avatar_url`, `birth_year` come anno nascita progetto, `headline` come ruolo pubblico, `bio`.

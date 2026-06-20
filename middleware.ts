@@ -55,6 +55,15 @@ export async function middleware(req: NextRequest) {
     }
   }
 
+  // Rotte /admin/* solo per admin
+  if (pathname.startsWith('/admin/') && role !== 'admin') {
+    return NextResponse.redirect(new URL(authenticated ? '/feed' : '/login?next=%2Fadmin%2Fprofile', url));
+  }
+
+  if (authenticated && role === 'admin' && pathname === '/player/profile') {
+    return NextResponse.redirect(new URL('/admin/profile', url));
+  }
+
   // Rotte /club/* solo per club
   if (pathname.startsWith('/club/') && role !== 'club') {
     return NextResponse.redirect(new URL('/feed', url));
