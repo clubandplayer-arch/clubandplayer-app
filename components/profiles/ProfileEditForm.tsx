@@ -1019,6 +1019,13 @@ export default function ProfileEditForm() {
                   </div>
                   <ClubStadiumMapPicker
                     value={{ name: stadium, address: stadiumAddress, lat: stadiumLat, lng: stadiumLng }}
+                    labels={isInstitution ? {
+                      searchLabel: 'Cerca sede o indirizzo',
+                      placeholder: 'Digita nome sede o indirizzo',
+                      defaultName: 'Sede ente',
+                      markerFallback: 'Sede ente',
+                      helperText: 'Clicca sulla mappa oppure usa la posizione del dispositivo per impostare dove mostrare il logo dell’Ente sulla mappa nazionale.',
+                    } : undefined}
                     onChange={(val) => {
                       setStadium(val.name || '');
                       setStadiumAddress(val.address || '');
@@ -1048,8 +1055,9 @@ export default function ProfileEditForm() {
                 </div>
                 <div>
                   <p className="text-[11px] text-gray-600">
-                    Usa la ricerca, la posizione del dispositivo o clicca sulla mappa per posizionare il marker:
-                    salveremo nome, indirizzo e coordinate usate dal segnaposto con il logo del {organizationTitle}.
+                    {isInstitution
+                      ? 'Usa la ricerca, la posizione del dispositivo o clicca sulla mappa per posizionare la sede: salveremo nome e indirizzo da mostrare come localizzazione pubblica dell’Ente.'
+                      : 'Usa la ricerca, la posizione del dispositivo o clicca sulla mappa per posizionare il marker: salveremo nome, indirizzo e coordinate usate dal segnaposto con il logo del Club.'}
                   </p>
                 </div>
               </div>
