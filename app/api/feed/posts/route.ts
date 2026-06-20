@@ -27,7 +27,7 @@ const RATE_LIMIT_MS = 5_000;
 const LAST_POST_TS_COOKIE = 'feed_last_post_ts';
 const POST_ID_SELECT_CHUNK_SIZE = 50;
 
-type Role = 'club' | 'athlete' | 'staff' | 'fan' | 'admin';
+type Role = 'club' | 'athlete' | 'staff' | 'institution' | 'fan' | 'admin';
 type PostKind = 'normal' | 'event';
 type DbPostKind = 'normal' | 'event';
 type PostMediaType = 'image' | 'video';
@@ -48,6 +48,7 @@ function normRole(v: unknown): Role | null {
   if (s === 'club') return 'club';
   if (s === 'athlete') return 'athlete';
   if (s === 'staff') return 'staff';
+  if (s === 'institution') return 'institution';
   if (s === PLATFORM_ADMIN_ROLE) return 'admin';
   return null;
 }
@@ -1003,12 +1004,12 @@ export async function POST(req: NextRequest) {
       actorRole = null;
     }
 
-    if (actorRole !== 'club' && actorRole !== 'athlete' && actorRole !== 'staff' && actorRole !== 'admin') {
+    if (actorRole !== 'club' && actorRole !== 'athlete' && actorRole !== 'staff' && actorRole !== 'institution' && actorRole !== 'admin') {
       return notAuthorized('Con questo account non puoi creare post.');
     }
 
-    if (isEvent && actorRole !== 'club' && actorRole !== 'admin') {
-      return notAuthorized('Solo i club possono creare eventi.');
+    if (isEvent && actorRole !== 'club' && actorRole !== 'institution' && actorRole !== 'admin') {
+      return notAuthorized('Solo club ed enti possono creare eventi.');
     }
 
     if (isEvent && !eventPayload) {

@@ -7,7 +7,7 @@ import { MessageButton } from '@/components/messaging/MessageButton';
 import CertifiedCMarkClubProfile from '@/components/badges/CertifiedCMarkClubProfile';
 import type { ProfileLinks } from '@/types/profile';
 
-type AccountType = 'club' | 'athlete' | 'staff' | 'player';
+type AccountType = 'club' | 'institution' | 'athlete' | 'staff' | 'player';
 
 type ProfileHeaderProps = {
   profileId: string;
@@ -26,7 +26,7 @@ type ProfileHeaderProps = {
 
 function initialsFromName(name: string, accountType: AccountType) {
   const safeName = (name || '').trim();
-  if (!safeName) return accountType === 'club' ? 'CL' : 'PL';
+  if (!safeName) return accountType === 'club' ? 'CL' : accountType === 'institution' ? 'EN' : 'PL';
   const parts = safeName
     .split(/\s+/)
     .map((p) => p.trim())
@@ -131,7 +131,8 @@ export default function ProfileHeader({
   const subtitleText = subtitle?.trim();
   const locationText = locationLabel?.trim();
   const isClub = accountType === 'club';
-  const badgeLabel = isClub ? 'Club' : accountType === 'staff' ? 'Staff' : 'Giocatore';
+  const isInstitution = accountType === 'institution';
+  const badgeLabel = isClub ? 'Club' : isInstitution ? 'Ente' : accountType === 'staff' ? 'Staff' : 'Giocatore';
   const hasActions = showMessageButton || showFollowButton;
 
   return (
@@ -158,7 +159,9 @@ export default function ProfileHeader({
                 className={`${
                   isClub
                     ? 'bg-blue-600 text-white'
-                    : 'bg-blue-50 text-blue-800 ring-1 ring-inset ring-blue-200'
+                    : isInstitution
+                      ? 'bg-cyan-50 text-cyan-800 ring-1 ring-inset ring-cyan-200'
+                      : 'bg-blue-50 text-blue-800 ring-1 ring-inset ring-blue-200'
                 } inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold leading-tight`}
               >
                 {badgeLabel}

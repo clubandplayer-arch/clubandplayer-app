@@ -73,7 +73,17 @@ export function QuotedPostCard({ post, quotedPostId, onRemove, onRepost, missing
     : fallbackAuthorLabel ?? 'Autore originale';
   const authorId = authorProfile?.id ?? effectivePost?.author_profile_id ?? null;
   const isClubAuthor = authorAccountType === 'club';
-  const profileHref = authorId ? (isClubAuthor ? `/clubs/${authorId}` : `/players/${authorId}`) : null;
+  const isInstitutionAuthor = authorAccountType === 'institution';
+  const isAdminAuthor = authorAccountType === 'admin' || authorProfile?.is_admin === true;
+  const profileHref = authorId
+    ? isClubAuthor
+      ? `/clubs/${authorId}`
+      : isInstitutionAuthor
+        ? `/institutions/${authorId}`
+        : isAdminAuthor
+          ? `/admin/${authorId}`
+          : `/players/${authorId}`
+    : null;
   const avatarUrl = authorProfile?.avatar_url ?? effectivePost?.author_avatar_url ?? null;
 
   return (

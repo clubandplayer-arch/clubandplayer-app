@@ -1,16 +1,16 @@
 import { isPlatformAdminEmail, PLATFORM_ADMIN_ROLE, PLATFORM_ADMIN_ROLE_LABEL } from '@/lib/constants/admin';
 
-type AccountType = 'athlete' | 'club' | 'fan' | 'staff' | 'admin';
+type AccountType = 'athlete' | 'club' | 'fan' | 'staff' | 'admin' | 'institution';
 
 function normalizeAccountType(value: unknown): AccountType | null {
   const normalized = String(value ?? '').trim().toLowerCase();
-  if (normalized === 'athlete' || normalized === 'club' || normalized === 'fan' || normalized === 'staff' || normalized === 'admin') return normalized;
+  if (normalized === 'athlete' || normalized === 'club' || normalized === 'fan' || normalized === 'staff' || normalized === 'admin' || normalized === 'institution') return normalized;
   return null;
 }
 
 function roleToAccountType(role: unknown): AccountType | null {
   const normalized = String(role ?? '').trim().toLowerCase();
-  if (normalized === 'athlete' || normalized === 'club' || normalized === 'fan' || normalized === 'staff' || normalized === 'admin') return normalized;
+  if (normalized === 'athlete' || normalized === 'club' || normalized === 'fan' || normalized === 'staff' || normalized === 'admin' || normalized === 'institution') return normalized;
   return null;
 }
 
@@ -60,7 +60,7 @@ export async function ensureSingleProfileRowForUser(
         .update({
           account_type: accountType,
           type: accountType,
-          role: accountType === PLATFORM_ADMIN_ROLE ? PLATFORM_ADMIN_ROLE_LABEL : accountType === 'club' ? 'Club' : byUser.role,
+          role: accountType === PLATFORM_ADMIN_ROLE ? PLATFORM_ADMIN_ROLE_LABEL : accountType === 'club' ? 'Club' : accountType === 'institution' ? 'Ente' : byUser.role,
           is_admin: accountType === PLATFORM_ADMIN_ROLE ? true : byUser.is_admin,
           updated_at: new Date().toISOString(),
         })
@@ -84,7 +84,9 @@ export async function ensureSingleProfileRowForUser(
             ? PLATFORM_ADMIN_ROLE_LABEL
             : (accountType ?? dirtyById.account_type ?? dirtyById.type) === 'club'
               ? 'Club'
-              : dirtyById.role,
+              : (accountType ?? dirtyById.account_type ?? dirtyById.type) === 'institution'
+                ? 'Ente'
+                : dirtyById.role,
         is_admin: (accountType ?? dirtyById.account_type ?? dirtyById.type) === PLATFORM_ADMIN_ROLE ? true : dirtyById.is_admin,
         display_name: dirtyById.display_name ?? displayName,
         full_name: dirtyById.full_name ?? displayName,

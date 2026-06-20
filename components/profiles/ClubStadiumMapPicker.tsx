@@ -28,6 +28,13 @@ declare global {
 type Props = {
   value: StadiumLocation;
   onChange: (value: StadiumLocation) => void;
+  labels?: {
+    searchLabel?: string;
+    placeholder?: string;
+    defaultName?: string;
+    markerFallback?: string;
+    helperText?: string;
+  };
 };
 
 type GoogleMaps = any;
@@ -66,7 +73,7 @@ function ensureGoogleMaps(apiKey?: string | null): Promise<GoogleMaps> {
   return googleMapsPromise;
 }
 
-export default function ClubStadiumMapPicker({ value, onChange }: Props) {
+export default function ClubStadiumMapPicker({ value, onChange, labels }: Props) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const mapRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -76,6 +83,13 @@ export default function ClubStadiumMapPicker({ value, onChange }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [locating, setLocating] = useState(false);
+  const searchLabel = labels?.searchLabel ?? 'Cerca sede, stadio o impianto';
+  const placeholder = labels?.placeholder ?? 'Digita nome stadio, sede o indirizzo';
+  const defaultName = labels?.defaultName ?? 'Sede / impianto Club';
+  const markerFallback = labels?.markerFallback ?? 'Stadio / impianto';
+  const helperText =
+    labels?.helperText ??
+    'Clicca sulla mappa oppure usa la posizione del dispositivo per impostare dove mostrare il logo del Club sulla mappa nazionale.';
 
   const center = useMemo(() => {
     if (value.lat != null && value.lng != null) return { lat: value.lat, lng: value.lng };
@@ -116,7 +130,7 @@ export default function ClubStadiumMapPicker({ value, onChange }: Props) {
         };
 
         if (value.lat != null && value.lng != null) {
-          placeMarker(value.lat, value.lng, value.name || 'Stadio / impianto');
+          placeMarker(value.lat, value.lng, value.name || markerFallback);
         }
 
         if (inputRef.current) {
@@ -134,7 +148,7 @@ export default function ClubStadiumMapPicker({ value, onChange }: Props) {
             map.panTo({ lat, lng });
             map.setZoom(15);
             onChange({
-              name: place.name || place.formatted_address || 'Stadio / impianto',
+              name: place.name || place.formatted_address || markerFallback,
               address: place.formatted_address || '',
               lat,
               lng,
@@ -147,9 +161,9 @@ export default function ClubStadiumMapPicker({ value, onChange }: Props) {
           if (!ev.latLng) return;
           const lat = ev.latLng.lat();
           const lng = ev.latLng.lng();
-          placeMarker(lat, lng, value.name || 'Stadio / impianto');
+          placeMarker(lat, lng, value.name || markerFallback);
           onChange({
-            name: value.name || 'Stadio / impianto',
+            name: value.name || markerFallback,
             address: value.address,
             lat,
             lng,
@@ -169,7 +183,7 @@ export default function ClubStadiumMapPicker({ value, onChange }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [apiKey, center, onChange, value.address, value.name, value.lat, value.lng]);
+  }, [apiKey, center, onChange, value.address, value.name, value.lat, value.lng, markerFallback]);
 
 
   const useCurrentLocation = () => {
@@ -183,7 +197,7 @@ export default function ClubStadiumMapPicker({ value, onChange }: Props) {
       (position) => {
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
-        const nextName = value.name || 'Sede / impianto Club';
+        const nextName = value.name || defaultName;
         onChange({
           name: nextName,
           address: value.address,
@@ -227,7 +241,7 @@ export default function ClubStadiumMapPicker({ value, onChange }: Props) {
     <div className="space-y-3 rounded-xl border border-white/40 bg-white/70 p-3 shadow-sm">
       <div className="flex flex-col gap-2">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <label className="text-sm font-semibold text-gray-800">Cerca sede, stadio o impianto</label>
+          <label className="text-sm font-semibold text-gray-800">{searchLabel}</label>
           <button
             type="button"
             onClick={useCurrentLocation}
@@ -240,10 +254,10 @@ export default function ClubStadiumMapPicker({ value, onChange }: Props) {
         <input
           ref={inputRef}
           className="rounded-lg border p-2 text-sm"
-          placeholder="Digita nome stadio, sede o indirizzo"
+          placeholder={placeholder}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          aria-label="Cerca sede, stadio o impianto"
+          aria-label={searchLabel}
         />
         {value.address ? (
           <p className="text-xs text-gray-600">Indirizzo selezionato: {value.address}</p>
@@ -258,7 +272,7 @@ export default function ClubStadiumMapPicker({ value, onChange }: Props) {
         <div>
           <div ref={mapRef} className="h-64 w-full overflow-hidden rounded-lg bg-gray-100" />
           <p className="mt-2 text-xs text-gray-500">
-            Clicca sulla mappa oppure usa la posizione del dispositivo per impostare dove mostrare il logo del Club sulla mappa nazionale.
+            {helperText}
           </p>
         </div>
       )}

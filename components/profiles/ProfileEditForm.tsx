@@ -29,7 +29,7 @@ import {
   type PastExperience,
 } from '@/lib/profiles/pastExperiences';
 
-type AccountType = 'club' | 'athlete' | 'staff' | 'fan' | null;
+type AccountType = 'club' | 'institution' | 'athlete' | 'staff' | 'fan' | null;
 
 type Links = {
   instagram?: string | null;
@@ -212,6 +212,10 @@ export default function ProfileEditForm() {
   const [fatalError, setFatalError] = useState<string | null>(null);
 
   const isClub = profile?.account_type === 'club';
+  const isInstitution = profile?.account_type === 'institution';
+  const isOrganization = isClub || isInstitution;
+  const organizationLabel = isInstitution ? 'ente' : 'club';
+  const organizationTitle = isInstitution ? 'Ente' : 'Club';
   const isFan = profile?.account_type === 'fan';
   const isStaff = profile?.account_type === 'staff';
 
@@ -406,7 +410,7 @@ export default function ProfileEditForm() {
     const sanitizedPersonFullName = sanitizeProfilePersonName(loadedFullName);
     const sanitizedClubFullName = sanitizeProfileClubName(loadedFullName);
     setFullName(
-      p.account_type === 'club'
+      (p.account_type === 'club' || p.account_type === 'institution')
         ? sanitizedClubFullName === loadedFullName
           ? sanitizedClubFullName
           : ''
@@ -524,14 +528,14 @@ export default function ProfileEditForm() {
     birth_year: birthYear === '' ? null : birthYear,
     country: normalizeCountryCode(country),
     sport: isClub ? sport : athleteSport,
-    role: isClub || isFan ? null : athleteRole,
-    region: isClub ? (clubLocation.regionName || clubLocationFallback.region || null) : profile?.region ?? null,
-    province: isClub ? (clubLocation.provinceName || clubLocationFallback.province || null) : profile?.province ?? null,
-    city: isClub ? (clubLocation.cityName || clubLocationFallback.city || null) : profile?.city ?? null,
-    interest_region_id: isClub ? clubLocation.regionId : null,
-    interest_province_id: isClub ? clubLocation.provinceId : null,
-    interest_municipality_id: isClub ? clubLocation.municipalityId : null,
-  }), [athleteRole, athleteSport, birthYear, clubLocation.cityName, clubLocation.provinceName, clubLocation.regionName, clubLocation.municipalityId, clubLocation.provinceId, clubLocation.regionId, clubLocationFallback.city, clubLocationFallback.province, clubLocationFallback.region, country, fullName, isClub, isFan, profile, sport]);
+    role: isOrganization || isFan ? null : athleteRole,
+    region: isOrganization ? (clubLocation.regionName || clubLocationFallback.region || null) : profile?.region ?? null,
+    province: isOrganization ? (clubLocation.provinceName || clubLocationFallback.province || null) : profile?.province ?? null,
+    city: isOrganization ? (clubLocation.cityName || clubLocationFallback.city || null) : profile?.city ?? null,
+    interest_region_id: isOrganization ? clubLocation.regionId : null,
+    interest_province_id: isOrganization ? clubLocation.provinceId : null,
+    interest_municipality_id: isOrganization ? clubLocation.municipalityId : null,
+  }), [athleteRole, athleteSport, birthYear, clubLocation.cityName, clubLocation.provinceName, clubLocation.regionName, clubLocation.municipalityId, clubLocation.provinceId, clubLocation.regionId, clubLocationFallback.city, clubLocationFallback.province, clubLocationFallback.region, country, fullName, isClub, isOrganization, isFan, profile, sport]);
   const missingRequiredFields = useMemo(() => getMissingRequiredProfileFields(requiredPreviewProfile), [requiredPreviewProfile]);
   const canSave = useMemo(() => !saving && profile != null, [saving, profile]);
   const currentYear = new Date().getFullYear();
@@ -567,7 +571,7 @@ export default function ProfileEditForm() {
         .map((experience) => ensurePastExperienceCategory(sanitizePastExperience(experience)))
         .filter((experience) => !isPastExperienceEmpty(experience));
 
-      if (!isClub && !isFan) {
+      if (!isOrganization && !isFan) {
         const partialIndex = normalizedPastExperiences.findIndex((experience) => !isPastExperienceComplete(experience));
         if (partialIndex >= 0) {
           throw new Error(`Completa tutti i campi in "Esperienze passate" alla riga ${partialIndex + 1}.`);
@@ -590,16 +594,16 @@ export default function ProfileEditForm() {
           : clubLocation.cityName || clubLocationFallback.city || null;
 
       const interestRegionName =
-        (isClub ? clubLocation : interestLocation).regionName ||
-        (isClub ? clubLocationFallback : interestFallback).region ||
+        (isOrganization ? clubLocation : interestLocation).regionName ||
+        (isOrganization ? clubLocationFallback : interestFallback).region ||
         null;
       const interestProvinceName =
-        (isClub ? clubLocation : interestLocation).provinceName ||
-        (isClub ? clubLocationFallback : interestFallback).province ||
+        (isOrganization ? clubLocation : interestLocation).provinceName ||
+        (isOrganization ? clubLocationFallback : interestFallback).province ||
         null;
       const interestCityName =
-        (isClub ? clubLocation : interestLocation).cityName ||
-        (isClub ? clubLocationFallback : interestFallback).city ||
+        (isOrganization ? clubLocation : interestLocation).cityName ||
+        (isOrganization ? clubLocationFallback : interestFallback).city ||
         null;
 
       const residenceRegionName = residenceLocation.regionName || residenceFallback.region || null;
@@ -618,29 +622,29 @@ export default function ProfileEditForm() {
         avatar_url: avatarUrl || null,
 
         // interesse
-        interest_country: isClub ? normalizedCountry : normalizedInterestCountry,
+        interest_country: isOrganization ? normalizedCountry : normalizedInterestCountry,
         interest_region_id:
-          (isClub ? normalizedCountry : normalizedInterestCountry) === 'IT'
-            ? (isClub ? clubLocation.regionId : interestLocation.regionId)
+          (isOrganization ? normalizedCountry : normalizedInterestCountry) === 'IT'
+            ? (isOrganization ? clubLocation.regionId : interestLocation.regionId)
             : null,
         interest_province_id:
-          (isClub ? normalizedCountry : normalizedInterestCountry) === 'IT'
-            ? (isClub ? clubLocation.provinceId : interestLocation.provinceId)
+          (isOrganization ? normalizedCountry : normalizedInterestCountry) === 'IT'
+            ? (isOrganization ? clubLocation.provinceId : interestLocation.provinceId)
             : null,
         interest_municipality_id:
-          (isClub ? normalizedCountry : normalizedInterestCountry) === 'IT'
-            ? (isClub ? clubLocation.municipalityId : interestLocation.municipalityId)
+          (isOrganization ? normalizedCountry : normalizedInterestCountry) === 'IT'
+            ? (isOrganization ? clubLocation.municipalityId : interestLocation.municipalityId)
             : null,
         interest_region:
-          (isClub ? normalizedCountry : normalizedInterestCountry) === 'IT'
+          (isOrganization ? normalizedCountry : normalizedInterestCountry) === 'IT'
             ? interestRegionName
             : interestRegionName,
         interest_province:
-          (isClub ? normalizedCountry : normalizedInterestCountry) === 'IT'
+          (isOrganization ? normalizedCountry : normalizedInterestCountry) === 'IT'
             ? interestProvinceName
             : null,
         interest_city:
-          (isClub ? normalizedCountry : normalizedInterestCountry) === 'IT'
+          (isOrganization ? normalizedCountry : normalizedInterestCountry) === 'IT'
             ? interestCityName
             : interestCityName,
 
@@ -649,10 +653,10 @@ export default function ProfileEditForm() {
         notify_email_new_message: !!notifyEmail,
       };
 
-      if (isClub) {
+      if (isOrganization) {
         Object.assign(basePayload, {
-          sport: (sport || '').trim() || null,
-          club_league_category: (clubCategory || '').trim() || null,
+          sport: isClub ? (sport || '').trim() || null : null,
+          club_league_category: isClub ? (clubCategory || '').trim() || null : null,
           club_foundation_year: foundationYear === '' ? null : Number(foundationYear),
           club_stadium: (stadium || '').trim() || null,
           club_stadium_address: (stadiumAddress || '').trim() || null,
@@ -764,7 +768,7 @@ export default function ProfileEditForm() {
         throw new Error(j?.error ?? 'Salvataggio non riuscito');
       }
 
-      if (!isClub && !isFan) {
+      if (!isOrganization && !isFan) {
         const experiencesRes = await fetch('/api/profiles/me/experiences', {
           method: 'PATCH',
           credentials: 'include',
@@ -874,10 +878,10 @@ export default function ProfileEditForm() {
         {/* Dati personali / club */}
         <section className="rounded-2xl border p-4 md:p-5">
           <h2 className="mb-3 text-lg font-semibold">
-            {isClub ? 'Modifica dati club' : 'Dati personali'}
+            {isOrganization ? `Modifica dati ${organizationLabel}` : 'Dati personali'}
           </h2>
 
-          {isClub ? (
+          {isOrganization ? (
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="flex flex-col gap-2 md:col-span-2">
@@ -898,19 +902,19 @@ export default function ProfileEditForm() {
                 </div>
 
                 <div className="flex min-w-0 flex-col gap-1 md:col-span-2">
-                  <label className="text-sm text-gray-600">Nome del club<RequiredMark /></label>
+                  <label className="text-sm text-gray-600">Nome del {organizationLabel}<RequiredMark /></label>
                   <input
                     className="w-full min-w-0 rounded-lg border p-2"
                     value={fullName}
                     onChange={(e) => setFullName(sanitizeProfileClubName(e.target.value))}
-                    placeholder="Es. ASD Carlentini"
+                    placeholder={isInstitution ? 'Es. Federazione Italiana Esempio' : 'Es. ASD Carlentini'}
                   />
                 </div>
               </div>
 
               <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-4">
                 <div className="flex min-w-0 flex-col gap-1">
-                  <label className="text-sm text-gray-600">Nazione del club<RequiredMark /></label>
+                  <label className="text-sm text-gray-600">Nazione del {organizationLabel}<RequiredMark /></label>
                   <select
                     className="w-full min-w-0 rounded-lg border p-2"
                     value={country}
@@ -934,16 +938,16 @@ export default function ProfileEditForm() {
                   fallback={clubLocationFallback}
                   onChange={setClubLocation}
                   labels={{
-                    region: 'Regione del club',
-                    province: 'Provincia del club',
-                    city: 'Città del club',
+                    region: `Regione del ${organizationLabel}`,
+                    province: `Provincia del ${organizationLabel}`,
+                    city: `Città del ${organizationLabel}`,
                   }}
                   required
                 />
               </div>
 
               <div className="flex min-w-0 flex-col gap-1">
-                <label className="text-sm text-gray-600">Motto del club</label>
+                <label className="text-sm text-gray-600">Motto del {organizationLabel}</label>
                 <input
                   className="w-full min-w-0 rounded-lg border p-2"
                   value={clubMotto}
@@ -953,6 +957,7 @@ export default function ProfileEditForm() {
               </div>
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                {isClub && (
                 <div className="flex min-w-0 flex-col gap-1">
                   <label className="text-sm text-gray-600">Sport del club<RequiredMark /></label>
                   <select
@@ -967,7 +972,9 @@ export default function ProfileEditForm() {
                     ))}
                   </select>
                 </div>
+                )}
 
+                {isClub && (
                 <div className="flex min-w-0 flex-col gap-1">
                   <label className="text-sm text-gray-600">Categoria</label>
                   <select
@@ -982,6 +989,7 @@ export default function ProfileEditForm() {
                     ))}
                   </select>
                 </div>
+                )}
 
                 <div className="flex min-w-0 flex-col gap-1">
                   <label className="text-sm text-gray-600">Anno di fondazione</label>
@@ -1004,13 +1012,20 @@ export default function ProfileEditForm() {
                 <div className="flex min-w-0 flex-col gap-2 rounded-2xl border border-blue-100 bg-blue-50/60 p-4 md:col-span-2">
                   <div>
                     <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-700">Geolocalizzazione</p>
-                    <h3 className="mt-1 text-lg font-semibold text-slate-950">Posizione del Club sulla mappa nazionale</h3>
+                    <h3 className="mt-1 text-lg font-semibold text-slate-950">Posizione del {organizationTitle} sulla mappa nazionale</h3>
                     <p className="mt-1 text-sm text-slate-600">
-                      Salva la sede o l’impianto principale: sulla mappa dei Club il tuo logo comparirà in questo punto.
+                      {isInstitution ? 'Salva la sede principale: sulla mappa degli enti il tuo logo comparirà in questo punto.' : 'Salva la sede o l’impianto principale: sulla mappa dei Club il tuo logo comparirà in questo punto.'}
                     </p>
                   </div>
                   <ClubStadiumMapPicker
                     value={{ name: stadium, address: stadiumAddress, lat: stadiumLat, lng: stadiumLng }}
+                    labels={isInstitution ? {
+                      searchLabel: 'Cerca sede o indirizzo',
+                      placeholder: 'Digita nome sede o indirizzo',
+                      defaultName: 'Sede ente',
+                      markerFallback: 'Sede ente',
+                      helperText: 'Clicca sulla mappa oppure usa la posizione del dispositivo per impostare dove mostrare il logo dell’Ente sulla mappa nazionale.',
+                    } : undefined}
                     onChange={(val) => {
                       setStadium(val.name || '');
                       setStadiumAddress(val.address || '');
@@ -1023,7 +1038,7 @@ export default function ProfileEditForm() {
 
               <div className="grid gap-3 rounded-xl bg-gray-50 p-3 text-xs text-gray-700 md:grid-cols-2">
                 <div>
-                  <div className="text-[11px] uppercase tracking-wide text-gray-500">Nome stadio</div>
+                  <div className="text-[11px] uppercase tracking-wide text-gray-500">{isInstitution ? 'Nome sede' : 'Nome stadio'}</div>
                   <div className="font-semibold text-gray-900">{stadium || '—'}</div>
                 </div>
                 <div>
@@ -1040,20 +1055,21 @@ export default function ProfileEditForm() {
                 </div>
                 <div>
                   <p className="text-[11px] text-gray-600">
-                    Usa la ricerca, la posizione del dispositivo o clicca sulla mappa per posizionare il marker:
-                    salveremo nome, indirizzo e coordinate usate dal segnaposto con il logo del Club.
+                    {isInstitution
+                      ? 'Usa la ricerca, la posizione del dispositivo o clicca sulla mappa per posizionare la sede: salveremo nome e indirizzo da mostrare come localizzazione pubblica dell’Ente.'
+                      : 'Usa la ricerca, la posizione del dispositivo o clicca sulla mappa per posizionare il marker: salveremo nome, indirizzo e coordinate usate dal segnaposto con il logo del Club.'}
                   </p>
                 </div>
               </div>
 
               <div className="flex min-w-0 flex-col gap-1">
-                <label className="text-sm text-gray-600">Biografia del club</label>
+                <label className="text-sm text-gray-600">Biografia del {organizationLabel}</label>
                 <textarea
                   className="w-full min-w-0 rounded-lg border p-2"
                   rows={4}
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
-                  placeholder="Storia, valori, palmarès…"
+                  placeholder="Storia, valori, attività…"
                 />
               </div>
             </div>
@@ -1230,7 +1246,7 @@ export default function ProfileEditForm() {
           )}
         </section>
 
-        {!isClub && !isFan && (
+        {!isOrganization && !isFan && (
           <section className="rounded-2xl border p-4 md:p-5">
             <h2 className="mb-3 text-lg font-semibold">Esperienze passate</h2>
             <div className="space-y-3">
@@ -1333,7 +1349,7 @@ export default function ProfileEditForm() {
         )}
 
         {/* Zona di interesse (atleta) */}
-        {!isClub && (
+        {!isOrganization && (
           <section className="rounded-2xl border p-4 md:p-5">
             <h2 className="mb-3 text-lg font-semibold">Zona di interesse</h2>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-4">

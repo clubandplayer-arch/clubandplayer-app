@@ -17,7 +17,7 @@ import BrandLogo from '@/components/brand/BrandLogo';
 import { buildProfileDisplayName } from '@/lib/displayName';
 import MobileSearchOverlay from '@/components/search/MobileSearchOverlay';
 
-type Role = 'athlete' | 'club' | 'staff' | 'fan' | 'admin' | 'guest';
+type Role = 'athlete' | 'club' | 'staff' | 'fan' | 'admin' | 'institution' | 'guest';
 
 type NavItem = { label: string; href: string; icon: MaterialIconName };
 
@@ -32,7 +32,7 @@ type MobileMenuItem = {
 
 function hasValidAccountType(profile: any): boolean {
   const value = String(profile?.account_type ?? profile?.type ?? '').toLowerCase().trim();
-  return value === 'club' || value === 'athlete' || value === 'staff' || value === 'fan' || value === 'admin';
+  return value === 'club' || value === 'athlete' || value === 'staff' || value === 'fan' || value === 'admin' || value === 'institution';
 }
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -85,7 +85,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        setRole(rawRole === 'club' || rawRole === 'athlete' || rawRole === 'staff' || rawRole === 'fan' || rawRole === 'admin' ? (rawRole as Role) : 'guest');
+        setRole(rawRole === 'club' || rawRole === 'athlete' || rawRole === 'staff' || rawRole === 'fan' || rawRole === 'admin' || rawRole === 'institution' ? (rawRole as Role) : 'guest');
         setAvatarUrl(typeof profile?.avatar_url === 'string' ? profile.avatar_url : null);
         setProfileName(buildProfileDisplayName(profile?.full_name, profile?.display_name, 'Profilo'));
 
@@ -123,20 +123,31 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [pathname, router]);
 
   const isFan = role === 'fan';
+  const isInstitution = role === 'institution';
   const profileHref =
-    role === 'admin' ? '/admin/profile' : role === 'club' ? '/club/profile' : role === 'fan' ? '/fan/profile' : '/player/profile';
+    role === 'admin' ? '/admin/profile' : role === 'club' ? '/club/profile' : role === 'institution' ? '/institution/profile' : role === 'fan' ? '/fan/profile' : '/player/profile';
   const applicationsHref = role === 'club' ? '/club/applications' : '/applications';
 
   const navItems = useMemo<NavItem[]>(
-    () => [
-      { label: 'Feed', href: '/feed', icon: 'home' },
-      ...(isFan ? [] : [{ label: 'Opportunità', href: '/opportunities', icon: 'opportunities' as const }]),
-      ...(isFan ? [] : [{ label: 'Candidature', href: applicationsHref, icon: 'applications' as const }]),
-      { label: 'Messaggi', href: '/messages', icon: 'mail' },
-      { label: 'Mappa Club', href: '/club-map', icon: 'map' },
-      { label: 'Notifiche', href: '/notifications', icon: 'notifications' },
-    ],
-    [applicationsHref, isFan],
+    () => {
+      if (isInstitution) {
+        return [
+          { label: 'Feed', href: '/feed', icon: 'home' },
+          { label: 'Messaggi', href: '/messages', icon: 'mail' },
+          { label: 'Mappa Club', href: '/club-map', icon: 'map' },
+          { label: 'Notifiche', href: '/notifications', icon: 'notifications' },
+        ];
+      }
+      return [
+        { label: 'Feed', href: '/feed', icon: 'home' },
+        ...(isFan ? [] : [{ label: 'Opportunità', href: '/opportunities', icon: 'opportunities' as const }]),
+        ...(isFan ? [] : [{ label: 'Candidature', href: applicationsHref, icon: 'applications' as const }]),
+        { label: 'Messaggi', href: '/messages', icon: 'mail' },
+        { label: 'Mappa Club', href: '/club-map', icon: 'map' },
+        { label: 'Notifiche', href: '/notifications', icon: 'notifications' },
+      ];
+    },
+    [applicationsHref, isFan, isInstitution],
   );
 
   const isActive = (href: string) => pathname === href || (!!pathname && pathname.startsWith(href + '/'));
@@ -428,6 +439,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                         >
                           Modifica profilo
                         </Link>
+                        {isInstitution ? (
+                          <Link
+                            href="/mymedia"
+                            role="menuitem"
+                            onClick={() => setIsProfileMenuOpen(false)}
+                            className="block rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
+                          >
+                            Media
+                          </Link>
+                        ) : null}
                         {isClub && (
                           <Link
                             href="/opportunities/new"
@@ -448,14 +469,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                             Verifica profilo
                           </Link>
                         )}
-                        <Link
-                          href="/settings"
-                          role="menuitem"
-                          onClick={() => setIsProfileMenuOpen(false)}
-                          className="block rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
-                        >
-                          Impostazioni
-                        </Link>
+                        {!isInstitution ? (
+                          <Link
+                            href="/settings"
+                            role="menuitem"
+                            onClick={() => setIsProfileMenuOpen(false)}
+                            className="block rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
+                          >
+                            Impostazioni
+                          </Link>
+                        ) : null}
                         <div className="my-1 h-px bg-slate-200" role="separator" />
                         <Link
                           href="/logout"

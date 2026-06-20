@@ -18,7 +18,7 @@ type P = {
   id?: string | null;
   user_id?: string | null;
 
-  account_type?: 'club' | 'athlete' | 'fan' | null;
+  account_type?: 'club' | 'athlete' | 'fan' | 'institution' | null;
 
   full_name?: string | null;
   display_name?: string | null;
@@ -155,12 +155,15 @@ export default function ProfileMiniCard() {
   const isClub = accountType === 'club';
   const isFan = accountType === 'fan';
   const isAthlete = accountType === 'athlete';
+  const isInstitution = accountType === 'institution';
   const targetId = p?.id ? String(p.id) : p?.user_id ? String(p.user_id) : '';
   const isSelf =
     !!targetId && ((!!p?.id && targetId === String(p.id)) || (!!p?.user_id && targetId === String(p.user_id)));
   const year = new Date().getFullYear();
   const age = !isClub && p?.birth_year ? Math.max(0, year - p.birth_year) : null;
-  const name = p?.full_name || p?.display_name || (isClub ? 'Il tuo club' : 'Benvenuto!');
+  const rawName = p?.full_name || p?.display_name || '';
+  const isEmailName = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawName.trim());
+  const name = isInstitution && isEmailName ? 'Ente in verifica' : rawName || (isClub ? 'Il tuo club' : isInstitution ? 'Ente in verifica' : 'Benvenuto!');
   const interestLabel = [interest.city, interest.province, interest.country].filter(Boolean).join(', ');
   const sportLabel = normalizeSport(p?.sport ?? null) ?? p?.sport ?? null;
   const clubGeoLabel = isClub ? interestLabel : '';

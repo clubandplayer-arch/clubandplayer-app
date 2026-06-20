@@ -39,16 +39,18 @@ type ApiResponse = {
   }>;
 };
 
-type AccountType = 'club' | 'athlete' | 'staff';
-type TabKey = 'club' | 'player' | 'staff';
+type AccountType = 'institution' | 'club' | 'athlete' | 'staff';
+type TabKey = 'institution' | 'club' | 'player' | 'staff';
 
 const TABS: Array<{ key: TabKey; label: string }> = [
+  { key: 'institution', label: 'ENTE' },
   { key: 'club', label: 'Club' },
   { key: 'player', label: 'Player' },
   { key: 'staff', label: 'Staff' },
 ];
 
 function mapAccountType(value: string | null | undefined): AccountType {
+  if (value === 'institution' || value === 'ente') return 'institution';
   if (value === 'club') return 'club';
   if (value === 'staff') return 'staff';
   return 'athlete';
@@ -97,10 +99,10 @@ type FollowCardProps = {
 
 function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, onToggleRoster }: FollowCardProps) {
   const [avatarOpen, setAvatarOpen] = useState(false);
-  const href = type === 'club' ? `/clubs/${profile.id}` : `/players/${profile.id}`;
+  const href = type === 'club' ? `/clubs/${profile.id}` : type === 'institution' ? `/institutions/${profile.id}` : `/players/${profile.id}`;
   const meta = [profile.city, profile.sport, normalizeRoleLabel(profile.role)].filter(Boolean).join(' · ');
-  const playerIso2 = type !== 'club' ? extractIso2(profile.country) : null;
-  const playerCountryLabel = type !== 'club' ? getCountryLabel(profile.country, playerIso2) : '';
+  const playerIso2 = type !== 'club' && type !== 'institution' ? extractIso2(profile.country) : null;
+  const playerCountryLabel = type !== 'club' && type !== 'institution' ? getCountryLabel(profile.country, playerIso2) : '';
   const initials = getInitials(profile.name || 'Profilo');
   const toggleDisabled = rosterPending || !onToggleRoster;
   const avatarUrl = profile.avatar_url ? profile.avatar_url.trim() : '';
@@ -146,7 +148,7 @@ function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, 
             <div className="flex flex-wrap items-center gap-1">
               <p className="break-words text-sm font-semibold leading-tight text-neutral-900 dark:text-white">{profile.name}</p>
             </div>
-            {type !== 'club' && (playerIso2 || playerCountryLabel) ? (
+            {type !== 'club' && type !== 'institution' && (playerIso2 || playerCountryLabel) ? (
               <div className="mt-1 flex items-center gap-1 text-xs text-neutral-500 dark:text-neutral-400">
                 {playerIso2 ? <CountryFlag iso2={playerIso2} /> : null}
                 <span>{playerCountryLabel}</span>
@@ -326,6 +328,7 @@ export default function FollowingPage() {
     }
   }, []);
 
+  const institutionFollows = useMemo(() => items.filter((p) => mapAccountType(p.account_type ?? p.type) === 'institution').sort((a, b) => a.name.localeCompare(b.name, 'it')), [items]);
   const clubFollows = useMemo(() => items.filter((p) => mapAccountType(p.account_type) === 'club'), [items]);
   const staffFollows = useMemo(
     () =>
@@ -345,8 +348,8 @@ export default function FollowingPage() {
     [items],
   );
   const activeItems = useMemo(
-    () => (activeTab === 'club' ? clubFollows : activeTab === 'staff' ? staffFollows : playerFollows),
-    [activeTab, clubFollows, playerFollows, staffFollows],
+    () => (activeTab === 'institution' ? institutionFollows : activeTab === 'club' ? clubFollows : activeTab === 'staff' ? staffFollows : playerFollows),
+    [activeTab, clubFollows, institutionFollows, playerFollows, staffFollows],
   );
   const showRosterControls = isClub && !roleLoading;
 
@@ -391,6 +394,8 @@ export default function FollowingPage() {
         <div className="rounded-xl border border-dashed border-neutral-200 bg-white/70 p-4 text-sm text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900/60 dark:text-neutral-300">
           {activeTab === 'club'
             ? 'Non stai seguendo nessun club al momento.'
+            : activeTab === 'institution'
+            ? 'Non stai seguendo nessun ente al momento.'
             : activeTab === 'staff'
             ? 'Non stai seguendo nessuno staff al momento.'
             : 'Non stai seguendo nessun player al momento.'}
@@ -400,7 +405,7 @@ export default function FollowingPage() {
       {activeItems.length > 0 ? (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3">
           {activeItems.map((profile) => {
-            const type: AccountType = activeTab === 'club' ? 'club' : activeTab === 'staff' ? 'staff' : 'athlete';
+            const type: AccountType = activeTab === 'institution' ? 'institution' : activeTab === 'club' ? 'club' : activeTab === 'staff' ? 'staff' : 'athlete';
             return (
               <FollowCard
                 key={profile.id}

@@ -9,7 +9,7 @@ export async function middleware(req: NextRequest) {
   const url = new URL(req.url);
   const pathname = url.pathname;
 
-  let role: 'club' | 'athlete' | 'staff' | 'fan' | 'admin' | 'guest' = 'guest';
+  let role: 'club' | 'athlete' | 'staff' | 'fan' | 'admin' | 'institution' | 'guest' = 'guest';
   let authenticated = false;
   let profileComplete = true;
   let completionPath = '/player/profile';
@@ -22,7 +22,7 @@ export async function middleware(req: NextRequest) {
     const j = await r.json().catch(() => ({}));
     authenticated = !!j?.user?.id;
     const raw = (j?.role ?? '').toString().toLowerCase();
-    if (raw === 'club' || raw === 'athlete' || raw === 'staff' || raw === 'fan' || raw === 'admin') role = raw;
+    if (raw === 'club' || raw === 'athlete' || raw === 'staff' || raw === 'fan' || raw === 'admin' || raw === 'institution') role = raw;
     profileComplete = j?.profile?.is_complete !== false;
     completionPath = (j?.profile?.completion_path || '').toString() || completionPath;
   } catch {
@@ -55,13 +55,44 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  // Rotte /admin/* solo per admin
-  if (pathname.startsWith('/admin/') && role !== 'admin') {
+  const isPublicAdminProfilePath = /^\/admin\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pathname);
+
+  // Rotte /admin/* solo per admin, tranne la pagina pubblica del profilo admin.
+  if (pathname.startsWith('/admin/') && !isPublicAdminProfilePath && role !== 'admin') {
     return NextResponse.redirect(new URL(authenticated ? '/feed' : '/login?next=%2Fadmin%2Fprofile', url));
   }
 
   if (authenticated && role === 'admin' && pathname === '/player/profile') {
     return NextResponse.redirect(new URL('/admin/profile', url));
+  }
+
+  // Gli enti non verificati possono restare solo nel flusso di verifica documentale.
+  if (authenticated && role === 'institution') {
+    let institutionVerified = false;
+    try {
+      const verificationRes = await fetch(new URL('/api/institution/verification/status', url.origin), {
+        headers: { cookie: req.headers.get('cookie') || '' },
+        cache: 'no-store',
+      });
+      const verificationJson = await verificationRes.json().catch(() => ({}));
+      const request = verificationJson?.request;
+      const verifiedUntil = request?.verified_until ? new Date(String(request.verified_until)) : null;
+      institutionVerified =
+        request?.status === 'approved' &&
+        (!verifiedUntil || Number.isNaN(verifiedUntil.getTime()) || verifiedUntil.getTime() > Date.now());
+    } catch {
+      institutionVerified = false;
+    }
+
+    const institutionAllowedPath = pathname === '/institution/verification' || pathname === '/logout';
+    if (!institutionVerified && !institutionAllowedPath) {
+      return NextResponse.redirect(new URL('/institution/verification', url));
+    }
+  }
+
+  // Rotte /institution/* solo per ente istituzionale
+  if (pathname.startsWith('/institution/') && role !== 'institution') {
+    return NextResponse.redirect(new URL(authenticated ? '/feed' : '/login?next=%2Finstitution%2Fverification', url));
   }
 
   // Rotte /club/* solo per club
