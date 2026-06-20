@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 
 type RequestRow = { id?: string; status?: string; document_path?: string | null } | null;
 
@@ -24,7 +23,6 @@ function normalizeWebsiteInput(value: string) {
 }
 
 export default function InstitutionVerificationClient() {
-  const router = useRouter();
   const [form, setForm] = useState({
     entityName: '', fiscalCode: '', vatNumber: '', email: '', pec: '', website: '', representative: '', entityType: ENTITY_TYPES[0], documentType: DOCUMENT_TYPES[0].value,
   });
@@ -92,7 +90,7 @@ export default function InstitutionVerificationClient() {
 
   return (
     <main className="page-shell max-w-4xl space-y-6">
-      <button type="button" onClick={() => router.back()} className="text-sm font-semibold text-[var(--brand)]">← Indietro</button>
+      <button type="button" disabled className="cursor-not-allowed text-sm font-semibold text-neutral-400" title="Disponibile dopo la verifica admin">← Indietro</button>
       <header className="space-y-2">
         <h1 className="heading-h1">Verifica Ente Istituzionale</h1>
         <p className="text-sm text-neutral-600">Completa i dati dell’ente e allega una Visura oppure un Certificato P.IVA o CF rilasciato da AdE. La richiesta sarà verificata manualmente lato admin.</p>
