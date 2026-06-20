@@ -226,7 +226,7 @@ function buildInstitutionQuery(
     .from('profiles')
     .select(select, options)
     .or('account_type.eq.institution,type.eq.institution')
-    .or('status.eq.active,status.is.null')
+    .or('status.eq.active,status.eq.approved,status.eq.verified,status.is.null')
     .not('country', 'is', null)
     .neq('country', '')
     .not('region', 'is', null)
