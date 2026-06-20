@@ -226,27 +226,23 @@ function buildInstitutionQuery(
     .from('profiles')
     .select(select, options)
     .or('account_type.eq.institution,type.eq.institution')
-    .or('status.eq.active,status.eq.approved,status.eq.verified,status.is.null')
-    .not('country', 'is', null)
-    .neq('country', '')
-    .not('region', 'is', null)
-    .neq('region', '')
-    .not('province', 'is', null)
-    .neq('province', '')
-    .not('city', 'is', null)
-    .neq('city', '')
+    .or('status.is.null,status.neq.rejected')
     .or('display_name.not.is.null,full_name.not.is.null');
 
   query = query.or(
     [
       `display_name.ilike.${ilikeQuery}`,
       `full_name.ilike.${ilikeQuery}`,
+      `headline.ilike.${ilikeQuery}`,
+      `role.ilike.${ilikeQuery}`,
       `city.ilike.${ilikeQuery}`,
       `province.ilike.${ilikeQuery}`,
       `region.ilike.${ilikeQuery}`,
       `country.ilike.${ilikeQuery}`,
       `club_motto.ilike.${ilikeQuery}`,
       `bio.ilike.${ilikeQuery}`,
+      `club_stadium.ilike.${ilikeQuery}`,
+      `club_stadium_address.ilike.${ilikeQuery}`,
     ].join(','),
   );
 
@@ -304,7 +300,7 @@ async function fetchProfileResults(params: {
     const { data, count, error } = await buildInstitutionQuery(
       supabase,
       ilikeQuery,
-      'id, full_name, display_name, avatar_url, city, province, region, country, club_motto, bio',
+      'id, full_name, display_name, avatar_url, city, province, region, country, headline, role, club_motto, bio, club_stadium, club_stadium_address',
       filters,
       { count: 'exact' },
     )
@@ -317,7 +313,8 @@ async function fetchProfileResults(params: {
     const results: SearchResult[] = rows.map((row) => {
       const displayName = (row.display_name || row.full_name || '').trim();
       const location = buildLocation(row, provinceAbbreviations);
-      const subtitle = [row.club_motto || row.bio, location].filter(Boolean).join(' · ');
+      const institutionDetails = row.headline || row.role || row.club_motto || row.bio || row.club_stadium || row.club_stadium_address;
+      const subtitle = [institutionDetails, location].filter(Boolean).join(' · ');
       return {
         id: String(row.id),
         title: displayName || 'Ente',
