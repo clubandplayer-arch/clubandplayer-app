@@ -47,7 +47,7 @@ export function getProfilePathForAccountType(accountType: ProfileCompletionAccou
   if (accountType === 'club') return '/club/profile';
   if (accountType === 'staff') return '/staff/profile';
   if (accountType === 'fan') return '/fan/profile';
-  if (accountType === 'institution') return '/institution/verification';
+  if (accountType === 'institution') return '/institution/profile';
   return '/player/profile';
 }
 
