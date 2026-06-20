@@ -129,14 +129,24 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const applicationsHref = role === 'club' ? '/club/applications' : '/applications';
 
   const navItems = useMemo<NavItem[]>(
-    () => isInstitution ? [] : [
-      { label: 'Feed', href: '/feed', icon: 'home' },
-      ...(isFan ? [] : [{ label: 'Opportunità', href: '/opportunities', icon: 'opportunities' as const }]),
-      ...(isFan ? [] : [{ label: 'Candidature', href: applicationsHref, icon: 'applications' as const }]),
-      { label: 'Messaggi', href: '/messages', icon: 'mail' },
-      { label: 'Mappa Club', href: '/club-map', icon: 'map' },
-      { label: 'Notifiche', href: '/notifications', icon: 'notifications' },
-    ],
+    () => {
+      if (isInstitution) {
+        return [
+          { label: 'Feed', href: '/feed', icon: 'home' },
+          { label: 'Messaggi', href: '/messages', icon: 'mail' },
+          { label: 'Mappa Club', href: '/club-map', icon: 'map' },
+          { label: 'Notifiche', href: '/notifications', icon: 'notifications' },
+        ];
+      }
+      return [
+        { label: 'Feed', href: '/feed', icon: 'home' },
+        ...(isFan ? [] : [{ label: 'Opportunità', href: '/opportunities', icon: 'opportunities' as const }]),
+        ...(isFan ? [] : [{ label: 'Candidature', href: applicationsHref, icon: 'applications' as const }]),
+        { label: 'Messaggi', href: '/messages', icon: 'mail' },
+        { label: 'Mappa Club', href: '/club-map', icon: 'map' },
+        { label: 'Notifiche', href: '/notifications', icon: 'notifications' },
+      ];
+    },
     [applicationsHref, isFan, isInstitution],
   );
 
@@ -224,7 +234,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       items.push({ key: 'logout', label: 'Logout', href: '/logout', icon: <LogOut size={16} aria-hidden />, tone: 'danger' });
     }
 
-    if (role !== 'guest' && !isInstitution) {
+    if (role !== 'guest') {
       items.push({ key: 'following', label: 'Seguiti', href: '/following', icon: <Users size={16} aria-hidden /> });
       items.push({ key: 'who-to-follow', label: 'Chi seguire', href: '/who-to-follow', icon: <UserPlus size={16} aria-hidden /> });
     }
@@ -266,7 +276,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
 
     return items;
-  }, [avatarUrl, isClub, isInstitution, navItems, profileHref, profileInitials, role, unreadDirectThreads, unreadNotifications]);
+  }, [avatarUrl, isClub, navItems, profileHref, profileInitials, role, unreadDirectThreads, unreadNotifications]);
 
   return (
     <ToastProvider>
@@ -277,7 +287,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <div
                 className="min-w-0 flex h-8 flex-shrink-0 items-center overflow-hidden md:h-10"
               >
-                <BrandLogo variant="header" href={isInstitution ? '/institution/verification' : '/feed'} priority />
+                <BrandLogo variant="header" href="/feed" priority />
               </div>
               <form
                 className="flex flex-1 min-w-0 items-center md:flex-none md:w-80"
@@ -309,7 +319,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
               <nav className="hidden flex-1 justify-center md:flex">
                 <div className="flex items-center gap-1 rounded-full border border-white/40 bg-white/70 px-2 py-1 shadow-sm backdrop-blur">
-                  {role !== 'guest' && !isInstitution && (
+                  {role !== 'guest' && (
                     <Link
                       href="/following"
                       aria-label="Seguiti"
@@ -421,47 +431,55 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                         role="menu"
                         className="absolute right-0 z-50 mt-2 w-52 rounded-xl border border-slate-200 bg-white p-1 text-sm shadow-lg"
                       >
-                        {!isInstitution ? (
-                          <>
-                            <Link
-                              href={profileHref}
-                              role="menuitem"
-                              onClick={() => setIsProfileMenuOpen(false)}
-                              className="block rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
-                            >
-                              Modifica profilo
-                            </Link>
-                            {isClub && (
-                              <Link
-                                href="/opportunities/new"
-                                role="menuitem"
-                                onClick={() => setIsProfileMenuOpen(false)}
-                                className="block rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
-                              >
-                                Crea opportunità
-                              </Link>
-                            )}
-                            {isClub && (
-                              <Link
-                                href="/club/verification"
-                                role="menuitem"
-                                onClick={() => setIsProfileMenuOpen(false)}
-                                className="block rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
-                              >
-                                Verifica profilo
-                              </Link>
-                            )}
-                            <Link
-                              href="/settings"
-                              role="menuitem"
-                              onClick={() => setIsProfileMenuOpen(false)}
-                              className="block rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
-                            >
-                              Impostazioni
-                            </Link>
-                            <div className="my-1 h-px bg-slate-200" role="separator" />
-                          </>
+                        <Link
+                          href={profileHref}
+                          role="menuitem"
+                          onClick={() => setIsProfileMenuOpen(false)}
+                          className="block rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
+                        >
+                          Modifica profilo
+                        </Link>
+                        {isInstitution ? (
+                          <Link
+                            href="/mymedia"
+                            role="menuitem"
+                            onClick={() => setIsProfileMenuOpen(false)}
+                            className="block rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
+                          >
+                            Media
+                          </Link>
                         ) : null}
+                        {isClub && (
+                          <Link
+                            href="/opportunities/new"
+                            role="menuitem"
+                            onClick={() => setIsProfileMenuOpen(false)}
+                            className="block rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
+                          >
+                            Crea opportunità
+                          </Link>
+                        )}
+                        {isClub && (
+                          <Link
+                            href="/club/verification"
+                            role="menuitem"
+                            onClick={() => setIsProfileMenuOpen(false)}
+                            className="block rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
+                          >
+                            Verifica profilo
+                          </Link>
+                        )}
+                        {!isInstitution ? (
+                          <Link
+                            href="/settings"
+                            role="menuitem"
+                            onClick={() => setIsProfileMenuOpen(false)}
+                            className="block rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
+                          >
+                            Impostazioni
+                          </Link>
+                        ) : null}
+                        <div className="my-1 h-px bg-slate-200" role="separator" />
                         <Link
                           href="/logout"
                           role="menuitem"
