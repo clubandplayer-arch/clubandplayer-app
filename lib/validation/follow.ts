@@ -23,7 +23,7 @@ export const FollowStateQuerySchema = z.object({
 export const FollowSuggestionsQuerySchema = z.object({
   limit: numberFromParam(4, 1, 50),
   kind: z
-    .enum(['club', 'player', 'staff'])
+    .enum(['institution', 'club', 'player', 'staff'])
     .optional(),
   geoScope: z.enum(['country', 'region', 'province', 'city']).optional(),
   sportScope: z.enum(['mine', 'all']).optional(),

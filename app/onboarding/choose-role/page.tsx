@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { MaterialIcon, type MaterialIconName } from '@/components/icons/MaterialIcon';
 
-type Role = 'club' | 'athlete' | 'staff' | 'fan';
+type Role = 'institution' | 'club' | 'athlete' | 'staff' | 'fan';
 
 export default function ChooseRolePage() {
   const router = useRouter();
@@ -29,6 +29,10 @@ export default function ChooseRolePage() {
         const j = await r.json().catch(() => ({}));
         throw new Error(j?.error ?? 'Salvataggio non riuscito');
       }
+      if (role === 'institution') {
+        router.replace('/institution/verification');
+        return;
+      }
       if (role === 'club') {
         router.replace('/club/profile');
         return;
@@ -50,6 +54,12 @@ export default function ChooseRolePage() {
     description: string;
     icon: MaterialIconName;
   }> = [
+    {
+      role: 'institution',
+      title: 'ENTE ISTITUZIONALE',
+      description: 'Federazioni, EPS, comitati, delegazioni e leghe con verifica documentale',
+      icon: 'globe',
+    },
     {
       role: 'club',
       title: 'CLUB',
@@ -85,7 +95,7 @@ export default function ChooseRolePage() {
         <p className="mt-3 text-base text-neutral-600 md:text-lg">Ogni ruolo offre un&apos;esperienza diversa</p>
       </div>
 
-      <div className="mx-auto mt-8 grid max-w-6xl gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mx-auto mt-8 grid max-w-6xl gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {roleCards.map(({ role, title, description, icon }) => {
           const active = selectedRole === role;
           return (

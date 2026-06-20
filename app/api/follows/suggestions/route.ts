@@ -14,7 +14,7 @@ type Suggestion = {
   id: string;
   user_id?: string | null;
   name: string;
-  kind: 'club' | 'player' | 'staff';
+  kind: 'institution' | 'club' | 'player' | 'staff';
   location?: string | null;
   category?: string | null;
   full_name?: string | null;
@@ -165,6 +165,7 @@ export async function GET(req: NextRequest) {
     const normalizeAccountType = (value?: string | null) => {
       const cleaned = typeof value === 'string' ? value.toLowerCase().trim() : '';
       if (!cleaned) return null;
+      if (cleaned === 'institution' || cleaned === 'ente') return 'institution';
       if (cleaned === 'club') return 'club';
       if (cleaned === 'athlete' || cleaned === 'player') return 'athlete';
       if (cleaned === 'staff') return 'staff';
@@ -187,7 +188,7 @@ export async function GET(req: NextRequest) {
       return query.not('id', 'in', inClause);
     };
 
-    async function runQuery(accountType: 'club' | 'athlete' | 'staff', filters: Array<(q: any) => any>, max: number) {
+    async function runQuery(accountType: 'institution' | 'club' | 'athlete' | 'staff', filters: Array<(q: any) => any>, max: number) {
       let query = supabase
         .from('profiles')
         .select(baseSelect);
@@ -208,7 +209,9 @@ export async function GET(req: NextRequest) {
 
       query = applyExclusions(query);
 
-      query = query.order('updated_at', { ascending: false }).limit(max);
+      query = accountType === 'institution'
+        ? query.order('full_name', { ascending: true, nullsFirst: false }).order('display_name', { ascending: true, nullsFirst: false }).limit(max)
+        : query.order('updated_at', { ascending: false }).limit(max);
 
       const { data, error } = await query;
       if (error) throw error;
@@ -219,12 +222,14 @@ export async function GET(req: NextRequest) {
 
     const mapSuggestion = (row: any, athleteOverride?: any): Suggestion => {
       const normalizedType = normalizeAccountType(row.account_type ?? row.type);
-      const kind = normalizedType === 'club' ? 'club' : 'player';
+      const kind = normalizedType === 'institution' ? 'institution' : normalizedType === 'club' ? 'club' : 'player';
       const fullName = athleteOverride?.full_name ?? row.full_name ?? null;
       const displayName = athleteOverride?.display_name ?? row.display_name ?? null;
       const avatarUrl = athleteOverride?.avatar_url ?? row.avatar_url ?? null;
       const name =
-        kind === 'club'
+        kind === 'institution'
+          ? buildClubDisplayName(fullName, displayName, 'Ente')
+          : kind === 'club'
           ? buildClubDisplayName(fullName, displayName, 'Club')
           : buildPlayerDisplayName(fullName, displayName, 'Profilo');
 
@@ -321,9 +326,9 @@ export async function GET(req: NextRequest) {
     const clubFilters = buildFilters();
     const playerFilters = buildFilters();
 
-    if (kind === 'club' || kind === 'player' || kind === 'staff') {
-      const accountType = kind === 'club' ? 'club' : kind === 'staff' ? 'staff' : 'athlete';
-      const filters = kind === 'club' ? clubFilters : playerFilters;
+    if (kind === 'institution' || kind === 'club' || kind === 'player' || kind === 'staff') {
+      const accountType = kind === 'institution' ? 'institution' : kind === 'club' ? 'club' : kind === 'staff' ? 'staff' : 'athlete';
+      const filters = kind === 'institution' || kind === 'club' ? clubFilters : playerFilters;
       for (const filterGroup of filters) {
         if (results.length >= limit) break;
         const rows = await runQuery(accountType, filterGroup, limit * 6);
@@ -424,7 +429,8 @@ export async function GET(req: NextRequest) {
     }
 
     const items = rawResults.map((row) => {
-      const isClub = normalizeAccountType(row?.account_type ?? row?.type) === 'club';
+      const normalizedRowType = normalizeAccountType(row?.account_type ?? row?.type);
+      const isClub = normalizedRowType === 'club';
       return {
         ...mapSuggestion(row, athleteMap.get(String(row.id))),
         is_verified: isClub ? clubVerificationMap.get(String(row.id)) ?? false : null,

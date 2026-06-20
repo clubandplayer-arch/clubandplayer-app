@@ -242,7 +242,17 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   if (Object.prototype.hasOwnProperty.call(updates, 'account_type')) {
     updates.type = updates.account_type ?? null;
   }
-  if (effectiveAccountType === 'club') {
+  if (effectiveAccountType === 'institution') {
+    updates.role = 'Ente';
+    if ('full_name' in updates && updates.full_name) {
+      const rawInstitutionName = String(updates.full_name);
+      if (!isValidProfileClubName(rawInstitutionName)) {
+        return jsonError("Il campo Nome ente può contenere solo lettere, numeri, spazi, apostrofo, virgola, punto e trattino", 400);
+      }
+      updates.full_name = sanitizeProfileClubName(rawInstitutionName);
+      updates.display_name = updates.full_name;
+    }
+  } else if (effectiveAccountType === 'club') {
     updates.role = 'Club';
     if ('interest_region' in updates) updates.region = updates.interest_region;
     if ('interest_province' in updates) updates.province = updates.interest_province;

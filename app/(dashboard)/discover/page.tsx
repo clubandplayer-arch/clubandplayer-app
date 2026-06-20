@@ -15,7 +15,7 @@ type Suggestion = {
   id: string;
   display_name?: string | null;
   full_name?: string | null;
-  kind?: 'club' | 'player' | null;
+  kind?: 'institution' | 'club' | 'player' | null;
   category?: string | null;
   location?: string | null;
   city?: string | null;
@@ -26,22 +26,25 @@ type Suggestion = {
   is_verified?: boolean | null;
 };
 
-type TabKey = 'club' | 'player' | 'staff';
+type TabKey = 'institution' | 'club' | 'player' | 'staff';
 type GeoScope = 'country' | 'region' | 'province' | 'city';
 type SportScope = 'mine' | 'all';
 
 const TABS: Array<{ key: TabKey; label: string }> = [
+  { key: 'institution', label: 'ENTE' },
   { key: 'club', label: 'Club' },
   { key: 'player', label: 'Player' },
   { key: 'staff', label: 'Staff' },
 ];
 
 function targetHref(item: Suggestion) {
-  return item.kind === 'club' ? `/clubs/${item.id}` : `/players/${item.id}`;
+  return item.kind === 'club' ? `/clubs/${item.id}` : item.kind === 'institution' ? `/institutions/${item.id}` : `/players/${item.id}`;
 }
 
 function displayName(item: Suggestion) {
-  return item.kind === 'club'
+  return item.kind === 'institution'
+    ? buildClubDisplayName(item.full_name ?? null, item.display_name ?? null, 'Ente')
+    : item.kind === 'club'
     ? buildClubDisplayName(item.full_name ?? null, item.display_name ?? null, 'Club')
     : buildPlayerDisplayName(item.full_name ?? null, item.display_name ?? null, 'Profilo');
 }
@@ -94,7 +97,7 @@ function secondaryMetaLine(suggestion: Suggestion): ReactNode {
 export default function DiscoverPage() {
   const { role: contextRole } = useCurrentProfileContext();
   const [activeTab, setActiveTab] = useState<TabKey>('club');
-  const [items, setItems] = useState<Record<TabKey, Suggestion[]>>({ club: [], player: [], staff: [] });
+  const [items, setItems] = useState<Record<TabKey, Suggestion[]>>({ institution: [], club: [], player: [], staff: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<{ url: string; alt: string } | null>(null);
@@ -128,7 +131,7 @@ export default function DiscoverPage() {
           id: item.id,
           display_name: item.display_name ?? item.name ?? null,
           full_name: item.full_name ?? item.name ?? null,
-          kind: item.kind ?? (item.account_type === 'club' ? 'club' : item.account_type ? 'player' : null),
+          kind: item.kind ?? (item.account_type === 'institution' ? 'institution' : item.account_type === 'club' ? 'club' : item.account_type ? 'player' : null),
         category: item.category ?? null,
         location: item.location ?? null,
         city: item.city ?? null,
@@ -146,13 +149,14 @@ export default function DiscoverPage() {
       setLoading(true);
       setError(null);
       try {
-        const [clubs, players, staff] = await Promise.all([
+        const [institutions, clubs, players, staff] = await Promise.all([
+          fetchSuggestions('institution'),
           fetchSuggestions('club'),
           fetchSuggestions('player'),
           fetchSuggestions('staff'),
         ]);
         if (cancelled) return;
-        setItems({ club: clubs.suggestions, player: players.suggestions, staff: staff.suggestions });
+        setItems({ institution: institutions.suggestions, club: clubs.suggestions, player: players.suggestions, staff: staff.suggestions });
       } catch (err) {
         if (cancelled) return;
         setError(err instanceof Error ? err.message : 'Impossibile caricare i suggerimenti.');
@@ -275,7 +279,11 @@ export default function DiscoverPage() {
                       <div className="flex flex-wrap items-center gap-1">
                         <span className="truncate text-sm font-semibold text-neutral-900">{name}</span>
                       </div>
-                      {activeTab === 'staff' ? (
+                      {activeTab === 'institution' ? (
+                        <span className="inline-flex rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-700">
+                          ENTE
+                        </span>
+                      ) : activeTab === 'staff' ? (
                         <span className="inline-flex rounded-full border border-fuchsia-200 bg-fuchsia-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-fuchsia-700">
                           Staff
                         </span>
