@@ -83,7 +83,7 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
   const [linkPreview, setLinkPreview] = useState<LinkPreview | null>(null);
   const [linkErr, setLinkErr] = useState<string | null>(null);
   const [linkLoading, setLinkLoading] = useState(false);
-  const [accountType, setAccountType] = useState<'club' | 'athlete' | 'staff' | 'fan' | null>(null);
+  const [accountType, setAccountType] = useState<'club' | 'athlete' | 'staff' | 'institution' | 'fan' | null>(null);
   const [eventModalOpen, setEventModalOpen] = useState(false);
   const [eventTitle, setEventTitle] = useState('');
   const [eventDate, setEventDate] = useState('');
@@ -101,7 +101,7 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
     accountType !== 'fan' &&
     (text.trim().length > 0 || mediaItems.length > 0 || Boolean(linkUrl) || Boolean(quotedPost)) &&
     !sending;
-  const isClub = accountType === 'club';
+  const canCreateEvent = accountType === 'club' || accountType === 'institution';
   const eventDescriptionLength = eventDescription.length;
   const eventDescriptionRemaining = MAX_CHARS - eventDescriptionLength;
   const eventDescriptionTooLong = eventDescriptionLength > MAX_CHARS;
@@ -128,6 +128,7 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
         if (role === 'club') setAccountType('club');
         else if (role === 'athlete') setAccountType('athlete');
         else if (role === 'staff') setAccountType('staff');
+        else if (role === 'institution') setAccountType('institution');
         else if (role === 'fan') setAccountType('fan');
       } catch {
         setAccountType(null);
@@ -747,7 +748,7 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
               <span>Immagini (max 8MB) o video (max 80MB)</span>
             )}
           </div>
-          {isClub ? (
+          {canCreateEvent ? (
             <button
               type="button"
               onClick={() => {

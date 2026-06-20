@@ -15,8 +15,8 @@ export type ProfileSkill = {
 
 export type Profile = {
   user_id: string;
-  type?: 'athlete' | 'club' | 'fan' | 'staff' | 'admin' | null;
-  account_type?: 'athlete' | 'club' | 'fan' | 'staff' | 'admin' | null;
+  type?: 'athlete' | 'club' | 'fan' | 'staff' | 'admin' | 'institution' | null;
+  account_type?: 'athlete' | 'club' | 'fan' | 'staff' | 'admin' | 'institution' | null;
   display_name: string;
   status?: 'pending' | 'active' | 'rejected' | null;
   headline?: string | null;

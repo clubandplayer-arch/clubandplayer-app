@@ -95,7 +95,7 @@ export default function FeedPage() {
   const errorMessage = error?.message ?? null;
   const canCreatePost =
     Boolean(currentUserId) &&
-    (_profile?.account_type === 'club' || _profile?.account_type === 'athlete' || _profile?.account_type === 'staff' || _profile?.account_type === 'admin');
+    (_profile?.account_type === 'club' || _profile?.account_type === 'athlete' || _profile?.account_type === 'staff' || _profile?.account_type === 'institution' || _profile?.account_type === 'admin');
   const isFan = _profile?.account_type === 'fan';
   const shouldShowEmptyState = !isInitialLoading && !errorMessage && posts.length === 0;
 
@@ -106,7 +106,7 @@ export default function FeedPage() {
     onLoadMore: loadMore,
   });
   const userRole =
-    _profile?.account_type === 'club' || _profile?.account_type === 'athlete' || _profile?.account_type === 'staff'
+    _profile?.account_type === 'club' || _profile?.account_type === 'athlete' || _profile?.account_type === 'staff' || _profile?.account_type === 'institution'
       ? _profile.account_type
       : 'guest';
   const shouldShowStarterPack = !isInitialLoading && !errorMessage && posts.length > 0 && posts.length < 3;
@@ -768,7 +768,7 @@ function StarterPackSection({
   error: string | null;
   opportunities: Opportunity[];
   profiles: StarterProfile[];
-  userRole: 'club' | 'athlete' | 'staff' | 'guest';
+  userRole: 'club' | 'athlete' | 'staff' | 'institution' | 'guest';
   currentUserId: string | null;
   showOpportunities: boolean;
 }) {

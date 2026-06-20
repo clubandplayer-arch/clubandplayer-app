@@ -7,7 +7,7 @@ import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
 import { opportunityGenderLabel } from '@/lib/opps/gender';
 import type { Opportunity } from '@/types/opportunity';
 
-type Role = 'athlete' | 'staff' | 'club' | 'guest';
+type Role = 'athlete' | 'staff' | 'club' | 'institution' | 'guest';
 
 type Props = {
   opp: Opportunity;
