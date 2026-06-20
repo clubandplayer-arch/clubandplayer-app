@@ -43,9 +43,9 @@ const EMPTY_RESULTS: SearchResultsByKind = {
 
 const TAB_ITEMS: Array<{ label: string; value: SearchType }> = [
   { label: 'Tutti', value: 'all' },
+  { label: 'Ente', value: 'institutions' },
   { label: 'Opportunità', value: 'opportunities' },
   { label: 'Club', value: 'clubs' },
-  { label: 'Ente', value: 'institutions' },
   { label: 'Player', value: 'players' },
   { label: 'Staff', value: 'staff' },
   { label: 'Post', value: 'posts' },
@@ -594,9 +594,9 @@ export default function SearchPage() {
             <div className="space-y-8">
               {(
                 [
+                  { key: 'institutions', label: 'Ente' },
                   { key: 'opportunities', label: 'Opportunità' },
                   { key: 'clubs', label: 'Club' },
-                  { key: 'institutions', label: 'Ente' },
                   { key: 'players', label: 'Player' },
                   { key: 'staff', label: 'Staff' },
                   { key: 'posts', label: 'Post' },
