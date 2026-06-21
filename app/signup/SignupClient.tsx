@@ -247,6 +247,14 @@ export default function SignupPage() {
                 Accedi
               </a>
             </p>
+
+            <p className="rounded-xl border border-blue-100 bg-blue-50 p-3 text-center text-sm leading-relaxed text-blue-900">
+              Ti eri registrato con email e password e non riesci più ad accedere?{' '}
+              <a href="/reset-password" className="font-semibold underline underline-offset-4">
+                Recupera password
+              </a>
+              . Per account Google o Apple usa invece il pulsante social corrispondente.
+            </p>
           </div>
         </section>
       </div>

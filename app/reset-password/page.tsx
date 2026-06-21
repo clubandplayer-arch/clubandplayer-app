@@ -5,7 +5,7 @@ export const fetchCache = 'default-no-store';
 
 ;
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 export default function ResetPasswordPage() {
@@ -14,6 +14,16 @@ export default function ResetPasswordPage() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const initialEmail = params.get('email')?.trim();
+      if (initialEmail) setEmail(initialEmail);
+    } catch {
+      // Ignora URL non leggibili: il form resta compilabile manualmente.
+    }
+  }, []);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,6 +46,10 @@ export default function ResetPasswordPage() {
     <main className="min-h-[60vh] flex items-center justify-center p-6">
       <div className="w-full max-w-sm rounded-2xl border p-6 shadow-sm space-y-4">
         <h1 className="text-xl font-semibold">Reimposta password</h1>
+        <p className="text-sm leading-relaxed text-gray-600">
+          Usa questa procedura se ti sei registrato con email e password. Se accedi con Google o Apple, continua con il
+          relativo pulsante social nella pagina di login.
+        </p>
 
         {err && <p className="rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700">{err}</p>}
         {ok && <p className="rounded-md border border-green-300 bg-green-50 p-2 text-sm text-green-700">{ok}</p>}
@@ -64,6 +78,11 @@ export default function ResetPasswordPage() {
 
         <p className="text-xs text-gray-500">
           Riceverai un link che ti porterà alla pagina <code>/update-password</code> per impostare la nuova password.
+        </p>
+        <p className="text-center text-sm text-gray-600">
+          <a href="/login" className="underline underline-offset-4">
+            Torna al login
+          </a>
         </p>
       </div>
     </main>
