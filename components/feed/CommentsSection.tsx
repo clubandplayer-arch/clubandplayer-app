@@ -75,6 +75,7 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const [followers, setFollowers] = useState<MentionFollowerOption[]>([]);
   const [commentCaretPosition, setCommentCaretPosition] = useState<number | null>(null);
+  const [suggestionPosition, setSuggestionPosition] = useState<{ top: number; left: number; width: number } | null>(null);
   const [count, setCount] = useState(initialCount);
   const lastExpandRef = useRef<number | null>(null);
   const loadedRef = useRef(false);
@@ -151,6 +152,31 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
       }
     })();
   }, [expanded, followers.length]);
+
+  useEffect(() => {
+    if (!mentionSuggestions.length) {
+      setSuggestionPosition(null);
+      return;
+    }
+
+    const updatePosition = () => {
+      const rect = inputRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setSuggestionPosition({
+        top: rect.bottom + 8,
+        left: rect.left,
+        width: Math.min(288, rect.width),
+      });
+    };
+
+    updatePosition();
+    window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener('resize', updatePosition);
+    return () => {
+      window.removeEventListener('scroll', updatePosition, true);
+      window.removeEventListener('resize', updatePosition);
+    };
+  }, [mentionSuggestions.length, newBody]);
 
   const ensureLoaded = useCallback(async () => {
     if (loadedRef.current || loading) return;
@@ -505,8 +531,15 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
                 }`}
                 placeholder="Scrivi un commento... usa @nome o @all per taggare i tuoi follower"
               />
-              {mentionSuggestions.length ? (
-                <div className="absolute left-0 top-full z-[9999] mt-2 w-72 overflow-hidden rounded-xl border border-sky-100 bg-white shadow-xl">
+              {mentionSuggestions.length && suggestionPosition ? (
+                <div
+                  className="fixed z-[100000] overflow-hidden rounded-xl border border-sky-100 bg-white shadow-2xl"
+                  style={{
+                    top: suggestionPosition.top,
+                    left: suggestionPosition.left,
+                    width: suggestionPosition.width,
+                  }}
+                >
                   <div className="border-b border-slate-100 px-3 py-2 text-xs font-semibold text-slate-500">
                     Tagga un tuo follower
                   </div>
