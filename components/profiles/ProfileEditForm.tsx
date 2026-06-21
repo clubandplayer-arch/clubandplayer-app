@@ -16,7 +16,7 @@ import { normalizeSport, SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
 import { WORLD_COUNTRY_OPTIONS } from '@/lib/geo/countries';
 import { ProfileSkill } from '@/types/profile';
 import { getMissingRequiredProfileFields } from '@/lib/profiles/completion';
-import { sanitizeProfileClubName, sanitizeProfilePersonName } from '@/lib/profiles/nameValidation';
+import { getProfileClubNameValidationError, sanitizeProfileClubName, sanitizeProfilePersonName } from '@/lib/profiles/nameValidation';
 import { CATEGORIES_BY_SPORT, CLUB_SPORT_OPTIONS, DEFAULT_CLUB_CATEGORIES } from '@/lib/opps/categories';
 import { iso2ToFlagEmoji } from '@/lib/utils/flags';
 import {
@@ -543,6 +543,7 @@ export default function ProfileEditForm() {
   const normalizedResidenceCountry = normalizeCountryCode(residenceCountry);
   const normalizedInterestCountry = normalizeCountryCode(interestCountry || 'IT') || 'IT';
   const playerBioRemaining = PLAYER_BIO_MAX_LENGTH - bio.length;
+  const clubNameValidationError = isClub ? getProfileClubNameValidationError(fullName) : null;
 
   function normalizeSocial(kind: keyof Links, value: string): string | null {
     const v = (value || '').trim();
@@ -654,6 +655,11 @@ export default function ProfileEditForm() {
       };
 
       if (isOrganization) {
+        if (isClub) {
+          const clubNameError = getProfileClubNameValidationError(fullName);
+          if (clubNameError) throw new Error(clubNameError);
+        }
+
         Object.assign(basePayload, {
           sport: isClub ? (sport || '').trim() || null : null,
           club_league_category: isClub ? (clubCategory || '').trim() || null : null,
@@ -904,11 +910,25 @@ export default function ProfileEditForm() {
                 <div className="flex min-w-0 flex-col gap-1 md:col-span-2">
                   <label className="text-sm text-gray-600">Nome del {organizationLabel}<RequiredMark /></label>
                   <input
-                    className="w-full min-w-0 rounded-lg border p-2"
+                    className={`w-full min-w-0 rounded-lg border p-2 ${
+                      clubNameValidationError ? 'border-red-400 bg-red-50' : ''
+                    }`}
                     value={fullName}
                     onChange={(e) => setFullName(sanitizeProfileClubName(e.target.value))}
+                    aria-invalid={Boolean(clubNameValidationError)}
+                    aria-describedby={clubNameValidationError ? 'club-name-validation-error' : undefined}
                     placeholder={isInstitution ? 'Es. Federazione Italiana Esempio' : 'Es. ASD Carlentini'}
                   />
+                  {clubNameValidationError && (
+                    <p id="club-name-validation-error" className="text-xs font-medium text-red-600">
+                      {clubNameValidationError}
+                    </p>
+                  )}
+                  {isClub && !clubNameValidationError && (
+                    <p className="text-xs text-gray-500">
+                      Usa la denominazione ufficiale del club o una sigla societaria (es. ASD, SSD, FC), non nome e cognome di una persona.
+                    </p>
+                  )}
                 </div>
               </div>
 
