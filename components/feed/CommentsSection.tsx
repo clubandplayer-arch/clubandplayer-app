@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { buildProfileDisplayName } from '@/lib/displayName';
 import CertifiedCMarkSidebar from '@/components/badges/CertifiedCMarkSidebar';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { MentionText, renderMentionText } from '@/components/feed/MentionText';
 
 export type CommentAuthor = {
   id: string;
@@ -32,6 +34,32 @@ type Props = {
   currentUserId?: string | null;
 };
 
+type MentionFollowerOption = {
+  id: string;
+  label: string;
+  mention: string;
+  avatarUrl: string | null;
+};
+
+function normalizeMentionToken(value: string) {
+  return value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, '');
+}
+
+function findMentionQuery(value: string, caret: number | null) {
+  if (caret == null) return null;
+  const beforeCaret = value.slice(0, caret);
+  const match = beforeCaret.match(/(^|\s)@([\p{L}\p{N}_.-]{0,64})$/u);
+  if (!match) return null;
+  return {
+    start: beforeCaret.length - (match[2]?.length ?? 0) - 1,
+    query: match[2] ?? '',
+  };
+}
+
 export function CommentsSection({ postId, initialCount = 0, onCountChange, expandSignal, currentUserId }: Props) {
   const [comments, setComments] = useState<PostComment[]>([]);
   const [loading, setLoading] = useState(false);
@@ -45,6 +73,9 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  const [followers, setFollowers] = useState<MentionFollowerOption[]>([]);
+  const [commentCaretPosition, setCommentCaretPosition] = useState<number | null>(null);
+  const [suggestionPosition, setSuggestionPosition] = useState<{ top: number; left: number; width: number } | null>(null);
   const [count, setCount] = useState(initialCount);
   const lastExpandRef = useRef<number | null>(null);
   const loadedRef = useRef(false);
@@ -60,6 +91,92 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
 
   const preview = useMemo(() => comments.slice(0, 2), [comments]);
   const remaining = Math.max(0, count - preview.length);
+  const mentionQuery = findMentionQuery(newBody, commentCaretPosition);
+  const mentionSuggestions =
+    mentionQuery && mentionQuery.query.length >= 2
+      ? followers
+          .filter((follower) => follower.mention.includes(normalizeMentionToken(mentionQuery.query)))
+          .slice(0, 6)
+      : [];
+
+  useEffect(() => {
+    if (!expanded || followers.length) return;
+    (async () => {
+      try {
+        const supabase = getSupabaseBrowserClient();
+        const { data: auth } = await supabase.auth.getUser();
+        const userId = auth?.user?.id;
+        if (!userId) return;
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('status', 'active')
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (!profile?.id) return;
+
+        const { data, error } = await supabase
+          .from('follows')
+          .select('follower:profiles!follows_follower_profile_id_fkey(id, display_name, full_name, avatar_url, status)')
+          .eq('target_profile_id', profile.id)
+          .limit(200);
+
+        if (error) {
+          console.warn('[CommentsSection] follower mention lookup failed', { message: error.message });
+          return;
+        }
+
+        const options = (data ?? [])
+          .map((row: any) => row?.follower)
+          .filter((follower: any) => follower?.id && follower?.status === 'active')
+          .map((follower: any): MentionFollowerOption | null => {
+            const label = String(follower.display_name || follower.full_name || '').trim();
+            const mention = normalizeMentionToken(label).slice(0, 64);
+            if (!label || !mention) return null;
+            return {
+              id: String(follower.id),
+              label,
+              mention,
+              avatarUrl: follower.avatar_url ?? null,
+            };
+          })
+          .filter(Boolean) as MentionFollowerOption[];
+
+        setFollowers(Array.from(new Map(options.map((option) => [option.id, option])).values()));
+      } catch (error: any) {
+        console.warn('[CommentsSection] follower mention lookup failed', { message: error?.message });
+      }
+    })();
+  }, [expanded, followers.length]);
+
+  useEffect(() => {
+    if (!mentionSuggestions.length) {
+      setSuggestionPosition(null);
+      return;
+    }
+
+    const updatePosition = () => {
+      const rect = inputRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setSuggestionPosition({
+        top: rect.bottom + 8,
+        left: rect.left,
+        width: Math.min(288, rect.width),
+      });
+    };
+
+    updatePosition();
+    window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener('resize', updatePosition);
+    return () => {
+      window.removeEventListener('scroll', updatePosition, true);
+      window.removeEventListener('resize', updatePosition);
+    };
+  }, [mentionSuggestions.length, newBody]);
 
   const ensureLoaded = useCallback(async () => {
     if (loadedRef.current || loading) return;
@@ -94,6 +211,19 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
     void ensureLoaded();
     setTimeout(() => inputRef.current?.focus(), 50);
   }, [ensureLoaded]);
+
+  function selectMentionSuggestion(option: MentionFollowerOption) {
+    if (!mentionQuery) return;
+    const suffix = `@${option.mention} `;
+    const next = `${newBody.slice(0, mentionQuery.start)}${suffix}${newBody.slice(commentCaretPosition ?? newBody.length)}`;
+    const nextCaret = mentionQuery.start + suffix.length;
+    setNewBody(next);
+    setCommentCaretPosition(nextCaret);
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+      inputRef.current?.setSelectionRange(nextCaret, nextCaret);
+    });
+  }
 
   useEffect(() => {
     if (typeof expandSignal === 'number' && expandSignal !== lastExpandRef.current) {
@@ -299,7 +429,9 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
               </div>
             ) : (
               <>
-                <p className="mt-1 whitespace-pre-wrap text-sm text-neutral-800">{c.body}</p>
+                <p className="mt-1 whitespace-pre-wrap text-sm text-neutral-800">
+                  <MentionText value={c.body} />
+                </p>
                 <div className="mt-1 flex items-center gap-2 text-[10px] text-neutral-500">
                   {c.created_at ? (
                     <span>
@@ -374,16 +506,69 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
             <label htmlFor={`comment-${postId}`} className="text-xs font-semibold text-neutral-700">
               Aggiungi un commento
             </label>
-            <div className="flex items-end gap-2">
+            <div className="relative z-50">
+              {newBody ? (
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0 whitespace-pre-wrap break-words rounded-lg border border-transparent p-2 text-sm leading-5 text-neutral-800"
+                >
+                  {renderMentionText(newBody)}
+                </div>
+              ) : null}
               <textarea
                 id={`comment-${postId}`}
                 ref={inputRef}
                 value={newBody}
-                onChange={(e) => setNewBody(e.target.value)}
+                onChange={(e) => {
+                  setNewBody(e.target.value);
+                  setCommentCaretPosition(e.currentTarget.selectionStart);
+                }}
+                onClick={(e) => setCommentCaretPosition(e.currentTarget.selectionStart)}
+                onKeyUp={(e) => setCommentCaretPosition(e.currentTarget.selectionStart)}
                 rows={3}
-                className="w-full rounded-lg border border-neutral-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
-                placeholder="Scrivi un commento..."
+                className={`relative w-full rounded-lg border border-neutral-300 bg-transparent p-2 text-sm leading-5 focus:outline-none focus:ring-2 focus:ring-[var(--brand)] ${
+                  newBody ? 'text-transparent caret-neutral-900' : ''
+                }`}
+                placeholder="Scrivi un commento... usa @nome o @all per taggare i tuoi follower"
               />
+              {mentionSuggestions.length && suggestionPosition ? (
+                <div
+                  className="fixed z-[100000] overflow-hidden rounded-xl border border-sky-100 bg-white shadow-2xl"
+                  style={{
+                    top: suggestionPosition.top,
+                    left: suggestionPosition.left,
+                    width: suggestionPosition.width,
+                  }}
+                >
+                  <div className="border-b border-slate-100 px-3 py-2 text-xs font-semibold text-slate-500">
+                    Tagga un tuo follower
+                  </div>
+                  {mentionSuggestions.map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-sky-50"
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        selectMentionSuggestion(option);
+                      }}
+                    >
+                      {option.avatarUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={option.avatarUrl} alt="" className="h-7 w-7 rounded-full object-cover" />
+                      ) : (
+                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-sky-100 text-xs font-semibold text-sky-700">
+                          {option.label.slice(0, 1).toUpperCase()}
+                        </span>
+                      )}
+                      <span className="min-w-0">
+                        <span className="block truncate font-medium text-slate-900">{option.label}</span>
+                        <span className="block truncate text-xs text-sky-600">@{option.mention}</span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
             </div>
             <div className="flex items-center gap-2">
               <button

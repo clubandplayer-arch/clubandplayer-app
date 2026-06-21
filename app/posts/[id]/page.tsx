@@ -94,6 +94,50 @@ async function fetchPostWithFallbackAdmin(
   return fallback;
 }
 
+async function fetchAuthorProfileForPost(client: any, authorId: string | null | undefined) {
+  const normalizedAuthorId = typeof authorId === 'string' ? authorId.trim() : '';
+  if (!normalizedAuthorId) return null;
+
+  const select = 'id, user_id, full_name, display_name, avatar_url, account_type, type';
+  const byUser = await client
+    .from('profiles')
+    .select(select)
+    .eq('user_id', normalizedAuthorId)
+    .maybeSingle();
+
+  if (byUser.error) {
+    logSupabaseError({ id: normalizedAuthorId, step: 'author:profile_by_user_id', error: byUser.error as SupabaseLikeError });
+  } else if (byUser.data) {
+    return byUser.data;
+  }
+
+  const byProfile = await client
+    .from('profiles')
+    .select(select)
+    .eq('id', normalizedAuthorId)
+    .maybeSingle();
+
+  if (byProfile.error) {
+    logSupabaseError({ id: normalizedAuthorId, step: 'author:profile_by_profile_id', error: byProfile.error as SupabaseLikeError });
+    return null;
+  }
+
+  return byProfile.data ?? null;
+}
+
+function attachAuthorProfile(row: any, profile: any) {
+  if (!row || !profile) return row;
+  return {
+    ...row,
+    author_profile: profile,
+    author_profile_id: profile.id ?? null,
+    author_account_type: profile.account_type ?? profile.type ?? null,
+    author_name: profile.full_name ?? profile.display_name ?? null,
+    author_display_name: profile.display_name ?? profile.full_name ?? null,
+    author_avatar_url: profile.avatar_url ?? null,
+  };
+}
+
 function baseUrl() {
   const raw =
     process.env.NEXT_PUBLIC_SITE_URL ||
@@ -143,17 +187,8 @@ export default async function PostPage({ params }: { params: { id: string } }) {
     );
   }
 
-  const { data: authorProfile, error: authorError } = admin
-    ? await admin
-        .from('profiles')
-        .select('id, full_name, avatar_url, account_type, type')
-        .eq('user_id', data.author_id ?? adminData.author_id ?? '')
-        .maybeSingle()
-    : { data: null, error: null };
-
-  if (authorError) {
-    logSupabaseError({ id: params.id, step: 'author:profile_by_id', error: authorError as SupabaseLikeError });
-  }
+  const authorClient = admin ?? supabase;
+  const authorProfile = await fetchAuthorProfileForPost(authorClient, data.author_id ?? adminData.author_id);
 
   let quotedPost: FeedPost | null = null;
   if (data.quoted_post_id) {
@@ -163,19 +198,14 @@ export default async function PostPage({ params }: { params: { id: string } }) {
     if (quotedError) {
       logSupabaseError({ id: params.id, step: 'quoted:optional', error: quotedError as SupabaseLikeError });
     } else {
-      quotedPost = quoted ? normalizePost(quoted) : null;
+      const quotedAuthorProfile = quoted
+        ? await fetchAuthorProfileForPost(authorClient, (quoted as any).author_id)
+        : null;
+      quotedPost = quoted ? normalizePost(attachAuthorProfile(quoted, quotedAuthorProfile)) : null;
     }
   }
 
-  const normalized = {
-    ...data,
-    quoted_post: quotedPost,
-    author_profile_id: authorProfile?.id ?? null,
-    author_account_type: authorProfile?.account_type ?? null,
-    author_name: authorProfile?.full_name ?? null,
-    author_display_name: authorProfile?.full_name ?? null,
-    author_avatar_url: authorProfile?.avatar_url ?? null,
-  };
+  const normalized = attachAuthorProfile({ ...data, quoted_post: quotedPost }, authorProfile);
 
   const post = normalizePost(normalized) as FeedPost;
 

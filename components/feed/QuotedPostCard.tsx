@@ -7,6 +7,7 @@ import { PostIconRepost } from '@/components/icons/PostActionIcons';
 import { PostMedia } from '@/components/feed/PostMedia';
 import { domainFromUrl, firstUrl, normalizePost, type FeedPost } from '@/components/feed/postShared';
 import { buildClubDisplayName, buildProfileDisplayName } from '@/lib/displayName';
+import { MentionText } from '@/components/feed/MentionText';
 
 type Props = {
   post?: FeedPost | null;
@@ -134,7 +135,11 @@ export function QuotedPostCard({ post, quotedPostId, onRemove, onRepost, missing
 
       {effectivePost ? (
         <div className="mt-3 space-y-3 text-sm text-neutral-800">
-          {effectivePost.content ? <p className="whitespace-pre-wrap leading-relaxed line-clamp-4">{effectivePost.content}</p> : null}
+          {effectivePost.content ? (
+            <p className="whitespace-pre-wrap leading-relaxed line-clamp-4">
+              <MentionText value={effectivePost.content} />
+            </p>
+          ) : null}
 
           <PostMedia
             postId={effectivePost.id}

@@ -203,9 +203,17 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY`}
             />
           </div>
           <div className="space-y-1">
-            <label htmlFor={passwordId} className="text-sm font-medium text-gray-700">
-              Password
-            </label>
+            <div className="flex items-center justify-between gap-3">
+              <label htmlFor={passwordId} className="text-sm font-medium text-gray-700">
+                Password
+              </label>
+              <a
+                href={`/reset-password${email ? `?email=${encodeURIComponent(email)}` : ''}`}
+                className="text-xs font-semibold text-[var(--brand)] underline underline-offset-4"
+              >
+                Password dimenticata?
+              </a>
+            </div>
             <input
               id={passwordId}
               type="password"
@@ -226,6 +234,17 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY`}
             {loading ? 'Accesso…' : 'Entra'}
           </button>
         </form>
+
+        <div className="rounded-xl border border-blue-100 bg-blue-50 p-3 text-xs leading-relaxed text-blue-900">
+          Hai creato l’account inserendo email e password?{' '}
+          <a
+            href={`/reset-password${email ? `?email=${encodeURIComponent(email)}` : ''}`}
+            className="font-semibold underline underline-offset-4"
+          >
+            Recupera password
+          </a>
+          . Se invece usi Google o Apple, continua con il relativo pulsante social.
+        </div>
 
         <p className="text-center text-xs text-gray-600">
           Accedendo accetti i{' '}

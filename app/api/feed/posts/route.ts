@@ -15,7 +15,7 @@ import {
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 import { reportApiError } from '@/lib/monitoring/reportApiError';
-import { getActiveProfile } from '@/lib/api/profile';
+import { getActiveProfile, getProfileByUserId } from '@/lib/api/profile';
 import { buildProfileDisplayName } from '@/lib/displayName';
 import { CreatePostSchema, FeedPostsQuerySchema, type CreatePostInput, type FeedPostsQueryInput } from '@/lib/validation/feed';
 import { PLATFORM_ADMIN_ROLE } from '@/lib/constants/admin';
@@ -31,6 +31,8 @@ type Role = 'club' | 'athlete' | 'staff' | 'institution' | 'fan' | 'admin';
 type PostKind = 'normal' | 'event';
 type DbPostKind = 'normal' | 'event';
 type PostMediaType = 'image' | 'video';
+type MentionFollower = { id: string; user_id: string; display_name: string | null; full_name: string | null };
+
 type PostMediaItem = {
   id: string | null;
   url: string;
@@ -862,6 +864,108 @@ function normalizeIncomingMediaList(raw: unknown): IncomingPostMedia[] {
     .filter(Boolean) as IncomingPostMedia[];
 }
 
+
+function normalizeMentionToken(value: string) {
+  return value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, '');
+}
+
+function extractMentionTokens(...values: Array<string | null | undefined>) {
+  const tokens = new Set<string>();
+  const hasAll = values.some((value) => /(^|\s)@all\b/i.test(value ?? ''));
+  for (const value of values) {
+    const source = value ?? '';
+    const matches = source.matchAll(/(^|\s)@([\p{L}\p{N}_][\p{L}\p{N}_.-]{0,63})/gu);
+    for (const match of matches) {
+      const token = normalizeMentionToken(match[2] ?? '');
+      if (token && token !== 'all') tokens.add(token);
+    }
+  }
+  return { hasAll, tokens };
+}
+
+function profileMentionAliases(profile: { display_name?: string | null; full_name?: string | null }) {
+  const aliases = new Set<string>();
+  for (const name of [profile.display_name, profile.full_name]) {
+    const raw = typeof name === 'string' ? name.trim() : '';
+    if (!raw) continue;
+    aliases.add(normalizeMentionToken(raw));
+    for (const part of raw.split(/\s+/)) {
+      const normalized = normalizeMentionToken(part);
+      if (normalized) aliases.add(normalized);
+    }
+  }
+  return aliases;
+}
+
+async function fetchFollowersForMentions(client: any, targetProfileId: string) {
+  const select = 'follower_profile_id, follower:profiles!follows_follower_profile_id_fkey(id, user_id, display_name, full_name, status)';
+  const { data, error } = await client
+    .from('follows')
+    .select(select)
+    .eq('target_profile_id', targetProfileId)
+    .limit(1000);
+  if (error) {
+    console.warn('[api/feed/posts][mentions] follower lookup failed', { message: error.message });
+    return [] as MentionFollower[];
+  }
+  return (data ?? [])
+    .map((row: any) => row?.follower)
+    .filter((profile: any) => profile?.id && profile?.user_id && profile?.status === 'active')
+    .map((profile: any): MentionFollower => ({
+      id: String(profile.id),
+      user_id: String(profile.user_id),
+      display_name: profile.display_name ?? null,
+      full_name: profile.full_name ?? null,
+    }));
+}
+
+async function notifyMentionedFollowers(params: {
+  client: any;
+  actorProfileId: string;
+  postId: string;
+  content: string;
+  eventTitle?: string | null;
+  actorName?: string | null;
+}) {
+  const { hasAll, tokens } = extractMentionTokens(params.content, params.eventTitle);
+  if (!hasAll && tokens.size === 0) return;
+
+  const followers = await fetchFollowersForMentions(params.client, params.actorProfileId);
+  if (!followers.length) return;
+
+  const recipients = followers.filter((profile: MentionFollower) => {
+    if (profile.id === params.actorProfileId) return false;
+    if (hasAll) return true;
+    const aliases = profileMentionAliases(profile);
+    for (const token of tokens) {
+      if (aliases.has(token)) return true;
+    }
+    return false;
+  });
+  if (!recipients.length) return;
+
+  const deduped = Array.from(
+    new Map<string, MentionFollower>(recipients.map((profile: MentionFollower) => [profile.id, profile])).values(),
+  );
+  const rows = deduped.map((profile: MentionFollower) => ({
+    user_id: profile.user_id,
+    recipient_profile_id: profile.id,
+    actor_profile_id: params.actorProfileId,
+    kind: 'post_mention',
+    payload: { post_id: params.postId, mention: hasAll ? 'all' : 'personal', actor_name: params.actorName ?? undefined },
+    read: false,
+  }));
+
+  const { error } = await params.client.from('notifications').insert(rows);
+  if (error) {
+    console.warn('[api/feed/posts][mentions] notification insert failed', { message: error.message });
+  }
+}
+
 type ServerClient = Awaited<ReturnType<typeof getSupabaseServerClient>>;
 type AdminClient = NonNullable<ReturnType<typeof getSupabaseAdminClientOrNull>>;
 type InsertClient = ServerClient | AdminClient;
@@ -1192,6 +1296,29 @@ export async function POST(req: NextRequest) {
 
     if (!mediaItems.length) {
       mediaItems = buildFallbackMedia({ ...data, media_url: mediaUrl, media_type: mediaType });
+    }
+
+    try {
+      const mentionClient = admin ?? supabase;
+      const actorProfile = await getActiveProfile(mentionClient as any, auth.user.id);
+      const actorProfileDetails = await getProfileByUserId(mentionClient as any, auth.user.id, { activeOnly: true });
+      const actorName = buildProfileDisplayName(
+        actorProfileDetails?.full_name,
+        actorProfileDetails?.display_name,
+        'Un utente',
+      );
+      if (actorProfile?.id && data?.id) {
+        await notifyMentionedFollowers({
+          client: mentionClient,
+          actorProfileId: actorProfile.id,
+          postId: String(data.id),
+          content: effectiveText,
+          eventTitle: eventPayload?.title ?? null,
+          actorName,
+        });
+      }
+    } catch (mentionError: any) {
+      console.warn('[api/feed/posts][mentions] notification flow failed', { message: mentionError?.message });
     }
 
     const authorMaps = await buildAuthorProfileMaps(supabase, data?.author_id ? [String(data.author_id)] : []);

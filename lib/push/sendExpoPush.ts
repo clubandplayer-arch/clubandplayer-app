@@ -73,6 +73,14 @@ function buildTitle(kind: string, payload?: Record<string, any> | null) {
     const actorName = sanitizeSenderName(payload?.actor_name) || 'Qualcuno';
     return `${actorName} ha reagito al tuo post`;
   }
+  if (kind === 'post_mention') {
+    const actorName = sanitizeSenderName(payload?.actor_name) || 'Qualcuno';
+    return `${actorName} ti ha taggato in un post`;
+  }
+  if (kind === 'comment_mention') {
+    const actorName = sanitizeSenderName(payload?.actor_name) || 'Qualcuno';
+    return `${actorName} ti ha taggato in un commento`;
+  }
   if (kind === 'application_received') return 'Nuova candidatura';
   if (kind === 'application_status') return 'Aggiornamento candidatura';
   return 'Nuova notifica';
@@ -117,7 +125,7 @@ function resolvePostIdFromPayload(payload?: Record<string, any> | null): string 
 }
 
 function buildCollapseId(kind: string, payload?: Record<string, any> | null): string | null {
-  if (kind !== 'new_comment' && kind !== 'new_reaction') return null;
+  if (kind !== 'new_comment' && kind !== 'new_reaction' && kind !== 'post_mention' && kind !== 'comment_mention') return null;
   const postId = resolvePostIdFromPayload(payload);
   if (!postId) return null;
   return `${kind}:post:${postId}`;

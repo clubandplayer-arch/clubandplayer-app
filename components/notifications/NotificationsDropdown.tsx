@@ -93,7 +93,7 @@ export default function NotificationsDropdown({ unreadCount, onUnreadChange, act
       </button>
 
       {open ? (
-        <div className="absolute right-0 z-50 mt-2 w-96 max-w-[90vw] rounded-xl border bg-white shadow-lg">
+        <div className="absolute right-0 z-[100001] mt-2 w-96 max-w-[90vw] rounded-xl border bg-white shadow-2xl">
           <div className="flex items-center justify-between border-b px-4 py-3">
             <div className="font-semibold">Notifiche</div>
             <Link href="/notifications" className="text-sm text-[var(--brand)] hover:underline">
