@@ -701,7 +701,7 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
           id={textareaId}
           className="w-full resize-y rounded-2xl border px-3 py-3 text-sm outline-none focus:ring"
           rows={3}
-          placeholder="Condividi un pensiero…"
+          placeholder="Condividi un pensiero… usa @nome per un follower o @all per tutti"
           value={text}
           onChange={(e) => handleTextChange(e.target.value)}
           disabled={sending || accountType === 'fan'}
@@ -710,7 +710,7 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
           aria-invalid={Boolean(err)}
         />
         <p id={helperId} className="text-xs text-gray-500">
-          {text.trim().length}/{MAX_CHARS} caratteri disponibili
+          {text.trim().length}/{MAX_CHARS} caratteri disponibili · Puoi taggare solo i tuoi follower con @nome, oppure tutti i follower con @all
         </p>
 
         {linkUrl ? (
@@ -927,7 +927,7 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
                     ? 'border-amber-300 focus:ring-amber-100'
                     : ''
               }`}
-              placeholder="Dettagli, programma, note…"
+              placeholder="Dettagli, programma, note… usa @nome per un follower o @all per tutti"
               aria-describedby="event-description-counter event-description-limit"
               aria-invalid={eventDescriptionTooLong}
             />
@@ -943,7 +943,7 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
             >
               {eventDescriptionTooLong
                 ? `Riduci la descrizione a massimo ${MAX_CHARS} caratteri per pubblicare l'evento.`
-                : `Massimo ${MAX_CHARS} caratteri per la descrizione dell'evento.`}
+                : `Massimo ${MAX_CHARS} caratteri per la descrizione dell'evento. Puoi taggare solo i tuoi follower con @nome o @all.`}
             </p>
           </div>
 
