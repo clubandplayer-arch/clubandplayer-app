@@ -282,7 +282,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     <ToastProvider>
       <FollowProvider>
         <div className="min-h-screen bg-clubplayer-gradient">
-          <header className="fixed inset-x-0 top-0 z-40 border-b bg-white/90 backdrop-blur">
+          <header className="fixed inset-x-0 top-0 z-[100000] border-b bg-white/90 backdrop-blur">
             <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4" style={{ ['--nav-h' as any]: '64px' }}>
               <div
                 className="min-w-0 flex h-8 flex-shrink-0 items-center overflow-hidden md:h-10"

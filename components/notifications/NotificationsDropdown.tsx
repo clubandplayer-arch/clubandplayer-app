@@ -27,7 +27,6 @@ type Props = {
 
 export default function NotificationsDropdown({ unreadCount, onUnreadChange, active }: Props) {
   const [open, setOpen] = useState(false);
-  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; right: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { items, loading, error } = useNotificationsList({ limit: 10, enabled: open });
@@ -72,30 +71,6 @@ export default function NotificationsDropdown({ unreadCount, onUnreadChange, act
     });
   }, [error, toast]);
 
-  useEffect(() => {
-    if (!open) {
-      setDropdownPosition(null);
-      return;
-    }
-
-    const updatePosition = () => {
-      const rect = containerRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      setDropdownPosition({
-        top: rect.bottom + 8,
-        right: Math.max(8, window.innerWidth - rect.right),
-      });
-    };
-
-    updatePosition();
-    window.addEventListener('scroll', updatePosition, true);
-    window.addEventListener('resize', updatePosition);
-    return () => {
-      window.removeEventListener('scroll', updatePosition, true);
-      window.removeEventListener('resize', updatePosition);
-    };
-  }, [open]);
-
   const badge = unreadCount > 0 && (
     <span className="absolute -right-1 -top-1 min-w-[18px] rounded-full bg-red-500 px-1.5 text-center text-[11px] font-semibold text-white">
       {unreadCount}
@@ -117,11 +92,8 @@ export default function NotificationsDropdown({ unreadCount, onUnreadChange, act
         {badge}
       </button>
 
-      {open && dropdownPosition ? (
-        <div
-          className="fixed z-[100000] w-96 max-w-[90vw] rounded-xl border bg-white shadow-2xl"
-          style={{ top: dropdownPosition.top, right: dropdownPosition.right }}
-        >
+      {open ? (
+        <div className="absolute right-0 z-[100001] mt-2 w-96 max-w-[90vw] rounded-xl border bg-white shadow-2xl">
           <div className="flex items-center justify-between border-b px-4 py-3">
             <div className="font-semibold">Notifiche</div>
             <Link href="/notifications" className="text-sm text-[var(--brand)] hover:underline">

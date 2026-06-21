@@ -98,7 +98,7 @@ async function fetchAuthorProfileForPost(client: any, authorId: string | null | 
   const normalizedAuthorId = typeof authorId === 'string' ? authorId.trim() : '';
   if (!normalizedAuthorId) return null;
 
-  const select = 'id, user_id, full_name, display_name, avatar_url, account_type, type, is_verified';
+  const select = 'id, user_id, full_name, display_name, avatar_url, account_type, type';
   const byUser = await client
     .from('profiles')
     .select(select)
