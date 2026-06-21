@@ -5,7 +5,7 @@ import { normalizeSport } from '@/lib/opps/constants';
 import { MAX_SKILLS, parseSkillsInput } from '@/lib/profiles/skills';
 import { ensureSingleProfileRowForUser, inferAccountType } from '@/lib/server/profileIntegrity';
 import { isPlatformAdminEmail, PLATFORM_ADMIN_ROLE, PLATFORM_ADMIN_ROLE_LABEL } from '@/lib/constants/admin';
-import { isValidProfileClubName, isValidProfilePersonName, sanitizeProfileClubName, sanitizeProfilePersonName } from '@/lib/profiles/nameValidation';
+import { getProfileClubNameValidationError, isValidProfileClubName, isValidProfilePersonName, sanitizeProfileClubName, sanitizeProfilePersonName } from '@/lib/profiles/nameValidation';
 
 export const runtime = 'nodejs';
 
@@ -259,8 +259,9 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
     if ('interest_city' in updates) updates.city = updates.interest_city;
     if (Object.prototype.hasOwnProperty.call(updates, 'full_name') && updates.full_name) {
       const rawClubName = String(updates.full_name);
-      if (!isValidProfileClubName(rawClubName)) {
-        return jsonError("Il campo Nome del club può contenere solo lettere, numeri, spazi, apostrofo, virgola, punto e trattino", 400);
+      const clubNameError = getProfileClubNameValidationError(rawClubName);
+      if (clubNameError) {
+        return jsonError(clubNameError, 400);
       }
       updates.full_name = sanitizeProfileClubName(rawClubName);
       updates.display_name = updates.full_name;
