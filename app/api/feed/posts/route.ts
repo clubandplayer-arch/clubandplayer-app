@@ -15,7 +15,7 @@ import {
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 import { reportApiError } from '@/lib/monitoring/reportApiError';
-import { getActiveProfile } from '@/lib/api/profile';
+import { getActiveProfile, getProfileByUserId } from '@/lib/api/profile';
 import { buildProfileDisplayName } from '@/lib/displayName';
 import { CreatePostSchema, FeedPostsQuerySchema, type CreatePostInput, type FeedPostsQueryInput } from '@/lib/validation/feed';
 import { PLATFORM_ADMIN_ROLE } from '@/lib/constants/admin';
@@ -929,6 +929,7 @@ async function notifyMentionedFollowers(params: {
   postId: string;
   content: string;
   eventTitle?: string | null;
+  actorName?: string | null;
 }) {
   const { hasAll, tokens } = extractMentionTokens(params.content, params.eventTitle);
   if (!hasAll && tokens.size === 0) return;
@@ -955,7 +956,7 @@ async function notifyMentionedFollowers(params: {
     recipient_profile_id: profile.id,
     actor_profile_id: params.actorProfileId,
     kind: 'post_mention',
-    payload: { post_id: params.postId, mention: hasAll ? 'all' : 'personal' },
+    payload: { post_id: params.postId, mention: hasAll ? 'all' : 'personal', actor_name: params.actorName ?? undefined },
     read: false,
   }));
 
@@ -1300,6 +1301,12 @@ export async function POST(req: NextRequest) {
     try {
       const mentionClient = admin ?? supabase;
       const actorProfile = await getActiveProfile(mentionClient as any, auth.user.id);
+      const actorProfileDetails = await getProfileByUserId(mentionClient as any, auth.user.id, { activeOnly: true });
+      const actorName = buildProfileDisplayName(
+        actorProfileDetails?.full_name,
+        actorProfileDetails?.display_name,
+        'Un utente',
+      );
       if (actorProfile?.id && data?.id) {
         await notifyMentionedFollowers({
           client: mentionClient,
@@ -1307,6 +1314,7 @@ export async function POST(req: NextRequest) {
           postId: String(data.id),
           content: effectiveText,
           eventTitle: eventPayload?.title ?? null,
+          actorName,
         });
       }
     } catch (mentionError: any) {

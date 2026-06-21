@@ -97,6 +97,22 @@ function renderContent(notification: NotificationWithActor): { title: string; bo
       return { title: `${actorName} ha reagito a un tuo post` };
     }
 
+    case 'post_mention': {
+      if (typeof payload.post_id !== 'string' || !payload.post_id.trim()) {
+        return { title: 'Nuova notifica' };
+      }
+
+      return { title: `${actorName} ti ha taggato in un post` };
+    }
+
+    case 'comment_mention': {
+      if (typeof payload.post_id !== 'string' || !payload.post_id.trim()) {
+        return { title: 'Nuova notifica' };
+      }
+
+      return { title: `${actorName} ti ha taggato in un commento` };
+    }
+
     case 'new_opportunity': {
       const title = typeof payload?.title === 'string' ? payload.title : 'nuova opportunità';
 
@@ -232,6 +248,14 @@ export default function NotificationItem({ notification, onClick, compact }: Pro
 
     if (
       notification.kind === 'new_reaction' &&
+      typeof payload.post_id === 'string' &&
+      payload.post_id.trim()
+    ) {
+      return `/posts/${payload.post_id}`;
+    }
+
+    if (
+      (notification.kind === 'post_mention' || notification.kind === 'comment_mention') &&
       typeof payload.post_id === 'string' &&
       payload.post_id.trim()
     ) {

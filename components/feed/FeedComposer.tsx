@@ -796,7 +796,7 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
   }
 
   return (
-    <div className="glass-panel p-4" aria-live="polite">
+    <div className="glass-panel relative z-50 overflow-visible p-4" aria-live="polite">
       <div className="mt-4 space-y-3">
         {accountType === 'fan' ? (
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
@@ -833,7 +833,7 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
             aria-invalid={Boolean(err)}
           />
           {mentionSuggestions.length ? (
-            <div className="absolute left-3 top-full z-20 mt-2 w-72 overflow-hidden rounded-xl border border-sky-100 bg-white shadow-xl">
+            <div className="absolute left-3 top-full z-[9999] mt-2 w-72 overflow-hidden rounded-xl border border-sky-100 bg-white shadow-xl">
               <div className="border-b border-slate-100 px-3 py-2 text-xs font-semibold text-slate-500">
                 Tagga un tuo follower
               </div>

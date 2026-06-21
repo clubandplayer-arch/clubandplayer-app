@@ -26,6 +26,8 @@ const GROUPED_PUSH_DEBOUNCE_ENABLED = process.env.GROUPED_PUSH_DEBOUNCE_ENABLED 
 
 const MAX_LEN = 800;
 
+type MentionFollower = { id: string; user_id: string; display_name: string | null; full_name: string | null };
+
 function sanitizeBody(raw: unknown) {
   const text = typeof raw === 'string' ? raw.trim() : '';
   if (!text) return null;
@@ -41,6 +43,112 @@ function cleanName(value: unknown) {
 function toPushPreview(value: unknown) {
   if (typeof value !== 'string') return '';
   return value.trim().slice(0, 120);
+}
+
+function normalizeMentionToken(value: string) {
+  return value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, '');
+}
+
+function extractMentionTokens(value: string) {
+  const tokens = new Set<string>();
+  const hasAll = /(^|\s)@all\b/i.test(value);
+  const matches = value.matchAll(/(^|\s)@([\p{L}\p{N}_][\p{L}\p{N}_.-]{0,63})/gu);
+  for (const match of matches) {
+    const token = normalizeMentionToken(match[2] ?? '');
+    if (token && token !== 'all') tokens.add(token);
+  }
+  return { hasAll, tokens };
+}
+
+function profileMentionAliases(profile: { display_name?: string | null; full_name?: string | null }) {
+  const aliases = new Set<string>();
+  for (const name of [profile.display_name, profile.full_name]) {
+    const raw = typeof name === 'string' ? name.trim() : '';
+    if (!raw) continue;
+    aliases.add(normalizeMentionToken(raw));
+    for (const part of raw.split(/\s+/)) {
+      const normalized = normalizeMentionToken(part);
+      if (normalized) aliases.add(normalized);
+    }
+  }
+  return aliases;
+}
+
+async function fetchFollowersForMentions(client: any, targetProfileId: string) {
+  const { data, error } = await client
+    .from('follows')
+    .select('follower:profiles!follows_follower_profile_id_fkey(id, user_id, display_name, full_name, status)')
+    .eq('target_profile_id', targetProfileId)
+    .limit(1000);
+
+  if (error) {
+    console.warn('[api/feed/comments][mentions] follower lookup failed', { message: error.message });
+    return [] as MentionFollower[];
+  }
+
+  return (data ?? [])
+    .map((row: any) => row?.follower)
+    .filter((profile: any) => profile?.id && profile?.user_id && profile?.status === 'active')
+    .map((profile: any): MentionFollower => ({
+      id: String(profile.id),
+      user_id: String(profile.user_id),
+      display_name: profile.display_name ?? null,
+      full_name: profile.full_name ?? null,
+    }));
+}
+
+async function notifyMentionedFollowersInComment(params: {
+  client: any;
+  actorProfileId: string;
+  actorName: string;
+  postId: string;
+  commentId: string;
+  body: string;
+}) {
+  const { hasAll, tokens } = extractMentionTokens(params.body);
+  if (!hasAll && tokens.size === 0) return;
+
+  const followers = await fetchFollowersForMentions(params.client, params.actorProfileId);
+  if (!followers.length) return;
+
+  const recipients = followers.filter((profile: MentionFollower) => {
+    if (profile.id === params.actorProfileId) return false;
+    if (hasAll) return true;
+    const aliases = profileMentionAliases(profile);
+    for (const token of tokens) {
+      if (aliases.has(token)) return true;
+    }
+    return false;
+  });
+
+  if (!recipients.length) return;
+
+  const deduped = Array.from(
+    new Map<string, MentionFollower>(recipients.map((profile: MentionFollower) => [profile.id, profile])).values(),
+  );
+  const rows = deduped.map((profile) => ({
+    user_id: profile.user_id,
+    recipient_profile_id: profile.id,
+    actor_profile_id: params.actorProfileId,
+    kind: 'comment_mention',
+    payload: {
+      post_id: params.postId,
+      comment_id: params.commentId,
+      mention: hasAll ? 'all' : 'personal',
+      actor_name: params.actorName,
+      preview: toPushPreview(params.body),
+    },
+    read: false,
+  }));
+
+  const { error } = await params.client.from('notifications').insert(rows);
+  if (error) {
+    console.warn('[api/feed/comments][mentions] notification insert failed', { message: error.message });
+  }
 }
 
 
@@ -346,6 +454,17 @@ export async function POST(req: NextRequest) {
           });
         }
       }
+    }
+
+    if (actorProfileId) {
+      await notifyMentionedFollowersInComment({
+        client: notificationsClient,
+        actorProfileId,
+        actorName: actorName || 'Qualcuno',
+        postId,
+        commentId: String(data.id),
+        body,
+      });
     }
   } catch (notificationErr: any) {
     console.warn('[api/feed/comments][POST] notification flow failed', {
