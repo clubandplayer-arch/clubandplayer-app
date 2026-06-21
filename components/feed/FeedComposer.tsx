@@ -8,6 +8,7 @@ import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import Modal from '@/components/ui/Modal';
 import { MaterialIcon } from '@/components/icons/MaterialIcon';
 import { QuotedPostCard } from '@/components/feed/QuotedPostCard';
+import { renderMentionText } from '@/components/feed/MentionText';
 import type { FeedPost } from '@/components/feed/postShared';
 
 type Props = {
@@ -55,6 +56,13 @@ type MediaAttachment = {
   posterPreviewUrl?: string;
 };
 
+type MentionFollowerOption = {
+  id: string;
+  label: string;
+  mention: string;
+  avatarUrl: string | null;
+};
+
 const POSTS_BUCKET = process.env.NEXT_PUBLIC_POSTS_BUCKET || 'posts';
 
 function sanitizeFileName(name?: string | null) {
@@ -71,6 +79,29 @@ class FeedUploadError extends Error {
     super(message);
     this.name = 'FeedUploadError';
   }
+}
+
+function normalizeMentionToken(value: string) {
+  return value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, '');
+}
+
+function mentionFromName(value: string) {
+  return normalizeMentionToken(value).slice(0, 64);
+}
+
+function findMentionQuery(value: string, caret: number | null) {
+  if (caret == null) return null;
+  const beforeCaret = value.slice(0, caret);
+  const match = beforeCaret.match(/(^|\s)@([\p{L}\p{N}_.-]{0,64})$/u);
+  if (!match) return null;
+  return {
+    start: beforeCaret.length - (match[2]?.length ?? 0) - 1,
+    query: match[2] ?? '',
+  };
 }
 
 export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Props) {
@@ -93,8 +124,11 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
   const [eventPosterPreview, setEventPosterPreview] = useState<string | null>(null);
   const [eventErr, setEventErr] = useState<string | null>(null);
   const [eventSending, setEventSending] = useState(false);
+  const [followers, setFollowers] = useState<MentionFollowerOption[]>([]);
+  const [caretPosition, setCaretPosition] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const eventFileInputRef = useRef<HTMLInputElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const linkAbortRef = useRef<AbortController | null>(null);
   const mediaItemsRef = useRef<MediaAttachment[]>([]);
   const canSend =
@@ -111,6 +145,13 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
   const helperId = 'feed-composer-helper';
   const errorId = err ? 'feed-composer-error' : undefined;
   const describedBy = [helperId, errorId].filter(Boolean).join(' ') || undefined;
+  const mentionQuery = findMentionQuery(text, caretPosition);
+  const mentionSuggestions =
+    mentionQuery && mentionQuery.query.length >= 2
+      ? followers
+          .filter((follower) => follower.mention.includes(normalizeMentionToken(mentionQuery.query)))
+          .slice(0, 6)
+      : [];
 
   useEffect(() => {
     return () => {
@@ -132,6 +173,59 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
         else if (role === 'fan') setAccountType('fan');
       } catch {
         setAccountType(null);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const supabase = getSupabaseBrowserClient();
+        const { data: auth } = await supabase.auth.getUser();
+        const userId = auth?.user?.id;
+        if (!userId) return;
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('status', 'active')
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (!profile?.id) return;
+
+        const { data, error } = await supabase
+          .from('follows')
+          .select('follower:profiles!follows_follower_profile_id_fkey(id, display_name, full_name, avatar_url, status)')
+          .eq('target_profile_id', profile.id)
+          .limit(200);
+
+        if (error) {
+          console.warn('[FeedComposer] follower mention lookup failed', { message: error.message });
+          return;
+        }
+
+        const options = (data ?? [])
+          .map((row: any) => row?.follower)
+          .filter((follower: any) => follower?.id && follower?.status === 'active')
+          .map((follower: any): MentionFollowerOption | null => {
+            const label = String(follower.display_name || follower.full_name || '').trim();
+            const mention = mentionFromName(label);
+            if (!label || !mention) return null;
+            return {
+              id: String(follower.id),
+              label,
+              mention,
+              avatarUrl: follower.avatar_url ?? null,
+            };
+          })
+          .filter(Boolean) as MentionFollowerOption[];
+
+        setFollowers(Array.from(new Map(options.map((option) => [option.id, option])).values()));
+      } catch (error: any) {
+        console.warn('[FeedComposer] follower mention lookup failed', { message: error?.message });
       }
     })();
   }, []);
@@ -309,6 +403,7 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
 
   function handleTextChange(value: string) {
     setText(value);
+    setCaretPosition(textareaRef.current?.selectionStart ?? value.length);
     setErr(null);
     const found = findFirstUrl(value);
     if (!found) {
@@ -321,6 +416,20 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
       setLinkErr(null);
       void fetchLinkPreview(found);
     }
+  }
+
+  function selectMentionSuggestion(option: MentionFollowerOption) {
+    if (!mentionQuery) return;
+    const suffix = `@${option.mention} `;
+    const next = `${text.slice(0, mentionQuery.start)}${suffix}${text.slice(caretPosition ?? text.length)}`;
+    const nextCaret = mentionQuery.start + suffix.length;
+    setText(next);
+    setCaretPosition(nextCaret);
+    setErr(null);
+    requestAnimationFrame(() => {
+      textareaRef.current?.focus();
+      textareaRef.current?.setSelectionRange(nextCaret, nextCaret);
+    });
   }
 
   async function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
@@ -697,18 +806,63 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
         <label htmlFor={textareaId} className="sr-only">
           Scrivi un aggiornamento per la community
         </label>
-        <textarea
-          id={textareaId}
-          className="w-full resize-y rounded-2xl border px-3 py-3 text-sm outline-none focus:ring"
-          rows={3}
-          placeholder="Condividi un pensiero… usa @nome per un follower o @all per tutti"
-          value={text}
-          onChange={(e) => handleTextChange(e.target.value)}
-          disabled={sending || accountType === 'fan'}
-          maxLength={MAX_CHARS}
-          aria-describedby={describedBy}
-          aria-invalid={Boolean(err)}
-        />
+        <div className="relative">
+          {text ? (
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 whitespace-pre-wrap break-words rounded-2xl border border-transparent px-3 py-3 text-sm leading-5 text-slate-900"
+            >
+              {renderMentionText(text)}
+            </div>
+          ) : null}
+          <textarea
+            ref={textareaRef}
+            id={textareaId}
+            className={`relative w-full resize-y rounded-2xl border bg-transparent px-3 py-3 text-sm leading-5 outline-none focus:ring ${
+              text ? 'text-transparent caret-slate-900' : ''
+            }`}
+            rows={3}
+            placeholder="Condividi un pensiero… usa @nome per un follower o @all per tutti"
+            value={text}
+            onChange={(e) => handleTextChange(e.target.value)}
+            onClick={(e) => setCaretPosition(e.currentTarget.selectionStart)}
+            onKeyUp={(e) => setCaretPosition(e.currentTarget.selectionStart)}
+            disabled={sending || accountType === 'fan'}
+            maxLength={MAX_CHARS}
+            aria-describedby={describedBy}
+            aria-invalid={Boolean(err)}
+          />
+          {mentionSuggestions.length ? (
+            <div className="absolute left-3 top-full z-20 mt-2 w-72 overflow-hidden rounded-xl border border-sky-100 bg-white shadow-xl">
+              <div className="border-b border-slate-100 px-3 py-2 text-xs font-semibold text-slate-500">
+                Tagga un tuo follower
+              </div>
+              {mentionSuggestions.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-sky-50"
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                    selectMentionSuggestion(option);
+                  }}
+                >
+                  {option.avatarUrl ? (
+                    <img src={option.avatarUrl} alt="" className="h-7 w-7 rounded-full object-cover" />
+                  ) : (
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-sky-100 text-xs font-semibold text-sky-700">
+                      {option.label.slice(0, 1).toUpperCase()}
+                    </span>
+                  )}
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium text-slate-900">{option.label}</span>
+                    <span className="block truncate text-xs text-sky-600">@{option.mention}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
         <p id={helperId} className="text-xs text-gray-500">
           {text.trim().length}/{MAX_CHARS} caratteri disponibili · Puoi taggare solo i tuoi follower con @nome, oppure tutti i follower con @all
         </p>

@@ -9,6 +9,7 @@ import { PostIconDelete, PostIconEdit, PostIconRepost, PostIconShare } from '@/c
 import { PostMedia } from '@/components/feed/PostMedia';
 import { EventPostHighlight } from '@/components/feed/EventPostHighlight';
 import { QuotedPostCard } from '@/components/feed/QuotedPostCard';
+import { MentionText } from '@/components/feed/MentionText';
 import { Lightbox } from '@/components/media/Lightbox';
 import CertifiedCMarkSidebar from '@/components/badges/CertifiedCMarkSidebar';
 import { createPostShareLink } from '@/lib/share';
@@ -534,7 +535,7 @@ export function PostCard({
                   descriptionExpanded ? '' : 'line-clamp-6'
                 }`}
               >
-                {description}
+                <MentionText value={description} />
               </p>
               {(descriptionCanExpand || descriptionExpanded) && (
                 <button

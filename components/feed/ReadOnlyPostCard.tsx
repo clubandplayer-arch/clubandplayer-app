@@ -8,6 +8,7 @@ import { buildClubDisplayName, buildProfileDisplayName } from '@/lib/displayName
 import { PostMedia } from '@/components/feed/PostMedia';
 import { EventPostHighlight } from '@/components/feed/EventPostHighlight';
 import { QuotedPostCard } from '@/components/feed/QuotedPostCard';
+import { MentionText } from '@/components/feed/MentionText';
 import { Lightbox } from '@/components/media/Lightbox';
 import CertifiedCMarkSidebar from '@/components/badges/CertifiedCMarkSidebar';
 import {
@@ -172,7 +173,9 @@ export function ReadOnlyPostCard({ post }: ReadOnlyPostCardProps) {
 
       <div className="mt-3 space-y-4 text-base leading-relaxed text-gray-900">
         {description ? (
-          <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-slate-900 line-clamp-6">{description}</p>
+          <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-slate-900 line-clamp-6">
+            <MentionText value={description} />
+          </p>
         ) : null}
 
         {post.quoted_post_id ? (
