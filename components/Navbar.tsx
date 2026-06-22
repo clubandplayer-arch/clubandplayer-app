@@ -135,7 +135,6 @@ export default function Navbar() {
             </div>
 
             <div className="ml-4 hidden md:flex items-center gap-1">
-              <Link href="/" className={linkClass('/')}>Home</Link>
               <Link href="/opportunities" className={linkClass('/opportunities')}>Opportunità</Link>
               <Link href="/favorites" className={linkClass('/favorites')}>Preferiti</Link>
               {isAdmin && (

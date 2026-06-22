@@ -132,14 +132,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     () => {
       if (isInstitution) {
         return [
-          { label: 'Feed', href: '/feed', icon: 'home' },
           { label: 'Messaggi', href: '/messages', icon: 'mail' },
           { label: 'Mappa Club', href: '/club-map', icon: 'map' },
           { label: 'Notifiche', href: '/notifications', icon: 'notifications' },
         ];
       }
       return [
-        { label: 'Feed', href: '/feed', icon: 'home' },
         ...(isFan ? [] : [{ label: 'Opportunità', href: '/opportunities', icon: 'opportunities' as const }]),
         ...(isFan ? [] : [{ label: 'Candidature', href: applicationsHref, icon: 'applications' as const }]),
         { label: 'Messaggi', href: '/messages', icon: 'mail' },
