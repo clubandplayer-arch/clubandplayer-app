@@ -1,4 +1,4 @@
-export const SITE_NAME = 'Club & Player';
+export const SITE_NAME = 'Club and Player';
 export const DEFAULT_SITE_URL = 'https://www.clubandplayer.com';
 export const DEFAULT_OG_IMAGE = '/og.jpg';
 

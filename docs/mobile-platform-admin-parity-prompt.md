@@ -3,7 +3,7 @@
 Copia e incolla questo file nella conversazione della repo mobile per replicare il comportamento implementato nella repo web.
 
 ## Obiettivo
-Replicare lato mobile il Platform Admin unico di Club&Player, riservato esclusivamente all'email normalizzata `clubandplayer@gmail.com`, con profilo dedicato e post visibili anche nel feed “following” degli utenti che non seguono l'admin.
+Replicare lato mobile il Platform Admin unico di Club and Player, riservato esclusivamente all'email normalizzata `clubandplayer@gmail.com`, con profilo dedicato e post visibili anche nel feed “following” degli utenti che non seguono l'admin.
 
 ## Invarianti obbligatorie
 1. L'unico Platform Admin è l'utente autenticato con email normalizzata `clubandplayer@gmail.com`.

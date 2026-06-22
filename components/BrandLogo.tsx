@@ -25,10 +25,10 @@ const variantConfig: Record<BrandLogoVariant, { imageClass: string; textClass: s
 export default function BrandLogo({ variant, className, href }: BrandLogoProps) {
   const config = variantConfig[variant]
   const content = (
-    <div className={`inline-flex flex-wrap items-center ${config.gapClass} ${className ?? ''}`} aria-label="Club & Player">
+    <div className={`inline-flex flex-wrap items-center ${config.gapClass} ${className ?? ''}`} aria-label="Club and Player">
       <Image
         src="/brand/logo-cp.png"
-        alt="Club & Player logo"
+        alt="Club and Player logo"
         width={variant === 'marketing' ? 68 : 40}
         height={variant === 'marketing' ? 68 : 40}
         className={`${config.imageClass} max-w-full`}
@@ -37,7 +37,7 @@ export default function BrandLogo({ variant, className, href }: BrandLogoProps) 
       <span className={config.textClass}>
         <span>Club</span>
         {' '}
-        <span className="text-[#036f9a]">&amp;</span>
+        <span className="text-[#036f9a]">and</span>
         {' '}
         <span>Player</span>
       </span>
@@ -46,7 +46,7 @@ export default function BrandLogo({ variant, className, href }: BrandLogoProps) 
 
   if (href) {
     return (
-      <Link href={href} className="inline-flex items-center" aria-label="Vai alla home di Club & Player">
+      <Link href={href} className="inline-flex items-center" aria-label="Vai alla home di Club and Player">
         {content}
       </Link>
     )

@@ -1,4 +1,4 @@
-# Club&Player — Roadmap post-MVP
+# Club and Player — Roadmap post-MVP
 _Stato iniziale: 04/11/2025 — timezone: Europe/Rome_  
 _Base: Next.js 15.5 · React 19 · TypeScript · Supabase (Auth/DB/Storage) · Vercel · Sentry · Smoke test Node · pnpm 10.17.1_
 

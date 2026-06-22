@@ -6,8 +6,8 @@ export const dynamic = 'force-dynamic';
 export const fetchCache = 'default-no-store';
 
 export const metadata: Metadata = {
-  title: 'Login Club & Player',
-  description: 'Accedi al tuo account Club & Player.',
+  title: 'Login Club and Player',
+  description: 'Accedi al tuo account Club and Player.',
   alternates: {
     canonical: '/login',
   },

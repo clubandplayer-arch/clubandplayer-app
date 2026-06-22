@@ -1,7 +1,7 @@
-# Ads Sales Playbook — Club&Player
+# Ads Sales Playbook — Club and Player
 
 ## 1) Overview
-Ads in Club&Player sono sponsorizzazioni native che appaiono in posizioni dedicate del feed e delle colonne laterali. Ogni impression e click viene tracciato per reportistica mensile, con targeting per area geografica, sport, audience e device.
+Ads in Club and Player sono sponsorizzazioni native che appaiono in posizioni dedicate del feed e delle colonne laterali. Ogni impression e click viene tracciato per reportistica mensile, con targeting per area geografica, sport, audience e device.
 
 **Cosa tracciamo**
 - **Impressions**: quante volte una creative è stata mostrata.
@@ -102,7 +102,7 @@ Endpoint: `/api/admin/ads/reports`
 
 ## 8) Template preventivo (copiabile)
 
-**Preventivo Sponsorizzazione — Club&Player**
+**Preventivo Sponsorizzazione — Club and Player**
 
 - Sponsor: **[NOME SPONSOR]**
 - Referente: **[REFERENTE]**
@@ -129,7 +129,7 @@ Endpoint: `/api/admin/ads/reports`
 
 ## 9) Template report mensile (copiabile)
 
-**Report Mensile ADS — Club&Player**
+**Report Mensile ADS — Club and Player**
 
 - Periodo: **[MESE/ANNO]**
 - Campaign ID: **[CAMPAIGN_ID]**
@@ -157,7 +157,7 @@ Endpoint: `/api/admin/ads/reports`
 
 **Non accettato**
 - Claim ingannevoli o fuorvianti.
-- Contenuti offensivi o non conformi alle policy Club&Player.
+- Contenuti offensivi o non conformi alle policy Club and Player.
 
 ## 11) FAQ breve
 **Posso targettizzare solo Siracusa?**

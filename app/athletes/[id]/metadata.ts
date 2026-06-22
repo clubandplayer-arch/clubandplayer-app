@@ -4,7 +4,7 @@ type Props = { params: { id: string } };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = params;
-  const title = 'Profilo spostato — Club & Player';
+  const title = 'Profilo spostato — Club and Player';
   const description = 'Questo profilo ora è disponibile su /players';
 
   return {

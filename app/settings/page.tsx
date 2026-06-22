@@ -129,7 +129,7 @@ export default function SettingsPage() {
       return
     }
 
-    const secondConfirm = window.confirm('Conferma finale: vuoi eliminare definitivamente il tuo account Club & Player?')
+    const secondConfirm = window.confirm('Conferma finale: vuoi eliminare definitivamente il tuo account Club and Player?')
     if (!secondConfirm) return
 
     setDeleting(true)

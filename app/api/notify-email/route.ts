@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
     const senderName =
       senderProf && senderProf[0] ? (senderProf[0] as { full_name: string | null }).full_name : null
 
-    const subject = 'Nuovo messaggio su Club&Player'
+    const subject = 'Nuovo messaggio su Club and Player'
     const preview = text.length > 120 ? text.slice(0, 120) + '…' : text
     const chatUrl = `${process.env.NEXT_PUBLIC_BASE_URL ?? ''}/messages?to=${senderId}`
 
@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
 
     const resend = new Resend(resendConfig.apiKey)
     const sendRes = await resend.emails.send({
-      from: resendConfig.from, // es. "Club&Player <no-reply@mail.clubandplayer.com>"
+      from: resendConfig.from, // es. "Club and Player <no-reply@mail.clubandplayer.com>"
       to: receiverUser.user.email,
       subject,
       html: `

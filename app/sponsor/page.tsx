@@ -93,7 +93,7 @@ function buildLeadSummary(params: {
   } = params;
 
   const lines = [
-    "=== Richiesta Sponsorizzazione (Club & Player) ===",
+    "=== Richiesta Sponsorizzazione (Club and Player) ===",
     `Pacchetto: ${PACKAGES[pkg].label}`,
     `Posizionamenti: ${PACKAGES[pkg].placements.join(" • ")}`,
     `Target: ${targetLabel}`,
@@ -386,7 +386,7 @@ export default function SponsorPage() {
         <p className="mt-2 text-sm text-muted-foreground">
           Raggiungi club e player in{" "}
           <span className="font-medium">tutta Italia</span> con annunci mirati su
-          Club &amp; Player.
+          Club and Player.
         </p>
       </div>
 
@@ -485,7 +485,7 @@ export default function SponsorPage() {
               <div className="mt-1 rounded-lg border px-3 py-2 text-sm">
                 <p className="font-medium">Italia</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Target nazionale su Club &amp; Player. (Opzionale: restringi con
+                  Target nazionale su Club and Player. (Opzionale: restringi con
                   Regione/Provincia/Città)
                 </p>
               </div>

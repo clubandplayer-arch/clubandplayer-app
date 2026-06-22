@@ -6,8 +6,8 @@ type Props = { params: { id: string } };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = params;
 
-  const title = 'Profilo — Club & Player';
-  const description = 'Profilo pubblico su Club & Player.';
+  const title = 'Profilo — Club and Player';
+  const description = 'Profilo pubblico su Club and Player.';
 
   return {
     title,
@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title,
       description,
       url: `/u/${id}`,
-      images: [{ url: '/og.jpg', width: 1200, height: 630, alt: 'Club & Player' }],
+      images: [{ url: '/og.jpg', width: 1200, height: 630, alt: 'Club and Player' }],
       type: 'profile',
     },
     twitter: {

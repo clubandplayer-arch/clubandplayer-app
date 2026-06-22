@@ -1,9 +1,9 @@
-# Gap analysis Club&Player vs modello LinkedIn (2025-12-06)
+# Gap analysis Club and Player vs modello LinkedIn (2025-12-06)
 
 Questo documento confronta lo stato attuale dell'app (branch principale, dicembre 2025) con il modello mentale di LinkedIn per aree chiave: feed, profili, messaggi, notifiche, ricerca, opportunità, impostazioni/onboarding. Fonti: codice delle pagine dashboard (`/feed`, `/messages`, `/search-map`, `/opportunities`, `/notifications`, `/athletes/[id]`, `/clubs/[id]`) e note di audit interne (`docs/audit-core-rewrite-2025-12-03.md`, `docs/linkedin-alignment.md`).
 
 ## Tabella dei gap
-| Area | LinkedIn | Club&Player oggi | Gap / Mancanze | Priorità | Tipo di lavoro |
+| Area | LinkedIn | Club and Player oggi | Gap / Mancanze | Priorità | Tipo di lavoro |
 | --- | --- | --- | --- | --- | --- |
 | Feed | Post con reazioni multiple, commenti annidati, share/reshare, contatori visibili, badge visibilità; media centrati e lightbox; ranking basato su rete. | Feed con composer, post con media centrati, reazioni multiple e contatori, commenti espandibili, colonna destra dinamica (chi seguire, club seguiti, evidenze).【F:app/(dashboard)/feed/page.tsx†L1-L79】【F:components/feed/PostMedia.tsx†L1-L93】 | Mancano reshare/quote, preferenza feed “seguo” vs “top”, insight view count, mute/snooze autore; lightbox presente ma senza galleria per album. | MUST | Solo UI + logica FE/BE (API share, contatori) |
 | Profili (Player/Club) | Sezioni About, Esperienze, Skills/endorsement, Attività, Featured media, Open to work/hiring, CTA follow/connect, people-also-viewed. | Profili pubblici con header, bio/headline, esperienze sportive, statistiche, media highlight, pannello Open to opportunities, feed autore; club con header, follow, about sintetico e feed.【F:app/athletes/[id]/page.tsx†L1-L105】【F:app/clubs/[id]/page.tsx†L1-L90】 | Mancano endorsement/competenze, sezione attività aggregata, widget “persone/club simili”, indicatori hiring/open roles per club, collegamento opportunità aperte nella hero. | MUST | UI + logica dati (campi profilo, query correlate) |

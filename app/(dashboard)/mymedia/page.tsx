@@ -308,7 +308,7 @@ export default function MyMediaPage() {
             <p className="text-xs font-semibold uppercase tracking-wider text-cp-brand">MyMedia</p>
             <h1 className="text-3xl font-semibold text-cp-brand">La tua libreria media</h1>
             <p className="max-w-2xl text-sm text-cp-brand-soft">
-              Gestisci in un unico posto tutti i video e le foto che hai condiviso su Club&Player.
+              Gestisci in un unico posto tutti i video e le foto che hai condiviso su Club and Player.
             </p>
           </div>
           <Link

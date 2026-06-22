@@ -413,7 +413,7 @@ export default function FeedPage() {
                 Sei un’attività e vuoi farti conoscere da club e player?
               </p>
               <p className="mt-0.5 text-xs leading-5 text-white/90">
-                Sponsorizza su Club &amp; Player: richiedi informazioni in 30 secondi.
+                Sponsorizza su Club and Player: richiedi informazioni in 30 secondi.
               </p>
             </div>
 

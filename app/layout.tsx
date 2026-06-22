@@ -23,9 +23,9 @@ const inter = Inter({
 });
 
 const BASE_URL = getSiteUrl();
-const DEFAULT_TITLE = 'Club & Player: network sportivo per club, player, staff e fan';
+const DEFAULT_TITLE = 'Club and Player: network sportivo per club, player, staff e fan';
 const DEFAULT_DESC =
-  'Club & Player connette club, player, staff e fan in una piattaforma sportiva con profili, opportunità, candidature e messaggi riservati agli utenti registrati.';
+  'Club and Player connette club, player, staff e fan in una piattaforma sportiva con profili, opportunità, candidature e messaggi riservati agli utenti registrati.';
 const OG_IMAGE = DEFAULT_OG_IMAGE; // /public/og.jpg (1200x630)
 
 // Disabilita la prerenderizzazione statica per evitare errori quando le variabili
@@ -150,7 +150,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <footer className="border-t border-neutral-200 bg-white/90 py-6 text-sm text-neutral-600">
           <div className="container mx-auto flex max-w-5xl flex-col gap-2 px-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs uppercase tracking-wide text-neutral-500">
-              © {new Date().getFullYear()} Club &amp; Player
+              © {new Date().getFullYear()} Club and Player
             </p>
             <nav className="flex flex-wrap gap-4">
               {FOOTER_LINKS.map((link) => (

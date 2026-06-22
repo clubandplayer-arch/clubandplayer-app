@@ -1,4 +1,4 @@
-# Club & Player scalability runbook
+# Club and Player scalability runbook
 
 Checklist operativa per verificare che l'app sia pronta a sostenere picchi di iscrizioni, upload e traffico feed/search.
 

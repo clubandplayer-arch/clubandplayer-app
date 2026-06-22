@@ -1,4 +1,4 @@
-# MVP "Club & Player" – checklist operativa
+# MVP "Club and Player" – checklist operativa
 
 Questo file riassume le attività prioritarie da passare al supporto ChatGPT/assistenza tecnica per completare la MVP dopo le ultime correzioni.
 

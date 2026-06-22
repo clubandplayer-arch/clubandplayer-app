@@ -31,7 +31,7 @@ export default function BrandLogo({
   const img = (
     <Image
       src={src}
-      alt="Club & Player"
+      alt="Club and Player"
       width={width}
       height={height}
       priority={priority}
@@ -53,7 +53,7 @@ export default function BrandLogo({
   return (
     <Link
       href={href}
-      aria-label="Club & Player"
+      aria-label="Club and Player"
       className={["inline-flex items-center", containerClassName].filter(Boolean).join(" ")}
     >
       {img}

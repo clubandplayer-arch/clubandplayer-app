@@ -70,7 +70,7 @@ export function FirstStepsCard({ profile }: { profile?: Profile | null }) {
           </div>
           <div className="space-y-1">
             <p className="text-base font-semibold text-neutral-800">
-              Completa questi passaggi per ottenere il massimo da Club&Player
+              Completa questi passaggi per ottenere il massimo da Club and Player
             </p>
             <p className="text-sm text-neutral-600">
               Ti suggeriamo alcune azioni veloci per migliorare il tuo profilo e il tuo feed.

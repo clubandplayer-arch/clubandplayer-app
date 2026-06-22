@@ -24,7 +24,6 @@ export default function LegalNavbar({ role }: Props) {
 
   const navItems = useMemo<NavItem[]>(
     () => [
-      { label: 'Feed', href: '/feed', icon: 'home' },
       { label: 'Cerca', href: '/search-map', icon: 'globe' },
       { label: 'Opportunità', href: '/opportunities', icon: 'opportunities' },
       { label: 'Messaggi', href: '/messages', icon: 'mail' },

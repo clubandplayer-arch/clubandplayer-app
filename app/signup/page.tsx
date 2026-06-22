@@ -5,9 +5,9 @@ import SignupClient from './SignupClient';
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'default-no-store';
 
-const title = 'Registrati a Club & Player: network sportivo per club, player, staff e fan';
+const title = 'Registrati a Club and Player: network sportivo per club, player, staff e fan';
 const description =
-  'Crea un account Club & Player per pubblicare opportunità sportive, candidarti, costruire un profilo sportivo e seguire club o player.';
+  'Crea un account Club and Player per pubblicare opportunità sportive, candidarti, costruire un profilo sportivo e seguire club o player.';
 
 export const metadata: Metadata = {
   title,

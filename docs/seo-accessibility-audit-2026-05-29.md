@@ -2,7 +2,7 @@
 
 ## Premessa operativa
 
-Club & Player è un'applicazione prevalentemente autenticata: la maggior parte delle rotte applicative richiede login o viene reindirizzata in base al ruolo. Di conseguenza la strategia SEO non deve provare a indicizzare dashboard, feed, profili privati, candidature, messaggi o aree amministrative.
+Club and Player è un'applicazione prevalentemente autenticata: la maggior parte delle rotte applicative richiede login o viene reindirizzata in base al ruolo. Di conseguenza la strategia SEO non deve provare a indicizzare dashboard, feed, profili privati, candidature, messaggi o aree amministrative.
 
 Le sole pagine considerate pubblicamente visitabili in questa fase sono:
 

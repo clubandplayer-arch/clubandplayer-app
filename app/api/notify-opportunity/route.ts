@@ -143,7 +143,7 @@ export async function POST(req: NextRequest) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: process.env.RESEND_FROM, // es. "Club&Player <no-reply@mail.clubandplayer.com>"
+          from: process.env.RESEND_FROM, // es. "Club and Player <no-reply@mail.clubandplayer.com>"
           to: rec.email,
           subject,
           html,
