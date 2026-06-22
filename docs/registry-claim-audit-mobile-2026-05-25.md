@@ -1,4 +1,4 @@
-# Audit forense Web → Mobile: Registry / Claim nazionale (Club&Player)
+# Audit forense Web → Mobile: Registry / Claim nazionale (Club and Player)
 
 Data audit: **2026-05-26 (UTC)**  
 Target: handoff per Codex Mobile con accesso **read-only** alla repo web.

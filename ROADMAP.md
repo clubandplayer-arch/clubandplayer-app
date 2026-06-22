@@ -1,4 +1,4 @@
-# Club&Player — Roadmap operativa
+# Club and Player — Roadmap operativa
 _Stato al 05/11/2025 — timezone: Europe/Rome_
 
 ---

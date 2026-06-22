@@ -1,6 +1,6 @@
 # Repository audit – 9 marzo 2025
 
-Questa analisi riepiloga lo stato attuale del branch `work`, evidenziando le cartelle indispensabili per la MVP di **Club & Player** e ciò che è stato rimosso perché ridondante. L'obiettivo è arrivare rapidamente a un perimetro pulito, mantenendo solo ciò che serve per sviluppare e validare le funzionalità core (autenticazione, profili, feed, opportunità, messaggistica e area admin).
+Questa analisi riepiloga lo stato attuale del branch `work`, evidenziando le cartelle indispensabili per la MVP di **Club and Player** e ciò che è stato rimosso perché ridondante. L'obiettivo è arrivare rapidamente a un perimetro pulito, mantenendo solo ciò che serve per sviluppare e validare le funzionalità core (autenticazione, profili, feed, opportunità, messaggistica e area admin).
 
 ## Sintesi
 

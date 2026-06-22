@@ -25,8 +25,8 @@ type ShareApiResponse =
   | { ok: false; message?: string };
 
 const FALLBACK_OG_IMAGE = '/og.jpg';
-const DEFAULT_OG_TITLE = 'Club & Player';
-const DEFAULT_OG_DESCRIPTION = 'Club & Player App';
+const DEFAULT_OG_TITLE = 'Club and Player';
+const DEFAULT_OG_DESCRIPTION = 'Club and Player App';
 const PUBLIC_SITE_URL = 'https://www.clubandplayer.com';
 const SUPABASE_PUBLIC_STORAGE_PATH = '/storage/v1/object/public/';
 const OG_IMAGE_OPTIMIZER_WIDTH = 1200;
@@ -120,7 +120,7 @@ function toOptimizedOgImageUrl(base: string, sourceUrl: string) {
 
 function metadataTitle(post: FeedPost) {
   const author = post.author_display_name?.trim();
-  return author ? `Post condiviso — ${author}` : 'Post condiviso — Club & Player';
+  return author ? `Post condiviso — ${author}` : 'Post condiviso — Club and Player';
 }
 
 async function fetchSharedPost(token: string): Promise<ShareApiResponse> {

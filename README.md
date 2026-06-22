@@ -1,6 +1,6 @@
-# Club & Player — MVP
+# Club and Player — MVP
 
-“Club & Player” è una piattaforma social che mette in contatto società sportive dilettantistiche e atleti, ispirata ai flussi di LinkedIn. Questa repo contiene la **MVP read-only per i club**, con autenticazione Supabase, feed pubblico, pagine profilo e area /clubs consultabile.
+“Club and Player” è una piattaforma social che mette in contatto società sportive dilettantistiche e atleti, ispirata ai flussi di LinkedIn. Questa repo contiene la **MVP read-only per i club**, con autenticazione Supabase, feed pubblico, pagine profilo e area /clubs consultabile.
 
 ## Stack principale
 - **Next.js 15.5** (App Router, Turbopack)

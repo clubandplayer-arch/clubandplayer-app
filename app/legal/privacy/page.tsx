@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy • Club & Player',
-  description: 'Informativa privacy di Club & Player: dati trattati, basi giuridiche, fornitori, diritti GDPR e contatti.',
+  title: 'Privacy Policy • Club and Player',
+  description: 'Informativa privacy di Club and Player: dati trattati, basi giuridiche, fornitori, diritti GDPR e contatti.',
   alternates: { canonical: '/legal/privacy' },
 };
 
@@ -14,14 +14,14 @@ export default function PrivacyPage() {
     <main className="container mx-auto max-w-3xl px-4 py-8">
       <h1 className="mb-4 text-3xl font-semibold">Informativa Privacy</h1>
       <p className="text-sm leading-6 text-neutral-600 dark:text-neutral-300">
-        Questa informativa descrive come Club & Player tratta i dati personali degli utenti e come puoi esercitare i tuoi diritti
+        Questa informativa descrive come Club and Player tratta i dati personali degli utenti e come puoi esercitare i tuoi diritti
         in qualità di interessato (GDPR UE 2016/679 e normativa nazionale).
       </p>
 
       <section className="mt-8 space-y-3 text-sm text-neutral-700 dark:text-neutral-200">
         <h2 className="text-lg font-semibold">Titolare e contatti</h2>
         <p>
-          Il titolare del trattamento è Club & Player — contattabile all’indirizzo{' '}
+          Il titolare del trattamento è Club and Player — contattabile all’indirizzo{' '}
           <a className="underline" href={`mailto:${LEGAL_EMAIL}`}>
             {LEGAL_EMAIL}
           </a>
@@ -61,7 +61,7 @@ export default function PrivacyPage() {
         </ul>
         <p>
           Tutti i fornitori sono vincolati da data processing agreement e operano solo come responsabili del trattamento per conto di
-          Club &amp; Player.
+          Club and Player.
         </p>
       </section>
 
@@ -95,7 +95,7 @@ export default function PrivacyPage() {
       <section className="mt-8 space-y-3 text-sm text-neutral-700 dark:text-neutral-200">
         <h2 className="text-lg font-semibold">Eliminazione dell’account</h2>
         <p>
-          Gli utenti possono richiedere l’eliminazione del proprio account Club &amp; Player e dei dati personali associati inviando
+          Gli utenti possono richiedere l’eliminazione del proprio account Club and Player e dei dati personali associati inviando
           una richiesta all’indirizzo email:
         </p>
         <p>support@clubandplayer.com</p>

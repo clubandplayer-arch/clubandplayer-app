@@ -313,7 +313,7 @@ export default function ClubRegistryClaimPage() {
       setMessage(
         json.alreadyExists
           ? 'Hai già una contestazione aperta per questa società.'
-          : 'Contestazione inviata. Lo staff Club & Player la prenderà in carico.'
+          : 'Contestazione inviata. Lo staff Club and Player la prenderà in carico.'
       );
 
       setDisputingId('');

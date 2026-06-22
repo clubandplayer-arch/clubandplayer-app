@@ -148,7 +148,7 @@ export default function AdminProfilePage() {
                 value={fullName}
                 onChange={(event) => setFullName(event.target.value)}
                 className="w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
-                placeholder="Club & Player"
+                placeholder="Club and Player"
               />
             </label>
 
@@ -182,7 +182,7 @@ export default function AdminProfilePage() {
               onChange={(event) => setBio(event.target.value)}
               rows={6}
               className="w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
-              placeholder="Racconta il progetto Club & Player"
+              placeholder="Racconta il progetto Club and Player"
             />
           </label>
 

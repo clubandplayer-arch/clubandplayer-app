@@ -1,4 +1,4 @@
-# Go Live roadmap – Club&Player (post 2025-12-06)
+# Go Live roadmap – Club and Player (post 2025-12-06)
 
 Questa roadmap riassume i punti aperti emersi da:
 - docs/linkedin-gap-analysis-2025-12-06.md

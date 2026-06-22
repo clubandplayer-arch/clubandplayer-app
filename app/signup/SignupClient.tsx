@@ -83,7 +83,7 @@ export default function SignupPage() {
           <BrandLogo variant="signup" unlinked />
           <div className="space-y-4">
             <h1 className="text-3xl font-bold leading-tight text-[#00527a] sm:text-4xl">
-              Entra a far parte di Club &amp; Player
+              Entra a far parte di Club and Player
             </h1>
             <p className="text-lg leading-relaxed text-slate-800">
               Registrati come <b>CLUB</b> o <b>PLAYER</b> o anche <b>STAFF</b>, pubblica opportunità, costruisci la tua carriera.
@@ -107,7 +107,7 @@ export default function SignupPage() {
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex h-[56px] w-[190px] overflow-hidden rounded-xl transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00527a] focus-visible:ring-offset-2"
-                  aria-label="Scarica Club & Player su App Store"
+                  aria-label="Scarica Club and Player su App Store"
                 >
                   <Image
                     src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg"

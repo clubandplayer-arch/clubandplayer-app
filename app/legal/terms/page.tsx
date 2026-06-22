@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Termini di utilizzo • Club & Player',
-  description: 'Termini di utilizzo di Club & Player per account, contenuti, beta privata, sicurezza e responsabilità.',
+  title: 'Termini di utilizzo • Club and Player',
+  description: 'Termini di utilizzo di Club and Player per account, contenuti, beta privata, sicurezza e responsabilità.',
   alternates: { canonical: '/legal/terms' },
 };
 
@@ -11,7 +11,7 @@ export default function TermsPage() {
     <main className="container mx-auto max-w-3xl px-4 py-8">
       <h1 className="mb-4 text-3xl font-semibold">Termini e condizioni d’uso</h1>
       <p className="text-sm text-neutral-600 dark:text-neutral-300">
-        L’accesso o l’utilizzo della piattaforma Club &amp; Player implica l’accettazione integrale dei presenti Termini. Ti
+        L’accesso o l’utilizzo della piattaforma Club and Player implica l’accettazione integrale dei presenti Termini. Ti
         invitiamo a leggerli con attenzione prima di proseguire. In caso di adesione al programma Beta privata si applicano anche le
         condizioni supplementari descritte nell’Informativa Beta.
       </p>
@@ -19,7 +19,7 @@ export default function TermsPage() {
       <section className="mt-8 space-y-3 text-sm text-neutral-700 dark:text-neutral-200">
         <h2 className="text-lg font-semibold">Oggetto del servizio</h2>
         <p>
-          Club & Player fornisce strumenti di matching tra società sportive e atleti, funzioni di messaggistica e gestione di opportunità.
+          Club and Player fornisce strumenti di matching tra società sportive e atleti, funzioni di messaggistica e gestione di opportunità.
           Le funzionalità possono essere aggiornate, sospese o ampliate senza preavviso per ragioni tecniche o di sicurezza.
         </p>
       </section>
@@ -47,7 +47,7 @@ export default function TermsPage() {
           <li>Non sono tollerati contenuti offensivi, abusivi, discriminatori, minacciosi, spam o illegali.</li>
           <li>Gli utenti possono segnalare contenuti e profili tramite le funzioni di segnalazione disponibili nella piattaforma.</li>
           <li>Gli utenti possono bloccare altri utenti per non visualizzarne più i contenuti nel proprio feed.</li>
-          <li>Club &amp; Player può rimuovere contenuti e/o sospendere account che violano queste regole o i presenti Termini.</li>
+          <li>Club and Player può rimuovere contenuti e/o sospendere account che violano queste regole o i presenti Termini.</li>
         </ul>
       </section>
 

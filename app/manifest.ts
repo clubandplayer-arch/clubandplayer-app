@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Club & Player",
+    name: "Club and Player",
     short_name: "C&P",
     start_url: "/feed",
     display: "standalone",

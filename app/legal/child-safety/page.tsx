@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Standard di sicurezza dei minori • Club & Player',
-  description: 'Standard di sicurezza dei minori applicati da Club & Player e contatti per segnalazioni.',
+  title: 'Standard di sicurezza dei minori • Club and Player',
+  description: 'Standard di sicurezza dei minori applicati da Club and Player e contatti per segnalazioni.',
   alternates: { canonical: '/legal/child-safety' },
 };
 
@@ -14,7 +14,7 @@ export default function ChildSafetyPage() {
       <h1 className="mb-4 text-3xl font-semibold">Standard di sicurezza dei minori</h1>
 
       <section className="space-y-3 text-sm text-neutral-700 dark:text-neutral-200">
-        <p>Club &amp; Player è una piattaforma dedicata ad atleti e club sportivi.</p>
+        <p>Club and Player è una piattaforma dedicata ad atleti e club sportivi.</p>
         <p>La piattaforma non è destinata ai minori di 13 anni.</p>
         <p>Adottiamo misure per prevenire abusi e contenuti inappropriati, tra cui:</p>
         <ul className="list-disc space-y-2 pl-6">

@@ -356,7 +356,7 @@ export default function FollowingPage() {
   return (
     <div className="space-y-6 p-4 md:p-6">
       <div className="space-y-1">
-        <h1 className="heading-h1">Club &amp; Player che segui</h1>
+        <h1 className="heading-h1">Club and Player che segui</h1>
         <p className="text-sm text-neutral-600 dark:text-neutral-300">
           Una panoramica di tutti i profili che hai deciso di seguire. {showRosterControls ? 'Come club puoi usare il toggle “In Rosa” per attivare la rosa dei player.' : ''}
         </p>

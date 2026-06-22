@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
     }
 
     const resend = new Resend(resendConfig.apiKey)
-    const from = body.from ?? resendConfig.from // es. "Club&Player <no-reply@mail.clubandplayer.com>"
+    const from = body.from ?? resendConfig.from // es. "Club and Player <no-reply@mail.clubandplayer.com>"
 
     const sendRes = await resend.emails.send({
       from,

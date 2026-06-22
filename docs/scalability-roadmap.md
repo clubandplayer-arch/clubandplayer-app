@@ -1,4 +1,4 @@
-# Club & Player scalability roadmap status
+# Club and Player scalability roadmap status
 
 Tracker delle attività fatte e delle attività residue per rendere l'app più resistente a picchi di iscrizioni, feed, upload e search.
 

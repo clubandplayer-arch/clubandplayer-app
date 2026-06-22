@@ -4,7 +4,7 @@ import type { FeedPost } from '@/components/feed/postShared';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-export const alt = 'Anteprima post condiviso Club & Player';
+export const alt = 'Anteprima post condiviso Club and Player';
 export const size = {
   width: 1200,
   height: 630,
@@ -15,7 +15,7 @@ type ShareApiResponse =
   | { ok: true; post: FeedPost }
   | { ok: false; message?: string };
 
-const DEFAULT_DESCRIPTION = 'Club & Player App';
+const DEFAULT_DESCRIPTION = 'Club and Player App';
 
 async function resolveBaseUrl() {
   const headerList = await headers();
@@ -54,8 +54,8 @@ export default async function OpengraphImage({ params }: { params: { token?: str
   const postData = token ? await fetchSharedPost(token) : { ok: false as const };
 
   const author = postData.ok
-    ? postData.post.author_display_name?.trim() || 'Autore Club & Player'
-    : 'Club & Player';
+    ? postData.post.author_display_name?.trim() || 'Autore Club and Player'
+    : 'Club and Player';
   const text = postData.ok
     ? excerpt(postData.post.content ?? postData.post.event_payload?.description ?? null)
     : DEFAULT_DESCRIPTION;
@@ -88,7 +88,7 @@ export default async function OpengraphImage({ params }: { params: { token?: str
               letterSpacing: '-0.02em',
             }}
           >
-            Club&Player
+            Club and Player
           </div>
           <div
             style={{

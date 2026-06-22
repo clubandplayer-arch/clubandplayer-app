@@ -1,7 +1,7 @@
 // app/(dashboard)/opportunities/metadata.ts
 import type { Metadata } from 'next';
 
-const title = 'Opportunità — Club & Player';
+const title = 'Opportunità — Club and Player';
 const description = 'Cerca e pubblica provini, ingaggi e proposte per club e atleti.';
 
 export const metadata: Metadata = {
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     url: '/opportunities',
     title,
     description,
-    images: [{ url: '/og.jpg', width: 1200, height: 630, alt: 'Club & Player' }],
+    images: [{ url: '/og.jpg', width: 1200, height: 630, alt: 'Club and Player' }],
     type: 'website',
   },
   twitter: {

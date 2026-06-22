@@ -198,7 +198,7 @@ export default function FanProfileForm() {
     <form onSubmit={onSubmit} className="space-y-6">
       {missingRequiredFields.length > 0 ? (
         <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-950 shadow-sm" role="alert">
-          <p className="font-semibold">Completa il tuo profilo per continuare ad utilizzare Club & Player.</p>
+          <p className="font-semibold">Completa il tuo profilo per continuare ad utilizzare Club and Player.</p>
           <p className="mt-2 text-sm">I dati richiesti servono a identificare correttamente utenti, staff e società all'interno della piattaforma.</p>
           <p className="mt-2 text-sm">Campi mancanti: {missingRequiredFields.join(', ')}.</p>
         </div>

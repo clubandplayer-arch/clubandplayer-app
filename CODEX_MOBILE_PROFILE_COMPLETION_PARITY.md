@@ -149,7 +149,7 @@ UI obbligatoria:
 - Banner visibile se ci sono campi mancanti:
 
 ```text
-Completa il tuo profilo per continuare ad utilizzare Club & Player.
+Completa il tuo profilo per continuare ad utilizzare Club and Player.
 
 I dati richiesti servono a identificare correttamente utenti, staff e società all'interno della piattaforma.
 ```

@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Informativa programma Beta • Club & Player',
-  description: 'Informativa del programma Beta Club & Player: partecipazione, feedback, monitoraggio tecnico e uscita dalla beta.',
+  title: 'Informativa programma Beta • Club and Player',
+  description: 'Informativa del programma Beta Club and Player: partecipazione, feedback, monitoraggio tecnico e uscita dalla beta.',
   alternates: { canonical: '/legal/beta' },
 };
 
@@ -11,7 +11,7 @@ const CONTACT = 'beta@clubandplayer.com';
 const sections = [
   {
     title: 'Chi può partecipare',
-    body: `L’accesso alla Beta privata è riservato a club, procuratori e atleti invitati direttamente dal team Club & Player. Gli account sono personali, non trasferibili e possono essere revocati in caso di uso improprio.`,
+    body: `L’accesso alla Beta privata è riservato a club, procuratori e atleti invitati direttamente dal team Club and Player. Gli account sono personali, non trasferibili e possono essere revocati in caso di uso improprio.`,
   },
   {
     title: 'Cosa monitoriamo',
@@ -51,7 +51,7 @@ export default function BetaInfoPage() {
           <a className="underline" href={`mailto:${CONTACT}`}>
             {CONTACT}
           </a>{' '}
-          indicando oggetto “Beta Club &amp; Player”.
+          indicando oggetto “Beta Club and Player”.
         </p>
       </section>
 

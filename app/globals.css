@@ -20,7 +20,7 @@
 
 /* === Theme tokens (CSS variables) === */
 :root {
-  /* Palette logo Club & Player */
+  /* Palette logo Club and Player */
   --brand:  #0e527b; /* blu logo per "Club" e "Player" */
   --brand-soft: #036f9a; /* azzurro logo per la "&" */
   --brand-border: rgba(14, 82, 123, 0.18); /* bordo soft coerente con il brand */

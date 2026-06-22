@@ -47,7 +47,7 @@ export default async function AdminPublicProfilePage({ params }: PageProps) {
 
   const displayName = buildProfileDisplayName(profile.full_name, profile.display_name, 'Platform Admin');
   const initials = initialsFromName(displayName);
-  const aboutText = profile.bio || 'Profilo amministratore della piattaforma Club & Player.';
+  const aboutText = profile.bio || 'Profilo amministratore della piattaforma Club and Player.';
 
   return (
     <ToastProvider>

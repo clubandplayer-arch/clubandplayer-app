@@ -1,7 +1,7 @@
 // app/(dashboard)/feed/metadata.ts
 import type { Metadata } from 'next';
 
-const title = 'Bacheca • Club & Player';
+const title = 'Bacheca • Club and Player';
 const description = 'Aggiornamenti dalla community.';
 
 export const metadata: Metadata = {
@@ -14,7 +14,7 @@ export const metadata: Metadata = {
     title,
     description,
     url: '/feed',
-    images: [{ url: '/og.jpg', width: 1200, height: 630, alt: 'Club & Player' }],
+    images: [{ url: '/og.jpg', width: 1200, height: 630, alt: 'Club and Player' }],
     type: 'website',
   },
   twitter: {

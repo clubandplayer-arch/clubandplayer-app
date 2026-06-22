@@ -1,4 +1,4 @@
-# Allineamento Club&Player al modello LinkedIn
+# Allineamento Club and Player al modello LinkedIn
 
 Questo documento raccoglie una revisione complessiva dell'app con la lente "LinkedIn per sportivi" e propone uno schema di interventi prioritari.
 

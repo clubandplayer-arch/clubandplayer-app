@@ -1,4 +1,4 @@
-# Informativa Beta – Club & Player
+# Informativa Beta – Club and Player
 
 _Data esecuzione: 09/03/2025_
 
