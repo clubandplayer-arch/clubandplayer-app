@@ -37,7 +37,7 @@ export default function BrandLogo({ variant, className, href }: BrandLogoProps) 
       <span className={config.textClass}>
         <span>Club</span>
         {' '}
-        <span className="text-[#036f9a]">&amp;</span>
+        <span className="text-[#036f9a]">and</span>
         {' '}
         <span>Player</span>
       </span>

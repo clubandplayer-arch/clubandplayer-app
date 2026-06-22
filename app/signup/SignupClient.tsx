@@ -86,8 +86,8 @@ export default function SignupPage() {
               Entra a far parte di Club and Player
             </h1>
             <p className="text-lg leading-relaxed text-slate-800">
-              Registrati come <b>CLUB</b> o <b>PLAYER</b> o anche <b>STAFF</b>, pubblica opportunità, costruisci la tua carriera.
-              Iscriviti in pochi secondi
+              Registrati come <b>CLUB</b> o <b>PLAYER</b>, pubblica opportunità, costruisci la tua carriera oppure come{' '}
+              <b>ENTE</b> o <b>STAFF</b>. Iscriviti in pochi secondi
             </p>
             <ul className="mt-4 space-y-3 text-base text-slate-800">
               <li>• Scopri e pubblica opportunità reali</li>
