@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { normalizePost, type FeedPost } from '@/components/feed/postShared';
 
-export type FeedScope = 'all' | 'following';
+export type FeedScope = 'all' | 'following' | 'personal';
 
 export type UseFeedOptions = {
   initialScope?: FeedScope;
