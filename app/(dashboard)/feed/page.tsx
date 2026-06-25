@@ -367,6 +367,14 @@ export default function FeedPage() {
     [scope, setScope],
   );
 
+  const scopeButtonClass = useCallback(
+    (target: FeedScope) =>
+      `rounded-full px-3 py-1 text-xs font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--brand)] ${
+        scope === target ? 'bg-[var(--brand)] text-white shadow-sm' : 'bg-white text-neutral-700 hover:bg-neutral-100'
+      }`,
+    [scope],
+  );
+
   function onPostUpdated(next: FeedPost) {
     updatePost(next);
   }
@@ -434,7 +442,7 @@ export default function FeedPage() {
             >
               <button
                 type="button"
-                className={`rounded-full px-3 py-1 text-xs font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-blue-500 ${scope === 'all' ? 'bg-neutral-900 text-white shadow-sm' : 'bg-white text-neutral-700 hover:bg-neutral-100'}`}
+                className={scopeButtonClass('all')}
                 onClick={() => handleScopeChange('all')}
                 aria-pressed={scope === 'all'}
               >
@@ -442,11 +450,19 @@ export default function FeedPage() {
               </button>
               <button
                 type="button"
-                className={`rounded-full px-3 py-1 text-xs font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-blue-500 ${scope === 'following' ? 'bg-neutral-900 text-white shadow-sm' : 'bg-white text-neutral-700 hover:bg-neutral-100'}`}
+                className={scopeButtonClass('following')}
                 onClick={() => handleScopeChange('following')}
                 aria-pressed={scope === 'following'}
               >
                 Seguiti
+              </button>
+              <button
+                type="button"
+                className={scopeButtonClass('personal')}
+                onClick={() => handleScopeChange('personal')}
+                aria-pressed={scope === 'personal'}
+              >
+                Personali
               </button>
             </div>
           </div>

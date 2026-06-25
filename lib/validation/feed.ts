@@ -48,7 +48,7 @@ export const FeedPostsQuerySchema = z.object({
   page: numberFromParam(0, 0, 10_000),
   limit: numberFromParam(50, 1, 200),
   scope: z
-    .preprocess((v) => (typeof v === 'string' ? v.trim().toLowerCase() : 'all'), z.enum(['all', 'following']))
+    .preprocess((v) => (typeof v === 'string' ? v.trim().toLowerCase() : 'all'), z.enum(['all', 'following', 'personal']))
     .default('all'),
   mine: booleanFromParam.default(false),
   authorId: z

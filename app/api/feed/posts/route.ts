@@ -470,7 +470,7 @@ export async function GET(req: NextRequest) {
 
   const selfId = currentUserId;
 
-  if (mine && !selfId) {
+  if ((mine || scope === 'personal') && !selfId) {
     return notAuthenticated('Utente non autenticato per filtrare i propri post');
   }
 
@@ -524,7 +524,7 @@ export async function GET(req: NextRequest) {
 
   if (authorIdFilter) {
     allowedAuthors = [authorIdFilter];
-  } else if (mine) {
+  } else if (mine || scope === 'personal') {
     allowedAuthors = selfId ? [selfId] : null;
   } else if (scope === 'following') {
     allowedAuthors = Array.from(new Set([...followedAuthorIds, ...globalAdminAuthorIds].filter(Boolean)));
