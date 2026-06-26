@@ -4,7 +4,6 @@
 
 do $$
 declare
-  target_user_id uuid := 'c5f0d3e-2197-43bd-8153-1e73a5cea1d4';
   target_email text := 'tajanimarcello@gmail.com';
   target_full_name text := 'Marcello Tajani';
 begin
@@ -22,7 +21,6 @@ begin
     updated_at = now()
   from auth.users u
   where p.user_id = u.id
-    and u.id = target_user_id
     and lower(u.email) = target_email;
 
   update auth.users
@@ -37,6 +35,5 @@ begin
         'name', target_full_name
       ),
     updated_at = now()
-  where id = target_user_id
-    and lower(email) = target_email;
+  where lower(email) = target_email;
 end $$;
