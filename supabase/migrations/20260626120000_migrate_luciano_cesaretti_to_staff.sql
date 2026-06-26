@@ -12,8 +12,8 @@ begin
     account_type = 'staff',
     type = 'staff',
     role = case
-      when lower(coalesce(role, '')) in ('ente', 'institution') then null
-      else role
+      when lower(coalesce(p.role, '')) in ('ente', 'institution') then null
+      else p.role
     end,
     is_admin = false,
     updated_at = now()
