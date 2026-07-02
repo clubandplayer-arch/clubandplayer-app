@@ -5,6 +5,7 @@ import { rateLimit } from '@/lib/api/rateLimit';
 import { getCountryName } from '@/lib/geo/countries';
 import { normalizeSport } from '@/lib/opps/constants';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { applyPublicProfileVisibilityFilters } from '@/lib/profile/visibility';
 import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
 import { getProvinceAbbreviationsServer } from '@/lib/geo/provinceAbbreviations.server';
 
@@ -154,7 +155,7 @@ function buildProfileQuery(
   filters: SearchFilters,
   options?: { count?: 'exact'; head?: boolean },
 ) {
-  let query = supabase.from(table).select(select, options).eq('status', 'active').not('full_name', 'is', null).neq('full_name', '').not('country', 'is', null).neq('country', '').not('sport', 'is', null).neq('sport', '').not('role', 'is', null).neq('role', '');
+  let query = applyPublicProfileVisibilityFilters(supabase.from(table).select(select, options)).not('full_name', 'is', null).neq('full_name', '').not('role', 'is', null).neq('role', '');
 
   const commonOr = [
     `city.ilike.${ilikeQuery}`,
@@ -184,7 +185,11 @@ function buildClubQuery(
     .from('profiles')
     .select(select, options)
     .or('account_type.eq.club,type.eq.club')
-    .or('status.eq.active,status.is.null')
+    .eq('status', 'active')
+    .not('display_name', 'is', null)
+    .neq('display_name', '')
+    .not('bio', 'is', null)
+    .neq('bio', '')
     .not('sport', 'is', null)
     .neq('sport', '')
     .not('country', 'is', null)
@@ -222,12 +227,12 @@ function buildInstitutionQuery(
   filters: SearchFilters,
   options?: { count?: 'exact'; head?: boolean },
 ) {
-  let query = supabase
-    .from('profiles')
-    .select(select, options)
-    .or('account_type.eq.institution,type.eq.institution')
-    .or('status.is.null,status.neq.rejected')
-    .or('display_name.not.is.null,full_name.not.is.null');
+  let query = applyPublicProfileVisibilityFilters(
+    supabase
+      .from('profiles')
+      .select(select, options)
+      .or('account_type.eq.institution,type.eq.institution'),
+  );
 
   query = query.or(
     [
@@ -345,7 +350,11 @@ async function fetchProfileResults(params: {
           `role.ilike.${ilikeQuery}`,
         ].join(','),
       )
-      .or('status.eq.active,status.is.null')
+      .eq('status', 'active')
+      .not('display_name', 'is', null)
+      .neq('display_name', '')
+      .not('bio', 'is', null)
+      .neq('bio', '')
       .not('full_name', 'is', null)
       .neq('full_name', '')
       .not('birth_year', 'is', null)
@@ -442,7 +451,11 @@ async function fetchProfileCount(params: {
           `role.ilike.${ilikeQuery}`,
         ].join(','),
       )
-      .or('status.eq.active,status.is.null')
+      .eq('status', 'active')
+      .not('display_name', 'is', null)
+      .neq('display_name', '')
+      .not('bio', 'is', null)
+      .neq('bio', '')
       .not('full_name', 'is', null)
       .neq('full_name', '')
       .not('birth_year', 'is', null)
@@ -609,7 +622,12 @@ async function fetchFilteredAuthorIds(params: {
   let query = supabase
     .from('profiles')
     .select('id, user_id')
-    .or('status.eq.active,status.is.null');
+    .eq('status', 'active')
+    .not('display_name', 'is', null)
+    .neq('display_name', '')
+    .not('bio', 'is', null)
+    .neq('bio', '')
+    .or('city.neq.,province.neq.,region.neq.,country.neq.');
 
   query = applyCommonFilters(query, filters, { allowRegion: true, allowProvince: true, allowSport: true, allowRole: true });
 

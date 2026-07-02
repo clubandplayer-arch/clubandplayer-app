@@ -5,6 +5,7 @@ import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 import { FollowSuggestionsQuerySchema, type FollowSuggestionsQueryInput } from '@/lib/validation/follow';
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
+import { applyPublicProfileVisibilityFilters } from '@/lib/profile/visibility';
 
 export const runtime = 'nodejs';
 const ENDPOINT_VERSION = 'follows-suggestions@2026-01-10a';
@@ -160,7 +161,7 @@ export async function GET(req: NextRequest) {
     alreadyFollowing.add(profileId);
 
     const baseSelect =
-      'id, user_id, account_type, type, full_name, display_name, role, city, province, region, country, interest_city, interest_province, interest_region, interest_country, sport, avatar_url, status, updated_at';
+      'id, user_id, account_type, type, full_name, display_name, role, city, province, region, country, interest_city, interest_province, interest_region, interest_country, sport, bio, avatar_url, status, updated_at';
 
     const normalizeAccountType = (value?: string | null) => {
       const cleaned = typeof value === 'string' ? value.toLowerCase().trim() : '';
@@ -199,8 +200,7 @@ export async function GET(req: NextRequest) {
         query = query.eq('account_type', accountType);
       }
 
-      query = query
-        .eq('status', 'active')
+      query = applyPublicProfileVisibilityFilters(query)
         .neq('id', profile?.id ?? '');
 
       filters.forEach((fn) => {
