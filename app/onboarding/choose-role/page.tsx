@@ -50,37 +50,43 @@ export default function ChooseRolePage() {
 
   const roleCards: Array<{
     role: Role;
+    prefix: string;
     title: string;
     description: string;
     icon: MaterialIconName;
   }> = [
     {
       role: 'institution',
-      title: 'Sono un ENTE',
+      prefix: 'Sono un',
+      title: 'ENTE',
       description: 'Federazioni, EPS, comitati, delegazioni e leghe con verifica documentale',
       icon: 'globe',
     },
     {
       role: 'club',
-      title: 'Sono una SQUADRA',
+      prefix: 'Sono una',
+      title: 'SQUADRA',
       description: 'Gestisci il tuo club, pubblica contenuti e crea opportunità',
       icon: 'opportunities',
     },
     {
       role: 'athlete',
-      title: 'Sono un GIOCATORE',
+      prefix: 'Sono un',
+      title: 'GIOCATORE',
       description: 'Vivi il tuo sport, crea il tuo profilo e trova opportunità',
       icon: 'person',
     },
     {
       role: 'staff',
-      title: 'Sono un Membro STAFF',
+      prefix: 'Sono un Membro',
+      title: 'STAFF',
       description: 'Lavora nello sport, crea il tuo profilo professionale e trova nuove opportunità',
       icon: 'network',
     },
     {
       role: 'fan',
-      title: 'Sono un TIFOSO',
+      prefix: 'Sono un',
+      title: 'TIFOSO',
       description: 'Segui, vivi e sostieni Club e Player, dentro e fuori dal campo',
       icon: 'following',
     },
@@ -96,7 +102,7 @@ export default function ChooseRolePage() {
       </div>
 
       <div className="mx-auto mt-8 grid max-w-6xl gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        {roleCards.map(({ role, title, description, icon }) => {
+        {roleCards.map(({ role, prefix, title, description, icon }) => {
           const active = selectedRole === role;
           return (
             <button
@@ -111,7 +117,10 @@ export default function ChooseRolePage() {
               <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-[#e7f1f6] text-[#1a7aa6]">
                 <MaterialIcon name={icon} fontSize={22} />
               </div>
-              <h2 className="mt-5 break-words text-lg font-semibold leading-snug text-[#0f172a] md:text-xl">{title}</h2>
+              <h2 className="mt-5 text-[#0f172a]">
+                <span className="block whitespace-nowrap text-sm font-semibold leading-tight md:text-base">{prefix}</span>
+                <span className="mt-1 block break-words text-lg font-semibold leading-snug md:text-xl">{title}</span>
+              </h2>
               <p className="mt-2 text-sm leading-6 text-neutral-600 md:text-base">{description}</p>
             </button>
           );
