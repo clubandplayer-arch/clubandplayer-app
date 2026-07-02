@@ -56,31 +56,31 @@ export default function ChooseRolePage() {
   }> = [
     {
       role: 'institution',
-      title: 'ENTE',
+      title: 'Sono un ENTE',
       description: 'Federazioni, EPS, comitati, delegazioni e leghe con verifica documentale',
       icon: 'globe',
     },
     {
       role: 'club',
-      title: 'CLUB',
+      title: 'Sono una SQUADRA',
       description: 'Gestisci il tuo club, pubblica contenuti e crea opportunità',
       icon: 'opportunities',
     },
     {
       role: 'athlete',
-      title: 'PLAYER',
+      title: 'Sono un GIOCATORE',
       description: 'Vivi il tuo sport, crea il tuo profilo e trova opportunità',
       icon: 'person',
     },
     {
       role: 'staff',
-      title: 'STAFF',
+      title: 'Sono un Membro STAFF',
       description: 'Lavora nello sport, crea il tuo profilo professionale e trova nuove opportunità',
       icon: 'network',
     },
     {
       role: 'fan',
-      title: 'FAN',
+      title: 'Sono un TIFOSO',
       description: 'Segui, vivi e sostieni Club e Player, dentro e fuori dal campo',
       icon: 'following',
     },
@@ -111,7 +111,7 @@ export default function ChooseRolePage() {
               <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-[#e7f1f6] text-[#1a7aa6]">
                 <MaterialIcon name={icon} fontSize={22} />
               </div>
-              <h2 className="mt-5 break-words text-xl font-semibold leading-tight text-[#0f172a] md:text-2xl">{title}</h2>
+              <h2 className="mt-5 break-words text-lg font-semibold leading-snug text-[#0f172a] md:text-xl">{title}</h2>
               <p className="mt-2 text-sm leading-6 text-neutral-600 md:text-base">{description}</p>
             </button>
           );
