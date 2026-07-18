@@ -1183,6 +1183,14 @@ function LinkPreviewCard({
   preview: LinkPreview | null;
   loading: boolean;
 }) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const href = preview?.url || url;
+  const showImage = Boolean(preview?.image && !imageFailed);
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [preview?.image]);
+
   return (
     <div className="glass-panel border px-4 py-3 text-sm">
       <div className="flex items-center justify-between">
@@ -1190,24 +1198,26 @@ function LinkPreviewCard({
         {loading ? <span className="text-xs text-gray-500">Caricamento…</span> : null}
       </div>
       <a
-        href={preview?.url || url}
+        href={href}
         target="_blank"
         rel="noreferrer noopener"
         className="mt-2 block rounded-lg border bg-white/60 p-3 hover:border-gray-400"
       >
-        <div className="flex gap-3">
-          {preview?.image ? (
+        <div className="flex min-w-0 gap-3">
+          {showImage ? (
             <img
-              src={preview.image}
-              alt={preview.title || preview.url || url}
-              className="h-16 w-24 flex-shrink-0 rounded-md object-cover"
+              src={preview?.image ?? ''}
+              alt=""
+              className="h-20 w-20 flex-shrink-0 rounded-md object-cover sm:h-24 sm:w-32"
+              loading="lazy"
+              onError={() => setImageFailed(true)}
             />
           ) : null}
-          <div className="flex-1 space-y-1">
-            <div className="text-xs uppercase text-gray-500">{domainFromUrl(preview?.url || url)}</div>
-            <div className="text-sm font-semibold text-gray-900">{preview?.title || 'Link'}</div>
+          <div className="min-w-0 flex-1 space-y-1">
+            <div className="truncate text-xs uppercase text-gray-500">{domainFromUrl(href)}</div>
+            <div className="line-clamp-2 break-words text-sm font-semibold text-gray-900">{preview?.title || 'Link'}</div>
             {preview?.description ? (
-              <div className="text-xs text-gray-600 line-clamp-2">{preview.description}</div>
+              <div className="line-clamp-2 break-words text-xs text-gray-600">{preview.description}</div>
             ) : null}
           </div>
         </div>
