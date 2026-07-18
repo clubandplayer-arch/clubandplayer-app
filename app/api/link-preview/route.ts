@@ -3,7 +3,31 @@ import { NextResponse, type NextRequest } from 'next/server';
 export const runtime = 'nodejs';
 
 const FETCH_TIMEOUT_MS = 5000;
-const MAX_HTML_BYTES = 200 * 1024;
+const MAX_HTML_BYTES = 400 * 1024;
+
+const ENTITY_MAP: Record<string, string> = {
+  amp: '&',
+  lt: '<',
+  gt: '>',
+  quot: '"',
+  apos: "'",
+  nbsp: ' ',
+};
+
+function decodeHtmlEntities(value: string): string {
+  return value.replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (match, entity) => {
+    const key = String(entity).toLowerCase();
+    if (key.startsWith('#x')) {
+      const code = Number.parseInt(key.slice(2), 16);
+      return Number.isFinite(code) ? String.fromCodePoint(code) : match;
+    }
+    if (key.startsWith('#')) {
+      const code = Number.parseInt(key.slice(1), 10);
+      return Number.isFinite(code) ? String.fromCodePoint(code) : match;
+    }
+    return ENTITY_MAP[key] ?? match;
+  }).trim();
+}
 
 function normalizeUrl(input: unknown): string | null {
   if (typeof input !== 'string') return null;
@@ -16,17 +40,32 @@ function normalizeUrl(input: unknown): string | null {
   }
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function extractAttribute(tag: string, attr: string): string | null {
+  const re = new RegExp(`\\s${escapeRegExp(attr)}=["']([^"']*)["']`, 'i');
+  return tag.match(re)?.[1] ?? null;
+}
+
 function extractMeta(html: string, name: string, attr: 'property' | 'name' = 'property'): string | null {
-  const re = new RegExp(`<meta[^>]+${attr}=["']${name}["'][^>]*content=["']([^"']+)`, 'i');
-  const match = html.match(re);
-  return match?.[1]?.trim() || null;
+  const tags = html.match(/<meta\s+[^>]*>/gi) ?? [];
+  const expectedName = name.toLowerCase();
+  for (const tag of tags) {
+    const tagName = extractAttribute(tag, attr)?.toLowerCase();
+    if (tagName !== expectedName) continue;
+    const content = extractAttribute(tag, 'content');
+    if (content) return decodeHtmlEntities(content);
+  }
+  return null;
 }
 
 function extractTitle(html: string): string | null {
   const og = extractMeta(html, 'og:title') || extractMeta(html, 'twitter:title');
   if (og) return og;
   const match = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-  return match?.[1]?.trim() || null;
+  return match?.[1] ? decodeHtmlEntities(match[1]) : null;
 }
 
 function extractDescription(html: string): string | null {
@@ -38,12 +77,14 @@ function extractDescription(html: string): string | null {
   );
 }
 
-function extractImage(html: string): string | null {
-  return (
-    extractMeta(html, 'og:image') ||
-    extractMeta(html, 'twitter:image') ||
-    null
-  );
+function extractImage(html: string, baseUrl: string): string | null {
+  const raw = extractMeta(html, 'og:image') || extractMeta(html, 'twitter:image') || null;
+  if (!raw) return null;
+  try {
+    return new URL(raw, baseUrl).toString();
+  } catch {
+    return raw;
+  }
 }
 
 async function fetchHtml(url: string): Promise<string> {
@@ -97,7 +138,7 @@ export async function POST(req: NextRequest) {
       const html = await fetchHtml(url);
       const title = extractTitle(html);
       const description = extractDescription(html);
-      const image = extractImage(html);
+      const image = extractImage(html, url);
 
       return NextResponse.json({
         ok: true,
