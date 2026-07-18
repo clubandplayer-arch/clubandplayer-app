@@ -13,8 +13,6 @@ export function applyPublicProfileVisibilityFilters<T>(query: T): T {
     .neq('display_name', '')
     .not('sport', 'is', null)
     .neq('sport', '')
-    .not('bio', 'is', null)
-    .neq('bio', '')
     .or(NON_EMPTY_LOCATION_FILTER);
 
   return nextQuery as T;

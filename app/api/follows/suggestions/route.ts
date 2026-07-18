@@ -222,7 +222,7 @@ export async function GET(req: NextRequest) {
 
     const mapSuggestion = (row: any, athleteOverride?: any): Suggestion => {
       const normalizedType = normalizeAccountType(row.account_type ?? row.type);
-      const kind = normalizedType === 'institution' ? 'institution' : normalizedType === 'club' ? 'club' : 'player';
+      const kind = normalizedType === 'institution' ? 'institution' : normalizedType === 'club' ? 'club' : normalizedType === 'staff' ? 'staff' : 'player';
       const fullName = athleteOverride?.full_name ?? row.full_name ?? null;
       const displayName = athleteOverride?.display_name ?? row.display_name ?? null;
       const avatarUrl = athleteOverride?.avatar_url ?? row.avatar_url ?? null;

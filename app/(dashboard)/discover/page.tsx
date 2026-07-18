@@ -15,7 +15,7 @@ type Suggestion = {
   id: string;
   display_name?: string | null;
   full_name?: string | null;
-  kind?: 'institution' | 'club' | 'player' | null;
+  kind?: 'institution' | 'club' | 'player' | 'staff' | null;
   category?: string | null;
   location?: string | null;
   city?: string | null;
@@ -131,7 +131,7 @@ export default function DiscoverPage() {
           id: item.id,
           display_name: item.display_name ?? item.name ?? null,
           full_name: item.full_name ?? item.name ?? null,
-          kind: item.kind ?? (item.account_type === 'institution' ? 'institution' : item.account_type === 'club' ? 'club' : item.account_type ? 'player' : null),
+          kind: item.kind ?? (item.account_type === 'institution' ? 'institution' : item.account_type === 'club' ? 'club' : item.account_type === 'staff' ? 'staff' : item.account_type ? 'player' : null),
         category: item.category ?? null,
         location: item.location ?? null,
         city: item.city ?? null,
