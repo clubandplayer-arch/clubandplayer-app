@@ -42,6 +42,7 @@ const EMPTY_PAST_EXPERIENCE: PastExperience = {
   season: '',
   club: '',
   sport: '',
+  role: '',
   category: '',
 };
 
@@ -498,7 +499,7 @@ export default function ProfileEditForm() {
     setStadiumLng(p.club_stadium_lng ?? null);
     setClubMotto(p.club_motto || '');
 
-    if (p.account_type === 'athlete') {
+    if (p.account_type === 'athlete' || p.account_type === 'staff') {
       await loadPastExperiences();
     } else {
       setPastExperiences([{ ...EMPTY_PAST_EXPERIENCE }]);
@@ -1272,9 +1273,12 @@ export default function ProfileEditForm() {
             <div className="space-y-3">
               {pastExperiences.map((experience, index) => {
                 const categoryOptions = getPastExperienceCategoriesBySport(experience.sport);
+                const roleOptions = isStaff
+                  ? [...STAFF_ROLES]
+                  : SPORTS_ROLES[normalizeSport(experience.sport) ?? experience.sport] ?? [];
                 return (
                   <div key={`past-experience-${index}`} className="rounded-xl border border-gray-200 p-3">
-                    <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
                       <div className="flex min-w-0 flex-col gap-1">
                         <label className="text-sm text-gray-600">Stagione</label>
                         <select
@@ -1308,12 +1312,29 @@ export default function ProfileEditForm() {
                         <select
                           className="w-full min-w-0 rounded-lg border p-2"
                           value={experience.sport}
-                          onChange={(e) => updatePastExperience(index, { sport: e.target.value })}
+                          onChange={(e) => updatePastExperience(index, { sport: e.target.value, role: isStaff ? experience.role : '' })}
                         >
                           <option value="">— Seleziona —</option>
                           {CLUB_SPORT_OPTIONS.map((sportOption) => (
                             <option key={sportOption} value={sportOption}>
                               {sportOption}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="flex min-w-0 flex-col gap-1">
+                        <label className="text-sm text-gray-600">Ruolo<RequiredMark /></label>
+                        <select
+                          className="w-full min-w-0 rounded-lg border p-2"
+                          value={experience.role}
+                          onChange={(e) => updatePastExperience(index, { role: e.target.value })}
+                          disabled={!isStaff && !experience.sport}
+                        >
+                          <option value="">— Seleziona —</option>
+                          {roleOptions.map((roleOption) => (
+                            <option key={roleOption} value={roleOption}>
+                              {roleOption}
                             </option>
                           ))}
                         </select>
