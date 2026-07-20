@@ -39,7 +39,7 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
 
   const { data, error } = await supabase
     .from('athlete_experiences')
-    .select('club_name, sport, category, start_year, end_year')
+    .select('club_name, sport, role, category, start_year, end_year')
     .eq('profile_id', profile.id)
     .order('start_year', { ascending: false })
     .order('end_year', { ascending: false });
@@ -58,6 +58,7 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
           season: `${startYear}/${String(endYear % 100).padStart(2, '0')}`,
           club: item.club_name || '',
           sport: item.sport || '',
+          role: item.role || '',
           category: item.category || '',
         }),
       );
@@ -119,6 +120,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
           profile_id: profile.id,
           club_name: experience.club,
           sport: experience.sport,
+          role: experience.role,
           category: experience.category,
           start_year: season.startYear,
           end_year: season.endYear,

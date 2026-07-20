@@ -8,6 +8,7 @@ export type PastExperienceInput = {
   club?: string | null;
   sport?: string | null;
   category?: string | null;
+  role?: string | null;
 };
 
 export type PastExperience = {
@@ -15,6 +16,7 @@ export type PastExperience = {
   club: string;
   sport: string;
   category: string;
+  role: string;
 };
 
 export function getLatestAvailableSeasonStartYear(now: Date = new Date()): number {
@@ -55,15 +57,16 @@ export function sanitizePastExperience(input: PastExperienceInput): PastExperien
     club: (input.club || '').trim(),
     sport,
     category: (input.category || '').trim(),
+    role: (input.role || '').trim(),
   };
 }
 
 export function isPastExperienceEmpty(experience: PastExperience): boolean {
-  return !experience.season && !experience.club && !experience.sport && !experience.category;
+  return !experience.season && !experience.club && !experience.sport && !experience.category && !experience.role;
 }
 
 export function isPastExperienceComplete(experience: PastExperience): boolean {
-  return !!experience.season && !!experience.club && !!experience.sport && !!experience.category;
+  return !!experience.season && !!experience.club && !!experience.sport && !!experience.category && !!experience.role;
 }
 
 export function getPastExperienceCategoriesBySport(sport: string): string[] {
