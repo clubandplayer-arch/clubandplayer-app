@@ -8,6 +8,7 @@ import FollowButton from '@/components/common/FollowButton';
 import CertifiedCMarkFollowing from '@/components/badges/CertifiedCMarkFollowing';
 import { Lightbox } from '@/components/media/Lightbox';
 import { CountryFlag } from '@/components/ui/CountryFlag';
+import FanVoteBadge from '@/components/fan-votes/FanVoteBadge';
 import useIsClub from '@/hooks/useIsClub';
 import { buildProfileDisplayName } from '@/lib/displayName';
 
@@ -22,6 +23,7 @@ type FollowedProfile = {
   sport: string | null;
   role: string | null;
   is_verified?: boolean | null;
+  fan_vote_count?: number | null;
 };
 
 type ApiResponse = {
@@ -36,6 +38,8 @@ type ApiResponse = {
     sport?: string | null;
     role?: string | null;
     is_verified?: boolean | null;
+    fan_vote_count?: number | null;
+    fanVoteCount?: number | null;
   }>;
 };
 
@@ -147,6 +151,7 @@ function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, 
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-1">
               <p className="break-words text-sm font-semibold leading-tight text-neutral-900 dark:text-white">{profile.name}</p>
+              {type === 'athlete' ? <FanVoteBadge count={profile.fan_vote_count} compact /> : null}
             </div>
             {type !== 'club' && type !== 'institution' && (playerIso2 || playerCountryLabel) ? (
               <div className="mt-1 flex items-center gap-1 text-xs text-neutral-500 dark:text-neutral-400">
@@ -225,6 +230,7 @@ export default function FollowingPage() {
               role: row.role ?? null,
               avatar_url: row.avatar_url ?? null,
               is_verified: (row as any)?.is_verified ?? null,
+              fan_vote_count: Number((row as any)?.fan_vote_count ?? (row as any)?.fanVoteCount ?? 0),
             }))
           : [];
         setItems(mapped);

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
+import { isFanVoteSummaryRead } from '@/lib/notifications/fanVoteSummaryClient'
 
 export default function NotificationsBell() {
   const supabase = supabaseBrowser()
@@ -21,7 +22,7 @@ export default function NotificationsBell() {
     })
     if (!res.ok) return
     const json = await res.json().catch(() => null)
-    setUnread(Number(json?.count) || 0)
+    setUnread((Number(json?.count) || 0) + (json?.fanVoteSummary && !isFanVoteSummaryRead(json.fanVoteSummary) ? 1 : 0))
   }, [supabase])
 
   useEffect(() => {

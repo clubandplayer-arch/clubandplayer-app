@@ -32,6 +32,7 @@ type Suggestion = {
   followers?: number | null;
   account_type?: string | null;
   is_verified?: boolean | null;
+  fan_vote_count?: number | null;
 };
 
 export async function GET(req: NextRequest) {
@@ -373,6 +374,16 @@ export async function GET(req: NextRequest) {
       .filter((row) => normalizeAccountType(row?.account_type ?? row?.type) === 'athlete')
       .map((row) => row.id)
       .filter(Boolean);
+    let fanVoteCountMap = new Map<string, number>();
+    if (athleteIds.length) {
+      const { data: voteRows, error: voteError } = await supabase
+        .from('current_player_fan_vote_counts')
+        .select('player_profile_id, vote_count')
+        .in('player_profile_id', athleteIds);
+      if (voteError) throw voteError;
+      fanVoteCountMap = new Map((voteRows || []).map((row: any) => [String(row.player_profile_id), Number(row.vote_count ?? 0)]));
+    }
+
     let athleteMap = new Map<string, { full_name?: string | null; display_name?: string | null; avatar_url?: string | null }>();
     if (athleteIds.length) {
       const { data: athletes, error: athletesError } = await supabase
@@ -434,6 +445,7 @@ export async function GET(req: NextRequest) {
       return {
         ...mapSuggestion(row, athleteMap.get(String(row.id))),
         is_verified: isClub ? clubVerificationMap.get(String(row.id)) ?? false : null,
+        fan_vote_count: normalizedRowType === 'athlete' ? fanVoteCountMap.get(String(row.id)) ?? 0 : 0,
       };
     });
 

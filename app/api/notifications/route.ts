@@ -1,6 +1,7 @@
 import { jsonError, withAuth } from '@/lib/api/auth';
 import { successResponse } from '@/lib/api/standardResponses';
 import { getActiveProfile } from '@/lib/api/profile';
+import { getPlayerFanVoteSummary } from '@/lib/notifications/fanVoteSummary';
 import type { NotificationWithActor } from '@/types/notifications';
 
 export const runtime = 'nodejs';
@@ -86,7 +87,7 @@ export const GET = withAuth(async (req, { supabase, user }) => {
     const clubNameMap = new Map<string, any>();
     (clubsRes.data ?? []).forEach((row: any) => row?.id && clubNameMap.set(String(row.id), row));
 
-    const items: NotificationWithActor[] = (data ?? []).map((row) => {
+    const serverItems: NotificationWithActor[] = (data ?? []).map((row) => {
       if (!row.actor_profile_id) {
         return { ...row, actor: null };
       }
@@ -113,8 +114,31 @@ export const GET = withAuth(async (req, { supabase, user }) => {
       };
     });
 
+    const fanVoteSummary = await getPlayerFanVoteSummary(supabase, user.id);
+    const syntheticFanVoteItem: NotificationWithActor | null = fanVoteSummary
+      ? {
+          id: fanVoteSummary.id,
+          kind: fanVoteSummary.kind,
+          payload: {
+            type: fanVoteSummary.kind,
+            title: 'Fan Vote',
+            vote_count: fanVoteSummary.voteCount,
+            player_profile_id: fanVoteSummary.playerProfileId,
+          },
+          created_at: fanVoteSummary.createdAt,
+          updated_at: fanVoteSummary.createdAt,
+          read_at: null,
+          read: false,
+          actor_profile_id: null,
+          recipient_profile_id: fanVoteSummary.playerProfileId,
+          actor: null,
+        }
+      : null;
+    const items = syntheticFanVoteItem ? [syntheticFanVoteItem, ...serverItems] : serverItems;
+    const filteredItems = unreadOnly ? items.filter((item) => !item.read_at && item.read !== true) : items;
+
     if (!debugMode) {
-      return successResponse({ data: items });
+      return successResponse({ data: filteredItems, fanVoteSummary });
     }
 
     const profile = await getActiveProfile(supabase, user.id);
@@ -135,7 +159,7 @@ export const GET = withAuth(async (req, { supabase, user }) => {
         meUserId: user.id,
         meProfileId: profile?.id ?? null,
         filter: { table: 'notifications', column: 'user_id', value: user.id },
-        returned: items.length,
+        returned: filteredItems.length,
         notificationsTotalInDbForUser: count ?? 0,
       },
     });

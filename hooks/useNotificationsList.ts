@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { NotificationWithActor } from '@/types/notifications';
+import { applyFanVoteSummaryReadState } from '@/lib/notifications/fanVoteSummaryClient';
 
 export type NotificationsFilter = 'all' | 'unread';
 
@@ -29,7 +30,8 @@ export function useNotificationsList({ limit = 50, filter = 'all', enabled = tru
         throw new Error(json?.error || 'Errore nel caricamento notifiche');
       }
       if (requestIdRef.current !== requestId) return;
-      setItems(json?.data ?? []);
+      const normalizedItems = applyFanVoteSummaryReadState(json?.data ?? []);
+      setItems(filter === 'unread' ? normalizedItems.filter((item) => !item.read_at && item.read !== true) : normalizedItems);
     } catch (err) {
       if (requestIdRef.current !== requestId) return;
       if (process.env.NODE_ENV !== 'production') {
