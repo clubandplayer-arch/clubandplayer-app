@@ -88,7 +88,6 @@ begin
     insert into public.profiles (
       id,
       user_id,
-      email,
       account_type,
       type,
       status,
@@ -103,7 +102,6 @@ begin
     ) values (
       test_user.id,
       test_user.id,
-      test_user.email,
       'fan',
       'fan',
       'active',
@@ -118,7 +116,6 @@ begin
     )
     on conflict (id) do update set
       user_id = excluded.user_id,
-      email = excluded.email,
       account_type = excluded.account_type,
       type = excluded.type,
       status = excluded.status,
