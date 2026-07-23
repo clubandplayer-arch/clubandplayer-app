@@ -25,7 +25,11 @@ begin
       raw_app_meta_data,
       raw_user_meta_data,
       created_at,
-      updated_at
+      updated_at,
+      confirmation_token,
+      email_change,
+      email_change_token_new,
+      recovery_token
     ) values (
       '00000000-0000-0000-0000-000000000000',
       test_user.id,
@@ -44,7 +48,11 @@ begin
         'name', test_user.full_name
       ),
       now(),
-      now()
+      now(),
+      '',
+      '',
+      '',
+      ''
     )
     on conflict (id) do update set
       aud = excluded.aud,
@@ -54,7 +62,18 @@ begin
       email_confirmed_at = coalesce(auth.users.email_confirmed_at, excluded.email_confirmed_at),
       raw_app_meta_data = excluded.raw_app_meta_data,
       raw_user_meta_data = excluded.raw_user_meta_data,
+      confirmation_token = coalesce(auth.users.confirmation_token, ''),
+      email_change = coalesce(auth.users.email_change, ''),
+      email_change_token_new = coalesce(auth.users.email_change_token_new, ''),
+      recovery_token = coalesce(auth.users.recovery_token, ''),
       updated_at = now();
+
+    -- Rimuove eventuali identity create da versioni precedenti della seed
+    -- con provider_id diverso dall'ID auth: per email/phone Supabase usa l'ID auth.users.
+    delete from auth.identities
+    where user_id = test_user.id
+      and provider = 'email'
+      and provider_id is distinct from test_user.id::text;
 
     insert into auth.identities (
       id,
@@ -66,7 +85,7 @@ begin
       created_at,
       updated_at
     ) values (
-      test_user.id,
+      gen_random_uuid(),
       test_user.id,
       test_user.id::text,
       jsonb_build_object(
