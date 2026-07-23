@@ -8,6 +8,7 @@ import FollowButton from '@/components/common/FollowButton';
 import CertifiedCMarkFollowing from '@/components/badges/CertifiedCMarkFollowing';
 import { Lightbox } from '@/components/media/Lightbox';
 import { CountryFlag } from '@/components/ui/CountryFlag';
+import FanVoteBadge from '@/components/fan-votes/FanVoteBadge';
 import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentProfileContext';
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
 
@@ -24,6 +25,7 @@ type Suggestion = {
   role?: string | null;
   avatar_url?: string | null;
   is_verified?: boolean | null;
+  fan_vote_count?: number | null;
 };
 
 type TabKey = 'institution' | 'club' | 'player' | 'staff';
@@ -140,6 +142,7 @@ export default function DiscoverPage() {
           role: item.role ?? null,
           avatar_url: item.avatar_url ?? null,
           is_verified: item.is_verified ?? null,
+          fan_vote_count: Number(item.fan_vote_count ?? item.fanVoteCount ?? 0),
         })) as Suggestion[];
 
       return { suggestions, role: (data?.role as ProfileRole) || contextRole || 'guest' };
@@ -278,6 +281,7 @@ export default function DiscoverPage() {
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-1">
                         <span className="truncate text-sm font-semibold text-neutral-900">{name}</span>
+                        {activeTab === 'player' ? <FanVoteBadge count={item.fan_vote_count} compact /> : null}
                       </div>
                       {activeTab === 'institution' ? (
                         <span className="inline-flex rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-700">

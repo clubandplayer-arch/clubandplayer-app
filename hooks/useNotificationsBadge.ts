@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { isFanVoteSummaryRead } from '@/lib/notifications/fanVoteSummaryClient';
 
 export function useNotificationsBadge(pollIntervalMs = 45000) {
   const [unreadCount, setUnreadCount] = useState(0);
@@ -15,7 +16,8 @@ export function useNotificationsBadge(pollIntervalMs = 45000) {
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json?.error || 'Errore caricamento badge notifiche');
-      if (!cancelledRef.current) setUnreadCount(Number(json?.count) || 0);
+      const fanVoteUnread = json?.fanVoteSummary && !isFanVoteSummaryRead(json.fanVoteSummary) ? 1 : 0;
+      if (!cancelledRef.current) setUnreadCount((Number(json?.count) || 0) + fanVoteUnread);
     } catch (error) {
       console.error('[notifications] unread-count poll failed', { error });
       if (!cancelledRef.current) setUnreadCount(0);

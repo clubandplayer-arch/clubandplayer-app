@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import type { NotificationWithActor } from '@/types/notifications';
+import { markFanVoteSummaryRead, notificationToFanVoteSummary } from '@/lib/notifications/fanVoteSummaryClient';
 
 function Avatar({ notification }: { notification: NotificationWithActor }) {
   const actorName = notification.actor?.public_name ?? 'Utente';
@@ -71,6 +72,24 @@ function renderContent(notification: NotificationWithActor): { title: string; bo
       return {
         title: 'Società Registro Nazionale trasferita',
         body: `La società ${clubName} è stata trasferita ad un altro profilo Club dopo revisione reclamo.`,
+      };
+    }
+
+    case 'player_fan_vote_summary': {
+      const voteCount = Number((payload as any)?.vote_count ?? (payload as any)?.voteCount ?? 0);
+      return {
+        title: 'Fan Vote',
+        body: `Hai ricevuto ${voteCount} vot${voteCount === 1 ? 'o' : 'i'} dai Fan`,
+      };
+    }
+
+    case 'player_fan_vote':
+    case 'fan_vote':
+    case 'new_player_fan_vote': {
+      const voteCount = Number((payload as any)?.vote_count ?? (payload as any)?.voteCount ?? 1);
+      return {
+        title: 'Fan Vote',
+        body: voteCount > 1 ? `Hai ricevuto ${voteCount} voti dai Fan` : `${actorName} ti ha dato un voto Fan`,
       };
     }
 
@@ -224,6 +243,24 @@ export default function NotificationItem({ notification, onClick, compact }: Pro
       }
     }
 
+    if (notification.kind === 'player_fan_vote_summary') {
+      const playerProfileId =
+        typeof payload.player_profile_id === 'string'
+          ? payload.player_profile_id
+          : notification.recipient_profile_id;
+      if (playerProfileId) return `/players/${playerProfileId}`;
+    }
+
+    if (notification.kind === 'player_fan_vote' || notification.kind === 'fan_vote' || notification.kind === 'new_player_fan_vote') {
+      const playerProfileId =
+        typeof payload.player_profile_id === 'string'
+          ? payload.player_profile_id
+          : typeof payload.playerProfileId === 'string'
+          ? payload.playerProfileId
+          : notification.recipient_profile_id;
+      if (playerProfileId) return `/players/${playerProfileId}`;
+    }
+
     if (notification.kind === 'new_follower') {
       const followerProfileId =
         typeof payload.follower_profile_id === 'string'
@@ -283,6 +320,14 @@ export default function NotificationItem({ notification, onClick, compact }: Pro
 
   const content = renderContent(notification);
   const href = hrefFromPayload();
+  const handleClick = () => {
+    const summary = notificationToFanVoteSummary(notification);
+    if (summary) {
+      markFanVoteSummaryRead(summary);
+      window.dispatchEvent(new Event('app:notifications-updated'));
+    }
+    onClick?.();
+  };
 
   const className = `flex items-start gap-3 rounded-lg border p-3 text-sm transition hover:bg-neutral-50 ${
     notification.read_at ? 'opacity-75' : 'bg-blue-50/40'
@@ -290,7 +335,7 @@ export default function NotificationItem({ notification, onClick, compact }: Pro
 
   if (!href) {
     return (
-      <div onClick={onClick} className={className}>
+      <div onClick={handleClick} className={className}>
         {notification.actor ? <Avatar notification={notification} /> : null}
 
         <div className="flex-1 space-y-1">
@@ -317,7 +362,7 @@ export default function NotificationItem({ notification, onClick, compact }: Pro
   }
 
   return (
-    <Link href={href} onClick={onClick} className={className}>
+    <Link href={href} onClick={handleClick} className={className}>
       {notification.actor ? <Avatar notification={notification} /> : null}
 
       <div className="flex-1 space-y-1">

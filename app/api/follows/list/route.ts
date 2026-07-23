@@ -71,6 +71,16 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
       .map((p) => p.id)
       .filter(Boolean);
 
+    let fanVoteCountMap = new Map<string, number>();
+    if (athleteIds.length) {
+      const { data: voteRows, error: voteError } = await supabase
+        .from('current_player_fan_vote_counts')
+        .select('player_profile_id, vote_count')
+        .in('player_profile_id', athleteIds);
+      if (voteError) throw voteError;
+      fanVoteCountMap = new Map((voteRows || []).map((row: any) => [String(row.player_profile_id), Number(row.vote_count ?? 0)]));
+    }
+
     const athleteMap = new Map<
       string,
       { id: string | null; user_id: string | null; full_name: string | null; display_name: string | null; avatar_url: string | null }
@@ -114,6 +124,7 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
         sport: p.sport,
         role: normalizeRoleLabel(p.role),
         avatar_url: avatarUrl,
+        fan_vote_count: normalizedType === 'athlete' ? fanVoteCountMap.get(String(p.id)) ?? 0 : 0,
         is_verified:
           normalizeAccountType(accountType) === 'club'
             ? clubVerificationMap.get(String(p.id)) ?? null

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import NotificationItem from './NotificationItem';
 import { useToast } from '@/components/common/ToastProvider';
 import { useNotificationsList } from '@/hooks/useNotificationsList';
+import { markFanVoteSummaryRead, notificationToFanVoteSummary } from '@/lib/notifications/fanVoteSummaryClient';
 
 export default function NotificationsPageClient() {
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
@@ -22,6 +23,10 @@ export default function NotificationsPageClient() {
         const json = await res.json().catch(() => ({}));
         throw new Error(json?.error || 'Errore nel marcare le notifiche come lette');
       }
+      items.forEach((item) => {
+        const summary = notificationToFanVoteSummary(item);
+        if (summary) markFanVoteSummaryRead(summary);
+      });
       window.dispatchEvent(new Event('app:notifications-updated'));
       reload();
     } catch (e: any) {

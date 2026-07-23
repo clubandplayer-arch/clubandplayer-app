@@ -1,6 +1,7 @@
 import { withAuth } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
 import { dbError, rateLimited, successResponse, unknownError } from '@/lib/api/standardResponses';
+import { getPlayerFanVoteSummary } from '@/lib/notifications/fanVoteSummary';
 
 export const runtime = 'nodejs';
 
@@ -18,8 +19,10 @@ export const GET = withAuth(async (req, { supabase, user }) => {
   try {
     const now = Date.now();
     const cached = unreadCountCache.get(user.id);
+    // Fan Vote summary is intentionally not cached because it can change outside notifications.
     if (cached && cached.expiresAt > now) {
-      return successResponse({ count: cached.count, cached: true });
+      const fanVoteSummary = await getPlayerFanVoteSummary(supabase, user.id);
+      return successResponse({ count: cached.count, serverCount: cached.count, fanVoteSummary, cached: true });
     }
 
     const { count, error } = await supabase
@@ -31,13 +34,15 @@ export const GET = withAuth(async (req, { supabase, user }) => {
 
     if (error) return dbError(error.message);
 
-    const safeCount = count || 0;
+    const serverCount = count || 0;
+    const fanVoteSummary = await getPlayerFanVoteSummary(supabase, user.id);
+    const safeCount = serverCount;
     unreadCountCache.set(user.id, {
       count: safeCount,
       expiresAt: now + UNREAD_COUNT_CACHE_TTL_MS,
     });
 
-    return successResponse({ count: safeCount, cached: false });
+    return successResponse({ count: safeCount, serverCount, fanVoteSummary, cached: false });
   } catch (e: any) {
     return unknownError({ endpoint: 'notifications/unread-count', error: e, message: e?.message || 'Errore inatteso' });
   }
