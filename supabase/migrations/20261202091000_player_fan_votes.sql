@@ -45,7 +45,8 @@ as $$
   from season;
 $$;
 
-create or replace view public.current_player_fan_vote_counts as
+create or replace view public.current_player_fan_vote_counts
+with (security_invoker = true) as
 select
   v.player_profile_id,
   s.season_key,
