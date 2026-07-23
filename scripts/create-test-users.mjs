@@ -1,8 +1,13 @@
 /* eslint-env node */
 /**
- * Crea/aggiorna due account di TEST per QA e demo:
+ * Crea/aggiorna account di TEST per QA e demo:
  *   1) club@test.it / password "club"  → account_type=club
  *   2) playm@test.it / password "playm" → account_type=athlete
+ *   3) rossi@test.it / password "rossi1111" → account_type=fan
+ *   4) bianchi@test.it / password "bianchi1111" → account_type=fan
+ *   5) bello@test.it / password "bello1111" → account_type=fan
+ *   6) porto@test.it / password "porto1111" → account_type=fan
+ *   7) servi@test.it / password "servi1111" → account_type=fan
  *
  * Richiede variabili d'ambiente:
  *   SUPABASE_URL=https://<project-ref>.supabase.co
@@ -59,6 +64,77 @@ const TEST_USERS = [
       country: 'IT',
       sport: 'Basket',
       role: 'Playmaker',
+    },
+  },
+
+  {
+    email: 'rossi@test.it',
+    password: 'rossi1111',
+    profile: {
+      account_type: 'fan',
+      type: 'fan',
+      status: 'active',
+      display_name: 'Mario Rossi',
+      full_name: 'Mario Rossi',
+      headline: 'Fan demo per QA',
+      country: 'IT',
+      role: 'Fan',
+    },
+  },
+  {
+    email: 'bianchi@test.it',
+    password: 'bianchi1111',
+    profile: {
+      account_type: 'fan',
+      type: 'fan',
+      status: 'active',
+      display_name: 'Luigi Bianchi',
+      full_name: 'Luigi Bianchi',
+      headline: 'Fan demo per QA',
+      country: 'IT',
+      role: 'Fan',
+    },
+  },
+  {
+    email: 'bello@test.it',
+    password: 'bello1111',
+    profile: {
+      account_type: 'fan',
+      type: 'fan',
+      status: 'active',
+      display_name: 'Roberto Bello',
+      full_name: 'Roberto Bello',
+      headline: 'Fan demo per QA',
+      country: 'IT',
+      role: 'Fan',
+    },
+  },
+  {
+    email: 'porto@test.it',
+    password: 'porto1111',
+    profile: {
+      account_type: 'fan',
+      type: 'fan',
+      status: 'active',
+      display_name: 'Andrea Porto',
+      full_name: 'Andrea Porto',
+      headline: 'Fan demo per QA',
+      country: 'IT',
+      role: 'Fan',
+    },
+  },
+  {
+    email: 'servi@test.it',
+    password: 'servi1111',
+    profile: {
+      account_type: 'fan',
+      type: 'fan',
+      status: 'active',
+      display_name: 'Luciano Servi',
+      full_name: 'Luciano Servi',
+      headline: 'Fan demo per QA',
+      country: 'IT',
+      role: 'Fan',
     },
   },
 ];
