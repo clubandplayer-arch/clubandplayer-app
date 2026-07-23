@@ -22,14 +22,16 @@ export function getFanVoteSeason(now = new Date()): FanVoteSeason {
   const startYear = month >= 9 ? year : year - 1;
   const endYear = startYear + 1;
   const seasonKey = `${startYear}-${endYear}`;
+  // Finestra temporanea di test: 1 settembre - 15 agosto incluso.
+  // Ripristinare a 1 settembre - 31 maggio incluso dopo la verifica del flusso voti.
   const votingOpen =
     (year === startYear && month >= 9) ||
-    (year === endYear && (month < 6 || (month === 5 && day <= 31)));
+    (year === endYear && (month < 8 || (month === 8 && day <= 15)));
 
   return {
     seasonKey,
     votingOpen,
     votingStartsAt: `${startYear}-09-01`,
-    votingEndsAt: `${endYear}-05-31`,
+    votingEndsAt: `${endYear}-08-15`,
   };
 }

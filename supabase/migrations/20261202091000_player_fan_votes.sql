@@ -37,9 +37,11 @@ as $$
   )
   select
     start_year::text || '-' || (start_year + 1)::text as season_key,
-    today >= make_date(start_year, 9, 1) and today < make_date(start_year + 1, 6, 1) as voting_open,
+    -- Finestra temporanea di test: 1 settembre - 15 agosto incluso.
+    -- Ripristinare a 1 settembre - 31 maggio incluso dopo la verifica del flusso voti.
+    today >= make_date(start_year, 9, 1) and today < make_date(start_year + 1, 8, 16) as voting_open,
     make_date(start_year, 9, 1) as voting_starts_on,
-    make_date(start_year + 1, 5, 31) as voting_ends_on
+    make_date(start_year + 1, 8, 15) as voting_ends_on
   from season;
 $$;
 
