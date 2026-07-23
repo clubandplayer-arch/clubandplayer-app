@@ -5,6 +5,7 @@ import Image from 'next/image';
 import FollowButton from '@/components/clubs/FollowButton';
 import { MessageButton } from '@/components/messaging/MessageButton';
 import CertifiedCMarkClubProfile from '@/components/badges/CertifiedCMarkClubProfile';
+import FanVoteBadge from '@/components/fan-votes/FanVoteBadge';
 import type { ProfileLinks } from '@/types/profile';
 
 type AccountType = 'club' | 'institution' | 'athlete' | 'staff' | 'player';
@@ -22,6 +23,7 @@ type ProfileHeaderProps = {
   showFollowButton?: boolean;
   messageLabel?: string;
   isVerified?: boolean | null;
+  fanVoteCount?: number | null;
 };
 
 function initialsFromName(name: string, accountType: AccountType) {
@@ -125,6 +127,7 @@ export default function ProfileHeader({
   showFollowButton = true,
   messageLabel = 'Messaggia',
   isVerified = null,
+  fanVoteCount = null,
 }: ProfileHeaderProps) {
   const name = displayName || (accountType === 'club' ? 'Club' : 'Player');
   const initials = initialsFromName(name, accountType);
@@ -155,6 +158,7 @@ export default function ProfileHeader({
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="font-logo text-2xl font-normal leading-tight text-neutral-900 md:text-3xl">{name}</h1>
+              <FanVoteBadge count={fanVoteCount} />
               <span
                 className={`${
                   isClub

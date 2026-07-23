@@ -13,6 +13,8 @@ import AthleteExperiencesSection from '@/components/athletes/AthleteExperiencesS
 import PublicAuthorFeed from '@/components/feed/PublicAuthorFeed';
 import ProfileHeader from '@/components/profiles/ProfileHeader';
 import ClubStaffToggleButton from '@/components/clubs/ClubStaffToggleButton';
+import FanVoteBadge from '@/components/fan-votes/FanVoteBadge';
+import FanVoteButton from '@/components/fan-votes/FanVoteButton';
 import type { ProfileLinks } from '@/types/profile';
 import { CountryFlag } from '@/components/ui/CountryFlag';
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
@@ -114,6 +116,16 @@ type ClubProfileSummary = {
   status: string | null;
 };
 
+type FanVoteState = {
+  voteCount: number;
+  votedByMe: boolean;
+  usedVotes: number;
+  remainingVotes: number;
+  votingOpen: boolean;
+  canVote: boolean;
+  votingEndsAt: string | null;
+};
+
 function isClubProfileSummary(row: unknown): row is ClubProfileSummary {
   return !!row && typeof row === 'object' && 'id' in row;
 }
@@ -138,6 +150,15 @@ export default function PlayerPublicProfilePage() {
   const [apps, setApps] = useState<ApplicationRow[]>([]);
   const [experiences, setExperiences] = useState<AthleteExperience[]>([]);
   const [media, setMedia] = useState<AthleteMediaItem[]>([]);
+  const [fanVoteState, setFanVoteState] = useState<FanVoteState>({
+    voteCount: 0,
+    votedByMe: false,
+    usedVotes: 0,
+    remainingVotes: 5,
+    votingOpen: false,
+    canVote: false,
+    votingEndsAt: null,
+  });
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState<string>('');
   const { role: viewerRole } = useRole();
@@ -147,6 +168,15 @@ export default function PlayerPublicProfilePage() {
       setLoading(true);
       setMsg('');
       setExperiences([]);
+      setFanVoteState({
+        voteCount: 0,
+        votedByMe: false,
+        usedVotes: 0,
+        remainingVotes: 5,
+        votingOpen: false,
+        canVote: false,
+        votingEndsAt: null,
+      });
 
       const athleteId = params.id;
       if (!athleteId) {
@@ -237,6 +267,27 @@ export default function PlayerPublicProfilePage() {
       };
 
       setProfile(normalizedProfile);
+
+      try {
+        const voteRes = await fetch(`/api/profiles/${normalizedProfile.id}/fan-vote`, {
+          credentials: 'include',
+          cache: 'no-store',
+        });
+        if (voteRes.ok) {
+          const voteJson = await voteRes.json().catch(() => ({}));
+          setFanVoteState({
+            voteCount: Number((voteJson as any)?.voteCount ?? 0),
+            votedByMe: Boolean((voteJson as any)?.votedByMe),
+            usedVotes: Number((voteJson as any)?.usedVotes ?? 0),
+            remainingVotes: Number((voteJson as any)?.remainingVotes ?? 5),
+            votingOpen: Boolean((voteJson as any)?.votingOpen),
+            canVote: Boolean((voteJson as any)?.canVote),
+            votingEndsAt: (voteJson as any)?.votingEndsAt ?? null,
+          });
+        }
+      } catch {
+        setFanVoteState((current) => ({ ...current, canVote: false }));
+      }
 
       const { data: experiencesData, error: experiencesError } = await supabase
         .from('athlete_experiences')
@@ -510,7 +561,38 @@ export default function PlayerPublicProfilePage() {
             showMessageButton
             showFollowButton={!isMe}
             messageLabel="Messaggia"
+            fanVoteCount={fanVoteState.voteCount}
           />
+
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-100 bg-white p-4 shadow-sm">
+            <div className="space-y-1">
+              <h2 className="text-sm font-semibold text-neutral-900">Preferenze Fan</h2>
+              {fanVoteState.voteCount > 0 ? (
+                <p className="flex items-center gap-2 text-sm text-neutral-700">
+                  <FanVoteBadge count={fanVoteState.voteCount} />
+                  <span>voti ricevuti in questa stagione</span>
+                </p>
+              ) : (
+                <p className="text-sm text-neutral-600">Ancora nessun voto Fan ricevuto in questa stagione.</p>
+              )}
+            </div>
+            <FanVoteButton
+              playerProfileId={profile.id}
+              initialVotedByMe={fanVoteState.votedByMe}
+              initialVoteCount={fanVoteState.voteCount}
+              initialUsedVotes={fanVoteState.usedVotes}
+              initialRemainingVotes={fanVoteState.remainingVotes}
+              votingOpen={fanVoteState.votingOpen}
+              canVote={fanVoteState.canVote}
+              votingEndsAt={fanVoteState.votingEndsAt}
+              onChange={(next) =>
+                setFanVoteState((current) => ({
+                  ...current,
+                  ...next,
+                }))
+              }
+            />
+          </div>
 
           {canManageStaff ? (
             <section className="rounded-2xl border bg-white p-4 shadow-sm">

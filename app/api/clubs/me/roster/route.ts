@@ -28,6 +28,7 @@ type RosterPlayer = {
     province: string | null;
     region: string | null;
     country: string | null;
+    fanVoteCount: number;
   };
 };
 
@@ -85,6 +86,13 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
     if (playerError) return jsonError(playerError.message, 400);
     playersMap = new Map((players || []).map((p: any) => [p.id, p]));
   }
+  const { data: voteRows } = playerIds.length
+    ? await supabase
+        .from('current_player_fan_vote_counts')
+        .select('player_profile_id, vote_count')
+        .in('player_profile_id', playerIds)
+    : { data: [] };
+  const voteCountMap = new Map((voteRows || []).map((row: any) => [row.player_profile_id, Number(row.vote_count ?? 0)]));
 
   const roster: RosterPlayer[] = (rosterRows || [])
     .map((row: any) => {
@@ -105,6 +113,7 @@ export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
           province: player.province ?? null,
           region: player.region ?? null,
           country: player.country ?? null,
+          fanVoteCount: voteCountMap.get(player.id) ?? 0,
           full_name: player.full_name ?? null,
           display_name: player.display_name ?? null,
         },

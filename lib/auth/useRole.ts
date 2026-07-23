@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 
-export type Role = 'athlete' | 'club' | 'admin' | 'guest';
+export type Role = 'athlete' | 'club' | 'fan' | 'staff' | 'institution' | 'admin' | 'guest';
 
 type WhoAmIResponse = {
   user: { id: string; email?: string | null } | null;
@@ -29,7 +29,15 @@ export function useRole() {
         if (aborted) return;
 
         const raw = (data.role ?? '').toString().toLowerCase();
-        const mapped: Role = raw === 'club' ? 'club' : raw === 'athlete' ? 'athlete' : raw === 'admin' ? 'admin' : 'guest';
+        const mapped: Role =
+          raw === 'club' ||
+          raw === 'athlete' ||
+          raw === 'fan' ||
+          raw === 'staff' ||
+          raw === 'institution' ||
+          raw === 'admin'
+            ? raw
+            : 'guest';
 
         setRole(mapped);
         setUser(data.user ?? null);

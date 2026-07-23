@@ -4,8 +4,9 @@ import { rateLimit } from '@/lib/api/rateLimit';
 
 export const runtime = 'nodejs';
 
-function extractClubId(routeContext?: { params?: Promise<Record<string, string>> | Record<string, string> }) {
-  const raw = (routeContext?.params as any)?.id;
+async function extractClubId(routeContext?: { params?: Promise<Record<string, string>> | Record<string, string> }) {
+  const params = routeContext?.params ? await routeContext.params : null;
+  const raw = (params as any)?.id;
   if (typeof raw === 'string') return raw;
   if (Array.isArray(raw)) return raw[0];
   return null;
@@ -20,6 +21,7 @@ type PublicRosterPlayer = {
   city: string | null;
   country: string | null;
   country_iso2: string | null;
+  fan_vote_count: number;
 };
 
 export const GET = withAuth(async (req: NextRequest, { supabase }, routeContext) => {
@@ -29,7 +31,7 @@ export const GET = withAuth(async (req: NextRequest, { supabase }, routeContext)
     return jsonError('Too Many Requests', 429);
   }
 
-  const clubId = extractClubId(routeContext);
+  const clubId = await extractClubId(routeContext);
   const targetClubId = typeof clubId === 'string' ? clubId.trim() : '';
   if (!targetClubId) return jsonError('clubId mancante', 400);
 
@@ -68,6 +70,11 @@ export const GET = withAuth(async (req: NextRequest, { supabase }, routeContext)
   if (playersError) return jsonError(playersError.message, 400);
 
   const playersMap = new Map((players || []).map((player: any) => [player.id, player]));
+  const { data: voteRows } = await supabase
+    .from('current_player_fan_vote_counts')
+    .select('player_profile_id, vote_count')
+    .in('player_profile_id', playerIds);
+  const voteCountMap = new Map((voteRows || []).map((row: any) => [row.player_profile_id, Number(row.vote_count ?? 0)]));
 
   const roster: PublicRosterPlayer[] = (rosterRows || [])
     .map((row: any) => {
@@ -86,6 +93,7 @@ export const GET = withAuth(async (req: NextRequest, { supabase }, routeContext)
         city: player.city ?? null,
         country: player.country ?? null,
         country_iso2: iso2 ?? null,
+        fan_vote_count: voteCountMap.get(player.id) ?? 0,
       } satisfies PublicRosterPlayer;
     })
     .filter(Boolean) as PublicRosterPlayer[];

@@ -7,6 +7,7 @@ import { CountryFlag } from '@/components/ui/CountryFlag';
 import { buildProfileDisplayName } from '@/lib/displayName';
 import { STAFF_ROLES } from '@/lib/opps/constants';
 import { buildRosterRoleSections } from '@/lib/utils/rosterRoleSort';
+import FanVoteBadge from '@/components/fan-votes/FanVoteBadge';
 
 type PublicRosterPlayer = {
   player_id: string;
@@ -17,6 +18,7 @@ type PublicRosterPlayer = {
   city: string | null;
   country: string | null;
   country_iso2: string | null;
+  fan_vote_count?: number | null;
 };
 
 type PublicRosterResponse = {
@@ -159,9 +161,12 @@ function RosterCard({ player }: { player: PublicRosterPlayer }) {
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-neutral-900 transition group-hover:text-pink-700">
-            {displayName}
-          </p>
+          <div className="flex min-w-0 items-center gap-2">
+            <p className="truncate text-sm font-semibold text-neutral-900 transition group-hover:text-pink-700">
+              {displayName}
+            </p>
+            <FanVoteBadge count={player.fan_vote_count} compact />
+          </div>
           {player.role ? <p className="text-xs text-neutral-600">{player.role}</p> : null}
           {player.city ? <p className="text-xs text-neutral-600">{player.city}</p> : null}
           {label ? (
