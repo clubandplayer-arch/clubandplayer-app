@@ -8,6 +8,7 @@ import { MaterialIcon } from '@/components/icons/MaterialIcon';
 import useIsClub from '@/hooks/useIsClub';
 import { CountryFlag } from '@/components/ui/CountryFlag';
 import { buildRosterRoleSections } from '@/lib/utils/rosterRoleSort';
+import FanVoteBadge from '@/components/fan-votes/FanVoteBadge';
 
 type ApiRosterPlayer = {
   playerProfileId?: string;
@@ -24,6 +25,8 @@ type ApiRosterPlayer = {
     province?: string | null;
     region?: string | null;
     country?: string | null;
+    fanVoteCount?: number | null;
+    fan_vote_count?: number | null;
   };
 };
 
@@ -37,6 +40,7 @@ type RosterPlayer = {
   sport: string | null;
   city: string | null;
   countryText: string | null;
+  fanVoteCount: number;
 };
 
 function getInitials(name: string) {
@@ -80,6 +84,7 @@ export default function ClubRosterPage() {
             sport: player.sport ?? null,
             city: player.city?.trim() || null,
             countryText: player.country?.trim() || null,
+            fanVoteCount: Number(player.fanVoteCount ?? player.fan_vote_count ?? 0),
           } as RosterPlayer;
         })
         .filter(Boolean) as RosterPlayer[];
@@ -217,7 +222,10 @@ function RosterPlayerCard({ player }: { player: RosterPlayer }) {
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-neutral-900">{title}</p>
+          <div className="flex min-w-0 items-center gap-2">
+            <p className="truncate text-sm font-semibold text-neutral-900">{title}</p>
+            <FanVoteBadge count={player.fanVoteCount} compact />
+          </div>
           {player.role ? <p className="text-xs text-neutral-600">{player.role}</p> : null}
           {player.city ? <p className="text-xs text-neutral-600">{player.city}</p> : null}
           {countryLabel ? (
