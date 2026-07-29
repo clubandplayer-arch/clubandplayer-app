@@ -9,47 +9,15 @@ import { PostMedia } from '@/components/feed/PostMedia';
 import { EventPostHighlight } from '@/components/feed/EventPostHighlight';
 import { QuotedPostCard } from '@/components/feed/QuotedPostCard';
 import { MentionText } from '@/components/feed/MentionText';
+import { FeedLinkCard } from '@/components/feed/FeedLinkCard';
 import { Lightbox } from '@/components/media/Lightbox';
 import CertifiedCMarkSidebar from '@/components/badges/CertifiedCMarkSidebar';
 import {
   type FeedPost,
-  domainFromUrl,
   firstUrl,
   formatEventDate,
 } from '@/components/feed/postShared';
 
-function FeedLinkCard({
-  url,
-  title,
-  description,
-  image,
-}: {
-  url: string;
-  title: string | null;
-  description: string | null;
-  image: string | null;
-}) {
-  return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noreferrer noopener"
-      className="block overflow-hidden rounded-xl border border-slate-100 bg-slate-50 shadow-sm transition hover:shadow-md"
-    >
-      <div className="flex gap-3 p-3">
-        {image ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={image} alt={title || url} className="h-20 w-28 flex-shrink-0 rounded-lg object-cover" />
-        ) : null}
-        <div className="flex-1 space-y-1">
-          <div className="text-xs uppercase text-gray-500">{domainFromUrl(url)}</div>
-          <div className="text-sm font-semibold text-gray-900 line-clamp-2">{title || url}</div>
-          {description ? <div className="text-xs text-gray-600 line-clamp-2">{description}</div> : null}
-        </div>
-      </div>
-    </a>
-  );
-}
 
 type ReadOnlyPostCardProps = {
   post: FeedPost;
