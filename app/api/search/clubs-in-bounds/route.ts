@@ -34,12 +34,14 @@ export async function GET(req: NextRequest) {
       .from('profiles')
       .select('id, display_name, full_name, latitude, longitude, club_stadium_lat, club_stadium_lng')
       .eq('status', 'active')
-      .neq('is_admin', true)
+      .or('is_admin.is.null,is_admin.eq.false')
       .or('account_type.eq.club,type.eq.club')
-      .gte('latitude', south)
-      .lte('latitude', north)
-      .gte('longitude', west)
-      .lte('longitude', east)
+      .or(
+        [
+          `and(latitude.gte.${south},latitude.lte.${north},longitude.gte.${west},longitude.lte.${east})`,
+          `and(club_stadium_lat.gte.${south},club_stadium_lat.lte.${north},club_stadium_lng.gte.${west},club_stadium_lng.lte.${east})`,
+        ].join(','),
+      )
       .limit(200)
 
     if (error) return dbError(error.message)
