@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { getYouTubeThumbnailUrl, getYouTubeVideoId } from '@/lib/media/youtube';
 
 export const runtime = 'nodejs';
 
@@ -138,7 +139,8 @@ export async function POST(req: NextRequest) {
       const html = await fetchHtml(url);
       const title = extractTitle(html);
       const description = extractDescription(html);
-      const image = extractImage(html, url);
+      const youtubeVideoId = getYouTubeVideoId(url);
+      const image = extractImage(html, url) || (youtubeVideoId ? getYouTubeThumbnailUrl(youtubeVideoId) : null);
 
       return NextResponse.json({
         ok: true,
@@ -148,6 +150,16 @@ export async function POST(req: NextRequest) {
         image: image || null,
       });
     } catch (err: any) {
+      const youtubeVideoId = getYouTubeVideoId(url);
+      if (youtubeVideoId) {
+        return NextResponse.json({
+          ok: true,
+          url,
+          title: 'Video YouTube',
+          description: null,
+          image: getYouTubeThumbnailUrl(youtubeVideoId),
+        });
+      }
       return NextResponse.json({
         ok: false,
         code: 'fetch_failed',
