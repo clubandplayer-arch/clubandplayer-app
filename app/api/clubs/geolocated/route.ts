@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
       .from('profiles')
       .select('id, display_name, full_name, avatar_url, account_type, type, status, is_admin, city, province, region, club_stadium_lat, club_stadium_lng, latitude, longitude')
       .eq('status', 'active')
-      .neq('is_admin', true)
+      .or('is_admin.is.false,is_admin.is.null')
       .or('account_type.eq.club,type.eq.club')
       .limit(1000);
 

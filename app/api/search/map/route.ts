@@ -142,7 +142,7 @@ export async function GET(req: NextRequest) {
         .select(select, { count: 'exact' })
         .limit(limit)
         .eq('status', 'active')
-        .neq('is_admin', true);
+        .or('is_admin.is.false,is_admin.is.null');
 
     const applyFilters = (query: ReturnType<typeof baseQuery>) => {
       let filtered = query;
@@ -196,6 +196,14 @@ export async function GET(req: NextRequest) {
       { withBounds }: { withBounds: boolean }
     ) => {
       if (!withBounds) return query;
+      if (south != null && north != null && west != null && east != null) {
+        return query.or(
+          [
+            `and(latitude.gte.${south},latitude.lte.${north},longitude.gte.${west},longitude.lte.${east})`,
+            `and(club_stadium_lat.gte.${south},club_stadium_lat.lte.${north},club_stadium_lng.gte.${west},club_stadium_lng.lte.${east})`,
+          ].join(','),
+        );
+      }
       let bounded = query;
       if (north != null && south != null) {
         bounded = bounded.gte('latitude', south).lte('latitude', north);
@@ -226,7 +234,7 @@ export async function GET(req: NextRequest) {
         .from('profiles')
         .select('id, latitude, longitude, club_stadium_lat, club_stadium_lng')
         .eq('status', 'active')
-        .neq('is_admin', true)
+        .or('is_admin.is.false,is_admin.is.null')
         .or('account_type.eq.club,type.eq.club');
 
       if (hasBounds) {
