@@ -14,6 +14,13 @@ const DOCUMENT_TYPES = [
   { value: 'ade_certificate', label: 'Certificato P.IVA o CF rilasciato da AdE' },
 ];
 
+const STATUS_MESSAGES: Record<string, string> = {
+  draft: 'Hai iniziato una richiesta, ma non risulta ancora inviata: completa tutti i campi obbligatori, allega il PDF e premi “Invia verifica”.',
+  submitted: 'Richiesta inviata correttamente: ora è in valutazione lato admin.',
+  approved: 'Ente verificato: la richiesta è stata approvata dall’amministrazione.',
+  rejected: 'Richiesta rifiutata: puoi correggere i dati e inviare una nuova verifica.',
+};
+
 function RequiredMark() {
   return <span className="ml-1 text-red-600" aria-label="obbligatorio">*</span>;
 }
@@ -63,7 +70,9 @@ export default async function InstitutionVerificationPage({ searchParams }: Page
 
       {sent ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">Richiesta inviata: sarà verificata manualmente dall’amministrazione.</div> : null}
       {params.error ? <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{String(params.error)}</div> : null}
-      {request?.status ? <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Stato richiesta: <b>{request.status}</b></div> : null}
+      {request?.status ? <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Stato richiesta: <b>{request.status}</b>. {STATUS_MESSAGES[request.status] ?? ''}</div> : (
+        <div className="rounded-xl border border-sky-200 bg-sky-50 p-3 text-sm text-sky-800">Non risulta ancora nessuna richiesta inviata: l’admin vedrà l’ente solo dopo l’invio del form completo con PDF.</div>
+      )}
 
       <form action="/institution/verification/submit" method="post" encType="multipart/form-data" className="grid gap-4 rounded-2xl border bg-white/80 p-5 shadow-sm md:grid-cols-2">
         <label className="block text-sm font-medium text-neutral-700">Tipologia ente<RequiredMark />

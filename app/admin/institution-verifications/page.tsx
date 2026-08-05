@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
 const STATUS_LABELS: Record<string, string> = {
+  all: 'Tutte',
   draft: 'Bozza',
   submitted: 'In valutazione',
   approved: 'Approvata',
@@ -41,7 +42,7 @@ function documentLabel(value?: string | null) {
 
 export default function AdminInstitutionVerificationsPage() {
   const [rows, setRows] = useState<Row[]>([]);
-  const [statusFilter, setStatusFilter] = useState<'submitted' | 'approved' | 'rejected' | 'draft'>('submitted');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'submitted' | 'approved' | 'rejected' | 'draft'>('submitted');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionId, setActionId] = useState<string | null>(null);
@@ -50,7 +51,8 @@ export default function AdminInstitutionVerificationsPage() {
   const load = async (status: string) => {
     setLoading(true);
     setError(null);
-    const res = await fetch(`/api/admin/institution-verifications?status=${encodeURIComponent(status)}`, { cache: 'no-store' });
+    const query = status === 'all' ? '' : `?status=${encodeURIComponent(status)}`;
+    const res = await fetch(`/api/admin/institution-verifications${query}`, { cache: 'no-store' });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
       setError(json?.error ?? 'Non autorizzato o errore di caricamento');
@@ -108,11 +110,12 @@ export default function AdminInstitutionVerificationsPage() {
   return (
     <main className="container mx-auto max-w-6xl px-4 py-8">
       <h1 className="heading-h2 mb-4 text-2xl font-bold">Verifiche Enti</h1>
-      <p className="mb-6 text-sm text-neutral-600">Gestisci le richieste inviate dagli Enti Istituzionali.</p>
+      <p className="mb-6 text-sm text-neutral-600">Gestisci le richieste inviate dagli Enti Istituzionali. Le richieste approvabili compaiono nello stato “In valutazione” solo dopo che l’ente ha inviato il form completo con PDF; le bozze non sono ancora pronte per la verifica.</p>
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <label className="text-sm text-neutral-700">
           Stato
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as any)} className="ml-2 rounded-md border px-2 py-1 text-sm">
+            <option value="all">Tutte</option>
             <option value="submitted">In valutazione</option>
             <option value="approved">Approvate</option>
             <option value="rejected">Rifiutate</option>
