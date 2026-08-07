@@ -5,7 +5,13 @@ import { normalizeSport } from '@/lib/opps/constants';
 import { MAX_SKILLS, parseSkillsInput } from '@/lib/profiles/skills';
 import { ensureSingleProfileRowForUser, inferAccountType } from '@/lib/server/profileIntegrity';
 import { isPlatformAdminEmail, PLATFORM_ADMIN_ROLE, PLATFORM_ADMIN_ROLE_LABEL } from '@/lib/constants/admin';
-import { getProfileClubNameValidationError, isValidProfileClubName, isValidProfilePersonName, sanitizeProfileClubName, sanitizeProfilePersonName } from '@/lib/profiles/nameValidation';
+import {
+  getProfileClubNameValidationError,
+  isValidProfileClubName,
+  isValidProfilePersonName,
+  normalizeProfilePersonName,
+  sanitizeProfileClubName,
+} from '@/lib/profiles/nameValidation';
 
 export const runtime = 'nodejs';
 
@@ -269,9 +275,12 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   } else if ((effectiveAccountType === 'athlete' || effectiveAccountType === 'staff' || effectiveAccountType === 'fan') && Object.prototype.hasOwnProperty.call(updates, 'full_name') && updates.full_name) {
     const rawFullName = String(updates.full_name);
     if (!isValidProfilePersonName(rawFullName)) {
-      return jsonError("Il campo Nome e cognome può contenere solo lettere, spazi, apostrofo, punto e trattino", 400);
+      return jsonError(
+        "Inserisci nome e cognome separati da uno spazio; sono ammessi solo lettere, apostrofo, punto e trattino",
+        400,
+      );
     }
-    updates.full_name = sanitizeProfilePersonName(rawFullName);
+    updates.full_name = normalizeProfilePersonName(rawFullName);
     updates.display_name = updates.full_name;
   }
 

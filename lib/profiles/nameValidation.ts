@@ -5,9 +5,25 @@ export function sanitizeProfilePersonName(value: string) {
   return value.replace(DISALLOWED_PERSON_NAME_CHARS, '').replace(/\s{2,}/g, ' ');
 }
 
+function capitalizeNamePart(value: string) {
+  const characters = Array.from(value.toLocaleLowerCase('it-IT'));
+  if (characters.length === 0) return '';
+  return characters[0].toLocaleUpperCase('it-IT') + characters.slice(1).join('');
+}
+
+/** Normalizes personal names to `Nome Cognome` casing, including D'Angelo and Di Giacomo. */
+export function normalizeProfilePersonName(value: string) {
+  return sanitizeProfilePersonName(value)
+    .trim()
+    .split(/\s+/u)
+    .filter(Boolean)
+    .map((word) => word.split(/([.'’-])/u).map(capitalizeNamePart).join(''))
+    .join(' ');
+}
+
 export function isValidProfilePersonName(value: string) {
   const trimmed = value.trim();
-  return trimmed.length > 0 && PERSON_NAME_PATTERN.test(trimmed);
+  return trimmed.length > 0 && PERSON_NAME_PATTERN.test(trimmed) && trimmed.split(/\s+/u).filter(Boolean).length >= 2;
 }
 
 
