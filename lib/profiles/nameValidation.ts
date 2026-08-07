@@ -23,7 +23,13 @@ export function normalizeProfilePersonName(value: string) {
 
 export function isValidProfilePersonName(value: string) {
   const trimmed = value.trim();
-  return trimmed.length > 0 && PERSON_NAME_PATTERN.test(trimmed) && trimmed.split(/\s+/u).filter(Boolean).length >= 2;
+  const words = trimmed.split(/\s+/u).filter(Boolean);
+  return (
+    trimmed.length > 0 &&
+    PERSON_NAME_PATTERN.test(trimmed) &&
+    words.length >= 2 &&
+    words.every((word) => (word.match(/\p{L}/gu) ?? []).length >= 2)
+  );
 }
 
 

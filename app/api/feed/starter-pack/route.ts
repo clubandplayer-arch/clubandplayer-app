@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getLatestOpenOpportunitiesByClub } from '@/lib/data/opportunities';
+import { isProfileEligibleForFollowSuggestions } from '@/lib/profiles/completion';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
@@ -14,6 +15,13 @@ type StarterProfile = {
   sport?: string | null;
   role?: string | null;
   avatar_url?: string | null;
+  type?: string | null;
+  birth_year?: number | null;
+  region?: string | null;
+  province?: string | null;
+  interest_region_id?: number | null;
+  interest_province_id?: number | null;
+  interest_municipality_id?: number | null;
 };
 
 async function hydrateClubNames(ids: string[], supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>) {
@@ -133,7 +141,7 @@ export async function GET() {
   for (const attempt of attemptProfiles) {
     let query = supabase
       .from('profiles')
-      .select('id, account_type, full_name, display_name, role, city, country, sport, avatar_url, created_at')
+      .select('id, account_type, type, full_name, display_name, role, city, region, province, country, sport, birth_year, interest_region_id, interest_province_id, interest_municipality_id, avatar_url, created_at')
       .eq('status', 'active')
       .not('country', 'is', null)
       .neq('country', '')
@@ -157,6 +165,7 @@ export async function GET() {
 
     const { data } = await query;
     for (const row of data || []) {
+      if (!isProfileEligibleForFollowSuggestions(row)) continue;
       const name = row.full_name || row.display_name;
       if (!name) continue;
       if (!profileMap.has(row.id)) {
