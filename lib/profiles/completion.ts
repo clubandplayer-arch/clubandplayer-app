@@ -93,3 +93,13 @@ export function getMissingRequiredProfileFields(profile?: ProfileCompletionProfi
 export function isProfileComplete(profile?: ProfileCompletionProfile | null) {
   return getMissingRequiredProfileFields(profile).length === 0;
 }
+
+/** Only complete profiles with a real public name can be proposed to follow. */
+export function isProfileEligibleForFollowSuggestions(profile?: ProfileCompletionProfile | null) {
+  const accountType = normalizeCompletionAccountType(profile);
+  const name = text(profile?.full_name || profile?.display_name);
+
+  if (!accountType || accountType === 'admin' || !name || /\S+@\S+\.\S+/u.test(name)) return false;
+  if (accountType === 'institution') return isValidProfileClubName(name);
+  return isProfileComplete(profile);
+}

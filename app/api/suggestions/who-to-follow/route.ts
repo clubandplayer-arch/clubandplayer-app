@@ -1,5 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { successResponse, unknownError } from '@/lib/api/standardResponses';
+import { isProfileEligibleForFollowSuggestions } from '@/lib/profiles/completion';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
@@ -15,6 +16,13 @@ type SuggestionRow = {
   city: string | null;
   country: string | null;
   account_type: string | null;
+  type?: string | null;
+  birth_year?: number | null;
+  region?: string | null;
+  province?: string | null;
+  interest_region_id?: number | null;
+  interest_province_id?: number | null;
+  interest_municipality_id?: number | null;
 };
 
 type Suggestion = {
@@ -87,7 +95,7 @@ export async function GET(req: NextRequest) {
     const excludedIdsCount = alreadyFollowing.size;
 
     const baseSelect =
-      'id, full_name, display_name, avatar_url, sport, role, city, country, account_type, status, updated_at';
+      'id, full_name, display_name, avatar_url, sport, role, city, country, region, province, account_type, type, status, birth_year, interest_region_id, interest_province_id, interest_municipality_id, updated_at';
 
     const buildBaseQuery = () => {
       let query = profilesClient
@@ -131,6 +139,7 @@ export async function GET(req: NextRequest) {
       }
 
       return rows
+        .filter((row) => isProfileEligibleForFollowSuggestions(row))
         .map((row) => {
           const athlete = athleteMap.get(row.id);
           const fullName = cleanName(athlete?.full_name ?? row.full_name);

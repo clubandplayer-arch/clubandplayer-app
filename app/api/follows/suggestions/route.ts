@@ -6,6 +6,7 @@ import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 import { FollowSuggestionsQuerySchema, type FollowSuggestionsQueryInput } from '@/lib/validation/follow';
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
 import { applyPublicProfileVisibilityFilters } from '@/lib/profile/visibility';
+import { isProfileEligibleForFollowSuggestions } from '@/lib/profiles/completion';
 
 export const runtime = 'nodejs';
 const ENDPOINT_VERSION = 'follows-suggestions@2026-01-10a';
@@ -162,7 +163,7 @@ export async function GET(req: NextRequest) {
     alreadyFollowing.add(profileId);
 
     const baseSelect =
-      'id, user_id, account_type, type, full_name, display_name, role, city, province, region, country, interest_city, interest_province, interest_region, interest_country, sport, bio, avatar_url, status, updated_at';
+      'id, user_id, account_type, type, full_name, display_name, role, city, province, region, country, interest_city, interest_province, interest_region, interest_country, interest_region_id, interest_province_id, interest_municipality_id, sport, birth_year, bio, avatar_url, status, updated_at';
 
     const normalizeAccountType = (value?: string | null) => {
       const cleaned = typeof value === 'string' ? value.toLowerCase().trim() : '';
@@ -216,7 +217,7 @@ export async function GET(req: NextRequest) {
 
       const { data, error } = await query;
       if (error) throw error;
-      return data || [];
+      return (data || []).filter((row) => isProfileEligibleForFollowSuggestions(row));
     }
 
     const buildLocation = (row: any) => [row.city, row.province, row.region, row.country].filter(Boolean).join(', ');
