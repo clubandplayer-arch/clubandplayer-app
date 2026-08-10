@@ -17,6 +17,7 @@ import { getCountryName } from '@/lib/geo/countries';
 import { getLatestOpenOpportunitiesByClub } from '@/lib/data/opportunities';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { isProfileComplete } from '@/lib/profiles/completion';
 
 type ClubProfileRow = {
   id: string;
@@ -116,6 +117,7 @@ async function loadClubProfile(id: string): Promise<ClubProfileRow | null> {
 
   const accountType = (profileState.account_type || profileState.type || '').toLowerCase();
   if (accountType !== 'club') return null;
+  if (!isProfileComplete(profileState)) return null;
 
   return {
     ...profileState,
