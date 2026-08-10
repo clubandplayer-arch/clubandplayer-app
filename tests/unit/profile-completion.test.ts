@@ -4,6 +4,7 @@ import test from 'node:test';
 import { getMissingRequiredProfileFields, isProfileComplete } from '../../lib/profiles/completion';
 import { getProfileClubNameValidationError, isValidProfileClubName } from '../../lib/profiles/nameValidation';
 import { getProfileVisibilityStatusCopy, normalizeProfileVisibilityStatus } from '../../lib/profiles/publication';
+import { getClubNameReviewReason, normalizeClubNameForDuplicateCheck } from '../../lib/profiles/clubNameReview';
 
 const completeClub = {
   account_type: 'club',
@@ -40,4 +41,10 @@ test('normalizes and explains every publication lifecycle state', () => {
   assert.equal(getProfileVisibilityStatusCopy('draft').label, 'Profilo in bozza');
   assert.equal(getProfileVisibilityStatusCopy('published').label, 'Profilo pubblicato');
   assert.equal(getProfileVisibilityStatusCopy('suspended').label, 'Profilo sospeso');
+});
+
+test('flags weak club names and normalizes likely duplicates', () => {
+  assert.match(getClubNameReviewReason('Giovani Talenti Carlentini Europa') ?? '', /riferimento societario/);
+  assert.equal(getClubNameReviewReason('ASD Carlentini'), null);
+  assert.equal(normalizeClubNameForDuplicateCheck('A.S.D. Carlentini'), normalizeClubNameForDuplicateCheck('ASD Carlentini'));
 });

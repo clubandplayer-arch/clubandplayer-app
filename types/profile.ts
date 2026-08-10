@@ -22,6 +22,9 @@ export type Profile = {
   display_name: string;
   status?: 'pending' | 'active' | 'rejected' | null;
   profile_visibility_status?: ProfileVisibilityStatus | null;
+  registry_master_id?: string | null;
+  club_name_review_status?: 'not_required' | 'pending' | 'approved' | 'rejected' | null;
+  club_name_review_reason?: string | null;
   headline?: string | null;
   bio?: string | null;
   country?: string | null;

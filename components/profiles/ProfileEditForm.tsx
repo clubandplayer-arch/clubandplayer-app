@@ -86,6 +86,8 @@ const STAFF_ROLES = [
 type Profile = {
   account_type: AccountType;
   profile_visibility_status: ProfileVisibilityStatus;
+  club_name_review_status: 'not_required' | 'pending' | 'approved' | 'rejected';
+  club_name_review_reason: string | null;
 
   // anagrafica comune
   full_name: string | null;
@@ -342,6 +344,8 @@ export default function ProfileEditForm() {
     const p: Profile = {
       account_type: (j?.account_type ?? null) as AccountType,
       profile_visibility_status: normalizeProfileVisibilityStatus(j?.profile_visibility_status),
+      club_name_review_status: (j?.club_name_review_status ?? 'not_required') as Profile['club_name_review_status'],
+      club_name_review_reason: typeof j?.club_name_review_reason === 'string' ? j.club_name_review_reason : null,
 
       full_name: (j as any)?.full_name ?? null,
       avatar_url: (j as any)?.avatar_url ?? null,
@@ -882,6 +886,18 @@ export default function ProfileEditForm() {
           <p className="font-semibold">{publicationCopy.label}</p>
           <p className="mt-1 text-sm">{publicationCopy.description}</p>
         </div>
+        {isClub && profile.club_name_review_status === 'pending' && (
+          <div className="rounded-2xl border border-violet-300 bg-violet-50 p-4 text-violet-950" role="status">
+            <p className="font-semibold">Nome Club in revisione</p>
+            <p className="mt-1 text-sm">{profile.club_name_review_reason || 'La denominazione deve essere verificata prima della pubblicazione.'}</p>
+          </div>
+        )}
+        {isClub && profile.club_name_review_status === 'rejected' && (
+          <div className="rounded-2xl border border-red-300 bg-red-50 p-4 text-red-950" role="alert">
+            <p className="font-semibold">Nome Club non approvato</p>
+            <p className="mt-1 text-sm">Modifica la denominazione oppure collega il profilo al Registro Club.</p>
+          </div>
+        )}
         {missingRequiredFields.length > 0 && (
           <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-950 shadow-sm" role="alert">
             <p className="font-semibold">Completa il tuo profilo per continuare ad utilizzare Club and Player.</p>

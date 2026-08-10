@@ -36,6 +36,16 @@ function renderContent(notification: NotificationWithActor): { title: string; bo
   const actorName = notification.actor?.public_name ?? 'Un utente';
 
   switch (kind) {
+    case 'profile_returned_to_draft': {
+      const reason = typeof payload?.reason === 'string' ? payload.reason : '';
+      return {
+        title: 'Profilo riportato in bozza',
+        body: reason && reason !== 'required_fields_changed'
+          ? `Il profilo non è più pubblico: ${reason}. Correggi i dati richiesti e salva nuovamente.`
+          : 'Il profilo non è più pubblico perché sono cambiati alcuni dati obbligatori. Completa il profilo e salva nuovamente.',
+      };
+    }
+
     case 'registry_claim_dispute': {
       const status = typeof payload?.status === 'string' ? payload.status : '';
       const clubName =
@@ -213,6 +223,12 @@ export default function NotificationItem({ notification, onClick, compact }: Pro
 
   const hrefFromPayload = () => {
     const payload = notification.payload || {};
+
+    if (notification.kind === 'profile_returned_to_draft') {
+      return typeof payload.completion_path === 'string' && payload.completion_path.startsWith('/')
+        ? payload.completion_path
+        : '/player/profile';
+    }
 
     if (notification.kind === 'registry_claim_dispute') {
       const status = typeof payload.status === 'string' ? payload.status : '';

@@ -155,7 +155,12 @@ export default function AdminReportsPage() {
 
   return (
     <div className="max-w-6xl mx-auto p-4">
-      <h1 className="text-2xl font-semibold mb-4">Moderazione — Segnalazioni</h1>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold">Moderazione — Segnalazioni</h1>
+        <Link href="/admin/profile-quality" className="rounded-full bg-cyan-700 px-4 py-2 text-sm font-semibold text-white">
+          Qualità profili Club
+        </Link>
+      </div>
 
       {/* FILTRI */}
       <div className="flex flex-wrap items-end gap-3 mb-4">
