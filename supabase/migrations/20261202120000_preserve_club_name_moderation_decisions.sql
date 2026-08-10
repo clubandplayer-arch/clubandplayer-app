@@ -1,23 +1,5 @@
 begin;
 
-alter table public.profiles
-  add column if not exists registry_master_id text references public.registry_clubs_master(master_id) on delete set null,
-  add column if not exists club_name_review_status text not null default 'not_required',
-  add column if not exists club_name_review_reason text,
-  add column if not exists club_name_reviewed_at timestamptz,
-  add column if not exists club_name_reviewed_by uuid references auth.users(id) on delete set null;
-
-alter table public.profiles drop constraint if exists profiles_club_name_review_status_check;
-alter table public.profiles add constraint profiles_club_name_review_status_check
-  check (club_name_review_status in ('not_required', 'pending', 'approved', 'rejected'));
-
-create unique index if not exists profiles_registry_master_id_unique
-  on public.profiles (registry_master_id)
-  where registry_master_id is not null;
-create index if not exists profiles_club_name_review_queue_idx
-  on public.profiles (club_name_review_status, updated_at desc)
-  where coalesce(account_type, type) = 'club';
-
 create or replace function public.set_profile_visibility_status()
 returns trigger
 language plpgsql
@@ -136,45 +118,5 @@ begin
 end;
 $$;
 
-create or replace function public.notify_profile_demoted_to_draft()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-  if old.profile_visibility_status = 'published'
-     and new.profile_visibility_status = 'draft'
-     and new.user_id is not null then
-    insert into public.notifications (user_id, kind, payload)
-    values (
-      new.user_id,
-      'profile_returned_to_draft',
-      jsonb_build_object(
-        'profile_id', new.id,
-        'reason', coalesce(new.club_name_review_reason, 'required_fields_changed'),
-        'completion_path', case when coalesce(new.account_type, new.type) = 'club' then '/club/profile' else '/player/profile' end
-      )
-    );
-  end if;
-  return new;
-end;
-$$;
-
-drop trigger if exists profiles_notify_draft_demotion on public.profiles;
-create trigger profiles_notify_draft_demotion
-after update on public.profiles
-for each row execute function public.notify_profile_demoted_to_draft();
-
--- Link profiles already backed by approved claims and queue weak names for review.
-update public.profiles p
-set registry_master_id = m.master_id,
-    club_name_review_status = 'approved',
-    club_name_review_reason = null
-from public.registry_clubs_master m
-where m.claimed_profile_id = p.id and m.is_claimed = true;
-
-update public.profiles set updated_at = updated_at
-where coalesce(account_type, type) = 'club';
 
 commit;
