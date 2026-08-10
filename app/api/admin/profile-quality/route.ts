@@ -153,7 +153,25 @@ export async function PATCH(req: NextRequest) {
       { status: 503 },
     );
   }
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error('[admin/profile-quality] moderation update failed', {
+      profileId,
+      action,
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
+    return NextResponse.json(
+      {
+        error: error.message,
+        code: error.code ?? null,
+        details: error.details ?? null,
+        hint: error.hint ?? null,
+      },
+      { status: 500 },
+    );
+  }
   if (!data) return NextResponse.json({ error: 'Profilo Club non trovato' }, { status: 404 });
   return NextResponse.json({ data });
 }

@@ -34,9 +34,9 @@ export function isMissingClubQualitySchemaError(error: unknown): boolean {
   const candidate = error as { code?: unknown; message?: unknown } | null;
   const code = typeof candidate?.code === 'string' ? candidate.code : '';
   const message = typeof candidate?.message === 'string' ? candidate.message : '';
+  const mentionsQualityColumn = /(?:profiles\.)?(?:registry_master_id|club_name_review_(?:status|reason)|club_name_reviewed_(?:at|by))/iu.test(message);
   return (
-    code === '42703' ||
-    code === 'PGRST204' ||
-    /profiles\.(?:registry_master_id|club_name_review_(?:status|reason|reviewed_at|reviewed_by))/iu.test(message)
+    (code === '42703' && mentionsQualityColumn) ||
+    (code === 'PGRST204' && mentionsQualityColumn)
   );
 }

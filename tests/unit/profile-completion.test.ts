@@ -53,5 +53,6 @@ test('recognizes a database where the P2 profile-quality migration is missing', 
   assert.equal(isMissingClubQualitySchemaError({ code: '42703', message: 'column profiles.registry_master_id does not exist' }), true);
   assert.equal(isMissingClubQualitySchemaError({ code: 'PGRST204', message: "Could not find club_name_review_status" }), true);
   assert.equal(isMissingClubQualitySchemaError({ code: 'PGRST204', message: "Could not find club_name_reviewed_by" }), true);
+  assert.equal(isMissingClubQualitySchemaError({ code: '42703', message: 'column unrelated_field does not exist' }), false);
   assert.equal(isMissingClubQualitySchemaError({ code: '23505', message: 'duplicate key' }), false);
 });
