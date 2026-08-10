@@ -121,8 +121,9 @@ export async function PATCH(req: NextRequest) {
 
   const schemaProbe = await context.admin
     .from('profiles')
-    .select('registry_master_id,club_name_review_status,club_name_review_reason,club_name_reviewed_at,club_name_reviewed_by')
-    .limit(1);
+    .select('id,account_type,type,registry_master_id,club_name_review_status,club_name_review_reason,club_name_reviewed_at,club_name_reviewed_by')
+    .eq('id', profileId)
+    .maybeSingle();
   if (schemaProbe.error && isMissingClubQualitySchemaError(schemaProbe.error)) {
     return NextResponse.json(
       { error: 'La migrazione P2 per qualità e moderazione non è ancora applicata al database.' },
@@ -130,6 +131,9 @@ export async function PATCH(req: NextRequest) {
     );
   }
   if (schemaProbe.error) return NextResponse.json({ error: schemaProbe.error.message }, { status: 500 });
+  if (!schemaProbe.data) return NextResponse.json({ error: 'Profilo Club non trovato' }, { status: 404 });
+  const accountType = String(schemaProbe.data.account_type ?? schemaProbe.data.type ?? '').toLowerCase();
+  if (accountType !== 'club') return NextResponse.json({ error: 'Profilo Club non trovato' }, { status: 404 });
 
   const now = new Date().toISOString();
   const update = action === 'approve_name'
@@ -144,7 +148,6 @@ export async function PATCH(req: NextRequest) {
     .from('profiles')
     .update({ ...update, updated_at: now })
     .eq('id', profileId)
-    .or('account_type.eq.club,type.eq.club')
     .select('id,profile_visibility_status,club_name_review_status,club_name_review_reason')
     .maybeSingle();
   if (error && isMissingClubQualitySchemaError(error)) {
