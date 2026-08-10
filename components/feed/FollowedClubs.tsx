@@ -23,6 +23,7 @@ type FollowedItem = {
 };
 
 function targetHref(item: FollowedItem) {
+  if (item.accountType === 'admin') return `/admin/${item.id}`;
   return item.accountType === 'club' ? `/clubs/${item.id}` : `/players/${item.id}`;
 }
 
