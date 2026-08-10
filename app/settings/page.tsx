@@ -11,11 +11,19 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
 
+type AccountType = 'athlete' | 'club' | 'fan' | 'staff' | 'institution'
+
 type Profile = {
   id: string
-  account_type: 'athlete' | 'club' | 'fan' | 'staff' | null
+  account_type: AccountType | null
   notify_email_new_message: boolean | null
 }
+
+const ROLE_OPTIONS: Array<{ value: AccountType; label: string }> = [
+  { value: 'athlete', label: 'Player' }, { value: 'staff', label: 'Staff' },
+  { value: 'club', label: 'Club' }, { value: 'fan', label: 'Fan' },
+  { value: 'institution', label: 'Ente' },
+]
 
 type BlockedItem = {
   blocked_profile_id: string
@@ -38,8 +46,14 @@ export default function SettingsPage() {
 
   const [userId, setUserId] = useState<string | null>(null)
   const [profileId, setProfileId] = useState<string | null>(null)
-  const [accountType, setAccountType] = useState<'athlete' | 'club' | 'fan' | 'staff' | null>(null)
+  const [accountType, setAccountType] = useState<AccountType | null>(null)
   const [notifyEmailNewMessage, setNotifyEmailNewMessage] = useState<boolean>(false)
+  const [showRoleRequest, setShowRoleRequest] = useState(false)
+  const [requestedRole, setRequestedRole] = useState<AccountType | ''>('')
+  const [roleReason, setRoleReason] = useState('')
+  const [roleRequestSending, setRoleRequestSending] = useState(false)
+  const [roleRequestMessage, setRoleRequestMessage] = useState('')
+  const [roleRequestSent, setRoleRequestSent] = useState(false)
   const [blockedUsers, setBlockedUsers] = useState<BlockedItem[]>([])
   const [blockedLoading, setBlockedLoading] = useState(false)
   const [blockedMsg, setBlockedMsg] = useState('')
@@ -183,6 +197,41 @@ export default function SettingsPage() {
     }
   }
 
+  const sendRoleChangeRequest = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (roleRequestSending || roleRequestSent) return
+    setRoleRequestMessage('')
+    if (!requestedRole || requestedRole === accountType) {
+      setRoleRequestMessage('Seleziona un ruolo diverso da quello attuale.')
+      return
+    }
+    if (roleReason.trim().length < 20) {
+      setRoleRequestMessage('Spiega la motivazione utilizzando almeno 20 caratteri.')
+      return
+    }
+
+    setRoleRequestSending(true)
+    try {
+      const response = await fetch('/api/account/role-change-request', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestedRole, reason: roleReason.trim() }),
+      })
+      const body = await response.json().catch(() => ({}))
+      if (!response.ok || !body?.ok) {
+        setRoleRequestMessage(body?.error || 'Non è stato possibile inviare la richiesta. Riprova.')
+        return
+      }
+      setRoleRequestSent(true)
+      setRoleRequestMessage('Richiesta inviata. Il team la valuterà e ti contatterà all’indirizzo email del tuo account.')
+    } catch {
+      setRoleRequestMessage('Errore di rete durante l’invio. Riprova.')
+    } finally {
+      setRoleRequestSending(false)
+    }
+  }
+
   const accountTypeLabel = accountType === 'athlete'
     ? 'Player'
     : accountType === 'club'
@@ -191,6 +240,8 @@ export default function SettingsPage() {
         ? 'Fan'
         : accountType === 'staff'
           ? 'Staff'
+          : accountType === 'institution'
+            ? 'Ente'
         : '—'
   const publicProfileHref = accountType === 'club' && profileId
     ? `/clubs/${profileId}`
@@ -244,6 +295,70 @@ export default function SettingsPage() {
                 <span> non disponibile per questo tipo account</span>
               )}
             </p>
+            <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid #e5e7eb' }}>
+              <h3 style={{ margin: '0 0 6px' }}>Hai scelto il ruolo sbagliato?</h3>
+              <p style={{ margin: '0 0 12px', color: '#4b5563' }}>
+                Invia una richiesta motivata al nostro team. Il cambio non è automatico: sarà valutato
+                in base alle informazioni fornite e riceverai una risposta via email.
+              </p>
+              {!showRoleRequest ? (
+                <button type="button" className="btn btn-primary" onClick={() => setShowRoleRequest(true)}>
+                  Richiedi cambio ruolo
+                </button>
+              ) : (
+                <form onSubmit={sendRoleChangeRequest} style={{ display: 'grid', gap: 12 }}>
+                  <label style={{ display: 'grid', gap: 6 }}>
+                    <span style={{ fontWeight: 600 }}>Nuovo ruolo desiderato</span>
+                    <select
+                      value={requestedRole}
+                      onChange={(event) => setRequestedRole(event.target.value as AccountType | '')}
+                      disabled={roleRequestSending || roleRequestSent}
+                      required
+                      style={{ padding: 10, borderRadius: 8, border: '1px solid #d1d5db', background: '#fff' }}
+                    >
+                      <option value="">Seleziona un ruolo</option>
+                      {ROLE_OPTIONS.filter((option) => option.value !== accountType).map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label style={{ display: 'grid', gap: 6 }}>
+                    <span style={{ fontWeight: 600 }}>Motivazione</span>
+                    <textarea
+                      value={roleReason}
+                      onChange={(event) => setRoleReason(event.target.value)}
+                      disabled={roleRequestSending || roleRequestSent}
+                      required minLength={20} maxLength={2000} rows={5}
+                      placeholder="Spiega perché desideri cambiare ruolo e aggiungi le informazioni utili alla valutazione."
+                      style={{ padding: 10, borderRadius: 8, border: '1px solid #d1d5db', resize: 'vertical' }}
+                    />
+                    <span style={{ color: '#6b7280', fontSize: 13 }}>{roleReason.length}/2000 caratteri</span>
+                  </label>
+                  <p style={{ margin: 0, color: '#4b5563', fontSize: 14 }}>
+                    L’invio non garantisce l’approvazione. Il ruolo attuale resterà invariato fino
+                    all’eventuale conferma del team Club and Player.
+                  </p>
+                  {roleRequestMessage ? (
+                    <p role="status" style={{ margin: 0, color: roleRequestSent ? '#065f46' : '#b91c1c', fontWeight: 600 }}>
+                      {roleRequestMessage}
+                    </p>
+                  ) : null}
+                  {!roleRequestSent ? (
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <button type="submit" className="btn btn-primary" disabled={roleRequestSending}>
+                        {roleRequestSending ? 'Invio in corso…' : 'Invia richiesta'}
+                      </button>
+                      <button
+                        type="button" className="btn btn-outline" disabled={roleRequestSending}
+                        onClick={() => { setShowRoleRequest(false); setRoleRequestMessage('') }}
+                      >
+                        Annulla
+                      </button>
+                    </div>
+                  ) : null}
+                </form>
+              )}
+            </div>
           </section>
 
           <section style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 16 }}>
