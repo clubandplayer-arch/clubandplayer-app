@@ -14,9 +14,10 @@ import {
 } from '@/components/profiles/LocationFields';
 import { normalizeSport, SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
 import { WORLD_COUNTRY_OPTIONS } from '@/lib/geo/countries';
-import { ProfileSkill } from '@/types/profile';
+import { ProfileSkill, type ProfileVisibilityStatus } from '@/types/profile';
 import { getMissingRequiredProfileFields } from '@/lib/profiles/completion';
 import { getProfileClubNameValidationError, sanitizeProfileClubName, sanitizeProfilePersonName } from '@/lib/profiles/nameValidation';
+import { getProfileVisibilityStatusCopy, normalizeProfileVisibilityStatus } from '@/lib/profiles/publication';
 import { CATEGORIES_BY_SPORT, CLUB_SPORT_OPTIONS, DEFAULT_CLUB_CATEGORIES } from '@/lib/opps/categories';
 import { iso2ToFlagEmoji } from '@/lib/utils/flags';
 import {
@@ -84,6 +85,7 @@ const STAFF_ROLES = [
 
 type Profile = {
   account_type: AccountType;
+  profile_visibility_status: ProfileVisibilityStatus;
 
   // anagrafica comune
   full_name: string | null;
@@ -339,6 +341,7 @@ export default function ProfileEditForm() {
 
     const p: Profile = {
       account_type: (j?.account_type ?? null) as AccountType,
+      profile_visibility_status: normalizeProfileVisibilityStatus(j?.profile_visibility_status),
 
       full_name: (j as any)?.full_name ?? null,
       avatar_url: (j as any)?.avatar_url ?? null,
@@ -870,9 +873,15 @@ export default function ProfileEditForm() {
   if (!profile) return null;
 
   const countryPreview = country ? [iso2ToFlagEmoji(country), countryName(country)].filter(Boolean).join(' ') : '';
+  const publicationStatus = profile.profile_visibility_status;
+  const publicationCopy = getProfileVisibilityStatusCopy(publicationStatus);
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
+        <div className={`rounded-2xl border p-4 shadow-sm ${publicationCopy.className}`} role="status">
+          <p className="font-semibold">{publicationCopy.label}</p>
+          <p className="mt-1 text-sm">{publicationCopy.description}</p>
+        </div>
         {missingRequiredFields.length > 0 && (
           <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-950 shadow-sm" role="alert">
             <p className="font-semibold">Completa il tuo profilo per continuare ad utilizzare Club and Player.</p>

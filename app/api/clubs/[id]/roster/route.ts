@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { jsonError, withAuth } from '@/lib/api/auth';
 import { rateLimit } from '@/lib/api/rateLimit';
+import { applyPublicProfileVisibilityFilters } from '@/lib/profile/visibility';
 
 export const runtime = 'nodejs';
 
@@ -35,9 +36,9 @@ export const GET = withAuth(async (req: NextRequest, { supabase }, routeContext)
   const targetClubId = typeof clubId === 'string' ? clubId.trim() : '';
   if (!targetClubId) return jsonError('clubId mancante', 400);
 
-  const { data: clubProfile, error: clubError } = await supabase
-    .from('profiles')
-    .select('id, account_type, type, status')
+  const { data: clubProfile, error: clubError } = await applyPublicProfileVisibilityFilters(
+    supabase.from('profiles').select('id, account_type, type, status'),
+  )
     .eq('id', targetClubId)
     .maybeSingle();
 
@@ -62,9 +63,9 @@ export const GET = withAuth(async (req: NextRequest, { supabase }, routeContext)
   const playerIds = (rosterRows || []).map((row: any) => row.player_profile_id).filter(Boolean);
   if (!playerIds.length) return NextResponse.json({ ok: true, roster: [] });
 
-  const { data: players, error: playersError } = await supabase
-    .from('players_view')
-    .select('id, full_name, display_name, avatar_url, role, city, country')
+  const { data: players, error: playersError } = await applyPublicProfileVisibilityFilters(
+    supabase.from('players_view').select('id, full_name, display_name, avatar_url, role, city, country'),
+  )
     .in('id', playerIds);
 
   if (playersError) return jsonError(playersError.message, 400);
