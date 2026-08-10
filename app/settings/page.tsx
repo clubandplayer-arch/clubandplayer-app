@@ -20,9 +20,9 @@ type Profile = {
 }
 
 const ROLE_OPTIONS: Array<{ value: AccountType; label: string }> = [
-  { value: 'athlete', label: 'Player' }, { value: 'staff', label: 'Staff' },
-  { value: 'club', label: 'Club' }, { value: 'fan', label: 'Fan' },
-  { value: 'institution', label: 'Ente' },
+  { value: 'athlete', label: 'Giocatore' }, { value: 'staff', label: 'Staff Tecnico' },
+  { value: 'club', label: 'Squadra' }, { value: 'fan', label: 'Tifoso' },
+  { value: 'institution', label: 'Federazione/Ente' },
 ]
 
 type BlockedItem = {
@@ -233,15 +233,15 @@ export default function SettingsPage() {
   }
 
   const accountTypeLabel = accountType === 'athlete'
-    ? 'Player'
+    ? 'Giocatore'
     : accountType === 'club'
-      ? 'Club'
+      ? 'Squadra'
       : accountType === 'fan'
-        ? 'Fan'
+        ? 'Tifoso'
         : accountType === 'staff'
-          ? 'Staff'
+          ? 'Staff Tecnico'
           : accountType === 'institution'
-            ? 'Ente'
+            ? 'Federazione/Ente'
         : '—'
   const publicProfileHref = accountType === 'club' && profileId
     ? `/clubs/${profileId}`

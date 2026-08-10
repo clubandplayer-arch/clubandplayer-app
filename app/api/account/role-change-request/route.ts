@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { getResendConfig } from "@/lib/server/resendConfig";
 
 export const runtime = "nodejs";
 
@@ -16,12 +15,17 @@ const ACCOUNT_TYPES = [
 type AccountType = (typeof ACCOUNT_TYPES)[number];
 
 const ROLE_LABELS: Record<AccountType, string> = {
-  athlete: "Player",
-  staff: "Staff",
-  club: "Club",
-  fan: "Fan",
-  institution: "Ente",
+  athlete: "Giocatore",
+  staff: "Staff Tecnico",
+  club: "Squadra",
+  fan: "Tifoso",
+  institution: "Federazione/Ente",
 };
+
+const emailDisabled = () =>
+  ["1", "true", "yes", "on"].includes(
+    String(process.env.NOOP_EMAILS ?? "").toLowerCase(),
+  );
 
 function escapeHtml(value: string) {
   return value
@@ -90,12 +94,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const resendConfig = getResendConfig();
-    if (!resendConfig.ok) {
-      console.error(
-        "Configurazione email incompleta:",
-        resendConfig.missing.join(", "),
-      );
+    const resendApiKey = process.env.RESEND_API_KEY;
+    const resendFrom = process.env.RESEND_FROM;
+    if (!resendApiKey || !resendFrom) {
+      console.error("Configurazione email incompleta per il cambio ruolo", {
+        missingApiKey: !resendApiKey,
+        missingFrom: !resendFrom,
+      });
       return NextResponse.json(
         {
           ok: false,
@@ -105,7 +110,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (resendConfig.noop) {
+    if (emailDisabled()) {
       console.info("NOOP_EMAILS: richiesta cambio ruolo validata", {
         userId: user.id,
         currentRole,
@@ -119,9 +124,9 @@ export async function POST(request: NextRequest) {
       profile.display_name || profile.full_name || "Non indicato";
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL?.replace(/\/$/, "");
     const profileUrl = baseUrl ? `${baseUrl}/admin/${profile.id}` : null;
-    const resend = new Resend(resendConfig.apiKey);
+    const resend = new Resend(resendApiKey);
     const result = await resend.emails.send({
-      from: resendConfig.from,
+      from: resendFrom,
       to: SUPPORT_EMAIL,
       replyTo: user.email,
       subject: `Richiesta cambio ruolo – ${ROLE_LABELS[currentRole]} → ${ROLE_LABELS[requestedRoleTyped]}`,

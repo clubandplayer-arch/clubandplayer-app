@@ -18,7 +18,7 @@ type FollowedItem = {
   sport: string | null;
   avatarUrl?: string | null;
   isVerified?: boolean | null;
-  accountType: 'club' | 'athlete' | 'staff';
+  accountType: 'club' | 'athlete' | 'staff' | 'admin';
   role?: string | null;
 };
 
@@ -86,9 +86,11 @@ export default function FollowedClubs() {
               .map((item) => {
                 const normalizedAccountType = String(item.account_type ?? '').trim().toLowerCase();
                 const normalizedRole = String(item.role ?? '').trim().toLowerCase();
-                const accountType: 'club' | 'athlete' | 'staff' =
+                const accountType: 'club' | 'athlete' | 'staff' | 'admin' =
                   normalizedAccountType === 'club'
                     ? 'club'
+                    : item.is_platform_admin === true || normalizedAccountType === 'admin'
+                      ? 'admin'
                     : normalizedAccountType === 'staff' || normalizedRole === 'staff'
                       ? 'staff'
                       : 'athlete';
@@ -188,7 +190,7 @@ export default function FollowedClubs() {
                       {item.name}
                     </Link>
                     <span className="rounded-full border border-zinc-200 bg-zinc-100 px-2 py-[1px] text-[10px] font-semibold uppercase tracking-wide text-zinc-700">
-                      {item.accountType === 'club' ? 'Club' : item.accountType === 'staff' ? 'Staff' : 'Player'}
+                      {item.accountType === 'admin' ? 'Admin' : item.accountType === 'club' ? 'Club' : item.accountType === 'staff' ? 'Staff' : 'Player'}
                     </span>
                   </div>
                   <div className="truncate text-xs text-zinc-500">{subtitle(item, role)}</div>
