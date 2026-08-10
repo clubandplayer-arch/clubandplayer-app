@@ -30,6 +30,10 @@ export function normalizeClubNameForDuplicateCheck(value: unknown): string {
     .replace(/\s+/gu, ' ');
 }
 
+export function shouldIncludeClubInQualityList(reasonCount: number, reviewStatus: unknown): boolean {
+  return reasonCount > 0 || reviewStatus === 'approved' || reviewStatus === 'rejected';
+}
+
 export function isMissingClubQualitySchemaError(error: unknown): boolean {
   const candidate = error as { code?: unknown; message?: unknown } | null;
   const code = typeof candidate?.code === 'string' ? candidate.code : '';

@@ -4,7 +4,7 @@ import test from 'node:test';
 import { getMissingRequiredProfileFields, isProfileComplete } from '../../lib/profiles/completion';
 import { getProfileClubNameValidationError, isValidProfileClubName } from '../../lib/profiles/nameValidation';
 import { getProfileVisibilityStatusCopy, normalizeProfileVisibilityStatus } from '../../lib/profiles/publication';
-import { getClubNameReviewReason, isMissingClubQualitySchemaError, normalizeClubNameForDuplicateCheck } from '../../lib/profiles/clubNameReview';
+import { getClubNameReviewReason, isMissingClubQualitySchemaError, normalizeClubNameForDuplicateCheck, shouldIncludeClubInQualityList } from '../../lib/profiles/clubNameReview';
 
 const completeClub = {
   account_type: 'club',
@@ -47,6 +47,13 @@ test('flags weak club names and normalizes likely duplicates', () => {
   assert.match(getClubNameReviewReason('Giovani Talenti Carlentini Europa') ?? '', /riferimento societario/);
   assert.equal(getClubNameReviewReason('ASD Carlentini'), null);
   assert.equal(normalizeClubNameForDuplicateCheck('A.S.D. Carlentini'), normalizeClubNameForDuplicateCheck('ASD Carlentini'));
+});
+
+test('keeps approved and rejected club-name decisions in moderation history', () => {
+  assert.equal(shouldIncludeClubInQualityList(0, 'approved'), true);
+  assert.equal(shouldIncludeClubInQualityList(0, 'rejected'), true);
+  assert.equal(shouldIncludeClubInQualityList(0, 'pending'), false);
+  assert.equal(shouldIncludeClubInQualityList(1, 'pending'), true);
 });
 
 test('recognizes a database where the P2 profile-quality migration is missing', () => {

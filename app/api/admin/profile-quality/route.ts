@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
 import { isAdminUser } from '@/lib/api/admin';
-import { getClubNameReviewReason, isMissingClubQualitySchemaError, normalizeClubNameForDuplicateCheck } from '@/lib/profiles/clubNameReview';
+import { getClubNameReviewReason, isMissingClubQualitySchemaError, normalizeClubNameForDuplicateCheck, shouldIncludeClubInQualityList } from '@/lib/profiles/clubNameReview';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
@@ -90,7 +90,10 @@ export async function GET() {
     if (registry && (!registry.is_claimed || registry.claimed_profile_id !== profile.id)) reasons.add('Collegamento Registro incoerente');
     if (profile.club_name_review_status === 'rejected') reasons.add('Nome rifiutato in revisione');
     if (profile.profile_visibility_status === 'suspended') reasons.add('Profilo sospeso');
-    if (!reasons.size) return [];
+    // Keep completed decisions in the response even when approval resolves the
+    // profile's last anomaly. Otherwise approved names disappear from their
+    // history tab, while rejected names remain because rejection adds a reason.
+    if (!shouldIncludeClubInQualityList(reasons.size, profile.club_name_review_status)) return [];
 
     return [{ ...profile, registry_master_id: registryMasterId, name, reasons: Array.from(reasons), duplicate_profile_ids: duplicates, registry }];
   });
@@ -99,7 +102,7 @@ export async function GET() {
     data: rows,
     summary: {
       total_clubs: profiles.length,
-      anomalies: rows.length,
+      anomalies: rows.filter((row) => row.reasons.length > 0).length,
       suspicious_names: rows.filter((row) => row.club_name_review_status === 'pending' || (row.club_name_review_status !== 'approved' && Boolean(getClubNameReviewReason(row.name)))).length,
       duplicate_groups: Array.from(duplicateGroups.values()).filter((ids) => ids.length > 1).length,
       unlinked_registry: rows.filter((profile) => !profile.registry_master_id).length,
