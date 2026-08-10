@@ -21,7 +21,7 @@ export async function GET() {
 
   const qualityResult = await context.admin
     .from('profiles')
-    .select('id,user_id,full_name,display_name,sport,city,province,region,status,profile_visibility_status,registry_master_id,club_name_review_status,club_name_review_reason,updated_at')
+    .select('id,user_id,full_name,display_name,sport,city,province,region,status,profile_visibility_status,registry_master_id,club_name_review_status,club_name_review_reason,club_name_reviewed_at,club_name_reviewed_by,updated_at')
     .or('account_type.eq.club,type.eq.club')
     .order('updated_at', { ascending: false })
     .limit(2000);
@@ -41,6 +41,8 @@ export async function GET() {
       registry_master_id: null,
       club_name_review_status: 'not_required',
       club_name_review_reason: null,
+      club_name_reviewed_at: null,
+      club_name_reviewed_by: null,
     }));
   } else if (qualityResult.error) {
     return NextResponse.json({ error: qualityResult.error.message }, { status: 500 });
@@ -103,7 +105,7 @@ export async function GET() {
       unlinked_registry: rows.filter((profile) => !profile.registry_master_id).length,
     },
     schema_ready: schemaReady,
-    setup_message: schemaReady ? null : 'La migrazione P2 non è ancora applicata: la dashboard è in modalità compatibilità e le azioni di revisione nome sono disabilitate.',
+    setup_message: schemaReady ? null : 'Lo schema P2 è assente o incompleto: verifica tutte e cinque le colonne di moderazione, ricarica la cache PostgREST e poi aggiorna la pagina.',
   });
 }
 
@@ -117,7 +119,10 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'Azione non valida' }, { status: 400 });
   }
 
-  const schemaProbe = await context.admin.from('profiles').select('registry_master_id').limit(1);
+  const schemaProbe = await context.admin
+    .from('profiles')
+    .select('registry_master_id,club_name_review_status,club_name_review_reason,club_name_reviewed_at,club_name_reviewed_by')
+    .limit(1);
   if (schemaProbe.error && isMissingClubQualitySchemaError(schemaProbe.error)) {
     return NextResponse.json(
       { error: 'La migrazione P2 per qualità e moderazione non è ancora applicata al database.' },
