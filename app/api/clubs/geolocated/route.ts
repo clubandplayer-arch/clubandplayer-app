@@ -4,6 +4,7 @@ import { rateLimit } from '@/lib/api/rateLimit';
 import { dbError, rateLimited, successResponse, unknownError } from '@/lib/api/standardResponses';
 import { buildProfileDisplayName } from '@/lib/displayName';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { applyPublicProfileVisibilityFilters } from '@/lib/profile/visibility';
 
 export const runtime = 'nodejs';
 
@@ -41,10 +42,9 @@ export async function GET(req: NextRequest) {
 
   try {
     const supabase = await getSupabaseServerClient();
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id, display_name, full_name, avatar_url, account_type, type, status, is_admin, city, province, region, club_stadium_lat, club_stadium_lng, latitude, longitude')
-      .eq('status', 'active')
+    const { data, error } = await applyPublicProfileVisibilityFilters(
+      supabase.from('profiles').select('id, display_name, full_name, avatar_url, account_type, type, status, is_admin, city, province, region, club_stadium_lat, club_stadium_lng, latitude, longitude'),
+    )
       .neq('is_admin', true)
       .or('account_type.eq.club,type.eq.club')
       .limit(1000);

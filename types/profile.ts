@@ -13,12 +13,18 @@ export type ProfileSkill = {
   endorsedByMe: boolean;
 };
 
+export type ProfileVisibilityStatus = 'draft' | 'published' | 'suspended';
+
 export type Profile = {
   user_id: string;
   type?: 'athlete' | 'club' | 'fan' | 'staff' | 'admin' | 'institution' | null;
   account_type?: 'athlete' | 'club' | 'fan' | 'staff' | 'admin' | 'institution' | null;
   display_name: string;
   status?: 'pending' | 'active' | 'rejected' | null;
+  profile_visibility_status?: ProfileVisibilityStatus | null;
+  registry_master_id?: string | null;
+  club_name_review_status?: 'not_required' | 'pending' | 'approved' | 'rejected' | null;
+  club_name_review_reason?: string | null;
   headline?: string | null;
   bio?: string | null;
   country?: string | null;

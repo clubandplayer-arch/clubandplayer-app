@@ -181,25 +181,10 @@ function buildClubQuery(
   filters: SearchFilters,
   options?: { count?: 'exact'; head?: boolean },
 ) {
-  let query = supabase
-    .from('profiles')
-    .select(select, options)
+  let query = applyPublicProfileVisibilityFilters(
+    supabase.from('profiles').select(select, options),
+  )
     .or('account_type.eq.club,type.eq.club')
-    .eq('status', 'active')
-    .not('display_name', 'is', null)
-    .neq('display_name', '')
-    .not('bio', 'is', null)
-    .neq('bio', '')
-    .not('sport', 'is', null)
-    .neq('sport', '')
-    .not('country', 'is', null)
-    .neq('country', '')
-    .not('region', 'is', null)
-    .neq('region', '')
-    .not('province', 'is', null)
-    .neq('province', '')
-    .not('city', 'is', null)
-    .neq('city', '')
     .or('display_name.not.is.null,full_name.not.is.null');
 
   query = query.or(
@@ -334,9 +319,9 @@ async function fetchProfileResults(params: {
   }
 
   if (kind === 'staff') {
-    const { data, count, error } = await supabase
-      .from('profiles')
-      .select('id, full_name, display_name, avatar_url, city, province, region, country, sport, role, account_type, type', { count: 'exact' })
+    const { data, count, error } = await applyPublicProfileVisibilityFilters(
+      supabase.from('profiles').select('id, full_name, display_name, avatar_url, city, province, region, country, sport, role, account_type, type', { count: 'exact' }),
+    )
       .or('account_type.eq.staff,type.eq.staff')
       .or(
         [
@@ -350,7 +335,6 @@ async function fetchProfileResults(params: {
           `role.ilike.${ilikeQuery}`,
         ].join(','),
       )
-      .eq('status', 'active')
       .not('display_name', 'is', null)
       .neq('display_name', '')
       .not('bio', 'is', null)
@@ -435,9 +419,9 @@ async function fetchProfileCount(params: {
     return count ?? 0;
   }
   if (kind === 'staff') {
-    const { count, error } = await supabase
-      .from('profiles')
-      .select('id', { count: 'exact', head: true })
+    const { count, error } = await applyPublicProfileVisibilityFilters(
+      supabase.from('profiles').select('id', { count: 'exact', head: true }),
+    )
       .or('account_type.eq.staff,type.eq.staff')
       .or(
         [
@@ -451,7 +435,6 @@ async function fetchProfileCount(params: {
           `role.ilike.${ilikeQuery}`,
         ].join(','),
       )
-      .eq('status', 'active')
       .not('display_name', 'is', null)
       .neq('display_name', '')
       .not('bio', 'is', null)
@@ -619,15 +602,9 @@ async function fetchFilteredAuthorIds(params: {
     return null;
   }
 
-  let query = supabase
-    .from('profiles')
-    .select('id, user_id')
-    .eq('status', 'active')
-    .not('display_name', 'is', null)
-    .neq('display_name', '')
-    .not('bio', 'is', null)
-    .neq('bio', '')
-    .or('city.neq.,province.neq.,region.neq.,country.neq.');
+  let query = applyPublicProfileVisibilityFilters(
+    supabase.from('profiles').select('id, user_id'),
+  );
 
   query = applyCommonFilters(query, filters, { allowRegion: true, allowProvince: true, allowSport: true, allowRole: true });
 

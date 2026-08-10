@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server'
 import { rateLimit } from '@/lib/api/rateLimit'
 import { rateLimited, dbError, successResponse, unknownError } from '@/lib/api/standardResponses'
 import { getSupabaseServerClient } from '@/lib/supabase/server'
+import { applyPublicProfileVisibilityFilters } from '@/lib/profile/visibility'
 
 export const runtime = 'nodejs'
 
@@ -30,10 +31,9 @@ export async function GET(req: NextRequest) {
 
   try {
     const supabase = await getSupabaseServerClient()
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id, display_name, full_name, latitude, longitude, club_stadium_lat, club_stadium_lng')
-      .eq('status', 'active')
+    const { data, error } = await applyPublicProfileVisibilityFilters(
+      supabase.from('profiles').select('id, display_name, full_name, latitude, longitude, club_stadium_lat, club_stadium_lng'),
+    )
       .neq('is_admin', true)
       .or('account_type.eq.club,type.eq.club')
       .gte('latitude', south)

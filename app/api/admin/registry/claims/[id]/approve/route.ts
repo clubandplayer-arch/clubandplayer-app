@@ -150,6 +150,26 @@ export async function POST(
       );
     }
 
+    const { error: linkProfileError } = await supabaseAdmin
+      .from("profiles")
+      .update({
+        registry_master_id: claim.registry_master_id,
+        club_name_review_status: "approved",
+        club_name_review_reason: null,
+        club_name_reviewed_at: now,
+        club_name_reviewed_by: user.id,
+        updated_at: now,
+      })
+      .eq("id", claim.profile_id);
+
+    if (linkProfileError) {
+      console.error("REGISTRY CLAIM APPROVE LINK PROFILE ERROR", linkProfileError);
+      return NextResponse.json(
+        { ok: false, error: `Claim approvato ma collegamento profilo fallito: ${linkProfileError.message}` },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json({
       ok: true,
       approved: true,

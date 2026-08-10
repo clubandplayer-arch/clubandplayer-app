@@ -65,13 +65,13 @@ const CLUB_ORGANIZATION_KEYWORDS = new Set([
   'us',
   'volley',
 ]);
-const PERSON_LIKE_NAME_PATTERN = /^\p{Lu}[\p{Ll}\p{M}'’-]+(?:\s+\p{Lu}[\p{Ll}\p{M}'’-]+){1,2}$/u;
+const PERSON_LIKE_NAME_PATTERN = /^[\p{L}\p{M}'’-]+(?:\s+[\p{L}\p{M}'’-]+){0,2}$/u;
 
 export function sanitizeProfileClubName(value: string) {
   return value.replace(DISALLOWED_CLUB_NAME_CHARS, '').replace(/\s{2,}/g, ' ');
 }
 
-export function isValidProfileClubName(value: string) {
+function hasValidProfileClubNameSyntax(value: string) {
   const trimmed = value.trim();
   return trimmed.length > 0 && CLUB_NAME_PATTERN.test(trimmed);
 }
@@ -85,7 +85,7 @@ function normalizeKeyword(value: string) {
 
 export function getProfileClubNameValidationError(value: string) {
   const trimmed = value.trim();
-  if (!isValidProfileClubName(trimmed)) {
+  if (!hasValidProfileClubNameSyntax(trimmed)) {
     return 'Il campo Nome del club può contenere solo lettere, numeri, spazi, apostrofo, virgola, punto e trattino';
   }
 
@@ -100,4 +100,9 @@ export function getProfileClubNameValidationError(value: string) {
   }
 
   return null;
+}
+
+/** Single source of truth for club names accepted by onboarding and public visibility. */
+export function isValidProfileClubName(value: string) {
+  return getProfileClubNameValidationError(value) === null;
 }

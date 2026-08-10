@@ -6,6 +6,8 @@ import { buildProfileDisplayName } from '@/lib/displayName';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
 import { getProvinceAbbreviationsServer } from '@/lib/geo/provinceAbbreviations.server';
+import { isProfileComplete } from '@/lib/profiles/completion';
+import { applyPublicProfileVisibilityFilters } from '@/lib/profile/visibility';
 
 export const runtime = 'nodejs';
 
@@ -115,6 +117,7 @@ export async function GET(req: NextRequest) {
       'user_id',
       'display_name',
       'full_name',
+      'bio',
       'account_type',
       'type',
       'status',
@@ -134,14 +137,16 @@ export async function GET(req: NextRequest) {
       'foot',
       'birth_year',
       'gender',
+      'interest_region_id',
+      'interest_province_id',
+      'interest_municipality_id',
     ].join(',');
 
     const baseQuery = () =>
-      supabase
-        .from('profiles')
-        .select(select, { count: 'exact' })
+      applyPublicProfileVisibilityFilters(
+        supabase.from('profiles').select(select, { count: 'exact' }),
+      )
         .limit(limit)
-        .eq('status', 'active')
         .neq('is_admin', true);
 
     const applyFilters = (query: ReturnType<typeof baseQuery>) => {
@@ -222,10 +227,9 @@ export async function GET(req: NextRequest) {
         oppAfterBounds: number;
         sampleOpp: { id: string; title?: string | null; club_id?: string | null; status?: string | null } | null;
       } | null = null;
-      let clubQuery = supabase
-        .from('profiles')
-        .select('id, latitude, longitude, club_stadium_lat, club_stadium_lng')
-        .eq('status', 'active')
+      let clubQuery = applyPublicProfileVisibilityFilters(
+        supabase.from('profiles').select('id, latitude, longitude, club_stadium_lat, club_stadium_lng'),
+      )
         .neq('is_admin', true)
         .or('account_type.eq.club,type.eq.club');
 
@@ -510,9 +514,11 @@ export async function GET(req: NextRequest) {
         if (!row || !row.id) return false;
         if (user?.id && (row.user_id === user.id || row.id === user.id)) return false;
         if (requestedUserId && (row.user_id === requestedUserId || row.id === requestedUserId)) return false;
+        if (!isProfileComplete(row)) return false;
         return true;
       });
 
+    total = rows.length;
     return successResponse({ data: rows, total, fallback: usedFallback ? 'no_geocoded_results' : undefined });
   } catch (err: any) {
     return unknownError({ endpoint: 'search/map', error: err, message: 'Errore ricerca mappa' });

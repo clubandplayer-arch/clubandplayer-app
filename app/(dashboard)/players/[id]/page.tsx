@@ -23,6 +23,7 @@ import { useProvinceAbbreviations } from '@/hooks/useProvinceAbbreviations';
 import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 import { useRole } from '@/lib/auth/useRole';
+import { applyPublicProfileVisibilityFilters } from '@/lib/profile/visibility';
 
 type AthleteProfileRow = {
   id: string;
@@ -188,9 +189,8 @@ export default function PlayerPublicProfilePage() {
       const currentUserId = userRes?.user?.id ?? null;
       setMeId(currentUserId);
 
-      const { data: profileRow, error } = await supabase
-        .from('profiles')
-        .select(
+      const { data: profileRow, error } = await applyPublicProfileVisibilityFilters(
+        supabase.from('profiles').select(
           [
             'id',
             'user_id',
@@ -223,9 +223,9 @@ export default function PlayerPublicProfilePage() {
             'preferred_roles',
             'preferred_locations',
           ].join(','),
-        )
+        ),
+      )
         .eq('id', athleteId)
-        .eq('status', 'active')
         .maybeSingle();
 
       if (error) {
@@ -359,9 +359,8 @@ export default function PlayerPublicProfilePage() {
             const chosenClubId = sorted[0]?.club_profile_id ?? null;
 
             if (chosenClubId) {
-              const { data: clubProfile, error: clubError } = await supabase
-                .from('profiles')
-                .select(
+              const { data: clubProfile, error: clubError } = await applyPublicProfileVisibilityFilters(
+                supabase.from('profiles').select(
                   [
                     'id',
                     'full_name',
@@ -374,9 +373,9 @@ export default function PlayerPublicProfilePage() {
                     'type',
                     'status',
                   ].join(','),
-                )
+                ),
+              )
                 .eq('id', chosenClubId)
-                .eq('status', 'active')
                 .maybeSingle();
 
               if (clubError || !isClubProfileSummary(clubProfile)) {

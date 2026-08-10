@@ -5,6 +5,7 @@ export type NotificationKind =
   | 'new_opportunity'
   | 'application_status'
   | 'application_received'
+  | 'profile_returned_to_draft'
   | 'system';
 
 export type NotificationRow = {
