@@ -135,7 +135,7 @@ export default function ProfileQualityAdminPage() {
                     {moderationState(row) === 'review' && <><button disabled={Boolean(saving) || !schemaReady} onClick={() => void act(row.id, 'approve_name')} className="rounded-full bg-emerald-600 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50">Approva nome</button><button disabled={Boolean(saving) || !schemaReady} onClick={() => void act(row.id, 'reject_name')} className="rounded-full bg-amber-600 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50">Rifiuta nome</button><button disabled={Boolean(saving)} onClick={() => void act(row.id, 'suspend')} className="rounded-full bg-red-700 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50">Sospendi</button></>}
                     {moderationState(row) === 'approved' && <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">Nome approvato</span>}
                     {moderationState(row) === 'rejected' && <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">Nome rifiutato</span>}
-                    {moderationState(row) === 'suspended' && <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-800">Club sospeso</span>}
+                    {moderationState(row) === 'suspended' && <><span className="rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-800">Club sospeso</span><button disabled={Boolean(saving) || !schemaReady} onClick={() => void act(row.id, 'restore')} className="rounded-full bg-cyan-700 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50">Ripristina club</button></>}
                   </div>
                 </td>
               </tr>
