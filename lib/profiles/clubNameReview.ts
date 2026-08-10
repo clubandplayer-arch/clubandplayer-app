@@ -29,3 +29,14 @@ export function normalizeClubNameForDuplicateCheck(value: unknown): string {
     .trim()
     .replace(/\s+/gu, ' ');
 }
+
+export function isMissingClubQualitySchemaError(error: unknown): boolean {
+  const candidate = error as { code?: unknown; message?: unknown } | null;
+  const code = typeof candidate?.code === 'string' ? candidate.code : '';
+  const message = typeof candidate?.message === 'string' ? candidate.message : '';
+  return (
+    code === '42703' ||
+    code === 'PGRST204' ||
+    /profiles\.(?:registry_master_id|club_name_review_(?:status|reason|reviewed_at|reviewed_by))/iu.test(message)
+  );
+}

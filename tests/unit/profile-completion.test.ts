@@ -4,7 +4,7 @@ import test from 'node:test';
 import { getMissingRequiredProfileFields, isProfileComplete } from '../../lib/profiles/completion';
 import { getProfileClubNameValidationError, isValidProfileClubName } from '../../lib/profiles/nameValidation';
 import { getProfileVisibilityStatusCopy, normalizeProfileVisibilityStatus } from '../../lib/profiles/publication';
-import { getClubNameReviewReason, normalizeClubNameForDuplicateCheck } from '../../lib/profiles/clubNameReview';
+import { getClubNameReviewReason, isMissingClubQualitySchemaError, normalizeClubNameForDuplicateCheck } from '../../lib/profiles/clubNameReview';
 
 const completeClub = {
   account_type: 'club',
@@ -47,4 +47,10 @@ test('flags weak club names and normalizes likely duplicates', () => {
   assert.match(getClubNameReviewReason('Giovani Talenti Carlentini Europa') ?? '', /riferimento societario/);
   assert.equal(getClubNameReviewReason('ASD Carlentini'), null);
   assert.equal(normalizeClubNameForDuplicateCheck('A.S.D. Carlentini'), normalizeClubNameForDuplicateCheck('ASD Carlentini'));
+});
+
+test('recognizes a database where the P2 profile-quality migration is missing', () => {
+  assert.equal(isMissingClubQualitySchemaError({ code: '42703', message: 'column profiles.registry_master_id does not exist' }), true);
+  assert.equal(isMissingClubQualitySchemaError({ code: 'PGRST204', message: "Could not find club_name_review_status" }), true);
+  assert.equal(isMissingClubQualitySchemaError({ code: '23505', message: 'duplicate key' }), false);
 });
