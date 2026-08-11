@@ -5,26 +5,44 @@ export type FanVoteSummaryPayload = {
   kind?: string;
   playerProfileId?: string;
   voteCount?: number;
-  createdAt?: string;
+  latestVoteAt?: string;
 } | null;
 
 const STORAGE_PREFIX = 'clubandplayer:player-fan-vote-summary-read:';
 
 export function fanVoteSummaryReadKey(summary: FanVoteSummaryPayload) {
-  if (!summary?.playerProfileId || !summary?.voteCount) return null;
-  return `${STORAGE_PREFIX}${summary.playerProfileId}:${summary.voteCount}`;
+  if (!summary?.playerProfileId) return null;
+  return `${STORAGE_PREFIX}${summary.playerProfileId}`;
+}
+
+export function hasFanVoteSummaryBeenRead(
+  summary: FanVoteSummaryPayload,
+  lastReadAt: string | null,
+) {
+  if (!summary?.latestVoteAt || !lastReadAt) return false;
+  const latestVoteTime = Date.parse(summary.latestVoteAt);
+  const lastReadTime = Date.parse(lastReadAt);
+  return (
+    Number.isFinite(latestVoteTime) &&
+    Number.isFinite(lastReadTime) &&
+    lastReadTime >= latestVoteTime
+  );
 }
 
 export function isFanVoteSummaryRead(summary: FanVoteSummaryPayload) {
   if (typeof window === 'undefined') return false;
   const key = fanVoteSummaryReadKey(summary);
-  return key ? window.localStorage.getItem(key) === '1' : false;
+  if (!key || !summary?.latestVoteAt) return false;
+  const lastReadAt = window.localStorage.getItem(key);
+  return hasFanVoteSummaryBeenRead(summary, lastReadAt);
 }
 
 export function markFanVoteSummaryRead(summary: FanVoteSummaryPayload) {
   if (typeof window === 'undefined') return;
   const key = fanVoteSummaryReadKey(summary);
-  if (key) window.localStorage.setItem(key, '1');
+  if (key && summary?.latestVoteAt) {
+    window.localStorage.setItem(key, summary.latestVoteAt);
+  }
 }
 
 export function notificationToFanVoteSummary(notification: NotificationWithActor): FanVoteSummaryPayload {
@@ -35,19 +53,23 @@ export function notificationToFanVoteSummary(notification: NotificationWithActor
       ? payload.player_profile_id
       : notification.recipient_profile_id ?? undefined;
   const voteCount = Number((payload as any).vote_count ?? (payload as any).voteCount ?? 0);
+  const latestVoteAt =
+    typeof payload.latest_vote_at === 'string'
+      ? payload.latest_vote_at
+      : notification.created_at;
   return {
     id: notification.id,
     kind: notification.kind,
     playerProfileId,
     voteCount,
-    createdAt: notification.created_at,
+    latestVoteAt,
   };
 }
 
 export function applyFanVoteSummaryReadState(items: NotificationWithActor[]) {
-  return items.map((item) => {
+  return items.flatMap((item) => {
     const summary = notificationToFanVoteSummary(item);
-    if (!summary || !isFanVoteSummaryRead(summary)) return item;
-    return { ...item, read: true, read_at: item.read_at ?? item.created_at };
+    if (summary && isFanVoteSummaryRead(summary)) return [];
+    return [item];
   });
 }
