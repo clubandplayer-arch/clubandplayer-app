@@ -36,7 +36,7 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
 
     const { data: profiles, error: profError } = await supabase
       .from('profiles')
-      .select('id, full_name, display_name, account_type, type, avatar_url, city, country, sport, role, is_admin')
+      .select('id, user_id, full_name, display_name, account_type, type, avatar_url, city, country, sport, role, is_admin')
       .in('id', targetIds);
     if (profError) throw profError;
 
@@ -115,6 +115,7 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
 
       return {
         id: p.id,
+        user_id: p.user_id ?? null,
         name: buildProfileDisplayName(fullName, displayName, 'Profilo'),
         full_name: fullName,
         display_name: displayName,

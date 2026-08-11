@@ -10,6 +10,7 @@ import CertifiedCMarkSidebar from '@/components/badges/CertifiedCMarkSidebar';
 
 type FollowedItem = {
   id: string;
+  userId?: string | null;
   name: string;
   fullName?: string | null;
   displayName?: string | null;
@@ -23,7 +24,7 @@ type FollowedItem = {
 };
 
 function targetHref(item: FollowedItem) {
-  if (item.accountType === 'admin') return `/admin/${item.id}`;
+  if (item.accountType === 'admin') return `/admin/${item.userId || item.id}`;
   return item.accountType === 'club' ? `/clubs/${item.id}` : `/players/${item.id}`;
 }
 
@@ -103,6 +104,7 @@ export default function FollowedClubs() {
                     : buildPlayerDisplayName(fullName, displayName, 'Profilo');
                 return {
                   id: item.id,
+                  userId: item.user_id ?? null,
                   name: safeName,
                   fullName,
                   displayName,
