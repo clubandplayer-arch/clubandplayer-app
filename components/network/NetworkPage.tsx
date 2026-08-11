@@ -4,11 +4,10 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import FollowButton from '@/components/common/FollowButton';
 
-type AccountType = 'club' | 'athlete' | 'admin';
+type AccountType = 'club' | 'athlete';
 
 type NetworkProfile = {
   id: string;
-  userId: string | null;
   name: string;
   accountType: AccountType;
   city: string | null;
@@ -42,13 +41,11 @@ function avatarSrc(name: string, url?: string | null) {
   return `https://api.dicebear.com/7.x/initials/svg?seed=${seed}`;
 }
 
-function profileHref(profile: NetworkProfile) {
-  if (profile.accountType === 'admin') return `/admin/${profile.userId || profile.id}`;
-  return profile.accountType === 'club' ? `/clubs/${profile.id}` : `/players/${profile.id}`;
+function profileHref(id: string, type: AccountType) {
+  return type === 'club' ? `/clubs/${id}` : `/players/${id}`;
 }
 
-function mapAccountType(value: string | null | undefined, isPlatformAdmin = false): AccountType {
-  if (isPlatformAdmin || value === 'admin') return 'admin';
+function mapAccountType(value: string | null | undefined): AccountType {
   return value === 'club' ? 'club' : 'athlete';
 }
 
@@ -61,7 +58,7 @@ function subtitle(profile: NetworkProfile) {
 function AccountBadge({ type }: { type: AccountType }) {
   return (
     <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-neutral-700">
-      {type === 'admin' ? 'Admin' : type === 'club' ? 'Club' : 'Player'}
+      {type === 'club' ? 'Club' : 'Player'}
     </span>
   );
 }
@@ -83,7 +80,7 @@ function ProfileCard({
       </div>
       <div className="min-w-0 flex-1 space-y-1">
         <div className="flex items-center gap-2">
-          <Link href={profileHref(profile)} className="text-sm font-semibold text-neutral-900 hover:underline dark:text-white">
+          <Link href={profileHref(profile.id, profile.accountType)} className="text-sm font-semibold text-neutral-900 hover:underline dark:text-white">
             {profile.name}
           </Link>
           <AccountBadge type={profile.accountType} />
@@ -97,7 +94,7 @@ function ProfileCard({
           size="md"
         />
         <Link
-          href={profileHref(profile)}
+          href={profileHref(profile.id, profile.accountType)}
           className="text-xs font-semibold text-blue-700 underline-offset-4 hover:underline dark:text-blue-300"
         >
           Visita profilo
@@ -150,7 +147,6 @@ export default function NetworkPage() {
       const items: NetworkProfile[] = Array.isArray(data?.items)
         ? data.items.map((p: any) => ({
             id: p.id,
-            userId: p.user_id ?? null,
             name: p.name ?? p.display_name ?? 'Profilo',
             accountType: mapAccountType(p.account_type),
             city: p.city ?? null,
@@ -179,9 +175,8 @@ export default function NetworkPage() {
       const items: NetworkProfile[] = Array.isArray(data?.items)
         ? data.items.map((p: any) => ({
             id: p.id,
-            userId: p.user_id ?? null,
             name: p.name ?? p.display_name ?? 'Profilo',
-            accountType: mapAccountType(p.account_type, p.is_platform_admin === true),
+            accountType: mapAccountType(p.account_type),
             city: p.city ?? null,
             country: p.country ?? null,
             sport: p.sport ?? null,
@@ -208,7 +203,6 @@ export default function NetworkPage() {
       const items: NetworkProfile[] = Array.isArray(data?.items)
         ? data.items.map((p: any) => ({
             id: p.id,
-            userId: p.user_id ?? null,
             name: p.name ?? p.display_name ?? 'Profilo',
             accountType: mapAccountType(p.account_type),
             city: p.city ?? null,

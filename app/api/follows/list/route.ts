@@ -36,7 +36,7 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
 
     const { data: profiles, error: profError } = await supabase
       .from('profiles')
-      .select('id, user_id, full_name, display_name, account_type, type, avatar_url, city, country, sport, role, is_admin')
+      .select('id, full_name, display_name, account_type, type, avatar_url, city, country, sport, role, is_admin')
       .in('id', targetIds);
     if (profError) throw profError;
 
@@ -105,34 +105,34 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
       }
     }
 
-    const items = (profiles || []).map((p) => {
-      const accountType = p.account_type ?? (p as any)?.type ?? null;
-      const normalizedType = normalizeAccountType(accountType);
-      const athlete = normalizedType === 'athlete' ? athleteMap.get(p.id) : null;
-      const fullName = athlete?.full_name ?? p.full_name ?? null;
-      const displayName = athlete?.display_name ?? p.display_name ?? null;
-      const avatarUrl = athlete?.avatar_url ?? p.avatar_url ?? null;
+    const items = (profiles || [])
+      .filter((p) => normalizeAccountType(p.account_type ?? (p as any)?.type) !== 'admin' && p.is_admin !== true)
+      .map((p) => {
+        const accountType = p.account_type ?? (p as any)?.type ?? null;
+        const normalizedType = normalizeAccountType(accountType);
+        const athlete = normalizedType === 'athlete' ? athleteMap.get(p.id) : null;
+        const fullName = athlete?.full_name ?? p.full_name ?? null;
+        const displayName = athlete?.display_name ?? p.display_name ?? null;
+        const avatarUrl = athlete?.avatar_url ?? p.avatar_url ?? null;
 
-      return {
-        id: p.id,
-        user_id: p.user_id ?? null,
-        name: buildProfileDisplayName(fullName, displayName, 'Profilo'),
-        full_name: fullName,
-        display_name: displayName,
-        account_type: accountType,
-        city: p.city,
-        country: p.country,
-        sport: p.sport,
-        role: normalizeRoleLabel(p.role),
-        is_platform_admin: normalizedType === 'admin' || p.is_admin === true,
-        avatar_url: avatarUrl,
-        fan_vote_count: normalizedType === 'athlete' ? fanVoteCountMap.get(String(p.id)) ?? 0 : 0,
-        is_verified:
-          normalizeAccountType(accountType) === 'club'
-            ? clubVerificationMap.get(String(p.id)) ?? null
-            : null,
-      };
-    });
+        return {
+          id: p.id,
+          name: buildProfileDisplayName(fullName, displayName, 'Profilo'),
+          full_name: fullName,
+          display_name: displayName,
+          account_type: accountType,
+          city: p.city,
+          country: p.country,
+          sport: p.sport,
+          role: normalizeRoleLabel(p.role),
+          avatar_url: avatarUrl,
+          fan_vote_count: normalizedType === 'athlete' ? fanVoteCountMap.get(String(p.id)) ?? 0 : 0,
+          is_verified:
+            normalizeAccountType(accountType) === 'club'
+              ? clubVerificationMap.get(String(p.id)) ?? null
+              : null,
+        };
+      });
 
     return successResponse({ items });
   } catch (error: any) {
