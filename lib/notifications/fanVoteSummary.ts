@@ -6,7 +6,7 @@ export type PlayerFanVoteSummary = {
   kind: 'player_fan_vote_summary';
   playerProfileId: string;
   voteCount: number;
-  createdAt: string;
+  latestVoteAt: string;
 };
 
 export async function getPlayerFanVoteSummary(
@@ -31,11 +31,26 @@ export async function getPlayerFanVoteSummary(
   const voteCount = Number((data as any)?.vote_count ?? 0);
   if (!Number.isFinite(voteCount) || voteCount <= 0) return null;
 
+  const { data: latestVote, error: latestVoteError } = await supabase
+    .from('player_fan_votes')
+    .select('created_at')
+    .eq('player_profile_id', profile.id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (latestVoteError || !latestVote?.created_at) {
+    console.warn('[fan-votes/summary] latest vote lookup failed', {
+      message: latestVoteError?.message ?? 'missing created_at',
+    });
+    return null;
+  }
+
   return {
-    id: `player_fan_vote_summary:${profile.id}:${voteCount}`,
+    id: `player_fan_vote_summary:${profile.id}:${latestVote.created_at}`,
     kind: 'player_fan_vote_summary',
     playerProfileId: profile.id,
     voteCount,
-    createdAt: new Date().toISOString(),
+    latestVoteAt: latestVote.created_at,
   };
 }
