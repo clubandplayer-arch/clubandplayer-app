@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { getRoleChangeRequestProfilePath } from "@/lib/account/roleChangeRequest.server";
 
 export const runtime = "nodejs";
 
@@ -122,8 +123,9 @@ export async function POST(request: NextRequest) {
     const requestedRoleTyped = requestedRole as AccountType;
     const profileName =
       profile.display_name || profile.full_name || "Non indicato";
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL?.replace(/\/$/, "");
-    const profileUrl = baseUrl ? `${baseUrl}/admin/${profile.id}` : null;
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL?.replace(/\/+$/, "");
+    const profilePath = getRoleChangeRequestProfilePath(currentRole, profile.id);
+    const profileUrl = baseUrl && profilePath ? `${baseUrl}${profilePath}` : null;
     const resend = new Resend(resendApiKey);
     const result = await resend.emails.send({
       from: resendFrom,
@@ -143,7 +145,7 @@ export async function POST(request: NextRequest) {
           </table>
           <h2 style="font-size:16px;margin-bottom:6px">Motivazione</h2>
           <div style="white-space:pre-wrap;padding:12px;background:#f3f4f6;border-radius:8px">${escapeHtml(reason)}</div>
-          ${profileUrl ? `<p><a href="${escapeHtml(profileUrl)}">Apri il profilo nell’area amministrativa</a></p>` : ""}
+          ${profileUrl ? `<p><a href="${escapeHtml(profileUrl)}">Apri il profilo dell’utente</a></p>` : ""}
           <p style="color:#6b7280;font-size:12px">Rispondendo a questa email, la risposta sarà indirizzata all’utente.</p>
         </div>
       `,
