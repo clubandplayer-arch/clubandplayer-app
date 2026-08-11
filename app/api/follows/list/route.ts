@@ -36,7 +36,7 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
 
     const { data: profiles, error: profError } = await supabase
       .from('profiles')
-      .select('id, full_name, display_name, account_type, type, avatar_url, city, country, sport, role, is_admin')
+      .select('id, full_name, display_name, account_type, type, avatar_url, city, country, sport, role')
       .in('id', targetIds);
     if (profError) throw profError;
 
@@ -123,7 +123,6 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
         country: p.country,
         sport: p.sport,
         role: normalizeRoleLabel(p.role),
-        is_platform_admin: normalizedType === 'admin' || p.is_admin === true,
         avatar_url: avatarUrl,
         fan_vote_count: normalizedType === 'athlete' ? fanVoteCountMap.get(String(p.id)) ?? 0 : 0,
         is_verified:
