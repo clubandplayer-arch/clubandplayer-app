@@ -7,6 +7,7 @@ import { buildProfileDisplayName } from '@/lib/displayName';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 type PageProps = { params: Promise<{ id: string }> };
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 type AdminProfileRow = {
   id: string;
@@ -34,11 +35,13 @@ function initialsFromName(name: string) {
 
 export default async function AdminPublicProfilePage({ params }: PageProps) {
   const { id } = await params;
+  if (!UUID_RE.test(id)) notFound();
   const supabase = await getSupabaseServerClient();
   const { data } = await supabase
     .from('profiles')
     .select('id,user_id,full_name,display_name,headline,bio,avatar_url,account_type,type,is_admin,club_foundation_year')
-    .eq('id', id)
+    // Accetta sia l'UUID pubblico del profilo sia l'UUID Auth dell'utente.
+    .or(`id.eq.${id},user_id.eq.${id}`)
     .maybeSingle();
 
   const profile = (data ?? null) as AdminProfileRow | null;
