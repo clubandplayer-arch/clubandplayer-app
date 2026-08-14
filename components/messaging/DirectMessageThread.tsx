@@ -78,6 +78,7 @@ export function DirectMessageThread({
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const [attachment, setAttachment] = useState<File | null>(null);
   const [attachmentPreview, setAttachmentPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -233,15 +234,19 @@ export function DirectMessageThread({
   const handleSend = async () => {
     const trimmed = content.trim();
     if ((!trimmed && !attachment) || sending) return;
+    setSendError(null);
     setSending(true);
     try {
       await sendDirectMessage(targetProfileId, { text: trimmed, attachment });
       setContent('');
       setAttachment(null);
+      if (galleryInputRef.current) galleryInputRef.current.value = '';
+      if (cameraInputRef.current) cameraInputRef.current.value = '';
       await reloadThread();
     } catch (err: any) {
       const message = err?.message || 'Errore invio messaggio';
       console.error('[direct-messages] send message failed', { error: err, targetProfileId });
+      setSendError(message);
       show(message, { variant: 'error' });
     } finally {
       setSending(false);
@@ -463,6 +468,11 @@ export function DirectMessageThread({
       </div>
 
       <div className={`flex-none space-y-2 border-t bg-white ${isDock ? 'px-4 py-3' : 'px-5 py-4'}`}>
+        {sendError && (
+          <div role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {sendError}
+          </div>
+        )}
         {attachmentPreview && (
           <div className="relative w-fit rounded-xl border border-neutral-200 bg-neutral-50 p-2 pb-7">
             {/* eslint-disable-next-line @next/next/no-img-element */}

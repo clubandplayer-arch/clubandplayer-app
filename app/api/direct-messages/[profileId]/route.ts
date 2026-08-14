@@ -305,15 +305,13 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }, routeC
 
     let attachmentPath: string | null = null;
     if (attachment) {
-      const admin = getSupabaseAdminClientOrNull();
-      if (!admin) throw new Error('Storage non configurato');
       // Sharp is a native, comparatively heavy dependency. Load it only for an
       // actual upload so reading an existing conversation never depends on the
       // image-processing runtime being initialized successfully.
       const { compressDirectMessageImage } = await import('@/lib/images/compressDirectMessageImage');
       const optimized = await compressDirectMessageImage(Buffer.from(await attachment.arrayBuffer()));
       attachmentPath = `${me.id}/${crypto.randomUUID()}.${optimized.extension}`;
-      const { error: uploadError } = await admin.storage
+      const { error: uploadError } = await supabase.storage
         .from('direct-message-images')
         .upload(attachmentPath, optimized.buffer, {
           contentType: optimized.contentType,
@@ -341,7 +339,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }, routeC
 
     if (error) {
       if (attachmentPath) {
-        await getSupabaseAdminClientOrNull()?.storage.from('direct-message-images').remove([attachmentPath]);
+        await supabase.storage.from('direct-message-images').remove([attachmentPath]);
       }
       throw error;
     }

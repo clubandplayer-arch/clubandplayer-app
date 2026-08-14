@@ -1,7 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth } from '@/lib/api/auth';
 import { getActiveProfile } from '@/lib/api/profile';
-import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 import { invalidPayload, notAuthenticated, notAuthorized, notFoundResponse, unknownError } from '@/lib/api/standardResponses';
 
 export const runtime = 'nodejs';
@@ -26,9 +25,7 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }, routeC
       return notAuthorized('Non puoi visualizzare questa foto');
     }
 
-    const admin = getSupabaseAdminClientOrNull();
-    if (!admin) throw new Error('Storage non configurato');
-    const { data, error: signedError } = await admin.storage
+    const { data, error: signedError } = await supabase.storage
       .from('direct-message-images')
       .createSignedUrl(message.attachment_path as string, 60 * 10);
     if (signedError || !data?.signedUrl) throw signedError || new Error('Foto non disponibile');
