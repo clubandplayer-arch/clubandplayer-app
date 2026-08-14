@@ -464,7 +464,7 @@ export function DirectMessageThread({
 
       <div className={`flex-none space-y-2 border-t bg-white ${isDock ? 'px-4 py-3' : 'px-5 py-4'}`}>
         {attachmentPreview && (
-          <div className="relative w-fit rounded-xl border border-neutral-200 bg-neutral-50 p-2">
+          <div className="relative w-fit rounded-xl border border-neutral-200 bg-neutral-50 p-2 pb-7">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={attachmentPreview} alt="Anteprima foto da inviare" className="h-24 w-24 rounded-lg object-cover" />
             <button
@@ -475,6 +475,7 @@ export function DirectMessageThread({
             >
               ×
             </button>
+            <span className="absolute bottom-1 left-2 text-[11px] text-neutral-500">Sarà ottimizzata automaticamente</span>
           </div>
         )}
         <textarea

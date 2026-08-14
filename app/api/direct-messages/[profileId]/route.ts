@@ -12,6 +12,7 @@ import { withAuth } from '@/lib/api/auth';
 import { getActiveProfile, getProfileById } from '@/lib/api/profile';
 import { sendPushForNotificationBestEffort } from '@/lib/push/sendExpoPush';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
+import { compressDirectMessageImage } from '@/lib/images/compressDirectMessageImage';
 
 export const runtime = 'nodejs';
 
@@ -276,12 +277,12 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }, routeC
     if (attachment) {
       const admin = getSupabaseAdminClientOrNull();
       if (!admin) throw new Error('Storage non configurato');
-      const extension = attachment.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
-      attachmentPath = `${me.id}/${crypto.randomUUID()}.${extension}`;
+      const optimized = await compressDirectMessageImage(Buffer.from(await attachment.arrayBuffer()));
+      attachmentPath = `${me.id}/${crypto.randomUUID()}.${optimized.extension}`;
       const { error: uploadError } = await admin.storage
         .from('direct-message-images')
-        .upload(attachmentPath, Buffer.from(await attachment.arrayBuffer()), {
-          contentType: attachment.type,
+        .upload(attachmentPath, optimized.buffer, {
+          contentType: optimized.contentType,
           upsert: false,
         });
       if (uploadError) throw uploadError;

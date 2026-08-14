@@ -16,8 +16,8 @@ values (
   'direct-message-images',
   'direct-message-images',
   false,
-  10485760,
-  array['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
+  3145728,
+  array['image/webp']
 )
 on conflict (id) do update set
   public = excluded.public,
