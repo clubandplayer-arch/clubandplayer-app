@@ -54,6 +54,16 @@ function emojiOnlyCount(value?: string | null) {
   return remainder ? 0 : emojiParts.length;
 }
 
+function renderMessageText(value: string, enlargeInlineEmoji: boolean) {
+  if (!enlargeInlineEmoji) return value;
+  const parts = value.split(/(\p{Extended_Pictographic}(?:\uFE0F|\p{Emoji_Modifier})?(?:\u200D\p{Extended_Pictographic}(?:\uFE0F|\p{Emoji_Modifier})?)*)/gu);
+  return parts.map((part, index) =>
+    /\p{Extended_Pictographic}/u.test(part) ? (
+      <span key={`${part}-${index}`} className="inline-block text-xl leading-none align-[-0.12em]">{part}</span>
+    ) : part,
+  );
+}
+
 function Avatar({ name, avatarUrl }: { name: string; avatarUrl: string | null }) {
   const fallback = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name || 'Profilo')}`;
   if (avatarUrl) {
@@ -478,6 +488,7 @@ export function DirectMessageThread({
             const isEditing = editingMessageId === msg.id;
             const emojiCount = emojiOnlyCount(msg.content);
             const isSingleEmoji = emojiCount === 1;
+            const hasInlineEmoji = emojiCount === 0 && /\p{Extended_Pictographic}/u.test(msg.content || '');
             const ref = index === thread.length - 1 ? lastMessageRef : null;
             return (
               <div key={msg.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`} ref={ref}>
@@ -535,8 +546,8 @@ export function DirectMessageThread({
                       )}
                       {msg.content && (
                         <div className={`${msg.attachment_url ? 'mt-2' : ''} whitespace-pre-wrap text-neutral-900 ${
-                          isSingleEmoji ? 'text-5xl leading-none' : emojiCount > 1 ? 'text-3xl leading-snug' : ''
-                        }`}>{msg.content}</div>
+                          isSingleEmoji ? 'text-5xl leading-none' : emojiCount > 1 ? 'text-xl leading-snug' : ''
+                        }`}>{renderMessageText(msg.content, hasInlineEmoji)}</div>
                       )}
                       {msg.voice_url && <audio controls preload="metadata" src={msg.voice_url} className="mt-2 h-10 max-w-full" />}
                     </>
