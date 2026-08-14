@@ -40,6 +40,10 @@ function cleanText(value: unknown): string | null {
   return normalized.length ? normalized : null;
 }
 
+function isWebpBuffer(buffer: Buffer) {
+  return buffer.length >= 12 && buffer.toString('ascii', 0, 4) === 'RIFF' && buffer.toString('ascii', 8, 12) === 'WEBP';
+}
+
 function toPushPreview(value: unknown) {
   return cleanText(value)?.slice(0, 120) ?? '';
 }
@@ -266,8 +270,8 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }, routeC
     });
     return invalidPayload('Inserisci un messaggio o allega una foto');
   }
-  if (attachment && (!attachment.type.startsWith('image/') || attachment.size > 10 * 1024 * 1024)) {
-    return invalidPayload('La foto deve essere JPG, PNG, WebP o HEIC e non superare 10 MB');
+  if (attachment && (attachment.type !== 'image/webp' || attachment.size > 1_500_000)) {
+    return invalidPayload('La foto deve essere ottimizzata in WebP e non superare 1,5 MB');
   }
 
   try {
@@ -305,16 +309,13 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }, routeC
 
     let attachmentPath: string | null = null;
     if (attachment) {
-      // Sharp is a native, comparatively heavy dependency. Load it only for an
-      // actual upload so reading an existing conversation never depends on the
-      // image-processing runtime being initialized successfully.
-      const { compressDirectMessageImage } = await import('@/lib/images/compressDirectMessageImage');
-      const optimized = await compressDirectMessageImage(Buffer.from(await attachment.arrayBuffer()));
-      attachmentPath = `${me.id}/${crypto.randomUUID()}.${optimized.extension}`;
+      const attachmentBuffer = Buffer.from(await attachment.arrayBuffer());
+      if (!isWebpBuffer(attachmentBuffer)) return invalidPayload('Il file allegato non è una foto WebP valida');
+      attachmentPath = `${me.id}/${crypto.randomUUID()}.webp`;
       const { error: uploadError } = await supabase.storage
         .from('direct-message-images')
-        .upload(attachmentPath, optimized.buffer, {
-          contentType: optimized.contentType,
+        .upload(attachmentPath, attachmentBuffer, {
+          contentType: 'image/webp',
           upsert: false,
         });
       if (uploadError) throw uploadError;

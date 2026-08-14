@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/common/ToastProvider';
+import { compressImageInBrowser } from '@/lib/images/compressImageInBrowser';
 import {
   getDirectThread,
   markDirectThreadRead,
@@ -81,6 +82,7 @@ export function DirectMessageThread({
   const [sendError, setSendError] = useState<string | null>(null);
   const [attachment, setAttachment] = useState<File | null>(null);
   const [attachmentPreview, setAttachmentPreview] = useState<string | null>(null);
+  const [optimizingAttachment, setOptimizingAttachment] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [peerAccountType, setPeerAccountType] = useState<string | null>(targetAccountType ?? null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -113,7 +115,7 @@ export function DirectMessageThread({
     el.scrollTop = el.scrollHeight;
   };
 
-  const selectAttachment = (file?: File) => {
+  const selectAttachment = async (file?: File) => {
     if (!file) return;
     if (!file.type.startsWith('image/')) {
       show('Puoi allegare soltanto una foto', { variant: 'error' });
@@ -123,7 +125,17 @@ export function DirectMessageThread({
       show('La foto non può superare 10 MB', { variant: 'error' });
       return;
     }
-    setAttachment(file);
+    setSendError(null);
+    setOptimizingAttachment(true);
+    try {
+      setAttachment(await compressImageInBrowser(file));
+    } catch (error: any) {
+      const message = error?.message || 'Non è stato possibile ottimizzare la foto';
+      setSendError(message);
+      show(message, { variant: 'error' });
+    } finally {
+      setOptimizingAttachment(false);
+    }
   };
 
   const canEditOrDelete = (msg: DirectMessage) => {
@@ -233,7 +245,7 @@ export function DirectMessageThread({
 
   const handleSend = async () => {
     const trimmed = content.trim();
-    if ((!trimmed && !attachment) || sending) return;
+    if ((!trimmed && !attachment) || sending || optimizingAttachment) return;
     setSendError(null);
     setSending(true);
     try {
@@ -513,7 +525,7 @@ export function DirectMessageThread({
               type="file"
               accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
               className="sr-only"
-              onChange={(event) => selectAttachment(event.target.files?.[0])}
+              onChange={(event) => void selectAttachment(event.target.files?.[0])}
             />
             <input
               ref={cameraInputRef}
@@ -521,12 +533,12 @@ export function DirectMessageThread({
               accept="image/*"
               capture="environment"
               className="sr-only"
-              onChange={(event) => selectAttachment(event.target.files?.[0])}
+              onChange={(event) => void selectAttachment(event.target.files?.[0])}
             />
             <button
               type="button"
               onClick={() => galleryInputRef.current?.click()}
-              disabled={sending}
+              disabled={sending || optimizingAttachment}
               className="inline-flex items-center gap-2 rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-50 disabled:opacity-60"
               aria-label="Allega una foto"
             >
@@ -535,7 +547,7 @@ export function DirectMessageThread({
             <button
               type="button"
               onClick={() => cameraInputRef.current?.click()}
-              disabled={sending}
+              disabled={sending || optimizingAttachment}
               className="inline-flex items-center gap-2 rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-50 disabled:opacity-60 sm:hidden"
               aria-label="Scatta una foto"
             >
@@ -545,10 +557,10 @@ export function DirectMessageThread({
           <button
             type="button"
             onClick={handleSend}
-            disabled={(!content.trim() && !attachment) || sending}
+            disabled={(!content.trim() && !attachment) || sending || optimizingAttachment}
             className="rounded-md bg-[var(--brand,#0ea5e9)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--brand-strong,#0284c7)] hover:text-white hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand,#0ea5e9)] focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {sending ? 'Invio…' : 'Invia'}
+            {optimizingAttachment ? 'Ottimizzo…' : sending ? 'Invio…' : 'Invia'}
           </button>
         </div>
       </div>

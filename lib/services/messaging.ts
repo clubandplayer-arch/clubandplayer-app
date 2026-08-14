@@ -124,7 +124,7 @@ export async function sendDirectMessage(
     const { json, rawText } = await parseResponse(res);
     if (!res.ok) {
       console.error('[direct-messages] sendDirectMessage failed', { status: res.status, body: json, target });
-      throw new Error((json as any)?.error || rawText || 'Non è stato possibile inviare il messaggio');
+      throw new Error((json as any)?.message || (json as any)?.error || rawText || 'Non è stato possibile inviare il messaggio');
     }
 
     return ((json as any)?.message || null) as DirectMessage;
