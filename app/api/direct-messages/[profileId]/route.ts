@@ -31,7 +31,7 @@ function isMissingHiddenThreadsTable(error: any) {
 
 function isMissingAttachmentColumn(error: any) {
   const message = String(error?.message || error?.details || '');
-  return error?.code === '42703' || error?.code === 'PGRST204' || message.includes('attachment_path');
+  return error?.code === '42703' || error?.code === 'PGRST204' || message.includes('attachment_path') || message.includes('voice_path');
 }
 
 function cleanText(value: unknown): string | null {
@@ -192,7 +192,7 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }, routeC
 
     let messagesQuery = supabase
       .from('direct_messages')
-      .select('id, sender_profile_id, recipient_profile_id, content, attachment_path, created_at, edited_at, edited_by')
+      .select('id, sender_profile_id, recipient_profile_id, content, attachment_path, voice_path, voice_mime_type, created_at, edited_at, edited_by')
       .or(
         `and(sender_profile_id.eq.${me.id},recipient_profile_id.eq.${peer.id}),and(sender_profile_id.eq.${peer.id},recipient_profile_id.eq.${me.id})`,
       )
@@ -227,7 +227,9 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }, routeC
       messages: (rows || []).map((row: any) => ({
         ...row,
         attachment_url: row.attachment_path ? `/api/direct-messages/attachment/${row.id}` : null,
+        voice_url: row.voice_path ? `/api/direct-messages/voice/${row.id}` : null,
         attachment_path: undefined,
+        voice_path: undefined,
       })),
       peer: {
         id: peer.id,
@@ -262,7 +264,9 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }, routeC
   const content = String(formData?.get('content') || jsonBody?.content || '').trim();
   const attachmentValue = formData?.get('attachment');
   const attachment = attachmentValue instanceof File && attachmentValue.size > 0 ? attachmentValue : null;
-  if (!content && !attachment) {
+  const voiceValue = formData?.get('voice');
+  const voice = voiceValue instanceof File && voiceValue.size > 0 ? voiceValue : null;
+  if (!content && !attachment && !voice) {
     console.warn('[direct-messages] POST /api/direct-messages/:profileId validation error', {
       userId: user.id,
       targetProfileId: otherId,
@@ -273,6 +277,11 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }, routeC
   if (attachment && (attachment.type !== 'image/webp' || attachment.size > 1_500_000)) {
     return invalidPayload('La foto deve essere ottimizzata in WebP e non superare 1,5 MB');
   }
+  const allowedVoiceTypes = new Set(['audio/webm', 'audio/ogg', 'audio/mp4', 'audio/mpeg']);
+  if (voice && (!allowedVoiceTypes.has(voice.type) || voice.size > 5_000_000)) {
+    return invalidPayload('Il messaggio vocale non è valido o supera 5 MB');
+  }
+  if (attachment && voice) return invalidPayload('Invia una foto o un messaggio vocale alla volta');
 
   try {
     const me = await getActiveProfile(supabase, user.id);
@@ -298,16 +307,17 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }, routeC
       return notFoundResponse('Profilo target non trovato');
     }
 
-    const attachmentSchemaProbe = await supabase.from('direct_messages').select('attachment_path').limit(1);
+    const attachmentSchemaProbe = await supabase.from('direct_messages').select('attachment_path, voice_path').limit(1);
     const attachmentSchemaAvailable = !attachmentSchemaProbe.error;
     if (attachmentSchemaProbe.error && !isMissingAttachmentColumn(attachmentSchemaProbe.error)) {
       throw attachmentSchemaProbe.error;
     }
-    if (attachment && !attachmentSchemaAvailable) {
+    if ((attachment || voice) && !attachmentSchemaAvailable) {
       return invalidPayload('Gli allegati saranno disponibili appena completato l’aggiornamento del database');
     }
 
     let attachmentPath: string | null = null;
+    let voicePath: string | null = null;
     if (attachment) {
       const attachmentBuffer = Buffer.from(await attachment.arrayBuffer());
       if (!isWebpBuffer(attachmentBuffer)) return invalidPayload('Il file allegato non è una foto WebP valida');
@@ -320,6 +330,14 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }, routeC
         });
       if (uploadError) throw uploadError;
     }
+    if (voice) {
+      const extension = voice.type === 'audio/ogg' ? 'ogg' : voice.type === 'audio/mp4' ? 'm4a' : voice.type === 'audio/mpeg' ? 'mp3' : 'webm';
+      voicePath = `${me.id}/${crypto.randomUUID()}.${extension}`;
+      const { error: voiceUploadError } = await supabase.storage
+        .from('direct-message-audio')
+        .upload(voicePath, Buffer.from(await voice.arrayBuffer()), { contentType: voice.type, upsert: false });
+      if (voiceUploadError) throw voiceUploadError;
+    }
 
     const messageValues = {
       sender_profile_id: me.id,
@@ -328,10 +346,10 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }, routeC
     };
     const insertQuery = supabase
       .from('direct_messages')
-      .insert(attachmentSchemaAvailable ? { ...messageValues, attachment_path: attachmentPath } : messageValues);
+      .insert(attachmentSchemaAvailable ? { ...messageValues, attachment_path: attachmentPath, voice_path: voicePath, voice_mime_type: voice?.type || null } : messageValues);
     const insertResult = attachmentSchemaAvailable
       ? await insertQuery
-          .select('id, sender_profile_id, recipient_profile_id, content, attachment_path, created_at, edited_at, edited_by')
+          .select('id, sender_profile_id, recipient_profile_id, content, attachment_path, voice_path, voice_mime_type, created_at, edited_at, edited_by')
           .maybeSingle()
       : await insertQuery
           .select('id, sender_profile_id, recipient_profile_id, content, created_at, edited_at, edited_by')
@@ -342,6 +360,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }, routeC
       if (attachmentPath) {
         await supabase.storage.from('direct-message-images').remove([attachmentPath]);
       }
+      if (voicePath) await supabase.storage.from('direct-message-audio').remove([voicePath]);
       throw error;
     }
 
@@ -350,7 +369,7 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }, routeC
         recipientProfileId: peer.id,
         senderProfileId: me.id,
         messageId: inserted.id as string,
-        preview: content || '📷 Foto',
+        preview: content || (voicePath ? '🎤 Messaggio vocale' : '📷 Foto'),
       });
     }
 
@@ -358,7 +377,9 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }, routeC
       message: inserted ? {
         ...inserted,
         attachment_url: (inserted as any).attachment_path ? `/api/direct-messages/attachment/${inserted.id}` : null,
+        voice_url: (inserted as any).voice_path ? `/api/direct-messages/voice/${inserted.id}` : null,
         attachment_path: undefined,
+        voice_path: undefined,
       } : null,
     });
   } catch (error: any) {

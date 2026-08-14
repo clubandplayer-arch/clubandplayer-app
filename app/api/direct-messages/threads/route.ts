@@ -30,7 +30,7 @@ function isMissingHiddenThreadsTable(error: any) {
 
 function isMissingAttachmentColumn(error: any) {
   const message = String(error?.message || error?.details || '');
-  return error?.code === '42703' || error?.code === 'PGRST204' || message.includes('attachment_path');
+  return error?.code === '42703' || error?.code === 'PGRST204' || message.includes('attachment_path') || message.includes('voice_path');
 }
 
 export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
@@ -45,7 +45,7 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
 
     let { data: messages, error: messagesError } = await supabase
       .from('direct_messages')
-      .select('sender_profile_id, recipient_profile_id, content, attachment_path, created_at')
+      .select('sender_profile_id, recipient_profile_id, content, attachment_path, voice_path, created_at')
       .or(`sender_profile_id.eq.${me.id},recipient_profile_id.eq.${me.id}`)
       .is('deleted_at', null)
       .order('created_at', { ascending: false });
@@ -225,7 +225,7 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
             avatar_url: resolvedAvatar,
             account_type: profile.account_type ?? null,
           },
-          lastMessage: (row.content as string | null) || (row.attachment_path ? '📷 Foto' : ''),
+          lastMessage: (row.content as string | null) || (row.attachment_path ? '📷 Foto' : row.voice_path ? '🎤 Messaggio vocale' : ''),
           lastMessageAt: row.created_at as string,
           lastIncomingAt: row.recipient_profile_id === me.id ? (row.created_at as string) : null,
         });

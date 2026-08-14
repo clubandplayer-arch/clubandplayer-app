@@ -85,6 +85,11 @@ export function DirectMessageThread({
   const [attachmentPreview, setAttachmentPreview] = useState<string | null>(null);
   const [optimizingAttachment, setOptimizingAttachment] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [voice, setVoice] = useState<File | null>(null);
+  const [voicePreviewUrl, setVoicePreviewUrl] = useState<string | null>(null);
+  const [recording, setRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [peerAccountType, setPeerAccountType] = useState<string | null>(targetAccountType ?? null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -94,6 +99,8 @@ export function DirectMessageThread({
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const didMarkReadRef = useRef(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordingStreamRef = useRef<MediaStream | null>(null);
   const thread = useMemo(() => messages || [], [messages]);
   const isDock = layout === 'dock';
 
@@ -106,6 +113,57 @@ export function DirectMessageThread({
     setAttachmentPreview(url);
     return () => URL.revokeObjectURL(url);
   }, [attachment]);
+
+  useEffect(() => {
+    if (!voice) { setVoicePreviewUrl(null); return; }
+    const url = URL.createObjectURL(voice);
+    setVoicePreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [voice]);
+
+  useEffect(() => {
+    if (!recording) return;
+    const timer = window.setInterval(() => setRecordingSeconds((value) => value + 1), 1000);
+    return () => window.clearInterval(timer);
+  }, [recording]);
+
+  useEffect(() => {
+    if (recording && recordingSeconds >= 120) mediaRecorderRef.current?.stop();
+  }, [recording, recordingSeconds]);
+
+  useEffect(() => () => recordingStreamRef.current?.getTracks().forEach((track) => track.stop()), []);
+
+  const toggleRecording = async () => {
+    if (recording) { mediaRecorderRef.current?.stop(); return; }
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+      setSendError('La registrazione vocale non è supportata da questo browser'); return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      recordingStreamRef.current = stream;
+      const preferred = ['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/mp4']
+        .find((type) => MediaRecorder.isTypeSupported(type));
+      const recorder = new MediaRecorder(stream, preferred ? { mimeType: preferred } : undefined);
+      const chunks: Blob[] = [];
+      recorder.ondataavailable = (event) => { if (event.data.size) chunks.push(event.data); };
+      recorder.onstop = () => {
+        const mime = recorder.mimeType.split(';')[0] || 'audio/webm';
+        const extension = mime === 'audio/mp4' ? 'm4a' : mime === 'audio/ogg' ? 'ogg' : 'webm';
+        const blob = new Blob(chunks, { type: mime });
+        if (!blob.size) setSendError('La registrazione è vuota, riprova');
+        else if (blob.size <= 5_000_000) setVoice(new File([blob], `vocale.${extension}`, { type: mime }));
+        else setSendError('Il messaggio vocale supera 5 MB');
+        stream.getTracks().forEach((track) => track.stop());
+        recordingStreamRef.current = null;
+        setRecording(false);
+      };
+      mediaRecorderRef.current = recorder;
+      setVoice(null); setAttachment(null); setRecordingSeconds(0); setSendError(null); setRecording(true);
+      recorder.start(250);
+    } catch {
+      setSendError('Consenti l’accesso al microfono per registrare un messaggio vocale');
+    }
+  };
 
   const scrollMessagesToBottom = () => {
     if (lastMessageRef.current) {
@@ -247,13 +305,14 @@ export function DirectMessageThread({
 
   const handleSend = async () => {
     const trimmed = content.trim();
-    if ((!trimmed && !attachment) || sending || optimizingAttachment) return;
+    if ((!trimmed && !attachment && !voice) || sending || optimizingAttachment || recording) return;
     setSendError(null);
     setSending(true);
     try {
-      await sendDirectMessage(targetProfileId, { text: trimmed, attachment });
+      await sendDirectMessage(targetProfileId, { text: trimmed, attachment, voice });
       setContent('');
       setAttachment(null);
+      setVoice(null);
       if (galleryInputRef.current) galleryInputRef.current.value = '';
       if (cameraInputRef.current) cameraInputRef.current.value = '';
       await reloadThread();
@@ -459,6 +518,7 @@ export function DirectMessageThread({
                         </button>
                       )}
                       {msg.content && <div className={`${msg.attachment_url ? 'mt-2' : ''} whitespace-pre-wrap text-neutral-900`}>{msg.content}</div>}
+                      {msg.voice_url && <audio controls preload="metadata" src={msg.voice_url} className="mt-2 h-10 max-w-full" />}
                     </>
                   )}
                   {mine && !isEditing && editable && (
@@ -507,6 +567,12 @@ export function DirectMessageThread({
             <span className="absolute bottom-1 left-2 text-[11px] text-neutral-500">Sarà ottimizzata automaticamente</span>
           </div>
         )}
+        {voicePreviewUrl && (
+          <div className="flex items-center gap-2 rounded-lg border bg-neutral-50 p-2">
+            <audio controls src={voicePreviewUrl} className="h-10 flex-1" />
+            <button type="button" onClick={() => setVoice(null)} aria-label="Rimuovi messaggio vocale" className="rounded-full px-2 py-1 hover:bg-neutral-200">×</button>
+          </div>
+        )}
         <textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
@@ -526,7 +592,7 @@ export function DirectMessageThread({
           placeholder="Scrivi un messaggio"
         />
         <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <input
               ref={galleryInputRef}
               type="file"
@@ -551,6 +617,19 @@ export function DirectMessageThread({
             >
               <span aria-hidden="true">📎</span><span className="hidden sm:inline">Allega foto</span><span className="sm:hidden">Foto</span>
             </button>
+            <div className="relative">
+              <button type="button" onClick={() => setShowEmojiPicker((value) => !value)} className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-neutral-300 text-xl hover:bg-neutral-50" aria-label="Aggiungi emoji">😊</button>
+              {showEmojiPicker && (
+                <div className="absolute bottom-12 left-0 z-20 grid w-64 grid-cols-8 gap-1 rounded-xl border bg-white p-3 shadow-xl">
+                  {Array.from('😀😃😄😁😂🥹😊😍😘😎🤩🥳😢😭😡👍👏🙌🙏💪⚽🏆❤️🔥🎉💙').map((emoji, index) => (
+                    <button key={`${emoji}-${index}`} type="button" onClick={() => { setContent((value) => value + emoji); setShowEmojiPicker(false); }} className="rounded p-1 text-xl hover:bg-neutral-100">{emoji}</button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <button type="button" onClick={() => void toggleRecording()} disabled={sending || optimizingAttachment} className={`inline-flex h-10 items-center justify-center gap-1 rounded-md border px-3 text-sm ${recording ? 'border-red-300 bg-red-50 text-red-700' : 'border-neutral-300 hover:bg-neutral-50'}`} aria-label={recording ? 'Termina registrazione' : 'Registra messaggio vocale'}>
+              🎤 {recording ? `${Math.floor(recordingSeconds / 60)}:${String(recordingSeconds % 60).padStart(2, '0')} Stop` : <span className="hidden sm:inline">Vocale</span>}
+            </button>
             <button
               type="button"
               onClick={() => cameraInputRef.current?.click()}
@@ -564,7 +643,7 @@ export function DirectMessageThread({
           <button
             type="button"
             onClick={handleSend}
-            disabled={(!content.trim() && !attachment) || sending || optimizingAttachment}
+            disabled={(!content.trim() && !attachment && !voice) || sending || optimizingAttachment || recording}
             className="rounded-md bg-[var(--brand,#0ea5e9)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--brand-strong,#0284c7)] hover:text-white hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand,#0ea5e9)] focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-not-allowed disabled:opacity-60"
           >
             {optimizingAttachment ? 'Ottimizzo…' : sending ? 'Invio…' : 'Invia'}

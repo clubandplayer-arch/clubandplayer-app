@@ -23,6 +23,8 @@ type DirectMessage = {
   recipient_profile_id: string;
   content: string;
   attachment_url?: string | null;
+  voice_url?: string | null;
+  voice_mime_type?: string | null;
   created_at: string;
   edited_at?: string | null;
   edited_by?: string | null;
@@ -107,16 +109,17 @@ export async function getDirectThread(targetProfileId: string): Promise<DirectMe
 
 export async function sendDirectMessage(
   targetProfileId: string,
-  payload: { text?: string; attachment?: File | null },
+  payload: { text?: string; attachment?: File | null; voice?: File | null },
 ): Promise<DirectMessage> {
   const target = ensureTargetProfileId(targetProfileId);
   const text = (payload?.text || '').trim();
-  if (!text && !payload?.attachment) throw new Error('contenuto mancante');
+  if (!text && !payload?.attachment && !payload?.voice) throw new Error('contenuto mancante');
 
   try {
     const formData = new FormData();
     formData.set('content', text);
     if (payload.attachment) formData.set('attachment', payload.attachment);
+    if (payload.voice) formData.set('voice', payload.voice);
     const res = await fetch(`/api/direct-messages/${target}`, {
       method: 'POST',
       body: formData,
