@@ -34,6 +34,11 @@ function isMissingAttachmentColumn(error: any) {
   return error?.code === '42703' || error?.code === 'PGRST204' || message.includes('attachment_path') || message.includes('voice_path');
 }
 
+function isMissingReactionsTable(error: any) {
+  const message = String(error?.message || error?.details || '');
+  return error?.code === '42P01' || error?.code === 'PGRST205' || message.includes('direct_message_reactions');
+}
+
 function cleanText(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   const normalized = value.trim();
@@ -223,6 +228,15 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }, routeC
 
     if (error) throw error;
 
+    let reactions: any[] = [];
+    const messageIds = (rows || []).map((row: any) => row.id).filter(Boolean);
+    if (messageIds.length) {
+      const reactionResult = await supabase.from('direct_message_reactions')
+        .select('id, message_id, profile_id, emoji, created_at').in('message_id', messageIds);
+      if (reactionResult.error && !isMissingReactionsTable(reactionResult.error)) throw reactionResult.error;
+      reactions = reactionResult.data || [];
+    }
+
     return successResponse({
       messages: (rows || []).map((row: any) => ({
         ...row,
@@ -230,6 +244,7 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }, routeC
         voice_url: row.voice_path ? `/api/direct-messages/voice/${row.id}` : null,
         attachment_path: undefined,
         voice_path: undefined,
+        reactions: reactions.filter((reaction) => reaction.message_id === row.id),
       })),
       peer: {
         id: peer.id,

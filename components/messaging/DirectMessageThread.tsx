@@ -14,6 +14,8 @@ import {
   updateDirectMessage,
   deleteDirectMessage,
   deleteDirectConversation,
+  setDirectMessageReaction,
+  removeDirectMessageReaction,
   type DirectMessage,
 } from '@/lib/services/messaging';
 
@@ -31,6 +33,7 @@ const CHAT_EMOJIS = [
   '😀', '😃', '😄', '😁', '😂', '🥹', '😊', '😍', '😘', '😎', '🤩', '🥳', '😢', '😭', '😡',
   '👍', '👏', '🙌', '🙏', '💪', '⚽', '🏀', '🏐', '🏉', '🏆', '❤️', '🧡', '💛', '💚', '💙', '💜', '🔥', '🎉',
 ];
+const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
 
 function formatDate(value: string) {
   try {
@@ -114,6 +117,7 @@ export function DirectMessageThread({
   const [voicePreviewUrl, setVoicePreviewUrl] = useState<string | null>(null);
   const [recording, setRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [reactionPickerMessageId, setReactionPickerMessageId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [peerAccountType, setPeerAccountType] = useState<string | null>(targetAccountType ?? null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -398,6 +402,19 @@ export function DirectMessageThread({
     }
   };
 
+  const handleReaction = async (messageId: string, emoji: string) => {
+    try {
+      const message = messages.find((item) => item.id === messageId);
+      const mine = message?.reactions?.find((reaction) => reaction.profile_id === currentProfileId);
+      if (mine?.emoji === emoji) await removeDirectMessageReaction(messageId);
+      else await setDirectMessageReaction(messageId, emoji);
+      setReactionPickerMessageId(null);
+      await reloadThread();
+    } catch (err: any) {
+      show(err?.message || 'Non è stato possibile aggiungere la reazione', { variant: 'error' });
+    }
+  };
+
   const handleDeleteConversation = async () => {
     const confirmed = typeof window !== 'undefined' ? window.confirm('Vuoi eliminare tutta la chat?') : true;
     if (!confirmed) return;
@@ -491,7 +508,22 @@ export function DirectMessageThread({
             const hasInlineEmoji = emojiCount === 0 && /\p{Extended_Pictographic}/u.test(msg.content || '');
             const ref = index === thread.length - 1 ? lastMessageRef : null;
             return (
-              <div key={msg.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`} ref={ref}>
+              <div key={msg.id} className={`group relative flex ${mine ? 'justify-end' : 'justify-start'}`} ref={ref}>
+                <button
+                  type="button"
+                  onClick={() => setReactionPickerMessageId((value) => value === msg.id ? null : msg.id)}
+                  className={`mx-2 flex h-8 w-8 flex-none self-center items-center justify-center rounded-full border bg-white text-base shadow-sm transition hover:bg-neutral-50 sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100 ${mine ? '' : 'order-2'}`}
+                  aria-label="Aggiungi una reazione"
+                >
+                  ☺
+                </button>
+                {reactionPickerMessageId === msg.id && (
+                  <div className={`absolute bottom-full z-30 mb-2 flex gap-1 rounded-full border bg-white p-2 shadow-xl ${mine ? 'right-0' : 'left-0'}`}>
+                    {QUICK_REACTIONS.map((emoji) => (
+                      <button key={emoji} type="button" onClick={() => void handleReaction(msg.id, emoji)} className="rounded-full p-1 text-xl transition hover:scale-125 hover:bg-neutral-100" aria-label={`Reagisci con ${emoji}`}>{emoji}</button>
+                    ))}
+                  </div>
+                )}
                 <div
                   className={`max-w-[80%] ${isSingleEmoji ? 'border-0 bg-transparent px-1 py-1 shadow-none' : 'rounded-2xl border px-3 py-2 text-sm shadow-sm'} ${
                     isSingleEmoji ? '' : mine ? 'rounded-br-sm border-[var(--brand)] bg-[var(--brand)]/10' : 'border-neutral-200 bg-white'
@@ -569,6 +601,15 @@ export function DirectMessageThread({
                       >
                         Elimina
                       </button>
+                    </div>
+                  )}
+                  {!!msg.reactions?.length && (
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {Array.from(new Set(msg.reactions.map((reaction) => reaction.emoji))).map((emoji) => {
+                        const reactions = msg.reactions?.filter((reaction) => reaction.emoji === emoji) || [];
+                        const reactedByMe = reactions.some((reaction) => reaction.profile_id === currentProfileId);
+                        return <button key={emoji} type="button" onClick={() => void handleReaction(msg.id, emoji)} className={`rounded-full border px-2 py-0.5 text-sm ${reactedByMe ? 'border-[var(--brand)] bg-[var(--brand)]/10' : 'border-neutral-200 bg-white'}`}>{emoji}{reactions.length > 1 ? ` ${reactions.length}` : ''}</button>;
+                      })}
                     </div>
                   )}
                 </div>

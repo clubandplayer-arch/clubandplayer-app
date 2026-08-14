@@ -25,11 +25,20 @@ type DirectMessage = {
   attachment_url?: string | null;
   voice_url?: string | null;
   voice_mime_type?: string | null;
+  reactions?: DirectMessageReaction[];
   created_at: string;
   edited_at?: string | null;
   edited_by?: string | null;
   deleted_at?: string | null;
   deleted_by?: string | null;
+};
+
+type DirectMessageReaction = {
+  id: string;
+  message_id: string;
+  profile_id: string;
+  emoji: string;
+  created_at: string;
 };
 
 type DirectMessagePeer = {
@@ -182,6 +191,20 @@ export async function deleteDirectMessage(messageId: string): Promise<string> {
   }
 }
 
+export async function setDirectMessageReaction(messageId: string, emoji: string): Promise<void> {
+  const res = await fetch(`/api/direct-messages/message/${messageId}/reaction`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ emoji }),
+  });
+  const { json, rawText } = await parseResponse(res);
+  if (!res.ok) throw new Error((json as any)?.message || rawText || 'Reazione non riuscita');
+}
+
+export async function removeDirectMessageReaction(messageId: string): Promise<void> {
+  const res = await fetch(`/api/direct-messages/message/${messageId}/reaction`, { method: 'DELETE' });
+  const { json, rawText } = await parseResponse(res);
+  if (!res.ok) throw new Error((json as any)?.message || rawText || 'Rimozione reazione non riuscita');
+}
+
 export async function deleteDirectConversation(targetProfileId: string): Promise<void> {
   const target = ensureTargetProfileId(targetProfileId);
   try {
@@ -243,4 +266,4 @@ export async function openDirectConversation(
   return url;
 }
 
-export type { DirectThreadSummary, DirectMessage, DirectMessagePeer, DirectMessageThread };
+export type { DirectThreadSummary, DirectMessage, DirectMessageReaction, DirectMessagePeer, DirectMessageThread };
