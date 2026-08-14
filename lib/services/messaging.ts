@@ -22,11 +22,23 @@ type DirectMessage = {
   sender_profile_id: string;
   recipient_profile_id: string;
   content: string;
+  attachment_url?: string | null;
+  voice_url?: string | null;
+  voice_mime_type?: string | null;
+  reactions?: DirectMessageReaction[];
   created_at: string;
   edited_at?: string | null;
   edited_by?: string | null;
   deleted_at?: string | null;
   deleted_by?: string | null;
+};
+
+type DirectMessageReaction = {
+  id: string;
+  message_id: string;
+  profile_id: string;
+  emoji: string;
+  created_at: string;
 };
 
 type DirectMessagePeer = {
@@ -50,7 +62,10 @@ async function parseResponse(res: Response) {
   } catch {
     json = rawText;
   }
-  return { json, rawText };
+  // A platform-level 500 can return a complete HTML error page. Never surface
+  // that document inside the chat UI as an error message.
+  const safeRawText = /^\s*<!doctype html/i.test(rawText) || /^\s*<html/i.test(rawText) ? '' : rawText;
+  return { json, rawText: safeRawText };
 }
 
 function ensureTargetProfileId(targetProfileId: string) {
@@ -103,22 +118,25 @@ export async function getDirectThread(targetProfileId: string): Promise<DirectMe
 
 export async function sendDirectMessage(
   targetProfileId: string,
-  payload: { text: string; attachmentUrl?: string | null },
+  payload: { text?: string; attachment?: File | null; voice?: File | null },
 ): Promise<DirectMessage> {
   const target = ensureTargetProfileId(targetProfileId);
   const text = (payload?.text || '').trim();
-  if (!text) throw new Error('contenuto mancante');
+  if (!text && !payload?.attachment && !payload?.voice) throw new Error('contenuto mancante');
 
   try {
+    const formData = new FormData();
+    formData.set('content', text);
+    if (payload.attachment) formData.set('attachment', payload.attachment);
+    if (payload.voice) formData.set('voice', payload.voice);
     const res = await fetch(`/api/direct-messages/${target}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: text }),
+      body: formData,
     });
     const { json, rawText } = await parseResponse(res);
     if (!res.ok) {
       console.error('[direct-messages] sendDirectMessage failed', { status: res.status, body: json, target });
-      throw new Error((json as any)?.error || rawText || 'Non è stato possibile inviare il messaggio');
+      throw new Error((json as any)?.message || (json as any)?.error || rawText || 'Non è stato possibile inviare il messaggio');
     }
 
     return ((json as any)?.message || null) as DirectMessage;
@@ -171,6 +189,20 @@ export async function deleteDirectMessage(messageId: string): Promise<string> {
     console.error('[direct-messages] deleteDirectMessage failed', { error, target });
     throw new Error(error?.message || 'Non è stato possibile eliminare il messaggio');
   }
+}
+
+export async function setDirectMessageReaction(messageId: string, emoji: string): Promise<void> {
+  const res = await fetch(`/api/direct-messages/message/${messageId}/reaction`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ emoji }),
+  });
+  const { json, rawText } = await parseResponse(res);
+  if (!res.ok) throw new Error((json as any)?.message || rawText || 'Reazione non riuscita');
+}
+
+export async function removeDirectMessageReaction(messageId: string): Promise<void> {
+  const res = await fetch(`/api/direct-messages/message/${messageId}/reaction`, { method: 'DELETE' });
+  const { json, rawText } = await parseResponse(res);
+  if (!res.ok) throw new Error((json as any)?.message || rawText || 'Rimozione reazione non riuscita');
 }
 
 export async function deleteDirectConversation(targetProfileId: string): Promise<void> {
@@ -234,4 +266,4 @@ export async function openDirectConversation(
   return url;
 }
 
-export type { DirectThreadSummary, DirectMessage, DirectMessagePeer, DirectMessageThread };
+export type { DirectThreadSummary, DirectMessage, DirectMessageReaction, DirectMessagePeer, DirectMessageThread };
