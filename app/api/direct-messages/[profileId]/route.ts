@@ -183,7 +183,7 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }, routeC
 
     let messagesQuery = supabase
       .from('direct_messages')
-      .select('id, sender_profile_id, recipient_profile_id, content, created_at, edited_at, edited_by')
+      .select('id, sender_profile_id, recipient_profile_id, content, attachment_path, created_at, edited_at, edited_by')
       .or(
         `and(sender_profile_id.eq.${me.id},recipient_profile_id.eq.${peer.id}),and(sender_profile_id.eq.${peer.id},recipient_profile_id.eq.${me.id})`,
       )
@@ -198,7 +198,11 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }, routeC
     if (error) throw error;
 
     return successResponse({
-      messages: rows || [],
+      messages: (rows || []).map((row: any) => ({
+        ...row,
+        attachment_url: row.attachment_path ? `/api/direct-messages/attachment/${row.id}` : null,
+        attachment_path: undefined,
+      })),
       peer: {
         id: peer.id,
         display_name: peer.display_name,
@@ -226,15 +230,22 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }, routeC
   const otherId = typeof targetProfileId === 'string' ? targetProfileId.trim() : '';
   if (!otherId) return invalidPayload('profileId mancante');
 
-  const body = (await req.json().catch(() => ({}))) as { content?: string };
-  const content = (body?.content || '').trim();
-  if (!content) {
+  const isMultipart = req.headers.get('content-type')?.includes('multipart/form-data');
+  const formData = isMultipart ? await req.formData().catch(() => null) : null;
+  const jsonBody = !isMultipart ? await req.json().catch(() => ({} as { content?: string })) : null;
+  const content = String(formData?.get('content') || jsonBody?.content || '').trim();
+  const attachmentValue = formData?.get('attachment');
+  const attachment = attachmentValue instanceof File && attachmentValue.size > 0 ? attachmentValue : null;
+  if (!content && !attachment) {
     console.warn('[direct-messages] POST /api/direct-messages/:profileId validation error', {
       userId: user.id,
       targetProfileId: otherId,
       reason: 'contenuto mancante',
     });
-    return invalidPayload('contenuto mancante');
+    return invalidPayload('Inserisci un messaggio o allega una foto');
+  }
+  if (attachment && (!attachment.type.startsWith('image/') || attachment.size > 10 * 1024 * 1024)) {
+    return invalidPayload('La foto deve essere JPG, PNG, WebP o HEIC e non superare 10 MB');
   }
 
   try {
@@ -261,28 +272,55 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }, routeC
       return notFoundResponse('Profilo target non trovato');
     }
 
+    let attachmentPath: string | null = null;
+    if (attachment) {
+      const admin = getSupabaseAdminClientOrNull();
+      if (!admin) throw new Error('Storage non configurato');
+      const extension = attachment.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+      attachmentPath = `${me.id}/${crypto.randomUUID()}.${extension}`;
+      const { error: uploadError } = await admin.storage
+        .from('direct-message-images')
+        .upload(attachmentPath, Buffer.from(await attachment.arrayBuffer()), {
+          contentType: attachment.type,
+          upsert: false,
+        });
+      if (uploadError) throw uploadError;
+    }
+
     const { data: inserted, error } = await supabase
       .from('direct_messages')
       .insert({
         sender_profile_id: me.id,
         recipient_profile_id: peer.id,
-        content,
+        content: content || null,
+        attachment_path: attachmentPath,
       })
-      .select('id, sender_profile_id, recipient_profile_id, content, created_at, edited_at, edited_by')
+      .select('id, sender_profile_id, recipient_profile_id, content, attachment_path, created_at, edited_at, edited_by')
       .maybeSingle();
 
-    if (error) throw error;
+    if (error) {
+      if (attachmentPath) {
+        await getSupabaseAdminClientOrNull()?.storage.from('direct-message-images').remove([attachmentPath]);
+      }
+      throw error;
+    }
 
     if (inserted?.id) {
       await notifyDirectMessage({
         recipientProfileId: peer.id,
         senderProfileId: me.id,
         messageId: inserted.id as string,
-        preview: content,
+        preview: content || '📷 Foto',
       });
     }
 
-    return successResponse({ message: inserted });
+    return successResponse({
+      message: inserted ? {
+        ...inserted,
+        attachment_url: inserted.attachment_path ? `/api/direct-messages/attachment/${inserted.id}` : null,
+        attachment_path: undefined,
+      } : null,
+    });
   } catch (error: any) {
     console.error('[direct-messages] POST /api/direct-messages/:profileId unexpected error', {
       error,

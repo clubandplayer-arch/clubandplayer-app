@@ -40,7 +40,7 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
 
     const { data: messages, error: messagesError } = await supabase
       .from('direct_messages')
-      .select('sender_profile_id, recipient_profile_id, content, created_at')
+      .select('sender_profile_id, recipient_profile_id, content, attachment_path, created_at')
       .or(`sender_profile_id.eq.${me.id},recipient_profile_id.eq.${me.id}`)
       .is('deleted_at', null)
       .order('created_at', { ascending: false });
@@ -209,7 +209,7 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
             avatar_url: resolvedAvatar,
             account_type: profile.account_type ?? null,
           },
-          lastMessage: row.content as string,
+          lastMessage: (row.content as string | null) || (row.attachment_path ? '📷 Foto' : ''),
           lastMessageAt: row.created_at as string,
           lastIncomingAt: row.recipient_profile_id === me.id ? (row.created_at as string) : null,
         });

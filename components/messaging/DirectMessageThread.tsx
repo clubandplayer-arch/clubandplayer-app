@@ -78,15 +78,29 @@ export function DirectMessageThread({
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [attachment, setAttachment] = useState<File | null>(null);
+  const [attachmentPreview, setAttachmentPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [peerAccountType, setPeerAccountType] = useState<string | null>(targetAccountType ?? null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState('');
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const lastMessageRef = useRef<HTMLDivElement | null>(null);
+  const galleryInputRef = useRef<HTMLInputElement | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const didMarkReadRef = useRef(false);
   const thread = useMemo(() => messages || [], [messages]);
   const isDock = layout === 'dock';
+
+  useEffect(() => {
+    if (!attachment) {
+      setAttachmentPreview(null);
+      return;
+    }
+    const url = URL.createObjectURL(attachment);
+    setAttachmentPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [attachment]);
 
   const scrollMessagesToBottom = () => {
     if (lastMessageRef.current) {
@@ -96,6 +110,19 @@ export function DirectMessageThread({
     const el = messagesContainerRef.current;
     if (!el) return;
     el.scrollTop = el.scrollHeight;
+  };
+
+  const selectAttachment = (file?: File) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      show('Puoi allegare soltanto una foto', { variant: 'error' });
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      show('La foto non può superare 10 MB', { variant: 'error' });
+      return;
+    }
+    setAttachment(file);
   };
 
   const canEditOrDelete = (msg: DirectMessage) => {
@@ -205,11 +232,12 @@ export function DirectMessageThread({
 
   const handleSend = async () => {
     const trimmed = content.trim();
-    if (!trimmed || sending) return;
+    if ((!trimmed && !attachment) || sending) return;
     setSending(true);
     try {
-      await sendDirectMessage(targetProfileId, { text: trimmed });
+      await sendDirectMessage(targetProfileId, { text: trimmed, attachment });
       setContent('');
+      setAttachment(null);
       await reloadThread();
     } catch (err: any) {
       const message = err?.message || 'Errore invio messaggio';
@@ -394,7 +422,20 @@ export function DirectMessageThread({
                       </div>
                     </div>
                   ) : (
-                    <div className="whitespace-pre-wrap text-neutral-900">{msg.content}</div>
+                    <>
+                      {msg.attachment_url && (
+                        <a href={msg.attachment_url} target="_blank" rel="noreferrer" className="mt-1 block">
+                          {/* The authenticated endpoint redirects to a short-lived private Storage URL. */}
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={msg.attachment_url}
+                            alt="Foto allegata al messaggio"
+                            className="max-h-80 w-auto max-w-full rounded-xl object-contain"
+                          />
+                        </a>
+                      )}
+                      {msg.content && <div className={`${msg.attachment_url ? 'mt-2' : ''} whitespace-pre-wrap text-neutral-900`}>{msg.content}</div>}
+                    </>
                   )}
                   {mine && !isEditing && editable && (
                     <div className="mt-2 flex items-center gap-2 text-[12px] text-neutral-600">
@@ -422,6 +463,20 @@ export function DirectMessageThread({
       </div>
 
       <div className={`flex-none space-y-2 border-t bg-white ${isDock ? 'px-4 py-3' : 'px-5 py-4'}`}>
+        {attachmentPreview && (
+          <div className="relative w-fit rounded-xl border border-neutral-200 bg-neutral-50 p-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={attachmentPreview} alt="Anteprima foto da inviare" className="h-24 w-24 rounded-lg object-cover" />
+            <button
+              type="button"
+              onClick={() => setAttachment(null)}
+              aria-label="Rimuovi foto"
+              className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center rounded-full bg-neutral-800 text-lg text-white shadow"
+            >
+              ×
+            </button>
+          </div>
+        )}
         <textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
@@ -440,11 +495,46 @@ export function DirectMessageThread({
           className="h-28 w-full resize-none rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
           placeholder="Scrivi un messaggio"
         />
-        <div className="flex items-center justify-end">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <input
+              ref={galleryInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+              className="sr-only"
+              onChange={(event) => selectAttachment(event.target.files?.[0])}
+            />
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="sr-only"
+              onChange={(event) => selectAttachment(event.target.files?.[0])}
+            />
+            <button
+              type="button"
+              onClick={() => galleryInputRef.current?.click()}
+              disabled={sending}
+              className="inline-flex items-center gap-2 rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-50 disabled:opacity-60"
+              aria-label="Allega una foto"
+            >
+              <span aria-hidden="true">📎</span><span className="hidden sm:inline">Allega foto</span><span className="sm:hidden">Foto</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => cameraInputRef.current?.click()}
+              disabled={sending}
+              className="inline-flex items-center gap-2 rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-50 disabled:opacity-60 sm:hidden"
+              aria-label="Scatta una foto"
+            >
+              <span aria-hidden="true">📷</span><span>Fotocamera</span>
+            </button>
+          </div>
           <button
             type="button"
             onClick={handleSend}
-            disabled={!content.trim() || sending}
+            disabled={(!content.trim() && !attachment) || sending}
             className="rounded-md bg-[var(--brand,#0ea5e9)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--brand-strong,#0284c7)] hover:text-white hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand,#0ea5e9)] focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-not-allowed disabled:opacity-60"
           >
             {sending ? 'Invio…' : 'Invia'}
