@@ -27,6 +27,11 @@ type Props = {
   className?: string;
 };
 
+const CHAT_EMOJIS = [
+  '😀', '😃', '😄', '😁', '😂', '🥹', '😊', '😍', '😘', '😎', '🤩', '🥳', '😢', '😭', '😡',
+  '👍', '👏', '🙌', '🙏', '💪', '⚽', '🏀', '🏐', '🏉', '🏆', '❤️', '🧡', '💛', '💚', '💙', '💜', '🔥', '🎉',
+];
+
 function formatDate(value: string) {
   try {
     return new Date(value).toLocaleString('it-IT', {
@@ -38,6 +43,15 @@ function formatDate(value: string) {
   } catch {
     return value;
   }
+}
+
+function emojiOnlyCount(value?: string | null) {
+  const content = value?.trim();
+  if (!content) return 0;
+  const emojiParts = content.match(/\p{Extended_Pictographic}/gu) ?? [];
+  if (!emojiParts.length) return 0;
+  const remainder = content.replace(/[\p{Extended_Pictographic}\p{Emoji_Modifier}\uFE0F\u200D\s]/gu, '');
+  return remainder ? 0 : emojiParts.length;
 }
 
 function Avatar({ name, avatarUrl }: { name: string; avatarUrl: string | null }) {
@@ -462,12 +476,14 @@ export function DirectMessageThread({
             const mine = currentProfileId ? msg.sender_profile_id === currentProfileId : false;
             const editable = mine && canEditOrDelete(msg);
             const isEditing = editingMessageId === msg.id;
+            const emojiCount = emojiOnlyCount(msg.content);
+            const isSingleEmoji = emojiCount === 1;
             const ref = index === thread.length - 1 ? lastMessageRef : null;
             return (
               <div key={msg.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`} ref={ref}>
                 <div
-                  className={`max-w-[80%] rounded-2xl border px-3 py-2 text-sm shadow-sm ${
-                    mine ? 'rounded-br-sm border-[var(--brand)] bg-[var(--brand)]/10' : 'border-neutral-200 bg-white'
+                  className={`max-w-[80%] ${isSingleEmoji ? 'border-0 bg-transparent px-1 py-1 shadow-none' : 'rounded-2xl border px-3 py-2 text-sm shadow-sm'} ${
+                    isSingleEmoji ? '' : mine ? 'rounded-br-sm border-[var(--brand)] bg-[var(--brand)]/10' : 'border-neutral-200 bg-white'
                   }`}
                 >
                   <div className="flex items-center justify-between gap-3 text-[11px] uppercase tracking-wide text-neutral-500">
@@ -517,7 +533,11 @@ export function DirectMessageThread({
                           />
                         </button>
                       )}
-                      {msg.content && <div className={`${msg.attachment_url ? 'mt-2' : ''} whitespace-pre-wrap text-neutral-900`}>{msg.content}</div>}
+                      {msg.content && (
+                        <div className={`${msg.attachment_url ? 'mt-2' : ''} whitespace-pre-wrap text-neutral-900 ${
+                          isSingleEmoji ? 'text-5xl leading-none' : emojiCount > 1 ? 'text-3xl leading-snug' : ''
+                        }`}>{msg.content}</div>
+                      )}
                       {msg.voice_url && <audio controls preload="metadata" src={msg.voice_url} className="mt-2 h-10 max-w-full" />}
                     </>
                   )}
@@ -621,7 +641,7 @@ export function DirectMessageThread({
               <button type="button" onClick={() => setShowEmojiPicker((value) => !value)} className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-neutral-300 text-xl hover:bg-neutral-50" aria-label="Aggiungi emoji">😊</button>
               {showEmojiPicker && (
                 <div className="absolute bottom-12 left-0 z-20 grid w-64 grid-cols-8 gap-1 rounded-xl border bg-white p-3 shadow-xl">
-                  {Array.from('😀😃😄😁😂🥹😊😍😘😎🤩🥳😢😭😡👍👏🙌🙏💪⚽🏆❤️🔥🎉💙').map((emoji, index) => (
+                  {CHAT_EMOJIS.map((emoji, index) => (
                     <button key={`${emoji}-${index}`} type="button" onClick={() => { setContent((value) => value + emoji); setShowEmojiPicker(false); }} className="rounded p-1 text-xl hover:bg-neutral-100">{emoji}</button>
                   ))}
                 </div>
