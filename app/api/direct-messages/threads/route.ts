@@ -28,6 +28,11 @@ function isMissingHiddenThreadsTable(error: any) {
     : error?.code === '42P01';
 }
 
+function isMissingAttachmentColumn(error: any) {
+  const message = String(error?.message || error?.details || '');
+  return error?.code === '42703' || error?.code === 'PGRST204' || message.includes('attachment_path');
+}
+
 export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
   try {
     const me = await getActiveProfile(supabase, user.id);
@@ -38,12 +43,23 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
 
     console.log('[direct-messages] GET /api/direct-messages/threads', { userId: user.id, profileId: me.id });
 
-    const { data: messages, error: messagesError } = await supabase
+    let { data: messages, error: messagesError } = await supabase
       .from('direct_messages')
       .select('sender_profile_id, recipient_profile_id, content, attachment_path, created_at')
       .or(`sender_profile_id.eq.${me.id},recipient_profile_id.eq.${me.id}`)
       .is('deleted_at', null)
       .order('created_at', { ascending: false });
+
+    if (messagesError && isMissingAttachmentColumn(messagesError)) {
+      const legacyResult = await supabase
+        .from('direct_messages')
+        .select('sender_profile_id, recipient_profile_id, content, created_at')
+        .or(`sender_profile_id.eq.${me.id},recipient_profile_id.eq.${me.id}`)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false });
+      messages = legacyResult.data as any;
+      messagesError = legacyResult.error;
+    }
 
     if (messagesError) throw messagesError;
 

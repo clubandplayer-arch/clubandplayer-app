@@ -51,7 +51,10 @@ async function parseResponse(res: Response) {
   } catch {
     json = rawText;
   }
-  return { json, rawText };
+  // A platform-level 500 can return a complete HTML error page. Never surface
+  // that document inside the chat UI as an error message.
+  const safeRawText = /^\s*<!doctype html/i.test(rawText) || /^\s*<html/i.test(rawText) ? '' : rawText;
+  return { json, rawText: safeRawText };
 }
 
 function ensureTargetProfileId(targetProfileId: string) {
