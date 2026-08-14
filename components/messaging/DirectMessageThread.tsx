@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/common/ToastProvider';
 import { compressImageInBrowser } from '@/lib/images/compressImageInBrowser';
+import { Lightbox } from '@/components/media/Lightbox';
 import {
   getDirectThread,
   markDirectThreadRead,
@@ -83,6 +84,7 @@ export function DirectMessageThread({
   const [attachment, setAttachment] = useState<File | null>(null);
   const [attachmentPreview, setAttachmentPreview] = useState<string | null>(null);
   const [optimizingAttachment, setOptimizingAttachment] = useState(false);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [peerAccountType, setPeerAccountType] = useState<string | null>(targetAccountType ?? null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -441,7 +443,12 @@ export function DirectMessageThread({
                   ) : (
                     <>
                       {msg.attachment_url && (
-                        <a href={msg.attachment_url} target="_blank" rel="noreferrer" className="mt-1 block">
+                        <button
+                          type="button"
+                          onClick={() => setLightboxUrl(msg.attachment_url ?? null)}
+                          className="mt-1 block cursor-zoom-in overflow-hidden rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2"
+                          aria-label="Apri la foto allegata"
+                        >
                           {/* The authenticated endpoint redirects to a short-lived private Storage URL. */}
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
@@ -449,7 +456,7 @@ export function DirectMessageThread({
                             alt="Foto allegata al messaggio"
                             className="max-h-80 w-auto max-w-full rounded-xl object-contain"
                           />
-                        </a>
+                        </button>
                       )}
                       {msg.content && <div className={`${msg.attachment_url ? 'mt-2' : ''} whitespace-pre-wrap text-neutral-900`}>{msg.content}</div>}
                     </>
@@ -564,6 +571,13 @@ export function DirectMessageThread({
           </button>
         </div>
       </div>
+      {lightboxUrl ? (
+        <Lightbox
+          items={[{ url: lightboxUrl, type: 'image', alt: 'Foto allegata al messaggio' }]}
+          index={0}
+          onClose={() => setLightboxUrl(null)}
+        />
+      ) : null}
     </div>
   );
 }
