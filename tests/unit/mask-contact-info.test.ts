@@ -34,6 +34,24 @@ test('masks Italian mobile numbers without a country code', () => {
   }
 });
 
+test('masks international phone numbers from different countries', () => {
+  for (const phone of [
+    '+1 (415) 555-2671',
+    '+44 20 7946 0958',
+    '0049 30 901820',
+    '+33.1.42.68.53.00',
+    '+81312345678',
+  ]) {
+    assert.equal(maskContactInfo(`Contatto: ${phone}.`), `Contatto: ${MASKED_PHONE_NUMBER}.`);
+  }
+});
+
+test('masks plausible local phone numbers that use common separators', () => {
+  for (const phone of ['(415) 555-2671', '020 7946 0958', '01 42 68 53 00']) {
+    assert.equal(maskContactInfo(`Contatto: ${phone}`), `Contatto: ${MASKED_PHONE_NUMBER}`);
+  }
+});
+
 test('masks email addresses and phone numbers in the same text', () => {
   assert.equal(
     maskContactInfo('Email: atleta@example.it, telefono: +39 392 987 4489'),
@@ -41,9 +59,9 @@ test('masks email addresses and phone numbers in the same text', () => {
   );
 });
 
-test('does not mask dates, years, scores, or numeric identifiers', () => {
+test('does not mask dates, years, scores, short numeric groups, or numeric identifiers', () => {
   assert.equal(
-    maskContactInfo('Partita 12/08/2026, risultato 3-2, tessera 1234567890.'),
-    'Partita 12/08/2026, risultato 3-2, tessera 1234567890.',
+    maskContactInfo('Partita 12/08/2026, risultato 3-2, modulo 4 3 3, tessera 1234567890.'),
+    'Partita 12/08/2026, risultato 3-2, modulo 4 3 3, tessera 1234567890.',
   );
 });
