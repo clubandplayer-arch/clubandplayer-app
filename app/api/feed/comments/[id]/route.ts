@@ -10,7 +10,7 @@ import {
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 import { UpdateCommentSchema, type UpdateCommentInput } from '@/lib/validation/feed';
-import { maskEmailAddresses } from '@/lib/privacy/maskEmailAddresses';
+import { maskContactInfo } from '@/lib/privacy/maskContactInfo';
 
 export const runtime = 'nodejs';
 
@@ -20,7 +20,7 @@ const EDIT_WINDOW_MS = 60_000;
 function sanitizeBody(raw: unknown) {
   const text = typeof raw === 'string' ? raw.trim() : '';
   if (!text) return null;
-  return maskEmailAddresses(text).slice(0, MAX_LEN);
+  return maskContactInfo(text).slice(0, MAX_LEN);
 }
 
 async function buildClubVerificationMap(supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>, clubIds: string[]) {

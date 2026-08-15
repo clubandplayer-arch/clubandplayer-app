@@ -20,7 +20,7 @@ import { getProfileByUserId } from '@/lib/api/profile';
 import { enqueueGroupedPostPush } from '@/lib/push/groupedPostPushQueue';
 import { sendPushForNotificationBestEffort } from '@/lib/push/sendExpoPush';
 import { rateLimit } from '@/lib/api/rateLimit';
-import { maskEmailAddresses } from '@/lib/privacy/maskEmailAddresses';
+import { maskContactInfo } from '@/lib/privacy/maskContactInfo';
 
 export const runtime = 'nodejs';
 const GROUPED_PUSH_DEBOUNCE_ENABLED = process.env.GROUPED_PUSH_DEBOUNCE_ENABLED === 'true';
@@ -32,7 +32,7 @@ type MentionFollower = { id: string; user_id: string; display_name: string | nul
 function sanitizeBody(raw: unknown) {
   const text = typeof raw === 'string' ? raw.trim() : '';
   if (!text) return null;
-  return maskEmailAddresses(text).slice(0, MAX_LEN);
+  return maskContactInfo(text).slice(0, MAX_LEN);
 }
 
 function cleanName(value: unknown) {

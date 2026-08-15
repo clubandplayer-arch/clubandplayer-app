@@ -19,7 +19,7 @@ import { getActiveProfile, getProfileByUserId } from '@/lib/api/profile';
 import { buildProfileDisplayName } from '@/lib/displayName';
 import { CreatePostSchema, FeedPostsQuerySchema, type CreatePostInput, type FeedPostsQueryInput } from '@/lib/validation/feed';
 import { PLATFORM_ADMIN_ROLE } from '@/lib/constants/admin';
-import { maskEmailAddresses } from '@/lib/privacy/maskEmailAddresses';
+import { maskContactInfo } from '@/lib/privacy/maskContactInfo';
 
 export const runtime = 'nodejs';
 
@@ -76,11 +76,11 @@ type EventPayload = {
 
 function normalizeEventPayload(raw: any): EventPayload | null {
   if (!raw || typeof raw !== 'object') return null;
-  const title = typeof raw.title === 'string' ? maskEmailAddresses(raw.title.trim()) : '';
+  const title = typeof raw.title === 'string' ? maskContactInfo(raw.title.trim()) : '';
   const date = typeof raw.date === 'string' ? raw.date.trim() : '';
   if (!title || !date) return null;
-  const location = typeof raw.location === 'string' ? maskEmailAddresses(raw.location.trim()) || null : null;
-  const description = typeof raw.description === 'string' ? maskEmailAddresses(raw.description.trim()) || null : null;
+  const location = typeof raw.location === 'string' ? maskContactInfo(raw.location.trim()) || null : null;
+  const description = typeof raw.description === 'string' ? maskContactInfo(raw.description.trim()) || null : null;
   const posterUrl = typeof raw.poster_url === 'string' ? raw.poster_url.trim() || null : null;
   const posterPath = typeof raw.poster_path === 'string' ? raw.poster_path.trim() || null : null;
   const posterBucket = typeof raw.poster_bucket === 'string' ? raw.poster_bucket.trim() || null : null;
@@ -1005,7 +1005,7 @@ export async function POST(req: NextRequest) {
 
     const body: CreatePostInput = parsedBody.data;
     const rawText = (body?.text ?? body?.content ?? '').toString();
-    const text = maskEmailAddresses(rawText.trim());
+    const text = maskContactInfo(rawText.trim());
     const requestedKind = normKind(body?.kind ?? body?.type);
     const dbKind: DbPostKind = requestedKind === 'event' ? 'event' : 'normal';
     const rawEventPayload = body?.event_payload ?? body?.event;

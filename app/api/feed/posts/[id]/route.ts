@@ -12,7 +12,7 @@ import { reportApiError } from '@/lib/monitoring/reportApiError';
 import { PatchPostSchema } from '@/lib/validation/feed';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 import { buildProfileDisplayName } from '@/lib/displayName';
-import { maskEmailAddresses } from '@/lib/privacy/maskEmailAddresses';
+import { maskContactInfo } from '@/lib/privacy/maskContactInfo';
 
 export const runtime = 'nodejs';
 
@@ -200,7 +200,7 @@ export const PATCH = withAuth(async (req: NextRequest, { user, supabase }) => {
     return validationError('Payload non valido', parsedBody.error.flatten());
   }
   const payload = parsedBody.data;
-  const text = maskEmailAddresses((payload.content ?? payload.text ?? '').trim());
+  const text = maskContactInfo((payload.content ?? payload.text ?? '').trim());
 
   const { data: existing, error: fetchErr } = await supabase
     .from('posts')

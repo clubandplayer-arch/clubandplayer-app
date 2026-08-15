@@ -3,7 +3,7 @@ import { normalizePost, type FeedPost } from '@/components/feed/postShared';
 import { getUserAndRole } from '@/lib/auth/role';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
-import { maskEmailAddresses } from '@/lib/privacy/maskEmailAddresses';
+import { maskContactInfo } from '@/lib/privacy/maskContactInfo';
 
 export const dynamic = 'force-dynamic';
 
@@ -249,8 +249,8 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
     postMeta = adminData ?? null;
   }
 
-  const safeContent = postMeta?.content ? maskEmailAddresses(postMeta.content) : '';
-  const title = postMeta?.event_payload?.title ? maskEmailAddresses(postMeta.event_payload.title) : safeContent || 'Post';
+  const safeContent = postMeta?.content ? maskContactInfo(postMeta.content) : '';
+  const title = postMeta?.event_payload?.title ? maskContactInfo(postMeta.event_payload.title) : safeContent || 'Post';
   const description = safeContent ? safeContent.slice(0, 140) : undefined;
   const image = postMeta?.media_url || undefined;
   const ogImageUrl = image ? `${baseUrl()}/api/posts/${params.id}/og-image` : undefined;
