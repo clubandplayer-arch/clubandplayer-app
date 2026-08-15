@@ -7,6 +7,7 @@ import Link from 'next/link';
 import ProfileMiniCard from '@/components/profiles/ProfileMiniCard';
 import WhoToFollow from '@/components/feed/WhoToFollow';
 import { useExclusiveVideoPlayback } from '@/hooks/useExclusiveVideoPlayback';
+import { maskEmailAddresses } from '@/lib/privacy/maskEmailAddresses';
 
 type ApiPost = {
   id: string | number;
@@ -340,7 +341,7 @@ export default function FeedClient() {
                   className="rounded-xl border border-neutral-100 bg-neutral-50 px-3 py-2 text-xs text-neutral-800"
                 >
                   <div className="whitespace-pre-line">
-                    {post.content}
+                    {maskEmailAddresses(post.content)}
                   </div>
                   {post.mediaUrl ? (
                     <div className="mt-2 overflow-hidden rounded-lg border bg-white">
