@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import type { Metadata } from 'next';
 import { ReadOnlyPostCard } from '@/components/feed/ReadOnlyPostCard';
 import type { FeedPost } from '@/components/feed/postShared';
+import { maskContactInfo } from '@/lib/privacy/maskContactInfo';
 
 export const dynamic = 'force-dynamic';
 
@@ -187,7 +188,7 @@ export async function generateMetadata({ params }: { params: { token?: string } 
 
   const post = data.post;
   const title = metadataTitle(post);
-  const description = excerpt(post.content ?? post.event_payload?.description ?? null);
+  const description = excerpt(maskContactInfo(post.content ?? post.event_payload?.description ?? ''));
 
   const originalOgImage = resolveOgImage(post, publicBaseUrl, fallbackImage);
   const isVideoPost = post.media?.[0]?.media_type === 'video';

@@ -1,6 +1,7 @@
 import { ImageResponse } from 'next/og';
 import { headers } from 'next/headers';
 import type { FeedPost } from '@/components/feed/postShared';
+import { maskContactInfo } from '@/lib/privacy/maskContactInfo';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -57,7 +58,7 @@ export default async function OpengraphImage({ params }: { params: { token?: str
     ? postData.post.author_display_name?.trim() || 'Autore Club and Player'
     : 'Club and Player';
   const text = postData.ok
-    ? excerpt(postData.post.content ?? postData.post.event_payload?.description ?? null)
+    ? excerpt(maskContactInfo(postData.post.content ?? postData.post.event_payload?.description ?? ''))
     : DEFAULT_DESCRIPTION;
 
   return new ImageResponse(
