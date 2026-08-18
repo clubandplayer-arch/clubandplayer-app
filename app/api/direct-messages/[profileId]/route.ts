@@ -237,7 +237,7 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }, routeC
       reactions = reactionResult.data || [];
     }
 
-    let peerOnline = false;
+    let peerOnline: boolean | null = null;
     let peerLastReadAt: string | null = null;
     const admin = getSupabaseAdminClientOrNull();
     if (admin) {

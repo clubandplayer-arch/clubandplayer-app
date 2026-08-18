@@ -16,6 +16,7 @@ import { useNotificationsBadge } from '@/hooks/useNotificationsBadge';
 import BrandLogo from '@/components/brand/BrandLogo';
 import { buildProfileDisplayName } from '@/lib/displayName';
 import MobileSearchOverlay from '@/components/search/MobileSearchOverlay';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 
 type Role = 'athlete' | 'club' | 'staff' | 'fan' | 'admin' | 'institution' | 'guest';
 
@@ -123,23 +124,43 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [pathname, router]);
 
   useEffect(() => {
-    if (role === 'guest') return;
+    const supabase = getSupabaseBrowserClient();
+    let presenceChannel: ReturnType<typeof supabase.channel> | null = null;
+    let stopped = false;
 
-    const heartbeat = () => {
-      if (document.visibilityState === 'visible') {
-        void fetch('/api/presence/heartbeat', { method: 'POST', credentials: 'include' });
+    const heartbeat = async () => {
+      if (document.visibilityState !== 'visible') return;
+      try {
+        const response = await fetch('/api/presence/heartbeat', { method: 'POST', credentials: 'include' });
+        const payload = await response.json().catch(() => null);
+        const profileId = typeof payload?.profileId === 'string' ? payload.profileId : null;
+        if (!response.ok || !profileId || stopped || presenceChannel) return;
+
+        presenceChannel = supabase.channel('app-online-presence', {
+          config: { presence: { key: profileId } },
+        });
+        presenceChannel.subscribe(async (status: string) => {
+          if (status === 'SUBSCRIBED' && presenceChannel) {
+            await presenceChannel.track({ profileId, onlineAt: new Date().toISOString() });
+          }
+        });
+      } catch {
+        // The database heartbeat remains the fallback when Realtime is unavailable.
       }
     };
-    heartbeat();
-    const intervalId = window.setInterval(heartbeat, 30_000);
+
+    void heartbeat();
+    const intervalId = window.setInterval(() => void heartbeat(), 30_000);
     document.addEventListener('visibilitychange', heartbeat);
     window.addEventListener('focus', heartbeat);
     return () => {
+      stopped = true;
       window.clearInterval(intervalId);
       document.removeEventListener('visibilitychange', heartbeat);
       window.removeEventListener('focus', heartbeat);
+      if (presenceChannel) void supabase.removeChannel(presenceChannel);
     };
-  }, [role]);
+  }, []);
 
   const isFan = role === 'fan';
   const isInstitution = role === 'institution';

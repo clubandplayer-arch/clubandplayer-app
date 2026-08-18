@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/common/ToastProvider';
 import { compressImageInBrowser } from '@/lib/images/compressImageInBrowser';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { Lightbox } from '@/components/media/Lightbox';
 import {
   getDirectThread,
@@ -119,7 +120,7 @@ export function DirectMessageThread({
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [reactionPickerMessageId, setReactionPickerMessageId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [peerOnline, setPeerOnline] = useState(false);
+  const [peerOnline, setPeerOnline] = useState<boolean | null>(null);
   const [peerLastReadAt, setPeerLastReadAt] = useState<string | null>(null);
   const [peerAccountType, setPeerAccountType] = useState<string | null>(targetAccountType ?? null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -131,6 +132,7 @@ export function DirectMessageThread({
   const didMarkReadRef = useRef<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordingStreamRef = useRef<MediaStream | null>(null);
+  const realtimePresenceReadyRef = useRef(false);
   const thread = useMemo(() => messages || [], [messages]);
   const isDock = layout === 'dock';
 
@@ -241,7 +243,9 @@ export function DirectMessageThread({
       setMessages(threadData.messages || []);
       setCurrentProfileId(threadData.currentProfileId ?? null);
       setPeerAccountType(threadData.peer?.account_type ?? targetAccountType ?? null);
-      setPeerOnline(threadData.peerOnline);
+      if (!realtimePresenceReadyRef.current && threadData.peerOnline !== null) {
+        setPeerOnline(threadData.peerOnline);
+      }
       setPeerLastReadAt(threadData.peerLastReadAt);
     } catch (err: any) {
       const message = err?.message || 'Errore caricamento messaggi';
@@ -250,6 +254,27 @@ export function DirectMessageThread({
       show(message, { variant: 'error' });
     }
   }, [show, targetAccountType, targetProfileId]);
+
+  useEffect(() => {
+    const supabase = getSupabaseBrowserClient();
+    realtimePresenceReadyRef.current = false;
+    const channel = supabase.channel('app-online-presence');
+    const syncPresence = () => {
+      const state = channel.presenceState() as Record<string, Array<Record<string, unknown>>>;
+      realtimePresenceReadyRef.current = true;
+      setPeerOnline(Boolean(state[targetProfileId]?.length));
+    };
+
+    channel.on('presence', { event: 'sync' }, syncPresence);
+    channel.on('presence', { event: 'join' }, syncPresence);
+    channel.on('presence', { event: 'leave' }, syncPresence);
+    channel.subscribe();
+
+    return () => {
+      realtimePresenceReadyRef.current = false;
+      void supabase.removeChannel(channel);
+    };
+  }, [targetProfileId]);
 
   useEffect(() => {
     let mounted = true;
@@ -469,7 +494,7 @@ export function DirectMessageThread({
           </Link>
           <div className={`flex items-center gap-1.5 text-sm font-medium ${peerOnline ? 'text-emerald-600' : 'text-neutral-500'}`}>
             <span className={`h-2 w-2 rounded-full ${peerOnline ? 'bg-emerald-500' : 'bg-neutral-400'}`} aria-hidden="true" />
-            <span>{peerOnline ? 'Online' : 'Offline'}</span>
+            <span>{peerOnline === null ? 'Verifica presenza…' : peerOnline ? 'Online' : 'Offline'}</span>
           </div>
         </div>
         <div className="flex items-center gap-2">

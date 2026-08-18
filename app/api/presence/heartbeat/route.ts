@@ -18,7 +18,7 @@ export const POST = withAuth(async (_req: NextRequest, { supabase, user }) => {
     );
     if (error) throw error;
 
-    return successResponse({ lastSeenAt });
+    return successResponse({ lastSeenAt, profileId: profile.id });
   } catch (error) {
     console.error('[presence] heartbeat failed', { error, userId: user.id });
     Sentry.captureException(error);
