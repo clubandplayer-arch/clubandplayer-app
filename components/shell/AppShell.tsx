@@ -122,6 +122,25 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [pathname, router]);
 
+  useEffect(() => {
+    if (role === 'guest') return;
+
+    const heartbeat = () => {
+      if (document.visibilityState === 'visible') {
+        void fetch('/api/presence/heartbeat', { method: 'POST', credentials: 'include' });
+      }
+    };
+    heartbeat();
+    const intervalId = window.setInterval(heartbeat, 30_000);
+    document.addEventListener('visibilitychange', heartbeat);
+    window.addEventListener('focus', heartbeat);
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', heartbeat);
+      window.removeEventListener('focus', heartbeat);
+    };
+  }, [role]);
+
   const isFan = role === 'fan';
   const isInstitution = role === 'institution';
   const profileHref =
