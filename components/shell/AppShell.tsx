@@ -16,7 +16,7 @@ import { useNotificationsBadge } from '@/hooks/useNotificationsBadge';
 import BrandLogo from '@/components/brand/BrandLogo';
 import { buildProfileDisplayName } from '@/lib/displayName';
 import MobileSearchOverlay from '@/components/search/MobileSearchOverlay';
-import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { startRealtimePresence, stopRealtimePresence } from '@/lib/presence/realtimePresence';
 
 type Role = 'athlete' | 'club' | 'staff' | 'fan' | 'admin' | 'institution' | 'guest';
 
@@ -124,8 +124,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [pathname, router]);
 
   useEffect(() => {
-    const supabase = getSupabaseBrowserClient();
-    let presenceChannel: ReturnType<typeof supabase.channel> | null = null;
     let stopped = false;
 
     const heartbeat = async () => {
@@ -134,16 +132,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         const response = await fetch('/api/presence/heartbeat', { method: 'POST', credentials: 'include' });
         const payload = await response.json().catch(() => null);
         const profileId = typeof payload?.profileId === 'string' ? payload.profileId : null;
-        if (!response.ok || !profileId || stopped || presenceChannel) return;
-
-        presenceChannel = supabase.channel('app-online-presence', {
-          config: { presence: { key: profileId } },
-        });
-        presenceChannel.subscribe(async (status: string) => {
-          if (status === 'SUBSCRIBED' && presenceChannel) {
-            await presenceChannel.track({ profileId, onlineAt: new Date().toISOString() });
-          }
-        });
+        if (!response.ok || !profileId || stopped) return;
+        await startRealtimePresence(profileId);
       } catch {
         // The database heartbeat remains the fallback when Realtime is unavailable.
       }
@@ -158,7 +148,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       window.clearInterval(intervalId);
       document.removeEventListener('visibilitychange', heartbeat);
       window.removeEventListener('focus', heartbeat);
-      if (presenceChannel) void supabase.removeChannel(presenceChannel);
+      stopRealtimePresence();
     };
   }, []);
 

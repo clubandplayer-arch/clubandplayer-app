@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/common/ToastProvider';
 import { compressImageInBrowser } from '@/lib/images/compressImageInBrowser';
-import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { subscribeToRealtimePresence } from '@/lib/presence/realtimePresence';
 import { Lightbox } from '@/components/media/Lightbox';
 import {
   getDirectThread,
@@ -256,24 +256,11 @@ export function DirectMessageThread({
   }, [show, targetAccountType, targetProfileId]);
 
   useEffect(() => {
-    const supabase = getSupabaseBrowserClient();
     realtimePresenceReadyRef.current = false;
-    const channel = supabase.channel('app-online-presence');
-    const syncPresence = () => {
-      const state = channel.presenceState() as Record<string, Array<Record<string, unknown>>>;
+    return subscribeToRealtimePresence((onlineProfileIds) => {
       realtimePresenceReadyRef.current = true;
-      setPeerOnline(Boolean(state[targetProfileId]?.length));
-    };
-
-    channel.on('presence', { event: 'sync' }, syncPresence);
-    channel.on('presence', { event: 'join' }, syncPresence);
-    channel.on('presence', { event: 'leave' }, syncPresence);
-    channel.subscribe();
-
-    return () => {
-      realtimePresenceReadyRef.current = false;
-      void supabase.removeChannel(channel);
-    };
+      setPeerOnline(onlineProfileIds.has(targetProfileId));
+    });
   }, [targetProfileId]);
 
   useEffect(() => {
