@@ -16,6 +16,7 @@ import { useNotificationsBadge } from '@/hooks/useNotificationsBadge';
 import BrandLogo from '@/components/brand/BrandLogo';
 import { buildProfileDisplayName } from '@/lib/displayName';
 import MobileSearchOverlay from '@/components/search/MobileSearchOverlay';
+import { startRealtimePresence, stopRealtimePresence } from '@/lib/presence/realtimePresence';
 
 type Role = 'athlete' | 'club' | 'staff' | 'fan' | 'admin' | 'institution' | 'guest';
 
@@ -121,6 +122,35 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       cancelled = true;
     };
   }, [pathname, router]);
+
+  useEffect(() => {
+    let stopped = false;
+
+    const heartbeat = async () => {
+      if (document.visibilityState !== 'visible') return;
+      try {
+        const response = await fetch('/api/presence/heartbeat', { method: 'POST', credentials: 'include' });
+        const payload = await response.json().catch(() => null);
+        const profileId = typeof payload?.profileId === 'string' ? payload.profileId : null;
+        if (!response.ok || !profileId || stopped) return;
+        await startRealtimePresence(profileId);
+      } catch {
+        // The database heartbeat remains the fallback when Realtime is unavailable.
+      }
+    };
+
+    void heartbeat();
+    const intervalId = window.setInterval(() => void heartbeat(), 30_000);
+    document.addEventListener('visibilitychange', heartbeat);
+    window.addEventListener('focus', heartbeat);
+    return () => {
+      stopped = true;
+      window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', heartbeat);
+      window.removeEventListener('focus', heartbeat);
+      stopRealtimePresence();
+    };
+  }, []);
 
   const isFan = role === 'fan';
   const isInstitution = role === 'institution';

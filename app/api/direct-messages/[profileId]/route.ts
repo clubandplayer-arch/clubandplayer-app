@@ -237,6 +237,20 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }, routeC
       reactions = reactionResult.data || [];
     }
 
+    let peerOnline: boolean | null = null;
+    let peerLastReadAt: string | null = null;
+    const admin = getSupabaseAdminClientOrNull();
+    if (admin) {
+      const onlineCutoff = new Date(Date.now() - 75_000).toISOString();
+      const [presenceResult, readResult] = await Promise.all([
+        admin.from('profile_presence').select('last_seen_at').eq('profile_id', peer.id).gte('last_seen_at', onlineCutoff).maybeSingle(),
+        admin.from('direct_message_read_state').select('last_read_at').eq('owner_profile_id', peer.id).eq('other_profile_id', me.id).maybeSingle(),
+      ]);
+      // Additive migrations can briefly lag behind an application deployment.
+      if (!presenceResult.error) peerOnline = Boolean(presenceResult.data?.last_seen_at);
+      if (!readResult.error) peerLastReadAt = readResult.data?.last_read_at ?? null;
+    }
+
     return successResponse({
       messages: (rows || []).map((row: any) => ({
         ...row,
@@ -253,6 +267,8 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }, routeC
         avatar_url: peer.avatar_url,
       },
       currentProfileId: me.id,
+      peerOnline,
+      peerLastReadAt,
     });
   } catch (error: any) {
     console.error('[direct-messages] GET /api/direct-messages/:profileId unexpected error', {

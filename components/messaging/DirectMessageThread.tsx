@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/common/ToastProvider';
 import { compressImageInBrowser } from '@/lib/images/compressImageInBrowser';
+import { subscribeToRealtimePresence } from '@/lib/presence/realtimePresence';
 import { Lightbox } from '@/components/media/Lightbox';
 import {
   getDirectThread,
@@ -119,6 +120,8 @@ export function DirectMessageThread({
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [reactionPickerMessageId, setReactionPickerMessageId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [peerOnline, setPeerOnline] = useState<boolean | null>(null);
+  const [peerLastReadAt, setPeerLastReadAt] = useState<string | null>(null);
   const [peerAccountType, setPeerAccountType] = useState<string | null>(targetAccountType ?? null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState('');
@@ -126,9 +129,10 @@ export function DirectMessageThread({
   const lastMessageRef = useRef<HTMLDivElement | null>(null);
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
-  const didMarkReadRef = useRef(false);
+  const didMarkReadRef = useRef<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordingStreamRef = useRef<MediaStream | null>(null);
+  const realtimePresenceReadyRef = useRef(false);
   const thread = useMemo(() => messages || [], [messages]);
   const isDock = layout === 'dock';
 
@@ -239,6 +243,10 @@ export function DirectMessageThread({
       setMessages(threadData.messages || []);
       setCurrentProfileId(threadData.currentProfileId ?? null);
       setPeerAccountType(threadData.peer?.account_type ?? targetAccountType ?? null);
+      if (!realtimePresenceReadyRef.current && threadData.peerOnline !== null) {
+        setPeerOnline(threadData.peerOnline);
+      }
+      setPeerLastReadAt(threadData.peerLastReadAt);
     } catch (err: any) {
       const message = err?.message || 'Errore caricamento messaggi';
       console.error('[direct-messages] thread load failed', { error: err, targetProfileId });
@@ -246,6 +254,14 @@ export function DirectMessageThread({
       show(message, { variant: 'error' });
     }
   }, [show, targetAccountType, targetProfileId]);
+
+  useEffect(() => {
+    realtimePresenceReadyRef.current = false;
+    return subscribeToRealtimePresence((onlineProfileIds) => {
+      realtimePresenceReadyRef.current = true;
+      setPeerOnline(onlineProfileIds.has(targetProfileId));
+    });
+  }, [targetProfileId]);
 
   useEffect(() => {
     let mounted = true;
@@ -302,13 +318,14 @@ export function DirectMessageThread({
   }, [reloadThread]);
 
   useEffect(() => {
-    didMarkReadRef.current = false;
+    didMarkReadRef.current = null;
   }, [targetProfileId]);
 
   useEffect(() => {
     if (loading || error) return;
-    if (didMarkReadRef.current) return;
-    didMarkReadRef.current = true;
+    const lastIncomingId = [...thread].reverse().find((message) => message.sender_profile_id === targetProfileId)?.id ?? 'empty';
+    if (didMarkReadRef.current === lastIncomingId) return;
+    didMarkReadRef.current = lastIncomingId;
     let cancelled = false;
 
     const markRead = async () => {
@@ -325,7 +342,7 @@ export function DirectMessageThread({
     return () => {
       cancelled = true;
     };
-  }, [error, loading, targetProfileId]);
+  }, [error, loading, targetProfileId, thread]);
 
   useEffect(() => {
     scrollMessagesToBottom();
@@ -462,7 +479,10 @@ export function DirectMessageThread({
           <Link href={profileHref} className="block truncate text-lg font-semibold text-neutral-900 hover:underline">
             {headerName}
           </Link>
-          <div className="text-sm text-neutral-500">Messaggi diretti</div>
+          <div className={`flex items-center gap-1.5 text-sm font-medium ${peerOnline ? 'text-emerald-600' : 'text-neutral-500'}`}>
+            <span className={`h-2 w-2 rounded-full ${peerOnline ? 'bg-emerald-500' : 'bg-neutral-400'}`} aria-hidden="true" />
+            <span>{peerOnline === null ? 'Verifica presenza…' : peerOnline ? 'Online' : 'Offline'}</span>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -601,6 +621,17 @@ export function DirectMessageThread({
                       >
                         Elimina
                       </button>
+                    </div>
+                  )}
+                  {mine && index === thread.length - 1 && !isEditing && (
+                    <div className={`mt-1 text-right text-[11px] font-medium ${
+                      peerLastReadAt && new Date(peerLastReadAt).getTime() >= new Date(msg.created_at).getTime()
+                        ? 'text-emerald-700'
+                        : 'text-neutral-500'
+                    }`}>
+                      {peerLastReadAt && new Date(peerLastReadAt).getTime() >= new Date(msg.created_at).getTime()
+                        ? 'Letto'
+                        : 'Non letto'}
                     </div>
                   )}
                   {!!msg.reactions?.length && (

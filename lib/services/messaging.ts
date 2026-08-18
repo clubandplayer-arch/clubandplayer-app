@@ -52,6 +52,8 @@ type DirectMessageThread = {
   messages: DirectMessage[];
   currentProfileId: string | null;
   peer?: DirectMessagePeer | null;
+  peerOnline: boolean | null;
+  peerLastReadAt: string | null;
 };
 
 async function parseResponse(res: Response) {
@@ -109,6 +111,8 @@ export async function getDirectThread(targetProfileId: string): Promise<DirectMe
       messages: Array.isArray((json as any)?.messages) ? (json as any).messages : [],
       currentProfileId: typeof (json as any)?.currentProfileId === 'string' ? (json as any).currentProfileId : null,
       peer: (json as any)?.peer ?? null,
+      peerOnline: typeof (json as any)?.peerOnline === 'boolean' ? (json as any).peerOnline : null,
+      peerLastReadAt: typeof (json as any)?.peerLastReadAt === 'string' ? (json as any).peerLastReadAt : null,
     } satisfies DirectMessageThread;
   } catch (error: any) {
     console.error('[direct-messages] getDirectThread failed', { error, target });
