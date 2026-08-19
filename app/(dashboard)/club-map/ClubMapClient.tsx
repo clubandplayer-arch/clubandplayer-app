@@ -17,6 +17,7 @@ type ClubMapPin = {
 };
 
 const ITALY_CENTER: [number, number] = [42.7, 12.7];
+const DEFAULT_CLUB_LOGO_URL = '/logo-cp.svg';
 const ITALY_BOUNDS: [[number, number], [number, number]] = [
   [35.2, 6.0],
   [47.3, 19.2],
@@ -74,20 +75,14 @@ function escapeHtml(value: string) {
   });
 }
 
-function initials(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  return (parts[0]?.[0] || 'C').toUpperCase() + (parts[1]?.[0] || 'P').toUpperCase();
-}
-
 function markerSizeForZoom(zoom: number) {
   return Math.max(34, Math.min(70, Math.round(26 + zoom * 3.2)));
 }
 
 function buildClubIcon(L: LeafletLib, pin: ClubMapPin, size: number) {
   const safeName = escapeHtml(pin.name);
-  const logo = pin.avatar_url
-    ? `<img src="${escapeHtml(pin.avatar_url)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:9999px;" />`
-    : `<span style="display:flex;width:100%;height:100%;align-items:center;justify-content:center;border-radius:9999px;background:linear-gradient(135deg,#2563eb,#db2777);color:white;font-size:${Math.max(10, Math.round(size * 0.28))}px;font-weight:800;">${escapeHtml(initials(pin.name))}</span>`;
+  const logoUrl = pin.avatar_url ? escapeHtml(pin.avatar_url) : DEFAULT_CLUB_LOGO_URL;
+  const logo = `<img src="${logoUrl}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:9999px;" />`;
 
   return L.divIcon({
     className: 'cp-club-map-marker',
