@@ -50,6 +50,21 @@ create index if not exists profile_country_interests_country_idx
 create index if not exists profile_country_interests_profile_priority_idx
   on public.profile_country_interests (profile_id, priority);
 
+-- Reuse the existing generic trigger function without changing its definition.
+-- Both tables expose updated_at and can be changed after their initial insert:
+-- languages by admins and profile_preferences by their owner or an admin.
+drop trigger if exists trg_languages_updated_at on public.languages;
+create trigger trg_languages_updated_at
+before update on public.languages
+for each row
+execute function public.set_current_timestamp_updated_at();
+
+drop trigger if exists trg_profile_preferences_updated_at on public.profile_preferences;
+create trigger trg_profile_preferences_updated_at
+before update on public.profile_preferences
+for each row
+execute function public.set_current_timestamp_updated_at();
+
 alter table public.languages enable row level security;
 alter table public.profile_preferences enable row level security;
 alter table public.profile_country_interests enable row level security;

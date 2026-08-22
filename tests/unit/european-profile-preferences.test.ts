@@ -90,6 +90,21 @@ test('migration creates only phase 2A tables with safe nullable preferences', ()
   assert.match(migrationSql, /primary key \(profile_id, country_id\)/i);
 });
 
+test('migration keeps mutable phase 2A updated_at values current with scoped triggers', () => {
+  for (const table of ['languages', 'profile_preferences']) {
+    assert.match(
+      migrationSql,
+      new RegExp(
+        `create trigger trg_${table}_updated_at\\s+before update on public\\.${table}\\s+for each row\\s+execute function public\\.set_current_timestamp_updated_at\\(\\)`,
+        'i',
+      ),
+    );
+  }
+
+  assert.doesNotMatch(migrationSql, /create(?:\s+or\s+replace)?\s+function\s+public\.set_current_timestamp_updated_at/i);
+  assert.doesNotMatch(migrationSql, /trg_profile_country_interests_updated_at/i);
+});
+
 test('migration neither changes nor backfills protected legacy domains', () => {
   assert.doesNotMatch(migrationSql, /alter\s+table\s+(?:if\s+exists\s+)?public\.(profiles|opportunities|applications|posts|follows|regions|provinces|municipalities)\b/i);
   assert.doesNotMatch(migrationSql, /(?:insert\s+into|update|delete\s+from)\s+public\.(profiles|opportunities|applications)\b/i);
