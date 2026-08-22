@@ -8,6 +8,7 @@ import {
 } from '../../lib/taxonomy/catalog';
 import {
   getLegacySportLabel,
+  normalizeLegacyTaxonomyValue,
   resolveCountryTaxonomy,
   resolveSportTaxonomy,
 } from '../../lib/taxonomy/legacyMappings';
@@ -32,6 +33,23 @@ test('contains every launch country exactly once and keeps future countries inac
     assert.equal(country.isActive, false);
   }
   assert.match(migrationSql, /create unique index if not exists countries_iso2_key/i);
+});
+
+test('catalogues every country code currently present in production without activating extra markets', () => {
+  const productionCountryCodes = ['IT', 'BR', 'AL', 'AR', 'BJ', 'DO', 'ES', 'GH', 'GQ', 'PY', 'RU', 'SN', 'UA', 'DE'];
+  for (const code of productionCountryCodes) {
+    const country = CANONICAL_COUNTRIES.find((item) => item.iso2 === code);
+    assert.ok(country, code);
+    assert.equal(resolveCountryTaxonomy(code).country?.iso2, code);
+  }
+
+  const inactiveProductionCountries = ['BR', 'AL', 'AR', 'BJ', 'DO', 'GH', 'GQ', 'PY', 'RU', 'SN', 'UA'];
+  for (const code of inactiveProductionCountries) {
+    const country = CANONICAL_COUNTRIES.find((item) => item.iso2 === code);
+    assert.equal(country?.isSupported, false, code);
+    assert.equal(country?.isActive, false, code);
+    assert.match(migrationSql, new RegExp(`\\('${code}', '[A-Z]{3}', '[^']+', false, false, \\d+\\)`));
+  }
 });
 
 test('country resolver follows canonical, legacy, unknown and empty precedence', () => {
@@ -102,6 +120,27 @@ test('mapping is case-insensitive and preserves unknown legacy values', () => {
   assert.equal(unknown.legacyLabel, 'Sport inventato');
   assert.equal(unknown.sport, null);
   assert.equal(getLegacySportLabel('Pallavolo'), 'Volley');
+});
+
+test('application normalization exactly matches sport mapping keys seeded in SQL', () => {
+  const cases = [
+    ['Calcio a 8', 'calcio_a_8'],
+    ['Hockey su prato', 'hockey_su_prato'],
+    ['Hockey su ghiaccio', 'hockey_su_ghiaccio'],
+    ['Football americano', 'football_americano'],
+    ['Pallavólo', 'pallavolo'],
+    ['  cALCIO A 8  ', 'calcio_a_8'],
+    ['  HOCKEY SU PRATO ', 'hockey_su_prato'],
+  ] as const;
+
+  for (const [source, expectedKey] of cases) {
+    assert.equal(normalizeLegacyTaxonomyValue(source), expectedKey, source);
+    assert.match(
+      migrationSql,
+      new RegExp(`\\('[^']+', '${expectedKey}', '[^']+'`),
+      `SQL seed is missing normalized key ${expectedKey}`,
+    );
+  }
 });
 
 test('cricket is resolvable but is not active or part of the 14 UI sports', () => {

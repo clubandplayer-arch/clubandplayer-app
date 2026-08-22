@@ -175,7 +175,18 @@ values
   ('PL', 'POL', 'Poland', true, true, 60),
   ('PT', 'PRT', 'Portugal', false, false, 70),
   ('DE', 'DEU', 'Germany', false, false, 80),
-  ('AT', 'AUT', 'Austria', false, false, 90)
+  ('AT', 'AUT', 'Austria', false, false, 90),
+  ('AL', 'ALB', 'Albania', false, false, 100),
+  ('AR', 'ARG', 'Argentina', false, false, 110),
+  ('BJ', 'BEN', 'Benin', false, false, 120),
+  ('BR', 'BRA', 'Brazil', false, false, 130),
+  ('DO', 'DOM', 'Dominican Republic', false, false, 140),
+  ('GH', 'GHA', 'Ghana', false, false, 150),
+  ('GQ', 'GNQ', 'Equatorial Guinea', false, false, 160),
+  ('PY', 'PRY', 'Paraguay', false, false, 170),
+  ('RU', 'RUS', 'Russian Federation', false, false, 180),
+  ('SN', 'SEN', 'Senegal', false, false, 190),
+  ('UA', 'UKR', 'Ukraine', false, false, 200)
 on conflict (iso2) do update set
   iso3 = excluded.iso3,
   official_name = excluded.official_name,

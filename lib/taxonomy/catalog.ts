@@ -42,6 +42,17 @@ export const CANONICAL_COUNTRIES = [
   { iso2: 'PT', iso3: 'PRT', officialName: 'Portugal', isSupported: false, isActive: false, displayOrder: 70 },
   { iso2: 'DE', iso3: 'DEU', officialName: 'Germany', isSupported: false, isActive: false, displayOrder: 80 },
   { iso2: 'AT', iso3: 'AUT', officialName: 'Austria', isSupported: false, isActive: false, displayOrder: 90 },
+  { iso2: 'AL', iso3: 'ALB', officialName: 'Albania', isSupported: false, isActive: false, displayOrder: 100 },
+  { iso2: 'AR', iso3: 'ARG', officialName: 'Argentina', isSupported: false, isActive: false, displayOrder: 110 },
+  { iso2: 'BJ', iso3: 'BEN', officialName: 'Benin', isSupported: false, isActive: false, displayOrder: 120 },
+  { iso2: 'BR', iso3: 'BRA', officialName: 'Brazil', isSupported: false, isActive: false, displayOrder: 130 },
+  { iso2: 'DO', iso3: 'DOM', officialName: 'Dominican Republic', isSupported: false, isActive: false, displayOrder: 140 },
+  { iso2: 'GH', iso3: 'GHA', officialName: 'Ghana', isSupported: false, isActive: false, displayOrder: 150 },
+  { iso2: 'GQ', iso3: 'GNQ', officialName: 'Equatorial Guinea', isSupported: false, isActive: false, displayOrder: 160 },
+  { iso2: 'PY', iso3: 'PRY', officialName: 'Paraguay', isSupported: false, isActive: false, displayOrder: 170 },
+  { iso2: 'RU', iso3: 'RUS', officialName: 'Russian Federation', isSupported: false, isActive: false, displayOrder: 180 },
+  { iso2: 'SN', iso3: 'SEN', officialName: 'Senegal', isSupported: false, isActive: false, displayOrder: 190 },
+  { iso2: 'UA', iso3: 'UKR', officialName: 'Ukraine', isSupported: false, isActive: false, displayOrder: 200 },
 ] as const satisfies readonly CanonicalCountry[];
 
 export const CANONICAL_SPORTS = [
