@@ -168,12 +168,13 @@ test('missing translation keys fall back safely', async () => {
   assert.equal(interpolateMessage('Hello {name}', { name: 'Alex' }), 'Hello Alex');
 });
 
-test('phase 2B adds no migration and keeps the two applied European migrations', () => {
+test('keeps the two applied Phase 1/2 migrations and admits only the Phase 3A foundation', () => {
   const migrationDirectory = new URL('../../supabase/migrations/', import.meta.url);
   const phaseMigrations = readdirSync(migrationDirectory).filter((name) => name.includes('european_'));
   assert.deepEqual(phaseMigrations, [
     '20260822120000_european_catalog_foundation.sql',
     '20260822130000_european_profile_preferences.sql',
+    '20260824120000_european_geo_area_foundation.sql',
   ]);
 
   const persistenceSource = readFileSync(new URL('../../lib/i18n/persistence.ts', import.meta.url), 'utf8');
