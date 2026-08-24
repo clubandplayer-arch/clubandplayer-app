@@ -7,6 +7,7 @@ import { Search } from 'lucide-react';
 import SearchResultRow, { type SearchResult } from '@/components/search/SearchResultRow';
 import { COUNTRIES, getCountryName } from '@/lib/geo/countries';
 import { SPORTS, SPORTS_ROLES, STAFF_ROLES, normalizeSport } from '@/lib/opps/constants';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 type SearchType = 'all' | 'opportunities' | 'clubs' | 'institutions' | 'players' | 'staff' | 'posts' | 'events';
 type LocationOption = { id: number; name: string };
@@ -40,17 +41,6 @@ const EMPTY_RESULTS: SearchResultsByKind = {
   posts: [],
   events: [],
 };
-
-const TAB_ITEMS: Array<{ label: string; value: SearchType }> = [
-  { label: 'Tutti', value: 'all' },
-  { label: 'Ente', value: 'institutions' },
-  { label: 'Opportunità', value: 'opportunities' },
-  { label: 'Club', value: 'clubs' },
-  { label: 'Player', value: 'players' },
-  { label: 'Staff', value: 'staff' },
-  { label: 'Post', value: 'posts' },
-  { label: 'Eventi', value: 'events' },
-];
 
 const PAGE_LIMIT = 10;
 const DEFAULT_COUNTRY = 'IT';
@@ -126,6 +116,17 @@ function hasActiveFilters(filters: SearchFilters) {
 }
 
 export default function SearchPage() {
+  const { t } = useI18n();
+  const tabItems: Array<{ label: string; value: SearchType }> = [
+    { label: t('search.all'), value: 'all' },
+    { label: t('search.institutions'), value: 'institutions' },
+    { label: t('navigation.opportunities'), value: 'opportunities' },
+    { label: t('search.clubs'), value: 'clubs' },
+    { label: t('search.players'), value: 'players' },
+    { label: t('search.staff'), value: 'staff' },
+    { label: t('search.posts'), value: 'posts' },
+    { label: t('search.events'), value: 'events' },
+  ];
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryParam = (searchParams.get('q') || '').trim();
@@ -405,8 +406,8 @@ export default function SearchPage() {
               type="search"
               value={inputValue}
               onChange={(event) => setInputValue(event.target.value)}
-              placeholder="Cerca club, enti, player, opportunità, post, eventi…"
-              aria-label="Cerca"
+              placeholder={t('navigation.searchPlaceholder')}
+              aria-label={t('common.search')}
               className="h-11 w-full rounded-full border border-slate-200 bg-white px-10 text-sm text-slate-700 shadow-sm transition focus:border-[var(--brand)] focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/20"
             />
           </div>
@@ -414,14 +415,14 @@ export default function SearchPage() {
             type="submit"
             className="inline-flex items-center justify-center rounded-full border border-[var(--brand)] bg-[var(--brand)] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
           >
-            Cerca
+            {t('common.search')}
           </button>
         </form>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="grid gap-4 lg:grid-cols-4">
             <label className="space-y-2 text-sm text-slate-700">
-              <span className="font-medium">Nazione</span>
+              <span className="font-medium">{t('search.country')}</span>
               <select
                 value={filters.country}
                 onChange={(event) => updateFilter('country', event.target.value)}
@@ -429,21 +430,21 @@ export default function SearchPage() {
               >
                 {COUNTRY_OPTIONS.map((country) => (
                   <option key={country.code || 'all'} value={country.code}>
-                    {country.label}
+                    {country.code ? country.label : t('search.allCountries')}
                   </option>
                 ))}
               </select>
             </label>
 
             <label className="space-y-2 text-sm text-slate-700">
-              <span className="font-medium">Regione</span>
+              <span className="font-medium">{t('search.region')}</span>
               <select
                 value={filters.region}
                 onChange={(event) => updateFilter('region', event.target.value)}
                 disabled={!isItalySelected}
                 className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-[var(--brand)] focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/20 disabled:bg-slate-100 disabled:text-slate-400"
               >
-                <option value="">{isItalySelected ? 'Tutte le regioni' : `Disponibile solo con ${ITALY_LABEL}`}</option>
+                <option value="">{isItalySelected ? t('search.allRegions') : `Disponibile solo con ${ITALY_LABEL}`}</option>
                 {regions.map((region) => (
                   <option key={region.id} value={region.name}>
                     {region.name}
@@ -453,14 +454,14 @@ export default function SearchPage() {
             </label>
 
             <label className="space-y-2 text-sm text-slate-700">
-              <span className="font-medium">Provincia</span>
+              <span className="font-medium">{t('search.province')}</span>
               <select
                 value={filters.province}
                 onChange={(event) => updateFilter('province', event.target.value)}
                 disabled={!isItalySelected || !filters.region}
                 className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-[var(--brand)] focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/20 disabled:bg-slate-100 disabled:text-slate-400"
               >
-                <option value="">Tutte le province</option>
+                <option value="">{t('search.allProvinces')}</option>
                 {provinces.map((province) => (
                   <option key={province.id} value={province.name}>
                     {province.name}
@@ -470,14 +471,14 @@ export default function SearchPage() {
             </label>
 
             <label className="space-y-2 text-sm text-slate-700">
-              <span className="font-medium">Città</span>
+              <span className="font-medium">{t('search.city')}</span>
               <select
                 value={filters.city}
                 onChange={(event) => updateFilter('city', event.target.value)}
                 disabled={!isItalySelected || !filters.province}
                 className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-[var(--brand)] focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/20 disabled:bg-slate-100 disabled:text-slate-400"
               >
-                <option value="">Tutte le città</option>
+                <option value="">{t('search.allCities')}</option>
                 {cities.map((city) => (
                   <option key={city.id} value={city.name}>
                     {city.name}
@@ -489,13 +490,13 @@ export default function SearchPage() {
 
           <div className="mt-4 grid gap-4 lg:grid-cols-2">
             <label className="space-y-2 text-sm text-slate-700">
-              <span className="font-medium">Sport</span>
+              <span className="font-medium">{t('search.sport')}</span>
               <select
                 value={filters.sport}
                 onChange={(event) => updateFilter('sport', event.target.value)}
                 className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-[var(--brand)] focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/20"
               >
-                <option value="">Tutti gli sport</option>
+                <option value="">{t('search.allSports')}</option>
                 {SPORTS.map((sport) => (
                   <option key={sport} value={sport}>
                     {sport}
@@ -505,14 +506,14 @@ export default function SearchPage() {
             </label>
 
             <label className="space-y-2 text-sm text-slate-700">
-              <span className="font-medium">Ruolo</span>
+              <span className="font-medium">{t('search.role')}</span>
               <select
                 value={filters.role}
                 onChange={(event) => updateFilter('role', event.target.value)}
                 disabled={!filters.sport}
                 className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-[var(--brand)] focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/20 disabled:bg-slate-100 disabled:text-slate-400"
               >
-                <option value="">Tutti i ruoli</option>
+                <option value="">{t('search.allRoles')}</option>
                 <option value="__group_player" disabled>──────── PLAYER ────────</option>
                 {playerRoles.map((role) => (
                   <option key={role} value={role}>
@@ -551,7 +552,7 @@ export default function SearchPage() {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          {TAB_ITEMS.map((tab) => {
+          {tabItems.map((tab) => {
             const isActive = tab.value === type;
             const countLabel =
               tab.value === 'all'
@@ -659,7 +660,7 @@ export default function SearchPage() {
           )}
 
           {loading && (
-            <div className="text-sm text-slate-500">Caricamento risultati…</div>
+            <div className="text-sm text-slate-500">{t('search.loadingResults')}</div>
           )}
         </div>
       )}

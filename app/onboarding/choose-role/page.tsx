@@ -3,10 +3,12 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { MaterialIcon, type MaterialIconName } from '@/components/icons/MaterialIcon';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 type Role = 'institution' | 'club' | 'athlete' | 'staff' | 'fan';
 
 export default function ChooseRolePage() {
+  const { t } = useI18n();
   const router = useRouter();
   const sp = useSearchParams();
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
@@ -27,7 +29,7 @@ export default function ChooseRolePage() {
       });
       if (!r.ok) {
         const j = await r.json().catch(() => ({}));
-        throw new Error(j?.error ?? 'Salvataggio non riuscito');
+        throw new Error(j?.error ?? t('roles.saveError'));
       }
       if (role === 'institution') {
         router.replace('/institution/verification');
@@ -57,37 +59,37 @@ export default function ChooseRolePage() {
   }> = [
     {
       role: 'institution',
-      prefix: 'Sono un',
-      title: 'ENTE',
-      description: 'Federazioni, EPS, comitati, delegazioni e leghe con verifica documentale',
+      prefix: '',
+      title: t('roles.institution'),
+      description: t('roles.institutionDescription'),
       icon: 'globe',
     },
     {
       role: 'club',
-      prefix: 'Sono una',
-      title: 'SQUADRA',
-      description: 'Gestisci il tuo club, pubblica contenuti e crea opportunità',
+      prefix: '',
+      title: t('roles.club'),
+      description: t('roles.clubDescription'),
       icon: 'opportunities',
     },
     {
       role: 'athlete',
-      prefix: 'Sono un',
-      title: 'GIOCATORE',
-      description: 'Vivi il tuo sport, crea il tuo profilo e trova opportunità',
+      prefix: '',
+      title: t('roles.player'),
+      description: t('roles.playerDescription'),
       icon: 'person',
     },
     {
       role: 'staff',
-      prefix: 'Sono un Membro',
-      title: 'STAFF',
-      description: 'Lavora nello sport, crea il tuo profilo professionale e trova nuove opportunità',
+      prefix: '',
+      title: t('roles.staff'),
+      description: t('roles.staffDescription'),
       icon: 'network',
     },
     {
       role: 'fan',
-      prefix: 'Sono un',
-      title: 'TIFOSO',
-      description: 'Segui, vivi e sostieni Club e Player, dentro e fuori dal campo',
+      prefix: '',
+      title: t('roles.fan'),
+      description: t('roles.fanDescription'),
       icon: 'following',
     },
   ];
@@ -96,9 +98,9 @@ export default function ChooseRolePage() {
     <main className="mx-auto w-full max-w-6xl px-4 py-10 md:py-14">
       <div className="mx-auto max-w-3xl text-center">
         <h1 className="text-3xl font-semibold tracking-tight text-[#0b5477] md:text-4xl">
-          Scegli come vuoi usare Club and Player
+          {t('roles.heading')}
         </h1>
-        <p className="mt-3 text-base text-neutral-600 md:text-lg">Ogni ruolo offre un&apos;esperienza diversa</p>
+        <p className="mt-3 text-base text-neutral-600 md:text-lg">{t('roles.subtitle')}</p>
       </div>
 
       <div className="mx-auto mt-8 grid max-w-6xl gap-4 sm:grid-cols-2 xl:grid-cols-5">
@@ -136,7 +138,7 @@ export default function ChooseRolePage() {
           onClick={() => selectedRole && choose(selectedRole)}
           className="min-w-[220px] rounded-2xl bg-[#7db0c5] px-8 py-4 text-2xl font-semibold text-white transition hover:bg-[#6ca4bb] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {saving ? 'Salvataggio…' : 'Continua'}
+          {saving ? t('roles.saving') : t('common.continue')}
         </button>
       </div>
     </main>
