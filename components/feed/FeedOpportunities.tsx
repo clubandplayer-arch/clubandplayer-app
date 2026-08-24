@@ -1,4 +1,5 @@
 'use client';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 import { useEffect, useState } from 'react';
 import OpportunityCard from '@/components/opportunities/OpportunityCard';
@@ -7,6 +8,7 @@ import type { Opportunity } from '@/types/opportunity';
 type Role = 'athlete' | 'staff' | 'club' | 'guest';
 
 export default function FeedOpportunities() {
+  const { t } = useI18n();
   const [role, setRole] = useState<Role>('guest');
   const [meId, setMeId] = useState<string | null>(null);
   const [items, setItems] = useState<Opportunity[]>([]);
@@ -110,7 +112,7 @@ export default function FeedOpportunities() {
   }
 
   if (!items.length) {
-    return <div className="rounded-xl border p-4 bg-white">Nessuna opportunità trovata.</div>;
+    return <div className="rounded-xl border p-4 bg-white">{t('feed.noOpportunityFound')}</div>;
   }
 
   return (

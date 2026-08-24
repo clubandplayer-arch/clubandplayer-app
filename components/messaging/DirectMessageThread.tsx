@@ -37,9 +37,9 @@ const CHAT_EMOJIS = [
 ];
 const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
 
-function formatDate(value: string) {
+function formatDate(value: string, locale: string) {
   try {
-    return new Date(value).toLocaleString('it-IT', {
+    return new Date(value).toLocaleString(locale, {
       day: '2-digit',
       month: 'short',
       hour: '2-digit',
@@ -102,7 +102,7 @@ export function DirectMessageThread({
   className,
   targetAccountType,
 }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const router = useRouter();
   const { show } = useToast();
   const [messages, setMessages] = useState<DirectMessage[]>([]);
@@ -170,7 +170,7 @@ export function DirectMessageThread({
   const toggleRecording = async () => {
     if (recording) { mediaRecorderRef.current?.stop(); return; }
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
-      setSendError('La registrazione vocale non è supportata da questo browser'); return;
+      setSendError(t('messages.voiceUnsupported')); return;
     }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -184,7 +184,7 @@ export function DirectMessageThread({
         const mime = recorder.mimeType.split(';')[0] || 'audio/webm';
         const extension = mime === 'audio/mp4' ? 'm4a' : mime === 'audio/ogg' ? 'ogg' : 'webm';
         const blob = new Blob(chunks, { type: mime });
-        if (!blob.size) setSendError('La registrazione è vuota, riprova');
+        if (!blob.size) setSendError(t('messages.voiceEmpty'));
         else if (blob.size <= 5_000_000) setVoice(new File([blob], `vocale.${extension}`, { type: mime }));
         else setSendError('Il messaggio vocale supera 5 MB');
         stream.getTracks().forEach((track) => track.stop());
@@ -216,7 +216,7 @@ export function DirectMessageThread({
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      show('La foto non può superare 10 MB', { variant: 'error' });
+      show(t('messages.photoTooLarge'), { variant: 'error' });
       return;
     }
     setSendError(null);
@@ -250,12 +250,12 @@ export function DirectMessageThread({
       }
       setPeerLastReadAt(threadData.peerLastReadAt);
     } catch (err: any) {
-      const message = err?.message || 'Errore caricamento messaggi';
+      const message = err?.message || t('messages.loadError');
       console.error('[direct-messages] thread load failed', { error: err, targetProfileId });
       setError(message);
       show(message, { variant: 'error' });
     }
-  }, [show, targetAccountType, targetProfileId]);
+  }, [show, t, targetAccountType, targetProfileId]);
 
   useEffect(() => {
     realtimePresenceReadyRef.current = false;
@@ -364,7 +364,7 @@ export function DirectMessageThread({
       if (cameraInputRef.current) cameraInputRef.current.value = '';
       await reloadThread();
     } catch (err: any) {
-      const message = err?.message || 'Errore invio messaggio';
+      const message = err?.message || t('messages.sendError');
       console.error('[direct-messages] send message failed', { error: err, targetProfileId });
       setSendError(message);
       show(message, { variant: 'error' });
@@ -398,7 +398,7 @@ export function DirectMessageThread({
       cancelEditing();
       scrollMessagesToBottom();
     } catch (err: any) {
-      const message = err?.message || 'Non è stato possibile modificare il messaggio';
+      const message = err?.message || t('messages.editError');
       console.error('[direct-messages] edit message failed', { error: err, targetId });
       show(message, { variant: 'error' });
     }
@@ -415,7 +415,7 @@ export function DirectMessageThread({
       if (editingMessageId === messageId) cancelEditing();
       scrollMessagesToBottom();
     } catch (err: any) {
-      const message = err?.message || 'Non è stato possibile eliminare il messaggio';
+      const message = err?.message || t('messages.deleteError');
       console.error('[direct-messages] delete message failed', { error: err, messageId });
       show(message, { variant: 'error' });
     }
@@ -430,7 +430,7 @@ export function DirectMessageThread({
       setReactionPickerMessageId(null);
       await reloadThread();
     } catch (err: any) {
-      show(err?.message || 'Non è stato possibile aggiungere la reazione', { variant: 'error' });
+      show(err?.message || t('messages.reactionError'), { variant: 'error' });
     }
   };
 
@@ -450,7 +450,7 @@ export function DirectMessageThread({
         router.push('/messages');
       }
     } catch (err: any) {
-      const message = err?.message || 'Non è stato possibile cancellare la chat';
+      const message = err?.message || t('messages.clearError');
       console.error('[direct-messages] delete conversation failed', { error: err, targetProfileId });
       show(message, { variant: 'error' });
     }
@@ -499,7 +499,7 @@ export function DirectMessageThread({
               type="button"
               onClick={onClose}
               className="inline-flex h-9 w-9 items-center justify-center rounded-full text-neutral-600 transition hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-              aria-label="Chiudi conversazione"
+              aria-label={t('messages.closeConversation')}
             >
               ×
             </button>
@@ -535,7 +535,7 @@ export function DirectMessageThread({
                   type="button"
                   onClick={() => setReactionPickerMessageId((value) => value === msg.id ? null : msg.id)}
                   className={`mx-2 flex h-8 w-8 flex-none self-center items-center justify-center rounded-full border bg-white text-base shadow-sm transition hover:bg-neutral-50 sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100 ${mine ? '' : 'order-2'}`}
-                  aria-label="Aggiungi una reazione"
+                  aria-label={t('messages.addReaction')}
                 >
                   ☺
                 </button>
@@ -552,7 +552,7 @@ export function DirectMessageThread({
                   }`}
                 >
                   <div className="flex items-center justify-between gap-3 text-[11px] uppercase tracking-wide text-neutral-500">
-                    <span>{formatDate(msg.created_at)}</span>
+                    <span>{formatDate(msg.created_at, locale)}</span>
                     {msg.edited_at && <span className="text-[10px] normal-case text-neutral-500">(modificato)</span>}
                   </div>
                   {isEditing ? (
@@ -569,14 +569,14 @@ export function DirectMessageThread({
                           onClick={cancelEditing}
                           className="rounded-md border border-neutral-200 bg-white px-3 py-1 text-neutral-700 transition hover:bg-neutral-100"
                         >
-                          Annulla
+                          {t('common.cancel')}
                         </button>
                         <button
                           type="button"
                           onClick={handleEditSubmit}
                           className="rounded-md bg-[var(--brand,#0ea5e9)] px-3 py-1 font-semibold text-white transition hover:bg-[var(--brand-strong,#0284c7)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand,#0ea5e9)] focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                         >
-                          Salva
+                          {t('common.save')}
                         </button>
                       </div>
                     </div>
@@ -587,13 +587,13 @@ export function DirectMessageThread({
                           type="button"
                           onClick={() => setLightboxUrl(msg.attachment_url ?? null)}
                           className="mt-1 block cursor-zoom-in overflow-hidden rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2"
-                          aria-label="Apri la foto allegata"
+                          aria-label={t('messages.openPhoto')}
                         >
                           {/* The authenticated endpoint redirects to a short-lived private Storage URL. */}
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={msg.attachment_url}
-                            alt="Foto allegata al messaggio"
+                            alt={t('upload.attachedPhoto')}
                             className="max-h-80 w-auto max-w-full rounded-xl object-contain"
                           />
                         </button>
@@ -613,7 +613,7 @@ export function DirectMessageThread({
                         onClick={() => startEditing(msg)}
                         className="rounded px-2 py-1 transition hover:bg-neutral-200"
                       >
-                        Modifica
+                        {t('common.edit')}
                       </button>
                       <span className="text-neutral-300">•</span>
                       <button
@@ -621,7 +621,7 @@ export function DirectMessageThread({
                         onClick={() => void handleDeleteMessage(msg.id)}
                         className="rounded px-2 py-1 transition hover:bg-neutral-200"
                       >
-                        Elimina
+                        {t('common.delete')}
                       </button>
                     </div>
                   )}
@@ -664,18 +664,18 @@ export function DirectMessageThread({
             <button
               type="button"
               onClick={() => setAttachment(null)}
-              aria-label="Rimuovi foto"
+              aria-label={t('upload.removePhoto')}
               className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center rounded-full bg-neutral-800 text-lg text-white shadow"
             >
               ×
             </button>
-            <span className="absolute bottom-1 left-2 text-[11px] text-neutral-500">Sarà ottimizzata automaticamente</span>
+            <span className="absolute bottom-1 left-2 text-[11px] text-neutral-500">{t('messages.optimized')}</span>
           </div>
         )}
         {voicePreviewUrl && (
           <div className="flex items-center gap-2 rounded-lg border bg-neutral-50 p-2">
             <audio controls src={voicePreviewUrl} className="h-10 flex-1" />
-            <button type="button" onClick={() => setVoice(null)} aria-label="Rimuovi messaggio vocale" className="rounded-full px-2 py-1 hover:bg-neutral-200">×</button>
+            <button type="button" onClick={() => setVoice(null)} aria-label={t('messages.removeVoice')} className="rounded-full px-2 py-1 hover:bg-neutral-200">×</button>
           </div>
         )}
         <textarea
@@ -723,7 +723,7 @@ export function DirectMessageThread({
               <span aria-hidden="true">📎</span><span className="hidden sm:inline">{t('messages.attachPhoto')}</span><span className="sm:hidden">{t('messages.photo')}</span>
             </button>
             <div className="relative">
-              <button type="button" onClick={() => setShowEmojiPicker((value) => !value)} className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-neutral-300 text-xl hover:bg-neutral-50" aria-label="Aggiungi emoji">😊</button>
+              <button type="button" onClick={() => setShowEmojiPicker((value) => !value)} className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-neutral-300 text-xl hover:bg-neutral-50" aria-label={t('messages.addEmoji')}>😊</button>
               {showEmojiPicker && (
                 <div className="absolute bottom-12 left-0 z-20 grid w-64 grid-cols-8 gap-1 rounded-xl border bg-white p-3 shadow-xl">
                   {CHAT_EMOJIS.map((emoji, index) => (
@@ -742,7 +742,7 @@ export function DirectMessageThread({
               className="inline-flex items-center gap-2 rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-50 disabled:opacity-60 sm:hidden"
               aria-label="Scatta una foto"
             >
-              <span aria-hidden="true">📷</span><span>Fotocamera</span>
+              <span aria-hidden="true">📷</span><span>{t('messages.camera')}</span>
             </button>
           </div>
           <button
@@ -757,7 +757,7 @@ export function DirectMessageThread({
       </div>
       {lightboxUrl ? (
         <Lightbox
-          items={[{ url: lightboxUrl, type: 'image', alt: 'Foto allegata al messaggio' }]}
+          items={[{ url: lightboxUrl, type: 'image', alt: t('upload.attachedPhoto') }]}
           index={0}
           onClose={() => setLightboxUrl(null)}
         />

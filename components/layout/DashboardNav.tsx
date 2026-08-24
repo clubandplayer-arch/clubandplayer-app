@@ -1,4 +1,5 @@
 'use client';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -22,6 +23,7 @@ function pill(active: boolean) {
 }
 
 export default function DashboardNav() {
+  const { t } = useI18n();
   const pathname = usePathname();
   const [role, setRole] = useState<Role>(null);
   const [sentCount, setSentCount] = useState(0);
@@ -149,7 +151,7 @@ export default function DashboardNav() {
               isActive('/applications/sent')
             )}
           >
-            Candidature inviate
+            {t('navigation.sentApplications')}
             {sentCount > 0 && (
               <span className="ml-1 rounded-full bg-gray-900 px-1.5 text-[10px] text-white">
                 {sentCount}
@@ -160,7 +162,7 @@ export default function DashboardNav() {
             href="/applications"
             className={pill(isActive('/applications'))}
           >
-            Candidature ricevute
+            {t('navigation.receivedApplications')}
             {receivedCount > 0 && (
               <span className="ml-1 rounded-full bg-gray-900 px-1.5 text-[10px] text-white">
                 {receivedCount}

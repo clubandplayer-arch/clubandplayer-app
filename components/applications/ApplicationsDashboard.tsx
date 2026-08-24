@@ -1,5 +1,6 @@
 // components/applications/ApplicationsDashboard.tsx
 'use client';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 import { useEffect, useMemo, useState } from 'react';
 
@@ -71,6 +72,7 @@ async function detectRole(): Promise<Role> {
 }
 
 export default function ApplicationsDashboard() {
+  const { t } = useI18n();
   const [role, setRole] = useState<Role>('guest');
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -211,7 +213,7 @@ export default function ApplicationsDashboard() {
   return (
     <main className="mx-auto max-w-6xl p-4 space-y-4">
       <header className="space-y-1">
-        <h1 className="heading-h1">Candidature</h1>
+        <h1 className="heading-h1">{t('applications.title')}</h1>
         <p className="text-sm text-gray-600">
           {role === 'club'
             ? 'Gestisci le candidature ricevute sulle opportunità pubblicate dal tuo club.'
@@ -232,7 +234,7 @@ export default function ApplicationsDashboard() {
             onChange={(e) => setFilterOpp(e.target.value)}
             className="w-full rounded-lg border px-3 py-2 sm:w-64"
           >
-            <option value="">Tutte le opportunità</option>
+            <option value="">{t('applications.allOpportunities')}</option>
             {opportunityOptions.map(([id, title]) => (
               <option key={id} value={id}>
                 {title || id}

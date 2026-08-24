@@ -1,4 +1,5 @@
 'use client';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 import { useEffect, useRef } from 'react';
 import { Search } from 'lucide-react';
@@ -18,6 +19,7 @@ export default function MobileSearchOverlay({
   onClose,
   onSubmit,
 }: MobileSearchOverlayProps) {
+  const { t } = useI18n();
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -44,8 +46,8 @@ export default function MobileSearchOverlay({
               type="search"
               value={query}
               onChange={(event) => onQueryChange(event.target.value)}
-              placeholder="Cerca club, player, opportunità, post, eventi…"
-              aria-label="Cerca"
+              placeholder={t('navigation.searchPlaceholder')}
+              aria-label={t('common.search')}
               className="h-12 w-full rounded-full border border-slate-200 bg-white pl-11 pr-4 text-base text-slate-700 shadow-sm transition focus:border-[var(--brand)] focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/20"
             />
           </div>
@@ -58,7 +60,7 @@ export default function MobileSearchOverlay({
           Annulla
         </button>
       </div>
-      <div className="px-4 py-4 text-sm text-slate-500">Inizia a digitare per cercare.</div>
+      <div className="px-4 py-4 text-sm text-slate-500">{t('search.startTyping')}</div>
     </div>
   );
 }

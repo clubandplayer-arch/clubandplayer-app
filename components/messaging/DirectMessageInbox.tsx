@@ -64,14 +64,14 @@ export function DirectMessageInbox({ onSelectThread, hideHeader, className }: Pr
       if (!cancelled?.current) setThreads(inbox);
     } catch (err: any) {
       if (cancelled?.current) return;
-      const message = err?.message || 'Errore caricamento conversazioni';
+      const message = err?.message || t('messages.loadError');
       console.error('[direct-messages] inbox load failed', { error: err });
       setError(message);
       show(message, { variant: 'error' });
     } finally {
       if (!cancelled?.current) setLoading(false);
     }
-  }, [show]);
+  }, [show, t]);
 
   useEffect(() => {
     const cancelled = { current: false };
@@ -119,7 +119,7 @@ export function DirectMessageInbox({ onSelectThread, hideHeader, className }: Pr
       await openDirectConversation(thread.otherProfileId, { router, source: 'messages-inbox' });
     } catch (error: any) {
       console.error('[direct-messages] inbox navigation failed', { targetProfileId: thread.otherProfileId, error });
-      show(error?.message || 'Errore apertura chat', { variant: 'error' });
+      show(error?.message || t('messages.openError'), { variant: 'error' });
     }
   };
 

@@ -165,7 +165,7 @@ export default function ClubStaffPage() {
   if (!isClub) {
     return (
       <div className="page-shell max-w-2xl rounded-xl border bg-yellow-50 p-4 text-yellow-900">
-        Devi essere un <b>Club</b> per gestire lo staff.
+        {t('staff.clubOnly')}
       </div>
     );
   }
@@ -178,11 +178,11 @@ export default function ClubStaffPage() {
           <span>Staff</span>
         </div>
         <h1 className="heading-h1">{t('staff.title')}</h1>
-        <p className="text-sm text-neutral-600">Qui trovi i profili staff che hai collegato al tuo club.</p>
+        <p className="text-sm text-neutral-600">{t('staff.help')}</p>
       </header>
 
       {error ? <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div> : null}
-      {loadingStaff ? <div className="glass-panel p-4 text-sm text-neutral-700">Caricamento staff…</div> : null}
+      {loadingStaff ? <div className="glass-panel p-4 text-sm text-neutral-700">{t('staff.loading')}</div> : null}
 
       {!loadingStaff && !error && staff.length === 0 ? (
         <div className="glass-panel space-y-2 p-5 text-sm text-neutral-700">

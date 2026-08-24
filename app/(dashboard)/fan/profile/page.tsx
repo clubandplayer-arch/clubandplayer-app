@@ -3,8 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import FanProfileForm from '@/components/profiles/FanProfileForm';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 export default function FanProfilePage() {
+  const { t } = useI18n();
   const router = useRouter();
   const [checking, setChecking] = useState(true);
 
@@ -39,12 +41,12 @@ export default function FanProfilePage() {
     };
   }, [router]);
 
-  if (checking) return <div className="p-4 text-sm text-gray-600">Verifica accesso…</div>;
+  if (checking) return <div className="p-4 text-sm text-gray-600">{t('profile.checkingAccess')}</div>;
 
   return (
     <div className="space-y-4 p-4 md:p-6">
-      <h1 className="text-2xl font-semibold">Il mio profilo Fan</h1>
-      <p className="text-sm text-gray-600">Aggiorna i dati principali per personalizzare feed e suggerimenti.</p>
+      <h1 className="text-2xl font-semibold">{t('profile.myFan')}</h1>
+      <p className="text-sm text-gray-600">{t('profile.fanHelp')}</p>
       <FanProfileForm />
     </div>
   );

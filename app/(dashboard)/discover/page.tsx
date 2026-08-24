@@ -210,9 +210,9 @@ export default function DiscoverPage() {
               className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 outline-none ring-[var(--brand)] focus:ring-2"
             >
               <option value="country">Tutta Italia</option>
-              <option value="region">Regione di interesse</option>
+              <option value="region">{t('discover.regionInterest')}</option>
               <option value="province">{t('discover.interestProvince')}</option>
-              <option value="city">Città di interesse</option>
+              <option value="city">{t('discover.cityInterest')}</option>
             </select>
           </label>
           <label className="flex flex-col gap-2 text-sm font-medium text-neutral-700">
@@ -230,7 +230,7 @@ export default function DiscoverPage() {
       </section>
 
       {loading ? (
-        <div className="rounded-xl border border-dashed p-6 text-sm text-neutral-600">Caricamento suggerimenti…</div>
+        <div className="rounded-xl border border-dashed p-6 text-sm text-neutral-600">{t('discover.loadingSuggestions')}</div>
       ) : error ? (
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>
       ) : activeItems.length === 0 ? (

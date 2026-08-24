@@ -265,13 +265,13 @@ export default function SettingsPage() {
         <button
           onClick={goBack}
           className="btn btn-outline"
-          aria-label="Torna alla pagina precedente"
+          aria-label={t('settings.backAria')}
         >
-          ← Torna indietro
+          ← {t('settings.back')}
         </button>
 
         <Link href="/feed" className="btn btn-ghost">
-          Vai al feed →
+          {t('settings.goFeed')} →
         </Link>
       </div>
 
@@ -287,21 +287,20 @@ export default function SettingsPage() {
           <section style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 16 }}>
             <h2 style={{ marginTop: 0 }}>{t('settings.profile')}</h2>
             <p style={{ margin: '8px 0' }}>
-              Tipo account: <b>{accountTypeLabel}</b>
+              {t('settings.accountType')}: <b>{accountTypeLabel}</b>
             </p>
             <p style={{ margin: '8px 0' }}>
-              Profilo pubblico:{' '}
+              {t('settings.publicProfile')}:{' '}
               {publicProfileHref ? (
                 <Link href={publicProfileHref}>{publicProfileHref}</Link>
               ) : (
-                <span> non disponibile per questo tipo account</span>
+                <span> {t('settings.profileUnavailable')}</span>
               )}
             </p>
             <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid #e5e7eb' }}>
-              <h3 style={{ margin: '0 0 6px' }}>Hai scelto il ruolo sbagliato?</h3>
+              <h3 style={{ margin: '0 0 6px' }}>{t('settings.wrongRole')}</h3>
               <p style={{ margin: '0 0 12px', color: '#4b5563' }}>
-                Invia una richiesta motivata al nostro team. Il cambio non è automatico: sarà valutato
-                in base alle informazioni fornite e riceverai una risposta via email.
+                {t('settings.roleRequestHelp')}
               </p>
               {!showRoleRequest ? (
                 <button type="button" className="btn btn-primary" onClick={() => setShowRoleRequest(true)}>
@@ -310,7 +309,7 @@ export default function SettingsPage() {
               ) : (
                 <form onSubmit={sendRoleChangeRequest} style={{ display: 'grid', gap: 12 }}>
                   <label style={{ display: 'grid', gap: 6 }}>
-                    <span style={{ fontWeight: 600 }}>Nuovo ruolo desiderato</span>
+                    <span style={{ fontWeight: 600 }}>{t('settings.requestedRole')}</span>
                     <select
                       value={requestedRole}
                       onChange={(event) => setRequestedRole(event.target.value as AccountType | '')}
@@ -318,27 +317,26 @@ export default function SettingsPage() {
                       required
                       style={{ padding: 10, borderRadius: 8, border: '1px solid #d1d5db', background: '#fff' }}
                     >
-                      <option value="">Seleziona un ruolo</option>
+                      <option value="">{t('settings.selectRole')}</option>
                       {ROLE_OPTIONS.filter((option) => option.value !== accountType).map((option) => (
                         <option key={option.value} value={option.value}>{option.label}</option>
                       ))}
                     </select>
                   </label>
                   <label style={{ display: 'grid', gap: 6 }}>
-                    <span style={{ fontWeight: 600 }}>Motivazione</span>
+                    <span style={{ fontWeight: 600 }}>{t('settings.reason')}</span>
                     <textarea
                       value={roleReason}
                       onChange={(event) => setRoleReason(event.target.value)}
                       disabled={roleRequestSending || roleRequestSent}
                       required minLength={20} maxLength={2000} rows={5}
-                      placeholder="Spiega perché desideri cambiare ruolo e aggiungi le informazioni utili alla valutazione."
+                      placeholder={t('settings.reasonPlaceholder')}
                       style={{ padding: 10, borderRadius: 8, border: '1px solid #d1d5db', resize: 'vertical' }}
                     />
-                    <span style={{ color: '#6b7280', fontSize: 13 }}>{roleReason.length}/2000 caratteri</span>
+                    <span style={{ color: '#6b7280', fontSize: 13 }}>{roleReason.length}/2000 {t('settings.characters')}</span>
                   </label>
                   <p style={{ margin: 0, color: '#4b5563', fontSize: 14 }}>
-                    L’invio non garantisce l’approvazione. Il ruolo attuale resterà invariato fino
-                    all’eventuale conferma del team Club and Player.
+                    {t('settings.roleDisclaimer')}
                   </p>
                   {roleRequestMessage ? (
                     <p role="status" style={{ margin: 0, color: roleRequestSent ? '#065f46' : '#b91c1c', fontWeight: 600 }}>
@@ -348,13 +346,13 @@ export default function SettingsPage() {
                   {!roleRequestSent ? (
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       <button type="submit" className="btn btn-primary" disabled={roleRequestSending}>
-                        {roleRequestSending ? 'Invio in corso…' : 'Invia richiesta'}
+                        {roleRequestSending ? t('settings.sending') : t('settings.sendRequest')}
                       </button>
                       <button
                         type="button" className="btn btn-outline" disabled={roleRequestSending}
                         onClick={() => { setShowRoleRequest(false); setRoleRequestMessage('') }}
                       >
-                        Annulla
+                        {t('common.cancel')}
                       </button>
                     </div>
                   ) : null}
@@ -371,7 +369,7 @@ export default function SettingsPage() {
                 checked={notifyEmailNewMessage}
                 onChange={(e) => setNotifyEmailNewMessage(e.target.checked)}
               />
-              Ricevi email per nuovi messaggi
+              {t('settings.emailMessages')}
             </label>
 
             <div style={{ marginTop: 12 }}>
@@ -408,10 +406,10 @@ export default function SettingsPage() {
           </section>
 
           <section style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 16 }}>
-            <h2 style={{ marginTop: 0 }}>Utenti bloccati</h2>
-            {blockedLoading ? <p>Caricamento utenti bloccati…</p> : null}
+            <h2 style={{ marginTop: 0 }}>{t('settings.blockedUsers')}</h2>
+            {blockedLoading ? <p>{t('settings.loadingBlocked')}</p> : null}
             {blockedMsg ? <p style={{ color: '#b91c1c' }}>{blockedMsg}</p> : null}
-            {!blockedLoading && blockedUsers.length === 0 ? <p>Non hai bloccato nessun utente.</p> : null}
+            {!blockedLoading && blockedUsers.length === 0 ? <p>{t('settings.noBlocked')}</p> : null}
 
             {!blockedLoading && blockedUsers.length > 0 ? (
               <ul style={{ display: 'grid', gap: 10, margin: 0, padding: 0, listStyle: 'none' }}>
@@ -437,7 +435,7 @@ export default function SettingsPage() {
                         disabled={unblockingId === item.blocked_profile_id}
                         style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #e5e7eb', background: '#fff', cursor: 'pointer' }}
                       >
-                        {unblockingId === item.blocked_profile_id ? 'Sblocco…' : 'Sblocca'}
+                        {unblockingId === item.blocked_profile_id ? t('settings.unblocking') : t('settings.unblock')}
                       </button>
                     </li>
                   )
@@ -447,13 +445,13 @@ export default function SettingsPage() {
           </section>
 
           <section style={{ border: '1px solid #fecaca', borderRadius: 12, padding: 16, background: '#fff7f7' }}>
-            <h2 style={{ marginTop: 0, color: '#991b1b' }}>Zona pericolosa</h2>
+            <h2 style={{ marginTop: 0, color: '#991b1b' }}>{t('settings.danger')}</h2>
             <p style={{ margin: '8px 0', color: '#7f1d1d' }}>
-              Eliminando l&apos;account perderai definitivamente accesso a profilo e dati collegati. Questa azione non è reversibile.
+              {t('settings.deleteHelp')}
             </p>
             <label style={{ display: 'grid', gap: 6, marginTop: 12 }}>
               <span style={{ fontSize: 14, color: '#7f1d1d' }}>
-                Digita <b>ELIMINA</b> per abilitare la cancellazione:
+                {t('settings.deleteConfirmHelp')}
               </span>
               <input
                 value={deleteConfirmText}

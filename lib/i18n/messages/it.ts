@@ -1,7 +1,9 @@
+import completion from './completion/it';
 import feedMessages from './feed/it';
 import operationsMessages from './operations/it';
 
 const messages = {
+  ...completion,
   'common.loading': 'Caricamento…',
   'common.continue': 'Continua',
   'common.save': 'Salva',

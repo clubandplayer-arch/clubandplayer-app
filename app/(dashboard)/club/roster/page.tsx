@@ -118,9 +118,9 @@ export default function ClubRosterPage() {
   if (!isClub) {
     return (
       <div className="page-shell max-w-2xl rounded-xl border bg-yellow-50 p-4 text-yellow-900">
-        Devi essere un <b>Club</b> per gestire la rosa.
+        {t('roster.clubOnly')}
         <div className="mt-2 text-sm text-yellow-800">
-          Apri il tuo profilo club e assicurati di aver completato l&apos;onboarding come Club.
+          {t('roster.openProfile')}
         </div>
       </div>
     );
@@ -144,7 +144,7 @@ export default function ClubRosterPage() {
       ) : null}
 
       {loadingRoster ? (
-        <div className="glass-panel p-4 text-sm text-neutral-700">Caricamento rosa…</div>
+        <div className="glass-panel p-4 text-sm text-neutral-700">{t('roster.loading')}</div>
       ) : null}
 
       {!loadingRoster && !error && !hasPlayers ? (

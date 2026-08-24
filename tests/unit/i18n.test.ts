@@ -109,6 +109,37 @@ test('phase 2B.2 operational routes no longer hardcode their reported Italian he
   ]) assert.ok(!source.includes(label), label);
 });
 
+
+test('completion gate inventories every required ordinary surface and rejects reported Italian UI literals', () => {
+  const requiredRoutes = [
+    '/feed', '/discover', '/following', '/who-to-follow', '/search', '/opportunities',
+    '/opportunities/[id]', '/opportunities/new', '/applications', '/club/applications',
+    '/club/roster', '/club/staff', '/club-map', '/clubs/[id]', '/players/[id]',
+    '/club/profile', '/player/profile', '/staff/profile', '/fan/profile', '/messages',
+    '/notifications', '/settings', '/login', '/signup', '/onboarding/choose-role',
+  ];
+  const inventorySource = readFileSync(new URL('../../lib/i18n/userFacingInventory.ts', import.meta.url), 'utf8');
+  for (const route of requiredRoutes) assert.ok(inventorySource.includes(`route: '${route}'`), route);
+
+  const targets = [
+    '../../app/(dashboard)/opportunities/[id]/page.tsx', '../../app/(dashboard)/opportunities/new/page.tsx',
+    '../../app/(dashboard)/applications/page.tsx', '../../app/(dashboard)/club/applications/page.tsx',
+    '../../app/(dashboard)/clubs/[id]/page.tsx', '../../app/(dashboard)/players/[id]/page.tsx',
+    '../../components/profiles/ProfileEditForm.tsx', '../../components/profiles/FanProfileForm.tsx',
+    '../../components/profiles/ClubStadiumMapPicker.tsx', '../../components/profiles/AvatarUploader.tsx',
+    '../../components/clubs/PublicClubRosterSection.tsx', '../../components/clubs/ClubOpenOpportunitiesWidget.tsx',
+    '../../components/messaging/DirectMessageThread.tsx', '../../app/settings/page.tsx',
+  ];
+  const source = targets.map((target) => readFileSync(new URL(target, import.meta.url), 'utf8')).join('\n');
+  for (const forbidden of [
+    'Torna alla lista', 'Dettagli annuncio', 'Requisiti e preferenze', 'Nuova opportunità',
+    'Candidature ricevute', 'Nessuna candidatura ricevuta', 'Dati club', 'Opportunità aperte',
+    'Rosa e Staff', 'Posizione del Club sulla mappa nazionale', 'Cerca sede, stadio o impianto',
+    'Usa la mia posizione', 'Carica nuova immagine', 'Nazione del club', 'Provincia del club',
+    'Città del club', 'Zona pericolosa', 'Utenti bloccati',
+  ]) assert.ok(!source.includes(forbidden), forbidden);
+});
+
 test('missing translation keys fall back safely', async () => {
   const english = await loadMessages('en');
   assert.equal(translateWithFallback('common.save', {}, italianMessages), 'Salva');

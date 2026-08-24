@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 import { useEffect, useMemo, useCallback, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -21,6 +22,7 @@ type Props = {
  *    • / (slash) → focus su "Cerca" se non stai già scrivendo in un campo
  */
 export default function FilterBar({ scope }: Props) {
+  const { t } = useI18n();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -133,31 +135,31 @@ export default function FilterBar({ scope }: Props) {
 
   // Opzioni UI
   const countries = useMemo(
-    () => [{ code: "", label: "Tutti i paesi" }, ...COUNTRIES],
-    []
+    () => [{ code: "", label: t('search.allCountries') }, ...COUNTRIES],
+    [t]
   );
 
   const roles = useMemo(
     () => [
-      { code: "", name: "Tutti i ruoli" },
-      { code: "player", name: "Giocatore" },
-      { code: "coach", name: "Allenatore" },
+      { code: "", name: t('search.allRoles') },
+      { code: "player", name: t('profile.player') },
+      { code: "coach", name: t('roles.coach') },
       { code: "staff", name: "Staff" },
-      { code: "scout", name: "Scout" },
-      { code: "director", name: "Direttore" },
+      { code: "scout", name: t('roles.scout') },
+      { code: "director", name: t('roles.director') },
     ],
-    []
+    [t]
   );
 
   const statuses = useMemo(
     () => [
-      { code: "", name: "Tutti gli stati" },
-      { code: "open", name: "Aperto" },
-      { code: "closed", name: "Chiuso" },
-      { code: "draft", name: "Bozza" },
-      { code: "archived", name: "Archiviato" },
+      { code: "", name: t('filters.allStatuses') },
+      { code: "open", name: t('filters.open') },
+      { code: "closed", name: t('filters.closed') },
+      { code: "draft", name: t('filters.draft') },
+      { code: "archived", name: t('filters.archived') },
     ],
-    []
+    [t]
   );
 
   return (
@@ -166,7 +168,7 @@ export default function FilterBar({ scope }: Props) {
         <div className="flex flex-col gap-3">
           <div className="text-sm text-slate-600">
             Filtri — <span className="font-semibold">{scope}</span>
-            <span className="ml-3 text-xs text-slate-400">(⌘/Ctrl+K o / per cercare)</span>
+            <span className="ml-3 text-xs text-slate-400">({t('filters.shortcuts')})</span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-center">
@@ -175,7 +177,7 @@ export default function FilterBar({ scope }: Props) {
               id="filterbar-search"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Cerca (es. Roma, club, ruolo, …)"
+              placeholder={t('filters.searchPlaceholder')}
               title="Scorciatoie: ⌘/Ctrl+K o /"
               className="md:col-span-2 rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-300"
             />
@@ -219,7 +221,7 @@ export default function FilterBar({ scope }: Props) {
             <input
               value={city}
               onChange={(e) => setCity(e.target.value)}
-              placeholder="Città"
+              placeholder={t('filters.city')}
               className="rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-300"
             />
           </div>

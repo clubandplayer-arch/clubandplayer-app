@@ -390,12 +390,12 @@ export default function FollowingPage() {
 
       {error && <p className="text-sm text-red-600">{error}</p>}
       {rosterError && showRosterControls ? <p className="text-sm text-red-600">{rosterError}</p> : null}
-      {loading && <p className="text-sm text-neutral-600">Caricamento…</p>}
+      {loading && <p className="text-sm text-neutral-600">{t('common.loading')}</p>}
       {rosterLoading && showRosterControls ? <p className="text-xs text-pink-700">{t('following.updatingRoster')}</p> : null}
 
       {!loading && items.length === 0 && !error ? (
         <div className="rounded-xl border border-dashed border-neutral-200 bg-white/70 p-4 text-sm text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900/60 dark:text-neutral-300">
-          Non stai seguendo nessun profilo al momento. Visita un club o un player e clicca “Segui”.
+          {t('following.empty')}
         </div>
       ) : null}
 

@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react';
 import Cropper, { type Area } from 'react-easy-crop';
 import 'react-easy-crop/react-easy-crop.css';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 type Props = {
   value: string | null;
@@ -102,6 +103,7 @@ function readFileAsDataUrl(file: File): Promise<string> {
 }
 
 export default function AvatarUploader({ value, onChange }: Props) {
+  const { t } = useI18n();
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -131,7 +133,7 @@ export default function AvatarUploader({ value, onChange }: Props) {
     setError(null);
 
     if (file.size > 10 * 1024 * 1024) {
-      setError('File troppo grande (max 10MB).');
+      setError(t('upload.tooLarge'));
       e.target.value = '';
       return;
     }
@@ -157,7 +159,7 @@ export default function AvatarUploader({ value, onChange }: Props) {
       setError(
         typeof err?.message === 'string' && err.message
           ? err.message
-          : 'Impossibile elaborare il file selezionato.'
+          : t('upload.processError')
       );
     } finally {
       e.target.value = '';
@@ -167,7 +169,7 @@ export default function AvatarUploader({ value, onChange }: Props) {
   async function saveAvatar() {
     const image = imageRef.current;
     if (!image) {
-      setError('Nessuna immagine da caricare. Seleziona un file.');
+      setError(t('upload.noImage'));
       return;
     }
 
@@ -192,7 +194,7 @@ export default function AvatarUploader({ value, onChange }: Props) {
         const msg =
           json?.error ||
           json?.details ||
-          'Errore durante il caricamento dello storage.';
+          t('upload.storageError');
         throw new Error(msg);
       }
 
@@ -206,7 +208,7 @@ export default function AvatarUploader({ value, onChange }: Props) {
       setError(
         typeof err?.message === 'string' && err.message
           ? err.message
-          : 'Errore durante il caricamento.'
+          : t('upload.storageError')
       );
     } finally {
       setUploading(false);
@@ -246,10 +248,10 @@ export default function AvatarUploader({ value, onChange }: Props) {
               onChange={handleFileChange}
               disabled={uploading || editorOpen}
             />
-            {uploading ? 'Caricamento...' : 'Carica nuova immagine'}
+            {uploading ? t('common.loading') : t('upload.button')}
           </label>
           <div>
-            Immagine consigliata: quadrata, ritaglio circolare. Max 10MB.
+            {t('upload.help')}
             Formati supportati: JPG/PNG.
           </div>
           {error && !editorOpen && (
@@ -326,7 +328,7 @@ export default function AvatarUploader({ value, onChange }: Props) {
                 onClick={resetEditor}
                 disabled={uploading}
               >
-                Annulla
+                {t('common.cancel')}
               </button>
               <button
                 type="button"
@@ -334,7 +336,7 @@ export default function AvatarUploader({ value, onChange }: Props) {
                 onClick={saveAvatar}
                 disabled={uploading}
               >
-                {uploading ? 'Salvataggio…' : 'Salva ritaglio'}
+                {uploading ? t('common.saving') : t('upload.saveCrop')}
               </button>
             </div>
           </div>
