@@ -55,4 +55,5 @@ package-lock.json
 package-lock.json
 
 # Official geography raw datasets - local import sources
+imports/geo/raw/
 imports/geo/staging/*.json
