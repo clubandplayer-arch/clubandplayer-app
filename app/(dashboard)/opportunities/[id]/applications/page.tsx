@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 import { useProvinceAbbreviations } from '@/hooks/useProvinceAbbreviations';
 import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
@@ -26,16 +27,17 @@ type Application = {
   } | null;
 };
 
-function StatusBadge({ s }: { s: Application['status'] }) {
+function StatusBadge({ s, label }: { s: Application['status']; label: string }) {
   const style =
     s === 'accepted' ? 'bg-green-100 text-green-700' :
     s === 'rejected' ? 'bg-red-100 text-red-700' :
     s === 'seen'     ? 'bg-blue-100 text-blue-700' :
                        'bg-gray-100 text-gray-700';
-  return <span className={`inline-block rounded px-2 py-0.5 text-xs ${style}`}>{s}</span>;
+  return <span className={`inline-block rounded px-2 py-0.5 text-xs ${style}`}>{label}</span>;
 }
 
 export default function OpportunityApplicationsPage({ params }: { params: { id: string } }) {
+  const { t } = useI18n();
   const { id } = params;
   const [apps, setApps] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,13 +68,13 @@ export default function OpportunityApplicationsPage({ params }: { params: { id: 
           );
         }
       } catch (e: any) {
-        if (!cancelled) setErr(e.message || 'Errore');
+        if (!cancelled) setErr(e.message || t('errors.generic'));
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
     return () => { cancelled = true; };
-  }, [id]);
+  }, [id, t]);
 
   async function setStatus(appId: string, status: Application['status']) {
     const r = await fetch(`/api/applications/${appId}`, {
@@ -100,21 +102,21 @@ export default function OpportunityApplicationsPage({ params }: { params: { id: 
 
   return (
     <div className="p-4 md:p-6 space-y-4">
-      <h1 className="text-2xl font-semibold">Candidature</h1>
+      <h1 className="text-2xl font-semibold">{t('applications.title')}</h1>
       {loading && <div className="h-24 rounded-xl bg-gray-200 animate-pulse" />}
       {err && <div className="border rounded-xl p-3 bg-red-50 text-red-700">{err}</div>}
-      {!loading && !err && !apps.length && <div className="text-sm text-gray-600">Nessuna candidatura.</div>}
+      {!loading && !err && !apps.length && <div className="text-sm text-gray-600">{t('applications.empty')}</div>}
 
       {!loading && !err && !!apps.length && (
         <div className="overflow-x-auto rounded-xl border">
           <table className="w-full text-sm">
             <thead className="bg-gray-50">
               <tr className="text-left border-b">
-                <th className="py-2 px-3">Player</th>
-                <th className="py-2 px-3">Nota</th>
-                <th className="py-2 px-3">Stato</th>
-                <th className="py-2 px-3">Data</th>
-                <th className="py-2 px-3">Azione</th>
+                <th className="py-2 px-3">{t('profile.player')}</th>
+                <th className="py-2 px-3">{t('applications.note')}</th>
+                <th className="py-2 px-3">{t('applications.status')}</th>
+                <th className="py-2 px-3">{t('applications.date')}</th>
+                <th className="py-2 px-3">{t('applications.action')}</th>
               </tr>
             </thead>
             <tbody>
@@ -123,7 +125,7 @@ export default function OpportunityApplicationsPage({ params }: { params: { id: 
                   <td className="py-2 px-3">
                     <div className="font-medium">{a.athlete?.display_name || a.athlete?.full_name || a.athlete_id}</div>
                     <div className="text-xs text-gray-600">
-                      {a.athlete?.headline || [a.athlete?.role, a.athlete?.sport].filter(Boolean).join(' · ') || 'Profilo atleta'}
+                      {a.athlete?.headline || [a.athlete?.role, a.athlete?.sport].filter(Boolean).join(' · ') || t('applications.athleteProfile')}
                     </div>
                     <div className="text-xs text-gray-500">
                       {[a.athlete?.city, provinceDisplayValue(a.athlete?.province, provinceAbbreviations), a.athlete?.region]
@@ -132,7 +134,7 @@ export default function OpportunityApplicationsPage({ params }: { params: { id: 
                     </div>
                   </td>
                   <td className="py-2 px-3">{a.note || '—'}</td>
-                  <td className="py-2 px-3"><StatusBadge s={a.status} /></td>
+                  <td className="py-2 px-3"><StatusBadge s={a.status} label={a.status === 'accepted' ? t('applications.accepted') : a.status === 'rejected' ? t('applications.rejected') : a.status === 'seen' ? t('applications.seen') : t('applications.submitted')} /></td>
                   <td className="py-2 px-3">{new Date(a.created_at).toLocaleString()}</td>
                   <td className="py-2 px-3">
                     <select
@@ -140,10 +142,10 @@ export default function OpportunityApplicationsPage({ params }: { params: { id: 
                       value={a.status}
                       onChange={(e) => setStatus(a.id, e.target.value as Application['status'])}
                     >
-                      <option value="submitted">submitted</option>
-                      <option value="seen">seen</option>
-                      <option value="accepted">accepted</option>
-                      <option value="rejected">rejected</option>
+                      <option value="submitted">{t('applications.submitted')}</option>
+                      <option value="seen">{t('applications.seen')}</option>
+                      <option value="accepted">{t('applications.accepted')}</option>
+                      <option value="rejected">{t('applications.rejected')}</option>
                     </select>
                   </td>
                 </tr>

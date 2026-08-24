@@ -1,8 +1,10 @@
+import sponsorMessages from './sponsor/it';
 import completion from './completion/it';
 import feedMessages from './feed/it';
 import operationsMessages from './operations/it';
 
 const messages = {
+  ...sponsorMessages,
   ...completion,
   'common.loading': 'Caricamento…',
   'common.continue': 'Continua',

@@ -110,35 +110,56 @@ test('phase 2B.2 operational routes no longer hardcode their reported Italian he
 });
 
 
-test('completion gate inventories every required ordinary surface and rejects reported Italian UI literals', () => {
-  const requiredRoutes = [
-    '/feed', '/discover', '/following', '/who-to-follow', '/search', '/opportunities',
-    '/opportunities/[id]', '/opportunities/new', '/applications', '/club/applications',
-    '/club/roster', '/club/staff', '/club-map', '/clubs/[id]', '/players/[id]',
-    '/club/profile', '/player/profile', '/staff/profile', '/fan/profile', '/messages',
-    '/notifications', '/settings', '/login', '/signup', '/onboarding/choose-role',
-  ];
-  const inventorySource = readFileSync(new URL('../../lib/i18n/userFacingInventory.ts', import.meta.url), 'utf8');
-  for (const route of requiredRoutes) assert.ok(inventorySource.includes(`route: '${route}'`), route);
+test('completion gate derives every App Router page from the filesystem', async () => {
+  const { classifyAppRouterFile, appPageFileToRoute } = await import('../../lib/i18n/userFacingInventory');
+  const appDirectory = new URL('../../app/', import.meta.url);
+  const walk = (directory: URL): string[] => readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const child = new URL(`${entry.name}${entry.isDirectory() ? '/' : ''}`, directory);
+    return entry.isDirectory() ? walk(child) : entry.name === 'page.tsx' ? [child.pathname.split('/app/')[1]] : [];
+  });
+  const files = walk(appDirectory).map((relative) => `app/${relative}`).sort();
+  assert.ok(files.length >= 80, `route inventory unexpectedly small: ${files.length}`);
+  for (const file of files) {
+    const type = classifyAppRouterFile(file);
+    assert.ok(type, file);
+    assert.ok(appPageFileToRoute(file).startsWith('/'), file);
+  }
+  for (const required of ['app/sponsor/page.tsx', 'app/reset-password/page.tsx', 'app/update-password/page.tsx', 'app/(dashboard)/opportunities/[id]/applications/page.tsx']) {
+    assert.equal(classifyAppRouterFile(required), 'USER-FACING', required);
+    assert.ok(files.includes(required), required);
+  }
+});
 
+test('completion gate rejects literal translation syntax and hardcoded Italian locale in ordinary UI', () => {
+  const roots = [new URL('../../app/', import.meta.url), new URL('../../components/', import.meta.url)];
+  const excluded = /\/(?:admin|registry|verification|legal)\//;
+  const walk = (directory: URL): URL[] => readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const child = new URL(`${entry.name}${entry.isDirectory() ? '/' : ''}`, directory);
+    return entry.isDirectory() ? walk(child) : /\.(?:ts|tsx)$/.test(entry.name) ? [child] : [];
+  });
+  for (const file of roots.flatMap(walk).filter((url) => !excluded.test(url.pathname))) {
+    const source = readFileSync(file, 'utf8');
+    assert.doesNotMatch(source, /\{\{\s*t\s*\(/i, file.pathname);
+    assert.doesNotMatch(source, /['"]it-IT['"]/, file.pathname);
+  }
+});
+
+test('reported completion surfaces contain no hardcoded Italian UI copy', () => {
   const targets = [
-    '../../app/(dashboard)/opportunities/[id]/page.tsx', '../../app/(dashboard)/opportunities/new/page.tsx',
-    '../../app/(dashboard)/applications/page.tsx', '../../app/(dashboard)/club/applications/page.tsx',
-    '../../app/(dashboard)/clubs/[id]/page.tsx', '../../app/(dashboard)/players/[id]/page.tsx',
-    '../../components/profiles/ProfileEditForm.tsx', '../../components/profiles/FanProfileForm.tsx',
-    '../../components/profiles/ClubStadiumMapPicker.tsx', '../../components/profiles/AvatarUploader.tsx',
-    '../../components/clubs/PublicClubRosterSection.tsx', '../../components/clubs/ClubOpenOpportunitiesWidget.tsx',
-    '../../components/messaging/DirectMessageThread.tsx', '../../app/settings/page.tsx',
+    '../../app/(dashboard)/club-map/ClubMapClient.tsx', '../../app/sponsor/page.tsx',
+    '../../app/(dashboard)/opportunities/[id]/page.tsx', '../../app/(dashboard)/opportunities/[id]/applications/page.tsx',
+    '../../components/profiles/ProfileEditForm.tsx', '../../components/profiles/ClubStadiumMapPicker.tsx',
+    '../../app/reset-password/page.tsx', '../../app/update-password/page.tsx',
   ];
   const source = targets.map((target) => readFileSync(new URL(target, import.meta.url), 'utf8')).join('\n');
   for (const forbidden of [
-    'Torna alla lista', 'Dettagli annuncio', 'Requisiti e preferenze', 'Nuova opportunità',
-    'Candidature ricevute', 'Nessuna candidatura ricevuta', 'Dati club', 'Opportunità aperte',
-    'Rosa e Staff', 'Posizione del Club sulla mappa nazionale', 'Cerca sede, stadio o impianto',
-    'Usa la mia posizione', 'Carica nuova immagine', 'Nazione del club', 'Provincia del club',
-    'Città del club', 'Zona pericolosa', 'Utenti bloccati',
+    '>{t(\'common.visitClub\')}<', 'Sponsorizza la tua attività', 'Configura il tuo preventivo',
+    'Posizione del Club sulla mappa nazionale', 'Cerca sede, stadio o impianto', 'Usa la mia posizione',
+    'Profilo pubblicato', 'Il profilo è visibile nelle pagine pubbliche', 'Candidature ricevute',
+    'Reimposta password', 'Imposta nuova password',
   ]) assert.ok(!source.includes(forbidden), forbidden);
 });
+
 
 test('missing translation keys fall back safely', async () => {
   const english = await loadMessages('en');

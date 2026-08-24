@@ -1,40 +1,27 @@
-export type I18nSurfaceStatus = 'complete' | 'redirect-or-legacy' | 'deferred';
-export type I18nSurface = { route: string; status: I18nSurfaceStatus; note: string };
+export type I18nRouteType = 'USER-FACING' | 'LEGACY REDIRECT' | 'ADMIN' | 'REGISTRY' | 'VERIFICATION' | 'LEGAL' | 'API/SERVER';
+export type I18nRouteInventoryItem = { file: string; route: string; type: I18nRouteType };
 
-/** Completion-gate inventory for ordinary web routes. Deferred entries are limited to approved B/C scope. */
-export const USER_FACING_I18N_INVENTORY: I18nSurface[] = [
-  { route: '/feed', status: 'complete', note: 'Feed, composer, post actions, comments and side widgets.' },
-  { route: '/discover', status: 'complete', note: 'Discovery tabs, scope filters and states.' },
-  { route: '/following', status: 'complete', note: 'Following filters, roster actions and states.' },
-  { route: '/who-to-follow', status: 'complete', note: 'Profile discovery list and actions.' },
-  { route: '/search', status: 'complete', note: 'Search filters, tabs and states.' },
-  { route: '/search-map', status: 'complete', note: 'Map-search controls; persisted locations remain data.' },
-  { route: '/opportunities', status: 'complete', note: 'Listing, filters, cards, tables and pagination.' },
-  { route: '/opportunities/[id]', status: 'complete', note: 'Details and actions; free text remains untranslated.' },
-  { route: '/opportunities/new', status: 'complete', note: 'Creation form and validation UI.' },
-  { route: '/applications', status: 'complete', note: 'Sent applications and states.' },
-  { route: '/club/applications', status: 'complete', note: 'Received applications and actions.' },
-  { route: '/club/roster', status: 'complete', note: 'Roster management.' },
-  { route: '/club/staff', status: 'complete', note: 'Staff management.' },
-  { route: '/club-map', status: 'complete', note: 'Italy-specific behavior retained; UI localized.' },
-  { route: '/clubs/[id]', status: 'complete', note: 'Public Club profile, opportunities, roster, Staff and board.' },
-  { route: '/players/[id]', status: 'complete', note: 'Public Player/Staff profile sections.' },
-  { route: '/club/profile', status: 'complete', note: 'Club form and existing national map controls.' },
-  { route: '/player/profile', status: 'complete', note: 'Player and Staff edit form.' },
-  { route: '/staff/profile', status: 'complete', note: 'Staff edit entry.' },
-  { route: '/fan/profile', status: 'complete', note: 'Fan edit form.' },
-  { route: '/messages', status: 'complete', note: 'Inbox, thread, media and voice controls.' },
-  { route: '/notifications', status: 'complete', note: 'Notification list, dropdown and actions.' },
-  { route: '/settings', status: 'complete', note: 'Profile, notifications, role request, blocked users and account controls.' },
-  { route: '/login', status: 'complete', note: 'Authentication UI.' },
-  { route: '/signup', status: 'complete', note: 'Registration UI.' },
-  { route: '/onboarding/choose-role', status: 'complete', note: 'Role selection.' },
-  { route: '/my/applications', status: 'redirect-or-legacy', note: 'Legacy alias backed by shared applications UI.' },
-  { route: '/messages/legacy', status: 'redirect-or-legacy', note: 'Explicit legacy route.' },
-  { route: '/athletes/[id]', status: 'redirect-or-legacy', note: 'Compatibility route to Player profile.' },
-  { route: '/u/[id]', status: 'redirect-or-legacy', note: 'Compatibility public-profile route.' },
-  { route: '/admin/**', status: 'deferred', note: 'Italian administration flow (approved C).' },
-  { route: '/**/verification/**', status: 'deferred', note: 'Italian verification flow (approved C).' },
-  { route: '/**/registry/**', status: 'deferred', note: 'Italian registry flow (approved C).' },
-  { route: '/legal/**', status: 'deferred', note: 'Legal documentation outside Phase 2B scope (approved C).' },
-];
+const LEGACY_REDIRECTS = new Set([
+  'app/(dashboard)/messages/legacy/page.tsx', 'app/(dashboard)/page.tsx',
+  'app/(dashboard)/profile/page.tsx', 'app/athletes/[id]/page.tsx',
+  'app/c/[id]/page.tsx', 'app/u/[id]/page.tsx', 'app/page.tsx',
+]);
+
+export function appPageFileToRoute(file: string): string {
+  const normalized = file.replaceAll('\\', '/').replace(/^\.\//, '');
+  const withoutApp = normalized.replace(/^app\//, '').replace(/\/page\.tsx$/, '');
+  const segments = withoutApp.split('/').filter((segment) => segment && !/^\(.+\)$/.test(segment));
+  return segments.length ? `/${segments.join('/')}` : '/';
+}
+
+export function classifyAppRouterFile(file: string): I18nRouteType {
+  const normalized = file.replaceAll('\\', '/').replace(/^\.\//, '');
+  if (normalized.startsWith('app/api/') || normalized.includes('/route.')) return 'API/SERVER';
+  if (LEGACY_REDIRECTS.has(normalized)) return 'LEGACY REDIRECT';
+  if (normalized.startsWith('app/admin/') || normalized.includes('/admin/')) return 'ADMIN';
+  if (normalized.includes('/registry') || normalized.includes('registry-')) return 'REGISTRY';
+  if (normalized.includes('/verification') || normalized.includes('verifications')) return 'VERIFICATION';
+  if (normalized.startsWith('app/legal/')) return 'LEGAL';
+  if (normalized.startsWith('app/debug/')) return 'API/SERVER';
+  return 'USER-FACING';
+}

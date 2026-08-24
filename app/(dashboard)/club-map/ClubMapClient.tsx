@@ -211,7 +211,7 @@ export default function ClubMapClient() {
         });
         (marker as any).__clubPin = pin;
         marker.bindPopup(
-          `<div style="min-width:170px"><strong>${safeName}</strong>${location ? `<br /><span style="color:#64748b">${escapeHtml(location)}</span>` : ''}<br /><a href="/clubs/${escapeHtml(pin.id)}" style="display:inline-flex;margin-top:8px;border-radius:999px;background:#2563eb;color:white;padding:6px 10px;text-decoration:none;font-weight:700;">{t('common.visitClub')}</a></div>`,
+          `<div style="min-width:170px"><strong>${safeName}</strong>${location ? `<br /><span style="color:#64748b">${escapeHtml(location)}</span>` : ''}<br /><a href="/clubs/${escapeHtml(pin.id)}" style="display:inline-flex;margin-top:8px;border-radius:999px;background:#2563eb;color:white;padding:6px 10px;text-decoration:none;font-weight:700;">${escapeHtml(t('common.visitClub'))}</a></div>`,
         );
         marker.addTo(group);
         markersRef.current.push(marker);
@@ -230,7 +230,7 @@ export default function ClubMapClient() {
     return () => {
       cancelled = true;
     };
-  }, [mapReady, pins]);
+  }, [mapReady, pins, t]);
 
   const helperText = useMemo(() => {
     if (loading) return t('common.loading');

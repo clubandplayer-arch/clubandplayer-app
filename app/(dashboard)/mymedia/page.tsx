@@ -2,6 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 
+import { useI18n } from '@/components/i18n/I18nProvider';
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { Lightbox, type LightboxItem } from '@/components/media/Lightbox';
 import Link from 'next/link';
@@ -13,7 +14,7 @@ import { MediaEmptyState } from '@/components/media/MediaEmptyState';
 import { MaterialIcon } from '@/components/icons/MaterialIcon';
 import { normalizePost as normalizeFeedPost, type FeedPost } from '@/components/feed/postShared';
 
-const shortDateFormatter = new Intl.DateTimeFormat('it-IT', {
+const shortDateFormatter = new Intl.DateTimeFormat(undefined, {
   day: 'numeric',
   month: 'short',
   year: 'numeric',
@@ -214,6 +215,7 @@ function buildMediaShareUrl(item: MediaPost) {
 }
 
 export default function MyMediaPage() {
+  const { t } = useI18n();
   const [items, setItems] = useState<MediaPost[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -306,9 +308,9 @@ export default function MyMediaPage() {
         <div className="flex flex-wrap items-start justify-between gap-4 rounded-2xl bg-gradient-to-r from-blue-50 via-white to-blue-50/60 px-4 py-4 shadow-md md:px-6">
           <div className="space-y-1">
             <p className="text-xs font-semibold uppercase tracking-wider text-cp-brand">MyMedia</p>
-            <h1 className="text-3xl font-semibold text-cp-brand">La tua libreria media</h1>
+            <h1 className="text-3xl font-semibold text-cp-brand">{t('media.library')}</h1>
             <p className="max-w-2xl text-sm text-cp-brand-soft">
-              Gestisci in un unico posto tutti i video e le foto che hai condiviso su Club and Player.
+              {t('media.libraryHelp')}
             </p>
           </div>
           <Link
@@ -332,16 +334,16 @@ export default function MyMediaPage() {
           />
         </div>
 
-        {loading && <div className="glass-panel p-4">Caricamento…</div>}
+        {loading && <div className="glass-panel p-4">{t('common.loading')}</div>}
         {err && <div className="glass-panel p-4 text-red-600">{err}</div>}
 
         {!loading && !err && (
           <div className="space-y-8">
             {activeTab === 'video' ? (
-              <MediaSection id="my-videos" title="MyVideo" items={videos} tab="video" onVideoClick={handleVideoClick} />
+              <MediaSection id="my-videos" title="MyVideo" items={videos} tab="video" onVideoClick={handleVideoClick} playLabel={t('media.playVideo')} shareLabel={t('media.share')} />
             ) : null}
             {activeTab === 'photo' ? (
-              <MediaSection id="my-photos" title="MyPhoto" items={photos} tab="photo" onImageClick={handlePhotoClick} />
+              <MediaSection id="my-photos" title="MyPhoto" items={photos} tab="photo" onImageClick={handlePhotoClick} playLabel={t('media.playVideo')} shareLabel={t('media.share')} />
             ) : null}
           </div>
         )}
@@ -384,6 +386,8 @@ function MediaSection({
   tab,
   onImageClick,
   onVideoClick,
+  playLabel,
+  shareLabel,
 }: {
   id: string;
   title: string;
@@ -391,6 +395,8 @@ function MediaSection({
   tab: MediaTab;
   onImageClick?: (index: number, item: MediaPost) => void;
   onVideoClick?: (item: MediaPost, trigger?: HTMLElement) => void;
+  playLabel: string;
+  shareLabel: string;
 }) {
   const isVideoSection = tab === 'video';
   const iconName = isVideoSection ? 'video' : 'photo';
@@ -428,7 +434,7 @@ function MediaSection({
                         type="button"
                         className="group relative block w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-cp-brand/70 focus-visible:ring-offset-2"
                         onClick={(e) => onVideoClick?.(item, e.currentTarget)}
-                        aria-label="Riproduci video"
+                        aria-label={playLabel}
                       >
                         <VideoPlayer
                           url={item.media_url}
@@ -492,7 +498,7 @@ function MediaSection({
                           })
                         }
                         className="inline-flex items-center justify-center p-2 text-cp-brand transition hover:text-cp-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cp-brand/70 focus-visible:ring-offset-2"
-                        aria-label="Condividi"
+                        aria-label={shareLabel}
                       >
                         <ShareButton className="text-current" ariaLabel={`Condividi ${item.media_type === 'video' ? 'questo video' : 'questa foto'}`} />
                       </button>

@@ -880,7 +880,8 @@ export default function ProfileEditForm() {
 
   const countryPreview = country ? [iso2ToFlagEmoji(country), countryName(country)].filter(Boolean).join(' ') : '';
   const publicationStatus = profile.profile_visibility_status;
-  const publicationCopy = getProfileVisibilityStatusCopy(publicationStatus);
+  const publicationBase = getProfileVisibilityStatusCopy(publicationStatus);
+  const publicationCopy = { ...publicationBase, label: t(`profile.visibility.${publicationStatus}` as any), description: t(`profile.visibility.${publicationStatus}Help` as any) };
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
@@ -890,14 +891,14 @@ export default function ProfileEditForm() {
         </div>
         {isClub && profile.club_name_review_status === 'pending' && (
           <div className="rounded-2xl border border-violet-300 bg-violet-50 p-4 text-violet-950" role="status">
-            <p className="font-semibold">Nome Club in revisione</p>
-            <p className="mt-1 text-sm">{profile.club_name_review_reason || 'La denominazione deve essere verificata prima della pubblicazione.'}</p>
+            <p className="font-semibold">{t('profile.clubNamePending')}</p>
+            <p className="mt-1 text-sm">{profile.club_name_review_reason || t('profile.clubNamePendingHelp')}</p>
           </div>
         )}
         {isClub && profile.club_name_review_status === 'rejected' && (
           <div className="rounded-2xl border border-red-300 bg-red-50 p-4 text-red-950" role="alert">
-            <p className="font-semibold">Nome Club non approvato</p>
-            <p className="mt-1 text-sm">Modifica la denominazione oppure collega il profilo al Registro Club.</p>
+            <p className="font-semibold">{t('profile.clubNameRejected')}</p>
+            <p className="mt-1 text-sm">{t('profile.clubNameRejectedHelp')}</p>
           </div>
         )}
         {missingRequiredFields.length > 0 && (
@@ -954,7 +955,7 @@ export default function ProfileEditForm() {
                   )}
                   {isClub && !clubNameValidationError && (
                     <p className="text-xs text-gray-500">
-                      Usa la denominazione ufficiale del club o una sigla societaria (es. ASD, SSD, FC), non nome e cognome di una persona.
+                      {t('profile.clubNameHelp')}
                     </p>
                   )}
                 </div>
@@ -1062,7 +1063,7 @@ export default function ProfileEditForm() {
                     <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-700">{t('profile.geolocation')}</p>
                     <h3 className="mt-1 text-lg font-semibold text-slate-950">{t('profile.mapPosition', { organization: organizationTitle })}</h3>
                     <p className="mt-1 text-sm text-slate-600">
-                      {isInstitution ? 'Salva la sede principale: sulla mappa degli enti il tuo logo comparirà in questo punto.' : 'Salva la sede o l’impianto principale: sulla mappa dei Club il tuo logo comparirà in questo punto.'}
+                      {isInstitution ? t('profile.institutionMapHelp') : t('profile.clubMapHelp')}
                     </p>
                   </div>
                   <ClubStadiumMapPicker
@@ -1104,8 +1105,8 @@ export default function ProfileEditForm() {
                 <div>
                   <p className="text-[11px] text-gray-600">
                     {isInstitution
-                      ? 'Usa la ricerca, la posizione del dispositivo o clicca sulla mappa per posizionare la sede: salveremo nome e indirizzo da mostrare come localizzazione pubblica dell’Ente.'
-                      : 'Usa la ricerca, la posizione del dispositivo o clicca sulla mappa per posizionare il marker: salveremo nome, indirizzo e coordinate usate dal segnaposto con il logo del Club.'}
+                      ? t('profile.institutionMarkerHelp')
+                      : t('profile.mapMarkerHelp')}
                   </p>
                 </div>
               </div>

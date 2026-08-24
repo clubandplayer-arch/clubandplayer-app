@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'default-no-store';
@@ -20,6 +21,7 @@ type AlertRow = {
 }
 
 export default function AlertsPage() {
+  const { t } = useI18n();
   const supabase = supabaseBrowser()
   const [rows, setRows] = useState<AlertRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -50,10 +52,10 @@ export default function AlertsPage() {
 
   return (
     <main style={{maxWidth:800, margin:'0 auto', padding:24}}>
-      <h1>I miei avvisi</h1>
+      <h1>{t('alerts.title')}</h1>
       {msg && <p style={{color:'#b91c1c'}}>{msg}</p>}
-      {loading && <p>Caricamento…</p>}
-      {!loading && rows.length === 0 && <p>Nessun avviso salvato. Vai su Opportunità e clicca “Salva ricerca”.</p>}
+      {loading && <p>{t('common.loading')}</p>}
+      {!loading && rows.length === 0 && <p>{t('alerts.empty')}</p>}
       <ul style={{display:'grid', gap:12}}>
         {rows.map(a => (
           <li key={a.id} style={{border:'1px solid #e5e7eb', borderRadius:12, padding:12}}>

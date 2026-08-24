@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
 import { fetchLocationChildren } from "@/lib/geo/location";
+import { useI18n } from "@/components/i18n/I18nProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
 
 type PackageId = "starter" | "growth" | "performance";
 type DurationId = 30 | 60 | 90;
@@ -23,20 +25,20 @@ const PACKAGES: Record<
   starter: {
     label: "Starter",
     basePriceNational30d: 149,
-    placements: ["Sidebar Bottom", "Left Bottom (rotazione)"],
-    includes: ["Report base (impression + click)"],
+    placements: ["sponsor.starterPlacement1", "sponsor.starterPlacement2"],
+    includes: ["sponsor.baseReport"],
   },
   growth: {
     label: "Growth",
     basePriceNational30d: 249,
-    placements: ["Sidebar Top", "Left Top"],
-    includes: ["Report settimanale", "1 cambio creatività gratuito (a metà mese)"],
+    placements: ["sponsor.growthPlacement1", "sponsor.growthPlacement2"],
+    includes: ["sponsor.weeklyReport", "sponsor.creativeChange"],
   },
   performance: {
     label: "Performance",
     basePriceNational30d: 399,
-    placements: ["Infeed (ogni ~3 post)"],
-    includes: ["Report settimanale", "Ottimizzazione (1 cambio creatività/settimana)"],
+    placements: ["sponsor.performancePlacement"],
+    includes: ["sponsor.weeklyReport", "sponsor.optimization"],
   },
 };
 
@@ -62,9 +64,9 @@ function getGeoLevel(params: { regionId: string; provinceId: string; cityId: str
   return "national";
 }
 
-function euro(amount: number) {
+function euro(amount: number, locale: string) {
   const rounded = Math.round(amount);
-  return new Intl.NumberFormat("it-IT", {
+  return new Intl.NumberFormat(locale, {
     style: "currency",
     currency: "EUR",
     maximumFractionDigits: 0,
@@ -80,6 +82,8 @@ function buildLeadSummary(params: {
   duration: DurationId;
   exclusive: boolean;
   estimate: number;
+  t: (key: MessageKey, values?: Record<string, string | number>) => string;
+  locale: string;
 }) {
   const {
     pkg,
@@ -89,27 +93,28 @@ function buildLeadSummary(params: {
     targetLabel,
     duration,
     exclusive,
-    estimate,
+    estimate, t, locale,
   } = params;
 
   const lines = [
-    "=== Richiesta Sponsorizzazione (Club and Player) ===",
-    `Pacchetto: ${PACKAGES[pkg].label}`,
-    `Posizionamenti: ${PACKAGES[pkg].placements.join(" • ")}`,
-    `Target: ${targetLabel}`,
-    `Regione: ${regionName || "-"}`,
-    `Provincia: ${provinceName || "-"}`,
-    `Città: ${cityName || "-"}`,
-    `Durata: ${duration} giorni`,
-    `Esclusiva di categoria: ${exclusive ? "Sì (+40%)" : "No"}`,
-    `Stima indicativa: ${euro(estimate)} (prezzi beta soggetti a conferma)`,
-    "Prezzo calcolato in base a copertura geografica, durata e opzione esclusiva.",
+    `=== ${t('sponsor.requestHeading')} ===`,
+    `${t('sponsor.package')}: ${PACKAGES[pkg].label}`,
+    `${t('sponsor.placements')}: ${PACKAGES[pkg].placements.map((key) => t(key as MessageKey)).join(" • ")}`,
+    `${t('sponsor.target')}: ${targetLabel}`,
+    `${t('sponsor.region')}: ${regionName || "-"}`,
+    `${t('sponsor.province')}: ${provinceName || "-"}`,
+    `${t('sponsor.city')}: ${cityName || "-"}`,
+    `${t('sponsor.duration')}: ${t('sponsor.days', { count: duration })}`,
+    `${t('sponsor.exclusiveSummary')}: ${exclusive ? t('sponsor.yes') : t('sponsor.no')}`,
+    t('sponsor.betaEstimate', { estimate: euro(estimate, locale) }),
+    t('sponsor.calculation'),
   ];
 
   return lines.join("\n");
 }
 
 export default function SponsorPage() {
+  const { t, locale } = useI18n();
   // configuratore
   const [pkg, setPkg] = useState<PackageId>("performance");
   const [regionId, setRegionId] = useState<string>("");
@@ -160,11 +165,11 @@ export default function SponsorPage() {
     [cities, cityId]
   );
   const targetLabel = useMemo(() => {
-    if (cityId) return `Città: ${selectedCityName}`;
-    if (provinceId) return `Provincia: ${selectedProvinceName}`;
-    if (regionId) return `Regione: ${selectedRegionName}`;
-    return "Italia";
-  }, [cityId, provinceId, regionId, selectedCityName, selectedProvinceName, selectedRegionName]);
+    if (cityId) return `${t('sponsor.city')}: ${selectedCityName}`;
+    if (provinceId) return `${t('sponsor.province')}: ${selectedProvinceName}`;
+    if (regionId) return `${t('sponsor.region')}: ${selectedRegionName}`;
+    return t('sponsor.italy');
+  }, [cityId, provinceId, regionId, selectedCityName, selectedProvinceName, selectedRegionName, t]);
 
   const leadSummary = useMemo(
     () =>
@@ -176,7 +181,7 @@ export default function SponsorPage() {
         targetLabel,
         duration,
         exclusive,
-        estimate,
+        estimate, t, locale,
       }),
     [
       pkg,
@@ -186,7 +191,7 @@ export default function SponsorPage() {
       targetLabel,
       duration,
       exclusive,
-      estimate,
+      estimate, t, locale,
     ]
   );
 
@@ -301,14 +306,14 @@ export default function SponsorPage() {
 
     if (cooldownSeconds > 0) {
       setStatus("error");
-      setErrorMsg(`Attendi ${cooldownSeconds}s prima di inviare di nuovo.`);
+      setErrorMsg(t('sponsor.cooldown', { seconds: cooldownSeconds }));
       return;
     }
 
     // validazione minima client
     if (!name.trim() || !company.trim() || !email.trim()) {
       setStatus("error");
-      setErrorMsg("Compila almeno Nome, Azienda e Email.");
+      setErrorMsg(t('sponsor.required'));
       return;
     }
 
@@ -322,8 +327,8 @@ export default function SponsorPage() {
     // Messaggio finale: include preventivo + messaggio libero
     const finalMessage =
       leadSummary +
-      "\n\n--- Messaggio ---\n" +
-      (freeMessage.trim() ? freeMessage.trim() : "(nessun messaggio aggiuntivo)");
+      `\n\n--- ${t('sponsor.message')} ---\n` +
+      (freeMessage.trim() ? freeMessage.trim() : t('sponsor.noExtraMessage'));
 
     const payload = {
       name: name.trim(),
@@ -332,7 +337,7 @@ export default function SponsorPage() {
       phone: phone.trim() || undefined,
       location: targetLabel,
       // usiamo budget come stima (così lo vedi subito in admin)
-      budget: euro(estimate),
+      budget: euro(estimate, locale),
       message: finalMessage,
       // chiave honeypot (deve combaciare con la route esistente)
       company_website: honeypot,
@@ -348,7 +353,7 @@ export default function SponsorPage() {
       });
 
       if (!res.ok) {
-        let msg = "Invio fallito.";
+        let msg = t('sponsor.sendFailed');
         try {
           const data = await res.json();
           if (typeof data?.error === "string" && data.error.trim()) {
@@ -374,7 +379,7 @@ export default function SponsorPage() {
       setErrorMsg(
         typeof err?.message === "string" && err.message.trim()
           ? err.message.trim()
-          : "Errore durante l’invio. Riprova tra poco."
+          : t('sponsor.sendError')
       );
     }
   }
@@ -382,24 +387,22 @@ export default function SponsorPage() {
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-8">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold">Sponsorizza la tua attività</h1>
+        <h1 className="text-2xl font-semibold">{t('sponsor.title')}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Raggiungi club e player in{" "}
-          <span className="font-medium">tutta Italia</span> con annunci mirati su
-          Club and Player.
+          {t('sponsor.subtitle')}
         </p>
       </div>
 
       {/* PACCHETTI */}
       <section className="mb-10">
         <div className="mb-3 flex items-end justify-between gap-3">
-          <h2 className="text-lg font-semibold">Pacchetti (Beta) — Italia</h2>
+          <h2 className="text-lg font-semibold">{t('sponsor.packages')}</h2>
           <Link
             href="/feed"
             className="text-sm font-medium underline underline-offset-4"
             style={{ color: BRAND_BLUE }}
           >
-            Vedi la piattaforma
+            {t('sponsor.viewPlatform')}
           </Link>
         </div>
 
@@ -419,9 +422,9 @@ export default function SponsorPage() {
                   <div>
                     <p className="text-sm font-semibold">{p.label}</p>
                     <p className="mt-1 text-2xl font-semibold">
-                      {euro(p.basePriceNational30d)}
+                      {euro(p.basePriceNational30d, locale)}
                       <span className="ml-1 text-xs font-medium text-muted-foreground">
-                        /30g
+                        {t('sponsor.period')}
                       </span>
                     </p>
                   </div>
@@ -429,19 +432,19 @@ export default function SponsorPage() {
 
                 <div className="mt-3 flex-1 text-xs text-muted-foreground">
                   <div className="min-h-[84px]">
-                    <p className="font-medium text-foreground">Posizionamenti</p>
+                    <p className="font-medium text-foreground">{t('sponsor.placements')}</p>
                     <ul className="mt-1 list-disc pl-4">
                       {p.placements.map((x) => (
-                        <li key={x}>{x}</li>
+                        <li key={x}>{t(x as MessageKey)}</li>
                       ))}
                     </ul>
                   </div>
 
                   <div className="mt-3">
-                    <p className="font-medium text-foreground">Include</p>
+                    <p className="font-medium text-foreground">{t('sponsor.includes')}</p>
                     <ul className="mt-1 list-disc pl-4">
                       {p.includes.map((x) => (
-                        <li key={x}>{x}</li>
+                        <li key={x}>{t(x as MessageKey)}</li>
                       ))}
                     </ul>
                   </div>
@@ -460,7 +463,7 @@ export default function SponsorPage() {
                       : "bg-white text-black border border-black/15 hover:bg-black/5",
                   ].join(" ")}
                 >
-                  Seleziona
+                  {t('sponsor.select')}
                 </button>
               </div>
             );
@@ -468,32 +471,30 @@ export default function SponsorPage() {
         </div>
 
         <p className="mt-3 text-xs text-muted-foreground">
-          * Prezzi <span className="font-medium">beta</span>: la stima è
-          indicativa e viene confermata dopo il contatto.
+          {t('sponsor.priceNote')}
         </p>
       </section>
 
       {/* CONFIGURATORE */}
       <section ref={preventivoRef} className="mb-10">
-        <h2 className="text-lg font-semibold">Configura il tuo preventivo</h2>
+        <h2 className="text-lg font-semibold">{t('sponsor.configure')}</h2>
         <div className="mt-3 rounded-xl border p-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="text-xs font-medium text-muted-foreground">
-                Target
+                {t('sponsor.target')}
               </label>
               <div className="mt-1 rounded-lg border px-3 py-2 text-sm">
-                <p className="font-medium">Italia</p>
+                <p className="font-medium">{t('sponsor.italy')}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Target nazionale su Club and Player. (Opzionale: restringi con
-                  Regione/Provincia/Città)
+                  {t('sponsor.targetHelp')}
                 </p>
               </div>
             </div>
 
             <div>
               <label className="text-xs font-medium text-muted-foreground">
-                Regione (opzionale)
+                {t('sponsor.regionOptional')}
               </label>
               <select
                 className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
@@ -502,7 +503,7 @@ export default function SponsorPage() {
                   setRegionId(e.target.value);
                 }}
               >
-                <option value="">Seleziona regione (opzionale)</option>
+                <option value="">{t('sponsor.selectRegion')}</option>
                 {regions.map((item) => (
                   <option key={item.id} value={item.id}>
                     {item.name}
@@ -513,7 +514,7 @@ export default function SponsorPage() {
 
             <div>
               <label className="text-xs font-medium text-muted-foreground">
-                Provincia (opzionale)
+                {t('sponsor.provinceOptional')}
               </label>
               <select
                 className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
@@ -523,7 +524,7 @@ export default function SponsorPage() {
                 }}
                 disabled={!regionId}
               >
-                <option value="">Seleziona provincia (opzionale)</option>
+                <option value="">{t('sponsor.selectProvince')}</option>
                 {provinces.map((item) => (
                   <option key={item.id} value={item.id}>
                     {item.name}
@@ -534,7 +535,7 @@ export default function SponsorPage() {
 
             <div>
               <label className="text-xs font-medium text-muted-foreground">
-                Città (opzionale)
+                {t('sponsor.cityOptional')}
               </label>
               <select
                 className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
@@ -544,7 +545,7 @@ export default function SponsorPage() {
                 }}
                 disabled={!provinceId}
               >
-                <option value="">Seleziona città (opzionale)</option>
+                <option value="">{t('sponsor.selectCity')}</option>
                 {cities.map((item) => (
                   <option key={item.id} value={item.id}>
                     {item.name}
@@ -555,19 +556,19 @@ export default function SponsorPage() {
 
             <div>
               <label className="text-xs font-medium text-muted-foreground">
-                Durata
+                {t('sponsor.duration')}
               </label>
               <select
                 className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
                 value={duration}
                 onChange={(e) => setDuration(Number(e.target.value) as DurationId)}
               >
-                <option value={30}>30 giorni</option>
-                <option value={60}>60 giorni</option>
-                <option value={90}>90 giorni</option>
+                <option value={30}>{t('sponsor.days', { count: 30 })}</option>
+                <option value={60}>{t('sponsor.days', { count: 60 })}</option>
+                <option value={90}>{t('sponsor.days', { count: 90 })}</option>
               </select>
               <p className="mt-1 text-xs text-muted-foreground">
-                Sconti/coefficiente già inclusi nella stima.
+                {t('sponsor.discountHelp')}
               </p>
             </div>
 
@@ -578,9 +579,9 @@ export default function SponsorPage() {
                   checked={exclusive}
                   onChange={(e) => setExclusive(e.target.checked)}
                 />
-                <span className="font-medium">Esclusiva di categoria</span>
+                <span className="font-medium">{t('sponsor.exclusive')}</span>
                 <span className="text-xs text-muted-foreground">
-                  (+40%, es. “solo 1 pizzeria” in SR)
+                  {t('sponsor.exclusiveHelp')}
                 </span>
               </label>
             </div>
@@ -589,7 +590,7 @@ export default function SponsorPage() {
           <div className="mt-4 rounded-xl border px-4 py-3">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
-                <p className="text-sm font-semibold">Riepilogo</p>
+                <p className="text-sm font-semibold">{t('sponsor.summary')}</p>
                 <p className="mt-1 text-xs text-muted-foreground whitespace-pre-line">
                   {leadSummary}
                 </p>
@@ -600,13 +601,13 @@ export default function SponsorPage() {
                 style={{ background: `${BRAND_BLUE}0F` }}
               >
                 <p className="text-xs font-medium text-muted-foreground">
-                  Stima indicativa
+                  {t('sponsor.estimate')}
                 </p>
                 <p className="text-xl font-semibold" style={{ color: BRAND_BLUE }}>
-                  {euro(estimate)}
+                  {euro(estimate, locale)}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  per {duration} giorni
+                  {t('sponsor.forDays', { count: duration })}
                 </p>
               </div>
             </div>
@@ -616,10 +617,9 @@ export default function SponsorPage() {
 
       {/* FORM CONTATTO */}
       <section>
-        <h2 className="text-lg font-semibold">Richiedi informazioni</h2>
+        <h2 className="text-lg font-semibold">{t('sponsor.requestInfo')}</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Compila il form: riceverai una risposta con i dettagli e la conferma
-          del preventivo.
+          {t('sponsor.contactHelp')}
         </p>
 
         <form onSubmit={onSubmit} className="mt-4 rounded-xl border p-4">
@@ -636,25 +636,25 @@ export default function SponsorPage() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="text-xs font-medium text-muted-foreground">
-                Nome e Cognome *
+                {t('sponsor.fullName')} *
               </label>
               <input
                 className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Es. Mario Rossi"
+                placeholder="Mario Rossi"
               />
             </div>
 
             <div>
               <label className="text-xs font-medium text-muted-foreground">
-                Azienda / Attività *
+                {t('sponsor.company')} *
               </label>
               <input
                 className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
                 value={company}
                 onChange={(e) => setCompany(e.target.value)}
-                placeholder="Es. Pizzeria XYZ"
+                placeholder="Pizzeria XYZ"
               />
             </div>
 
@@ -673,7 +673,7 @@ export default function SponsorPage() {
 
             <div>
               <label className="text-xs font-medium text-muted-foreground">
-                Telefono (opzionale)
+                {t('sponsor.phoneOptional')}
               </label>
               <input
                 className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
@@ -685,13 +685,13 @@ export default function SponsorPage() {
 
             <div className="sm:col-span-2">
               <label className="text-xs font-medium text-muted-foreground">
-                Messaggio (opzionale)
+                {t('sponsor.messageOptional')}
               </label>
               <textarea
                 className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
                 value={freeMessage}
                 onChange={(e) => setFreeMessage(e.target.value)}
-                placeholder="Scrivi qui eventuali richieste (settore, obiettivo, link, preferenze...)"
+                placeholder={t('sponsor.messagePlaceholder')}
                 rows={5}
               />
             </div>
@@ -705,14 +705,13 @@ export default function SponsorPage() {
 
           {status === "success" && (
             <div className="mt-4 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
-              Richiesta inviata! Ti contatteremo a breve.
+              {t('sponsor.success')}
             </div>
           )}
 
           <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs text-muted-foreground">
-              Inviando il form accetti che i dati vengano usati solo per
-              ricontatto commerciale.
+              {t('sponsor.privacy')}
             </p>
 
             <button
@@ -727,16 +726,15 @@ export default function SponsorPage() {
               ].join(" ")}
             >
               {status === "sending"
-                ? "Invio in corso..."
+                ? t('sponsor.sending')
                 : cooldownSeconds > 0
-                ? `Attendi ${cooldownSeconds}s`
-                : "Invia richiesta"}
+                ? t('sponsor.wait', { seconds: cooldownSeconds })
+                : t('sponsor.send')}
             </button>
           </div>
 
           <div className="mt-3 text-xs text-muted-foreground">
-            Il riepilogo del preventivo viene incluso automaticamente nella
-            richiesta.
+            {t('sponsor.autoSummary')}
           </div>
         </form>
       </section>

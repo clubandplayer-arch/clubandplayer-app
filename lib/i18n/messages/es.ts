@@ -1,8 +1,10 @@
+import sponsorMessages from './sponsor/es';
 import completion from './completion/es';
 import type { MessageKey } from './it';
 import feedMessages from './feed/es';
 import operationsMessages from './operations/es';
 const messages = {
+  ...sponsorMessages,
   ...completion,
   ...operationsMessages,
   'common.loading':'Cargando…','common.continue':'Continuar','common.save':'Guardar','common.cancel':'Cancelar','common.search':'Buscar','common.profile':'Perfil','common.settings':'Ajustes','common.logout':'Cerrar sesión','common.login':'Iniciar sesión','common.language':'Idioma','common.skipContent':'Saltar al contenido principal','common.privacy':'Privacidad','common.terms':'Términos','common.betaInfo':'Información beta',

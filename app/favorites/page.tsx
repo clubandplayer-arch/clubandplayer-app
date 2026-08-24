@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'default-no-store';
@@ -10,6 +11,7 @@ type Fav = { id: string; opportunity_id: string; created_at: string }
 type Opp = { id: string; title: string; club_name: string; city: string; role: string }
 
 export default function FavoritesPage() {
+  const { t } = useI18n();
   const supabase = supabaseBrowser()
   const [loading, setLoading] = useState(true)
   const [msg, setMsg] = useState('')
@@ -64,10 +66,10 @@ export default function FavoritesPage() {
 
   return (
     <main style={{maxWidth:960, margin:'0 auto', padding:24}}>
-      <h1>I miei preferiti</h1>
+      <h1>{t('favorites.title')}</h1>
       {msg && <p style={{color:'#b91c1c'}}>{msg}</p>}
-      {loading && <p>Caricamento…</p>}
-      {!loading && items.length === 0 && <p>Nessun annuncio salvato.</p>}
+      {loading && <p>{t('common.loading')}</p>}
+      {!loading && items.length === 0 && <p>{t('favorites.empty')}</p>}
 
       <div style={{display:'grid', gap:12, marginTop:12}}>
         {items.map(i => (

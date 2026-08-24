@@ -146,7 +146,7 @@ export default function MyApplications() {
                 </div>
                 <div className="mt-1 flex items-center gap-2 text-xs text-gray-500">
                   Stato: <StatusChip status={appl.status} />
-                  {appl.created_at ? <>• inviata il {new Date(appl.created_at).toLocaleDateString('it-IT')}</> : null}
+                  {appl.created_at ? <>• inviata il {new Date(appl.created_at).toLocaleDateString(undefined)}</> : null}
                 </div>
               </div>
               <div className="flex items-center gap-2">
