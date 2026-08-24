@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 type Props = { className?: string; label?: string };
 
-export default function LogoutButton({ className, label = "Logout" }: Props) {
+export default function LogoutButton({ className, label }: Props) {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(false);
 
   async function handleLogout() {
@@ -40,7 +42,7 @@ export default function LogoutButton({ className, label = "Logout" }: Props) {
       className={className}
       aria-busy={loading}
     >
-      {loading ? "…" : label}
+      {loading ? "…" : (label ?? t('common.logout'))}
     </button>
   );
 }

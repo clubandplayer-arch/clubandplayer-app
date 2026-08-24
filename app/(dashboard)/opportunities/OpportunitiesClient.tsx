@@ -12,10 +12,13 @@ import { COUNTRIES } from '@/lib/geo/countries';
 import { AGE_BRACKETS, normalizeSport, SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
 import { CATEGORIES_BY_SPORT } from '@/lib/opps/categories';
 import { useGeo } from '@/hooks/useGeo';
+import { useI18n } from '@/components/i18n/I18nProvider';
+import { localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 
 type Role = 'athlete' | 'club' | 'staff' | 'fan' | 'guest';
 
 export default function OpportunitiesClient() {
+  const { t } = useI18n();
   const router = useRouter();
   const sp = useSearchParams();
 
@@ -437,7 +440,7 @@ export default function OpportunitiesClient() {
   return (
     <div className="page-shell space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <h1 className="heading-h1">Opportunità</h1>
+        <h1 className="heading-h1">{t('opportunities.title')}</h1>
         {/* CTA spostata in topbar (link /opportunities?new=1) */}
       </div>
 
@@ -445,14 +448,14 @@ export default function OpportunitiesClient() {
       <div className="space-y-4 rounded-2xl border p-4 bg-white/70 shadow-sm">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-2">
           <input
-            placeholder="Cerca per titolo/descrizione…"
+            placeholder={t('opportunities.searchPlaceholder')}
             defaultValue={sp.get('q') ?? ''}
             onChange={(e) => setParam('q', e.currentTarget.value)}
             className="w-full rounded-xl border px-4 py-2"
           />
 
           <input
-            placeholder="Nome club/squadra"
+            placeholder={t('opportunities.clubPlaceholder')}
             defaultValue={sp.get('club') ?? ''}
             onBlur={(e) => setParam('club', e.currentTarget.value)}
             className="w-full rounded-xl border px-3 py-2"
@@ -481,7 +484,7 @@ export default function OpportunitiesClient() {
             }}
             className="w-full rounded-xl border px-3 py-2"
           >
-            <option value="">Paese</option>
+            <option value="">{t('opportunities.country')}</option>
             {COUNTRIES.map((c) => (
               <option key={c.code} value={c.code}>
                 {c.label}
@@ -510,7 +513,7 @@ export default function OpportunitiesClient() {
             className="w-full rounded-xl border px-3 py-2"
             disabled={!countryCode || countryCode !== 'IT'}
           >
-            <option value="">Regione</option>
+            <option value="">{t('opportunities.region')}</option>
             {availableRegions.map((r) => (
               <option key={r.id} value={String(r.id)}>{r.name}</option>
             ))}
@@ -534,7 +537,7 @@ export default function OpportunitiesClient() {
             className="w-full rounded-xl border px-3 py-2"
             disabled={!regionId || countryCode !== 'IT'}
           >
-            <option value="">Provincia</option>
+            <option value="">{t('opportunities.province')}</option>
             {availableProvinces.map((p) => (
               <option key={p.id} value={String(p.id)}>{p.name}</option>
             ))}
@@ -555,7 +558,7 @@ export default function OpportunitiesClient() {
             className="w-full rounded-xl border px-3 py-2"
             disabled={!provinceId || countryCode !== 'IT'}
           >
-            <option value="">Città</option>
+            <option value="">{t('opportunities.city')}</option>
             {availableMunicipalities.map((c) => (
               <option key={c.id} value={String(c.id)}>{c.name}</option>
             ))}
@@ -568,7 +571,7 @@ export default function OpportunitiesClient() {
             onChange={(e) => handleSportChange(e.target.value)}
             className="w-full rounded-xl border px-3 py-2"
           >
-            <option value="">Sport</option>
+            <option value="">{t('opportunities.sport')}</option>
             {SPORTS.map((s: string) => (
               <option key={s} value={s}>
                 {s}
@@ -582,10 +585,10 @@ export default function OpportunitiesClient() {
             className="w-full rounded-xl border px-3 py-2"
             disabled={!selectedSport}
           >
-            <option value="">{selectedSport ? 'Ruolo/posizione' : 'Seleziona uno sport'}</option>
+            <option value="">{selectedSport ? t('opportunities.role') : t('opportunities.selectSport')}</option>
             {roleOptions.map((r) => (
               <option key={r} value={r}>
-                {r}
+                {localizeSportRole(r, t)}
               </option>
             ))}
           </select>
@@ -595,7 +598,7 @@ export default function OpportunitiesClient() {
             onChange={(e) => setParam('role_group', e.target.value)}
             className="w-full rounded-xl border px-3 py-2"
           >
-            <option value="">Gruppo ruolo: Tutte</option>
+            <option value="">{t('opportunities.allRoleGroups')}</option>
             <option value="player">Player</option>
             <option value="staff">Staff</option>
           </select>
@@ -609,7 +612,7 @@ export default function OpportunitiesClient() {
             className="w-full rounded-xl border px-3 py-2"
             disabled={!selectedSport}
           >
-            <option value="">{selectedSport ? 'Categoria/Livello' : 'Seleziona uno sport'}</option>
+            <option value="">{selectedSport ? t('opportunities.category') : t('opportunities.selectSport')}</option>
             {categoryOptions.map((c) => (
               <option key={c} value={c}>
                 {c}
@@ -622,7 +625,7 @@ export default function OpportunitiesClient() {
             onChange={(e) => setParam('age', e.target.value)}
             className="w-full rounded-xl border px-3 py-2"
           >
-            <option value="">Età</option>
+            <option value="">{t('opportunities.age')}</option>
             {AGE_BRACKETS.map((b: string) => (
               <option key={b} value={b}>
                 {b}
@@ -633,14 +636,14 @@ export default function OpportunitiesClient() {
 
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
           <div className="flex w-full items-center gap-2 sm:w-auto">
-            <label className="text-sm text-gray-600">Ordina</label>
+            <label className="text-sm text-gray-600">{t('opportunities.sort')}</label>
             <select
               value={sp.get('sort') ?? 'recent'}
               onChange={(e) => setParam('sort', e.target.value)}
               className="w-full rounded-xl border px-3 py-2 sm:w-44"
             >
-              <option value="recent">Più recenti</option>
-              <option value="oldest">Meno recenti</option>
+              <option value="recent">{t('opportunities.recent')}</option>
+              <option value="oldest">{t('opportunities.oldest')}</option>
             </select>
           </div>
           <button
@@ -651,7 +654,7 @@ export default function OpportunitiesClient() {
             Inverti ordine
           </button>
           <div className="flex w-full items-center gap-2 sm:w-auto">
-            <label className="text-sm text-gray-600">Per pagina</label>
+            <label className="text-sm text-gray-600">{t('opportunities.perPage')}</label>
             <select
               value={sp.get('pageSize') ?? '20'}
               onChange={(e) => setParam('pageSize', e.target.value)}
@@ -685,17 +688,17 @@ export default function OpportunitiesClient() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm text-gray-700">
           <div className="rounded-xl border bg-gray-50 p-3">
-            <p className="text-xs text-gray-500">Totale risultati</p>
+            <p className="text-xs text-gray-500">{t('opportunities.totalResults')}</p>
             <p className="text-2xl font-semibold">{items.length}</p>
             <p className="text-xs text-gray-500">{data?.total ? `${data.totalIsExact === false ? '≥ ' : ''}${data.total} risultati` : 'Vista corrente'}</p>
           </div>
           <div className="rounded-xl border bg-gray-50 p-3">
-            <p className="text-xs text-gray-500">Club unici</p>
+            <p className="text-xs text-gray-500">{t('opportunities.uniqueClubs')}</p>
             <p className="text-2xl font-semibold">{new Set(items.map((o) => o.created_by || o.owner_id || o.club_name)).size}</p>
-            <p className="text-xs text-gray-500">in questa vista</p>
+            <p className="text-xs text-gray-500">{t('opportunities.currentView')}</p>
           </div>
           <div className="rounded-xl border bg-gray-50 p-3">
-            <p className="text-xs text-gray-500">Area prevalente</p>
+            <p className="text-xs text-gray-500">{t('opportunities.mainArea')}</p>
             <p className="text-sm font-medium">
               {(() => {
                 const byRegion = items.reduce((acc, curr) => {
@@ -707,7 +710,7 @@ export default function OpportunitiesClient() {
                 return top ? `${top[0]} (${top[1]})` : 'Nessuna area';
               })()}
             </p>
-            <p className="text-xs text-gray-500">ordinata per occorrenze</p>
+            <p className="text-xs text-gray-500">{t('opportunities.byOccurrences')}</p>
           </div>
         </div>
 
@@ -715,7 +718,7 @@ export default function OpportunitiesClient() {
 
       {err && (
         <div className="border rounded-xl p-4 bg-red-50 text-red-700">
-          Errore nel caricamento: {err}{' '}
+          {t('opportunities.loadError')}: {err}{' '}
           <button onClick={() => setReloadKey((k) => k + 1)} className="ml-3 px-3 py-1 border rounded-lg bg-white hover:bg-gray-50">
             Riprova
           </button>
@@ -746,7 +749,7 @@ export default function OpportunitiesClient() {
             }}
           />
         ) : (
-          <div className="text-sm text-gray-600">Devi essere un club per creare un’opportunità.</div>
+          <div className="text-sm text-gray-600">{t('opportunities.clubOnly')}</div>
         )}
       </Modal>
 

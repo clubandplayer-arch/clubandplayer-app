@@ -9,6 +9,10 @@ import SessionSyncMount from '@/components/auth/SessionSyncMount';
 import CookieConsent from '@/components/misc/CookieConsent';
 import PrivacyAnalytics from '@/components/analytics/PrivacyAnalytics';
 import WebVitalsReporter from '@/components/analytics/WebVitalsReporter';
+import { I18nProvider } from '@/components/i18n/I18nProvider';
+import LanguageSwitcher from '@/components/i18n/LanguageSwitcher';
+import { loadMessages } from '@/lib/i18n/messages';
+import { resolveRequestLocale } from '@/lib/i18n/server';
 import { DEFAULT_OG_IMAGE, getSiteUrl, SITE_NAME } from '@/lib/seo';
 
 const righteous = Righteous({
@@ -70,14 +74,15 @@ export const viewport: Viewport = {
   // colorScheme: 'light dark',
 };
 
-const FOOTER_LINKS = [
-  { href: '/legal/privacy', label: 'Privacy' },
-  { href: '/legal/terms', label: 'Termini' },
-  { href: '/legal/beta', label: 'Informativa Beta' },
-  { href: '/legal/child-safety', label: 'Child Safety' },
-];
-
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const locale = await resolveRequestLocale();
+  const messages = await loadMessages(locale);
+  const footerLinks = [
+    { href: '/legal/privacy', label: messages['common.privacy'] },
+    { href: '/legal/terms', label: messages['common.terms'] },
+    { href: '/legal/beta', label: messages['common.betaInfo'] },
+    { href: '/legal/child-safety', label: 'Child Safety' },
+  ];
   // JSON-LD (Organization)
   const jsonLdOrg = {
     '@context': 'https://schema.org',
@@ -96,7 +101,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   };
 
   return (
-    <html lang="it">
+    <html lang={locale}>
       <head>
         {/* Structured Data */}
         <script
@@ -124,9 +129,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
 
       <body className={`${righteous.variable} ${inter.className} antialiased text-neutral-900`}>
+        <I18nProvider initialLocale={locale} initialMessages={messages}>
         <a href="#main-content" className="skip-link">
-          Salta al contenuto principale
+          {messages['common.skipContent']}
         </a>
+        <LanguageSwitcher />
         {/* Analytics privacy-first: si attiva solo con consenso e DNT disattivato */}
         <Suspense fallback={null}>
           <PrivacyAnalytics />
@@ -153,7 +160,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               © {new Date().getFullYear()} Club and Player
             </p>
             <nav className="flex flex-wrap gap-4">
-              {FOOTER_LINKS.map((link) => (
+              {footerLinks.map((link) => (
                 <a key={link.href} href={link.href} className="hover:text-neutral-900 underline-offset-2 hover:underline">
                   {link.label}
                 </a>
@@ -171,6 +178,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Suspense fallback={null}>
           <CookieConsent />
         </Suspense>
+        </I18nProvider>
       </body>
     </html>
   );

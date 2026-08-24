@@ -4,6 +4,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
+import { useI18n } from '@/components/i18n/I18nProvider';
+import { localizeControlledStatus } from '@/lib/i18n/controlledVocabulary';
 
 import AthleteMediaHighlightsSection, {
   type AthleteMediaItem,
@@ -140,6 +142,7 @@ function getInitials(name: string) {
 }
 
 export default function PlayerPublicProfilePage() {
+  const { t } = useI18n();
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const supabase = useMemo(() => supabaseBrowser(), []);
@@ -544,7 +547,7 @@ export default function PlayerPublicProfilePage() {
 
   return (
     <main className="mx-auto min-w-0 max-w-5xl space-y-6 px-4 py-6">
-      {loading && <p>Caricamento…</p>}
+      {loading && <p>{t('common.loading')}</p>}
       {!loading && !!msg && <p style={{ color: '#b91c1c' }}>{msg}</p>}
       {!loading && !msg && profile && (
         <>
@@ -565,14 +568,14 @@ export default function PlayerPublicProfilePage() {
 
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-100 bg-white p-4 shadow-sm">
             <div className="space-y-1">
-              <h2 className="text-sm font-semibold text-neutral-900">Preferenze Fan</h2>
+              <h2 className="text-sm font-semibold text-neutral-900">{t('player.fanPreferences')}</h2>
               {fanVoteState.voteCount > 0 ? (
                 <p className="flex items-center gap-2 text-sm text-neutral-700">
                   <FanVoteBadge count={fanVoteState.voteCount} />
-                  <span>voti ricevuti in questa stagione</span>
+                  <span>{t('player.votesSeason')}</span>
                 </p>
               ) : (
-                <p className="text-sm text-neutral-600">Ancora nessun voto Fan ricevuto in questa stagione.</p>
+                <p className="text-sm text-neutral-600">{t('player.noVotes')}</p>
               )}
             </div>
             <FanVoteButton
@@ -595,7 +598,7 @@ export default function PlayerPublicProfilePage() {
 
           {canManageStaff ? (
             <section className="rounded-2xl border bg-white p-4 shadow-sm">
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Gestione staff</h2>
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{t('player.staffManagement')}</h2>
               <div className="mt-3">
                 <ClubStaffToggleButton staffProfileId={profile.id} visible={canManageStaff} />
               </div>
@@ -604,7 +607,7 @@ export default function PlayerPublicProfilePage() {
 
           {clubOfBelonging && clubDisplayName ? (
             <section className="rounded-2xl border bg-white p-4 shadow-sm">
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Club di appartenenza</h2>
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{t('player.currentClub')}</h2>
               <Link
                 href={`/clubs/${clubOfBelonging.id}`}
                 className="mt-3 flex items-center gap-3 rounded-xl border border-neutral-200 bg-white/80 p-3 transition hover:border-pink-200 hover:bg-pink-50/40"
@@ -658,17 +661,17 @@ export default function PlayerPublicProfilePage() {
 
           <section className="space-y-3 rounded-2xl border bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="heading-h2 text-xl">Bacheca</h2>
-              <span className="text-xs font-semibold text-blue-700">Aggiornamenti del player</span>
+              <h2 className="heading-h2 text-xl">{t('player.board')}</h2>
+              <span className="text-xs font-semibold text-blue-700">{t('player.updates')}</span>
             </div>
             <PublicAuthorFeed authorId={profile.id} fallbackAuthorIds={profile.user_id ? [profile.user_id] : []} />
           </section>
 
           {isMe && (
             <section className="rounded-2xl border bg-white p-5 shadow-sm">
-              <h2 className="heading-h2 text-xl">Le mie ultime candidature</h2>
+              <h2 className="heading-h2 text-xl">{t('player.latestApplications')}</h2>
               {apps.length === 0 ? (
-                <p className="text-sm text-neutral-700">Nessuna candidatura recente.</p>
+                <p className="text-sm text-neutral-700">{t('player.noRecentApplications')}</p>
               ) : (
                 <ul className="mt-3 grid gap-3">
                   {apps.map((a) => (
@@ -678,7 +681,7 @@ export default function PlayerPublicProfilePage() {
                         {a.opportunity?.club_name ?? '—'} — {a.opportunity?.city ?? '—'}
                       </div>
                       <div className="text-[12px] text-neutral-500">
-                        Stato: {a.status} · {new Date(a.created_at).toLocaleString()}
+                        {t('applications.status')}: {localizeControlledStatus(a.status, t)} · {new Date(a.created_at).toLocaleString()}
                       </div>
                     </li>
                   ))}

@@ -20,6 +20,8 @@ import { getProfileClubNameValidationError, sanitizeProfileClubName, sanitizePro
 import { getProfileVisibilityStatusCopy, normalizeProfileVisibilityStatus } from '@/lib/profiles/publication';
 import { CATEGORIES_BY_SPORT, CLUB_SPORT_OPTIONS, DEFAULT_CLUB_CATEGORIES } from '@/lib/opps/categories';
 import { iso2ToFlagEmoji } from '@/lib/utils/flags';
+import { useI18n } from '@/components/i18n/I18nProvider';
+import { localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 import {
   ensurePastExperienceCategory,
   getPastExperienceCategoriesBySport,
@@ -206,6 +208,7 @@ function normalizeCountryCode(v?: string | null) {
 /* ------------------------------ */
 
 export default function ProfileEditForm() {
+  const { t } = useI18n();
   const router = useRouter();
 
   // Profile
@@ -521,7 +524,7 @@ export default function ProfileEditForm() {
         await loadProfile();
       } catch (e: any) {
         console.error(e);
-        setFatalError(e?.message ?? 'Errore caricamento profilo');
+        setFatalError(e?.message ?? t('errors.profileLoad'));
       } finally {
         setLoading(false);
       }
@@ -796,11 +799,11 @@ export default function ProfileEditForm() {
       }
 
       await loadProfile();
-      setMessage('Profilo aggiornato correttamente.');
+      setMessage(t('profile.saved'));
       router.refresh();
     } catch (e: any) {
       console.error(e);
-      setError(e?.message ?? 'Errore durante il salvataggio');
+      setError(e?.message ?? t('profile.saveError'));
     } finally {
       setSaving(false);
       setTimeout(() => setMessage(null), 4000);
@@ -872,13 +875,14 @@ export default function ProfileEditForm() {
     });
   };
 
-  if (loading) return <div className="rounded-xl border p-4 text-sm text-gray-600">Caricamento profilo…</div>;
+  if (loading) return <div className="rounded-xl border p-4 text-sm text-gray-600">{t('common.loading')}</div>;
   if (fatalError) return <div className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-800">{fatalError}</div>;
   if (!profile) return null;
 
   const countryPreview = country ? [iso2ToFlagEmoji(country), countryName(country)].filter(Boolean).join(' ') : '';
   const publicationStatus = profile.profile_visibility_status;
-  const publicationCopy = getProfileVisibilityStatusCopy(publicationStatus);
+  const publicationBase = getProfileVisibilityStatusCopy(publicationStatus);
+  const publicationCopy = { ...publicationBase, label: t(`profile.visibility.${publicationStatus}` as any), description: t(`profile.visibility.${publicationStatus}Help` as any) };
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
@@ -888,53 +892,53 @@ export default function ProfileEditForm() {
         </div>
         {isClub && profile.club_name_review_status === 'pending' && (
           <div className="rounded-2xl border border-violet-300 bg-violet-50 p-4 text-violet-950" role="status">
-            <p className="font-semibold">Nome Club in revisione</p>
-            <p className="mt-1 text-sm">{profile.club_name_review_reason || 'La denominazione deve essere verificata prima della pubblicazione.'}</p>
+            <p className="font-semibold">{t('profile.clubNamePending')}</p>
+            <p className="mt-1 text-sm">{profile.club_name_review_reason || t('profile.clubNamePendingHelp')}</p>
           </div>
         )}
         {isClub && profile.club_name_review_status === 'rejected' && (
           <div className="rounded-2xl border border-red-300 bg-red-50 p-4 text-red-950" role="alert">
-            <p className="font-semibold">Nome Club non approvato</p>
-            <p className="mt-1 text-sm">Modifica la denominazione oppure collega il profilo al Registro Club.</p>
+            <p className="font-semibold">{t('profile.clubNameRejected')}</p>
+            <p className="mt-1 text-sm">{t('profile.clubNameRejectedHelp')}</p>
           </div>
         )}
         {missingRequiredFields.length > 0 && (
           <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-950 shadow-sm" role="alert">
-            <p className="font-semibold">Completa il tuo profilo per continuare ad utilizzare Club and Player.</p>
+            <p className="font-semibold">{t('profile.completeTitle')}</p>
             <p className="mt-2 text-sm">
-              I dati richiesti servono a identificare correttamente utenti, staff e società all'interno della piattaforma.
+              {t('profile.completeHelp')}
             </p>
-            <p className="mt-2 text-sm">Campi mancanti: {missingRequiredFields.join(', ')}.</p>
+            <p className="mt-2 text-sm">{t('profile.missingFields', { fields: missingRequiredFields.join(', ') })}</p>
           </div>
         )}
         {/* Dati personali / club */}
         <section className="rounded-2xl border p-4 md:p-5">
           <h2 className="mb-3 text-lg font-semibold">
-            {isOrganization ? `Modifica dati ${organizationLabel}` : 'Dati personali'}
+            {isOrganization ? t('profile.editOrganization', { organization: organizationLabel }) : t('profile.personalData')}
           </h2>
 
           {isOrganization ? (
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="flex flex-col gap-2 md:col-span-2">
-                  <label className="text-sm text-gray-600">Foto profilo</label>
+                  <label className="text-sm text-gray-600">{t('club.photo')}</label>
                   <AvatarUploader value={avatarUrl} onChange={setAvatarUrl} />
                   <div className="flex items-center gap-3 text-xs text-gray-500">
-                    <span>La foto viene mostrata nelle mini-card della bacheca.</span>
+                    <span>{t('profile.photoFeedHelp')}</span>
                     {avatarUrl && (
                       <button
                         type="button"
                         onClick={() => setAvatarUrl(null)}
                         className="font-medium text-red-600 hover:underline"
                       >
-                        Rimuovi foto
+                        {t('club.removePhoto')}
                       </button>
                     )}
                   </div>
                 </div>
 
                 <div className="flex min-w-0 flex-col gap-1 md:col-span-2">
-                  <label className="text-sm text-gray-600">Nome del {organizationLabel}<RequiredMark /></label>
+                  <label className="text-sm text-gray-600">{t('profile.organizationName', { organization: organizationLabel })}<RequiredMark /></label>
                   <input
                     className={`w-full min-w-0 rounded-lg border p-2 ${
                       clubNameValidationError ? 'border-red-400 bg-red-50' : ''
@@ -952,7 +956,7 @@ export default function ProfileEditForm() {
                   )}
                   {isClub && !clubNameValidationError && (
                     <p className="text-xs text-gray-500">
-                      Usa la denominazione ufficiale del club o una sigla societaria (es. ASD, SSD, FC), non nome e cognome di una persona.
+                      {t('profile.clubNameHelp')}
                     </p>
                   )}
                 </div>
@@ -960,7 +964,7 @@ export default function ProfileEditForm() {
 
               <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-4">
                 <div className="flex min-w-0 flex-col gap-1">
-                  <label className="text-sm text-gray-600">Nazione del {organizationLabel}<RequiredMark /></label>
+                  <label className="text-sm text-gray-600">{t('profile.organizationCountry', { organization: organizationLabel })}<RequiredMark /></label>
                   <select
                     className="w-full min-w-0 rounded-lg border p-2"
                     value={country}
@@ -984,16 +988,16 @@ export default function ProfileEditForm() {
                   fallback={clubLocationFallback}
                   onChange={setClubLocation}
                   labels={{
-                    region: `Regione del ${organizationLabel}`,
-                    province: `Provincia del ${organizationLabel}`,
-                    city: `Città del ${organizationLabel}`,
+                    region: t('profile.organizationRegion', { organization: organizationLabel }),
+                    province: t('profile.organizationProvince', { organization: organizationLabel }),
+                    city: t('profile.organizationCity', { organization: organizationLabel }),
                   }}
                   required
                 />
               </div>
 
               <div className="flex min-w-0 flex-col gap-1">
-                <label className="text-sm text-gray-600">Motto del {organizationLabel}</label>
+                <label className="text-sm text-gray-600">{t('profile.motto', { organization: organizationLabel })}</label>
                 <input
                   className="w-full min-w-0 rounded-lg border p-2"
                   value={clubMotto}
@@ -1005,7 +1009,7 @@ export default function ProfileEditForm() {
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 {isClub && (
                 <div className="flex min-w-0 flex-col gap-1">
-                  <label className="text-sm text-gray-600">Sport del club<RequiredMark /></label>
+                  <label className="text-sm text-gray-600">{t('profile.clubSport')}<RequiredMark /></label>
                   <select
                     className="w-full min-w-0 rounded-lg border p-2"
                     value={sport}
@@ -1022,7 +1026,7 @@ export default function ProfileEditForm() {
 
                 {isClub && (
                 <div className="flex min-w-0 flex-col gap-1">
-                  <label className="text-sm text-gray-600">Categoria</label>
+                  <label className="text-sm text-gray-600">{t('club.category')}</label>
                   <select
                     className="w-full min-w-0 rounded-lg border p-2"
                     value={clubCategory}
@@ -1038,7 +1042,7 @@ export default function ProfileEditForm() {
                 )}
 
                 <div className="flex min-w-0 flex-col gap-1">
-                  <label className="text-sm text-gray-600">Anno di fondazione</label>
+                  <label className="text-sm text-gray-600">{t('club.foundationYear')}</label>
                   <input
                     type="number"
                     inputMode="numeric"
@@ -1057,10 +1061,10 @@ export default function ProfileEditForm() {
 
                 <div className="flex min-w-0 flex-col gap-2 rounded-2xl border border-blue-100 bg-blue-50/60 p-4 md:col-span-2">
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-700">Geolocalizzazione</p>
-                    <h3 className="mt-1 text-lg font-semibold text-slate-950">Posizione del {organizationTitle} sulla mappa nazionale</h3>
+                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-700">{t('profile.geolocation')}</p>
+                    <h3 className="mt-1 text-lg font-semibold text-slate-950">{t('profile.mapPosition', { organization: organizationTitle })}</h3>
                     <p className="mt-1 text-sm text-slate-600">
-                      {isInstitution ? 'Salva la sede principale: sulla mappa degli enti il tuo logo comparirà in questo punto.' : 'Salva la sede o l’impianto principale: sulla mappa dei Club il tuo logo comparirà in questo punto.'}
+                      {isInstitution ? t('profile.institutionMapHelp') : t('profile.clubMapHelp')}
                     </p>
                   </div>
                   <ClubStadiumMapPicker
@@ -1084,15 +1088,15 @@ export default function ProfileEditForm() {
 
               <div className="grid gap-3 rounded-xl bg-gray-50 p-3 text-xs text-gray-700 md:grid-cols-2">
                 <div>
-                  <div className="text-[11px] uppercase tracking-wide text-gray-500">{isInstitution ? 'Nome sede' : 'Nome stadio'}</div>
+                  <div className="text-[11px] uppercase tracking-wide text-gray-500">{isInstitution ? t('profile.venueName') : t('profile.stadiumName')}</div>
                   <div className="font-semibold text-gray-900">{stadium || '—'}</div>
                 </div>
                 <div>
-                  <div className="text-[11px] uppercase tracking-wide text-gray-500">Indirizzo</div>
+                  <div className="text-[11px] uppercase tracking-wide text-gray-500">{t('club.address')}</div>
                   <div className="font-semibold text-gray-900">{stadiumAddress || '—'}</div>
                 </div>
                 <div>
-                  <div className="text-[11px] uppercase tracking-wide text-gray-500">Coordinate</div>
+                  <div className="text-[11px] uppercase tracking-wide text-gray-500">{t('profile.coordinates')}</div>
                   <div className="font-semibold text-gray-900">
                     {stadiumLat != null && stadiumLng != null
                       ? `${stadiumLat.toFixed(5)}, ${stadiumLng.toFixed(5)}`
@@ -1102,44 +1106,44 @@ export default function ProfileEditForm() {
                 <div>
                   <p className="text-[11px] text-gray-600">
                     {isInstitution
-                      ? 'Usa la ricerca, la posizione del dispositivo o clicca sulla mappa per posizionare la sede: salveremo nome e indirizzo da mostrare come localizzazione pubblica dell’Ente.'
-                      : 'Usa la ricerca, la posizione del dispositivo o clicca sulla mappa per posizionare il marker: salveremo nome, indirizzo e coordinate usate dal segnaposto con il logo del Club.'}
+                      ? t('profile.institutionMarkerHelp')
+                      : t('profile.mapMarkerHelp')}
                   </p>
                 </div>
               </div>
 
               <div className="flex min-w-0 flex-col gap-1">
-                <label className="text-sm text-gray-600">Biografia del {organizationLabel}</label>
+                <label className="text-sm text-gray-600">{t('club.biography')}</label>
                 <textarea
                   className="w-full min-w-0 rounded-lg border p-2"
                   rows={4}
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
-                  placeholder="Storia, valori, attività…"
+                  placeholder={t('profile.clubBiographyPlaceholder')}
                 />
               </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="flex flex-col gap-2 md:col-span-2">
-                <label className="text-sm text-gray-600">Foto profilo</label>
+                <label className="text-sm text-gray-600">{t('club.photo')}</label>
                 <AvatarUploader value={avatarUrl} onChange={setAvatarUrl} />
                 <div className="flex items-center gap-3 text-xs text-gray-500">
-                  <span>La foto viene mostrata nelle mini-card della bacheca.</span>
+                  <span>{t('profile.photoFeedHelp')}</span>
                   {avatarUrl && (
                     <button
                       type="button"
                       onClick={() => setAvatarUrl(null)}
                       className="font-medium text-red-600 hover:underline"
                     >
-                      Rimuovi foto
+                      {t('club.removePhoto')}
                     </button>
                   )}
                 </div>
               </div>
 
               <div className="flex min-w-0 flex-col gap-1 md:col-span-2">
-                <label className="text-sm text-gray-600">{isFan ? 'Nome visualizzato / gruppo tifosi' : 'Nome e cognome'}<RequiredMark /></label>
+                <label className="text-sm text-gray-600">{isFan ? t('profile.displayName') : t('profile.fullName')}<RequiredMark /></label>
                 <input
                   className="w-full min-w-0 rounded-lg border p-2"
                   value={fullName}
@@ -1150,7 +1154,7 @@ export default function ProfileEditForm() {
 
               {!isFan && (
               <div className="flex min-w-0 flex-col gap-1">
-                <label className="text-sm text-gray-600">Anno di nascita<RequiredMark /></label>
+                <label className="text-sm text-gray-600">{t('profile.birthYear')}<RequiredMark /></label>
                 <input
                   type="number"
                   inputMode="numeric"
@@ -1167,7 +1171,7 @@ export default function ProfileEditForm() {
               )}
 
               <div className="flex min-w-0 flex-col gap-1">
-                <label className="text-sm text-gray-600">Nazionalità<RequiredMark /></label>
+                <label className="text-sm text-gray-600">{t('profile.nationality')}<RequiredMark /></label>
                 <select
                   className="w-full min-w-0 rounded-lg border p-2"
                   value={country}
@@ -1187,7 +1191,7 @@ export default function ProfileEditForm() {
               {!isFan && (
               <div className="md:col-span-2 grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="flex min-w-0 flex-col gap-1">
-                  <label className="text-sm text-gray-600">Sport<RequiredMark /></label>
+                  <label className="text-sm text-gray-600">{t('opportunities.sport')}<RequiredMark /></label>
                   <select
                     className="w-full min-w-0 rounded-lg border p-2"
                     value={athleteSport}
@@ -1202,23 +1206,23 @@ export default function ProfileEditForm() {
                 </div>
 
                 <div className="flex min-w-0 flex-col gap-1">
-                  <label className="text-sm text-gray-600">Ruolo<RequiredMark /></label>
+                  <label className="text-sm text-gray-600">{t('profile.role')}<RequiredMark /></label>
                   <select
                     className="w-full min-w-0 rounded-lg border p-2"
                     value={athleteRole}
                     onChange={(e) => setAthleteRole(e.target.value)}
                   >
-                    <option value="">— Seleziona —</option>
+                    <option value="">— {t('profile.select')} —</option>
                     {athleteRoles.map((r) => (
                       <option key={r} value={r}>
-                        {r}
+                        {localizeSportRole(r, t)}
                       </option>
                     ))}
                   </select>
                   <p className="text-xs text-gray-500">
                     {isStaff
-                      ? 'Per i profili Staff i ruoli sono trasversali e non dipendono dallo sport.'
-                      : 'I ruoli mostrati dipendono dallo sport scelto.'}
+                      ? t('profile.staffRoleHelp')
+                      : t('profile.playerRoleHelp')}
                   </p>
                 </div>
               </div>
@@ -1226,17 +1230,17 @@ export default function ProfileEditForm() {
 
               {!isFan && (
               <div className="md:col-span-2 flex min-w-0 flex-col gap-1">
-                <label className="text-sm text-gray-600">Biografia</label>
+                <label className="text-sm text-gray-600">{t('club.biography')}</label>
                 <textarea
                   className="w-full min-w-0 rounded-lg border p-2"
                   rows={4}
                   maxLength={PLAYER_BIO_MAX_LENGTH}
                   value={bio}
                   onChange={(e) => setBio(e.target.value.slice(0, PLAYER_BIO_MAX_LENGTH))}
-                  placeholder="Racconta in breve ruolo, caratteristiche, esperienze…"
+                  placeholder={t('profile.biographyPlaceholder')}
                 />
                 <p className={`text-xs ${playerBioRemaining <= PLAYER_BIO_WARNING_THRESHOLD ? 'text-red-600' : 'text-gray-500'}`}>
-                  Caratteri rimanenti: {playerBioRemaining}
+                  {t('profile.remainingChars', { count: playerBioRemaining })}
                 </p>
               </div>
               )}
@@ -1244,20 +1248,20 @@ export default function ProfileEditForm() {
               {!isFan && !isStaff && (
               <div className="md:col-span-2 grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div className="flex min-w-0 flex-col gap-1">
-                  <label className="text-sm text-gray-600">Mano/Piede preferito</label>
+                  <label className="text-sm text-gray-600">{t('profile.preferredSide')}</label>
                   <select
                     className="w-full min-w-0 rounded-lg border p-2"
                     value={foot}
                     onChange={(e) => setFoot(e.target.value)}
                   >
-                    <option value="">— Seleziona —</option>
+                    <option value="">— {t('profile.select')} —</option>
                     <option value="Destro">Destro</option>
                     <option value="Sinistro">Sinistro</option>
                     <option value="Ambidestro">Ambidestro</option>
                   </select>
                 </div>
                 <div className="flex min-w-0 flex-col gap-1">
-                  <label className="text-sm text-gray-600">Altezza (cm)</label>
+                  <label className="text-sm text-gray-600">{t('profile.height')} (cm)</label>
                   <input
                     type="number"
                     inputMode="numeric"
@@ -1272,7 +1276,7 @@ export default function ProfileEditForm() {
                   />
                 </div>
                 <div className="flex min-w-0 flex-col gap-1">
-                  <label className="text-sm text-gray-600">Peso (kg)</label>
+                  <label className="text-sm text-gray-600">{t('profile.weight')} (kg)</label>
                   <input
                     type="number"
                     inputMode="numeric"
@@ -1294,7 +1298,7 @@ export default function ProfileEditForm() {
 
         {!isOrganization && !isFan && (
           <section className="rounded-2xl border p-4 md:p-5">
-            <h2 className="mb-3 text-lg font-semibold">Esperienze passate</h2>
+            <h2 className="mb-3 text-lg font-semibold">{t('profile.pastExperiences')}</h2>
             <div className="space-y-3">
               {pastExperiences.map((experience, index) => {
                 const categoryOptions = getPastExperienceCategoriesBySport(experience.sport);
@@ -1305,13 +1309,13 @@ export default function ProfileEditForm() {
                   <div key={`past-experience-${index}`} className="rounded-xl border border-gray-200 p-3">
                     <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
                       <div className="flex min-w-0 flex-col gap-1">
-                        <label className="text-sm text-gray-600">Stagione</label>
+                        <label className="text-sm text-gray-600">{t('profile.season')}</label>
                         <select
                           className="w-full min-w-0 rounded-lg border p-2"
                           value={experience.season}
                           onChange={(e) => updatePastExperience(index, { season: e.target.value })}
                         >
-                          <option value="">— Seleziona —</option>
+                          <option value="">— {t('profile.select')} —</option>
                           {seasonOptions.map((season) => (
                             <option key={season} value={season}>
                               {season}
@@ -1333,13 +1337,13 @@ export default function ProfileEditForm() {
                       </div>
 
                       <div className="flex min-w-0 flex-col gap-1">
-                        <label className="text-sm text-gray-600">Sport<RequiredMark /></label>
+                        <label className="text-sm text-gray-600">{t('opportunities.sport')}<RequiredMark /></label>
                         <select
                           className="w-full min-w-0 rounded-lg border p-2"
                           value={experience.sport}
                           onChange={(e) => updatePastExperience(index, { sport: e.target.value, role: isStaff ? experience.role : '' })}
                         >
-                          <option value="">— Seleziona —</option>
+                          <option value="">— {t('profile.select')} —</option>
                           {CLUB_SPORT_OPTIONS.map((sportOption) => (
                             <option key={sportOption} value={sportOption}>
                               {sportOption}
@@ -1349,31 +1353,31 @@ export default function ProfileEditForm() {
                       </div>
 
                       <div className="flex min-w-0 flex-col gap-1">
-                        <label className="text-sm text-gray-600">Ruolo<RequiredMark /></label>
+                        <label className="text-sm text-gray-600">{t('profile.role')}<RequiredMark /></label>
                         <select
                           className="w-full min-w-0 rounded-lg border p-2"
                           value={experience.role}
                           onChange={(e) => updatePastExperience(index, { role: e.target.value })}
                           disabled={!isStaff && !experience.sport}
                         >
-                          <option value="">— Seleziona —</option>
+                          <option value="">— {t('profile.select')} —</option>
                           {roleOptions.map((roleOption) => (
                             <option key={roleOption} value={roleOption}>
-                              {roleOption}
+                              {localizeSportRole(roleOption, t)}
                             </option>
                           ))}
                         </select>
                       </div>
 
                       <div className="flex min-w-0 flex-col gap-1">
-                        <label className="text-sm text-gray-600">Categoria</label>
+                        <label className="text-sm text-gray-600">{t('club.category')}</label>
                         <select
                           className="w-full min-w-0 rounded-lg border p-2"
                           value={experience.category}
                           onChange={(e) => updatePastExperience(index, { category: e.target.value })}
                           disabled={!experience.sport}
                         >
-                          <option value="">— Seleziona —</option>
+                          <option value="">— {t('profile.select')} —</option>
                           {categoryOptions.map((category) => (
                             <option key={category} value={category}>
                               {category}
@@ -1403,7 +1407,7 @@ export default function ProfileEditForm() {
                 className="text-sm font-semibold text-blue-700 hover:underline"
                 onClick={addPastExperience}
               >
-                + aggiungi esperienza
+                + {t('profile.addExperience')}
               </button>
             </div>
             <datalist id="past-experience-club-options">
@@ -1417,10 +1421,10 @@ export default function ProfileEditForm() {
         {/* Zona di interesse (atleta) */}
         {!isOrganization && (
           <section className="rounded-2xl border p-4 md:p-5">
-            <h2 className="mb-3 text-lg font-semibold">Zona di interesse</h2>
+            <h2 className="mb-3 text-lg font-semibold">{t('profile.interestArea')}</h2>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
               <div className="flex min-w-0 flex-col gap-1">
-                <label className="text-sm text-gray-600">Paese</label>
+                <label className="text-sm text-gray-600">{t('profile.country')}</label>
                 <select
                   className="w-full min-w-0 rounded-lg border p-2"
                   value={interestCountry}
@@ -1439,7 +1443,7 @@ export default function ProfileEditForm() {
                 value={interestLocation}
                 fallback={interestFallback}
                 onChange={setInterestLocation}
-                labels={{ region: 'Regione', province: 'Provincia', city: 'Città' }}
+                labels={{ region: t('opportunities.region'), province: t('opportunities.province'), city: t('opportunities.city') }}
               />
             </div>
           </section>
@@ -1448,9 +1452,9 @@ export default function ProfileEditForm() {
         {/* Social */}
         {!isFan && (
         <section className="rounded-2xl border p-4 md:p-5">
-          <h2 className="mb-3 text-lg font-semibold">Profili social</h2>
+          <h2 className="mb-3 text-lg font-semibold">{t('profile.socialProfiles')}</h2>
           <p className="mb-3 text-xs text-gray-500">
-            Inserisci URL completi o semplici @handle.
+            {t('profile.socialHelp')}
           </p>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="flex min-w-0 flex-col gap-1">
@@ -1496,7 +1500,7 @@ export default function ProfileEditForm() {
         {/* Notifiche */}
         {!isFan && (
         <section className="rounded-2xl border p-4 md:p-5">
-          <h2 className="mb-3 text-lg font-semibold">Notifiche</h2>
+          <h2 className="mb-3 text-lg font-semibold">{t('profile.notifications')}</h2>
           <label className="flex items-center gap-3">
             <input
               type="checkbox"
@@ -1504,7 +1508,7 @@ export default function ProfileEditForm() {
               checked={notifyEmail}
               onChange={(e) => setNotifyEmail(e.target.checked)}
             />
-            <span className="text-sm">Email per nuovi messaggi</span>
+            <span className="text-sm">{t('profile.emailMessages')}</span>
           </label>
         </section>
         )}
@@ -1515,7 +1519,7 @@ export default function ProfileEditForm() {
             disabled={!canSave}
             className="rounded-xl bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-60"
           >
-            {saving ? 'Salvataggio…' : 'Salva profilo'}
+            {saving ? t('settings.saving') : t('common.save')}
           </button>
           {message && <span className="text-sm text-green-700">{message}</span>}
           {error && <span className="text-sm text-red-700">{error}</span>}

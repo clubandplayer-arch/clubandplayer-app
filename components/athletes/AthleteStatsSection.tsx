@@ -1,4 +1,5 @@
 'use client';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 type Props = {
   matches?: number | null;
@@ -7,12 +8,13 @@ type Props = {
 };
 
 export default function AthleteStatsSection({ matches, goals, assists }: Props) {
+  const { t } = useI18n();
   const hasStats = [matches, goals, assists].some((v) => (v ?? null) !== null && (v ?? 0) !== 0);
 
   return (
     <section className="rounded-2xl border bg-white p-5 shadow-sm">
-      <h2 className="heading-h2 text-xl">Statistiche</h2>
-      {!hasStats && <p className="mt-3 text-sm text-neutral-700">Statistiche non disponibili.</p>}
+      <h2 className="heading-h2 text-xl">{t('player.stats')}</h2>
+      {!hasStats && <p className="mt-3 text-sm text-neutral-700">{t('player.noStats')}</p>}
       {hasStats && (
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <StatCard label="Partite" value={matches} />

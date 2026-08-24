@@ -1,4 +1,5 @@
 'use client';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -11,7 +12,8 @@ type Props = {
   className?: string;
 };
 
-export function MessageButton({ targetProfileId, label = 'Messaggia', className }: Props) {
+export function MessageButton({ targetProfileId, label, className }: Props) {
+  const { t } = useI18n();
   const router = useRouter();
   const { show } = useToast();
   const [loading, setLoading] = useState(false);
@@ -24,7 +26,7 @@ export function MessageButton({ targetProfileId, label = 'Messaggia', className 
       await openDirectConversation(target, { router, source: 'message-button' });
     } catch (error: any) {
       console.error('[direct-messages] message-button navigation failed', { target, error });
-      show(error?.message || 'Errore apertura chat', { variant: 'error' });
+      show(error?.message || t('messages.openError'), { variant: 'error' });
     } finally {
       setLoading(false);
     }
@@ -37,7 +39,7 @@ export function MessageButton({ targetProfileId, label = 'Messaggia', className 
       disabled={loading || !targetProfileId}
       className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold text-neutral-800 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-60 ${className || ''}`}
     >
-      {loading ? 'Attendi…' : label}
+      {loading ? t('auth.wait') : label ?? t('profile.message')}
     </button>
   );
 }

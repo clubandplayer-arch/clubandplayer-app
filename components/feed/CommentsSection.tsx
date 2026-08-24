@@ -5,6 +5,8 @@ import { buildProfileDisplayName } from '@/lib/displayName';
 import CertifiedCMarkSidebar from '@/components/badges/CertifiedCMarkSidebar';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { MentionText, renderMentionText } from '@/components/feed/MentionText';
+import { useI18n } from '@/components/i18n/I18nProvider';
+import { formatDate } from '@/lib/i18n/format';
 
 export type CommentAuthor = {
   id: string;
@@ -61,6 +63,7 @@ function findMentionQuery(value: string, caret: number | null) {
 }
 
 export function CommentsSection({ postId, initialCount = 0, onCountChange, expandSignal, currentUserId }: Props) {
+  const { locale, t } = useI18n();
   const [comments, setComments] = useState<PostComment[]>([]);
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -419,10 +422,10 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
                     onClick={() => saveEdit(c.id)}
                     disabled={editSaving}
                   >
-                    Salva
+                    {t('common.save')}
                   </button>
                   <button type="button" className="text-sm text-neutral-600 underline" onClick={cancelEdit}>
-                    Annulla
+                    {t('common.cancel')}
                   </button>
                 </div>
                 {editError ? <div className="text-xs text-red-600">{editError}</div> : null}
@@ -435,10 +438,10 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
                 <div className="mt-1 flex items-center gap-2 text-[10px] text-neutral-500">
                   {c.created_at ? (
                     <span>
-                      {new Intl.DateTimeFormat('it-IT', {
+                      {formatDate(new Date(c.created_at), locale, {
                         dateStyle: 'short',
                         timeStyle: 'short',
-                      }).format(new Date(c.created_at))}
+                      })}
                     </span>
                   ) : null}
                   {canEdit ? (
@@ -447,7 +450,7 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
                       className="font-semibold text-[var(--brand)] hover:underline"
                       onClick={() => startEdit(c)}
                     >
-                      Modifica
+                      {t('feed.edit')}
                     </button>
                   ) : null}
                   {canDelete ? (
@@ -456,7 +459,7 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
                       className="font-semibold text-red-600 hover:underline"
                       onClick={() => deleteComment(c.id)}
                     >
-                      Elimina
+                      {t('feed.delete')}
                     </button>
                   ) : null}
                 </div>
@@ -469,7 +472,7 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
       {deleteError ? <div className="text-xs text-red-600">{deleteError}</div> : null}
 
       {count === 0 && !loading ? (
-        <div className="text-sm text-neutral-500">Nessun commento</div>
+        <div className="text-sm text-neutral-500">{t('feed.noComments')}</div>
       ) : null}
 
       {!expanded ? (
@@ -480,7 +483,7 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
               className="text-sm font-semibold text-[var(--brand)] hover:underline whitespace-nowrap"
               onClick={openComments}
             >
-              Mostra altri {remaining} commenti
+              {t('feed.showMoreComments', { count: remaining })}
             </button>
           ) : (
             <button
@@ -488,7 +491,7 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
               className="text-sm font-semibold text-[var(--brand)] hover:underline whitespace-nowrap"
               onClick={openComments}
             >
-              Mostra commenti
+              {t('feed.showComments')}
             </button>
           )}
 
@@ -497,14 +500,14 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
             className="text-sm font-semibold text-[var(--brand)] hover:underline whitespace-nowrap"
             onClick={openComments}
           >
-            Aggiungi un commento
+            {t('feed.addComment')}
           </button>
         </div>
       ) : expanded ? (
         <div className="space-y-2">
           <div className="flex flex-col gap-2">
             <label htmlFor={`comment-${postId}`} className="text-xs font-semibold text-neutral-700">
-              Aggiungi un commento
+              {t('feed.addComment')}
             </label>
             <div className="relative z-50">
               {newBody ? (
@@ -529,7 +532,7 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
                 className={`relative w-full rounded-lg border border-neutral-300 bg-transparent p-2 text-sm leading-5 focus:outline-none focus:ring-2 focus:ring-[var(--brand)] ${
                   newBody ? 'text-transparent caret-neutral-900' : ''
                 }`}
-                placeholder="Scrivi un commento... usa @nome o @all per taggare i tuoi follower"
+                placeholder={t('feed.commentPlaceholder')}
               />
               {mentionSuggestions.length && suggestionPosition ? (
                 <div
@@ -541,7 +544,7 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
                   }}
                 >
                   <div className="border-b border-slate-100 px-3 py-2 text-xs font-semibold text-slate-500">
-                    Tagga un tuo follower
+                    {t('feed.tagFollower')}
                   </div>
                   {mentionSuggestions.map((option) => (
                     <button
@@ -576,21 +579,21 @@ export function CommentsSection({ postId, initialCount = 0, onCountChange, expan
                 className="rounded-full bg-[var(--brand)] px-3 py-1.5 text-sm font-semibold text-white hover:bg-[var(--brand)]/90"
                 onClick={submitComment}
               >
-                Pubblica
+                {t('feed.publish')}
               </button>
               <button
                 type="button"
                 className="text-sm text-neutral-600 underline"
                 onClick={closeComments}
               >
-                Chiudi
+                {t('feed.closeComments')}
               </button>
             </div>
           </div>
         </div>
       ) : null}
 
-      {loading ? <div className="text-sm text-neutral-500">Caricamento commenti…</div> : null}
+      {loading ? <div className="text-sm text-neutral-500">{t('feed.loadingComments')}</div> : null}
     </div>
   );
 }

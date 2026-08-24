@@ -5,11 +5,13 @@ export const fetchCache = 'default-no-store';
 
 ;
 
+import { useI18n } from '@/components/i18n/I18nProvider';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 export default function UpdatePasswordPage() {
+  const { t } = useI18n();
   const router = useRouter();
   const supabase = supabaseBrowser();
 
@@ -24,8 +26,8 @@ export default function UpdatePasswordPage() {
     setErr(null);
     setOk(null);
 
-    if (pwd1.length < 8) return setErr('La password deve contenere almeno 8 caratteri.');
-    if (pwd1 !== pwd2) return setErr('Le password non coincidono.');
+    if (pwd1.length < 8) return setErr(t('auth.passwordTooShort'));
+    if (pwd1 !== pwd2) return setErr(t('auth.passwordMismatch'));
 
     setBusy(true);
     try {
@@ -33,10 +35,10 @@ export default function UpdatePasswordPage() {
       const { error } = await supabase.auth.updateUser({ password: pwd1 });
       if (error) throw error;
 
-      setOk('Password aggiornata correttamente. Ora puoi accedere.');
+      setOk(t('auth.passwordUpdated'));
       setTimeout(() => router.replace('/login'), 1200);
     } catch (e: any) {
-      setErr(e?.message ?? 'Errore durante l’aggiornamento della password (link scaduto?).');
+      setErr(e?.message ?? t('auth.passwordUpdateError'));
     } finally {
       setBusy(false);
     }
@@ -45,14 +47,14 @@ export default function UpdatePasswordPage() {
   return (
     <main className="min-h-[60vh] flex items-center justify-center p-6">
       <div className="w-full max-w-sm rounded-2xl border p-6 shadow-sm space-y-4">
-        <h1 className="text-xl font-semibold">Imposta nuova password</h1>
+        <h1 className="text-xl font-semibold">{t('auth.newPasswordTitle')}</h1>
 
         {err && <p className="rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700">{err}</p>}
         {ok && <p className="rounded-md border border-green-300 bg-green-50 p-2 text-sm text-green-700">{ok}</p>}
 
         <form onSubmit={onSubmit} className="space-y-3">
           <label className="block text-sm">
-            Nuova password
+            {t('auth.newPassword')}
             <input
               type="password"
               className="mt-1 w-full rounded-md border px-3 py-2"
@@ -65,7 +67,7 @@ export default function UpdatePasswordPage() {
           </label>
 
           <label className="block text-sm">
-            Conferma password
+            {t('auth.confirmPassword')}
             <input
               type="password"
               className="mt-1 w-full rounded-md border px-3 py-2"
@@ -82,13 +84,12 @@ export default function UpdatePasswordPage() {
             disabled={busy}
             className="w-full rounded-md bg-black px-4 py-2 text-white disabled:opacity-50"
           >
-            {busy ? 'Aggiorno…' : 'Aggiorna password'}
+            {busy ? t('auth.updating') : t('auth.updatePassword')}
           </button>
         </form>
 
         <p className="text-xs text-gray-500">
-          Se vedi errori, prova a ripetere il reset dalla pagina{' '}
-          <a href="/reset-password" className="underline">reset-password</a>.
+          {t('auth.retryReset')}
         </p>
       </div>
     </main>

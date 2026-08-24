@@ -8,6 +8,7 @@ import { resolveCountryName, resolveStateName } from '@/lib/geodata/countryState
 import { normalizeSport } from '@/lib/opps/constants';
 import { useProvinceAbbreviations } from '@/hooks/useProvinceAbbreviations';
 import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 type Profile = {
   account_type?: string | null;
@@ -38,6 +39,7 @@ const supabase = createSupabaseClient(
 );
 
 export default function ClubProfileDetails() {
+  const { t } = useI18n();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [location, setLocation] = useState<{ region?: string; province?: string; municipality?: string }>({});
@@ -143,7 +145,7 @@ export default function ClubProfileDetails() {
           <div className="mx-auto h-36 w-36 rounded-full bg-gradient-to-br from-neutral-100 to-neutral-200 md:h-40 md:w-40" />
         )}
         <div>
-          <h2 className="heading-h2 mb-1">Dati club</h2>
+          <h2 className="heading-h2 mb-1">{t('club.details')}</h2>
           <p className="text-lg font-semibold leading-tight text-neutral-900">{displayName}</p>
           {cityLine ? <p className="text-sm text-neutral-600">{cityLine}</p> : null}
           {profile?.club_motto ? (
@@ -154,29 +156,29 @@ export default function ClubProfileDetails() {
 
       <dl className="grid gap-4 sm:grid-cols-2">
         <div className="rounded-xl border border-white/30 bg-white/40 p-3 shadow-sm backdrop-blur">
-          <dt className="text-xs uppercase tracking-wide text-neutral-500">Sport</dt>
+          <dt className="text-xs uppercase tracking-wide text-neutral-500">{t('opportunities.sport')}</dt>
           <dd className="text-base font-semibold text-neutral-900">{sportLabel || '—'}</dd>
         </div>
         <div className="rounded-xl border border-white/30 bg-white/40 p-3 shadow-sm backdrop-blur">
-          <dt className="text-xs uppercase tracking-wide text-neutral-500">Categoria</dt>
+          <dt className="text-xs uppercase tracking-wide text-neutral-500">{t('club.category')}</dt>
           <dd className="text-base font-semibold text-neutral-900">{profile?.club_league_category || '—'}</dd>
         </div>
         <div className="rounded-xl border border-white/30 bg-white/40 p-3 shadow-sm backdrop-blur">
-          <dt className="text-xs uppercase tracking-wide text-neutral-500">Anno di fondazione</dt>
+          <dt className="text-xs uppercase tracking-wide text-neutral-500">{t('club.foundationYear')}</dt>
           <dd className="text-base font-semibold text-neutral-900">{profile?.club_foundation_year || '—'}</dd>
         </div>
         <div className="rounded-xl border border-white/30 bg-white/40 p-3 shadow-sm backdrop-blur">
-          <dt className="text-xs uppercase tracking-wide text-neutral-500">Impianto sportivo</dt>
+          <dt className="text-xs uppercase tracking-wide text-neutral-500">{t('club.facility')}</dt>
           <dd className="text-base font-semibold text-neutral-900">{profile?.club_stadium || '—'}</dd>
         </div>
         <div className="rounded-xl border border-white/30 bg-white/40 p-3 shadow-sm backdrop-blur">
-          <dt className="text-xs uppercase tracking-wide text-neutral-500">Indirizzo impianto</dt>
+          <dt className="text-xs uppercase tracking-wide text-neutral-500">{t('club.address')}</dt>
           <dd className="text-base font-semibold text-neutral-900">
             {profile?.club_stadium_address || '—'}
           </dd>
         </div>
         <div className="sm:col-span-2 rounded-xl border border-white/30 bg-white/40 p-3 shadow-sm backdrop-blur">
-          <dt className="text-xs uppercase tracking-wide text-neutral-500">Biografia</dt>
+          <dt className="text-xs uppercase tracking-wide text-neutral-500">{t('club.biography')}</dt>
           <dd className="mt-1 text-sm leading-relaxed text-neutral-800">
             {profile?.bio ? profile.bio : 'Aggiungi una descrizione per raccontare storia e valori del club.'}
           </dd>

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 type LeafletLib = any;
 
@@ -94,6 +95,7 @@ function buildClubIcon(L: LeafletLib, pin: ClubMapPin, size: number) {
 }
 
 export default function ClubMapClient() {
+  const { t } = useI18n();
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<LeafletLib['Map'] | null>(null);
   const markersRef = useRef<LeafletLib['Marker'][]>([]);
@@ -209,7 +211,7 @@ export default function ClubMapClient() {
         });
         (marker as any).__clubPin = pin;
         marker.bindPopup(
-          `<div style="min-width:170px"><strong>${safeName}</strong>${location ? `<br /><span style="color:#64748b">${escapeHtml(location)}</span>` : ''}<br /><a href="/clubs/${escapeHtml(pin.id)}" style="display:inline-flex;margin-top:8px;border-radius:999px;background:#2563eb;color:white;padding:6px 10px;text-decoration:none;font-weight:700;">Visita Club</a></div>`,
+          `<div style="min-width:170px"><strong>${safeName}</strong>${location ? `<br /><span style="color:#64748b">${escapeHtml(location)}</span>` : ''}<br /><a href="/clubs/${escapeHtml(pin.id)}" style="display:inline-flex;margin-top:8px;border-radius:999px;background:#2563eb;color:white;padding:6px 10px;text-decoration:none;font-weight:700;">${escapeHtml(t('common.visitClub'))}</a></div>`,
         );
         marker.addTo(group);
         markersRef.current.push(marker);
@@ -228,29 +230,29 @@ export default function ClubMapClient() {
     return () => {
       cancelled = true;
     };
-  }, [mapReady, pins]);
+  }, [mapReady, pins, t]);
 
   const helperText = useMemo(() => {
-    if (loading) return 'Caricamento dei Club geolocalizzati in corso…';
-    if (locatedCount === 1) return '1 Club è già visibile sulla mappa.';
-    return `${locatedCount} Club sono già visibili sulla mappa.`;
-  }, [loading, locatedCount]);
+    if (loading) return t('common.loading');
+    if (locatedCount === 1) return t('map.visibleCount', { count: locatedCount });
+    return t('map.visibleCount', { count: locatedCount });
+  }, [loading, locatedCount, t]);
 
   return (
     <div className="space-y-4">
       <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
         <div className="flex flex-col gap-3 border-b border-slate-100 p-4 md:flex-row md:items-center md:justify-between md:p-5">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-700">Mappa Club</p>
-            <h1 className="mt-1 text-2xl font-bold text-slate-950 md:text-3xl">Club geolocalizzati in Italia</h1>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-700">{t('navigation.clubMap')}</p>
+            <h1 className="mt-1 text-2xl font-bold text-slate-950 md:text-3xl">{t('map.title')}</h1>
             <p className="mt-1 text-sm text-slate-600">
-              Spostati e ingrandisci la mappa: i loghi dei Club diventano più visibili al crescere dello zoom.
+              {t('map.instructions')}
             </p>
           </div>
           <div className="flex flex-col gap-2 text-sm md:items-end">
             <span className="rounded-full bg-blue-50 px-3 py-1 font-semibold text-blue-800">{helperText}</span>
             <Link href="/club/profile" className="text-blue-700 underline-offset-2 hover:underline">
-              Sei un Club? Imposta la geolocalizzazione
+              {t('map.setLocation')}
             </Link>
           </div>
         </div>
@@ -259,7 +261,7 @@ export default function ClubMapClient() {
           <div ref={mapContainerRef} className="absolute inset-0" aria-label="Mappa dei Club geolocalizzati" />
           {loading ? (
             <div className="absolute left-4 top-4 rounded-2xl bg-white/95 px-4 py-3 text-sm font-medium text-slate-700 shadow-lg">
-              Caricamento Club…
+              {t('map.loadingClubs')}
             </div>
           ) : null}
           {error ? (
@@ -269,7 +271,7 @@ export default function ClubMapClient() {
           ) : null}
           {!loading && !error && locatedCount === 0 ? (
             <div className="absolute left-4 right-4 top-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800 shadow-lg md:right-auto">
-              Nessun Club geolocalizzato: appena i Club salveranno le coordinate compariranno qui con il loro logo.
+              {t('map.empty')}
             </div>
           ) : null}
         </div>

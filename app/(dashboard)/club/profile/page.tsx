@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import ProfileEditForm from '@/components/profiles/ProfileEditForm';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 type RegistryClub = {
   master_id: string;
@@ -157,6 +158,7 @@ function RegistryNationalCard({ state }: { state: RegistryState }) {
 }
 
 export default function ProfilePage() {
+  const { t } = useI18n();
   const supabase = useMemo(() => supabaseBrowser(), []);
   const [registryState, setRegistryState] = useState<RegistryState>({
     status: 'loading',
@@ -304,11 +306,11 @@ export default function ProfilePage() {
   return (
     <main className="container mx-auto space-y-6 py-6">
       <header className="space-y-1">
-        <h1 className="heading-h1 mb-1">Modifica dati club</h1>
+        <h1 className="heading-h1 mb-1">{t('club.editTitle')}</h1>
       </header>
 
       <section className="glass-panel p-5 md:p-6">
-        <h2 className="heading-h2 mb-2">Dati club</h2>
+        <h2 className="heading-h2 mb-2">{t('club.data')}</h2>
         <p className="mb-4 text-sm text-neutral-600">
           Compila o aggiorna le informazioni principali del club, inclusi foto profilo, località e impianto.
         </p>

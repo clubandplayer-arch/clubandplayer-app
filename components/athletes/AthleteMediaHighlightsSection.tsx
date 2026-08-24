@@ -1,5 +1,6 @@
 'use client';
 
+import { useI18n } from '@/components/i18n/I18nProvider';
 import Image from 'next/image';
 
 import { useExclusiveVideoPlayback } from '@/hooks/useExclusiveVideoPlayback';
@@ -46,12 +47,13 @@ function HighlightMediaItem({ item }: { item: AthleteMediaItem }) {
 }
 
 export default function AthleteMediaHighlightsSection({ items }: Props) {
+  const { t } = useI18n();
   const hasMedia = items.length > 0;
 
   return (
     <section className="rounded-2xl border bg-white p-5 shadow-sm">
-      <h2 className="heading-h2 text-xl">Media in evidenza</h2>
-      {!hasMedia && <p className="mt-3 text-sm text-neutral-700">Nessun media in evidenza.</p>}
+      <h2 className="heading-h2 text-xl">{t('player.featuredMedia')}</h2>
+      {!hasMedia && <p className="mt-3 text-sm text-neutral-700">{t('player.noFeaturedMedia')}</p>}
       {hasMedia && (
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
           {items.map((item) => (

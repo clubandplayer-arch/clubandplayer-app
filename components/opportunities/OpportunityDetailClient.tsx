@@ -8,6 +8,8 @@ import type { Opportunity } from '@/types/opportunity';
 import { opportunityGenderLabel } from '@/lib/opps/gender';
 import { useProvinceAbbreviations } from '@/hooks/useProvinceAbbreviations';
 import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
+import { useI18n } from '@/components/i18n/I18nProvider';
+import { localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 
 type Role = 'athlete' | 'club' | 'staff' | 'fan' | 'guest';
 type ApiOne<T> = { data?: T; [k: string]: any };
@@ -47,6 +49,7 @@ function fmtAge(min?: number | null, max?: number | null) {
 }
 
 export default function OpportunityDetailClient({ id }: { id: string }) {
+  const { t } = useI18n();
   const [opp, setOpp] = useState<OpportunityWithLegacy | null>(null);
   const [role, setRole] = useState<Role>('guest');
   const [meId, setMeId] = useState<string | null>(null);
@@ -157,7 +160,7 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
             <div className="mt-1 text-sm text-gray-600 flex flex-wrap items-center gap-2">
               <span>{sport ?? '—'}</span>
               <span>•</span>
-              <span>{opp.role ?? '—'}</span>
+              <span>{localizeSportRole(opp.role, t) ?? '—'}</span>
               <span>•</span>
               <span>Età: {fmtAge(ageMin, ageMax)}</span>
               {gender && (

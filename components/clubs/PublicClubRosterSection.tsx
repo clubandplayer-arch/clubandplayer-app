@@ -8,6 +8,8 @@ import { buildProfileDisplayName } from '@/lib/displayName';
 import { STAFF_ROLES } from '@/lib/opps/constants';
 import { buildRosterRoleSections } from '@/lib/utils/rosterRoleSort';
 import FanVoteBadge from '@/components/fan-votes/FanVoteBadge';
+import { useI18n } from '@/components/i18n/I18nProvider';
+import { localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 
 type PublicRosterPlayer = {
   player_id: string;
@@ -126,6 +128,7 @@ function compareNames(a: string, b: string) {
 }
 
 function RosterCard({ player }: { player: PublicRosterPlayer }) {
+  const { t } = useI18n();
   const displayName = buildProfileDisplayName(
     player.full_name,
     player.display_name,
@@ -167,7 +170,7 @@ function RosterCard({ player }: { player: PublicRosterPlayer }) {
             </p>
             <FanVoteBadge count={player.fan_vote_count} compact />
           </div>
-          {player.role ? <p className="text-xs text-neutral-600">{player.role}</p> : null}
+          {player.role ? <p className="text-xs text-neutral-600">{localizeSportRole(player.role, t)}</p> : null}
           {player.city ? <p className="text-xs text-neutral-600">{player.city}</p> : null}
           {label ? (
             <p className="flex items-center gap-1 text-xs text-neutral-600">
@@ -246,6 +249,7 @@ function ListSkeleton() {
 }
 
 export default function PublicClubRosterSection({ clubId, clubSport, clubCity }: Props) {
+  const { t } = useI18n();
   const [activeTab, setActiveTab] = useState<ActiveTab>('roster');
 
   const [rosterLoading, setRosterLoading] = useState(true);
@@ -340,7 +344,7 @@ export default function PublicClubRosterSection({ clubId, clubSport, clubCity }:
   return (
     <section className="space-y-4 rounded-2xl border bg-white p-5 shadow-sm">
       <div className="space-y-2">
-        <h2 className="heading-h2 text-xl">Rosa e Staff</h2>
+        <h2 className="heading-h2 text-xl">{t('club.rosterStaff')}</h2>
         <div className="inline-flex rounded-xl border border-neutral-200 bg-neutral-50 p-1">
           <button
             type="button"
@@ -367,7 +371,7 @@ export default function PublicClubRosterSection({ clubId, clubSport, clubCity }:
 
       {isRosterTab ? (
         <>
-          <p className="text-sm text-neutral-600">Giocatori in rosa</p>
+          <p className="text-sm text-neutral-600">{t('club.rosterPlayers')}</p>
           {rosterLoading ? (
             <div className="space-y-2">
               <ListSkeleton />
@@ -376,7 +380,7 @@ export default function PublicClubRosterSection({ clubId, clubSport, clubCity }:
           ) : null}
 
           {!rosterLoading && (!players.length || rosterError) ? (
-            <p className="text-sm text-neutral-600">Nessun giocatore in rosa.</p>
+            <p className="text-sm text-neutral-600">{t('roster.empty')}</p>
           ) : null}
 
           {!rosterLoading && rosterSections.length ? (
@@ -384,7 +388,7 @@ export default function PublicClubRosterSection({ clubId, clubSport, clubCity }:
               {rosterSections.map((section) => (
                 <section key={section.roleLabel} className="space-y-3">
                   <div className="flex items-center gap-3">
-                    <h3 className="text-sm font-semibold uppercase tracking-wide text-neutral-700">{section.roleLabel}</h3>
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-neutral-700">{localizeSportRole(section.roleLabel, t)}</h3>
                     <div className="h-px flex-1 bg-neutral-200" />
                   </div>
                   <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -399,7 +403,7 @@ export default function PublicClubRosterSection({ clubId, clubSport, clubCity }:
         </>
       ) : (
         <>
-          <p className="text-sm text-neutral-600">Membri staff del club</p>
+          <p className="text-sm text-neutral-600">{t('club.staffMembers')}</p>
           {staffLoading ? (
             <div className="space-y-2">
               <ListSkeleton />
@@ -408,7 +412,7 @@ export default function PublicClubRosterSection({ clubId, clubSport, clubCity }:
           ) : null}
 
           {!staffLoading && (!staffMembers.length || staffError) ? (
-            <p className="text-sm text-neutral-600">Nessun membro dello staff ancora aggiunto.</p>
+            <p className="text-sm text-neutral-600">{t('staff.empty')}</p>
           ) : null}
 
           {!staffLoading && staffSections.length ? (

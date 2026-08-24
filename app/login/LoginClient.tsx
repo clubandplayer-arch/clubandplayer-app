@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import SocialLogin from '@/components/auth/SocialLogin';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 const SUPA_URL  = process.env.NEXT_PUBLIC_SUPABASE_URL  ?? '';
 const SUPA_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
@@ -21,6 +22,7 @@ function sanitizeRedirect(input: string | null, origin: string): string | null {
 }
 
 export default function LoginPage() {
+  const { t } = useI18n();
   const router = useRouter();
 
   const [email, setEmail] = useState('');
@@ -135,7 +137,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm rounded-2xl border p-6 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <h1 id="login-heading" className="text-xl font-semibold">
-            Login
+            {t('auth.loginTitle')}
           </h1>
           <span className="text-[10px] rounded bg-gray-100 px-2 py-0.5 text-gray-600" title={BUILD_TAG}>
             {BUILD_TAG}
@@ -154,11 +156,11 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY`}
 
         {oauthReady ? (
           <div className="space-y-3">
-            <SocialLogin />
-            <SocialLogin label="Continua con Apple" provider="apple" />
+            <SocialLogin label={t('auth.continueGoogle')} />
+            <SocialLogin label={t('auth.continueApple')} provider="apple" />
             <div className="flex items-center gap-3 text-xs text-gray-500">
               <span className="h-px flex-1 bg-gray-200" />
-              <span>oppure</span>
+              <span>{t('auth.or')}</span>
               <span className="h-px flex-1 bg-gray-200" />
             </div>
           </div>
@@ -188,7 +190,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY`}
         >
           <div className="space-y-1">
             <label htmlFor={emailId} className="text-sm font-medium text-gray-700">
-              Email
+              {t('auth.email')}
             </label>
             <input
               id={emailId}
@@ -205,13 +207,13 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY`}
           <div className="space-y-1">
             <div className="flex items-center justify-between gap-3">
               <label htmlFor={passwordId} className="text-sm font-medium text-gray-700">
-                Password
+                {t('auth.password')}
               </label>
               <a
                 href={`/reset-password${email ? `?email=${encodeURIComponent(email)}` : ''}`}
                 className="text-xs font-semibold text-[var(--brand)] underline underline-offset-4"
               >
-                Password dimenticata?
+                {t('auth.forgotPassword')}
               </a>
             </div>
             <input
@@ -231,7 +233,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY`}
             type="submit"
             className="w-full rounded-md bg-blue-600 py-2 text-white disabled:opacity-50"
           >
-            {loading ? 'Accesso…' : 'Entra'}
+            {loading ? t('auth.signingIn') : t('auth.enter')}
           </button>
         </form>
 
@@ -241,7 +243,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY`}
             href={`/reset-password${email ? `?email=${encodeURIComponent(email)}` : ''}`}
             className="font-semibold underline underline-offset-4"
           >
-            Recupera password
+            {t('auth.recoverPassword')}
           </a>
           . Se invece usi Google o Apple, continua con il relativo pulsante social.
         </div>
@@ -249,7 +251,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY`}
         <p className="text-center text-xs text-gray-600">
           Accedendo accetti i{' '}
           <a href="/legal/terms" className="underline" target="_blank" rel="noreferrer">
-            Termini di utilizzo
+            {t('common.terms')}
           </a>{' '}
           e la{' '}
           <a href="/legal/privacy" className="underline" target="_blank" rel="noreferrer">
@@ -260,7 +262,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY`}
 
         {currentEmail && (
           <div className="mt-2 text-center text-xs text-gray-600">
-            Sei loggato come <strong>{currentEmail}</strong>.{' '}
+            {t('auth.loggedAs', { email: currentEmail })}{' '}
             <button onClick={signOut} className="underline">Esci</button>
           </div>
         )}

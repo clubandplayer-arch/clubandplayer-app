@@ -5,6 +5,8 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import EmptyState from '@/components/common/EmptyState';
 import { useToast } from '@/components/common/ToastProvider';
+import { useI18n } from '@/components/i18n/I18nProvider';
+import { formatDate as formatLocalizedDate } from '@/lib/i18n/format';
 import {
   getDirectInbox,
   markDirectThreadRead,
@@ -18,9 +20,9 @@ type Props = {
   className?: string;
 };
 
-function formatDate(value: string) {
+function formatDate(value: string, locale: Parameters<typeof formatLocalizedDate>[1]) {
   try {
-    return new Date(value).toLocaleString('it-IT', {
+    return formatLocalizedDate(value, locale, {
       day: '2-digit',
       month: 'short',
       hour: '2-digit',
@@ -46,6 +48,7 @@ function Avatar({ name, avatarUrl }: { name: string; avatarUrl: string | null })
 }
 
 export function DirectMessageInbox({ onSelectThread, hideHeader, className }: Props) {
+  const { locale, t } = useI18n();
   const router = useRouter();
   const { show } = useToast();
   const [threads, setThreads] = useState<DirectThreadSummary[]>([]);
@@ -61,14 +64,14 @@ export function DirectMessageInbox({ onSelectThread, hideHeader, className }: Pr
       if (!cancelled?.current) setThreads(inbox);
     } catch (err: any) {
       if (cancelled?.current) return;
-      const message = err?.message || 'Errore caricamento conversazioni';
+      const message = err?.message || t('messages.loadError');
       console.error('[direct-messages] inbox load failed', { error: err });
       setError(message);
       show(message, { variant: 'error' });
     } finally {
       if (!cancelled?.current) setLoading(false);
     }
-  }, [show]);
+  }, [show, t]);
 
   useEffect(() => {
     const cancelled = { current: false };
@@ -116,7 +119,7 @@ export function DirectMessageInbox({ onSelectThread, hideHeader, className }: Pr
       await openDirectConversation(thread.otherProfileId, { router, source: 'messages-inbox' });
     } catch (error: any) {
       console.error('[direct-messages] inbox navigation failed', { targetProfileId: thread.otherProfileId, error });
-      show(error?.message || 'Errore apertura chat', { variant: 'error' });
+      show(error?.message || t('messages.openError'), { variant: 'error' });
     }
   };
 
@@ -124,21 +127,21 @@ export function DirectMessageInbox({ onSelectThread, hideHeader, className }: Pr
     <div className={containerClass}>
       {!hideHeader && (
         <>
-          <h1 className="text-xl font-semibold text-neutral-900">Messaggi diretti</h1>
-          <p className="mt-2 text-sm text-neutral-600">Scegli con chi continuare la conversazione 1-a-1.</p>
+          <h1 className="text-xl font-semibold text-neutral-900">{t('messages.direct')}</h1>
+          <p className="mt-2 text-sm text-neutral-600">{t('messages.chooseConversation')}</p>
         </>
       )}
 
       <div className={`${hideHeader ? 'mt-0' : 'mt-4'} space-y-3`}>
-        {loading && <div className="text-sm text-neutral-600">Caricamento conversazioni…</div>}
+        {loading && <div className="text-sm text-neutral-600">{t('messages.loading')}</div>}
         {!loading && error && (
           <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
         )}
         {!loading && !error && threads.length === 0 && (
           <EmptyState
-            title="Nessuna conversazione"
-            description="Apri un profilo e clicca “Messaggia” per iniziare una chat 1-a-1."
-            actions={[{ label: 'Cerca su mappa', href: '/search-map', variant: 'primary' }]}
+            title={t('messages.empty')}
+            description={t('messages.emptyDescription')}
+            actions={[{ label: t('messages.searchMap'), href: '/search-map', variant: 'primary' }]}
           />
         )}
         {!loading && !error &&
@@ -146,7 +149,7 @@ export function DirectMessageInbox({ onSelectThread, hideHeader, className }: Pr
             const title =
               thread.other?.full_name?.trim?.() ||
               thread.other?.display_name?.trim?.() ||
-              'Senza nome';
+              t('messages.unknownName');
 
             return (
               <button
@@ -164,7 +167,7 @@ export function DirectMessageInbox({ onSelectThread, hideHeader, className }: Pr
                     {thread.lastMessage}
                   </div>
                 </div>
-                <div className="text-xs text-neutral-500">{formatDate(thread.lastMessageAt)}</div>
+                <div className="text-xs text-neutral-500">{formatDate(thread.lastMessageAt, locale)}</div>
                 {thread.hasUnread && (
                   <span className="ml-2 inline-flex h-2 w-2 rounded-full bg-[var(--brand)]" aria-hidden="true" />
                 )}

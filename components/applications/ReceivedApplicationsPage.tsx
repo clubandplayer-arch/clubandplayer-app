@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import ApplicationsTable from '@/components/applications/ApplicationsTable';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 type ApplicationRow = {
   id: string;
@@ -15,6 +16,7 @@ type ApplicationRow = {
 };
 
 export default function ReceivedApplicationsPage() {
+  const { t } = useI18n();
   const [rows, setRows] = useState<ApplicationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -82,9 +84,9 @@ export default function ReceivedApplicationsPage() {
   return (
     <main className="mx-auto max-w-6xl p-4 space-y-4">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">Candidature ricevute</h1>
+        <h1 className="text-2xl font-semibold">{t('applications.received')}</h1>
         <p className="text-sm text-gray-600">
-          Elenco delle candidature alle opportunità pubblicate dal tuo club.
+          {t('applications.subtitle')}
         </p>
       </header>
 
@@ -102,7 +104,7 @@ export default function ReceivedApplicationsPage() {
       />
 
       {!loading && !err && rows.length === 0 && (
-        <div className="text-sm text-gray-500">Nessuna candidatura ricevuta al momento.</div>
+        <div className="text-sm text-gray-500">{t('applications.empty')}</div>
       )}
     </main>
   );

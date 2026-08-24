@@ -1,4 +1,5 @@
 'use client';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -38,6 +39,7 @@ function countryName(codeOrText?: string | null) {
 }
 
 export default function FanProfileForm() {
+  const { t } = useI18n();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -182,13 +184,13 @@ export default function FanProfileForm() {
         body: JSON.stringify(payload),
       });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json?.error || 'Salvataggio non riuscito');
+      if (!res.ok) throw new Error(json?.error || t('profile.saveFailed'));
 
-      setMessage('Profilo fan aggiornato correttamente.');
+      setMessage(t('profile.saved'));
       router.replace('/feed');
       router.refresh();
     } catch (err: any) {
-      setError(err?.message || 'Errore durante il salvataggio.');
+      setError(err?.message || t('profile.saveError'));
     } finally {
       setSaving(false);
     }
@@ -198,22 +200,22 @@ export default function FanProfileForm() {
     <form onSubmit={onSubmit} className="space-y-6">
       {missingRequiredFields.length > 0 ? (
         <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-950 shadow-sm" role="alert">
-          <p className="font-semibold">Completa il tuo profilo per continuare ad utilizzare Club and Player.</p>
-          <p className="mt-2 text-sm">I dati richiesti servono a identificare correttamente utenti, staff e società all'interno della piattaforma.</p>
-          <p className="mt-2 text-sm">Campi mancanti: {missingRequiredFields.join(', ')}.</p>
+          <p className="font-semibold">{t('profile.completeTitle')}</p>
+          <p className="mt-2 text-sm">{t('profile.completeHelp')}</p>
+          <p className="mt-2 text-sm">{t('profile.missingFields', { fields: missingRequiredFields.join(', ') })}</p>
         </div>
       ) : null}
       {error ? <p className="rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-700">{error}</p> : null}
       {message ? <p className="rounded-md border border-green-200 bg-green-50 p-2 text-sm text-green-700">{message}</p> : null}
 
       <section className="rounded-2xl border p-4 md:p-5">
-        <h2 className="mb-3 text-lg font-semibold">Dati personali</h2>
+        <h2 className="mb-3 text-lg font-semibold">{t('profile.personalData')}</h2>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="flex flex-col gap-2 md:col-span-2">
-            <label className="text-sm text-gray-600">Foto profilo</label>
+            <label className="text-sm text-gray-600">{t('club.photo')}</label>
             <AvatarUploader value={avatarUrl} onChange={setAvatarUrl} />
             <div className="flex items-center gap-3 text-xs text-gray-500">
-              <span>La foto viene mostrata nelle mini-card della bacheca.</span>
+              <span>{t('profile.photoFeedHelp')}</span>
               {avatarUrl && (
                 <button
                   type="button"
@@ -227,7 +229,7 @@ export default function FanProfileForm() {
           </div>
 
           <div className="flex min-w-0 flex-col gap-1 md:col-span-2">
-            <label className="text-sm text-gray-600">Nome e cognome / Gruppo tifoseria<RequiredMark /></label>
+            <label className="text-sm text-gray-600">{t('profile.fanName')}<RequiredMark /></label>
             <input
               className="w-full min-w-0 rounded-lg border p-2"
               value={fullName}
@@ -238,7 +240,7 @@ export default function FanProfileForm() {
           </div>
 
           <div className="flex min-w-0 flex-col gap-1">
-            <label className="text-sm text-gray-600">Nazionalità</label>
+            <label className="text-sm text-gray-600">{t('profile.nationality')}</label>
             <select
               className="w-full min-w-0 rounded-lg border p-2"
               value={country}
@@ -257,10 +259,10 @@ export default function FanProfileForm() {
       </section>
 
       <section className="rounded-2xl border p-4 md:p-5">
-        <h2 className="mb-3 text-lg font-semibold">Zona di interesse</h2>
+        <h2 className="mb-3 text-lg font-semibold">{t('profile.interestArea')}</h2>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
           <div className="flex min-w-0 flex-col gap-1">
-            <label className="text-sm text-gray-600">Paese</label>
+            <label className="text-sm text-gray-600">{t('profile.country')}</label>
             <select
               className="w-full min-w-0 rounded-lg border p-2"
               value={interestCountry}
@@ -280,7 +282,7 @@ export default function FanProfileForm() {
             value={interestLocation}
             fallback={interestFallback}
             onChange={setInterestLocation}
-            labels={{ region: 'Regione', province: 'Provincia', city: 'Città' }}
+            labels={{ region: t('opportunities.region'), province: t('opportunities.province'), city: t('opportunities.city') }}
             disabled={loading}
           />
         </div>
@@ -288,7 +290,7 @@ export default function FanProfileForm() {
 
       <div className="flex items-center gap-3">
         <button type="submit" disabled={loading || saving} className="rounded-xl bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-60">
-          {saving ? 'Salvataggio…' : 'Salva profilo'}
+          {saving ? t('common.saving') : t('profile.saveProfile')}
         </button>
       </div>
     </form>

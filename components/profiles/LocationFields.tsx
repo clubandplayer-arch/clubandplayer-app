@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SupabaseClient } from '@supabase/supabase-js';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 import {
   fetchLocationChildren,
@@ -40,12 +41,6 @@ type Props = {
   required?: boolean;
 };
 
-const defaultLabels = {
-  region: 'Regione',
-  province: 'Provincia',
-  city: 'Città',
-};
-
 function RequiredMark({ show }: { show?: boolean }) {
   if (!show) return null;
   return <span className="ml-1 font-semibold text-red-600" aria-hidden="true">*</span>;
@@ -57,10 +52,12 @@ export function LocationFields({
   value,
   fallback,
   onChange,
-  labels = defaultLabels,
+  labels,
   disabled = false,
   required = false,
 }: Props) {
+  const { t } = useI18n();
+  const resolvedLabels = labels ?? { region: t('opportunities.region'), province: t('opportunities.province'), city: t('opportunities.city') };
   const [regions, setRegions] = useState<LocationOption[]>([]);
   const [provinces, setProvinces] = useState<LocationOption[]>([]);
   const [municipalities, setMunicipalities] = useState<LocationOption[]>([]);
@@ -261,7 +258,7 @@ export function LocationFields({
     return (
       <>
         <div className="flex min-w-0 flex-col gap-1">
-          <label className="text-sm text-gray-600">{labels.region}<RequiredMark show={required} /></label>
+          <label className="text-sm text-gray-600">{resolvedLabels.region}<RequiredMark show={required} /></label>
           <input
             className="w-full min-w-0 rounded-lg border p-2"
             value={regionValue}
@@ -281,7 +278,7 @@ export function LocationFields({
         </div>
 
         <div className="flex min-w-0 flex-col gap-1">
-          <label className="text-sm text-gray-600">{labels.city}<RequiredMark show={required} /></label>
+          <label className="text-sm text-gray-600">{resolvedLabels.city}<RequiredMark show={required} /></label>
           <input
             className="w-full min-w-0 rounded-lg border p-2"
             value={cityValue}
@@ -308,14 +305,14 @@ export function LocationFields({
   return (
     <>
       <div className="flex min-w-0 flex-col gap-1">
-        <label className="text-sm text-gray-600">{labels.region}<RequiredMark show={required} /></label>
+        <label className="text-sm text-gray-600">{resolvedLabels.region}<RequiredMark show={required} /></label>
         <select
           className="w-full min-w-0 rounded-lg border p-2"
           value={value.regionId ?? ''}
           onChange={(e) => handleRegionChange(e.target.value ? Number(e.target.value) : null)}
           disabled={disabled}
         >
-          <option value="">— Seleziona regione —</option>
+          <option value="">— {t('profile.selectRegion')} —</option>
           {regions.map((r) => (
             <option key={r.id} value={r.id}>
               {r.name}
@@ -325,14 +322,14 @@ export function LocationFields({
       </div>
 
       <div className="flex min-w-0 flex-col gap-1">
-        <label className="text-sm text-gray-600">{labels.province}<RequiredMark show={required} /></label>
+        <label className="text-sm text-gray-600">{resolvedLabels.province}<RequiredMark show={required} /></label>
         <select
           className="w-full min-w-0 rounded-lg border p-2 disabled:bg-gray-50"
           value={value.provinceId ?? ''}
           onChange={(e) => handleProvinceChange(e.target.value ? Number(e.target.value) : null)}
           disabled={disabled || !value.regionId}
         >
-          <option value="">— Seleziona provincia —</option>
+          <option value="">— {t('profile.selectProvince')} —</option>
           {provinces.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}
@@ -342,14 +339,14 @@ export function LocationFields({
       </div>
 
       <div className="flex min-w-0 flex-col gap-1">
-        <label className="text-sm text-gray-600">{labels.city}<RequiredMark show={required} /></label>
+        <label className="text-sm text-gray-600">{resolvedLabels.city}<RequiredMark show={required} /></label>
         <select
           className="w-full min-w-0 rounded-lg border p-2 disabled:bg-gray-50"
           value={selectedMunicipalityValue}
           onChange={(e) => handleMunicipalityChange(e.target.value)}
           disabled={disabled || !value.provinceId}
         >
-          <option value="">— Seleziona città —</option>
+          <option value="">— {t('profile.selectCity')} —</option>
           {municipalityOptions.map((m) => (
             <option key={`${m.id}-${m.name}`} value={m.isFallback ? '__saved__' : m.id}>
               {m.name}

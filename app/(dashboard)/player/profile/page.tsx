@@ -3,10 +3,12 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ProfileEditForm from '@/components/profiles/ProfileEditForm';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 type Role = 'club' | 'athlete' | 'staff' | 'fan' | 'admin' | 'guest';
 
 export default function ProfilePage() {
+  const { t } = useI18n();
   const router = useRouter();
   const [role, setRole] = useState<Role>('guest');
   const [checking, setChecking] = useState(true);
@@ -46,15 +48,15 @@ export default function ProfilePage() {
 
   if (checking || role === 'admin' || role === 'club' || role === 'fan') {
     return (
-      <div className="p-4 text-sm text-gray-600">Reindirizzamento in corso…</div>
+      <div className="p-4 text-sm text-gray-600">{t('profile.redirecting')}</div>
     );
   }
 
   return (
     <div className="p-4 md:p-6 space-y-4">
-      <h1 className="text-2xl font-semibold">{role === 'staff' ? 'Il mio profilo Staff' : 'Il mio profilo Player'}</h1>
+      <h1 className="text-2xl font-semibold">{role === 'staff' ? t('profile.myStaff') : t('profile.myPlayer')}</h1>
       <p className="text-sm text-gray-600">
-        Aggiorna i tuoi dati per migliorare il matching con club e opportunità.
+        {t('profile.matchingHelp')}
       </p>
       <ProfileEditForm />
     </div>

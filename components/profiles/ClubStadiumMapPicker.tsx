@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 const DEFAULT_CENTER = { lat: 41.9028, lng: 12.4964 };
 
@@ -74,6 +75,7 @@ function ensureGoogleMaps(apiKey?: string | null): Promise<GoogleMaps> {
 }
 
 export default function ClubStadiumMapPicker({ value, onChange, labels }: Props) {
+  const { t } = useI18n();
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const mapRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -83,13 +85,13 @@ export default function ClubStadiumMapPicker({ value, onChange, labels }: Props)
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [locating, setLocating] = useState(false);
-  const searchLabel = labels?.searchLabel ?? 'Cerca sede, stadio o impianto';
-  const placeholder = labels?.placeholder ?? 'Digita nome stadio, sede o indirizzo';
-  const defaultName = labels?.defaultName ?? 'Sede / impianto Club';
-  const markerFallback = labels?.markerFallback ?? 'Stadio / impianto';
+  const searchLabel = labels?.searchLabel ?? t('stadium.search');
+  const placeholder = labels?.placeholder ?? t('stadium.placeholder');
+  const defaultName = labels?.defaultName ?? t('stadium.defaultName');
+  const markerFallback = labels?.markerFallback ?? t('stadium.marker');
   const helperText =
     labels?.helperText ??
-    'Clicca sulla mappa oppure usa la posizione del dispositivo per impostare dove mostrare il logo del Club sulla mappa nazionale.';
+    t('stadium.help');
 
   const center = useMemo(() => {
     if (value.lat != null && value.lng != null) return { lat: value.lat, lng: value.lng };
@@ -99,7 +101,7 @@ export default function ClubStadiumMapPicker({ value, onChange, labels }: Props)
   useEffect(() => {
     let cancelled = false;
     if (!apiKey) {
-      setError('Configura NEXT_PUBLIC_GOOGLE_MAPS_API_KEY per usare la mappa.');
+      setError(t('stadium.apiKeyMissing'));
       return () => {
         cancelled = true;
       };
@@ -176,19 +178,19 @@ export default function ClubStadiumMapPicker({ value, onChange, labels }: Props)
       })
       .catch((e) => {
         if (!cancelled) {
-          setError(e?.message || 'Errore di caricamento della mappa');
+          setError(e?.message || t('stadium.loadError'));
         }
       });
 
     return () => {
       cancelled = true;
     };
-  }, [apiKey, center, onChange, value.address, value.name, value.lat, value.lng, markerFallback]);
+  }, [apiKey, center, onChange, value.address, value.name, value.lat, value.lng, markerFallback, t]);
 
 
   const useCurrentLocation = () => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
-      setError('Geolocalizzazione del dispositivo non disponibile.');
+      setError(t('stadium.locationUnavailable'));
       return;
     }
 
@@ -222,7 +224,7 @@ export default function ClubStadiumMapPicker({ value, onChange, labels }: Props)
         setLocating(false);
       },
       () => {
-        setError('Non è stato possibile leggere la posizione. Controlla i permessi del browser.');
+        setError(t('stadium.locationDenied'));
         setLocating(false);
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
@@ -248,7 +250,7 @@ export default function ClubStadiumMapPicker({ value, onChange, labels }: Props)
             disabled={locating}
             className="inline-flex items-center justify-center rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {locating ? 'Rilevamento…' : 'Usa la mia posizione'}
+            {locating ? t('stadium.locating') : t('stadium.useLocation')}
           </button>
         </div>
         <input
@@ -260,7 +262,7 @@ export default function ClubStadiumMapPicker({ value, onChange, labels }: Props)
           aria-label={searchLabel}
         />
         {value.address ? (
-          <p className="text-xs text-gray-600">Indirizzo selezionato: {value.address}</p>
+          <p className="text-xs text-gray-600">{t('stadium.selectedAddress', { address: value.address })}</p>
         ) : null}
       </div>
 

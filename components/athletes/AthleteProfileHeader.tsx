@@ -1,5 +1,6 @@
 'use client';
 
+import { useI18n } from '@/components/i18n/I18nProvider';
 import Image from 'next/image';
 import FollowButton from '@/components/clubs/FollowButton';
 import { MessageButton } from '@/components/messaging/MessageButton';
@@ -32,6 +33,7 @@ export default function AthleteProfileHeader({
   profile: AthleteProfile;
   isMe: boolean;
 }) {
+  const { t } = useI18n();
   const provinceAbbreviations = useProvinceAbbreviations();
   const name = resolveName(profile);
 
@@ -83,9 +85,9 @@ export default function AthleteProfileHeader({
               <p className="text-sm font-medium text-neutral-700 md:text-base">{subtitle}</p>
             </div>
             {headline ? <p className="text-sm text-neutral-600">{headline}</p> : null}
-            {location ? <p className="text-xs text-neutral-500">{location}</p> : <p className="text-xs text-neutral-400">Località —</p>}
+            {location ? <p className="text-xs text-neutral-500">{location}</p> : <p className="text-xs text-neutral-400">{t('profile.locationMissing')}</p>}
             <div className="flex flex-wrap items-center gap-3 text-xs text-neutral-500">
-              <span>ID profilo: <code>{profile.id}</code></span>
+              <span>{t('profile.id')}: <code>{profile.id}</code></span>
               <MessageButton
                 targetProfileId={profile.id}
                 label="Messaggia →"

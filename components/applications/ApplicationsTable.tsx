@@ -8,6 +8,7 @@ import { buildPlayerDisplayName } from '@/lib/displayName';
 import { useRouter } from 'next/navigation';
 import { useProvinceAbbreviations } from '@/hooks/useProvinceAbbreviations';
 import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 type AthleteSummary = {
   id: string;
@@ -51,30 +52,28 @@ export default function ApplicationsTable({
   loading?: boolean;
   onStatusChange?: (id: string, status: 'accepted' | 'rejected') => void;
 }) {
+  const { t, locale } = useI18n();
   const router = useRouter();
   const [savingId, setSavingId] = useState<string | null>(null);
   const provinceAbbreviations = useProvinceAbbreviations();
 
   const headers = useMemo(
     () => [
-      { key: 'created_at', label: 'Data' },
-      { key: 'opportunity_id', label: 'Annuncio' },
-      ...(kind === 'received' ? [{ key: 'athlete_id', label: 'Player' }] : []),
-      { key: 'status', label: 'Stato' },
-      { key: 'note', label: kind === 'sent' ? 'Nota (mia)' : 'Nota' },
-      { key: 'actions', label: 'Azioni' },
+      { key: 'created_at', label: t('applications.date') },
+      { key: 'opportunity_id', label: t('applications.opportunity') },
+      ...(kind === 'received' ? [{ key: 'athlete_id', label: t('profile.player') }] : []),
+      { key: 'status', label: t('applications.status') },
+      { key: 'note', label: kind === 'sent' ? t('applications.myNote') : t('applications.note') },
+      { key: 'actions', label: t('applications.actions') },
     ],
-    [kind]
+    [kind, t]
   );
 
   const STATUS_LABEL: Record<string, string> = {
-    submitted: 'In valutazione',
-    in_review: 'In valutazione',
-    pending: 'In valutazione',
-    accepted: 'Accettata',
-    rejected: 'Rifiutata',
-    withdrawn: 'Ritirata',
-    open: 'Aperta',
+    submitted: t('applications.review'), in_review: t('applications.review'), pending: t('applications.review'),
+    accepted: t('applications.accepted'), rejected: t('applications.rejected'),
+    withdrawn: t('applications.withdrawn'),
+    open: t('applications.open'),
   };
 
   const STATUS_CLASS: Record<string, string> = {
@@ -90,8 +89,8 @@ export default function ApplicationsTable({
   async function updateStatus(id: string, next: 'accepted' | 'rejected') {
     const msg =
       next === 'accepted'
-        ? 'Confermi di ACCETTARE questa candidatura?'
-        : 'Confermi di RIFIUTARE questa candidatura?';
+        ? t('applications.confirmAccept')
+        : t('applications.confirmReject');
     if (!confirm(msg)) return;
 
     try {
@@ -109,7 +108,7 @@ export default function ApplicationsTable({
 
       onStatusChange?.(id, next);
     } catch (e: any) {
-      alert(e?.message || 'Errore durante l’aggiornamento dello stato');
+      alert(e?.message || t('applications.updateError'));
     } finally {
       setSavingId(null);
       if (!onStatusChange) {
@@ -121,7 +120,7 @@ export default function ApplicationsTable({
   if (loading) {
     return (
       <div className="border rounded-lg p-6 text-gray-600">
-        Caricamento candidature…
+        {t('common.loading')}
       </div>
     );
   }
@@ -130,8 +129,8 @@ export default function ApplicationsTable({
     return (
       <div className="rounded-lg border p-10 text-center text-gray-500">
         {kind === 'sent'
-          ? 'Non hai ancora inviato candidature.'
-          : 'Nessuna candidatura ricevuta.'}
+          ? t('applications.sentEmpty')
+          : t('applications.empty')}
       </div>
     );
   }
@@ -192,7 +191,7 @@ export default function ApplicationsTable({
               <tr key={r.id} className="border-t align-top">
                 <td className="px-3 py-2 align-top">
                   {r.created_at
-                    ? new Date(r.created_at).toLocaleString('it-IT')
+                    ? new Date(r.created_at).toLocaleString(locale)
                     : '—'}
                 </td>
 
@@ -211,7 +210,7 @@ export default function ApplicationsTable({
                           href={`/opportunities/${r.opportunity_id}`}
                           title={fullId}
                         >
-                          {label || 'Apri annuncio'}
+                          {label || t('applications.openAd')}
                         </Link>
                       );
                     })()
@@ -247,14 +246,14 @@ export default function ApplicationsTable({
                         onClick={() => updateStatus(r.id, 'accepted')}
                         className="rounded-md border px-2 py-1 hover:bg-gray-50 disabled:opacity-50"
                       >
-                        Accetta
+                        {t('applications.accept')}
                       </button>
                       <button
                         disabled={savingId === r.id || sKey === 'rejected'}
                         onClick={() => updateStatus(r.id, 'rejected')}
                         className="rounded-md border px-2 py-1 hover:bg-gray-50 disabled:opacity-50"
                       >
-                        Rifiuta
+                        {t('applications.reject')}
                       </button>
                     </div>
                   ) : (
@@ -290,7 +289,7 @@ export default function ApplicationsTable({
                 <div className="text-xs text-gray-500">Data</div>
                 <div className="font-medium text-gray-900">
                   {r.created_at
-                    ? new Date(r.created_at).toLocaleString('it-IT')
+                    ? new Date(r.created_at).toLocaleString(locale)
                     : '—'}
                 </div>
               </div>
@@ -301,13 +300,13 @@ export default function ApplicationsTable({
 
             <div className="mt-3 space-y-2 text-sm">
               <div>
-                <div className="text-xs text-gray-500">Annuncio</div>
+                <div className="text-xs text-gray-500">{t('applications.ad')}</div>
                 {r.opportunity_id ? (
                   <Link
                     className="font-medium text-blue-700 hover:underline"
                     href={`/opportunities/${r.opportunity_id}`}
                   >
-                    {(r.opportunity?.title || '').trim() || 'Apri annuncio'}
+                    {(r.opportunity?.title || '').trim() || t('applications.openAd')}
                   </Link>
                 ) : (
                   <span className="text-gray-700">—</span>
@@ -335,14 +334,14 @@ export default function ApplicationsTable({
                     onClick={() => updateStatus(r.id, 'accepted')}
                     className="flex-1 rounded-md border px-3 py-1 text-sm hover:bg-gray-50 disabled:opacity-50"
                   >
-                    Accetta
+                    {t('applications.accept')}
                   </button>
                   <button
                     disabled={savingId === r.id || sKey === 'rejected'}
                     onClick={() => updateStatus(r.id, 'rejected')}
                     className="flex-1 rounded-md border px-3 py-1 text-sm hover:bg-gray-50 disabled:opacity-50"
                   >
-                    Rifiuta
+                    {t('applications.reject')}
                   </button>
                 </>
               ) : (

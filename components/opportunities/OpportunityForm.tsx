@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useI18n } from '@/components/i18n/I18nProvider';
+import { localizeAccountType, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 import type { Opportunity } from '@/types/opportunity';
@@ -135,6 +137,7 @@ export default function OpportunityForm({
   onCancel: () => void;
   onSaved: (saved: Opportunity) => void;
 }) {
+  const { t } = useI18n();
   const [title, setTitle] = useState(initial?.title ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
 
@@ -301,18 +304,18 @@ export default function OpportunityForm({
     e.preventDefault();
     setErr(null);
 
-    const t = title.trim();
-    if (!t) return setErr('Titolo obbligatorio');
-    if (playerRoleRequired && roleGroup === 'player' && !role) return setErr(`Seleziona un ruolo per ${sport}`);
+    const normalizedTitle = title.trim();
+    if (!normalizedTitle) return setErr(t('opportunity.titleRequired'));
+    if (playerRoleRequired && roleGroup === 'player' && !role) return setErr(t('opportunity.invalidRole', { sport }));
     const normalizedGender = normalizeOpportunityGender(gender);
-    if (!normalizedGender) return setErr('Seleziona il genere');
+    if (!normalizedGender) return setErr(t('opportunity.selectGender'));
 
     const { age_min, age_max } = rangeFromBracket(ageBracket);
 
     setSaving(true);
     try {
       const payload = {
-        title: t,
+        title: normalizedTitle,
         description: (description || '').trim() || null,
         country: effectiveCountry(),
         region: region || null,
@@ -340,7 +343,7 @@ export default function OpportunityForm({
       if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
       onSaved(json.data);
     } catch (e: any) {
-      setErr(e.message || 'Errore');
+      setErr(e.message || t('opportunity.saveError'));
     } finally {
       setSaving(false);
     }
@@ -378,7 +381,7 @@ export default function OpportunityForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="block text-sm font-medium mb-1">Titolo *</label>
+        <label className="block text-sm font-medium mb-1">{t('opportunity.titleLabel')} *</label>
         <input
           className="w-full rounded-xl border px-3 py-2"
           value={title}
@@ -387,7 +390,7 @@ export default function OpportunityForm({
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-1">Descrizione</label>
+        <label className="block text-sm font-medium mb-1">{t('opportunity.description')}</label>
         <textarea
           className="w-full rounded-xl border px-3 py-2 min-h-28"
           value={description ?? ''}
@@ -396,7 +399,7 @@ export default function OpportunityForm({
       </div>
 
       <fieldset className="space-y-3">
-        <legend className="text-sm font-semibold">Località</legend>
+        <legend className="text-sm font-semibold">{t('opportunity.locationSection')}</legend>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
             <label className="block text-sm font-medium mb-1">Paese</label>
@@ -422,7 +425,7 @@ export default function OpportunityForm({
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Regione</label>
+            <label className="block text-sm font-medium mb-1">{t('opportunities.region')}</label>
             {countryCode === 'IT' ? (
               <select
                 className="w-full rounded-xl border px-3 py-2"
@@ -449,7 +452,7 @@ export default function OpportunityForm({
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Provincia</label>
+            <label className="block text-sm font-medium mb-1">{t('opportunities.province')}</label>
             {countryCode === 'IT' && provinces.length > 0 ? (
               <select
                 className="w-full rounded-xl border px-3 py-2"
@@ -476,7 +479,7 @@ export default function OpportunityForm({
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Città</label>
+            <label className="block text-sm font-medium mb-1">{t('opportunities.city')}</label>
             {countryCode === 'IT' && cities.length > 0 ? (
               <select
                 className="w-full rounded-xl border px-3 py-2"
@@ -502,10 +505,10 @@ export default function OpportunityForm({
       </fieldset>
 
       <fieldset className="space-y-3">
-        <legend className="text-sm font-semibold">Sport & Profilo</legend>
+        <legend className="text-sm font-semibold">{t('opportunity.sportProfile')}</legend>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
-            <label className="block text-sm font-medium mb-1">Sport</label>
+            <label className="block text-sm font-medium mb-1">{t('opportunities.sport')}</label>
             <select
               className="w-full rounded-xl border px-3 py-2"
               value={sport}
@@ -529,7 +532,7 @@ export default function OpportunityForm({
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Categoria</label>
+            <label className="block text-sm font-medium mb-1">{t('opportunities.category')}</label>
             <select
               className="w-full rounded-xl border px-3 py-2"
               value={category}
@@ -546,7 +549,7 @@ export default function OpportunityForm({
 
           <div>
             <label className="block text-sm font-medium mb-1">
-              Ruolo {playerRoleRequired && <span className="text-red-600">*</span>}
+              {t('opportunities.role')} {playerRoleRequired && <span className="text-red-600">*</span>}
             </label>
             <select
               className="w-full rounded-xl border px-3 py-2"
@@ -569,16 +572,16 @@ export default function OpportunityForm({
               required={playerRoleRequired}
             >
               <option value="">—</option>
-              <option value="__group_player" disabled>──────── PLAYER ────────</option>
+              <option value="__group_player" disabled>──────── {localizeAccountType('player', t)?.toUpperCase()} ────────</option>
               {roleOptions.map((r: string) => (
                 <option key={r} value={r}>
-                  {r}
+                  {localizeSportRole(r, t)}
                 </option>
               ))}
-              <option value="__group_staff" disabled>──────── STAFF ────────</option>
+              <option value="__group_staff" disabled>──────── {localizeAccountType('staff', t)?.toUpperCase()} ────────</option>
               {STAFF_ROLES.map((r) => (
                 <option key={r} value={r}>
-                  {r}
+                  {localizeSportRole(r, t)}
                 </option>
               ))}
             </select>
@@ -587,7 +590,7 @@ export default function OpportunityForm({
           {/* GENERE obbligatorio */}
           <div>
             <label className="block text-sm font-medium mb-1">
-              Genere <span className="text-red-600">*</span>
+              {t('opportunity.gender')} <span className="text-red-600">*</span>
             </label>
             <select
               className="w-full rounded-xl border px-3 py-2"
@@ -608,7 +611,7 @@ export default function OpportunityForm({
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Età</label>
+            <label className="block text-sm font-medium mb-1">{t('opportunities.age')}</label>
             <select
               className="w-full rounded-xl border px-3 py-2"
               value={ageBracket}
@@ -634,14 +637,14 @@ export default function OpportunityForm({
           onClick={onCancel}
           className="px-3 py-2 rounded-lg border hover:bg-gray-50"
         >
-          Annulla
+          {t('common.cancel')}
         </button>
         <button
           type="submit"
           disabled={saving}
           className="px-3 py-2 rounded-lg bg-gray-900 text-white"
         >
-          {saving ? 'Salvataggio…' : isEdit ? 'Salva' : 'Crea'}
+          {saving ? t('common.saving') : isEdit ? t('common.save') : t('opportunity.createShort')}
         </button>
       </div>
     </form>

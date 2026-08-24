@@ -4,6 +4,9 @@ import Link from 'next/link';
 import Image from 'next/image';
 import type { NotificationWithActor } from '@/types/notifications';
 import { markFanVoteSummaryRead, notificationToFanVoteSummary } from '@/lib/notifications/fanVoteSummaryClient';
+import { useI18n } from '@/components/i18n/I18nProvider';
+import type { MessageKey } from '@/lib/i18n/messages';
+import { formatDate } from '@/lib/i18n/format';
 
 function Avatar({ notification }: { notification: NotificationWithActor }) {
   const actorName = notification.actor?.public_name ?? 'Utente';
@@ -30,10 +33,10 @@ type Props = {
   compact?: boolean;
 };
 
-function renderContent(notification: NotificationWithActor): { title: string; body?: string } {
+function renderContent(notification: NotificationWithActor, t: (key: MessageKey, values?: Record<string, string | number>) => string): { title: string; body?: string } {
   const kind = (notification.kind || '').toString();
   const payload = notification.payload || {};
-  const actorName = notification.actor?.public_name ?? 'Un utente';
+  const actorName = notification.actor?.public_name ?? t('notifications.someone');
 
   switch (kind) {
     case 'profile_returned_to_draft': {
@@ -104,42 +107,42 @@ function renderContent(notification: NotificationWithActor): { title: string; bo
     }
 
     case 'new_follower':
-      return { title: `${actorName} ha iniziato a seguirti` };
+      return { title: t('notifications.newFollower', { actor: actorName }) };
 
     case 'new_message':
     case 'message':
-      return { title: `${actorName} ti ha inviato un messaggio` };
+      return { title: t('notifications.newMessage', { actor: actorName }) };
 
     case 'new_comment': {
       if (typeof payload.post_id !== 'string' || !payload.post_id.trim()) {
-        return { title: 'Nuova notifica' };
+        return { title: t('notifications.new') };
       }
 
-      return { title: `${actorName} ha commentato un tuo post` };
+      return { title: t('notifications.newComment', { actor: actorName }) };
     }
 
     case 'new_reaction': {
       if (typeof payload.post_id !== 'string' || !payload.post_id.trim()) {
-        return { title: 'Nuova notifica' };
+        return { title: t('notifications.new') };
       }
 
-      return { title: `${actorName} ha reagito a un tuo post` };
+      return { title: t('notifications.newReaction', { actor: actorName }) };
     }
 
     case 'post_mention': {
       if (typeof payload.post_id !== 'string' || !payload.post_id.trim()) {
-        return { title: 'Nuova notifica' };
+        return { title: t('notifications.new') };
       }
 
-      return { title: `${actorName} ti ha taggato in un post` };
+      return { title: t('notifications.postMention', { actor: actorName }) };
     }
 
     case 'comment_mention': {
       if (typeof payload.post_id !== 'string' || !payload.post_id.trim()) {
-        return { title: 'Nuova notifica' };
+        return { title: t('notifications.new') };
       }
 
-      return { title: `${actorName} ti ha taggato in un commento` };
+      return { title: t('notifications.commentMention', { actor: actorName }) };
     }
 
     case 'new_opportunity': {
@@ -191,24 +194,25 @@ function renderContent(notification: NotificationWithActor): { title: string; bo
 
     default:
       return {
-        title: payload?.title ? String(payload.title) : 'Nuova notifica',
+        title: payload?.title ? String(payload.title) : t('notifications.new'),
         body: typeof payload?.preview === 'string' ? payload.preview : undefined,
       };
   }
 }
 
-function formatRelative(dateStr: string) {
+function formatRelative(dateStr: string, locale: Parameters<typeof formatDate>[1]) {
   const date = new Date(dateStr);
 
   if (Number.isNaN(date.getTime())) return '';
 
-  return date.toLocaleString('it-IT', {
+  return formatDate(date, locale, {
     dateStyle: 'short',
     timeStyle: 'short',
   });
 }
 
 export default function NotificationItem({ notification, onClick, compact }: Props) {
+  const { locale, t } = useI18n();
   const profileHref = (profileId: string, accountType?: string | null) => {
     const normalized = (accountType || '').toLowerCase();
 
@@ -334,7 +338,7 @@ export default function NotificationItem({ notification, onClick, compact }: Pro
     return null;
   };
 
-  const content = renderContent(notification);
+  const content = renderContent(notification, t);
   const href = hrefFromPayload();
   const handleClick = () => {
     const summary = notificationToFanVoteSummary(notification);
@@ -366,7 +370,7 @@ export default function NotificationItem({ notification, onClick, compact }: Pro
           ) : null}
 
           <div className="text-xs text-neutral-500">
-            {formatRelative(notification.created_at)}
+            {formatRelative(notification.created_at, locale)}
           </div>
         </div>
 
@@ -393,7 +397,7 @@ export default function NotificationItem({ notification, onClick, compact }: Pro
         ) : null}
 
         <div className="text-xs text-neutral-500">
-          {formatRelative(notification.created_at)}
+          {formatRelative(notification.created_at, locale)}
         </div>
       </div>
 

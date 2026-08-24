@@ -355,7 +355,7 @@ export default function FeedClient() {
                   <div className="mt-1 text-[9px] text-neutral-400">
                     {new Date(
                       post.createdAt
-                    ).toLocaleString('it-IT')}
+                    ).toLocaleString(undefined)}
                   </div>
 
                   {(() => {

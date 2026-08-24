@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 import SocialLogin from '@/components/auth/SocialLogin';
 import BrandLogo from '@/components/brand/BrandLogo';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 // env presenti?
 const HAS_ENV = Boolean(
@@ -13,6 +14,7 @@ const HAS_ENV = Boolean(
 );
 
 export default function SignupPage() {
+  const { t } = useI18n();
   const router = useRouter();
   const supabase = supabaseBrowser();
 
@@ -47,8 +49,8 @@ export default function SignupPage() {
     setErr(null);
     setOk(null);
 
-    if (pwd1.length < 8) return setErr('La password deve contenere almeno 8 caratteri.');
-    if (pwd1 !== pwd2) return setErr('Le password non coincidono.');
+    if (pwd1.length < 8) return setErr(t('auth.passwordTooShort'));
+    if (pwd1 !== pwd2) return setErr(t('auth.passwordMismatch'));
 
     setBusy(true);
     try {
@@ -67,7 +69,7 @@ export default function SignupPage() {
       });
       if (error) throw error;
 
-      setOk('Registrazione avviata! Controlla la tua email per confermare l’account.');
+      setOk(t('auth.signupSuccess'));
       setTimeout(() => router.replace('/login'), 1500);
     } catch (e: any) {
       setErr(e?.message ?? 'Errore durante la registrazione.');
@@ -83,16 +85,15 @@ export default function SignupPage() {
           <BrandLogo variant="signup" unlinked />
           <div className="space-y-4">
             <h1 className="text-3xl font-bold leading-tight text-[#00527a] sm:text-4xl">
-              Entra a far parte di Club and Player
+              {t('auth.signupTitle')}
             </h1>
             <p className="text-lg leading-relaxed text-slate-800">
-              Registrati come <b>CLUB</b> o <b>PLAYER</b>, pubblica opportunità, costruisci la tua carriera oppure come{' '}
-              <b>ENTE</b> o <b>STAFF</b>. Iscriviti in pochi secondi
+              {t('auth.signupIntro')}
             </p>
             <ul className="mt-4 space-y-3 text-base text-slate-800">
-              <li>• Scopri e pubblica opportunità reali</li>
-              <li>• Crea un profilo chiaro e aggiornato</li>
-              <li>• Ricevi candidature e messaggi in app</li>
+              <li>• {t('auth.benefitDiscover')}</li>
+              <li>• {t('auth.benefitProfile')}</li>
+              <li>• {t('auth.benefitMessages')}</li>
             </ul>
             <p className="text-lg leading-relaxed text-slate-800">
               Oppure registrati e connettiti come <b>FAN</b> e segui i tuoi Club o Player preferiti e interagisci con
@@ -100,7 +101,7 @@ export default function SignupPage() {
             </p>
 
             <div className="pt-2">
-              <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-700">Scarica l’app</p>
+              <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-700">{t('auth.downloadApp')}</p>
               <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                 <a
                   href="https://apps.apple.com/app/club-player/id6758587330"
@@ -142,20 +143,20 @@ export default function SignupPage() {
         {/* CARD FORM */}
         <section className="w-full max-w-lg flex-shrink-0">
           <div className="space-y-4 rounded-3xl border border-[#00527a1a] bg-white/90 p-8 shadow-xl backdrop-blur">
-            <h2 className="sr-only">Crea un account</h2>
+            <h2 className="sr-only">{t('auth.createAccount')}</h2>
             <div className="flex items-center gap-2 text-sm font-semibold text-[#00527a]">
               <span className="h-2 w-2 rounded-full bg-[#00527a]" aria-hidden />
-              Accesso sicuro con email o Google
+              {t('auth.secureAccess')}
             </div>
 
             {/* Google first */}
             {oauthReady && (
               <div className="space-y-3">
-                <SocialLogin label="Registrati con Google" />
-                <SocialLogin label="Registrati con Apple" provider="apple" />
+                <SocialLogin label={t('auth.registerGoogle')} />
+                <SocialLogin label={t('auth.registerApple')} provider="apple" />
                 <div className="flex items-center gap-3 text-xs text-gray-500">
                   <span className="h-px flex-1 bg-gray-200" />
-                  <span>oppure</span>
+                  <span>{t('auth.or')}</span>
                   <span className="h-px flex-1 bg-gray-200" />
                 </div>
               </div>
@@ -174,7 +175,7 @@ export default function SignupPage() {
 
             <form onSubmit={onSubmit} className="space-y-3">
               <label className="label">
-                Nome (facoltativo)
+                {t('auth.nameOptional')}
                 <input
                   type="text"
                   className="input"
@@ -185,7 +186,7 @@ export default function SignupPage() {
               </label>
 
               <label className="label">
-                Email
+                {t('auth.email')}
                 <input
                   type="email"
                   className="input"
@@ -197,7 +198,7 @@ export default function SignupPage() {
               </label>
 
               <label className="label">
-                Password
+                {t('auth.password')}
                 <input
                   type="password"
                   className="input"
@@ -210,7 +211,7 @@ export default function SignupPage() {
               </label>
 
               <label className="label">
-                Conferma password
+                {t('auth.confirmPassword')}
                 <input
                   type="password"
                   className="input"
@@ -223,7 +224,7 @@ export default function SignupPage() {
               </label>
 
               <button type="submit" disabled={busy} className="btn btn-brand w-full">
-                {busy ? 'Registrazione…' : 'Registrati'}
+                {busy ? t('auth.registering') : t('auth.register')}
               </button>
             </form>
 
@@ -231,7 +232,7 @@ export default function SignupPage() {
               <span className="block">Registrandoti accetti</span>
               <span className="block">
                 <a href="/legal/terms" className="underline underline-offset-4" target="_blank" rel="noreferrer">
-                  Termini di utilizzo
+                  {t('common.terms')}
                 </a>{' '}
                 e la{' '}
                 <a href="/legal/privacy" className="underline underline-offset-4" target="_blank" rel="noreferrer">
@@ -242,16 +243,16 @@ export default function SignupPage() {
             </p>
 
             <p className="text-center text-base font-semibold text-gray-700 dark:text-gray-200">
-              Hai già un account?{' '}
+              {t('auth.alreadyAccount')}{' '}
               <a href="/login" className="link underline underline-offset-4">
-                Accedi
+                {t('common.login')}
               </a>
             </p>
 
             <p className="rounded-xl border border-blue-100 bg-blue-50 p-3 text-center text-sm leading-relaxed text-blue-900">
               Ti eri registrato con email e password e non riesci più ad accedere?{' '}
               <a href="/reset-password" className="font-semibold underline underline-offset-4">
-                Recupera password
+                {t('auth.recoverPassword')}
               </a>
               . Per account Google o Apple usa invece il pulsante social corrispondente.
             </p>
