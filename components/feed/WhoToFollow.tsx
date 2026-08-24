@@ -15,7 +15,7 @@ type Suggestion = {
   display_name?: string | null;
   full_name?: string | null;
   accountType: 'club' | 'athlete';
-  kind?: 'club' | 'player' | null;
+  kind?: 'club' | 'player' | 'staff' | null;
   type?: string | null;
   category?: string | null;
   location?: string | null;
@@ -27,6 +27,17 @@ type Suggestion = {
   is_verified?: boolean | null;
   isVerified?: boolean | null;
 };
+
+
+function profileKindLabel(item: Suggestion): 'CLUB' | 'STAFF' | 'PLAYER' {
+  if (item.kind === 'club') return 'CLUB';
+  if (item.kind === 'staff') return 'STAFF';
+  const accountType = String(item.accountType ?? '').toLowerCase();
+  const roleValue = String(item.role ?? '').trim().toLowerCase();
+  const typeValue = String(item.type ?? '').trim().toLowerCase();
+  if (accountType === 'staff' || roleValue === 'staff' || typeValue === 'staff') return 'STAFF';
+  return 'PLAYER';
+}
 
 function targetHref(item: Suggestion) {
   return item.kind === 'club' ? `/clubs/${item.id}` : `/players/${item.id}`;
@@ -129,9 +140,17 @@ function normalizeSuggestions(rawItems: any[]): Suggestion[] {
     display_name: item.display_name ?? item.name ?? null,
     full_name: item.full_name ?? item.name ?? null,
     accountType: item.account_type === 'club' ? 'club' : 'athlete',
-    kind:
-      item.kind ??
-      (item.account_type === 'club' || item.type === 'CLUB' ? 'club' : item.account_type || item.type ? 'player' : null),
+    kind: (() => {
+      const explicitKind = String(item.kind ?? '').trim().toLowerCase();
+      if (explicitKind === 'club' || explicitKind === 'player' || explicitKind === 'staff') return explicitKind;
+      const accountType = String(item.account_type ?? '').trim().toLowerCase();
+      const typeValue = String(item.type ?? '').trim().toLowerCase();
+      const roleValue = String(item.role ?? '').trim().toLowerCase();
+      if (accountType === 'club' || typeValue === 'club') return 'club';
+      if (accountType === 'staff' || typeValue === 'staff' || roleValue === 'staff') return 'staff';
+      if (accountType || typeValue) return 'player';
+      return null;
+    })(),
     type: item.type ?? null,
     category: item.category ?? null,
     location: item.location ?? null,
@@ -447,7 +466,7 @@ export default function WhoToFollow({
 
                 {it.kind ? (
                   <span className="relative z-20 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-600 pointer-events-none">
-                    {it.kind === 'club' ? 'CLUB' : 'PLAYER'}
+                    {profileKindLabel(it)}
                   </span>
                 ) : null}
                 <div
