@@ -7,6 +7,8 @@ import FollowButton from '@/components/common/FollowButton';
 import type { Opportunity } from '@/types/opportunity';
 import { useProvinceAbbreviations } from '@/hooks/useProvinceAbbreviations';
 import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
+import { useI18n } from '@/components/i18n/I18nProvider';
+import { formatDate } from '@/lib/i18n/format';
 
 type Role = 'athlete' | 'club' | 'staff' | 'fan' | 'guest';
 
@@ -18,11 +20,11 @@ function formatBracket(min: number | null | undefined, max: number | null | unde
   return '—';
 }
 
-function fmtDateHuman(s?: string | null) {
+function fmtDateHuman(s: string | null | undefined, locale: Parameters<typeof formatDate>[1]) {
   if (!s) return '—';
   const d = new Date(s);
   if (Number.isNaN(d.valueOf())) return '—';
-  return d.toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric' });
+  return formatDate(d, locale, { day: '2-digit', month: 'long', year: 'numeric' });
 }
 
 function roleGroupLabel(value: unknown): 'Player' | 'Staff' {
@@ -46,13 +48,14 @@ export default function OpportunitiesTable({
   onEdit?: (opp: Opportunity) => void;
   onDelete?: (opp: Opportunity) => void;
 }) {
+  const { locale, t } = useI18n();
   const ownerNameMap = useMemo(() => clubNames ?? {}, [clubNames]);
   const provinceAbbreviations = useProvinceAbbreviations();
 
   if (!items.length) {
     return (
       <div className="text-sm text-gray-500 py-8">
-        Nessuna opportunità trovata. Prova a rimuovere i filtri.
+        {t('empty.noResults')}
       </div>
     );
   }
@@ -88,7 +91,7 @@ export default function OpportunitiesTable({
               <div className="min-w-0 space-y-2">
                 <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-wide text-gray-500">
                   {o.status && <span className="rounded-full border px-2 py-1">{o.status}</span>}
-                  <span>Pubblicata il {fmtDateHuman((o as any).created_at ?? (o as any).createdAt)}</span>
+                  <span>{t('opportunities.publishedOn', { date: fmtDateHuman((o as any).created_at ?? (o as any).createdAt, locale) })}</span>
                 </div>
 
                 <Link href={`/opportunities/${o.id}`} className="group inline-flex items-start gap-2">
@@ -126,7 +129,7 @@ export default function OpportunitiesTable({
                 )}
                   <span className="text-gray-500">•</span>
                 <Link href={`/opportunities/${o.id}`} className="text-blue-700 hover:underline">
-                  Dettagli annuncio
+                  {t('opportunities.details')}
                 </Link>
                   {showVisitClub && (
                     <Link href={`/clubs/${profileOwnerId}`} className="text-blue-700 hover:underline">
@@ -146,14 +149,14 @@ export default function OpportunitiesTable({
                       className="rounded-xl border px-3 py-2 text-xs font-semibold hover:bg-gray-50"
                       type="button"
                     >
-                      Modifica
+                      {t('feed.edit')}
                     </button>
                     <button
                       onClick={() => onDelete?.(o)}
                       className="rounded-xl border px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50"
                       type="button"
                     >
-                      Elimina
+                      {t('feed.delete')}
                     </button>
                   </div>
                 )}

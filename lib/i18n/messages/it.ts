@@ -1,4 +1,5 @@
 import feedMessages from './feed/it';
+import operationsMessages from './operations/it';
 
 const messages = {
   'common.loading': 'Caricamento…',
@@ -124,6 +125,7 @@ const messages = {
   'errors.generic': 'Si è verificato un errore. Riprova.',
   'empty.noResults': 'Nessun risultato trovato.',
   ...feedMessages,
+  ...operationsMessages,
 } as const;
 
 export default messages;

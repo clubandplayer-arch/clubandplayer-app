@@ -20,6 +20,7 @@ import { getProfileClubNameValidationError, sanitizeProfileClubName, sanitizePro
 import { getProfileVisibilityStatusCopy, normalizeProfileVisibilityStatus } from '@/lib/profiles/publication';
 import { CATEGORIES_BY_SPORT, CLUB_SPORT_OPTIONS, DEFAULT_CLUB_CATEGORIES } from '@/lib/opps/categories';
 import { iso2ToFlagEmoji } from '@/lib/utils/flags';
+import { useI18n } from '@/components/i18n/I18nProvider';
 import {
   ensurePastExperienceCategory,
   getPastExperienceCategoriesBySport,
@@ -206,6 +207,7 @@ function normalizeCountryCode(v?: string | null) {
 /* ------------------------------ */
 
 export default function ProfileEditForm() {
+  const { t } = useI18n();
   const router = useRouter();
 
   // Profile
@@ -917,7 +919,7 @@ export default function ProfileEditForm() {
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="flex flex-col gap-2 md:col-span-2">
-                  <label className="text-sm text-gray-600">Foto profilo</label>
+                  <label className="text-sm text-gray-600">{t('club.photo')}</label>
                   <AvatarUploader value={avatarUrl} onChange={setAvatarUrl} />
                   <div className="flex items-center gap-3 text-xs text-gray-500">
                     <span>La foto viene mostrata nelle mini-card della bacheca.</span>
@@ -927,7 +929,7 @@ export default function ProfileEditForm() {
                         onClick={() => setAvatarUrl(null)}
                         className="font-medium text-red-600 hover:underline"
                       >
-                        Rimuovi foto
+                        {t('club.removePhoto')}
                       </button>
                     )}
                   </div>
@@ -1022,7 +1024,7 @@ export default function ProfileEditForm() {
 
                 {isClub && (
                 <div className="flex min-w-0 flex-col gap-1">
-                  <label className="text-sm text-gray-600">Categoria</label>
+                  <label className="text-sm text-gray-600">{t('club.category')}</label>
                   <select
                     className="w-full min-w-0 rounded-lg border p-2"
                     value={clubCategory}
@@ -1038,7 +1040,7 @@ export default function ProfileEditForm() {
                 )}
 
                 <div className="flex min-w-0 flex-col gap-1">
-                  <label className="text-sm text-gray-600">Anno di fondazione</label>
+                  <label className="text-sm text-gray-600">{t('club.foundationYear')}</label>
                   <input
                     type="number"
                     inputMode="numeric"
@@ -1088,7 +1090,7 @@ export default function ProfileEditForm() {
                   <div className="font-semibold text-gray-900">{stadium || '—'}</div>
                 </div>
                 <div>
-                  <div className="text-[11px] uppercase tracking-wide text-gray-500">Indirizzo</div>
+                  <div className="text-[11px] uppercase tracking-wide text-gray-500">{t('club.address')}</div>
                   <div className="font-semibold text-gray-900">{stadiumAddress || '—'}</div>
                 </div>
                 <div>
@@ -1109,7 +1111,7 @@ export default function ProfileEditForm() {
               </div>
 
               <div className="flex min-w-0 flex-col gap-1">
-                <label className="text-sm text-gray-600">Biografia del {organizationLabel}</label>
+                <label className="text-sm text-gray-600">{t('club.biography')}</label>
                 <textarea
                   className="w-full min-w-0 rounded-lg border p-2"
                   rows={4}
@@ -1122,7 +1124,7 @@ export default function ProfileEditForm() {
           ) : (
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="flex flex-col gap-2 md:col-span-2">
-                <label className="text-sm text-gray-600">Foto profilo</label>
+                <label className="text-sm text-gray-600">{t('club.photo')}</label>
                 <AvatarUploader value={avatarUrl} onChange={setAvatarUrl} />
                 <div className="flex items-center gap-3 text-xs text-gray-500">
                   <span>La foto viene mostrata nelle mini-card della bacheca.</span>
@@ -1132,7 +1134,7 @@ export default function ProfileEditForm() {
                       onClick={() => setAvatarUrl(null)}
                       className="font-medium text-red-600 hover:underline"
                     >
-                      Rimuovi foto
+                      {t('club.removePhoto')}
                     </button>
                   )}
                 </div>
@@ -1226,7 +1228,7 @@ export default function ProfileEditForm() {
 
               {!isFan && (
               <div className="md:col-span-2 flex min-w-0 flex-col gap-1">
-                <label className="text-sm text-gray-600">Biografia</label>
+                <label className="text-sm text-gray-600">{t('club.biography')}</label>
                 <textarea
                   className="w-full min-w-0 rounded-lg border p-2"
                   rows={4}
@@ -1515,7 +1517,7 @@ export default function ProfileEditForm() {
             disabled={!canSave}
             className="rounded-xl bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-60"
           >
-            {saving ? 'Salvataggio…' : 'Salva profilo'}
+            {saving ? t('settings.saving') : t('common.save')}
           </button>
           {message && <span className="text-sm text-green-700">{message}</span>}
           {error && <span className="text-sm text-red-700">{error}</span>}

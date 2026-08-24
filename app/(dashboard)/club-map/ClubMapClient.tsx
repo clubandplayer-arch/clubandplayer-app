@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 type LeafletLib = any;
 
@@ -94,6 +95,7 @@ function buildClubIcon(L: LeafletLib, pin: ClubMapPin, size: number) {
 }
 
 export default function ClubMapClient() {
+  const { t } = useI18n();
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<LeafletLib['Map'] | null>(null);
   const markersRef = useRef<LeafletLib['Marker'][]>([]);
@@ -231,10 +233,10 @@ export default function ClubMapClient() {
   }, [mapReady, pins]);
 
   const helperText = useMemo(() => {
-    if (loading) return 'Caricamento dei Club geolocalizzati in corso…';
-    if (locatedCount === 1) return '1 Club è già visibile sulla mappa.';
-    return `${locatedCount} Club sono già visibili sulla mappa.`;
-  }, [loading, locatedCount]);
+    if (loading) return t('common.loading');
+    if (locatedCount === 1) return t('map.visibleCount', { count: locatedCount });
+    return t('map.visibleCount', { count: locatedCount });
+  }, [loading, locatedCount, t]);
 
   return (
     <div className="space-y-4">
@@ -242,7 +244,7 @@ export default function ClubMapClient() {
         <div className="flex flex-col gap-3 border-b border-slate-100 p-4 md:flex-row md:items-center md:justify-between md:p-5">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-700">Mappa Club</p>
-            <h1 className="mt-1 text-2xl font-bold text-slate-950 md:text-3xl">Club geolocalizzati in Italia</h1>
+            <h1 className="mt-1 text-2xl font-bold text-slate-950 md:text-3xl">{t('map.title')}</h1>
             <p className="mt-1 text-sm text-slate-600">
               Spostati e ingrandisci la mappa: i loghi dei Club diventano più visibili al crescere dello zoom.
             </p>
@@ -250,7 +252,7 @@ export default function ClubMapClient() {
           <div className="flex flex-col gap-2 text-sm md:items-end">
             <span className="rounded-full bg-blue-50 px-3 py-1 font-semibold text-blue-800">{helperText}</span>
             <Link href="/club/profile" className="text-blue-700 underline-offset-2 hover:underline">
-              Sei un Club? Imposta la geolocalizzazione
+              {t('map.setLocation')}
             </Link>
           </div>
         </div>

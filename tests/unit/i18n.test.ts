@@ -90,6 +90,25 @@ test('preview-reported primary feed labels are no longer hardcoded in target com
   }
 });
 
+test('phase 2B.2 operational routes no longer hardcode their reported Italian headings and controls', () => {
+  const targets = [
+    '../../app/(dashboard)/discover/page.tsx', '../../app/(dashboard)/following/page.tsx',
+    '../../app/(dashboard)/club/roster/page.tsx', '../../app/(dashboard)/club/staff/page.tsx',
+    '../../app/(dashboard)/opportunities/OpportunitiesClient.tsx', '../../components/opportunities/OpportunitiesTable.tsx',
+    '../../components/applications/ReceivedApplicationsPage.tsx', '../../app/(dashboard)/club-map/ClubMapClient.tsx',
+    '../../app/(dashboard)/club/profile/page.tsx', '../../components/profiles/ClubProfileDetails.tsx',
+    '../../components/ads/AdSlot.tsx',
+  ];
+  const source = targets.map((target) => readFileSync(new URL(target, import.meta.url), 'utf8')).join('\n');
+  for (const label of [
+    'Scopri profili', 'Ambito geografico', 'Provincia di interesse', 'Solo il mio sport',
+    'Club and Player che segui', 'Nessun membro dello staff ancora aggiunto.', 'Cerca per titolo/descrizione…',
+    'Nome club/squadra', 'Totale risultati', 'Club unici', 'Area prevalente', 'Pubblicata il ',
+    'Dettagli annuncio', 'Candidature ricevute', 'Club geolocalizzati in Italia',
+    'Sei un Club? Imposta la geolocalizzazione', 'Modifica dati club', '>Sponsored<',
+  ]) assert.ok(!source.includes(label), label);
+});
+
 test('missing translation keys fall back safely', async () => {
   const english = await loadMessages('en');
   assert.equal(translateWithFallback('common.save', {}, italianMessages), 'Salva');

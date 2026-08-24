@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { isAdsEnabled } from '@/lib/env/features';
 import { useAdsServeCoordinator, type DedupeMode } from '@/components/ads/AdsServeCoordinator';
 import { normalizeExternalUrl } from '@/lib/utils/normalizeExternalUrl';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 const ADS_ENDPOINT = '/api/ads/serve';
 const ADS_CLICK_ENDPOINT = '/api/ads/click';
@@ -45,6 +46,7 @@ const inferDedupeMode = (slot: string) => {
 };
 
 export default function AdSlot({ slot, page, imageAspect = 'landscape', dedupeMode }: AdSlotProps) {
+  const { t } = useI18n();
   const adsEnabled = isAdsEnabled();
   const [creative, setCreative] = useState<AdCreative | null>(null);
   const coordinator = useAdsServeCoordinator();
@@ -128,7 +130,7 @@ export default function AdSlot({ slot, page, imageAspect = 'landscape', dedupeMo
   return (
     <div className="w-full">
       <div className="rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur">
-        <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Sponsored</div>
+        <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t('ads.sponsored')}</div>
         {href ? (
           <a
             href={href}

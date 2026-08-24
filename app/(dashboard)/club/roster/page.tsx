@@ -9,6 +9,7 @@ import useIsClub from '@/hooks/useIsClub';
 import { CountryFlag } from '@/components/ui/CountryFlag';
 import { buildRosterRoleSections } from '@/lib/utils/rosterRoleSort';
 import FanVoteBadge from '@/components/fan-votes/FanVoteBadge';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 type ApiRosterPlayer = {
   playerProfileId?: string;
@@ -52,6 +53,7 @@ function getInitials(name: string) {
 }
 
 export default function ClubRosterPage() {
+  const { t } = useI18n();
   const { isClub, loading } = useIsClub();
   const [roster, setRoster] = useState<RosterPlayer[]>([]);
   const [clubSport, setClubSport] = useState<string | null>(null);
@@ -129,12 +131,11 @@ export default function ClubRosterPage() {
       <header className="space-y-2">
         <div className="inline-flex items-center gap-2 rounded-full bg-pink-50 px-3 py-1 text-sm font-semibold text-pink-700">
           <MaterialIcon name="following" fontSize={16} />
-          <span>Rosa</span>
+          <span>{t('roster.title')}</span>
         </div>
-        <h1 className="heading-h1">Rosa</h1>
+        <h1 className="heading-h1">{t('roster.title')}</h1>
         <p className="text-sm text-neutral-600">
-          Qui trovi i player che hai aggiunto alla rosa del club. Usa il toggle &ldquo;In Rosa&rdquo; nella pagina dei
-          seguiti per aggiungerli o rimuoverli in tempo reale.
+          {t('roster.instructions')}
         </p>
       </header>
 
@@ -148,10 +149,10 @@ export default function ClubRosterPage() {
 
       {!loadingRoster && !error && !hasPlayers ? (
         <div className="glass-panel space-y-2 p-5 text-sm text-neutral-700">
-          <p className="font-semibold">Nessun player in rosa</p>
+          <p className="font-semibold">{t('roster.empty')}</p>
           <p>
             Vai nella sezione <Link href="/following" className="underline">Seguiti</Link> e attiva il toggle
-            <span className="mx-1 rounded-full bg-pink-100 px-2 py-0.5 text-[11px] font-semibold text-pink-700">In Rosa</span>
+            <span className="mx-1 rounded-full bg-pink-100 px-2 py-0.5 text-[11px] font-semibold text-pink-700">{t('following.inRoster')}</span>
             sui player che desideri aggiungere.
           </p>
         </div>
@@ -179,6 +180,7 @@ export default function ClubRosterPage() {
 }
 
 function RosterPlayerCard({ player }: { player: RosterPlayer }) {
+  const { t } = useI18n();
   const title = player.fullName?.trim() || player.displayName?.trim() || player.name || 'Profilo';
   const initials = getInitials(title);
   const [removing, setRemoving] = useState(false);
@@ -242,7 +244,7 @@ function RosterPlayerCard({ player }: { player: RosterPlayer }) {
         disabled={removing}
         className="text-xs font-semibold text-pink-700 hover:underline disabled:opacity-60"
       >
-        {removing ? 'Rimozione…' : 'Rimuovi'}
+        {removing ? t('roster.removing') : t('roster.remove')}
       </button>
     </div>
   );

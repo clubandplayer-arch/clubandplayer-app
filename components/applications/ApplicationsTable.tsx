@@ -8,6 +8,7 @@ import { buildPlayerDisplayName } from '@/lib/displayName';
 import { useRouter } from 'next/navigation';
 import { useProvinceAbbreviations } from '@/hooks/useProvinceAbbreviations';
 import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 type AthleteSummary = {
   id: string;
@@ -51,28 +52,26 @@ export default function ApplicationsTable({
   loading?: boolean;
   onStatusChange?: (id: string, status: 'accepted' | 'rejected') => void;
 }) {
+  const { t } = useI18n();
   const router = useRouter();
   const [savingId, setSavingId] = useState<string | null>(null);
   const provinceAbbreviations = useProvinceAbbreviations();
 
   const headers = useMemo(
     () => [
-      { key: 'created_at', label: 'Data' },
-      { key: 'opportunity_id', label: 'Annuncio' },
-      ...(kind === 'received' ? [{ key: 'athlete_id', label: 'Player' }] : []),
-      { key: 'status', label: 'Stato' },
+      { key: 'created_at', label: t('applications.date') },
+      { key: 'opportunity_id', label: t('applications.opportunity') },
+      ...(kind === 'received' ? [{ key: 'athlete_id', label: t('profile.player') }] : []),
+      { key: 'status', label: t('applications.status') },
       { key: 'note', label: kind === 'sent' ? 'Nota (mia)' : 'Nota' },
-      { key: 'actions', label: 'Azioni' },
+      { key: 'actions', label: t('applications.actions') },
     ],
-    [kind]
+    [kind, t]
   );
 
   const STATUS_LABEL: Record<string, string> = {
-    submitted: 'In valutazione',
-    in_review: 'In valutazione',
-    pending: 'In valutazione',
-    accepted: 'Accettata',
-    rejected: 'Rifiutata',
+    submitted: t('applications.review'), in_review: t('applications.review'), pending: t('applications.review'),
+    accepted: t('applications.accepted'), rejected: t('applications.rejected'),
     withdrawn: 'Ritirata',
     open: 'Aperta',
   };
@@ -121,7 +120,7 @@ export default function ApplicationsTable({
   if (loading) {
     return (
       <div className="border rounded-lg p-6 text-gray-600">
-        Caricamento candidature…
+        {t('common.loading')}
       </div>
     );
   }
@@ -131,7 +130,7 @@ export default function ApplicationsTable({
       <div className="rounded-lg border p-10 text-center text-gray-500">
         {kind === 'sent'
           ? 'Non hai ancora inviato candidature.'
-          : 'Nessuna candidatura ricevuta.'}
+          : t('applications.empty')}
       </div>
     );
   }
@@ -247,14 +246,14 @@ export default function ApplicationsTable({
                         onClick={() => updateStatus(r.id, 'accepted')}
                         className="rounded-md border px-2 py-1 hover:bg-gray-50 disabled:opacity-50"
                       >
-                        Accetta
+                        {t('applications.accept')}
                       </button>
                       <button
                         disabled={savingId === r.id || sKey === 'rejected'}
                         onClick={() => updateStatus(r.id, 'rejected')}
                         className="rounded-md border px-2 py-1 hover:bg-gray-50 disabled:opacity-50"
                       >
-                        Rifiuta
+                        {t('applications.reject')}
                       </button>
                     </div>
                   ) : (
@@ -335,14 +334,14 @@ export default function ApplicationsTable({
                     onClick={() => updateStatus(r.id, 'accepted')}
                     className="flex-1 rounded-md border px-3 py-1 text-sm hover:bg-gray-50 disabled:opacity-50"
                   >
-                    Accetta
+                    {t('applications.accept')}
                   </button>
                   <button
                     disabled={savingId === r.id || sKey === 'rejected'}
                     onClick={() => updateStatus(r.id, 'rejected')}
                     className="flex-1 rounded-md border px-3 py-1 text-sm hover:bg-gray-50 disabled:opacity-50"
                   >
-                    Rifiuta
+                    {t('applications.reject')}
                   </button>
                 </>
               ) : (

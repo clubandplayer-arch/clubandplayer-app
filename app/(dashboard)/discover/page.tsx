@@ -11,6 +11,7 @@ import { CountryFlag } from '@/components/ui/CountryFlag';
 import FanVoteBadge from '@/components/fan-votes/FanVoteBadge';
 import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentProfileContext';
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 type Suggestion = {
   id: string;
@@ -31,13 +32,6 @@ type Suggestion = {
 type TabKey = 'institution' | 'club' | 'player' | 'staff';
 type GeoScope = 'country' | 'region' | 'province' | 'city';
 type SportScope = 'mine' | 'all';
-
-const TABS: Array<{ key: TabKey; label: string }> = [
-  { key: 'institution', label: 'ENTE' },
-  { key: 'club', label: 'Club' },
-  { key: 'player', label: 'Player' },
-  { key: 'staff', label: 'Staff' },
-];
 
 function targetHref(item: Suggestion) {
   return item.kind === 'club' ? `/clubs/${item.id}` : item.kind === 'institution' ? `/institutions/${item.id}` : `/players/${item.id}`;
@@ -97,6 +91,11 @@ function secondaryMetaLine(suggestion: Suggestion): ReactNode {
 }
 
 export default function DiscoverPage() {
+  const { t } = useI18n();
+  const tabs: Array<{ key: TabKey; label: string }> = [
+    { key: 'institution', label: t('profile.institution') }, { key: 'club', label: 'Club' },
+    { key: 'player', label: t('profile.player') }, { key: 'staff', label: t('navigation.staff') },
+  ];
   const { role: contextRole } = useCurrentProfileContext();
   const [activeTab, setActiveTab] = useState<TabKey>('club');
   const [items, setItems] = useState<Record<TabKey, Suggestion[]>>({ institution: [], club: [], player: [], staff: [] });
@@ -179,14 +178,14 @@ export default function DiscoverPage() {
   return (
     <div className="page-shell space-y-6">
       <header className="space-y-2">
-        <h1 className="heading-h1">Scopri profili</h1>
+        <h1 className="heading-h1">{t('discover.title')}</h1>
         <p className="text-sm text-neutral-600">
-          Suggerimenti ordinati per zona di interesse (città, provincia, regione).
+          {t('discover.subtitle')}
         </p>
       </header>
 
       <div className="flex flex-wrap gap-2">
-        {TABS.map((tab) => (
+        {tabs.map((tab) => (
           <button
             key={tab.key}
             type="button"
@@ -204,7 +203,7 @@ export default function DiscoverPage() {
       <section className="rounded-2xl border border-neutral-200 bg-white/70 p-4 shadow-sm">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <label className="flex flex-col gap-2 text-sm font-medium text-neutral-700">
-            Ambito geografico
+            {t('discover.scope')}
             <select
               value={geoScope}
               onChange={(event) => setGeoScope(event.target.value as GeoScope)}
@@ -212,7 +211,7 @@ export default function DiscoverPage() {
             >
               <option value="country">Tutta Italia</option>
               <option value="region">Regione di interesse</option>
-              <option value="province">Provincia di interesse</option>
+              <option value="province">{t('discover.interestProvince')}</option>
               <option value="city">Città di interesse</option>
             </select>
           </label>
@@ -223,7 +222,7 @@ export default function DiscoverPage() {
               onChange={(event) => setSportScope(event.target.value as SportScope)}
               className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 outline-none ring-[var(--brand)] focus:ring-2"
             >
-              <option value="mine">Solo il mio sport</option>
+              <option value="mine">{t('discover.mySport')}</option>
               <option value="all">Tutti gli sport</option>
             </select>
           </label>

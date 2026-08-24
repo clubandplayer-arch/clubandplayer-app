@@ -11,6 +11,7 @@ import { CountryFlag } from '@/components/ui/CountryFlag';
 import FanVoteBadge from '@/components/fan-votes/FanVoteBadge';
 import useIsClub from '@/hooks/useIsClub';
 import { buildProfileDisplayName } from '@/lib/displayName';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 type FollowedProfile = {
   id: string;
@@ -102,6 +103,7 @@ type FollowCardProps = {
 };
 
 function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, onToggleRoster }: FollowCardProps) {
+  const { t } = useI18n();
   const [avatarOpen, setAvatarOpen] = useState(false);
   const href = type === 'club' ? `/clubs/${profile.id}` : type === 'institution' ? `/institutions/${profile.id}` : `/players/${profile.id}`;
   const meta = [profile.city, profile.sport, normalizeRoleLabel(profile.role)].filter(Boolean).join(' · ');
@@ -170,7 +172,7 @@ function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, 
       <div className={`mt-auto flex items-center justify-between gap-3 ${showRosterToggle && type === 'athlete' ? 'rounded-lg border border-pink-100 bg-pink-50 px-3 py-2' : ''}`}>
         {showRosterToggle && type === 'athlete' ? (
           <div className="flex items-center gap-3">
-            <div className="text-xs font-semibold text-pink-700">In Rosa</div>
+            <div className="text-xs font-semibold text-pink-700">{t('following.inRoster')}</div>
             <button
               type="button"
               onClick={handleToggle}
@@ -198,6 +200,7 @@ function FollowCard({ profile, type, showRosterToggle, inRoster, rosterPending, 
 }
 
 export default function FollowingPage() {
+  const { t } = useI18n();
   const [items, setItems] = useState<FollowedProfile[]>([]);
   const [activeTab, setActiveTab] = useState<TabKey>('club');
   const [loading, setLoading] = useState(true);
@@ -362,9 +365,9 @@ export default function FollowingPage() {
   return (
     <div className="space-y-6 p-4 md:p-6">
       <div className="space-y-1">
-        <h1 className="heading-h1">Club and Player che segui</h1>
+        <h1 className="heading-h1">{t('following.title')}</h1>
         <p className="text-sm text-neutral-600 dark:text-neutral-300">
-          Una panoramica di tutti i profili che hai deciso di seguire. {showRosterControls ? 'Come club puoi usare il toggle “In Rosa” per attivare la rosa dei player.' : ''}
+          {t('following.subtitle')} {showRosterControls ? t('following.rosterHelp') : ''}
         </p>
       </div>
 
@@ -388,7 +391,7 @@ export default function FollowingPage() {
       {error && <p className="text-sm text-red-600">{error}</p>}
       {rosterError && showRosterControls ? <p className="text-sm text-red-600">{rosterError}</p> : null}
       {loading && <p className="text-sm text-neutral-600">Caricamento…</p>}
-      {rosterLoading && showRosterControls ? <p className="text-xs text-pink-700">Aggiornamento stato “In Rosa”…</p> : null}
+      {rosterLoading && showRosterControls ? <p className="text-xs text-pink-700">{t('following.updatingRoster')}</p> : null}
 
       {!loading && items.length === 0 && !error ? (
         <div className="rounded-xl border border-dashed border-neutral-200 bg-white/70 p-4 text-sm text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900/60 dark:text-neutral-300">

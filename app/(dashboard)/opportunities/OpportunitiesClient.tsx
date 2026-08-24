@@ -447,14 +447,14 @@ export default function OpportunitiesClient() {
       <div className="space-y-4 rounded-2xl border p-4 bg-white/70 shadow-sm">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-2">
           <input
-            placeholder="Cerca per titolo/descrizione…"
+            placeholder={t('opportunities.searchPlaceholder')}
             defaultValue={sp.get('q') ?? ''}
             onChange={(e) => setParam('q', e.currentTarget.value)}
             className="w-full rounded-xl border px-4 py-2"
           />
 
           <input
-            placeholder="Nome club/squadra"
+            placeholder={t('opportunities.clubPlaceholder')}
             defaultValue={sp.get('club') ?? ''}
             onBlur={(e) => setParam('club', e.currentTarget.value)}
             className="w-full rounded-xl border px-3 py-2"
@@ -687,17 +687,17 @@ export default function OpportunitiesClient() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm text-gray-700">
           <div className="rounded-xl border bg-gray-50 p-3">
-            <p className="text-xs text-gray-500">Totale risultati</p>
+            <p className="text-xs text-gray-500">{t('opportunities.totalResults')}</p>
             <p className="text-2xl font-semibold">{items.length}</p>
             <p className="text-xs text-gray-500">{data?.total ? `${data.totalIsExact === false ? '≥ ' : ''}${data.total} risultati` : 'Vista corrente'}</p>
           </div>
           <div className="rounded-xl border bg-gray-50 p-3">
-            <p className="text-xs text-gray-500">Club unici</p>
+            <p className="text-xs text-gray-500">{t('opportunities.uniqueClubs')}</p>
             <p className="text-2xl font-semibold">{new Set(items.map((o) => o.created_by || o.owner_id || o.club_name)).size}</p>
-            <p className="text-xs text-gray-500">in questa vista</p>
+            <p className="text-xs text-gray-500">{t('opportunities.currentView')}</p>
           </div>
           <div className="rounded-xl border bg-gray-50 p-3">
-            <p className="text-xs text-gray-500">Area prevalente</p>
+            <p className="text-xs text-gray-500">{t('opportunities.mainArea')}</p>
             <p className="text-sm font-medium">
               {(() => {
                 const byRegion = items.reduce((acc, curr) => {
@@ -709,7 +709,7 @@ export default function OpportunitiesClient() {
                 return top ? `${top[0]} (${top[1]})` : 'Nessuna area';
               })()}
             </p>
-            <p className="text-xs text-gray-500">ordinata per occorrenze</p>
+            <p className="text-xs text-gray-500">{t('opportunities.byOccurrences')}</p>
           </div>
         </div>
 
