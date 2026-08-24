@@ -11,6 +11,9 @@ import {
 const migrationName = '20260824120000_european_geo_area_foundation.sql';
 const migrationPath = new URL(`../../supabase/migrations/${migrationName}`, import.meta.url);
 const migrationSql = readFileSync(migrationPath, 'utf8');
+const correctiveMigrationName = '20260824130000_relax_geo_area_code_uniqueness.sql';
+const correctiveMigrationPath = new URL(`../../supabase/migrations/${correctiveMigrationName}`, import.meta.url);
+const correctiveMigrationSql = readFileSync(correctiveMigrationPath, 'utf8');
 const migrationsDir = new URL('../../supabase/migrations/', import.meta.url);
 
 test('migration creates the empty canonical geography schema and country/parent foreign keys', () => {
@@ -40,6 +43,14 @@ test('migration defines provider, administrative-code, localized-name and legacy
   assert.match(migrationSql, /unique index if not exists geo_area_names_preferred_key[\s\S]*geo_area_id, locale/i);
   assert.match(migrationSql, /unique \(source_system, source_entity_type, legacy_id\)/i);
   assert.match(migrationSql, /geo_area_id uuid not null references public\.geo_areas\(id\) on delete cascade/i);
+});
+
+test('corrective migration keeps administrative codes indexed without enforcing uniqueness', () => {
+  assert.match(correctiveMigrationSql, /drop index if exists public\.geo_areas_country_authority_code_key/i);
+  assert.match(correctiveMigrationSql, /create index if not exists geo_areas_country_authority_code_idx[\s\S]*country_id, code_authority, code/i);
+  assert.doesNotMatch(correctiveMigrationSql, /create\s+unique\s+index/i);
+  assert.doesNotMatch(correctiveMigrationSql, /geo_areas_provider_record_key/i);
+  assert.doesNotMatch(correctiveMigrationSql, /\b(?:insert|update|delete|alter|create\s+table|drop\s+table)\b/i);
 });
 
 test('catalogues are publicly readable, mappings are authenticated-only, and writes are admin protected', () => {
@@ -109,8 +120,9 @@ test('migration contains no seeds, legacy changes, profile relations, map change
   assert.doesNotMatch(migrationSql, /players_view|athletes_view|clubs_view|residence_geo_area_id|profile_geo_area_interests|profile_organization_locations|opportunity_geo_area_id/i);
   assert.doesNotMatch(migrationSql, /club_stadium_lat|club_stadium_lng|latitude|longitude/i);
 
-  const names = readdirSync(migrationsDir).filter((name) => name.includes('european_geo_area_foundation'));
-  assert.deepEqual(names, [migrationName]);
+  const names = readdirSync(migrationsDir).filter((name) =>
+    name.includes('european_geo_area_foundation') || name.includes('relax_geo_area_code_uniqueness'));
+  assert.deepEqual(names, [migrationName, correctiveMigrationName]);
 });
 
 test('generic read API validates canonical filters and does not replace legacy geo routes', () => {
