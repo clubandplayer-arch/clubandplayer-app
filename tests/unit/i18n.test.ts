@@ -59,6 +59,37 @@ test('all active dictionaries contain every required Italian key', async () => {
   }
 });
 
+test('French and Spanish use localized primary feed copy rather than English placeholders', async () => {
+  const english = await loadMessages('en');
+  for (const locale of ['fr', 'es'] as const) {
+    const messages = await loadMessages(locale);
+    for (const key of [
+      'feed.whoToFollow', 'feed.suggestedForYou', 'feed.followedProfiles', 'feed.highlights',
+      'feed.react', 'feed.comment', 'feed.noComments', 'feed.addComment', 'feed.writeUpdate',
+      'notifications.empty', 'messages.empty', 'settings.title',
+    ] as const) {
+      assert.notEqual(messages[key], english[key], `${locale}:${key}`);
+    }
+  }
+});
+
+test('preview-reported primary feed labels are no longer hardcoded in target components', () => {
+  const targets = [
+    '../../components/feed/WhoToFollow.tsx', '../../components/feed/FollowedClubs.tsx',
+    '../../components/feed/FeedHighlights.tsx', '../../components/feed/FeedComposer.tsx',
+    '../../components/feed/PostCard.tsx', '../../components/feed/CommentsSection.tsx',
+    '../../app/(dashboard)/feed/page.tsx',
+  ];
+  const source = targets.map((target) => readFileSync(new URL(target, import.meta.url), 'utf8')).join('\n');
+  for (const legacyLabel of [
+    'Chi seguire', 'Suggeriti per te', 'Profili che segui', 'Gestisci / vedi tutte le opportunità',
+    '>Reagisci<', '>Commenta<', 'Nessun commento', 'Mostra commenti', 'Aggiungi un commento',
+    'Scrivi un aggiornamento per la community',
+  ]) {
+    assert.ok(!source.includes(legacyLabel), legacyLabel);
+  }
+});
+
 test('missing translation keys fall back safely', async () => {
   const english = await loadMessages('en');
   assert.equal(translateWithFallback('common.save', {}, italianMessages), 'Salva');

@@ -7,6 +7,7 @@ import { MessageButton } from '@/components/messaging/MessageButton';
 import CertifiedCMarkClubProfile from '@/components/badges/CertifiedCMarkClubProfile';
 import FanVoteBadge from '@/components/fan-votes/FanVoteBadge';
 import type { ProfileLinks } from '@/types/profile';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 type AccountType = 'club' | 'institution' | 'athlete' | 'staff' | 'player';
 
@@ -129,13 +130,14 @@ export default function ProfileHeader({
   isVerified = null,
   fanVoteCount = null,
 }: ProfileHeaderProps) {
+  const { t } = useI18n();
   const name = displayName || (accountType === 'club' ? 'Club' : 'Player');
   const initials = initialsFromName(name, accountType);
   const subtitleText = subtitle?.trim();
   const locationText = locationLabel?.trim();
   const isClub = accountType === 'club';
   const isInstitution = accountType === 'institution';
-  const badgeLabel = isClub ? 'Club' : isInstitution ? 'Ente' : accountType === 'staff' ? 'Staff' : 'Giocatore';
+  const badgeLabel = isClub ? 'Club' : isInstitution ? t('profile.institution') : accountType === 'staff' ? t('navigation.staff') : t('profile.player');
   const hasActions = showMessageButton || showFollowButton;
 
   return (
@@ -179,7 +181,7 @@ export default function ProfileHeader({
             ) : locationText ? (
               <p className="text-xs text-neutral-500">{locationText}</p>
             ) : (
-              <p className="text-xs text-neutral-400">Località —</p>
+              <p className="text-xs text-neutral-400">{t('profile.locationMissing')}</p>
             )}
           </div>
 
@@ -191,15 +193,15 @@ export default function ProfileHeader({
                   {showMessageButton ? (
                     <MessageButton
                       targetProfileId={profileId}
-                      label={messageLabel}
+                      label={messageLabel === 'Messaggia' ? t('profile.message') : messageLabel}
                       className="border-neutral-200 bg-white hover:bg-neutral-50"
                     />
                   ) : null}
                   {showFollowButton ? (
                     <FollowButton
                       targetProfileId={profileId}
-                      labelFollow="Segui"
-                      labelFollowing="Seguo"
+                      labelFollow={t('profile.follow')}
+                      labelFollowing={t('profile.following')}
                       size="md"
                     />
                   ) : null}

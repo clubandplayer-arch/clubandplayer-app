@@ -9,6 +9,7 @@ import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName'
 import CertifiedCMarkSidebar from '@/components/badges/CertifiedCMarkSidebar';
 import { CountryFlag } from '@/components/ui/CountryFlag';
 import { toggleFollow } from '@/lib/services/follow';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 type Suggestion = {
   id: string;
@@ -150,6 +151,7 @@ export default function WhoToFollow({
   visibleLimit = DEFAULT_VISIBLE_LIMIT,
   prefetchLimit = DEFAULT_PREFETCH_LIMIT,
 }: WhoToFollowProps) {
+  const { t } = useI18n();
   const { role: contextRole } = useCurrentProfileContext();
   const isSidebar = variant === 'sidebar';
   const skeletonCount = Math.min(visibleLimit, 6);
@@ -310,9 +312,9 @@ export default function WhoToFollow({
       <div className="space-y-3">
         {isSidebar ? (
           <div className="flex items-center justify-between">
-            <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Chi seguire</div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{t('feed.whoToFollow')}</div>
             <Link href="/discover" className="text-xs font-semibold text-[var(--brand)] hover:underline">
-              Vedi tutti
+              {t('feed.viewAll')}
             </Link>
           </div>
         ) : null}
@@ -388,12 +390,12 @@ export default function WhoToFollow({
       {isSidebar ? (
         <>
           <div className="flex items-center justify-between">
-            <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Chi seguire</div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{t('feed.whoToFollow')}</div>
             <Link href="/discover" className="text-xs font-semibold text-[var(--brand)] hover:underline">
-              Vedi tutti
+              {t('feed.viewAll')}
             </Link>
           </div>
-          <div className="text-xs text-zinc-500">Suggeriti per te</div>
+          <div className="text-xs text-zinc-500">{t('feed.suggestedForYou')}</div>
         </>
       ) : null}
       {error ? (
@@ -404,7 +406,7 @@ export default function WhoToFollow({
             onClick={() => loadSuggestions(prefetchLimit)}
             className="mt-3 inline-flex items-center justify-center rounded-md border border-zinc-200 px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-900"
           >
-            Riprova
+            {t('feed.retry')}
           </button>
         </div>
       ) : visible.length > 0 ? (
@@ -467,7 +469,7 @@ export default function WhoToFollow({
                     disabled={inFlightFollowRef.current.has(it.id)}
                     className="inline-flex items-center gap-2 rounded-md border border-neutral-300 bg-white px-2 py-1 text-sm text-neutral-800 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {inFlightFollowRef.current.has(it.id) ? '...' : 'Segui'}
+                    {inFlightFollowRef.current.has(it.id) ? '...' : t('feed.follow')}
                   </button>
                 </div>
               </li>
@@ -476,7 +478,7 @@ export default function WhoToFollow({
         </ul>
       ) : isEmpty ? (
         <div className="rounded-lg border border-dashed p-4 text-center text-sm text-zinc-500 dark:border-zinc-800">
-          Nessun suggerimento al momento.
+          {t('feed.noSuggestions')}
         </div>
       ) : null}
     </div>

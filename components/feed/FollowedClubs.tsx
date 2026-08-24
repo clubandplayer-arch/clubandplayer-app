@@ -7,6 +7,7 @@ import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentPr
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
 import { CountryFlag } from '@/components/ui/CountryFlag';
 import CertifiedCMarkSidebar from '@/components/badges/CertifiedCMarkSidebar';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 type FollowedItem = {
   id: string;
@@ -66,6 +67,7 @@ function subtitle(item: FollowedItem, viewerRole: ProfileRole): ReactNode {
 }
 
 export default function FollowedClubs() {
+  const { t } = useI18n();
   const { role: contextRole, profile } = useCurrentProfileContext();
   const [role, setRole] = useState<ProfileRole>('guest');
   const [items, setItems] = useState<FollowedItem[]>([]);
@@ -124,8 +126,8 @@ export default function FollowedClubs() {
     })();
   }, [contextRole, profile?.id]);
 
-  const heading = 'Profili che segui';
-  const emptyCopy = 'Inizia a seguire profili per vederli qui.';
+  const heading = t('feed.followedProfiles');
+  const emptyCopy = t('feed.followedEmpty');
 
   if (loading) {
     return (
@@ -133,7 +135,7 @@ export default function FollowedClubs() {
         <div className="flex items-center justify-between">
           <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{heading}</div>
           <Link href="/following" className="text-xs font-semibold text-[var(--brand)] hover:underline">
-            Vedi tutti
+            {t('feed.viewAll')}
           </Link>
         </div>
         <ul className="space-y-2">
@@ -156,7 +158,7 @@ export default function FollowedClubs() {
       <div className="flex items-center justify-between">
         <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{heading}</div>
         <Link href="/following" className="text-xs font-semibold text-[var(--brand)] hover:underline">
-          Vedi tutti
+          {t('feed.viewAll')}
         </Link>
       </div>
       {error ? (

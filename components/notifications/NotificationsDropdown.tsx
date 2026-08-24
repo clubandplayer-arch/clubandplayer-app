@@ -6,6 +6,7 @@ import { MaterialIcon } from '@/components/icons/MaterialIcon';
 import NotificationItem from './NotificationItem';
 import { useToast } from '@/components/common/ToastProvider';
 import { useNotificationsList } from '@/hooks/useNotificationsList';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 function useOutsideClick(ref: React.RefObject<HTMLDivElement | null>, onClose: () => void) {
   useEffect(() => {
@@ -26,6 +27,7 @@ type Props = {
 };
 
 export default function NotificationsDropdown({ unreadCount, onUnreadChange, active }: Props) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -86,7 +88,7 @@ export default function NotificationsDropdown({ unreadCount, onUnreadChange, act
         }`}
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        aria-label="Notifiche"
+        aria-label={t('notifications.title')}
       >
         <MaterialIcon name="notifications" fontSize="small" />
         {badge}
@@ -95,14 +97,14 @@ export default function NotificationsDropdown({ unreadCount, onUnreadChange, act
       {open ? (
         <div className="absolute right-0 z-[100001] mt-2 w-96 max-w-[90vw] rounded-xl border bg-white shadow-2xl">
           <div className="flex items-center justify-between border-b px-4 py-3">
-            <div className="font-semibold">Notifiche</div>
+            <div className="font-semibold">{t('notifications.title')}</div>
             <Link href="/notifications" className="text-sm text-[var(--brand)] hover:underline">
               Vedi tutte
             </Link>
           </div>
           <div className="max-h-[420px] overflow-auto p-3">
             {loading ? (
-              <div className="p-3 text-sm text-neutral-500">Caricamento…</div>
+              <div className="p-3 text-sm text-neutral-500">{t('notifications.loading')}</div>
             ) : error ? (
               <div className="p-3 text-sm text-red-500">{error}</div>
             ) : items.length > 0 ? (
@@ -112,7 +114,7 @@ export default function NotificationsDropdown({ unreadCount, onUnreadChange, act
                 ))}
               </div>
             ) : (
-              <div className="p-3 text-sm text-neutral-500">Nessuna notifica</div>
+              <div className="p-3 text-sm text-neutral-500">{t('notifications.empty')}</div>
             )}
           </div>
         </div>

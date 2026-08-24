@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/common/ToastProvider';
+import { useI18n } from '@/components/i18n/I18nProvider';
 import { compressImageInBrowser } from '@/lib/images/compressImageInBrowser';
 import { subscribeToRealtimePresence } from '@/lib/presence/realtimePresence';
 import { Lightbox } from '@/components/media/Lightbox';
@@ -101,6 +102,7 @@ export function DirectMessageThread({
   className,
   targetAccountType,
 }: Props) {
+  const { t } = useI18n();
   const router = useRouter();
   const { show } = useToast();
   const [messages, setMessages] = useState<DirectMessage[]>([]);
@@ -481,7 +483,7 @@ export function DirectMessageThread({
           </Link>
           <div className={`flex items-center gap-1.5 text-sm font-medium ${peerOnline ? 'text-emerald-600' : 'text-neutral-500'}`}>
             <span className={`h-2 w-2 rounded-full ${peerOnline ? 'bg-emerald-500' : 'bg-neutral-400'}`} aria-hidden="true" />
-            <span>{peerOnline === null ? 'Verifica presenza…' : peerOnline ? 'Online' : 'Offline'}</span>
+            <span>{peerOnline === null ? t('messages.checkingPresence') : peerOnline ? t('messages.online') : t('messages.offline')}</span>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -509,13 +511,13 @@ export function DirectMessageThread({
         ref={messagesContainerRef}
         className={`flex-1 space-y-3 overflow-y-auto bg-neutral-50 ${isDock ? 'px-4 py-3' : 'px-5 py-4'}`}
       >
-        {loading && <div className="text-sm text-neutral-600">Caricamento conversazione…</div>}
+        {loading && <div className="text-sm text-neutral-600">{t('messages.loading')}</div>}
         {!loading && error && (
           <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
         )}
         {!loading && !error && thread.length === 0 && (
           <div className="rounded-md border border-dashed border-neutral-300 bg-white p-3 text-sm text-neutral-600">
-            Nessun messaggio ancora. Scrivi il primo.
+            {t('messages.noMessages')}
           </div>
         )}
         {!loading && !error &&
@@ -692,7 +694,7 @@ export function DirectMessageThread({
             }
           }}
           className="h-28 w-full resize-none rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
-          placeholder="Scrivi un messaggio"
+          placeholder={t('messages.write')}
         />
         <div className="flex items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
@@ -716,9 +718,9 @@ export function DirectMessageThread({
               onClick={() => galleryInputRef.current?.click()}
               disabled={sending || optimizingAttachment}
               className="inline-flex items-center gap-2 rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-50 disabled:opacity-60"
-              aria-label="Allega una foto"
+              aria-label={t('messages.attachPhoto')}
             >
-              <span aria-hidden="true">📎</span><span className="hidden sm:inline">Allega foto</span><span className="sm:hidden">Foto</span>
+              <span aria-hidden="true">📎</span><span className="hidden sm:inline">{t('messages.attachPhoto')}</span><span className="sm:hidden">{t('messages.photo')}</span>
             </button>
             <div className="relative">
               <button type="button" onClick={() => setShowEmojiPicker((value) => !value)} className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-neutral-300 text-xl hover:bg-neutral-50" aria-label="Aggiungi emoji">😊</button>
@@ -730,7 +732,7 @@ export function DirectMessageThread({
                 </div>
               )}
             </div>
-            <button type="button" onClick={() => void toggleRecording()} disabled={sending || optimizingAttachment} className={`inline-flex h-10 items-center justify-center gap-1 rounded-md border px-3 text-sm ${recording ? 'border-red-300 bg-red-50 text-red-700' : 'border-neutral-300 hover:bg-neutral-50'}`} aria-label={recording ? 'Termina registrazione' : 'Registra messaggio vocale'}>
+            <button type="button" onClick={() => void toggleRecording()} disabled={sending || optimizingAttachment} className={`inline-flex h-10 items-center justify-center gap-1 rounded-md border px-3 text-sm ${recording ? 'border-red-300 bg-red-50 text-red-700' : 'border-neutral-300 hover:bg-neutral-50'}`} aria-label={recording ? t('messages.stopRecording') : t('messages.recordVoice')}>
               🎤 {recording ? `${Math.floor(recordingSeconds / 60)}:${String(recordingSeconds % 60).padStart(2, '0')} Stop` : <span className="hidden sm:inline">Vocale</span>}
             </button>
             <button
@@ -749,7 +751,7 @@ export function DirectMessageThread({
             disabled={(!content.trim() && !attachment && !voice) || sending || optimizingAttachment || recording}
             className="rounded-md bg-[var(--brand,#0ea5e9)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--brand-strong,#0284c7)] hover:text-white hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand,#0ea5e9)] focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {optimizingAttachment ? 'Ottimizzo…' : sending ? 'Invio…' : 'Invia'}
+            {optimizingAttachment ? t('messages.optimizing') : sending ? t('messages.sending') : t('messages.send')}
           </button>
         </div>
       </div>

@@ -10,6 +10,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
+import { useI18n } from '@/components/i18n/I18nProvider'
 
 type AccountType = 'athlete' | 'club' | 'fan' | 'staff' | 'institution'
 
@@ -34,6 +35,7 @@ type BlockedItem = {
 }
 
 export default function SettingsPage() {
+  const { t } = useI18n()
   const supabase = useMemo(() => supabaseBrowser(), [])
   const router = useRouter()
 
@@ -121,7 +123,7 @@ export default function SettingsPage() {
       setMsg(`Errore salvataggio: ${error.message}`)
       return
     }
-    setMsg('Impostazioni salvate.')
+    setMsg(t('settings.saved'))
   }
 
   const logout = async () => {
@@ -273,9 +275,9 @@ export default function SettingsPage() {
         </Link>
       </div>
 
-      <h1>Impostazioni</h1>
+      <h1>{t('settings.title')}</h1>
 
-      {loading && <p>Caricamento…</p>}
+      {loading && <p>{t('common.loading')}</p>}
       {!!msg && (
         <p style={{ color: msg.includes('Errore') ? '#b91c1c' : '#065f46' }}>{msg}</p>
       )}
@@ -283,7 +285,7 @@ export default function SettingsPage() {
       {!loading && (
         <div style={{ display: 'grid', gap: 16 }}>
           <section style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 16 }}>
-            <h2 style={{ marginTop: 0 }}>Profilo</h2>
+            <h2 style={{ marginTop: 0 }}>{t('settings.profile')}</h2>
             <p style={{ margin: '8px 0' }}>
               Tipo account: <b>{accountTypeLabel}</b>
             </p>
@@ -362,7 +364,7 @@ export default function SettingsPage() {
           </section>
 
           <section style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 16 }}>
-            <h2 style={{ marginTop: 0 }}>Notifiche</h2>
+            <h2 style={{ marginTop: 0 }}>{t('settings.notifications')}</h2>
             <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <input
                 type="checkbox"
@@ -384,13 +386,13 @@ export default function SettingsPage() {
                   cursor: 'pointer',
                 }}
               >
-                {saving ? 'Salvataggio…' : 'Salva'}
+                {saving ? t('settings.saving') : t('settings.save')}
               </button>
             </div>
           </section>
 
           <section style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 16 }}>
-            <h2 style={{ marginTop: 0 }}>Sessione</h2>
+            <h2 style={{ marginTop: 0 }}>{t('settings.session')}</h2>
             <button
               onClick={logout}
               style={{
@@ -484,7 +486,7 @@ export default function SettingsPage() {
                   cursor: 'pointer',
                 }}
               >
-                {deleting ? 'Eliminazione…' : 'Elimina account'}
+                {deleting ? t('settings.saving') : t('settings.deleteAccount')}
               </button>
             </div>
           </section>

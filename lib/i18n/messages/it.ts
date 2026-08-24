@@ -1,3 +1,5 @@
+import feedMessages from './feed/it';
+
 const messages = {
   'common.loading': 'Caricamento…',
   'common.continue': 'Continua',
@@ -121,6 +123,7 @@ const messages = {
   'search.events': 'Eventi',
   'errors.generic': 'Si è verificato un errore. Riprova.',
   'empty.noResults': 'Nessun risultato trovato.',
+  ...feedMessages,
 } as const;
 
 export default messages;
