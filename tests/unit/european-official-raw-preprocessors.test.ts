@@ -20,16 +20,23 @@ test('real FR COG release yields the exact hierarchy and preserves Corsican stri
   assert.equal(typeof ajaccio?.officialCode, 'string');
 });
 
-test('real ES workbook exposes only municipality names and retains code components as strings', () => {
-  const result = preprocessSpain(resolve(raw, 'ES/diccionario26.xlsx'));
+test('real ES datasets yield autonomous communities, provinces, and municipalities with complete parentage', () => {
+  const result = preprocessSpain(resolve(raw, 'ES'));
   assert.deepEqual(result.inspected.sheets, ['dic25']);
   assert.deepEqual(result.inspected.headers?.dic25, ['CODAUTO', 'CPRO', 'CMUN', 'DC', 'NOMBRE']);
-  assert.equal(result.records.length, 8132);
-  assert.ok(result.records.every((row) => row.areaType === 'MUNICIPALITY' && row.parentAreaType === 'PROVINCE'));
-  assert.equal(result.records[0].officialCode, '01051');
-  assert.equal(result.records[0].parentOfficialCode, '01');
-  assert.equal(typeof result.records[0].metadata?.autonomousCommunityCode, 'string');
-  assert.equal(result.blockers.length, 1);
+  assert.deepEqual(result.inspected.headers?.['autonomous_communities_2026.csv'], ['CODAUTO', 'COMUNIDAD_AUTONOMA']);
+  assert.deepEqual(result.inspected.headers?.['provinces_by_autonomous_community_2026.csv'], ['CODAUTO', 'COMUNIDAD_AUTONOMA', 'CPRO', 'PROVINCIA']);
+  const counts = result.records.reduce<Record<string, number>>((all, row) => ({ ...all, [row.areaType]: (all[row.areaType] ?? 0) + 1 }), {});
+  assert.deepEqual(counts, { AUTONOMOUS_COMMUNITY: 19, PROVINCE: 52, MUNICIPALITY: 8132 });
+  assert.equal(result.records.length, 8203);
+  assert.ok(result.records.filter((row) => row.areaType === 'PROVINCE').every((row) => row.parentAreaType === 'AUTONOMOUS_COMMUNITY'));
+  assert.ok(result.records.filter((row) => row.areaType === 'MUNICIPALITY').every((row) => row.parentAreaType === 'PROVINCE'));
+  const firstMunicipality = result.records.find((row) => row.areaType === 'MUNICIPALITY');
+  assert.equal(firstMunicipality?.officialCode, '01051');
+  assert.equal(firstMunicipality?.parentOfficialCode, '01');
+  assert.equal(typeof firstMunicipality?.metadata?.autonomousCommunityCode, 'string');
+  assert.deepEqual(result.blockers, []);
+  assert.equal(result.licenseStatus, 'CONFIRM_REQUIRED');
 });
 
 test('real CH GeoPackage uses inspected layers and supports municipalities with and without districts', () => {

@@ -10,7 +10,7 @@ const countryArgumentIndex = process.argv.indexOf('--country');
 const requested = countryArgumentIndex >= 0 ? process.argv[countryArgumentIndex + 1]?.toUpperCase() : undefined;
 const jobs = {
   FR: () => preprocessFrance(resolve(raw, 'FR')),
-  ES: () => preprocessSpain(resolve(raw, 'ES/diccionario26.xlsx')),
+  ES: () => preprocessSpain(resolve(raw, 'ES')),
   CH: () => preprocessSwitzerland(resolve(raw, 'CH/swissboundaries3d_2026-01_2056_5728.gpkg.zip')),
   SI: () => preprocessSlovenia(resolve(raw, 'SI/NUTS3,_SKTE5,7, 2022 - Tabela.xlsx')),
   PL: () => preprocessPoland(resolve(raw, 'PL/TERC_Urzedowy_2026-08-24.zip')),
