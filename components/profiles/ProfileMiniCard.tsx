@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { useI18n } from '@/components/i18n/I18nProvider';
+import { localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 
 import FollowButton from '@/components/clubs/FollowButton';
 import { CountryFlag } from '@/components/ui/CountryFlag';
@@ -396,7 +397,7 @@ export default function ProfileMiniCard() {
             </div>
             <div className="flex flex-col gap-0.5">
               <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t('profile.role')}</dt>
-              <dd className="font-medium text-gray-900">{p?.role || '—'}</dd>
+              <dd className="font-medium text-gray-900">{localizeSportRole(p?.role, t) || '—'}</dd>
             </div>
             <div className="flex flex-col gap-0.5 col-span-2">
               <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t('profile.cityCountry')}</dt>

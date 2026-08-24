@@ -11,6 +11,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
 import { useI18n } from '@/components/i18n/I18nProvider'
+import { localizeAccountType } from '@/lib/i18n/controlledVocabulary'
 
 type AccountType = 'athlete' | 'club' | 'fan' | 'staff' | 'institution'
 
@@ -20,11 +21,7 @@ type Profile = {
   notify_email_new_message: boolean | null
 }
 
-const ROLE_OPTIONS: Array<{ value: AccountType; label: string }> = [
-  { value: 'athlete', label: 'Giocatore' }, { value: 'staff', label: 'Staff Tecnico' },
-  { value: 'club', label: 'Squadra' }, { value: 'fan', label: 'Tifoso' },
-  { value: 'institution', label: 'Federazione/Ente' },
-]
+const ROLE_OPTIONS: AccountType[] = ['athlete', 'staff', 'club', 'fan', 'institution']
 
 type BlockedItem = {
   blocked_profile_id: string
@@ -234,17 +231,7 @@ export default function SettingsPage() {
     }
   }
 
-  const accountTypeLabel = accountType === 'athlete'
-    ? 'Giocatore'
-    : accountType === 'club'
-      ? 'Squadra'
-      : accountType === 'fan'
-        ? 'Tifoso'
-        : accountType === 'staff'
-          ? 'Staff Tecnico'
-          : accountType === 'institution'
-            ? 'Federazione/Ente'
-        : '—'
+  const accountTypeLabel = localizeAccountType(accountType, t) ?? '—'
   const publicProfileHref = accountType === 'club' && profileId
     ? `/clubs/${profileId}`
     : (accountType === 'athlete' || accountType === 'staff') && profileId
@@ -304,7 +291,7 @@ export default function SettingsPage() {
               </p>
               {!showRoleRequest ? (
                 <button type="button" className="btn btn-primary" onClick={() => setShowRoleRequest(true)}>
-                  Richiedi cambio ruolo
+                  {t('settings.requestRole')}
                 </button>
               ) : (
                 <form onSubmit={sendRoleChangeRequest} style={{ display: 'grid', gap: 12 }}>
@@ -318,8 +305,8 @@ export default function SettingsPage() {
                       style={{ padding: 10, borderRadius: 8, border: '1px solid #d1d5db', background: '#fff' }}
                     >
                       <option value="">{t('settings.selectRole')}</option>
-                      {ROLE_OPTIONS.filter((option) => option.value !== accountType).map((option) => (
-                        <option key={option.value} value={option.value}>{option.label}</option>
+                      {ROLE_OPTIONS.filter((option) => option !== accountType).map((option) => (
+                        <option key={option} value={option}>{localizeAccountType(option, t)}</option>
                       ))}
                     </select>
                   </label>
@@ -401,7 +388,7 @@ export default function SettingsPage() {
                 cursor: 'pointer',
               }}
             >
-              Logout
+              {t('common.logout')}
             </button>
           </section>
 
@@ -415,7 +402,7 @@ export default function SettingsPage() {
               <ul style={{ display: 'grid', gap: 10, margin: 0, padding: 0, listStyle: 'none' }}>
                 {blockedUsers.map((item) => {
                   const label = item.display_name || item.full_name || item.blocked_profile_id
-                  const typeLabel = item.account_type === 'athlete' ? 'Player' : item.account_type === 'club' ? 'Club' : item.account_type === 'fan' ? 'Fan' : item.account_type === 'staff' ? 'Staff' : '—'
+                  const typeLabel = localizeAccountType(item.account_type, t) ?? '—'
                   return (
                     <li key={item.blocked_profile_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, border: '1px solid #e5e7eb', borderRadius: 10, padding: 10 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

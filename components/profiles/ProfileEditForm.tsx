@@ -21,6 +21,7 @@ import { getProfileVisibilityStatusCopy, normalizeProfileVisibilityStatus } from
 import { CATEGORIES_BY_SPORT, CLUB_SPORT_OPTIONS, DEFAULT_CLUB_CATEGORIES } from '@/lib/opps/categories';
 import { iso2ToFlagEmoji } from '@/lib/utils/flags';
 import { useI18n } from '@/components/i18n/I18nProvider';
+import { localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 import {
   ensurePastExperienceCategory,
   getPastExperienceCategoriesBySport,
@@ -1214,7 +1215,7 @@ export default function ProfileEditForm() {
                     <option value="">— {t('profile.select')} —</option>
                     {athleteRoles.map((r) => (
                       <option key={r} value={r}>
-                        {r}
+                        {localizeSportRole(r, t)}
                       </option>
                     ))}
                   </select>
@@ -1362,7 +1363,7 @@ export default function ProfileEditForm() {
                           <option value="">— {t('profile.select')} —</option>
                           {roleOptions.map((roleOption) => (
                             <option key={roleOption} value={roleOption}>
-                              {roleOption}
+                              {localizeSportRole(roleOption, t)}
                             </option>
                           ))}
                         </select>

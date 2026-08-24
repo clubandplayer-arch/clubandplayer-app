@@ -8,6 +8,7 @@ import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName'
 import { CountryFlag } from '@/components/ui/CountryFlag';
 import CertifiedCMarkSidebar from '@/components/badges/CertifiedCMarkSidebar';
 import { useI18n } from '@/components/i18n/I18nProvider';
+import { localizeAccountType } from '@/lib/i18n/controlledVocabulary';
 
 type FollowedItem = {
   id: string;
@@ -190,7 +191,7 @@ export default function FollowedClubs() {
                       {item.name}
                     </Link>
                     <span className="rounded-full border border-zinc-200 bg-zinc-100 px-2 py-[1px] text-[10px] font-semibold uppercase tracking-wide text-zinc-700">
-                      {item.accountType === 'club' ? 'Club' : item.accountType === 'staff' ? 'Staff' : 'Player'}
+                      {localizeAccountType(item.accountType ?? 'player', t)}
                     </span>
                   </div>
                   <div className="truncate text-xs text-zinc-500">{subtitle(item, role)}</div>

@@ -8,6 +8,7 @@ import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
 import { getProvinceAbbreviationsServer } from '@/lib/geo/provinceAbbreviations.server';
 import { resolveRequestLocale } from '@/lib/i18n/server';
 import { loadMessages, type MessageKey } from '@/lib/i18n/messages';
+import { localizeAccountType, localizeControlledStatus, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 
 function formatDateHuman(date: string | null | undefined, locale: string) {
   if (!date) return '—';
@@ -86,7 +87,7 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
   const placeLabel = buildLocationLabel(opp.city, opp.province, opp.region, opp.country, provinceAbbreviations);
   const place = placeLabel || [opp.city, provinceDisplayValue(opp.province, provinceAbbreviations), opp.region, opp.country].filter(Boolean).join(', ');
   const categoryLabel = (opp as any).category ?? (opp as any).required_category ?? null;
-  const groupLabel = roleGroupLabel((opp as any).role_group);
+  const groupLabel = localizeAccountType(roleGroupLabel((opp as any).role_group), t) ?? roleGroupLabel((opp as any).role_group);
   const genderLabel = opportunityGenderLabel((opp as any).gender) ?? undefined;
   const ageLabel = formatAge((opp as any).age_min, (opp as any).age_max);
   const published = formatDateHuman((opp as any).created_at, locale);
@@ -107,14 +108,14 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
             <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
               <div className="min-w-0 space-y-2">
                 <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-wide text-gray-500">
-                  {opp.status && <span className="rounded-full border px-2 py-1">{opp.status}</span>}
+                  {opp.status && <span className="rounded-full border px-2 py-1">{localizeControlledStatus(opp.status, t)}</span>}
                   <span>{messages['opportunities.publishedOn'].replace('{date}', published)}</span>
                 </div>
                 <h1 className="text-2xl md:text-3xl font-semibold leading-tight">{opp.title}</h1>
                 <div className="flex flex-wrap items-center gap-2 text-sm text-gray-700">
                   {opp.sport && <span className="rounded-full bg-gray-100 px-3 py-1">{opp.sport}</span>}
                   <span className="rounded-full bg-blue-50 px-3 py-1 text-blue-800">[{groupLabel.toUpperCase()}]</span>
-                  {opp.role && <span className="rounded-full bg-gray-100 px-3 py-1">{opp.role}</span>}
+                  {opp.role && <span className="rounded-full bg-gray-100 px-3 py-1">{localizeSportRole(opp.role, t)}</span>}
                   <span className="rounded-full bg-gray-100 px-3 py-1">{t('profile.age')}: {ageLabel}</span>
                   {genderLabel && <span className="rounded-full bg-gray-100 px-3 py-1">{genderLabel}</span>}
                   {place && <span className="rounded-full bg-gray-100 px-3 py-1">📍 {place}</span>}
@@ -136,7 +137,7 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
 
           <section className="rounded-2xl border bg-white/80 p-4 shadow-sm text-sm text-gray-700 space-y-2">
             <h4 className="text-base font-semibold">{t('opportunities.details')}</h4>
-            <p><span className="font-medium">{t('applications.status')}:</span> {opp.status ?? '—'}</p>
+            <p><span className="font-medium">{t('applications.status')}:</span> {localizeControlledStatus(opp.status, t) ?? '—'}</p>
             <p><span className="font-medium">{t('opportunity.published')}:</span> {published}</p>
             <p><span className="font-medium">ID:</span> {opp.id}</p>
           </section>
@@ -149,10 +150,10 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
           <section className="rounded-2xl border bg-white/80 p-4 shadow-sm space-y-3">
             <h3 className="text-lg font-semibold">{t('opportunity.requirements')}</h3>
             <ul className="list-disc space-y-1 pl-5 text-sm text-gray-800">
-              <li>{t('opportunity.sportRole')}: {opp.sport || '—'} • [{groupLabel.toUpperCase()}] {opp.role || '—'}</li>
+              <li>{t('opportunity.sportRole')}: {opp.sport || '—'} • [{groupLabel.toUpperCase()}] {localizeSportRole(opp.role, t) || '—'}</li>
               <li>{t('opportunity.targetAge')}: {ageLabel}</li>
               <li>{place ? `${t('opportunity.location')}: ${place}` : t('opportunity.locationMissing')}</li>
-              <li>{t('opportunity.requiredCategory')}: {categoryLabel ?? '—'}{genderLabel ? ` • ${genderLabel}` : ''}</li>
+              <li>{t('opportunity.requiredCategory')}: {localizeSportRole(categoryLabel, t) ?? '—'}{genderLabel ? ` • ${genderLabel}` : ''}</li>
             </ul>
           </section>
         </section>

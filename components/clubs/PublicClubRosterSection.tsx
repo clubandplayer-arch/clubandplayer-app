@@ -9,6 +9,7 @@ import { STAFF_ROLES } from '@/lib/opps/constants';
 import { buildRosterRoleSections } from '@/lib/utils/rosterRoleSort';
 import FanVoteBadge from '@/components/fan-votes/FanVoteBadge';
 import { useI18n } from '@/components/i18n/I18nProvider';
+import { localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 
 type PublicRosterPlayer = {
   player_id: string;
@@ -127,6 +128,7 @@ function compareNames(a: string, b: string) {
 }
 
 function RosterCard({ player }: { player: PublicRosterPlayer }) {
+  const { t } = useI18n();
   const displayName = buildProfileDisplayName(
     player.full_name,
     player.display_name,
@@ -168,7 +170,7 @@ function RosterCard({ player }: { player: PublicRosterPlayer }) {
             </p>
             <FanVoteBadge count={player.fan_vote_count} compact />
           </div>
-          {player.role ? <p className="text-xs text-neutral-600">{player.role}</p> : null}
+          {player.role ? <p className="text-xs text-neutral-600">{localizeSportRole(player.role, t)}</p> : null}
           {player.city ? <p className="text-xs text-neutral-600">{player.city}</p> : null}
           {label ? (
             <p className="flex items-center gap-1 text-xs text-neutral-600">
@@ -386,7 +388,7 @@ export default function PublicClubRosterSection({ clubId, clubSport, clubCity }:
               {rosterSections.map((section) => (
                 <section key={section.roleLabel} className="space-y-3">
                   <div className="flex items-center gap-3">
-                    <h3 className="text-sm font-semibold uppercase tracking-wide text-neutral-700">{section.roleLabel}</h3>
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-neutral-700">{localizeSportRole(section.roleLabel, t)}</h3>
                     <div className="h-px flex-1 bg-neutral-200" />
                   </div>
                   <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">

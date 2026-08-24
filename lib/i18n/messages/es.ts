@@ -3,10 +3,12 @@ import completion from './completion/es';
 import type { MessageKey } from './it';
 import feedMessages from './feed/es';
 import operationsMessages from './operations/es';
+import vocabularyMessages from './vocabulary/es';
 const messages = {
   ...sponsorMessages,
   ...completion,
   ...operationsMessages,
+  ...vocabularyMessages,
   'common.loading':'Cargando…','common.continue':'Continuar','common.save':'Guardar','common.cancel':'Cancelar','common.search':'Buscar','common.profile':'Perfil','common.settings':'Ajustes','common.logout':'Cerrar sesión','common.login':'Iniciar sesión','common.language':'Idioma','common.skipContent':'Saltar al contenido principal','common.privacy':'Privacidad','common.terms':'Términos','common.betaInfo':'Información beta',
   'navigation.feed':'Inicio','navigation.opportunities':'Oportunidades','navigation.applications':'Candidaturas','navigation.messages':'Mensajes','navigation.clubMap':'Mapa de Clubes','navigation.notifications':'Notificaciones','navigation.following':'Siguiendo','navigation.whoToFollow':'A quién seguir','navigation.roster':'Plantilla','navigation.staff':'Cuerpo técnico','navigation.editProfile':'Editar perfil','navigation.verifyProfile':'Verificar perfil','navigation.createOpportunity':'Crear oportunidad','navigation.openMenu':'Abrir menú de navegación','navigation.closeMenu':'Cerrar menú de navegación','navigation.searchPlaceholder':'Buscar Clubes, jugadores, oportunidades, publicaciones, eventos…',
   'language.select':'Elegir idioma','language.saveError':'No se pudo guardar la preferencia remota. Tu elección sigue activa en este dispositivo.',

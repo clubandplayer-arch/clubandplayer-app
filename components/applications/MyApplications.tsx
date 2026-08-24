@@ -5,6 +5,8 @@ import Link from 'next/link';
 import type { Opportunity } from '@/types/opportunity';
 import { useProvinceAbbreviations } from '@/hooks/useProvinceAbbreviations';
 import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
+import { useI18n } from '@/components/i18n/I18nProvider';
+import { localizeControlledStatus } from '@/lib/i18n/controlledVocabulary';
 
 type Application = {
   id: string;
@@ -23,6 +25,7 @@ type ApiShape =
 const WITHDRAW_ALLOWED = new Set(['inviata', 'aperta', 'in_review', 'pending']);
 
 function StatusChip({ status }: { status?: string }) {
+  const { t } = useI18n();
   const s = (status || 'inviata').toLowerCase();
   const map: Record<string, string> = {
     inviata: 'bg-amber-100 text-amber-800',
@@ -34,16 +37,7 @@ function StatusChip({ status }: { status?: string }) {
     submitted: 'bg-amber-100 text-amber-800',
   };
   const cls = map[s] || 'bg-gray-100 text-gray-700';
-  const label: Record<string, string> = {
-    inviata: 'In valutazione',
-    in_review: 'In valutazione',
-    accettata: 'Accettata',
-    rifiutata: 'Rifiutata',
-    ritirata: 'Ritirata',
-    pending: 'In valutazione',
-    submitted: 'In valutazione',
-  };
-  return <span className={`px-2 py-0.5 rounded-lg text-xs font-medium ${cls}`}>{label[s] ?? s}</span>;
+  return <span className={`px-2 py-0.5 rounded-lg text-xs font-medium ${cls}`}>{localizeControlledStatus(s, t)}</span>;
 }
 
 export default function MyApplications() {

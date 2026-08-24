@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import FollowButton from '@/components/common/FollowButton';
+import { useI18n } from '@/components/i18n/I18nProvider';
+import { localizeAccountType, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 
 type AccountType = 'club' | 'athlete';
 
@@ -49,16 +51,17 @@ function mapAccountType(value: string | null | undefined): AccountType {
   return value === 'club' ? 'club' : 'athlete';
 }
 
-function subtitle(profile: NetworkProfile) {
-  const meta = [profile.role, profile.sport].filter(Boolean).join(' · ');
+function subtitle(profile: NetworkProfile, t: ReturnType<typeof useI18n>['t']) {
+  const meta = [localizeSportRole(profile.role, t), profile.sport].filter(Boolean).join(' · ');
   const place = [profile.city, profile.country].filter(Boolean).join(', ');
   return meta || place || '—';
 }
 
 function AccountBadge({ type }: { type: AccountType }) {
+  const { t } = useI18n();
   return (
     <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-neutral-700">
-      {type === 'club' ? 'Club' : 'Player'}
+      {localizeAccountType(type, t)}
     </span>
   );
 }
@@ -68,6 +71,7 @@ function ProfileCard({
 }: {
   profile: NetworkProfile;
 }) {
+  const { t } = useI18n();
   return (
     <div className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white/80 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900/60">
       <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full bg-neutral-100 ring-1 ring-neutral-200 dark:bg-neutral-800 dark:ring-neutral-700">
@@ -85,7 +89,7 @@ function ProfileCard({
           </Link>
           <AccountBadge type={profile.accountType} />
         </div>
-        <div className="truncate text-sm text-neutral-600 dark:text-neutral-300">{subtitle(profile)}</div>
+        <div className="truncate text-sm text-neutral-600 dark:text-neutral-300">{subtitle(profile, t)}</div>
         <div className="text-xs text-neutral-500 dark:text-neutral-400">{[profile.city, profile.country].filter(Boolean).join(', ') || '—'}</div>
       </div>
       <div className="flex flex-col items-end gap-2">

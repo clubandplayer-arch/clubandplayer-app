@@ -9,6 +9,7 @@ import { useProvinceAbbreviations } from '@/hooks/useProvinceAbbreviations';
 import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
 import { useI18n } from '@/components/i18n/I18nProvider';
 import { formatDate } from '@/lib/i18n/format';
+import { localizeControlledStatus, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 
 type Role = 'athlete' | 'club' | 'staff' | 'fan' | 'guest';
 
@@ -90,7 +91,7 @@ export default function OpportunitiesTable({
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div className="min-w-0 space-y-2">
                 <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-wide text-gray-500">
-                  {o.status && <span className="rounded-full border px-2 py-1">{o.status}</span>}
+                  {o.status && <span className="rounded-full border px-2 py-1">{localizeControlledStatus(o.status, t)}</span>}
                   <span>{t('opportunities.publishedOn', { date: fmtDateHuman((o as any).created_at ?? (o as any).createdAt, locale) })}</span>
                 </div>
 
@@ -101,7 +102,7 @@ export default function OpportunitiesTable({
                 <div className="flex flex-wrap items-center gap-2 text-sm text-gray-700">
                   {o.sport && <span className="rounded-full bg-gray-100 px-2.5 py-1">{o.sport}</span>}
                   <span className="rounded-full bg-blue-50 text-blue-800 px-2.5 py-1">[{groupLabel.toUpperCase()}]</span>
-                  {o.role && <span className="rounded-full bg-gray-100 px-2.5 py-1">{o.role}</span>}
+                  {o.role && <span className="rounded-full bg-gray-100 px-2.5 py-1">{localizeSportRole(o.role, t)}</span>}
                   {o.category && <span className="rounded-full bg-gray-100 px-2.5 py-1">{o.category}</span>}
                   <span className="rounded-full bg-gray-100 px-2.5 py-1">Età: {formatBracket(o.age_min as any, o.age_max as any)}</span>
                   {place && <span className="rounded-full bg-gray-100 px-2.5 py-1">📍 {place}</span>}

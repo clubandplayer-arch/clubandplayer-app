@@ -6,6 +6,8 @@ import { useProvinceAbbreviations } from '@/hooks/useProvinceAbbreviations';
 import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
 import { opportunityGenderLabel } from '@/lib/opps/gender';
 import type { Opportunity } from '@/types/opportunity';
+import { useI18n } from '@/components/i18n/I18nProvider';
+import { localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 
 type Role = 'athlete' | 'staff' | 'club' | 'institution' | 'guest';
 
@@ -24,6 +26,7 @@ export default function OpportunityCard({
   alreadyApplied,
   onApplied,
 }: Props) {
+  const { t } = useI18n();
   const provinceAbbreviations = useProvinceAbbreviations();
   const place = [opp.city, provinceDisplayValue(opp.province, provinceAbbreviations), opp.region, opp.country].filter(Boolean).join(', ');
 
@@ -49,7 +52,7 @@ export default function OpportunityCard({
           </Link>
           <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm text-gray-600">
             {opp.sport && <span>{opp.sport}</span>}
-            {opp.role && <span>{opp.role}</span>}
+            {opp.role && <span>{localizeSportRole(opp.role, t)}</span>}
             {genderLabel && <span>{genderLabel}</span>}
             {ageLabel && <span>Età: {ageLabel}</span>}
             {place && <span>📍 {place}</span>}

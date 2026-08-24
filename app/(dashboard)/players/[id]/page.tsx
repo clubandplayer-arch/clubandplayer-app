@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { useI18n } from '@/components/i18n/I18nProvider';
+import { localizeControlledStatus } from '@/lib/i18n/controlledVocabulary';
 
 import AthleteMediaHighlightsSection, {
   type AthleteMediaItem,
@@ -680,7 +681,7 @@ export default function PlayerPublicProfilePage() {
                         {a.opportunity?.club_name ?? '—'} — {a.opportunity?.city ?? '—'}
                       </div>
                       <div className="text-[12px] text-neutral-500">
-                        Stato: {a.status} · {new Date(a.created_at).toLocaleString()}
+                        {t('applications.status')}: {localizeControlledStatus(a.status, t)} · {new Date(a.created_at).toLocaleString()}
                       </div>
                     </li>
                   ))}

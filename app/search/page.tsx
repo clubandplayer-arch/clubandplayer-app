@@ -8,6 +8,7 @@ import SearchResultRow, { type SearchResult } from '@/components/search/SearchRe
 import { COUNTRIES, getCountryName } from '@/lib/geo/countries';
 import { SPORTS, SPORTS_ROLES, STAFF_ROLES, normalizeSport } from '@/lib/opps/constants';
 import { useI18n } from '@/components/i18n/I18nProvider';
+import { localizeAccountType, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 
 type SearchType = 'all' | 'opportunities' | 'clubs' | 'institutions' | 'players' | 'staff' | 'posts' | 'events';
 type LocationOption = { id: number; name: string };
@@ -514,20 +515,20 @@ export default function SearchPage() {
                 className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-[var(--brand)] focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/20 disabled:bg-slate-100 disabled:text-slate-400"
               >
                 <option value="">{t('search.allRoles')}</option>
-                <option value="__group_player" disabled>──────── PLAYER ────────</option>
+                <option value="__group_player" disabled>──────── {localizeAccountType('player', t)?.toUpperCase()} ────────</option>
                 {playerRoles.map((role) => (
                   <option key={role} value={role}>
-                    {role}
+                    {localizeSportRole(role, t)}
                   </option>
                 ))}
-                <option value="__group_staff" disabled>──────── STAFF ────────</option>
+                <option value="__group_staff" disabled>──────── {localizeAccountType('staff', t)?.toUpperCase()} ────────</option>
                 {STAFF_ROLES.map((role) => (
                   <option key={role} value={role}>
-                    {role}
+                    {localizeSportRole(role, t)}
                   </option>
                 ))}
               </select>
-              <p className="text-xs text-slate-500">Ruoli player per lo sport selezionato + ruoli staff trasversali.</p>
+              <p className="text-xs text-slate-500">{t('profile.playerRoleHelp')} {t('profile.staffRoleHelp')}</p>
             </label>
           </div>
 

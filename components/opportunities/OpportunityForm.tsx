@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useI18n } from '@/components/i18n/I18nProvider';
+import { localizeAccountType, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 import type { Opportunity } from '@/types/opportunity';
@@ -571,16 +572,16 @@ export default function OpportunityForm({
               required={playerRoleRequired}
             >
               <option value="">—</option>
-              <option value="__group_player" disabled>──────── PLAYER ────────</option>
+              <option value="__group_player" disabled>──────── {localizeAccountType('player', t)?.toUpperCase()} ────────</option>
               {roleOptions.map((r: string) => (
                 <option key={r} value={r}>
-                  {r}
+                  {localizeSportRole(r, t)}
                 </option>
               ))}
-              <option value="__group_staff" disabled>──────── STAFF ────────</option>
+              <option value="__group_staff" disabled>──────── {localizeAccountType('staff', t)?.toUpperCase()} ────────</option>
               {STAFF_ROLES.map((r) => (
                 <option key={r} value={r}>
-                  {r}
+                  {localizeSportRole(r, t)}
                 </option>
               ))}
             </select>

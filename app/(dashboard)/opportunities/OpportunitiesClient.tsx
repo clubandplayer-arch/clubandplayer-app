@@ -13,6 +13,7 @@ import { AGE_BRACKETS, normalizeSport, SPORTS, SPORTS_ROLES } from '@/lib/opps/c
 import { CATEGORIES_BY_SPORT } from '@/lib/opps/categories';
 import { useGeo } from '@/hooks/useGeo';
 import { useI18n } from '@/components/i18n/I18nProvider';
+import { localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 
 type Role = 'athlete' | 'club' | 'staff' | 'fan' | 'guest';
 
@@ -587,7 +588,7 @@ export default function OpportunitiesClient() {
             <option value="">{selectedSport ? t('opportunities.role') : t('opportunities.selectSport')}</option>
             {roleOptions.map((r) => (
               <option key={r} value={r}>
-                {r}
+                {localizeSportRole(r, t)}
               </option>
             ))}
           </select>

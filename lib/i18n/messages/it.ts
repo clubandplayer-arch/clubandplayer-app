@@ -2,6 +2,7 @@ import sponsorMessages from './sponsor/it';
 import completion from './completion/it';
 import feedMessages from './feed/it';
 import operationsMessages from './operations/it';
+import vocabularyMessages from './vocabulary/it';
 
 const messages = {
   ...sponsorMessages,
@@ -130,6 +131,7 @@ const messages = {
   'empty.noResults': 'Nessun risultato trovato.',
   ...feedMessages,
   ...operationsMessages,
+  ...vocabularyMessages,
 } as const;
 
 export default messages;

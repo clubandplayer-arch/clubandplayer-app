@@ -6,6 +6,7 @@ export const fetchCache = 'default-no-store';
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
+import { localizeSportRole } from '@/lib/i18n/controlledVocabulary'
 
 type Fav = { id: string; opportunity_id: string; created_at: string }
 type Opp = { id: string; title: string; club_name: string; city: string; role: string }
@@ -78,7 +79,7 @@ export default function FavoritesPage() {
               <div>
                 <div style={{fontWeight:600}}>{i.title}</div>
                 <div style={{fontSize:14, opacity:.8}}>
-                  {i.club_name} — {i.city} — Ruolo: {i.role}
+                  {i.club_name} — {i.city} — {t('profile.role')}: {localizeSportRole(i.role, t)}
                 </div>
                 <div style={{fontSize:12, opacity:.7}}>
                   Salvato: {new Date(i.saved_at).toLocaleString()}
