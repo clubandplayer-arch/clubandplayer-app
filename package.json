@@ -15,7 +15,8 @@
     "test:integration": "tsx --test tests/integration/*.test.ts",
     "geo:import:csc": "tsx scripts/geo/import-country-state-city.ts",
     "geo:preprocess": "tsx scripts/geo/preprocess-official.ts",
-    "geo:dry-run": "tsx scripts/geo/dry-run-official.ts"
+    "geo:dry-run": "tsx scripts/geo/dry-run-official.ts",
+    "geo:import": "tsx scripts/geo/import-official-production.ts"
   },
   "dependencies": {
     "@react-email/render": "^1.3.1",
