@@ -95,3 +95,16 @@ test('readiness classification is conservative for canonical, Italian, foreign, 
   assert.match(readiness, /when declared_country is not null or has_legacy_text or most_specific_legacy_level is not null[\s\S]*then 'not_mappable'/i);
   assert.match(readiness, /else 'no_geography'/i);
 });
+
+test('backfill candidate dry-run is SELECT-only, conservative, detailed and aggregated', () => {
+  const report = readFileSync(new URL('../../scripts/geo/reports/profile-canonical-geography-backfill-dry-run.sql', import.meta.url), 'utf8');
+  assert.doesNotMatch(report, /\b(?:insert|update|delete|alter|create|drop|truncate|merge)\b/i);
+  assert.match(report, /where residence_geo_area_id is null[\s\S]*upper\(declared_country\) in \('IT', 'ITALIA', 'ITALY'\)[\s\S]*coalesce\(municipality_geo_area_id, province_geo_area_id, region_geo_area_id\) is not null/i);
+  assert.match(report, /when municipality_geo_area_id is not null then 'safe_municipality_candidate'/i);
+  assert.match(report, /when province_geo_area_id is not null then 'province_only_candidate'/i);
+  assert.match(report, /when region_geo_area_id is not null then 'region_only_candidate'/i);
+  for (const field of ['profile_id', 'account_type', 'display_name', 'legacy_country', 'legacy_region', 'legacy_province', 'legacy_city', 'interest_country', 'interest_region', 'interest_province', 'interest_city', 'interest_region_id', 'interest_province_id', 'interest_municipality_id', 'legacy_level_used', 'mapped_geo_area_id', 'canonical_area_type', 'canonical_official_name', 'canonical_country', 'canonical_ancestors', 'proposed_classification']) assert.match(report, new RegExp(`\\b${field}\\b`, 'i'));
+  assert.match(report, /jsonb_agg\([\s\S]*area_type[\s\S]*official_name[\s\S]*order by ancestors\.depth/i);
+  assert.match(report, /count\(\*\) over \(partition by account_type, candidate_classification, canonical_area_type\)/i);
+  assert.match(report, /'summary'::text[\s\S]*group by account_type, candidate_classification, canonical_area_type/i);
+});
