@@ -56,10 +56,24 @@ test('rerun is idempotent, reports no inserts, and preserves canonical UUIDs', a
   await prepareEuropeanProductionImport(repository, 'ES', validSpain, { apply: true });
   const originalIds = new Map(repository.ids);
   const preview = await prepareEuropeanProductionImport(repository, 'ES', validSpain);
-  assert.equal(preview.wouldInsert, 0); assert.equal(preview.unchanged, 8203);
+  assert.equal(preview.recordsToInsert, 0); assert.equal(preview.wouldInsert, 0);
+  assert.equal(preview.recordsToUpdate, 0); assert.equal(preview.wouldUpdate, 0);
+  assert.equal(preview.unchanged, 8203);
   const rerun = await prepareEuropeanProductionImport(repository, 'ES', validSpain, { apply: true });
   assert.deepEqual(repository.ids, originalIds); assert.equal(rerun.inserted, 0); assert.equal(rerun.unchanged, 8203);
   assert.equal(canonicalFingerprint({ ...validSpain[0], sourceUpdatedAt: '2026-01-01', metadata: { b: 2, a: 1 } }), canonicalFingerprint({ ...validSpain[0], sourceUpdatedAt: '2026-01-01T00:00:00.000Z', metadata: { a: 1, b: 2 } }));
+});
+
+test('preview reports inserts, real updates, and unchanged records as mutually exclusive', async () => {
+  const repository = new MemoryRepository();
+  await prepareEuropeanProductionImport(repository, 'ES', validSpain, { apply: true });
+  repository.ids.delete(validSpain[0].externalId);
+  const changed = validSpain.map((item, index) => index === 1 ? { ...item, officialName: 'Changed official name' } : item);
+  const preview = await prepareEuropeanProductionImport(repository, 'ES', changed);
+  assert.equal(preview.recordsToInsert, 1); assert.equal(preview.wouldInsert, 1);
+  assert.equal(preview.recordsToUpdate, 1); assert.equal(preview.wouldUpdate, 1);
+  assert.equal(preview.unchanged, 8201);
+  assert.equal(preview.wouldInsert + preview.wouldUpdate + preview.unchanged, preview.totalRecords);
 });
 
 test('duplicate provider IDs and manifest mismatch stop before writes', async () => {

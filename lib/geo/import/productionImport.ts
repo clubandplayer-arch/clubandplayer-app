@@ -58,7 +58,21 @@ export async function prepareEuropeanProductionImport(
   const inserted = records.filter((record) => !existingByIdentity.has(identity(record))).length;
   const updated = records.filter((record) => { const current = existingByIdentity.get(identity(record)); return current && current.fingerprint !== canonicalFingerprint(record); }).length;
   const unchanged = records.length - inserted - updated;
-  const base = { ...dryRun, records: undefined, inserted, updated, unchanged, failed: 0, sourceLicense: config.sourceLicense, applied: false, batchesCompleted: 0 } as ProductionImportReport;
+  const base = {
+    ...dryRun,
+    records: undefined,
+    recordsToInsert: inserted,
+    recordsToUpdate: updated,
+    wouldInsert: inserted,
+    wouldUpdate: updated,
+    inserted,
+    updated,
+    unchanged,
+    failed: 0,
+    sourceLicense: config.sourceLicense,
+    applied: false,
+    batchesCompleted: 0,
+  } as ProductionImportReport;
   if (!options.apply) return base;
   if (!repository) throw new Error('Apply requires a server-side repository');
   const batchSize = options.batchSize ?? 500;
