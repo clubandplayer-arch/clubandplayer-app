@@ -108,3 +108,13 @@ test('backfill candidate dry-run is SELECT-only, conservative, detailed and aggr
   assert.match(report, /count\(\*\) over \(partition by account_type, candidate_classification, canonical_area_type\)/i);
   assert.match(report, /'summary'::text[\s\S]*group by account_type, candidate_classification, canonical_area_type/i);
 });
+
+test('readiness discrepancy report compares identical-snapshot populations without writes', () => {
+  const report = readFileSync(new URL('../../scripts/geo/reports/profile-canonical-geography-report-discrepancy.sql', import.meta.url), 'utf8');
+  assert.doesNotMatch(report, /\b(?:insert|update|delete|alter|create|drop|truncate|merge)\b/i);
+  assert.match(report, /readiness_population[\s\S]*where mapping_status = 'automatically_mappable'/i);
+  assert.match(report, /audit_population[\s\S]*join public\.geo_areas mapped_area[\s\S]*where evidence\.residence_geo_area_id is null[\s\S]*upper\(evidence\.declared_country\) in \('IT', 'ITALIA', 'ITALY'\)[\s\S]*evidence\.mapped_geo_area_id is not null/i);
+  assert.match(report, /in_readiness_population is distinct from membership\.in_audit_population/i);
+  assert.match(report, /readiness_total[\s\S]*audit_total[\s\S]*readiness_staff_total[\s\S]*audit_staff_total/i);
+  for (const field of ['profile_id', 'account_type', 'display_name', 'declared_country', 'interest_country', 'interest_region_id', 'interest_province_id', 'interest_municipality_id', 'profile_updated_at', 'preferences_updated_at']) assert.match(report, new RegExp(`\\b${field}\\b`, 'i'));
+});
