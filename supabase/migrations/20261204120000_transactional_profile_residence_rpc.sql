@@ -20,6 +20,7 @@ declare
   v_seen uuid[] := array[]::uuid[];
   v_depth integer := 0;
   v_mapping_count integer;
+  v_mapping_ids_valid boolean;
   v_legacy_id bigint;
   v_region text := null;
   v_province text := null;
@@ -86,37 +87,40 @@ begin
 
       if v_country.iso2 = 'IT' then
         if v_current.area_type = 'REGION' then
-          select count(*), min(m.legacy_id::bigint)
-            into v_mapping_count, v_legacy_id
+          select count(*), bool_and(m.legacy_id ~ '^[1-9][0-9]{0,17}$'),
+                 min(case when m.legacy_id ~ '^[1-9][0-9]{0,17}$' then m.legacy_id::bigint end)
+            into v_mapping_count, v_mapping_ids_valid, v_legacy_id
           from public.legacy_geo_area_mappings m
           where m.source_system = 'italy_legacy'
             and m.source_entity_type = 'region'
-            and m.geo_area_id = v_current.id
-            and m.legacy_id ~ '^[1-9][0-9]*$';
+            and m.geo_area_id = v_current.id;
           if v_mapping_count = 0 then raise exception using errcode = '22023', message = 'Italy region mapping is missing'; end if;
           if v_mapping_count > 1 then raise exception using errcode = '22023', message = 'Italy region mapping is ambiguous'; end if;
+          if not v_mapping_ids_valid then raise exception using errcode = '22023', message = 'Italy region mapping has an invalid legacy ID'; end if;
           v_region := v_current.official_name; v_region_id := v_legacy_id;
         elsif v_current.area_type = 'PROVINCE' then
-          select count(*), min(m.legacy_id::bigint)
-            into v_mapping_count, v_legacy_id
+          select count(*), bool_and(m.legacy_id ~ '^[1-9][0-9]{0,17}$'),
+                 min(case when m.legacy_id ~ '^[1-9][0-9]{0,17}$' then m.legacy_id::bigint end)
+            into v_mapping_count, v_mapping_ids_valid, v_legacy_id
           from public.legacy_geo_area_mappings m
           where m.source_system = 'italy_legacy'
             and m.source_entity_type = 'province'
-            and m.geo_area_id = v_current.id
-            and m.legacy_id ~ '^[1-9][0-9]*$';
+            and m.geo_area_id = v_current.id;
           if v_mapping_count = 0 then raise exception using errcode = '22023', message = 'Italy province mapping is missing'; end if;
           if v_mapping_count > 1 then raise exception using errcode = '22023', message = 'Italy province mapping is ambiguous'; end if;
+          if not v_mapping_ids_valid then raise exception using errcode = '22023', message = 'Italy province mapping has an invalid legacy ID'; end if;
           v_province := v_current.official_name; v_province_id := v_legacy_id;
         elsif v_current.area_type = 'MUNICIPALITY' then
-          select count(*), min(m.legacy_id::bigint)
-            into v_mapping_count, v_legacy_id
+          select count(*), bool_and(m.legacy_id ~ '^[1-9][0-9]{0,17}$'),
+                 min(case when m.legacy_id ~ '^[1-9][0-9]{0,17}$' then m.legacy_id::bigint end)
+            into v_mapping_count, v_mapping_ids_valid, v_legacy_id
           from public.legacy_geo_area_mappings m
           where m.source_system = 'italy_legacy'
             and m.source_entity_type = 'municipality'
-            and m.geo_area_id = v_current.id
-            and m.legacy_id ~ '^[1-9][0-9]*$';
+            and m.geo_area_id = v_current.id;
           if v_mapping_count = 0 then raise exception using errcode = '22023', message = 'Italy municipality mapping is missing'; end if;
           if v_mapping_count > 1 then raise exception using errcode = '22023', message = 'Italy municipality mapping is ambiguous'; end if;
+          if not v_mapping_ids_valid then raise exception using errcode = '22023', message = 'Italy municipality mapping has an invalid legacy ID'; end if;
           v_city := v_current.official_name; v_municipality_id := v_legacy_id;
         else
           raise exception using errcode = '22023', message = 'unsupported Italy residence hierarchy';

@@ -49,7 +49,9 @@ test('Italy requires one mapping per canonical level and rejects missing or ambi
   assert.ok((sql.match(/v_mapping_count = 0/g) ?? []).length === 3);
   assert.ok((sql.match(/v_mapping_count > 1/g) ?? []).length === 3);
   assert.match(sql, /source_system = 'italy_legacy'/i);
-  assert.match(sql, /legacy_id ~ '\^\[1-9\]\[0-9\]\*\$'/i);
+  assert.ok((sql.match(/bool_and\(m\.legacy_id ~ '\^\[1-9\]\[0-9\]\{0,17\}\$'\)/g) ?? []).length === 3);
+  assert.ok((sql.match(/if not v_mapping_ids_valid/g) ?? []).length === 3);
+  assert.doesNotMatch(sql, /and m\.legacy_id ~/i);
 });
 
 test('foreign projections cover FR ES CH with optional District SI and PL while Italy IDs stay null', () => {

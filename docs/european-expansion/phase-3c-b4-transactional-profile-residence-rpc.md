@@ -121,3 +121,7 @@ Non essendoci un database locale isolato configurato, non è stata verificata l'
 ## Stato B4 e next step
 
 B4 resta **IN PROGRESS**. Il prossimo step proposto è **B4.4 — Player/Staff Profile Edit integration**, ma non è iniziato. Prima di applicare la migration o di eseguire qualsiasi test manuale con write occorre una nuova approvazione esplicita.
+
+## Runtime validation gate del 2026-08-25
+
+**BLOCKED — ISOLATED DATABASE NOT AVAILABLE.** Il gate e la revisione approfondita sono registrati in `docs/european-expansion/phase-3c-b4-transactional-rpc-runtime-validation-gate.md`. La migration resta non applicata; B4.4 non può iniziare sulla base dei soli controlli statici.

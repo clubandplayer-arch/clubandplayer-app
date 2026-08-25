@@ -269,6 +269,8 @@ Decisioni approvate per B4: prima integrazione limitata a Player/Athlete e Staff
 
 B4.3 ha creato nel repository la migration additiva `20261204120000_transactional_profile_residence_rpc.sql` e il wrapper server, con scope atomico limitato ai campi residence. **MIGRATION CREATA MA NON APPLICATA** a locale, Preview o Production; nessuna RPC o write remoto è stato eseguito. Il default server `interest_country = 'IT'` è rimosso, ma il fallback analogo in `ProfileEditForm` resta aperto e deve essere eliminato in B4.4: il problema non è risolto end-to-end.
 
+**B4.3 RUNTIME VALIDATION GATE: BLOCKED — ISOLATED DATABASE NOT AVAILABLE.** L'audit conferma che il timestamp `20261204120000` segue senza collisioni la precedente migration `20261203120000`; il repository contiene già 21 altre migration future rispetto al 2026-08-25, quindi il nome è coerente con la cronologia reale e non viene rinominato. La revisione statica ha corretto la validazione 1:1 dei mapping Italia affinché conti anche mapping con ID non validi. L'esecuzione PL/pgSQL, RLS e rollback runtime resta obbligatoria in un Supabase locale/branch/staging realmente isolato prima di applicare la migration o iniziare B4.4.
+
 #### 3C-B5 — Signup / onboarding
 
 **Stato: NOT STARTED.** Solo dopo la validazione di Profile Edit, integrare selezione Paese/residence canonica nei nuovi account, garantendo compatibilità per Club, Player/Athlete, Staff, Fan e Institution.
