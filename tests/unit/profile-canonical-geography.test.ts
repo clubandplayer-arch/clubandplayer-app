@@ -82,6 +82,16 @@ test('migration and readiness report perform no backfill or protected-domain cha
   assert.doesNotMatch(migration, /public\.(?:opportunities|applications|regions|provinces|municipalities|location_children)\b/i);
   assert.doesNotMatch(migration, /municipality_sync_region|profile_location_coerce|location_children\s*\(/i);
   assert.doesNotMatch(readiness, /\b(?:insert|update|delete|alter|create|drop)\b/i);
-  for (const status of ['automatically_mappable', 'ambiguous', 'not_mappable']) assert.match(readiness, new RegExp(status));
-  assert.match(readiness, /account_type, country, mapping_status, count\(\*\)/i);
+  assert.match(readiness, /group by account_type, coalesce\(declared_country, 'unknown'\), mapping_status/i);
+});
+
+test('readiness classification is conservative for canonical, Italian, foreign, missing-country, textual-only and empty profiles', () => {
+  for (const status of ['already_canonical', 'automatically_mappable', 'ambiguous', 'not_mappable', 'no_geography']) assert.match(readiness, new RegExp(status));
+  assert.match(readiness, /coalesce\(nullif\(btrim\(pp_country\.iso2\), ''\), nullif\(btrim\(p\.country\), ''\)\) as declared_country/i);
+  assert.doesNotMatch(readiness, /coalesce\([^)]*p\.country[^)]*p\.interest_country[^)]*\) as (?:declared_)?country/i);
+  assert.match(readiness, /when residence_geo_area_id is not null then 'already_canonical'/i);
+  assert.match(readiness, /when upper\(declared_country\) in \('IT', 'ITALIA', 'ITALY'\)[\s\S]*and mapped_geo_area_id is not null[\s\S]*then 'automatically_mappable'/i);
+  assert.match(readiness, /when most_specific_legacy_level is not null[\s\S]*declared_country is null or upper\(declared_country\) not in \('IT', 'ITALIA', 'ITALY'\)[\s\S]*then 'ambiguous'/i);
+  assert.match(readiness, /when declared_country is not null or has_legacy_text or most_specific_legacy_level is not null[\s\S]*then 'not_mappable'/i);
+  assert.match(readiness, /else 'no_geography'/i);
 });
