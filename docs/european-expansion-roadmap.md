@@ -8,15 +8,15 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed phase | **COMPLETATO — FASE 3C-A — Profile canonical geography foundation** |
-| Next phase | **FASE 3C-B1 — Audit dei flussi geografici UI/write** |
+| Last completed phase | **COMPLETATO — FASE 3C-B1 — Audit dei flussi geografici UI/write** |
+| Next phase | **FASE 3C-B2 — Canonical geography read APIs/helpers** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
 | Mobile international parity | **NOT STARTED** |
-| FASE 3C-B | **NOT STARTED** |
+| FASE 3C-B | **NOT COMPLETED — B1 completata; B2–B7 non iniziate** |
 
-**FASE 3C-B1 è il prossimo task; non è una fase completata.** Il backfill automatico della residence è escluso perché i campi legacy `interest_*` non costituiscono evidenza sufficiente della residenza effettiva dell'utente.
+**FASE 3C-B1 è completata esclusivamente come audit read-only/code-only; non ha introdotto modifiche comportamentali.** Il backfill automatico della residence resta escluso perché i campi legacy `interest_*` non costituiscono evidenza sufficiente della residenza effettiva dell'utente. La FASE 3C-B complessiva non è completata.
 
 ## Roadmap maintenance rules
 
@@ -227,15 +227,17 @@ I candidati non sono stati backfillati. Il candidate audit distingueva `safe_mun
 
 ### FASE 3C-B — Profile UI/write integration
 
-**Stato: NOT STARTED.**
+**Stato: NOT COMPLETED — 3C-B1 COMPLETATA; 3C-B2–3C-B7 NOT STARTED.**
 
 #### 3C-B1 — Audit UI/write flows
 
-**Stato: NEXT PHASE — NON INIZIATA.**
+**Stato: COMPLETATA — AUDIT READ-ONLY/CODE-ONLY; NESSUNA MODIFICA COMPORTAMENTALE.**
 
 Obiettivo: audit read-only/code-only di tutti i punti in cui la geografia profilo viene visualizzata, selezionata, validata, salvata o sincronizzata. L'audit dovrà coprire almeno Signup, onboarding, `ProfileEditForm`, `LocationFields`, `FanProfileForm`, `InterestAreaForm`, eventuali form Club, Player, Staff, Fan e Institution, API/actions/server handlers, write Supabase, hook e validation schema.
 
-Nessuna modifica comportamentale è ammessa in B1. Deliverable: mappa completa read/write e piano d'integrazione.
+Deliverable creato: `docs/european-expansion/phase-3c-b1-profile-geography-ui-write-audit.md`.
+
+Risultati principali: i form attivi leggono e scrivono ancora prevalentemente `profiles` e le strutture legacy italiane; `LocationFields` assume la gerarchia italiana e usa testo libero fuori dall'Italia; la foundation canonica (`geo_areas`, preferenze, interessi, canonical-first resolver e dual-write payload builder) è implementata ma non collegata alla UI. Non sono stati eseguiti write Production, backfill o modifiche a codice, UI, API, schema, migration o test. La FASE 3C-B complessiva resta non completata.
 
 #### 3C-B2 — Canonical geography read APIs/helpers
 
@@ -670,10 +672,10 @@ Alla data di creazione iniziale della roadmap:
 
 | Voce | Stato |
 | --- | --- |
-| Last completed phase | **FASE 3C-A — Profile canonical geography foundation** |
-| Next phase | **FASE 3C-B1 — Audit dei flussi geografici UI/write** |
-| FASE 3C-B | **NOT STARTED** |
+| Last completed phase | **FASE 3C-B1 — Audit dei flussi geografici UI/write** |
+| Next phase | **FASE 3C-B2 — Canonical geography read APIs/helpers** |
+| FASE 3C-B | **NOT COMPLETED — B1 completata; B2–B7 non iniziate** |
 | Automatic residence backfill | **DELIBERATELY EXCLUDED** |
 | Mobile international parity | **NOT STARTED** |
 
-Non iniziare automaticamente 3C-B1 durante questo task documentale.
+Non iniziare automaticamente 3C-B2 dopo il completamento dell'audit 3C-B1.
