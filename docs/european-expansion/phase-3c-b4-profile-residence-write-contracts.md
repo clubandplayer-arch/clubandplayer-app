@@ -93,4 +93,4 @@ Le fixture non effettuano accesso a Supabase e non contengono dati personali.
 
 Il piano non viene ancora eseguito. Mancano repository lookup reali, reverse mapping canonical→legacy, RPC transazionale, integrazione endpoint, UI Player/Staff e read-after-write. B4 non è completata.
 
-Il prossimo step architetturale previsto è **B4.3 — transactional server write**, ma prima di applicare una migration o svolgere qualsiasi test manuale mutativo occorre fermarsi e ottenere una nuova approvazione. La migration futura potrà essere creata nel repository secondo l'approvazione strategica, ma non applicata a Production.
+Il successivo **B4.3 — transactional server write** è stato completato staticamente: migration e wrapper sono documentati in `docs/european-expansion/phase-3c-b4-transactional-profile-residence-rpc.md`. La migration non è stata applicata e nessun write è stato eseguito. Il prossimo step proposto è B4.4, non iniziato.

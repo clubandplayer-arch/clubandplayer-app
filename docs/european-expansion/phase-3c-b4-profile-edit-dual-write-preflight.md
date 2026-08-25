@@ -197,4 +197,6 @@ B4 potrà essere marcata completata soltanto quando: ruoli e semantiche sono app
 
 ## Avanzamento successivo
 
-**B4.2 — Contract tests: COMPLETATO.** Il contratto puro e i test deterministici sono documentati in `docs/european-expansion/phase-3c-b4-profile-residence-write-contracts.md`. Non sono stati collegati UI o write server; non è stata creata/applicata alcuna migration. Prima di iniziare B4.3 occorre mantenere il divieto di write reali e fermarsi nuovamente prima di applicare qualsiasi migration.
+**B4.2 — Contract tests: COMPLETATO.** Il contratto puro e i test deterministici sono documentati in `docs/european-expansion/phase-3c-b4-profile-residence-write-contracts.md`.
+
+**B4.3 — Transactional server write: COMPLETATO STATICAMENTE.** È stata creata la migration additiva della RPC e il wrapper server, senza applicare la migration e senza eseguire write. Il prossimo step proposto è B4.4; prima di qualsiasi applicazione migration o test manuale mutativo resta obbligatorio fermarsi e ottenere una nuova approvazione.

@@ -259,13 +259,15 @@ Il `DEFERRED MANUAL LIVE-DATA GATE` registrato in B3 è stato successivamente es
 
 #### 3C-B4 — Profile Edit dual-write
 
-**Stato: IN PROGRESS — STEP 1 PREFLIGHT E B4.2 CONTRACT TESTS COMPLETATI; UI/WRITE TRANSAZIONALE NON INIZIATI.** Collegare per primi i form di modifica profilo. I nuovi valori devono essere canonical; per compatibilità scrivere anche i legacy soltanto dove necessario e semanticamente sicuro. Non ricostruire automaticamente residence dagli `interest_*`. Deliverable: `docs/european-expansion/phase-3c-b4-profile-edit-dual-write-preflight.md` e `docs/european-expansion/phase-3c-b4-profile-residence-write-contracts.md`.
+**Stato: IN PROGRESS — PREFLIGHT, B4.2 CONTRACTS E B4.3 TRANSACTIONAL SERVER WRITE COMPLETATI; B4.4 UI NON INIZIATA.** I nuovi valori devono essere canonical; per compatibilità scrivere anche i legacy soltanto dove necessario e semanticamente sicuro. Non ricostruire automaticamente residence dagli `interest_*`. Deliverable: preflight, write contracts e `docs/european-expansion/phase-3c-b4-transactional-profile-residence-rpc.md`.
 
 **LIVE CANONICAL READ-DATA GATE: PASSED.** La verifica manuale read-only sulla Preview Vercel collegata a Supabase ha validato countries, root, children, ultimo livello, ancestors, profondità variabile, coerenza country/parent e caratteri internazionali per IT, FR, ES, CH con e senza District, SI e PL. Restano obbligatori in B4 i gate su selector nel form reale, reset con dati reali, dual-write, salvataggio, rilettura, compatibility legacy Italia, privacy e autorizzazioni.
 
 L'ambiente dati della Preview non è dimostrabilmente separato da Production ed è classificato **POTENTIALLY PRODUCTION — WRITES FORBIDDEN WITHOUT EXPLICIT APPROVAL**. Il Current checkpoint resta FASE 3C-B3 completata / B4 prossima fase; la FASE 3C-B complessiva resta non completata.
 
-Decisioni approvate per B4: prima integrazione limitata a Player/Athlete e Staff; country-only consentita; RPC transazionale additiva approvata come strategia ma non ancora creata/applicata; Club, Institution e Fan esclusi; proiezione legacy testuale estera consentita; assenza di geography/interest nel PATCH significa non modificare. Nessuna migration può essere applicata e nessun write reale può essere eseguito senza una nuova approvazione esplicita.
+Decisioni approvate per B4: prima integrazione limitata a Player/Athlete e Staff; country-only consentita; RPC transazionale additiva creata nel repository ma non applicata; Club, Institution e Fan esclusi; proiezione legacy testuale estera consentita; assenza di geography/interest nel PATCH significa non modificare. Nessuna migration può essere applicata e nessun write reale può essere eseguito senza una nuova approvazione esplicita.
+
+B4.3 ha creato nel repository la migration additiva `20261204120000_transactional_profile_residence_rpc.sql` e il wrapper server, con scope atomico limitato ai campi residence. **MIGRATION CREATA MA NON APPLICATA** a locale, Preview o Production; nessuna RPC o write remoto è stato eseguito. Il default server `interest_country = 'IT'` è rimosso, ma il fallback analogo in `ProfileEditForm` resta aperto e deve essere eliminato in B4.4: il problema non è risolto end-to-end.
 
 #### 3C-B5 — Signup / onboarding
 
