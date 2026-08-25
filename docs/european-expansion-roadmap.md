@@ -255,11 +255,15 @@ I selector devono supportare IT, FR, ES, CH, SI e PL senza assumere ovunque `reg
 
 Non sono stati modificati form reali, write profilo, migration, RLS, schema o dati Supabase; non sono stati eseguiti dual-write o backfill.
 
-**Gate obbligatorio prima di marcare 3C-B4 COMPLETATA:** `DEFERRED MANUAL LIVE-DATA GATE — da eseguire nella FASE 3C-B4 in un ambiente Preview collegato a Supabase`. L'ambiente QA B3 non ha potuto verificare la navigazione dei 56.304 record Production perché la connessione Supabase falliva prima della valutazione RLS. Il gate B4 deve verificare countries, root areas, children, ancestors, IT, FR, ES, CH con e senza District, SI, PL, assenza di default implicito a IT, coerenza country/geo-area, reset delle selezioni e lettura dopo il salvataggio del profilo.
+Il `DEFERRED MANUAL LIVE-DATA GATE` registrato in B3 è stato successivamente eseguito sulla Preview Vercel collegata a Supabase: **LIVE CANONICAL READ-DATA GATE: PASSED** per countries, root, children, ancestors e gerarchie reali dei sei Paesi. Restano gate obbligatori prima di marcare 3C-B4 completata: selector nel form reale, reset, write atomico, salvataggio e rilettura, compatibility legacy Italia, privacy e autorizzazioni.
 
 #### 3C-B4 — Profile Edit dual-write
 
-**Stato: NOT STARTED.** Collegare per primi i form di modifica profilo. I nuovi valori devono essere canonical; per compatibilità scrivere anche i legacy soltanto dove necessario e semanticamente sicuro. Non ricostruire automaticamente residence dagli `interest_*`.
+**Stato: IN PROGRESS — STEP 1 PREFLIGHT TECNICO COMPLETATO; IMPLEMENTAZIONE NON INIZIATA.** Collegare per primi i form di modifica profilo. I nuovi valori devono essere canonical; per compatibilità scrivere anche i legacy soltanto dove necessario e semanticamente sicuro. Non ricostruire automaticamente residence dagli `interest_*`. Deliverable di preflight: `docs/european-expansion/phase-3c-b4-profile-edit-dual-write-preflight.md`.
+
+**LIVE CANONICAL READ-DATA GATE: PASSED.** La verifica manuale read-only sulla Preview Vercel collegata a Supabase ha validato countries, root, children, ultimo livello, ancestors, profondità variabile, coerenza country/parent e caratteri internazionali per IT, FR, ES, CH con e senza District, SI e PL. Restano obbligatori in B4 i gate su selector nel form reale, reset con dati reali, dual-write, salvataggio, rilettura, compatibility legacy Italia, privacy e autorizzazioni.
+
+L'ambiente dati della Preview non è dimostrabilmente separato da Production ed è classificato **POTENTIALLY PRODUCTION — WRITES FORBIDDEN WITHOUT EXPLICIT APPROVAL**. Il Current checkpoint resta FASE 3C-B3 completata / B4 prossima fase; la FASE 3C-B complessiva resta non completata.
 
 #### 3C-B5 — Signup / onboarding
 
