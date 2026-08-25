@@ -8,15 +8,15 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed phase | **COMPLETATO — FASE 3C-B1 — Audit dei flussi geografici UI/write** |
-| Next phase | **FASE 3C-B2 — Canonical geography read APIs/helpers** |
+| Last completed phase | **COMPLETATO — FASE 3C-B2 — Canonical geography read APIs/helpers** |
+| Next phase | **FASE 3C-B3 — Reusable canonical geography selectors** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
 | Mobile international parity | **NOT STARTED** |
-| FASE 3C-B | **NOT COMPLETED — B1 completata; B2–B7 non iniziate** |
+| FASE 3C-B | **NOT COMPLETED — B1–B2 completate; B3–B7 non iniziate** |
 
-**FASE 3C-B1 è completata esclusivamente come audit read-only/code-only; non ha introdotto modifiche comportamentali.** Il backfill automatico della residence resta escluso perché i campi legacy `interest_*` non costituiscono evidenza sufficiente della residenza effettiva dell'utente. La FASE 3C-B complessiva non è completata.
+**FASE 3C-B2 è completata come foundation read-only tipizzata; non è collegata alla UI e non introduce dual-write.** Il backfill automatico della residence resta escluso perché i campi legacy `interest_*` non costituiscono evidenza sufficiente della residenza effettiva dell'utente. La FASE 3C-B complessiva non è completata.
 
 ## Roadmap maintenance rules
 
@@ -227,7 +227,7 @@ I candidati non sono stati backfillati. Il candidate audit distingueva `safe_mun
 
 ### FASE 3C-B — Profile UI/write integration
 
-**Stato: NOT COMPLETED — 3C-B1 COMPLETATA; 3C-B2–3C-B7 NOT STARTED.**
+**Stato: NOT COMPLETED — 3C-B1–3C-B2 COMPLETATE; 3C-B3–3C-B7 NOT STARTED.**
 
 #### 3C-B1 — Audit UI/write flows
 
@@ -241,7 +241,11 @@ Risultati principali: i form attivi leggono e scrivono ancora prevalentemente `p
 
 #### 3C-B2 — Canonical geography read APIs/helpers
 
-**Stato: NOT STARTED.** Preparare accesso standardizzato a countries, children geo areas, ancestors, residence, country interests e geo-area interests, mantenendo la backward compatibility.
+**Stato: COMPLETATA — FOUNDATION READ-ONLY IMPLEMENTATA; NON COLLEGATA ALLA UI.**
+
+Contratti disponibili: countries supported/active; root e children country/parent-aware; ancestors a profondità variabile; residence canonical-first con Italy legacy residence mapping e fallback testuale; country interests, geo-area interests e relocation semanticamente separati. Deliverable: `docs/european-expansion/phase-3c-b2-canonical-geography-read-contracts.md`.
+
+La fase non ha modificato form o write profilo, non ha implementato selector o dual-write e non ha introdotto migration, backfill, modifiche RLS o dati Supabase.
 
 #### 3C-B3 — Reusable canonical geography selectors
 
@@ -672,10 +676,10 @@ Alla data di creazione iniziale della roadmap:
 
 | Voce | Stato |
 | --- | --- |
-| Last completed phase | **FASE 3C-B1 — Audit dei flussi geografici UI/write** |
-| Next phase | **FASE 3C-B2 — Canonical geography read APIs/helpers** |
-| FASE 3C-B | **NOT COMPLETED — B1 completata; B2–B7 non iniziate** |
+| Last completed phase | **FASE 3C-B2 — Canonical geography read APIs/helpers** |
+| Next phase | **FASE 3C-B3 — Reusable canonical geography selectors** |
+| FASE 3C-B | **NOT COMPLETED — B1–B2 completate; B3–B7 non iniziate** |
 | Automatic residence backfill | **DELIBERATELY EXCLUDED** |
 | Mobile international parity | **NOT STARTED** |
 
-Non iniziare automaticamente 3C-B2 dopo il completamento dell'audit 3C-B1.
+Non iniziare automaticamente 3C-B3 dopo il completamento della foundation read-only 3C-B2.

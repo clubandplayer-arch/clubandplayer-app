@@ -23,7 +23,7 @@ export class SupabaseProfileGeographyRepository implements ProfileGeographyRepos
   async load(profileId: string): Promise<ProfileGeographySnapshot> {
     const [preferencesResult, profileResult, countriesResult, geoInterestsResult] = await Promise.all([
       this.client.from('profile_preferences').select('residence_country_id,residence_geo_area_id,open_to_relocation').eq('profile_id', profileId).maybeSingle(),
-      this.client.from('profiles').select('country,region,province,city,interest_country,interest_region,interest_province,interest_city,interest_region_id,interest_province_id,interest_municipality_id').eq('id', profileId).single(),
+      this.client.from('profiles').select('country,region,province,city,interest_country,interest_region,interest_province,interest_city,interest_region_id,interest_province_id,interest_municipality_id,residence_region_id,residence_province_id,residence_municipality_id').eq('id', profileId).single(),
       this.client.from('profile_country_interests').select('country_id,priority,country:countries(iso2)').eq('profile_id', profileId).order('priority'),
       this.client.from('profile_geo_area_interests').select('geo_area_id,priority').eq('profile_id', profileId).order('priority'),
     ]);
@@ -35,9 +35,10 @@ export class SupabaseProfileGeographyRepository implements ProfileGeographyRepos
       country: profile.country as string | null, region: profile.region as string | null, province: profile.province as string | null, city: profile.city as string | null,
       interestCountry: profile.interest_country as string | null, interestRegion: profile.interest_region as string | null, interestProvince: profile.interest_province as string | null, interestCity: profile.interest_city as string | null,
       interestRegionId: textId(profile.interest_region_id), interestProvinceId: textId(profile.interest_province_id), interestMunicipalityId: textId(profile.interest_municipality_id),
+      residenceRegionId: textId(profile.residence_region_id), residenceProvinceId: textId(profile.residence_province_id), residenceMunicipalityId: textId(profile.residence_municipality_id),
     };
     const residenceChain = preferences?.residence_geo_area_id ? await this.loadAreaChain(preferences.residence_geo_area_id) : [];
-    const mappingIds = [legacy.interestRegionId, legacy.interestProvinceId, legacy.interestMunicipalityId].filter((value): value is string | number => value != null).map(String);
+    const mappingIds = [legacy.residenceRegionId, legacy.residenceProvinceId, legacy.residenceMunicipalityId].filter((value): value is string | number => value != null).map(String);
     const mappings = mappingIds.length ? await this.loadItalyMappings(mappingIds) : [];
     const interestRows = geoInterestsResult.data as Array<{ geo_area_id: string; priority: number | null }>;
     const interestAreas = await this.loadAreas(interestRows.map((row) => row.geo_area_id));
@@ -66,13 +67,13 @@ export class SupabaseProfileGeographyRepository implements ProfileGeographyRepos
 
   private async loadAreaChain(areaId: string): Promise<ProfileGeoArea[]> {
     const chain: ProfileGeoArea[] = []; let cursor: string | null = areaId;
-    while (cursor && chain.length < 8) {
+    while (cursor && chain.length < 16) {
       const result = await this.client.from('geo_areas').select('id,country_id,parent_id,official_name,area_type,level,country:countries!inner(iso2)').eq('id', cursor).maybeSingle();
       if (result.error) throw result.error;
       if (!result.data) break;
       const area = toArea(result.data as AreaRow); chain.push(area); cursor = area.parentId;
     }
-    return chain;
+    return chain.length ? [chain[0], ...chain.slice(1).reverse()] : [];
   }
 
   private async loadAreas(ids: string[]): Promise<ProfileGeoArea[]> {

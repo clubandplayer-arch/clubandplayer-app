@@ -20,6 +20,9 @@ export type LegacyProfileGeography = {
   interestRegionId?: string | number | null;
   interestProvinceId?: string | number | null;
   interestMunicipalityId?: string | number | null;
+  residenceRegionId?: string | number | null;
+  residenceProvinceId?: string | number | null;
+  residenceMunicipalityId?: string | number | null;
 };
 
 export type ItalyLegacyMapping = {
@@ -73,9 +76,9 @@ export function resolveProfileResidenceGeography(snapshot: ProfileGeographySnaps
   }
 
   const candidates: Array<['municipality' | 'province' | 'region', string | number | null | undefined]> = [
-    ['municipality', snapshot.legacy.interestMunicipalityId],
-    ['province', snapshot.legacy.interestProvinceId],
-    ['region', snapshot.legacy.interestRegionId],
+    ['municipality', snapshot.legacy.residenceMunicipalityId],
+    ['province', snapshot.legacy.residenceProvinceId],
+    ['region', snapshot.legacy.residenceRegionId],
   ];
   for (const [entityType, id] of candidates) {
     if (id == null || String(id).trim() === '') continue;

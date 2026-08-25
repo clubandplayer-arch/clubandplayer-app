@@ -29,6 +29,35 @@ export type GeoAreaFilters = {
   active?: boolean;
 };
 
+export type GeoReadErrorCode =
+  | 'INVALID_COUNTRY'
+  | 'INVALID_UUID'
+  | 'AREA_NOT_FOUND'
+  | 'COUNTRY_PARENT_MISMATCH'
+  | 'HIERARCHY_CYCLE'
+  | 'HIERARCHY_TOO_DEEP';
+
+export class GeoReadError extends Error {
+  constructor(public readonly code: GeoReadErrorCode, message: string) {
+    super(message);
+    this.name = 'GeoReadError';
+  }
+}
+
+export const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function normalizeCountryIso2(value: string): string {
+  const iso2 = value.trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(iso2)) throw new GeoReadError('INVALID_COUNTRY', 'country must be an ISO2 code');
+  return iso2;
+}
+
+export function assertUuid(value: string, name = 'id'): string {
+  const normalized = value.trim();
+  if (!UUID_PATTERN.test(normalized)) throw new GeoReadError('INVALID_UUID', `${name} must be a UUID`);
+  return normalized;
+}
+
 const GEO_AREA_SELECT = [
   'id', 'country_id', 'parent_id', 'code', 'code_authority', 'official_name', 'short_name',
   'area_type', 'level', 'is_active', 'display_order', 'centroid_lat', 'centroid_lng',
@@ -43,7 +72,7 @@ export async function getGeoAreas(client: SupabaseClient, filters: GeoAreaFilter
     .order('display_order', { ascending: true })
     .order('official_name', { ascending: true });
 
-  if (filters.countryIso2) query = query.eq('countries.iso2', filters.countryIso2.toUpperCase());
+  if (filters.countryIso2) query = query.eq('countries.iso2', normalizeCountryIso2(filters.countryIso2));
   if (filters.parentId === null) query = query.is('parent_id', null);
   else if (filters.parentId) query = query.eq('parent_id', filters.parentId);
   if (filters.level != null) query = query.eq('level', filters.level);
@@ -63,7 +92,52 @@ export function getGeoAreaChildren(
 }
 
 export async function getGeoAreaById(client: SupabaseClient, id: string): Promise<GeoAreaRead | null> {
-  const { data, error } = await client.from('geo_areas').select(GEO_AREA_SELECT).eq('id', id).maybeSingle();
+  const { data, error } = await client.from('geo_areas').select(GEO_AREA_SELECT).eq('id', assertUuid(id)).maybeSingle();
   if (error) throw error;
   return (data ?? null) as unknown as GeoAreaRead | null;
+}
+
+export function getRootGeoAreas(client: SupabaseClient, countryIso2: string): Promise<GeoAreaRead[]> {
+  return getGeoAreas(client, { countryIso2: normalizeCountryIso2(countryIso2), parentId: null, active: true });
+}
+
+export async function getCountryGeoAreaChildren(
+  client: SupabaseClient,
+  countryIso2: string,
+  parentId: string,
+): Promise<GeoAreaRead[]> {
+  const iso2 = normalizeCountryIso2(countryIso2);
+  const parent = await getGeoAreaById(client, assertUuid(parentId, 'parentId'));
+  if (!parent) throw new GeoReadError('AREA_NOT_FOUND', 'parent geo area was not found');
+  const parentCountry = Array.isArray(parent.country) ? parent.country[0]?.iso2 : parent.country?.iso2;
+  if (parentCountry !== iso2) {
+    throw new GeoReadError('COUNTRY_PARENT_MISMATCH', 'parent geo area does not belong to country');
+  }
+  return getGeoAreas(client, { countryIso2: iso2, parentId: parent.id, active: true });
+}
+
+/** Returns root-to-parent order and supports variable-depth hierarchies. */
+export async function getGeoAreaAncestors(
+  client: SupabaseClient,
+  areaId: string,
+  maxDepth = 16,
+): Promise<GeoAreaRead[]> {
+  let current = await getGeoAreaById(client, assertUuid(areaId, 'areaId'));
+  if (!current) throw new GeoReadError('AREA_NOT_FOUND', 'geo area was not found');
+
+  const seen = new Set<string>([current.id]);
+  const ancestors: GeoAreaRead[] = [];
+  while (current.parent_id) {
+    if (ancestors.length >= maxDepth) throw new GeoReadError('HIERARCHY_TOO_DEEP', 'geo area hierarchy exceeds maximum depth');
+    if (seen.has(current.parent_id)) throw new GeoReadError('HIERARCHY_CYCLE', 'geo area hierarchy contains a cycle');
+    seen.add(current.parent_id);
+    const parent = await getGeoAreaById(client, current.parent_id);
+    if (!parent) throw new GeoReadError('AREA_NOT_FOUND', 'ancestor geo area was not found');
+    if (parent.country_id !== current.country_id) {
+      throw new GeoReadError('COUNTRY_PARENT_MISMATCH', 'ancestor geo area belongs to another country');
+    }
+    ancestors.push(parent);
+    current = parent;
+  }
+  return ancestors.reverse();
 }
