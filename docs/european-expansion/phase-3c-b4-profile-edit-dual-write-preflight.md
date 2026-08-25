@@ -185,13 +185,16 @@ Il gate manuale B4 deve includere: un caso Italia legacy esistente, un nuovo val
 
 B4 potrà essere marcata completata soltanto quando: ruoli e semantiche sono approvati; payload parziali non mutano geography; canonical country/area sono validati; write canonicale e legacy sicuro sono atomici; reset/cambio Paese sono corretti; IT e cinque Paesi esteri superano test; read-after-save è canonical-first; nessun interest/birth/nationality diventa residence; privacy/RLS sono verificate; legacy Italia non regredisce; il gate manuale usa un ambiente autorizzato; nessun blocker resta aperto.
 
-## Decisioni richieste e blocker
+## Decisioni approvate dopo il preflight
 
-1. **Ambiente:** fornire evidenza non sensibile di Supabase Preview/Staging separato oppure autorizzare esplicitamente un test controllato; fino ad allora write vietati.
-2. **Atomicità:** approvare RPC transazionale con migration additiva (raccomandato) oppure indicare un meccanismo atomico esistente.
-3. **Club/Institution:** approvare residence preferences come sede oppure un modello organization-location separato (raccomandato).
-4. **Fan:** confermare se B4 deve introdurre residence esplicita nel form Fan.
-5. **Country-only:** decidere se residence country senza geo-area finale sia valida.
-6. **Legacy text estero:** approvare la proiezione country-aware proposta in `region/province/city` per i soli ruoli personali.
+1. **Ambiente:** resta `POTENTIALLY PRODUCTION — WRITES FORBIDDEN WITHOUT EXPLICIT APPROVAL`; nessun test manuale con write è autorizzato.
+2. **Atomicità:** approvata una RPC transazionale additiva come strategia. La migration potrà essere creata in uno step futuro, ma non applicata a Production senza stop e nuova approvazione.
+3. **Ruoli:** prima integrazione esclusivamente Player/Athlete e Staff. Club e Institution richiedono un futuro modello organization-location; Fan è rinviato per decisione privacy/prodotto.
+4. **Country-only:** approvata con country UUID e geo-area `null`; resta distinta da geography assente e reset esplicito.
+5. **Italia:** canonical autoritativa e mapping canonical→legacy 1:1; mai derivare residence dagli `interest_*`.
+6. **Estero:** approvata la proiezione testuale country-aware per Player/Staff; legacy ID italiani azzerati.
+7. **PATCH parziale:** campo assente significa non modificare; eliminato il default implicito `interest_country = 'IT'`.
 
-Finché questi punti non sono risolti, non iniziare l'implementazione comportamentale della B4.
+## Avanzamento successivo
+
+**B4.2 — Contract tests: COMPLETATO.** Il contratto puro e i test deterministici sono documentati in `docs/european-expansion/phase-3c-b4-profile-residence-write-contracts.md`. Non sono stati collegati UI o write server; non è stata creata/applicata alcuna migration. Prima di iniziare B4.3 occorre mantenere il divieto di write reali e fermarsi nuovamente prima di applicare qualsiasi migration.
