@@ -8,15 +8,15 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed phase | **COMPLETATO — FASE 3C-B2 — Canonical geography read APIs/helpers** |
-| Next phase | **FASE 3C-B3 — Reusable canonical geography selectors** |
+| Last completed phase | **COMPLETATO — FASE 3C-B3 — Reusable canonical geography selectors** |
+| Next phase | **FASE 3C-B4 — Profile Edit dual-write** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
 | Mobile international parity | **NOT STARTED** |
-| FASE 3C-B | **NOT COMPLETED — B1–B2 completate; B3–B7 non iniziate** |
+| FASE 3C-B | **NOT COMPLETED — B1–B3 completate; B4–B7 non iniziate** |
 
-**FASE 3C-B2 è completata come foundation read-only tipizzata; non è collegata alla UI e non introduce dual-write.** Il backfill automatico della residence resta escluso perché i campi legacy `interest_*` non costituiscono evidenza sufficiente della residenza effettiva dell'utente. La FASE 3C-B complessiva non è completata.
+**FASE 3C-B3 è completata con selector canonici riutilizzabili, ma non collegati ai form reali e senza dual-write.** Il backfill automatico della residence resta escluso perché i campi legacy `interest_*` non costituiscono evidenza sufficiente della residenza effettiva dell'utente. La FASE 3C-B complessiva non è completata e la mobile international parity resta non iniziata.
 
 ## Roadmap maintenance rules
 
@@ -227,7 +227,7 @@ I candidati non sono stati backfillati. Il candidate audit distingueva `safe_mun
 
 ### FASE 3C-B — Profile UI/write integration
 
-**Stato: NOT COMPLETED — 3C-B1–3C-B2 COMPLETATE; 3C-B3–3C-B7 NOT STARTED.**
+**Stato: NOT COMPLETED — 3C-B1–3C-B3 COMPLETATE; 3C-B4–3C-B7 NOT STARTED.**
 
 #### 3C-B1 — Audit UI/write flows
 
@@ -249,7 +249,13 @@ La fase non ha modificato form o write profilo, non ha implementato selector o d
 
 #### 3C-B3 — Reusable canonical geography selectors
 
-**Stato: NOT STARTED.** Realizzare componenti UI riutilizzabili, country-aware e hierarchy-aware per IT, FR, ES, CH, SI e PL. Non assumere ovunque `region → province → municipality`: CH, SI, PL, FR ed ES hanno gerarchie differenti.
+**Stato: COMPLETATA — SELECTOR RIUTILIZZABILI IMPLEMENTATI; NON COLLEGATI AI FORM REALI.** Sono disponibili selector controllati, country-aware e hierarchy-aware e un adapter HTTP read-only basato sui contratti B2. La validazione automatica e visiva della preview QA ha prodotto **14 PASS, 0 FAIL**; la pagina QA temporanea è stata rimossa dopo l'approvazione. Deliverable: `docs/european-expansion/phase-3c-b3-reusable-canonical-geography-selectors.md`.
+
+I selector devono supportare IT, FR, ES, CH, SI e PL senza assumere ovunque `region → province → municipality`: CH, SI, PL, FR ed ES hanno gerarchie differenti.
+
+Non sono stati modificati form reali, write profilo, migration, RLS, schema o dati Supabase; non sono stati eseguiti dual-write o backfill.
+
+**Gate obbligatorio prima di marcare 3C-B4 COMPLETATA:** `DEFERRED MANUAL LIVE-DATA GATE — da eseguire nella FASE 3C-B4 in un ambiente Preview collegato a Supabase`. L'ambiente QA B3 non ha potuto verificare la navigazione dei 56.304 record Production perché la connessione Supabase falliva prima della valutazione RLS. Il gate B4 deve verificare countries, root areas, children, ancestors, IT, FR, ES, CH con e senza District, SI, PL, assenza di default implicito a IT, coerenza country/geo-area, reset delle selezioni e lettura dopo il salvataggio del profilo.
 
 #### 3C-B4 — Profile Edit dual-write
 
@@ -676,10 +682,10 @@ Alla data di creazione iniziale della roadmap:
 
 | Voce | Stato |
 | --- | --- |
-| Last completed phase | **FASE 3C-B2 — Canonical geography read APIs/helpers** |
-| Next phase | **FASE 3C-B3 — Reusable canonical geography selectors** |
-| FASE 3C-B | **NOT COMPLETED — B1–B2 completate; B3–B7 non iniziate** |
+| Last completed phase | **FASE 3C-B3 — Reusable canonical geography selectors** |
+| Next phase | **FASE 3C-B4 — Profile Edit dual-write** |
+| FASE 3C-B | **NOT COMPLETED — B1–B3 completate; B4–B7 non iniziate** |
 | Automatic residence backfill | **DELIBERATELY EXCLUDED** |
 | Mobile international parity | **NOT STARTED** |
 
-Non iniziare automaticamente 3C-B3 dopo il completamento della foundation read-only 3C-B2.
+Non iniziare automaticamente 3C-B4 dopo il completamento dei selector riutilizzabili 3C-B3.
