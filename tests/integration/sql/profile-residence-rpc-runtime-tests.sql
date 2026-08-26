@@ -24,6 +24,9 @@ select test.assert((select residence_country_id='10000000-0000-0000-0000-0000000
 select test.assert((select birth_country='IT' and nationality='Italian' and interest_country='FR' and interest_region='Île-de-France' from public.profiles where user_id=auth.uid()),'unrelated profile fields unchanged');
 select test.assert((select count(*)=1 from public.profile_country_interests where profile_id='30000000-0000-0000-0000-000000000001'),'country interests unchanged');
 select test.assert((select count(*)=1 from public.profile_geo_area_interests where profile_id='30000000-0000-0000-0000-000000000001'),'geo interests unchanged');
+select test.assert((select full_name='Mario Rossi' and display_name='Mario Rossi' and profile_visibility_status='published' and club_name_review_status='not_required' and region_id=1 and province_id=10 and municipality_id=100 from public.profiles where user_id=auth.uid()),'residence-only keeps names visibility moderation and legacy location IDs');
+select test.assert((select raw_user_meta_data='{"full_name":"Mario Rossi"}'::jsonb and updated_at='2026-01-01'::timestamptz from auth.users where id=auth.uid()),'residence-only does not touch auth users');
+select test.assert((select count(*)=0 from public.notifications where user_id=auth.uid()),'residence-only creates no visibility notification');
 
 -- Reset.
 select public.update_my_profile_residence(null,null);
@@ -106,5 +109,18 @@ select test.assert((select region='Mazowieckie' and province='Warszawa' and city
 
 -- Invalid UUID is rejected by PostgreSQL before function execution.
 do $$ begin perform public.update_my_profile_residence('not-a-uuid'::uuid,null); raise exception 'expected UUID failure'; exception when invalid_text_representation then null; end $$;
+
+-- Normal profile changes still execute the trigger behaviors.
+set role authenticated;
+select set_config('request.jwt.claim.sub','40000000-0000-0000-0000-000000000001',false);
+update public.profiles set full_name='mARIO rOSSI' where user_id=auth.uid();
+select test.assert((select full_name='Mario Rossi' and display_name='Mario Rossi' from public.profiles where user_id=auth.uid()),'name change remains normalized');
+select test.assert((select updated_at > '2026-01-01'::timestamptz and raw_user_meta_data->>'full_name'='Mario Rossi' from auth.users where id=auth.uid()),'name change still syncs auth metadata');
+update public.profiles set role=null where user_id=auth.uid();
+select test.assert((select profile_visibility_status='draft' from public.profiles where user_id=auth.uid()),'relevant completeness change recalculates visibility');
+select test.assert((select count(*)=1 from public.notifications where user_id=auth.uid() and kind='profile_returned_to_draft'),'real published-to-draft transition notifies');
+update public.profiles set municipality_id=null, province_id=10, region_id=null where user_id=auth.uid();
+select test.assert((select municipality_id is null and province_id=10 and region_id=1 from public.profiles where user_id=auth.uid()),'location input change still coerces region');
+reset role;
 
 select 'B4_RPC_RUNTIME_PASS' as result;

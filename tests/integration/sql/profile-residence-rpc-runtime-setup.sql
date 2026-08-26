@@ -6,20 +6,32 @@ create schema test;
 create function auth.uid() returns uuid language sql stable as $$
   select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid
 $$;
+create function auth.jwt() returns jsonb language sql stable as $$ select '{}'::jsonb $$;
+create table auth.users(id uuid primary key, raw_user_meta_data jsonb not null default '{}'::jsonb, updated_at timestamptz not null default now());
 grant usage on schema auth to anon, authenticated;
 grant execute on function auth.uid() to anon, authenticated;
+grant execute on function auth.jwt() to anon, authenticated;
 
 create table public.profiles (
  id uuid primary key,
  user_id uuid not null unique,
  account_type text,
- type text,
+ type text, role text, full_name text, display_name text,
+ status text not null default 'active', birth_year integer, country text, sport text,
+ profile_visibility_status text not null default 'published', registry_master_id uuid,
+ club_name_review_status text not null default 'not_required', club_name_review_reason text,
+ club_name_reviewed_at timestamptz, club_name_reviewed_by uuid,
  is_admin boolean not null default false,
- region text, province text, city text,
- residence_region_id bigint, residence_province_id bigint, residence_municipality_id bigint,
+ region text, province text, city text, region_id integer, province_id integer, municipality_id integer,
+ residence_region_id integer, residence_province_id integer, residence_municipality_id integer,
  birth_country text, nationality text, interest_country text, interest_region text,
  updated_at timestamptz not null default now()
 );
+create table public.provinces(id integer primary key, region_id integer);
+create table public.municipalities(id integer primary key, province_id integer, region_id integer);
+create table public.notifications(id bigserial primary key, user_id uuid, kind text, payload jsonb);
+create function public.normalize_person_name(value text) returns text language sql immutable strict as $$ select initcap(lower(regexp_replace(btrim(value), '\s+', ' ', 'g'))) $$;
+
 create table public.countries (
  id uuid primary key, iso2 text not null unique, official_name text not null,
  is_supported boolean not null, is_active boolean not null
@@ -60,6 +72,8 @@ create policy pref_update on public.profile_preferences for update to authentica
 grant usage on schema public to anon,authenticated;
 grant select on public.countries,public.geo_areas,public.legacy_geo_area_mappings to anon,authenticated;
 grant select,update on public.profiles to authenticated;
+grant select on auth.users to authenticated;
+grant select on public.notifications to authenticated;
 grant select,insert,update on public.profile_preferences to authenticated;
 grant select on public.profile_country_interests,public.profile_geo_area_interests to authenticated;
 
@@ -105,9 +119,15 @@ insert into public.legacy_geo_area_mappings(source_system,source_entity_type,leg
  ('italy_legacy','region','51','20000000-0000-0000-0000-000000000005'),
  ('italy_legacy','region','52','20000000-0000-0000-0000-000000000005');
 
-insert into public.profiles(id,user_id,account_type,birth_country,nationality,interest_country,interest_region) values
- ('30000000-0000-0000-0000-000000000001','40000000-0000-0000-0000-000000000001','athlete','IT','Italian','FR','Île-de-France'),
- ('30000000-0000-0000-0000-000000000002','40000000-0000-0000-0000-000000000002','staff','IT','Italian','ES','Madrid'),
+insert into auth.users(id,raw_user_meta_data,updated_at) values
+ ('40000000-0000-0000-0000-000000000001','{"full_name":"Mario Rossi"}','2026-01-01'),
+ ('40000000-0000-0000-0000-000000000002','{"full_name":"Anna Verdi"}','2026-01-01');
+insert into public.provinces values (10,1);
+insert into public.municipalities values (100,10,1);
+
+insert into public.profiles(id,user_id,account_type,role,full_name,display_name,birth_year,country,sport,region_id,province_id,municipality_id,birth_country,nationality,interest_country,interest_region) values
+ ('30000000-0000-0000-0000-000000000001','40000000-0000-0000-0000-000000000001','athlete','Player','Mario Rossi','Mario Rossi',1995,'IT','Calcio',1,10,100,'IT','Italian','FR','Île-de-France'),
+ ('30000000-0000-0000-0000-000000000002','40000000-0000-0000-0000-000000000002','staff','Coach','Anna Verdi','Anna Verdi',1985,'IT','Calcio',1,10,100,'IT','Italian','ES','Madrid'),
  ('30000000-0000-0000-0000-000000000003','40000000-0000-0000-0000-000000000003','club','IT','Italian','IT','Lazio'),
  ('30000000-0000-0000-0000-000000000004','40000000-0000-0000-0000-000000000004','fan','IT','Italian','IT','Lazio'),
  ('30000000-0000-0000-0000-000000000005','40000000-0000-0000-0000-000000000005','institution','IT','Italian','IT','Lazio');

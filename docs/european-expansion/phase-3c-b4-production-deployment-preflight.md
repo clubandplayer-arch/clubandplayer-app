@@ -322,3 +322,27 @@ Solo account dedicati non reali, dopo autorizzazione:
 ## Checkpoint
 
 B4.4 resta **IN PROGRESS** e B4 resta **NOT COMPLETED**. Il ticket Supabase non è più un blocker operativo, ma la certificazione Production, l’applicazione migration e i test mutativi richiedono approvazioni distinte. B5 non è iniziata. Nessuna query remota, migration o write è stata eseguita in questo preflight.
+
+## Trigger-aware correction repository audit
+
+La decisione approvata non autorizza guardie indiscriminate. La migration additiva repository-only `20261204121000_profile_residence_trigger_guards.sql` sostituisce esclusivamente tre funzioni preservandone il comportamento ordinario; non disabilita né ricrea trigger e non modifica dati.
+
+| Trigger/funzione | Colonne osservate | Colonne/oggetti modificati | Relazione residence | Decisione |
+| --- | --- | --- | --- | --- |
+| `profile_location_coerce()` | `municipality_id`, `province_id`, `region_id` | `province_id`, `region_id` | Indipendente dai nuovi `residence_*`; opera sugli ID location legacy generali | Guard su tutti e tre gli input ID; se uno cambia, coercion invariata |
+| `sync_profile_names()` | `full_name`, `display_name`, `account_type`, `type`, `user_id` | nomi profilo; `auth.users.raw_user_meta_data/updated_at` | Indipendente dalla residence | Guard soltanto quando tutti gli input nome/identità sono invariati |
+| `set_profile_visibility_status()` | status, account type, nome, sport, country, ruolo, nascita, moderazione; per Club anche testi geografici/interessi | visibility e moderazione | I testi residence partecipano alla completezza Club, ma B4 è esclusivamente Athlete/Staff e per questi non partecipano | Guard solo per UPDATE Athlete/Staff e solo se tutti gli input di completezza/moderazione sono invariati; nessun bypass Club |
+| `notify_profile_demoted_to_draft()` | transizione `profile_visibility_status`, `user_id` | eventuale riga `notifications` | Indiretta | Nessuna modifica: la condizione reale `published → draft` è già corretta |
+| `enforce_single_platform_admin_profile()` | account type/type/role/is_admin/user_id | campi admin | Indipendente; B4 rifiuta Admin | Nessuna modifica |
+| `profiles_fill_default_role()` / `profiles_fill_role_for_fan()` | account type/role | role per Club/Fan | Indipendente; ruoli esclusi da B4 | Nessuna modifica |
+| trigger timestamp | UPDATE | `updated_at` | Aggiornamento atteso della riga legacy | Nessuna modifica |
+
+### Test e runtime harness esteso
+
+- test statici positivi/negativi verificano guardie, assenza di disable/bypass e preservazione dei corpi funzionali;
+- il setup PostgreSQL sintetico ora include `auth.users`, notifiche, colonne visibility/moderation e gerarchia legacy ID;
+- il runtime installa le tre funzioni corrette e i trigger pertinenti prima della RPC;
+- residence-only deve lasciare invariati nomi, Auth metadata, visibility, moderation, notifiche e ID location generali;
+- modifiche normali a nome, completezza e location devono continuare rispettivamente a sincronizzare Auth, produrre una vera transizione/notifica e applicare coercion.
+
+Il runtime harness è stato esteso ma non rieseguito nel container corrente perché manca `pg_ctlcluster`. Questo è un limite ambientale, non un PASS: la nuova migration trigger-aware resta **NON APPLICABILE** finché il runtime PostgreSQL 16 esteso non passa. Nessuna decisione di prodotto residua è stata assunta; qualsiasi modifica ulteriore ai trigger richiede un nuovo audit.
