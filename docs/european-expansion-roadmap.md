@@ -10,14 +10,14 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | --- | --- |
 | Last completed subphase | **COMPLETATA — FASE 3C-B3 — Reusable canonical geography selectors** |
 | Current active phase | **FASE 3C-B4 — Profile Edit dual-write — IN PROGRESS** |
-| Next safe action | **Attendere il dettaglio del workflow dal supporto Supabase; mantenere B4.4 non iniziata** |
+| Next safe action | **Validare visivamente B4.4 Step 1 fixture-only; mantenere disabilitati i write remoti** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
 | Mobile international parity | **NOT STARTED** |
 | FASE 3C-B | **NOT COMPLETED — B1–B3 completate; B4 IN PROGRESS; B5–B7 non iniziate** |
 
-**FASE 3C-B3 è l'ultima sottofase completata. FASE 3C-B4 è la fase attiva ed è IN PROGRESS:** preflight, B4.2 contract tests e implementazione/revisione statica B4.3 sono completati. Il runtime harness PostgreSQL 16 locale è **PASSED**. Il Preview Branch `b4-rpc-validation` è stato creato ma risulta **UNHEALTHY — MIGRATIONS: FAILED** durante la ricostruzione della history; dashboard e DevTools non espongono il dettaglio del workflow. La certificazione Supabase B4.3 resta bloccata in attesa del supporto e B4.4 è **NOT STARTED**. Non eseguire retry, reset, merge, migration manuali o modifiche Production. Il backfill automatico della residence resta escluso perché i campi legacy `interest_*` non costituiscono evidenza sufficiente della residenza effettiva dell'utente. La FASE 3C-B complessiva non è completata e la mobile international parity resta non iniziata.
+**FASE 3C-B3 è l'ultima sottofase completata. FASE 3C-B4 è la fase attiva ed è IN PROGRESS:** preflight, B4.2 contract tests e implementazione/revisione statica B4.3 sono completati. Il runtime harness PostgreSQL 16 locale è **PASSED**. Il Preview Branch `b4-rpc-validation` è stato creato ma risulta **UNHEALTHY — MIGRATIONS: FAILED** durante la ricostruzione della history; dashboard e DevTools non espongono il dettaglio del workflow. La certificazione Supabase B4.3 resta differita in attesa del supporto. Una nuova decisione esplicita ha autorizzato **B4.4 STEP 1 IN PROGRESS** esclusivamente code-only, mock e fixture, con write remoti disabilitati. Non eseguire retry, reset, merge, migration manuali o modifiche Production. Il backfill automatico della residence resta escluso perché i campi legacy `interest_*` non costituiscono evidenza sufficiente della residenza effettiva dell'utente. La FASE 3C-B complessiva non è completata e la mobile international parity resta non iniziata.
 
 ## Roadmap maintenance rules
 
@@ -260,7 +260,7 @@ Il `DEFERRED MANUAL LIVE-DATA GATE` registrato in B3 è stato successivamente es
 
 #### 3C-B4 — Profile Edit dual-write
 
-**Stato: IN PROGRESS — PREFLIGHT COMPLETATO; B4.2 CONTRACT TESTS COMPLETATA; IMPLEMENTAZIONE E REVISIONE STATICA B4.3 COMPLETATE; CERTIFICAZIONE RUNTIME B4.3 BLOCCATA; B4.4 NOT STARTED.** I nuovi valori devono essere canonical; per compatibilità scrivere anche i legacy soltanto dove necessario e semanticamente sicuro. Non ricostruire automaticamente residence dagli `interest_*`. Deliverable: preflight, write contracts e `docs/european-expansion/phase-3c-b4-transactional-profile-residence-rpc.md`.
+**Stato: IN PROGRESS — PREFLIGHT E B4.2 COMPLETATI; B4.3 LOCAL RUNTIME PASSED E CERTIFICAZIONE SUPABASE DIFFERITA; B4.4 STEP 1 CODE-ONLY IMPLEMENTATO, VALIDAZIONE VISIVA PENDING.** I nuovi valori devono essere canonical; per compatibilità scrivere anche i legacy soltanto dove necessario e semanticamente sicuro. Non ricostruire automaticamente residence dagli `interest_*`. Deliverable: preflight, write contracts e `docs/european-expansion/phase-3c-b4-transactional-profile-residence-rpc.md`.
 
 **LIVE CANONICAL READ-DATA GATE: PASSED.** La verifica manuale read-only sulla Preview Vercel collegata a Supabase ha validato countries, root, children, ultimo livello, ancestors, profondità variabile, coerenza country/parent e caratteri internazionali per IT, FR, ES, CH con e senza District, SI e PL. Restano obbligatori in B4 i gate su selector nel form reale, reset con dati reali, dual-write, salvataggio, rilettura, compatibility legacy Italia, privacy e autorizzazioni.
 
@@ -268,11 +268,11 @@ L'ambiente dati della Preview non è dimostrabilmente separato da Production ed 
 
 Decisioni approvate per B4: prima integrazione limitata a Player/Athlete e Staff; country-only consentita; RPC transazionale additiva creata nel repository ma non applicata; Club, Institution e Fan esclusi; proiezione legacy testuale estera consentita; assenza di geography/interest nel PATCH significa non modificare. Nessuna migration può essere applicata e nessun write reale può essere eseguito senza una nuova approvazione esplicita.
 
-B4.3 ha creato nel repository la migration additiva `20261204120000_transactional_profile_residence_rpc.sql` e il wrapper server, con scope atomico limitato ai campi residence. **MIGRATION ESEGUITA SOLTANTO NEL DATABASE TEMPORANEO LOCALE; NON APPLICATA A PREVIEW, STAGING O PRODUCTION**; nessuna RPC o write remoto è stato eseguito. Il default server `interest_country = 'IT'` è rimosso, ma il fallback analogo in `ProfileEditForm` resta aperto e deve essere eliminato in B4.4: il problema non è risolto end-to-end.
+B4.3 ha creato nel repository la migration additiva `20261204120000_transactional_profile_residence_rpc.sql` e il wrapper server, con scope atomico limitato ai campi residence. **MIGRATION ESEGUITA SOLTANTO NEL DATABASE TEMPORANEO LOCALE; NON APPLICATA A PREVIEW, STAGING O PRODUCTION**; nessuna RPC o write remoto è stato eseguito. Il default server `interest_country = 'IT'` e il fallback analogo in `ProfileEditForm` sono stati rimossi in B4.4 Step 1; i test di regressione verificano che un campo assente non introduca un default geografico implicito.
 
 **B4.3 LOCAL RUNTIME HARNESS: PASSED; SUPABASE CERTIFICATION: BLOCKED — PREVIEW BRANCH UNHEALTHY / SUPPORT PENDING.** Il 2026-08-26 la migration e la matrice RPC sono state eseguite realmente in PostgreSQL 16 locale con fixture sintetiche: firma/grants, RLS rilevanti simulata, ruoli, reset, country-only, IT, FR, ES, CH con e senza District, SI, PL e rollback hanno superato i controlli. Nessuna connessione o write remoto è stato eseguito e il database temporaneo è stato eliminato. Il Preview Branch isolato esiste ma non ha completato la ricostruzione della history; la migration B4 resta non applicata a qualsiasi ambiente remoto.
 
-**SUPABASE PREVIEW BRANCH WORKFLOW: BLOCKED — SUPPORT PENDING.** Il branch dedicato `b4-rpc-validation` è `UNHEALTHY`: il workflow del 2026-08-26 10:55:32 è fallito allo step `MIGRATIONS`. `Manage Branches → View Logs` mostra soltanto la riga fallita e il controllo DevTools read-only conferma che il click non genera richieste `actions/logs`; non sono quindi noti né la prima migration fallita né l'errore SQL. Il branch viene mantenuto temporaneamente per l'analisi del supporto. Non sono stati configurati GitHub o Vercel, non sono state applicate migration manuali e Production non è stata modificata. B4.4 resta non iniziata fino alla risposta del supporto.
+**SUPABASE PREVIEW BRANCH WORKFLOW: BLOCKED — SUPPORT PENDING.** Il branch dedicato `b4-rpc-validation` è `UNHEALTHY`: il workflow del 2026-08-26 10:55:32 è fallito allo step `MIGRATIONS`. `Manage Branches → View Logs` mostra soltanto la riga fallita e il controllo DevTools read-only conferma che il click non genera richieste `actions/logs`; non sono quindi noti né la prima migration fallita né l'errore SQL. Il branch viene mantenuto temporaneamente per l'analisi del supporto. Non sono stati configurati GitHub o Vercel, non sono state applicate migration manuali e Production non è stata modificata. Il ticket supporto resta aperto. B4.4 Step 1 è autorizzato soltanto code-only con feature gate write disabilitato; certificazione Supabase e read-after-write reale restano obbligatori prima della chiusura.
 
 #### 3C-B5 — Signup / onboarding
 
@@ -699,12 +699,12 @@ Alla data di creazione iniziale della roadmap:
 | --- | --- |
 | Last completed subphase | **FASE 3C-B3 — Reusable canonical geography selectors** |
 | Current active phase | **FASE 3C-B4 — Profile Edit dual-write — IN PROGRESS** |
-| Next safe action | **Attendere il dettaglio del workflow dal supporto Supabase; nessun retry o write** |
+| Next safe action | **Validazione visiva B4.4 Step 1 su QA fixture-only; nessun retry o write remoto** |
 | B4.3 local runtime harness | **PASSED — PostgreSQL 16, fixture sintetiche, nessuna connessione remota** |
 | B4.3 Supabase certification | **BLOCKED — PREVIEW BRANCH UNHEALTHY / MIGRATIONS FAILED / SUPPORT PENDING** |
-| B4.4 | **NOT STARTED — vietato iniziarla prima del superamento del runtime gate o di una nuova decisione esplicita** |
+| B4.4 | **IN PROGRESS — STEP 1 code-only implementato; validazione visiva, certificazione Supabase e read-after-write reale pending** |
 | FASE 3C-B | **NOT COMPLETED — B1–B3 completate; B4 IN PROGRESS; B5–B7 non iniziate** |
 | Automatic residence backfill | **DELIBERATELY EXCLUDED** |
 | Mobile international parity | **NOT STARTED** |
 
-Non iniziare B4.4 fino alla risposta del supporto sul workflow fallito e a una successiva decisione esplicita.
+Non abilitare write remoti e non chiudere B4.4 prima della certificazione Supabase e del read-after-write reale esplicitamente approvati. Non iniziare la fase successiva.

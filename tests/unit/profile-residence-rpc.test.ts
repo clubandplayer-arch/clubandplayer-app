@@ -109,10 +109,11 @@ test('server wrapper propagates RPC errors for transactional rollback paths', as
   }
 });
 
-test('partial PATCH interest_country regression is explicit but client fallback remains for B4.4', () => {
+test('partial PATCH interest_country regression is fixed server-side and client-side', () => {
   assert.match(profileRoute, /interest_country:\s*'text'/);
   assert.doesNotMatch(profileRoute, /updates\.interest_country\s*===\s*undefined[^\n]*['"]IT['"]/);
   assert.match(profileRoute, /if \(updates\.interest_country\) updates\.interest_country = updates\.interest_country\.toString\(\)\.trim\(\)\.toUpperCase\(\)/);
   const form = readFileSync(new URL('../../components/profiles/ProfileEditForm.tsx', import.meta.url), 'utf8');
-  assert.match(form, /interestCountry \|\| 'IT'/);
+  assert.doesNotMatch(form, /interestCountry \|\| 'IT'/);
+  assert.doesNotMatch(form, /useState\('IT'\)/);
 });

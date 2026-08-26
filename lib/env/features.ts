@@ -39,3 +39,13 @@ export function isAdsEnabled() {
 export function isAdsEnabledServer() {
   return boolFromEnv(process.env.ADS_ENABLED ?? process.env.NEXT_PUBLIC_ADS_ENABLED, false);
 }
+
+/** B4.4 UI is opt-in and remains disabled until the Supabase runtime gate is cleared. */
+export function isCanonicalProfileResidenceUiEnabled() {
+  return boolFromEnv(process.env.NEXT_PUBLIC_CANONICAL_PROFILE_RESIDENCE_UI_ENABLED, false);
+}
+
+/** Server-side kill switch: no canonical residence RPC can run unless explicitly enabled. */
+export function isCanonicalProfileResidenceWriteEnabled() {
+  return boolFromEnv(process.env.CANONICAL_PROFILE_RESIDENCE_WRITE_ENABLED, false);
+}

@@ -21,7 +21,9 @@ import { getProfileVisibilityStatusCopy, normalizeProfileVisibilityStatus } from
 import { CATEGORIES_BY_SPORT, CLUB_SPORT_OPTIONS, DEFAULT_CLUB_CATEGORIES } from '@/lib/opps/categories';
 import { iso2ToFlagEmoji } from '@/lib/utils/flags';
 import { useI18n } from '@/components/i18n/I18nProvider';
+import CanonicalGeographySelector from '@/components/geo/CanonicalGeographySelector';
 import { localizeSportRole } from '@/lib/i18n/controlledVocabulary';
+import { isCanonicalProfileResidenceUiEnabled } from '@/lib/env/features';
 import {
   ensurePastExperienceCategory,
   getPastExperienceCategoriesBySport,
@@ -210,6 +212,7 @@ function normalizeCountryCode(v?: string | null) {
 export default function ProfileEditForm() {
   const { t } = useI18n();
   const router = useRouter();
+  const canonicalResidenceUiEnabled = isCanonicalProfileResidenceUiEnabled();
 
   // Profile
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -231,15 +234,18 @@ export default function ProfileEditForm() {
   const [fullName, setFullName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [bio, setBio] = useState('');
-  const [country, setCountry] = useState('IT');
-  const [residenceCountry, setResidenceCountry] = useState('IT');
+  const [country, setCountry] = useState('');
+  const [residenceCountryId, setResidenceCountryId] = useState<string | null>(null);
+  const [residenceGeoAreaId, setResidenceGeoAreaId] = useState<string | null>(null);
+  const [residenceDirty, setResidenceDirty] = useState(false);
+  const [residenceWritable, setResidenceWritable] = useState(false);
 
   // Atleta only
   const [birthYear, setBirthYear] = useState<number | ''>('');
   const [birthPlace, setBirthPlace] = useState('');
 
   // Nascita (atleta)
-  const [birthCountry, setBirthCountry] = useState('IT');
+  const [birthCountry, setBirthCountry] = useState('');
   const [birthRegionId, setBirthRegionId] = useState<number | null>(null);
   const [birthProvinceId, setBirthProvinceId] = useState<number | null>(null);
   const [birthMunicipalityId, setBirthMunicipalityId] = useState<number | null>(null);
@@ -255,17 +261,7 @@ export default function ProfileEditForm() {
   });
   const [clubLocationFallback, setClubLocationFallback] = useState<LocationFallback>({});
 
-  const [residenceLocation, setResidenceLocation] = useState<LocationSelection>({
-    regionId: null,
-    provinceId: null,
-    municipalityId: null,
-    regionName: null,
-    provinceName: null,
-    cityName: null,
-  });
-  const [residenceFallback, setResidenceFallback] = useState<LocationFallback>({});
-
-  const [interestCountry, setInterestCountry] = useState('IT');
+  const [interestCountry, setInterestCountry] = useState('');
   const [interestLocation, setInterestLocation] = useState<LocationSelection>({
     regionId: null,
     provinceId: null,
@@ -433,14 +429,13 @@ export default function ProfileEditForm() {
     );
     setAvatarUrl(p.avatar_url || null);
     setBio(p.bio || '');
-    setCountry(normalizeCountryCode(p.country) || 'IT');
-    setResidenceCountry(normalizeCountryCode(p.country) || 'IT');
+    setCountry(normalizeCountryCode(p.country) || '');
 
     // atleta
     setBirthYear(p.birth_year ?? '');
     setBirthPlace(p.birth_place || '');
 
-    setBirthCountry(normalizeCountryCode(p.birth_country) || 'IT');
+    setBirthCountry(normalizeCountryCode(p.birth_country) || '');
     setBirthRegionId(p.birth_region_id);
     setBirthProvinceId(p.birth_province_id);
     setBirthMunicipalityId(p.birth_municipality_id);
@@ -459,21 +454,20 @@ export default function ProfileEditForm() {
       city: p.interest_city || p.city || null,
     });
 
-    setResidenceLocation({
-      regionId: p.residence_region_id,
-      provinceId: p.residence_province_id,
-      municipalityId: p.residence_municipality_id,
-      regionName: null,
-      provinceName: null,
-      cityName: null,
-    });
-    setResidenceFallback({
-      region: p.region ?? null,
-      province: p.province ?? null,
-      city: p.city ?? null,
-    });
+    setResidenceCountryId(null);
+    setResidenceGeoAreaId(null);
+    setResidenceWritable(false);
+    setResidenceDirty(false);
+    if (canonicalResidenceUiEnabled && (p.account_type === 'athlete' || p.account_type === 'staff')) {
+      const residenceResponse = await fetch('/api/profiles/me/residence', { credentials: 'include', cache: 'no-store' });
+      if (!residenceResponse.ok) throw new Error('Impossibile leggere la residenza canonica');
+      const residencePayload = await residenceResponse.json().catch(() => ({}));
+      setResidenceCountryId(residencePayload?.residence?.residenceCountryId ?? null);
+      setResidenceGeoAreaId(residencePayload?.residence?.residenceGeoAreaId ?? null);
+      setResidenceWritable(residencePayload?.writable === true);
+    }
 
-    setInterestCountry(p.interest_country || 'IT');
+    setInterestCountry(p.interest_country || '');
     setInterestLocation({
       regionId: p.interest_region_id,
       provinceId: p.interest_province_id,
@@ -551,8 +545,7 @@ export default function ProfileEditForm() {
   const canSave = useMemo(() => !saving && profile != null, [saving, profile]);
   const currentYear = new Date().getFullYear();
   const normalizedCountry = normalizeCountryCode(country);
-  const normalizedResidenceCountry = normalizeCountryCode(residenceCountry);
-  const normalizedInterestCountry = normalizeCountryCode(interestCountry || 'IT') || 'IT';
+  const normalizedInterestCountry = normalizeCountryCode(interestCountry);
   const playerBioRemaining = PLAYER_BIO_MAX_LENGTH - bio.length;
   const clubNameValidationError = isClub ? getProfileClubNameValidationError(fullName) : null;
 
@@ -617,13 +610,6 @@ export default function ProfileEditForm() {
         (isOrganization ? clubLocation : interestLocation).cityName ||
         (isOrganization ? clubLocationFallback : interestFallback).city ||
         null;
-
-      const residenceRegionName = residenceLocation.regionName || residenceFallback.region || null;
-      const residenceProvinceName = residenceLocation.provinceName || residenceFallback.province || null;
-      const residenceCityName =
-        normalizedResidenceCountry === 'IT'
-          ? residenceLocation.cityName || residenceFallback.city || null
-          : residenceLocation.cityName || residenceFallback.city || null;
 
       const basePayload: any = {
         account_type: profile?.account_type ?? null,
@@ -734,15 +720,6 @@ export default function ProfileEditForm() {
         Object.assign(basePayload, {
           birth_year: birthYear === '' ? null : Number(birthYear),
 
-          region: normalizedResidenceCountry === 'IT' ? residenceRegionName : residenceLocation.regionName || residenceFallback.region || null,
-          province: normalizedResidenceCountry === 'IT' ? residenceProvinceName : null,
-          city: residenceCityName,
-
-          // residenza (non più mostrata, uso la zona di interesse come riferimento principale)
-          residence_region_id: normalizedResidenceCountry === 'IT' ? residenceLocation.regionId : null,
-          residence_province_id: normalizedResidenceCountry === 'IT' ? residenceLocation.provinceId : null,
-          residence_municipality_id: normalizedResidenceCountry === 'IT' ? residenceLocation.municipalityId : null,
-
           // nascita
           birth_country: normalizeCountryCode(birthCountry), // <<< ISO2
           birth_region_id:      birthCountry === 'IT' ? birthRegionId      : null,
@@ -773,6 +750,10 @@ export default function ProfileEditForm() {
         throw new Error(`Completa i campi obbligatori: ${missingFields.join(', ')}.`);
       }
 
+      if (canonicalResidenceUiEnabled && residenceDirty && !residenceWritable && !isOrganization && !isFan) {
+        throw new Error('Il salvataggio della residenza canonica è disabilitato in attesa della certificazione Supabase');
+      }
+
       const r = await fetch('/api/profiles/me', {
         method: 'PATCH',
         credentials: 'include',
@@ -783,6 +764,21 @@ export default function ProfileEditForm() {
       if (!r.ok) {
         const j = await r.json().catch(() => ({}));
         throw new Error(j?.error ?? 'Salvataggio non riuscito');
+      }
+
+      if (canonicalResidenceUiEnabled && residenceDirty && !isOrganization && !isFan) {
+        if (!residenceWritable) throw new Error('Il salvataggio della residenza canonica è disabilitato in attesa della certificazione Supabase');
+        const residenceResponse = await fetch('/api/profiles/me/residence', {
+          method: 'PATCH',
+          credentials: 'include',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ geography: { residenceCountryId, residenceGeoAreaId } }),
+        });
+        if (!residenceResponse.ok) {
+          const payload = await residenceResponse.json().catch(() => ({}));
+          throw new Error(payload?.error ?? 'Salvataggio della residenza canonica non riuscito');
+        }
+        setResidenceDirty(false);
       }
 
       if (!isOrganization && !isFan) {
@@ -970,6 +966,7 @@ export default function ProfileEditForm() {
                     value={country}
                     onChange={(e) => setCountry(e.target.value)}
                   >
+                    <option value="">— {t('profile.select')} —</option>
                     {WORLD_COUNTRY_OPTIONS.map((c) => (
                       <option key={c.code} value={c.code}>
                         {c.name}
@@ -1177,6 +1174,7 @@ export default function ProfileEditForm() {
                   value={country}
                   onChange={(e) => setCountry(e.target.value)}
                 >
+                  <option value="">— {t('profile.select')} —</option>
                   {WORLD_COUNTRY_OPTIONS.map((c) => (
                     <option key={c.code} value={c.code}>
                       {c.name}
@@ -1295,6 +1293,33 @@ export default function ProfileEditForm() {
             </div>
           )}
         </section>
+
+        {canonicalResidenceUiEnabled && !isOrganization && !isFan && (
+          <section className="rounded-2xl border border-sky-200 bg-sky-50/40 p-4 md:p-5">
+            <h2 className="text-lg font-semibold text-slate-950">Residenza canonica</h2>
+            <p className="mb-4 mt-1 text-sm text-slate-600">
+              Seleziona il Paese e, facoltativamente, l’area di residenza. Interessi geografici e nazionalità restano separati.
+            </p>
+            <CanonicalGeographySelector
+              countryId={residenceCountryId}
+              geoAreaId={residenceGeoAreaId}
+              onCountryChange={(value) => { setResidenceCountryId(value); setResidenceDirty(true); }}
+              onGeoAreaChange={(value) => { setResidenceGeoAreaId(value); setResidenceDirty(true); }}
+              disabled={!residenceWritable}
+              labels={{
+                country: 'Paese di residenza',
+                area: 'Area di residenza',
+                selectCountry: 'Seleziona il Paese di residenza',
+                selectArea: 'Seleziona un’area',
+              }}
+            />
+            {!residenceWritable && (
+              <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900" role="status">
+                Modifica disabilitata fino alla certificazione Supabase B4.3.
+              </p>
+            )}
+          </section>
+        )}
 
         {!isOrganization && !isFan && (
           <section className="rounded-2xl border p-4 md:p-5">
@@ -1430,6 +1455,7 @@ export default function ProfileEditForm() {
                   value={interestCountry}
                   onChange={(e) => setInterestCountry(e.target.value)}
                 >
+                  <option value="">— {t('profile.select')} —</option>
                   {WORLD_COUNTRY_OPTIONS.map((c) => (
                     <option key={c.code} value={c.code}>
                       {c.name}
