@@ -2,7 +2,7 @@
 
 ## Esito
 
-**STATIC PREFLIGHT: CONDITIONAL PASS — BLOCCO 1 COLONNE SUPERATO; DEPLOYMENT NON AUTORIZZATO.**
+**STATIC PREFLIGHT: CONDITIONAL PASS — BLOCCHI 1–2 SUPERATI; DEPLOYMENT NON AUTORIZZATO.**
 
 La migration `20261204120000_transactional_profile_residence_rpc.sql` ha superato revisione statica e runtime PostgreSQL locale già certificato. Non contiene `INSERT`, `UPDATE` o `DELETE` applicati al momento della migration: crea o sostituisce una funzione, ne imposta il commento e ne restringe/concede `EXECUTE`. Nessun profilo o `profile_preferences` viene modificato finché un utente autenticato non invoca esplicitamente la RPC dopo l’abilitazione server-side.
 
@@ -57,8 +57,8 @@ Da confermare esclusivamente con query read-only Production:
 
 - **SUPERATO:** presenza e tipi dei campi legacy residence e di `profiles.user_id/account_type/type/updated_at`;
 - unicità reale di `profiles.user_id` o assenza di duplicati;
-- policy, grant e RLS effettivi;
-- funzione omonima eventualmente preesistente;
+- **SUPERATO:** grant e RLS effettivi; policy owner necessarie presenti;
+- **SUPERATO:** funzione omonima non presente;
 - trigger effettivi e loro definizioni;
 - completezza/univocità dei mapping italiani;
 - migration history reale, incluso `20261203120000` e assenza di `20261204120000`.
@@ -132,6 +132,8 @@ where n.nspname = 'public'
 
 Il Blocco 1 è stato eseguito: le colonne richieste sono presenti. L’output relativo a RLS degli oggetti e all’eventuale funzione preesistente non è stato incluso nel risultato ricevuto; viene quindi riconfermato insieme a policy e grant nel Blocco 2.
 
+**Esito Blocco 2: PASS per il deployment della RPC.** RLS è abilitata su tutte le cinque tabelle, la funzione non è presente e i grant/policy richiesti per `SECURITY INVOKER` sono disponibili. `profiles` conserva numerose policy legacy sovrapposte, incluse policy assegnate a `public`: costituiscono debito di hardening separato, ma nessuna concede update indiscriminato a un utente non admin. La RPC aggiunge inoltre i propri controlli `auth.uid()`, ruolo e doppia condizione `id/user_id`, quindi il debito non amplia il target della funzione. Non modificare le policy in B4.
+
 ### Blocco 2 — funzione, RLS, policy e grant — READ-ONLY
 
 ```sql
@@ -181,6 +183,68 @@ join pg_catalog.pg_namespace n on n.oid = p.pronamespace
 where n.nspname = 'public'
   and p.proname = 'update_my_profile_residence';
 ```
+
+### Blocco 3 — unicità owner, constraint e trigger — READ-ONLY
+
+```sql
+with checks as (
+  select
+    'PROFILE_USER_DUPLICATES'::text as check_type,
+    'profiles.user_id'::text as object_name,
+    jsonb_build_object(
+      'duplicate_non_null_user_ids', count(*)
+    ) as details
+  from (
+    select user_id
+    from public.profiles
+    where user_id is not null
+    group by user_id
+    having count(*) > 1
+  ) duplicates
+
+  union all
+
+  select
+    'CONSTRAINT'::text,
+    (n.nspname || '.' || c.relname || '.' || con.conname)::text,
+    jsonb_build_object(
+      'type', con.contype,
+      'definition', pg_catalog.pg_get_constraintdef(con.oid, true)
+    )
+  from pg_catalog.pg_constraint con
+  join pg_catalog.pg_class c on c.oid = con.conrelid
+  join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+  where n.nspname = 'public'
+    and c.relname in ('profiles', 'profile_preferences')
+    and (
+      con.contype in ('p', 'u')
+      or con.conname in (
+        'profile_preferences_residence_geo_area_fk',
+        'profile_preferences_residence_geo_country_required_check',
+        'profile_preferences_residence_geo_country_fk'
+      )
+    )
+
+  union all
+
+  select
+    'TRIGGER'::text,
+    (event_object_schema || '.' || event_object_table || '.' || trigger_name)::text,
+    jsonb_build_object(
+      'timing', action_timing,
+      'event', event_manipulation,
+      'statement', action_statement
+    )
+  from information_schema.triggers
+  where event_object_schema = 'public'
+    and event_object_table in ('profiles', 'profile_preferences')
+)
+select *
+from checks
+order by check_type, object_name;
+```
+
+Il risultato non espone UUID o dati personali: per i duplicati restituisce soltanto un conteggio aggregato.
 
 ## Rollback minimale preparato — MUTATIVO, NON AUTORIZZATO
 
