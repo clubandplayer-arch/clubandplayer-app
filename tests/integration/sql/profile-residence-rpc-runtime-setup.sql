@@ -25,6 +25,7 @@ create table public.profiles (
  region text, province text, city text, region_id integer, province_id integer, municipality_id integer,
  residence_region_id integer, residence_province_id integer, residence_municipality_id integer,
  birth_country text, nationality text, interest_country text, interest_region text,
+ interest_region_id integer, interest_province_id integer, interest_municipality_id integer,
  updated_at timestamptz not null default now()
 );
 create table public.provinces(id integer primary key, region_id integer);
@@ -70,7 +71,7 @@ create policy pref_read on public.profile_preferences for select to authenticate
 create policy pref_insert on public.profile_preferences for insert to authenticated with check(exists(select 1 from public.profiles p where p.id=profile_id and p.user_id=auth.uid()));
 create policy pref_update on public.profile_preferences for update to authenticated using(exists(select 1 from public.profiles p where p.id=profile_id and p.user_id=auth.uid())) with check(exists(select 1 from public.profiles p where p.id=profile_id and p.user_id=auth.uid()));
 grant usage on schema public to anon,authenticated;
-grant select on public.countries,public.geo_areas,public.legacy_geo_area_mappings to anon,authenticated;
+grant select on public.countries,public.geo_areas,public.legacy_geo_area_mappings,public.provinces,public.municipalities to anon,authenticated;
 grant select,update on public.profiles to authenticated;
 grant select on auth.users to authenticated;
 grant select on public.notifications to authenticated;
@@ -128,8 +129,8 @@ insert into public.municipalities values (100,10,1);
 insert into public.profiles(id,user_id,account_type,role,full_name,display_name,birth_year,country,sport,region_id,province_id,municipality_id,birth_country,nationality,interest_country,interest_region) values
  ('30000000-0000-0000-0000-000000000001','40000000-0000-0000-0000-000000000001','athlete','Player','Mario Rossi','Mario Rossi',1995,'IT','Calcio',1,10,100,'IT','Italian','FR','Île-de-France'),
  ('30000000-0000-0000-0000-000000000002','40000000-0000-0000-0000-000000000002','staff','Coach','Anna Verdi','Anna Verdi',1985,'IT','Calcio',1,10,100,'IT','Italian','ES','Madrid'),
- ('30000000-0000-0000-0000-000000000003','40000000-0000-0000-0000-000000000003','club','IT','Italian','IT','Lazio'),
- ('30000000-0000-0000-0000-000000000004','40000000-0000-0000-0000-000000000004','fan','IT','Italian','IT','Lazio'),
- ('30000000-0000-0000-0000-000000000005','40000000-0000-0000-0000-000000000005','institution','IT','Italian','IT','Lazio');
+ ('30000000-0000-0000-0000-000000000003','40000000-0000-0000-0000-000000000003','club','Club','Test Club','Test Club',null,'IT','Calcio',null,null,null,'IT','Italian','IT','Lazio'),
+ ('30000000-0000-0000-0000-000000000004','40000000-0000-0000-0000-000000000004','fan','Fan','Test Fan','Test Fan',null,'IT',null,null,null,null,'IT','Italian','IT','Lazio'),
+ ('30000000-0000-0000-0000-000000000005','40000000-0000-0000-0000-000000000005','institution','Institution','Test Institution','Test Institution',null,'IT',null,null,null,null,'IT','Italian','IT','Lazio');
 insert into public.profile_country_interests values ('30000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000002');
 insert into public.profile_geo_area_interests values ('30000000-0000-0000-0000-000000000001','20000000-0000-0000-0000-000000000011');

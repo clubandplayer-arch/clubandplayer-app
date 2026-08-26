@@ -10,7 +10,7 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | --- | --- |
 | Last completed subphase | **COMPLETATA — FASE 3C-B3 — Reusable canonical geography selectors** |
 | Current active phase | **FASE 3C-B4 — Profile Edit dual-write — IN PROGRESS** |
-| Next safe action | **Eseguire runtime PostgreSQL 16 esteso dei trigger guard; migration/write remoti disabilitati** |
+| Next safe action | **Runtime trigger-aware PASS; prossimo gate: approvazione separata del deployment migration con feature gate false** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -260,7 +260,7 @@ Il `DEFERRED MANUAL LIVE-DATA GATE` registrato in B3 è stato successivamente es
 
 #### 3C-B4 — Profile Edit dual-write
 
-**Stato: IN PROGRESS — PREFLIGHT E B4.2 COMPLETATI; B4.3 LOCAL RUNTIME PASSED E CERTIFICAZIONE SUPABASE DIFFERITA; B4.4 STEP 1 COMPLETATO; STEP 2 STATIC PRODUCTION PREFLIGHT CONDITIONAL PASS; BLOCCHI 1–4 AUDITATI; CORREZIONE TRIGGER-AWARE REPOSITORY-ONLY IMPLEMENTATA; RUNTIME ESTESO PENDING.** I nuovi valori devono essere canonical; per compatibilità scrivere anche i legacy soltanto dove necessario e semanticamente sicuro. Non ricostruire automaticamente residence dagli `interest_*`. Deliverable: preflight, write contracts e `docs/european-expansion/phase-3c-b4-transactional-profile-residence-rpc.md`.
+**Stato: IN PROGRESS — PREFLIGHT E B4.2 COMPLETATI; B4.3 LOCAL RUNTIME PASSED E CERTIFICAZIONE SUPABASE DIFFERITA; B4.4 STEP 1 COMPLETATO; STEP 2 STATIC PRODUCTION PREFLIGHT CONDITIONAL PASS; BLOCCHI 1–4 AUDITATI; CORREZIONE TRIGGER-AWARE REPOSITORY-ONLY IMPLEMENTATA; RUNTIME ESTESO PASSED.** I nuovi valori devono essere canonical; per compatibilità scrivere anche i legacy soltanto dove necessario e semanticamente sicuro. Non ricostruire automaticamente residence dagli `interest_*`. Deliverable: preflight, write contracts e `docs/european-expansion/phase-3c-b4-transactional-profile-residence-rpc.md`.
 
 **LIVE CANONICAL READ-DATA GATE: PASSED.** La verifica manuale read-only sulla Preview Vercel collegata a Supabase ha validato countries, root, children, ultimo livello, ancestors, profondità variabile, coerenza country/parent e caratteri internazionali per IT, FR, ES, CH con e senza District, SI e PL. Restano obbligatori in B4 i gate su selector nel form reale, reset con dati reali, dual-write, salvataggio, rilettura, compatibility legacy Italia, privacy e autorizzazioni.
 
@@ -699,10 +699,10 @@ Alla data di creazione iniziale della roadmap:
 | --- | --- |
 | Last completed subphase | **FASE 3C-B3 — Reusable canonical geography selectors** |
 | Current active phase | **FASE 3C-B4 — Profile Edit dual-write — IN PROGRESS** |
-| Next safe action | **Eseguire runtime locale esteso in ambiente PostgreSQL 16 con pg_ctlcluster; nessuna migration remota o write** |
+| Next safe action | **Fermarsi prima del deployment: serve approvazione migration separata; feature gate false** |
 | B4.3 local runtime harness | **PASSED — PostgreSQL 16, fixture sintetiche, nessuna connessione remota** |
 | B4.3 Supabase certification | **BLOCKED — PREVIEW BRANCH UNHEALTHY / MIGRATIONS FAILED / SUPPORT PENDING** |
-| B4.4 | **IN PROGRESS — STEP 1 PASS; STEP 2 static preflight CONDITIONAL PASS; Blocchi 1–4 auditati; trigger guards implementate; runtime esteso pending** |
+| B4.4 | **IN PROGRESS — STEP 1 PASS; STEP 2 static preflight CONDITIONAL PASS; Blocchi 1–4 auditati; trigger guards implementate; runtime PostgreSQL 16 esteso PASS** |
 | FASE 3C-B | **NOT COMPLETED — B1–B3 completate; B4 IN PROGRESS; B5–B7 non iniziate** |
 | Automatic residence backfill | **DELIBERATELY EXCLUDED** |
 | Mobile international parity | **NOT STARTED** |

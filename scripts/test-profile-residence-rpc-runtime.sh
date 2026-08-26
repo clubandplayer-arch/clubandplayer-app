@@ -22,10 +22,10 @@ trap cleanup EXIT
 runuser -u postgres -- psql -X -v ON_ERROR_STOP=1 -q -d "$DB_NAME" \
   -f "$ROOT_DIR/tests/integration/sql/profile-residence-rpc-runtime-setup.sql"
 runuser -u postgres -- psql -X -v ON_ERROR_STOP=1 -q -d "$DB_NAME" \
+  -f "$ROOT_DIR/supabase/migrations/20261204120000_transactional_profile_residence_rpc.sql"
+runuser -u postgres -- psql -X -v ON_ERROR_STOP=1 -q -d "$DB_NAME" \
   -f "$ROOT_DIR/supabase/migrations/20261204121000_profile_residence_trigger_guards.sql"
 runuser -u postgres -- psql -X -v ON_ERROR_STOP=1 -q -d "$DB_NAME" \
   -f "$ROOT_DIR/tests/integration/sql/profile-residence-trigger-runtime-install.sql"
-runuser -u postgres -- psql -X -v ON_ERROR_STOP=1 -q -d "$DB_NAME" \
-  -f "$ROOT_DIR/supabase/migrations/20261204120000_transactional_profile_residence_rpc.sql"
 runuser -u postgres -- psql -X -v ON_ERROR_STOP=1 -q -d "$DB_NAME" \
   -f "$ROOT_DIR/tests/integration/sql/profile-residence-rpc-runtime-tests.sql"
