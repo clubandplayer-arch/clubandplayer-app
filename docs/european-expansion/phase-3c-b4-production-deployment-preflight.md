@@ -2,7 +2,7 @@
 
 ## Esito
 
-**STATIC PREFLIGHT: CONDITIONAL PASS — BLOCCHI 1–2 SUPERATI; DEPLOYMENT NON AUTORIZZATO.**
+**STATIC PREFLIGHT: CONDITIONAL PASS — BLOCCHI 1–2 PASS; BLOCCO 3 PARZIALE; DEPLOYMENT NON AUTORIZZATO.**
 
 La migration `20261204120000_transactional_profile_residence_rpc.sql` ha superato revisione statica e runtime PostgreSQL locale già certificato. Non contiene `INSERT`, `UPDATE` o `DELETE` applicati al momento della migration: crea o sostituisce una funzione, ne imposta il commento e ne restringe/concede `EXECUTE`. Nessun profilo o `profile_preferences` viene modificato finché un utente autenticato non invoca esplicitamente la RPC dopo l’abilitazione server-side.
 
@@ -56,10 +56,10 @@ Confermati dal repository:
 Da confermare esclusivamente con query read-only Production:
 
 - **SUPERATO:** presenza e tipi dei campi legacy residence e di `profiles.user_id/account_type/type/updated_at`;
-- unicità reale di `profiles.user_id` o assenza di duplicati;
+- **VERIFICATO:** zero `user_id` non-null duplicati; nessun vincolo UNIQUE rilevato, RPC corretta per rifiutare ambiguità futura;
 - **SUPERATO:** grant e RLS effettivi; policy owner necessarie presenti;
 - **SUPERATO:** funzione omonima non presente;
-- trigger effettivi e loro definizioni;
+- **PARZIALE:** trigger inventariati; definizione Production di `profile_location_coerce()` ancora da verificare;
 - completezza/univocità dei mapping italiani;
 - migration history reale, incluso `20261203120000` e assenza di `20261204120000`.
 
@@ -245,6 +245,34 @@ order by check_type, object_name;
 ```
 
 Il risultato non espone UUID o dati personali: per i duplicati restituisce soltanto un conteggio aggregato.
+
+**Esito Blocco 3: PASS per constraint e stato corrente; trigger gate ancora aperto.** Le FK canonicali e il check country-required sono presenti; non esistono duplicati non-null di `profiles.user_id`, ma non è presente un vincolo UNIQUE su tale colonna. La RPC è stata corretta per contare i profili owner e fallire con cardinality violation invece di scegliere una riga tramite `LIMIT 1`. Production espone inoltre `trg_profile_location_coerce`, la cui funzione non è definita nella migration history nota: deve essere verificata prima del deployment perché potrebbe trasformare gli stessi campi legacy della allowlist RPC. I molteplici trigger timestamp sono debito preesistente e non vengono modificati in B4.
+
+### Blocco 4 — definizioni dei trigger pertinenti — READ-ONLY
+
+```sql
+select
+  p.oid::regprocedure::text as function_signature,
+  p.prosecdef as security_definer,
+  p.proconfig,
+  pg_catalog.pg_get_userbyid(p.proowner) as function_owner,
+  pg_catalog.pg_get_functiondef(p.oid) as function_definition
+from pg_catalog.pg_proc p
+join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public'
+  and p.proname in (
+    'profile_location_coerce',
+    'set_profile_visibility_status',
+    'notify_profile_demoted_to_draft',
+    'enforce_single_platform_admin_profile',
+    'sync_profile_names',
+    'profiles_fill_default_role',
+    'profiles_fill_role_for_fan'
+  )
+order by p.proname, p.oid::regprocedure::text;
+```
+
+Il blocco legge esclusivamente metadati/definizioni SQL e non accede a righe profilo.
 
 ## Rollback minimale preparato — MUTATIVO, NON AUTORIZZATO
 

@@ -14,6 +14,7 @@ as $$
 declare
   v_uid uuid := auth.uid();
   v_profile_id uuid;
+  v_profile_count integer;
   v_account_type text;
   v_country public.countries%rowtype;
   v_current public.geo_areas%rowtype;
@@ -34,15 +35,24 @@ begin
   end if;
 
   -- No profile ID is accepted from the caller: ownership comes only from auth.uid().
+  -- Production currently has no duplicate non-null user_id values, but no UNIQUE
+  -- constraint exists: reject ambiguity rather than choosing a row nondeterministically.
+  select count(*)
+    into v_profile_count
+  from public.profiles p
+  where p.user_id = v_uid;
+
+  if v_profile_count = 0 then
+    raise exception using errcode = 'P0002', message = 'profile not found';
+  end if;
+  if v_profile_count > 1 then
+    raise exception using errcode = '21000', message = 'multiple profiles found for authenticated user';
+  end if;
+
   select p.id, lower(coalesce(p.account_type, p.type, ''))
     into v_profile_id, v_account_type
   from public.profiles p
-  where p.user_id = v_uid
-  limit 1;
-
-  if v_profile_id is null then
-    raise exception using errcode = 'P0002', message = 'profile not found';
-  end if;
+  where p.user_id = v_uid;
   if v_account_type not in ('athlete', 'staff') then
     raise exception using errcode = '42501', message = 'profile role is not eligible for residence dual-write';
   end if;

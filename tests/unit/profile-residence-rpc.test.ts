@@ -25,7 +25,9 @@ test('RPC has a narrow UUID signature, no client profile ID and SECURITY INVOKER
 
 test('anonymous, missing, foreign and ineligible profiles are rejected before writes', () => {
   assert.match(sql, /if v_uid is null[\s\S]*authentication required/i);
-  assert.match(sql, /if v_profile_id is null[\s\S]*profile not found/i);
+  assert.match(sql, /if v_profile_count = 0[\s\S]*profile not found/i);
+  assert.match(sql, /if v_profile_count > 1[\s\S]*multiple profiles found for authenticated user/i);
+  assert.doesNotMatch(sql, /where p\.user_id = v_uid\s+limit 1/i);
   assert.match(sql, /v_account_type not in \('athlete', 'staff'\)/i);
   assert.match(sql, /profile role is not eligible/i);
   for (const role of ['club', 'institution', 'fan']) assert.doesNotMatch(sql, new RegExp(`'${role}'\\s*\\)`));
