@@ -2,7 +2,7 @@
 
 ## Esito
 
-**STATIC PREFLIGHT: CONDITIONAL PASS — BLOCCHI 1–2 PASS; BLOCCO 3 PARZIALE; DEPLOYMENT NON AUTORIZZATO.**
+**STATIC PREFLIGHT: BLOCKED — BLOCCHI 1–3 VERIFICATI; BLOCCO 4 HA RILEVATO SIDE EFFECT TRIGGER; DEPLOYMENT NON AUTORIZZATO.**
 
 La migration `20261204120000_transactional_profile_residence_rpc.sql` ha superato revisione statica e runtime PostgreSQL locale già certificato. Non contiene `INSERT`, `UPDATE` o `DELETE` applicati al momento della migration: crea o sostituisce una funzione, ne imposta il commento e ne restringe/concede `EXECUTE`. Nessun profilo o `profile_preferences` viene modificato finché un utente autenticato non invoca esplicitamente la RPC dopo l’abilitazione server-side.
 
@@ -59,7 +59,7 @@ Da confermare esclusivamente con query read-only Production:
 - **VERIFICATO:** zero `user_id` non-null duplicati; nessun vincolo UNIQUE rilevato, RPC corretta per rifiutare ambiguità futura;
 - **SUPERATO:** grant e RLS effettivi; policy owner necessarie presenti;
 - **SUPERATO:** funzione omonima non presente;
-- **PARZIALE:** trigger inventariati; definizione Production di `profile_location_coerce()` ancora da verificare;
+- **BLOCKER:** trigger verificati; l’update residence attiva side effect fuori dall’allowlist RPC;
 - completezza/univocità dei mapping italiani;
 - migration history reale, incluso `20261203120000` e assenza di `20261204120000`.
 
@@ -273,6 +273,26 @@ order by p.proname, p.oid::regprocedure::text;
 ```
 
 Il blocco legge esclusivamente metadati/definizioni SQL e non accede a righe profilo.
+
+**Esito Blocco 4: BLOCKED — side effect runtime fuori scope.** Le definizioni Production confermano che:
+
+- `profile_location_coerce()` può riscrivere `province_id` e `region_id` in base a `municipality_id`/`province_id` esistenti;
+- `sync_profile_names()` può normalizzare `full_name`/`display_name` e aggiornare `auth.users.raw_user_meta_data` e `auth.users.updated_at` per Athlete/Staff;
+- `set_profile_visibility_status()` ricalcola `profile_visibility_status` e campi di moderazione;
+- `notify_profile_demoted_to_draft()` può inserire una notifica quando la visibilità cambia;
+- gli altri trigger role/admin sono condizionali e non pertinenti per un normale Athlete/Staff, ma vengono comunque eseguiti.
+
+La statement RPC mantiene una allowlist esplicita, ma PostgreSQL esegue questi trigger su ogni `UPDATE profiles`: l’effetto transazionale complessivo non è quindi limitato alle sole colonne residence. Qualsiasi errore nei trigger produce rollback atomico, ma non elimina i side effect quando la transazione riesce. Non applicare la migration finché non viene approvata una strategia trigger-aware. Non usare `session_replication_role`, disabilitazione trigger o bypass equivalenti.
+
+### Decisione architetturale richiesta
+
+Raccomandazione: introdurre una correzione additiva e circoscritta ai trigger esistenti affinché saltino il lavoro quando nessuna delle colonne di loro competenza è cambiata (`IS NOT DISTINCT FROM`), preservando il comportamento per i normali Profile Edit. Questa soluzione richiede audit/test dedicati e amplia il deployment oltre la sola RPC; deve essere approvata esplicitamente.
+
+Alternative:
+
+1. accettare e certificare esplicitamente i side effect trigger durante il dual-write;
+2. rinunciare temporaneamente al legacy dual-write su `profiles` e scrivere soltanto `profile_preferences` (incompatibile con la decisione B4 corrente);
+3. modificare/disabilitare trigger durante la RPC — **non raccomandato** per sicurezza e concorrenza.
 
 ## Rollback minimale preparato — MUTATIVO, NON AUTORIZZATO
 
