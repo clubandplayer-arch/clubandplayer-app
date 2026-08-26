@@ -2,7 +2,7 @@
 
 ## Esito
 
-**PARTIAL PASS — LOCAL POSTGRESQL 16 RUNTIME HARNESS PASSED; ISOLATED SUPABASE CERTIFICATION STILL BLOCKED.**
+**PARTIAL PASS — LOCAL POSTGRESQL 16 RUNTIME HARNESS PASSED; PREVIEW BRANCH UNHEALTHY; SUPABASE SUPPORT PENDING.**
 
 Il 2026-08-26 la migration è stata applicata e la RPC è stata invocata esclusivamente in un database PostgreSQL 16 temporaneo locale, popolato con fixture sintetiche e distrutto al termine del test. Non sono state eseguite connessioni o scritture remote e la migration non è stata applicata a Preview, Staging o Production.
 
@@ -52,6 +52,24 @@ Il setup riproduce ruoli `anon`/`authenticated`, `auth.uid()`, tabelle, foreign 
 - risultato canonical-first coerente con i valori persistiti.
 
 Il database e tutte le fixture erano sintetici; il runner elimina il database al termine.
+
+## Preview Branch `b4-rpc-validation` — support pending
+
+Il Preview Branch dedicato è stato creato, ma il workflow di ricostruzione della migration history è fallito:
+
+| Voce | Stato verificato |
+| --- | --- |
+| Branch | `b4-rpc-validation` |
+| Health | `UNHEALTHY` |
+| Workflow step | `MIGRATIONS: FAILED` |
+| Timestamp dashboard | `2026-08-26 10:55:32` |
+| Migration manuale B4 | non applicata |
+| GitHub/Vercel | non collegati |
+| Production | non modificata |
+
+Il dashboard `Manage Branches → View Logs` mostra esclusivamente la riga fallita e non apre dettagli. Un controllo read-only con browser DevTools ha confermato che il click su `MIGRATIONS: FAILED` non genera alcuna richiesta per endpoint `actions` o workflow `logs`. Non è pertanto possibile attribuire il fallimento a una migration specifica o a un errore SQL verificato.
+
+È stato deciso di contattare il supporto Supabase e mantenere temporaneamente il branch per consentire l'analisi. Fino alla risposta del supporto sono vietati retry, reset, merge, applicazioni manuali della migration, query remote e modifiche Production. B4.4 resta **NOT STARTED**.
 
 ## Revisione SQL statica
 
@@ -144,4 +162,4 @@ Non inviare key, token, password o service role key. Per sbloccare il gate basta
 
 ## Prossimo passo
 
-Predisporre un Supabase Preview Branch dedicato o uno Staging separato da Production, applicare lì la migration soltanto dopo approvazione esplicita e rieseguire la matrice con lo schema/trigger Supabase reali. Non applicare la migration a una Preview condivisa o a Production. B4.4 resta non iniziata finché questa certificazione Supabase isolata non è superata o non viene presa una decisione esplicita successiva.
+Attendere che il supporto Supabase fornisca il primo file migration fallito e il relativo errore SQL, oppure ripristini l'accesso ai workflow logs. Non eseguire retry, merge, reset, query o migration manuali nel frattempo. B4.4 resta non iniziata fino alla risposta del supporto e a una successiva decisione esplicita.
