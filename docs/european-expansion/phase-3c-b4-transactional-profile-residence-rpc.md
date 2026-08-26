@@ -120,7 +120,7 @@ Non essendoci un database locale isolato configurato, non è stata verificata l'
 
 ## Stato B4 e next step
 
-B4 resta **IN PROGRESS**. Il prossimo step proposto è **B4.4 — Player/Staff Profile Edit integration**, ma non è iniziato. Prima di applicare la migration o di eseguire qualsiasi test manuale con write occorre una nuova approvazione esplicita.
+B4 resta **IN PROGRESS**. Il prossimo passo sicuro è predisporre un database isolato e completare la certificazione runtime B4.3. **B4.4 — Player/Staff Profile Edit integration** resta NOT STARTED e non deve iniziare prima del superamento del runtime gate o di una nuova decisione esplicita. Prima di applicare la migration o di eseguire qualsiasi test manuale con write occorre una nuova approvazione esplicita.
 
 ## Runtime validation gate del 2026-08-25
 

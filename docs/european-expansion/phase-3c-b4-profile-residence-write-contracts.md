@@ -91,6 +91,6 @@ Le fixture non effettuano accesso a Supabase e non contengono dati personali.
 
 ## Limiti e next step
 
-Il piano non viene ancora eseguito. Mancano repository lookup reali, reverse mapping canonical→legacy, RPC transazionale, integrazione endpoint, UI Player/Staff e read-after-write. B4 non è completata.
+Il contratto puro B4.2 non esegue direttamente alcun write. La successiva B4.3 ha aggiunto repository wrapper, reverse mapping canonical→legacy e RPC transazionale, ma la certificazione runtime resta bloccata; mancano inoltre integrazione endpoint, UI Player/Staff e read-after-write reale. B4 non è completata.
 
-Il successivo **B4.3 — transactional server write** è stato completato staticamente: migration e wrapper sono documentati in `docs/european-expansion/phase-3c-b4-transactional-profile-residence-rpc.md`. La migration non è stata applicata e nessun write è stato eseguito. Il prossimo step proposto è B4.4, non iniziato.
+Il successivo **B4.3 — transactional server write** ha implementazione e revisione statica completate: migration e wrapper sono documentati in `docs/european-expansion/phase-3c-b4-transactional-profile-residence-rpc.md`. La migration non è stata applicata e nessun write è stato eseguito. La certificazione runtime è **BLOCKED — ISOLATED DATABASE NOT AVAILABLE**: il prossimo passo sicuro è predisporre un database isolato e completare il runtime gate B4.3. B4.4 resta **NOT STARTED** e non deve iniziare prima del superamento del gate o di una nuova decisione esplicita.

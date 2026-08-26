@@ -8,15 +8,16 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed phase | **COMPLETATO — FASE 3C-B3 — Reusable canonical geography selectors** |
-| Next phase | **FASE 3C-B4 — Profile Edit dual-write** |
+| Last completed subphase | **COMPLETATA — FASE 3C-B3 — Reusable canonical geography selectors** |
+| Current active phase | **FASE 3C-B4 — Profile Edit dual-write — IN PROGRESS** |
+| Next safe action | **Predisporre un database isolato e completare il runtime gate B4.3** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
 | Mobile international parity | **NOT STARTED** |
-| FASE 3C-B | **NOT COMPLETED — B1–B3 completate; B4–B7 non iniziate** |
+| FASE 3C-B | **NOT COMPLETED — B1–B3 completate; B4 IN PROGRESS; B5–B7 non iniziate** |
 
-**FASE 3C-B3 è completata con selector canonici riutilizzabili, ma non collegati ai form reali e senza dual-write.** Il backfill automatico della residence resta escluso perché i campi legacy `interest_*` non costituiscono evidenza sufficiente della residenza effettiva dell'utente. La FASE 3C-B complessiva non è completata e la mobile international parity resta non iniziata.
+**FASE 3C-B3 è l'ultima sottofase completata. FASE 3C-B4 è la fase attiva ed è IN PROGRESS:** preflight, B4.2 contract tests e implementazione/revisione statica B4.3 sono completati; la certificazione runtime B4.3 è **BLOCKED — ISOLATED DATABASE NOT AVAILABLE** e B4.4 è **NOT STARTED**. Il prossimo passo sicuro è predisporre un database isolato e completare il runtime gate B4.3. B4.4 non deve iniziare prima del superamento del gate o di una nuova decisione esplicita. Il backfill automatico della residence resta escluso perché i campi legacy `interest_*` non costituiscono evidenza sufficiente della residenza effettiva dell'utente. La FASE 3C-B complessiva non è completata e la mobile international parity resta non iniziata.
 
 ## Roadmap maintenance rules
 
@@ -227,7 +228,7 @@ I candidati non sono stati backfillati. Il candidate audit distingueva `safe_mun
 
 ### FASE 3C-B — Profile UI/write integration
 
-**Stato: NOT COMPLETED — 3C-B1–3C-B3 COMPLETATE; 3C-B4–3C-B7 NOT STARTED.**
+**Stato: NOT COMPLETED — 3C-B1–3C-B3 COMPLETATE; 3C-B4 IN PROGRESS; 3C-B5–3C-B7 NOT STARTED.**
 
 #### 3C-B1 — Audit UI/write flows
 
@@ -259,17 +260,17 @@ Il `DEFERRED MANUAL LIVE-DATA GATE` registrato in B3 è stato successivamente es
 
 #### 3C-B4 — Profile Edit dual-write
 
-**Stato: IN PROGRESS — PREFLIGHT, B4.2 CONTRACTS E B4.3 TRANSACTIONAL SERVER WRITE COMPLETATI; B4.4 UI NON INIZIATA.** I nuovi valori devono essere canonical; per compatibilità scrivere anche i legacy soltanto dove necessario e semanticamente sicuro. Non ricostruire automaticamente residence dagli `interest_*`. Deliverable: preflight, write contracts e `docs/european-expansion/phase-3c-b4-transactional-profile-residence-rpc.md`.
+**Stato: IN PROGRESS — PREFLIGHT COMPLETATO; B4.2 CONTRACT TESTS COMPLETATA; IMPLEMENTAZIONE E REVISIONE STATICA B4.3 COMPLETATE; CERTIFICAZIONE RUNTIME B4.3 BLOCCATA; B4.4 NOT STARTED.** I nuovi valori devono essere canonical; per compatibilità scrivere anche i legacy soltanto dove necessario e semanticamente sicuro. Non ricostruire automaticamente residence dagli `interest_*`. Deliverable: preflight, write contracts e `docs/european-expansion/phase-3c-b4-transactional-profile-residence-rpc.md`.
 
 **LIVE CANONICAL READ-DATA GATE: PASSED.** La verifica manuale read-only sulla Preview Vercel collegata a Supabase ha validato countries, root, children, ultimo livello, ancestors, profondità variabile, coerenza country/parent e caratteri internazionali per IT, FR, ES, CH con e senza District, SI e PL. Restano obbligatori in B4 i gate su selector nel form reale, reset con dati reali, dual-write, salvataggio, rilettura, compatibility legacy Italia, privacy e autorizzazioni.
 
-L'ambiente dati della Preview non è dimostrabilmente separato da Production ed è classificato **POTENTIALLY PRODUCTION — WRITES FORBIDDEN WITHOUT EXPLICIT APPROVAL**. Il Current checkpoint resta FASE 3C-B3 completata / B4 prossima fase; la FASE 3C-B complessiva resta non completata.
+L'ambiente dati della Preview non è dimostrabilmente separato da Production ed è classificato **POTENTIALLY PRODUCTION — WRITES FORBIDDEN WITHOUT EXPLICIT APPROVAL**. Il Current checkpoint registra FASE 3C-B3 come ultima sottofase completata e FASE 3C-B4 come fase attiva IN PROGRESS; la FASE 3C-B complessiva resta non completata.
 
 Decisioni approvate per B4: prima integrazione limitata a Player/Athlete e Staff; country-only consentita; RPC transazionale additiva creata nel repository ma non applicata; Club, Institution e Fan esclusi; proiezione legacy testuale estera consentita; assenza di geography/interest nel PATCH significa non modificare. Nessuna migration può essere applicata e nessun write reale può essere eseguito senza una nuova approvazione esplicita.
 
 B4.3 ha creato nel repository la migration additiva `20261204120000_transactional_profile_residence_rpc.sql` e il wrapper server, con scope atomico limitato ai campi residence. **MIGRATION CREATA MA NON APPLICATA** a locale, Preview o Production; nessuna RPC o write remoto è stato eseguito. Il default server `interest_country = 'IT'` è rimosso, ma il fallback analogo in `ProfileEditForm` resta aperto e deve essere eliminato in B4.4: il problema non è risolto end-to-end.
 
-**B4.3 RUNTIME VALIDATION GATE: BLOCKED — ISOLATED DATABASE NOT AVAILABLE.** L'audit conferma che il timestamp `20261204120000` segue senza collisioni la precedente migration `20261203120000`; il repository contiene già 21 altre migration future rispetto al 2026-08-25, quindi il nome è coerente con la cronologia reale e non viene rinominato. La revisione statica ha corretto la validazione 1:1 dei mapping Italia affinché conti anche mapping con ID non validi. L'esecuzione PL/pgSQL, RLS e rollback runtime resta obbligatoria in un Supabase locale/branch/staging realmente isolato prima di applicare la migration o iniziare B4.4.
+**B4.3 RUNTIME CERTIFICATION: BLOCKED — ISOLATED DATABASE NOT AVAILABLE.** L'audit conferma che il timestamp `20261204120000` segue senza collisioni la precedente migration `20261203120000`; il repository contiene già 21 altre migration future rispetto al 2026-08-25, quindi il nome è coerente con la cronologia reale e non viene rinominato. La revisione statica ha corretto la validazione 1:1 dei mapping Italia affinché conti anche mapping con ID non validi. Il prossimo passo sicuro è predisporre un Supabase locale/branch/staging realmente isolato e certificare a runtime PL/pgSQL, RLS e rollback. B4.4 non deve iniziare prima del superamento del gate o di una nuova decisione esplicita.
 
 #### 3C-B5 — Signup / onboarding
 
@@ -313,9 +314,11 @@ Obiettivi futuri: `ClubMap`, `SearchMap`, supporto internazionale, coordinate ca
 
 ## FASE 4 — Internationalization / i18n
 
-**Stato: PARTIAL FOUNDATION; INTERNAZIONALIZZAZIONE UI COMPLETA NOT STARTED.**
+**Stato prudenziale: IMPLEMENTAZIONE i18n SOSTANZIALE PRESENTE; CERTIFICAZIONE COMPLETA 4A–4I NON ESEGUITA; FASE NON COMPLETATA.**
 
-La fondazione verificabile comprende il catalogo `languages` e la preferred language in `profile_preferences`; questo non equivale a traduzioni UI complete.
+Il repository contiene un'implementazione i18n sostanziale ed è quindi più avanzato rispetto alla precedente dicitura `NOT STARTED`: sono verificabili catalogo `languages`, preferred language in `profile_preferences`, infrastruttura locale/provider, messaggi per le lingue attive e test dedicati. Queste evidenze non equivalgono tuttavia alla certificazione completa della FASE 4.
+
+Prima di pianificare nuovo lavoro i18n è richiesto un audit dedicato di riconciliazione rispetto alle sottofasi 4A–4I. Questo aggiornamento documentale non avvia tale audit e non marca la FASE 4 come COMPLETATA.
 
 Roadmap prevista:
 
@@ -692,10 +695,13 @@ Alla data di creazione iniziale della roadmap:
 
 | Voce | Stato |
 | --- | --- |
-| Last completed phase | **FASE 3C-B3 — Reusable canonical geography selectors** |
-| Next phase | **FASE 3C-B4 — Profile Edit dual-write** |
-| FASE 3C-B | **NOT COMPLETED — B1–B3 completate; B4–B7 non iniziate** |
+| Last completed subphase | **FASE 3C-B3 — Reusable canonical geography selectors** |
+| Current active phase | **FASE 3C-B4 — Profile Edit dual-write — IN PROGRESS** |
+| Next safe action | **Predisporre un database isolato e completare il runtime gate B4.3** |
+| B4.3 runtime certification | **BLOCKED — ISOLATED DATABASE NOT AVAILABLE** |
+| B4.4 | **NOT STARTED — vietato iniziarla prima del superamento del runtime gate o di una nuova decisione esplicita** |
+| FASE 3C-B | **NOT COMPLETED — B1–B3 completate; B4 IN PROGRESS; B5–B7 non iniziate** |
 | Automatic residence backfill | **DELIBERATELY EXCLUDED** |
 | Mobile international parity | **NOT STARTED** |
 
-Non iniziare automaticamente 3C-B4 dopo il completamento dei selector riutilizzabili 3C-B3.
+Non iniziare B4.4 prima di avere completato la certificazione runtime B4.3 in un database isolato o prima di una nuova decisione esplicita.
