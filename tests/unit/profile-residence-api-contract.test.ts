@@ -6,8 +6,6 @@ import { isCanonicalProfileResidenceUiEnabled, isCanonicalProfileResidenceWriteE
 
 const route = readFileSync(new URL('../../app/api/profiles/me/residence/route.ts', import.meta.url), 'utf8');
 const form = readFileSync(new URL('../../components/profiles/ProfileEditForm.tsx', import.meta.url), 'utf8');
-const qaPage = readFileSync(new URL('../../app/qa/b4-profile-residence/page.tsx', import.meta.url), 'utf8');
-const qaClient = readFileSync(new URL('../../app/qa/b4-profile-residence/B4ProfileResidencePreview.tsx', import.meta.url), 'utf8');
 
 test('canonical profile residence UI and writes are disabled by default', () => {
   const previousUi = process.env.NEXT_PUBLIC_CANONICAL_PROFILE_RESIDENCE_UI_ENABLED;
@@ -40,12 +38,4 @@ test('ProfileEditForm integrates canonical selector only for Player/Staff and se
   const playerPayload = form.slice(form.indexOf('// PLAYER'), form.indexOf('// pulizia campi club', form.indexOf('// PLAYER')));
   assert.doesNotMatch(playerPayload, /residence_(?:region|province|municipality)_id/);
   assert.doesNotMatch(playerPayload, /\bregion:|\bprovince:|\bcity:/);
-});
-
-test('QA preview is noindex, fixture-only and cannot save remotely', () => {
-  assert.match(qaPage, /robots: \{ index: false, follow: false \}/);
-  assert.match(qaClient, /Fixture deterministiche/);
-  assert.match(qaClient, /Salvataggio remoto disabilitato/);
-  assert.doesNotMatch(qaClient, /fetch\(|createClient|from\(['"]@supabase|@\/lib\/supabase/i);
-  for (const scenario of ['IT', 'FR', 'ES', 'CH', 'SI', 'PL', 'CH senza District', 'country-only', 'Reset completo']) assert.ok(qaClient.includes(scenario), scenario);
 });
