@@ -2,11 +2,11 @@
 
 ## Esito
 
-**STATIC PREFLIGHT: CONDITIONAL PASS — DEPLOYMENT NON AUTORIZZATO.**
+**STATIC PREFLIGHT: CONDITIONAL PASS — BLOCCO 1 COLONNE SUPERATO; DEPLOYMENT NON AUTORIZZATO.**
 
 La migration `20261204120000_transactional_profile_residence_rpc.sql` ha superato revisione statica e runtime PostgreSQL locale già certificato. Non contiene `INSERT`, `UPDATE` o `DELETE` applicati al momento della migration: crea o sostituisce una funzione, ne imposta il commento e ne restringe/concede `EXECUTE`. Nessun profilo o `profile_preferences` viene modificato finché un utente autenticato non invoca esplicitamente la RPC dopo l’abilitazione server-side.
 
-Il passaggio a Production resta condizionato alla verifica read-only dello schema reale. Il repository non contiene la creazione originaria di tutte le colonne legacy di `profiles`, quindi la loro presenza/tipologia non può essere certificata esclusivamente dalla migration history tracciata.
+Il Blocco 1 Production ha confermato tutte le tabelle e colonne richieste. Ha inoltre rilevato che `profiles.residence_region_id`, `residence_province_id` e `residence_municipality_id` sono `integer/int4`; la RPC è stata quindi corretta nel repository per accettare soltanto mapping nel range `1..2147483647`, evitando conversioni implicite da `bigint`. Il passaggio a Production resta condizionato ai successivi controlli read-only.
 
 ## Effetti DDL della migration
 
@@ -55,7 +55,7 @@ Confermati dal repository:
 
 Da confermare esclusivamente con query read-only Production:
 
-- presenza e tipi dei sei campi legacy residence e di `profiles.user_id/account_type/type/updated_at`;
+- **SUPERATO:** presenza e tipi dei campi legacy residence e di `profiles.user_id/account_type/type/updated_at`;
 - unicità reale di `profiles.user_id` o assenza di duplicati;
 - policy, grant e RLS effettivi;
 - funzione omonima eventualmente preesistente;
@@ -130,7 +130,57 @@ where n.nspname = 'public'
   and p.proname = 'update_my_profile_residence';
 ```
 
-I blocchi successivi già progettati riguardano policy/grant, constraint/trigger, mapping IT e migration history. Verranno forniti soltanto dopo la revisione dell’output del blocco precedente.
+Il Blocco 1 è stato eseguito: le colonne richieste sono presenti. L’output relativo a RLS degli oggetti e all’eventuale funzione preesistente non è stato incluso nel risultato ricevuto; viene quindi riconfermato insieme a policy e grant nel Blocco 2.
+
+### Blocco 2 — funzione, RLS, policy e grant — READ-ONLY
+
+```sql
+select
+  n.nspname as schema_name,
+  c.relname as table_name,
+  c.relrowsecurity as rls_enabled,
+  c.relforcerowsecurity as rls_forced
+from pg_catalog.pg_class c
+join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+where n.nspname = 'public'
+  and c.relkind in ('r', 'p')
+  and c.relname in ('profiles', 'profile_preferences', 'countries', 'geo_areas', 'legacy_geo_area_mappings')
+order by c.relname;
+
+select
+  schemaname,
+  tablename,
+  policyname,
+  roles,
+  cmd,
+  qual,
+  with_check
+from pg_catalog.pg_policies
+where schemaname = 'public'
+  and tablename in ('profiles', 'profile_preferences', 'countries', 'geo_areas', 'legacy_geo_area_mappings')
+order by tablename, policyname;
+
+select
+  table_name,
+  privilege_type
+from information_schema.role_table_grants
+where table_schema = 'public'
+  and grantee = 'authenticated'
+  and table_name in ('profiles', 'profile_preferences', 'countries', 'geo_areas', 'legacy_geo_area_mappings')
+order by table_name, privilege_type;
+
+select
+  p.oid::regprocedure::text as function_signature,
+  p.prosecdef as security_definer,
+  p.proconfig,
+  pg_catalog.pg_get_userbyid(p.proowner) as function_owner,
+  p.proacl,
+  pg_catalog.pg_get_function_identity_arguments(p.oid) as identity_arguments
+from pg_catalog.pg_proc p
+join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public'
+  and p.proname = 'update_my_profile_residence';
+```
 
 ## Rollback minimale preparato — MUTATIVO, NON AUTORIZZATO
 

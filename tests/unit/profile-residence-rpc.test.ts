@@ -49,7 +49,7 @@ test('Italy requires one mapping per canonical level and rejects missing or ambi
   assert.ok((sql.match(/v_mapping_count = 0/g) ?? []).length === 3);
   assert.ok((sql.match(/v_mapping_count > 1/g) ?? []).length === 3);
   assert.match(sql, /source_system = 'italy_legacy'/i);
-  assert.ok((sql.match(/bool_and\(m\.legacy_id ~ '\^\[1-9\]\[0-9\]\{0,17\}\$'\)/g) ?? []).length === 3);
+  assert.ok((sql.match(/m\.legacy_id::numeric <= 2147483647/g) ?? []).length === 6);
   assert.ok((sql.match(/if not v_mapping_ids_valid/g) ?? []).length === 3);
   assert.doesNotMatch(sql, /and m\.legacy_id ~/i);
 });
@@ -58,9 +58,9 @@ test('foreign projections cover FR ES CH with optional District SI and PL while 
   for (const type of ['REGION', 'DEPARTMENT', 'COMMUNE', 'AUTONOMOUS_COMMUNITY', 'PROVINCE', 'MUNICIPALITY', 'CANTON', 'DISTRICT', 'STATISTICAL_REGION', 'VOIVODESHIP', 'POWIAT', 'GMINA']) {
     assert.match(sql, new RegExp(`'${type}'`));
   }
-  assert.match(sql, /v_region_id bigint := null/i);
-  assert.match(sql, /v_province_id bigint := null/i);
-  assert.match(sql, /v_municipality_id bigint := null/i);
+  assert.match(sql, /v_region_id integer := null/i);
+  assert.match(sql, /v_province_id integer := null/i);
+  assert.match(sql, /v_municipality_id integer := null/i);
 });
 
 test('RPC atomically updates only residence allowlist and upserts initially absent preferences', () => {

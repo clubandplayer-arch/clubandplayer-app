@@ -21,13 +21,13 @@ declare
   v_depth integer := 0;
   v_mapping_count integer;
   v_mapping_ids_valid boolean;
-  v_legacy_id bigint;
+  v_legacy_id integer;
   v_region text := null;
   v_province text := null;
   v_city text := null;
-  v_region_id bigint := null;
-  v_province_id bigint := null;
-  v_municipality_id bigint := null;
+  v_region_id integer := null;
+  v_province_id integer := null;
+  v_municipality_id integer := null;
 begin
   if v_uid is null then
     raise exception using errcode = '42501', message = 'authentication required';
@@ -87,8 +87,16 @@ begin
 
       if v_country.iso2 = 'IT' then
         if v_current.area_type = 'REGION' then
-          select count(*), bool_and(m.legacy_id ~ '^[1-9][0-9]{0,17}$'),
-                 min(case when m.legacy_id ~ '^[1-9][0-9]{0,17}$' then m.legacy_id::bigint end)
+          select count(*), bool_and(case
+                   when m.legacy_id ~ '^[1-9][0-9]{0,9}$'
+                     then m.legacy_id::numeric <= 2147483647
+                   else false
+                 end),
+                 min(case
+                   when m.legacy_id ~ '^[1-9][0-9]{0,9}$'
+                     and m.legacy_id::numeric <= 2147483647
+                     then m.legacy_id::integer
+                 end)
             into v_mapping_count, v_mapping_ids_valid, v_legacy_id
           from public.legacy_geo_area_mappings m
           where m.source_system = 'italy_legacy'
@@ -99,8 +107,16 @@ begin
           if not v_mapping_ids_valid then raise exception using errcode = '22023', message = 'Italy region mapping has an invalid legacy ID'; end if;
           v_region := v_current.official_name; v_region_id := v_legacy_id;
         elsif v_current.area_type = 'PROVINCE' then
-          select count(*), bool_and(m.legacy_id ~ '^[1-9][0-9]{0,17}$'),
-                 min(case when m.legacy_id ~ '^[1-9][0-9]{0,17}$' then m.legacy_id::bigint end)
+          select count(*), bool_and(case
+                   when m.legacy_id ~ '^[1-9][0-9]{0,9}$'
+                     then m.legacy_id::numeric <= 2147483647
+                   else false
+                 end),
+                 min(case
+                   when m.legacy_id ~ '^[1-9][0-9]{0,9}$'
+                     and m.legacy_id::numeric <= 2147483647
+                     then m.legacy_id::integer
+                 end)
             into v_mapping_count, v_mapping_ids_valid, v_legacy_id
           from public.legacy_geo_area_mappings m
           where m.source_system = 'italy_legacy'
@@ -111,8 +127,16 @@ begin
           if not v_mapping_ids_valid then raise exception using errcode = '22023', message = 'Italy province mapping has an invalid legacy ID'; end if;
           v_province := v_current.official_name; v_province_id := v_legacy_id;
         elsif v_current.area_type = 'MUNICIPALITY' then
-          select count(*), bool_and(m.legacy_id ~ '^[1-9][0-9]{0,17}$'),
-                 min(case when m.legacy_id ~ '^[1-9][0-9]{0,17}$' then m.legacy_id::bigint end)
+          select count(*), bool_and(case
+                   when m.legacy_id ~ '^[1-9][0-9]{0,9}$'
+                     then m.legacy_id::numeric <= 2147483647
+                   else false
+                 end),
+                 min(case
+                   when m.legacy_id ~ '^[1-9][0-9]{0,9}$'
+                     and m.legacy_id::numeric <= 2147483647
+                     then m.legacy_id::integer
+                 end)
             into v_mapping_count, v_mapping_ids_valid, v_legacy_id
           from public.legacy_geo_area_mappings m
           where m.source_system = 'italy_legacy'
