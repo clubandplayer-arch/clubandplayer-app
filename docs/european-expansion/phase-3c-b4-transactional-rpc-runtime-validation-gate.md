@@ -2,11 +2,11 @@
 
 ## Esito
 
-**BLOCKED — ISOLATED DATABASE NOT AVAILABLE.**
+**PARTIAL PASS — LOCAL POSTGRESQL 16 RUNTIME HARNESS PASSED; ISOLATED SUPABASE CERTIFICATION STILL BLOCKED.**
 
-Non è stata applicata alcuna migration, non è stata invocata la RPC e non sono state eseguite connessioni o scritture remote. I risultati in questo documento sono un audit di repository e una revisione statica; **non equivalgono a una validazione runtime**.
+Il 2026-08-26 la migration è stata applicata e la RPC è stata invocata esclusivamente in un database PostgreSQL 16 temporaneo locale, popolato con fixture sintetiche e distrutto al termine del test. Non sono state eseguite connessioni o scritture remote e la migration non è stata applicata a Preview, Staging o Production.
 
-L'ambiente remoto resta `POTENTIALLY PRODUCTION — WRITES FORBIDDEN WITHOUT EXPLICIT APPROVAL`. B4 resta **IN PROGRESS** e B4.4 non è iniziata.
+Il runtime locale certifica sintassi, firma, grants, `SECURITY INVOKER`, comportamento funzionale e atomicità sulle tabelle/policy rilevanti riprodotte. Il repository non contiene però una baseline Supabase locale completa e riproducibile: la compatibilità con l'intera migration history, i trigger reali e l'ambiente Supabase resta un gate separato. L'ambiente remoto resta `POTENTIALLY PRODUCTION — WRITES FORBIDDEN WITHOUT EXPLICIT APPROVAL`. B4 resta **IN PROGRESS** e B4.4 non è iniziata.
 
 ## Audit timestamp e ordine migration
 
@@ -25,17 +25,33 @@ Il timestamp è futuro rispetto alla data corrente, ma non è isolato né arbitr
 
 È presente una collisione preesistente e non correlata su `20260720103000` (`normalize_pallavolo_to_volley.sql` e `seed_players_from_excel.sql`). Non coinvolge la nuova RPC, ma deve essere considerata in un futuro audit generale della migration history. Non è stata corretta perché fuori scope e storica.
 
-## Disponibilità ambiente isolato
+## Ambiente isolato locale e limite di fedeltà
 
-Nel workspace non risultano disponibili:
+All'inizio del controllo non risultavano disponibili Supabase CLI, Docker/Podman o PostgreSQL. È stato installato PostgreSQL 16 nel solo container di lavoro ed è stato creato un database temporaneo locale senza configurare alcun host remoto.
 
-- Supabase CLI;
-- `supabase/config.toml`;
-- Docker o Podman;
-- client/server PostgreSQL (`psql`, `postgres`, `initdb`, `pg_ctl`);
-- metadati di un Supabase Preview Branch o Staging dimostrabilmente separato.
+Il banco prova riproducibile è composto da:
 
-Non è quindi possibile creare un database temporaneo, applicare la history completa e verificare realmente funzione, grants, RLS, trigger e rollback. Non sono stati tentati download di tooling, bootstrap infrastrutturali o connessioni remote.
+- `scripts/test-profile-residence-rpc-runtime.sh`;
+- `tests/integration/sql/profile-residence-rpc-runtime-setup.sql`;
+- `tests/integration/sql/profile-residence-rpc-runtime-tests.sql`.
+
+Il setup riproduce ruoli `anon`/`authenticated`, `auth.uid()`, tabelle, foreign key, grants e policy RLS direttamente rilevanti per la RPC. Non riproduce l'intero stack Supabase né tutte le 117 migration: la history contiene dipendenze da `auth`, `storage`, configurazioni e uno schema base non integralmente ricostruibile dai soli file presenti. Per questo il test locale è una validazione runtime reale ma mirata, non la certificazione Supabase finale.
+
+## Risultati runtime locali del 2026-08-26
+
+**PASS — 0 errori residui nel banco prova.** Sono stati verificati:
+
+- creazione della funzione, firma `uuid, uuid → jsonb`, `SECURITY INVOKER`, `search_path` vuoto e grants;
+- anonimo negato; Player/Athlete e Staff owner consentiti; Club, Fan e Institution negati; identità senza profilo negata;
+- UUID invalido, country unsupported/inactive, area mancante, country/area mismatch e ancestor inattivo;
+- reset, country-only e preferences inizialmente assenti;
+- full IT con mapping 1:1; mapping mancante e ambiguo negati;
+- FR, ES, CH con District, CH senza District, SI e PL con proiezione testuale e ID legacy italiani null;
+- interests, birth country, nationality e relocation invariati;
+- rollback del write `profiles` quando fallisce `profile_preferences` e assenza di mutazione preferences quando fallisce `profiles`;
+- risultato canonical-first coerente con i valori persistiti.
+
+Il database e tutte le fixture erano sintetici; il runner elimina il database al termine.
 
 ## Revisione SQL statica
 
@@ -128,4 +144,4 @@ Non inviare key, token, password o service role key. Per sbloccare il gate basta
 
 ## Prossimo passo
 
-Predisporre uno degli ambienti isolati precedenti e rieseguire integralmente la matrice runtime. Fermarsi nuovamente prima di applicare la migration a Preview condivisa o Production. B4.4 resta non iniziata finché questo gate non è superato o non viene presa una decisione esplicita successiva.
+Predisporre un Supabase Preview Branch dedicato o uno Staging separato da Production, applicare lì la migration soltanto dopo approvazione esplicita e rieseguire la matrice con lo schema/trigger Supabase reali. Non applicare la migration a una Preview condivisa o a Production. B4.4 resta non iniziata finché questa certificazione Supabase isolata non è superata o non viene presa una decisione esplicita successiva.

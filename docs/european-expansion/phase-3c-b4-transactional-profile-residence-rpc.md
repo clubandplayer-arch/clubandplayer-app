@@ -120,8 +120,8 @@ Non essendoci un database locale isolato configurato, non è stata verificata l'
 
 ## Stato B4 e next step
 
-B4 resta **IN PROGRESS**. Il prossimo passo sicuro è predisporre un database isolato e completare la certificazione runtime B4.3. **B4.4 — Player/Staff Profile Edit integration** resta NOT STARTED e non deve iniziare prima del superamento del runtime gate o di una nuova decisione esplicita. Prima di applicare la migration o di eseguire qualsiasi test manuale con write occorre una nuova approvazione esplicita.
+B4 resta **IN PROGRESS**. Il runtime PostgreSQL locale mirato è passato; il prossimo passo sicuro è predisporre un Supabase Branch/Staging isolato e completare la certificazione B4.3 sullo schema reale. **B4.4 — Player/Staff Profile Edit integration** resta NOT STARTED e non deve iniziare prima del superamento del gate o di una nuova decisione esplicita. Prima di applicare la migration a un ambiente remoto o di eseguire qualsiasi test manuale con write occorre una nuova approvazione esplicita.
 
 ## Runtime validation gate del 2026-08-25
 
-**BLOCKED — ISOLATED DATABASE NOT AVAILABLE.** Il gate e la revisione approfondita sono registrati in `docs/european-expansion/phase-3c-b4-transactional-rpc-runtime-validation-gate.md`. La migration resta non applicata; B4.4 non può iniziare sulla base dei soli controlli statici.
+**LOCAL POSTGRESQL RUNTIME: PASSED; ISOLATED SUPABASE CERTIFICATION: BLOCKED.** Il gate e i risultati sono registrati in `docs/european-expansion/phase-3c-b4-transactional-rpc-runtime-validation-gate.md`. La migration resta non applicata a Preview, Staging e Production; B4.4 non può iniziare sulla base del solo banco prova locale mirato.
