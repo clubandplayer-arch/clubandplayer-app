@@ -162,8 +162,13 @@ Non inviare key, token, password o service role key. Per sbloccare il gate basta
 
 ## Prossimo passo
 
-Attendere che il supporto Supabase fornisca il primo file migration fallito e il relativo errore SQL, oppure ripristini l'accesso ai workflow logs. Non eseguire retry, merge, reset, query o migration manuali nel frattempo. B4.4 resta non iniziata fino alla risposta del supporto e a una successiva decisione esplicita.
+Attendere che il supporto Supabase fornisca il primo file migration fallito e il relativo errore SQL, oppure ripristini l'accesso ai workflow logs. Non eseguire retry, merge, reset, query o migration manuali nel frattempo. Questo era il gate storico del Preview Branch; il percorso Production manuale successivamente autorizzato mantiene B4.4 **IN PROGRESS** e non autorizza B5.
 
 ## Estensione database canary
 
 Il runtime aggiornato applica nell'ordine RPC, trigger guards, `20261204121500_profile_residence_database_canary.sql`, membership sintetiche, trigger pertinenti, verifica RPC disabilitata e infine attivazione esclusivamente locale. Verifica RLS, visibilità della sola membership propria, assenza dei privilegi di gestione per `authenticated`, successo Player/Staff allowlisted e rifiuto senza scritture di un Athlete non allowlisted. Gli UUID delle membership runtime sono sintetici e non sono valori Production.
+
+
+### Esecuzione canary locale 2026-08-27
+
+PostgreSQL 16.15 è stato installato esclusivamente nel container locale autorizzato. La prima esecuzione ha rilevato una lacuna di fixture: il caso “utente senza profilo” non aveva membership canary e veniva correttamente respinto dal nuovo gate prima di raggiungere l'asserzione `profile not found`. Sono stati aggiunti al solo harness un utente Auth sintetico e la relativa membership, senza creare un profilo. Dopo la correzione, l'intero harness ha restituito **B4_RPC_RUNTIME_PASS**: RLS/ACL canary, Athlete non allowlisted senza scritture, Player/Staff, gerarchie, trigger, side effect e rollback sono passati. Il trap ha eliminato `b4_rpc_runtime`; la verifica finale ha restituito zero database residui. Nessuna connessione o query remota è stata eseguita.

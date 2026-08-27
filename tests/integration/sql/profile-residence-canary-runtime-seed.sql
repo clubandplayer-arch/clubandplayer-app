@@ -6,4 +6,6 @@ insert into public.profile_residence_write_canary_users(user_id) values
   ('40000000-0000-0000-0000-000000000002'),
   ('40000000-0000-0000-0000-000000000003'),
   ('40000000-0000-0000-0000-000000000004'),
-  ('40000000-0000-0000-0000-000000000005');
+  ('40000000-0000-0000-0000-000000000005'),
+  -- Canary membership without a profile preserves the RPC no-profile test.
+  ('49999999-0000-0000-0000-000000000099');
