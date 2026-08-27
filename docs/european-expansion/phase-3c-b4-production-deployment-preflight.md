@@ -366,3 +366,7 @@ La migration `20261204121500_profile_residence_database_canary.sql`, ordinata pr
 Nessun UUID Production è incluso nella migration. Le membership sintetiche esistono soltanto nel runtime harness locale; il popolamento Production richiede un blocco operativo separato e autorizzato. La migration revoca nuovamente `EXECUTE` a `PUBLIC`, `anon` e `authenticated`, quindi non abilita la RPC. Nessuna migration è stata applicata e nessun feature gate è stato modificato da questo passaggio repository-only. B4.4 resta **IN PROGRESS**.
 
 Il rollback dedicato repository-only è `supabase/rollbacks/20261204121500_profile_residence_database_canary.sql`: revoca per prima cosa ogni `EXECUTE`, quindi elimina RPC e tabella canary. Non ripristina deliberatamente una RPC priva del controllo database, evitando un rollback che riapra l'accesso. Non modifica profili o preferenze e richiede comunque autorizzazione separata prima dell'uso.
+
+## Vercel environment preflight guard
+
+`docs/env.sample` e `scripts/check-vercel-env.mjs` includono ora i tre valori B4.4. Durante questo checkpoint il checker accetta esclusivamente UI e write gate esplicitamente disabilitati e una allowlist composta da esattamente due UUID validi e distinti; non stampa i valori. Configurazioni mancanti, gate attivi, UUID malformati o duplicati producono exit code non-zero. Questa è una guardia temporanea di pre-attivazione e dovrà essere modificata con una decisione esplicita prima del rollout.
