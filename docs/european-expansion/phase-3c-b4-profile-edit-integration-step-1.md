@@ -23,6 +23,7 @@ Entrambi i gate sono `false` per default:
 
 - `NEXT_PUBLIC_CANONICAL_PROFILE_RESIDENCE_UI_ENABLED`: rende visibile l'integrazione reale;
 - `CANONICAL_PROFILE_RESIDENCE_WRITE_ENABLED`: kill switch server-side verificato prima di query o invocazioni RPC nel PATCH.
+- `CANONICAL_PROFILE_RESIDENCE_WRITE_USER_IDS`: allowlist temporanea B4.4, composta esclusivamente da UUID `auth.users` separati da virgola; una configurazione assente o non valida nega tutte le scritture.
 
 Con la configurazione predefinita nessuna RPC residence può essere invocata dal nuovo endpoint. La pagina QA ha usato esclusivamente fixture in memoria, senza letture profilo, client Supabase o azioni di salvataggio; è stata rimossa dopo l’approvazione.
 

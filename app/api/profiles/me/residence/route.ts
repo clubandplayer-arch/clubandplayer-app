@@ -1,7 +1,11 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
 import { withAuth, jsonError } from '@/lib/api/auth';
-import { isCanonicalProfileResidenceUiEnabled, isCanonicalProfileResidenceWriteEnabled } from '@/lib/env/features';
+import {
+  isCanonicalProfileResidenceUiEnabled,
+  isCanonicalProfileResidenceWriteEnabled,
+  isCanonicalProfileResidenceWriteUserAllowed,
+} from '@/lib/env/features';
 import { getProfileGeography } from '@/lib/geo/profileGeography';
 import { SupabaseProfileGeographyRepository } from '@/lib/geo/profileGeography.server';
 import { writeMyProfileResidence } from '@/lib/geo/profileResidenceWrite.server';
@@ -29,7 +33,9 @@ export const GET = withAuth(async (_req: NextRequest, { supabase, user }) => {
     const geography = await getProfileGeography(new SupabaseProfileGeographyRepository(supabase), profile.id);
     return NextResponse.json({
       enabled: true,
-      writable: isCanonicalProfileResidenceWriteEnabled(),
+      writable:
+        isCanonicalProfileResidenceWriteEnabled()
+        && isCanonicalProfileResidenceWriteUserAllowed(user.id),
       residence: {
         source: geography.residence.source,
         residenceCountryId: geography.residence.countryId,
@@ -45,6 +51,9 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   // The kill switch is checked before profile lookup or RPC invocation.
   if (!isCanonicalProfileResidenceWriteEnabled()) {
     return jsonError('Canonical residence writes are disabled pending Supabase certification', 503);
+  }
+  if (!isCanonicalProfileResidenceWriteUserAllowed(user.id)) {
+    return jsonError('Canonical residence writes are not enabled for this account', 403);
   }
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
