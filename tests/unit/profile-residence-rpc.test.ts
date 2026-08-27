@@ -6,6 +6,7 @@ import { writeMyProfileResidence } from '../../lib/geo/profileResidenceWrite.ser
 import type { ResidencePatch } from '../../lib/geo/profileResidenceWriteContract';
 
 const sql = readFileSync(new URL('../../supabase/migrations/20261204120000_transactional_profile_residence_rpc.sql', import.meta.url), 'utf8');
+const activationSql = readFileSync(new URL('../../supabase/migrations/20261204122000_enable_profile_residence_rpc.sql', import.meta.url), 'utf8');
 const profileRoute = readFileSync(new URL('../../app/api/profiles/me/route.ts', import.meta.url), 'utf8');
 const countryId = '10000000-0000-4000-8000-000000000001';
 const areaId = '20000000-0000-4000-8000-000000000001';
@@ -19,8 +20,18 @@ test('RPC has a narrow UUID signature, no client profile ID and SECURITY INVOKER
   assert.match(sql, /where p\.user_id = v_uid/i);
   assert.match(sql, /revoke all on function public\.update_my_profile_residence\(uuid, uuid\) from public/i);
   assert.match(sql, /revoke all on function public\.update_my_profile_residence\(uuid, uuid\) from anon/i);
-  assert.match(sql, /grant execute on function public\.update_my_profile_residence\(uuid, uuid\) to authenticated/i);
+  assert.match(sql, /revoke all on function public\.update_my_profile_residence\(uuid, uuid\) from authenticated/i);
+  assert.doesNotMatch(sql, /grant execute[\s\S]*to authenticated/i);
   assert.doesNotMatch(sql, /service[_ -]?role/i);
+});
+
+test('RPC activation is isolated in a grant-only migration', () => {
+  assert.match(activationSql, /^begin;/i);
+  assert.match(activationSql, /revoke all on function public\.update_my_profile_residence\(uuid, uuid\) from public/i);
+  assert.match(activationSql, /revoke all on function public\.update_my_profile_residence\(uuid, uuid\) from anon/i);
+  assert.match(activationSql, /grant execute on function public\.update_my_profile_residence\(uuid, uuid\) to authenticated/i);
+  assert.match(activationSql, /commit;\s*$/i);
+  assert.doesNotMatch(activationSql, /create(?:\s+or\s+replace)?\s+function|insert\s+into|update\s+public\.|delete\s+from|alter\s+table/i);
 });
 
 test('anonymous, missing, foreign and ineligible profiles are rejected before writes', () => {

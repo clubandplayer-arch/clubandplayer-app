@@ -228,6 +228,6 @@ comment on function public.update_my_profile_residence(uuid, uuid) is
 
 revoke all on function public.update_my_profile_residence(uuid, uuid) from public;
 revoke all on function public.update_my_profile_residence(uuid, uuid) from anon;
-grant execute on function public.update_my_profile_residence(uuid, uuid) to authenticated;
+revoke all on function public.update_my_profile_residence(uuid, uuid) from authenticated;
 
 commit;

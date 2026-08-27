@@ -52,7 +52,7 @@ La RPC restituisce un risultato ristretto canonical-first con profile ID owner, 
 - rifiuta Club, Institution e Fan;
 - usa `search_path = ''` e nomi schema qualificati;
 - è revocata a `PUBLIC` e `anon`;
-- concede `EXECUTE` soltanto ad `authenticated`;
+- la migration di installazione revoca `EXECUTE` a `PUBLIC`, `anon` e `authenticated`; la concessione ad `authenticated` è isolata nella migration di attivazione `20261204122000_enable_profile_residence_rpc.sql`;
 - non usa service role.
 
 Un admin non riceve una capacità cross-profile da questa RPC: non essendo necessaria per B4 Player/Staff, la superficie rimane owner-only e minima.

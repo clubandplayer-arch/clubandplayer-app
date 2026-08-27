@@ -4,7 +4,7 @@
 
 **STATIC PREFLIGHT: BLOCKED — BLOCCHI 1–3 VERIFICATI; BLOCCO 4 HA RILEVATO SIDE EFFECT TRIGGER; DEPLOYMENT NON AUTORIZZATO.**
 
-La migration `20261204120000_transactional_profile_residence_rpc.sql` ha superato revisione statica e runtime PostgreSQL locale già certificato. Non contiene `INSERT`, `UPDATE` o `DELETE` applicati al momento della migration: crea o sostituisce una funzione, ne imposta il commento e ne restringe/concede `EXECUTE`. Nessun profilo o `profile_preferences` viene modificato finché un utente autenticato non invoca esplicitamente la RPC dopo l’abilitazione server-side.
+La migration `20261204120000_transactional_profile_residence_rpc.sql` ha superato revisione statica e runtime PostgreSQL locale già certificato. Non contiene `INSERT`, `UPDATE` o `DELETE` applicati al momento della migration: crea o sostituisce una funzione, ne imposta il commento e revoca `EXECUTE` a tutti i ruoli Data API. La concessione è demandata alla migration separata `20261204122000_enable_profile_residence_rpc.sql`. Nessun profilo o `profile_preferences` viene modificato finché un utente autenticato non invoca esplicitamente la RPC dopo l’abilitazione server-side.
 
 Il Blocco 1 Production ha confermato tutte le tabelle e colonne richieste. Ha inoltre rilevato che `profiles.residence_region_id`, `residence_province_id` e `residence_municipality_id` sono `integer/int4`; la RPC è stata quindi corretta nel repository per accettare soltanto mapping nel range `1..2147483647`, evitando conversioni implicite da `bigint`. Il passaggio a Production resta condizionato ai successivi controlli read-only.
 
@@ -16,7 +16,7 @@ All’interno di una singola transazione la migration esegue esclusivamente:
 2. `comment on function ...`;
 3. `revoke ... from public`;
 4. `revoke ... from anon`;
-5. `grant execute ... to authenticated`.
+5. `revoke all ... from authenticated` (oltre a `PUBLIC` e `anon`).
 
 Non altera tabelle, constraint, policy, trigger o dati. Se una funzione con la stessa firma esistesse già, `create or replace` ne sostituirebbe il corpo: per questo l’assenza o la definizione della funzione preesistente è un gate obbligatorio.
 
@@ -33,7 +33,7 @@ Non altera tabelle, constraint, policy, trigger o dati. Se una funzione con la s
 - allowlist `profiles`: `region`, `province`, `city`, `residence_region_id`, `residence_province_id`, `residence_municipality_id`, `updated_at`;
 - allowlist `profile_preferences`: `residence_country_id`, `residence_geo_area_id`;
 - nessun accesso a interests, birth country, nationality o relocation;
-- privilegi `EXECUTE` revocati a `PUBLIC`/`anon` e concessi ad `authenticated` soltanto.
+- privilegi `EXECUTE` revocati a `PUBLIC`/`anon`/`authenticated` nella migration RPC; la migration di attivazione separata concede soltanto ad `authenticated`.
 
 Con `SECURITY INVOKER`, SELECT/UPDATE/INSERT dipendono dai grant e dalle policy RLS del chiamante. Le migration note definiscono owner policies su `profiles` e owner/admin policies su `profile_preferences`; cataloghi e mapping hanno SELECT per `authenticated`. La migration `20261113110000_data_api_explicit_grants.sql` concede i privilegi tabellari alle tabelle RLS note. Tutto deve essere riconfermato sul database reale prima del deployment.
 
@@ -346,3 +346,10 @@ La decisione approvata non autorizza guardie indiscriminate. La migration additi
 - modifiche normali a nome, completezza e location devono continuare rispettivamente a sincronizzare Auth, produrre una vera transizione/notifica e applicare coercion.
 
 Il runtime harness esteso è stato eseguito il 2026-08-26 su PostgreSQL 16.15 locale temporaneo: **B4_RPC_RUNTIME_PASS**. Ha applicato nell’ordine RPC, trigger guards, trigger Production pertinenti e test; ha verificato RPC, side effect, rollback e normali Profile Edit. Due lacune iniziali delle fixture (colonne interest ID e grant SELECT su provinces/municipalities) sono state corrette nel solo harness. Il database `b4_rpc_runtime` è stato eliminato dal trap e la verifica finale ha restituito zero database residui. Nessuna connessione remota è stata usata.
+
+
+## Separazione del grant RPC — checkpoint repository-only
+
+La migration di installazione `20261204120000_transactional_profile_residence_rpc.sql` crea la funzione ma revoca esplicitamente `EXECUTE` anche ad `authenticated`. Questo impedisce di aggirare i feature gate applicativi invocando direttamente la Data API dopo la sola installazione.
+
+La migration `20261204122000_enable_profile_residence_rpc.sql` contiene esclusivamente le ACL della funzione e concede `EXECUTE` ad `authenticated`. È un gate operativo distinto: non deve essere applicata finché UI, write gate e test Production dedicati non siano stati autorizzati. Il runtime locale verifica prima il rifiuto della RPC disabilitata, poi applica localmente l'attivazione e riesegue l'intera matrice funzionale. Nessuna migration o history Production è stata modificata da questa correzione repository-only. B4.4 resta **IN PROGRESS**.
