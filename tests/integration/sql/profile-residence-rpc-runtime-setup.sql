@@ -122,7 +122,11 @@ insert into public.legacy_geo_area_mappings(source_system,source_entity_type,leg
 
 insert into auth.users(id,raw_user_meta_data,updated_at) values
  ('40000000-0000-0000-0000-000000000001','{"full_name":"Mario Rossi"}','2026-01-01'),
- ('40000000-0000-0000-0000-000000000002','{"full_name":"Anna Verdi"}','2026-01-01');
+ ('40000000-0000-0000-0000-000000000002','{"full_name":"Anna Verdi"}','2026-01-01'),
+ ('40000000-0000-0000-0000-000000000003','{}','2026-01-01'),
+ ('40000000-0000-0000-0000-000000000004','{}','2026-01-01'),
+ ('40000000-0000-0000-0000-000000000005','{}','2026-01-01'),
+ ('40000000-0000-0000-0000-000000000006','{"full_name":"Non Canary"}','2026-01-01');
 insert into public.provinces values (10,1);
 insert into public.municipalities values (100,10,1);
 
@@ -131,6 +135,7 @@ insert into public.profiles(id,user_id,account_type,role,full_name,display_name,
  ('30000000-0000-0000-0000-000000000002','40000000-0000-0000-0000-000000000002','staff','Coach','Anna Verdi','Anna Verdi',1985,'IT','Calcio',1,10,100,'IT','Italian','ES','Madrid'),
  ('30000000-0000-0000-0000-000000000003','40000000-0000-0000-0000-000000000003','club','Club','Test Club','Test Club',null,'IT','Calcio',null,null,null,'IT','Italian','IT','Lazio'),
  ('30000000-0000-0000-0000-000000000004','40000000-0000-0000-0000-000000000004','fan','Fan','Test Fan','Test Fan',null,'IT',null,null,null,null,'IT','Italian','IT','Lazio'),
- ('30000000-0000-0000-0000-000000000005','40000000-0000-0000-0000-000000000005','institution','Institution','Test Institution','Test Institution',null,'IT',null,null,null,null,'IT','Italian','IT','Lazio');
+ ('30000000-0000-0000-0000-000000000005','40000000-0000-0000-0000-000000000005','institution','Institution','Test Institution','Test Institution',null,'IT',null,null,null,null,'IT','Italian','IT','Lazio'),
+ ('30000000-0000-0000-0000-000000000006','40000000-0000-0000-0000-000000000006','athlete','Player','Non Canary','Non Canary',1990,'IT','Calcio',1,10,100,'IT','Italian','FR','Paris');
 insert into public.profile_country_interests values ('30000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000002');
 insert into public.profile_geo_area_interests values ('30000000-0000-0000-0000-000000000001','20000000-0000-0000-0000-000000000011');

@@ -125,3 +125,8 @@ B4 resta **IN PROGRESS**. Il runtime PostgreSQL locale mirato è passato; il pro
 ## Runtime validation gate del 2026-08-25
 
 **LOCAL POSTGRESQL RUNTIME: PASSED; ISOLATED SUPABASE CERTIFICATION: BLOCKED.** Il gate e i risultati sono registrati in `docs/european-expansion/phase-3c-b4-transactional-rpc-runtime-validation-gate.md`. La migration resta non applicata a Preview, Staging e Production; B4.4 non può iniziare sulla base del solo banco prova locale mirato.
+
+
+## Database canary gate
+
+Prima della migration di attivazione, `20261204121500_profile_residence_database_canary.sql` aggiunge un controllo fail-closed basato su `auth.uid()`. La tabella di membership è vuota, RLS-protected e non modificabile dai ruoli Data API; il controllo dentro la RPC impedisce di aggirare l'allowlist applicativa con una chiamata Supabase diretta. Gli UUID reali non sono hardcoded e l'installazione del gate non concede `EXECUTE`.

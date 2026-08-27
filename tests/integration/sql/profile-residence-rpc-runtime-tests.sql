@@ -6,6 +6,33 @@ where n.nspname='public' and p.proname='update_my_profile_residence';
 select test.assert(has_function_privilege('authenticated','public.update_my_profile_residence(uuid,uuid)','EXECUTE'),'authenticated execute grant');
 select test.assert(not has_function_privilege('anon','public.update_my_profile_residence(uuid,uuid)','EXECUTE'),'anon execute revoked');
 select test.assert(not has_function_privilege('public','public.update_my_profile_residence(uuid,uuid)','EXECUTE'),'PUBLIC execute revoked');
+select test.assert((select relrowsecurity from pg_class where oid='public.profile_residence_write_canary_users'::regclass),'canary RLS enabled');
+select test.assert(has_table_privilege('authenticated','public.profile_residence_write_canary_users','SELECT'),'authenticated can check own membership');
+select test.assert(
+  not has_table_privilege('authenticated','public.profile_residence_write_canary_users','INSERT')
+  and not has_table_privilege('authenticated','public.profile_residence_write_canary_users','UPDATE')
+  and not has_table_privilege('authenticated','public.profile_residence_write_canary_users','DELETE'),
+  'authenticated cannot manage canary membership'
+);
+
+-- Authenticated users can observe only their own canary membership through RLS.
+set role authenticated;
+select set_config('request.jwt.claim.sub','40000000-0000-0000-0000-000000000001',false);
+select test.assert((select count(*)=1 from public.profile_residence_write_canary_users),'canary user sees only own membership');
+reset role;
+
+-- A valid athlete outside the database allowlist is denied before all writes.
+set role authenticated;
+select set_config('request.jwt.claim.sub','40000000-0000-0000-0000-000000000006',false);
+do $$ begin
+ perform public.update_my_profile_residence(null,null);
+ raise exception 'expected database canary denial';
+exception when insufficient_privilege then
+ if sqlerrm not like '%not enabled for authenticated user%' then raise; end if;
+end $$;
+reset role;
+select test.assert((select not exists(select 1 from public.profile_preferences where profile_id='30000000-0000-0000-0000-000000000006')),'non-canary denial performs no preference write');
+select test.assert((select region is null and province is null and city is null from public.profiles where id='30000000-0000-0000-0000-000000000006'),'non-canary denial performs no profile write');
 
 -- Anonymous denied.
 set role anon;

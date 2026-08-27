@@ -357,3 +357,12 @@ La migration `20261204122000_enable_profile_residence_rpc.sql` contiene esclusiv
 ## Canary server-side repository-only
 
 Il PATCH richiede ora tre condizioni cumulative: kill switch globale attivo, `user.id` presente nella variabile server-only `CANONICAL_PROFILE_RESIDENCE_WRITE_USER_IDS` e ruolo profilo `athlete`/`staff`. L'allowlist accetta soltanto UUID validi, non è esposta al client e fallisce chiusa quando assente o malformata. Anche il campo GET `writable` combina kill switch e allowlist. Nessun UUID Production è hardcoded nel repository; la configurazione dei due account dedicati resta un passo operativo separato. La migration di attivazione, i feature gate e le scritture Production non sono stati eseguiti da questa modifica.
+
+
+## Canary database-level repository-only
+
+La migration `20261204121500_profile_residence_database_canary.sql`, ordinata prima dell'attivazione `20261204122000`, crea una tabella di membership vuota per default, abilita RLS e concede ad `authenticated` soltanto `SELECT`. La policy rende visibile esclusivamente la riga con `user_id = auth.uid()`; `INSERT`, `UPDATE` e `DELETE` restano revocati. La RPC `SECURITY INVOKER` viene sostituita senza alterarne la firma e verifica la membership immediatamente dopo l'autenticazione, prima di leggere il profilo o scrivere dati.
+
+Nessun UUID Production è incluso nella migration. Le membership sintetiche esistono soltanto nel runtime harness locale; il popolamento Production richiede un blocco operativo separato e autorizzato. La migration revoca nuovamente `EXECUTE` a `PUBLIC`, `anon` e `authenticated`, quindi non abilita la RPC. Nessuna migration è stata applicata e nessun feature gate è stato modificato da questo passaggio repository-only. B4.4 resta **IN PROGRESS**.
+
+Il rollback dedicato repository-only è `supabase/rollbacks/20261204121500_profile_residence_database_canary.sql`: revoca per prima cosa ogni `EXECUTE`, quindi elimina RPC e tabella canary. Non ripristina deliberatamente una RPC priva del controllo database, evitando un rollback che riapra l'accesso. Non modifica profili o preferenze e richiede comunque autorizzazione separata prima dell'uso.
