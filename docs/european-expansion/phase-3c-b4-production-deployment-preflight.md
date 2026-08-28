@@ -321,7 +321,7 @@ Solo account dedicati non reali, dopo autorizzazione:
 
 ## Checkpoint
 
-B4.4 resta **IN PROGRESS** e B4 resta **NOT COMPLETED**. Il ticket Supabase non è più un blocker operativo, ma la certificazione Production, l’applicazione migration e i test mutativi richiedono approvazioni distinte. B5 non è iniziata. Nessuna query remota, migration o write è stata eseguita in questo preflight.
+B4.4 resta **IN PROGRESS** e B4 resta **NOT COMPLETED**. Il percorso Production manuale successivamente autorizzato ha installato e verificato RPC, trigger guards e canary database mantenendo `EXECUTE` revocato; il test transazionale dedicato Player/Staff ha restituito `POST_ROLLBACK_PASS` e ha ripristinato le ACL negate. Il checkpoint Vercel fail-closed del 2026-08-28 è descritto in fondo al documento. Attivazione canary applicativa e read-after-write reale richiedono approvazioni distinte. B5 non è iniziata.
 
 ## Trigger-aware correction repository audit
 
@@ -370,3 +370,19 @@ Il rollback dedicato repository-only è `supabase/rollbacks/20261204121500_profi
 ## Vercel environment preflight guard
 
 `docs/env.sample` e `scripts/check-vercel-env.mjs` includono ora i tre valori B4.4. Durante questo checkpoint il checker accetta esclusivamente UI e write gate esplicitamente disabilitati e una allowlist composta da esattamente due UUID validi e distinti; non stampa i valori. Configurazioni mancanti, gate attivi, UUID malformati o duplicati producono exit code non-zero. Questa è una guardia temporanea di pre-attivazione e dovrà essere modificata con una decisione esplicita prima del rollout.
+
+## Checkpoint operativo verificato — 2026-08-28
+
+Il percorso controllato successivo al preflight statico ha prodotto questi risultati:
+
+- funzioni trigger-aware e relativi trigger Production: verifica `PASS`;
+- RPC `public.update_my_profile_residence(uuid,uuid)`: presente, `SECURITY INVOKER`, `EXECUTE` negato a `PUBLIC`, `anon` e `authenticated`;
+- tabella `profile_residence_write_canary_users`: presente, RLS attiva, policy SELECT-own valida e nessun permesso mutativo per `authenticated`;
+- membership canary: esattamente due account dedicati qualificati, senza UUID hardcoded nel repository;
+- test Production transazionale Player/Italia e Staff/Francia: `POST_ROLLBACK_PASS`, profili ripristinati e ACL negate dopo il rollback;
+- commit B4.4 `4825ede71a0cfe49ff84c1aecc85ae12f299ad23`: push fast-forward sul branch `codex/completa-fase-3b-e2-per-spagna`;
+- Vercel Preview del commit: deployment completato con stato `success`;
+- variabili Vercel Preview e Production: UI `false`, write `false`, allowlist server-only Secret con due UUID;
+- redeploy manuale, merge, promozione e deployment Production: non eseguiti.
+
+Questa evidenza chiude il preflight fail-closed, non l'attivazione B4.4. La RPC resta non invocabile dagli utenti autenticati e i gate applicativi restano spenti. Prima di qualsiasi grant, attivazione UI/write o read-after-write applicativo è necessaria una nuova autorizzazione esplicita.
