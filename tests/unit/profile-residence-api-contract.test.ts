@@ -52,9 +52,11 @@ test('owner-only GET/PATCH contract has a pre-query write kill switch and eligib
   assert.doesNotMatch(route, /profile_id|profileId/);
 });
 
-test('ProfileEditForm integrates canonical selector only for Player/Staff and sends no legacy residence payload', () => {
-  assert.match(form, /canonicalResidenceUiEnabled && !isOrganization && !isFan/);
+test('ProfileEditForm shows the canonical selector only to writable Player/Staff canaries and sends no legacy residence payload', () => {
+  assert.match(form, /canonicalResidenceUiEnabled && residenceWritable && !isOrganization && !isFan/);
   assert.match(form, /<CanonicalGeographySelector/);
+  assert.doesNotMatch(form, /disabled=\{!residenceWritable\}/);
+  assert.doesNotMatch(form, /Modifica disabilitata fino alla certificazione Supabase/);
   assert.match(form, /body: JSON\.stringify\(\{ geography: \{ residenceCountryId, residenceGeoAreaId \} \}\)/);
   assert.doesNotMatch(form, /useState\('IT'\)/);
   assert.doesNotMatch(form, /interestCountry \|\| 'IT'/);

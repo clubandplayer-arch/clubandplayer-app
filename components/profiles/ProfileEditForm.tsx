@@ -1294,7 +1294,7 @@ export default function ProfileEditForm() {
           )}
         </section>
 
-        {canonicalResidenceUiEnabled && !isOrganization && !isFan && (
+        {canonicalResidenceUiEnabled && residenceWritable && !isOrganization && !isFan && (
           <section className="rounded-2xl border border-sky-200 bg-sky-50/40 p-4 md:p-5">
             <h2 className="text-lg font-semibold text-slate-950">Residenza canonica</h2>
             <p className="mb-4 mt-1 text-sm text-slate-600">
@@ -1305,7 +1305,6 @@ export default function ProfileEditForm() {
               geoAreaId={residenceGeoAreaId}
               onCountryChange={(value) => { setResidenceCountryId(value); setResidenceDirty(true); }}
               onGeoAreaChange={(value) => { setResidenceGeoAreaId(value); setResidenceDirty(true); }}
-              disabled={!residenceWritable}
               labels={{
                 country: 'Paese di residenza',
                 area: 'Area di residenza',
@@ -1313,11 +1312,6 @@ export default function ProfileEditForm() {
                 selectArea: 'Seleziona un’area',
               }}
             />
-            {!residenceWritable && (
-              <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900" role="status">
-                Modifica disabilitata fino alla certificazione Supabase B4.3.
-              </p>
-            )}
           </section>
         )}
 
