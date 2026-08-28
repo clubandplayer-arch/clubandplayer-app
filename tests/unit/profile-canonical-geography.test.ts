@@ -50,12 +50,21 @@ test('canonical residence wins and includes canonical ancestors', () => {
   assert.equal(resolved.legacyText.city, 'Legacy city');
 });
 
-test('Italy fallback selects the most specific legacy mapping without using birth country', () => {
-  const legacyWithUnrelatedBirth = { interestRegionId: 1, interestProvinceId: 2, interestMunicipalityId: 3, country: 'Italia', birthCountry: 'FR' };
+test('Italy fallback selects the most specific explicit legacy residence mapping without using interests or birth country', () => {
+  const legacyWithUnrelatedBirth = { residenceRegionId: 1, residenceProvinceId: 2, residenceMunicipalityId: 3, interestMunicipalityId: 99, country: 'Italia', birthCountry: 'FR' };
   const province = { ...area, id: 'province', areaType: 'PROVINCE', level: 2 };
   const resolved = resolveProfileResidenceGeography(snapshot({ legacy: legacyWithUnrelatedBirth, italyLegacyMappings: [{ entityType: 'region', legacyId: '1', area: { ...area, id: 'region', areaType: 'REGION', level: 1 }, ancestors: [] }, { entityType: 'municipality', legacyId: '3', area, ancestors: [province] }] }));
   assert.equal(resolved.source, 'italy_legacy_mapping'); assert.equal(resolved.areaId, area.id); assert.equal(resolved.countryIso2, 'IT'); assert.deepEqual(resolved.ancestors, [province]);
   assert.doesNotMatch(readFileSync(new URL('../../lib/geo/profileGeography.ts', import.meta.url), 'utf8'), /birth_country|birthCountry/);
+});
+
+test('interest geography never becomes an Italy residence fallback', () => {
+  const resolved = resolveProfileResidenceGeography(snapshot({
+    legacy: { country: 'IT', interestMunicipalityId: 3, interestCity: 'Roma' },
+    italyLegacyMappings: [{ entityType: 'municipality', legacyId: '3', area, ancestors: [] }],
+  }));
+  assert.equal(resolved.source, 'legacy_text');
+  assert.equal(resolved.areaId, null);
 });
 
 test('unknown legacy residence and interest text is preserved verbatim', () => {
