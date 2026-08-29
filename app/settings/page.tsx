@@ -349,7 +349,7 @@ export default function SettingsPage() {
             </div>
           </section>
 
-          <GeographicInterestsForm />
+          {(accountType === 'athlete' || accountType === 'staff') ? <GeographicInterestsForm /> : null}
 
           <section style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 16 }}>
             <h2 style={{ marginTop: 0 }}>{t('settings.notifications')}</h2>

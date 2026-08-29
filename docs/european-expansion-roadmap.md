@@ -17,7 +17,7 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | Mobile international parity | **NOT STARTED** |
 | FASE 3C-B | **NOT COMPLETED — B1–B6 completate; B7 non iniziata** |
 
-**FASE 3C-B6 è COMPLETATA repository-only.** Il boundary API owner-only e la UI web `/settings` gestiscono country interests, geo-area interests e relocation con operazioni singole e cataloghi supported/active. Residence personale, sede pubblica organization-specific e interessi restano distinti. È richiesta verifica manuale non-Production prima di B7; B7 e mobile international parity non sono iniziate.
+**FASE 3C-B6 è COMPLETATA repository-only.** Il boundary API owner-only e la UI web `/settings` gestiscono country interests, geo-area interests e relocation esclusivamente per Player/Athlete e Staff. Club, Institution e Fan non vedono la UI e ricevono `403` dall'API: le organizzazioni restano legate alla propria sede pubblica separata. È richiesta verifica manuale non-Production prima di B7; B7 e mobile international parity non sono iniziate.
 
 ## Roadmap maintenance rules
 
@@ -289,7 +289,7 @@ B4.3 ha creato nel repository la migration additiva `20261204120000_transactiona
 
 #### 3C-B6 — Geographic interests
 
-**Stato: COMPLETATA — repository-only, verifica manuale non-Production richiesta.** `GET/PATCH /api/profile-geography/interests` e la UI `/settings` integrano `profile_country_interests`, `profile_geo_area_interests` e `open_to_relocation` tramite un boundary owner-only. Ogni PATCH contiene una sola operazione e valida country/area supported e active; nessuna write tocca residence, legacy `interest_*` o sede pubblica. Deliverable: `docs/european-expansion/phase-3c-b6-geographic-interests.md`.
+**Stato: COMPLETATA — repository-only, verifica manuale non-Production richiesta.** `GET/PATCH /api/profile-geography/interests` e la UI `/settings` integrano `profile_country_interests`, `profile_geo_area_interests` e `open_to_relocation` esclusivamente per Player/Athlete e Staff. Club, Institution e Fan sono esclusi sia dalla UI sia dal boundary server (`403`); nessuna write tocca residence, legacy `interest_*` o sede pubblica. Deliverable: `docs/european-expansion/phase-3c-b6-geographic-interests.md`.
 
 #### 3C-B7 — Compatibility and regression
 

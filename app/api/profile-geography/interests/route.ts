@@ -6,17 +6,22 @@ export const runtime = 'nodejs';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-async function ownProfileId(supabase: any, userId: string) {
-  const result = await supabase.from('profiles').select('id').eq('user_id', userId).maybeSingle();
+const ELIGIBLE_ACCOUNT_TYPES = new Set(['athlete', 'staff']);
+
+async function ownEligibleProfileId(supabase: any, userId: string) {
+  const result = await supabase.from('profiles').select('id,account_type').eq('user_id', userId).maybeSingle();
   if (result.error) throw result.error;
-  return (result.data as { id?: string } | null)?.id ?? null;
+  const profile = result.data as { id?: string; account_type?: string | null } | null;
+  if (!profile?.id) return { profileId: null, eligible: false };
+  return { profileId: profile.id, eligible: ELIGIBLE_ACCOUNT_TYPES.has(profile.account_type ?? '') };
 }
 
 export const GET = withAuth(async (req: NextRequest, { supabase, user }) => {
   try {
     await rateLimit(req, { key: `profile-geography:INTERESTS:GET:${user.id}`, limit: 60, window: '1m' } as any);
-    const profileId = await ownProfileId(supabase, user.id);
+    const { profileId, eligible } = await ownEligibleProfileId(supabase, user.id);
     if (!profileId) return jsonError('Profile not found', 404);
+    if (!eligible) return jsonError('Geographic interests are available only to Player and Staff profiles', 403);
 
     const [preferences, countries, areas] = await Promise.all([
       supabase.from('profile_preferences').select('open_to_relocation').eq('profile_id', profileId).maybeSingle(),
@@ -44,8 +49,9 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
     const operations = ['openToRelocation', 'countryInterest', 'geoAreaInterest'].filter((key) => key in body);
     if (operations.length !== 1 || Object.keys(body).length !== 1) return jsonError('Exactly one interest operation is required', 400);
 
-    const profileId = await ownProfileId(supabase, user.id);
+    const { profileId, eligible } = await ownEligibleProfileId(supabase, user.id);
     if (!profileId) return jsonError('Profile not found', 404);
+    if (!eligible) return jsonError('Geographic interests are available only to Player and Staff profiles', 403);
 
     if ('openToRelocation' in body) {
       if (typeof body.openToRelocation !== 'boolean') return jsonError('openToRelocation must be boolean', 400);

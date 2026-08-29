@@ -7,7 +7,7 @@ const form = readFileSync('components/profiles/GeographicInterestsForm.tsx', 'ut
 const settings = readFileSync('app/settings/page.tsx', 'utf8');
 
 test('geography interests endpoint is owner-scoped and reads all three B6 concepts separately', () => {
-  assert.match(source, /\.eq\(['"]user_id['"], userId\)\.maybeSingle\(\)/);
+  assert.match(source, /\.select\(['"]id,account_type['"]\)\.eq\(['"]user_id['"], userId\)\.maybeSingle\(\)/);
   assert.match(source, /profile_country_interests/);
   assert.match(source, /profile_geo_area_interests/);
   assert.match(source, /open_to_relocation/);
@@ -31,12 +31,19 @@ test('B6 writes never mutate residence, legacy interests, or organization locati
 });
 
 test('settings integrates the canonical B6 UI through the narrow endpoint', () => {
-  assert.match(settings, /<GeographicInterestsForm \/>/);
+  assert.match(settings, /accountType === ['"]athlete['"] \|\| accountType === ['"]staff['"]\) \? <GeographicInterestsForm \/> : null/);
   assert.match(form, /CanonicalGeographySelector/);
   assert.match(form, /fetch\(['"]\/api\/profile-geography\/interests['"]/);
   assert.match(form, /countryInterest: \{ countryId, selected: true \}/);
   assert.match(form, /geoAreaInterest: \{ geoAreaId, selected: true \}/);
   assert.match(form, /openToRelocation: event\.target\.checked/);
+});
+
+test('Club, Institution and Fan cannot read or write personal mobility interests', () => {
+  assert.match(source, /ELIGIBLE_ACCOUNT_TYPES = new Set\(\[['"]athlete['"], ['"]staff['"]\]\)/);
+  assert.match(source, /if \(!eligible\) return jsonError\(['"]Geographic interests are available only to Player and Staff profiles['"], 403\)/);
+  assert.doesNotMatch(settings, /accountType === ['"]club['"].*<GeographicInterestsForm/);
+  assert.doesNotMatch(settings, /accountType === ['"]institution['"].*<GeographicInterestsForm/);
 });
 
 test('B6 UI copy keeps interests, relocation, residence and public headquarters distinct', () => {
