@@ -321,7 +321,7 @@ Solo account dedicati non reali, dopo autorizzazione:
 
 ## Checkpoint
 
-B4.4 è **COMPLETATA** con canary applicativo, read-after-write, cleanup e ripristino fail-closed; B4 resta **IN PROGRESS** in attesa del checkpoint repository-only di revisione/chiusura. Il percorso Production manuale successivamente autorizzato ha installato e verificato RPC, trigger guards e canary database mantenendo `EXECUTE` revocato; il test transazionale dedicato Player/Staff ha restituito `POST_ROLLBACK_PASS` e ha ripristinato le ACL negate. Il checkpoint Vercel fail-closed del 2026-08-28 è descritto in fondo al documento. Le approvazioni distinte per canary applicativo e read-after-write sono state successivamente concesse ed eseguite con esito PASS come registrato nel checkpoint finale. B5 non è iniziata.
+B4.4 e la FASE 3C-B4 sono **COMPLETATE** con canary applicativo, read-after-write, cleanup, ripristino fail-closed e closure review repository-only. Il percorso Production manuale successivamente autorizzato ha installato e verificato RPC, trigger guards e canary database mantenendo `EXECUTE` revocato; il test transazionale dedicato Player/Staff ha restituito `POST_ROLLBACK_PASS` e ha ripristinato le ACL negate. Il checkpoint Vercel fail-closed del 2026-08-28 è descritto in fondo al documento. Le approvazioni distinte per canary applicativo e read-after-write sono state concesse ed eseguite con esito PASS come registrato nel checkpoint finale. B5 non è iniziata.
 
 ## Trigger-aware correction repository audit
 
@@ -352,7 +352,7 @@ Il runtime harness esteso è stato eseguito il 2026-08-26 su PostgreSQL 16.15 lo
 
 La migration di installazione `20261204120000_transactional_profile_residence_rpc.sql` crea la funzione ma revoca esplicitamente `EXECUTE` anche ad `authenticated`. Questo impedisce di aggirare i feature gate applicativi invocando direttamente la Data API dopo la sola installazione.
 
-La migration `20261204122000_enable_profile_residence_rpc.sql` contiene esclusivamente le ACL della funzione e concede `EXECUTE` ad `authenticated`. È un gate operativo distinto: non deve essere applicata finché UI, write gate e test Production dedicati non siano stati autorizzati. Il runtime locale verifica prima il rifiuto della RPC disabilitata, poi applica localmente l'attivazione e riesegue l'intera matrice funzionale. Nessuna migration o history Production è stata modificata da questa correzione repository-only. B4.4 resta **IN PROGRESS**.
+La migration `20261204122000_enable_profile_residence_rpc.sql` contiene esclusivamente le ACL della funzione e concede `EXECUTE` ad `authenticated`. È un gate operativo distinto: non deve essere applicata finché UI, write gate e test Production dedicati non siano stati autorizzati. Il runtime locale verifica prima il rifiuto della RPC disabilitata, poi applica localmente l'attivazione e riesegue l'intera matrice funzionale. Nessuna migration o history Production è stata modificata da questa correzione repository-only. **In questo checkpoint storico** B4.4 restava `IN PROGRESS`; il canary successivo è documentato nel checkpoint finale.
 
 ## Canary server-side repository-only
 
@@ -363,7 +363,7 @@ Il PATCH richiede ora tre condizioni cumulative: kill switch globale attivo, `us
 
 La migration `20261204121500_profile_residence_database_canary.sql`, ordinata prima dell'attivazione `20261204122000`, crea una tabella di membership vuota per default, abilita RLS e concede ad `authenticated` soltanto `SELECT`. La policy rende visibile esclusivamente la riga con `user_id = auth.uid()`; `INSERT`, `UPDATE` e `DELETE` restano revocati. La RPC `SECURITY INVOKER` viene sostituita senza alterarne la firma e verifica la membership immediatamente dopo l'autenticazione, prima di leggere il profilo o scrivere dati.
 
-Nessun UUID Production è incluso nella migration. Le membership sintetiche esistono soltanto nel runtime harness locale; il popolamento Production richiede un blocco operativo separato e autorizzato. La migration revoca nuovamente `EXECUTE` a `PUBLIC`, `anon` e `authenticated`, quindi non abilita la RPC. Nessuna migration è stata applicata e nessun feature gate è stato modificato da questo passaggio repository-only. B4.4 resta **IN PROGRESS**.
+Nessun UUID Production è incluso nella migration. Le membership sintetiche esistono soltanto nel runtime harness locale; il popolamento Production richiede un blocco operativo separato e autorizzato. La migration revoca nuovamente `EXECUTE` a `PUBLIC`, `anon` e `authenticated`, quindi non abilita la RPC. Nessuna migration è stata applicata e nessun feature gate è stato modificato da questo passaggio repository-only. **In questo checkpoint storico** B4.4 restava `IN PROGRESS`; popolamento canary, test e cleanup successivi sono documentati nel checkpoint finale.
 
 Il rollback dedicato repository-only è `supabase/rollbacks/20261204121500_profile_residence_database_canary.sql`: revoca per prima cosa ogni `EXECUTE`, quindi elimina RPC e tabella canary. Non ripristina deliberatamente una RPC priva del controllo database, evitando un rollback che riapra l'accesso. Non modifica profili o preferenze e richiede comunque autorizzazione separata prima dell'uso.
 
@@ -404,3 +404,19 @@ Il canary applicativo B4.4 autorizzato si è concluso con **PASS** e ritorno all
 - verifica post-cleanup: Player `preferences_count=1`, Staff `preferences_count=0`, profili attivi, due membership database canary invariate e `authenticated_execute=false`.
 
 B4.4 è quindi **COMPLETATA**. RPC, gate e UI restano fail-closed; questo esito non autorizza rollout generale, merge, Production deployment o avvio comportamentale B5. Il passo repository-only successivo è la revisione di chiusura complessiva B4; solo dopo potrà essere proposto il preflight/audit B5.
+
+## Closure review B4 — 2026-08-29
+
+**Esito: PASS — FASE 3C-B4 COMPLETATA.** La revisione finale ha confrontato gli acceptance criteria del preflight con codice, test automatici, runtime PostgreSQL, verifiche Production autorizzate e canary applicativo. Risultano verificati:
+
+- scope limitato a Player/Athlete e Staff, con Club, Institution e Fan invariati;
+- contratti `absent`, reset, country-only e full, senza default implicito a Italia;
+- validazione canonical country/area e gerarchie a profondità variabile;
+- dual-write atomico, mapping Italia 1:1 e proiezione testuale estera;
+- test automatici per IT, FR, ES, CH con e senza District, SI e PL;
+- owner/RLS/privacy, rollback e assenza di modifiche a interests, birth country, nationality e relocation;
+- test applicativo reale Player Italia e Staff Francia con read-after-write canonical-first;
+- cleanup dei soli dati canary e ripristino dei baseline;
+- `EXECUTE` revocato, gate Preview/Production `false` e selector nuovamente non esposto.
+
+Non restano blocker critici per B4. La database allowlist resta una barriera fail-closed e non autorizza alcun rollout generale. La FASE 3C-B complessiva resta non completata: B5–B7 sono ancora `NOT STARTED`. Il prossimo passo ammesso è il preflight/audit read-only B5; Signup/onboarding non sono stati modificati da questa closure review.
