@@ -8,16 +8,16 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **COMPLETATA — FASE 3C-B4 — Profile Edit dual-write** |
-| Current active phase | **NESSUNA — FASE 3C-B5 NON INIZIATA** |
-| Next safe action | **FASE 3C-B5 — Signup / onboarding — preflight/audit read-only prima di qualsiasi modifica comportamentale** |
+| Last completed subphase | **COMPLETATA — FASE 3C-B5 — Signup / onboarding** |
+| Current active phase | **NESSUNA — FASE 3C-B5 COMPLETATA** |
+| Next safe action | **FASE 3C-B6 — non avviata; richiede autorizzazione separata** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
 | Mobile international parity | **NOT STARTED** |
-| FASE 3C-B | **NOT COMPLETED — B1–B4 completate; B5–B7 non iniziate** |
+| FASE 3C-B | **NOT COMPLETED — B1–B5 completate; B6–B7 non iniziate** |
 
-**FASE 3C-B4 è l'ultima sottofase completata; FASE 3C-B5 non è iniziata.** La revisione conclusiva B4 ha verificato contratti, test automatici, runtime PostgreSQL 16, installazione fail-closed, selector Player/Staff, write atomico, read-after-write reale, compatibilità legacy Italia, proiezione estera, cleanup e ripristino dei gate. Il Preview Branch `b4-rpc-validation` resta un blocco storico, non operativo. I gate Vercel Preview/Production sono `false`; RPC `EXECUTE`, UI e write applicativi sono disabilitati e la allowlist resta limitata ai due account dedicati. Il backfill automatico della residence resta escluso perché i campi legacy `interest_*` non costituiscono evidenza sufficiente della residenza effettiva dell'utente. La FASE 3C-B complessiva non è completata, B5–B7 non sono iniziate e la mobile international parity resta non iniziata.
+**FASE 3C-B5 è l'ultima sottofase completata.** Signup non raccoglie geografia, il role chooser salva soltanto `account_type`, `/onboarding` non è diventato un wizard e il bootstrap non introduce più il default implicito `interest_country = 'IT'`. Residence personale opzionale, sede pubblica organization-specific e interessi restano distinti. I gate residence e la RPC restano fail-closed; B6–B7 e la mobile international parity non sono iniziate.
 
 ## Roadmap maintenance rules
 
@@ -285,7 +285,7 @@ B4.3 ha creato nel repository la migration additiva `20261204120000_transactiona
 
 #### 3C-B5 — Signup / onboarding
 
-**Stato: NOT STARTED.** Solo dopo la validazione di Profile Edit, integrare selezione Paese/residence canonica nei nuovi account, garantendo compatibilità per Club, Player/Athlete, Staff, Fan e Institution.
+**Stato: COMPLETATA — repository-only.** Signup non raccoglie o scrive geografia. Il role chooser usa una write ristretta al solo `account_type`; `/onboarding` resta un redirect/placeholder e non diventa un nuovo wizard. Player/Athlete, Staff e Fan mantengono residence personale canonica opzionale nei flussi profilo dedicati; Club e Institution mantengono una sede pubblica separata senza scritture in `profile_preferences.residence_*`. Rimosso dal bootstrap il default implicito `interest_country = 'IT'` senza reinterpretarlo come residence. Interessi, residence e sede pubblica restano distinti. Deliverable: `docs/european-expansion/phase-3c-b5-signup-onboarding.md`.
 
 #### 3C-B6 — Geographic interests
 
@@ -706,14 +706,14 @@ Alla data di creazione iniziale della roadmap:
 
 | Voce | Stato |
 | --- | --- |
-| Last completed subphase | **FASE 3C-B4 — Profile Edit dual-write — COMPLETATA** |
-| Current active phase | **NESSUNA — FASE 3C-B5 NON INIZIATA** |
-| Next safe action | **FASE 3C-B5 — Signup / onboarding — preflight/audit read-only** |
+| Last completed subphase | **FASE 3C-B5 — Signup / onboarding — COMPLETATA** |
+| Current active phase | **NESSUNA — FASE 3C-B5 COMPLETATA** |
+| Next safe action | **FASE 3C-B6 — non avviata; richiede autorizzazione separata** |
 | B4.3 local runtime harness | **PASSED — PostgreSQL 16, fixture sintetiche, nessuna connessione remota** |
 | B4.3 Supabase certification | **BLOCKED — PREVIEW BRANCH UNHEALTHY / MIGRATIONS FAILED / SUPPORT PENDING** |
 | B4.4 | **COMPLETATA — CANARY APPLICATIVO PLAYER IT / STAFF FR, READ-AFTER-WRITE, CLEANUP E RIPRISTINO FAIL-CLOSED PASS** |
-| FASE 3C-B | **NOT COMPLETED — B1–B4 completate; B5–B7 non iniziate** |
+| FASE 3C-B | **NOT COMPLETED — B1–B5 completate; B6–B7 non iniziate** |
 | Automatic residence backfill | **DELIBERATELY EXCLUDED** |
 | Mobile international parity | **NOT STARTED** |
 
-B4 è chiusa con read-after-write reale, cleanup, ripristino fail-closed e closure review PASS. Non riabilitare grant o gate. Il prossimo passo sicuro è il solo preflight/audit read-only B5; nessuna modifica comportamentale Signup/onboarding è ancora iniziata.
+B5 è chiusa repository-only: Signup non raccoglie geografia, il role chooser scrive soltanto `account_type`, `/onboarding` non è diventato un wizard e il default bootstrap `interest_country = 'IT'` è stato rimosso senza trasformarlo in residence. Non riabilitare grant o gate. B6 non è avviata e richiede autorizzazione separata.
