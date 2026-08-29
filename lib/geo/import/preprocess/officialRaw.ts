@@ -90,10 +90,17 @@ export function preprocessFrance(root: string): OfficialRawResult {
   return { country: 'FR', provider: 'fr_insee_cog', codeAuthority: 'FR_INSEE_COG', datasetVersion: 'COG-2026', datasetPublishedAt: '2026-02-24', sourceUrlIdentifier: 'INSEE-COG-2026-local-release', inspected: { files, headers: Object.fromEntries(files.map((file, index) => [file, [regions, departments, communes][index][0]])) }, records, expected: { REGION: { min: 18, max: 18 }, DEPARTMENT: { min: 101, max: 101 }, COMMUNE: { min: 34875, max: 34875 } }, blockers: [], licenseStatus: 'CONFIRM_REQUIRED' };
 }
 
-export function preprocessSpain(file: string): OfficialRawResult {
-  const sheet = readFirstXlsxSheet(file); const headers = sheet.rows[1];
-  const records = objects(sheet.rows, 1).map((row) => ({ countryIso2: 'ES', areaType: 'MUNICIPALITY', officialCode: `${row.CPRO}${row.CMUN}`, officialName: row.NOMBRE, parentAreaType: 'PROVINCE', parentOfficialCode: row.CPRO, metadata: { autonomousCommunityCode: row.CODAUTO, checkDigit: row.DC } }));
-  return { country: 'ES', provider: 'es_ine', codeAuthority: 'ES_INE', datasetVersion: '2026-01-01', sourceUrlIdentifier: 'INE-diccionario26-local-release', inspected: { files: [basename(file)], sheets: [sheet.name], headers: { [sheet.name]: headers } }, records, expected: { MUNICIPALITY: { min: 8132, max: 8132 } }, blockers: ['The workbook has codes but no official names for autonomous communities or provinces; those parent records cannot be constructed without a complementary official source.'], licenseStatus: 'CONFIRM_REQUIRED' };
+export function preprocessSpain(root: string): OfficialRawResult {
+  const files = ['diccionario26.xlsx', 'autonomous_communities_2026.csv', 'provinces_by_autonomous_community_2026.csv'];
+  const sheet = readFirstXlsxSheet(join(root, files[0])); const municipalityHeaders = sheet.rows[1];
+  const communities = parseCsv(readFileSync(join(root, files[1]), 'utf8'));
+  const provinces = parseCsv(readFileSync(join(root, files[2]), 'utf8'));
+  const records: OfficialGeoStagingRecord[] = [
+    ...objects(communities).map((row) => ({ countryIso2: 'ES', areaType: 'AUTONOMOUS_COMMUNITY', officialCode: row.CODAUTO, officialName: row.COMUNIDAD_AUTONOMA })),
+    ...objects(provinces).map((row) => ({ countryIso2: 'ES', areaType: 'PROVINCE', officialCode: row.CPRO, officialName: row.PROVINCIA, parentAreaType: 'AUTONOMOUS_COMMUNITY', parentOfficialCode: row.CODAUTO })),
+    ...objects(sheet.rows, 1).map((row) => ({ countryIso2: 'ES', areaType: 'MUNICIPALITY', officialCode: `${row.CPRO}${row.CMUN}`, officialName: row.NOMBRE, parentAreaType: 'PROVINCE', parentOfficialCode: row.CPRO, metadata: { autonomousCommunityCode: row.CODAUTO, checkDigit: row.DC } })),
+  ];
+  return { country: 'ES', provider: 'es_ine', codeAuthority: 'ES_INE', datasetVersion: '2026-01-01', sourceUrlIdentifier: 'INE-diccionario26-and-official-parent-files-local-release', inspected: { files, sheets: [sheet.name], headers: { [sheet.name]: municipalityHeaders, [files[1]]: communities[0], [files[2]]: provinces[0] } }, records, expected: { AUTONOMOUS_COMMUNITY: { min: 19, max: 19 }, PROVINCE: { min: 52, max: 52 }, MUNICIPALITY: { min: 8132, max: 8132 } }, blockers: [], licenseStatus: 'CONFIRM_REQUIRED' };
 }
 
 const sqliteJson = <T>(file: string, sql: string) => JSON.parse(execFileSync('sqlite3', ['-json', file, sql], { encoding: 'utf8', maxBuffer: 100 * 1024 * 1024 }) || '[]') as T[];

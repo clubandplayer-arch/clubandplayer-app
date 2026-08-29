@@ -63,3 +63,22 @@ deletes, deactivates or writes records.
 
 The existing `geo:import:csc` local-export adapter remains available as a fallback utility. It is not the
 primary source for FR, ES, CH, SI or PL and performs no download or production write.
+
+## Phase 3B-E3 production preparation
+
+The reviewed command is country-scoped and defaults to a local, read-only preview:
+
+```sh
+pnpm geo:import --country FR --file imports/geo/staging/FR.staging.json --dry-run
+```
+
+Use `--check-existing` with server-side environment credentials to include the current Production identities in a read-only preview. A future write requires the explicit `--apply` flag; omitting it can never write:
+
+```sh
+pnpm geo:import --country FR --file imports/geo/staging/FR.staging.json --dry-run --check-existing
+pnpm geo:import --country FR --file imports/geo/staging/FR.staging.json --apply
+```
+
+Before every write, the command validates the approved exact manifest, provenance, hierarchy, provider identity, parents, cycles, supported types and duplicates. Records are ordered and batched by complete hierarchy level, so every parent level finishes before its children begin. A batch failure stops later batches, reports the unfinished count, and is recoverable by rerunning the idempotent command. Existing identities are updated in place, preserving their Club and Player UUIDs; absent identities are inserted with database-generated UUIDs. Missing records are reported but never deleted, deactivated, or written outside `geo_areas`.
+
+Batches are separate server requests because no database RPC or schema change is introduced in Phase 3B-E3. Each insert request is atomic; successful earlier parent batches remain explicitly visible if a later child batch fails, and the non-zero failure report prevents treating that country as complete. Operators must verify the final report (`inserted`, `updated`, `unchanged`, `failed`, type counts, missing parents, provider, version and license) before moving to the next country.

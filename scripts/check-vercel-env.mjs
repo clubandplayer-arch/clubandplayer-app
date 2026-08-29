@@ -68,6 +68,14 @@ const categories = [
     name: 'Analytics',
     keys: ['NEXT_PUBLIC_ANALYTICS_DOMAIN', 'NEXT_PUBLIC_ANALYTICS_SRC', 'NEXT_PUBLIC_ANALYTICS_API'],
   },
+  {
+    name: 'B4.4 canonical residence canary',
+    keys: [
+      'NEXT_PUBLIC_CANONICAL_PROFILE_RESIDENCE_UI_ENABLED',
+      'CANONICAL_PROFILE_RESIDENCE_WRITE_ENABLED',
+      'CANONICAL_PROFILE_RESIDENCE_WRITE_USER_IDS',
+    ],
+  },
 ];
 
 const requiredKeys = Array.from(new Set(categories.flatMap((c) => c.keys)));
@@ -109,7 +117,37 @@ function reportMissing(label, vars) {
   }
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function explicitlyDisabled(value) {
+  return ['0', 'false', 'no', 'off'].includes(String(value ?? '').trim().toLowerCase());
+}
+
+function validateResidenceCanary(label, vars) {
+  const uiDisabled = explicitlyDisabled(vars.NEXT_PUBLIC_CANONICAL_PROFILE_RESIDENCE_UI_ENABLED);
+  const writesDisabled = explicitlyDisabled(vars.CANONICAL_PROFILE_RESIDENCE_WRITE_ENABLED);
+  const userIds = String(vars.CANONICAL_PROFILE_RESIDENCE_WRITE_USER_IDS ?? '')
+    .split(',')
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean);
+  const uniqueUserIds = new Set(userIds);
+  const allowlistValid = userIds.length === 2
+    && uniqueUserIds.size === 2
+    && userIds.every((value) => UUID_PATTERN.test(value));
+
+  if (!uiDisabled || !writesDisabled || !allowlistValid) {
+    exitCode = 1;
+    console.error(
+      `[${label}] B4.4 non sicuro: UI e write gate devono essere esplicitamente disabilitati e la allowlist deve contenere esattamente due UUID validi e distinti.`,
+    );
+    return;
+  }
+
+  console.log(`[${label}] B4.4 fail-closed: gate disabilitati e allowlist canary valida (2 UUID).`);
+}
+
 reportMissing('local', envFiles.local.vars);
+validateResidenceCanary('local', envFiles.local.vars);
 
 const localDefined = new Set(requiredKeys.filter((key) => valueIsSet(envFiles.local.vars[key])));
 
@@ -117,6 +155,7 @@ for (const label of ['preview', 'production']) {
   const file = envFiles[label];
   if (!file) continue;
   reportMissing(label, file.vars);
+  validateResidenceCanary(label, file.vars);
   const envDefined = new Set(requiredKeys.filter((key) => valueIsSet(file.vars[key])));
   const missingComparedToLocal = [...localDefined].filter((key) => !envDefined.has(key));
   if (missingComparedToLocal.length) {
