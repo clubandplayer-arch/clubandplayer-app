@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation'
 import { supabaseBrowser } from '@/lib/supabaseBrowser'
 import { useI18n } from '@/components/i18n/I18nProvider'
 import { localizeAccountType } from '@/lib/i18n/controlledVocabulary'
+import GeographicInterestsForm from '@/components/profiles/GeographicInterestsForm'
 
 type AccountType = 'athlete' | 'club' | 'fan' | 'staff' | 'institution'
 
@@ -347,6 +348,8 @@ export default function SettingsPage() {
               )}
             </div>
           </section>
+
+          <GeographicInterestsForm />
 
           <section style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 16 }}>
             <h2 style={{ marginTop: 0 }}>{t('settings.notifications')}</h2>

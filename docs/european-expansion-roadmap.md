@@ -8,16 +8,16 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **COMPLETATA — FASE 3C-B5 — Signup / onboarding** |
-| Current active phase | **FASE 3C-B6 — IN PROGRESS (B6.1 API boundary completata)** |
-| Next safe action | **FASE 3C-B6.2 — UI web geographic interests, con approvazione separata** |
+| Last completed subphase | **COMPLETATA — FASE 3C-B6 — Geographic interests** |
+| Current active phase | **NESSUNA — FASE 3C-B6 COMPLETATA** |
+| Next safe action | **Verifica manuale B6 non-Production; poi FASE 3C-B7 con autorizzazione separata** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
 | Mobile international parity | **NOT STARTED** |
-| FASE 3C-B | **NOT COMPLETED — B1–B5 e B6.1 completate; B6 in progress, B7 non iniziata** |
+| FASE 3C-B | **NOT COMPLETED — B1–B6 completate; B7 non iniziata** |
 
-**FASE 3C-B6 è IN PROGRESS.** B6.1 ha introdotto il boundary API owner-only per country interests, geo-area interests e relocation con operazioni singole e cataloghi supported/active. Non è stata attivata alcuna UI. Residence personale, sede pubblica organization-specific e interessi restano distinti; B7 e la mobile international parity non sono iniziate.
+**FASE 3C-B6 è COMPLETATA repository-only.** Il boundary API owner-only e la UI web `/settings` gestiscono country interests, geo-area interests e relocation con operazioni singole e cataloghi supported/active. Residence personale, sede pubblica organization-specific e interessi restano distinti. È richiesta verifica manuale non-Production prima di B7; B7 e mobile international parity non sono iniziate.
 
 ## Roadmap maintenance rules
 
@@ -289,7 +289,7 @@ B4.3 ha creato nel repository la migration additiva `20261204120000_transactiona
 
 #### 3C-B6 — Geographic interests
 
-**Stato: IN PROGRESS — B6.1 API boundary COMPLETATA, UI NOT STARTED.** `GET/PATCH /api/profile-geography/interests` integra `profile_country_interests`, `profile_geo_area_interests` e `open_to_relocation` tramite un boundary owner-only. Ogni PATCH contiene una sola operazione e valida country/area supported e active; nessuna write tocca residence, legacy `interest_*` o sede pubblica. Deliverable: `docs/european-expansion/phase-3c-b6-geographic-interests.md`.
+**Stato: COMPLETATA — repository-only, verifica manuale non-Production richiesta.** `GET/PATCH /api/profile-geography/interests` e la UI `/settings` integrano `profile_country_interests`, `profile_geo_area_interests` e `open_to_relocation` tramite un boundary owner-only. Ogni PATCH contiene una sola operazione e valida country/area supported e active; nessuna write tocca residence, legacy `interest_*` o sede pubblica. Deliverable: `docs/european-expansion/phase-3c-b6-geographic-interests.md`.
 
 #### 3C-B7 — Compatibility and regression
 
@@ -706,14 +706,14 @@ Alla data di creazione iniziale della roadmap:
 
 | Voce | Stato |
 | --- | --- |
-| Last completed subphase | **FASE 3C-B5 — Signup / onboarding — COMPLETATA** |
-| Current active phase | **FASE 3C-B6 — IN PROGRESS (B6.1 API boundary completata)** |
-| Next safe action | **FASE 3C-B6.2 — UI web geographic interests, con approvazione separata** |
+| Last completed subphase | **FASE 3C-B6 — Geographic interests — COMPLETATA** |
+| Current active phase | **NESSUNA — FASE 3C-B6 COMPLETATA** |
+| Next safe action | **Verifica manuale B6 non-Production; poi FASE 3C-B7 con autorizzazione separata** |
 | B4.3 local runtime harness | **PASSED — PostgreSQL 16, fixture sintetiche, nessuna connessione remota** |
 | B4.3 Supabase certification | **BLOCKED — PREVIEW BRANCH UNHEALTHY / MIGRATIONS FAILED / SUPPORT PENDING** |
 | B4.4 | **COMPLETATA — CANARY APPLICATIVO PLAYER IT / STAFF FR, READ-AFTER-WRITE, CLEANUP E RIPRISTINO FAIL-CLOSED PASS** |
-| FASE 3C-B | **NOT COMPLETED — B1–B5 e B6.1 completate; B6 in progress, B7 non iniziata** |
+| FASE 3C-B | **NOT COMPLETED — B1–B6 completate; B7 non iniziata** |
 | Automatic residence backfill | **DELIBERATELY EXCLUDED** |
 | Mobile international parity | **NOT STARTED** |
 
-B6.1 è chiusa repository-only con un boundary API owner-only e operazioni singole per country interests, geo-area interests e relocation. Non riabilitare grant o gate. La UI B6.2 non è avviata e richiede approvazione separata.
+B6 è chiusa repository-only con boundary API owner-only e UI web `/settings` per country interests, geo-area interests e relocation. Non riabilitare grant o gate. Prima di B7 eseguire la verifica manuale B6 esclusivamente in ambiente non-Production.
