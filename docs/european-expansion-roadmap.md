@@ -10,14 +10,14 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | --- | --- |
 | Last completed subphase | **COMPLETATA — FASE 3C-B3 — Reusable canonical geography selectors** |
 | Current active phase | **FASE 3C-B4 — Profile Edit dual-write — IN PROGRESS** |
-| Next safe action | **B4.4 fail-closed Preview: pubblicare il checkpoint documentale e certificare il nuovo Preview; attivazione canary e read-after-write restano gate separati** |
+| Next safe action | **Registrare e revisionare la chiusura B4 dopo il B4.4 applicativo PASS; poi preparare soltanto il preflight/audit B5, senza avvio comportamentale** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
 | Mobile international parity | **NOT STARTED** |
 | FASE 3C-B | **NOT COMPLETED — B1–B3 completate; B4 IN PROGRESS; B5–B7 non iniziate** |
 
-**FASE 3C-B3 è l'ultima sottofase completata. FASE 3C-B4 è la fase attiva ed è IN PROGRESS:** preflight, B4.2 contract tests e implementazione/revisione statica B4.3 sono completati. Il runtime harness PostgreSQL 16 locale è **PASSED**. Il Preview Branch `b4-rpc-validation` resta storico e `UNHEALTHY — MIGRATIONS: FAILED`; la certificazione è stata proseguita con un percorso Production manuale esplicitamente autorizzato, canary e fail-closed. B4.4 Step 1 e il preflight statico sono completati; installazione RPC, trigger guards, canary database, test transazionale con rollback e Preview applicativo sono verificati. I gate Vercel Preview/Production sono configurati a `false` e la allowlist contiene soltanto i due account dedicati. RPC `EXECUTE`, UI e write applicativi restano disabilitati. Il backfill automatico della residence resta escluso perché i campi legacy `interest_*` non costituiscono evidenza sufficiente della residenza effettiva dell'utente. La FASE 3C-B complessiva non è completata e la mobile international parity resta non iniziata.
+**FASE 3C-B3 è l'ultima sottofase completata. FASE 3C-B4 è la fase attiva ed è IN PROGRESS:** preflight, B4.2 contract tests e implementazione/revisione statica B4.3 sono completati. Il runtime harness PostgreSQL 16 locale è **PASSED**. Il Preview Branch `b4-rpc-validation` resta storico e `UNHEALTHY — MIGRATIONS: FAILED`; la certificazione è stata proseguita con un percorso Production manuale esplicitamente autorizzato, canary e fail-closed. B4.4 Step 1, preflight statico e canary applicativo sono completati: installazione RPC, trigger guards, canary database, test transazionale con rollback, Preview applicativo, Player Italia e Staff Francia con read-after-write sono verificati. Il cleanup transazionale ha ripristinato entrambi i baseline; la sola `profile_preferences` Staff creata dal test è stata eliminata. I gate Vercel Preview/Production sono tornati a `false`; RPC `EXECUTE`, UI e write applicativi sono nuovamente disabilitati e la allowlist resta limitata ai due account dedicati. Il backfill automatico della residence resta escluso perché i campi legacy `interest_*` non costituiscono evidenza sufficiente della residenza effettiva dell'utente. La FASE 3C-B complessiva non è completata e la mobile international parity resta non iniziata.
 
 ## Roadmap maintenance rules
 
@@ -260,7 +260,7 @@ Il `DEFERRED MANUAL LIVE-DATA GATE` registrato in B3 è stato successivamente es
 
 #### 3C-B4 — Profile Edit dual-write
 
-**Stato: IN PROGRESS — PREFLIGHT E B4.2 COMPLETATI; B4.3 LOCAL RUNTIME PASSED; B4.4 CODE, PRODUCTION FAIL-CLOSED FOUNDATION E VERCEL PREVIEW PASS; ATTIVAZIONE CANARY E READ-AFTER-WRITE APPLICATIVO PENDENTI.** I nuovi valori devono essere canonical; per compatibilità scrivere anche i legacy soltanto dove necessario e semanticamente sicuro. Non ricostruire automaticamente residence dagli `interest_*`. Deliverable: preflight, write contracts e `docs/european-expansion/phase-3c-b4-transactional-profile-residence-rpc.md`.
+**Stato: IN PROGRESS — PREFLIGHT E B4.2 COMPLETATI; B4.3 LOCAL RUNTIME PASSED; B4.4 CANARY APPLICATIVO COMPLETATO E RIPRISTINATO FAIL-CLOSED.** I nuovi valori devono essere canonical; per compatibilità scrivere anche i legacy soltanto dove necessario e semanticamente sicuro. Non ricostruire automaticamente residence dagli `interest_*`. Deliverable: preflight, write contracts e `docs/european-expansion/phase-3c-b4-transactional-profile-residence-rpc.md`.
 
 **LIVE CANONICAL READ-DATA GATE: PASSED.** La verifica manuale read-only sulla Preview Vercel collegata a Supabase ha validato countries, root, children, ultimo livello, ancestors, profondità variabile, coerenza country/parent e caratteri internazionali per IT, FR, ES, CH con e senza District, SI e PL. Restano obbligatori in B4 i gate su selector nel form reale, reset con dati reali, dual-write, salvataggio, rilettura, compatibility legacy Italia, privacy e autorizzazioni.
 
@@ -272,9 +272,12 @@ B4.3 ha creato nel repository la migration additiva `20261204120000_transactiona
 
 **B4.3 LOCAL RUNTIME HARNESS: PASSED; PREVIEW BRANCH CERTIFICATION: HISTORICAL BLOCK.** Il 2026-08-26 la migration e la matrice RPC sono state eseguite realmente in PostgreSQL 16 locale con fixture sintetiche: firma/grants, RLS rilevanti simulata, ruoli, reset, country-only, IT, FR, ES, CH con e senza District, SI, PL e rollback hanno superato i controlli. In quel checkpoint nessuna connessione o write remoto era stato eseguito e il database temporaneo era stato eliminato. Il Preview Branch isolato non ha completato la ricostruzione della history; il successivo percorso Production manuale fail-closed è registrato separatamente sotto.
 
-**SUPABASE PREVIEW BRANCH WORKFLOW: HISTORICAL BLOCK — SUPPORT PENDING.** Il branch dedicato `b4-rpc-validation` è `UNHEALTHY`: il workflow del 2026-08-26 10:55:32 è fallito allo step `MIGRATIONS` senza dettaglio disponibile. Il percorso alternativo Production è stato autorizzato ed eseguito per blocchi controllati: RPC e trigger guards installati e verificati, canary database con RLS installato, due membership dedicate qualificate, test transazionale Player/Staff completato con rollback obbligatorio e ACL nuovamente negate. Il feature gate write resta disabilitato; attivazione canary applicativa e read-after-write reale restano obbligatori prima della chiusura. Il runbook Step 2 è `docs/european-expansion/phase-3c-b4-production-deployment-preflight.md`.
+**SUPABASE PREVIEW BRANCH WORKFLOW: HISTORICAL BLOCK — SUPPORT PENDING.** Il branch dedicato `b4-rpc-validation` è `UNHEALTHY`: il workflow del 2026-08-26 10:55:32 è fallito allo step `MIGRATIONS` senza dettaglio disponibile. Il percorso alternativo Production è stato autorizzato ed eseguito per blocchi controllati: RPC e trigger guards installati e verificati, canary database con RLS installato, due membership dedicate qualificate, test transazionale Player/Staff completato con rollback obbligatorio e ACL nuovamente negate. Il successivo canary applicativo autorizzato ha completato Player Italia e Staff Francia con read-after-write reale, cleanup dei baseline e ripristino fail-closed; resta soltanto il checkpoint repository-only di chiusura/revisione B4 prima di B5. Il runbook Step 2 è `docs/european-expansion/phase-3c-b4-production-deployment-preflight.md`.
 
 **B4.4 VERCEL FAIL-CLOSED CHECKPOINT — 2026-08-28: PASS.** Il commit applicativo `4825ede71a0cfe49ff84c1aecc85ae12f299ad23` è stato pubblicato con fast-forward sul branch di lavoro. Il deployment Vercel Preview associato ha concluso con stato `success`. Preview e Production contengono entrambi i gate B4.4 esplicitamente impostati a `false`; la allowlist server-only è registrata come Secret e contiene esattamente i due account canary qualificati. Nessun redeploy manuale, merge o deployment Production è stato eseguito in questo checkpoint.
+
+
+**B4.4 APPLICATION CANARY — 2026-08-28/29: PASS E CLEANUP COMPLETATO.** Sulla sola Preview e per i due account dedicati già qualificati, il grant temporaneo alla RPC protetta dalla database allowlist ha consentito i test owner reali: Player ha salvato e riletto `Italia / Abruzzo / Chieti / Altino`, con canonical IDs e proiezione legacy testuale/ID `81 / 323 / 165`; Staff ha salvato e riletto `Francia / Auvergne-Rhône-Alpes / Ain / Ambérieu-en-Bugey`, con canonical IDs, proiezione testuale estera e legacy ID italiani null. Entrambi i refresh applicativi non hanno mostrato errori. Il read-after-write SQL ha confermato profili attivi, membership canary e valori attesi. Il cleanup transazionale successivo ha riportato tutti i campi residence dei due profili a null, ha preservato la `profile_preferences` Player preesistente con canonical residence null e ha eliminato esclusivamente la `profile_preferences` Staff creata dal test. La verifica finale ha restituito Player `preferences_count=1`, Staff `preferences_count=0`, entrambi i baseline null, due membership canary invariate e `authenticated_execute=false`. UI e write gate Preview sono tornati a `false`, la Preview finale non espone il selector; Production è rimasta fail-closed e non è stata promossa o ridistribuita. B4.4 è **COMPLETATA**; nessun rollout generale è autorizzato.
 
 #### 3C-B5 — Signup / onboarding
 
@@ -701,12 +704,12 @@ Alla data di creazione iniziale della roadmap:
 | --- | --- |
 | Last completed subphase | **FASE 3C-B3 — Reusable canonical geography selectors** |
 | Current active phase | **FASE 3C-B4 — Profile Edit dual-write — IN PROGRESS** |
-| Next safe action | **Fermarsi prima del deployment: serve approvazione migration separata; feature gate false** |
+| Next safe action | **Revisionare la chiusura B4 dopo B4.4 PASS; successivamente solo preflight/audit B5** |
 | B4.3 local runtime harness | **PASSED — PostgreSQL 16, fixture sintetiche, nessuna connessione remota** |
 | B4.3 Supabase certification | **BLOCKED — PREVIEW BRANCH UNHEALTHY / MIGRATIONS FAILED / SUPPORT PENDING** |
-| B4.4 | **IN PROGRESS — STEP 1 PASS; STEP 2 static preflight CONDITIONAL PASS; Blocchi 1–4 auditati; trigger guards implementate; runtime PostgreSQL 16 esteso PASS** |
+| B4.4 | **COMPLETATA — CANARY APPLICATIVO PLAYER IT / STAFF FR, READ-AFTER-WRITE, CLEANUP E RIPRISTINO FAIL-CLOSED PASS** |
 | FASE 3C-B | **NOT COMPLETED — B1–B3 completate; B4 IN PROGRESS; B5–B7 non iniziate** |
 | Automatic residence backfill | **DELIBERATELY EXCLUDED** |
 | Mobile international parity | **NOT STARTED** |
 
-Non abilitare write remoti e non chiudere B4.4 prima della certificazione Supabase e del read-after-write reale esplicitamente approvati. Non iniziare la fase successiva.
+B4.4 è chiusa con read-after-write reale, cleanup e ripristino fail-closed. Non riabilitare grant o gate e non iniziare modifiche comportamentali B5 senza una nuova autorizzazione; il prossimo passo sicuro è la revisione di chiusura B4 e il solo preflight/audit B5.

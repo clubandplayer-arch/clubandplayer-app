@@ -321,7 +321,7 @@ Solo account dedicati non reali, dopo autorizzazione:
 
 ## Checkpoint
 
-B4.4 resta **IN PROGRESS** e B4 resta **NOT COMPLETED**. Il percorso Production manuale successivamente autorizzato ha installato e verificato RPC, trigger guards e canary database mantenendo `EXECUTE` revocato; il test transazionale dedicato Player/Staff ha restituito `POST_ROLLBACK_PASS` e ha ripristinato le ACL negate. Il checkpoint Vercel fail-closed del 2026-08-28 è descritto in fondo al documento. Attivazione canary applicativa e read-after-write reale richiedono approvazioni distinte. B5 non è iniziata.
+B4.4 è **COMPLETATA** con canary applicativo, read-after-write, cleanup e ripristino fail-closed; B4 resta **IN PROGRESS** in attesa del checkpoint repository-only di revisione/chiusura. Il percorso Production manuale successivamente autorizzato ha installato e verificato RPC, trigger guards e canary database mantenendo `EXECUTE` revocato; il test transazionale dedicato Player/Staff ha restituito `POST_ROLLBACK_PASS` e ha ripristinato le ACL negate. Il checkpoint Vercel fail-closed del 2026-08-28 è descritto in fondo al documento. Le approvazioni distinte per canary applicativo e read-after-write sono state successivamente concesse ed eseguite con esito PASS come registrato nel checkpoint finale. B5 non è iniziata.
 
 ## Trigger-aware correction repository audit
 
@@ -386,3 +386,21 @@ Il percorso controllato successivo al preflight statico ha prodotto questi risul
 - redeploy manuale, merge, promozione e deployment Production: non eseguiti.
 
 Questa evidenza chiude il preflight fail-closed, non l'attivazione B4.4. La RPC resta non invocabile dagli utenti autenticati e i gate applicativi restano spenti. Prima di qualsiasi grant, attivazione UI/write o read-after-write applicativo è necessaria una nuova autorizzazione esplicita.
+
+
+## Checkpoint finale canary applicativo — 2026-08-28/29
+
+Il canary applicativo B4.4 autorizzato si è concluso con **PASS** e ritorno allo stato fail-closed:
+
+- scope limitato ai due account dedicati già presenti sia nella allowlist Vercel sia nella database allowlist;
+- Production mantenuta con UI e write gate `false`, senza deployment, promozione o merge;
+- grant `EXECUTE` temporaneo soltanto ad `authenticated`; `PUBLIC` e `anon` sempre negati;
+- Player owner: salvataggio e refresh `Italia / Abruzzo / Chieti / Altino`; read-after-write con canonical IDs attesi, testi legacy e ID `81 / 323 / 165`;
+- Staff owner: salvataggio e refresh `Francia / Auvergne-Rhône-Alpes / Ain / Ambérieu-en-Bugey`; read-after-write con canonical IDs attesi, proiezione testuale estera e legacy ID italiani null;
+- nessun errore applicativo visibile nei due percorsi;
+- revoca immediata di `EXECUTE` a `PUBLIC`, `anon` e `authenticated`; verifica ACL finale tutta `false`;
+- UI e write gate Preview ripristinati a `false` e Preview finale senza selector;
+- cleanup transazionale: campi residence Player e Staff riportati al baseline null; `profile_preferences` Player preesistente preservata con canonical residence null; eliminata esclusivamente la riga Staff creata dal test;
+- verifica post-cleanup: Player `preferences_count=1`, Staff `preferences_count=0`, profili attivi, due membership database canary invariate e `authenticated_execute=false`.
+
+B4.4 è quindi **COMPLETATA**. RPC, gate e UI restano fail-closed; questo esito non autorizza rollout generale, merge, Production deployment o avvio comportamentale B5. Il passo repository-only successivo è la revisione di chiusura complessiva B4; solo dopo potrà essere proposto il preflight/audit B5.
