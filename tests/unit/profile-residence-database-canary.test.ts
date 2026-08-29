@@ -51,7 +51,7 @@ test('repository migration has no production UUID seed and runtime memberships a
 test('runtime installs and seeds the canary before activation, with a fail-closed rollback artifact', () => {
   const install = harness.indexOf('20261204121500_profile_residence_database_canary.sql');
   const seedStep = harness.indexOf('profile-residence-canary-runtime-seed.sql');
-  const activation = harness.indexOf('20261204122000_enable_profile_residence_rpc.sql');
+  const activation = harness.indexOf('supabase/runbooks/manual/20261204122000_enable_profile_residence_rpc.sql');
   assert.ok(install > 0 && install < seedStep && seedStep < activation);
   assert.match(rollback, /revoke all on function public\.update_my_profile_residence\(uuid, uuid\) from authenticated/i);
   assert.match(rollback, /drop function if exists public\.update_my_profile_residence\(uuid, uuid\)/i);

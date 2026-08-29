@@ -87,7 +87,7 @@ La scelta `SECURITY INVOKER` è coerente staticamente con:
 - lettura cataloghi countries/geo areas;
 - grant Data API espliciti alle tabelle RLS creati dalla migration `20261113110000_data_api_explicit_grants.sql`.
 
-La RPC aggiunge una verifica `profiles.user_id = auth.uid()`, accetta soltanto `athlete`/`staff`, usa `search_path = ''`, qualifica gli schemi, revoca `PUBLIC`/`anon`/`authenticated`; la migration separata `20261204122000_enable_profile_residence_rpc.sql` concede execute ad `authenticated` soltanto dopo un gate esplicito. Non usa SQL dinamico, SECURITY DEFINER o service role e non introduce escalation visibile staticamente.
+La RPC aggiunge una verifica `profiles.user_id = auth.uid()`, accetta soltanto `athlete`/`staff`, usa `search_path = ''`, qualifica gli schemi, revoca `PUBLIC`/`anon`/`authenticated`; il runbook manuale separato `supabase/runbooks/manual/20261204122000_enable_profile_residence_rpc.sql`, escluso da `supabase/migrations`, concede execute ad `authenticated` soltanto dopo un gate esplicito. Non usa SQL dinamico, SECURITY DEFINER o service role e non introduce escalation visibile staticamente.
 
 **Gate runtime:** la compatibilità effettiva dipende dal fatto che migration, grants e policy siano realmente presenti nello stesso stato nel database isolato/target. Questo non è verificabile dal solo repository.
 
@@ -118,7 +118,7 @@ In un database isolato con schema/migration history equivalente eseguire, senza 
 
 1. applicazione completa fino alla migration RPC;
 2. verifica `pg_proc` di firma e `prosecdef = false`;
-3. verifica ACL prima dell'attivazione: authenticated/anon/public negati; applica localmente la migration di attivazione e verifica authenticated execute con anon/public negati;
+3. verifica ACL prima dell'attivazione: authenticated/anon/public negati; esegue esplicitamente e soltanto nel database locale temporaneo il runbook manuale di attivazione e verifica authenticated execute con anon/public negati;
 4. sessione anonima negata;
 5. owner Athlete consentito;
 6. owner Staff consentito;

@@ -34,6 +34,6 @@ runuser -u postgres -- psql -X -v ON_ERROR_STOP=1 -q -d "$DB_NAME" \
 runuser -u postgres -- psql -X -v ON_ERROR_STOP=1 -q -d "$DB_NAME" \
   -f "$ROOT_DIR/tests/integration/sql/profile-residence-rpc-disabled-tests.sql"
 runuser -u postgres -- psql -X -v ON_ERROR_STOP=1 -q -d "$DB_NAME" \
-  -f "$ROOT_DIR/supabase/migrations/20261204122000_enable_profile_residence_rpc.sql"
+  -f "$ROOT_DIR/supabase/runbooks/manual/20261204122000_enable_profile_residence_rpc.sql"
 runuser -u postgres -- psql -X -v ON_ERROR_STOP=1 -q -d "$DB_NAME" \
   -f "$ROOT_DIR/tests/integration/sql/profile-residence-rpc-runtime-tests.sql"

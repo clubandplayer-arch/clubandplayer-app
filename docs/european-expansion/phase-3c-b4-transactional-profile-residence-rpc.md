@@ -52,7 +52,7 @@ La RPC restituisce un risultato ristretto canonical-first con profile ID owner, 
 - rifiuta Club, Institution e Fan;
 - usa `search_path = ''` e nomi schema qualificati;
 - è revocata a `PUBLIC` e `anon`;
-- la migration di installazione revoca `EXECUTE` a `PUBLIC`, `anon` e `authenticated`; la concessione ad `authenticated` è isolata nella migration di attivazione `20261204122000_enable_profile_residence_rpc.sql`;
+- la migration di installazione revoca `EXECUTE` a `PUBLIC`, `anon` e `authenticated`; la concessione ad `authenticated` è isolata nel runbook di attivazione manuale `supabase/runbooks/manual/20261204122000_enable_profile_residence_rpc.sql`, escluso dalla sequenza automatica delle migration;
 - non usa service role.
 
 Un admin non riceve una capacità cross-profile da questa RPC: non essendo necessaria per B4 Player/Staff, la superficie rimane owner-only e minima.
@@ -129,4 +129,4 @@ B4 resta **IN PROGRESS**. Il runtime PostgreSQL locale mirato è passato; il pro
 
 ## Database canary gate
 
-Prima della migration di attivazione, `20261204121500_profile_residence_database_canary.sql` aggiunge un controllo fail-closed basato su `auth.uid()`. La tabella di membership è vuota, RLS-protected e non modificabile dai ruoli Data API; il controllo dentro la RPC impedisce di aggirare l'allowlist applicativa con una chiamata Supabase diretta. Gli UUID reali non sono hardcoded e l'installazione del gate non concede `EXECUTE`.
+Prima dell’esecuzione manuale del runbook di attivazione, `20261204121500_profile_residence_database_canary.sql` aggiunge un controllo fail-closed basato su `auth.uid()`. La tabella di membership è vuota, RLS-protected e non modificabile dai ruoli Data API; il controllo dentro la RPC impedisce di aggirare l'allowlist applicativa con una chiamata Supabase diretta. Gli UUID reali non sono hardcoded e l'installazione del gate non concede `EXECUTE`.

@@ -281,6 +281,8 @@ B4.3 ha creato nel repository la migration additiva `20261204120000_transactiona
 
 **B4 CLOSURE REVIEW — 2026-08-29: PASS.** La revisione repository-only ha confermato tutti gli acceptance criteria B4: ruoli e semantiche approvati; payload `absent`, reset, country-only e full coperti; validazione country/area; transazione canonical/legacy; gerarchie IT, FR, ES, CH con/senza District, SI e PL coperte dai test; canary reale Player Italia e Staff Francia; canonical-first read-after-save; interessi, birth country, nationality e relocation invariati; RLS/owner/privacy verificate; legacy Italia senza regressioni; cleanup e stato fail-closed finali verificati. Non restano blocker critici per B4. La FASE 3C-B4 è **COMPLETATA**; ciò non autorizza rollout generale o l'avvio comportamentale di B5.
 
+**ACTIVATION RUNBOOK SAFETY — 2026-08-29.** Il grant RPC non fa parte della sequenza automatica delle migration: `supabase/runbooks/manual/20261204122000_enable_profile_residence_rpc.sql` è un runbook manuale con avviso di approvazione rollout obbligatoria. Il runtime harness lo esegue esplicitamente soltanto nel database locale temporaneo. Production resta con `EXECUTE` revocato e gate UI/write `false`.
+
 #### 3C-B5 — Signup / onboarding
 
 **Stato: NOT STARTED.** Solo dopo la validazione di Profile Edit, integrare selezione Paese/residence canonica nei nuovi account, garantendo compatibilità per Club, Player/Athlete, Staff, Fan e Institution.
