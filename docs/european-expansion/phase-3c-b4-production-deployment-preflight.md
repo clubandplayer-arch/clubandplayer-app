@@ -403,7 +403,7 @@ Il canary applicativo B4.4 autorizzato si è concluso con **PASS** e ritorno all
 - cleanup transazionale: campi residence Player e Staff riportati al baseline null; `profile_preferences` Player preesistente preservata con canonical residence null; eliminata esclusivamente la riga Staff creata dal test;
 - verifica post-cleanup: Player `preferences_count=1`, Staff `preferences_count=0`, profili attivi, due membership database canary invariate e `authenticated_execute=false`.
 
-B4.4 è quindi **COMPLETATA**. RPC, gate e UI restano fail-closed; questo esito non autorizza rollout generale, merge, Production deployment o avvio comportamentale B5. Il passo repository-only successivo è la revisione di chiusura complessiva B4; solo dopo potrà essere proposto il preflight/audit B5.
+B4.4 è quindi **COMPLETATA**. RPC, gate e UI restano fail-closed; questo esito non autorizza rollout generale, merge, Production deployment o avvio comportamentale B5. La successiva closure review B4 è riportata nella sezione seguente.
 
 ## Closure review B4 — 2026-08-29
 
