@@ -48,13 +48,13 @@ jobs:
           end_ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           duration=$((end_epoch-start_epoch))
           cat <<'JSON' > artifacts/smoke/metadata.json
-{
-  "exitCode": STATUS_PLACEHOLDER,
-  "startedAt": "START_PLACEHOLDER",
-  "finishedAt": "END_PLACEHOLDER",
-  "durationSeconds": DURATION_PLACEHOLDER
-}
-JSON
+          {
+            "exitCode": STATUS_PLACEHOLDER,
+            "startedAt": "START_PLACEHOLDER",
+            "finishedAt": "END_PLACEHOLDER",
+            "durationSeconds": DURATION_PLACEHOLDER
+          }
+          JSON
           sed -i "s/STATUS_PLACEHOLDER/${status}/" artifacts/smoke/metadata.json
           sed -i "s/START_PLACEHOLDER/${start_ts}/" artifacts/smoke/metadata.json
           sed -i "s/END_PLACEHOLDER/${end_ts}/" artifacts/smoke/metadata.json
