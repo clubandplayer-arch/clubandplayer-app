@@ -21,7 +21,7 @@ export default function ChooseRolePage() {
     setSaving(true);
     setError(null);
     try {
-      const r = await fetch('/api/profiles/me', {
+      const r = await fetch('/api/onboarding/role', {
         method: 'PATCH',
         credentials: 'include',
         headers: { 'content-type': 'application/json' },

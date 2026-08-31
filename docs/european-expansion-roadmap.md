@@ -8,16 +8,16 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **COMPLETATA — FASE 3C-B4 — Profile Edit dual-write** |
-| Current active phase | **NESSUNA — FASE 3C-B5 NON INIZIATA** |
-| Next safe action | **FASE 3C-B5 — Signup / onboarding — preflight/audit read-only prima di qualsiasi modifica comportamentale** |
+| Last completed subphase | **COMPLETATA — FASE 3C-B7 — Compatibility and regression** |
+| Current active phase | **NESSUNA — FASE 3C-B COMPLETATA repository web/API** |
+| Next safe action | **Verifica manuale Preview B7 e merge review; nessun rollout implicito** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
 | Mobile international parity | **NOT STARTED** |
-| FASE 3C-B | **NOT COMPLETED — B1–B4 completate; B5–B7 non iniziate** |
+| FASE 3C-B | **COMPLETATA — B1–B7 repository web/API** |
 
-**FASE 3C-B4 è l'ultima sottofase completata; FASE 3C-B5 non è iniziata.** La revisione conclusiva B4 ha verificato contratti, test automatici, runtime PostgreSQL 16, installazione fail-closed, selector Player/Staff, write atomico, read-after-write reale, compatibilità legacy Italia, proiezione estera, cleanup e ripristino dei gate. Il Preview Branch `b4-rpc-validation` resta un blocco storico, non operativo. I gate Vercel Preview/Production sono `false`; RPC `EXECUTE`, UI e write applicativi sono disabilitati e la allowlist resta limitata ai due account dedicati. Il backfill automatico della residence resta escluso perché i campi legacy `interest_*` non costituiscono evidenza sufficiente della residenza effettiva dell'utente. La FASE 3C-B complessiva non è completata, B5–B7 non sono iniziate e la mobile international parity resta non iniziata.
+**FASE 3C-B è COMPLETATA nel perimetro repository web/API.** B7 riconferma IT legacy, IT/FR/ES/CH/SI/PL canonicali, account type, canonical-first, fallback e separazione semantica. `/settings` è ora raggiungibile anche dagli Enti su desktop e mobile, senza esporre loro gli interessi mobility. Prima del merge resta richiesta la verifica manuale Preview; mobile international parity resta una fase futura separata.
 
 ## Roadmap maintenance rules
 
@@ -285,15 +285,15 @@ B4.3 ha creato nel repository la migration additiva `20261204120000_transactiona
 
 #### 3C-B5 — Signup / onboarding
 
-**Stato: NOT STARTED.** Solo dopo la validazione di Profile Edit, integrare selezione Paese/residence canonica nei nuovi account, garantendo compatibilità per Club, Player/Athlete, Staff, Fan e Institution.
+**Stato: COMPLETATA — repository-only.** Signup non raccoglie o scrive geografia. Il role chooser usa una write ristretta al solo `account_type`; `/onboarding` resta un redirect/placeholder e non diventa un nuovo wizard. Player/Athlete, Staff e Fan mantengono residence personale canonica opzionale nei flussi profilo dedicati; Club e Institution mantengono una sede pubblica separata senza scritture in `profile_preferences.residence_*`. Rimosso dal bootstrap il default implicito `interest_country = 'IT'` senza reinterpretarlo come residence. Interessi, residence e sede pubblica restano distinti. Deliverable: `docs/european-expansion/phase-3c-b5-signup-onboarding.md`.
 
 #### 3C-B6 — Geographic interests
 
-**Stato: NOT STARTED.** Integrare `profile_country_interests`, `profile_geo_area_interests` e `open_to_relocation`, separando chiaramente residence e interest geography.
+**Stato: COMPLETATA — repository-only, verifica manuale non-Production richiesta.** `GET/PATCH /api/profile-geography/interests` e la UI `/settings` integrano `profile_country_interests`, `profile_geo_area_interests` e `open_to_relocation` esclusivamente per Player/Athlete e Staff. Club, Institution e Fan sono esclusi sia dalla UI sia dal boundary server (`403`); nessuna write tocca residence, legacy `interest_*` o sede pubblica. Deliverable: `docs/european-expansion/phase-3c-b6-geographic-interests.md`.
 
 #### 3C-B7 — Compatibility and regression
 
-**Stato: NOT STARTED.** Verificare profili legacy Italia; nuovi profili Italia, FR, ES, CH, SI e PL; account type differenti; canonical-first; legacy fallback; assenza di regressioni mobile/API. Solo dopo B7 la FASE 3C-B potrà essere marcata **COMPLETATA**.
+**Stato: COMPLETATA — repository web/API, verifica manuale Preview richiesta.** Coperti profili legacy Italia; nuovi profili IT, FR, ES, CH, SI e PL; account type; canonical-first; legacy fallback; signup senza default e boundary B6. Il client mobile non è contenuto in questo repository e non è stato modificato; la parity mobile resta separata. Deliverable: `docs/european-expansion/phase-3c-b7-compatibility-regression.md`.
 
 ### FASE 3C-C — Opportunities canonical geography
 
@@ -706,14 +706,14 @@ Alla data di creazione iniziale della roadmap:
 
 | Voce | Stato |
 | --- | --- |
-| Last completed subphase | **FASE 3C-B4 — Profile Edit dual-write — COMPLETATA** |
-| Current active phase | **NESSUNA — FASE 3C-B5 NON INIZIATA** |
-| Next safe action | **FASE 3C-B5 — Signup / onboarding — preflight/audit read-only** |
+| Last completed subphase | **FASE 3C-B7 — Compatibility and regression — COMPLETATA** |
+| Current active phase | **NESSUNA — FASE 3C-B COMPLETATA repository web/API** |
+| Next safe action | **Verifica manuale Preview B7 e merge review; nessun rollout implicito** |
 | B4.3 local runtime harness | **PASSED — PostgreSQL 16, fixture sintetiche, nessuna connessione remota** |
 | B4.3 Supabase certification | **BLOCKED — PREVIEW BRANCH UNHEALTHY / MIGRATIONS FAILED / SUPPORT PENDING** |
 | B4.4 | **COMPLETATA — CANARY APPLICATIVO PLAYER IT / STAFF FR, READ-AFTER-WRITE, CLEANUP E RIPRISTINO FAIL-CLOSED PASS** |
-| FASE 3C-B | **NOT COMPLETED — B1–B4 completate; B5–B7 non iniziate** |
+| FASE 3C-B | **COMPLETATA — B1–B7 repository web/API** |
 | Automatic residence backfill | **DELIBERATELY EXCLUDED** |
 | Mobile international parity | **NOT STARTED** |
 
-B4 è chiusa con read-after-write reale, cleanup, ripristino fail-closed e closure review PASS. Non riabilitare grant o gate. Il prossimo passo sicuro è il solo preflight/audit read-only B5; nessuna modifica comportamentale Signup/onboarding è ancora iniziata.
+B7 è chiusa nel perimetro repository web/API. Non riabilitare grant o gate e non interpretare la chiusura come rollout. Prima del merge eseguire gli smoke manuali Preview documentati, inclusi accesso Settings Institution desktop/mobile e assenza mobility per Club/Institution/Fan.

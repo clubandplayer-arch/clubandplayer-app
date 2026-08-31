@@ -258,6 +258,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       );
 
       items.push({ key: 'profile', label: t('common.profile'), href: profileHref, icon: profileIcon });
+      items.push({ key: 'settings', label: t('common.settings'), href: '/settings' });
       if (isClub) {
         items.push({ key: 'verification', label: t('navigation.verifyProfile'), href: '/club/verification' });
       }
@@ -499,16 +500,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                             {t('navigation.verifyProfile')}
                           </Link>
                         )}
-                        {!isInstitution ? (
-                          <Link
-                            href="/settings"
-                            role="menuitem"
-                            onClick={() => setIsProfileMenuOpen(false)}
-                            className="block rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
-                          >
-                            {t('common.settings')}
-                          </Link>
-                        ) : null}
+                        <Link
+                          href="/settings"
+                          role="menuitem"
+                          onClick={() => setIsProfileMenuOpen(false)}
+                          className="block rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
+                        >
+                          {t('common.settings')}
+                        </Link>
                         <div className="my-1 h-px bg-slate-200" role="separator" />
                         <Link
                           href="/logout"
