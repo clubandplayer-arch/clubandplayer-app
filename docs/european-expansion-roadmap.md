@@ -9,14 +9,14 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | Voce | Stato verificato |
 | --- | --- |
 | Last completed subphase | **COMPLETATA — FASE 3C-C4 — Opportunities dual-read/dual-write** |
-| Current active phase | **NESSUNA — C4 conclusa; C5 non autorizzata** |
-| Next safe action | **FASE 3C-C5 — OpportunityForm, solo previa autorizzazione esplicita** |
+| Current active phase | **FASE 3C-C5 — OpportunityForm — CONDITIONAL PASS, verifica manuale Preview pending** |
+| Next safe action | **Completare smoke Preview C5; C6 non autorizzabile prima del PASS** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
 | Mobile international parity | **NOT STARTED** |
 | FASE 3C-B | **COMPLETATA — B1–B7 repository web/API** |
-| FASE 3C-C | **IN CORSO — C1–C4 COMPLETATE; C5–C7 NOT STARTED** |
+| FASE 3C-C | **IN CORSO — C1–C4 COMPLETATE; C5 IN VERIFICA; C6–C7 NOT STARTED** |
 
 **FASE 3C-B è COMPLETATA nel perimetro repository web/API.** B7 riconferma IT legacy, IT/FR/ES/CH/SI/PL canonicali, account type, canonical-first, fallback e separazione semantica. `/settings` è ora raggiungibile anche dagli Enti su desktop e mobile, senza esporre loro gli interessi mobility. Prima del merge resta richiesta la verifica manuale Preview; mobile international parity resta una fase futura separata.
 
@@ -298,7 +298,7 @@ B4.3 ha creato nel repository la migration additiva `20261204120000_transactiona
 
 ### FASE 3C-C — Opportunities canonical geography
 
-**Stato: IN CORSO — C1–C4 COMPLETATE; C5–C7 NOT STARTED.**
+**Stato: IN CORSO — C1–C4 COMPLETATE; C5 CONDITIONAL PASS / MANUAL PREVIEW PENDING; C6–C7 NOT STARTED.**
 
 Sottofasi previste:
 
@@ -347,6 +347,14 @@ Migration testata localmente: **SÌ — PostgreSQL 16.15, PASS**. Il runtime har
 Implementato un contratto field-aware `absent`/`legacy`/`reset`/`country_only`/`full`, validazione server di country supported+active, area attiva, country/area e ancestors, proiezione legacy per gerarchie IT/FR/ES/CH/SI/PL e singola statement atomica su `opportunities`. I read espongono canonical, canonical-country, legacy-text o none e usano canonical-first; collection e gerarchie sono caricate in batch. Integrati API collection/item, detail, repository, Search, feed, owner/applications summaries e componenti di presentazione. `OpportunityForm` e filtri canonici restano esclusi rispettivamente fino a C5 e C6.
 
 Migration: nessuna nuova migration C4. C3 applicata secondo comunicazione utente, target non verificato indipendentemente. Production: nessuna query/write eseguita da C4. RLS, grant, trigger, funzioni, ownership, applications, backfill e mobile: **NON MODIFICATI**. Web: dual-read/dual-write implementato, selector non collegato. Test repository: diff-check, lint, typecheck e **191 unit test PASS, 0 FAIL**; build bloccata dal download esterno Google Fonts. Verifica manuale/visiva: **NESSUNA VERIFICA MANUALE APPLICABILE**. Blocker C4: nessuno. Prossimo passaggio autorizzabile: **C5**, senza avvio automatico.
+
+#### 3C-C5 — OpportunityForm
+
+**Stato: CONDITIONAL PASS — IMPLEMENTAZIONE E TEST AUTOMATICI PASS; VERIFICA MANUALE PREVIEW PENDING.** Deliverable: `docs/european-expansion/phase-3c-c5-opportunity-form.md`.
+
+`OpportunityForm` usa ora il selector canonico riutilizzabile senza default Italia, query legacy dirette o testo libero estero. Supporta geography opzionale, country-only, profondità variabile, reset e payload field-aware. Edit canonical ricostruisce la selezione; edit legacy mostra il testo esistente e lo preserva se non si interagisce, consentendo sostituzione o reset espliciti.
+
+Migration: nessuna nuova. C3 applicata secondo comunicazione utente, target non verificato indipendentemente. Production: nessuna query/write eseguita dall'agente. RLS, grants, ownership, applications, filtri e mobile: **NON MODIFICATI**. Web: form collegato. Test: diff-check, lint, typecheck e **196 unit test PASS, 0 FAIL**; build bloccata dal download esterno Google Fonts. Verifica manuale/visiva: **PENDING — checklist create/edit/legacy/cleanup nel deliverable**. C5 non è COMPLETATA e C6 non è autorizzabile finché lo smoke non è PASS.
 
 ### FASE 3C-D — Search / Discover / WhoToFollow
 
@@ -744,13 +752,13 @@ Alla data di creazione iniziale della roadmap:
 | Voce | Stato |
 | --- | --- |
 | Last completed subphase | **FASE 3C-C4 — Opportunities dual-read/dual-write — COMPLETATA** |
-| Current active phase | **NESSUNA — C4 conclusa; C5 non autorizzata** |
-| Next safe action | **FASE 3C-C5 solo previa autorizzazione esplicita; nessun rollout implicito** |
+| Current active phase | **FASE 3C-C5 — CONDITIONAL PASS / MANUAL PREVIEW PENDING** |
+| Next safe action | **Eseguire smoke Preview C5; nessun avvio C6 implicito** |
 | B4.3 local runtime harness | **PASSED — PostgreSQL 16, fixture sintetiche, nessuna connessione remota** |
 | B4.3 Supabase certification | **BLOCKED — PREVIEW BRANCH UNHEALTHY / MIGRATIONS FAILED / SUPPORT PENDING** |
 | B4.4 | **COMPLETATA — CANARY APPLICATIVO PLAYER IT / STAFF FR, READ-AFTER-WRITE, CLEANUP E RIPRISTINO FAIL-CLOSED PASS** |
 | FASE 3C-B | **COMPLETATA — B1–B7 repository web/API** |
-| FASE 3C-C | **IN CORSO — C1–C4 COMPLETATE; C5–C7 NOT STARTED** |
+| FASE 3C-C | **IN CORSO — C1–C4 COMPLETATE; C5 IN VERIFICA; C6–C7 NOT STARTED** |
 | Automatic residence backfill | **DELIBERATELY EXCLUDED** |
 | Mobile international parity | **NOT STARTED** |
 
@@ -765,3 +773,5 @@ C3 Opportunities è chiusa: migration additiva creata e testata due volte su Pos
 Aggiornamento successivo: l'utente ha applicato la migration C3 con esito `Success. No rows returned`; target e Production non sono stati verificati indipendentemente.
 
 C4 Opportunities è chiusa nel repository web/API: dual-read canonical-first e dual-write atomico/field-aware implementati, senza selector form, filtri canonici, migration aggiuntive, RLS/grant/backfill o mobile. La verifica manuale/visiva C4 non è applicabile. Attendere autorizzazione esplicita prima di C5.
+
+C5 Opportunities è implementata e supera i test automatici, ma resta **CONDITIONAL PASS** fino alla checklist manuale Preview su create, country-only/full, edit canonical, reset, preservation/sostituzione legacy e cleanup. Mobile e filtri restano invariati. Non iniziare C6 prima del PASS manuale e di una nuova autorizzazione esplicita.

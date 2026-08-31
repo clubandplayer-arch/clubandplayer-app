@@ -124,7 +124,7 @@ test('collection and item APIs implement canonical reads and field-aware dual wr
   assert.match(item, /resolveOpportunityGeography/);
 });
 
-test('dual-read reaches detail, Search, feed, owner and application surfaces without UI selectors', () => {
+test('dual-read reaches detail, Search, feed, owner and application surfaces', () => {
   const targets = [
     'app/(dashboard)/opportunities/[id]/page.tsx',
     'app/api/search/route.ts',
@@ -137,5 +137,5 @@ test('dual-read reaches detail, Search, feed, owner and application surfaces wit
     assert.match(source, /country_id\s*,\s*geo_area_id/);
     assert.match(source, /OpportunityGeography|opportunityGeography|attachOpportunityGeography|resolveOpportunityGeography/);
   }
-  assert.doesNotMatch(read('components/opportunities/OpportunityForm.tsx'), /CanonicalGeographySelector|country_id|geo_area_id/);
+  assert.match(read('components/opportunities/OpportunityForm.tsx'), /CanonicalGeographySelector/);
 });
