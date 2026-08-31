@@ -2,9 +2,9 @@
 
 ## Esito
 
-**CONDITIONAL PASS — repository e PostgreSQL locale PASS; audit/apply Preview del backfill manuale PENDING.** C7 non è COMPLETATA finché i conteggi Preview non sono revisionati e lo smoke post-backfill non è PASS.
+**CONDITIONAL PASS — repository e PostgreSQL locale PASS; audit Production read-only USER-REPORTED PASS; apply e smoke post-backfill NON AUTORIZZATI/PENDING.** C7 non è COMPLETATA.
 
-**Aggiornamento gate:** il progetto non dispone di un Preview Branch Supabase funzionante collegato alla PR; `b4-rpc-validation` è UNHEALTHY e non è autorizzato. Il check Supabase resta QUEUED e il ticket Support è irrisolto. Non sono autorizzati nuovi Preview Branch, apply/backfill, uso del branch unhealthy o query Production da parte dell'agente.
+**Aggiornamento gate:** il progetto non dispone di un Preview Branch Supabase funzionante collegato alla PR; `b4-rpc-validation` è UNHEALTHY e non è autorizzato. Il check Supabase resta QUEUED e il ticket Support è irrisolto. L'utente ha eseguito esclusivamente l'alternativa Production read-only; non sono stati autorizzati nuovi Preview Branch, apply/backfill, uso del branch unhealthy o altre query Production da parte dell'agente.
 
 ## Obiettivo e confine
 
@@ -62,9 +62,9 @@ Il runtime PostgreSQL 16.15 ha verificato:
 
 Non applicare a Production finché audit, conteggi, rollback e smoke Preview non sono approvati. Non includere credenziali o UUID sensibili nel report.
 
-## Alternativa audit Production preparata, non eseguita
+## Audit Production read-only — esito comunicato
 
-Poiché il gate Preview è esternamente bloccato, è disponibile un audit alternativo che:
+Poiché il gate Preview è esternamente bloccato, l'utente ha eseguito l'audit alternativo che:
 
 - contiene un unico statement `WITH ... SELECT`;
 - non crea nemmeno oggetti temporanei e non contiene DML, DDL o advisory lock;
@@ -72,7 +72,23 @@ Poiché il gate Preview è esternamente bloccato, è disponibile un audit altern
 - non restituisce UUID, testi geografici, owner, applicant o altri dati personali;
 - verifica internamente che ogni mapping candidato appartenga al country canonico IT.
 
-L'artefatto è stato testato esclusivamente su PostgreSQL locale con fixture sintetiche. **Non è stato eseguito su Production** e la sua presenza non costituisce autorizzazione a eseguirlo. C7 resta CONDITIONAL PASS; nessuna fase successiva è avviata.
+Esito user-reported del solo statement read-only:
+
+| Resolution | Conteggio |
+| --- | ---: |
+| `municipality` | 31 |
+| `province` | 0 |
+| `region` | 0 |
+| `ambiguous_country_only` | 0 |
+| `unresolved_country_only` | 0 |
+
+Il totale è 31 e coincide con i 31 match Municipality: copertura deterministica **100%**, nessun ambiguo e nessun unresolved. L'esito è favorevole e non richiede una coda di correzione manuale prima dell'eventuale apply. Rimane una fotografia del momento dell'audit: non autorizza né garantisce automaticamente un apply successivo se nel frattempo cambiano i dati.
+
+## Prossimo passaggio controllato raccomandato
+
+Non eseguire ancora `apply_opportunity_legacy_geography_backfill.sql` nella forma corrente. Il prossimo checkpoint autorizzabile è la preparazione/revisione di un apply Production **fail-closed sui conteggi approvati**: immediatamente prima dell'UPDATE dovrà ricalcolare il piano nella stessa transazione e abortire salvo esattamente 31 Municipality e zero nelle altre quattro categorie. Dovrà inoltre restituire l'allowlist per rollback e mantenere invariati testi legacy, ownership e applications.
+
+Soltanto dopo una nuova autorizzazione esplicita si potrà eseguire quell'apply controllato. Dopo l'eventuale apply saranno obbligatori: audit count-only atteso a zero, smoke di “Juniores Regionale”, nuova Opportunity francese, detail/edit non geografico e Application esistente. Nessuna fase successiva è avviata.
 
 ## Stato operativo
 
@@ -82,9 +98,10 @@ L'artefatto è stato testato esclusivamente su PostgreSQL locale con fixture sin
 | Migration automatica nuova | NESSUNA |
 | Audit/apply locale | PASS |
 | Audit Preview | BLOCKED — nessun Preview Branch healthy |
-| Apply Preview | PENDING / richiede approvazione conteggi |
-| Audit Production alternativo | PREPARATO / NON ESEGUITO / NON AUTORIZZATO |
-| Production | NON INTERROGATA / NON MODIFICATA |
+| Apply Preview | BLOCKED — nessun Preview Branch healthy |
+| Audit Production alternativo | USER-REPORTED PASS — 31/31 Municipality, zero scarti |
+| Apply/backfill Production | NON ESEGUITO / NON AUTORIZZATO |
+| Production | SOLO AUDIT READ-ONLY USER-REPORTED; DATI NON MODIFICATI |
 | Web | C1–C6 preservati; regressione automatica PASS |
 | Mobile | NOT STARTED / NON MODIFICATO |
 | Stato C7 | CONDITIONAL PASS |
