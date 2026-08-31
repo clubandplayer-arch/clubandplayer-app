@@ -8,15 +8,15 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **COMPLETATA — FASE 3C-C1 — Opportunities audit schema/write/read** |
-| Current active phase | **NESSUNA — C1 repository-only conclusa; C2 non autorizzata** |
-| Next safe action | **FASE 3C-C2 — canonical geography schema, solo previa autorizzazione esplicita** |
+| Last completed subphase | **COMPLETATA — FASE 3C-C2 — Opportunities canonical geography schema contract** |
+| Current active phase | **NESSUNA — C2 repository-only conclusa; C3 non autorizzata** |
+| Next safe action | **FASE 3C-C3 — migration additive, solo previa autorizzazione esplicita** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
 | Mobile international parity | **NOT STARTED** |
 | FASE 3C-B | **COMPLETATA — B1–B7 repository web/API** |
-| FASE 3C-C | **IN CORSO — C1 COMPLETATA; C2–C7 NOT STARTED** |
+| FASE 3C-C | **IN CORSO — C1–C2 COMPLETATE; C3–C7 NOT STARTED** |
 
 **FASE 3C-B è COMPLETATA nel perimetro repository web/API.** B7 riconferma IT legacy, IT/FR/ES/CH/SI/PL canonicali, account type, canonical-first, fallback e separazione semantica. `/settings` è ora raggiungibile anche dagli Enti su desktop e mobile, senza esporre loro gli interessi mobility. Prima del merge resta richiesta la verifica manuale Preview; mobile international parity resta una fase futura separata.
 
@@ -298,7 +298,7 @@ B4.3 ha creato nel repository la migration additiva `20261204120000_transactiona
 
 ### FASE 3C-C — Opportunities canonical geography
 
-**Stato: IN CORSO — C1 COMPLETATA; C2–C7 NOT STARTED.**
+**Stato: IN CORSO — C1–C2 COMPLETATE; C3–C7 NOT STARTED.**
 
 Sottofasi previste:
 
@@ -321,6 +321,14 @@ L'audit ha ricostruito lo schema Opportunity osservabile, i campi testuali legac
 Decisioni raccomandate per C2: colonne canonicali nullable `country_id` e `geo_area_id`, coerenza country/area garantita dal database, country-only e geo area a profondità variabile, nessun default Italia, nessuna derivazione automatica da residence/interessi/sede Club e conservazione integrale dei campi testuali. La priorità read proposta è canonical → mapping legacy Italia univoco → testo legacy. Ownership `owner_id`/`created_by`/`club_id` e semantics applications (`athlete_id` legacy compatibile Player/Staff e `club_id` user owner) restano invarianti.
 
 Codice comportamentale: **NON MODIFICATO**. Migration: **NON CREATA, NON TESTATA, NON APPLICATA — non applicabile/vietata in C1**. Production: **NON INTERROGATA E NON MODIFICATA**. Web: audit completato, nessuna UI collegata. Mobile: **NOT STARTED / NON MODIFICATO**. Test repository: `git diff --check`, lint, typecheck e 180 unit test **PASS**; build applicativa bloccata esclusivamente dal mancato download di Inter/Righteous da Google Fonts nell'ambiente, senza errori di codice osservati prima del fetch. Verifica manuale C1: **NESSUNA VERIFICA MANUALE APPLICABILE**. Blocker critici C1: nessuno; decisioni residue e rischi C2–C7 sono enumerati nel deliverable. Prossimo passaggio autorizzabile: **C2**, senza avvio automatico.
+
+#### 3C-C2 — Canonical geography schema
+
+**Stato: COMPLETATA — PASS repository-only; NESSUNA VERIFICA MANUALE APPLICABILE.** Deliverable: `docs/european-expansion/phase-3c-c2-opportunities-canonical-geography-schema.md`.
+
+Il contratto C2 fissa `opportunities.country_id uuid null` e `opportunities.geo_area_id uuid null`, FK dirette verso `countries`/`geo_areas`, check area→country e FK composita country/area. Country-only e selezione di qualunque livello attivo sono ammesse; area senza country e mismatch sono vietati. Delete è `RESTRICT`; non esistono default, backfill o derivazioni da profilo, residence, interessi o sede Club. `country`/`region`/`province`/`city`, ownership, RLS e applications restano invariati.
+
+C2 contiene soltanto il DDL blueprint e i criteri verificabili per C3: **nessuna migration creata, testata o applicata; nessuno schema runtime modificato**. Production: **NON INTERROGATA E NON MODIFICATA**. Web: contratto documentato, nessuna UI o API collegata. Mobile: **NOT STARTED / NON MODIFICATO**. Test repository: `git diff --check`, lint, typecheck e 180 unit test **PASS**. Verifica manuale/visiva: **NESSUNA VERIFICA MANUALE APPLICABILE**. Blocker C2: nessuno. Prossimo passaggio autorizzabile: **C3 — migration additive**, senza avvio automatico.
 
 ### FASE 3C-D — Search / Discover / WhoToFollow
 
@@ -717,17 +725,19 @@ Alla data di creazione iniziale della roadmap:
 
 | Voce | Stato |
 | --- | --- |
-| Last completed subphase | **FASE 3C-C1 — Opportunities audit schema/write/read — COMPLETATA** |
-| Current active phase | **NESSUNA — C1 conclusa; C2 non autorizzata** |
-| Next safe action | **FASE 3C-C2 solo previa autorizzazione esplicita; nessun rollout implicito** |
+| Last completed subphase | **FASE 3C-C2 — Opportunities canonical geography schema contract — COMPLETATA** |
+| Current active phase | **NESSUNA — C2 conclusa; C3 non autorizzata** |
+| Next safe action | **FASE 3C-C3 solo previa autorizzazione esplicita; nessun rollout implicito** |
 | B4.3 local runtime harness | **PASSED — PostgreSQL 16, fixture sintetiche, nessuna connessione remota** |
 | B4.3 Supabase certification | **BLOCKED — PREVIEW BRANCH UNHEALTHY / MIGRATIONS FAILED / SUPPORT PENDING** |
 | B4.4 | **COMPLETATA — CANARY APPLICATIVO PLAYER IT / STAFF FR, READ-AFTER-WRITE, CLEANUP E RIPRISTINO FAIL-CLOSED PASS** |
 | FASE 3C-B | **COMPLETATA — B1–B7 repository web/API** |
-| FASE 3C-C | **IN CORSO — C1 COMPLETATA; C2–C7 NOT STARTED** |
+| FASE 3C-C | **IN CORSO — C1–C2 COMPLETATE; C3–C7 NOT STARTED** |
 | Automatic residence backfill | **DELIBERATELY EXCLUDED** |
 | Mobile international parity | **NOT STARTED** |
 
 B7 è chiusa nel perimetro repository web/API. Non riabilitare grant o gate e non interpretare la chiusura come rollout. Prima del merge eseguire gli smoke manuali Preview documentati, inclusi accesso Settings Institution desktop/mobile e assenza mobility per Club/Institution/Fan.
 
 C1 Opportunities è chiusa come audit repository-only: nessuna migration, query remota, write, UI o modifica mobile. La verifica manuale C1 non è applicabile. Attendere autorizzazione esplicita prima di C2.
+
+C2 Opportunities è chiusa come contratto schema repository-only: DDL blueprint additivo definito, ma nessuna migration o modifica runtime è stata creata o applicata. Production non è stata interrogata o modificata; web e mobile non hanno modifiche comportamentali. La verifica manuale/visiva C2 non è applicabile. Attendere autorizzazione esplicita prima di C3.
