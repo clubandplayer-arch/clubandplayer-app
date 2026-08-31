@@ -40,3 +40,17 @@ test('rollback is explicit-ID only and cannot clear every canonical opportunity'
   assert.match(rollback, /where opportunity\.id = rollback\.id/);
   assert.doesNotMatch(rollback, /where opportunity\.country_id is not null/i);
 });
+
+const productionAudit = readFileSync('supabase/runbooks/manual/audit_opportunity_legacy_geography_production_read_only.sql', 'utf8');
+
+test('Production alternative is one read-only CTE statement with count-only output', () => {
+  const normalized = productionAudit.trim();
+  assert.match(normalized, /^with\s+italy\s+as\s*\(/i);
+  assert.equal((normalized.match(/;/g) ?? []).length, 1);
+  assert.doesNotMatch(normalized, /\b(create|insert|update|delete|alter|drop|truncate|grant|revoke|call|do)\b/i);
+  assert.doesNotMatch(normalized, /pg_advisory|opportunity_id\s*,\s*resolution\s*,\s*country_id/i);
+  assert.match(normalized, /select categories\.resolution, count\(classified\.opportunity_id\) as opportunities/);
+  for (const category of ['municipality', 'province', 'region', 'ambiguous_country_only', 'unresolved_country_only']) {
+    assert.match(normalized, new RegExp(`'${category}'`));
+  }
+});

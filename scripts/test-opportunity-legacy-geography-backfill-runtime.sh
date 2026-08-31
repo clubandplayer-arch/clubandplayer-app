@@ -10,6 +10,7 @@ trap 'runuser -u postgres -- dropdb --if-exists "$DB_NAME" >/dev/null 2>&1 || tr
 PSQL=(runuser -u postgres -- psql -X -v ON_ERROR_STOP=1 -q -d "$DB_NAME")
 "${PSQL[@]}" -f "$ROOT_DIR/tests/integration/sql/opportunity-legacy-geography-backfill-setup.sql"
 "${PSQL[@]}" -f "$ROOT_DIR/supabase/migrations/20261205120000_opportunity_canonical_geography.sql"
+"${PSQL[@]}" -f "$ROOT_DIR/supabase/runbooks/manual/audit_opportunity_legacy_geography_production_read_only.sql"
 (cd "$ROOT_DIR/supabase/runbooks/manual" && "${PSQL[@]}" -f audit_opportunity_legacy_geography_backfill.sql)
 (cd "$ROOT_DIR/supabase/runbooks/manual" && "${PSQL[@]}" -f apply_opportunity_legacy_geography_backfill.sql)
 # Second execution certifies idempotence (empty plan, zero further updates).

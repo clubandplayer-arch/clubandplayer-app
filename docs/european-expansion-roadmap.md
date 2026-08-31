@@ -9,8 +9,8 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | Voce | Stato verificato |
 | --- | --- |
 | Last completed subphase | **COMPLETATA — FASE 3C-C6 — Opportunities canonical filters** |
-| Current active phase | **FASE 3C-C7 — CONDITIONAL PASS; AUDIT/APPLY PREVIEW PENDING** |
-| Next safe action | **Eseguire audit read-only C7 su Preview, revisionare conteggi, poi autorizzare apply Preview** |
+| Current active phase | **FASE 3C-C7 — CONDITIONAL PASS; PREVIEW SUPABASE GATE BLOCKED** |
+| Next safe action | **Attendere ripristino Preview o autorizzazione esplicita per audit Production read-only preparato** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -298,7 +298,7 @@ B4.3 ha creato nel repository la migration additiva `20261204120000_transactiona
 
 ### FASE 3C-C — Opportunities canonical geography
 
-**Stato: IN CORSO — C1–C6 COMPLETATE; C7 CONDITIONAL PASS / PREVIEW DATA VERIFICATION PENDING.**
+**Stato: IN CORSO — C1–C6 COMPLETATE; C7 CONDITIONAL PASS / PREVIEW SUPABASE GATE BLOCKED.**
 
 Sottofasi previste:
 
@@ -370,11 +370,13 @@ Lo smoke ha anche confermato che le Opportunities storiche con soli campi testua
 
 #### 3C-C7 — Regressione e backward compatibility
 
-**Stato: CONDITIONAL PASS — REPOSITORY E POSTGRESQL LOCALE PASS; AUDIT/APPLY PREVIEW PENDING.** Deliverable: `docs/european-expansion/phase-3c-c7-opportunities-regression-backward-compatibility.md`.
+**Stato: CONDITIONAL PASS — REPOSITORY E POSTGRESQL LOCALE PASS; PREVIEW SUPABASE GATE BLOCKED.** Deliverable: `docs/european-expansion/phase-3c-c7-opportunities-regression-backward-compatibility.md`.
 
 Creati audit read-only, piano deterministico, apply transazionale manuale e rollback explicit-ID per le Opportunities legacy italiane. Il resolver usa soltanto country alias espliciti e gerarchia esatta Municipality/Province/Region; match univoci ricevono country+area, ambigui e unresolved soltanto country IT. Nessuna label legacy, ownership o Application viene modificata. Il runbook resta fuori dalle migration automatiche.
 
-Test locale PostgreSQL 16.15: **PASS**, inclusi Subiaco/RM/Lazio, ambigui, unresolved, preservazione estero/ownership/applications e idempotenza; risultato `C7_OPPORTUNITY_BACKFILL_RUNTIME_PASS`. Test statici e suite repository: typecheck, lint e **204 unit test PASS, 0 FAIL**. Migration automatica: nessuna. Production: non interrogata/modificata. Web: regressione repository implementata. Mobile: NOT STARTED / NON MODIFICATO. Blocker: audit dei conteggi su Preview, approvazione apply, smoke post-backfill. C7 non è ancora COMPLETATA.
+Test locale PostgreSQL 16.15: **PASS**, inclusi Subiaco/RM/Lazio, ambigui, unresolved, preservazione estero/ownership/applications e idempotenza; risultato `C7_OPPORTUNITY_BACKFILL_RUNTIME_PASS`. Test statici e suite repository: typecheck, lint e **205 unit test PASS, 0 FAIL**. Migration automatica: nessuna. Production: non interrogata/modificata. Web: regressione repository implementata. Mobile: NOT STARTED / NON MODIFICATO. Blocker: audit dei conteggi su Preview, approvazione apply, smoke post-backfill. C7 non è ancora COMPLETATA.
+
+**Aggiornamento blocker C7:** non esiste un Preview Branch Supabase healthy collegato alla PR; `b4-rpc-validation` è UNHEALTHY e non autorizzato, il check resta QUEUED e Support non ha ancora risolto. Preparato senza eseguirlo `audit_opportunity_legacy_geography_production_read_only.sql`: singolo statement CTE/SELECT, nessuna temp table/DML/DDL/lock, output limitato ai cinque conteggi e privo di UUID/dati personali. Nessuna query Production, apply o backfill è stata eseguita o autorizzata. C7 resta CONDITIONAL PASS e le fasi successive restano ferme.
 
 ### FASE 3C-D — Search / Discover / WhoToFollow
 
@@ -772,8 +774,8 @@ Alla data di creazione iniziale della roadmap:
 | Voce | Stato |
 | --- | --- |
 | Last completed subphase | **FASE 3C-C6 — Opportunities canonical filters — COMPLETATA** |
-| Current active phase | **FASE 3C-C7 — CONDITIONAL PASS; AUDIT/APPLY PREVIEW PENDING** |
-| Next safe action | **Audit read-only C7 su Preview; apply solo dopo revisione e approvazione** |
+| Current active phase | **FASE 3C-C7 — CONDITIONAL PASS; PREVIEW SUPABASE GATE BLOCKED** |
+| Next safe action | **Attendere Preview healthy o autorizzazione esplicita dell’audit Production read-only preparato** |
 | B4.3 local runtime harness | **PASSED — PostgreSQL 16, fixture sintetiche, nessuna connessione remota** |
 | B4.3 Supabase certification | **BLOCKED — PREVIEW BRANCH UNHEALTHY / MIGRATIONS FAILED / SUPPORT PENDING** |
 | B4.4 | **COMPLETATA — CANARY APPLICATIVO PLAYER IT / STAFF FR, READ-AFTER-WRITE, CLEANUP E RIPRISTINO FAIL-CLOSED PASS** |

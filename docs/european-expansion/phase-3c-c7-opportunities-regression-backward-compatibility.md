@@ -4,6 +4,8 @@
 
 **CONDITIONAL PASS — repository e PostgreSQL locale PASS; audit/apply Preview del backfill manuale PENDING.** C7 non è COMPLETATA finché i conteggi Preview non sono revisionati e lo smoke post-backfill non è PASS.
 
+**Aggiornamento gate:** il progetto non dispone di un Preview Branch Supabase funzionante collegato alla PR; `b4-rpc-validation` è UNHEALTHY e non è autorizzato. Il check Supabase resta QUEUED e il ticket Support è irrisolto. Non sono autorizzati nuovi Preview Branch, apply/backfill, uso del branch unhealthy o query Production da parte dell'agente.
+
 ## Obiettivo e confine
 
 C7 chiude la regressione web/API di C1–C6 e affronta il gap emerso nello smoke C6: le Opportunity storiche testuali restano leggibili, ma non soddisfano un filtro canonico ID-based. Non vengono modificate semantiche di ownership, applications, RLS, grants, trigger o mobile.
@@ -13,6 +15,7 @@ Il backfill è deliberatamente un **runbook manuale**, non una migration automat
 ## Artefatti
 
 - `supabase/runbooks/manual/audit_opportunity_legacy_geography_backfill.sql`: genera conteggi e lista degli scarti, poi esegue rollback;
+- `supabase/runbooks/manual/audit_opportunity_legacy_geography_production_read_only.sql`: alternativa Production a singolo statement CTE/SELECT, solo conteggi aggregati;
 - `supabase/runbooks/manual/opportunity_legacy_geography_backfill_plan.sql`: piano condiviso in temporary table;
 - `supabase/runbooks/manual/apply_opportunity_legacy_geography_backfill.sql`: apply transazionale, serializzato con advisory lock;
 - `supabase/rollbacks/20261205_opportunity_legacy_geography_backfill.sql`: rollback fail-closed per soli UUID approvati;
@@ -46,7 +49,7 @@ Il runtime PostgreSQL 16.15 ha verificato:
 - testi legacy, owner/created_by/club_id e Application preservati;
 - seconda apply senza ulteriori update;
 - risultato `C7_OPPORTUNITY_BACKFILL_RUNTIME_PASS`;
-- typecheck, lint e **204 unit test PASS, 0 FAIL**.
+- typecheck, lint e **205 unit test PASS, 0 FAIL**.
 
 ## Verifica Preview richiesta prima del completamento
 
@@ -59,6 +62,18 @@ Il runtime PostgreSQL 16.15 ha verificato:
 
 Non applicare a Production finché audit, conteggi, rollback e smoke Preview non sono approvati. Non includere credenziali o UUID sensibili nel report.
 
+## Alternativa audit Production preparata, non eseguita
+
+Poiché il gate Preview è esternamente bloccato, è disponibile un audit alternativo che:
+
+- contiene un unico statement `WITH ... SELECT`;
+- non crea nemmeno oggetti temporanei e non contiene DML, DDL o advisory lock;
+- restituisce sempre e soltanto le cinque righe aggregate `municipality`, `province`, `region`, `ambiguous_country_only`, `unresolved_country_only` con il relativo conteggio;
+- non restituisce UUID, testi geografici, owner, applicant o altri dati personali;
+- verifica internamente che ogni mapping candidato appartenga al country canonico IT.
+
+L'artefatto è stato testato esclusivamente su PostgreSQL locale con fixture sintetiche. **Non è stato eseguito su Production** e la sua presenza non costituisce autorizzazione a eseguirlo. C7 resta CONDITIONAL PASS; nessuna fase successiva è avviata.
+
 ## Stato operativo
 
 | Voce | Stato |
@@ -66,8 +81,9 @@ Non applicare a Production finché audit, conteggi, rollback e smoke Preview non
 | Codice/runbook C7 | IMPLEMENTATO |
 | Migration automatica nuova | NESSUNA |
 | Audit/apply locale | PASS |
-| Audit Preview | PENDING |
+| Audit Preview | BLOCKED — nessun Preview Branch healthy |
 | Apply Preview | PENDING / richiede approvazione conteggi |
+| Audit Production alternativo | PREPARATO / NON ESEGUITO / NON AUTORIZZATO |
 | Production | NON INTERROGATA / NON MODIFICATA |
 | Web | C1–C6 preservati; regressione automatica PASS |
 | Mobile | NOT STARTED / NON MODIFICATO |
