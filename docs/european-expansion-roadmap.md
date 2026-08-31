@@ -10,7 +10,7 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | --- | --- |
 | Last completed subphase | **COMPLETATA — FASE 3C-C6 — Opportunities canonical filters** |
 | Current active phase | **FASE 3C-C7 — CONDITIONAL PASS; PROD READ-ONLY AUDIT PASS, APPLY NOT AUTHORIZED** |
-| Next safe action | **Autorizzare separatamente la preparazione/revisione di un apply fail-closed sui conteggi 31/0/0/0/0** |
+| Next safe action | **Autorizzare separatamente l’esecuzione Production del candidato apply fail-closed 31/0/0/0/0** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -374,11 +374,13 @@ Lo smoke ha anche confermato che le Opportunities storiche con soli campi testua
 
 Creati audit read-only, piano deterministico, apply transazionale manuale e rollback explicit-ID per le Opportunities legacy italiane. Il resolver usa soltanto country alias espliciti e gerarchia esatta Municipality/Province/Region; match univoci ricevono country+area, ambigui e unresolved soltanto country IT. Nessuna label legacy, ownership o Application viene modificata. Il runbook resta fuori dalle migration automatiche.
 
-Test locale PostgreSQL 16.15: **PASS**, inclusi Subiaco/RM/Lazio, ambigui, unresolved, preservazione estero/ownership/applications e idempotenza; risultato `C7_OPPORTUNITY_BACKFILL_RUNTIME_PASS`. Test statici e suite repository: typecheck, lint e **205 unit test PASS, 0 FAIL**. Migration automatica: nessuna. Production: non interrogata/modificata dall’agente; successivo audit read-only user-reported documentato sotto. Web: regressione repository implementata. Mobile: NOT STARTED / NON MODIFICATO. Blocker: audit dei conteggi su Preview, approvazione apply, smoke post-backfill. C7 non è ancora COMPLETATA.
+Test locale PostgreSQL 16.15: **PASS**, inclusi Subiaco/RM/Lazio, ambigui, unresolved, preservazione estero/ownership/applications e idempotenza; risultato `C7_OPPORTUNITY_BACKFILL_RUNTIME_PASS`. Test statici e suite repository: typecheck, lint e **207 unit test PASS, 0 FAIL**. Migration automatica: nessuna. Production: non interrogata/modificata dall’agente; successivo audit read-only user-reported documentato sotto. Web: regressione repository implementata. Mobile: NOT STARTED / NON MODIFICATO. Blocker: audit dei conteggi su Preview, approvazione apply, smoke post-backfill. C7 non è ancora COMPLETATA.
 
 **Aggiornamento blocker C7:** non esiste un Preview Branch Supabase healthy collegato alla PR; `b4-rpc-validation` è UNHEALTHY e non autorizzato, il check resta QUEUED e Support non ha ancora risolto. Preparato senza eseguirlo `audit_opportunity_legacy_geography_production_read_only.sql`: singolo statement CTE/SELECT, nessuna temp table/DML/DDL/lock, output limitato ai cinque conteggi e privo di UUID/dati personali. In quel checkpoint nessuna query Production, apply o backfill era stata eseguita; il successivo audit read-only user-reported è documentato sotto. C7 resta CONDITIONAL PASS e le fasi successive restano ferme.
 
 **Esito audit Production read-only comunicato dall'utente:** `municipality=31`, `province=0`, `region=0`, `ambiguous_country_only=0`, `unresolved_country_only=0`; totale 31. Tutte le Opportunity legacy italiane osservate hanno quindi un match Municipality deterministico e non esiste una coda ambigua/unresolved nel momento dell'audit. È stato eseguito esclusivamente lo statement read-only; nessun apply, backfill o write. Il prossimo passaggio raccomandato, ancora non autorizzato, è preparare/revisionare un apply transazionale che ricalcoli e richieda esattamente i conteggi approvati prima di qualsiasi UPDATE, con allowlist rollback; poi serviranno nuova autorizzazione, post-audit e smoke. C7 resta CONDITIONAL PASS.
+
+**Apply fail-closed preparato, non eseguito:** `apply_opportunity_legacy_geography_production_fail_closed_31.sql` ricalcola il piano sotto advisory transaction lock e abortisce salvo esattamente 31/0/0/0/0; richiede target Municipality attivi/coerenti, emette allowlist rollback, modifica soltanto `country_id`/`geo_area_id` e verifica il post-update. Runtime PostgreSQL 16.15 su 31 fixture: PASS; preservati testi legacy, ownership e Application, rerun con piano diverso rifiutato fail-closed, risultato `C7_PRODUCTION_FAIL_CLOSED_GATE_PASS`. Nessuna esecuzione Production è stata effettuata. Prossimo passaggio autorizzabile: esecuzione Production separata del solo candidato, poi post-audit e smoke; C7 resta CONDITIONAL PASS.
 
 ### FASE 3C-D — Search / Discover / WhoToFollow
 
@@ -777,7 +779,7 @@ Alla data di creazione iniziale della roadmap:
 | --- | --- |
 | Last completed subphase | **FASE 3C-C6 — Opportunities canonical filters — COMPLETATA** |
 | Current active phase | **FASE 3C-C7 — CONDITIONAL PASS; PROD READ-ONLY AUDIT PASS, APPLY NOT AUTHORIZED** |
-| Next safe action | **Autorizzare separatamente la preparazione/revisione dell’apply fail-closed 31/0/0/0/0** |
+| Next safe action | **Autorizzare separatamente l’esecuzione Production dell’apply fail-closed 31/0/0/0/0** |
 | B4.3 local runtime harness | **PASSED — PostgreSQL 16, fixture sintetiche, nessuna connessione remota** |
 | B4.3 Supabase certification | **BLOCKED — PREVIEW BRANCH UNHEALTHY / MIGRATIONS FAILED / SUPPORT PENDING** |
 | B4.4 | **COMPLETATA — CANARY APPLICATIVO PLAYER IT / STAFF FR, READ-AFTER-WRITE, CLEANUP E RIPRISTINO FAIL-CLOSED PASS** |

@@ -18,6 +18,7 @@ Il backfill è deliberatamente un **runbook manuale**, non una migration automat
 - `supabase/runbooks/manual/audit_opportunity_legacy_geography_production_read_only.sql`: alternativa Production a singolo statement CTE/SELECT, solo conteggi aggregati;
 - `supabase/runbooks/manual/opportunity_legacy_geography_backfill_plan.sql`: piano condiviso in temporary table;
 - `supabase/runbooks/manual/apply_opportunity_legacy_geography_backfill.sql`: apply transazionale, serializzato con advisory lock;
+- `supabase/runbooks/manual/apply_opportunity_legacy_geography_production_fail_closed_31.sql`: candidato Production vincolato allo snapshot approvato 31/0/0/0/0, preparato ma non autorizzato;
 - `supabase/rollbacks/20261205_opportunity_legacy_geography_backfill.sql`: rollback fail-closed per soli UUID approvati;
 - `scripts/test-opportunity-legacy-geography-backfill-runtime.sh`: harness PostgreSQL locale;
 - fixture/assertion SQL e unit test statici dedicati.
@@ -49,7 +50,7 @@ Il runtime PostgreSQL 16.15 ha verificato:
 - testi legacy, owner/created_by/club_id e Application preservati;
 - seconda apply senza ulteriori update;
 - risultato `C7_OPPORTUNITY_BACKFILL_RUNTIME_PASS`;
-- typecheck, lint e **205 unit test PASS, 0 FAIL**.
+- typecheck, lint e **207 unit test PASS, 0 FAIL**.
 
 ## Verifica Preview richiesta prima del completamento
 
@@ -86,9 +87,11 @@ Il totale è 31 e coincide con i 31 match Municipality: copertura deterministica
 
 ## Prossimo passaggio controllato raccomandato
 
-Non eseguire ancora `apply_opportunity_legacy_geography_backfill.sql` nella forma corrente. Il prossimo checkpoint autorizzabile è la preparazione/revisione di un apply Production **fail-closed sui conteggi approvati**: immediatamente prima dell'UPDATE dovrà ricalcolare il piano nella stessa transazione e abortire salvo esattamente 31 Municipality e zero nelle altre quattro categorie. Dovrà inoltre restituire l'allowlist per rollback e mantenere invariati testi legacy, ownership e applications.
+Preparato e testato localmente `apply_opportunity_legacy_geography_production_fail_closed_31.sql`. Il candidato acquisisce l'advisory transaction lock, ricalcola il piano nella stessa transazione e abortisce salvo esattamente 31 Municipality e zero nelle altre quattro categorie. Verifica inoltre che ogni target sia una Municipality attiva e coerente con IT, restituisce l'allowlist per rollback, aggiorna soltanto gli ID canonici e verifica il risultato prima del commit.
 
-Soltanto dopo una nuova autorizzazione esplicita si potrà eseguire quell'apply controllato. Dopo l'eventuale apply saranno obbligatori: audit count-only atteso a zero, smoke di “Juniores Regionale”, nuova Opportunity francese, detail/edit non geografico e Application esistente. Nessuna fase successiva è avviata.
+Il runtime PostgreSQL 16.15 ha applicato il candidato a 31 fixture Municipality, preservando testi legacy, ownership e Application; una seconda esecuzione con piano ormai diverso è stata rifiutata prima dell'UPDATE e i dati sono rimasti invariati. Risultato: `C7_PRODUCTION_FAIL_CLOSED_GATE_PASS`.
+
+Il prossimo passaggio controllato è ora **una nuova autorizzazione esplicita all'esecuzione Production** del solo candidato fail-closed. L'apply non è stato eseguito dall'agente. Dopo l'eventuale apply saranno obbligatori: audit count-only atteso a zero, smoke di “Juniores Regionale”, nuova Opportunity francese, detail/edit non geografico e Application esistente. Nessuna fase successiva è avviata.
 
 ## Stato operativo
 
@@ -100,6 +103,7 @@ Soltanto dopo una nuova autorizzazione esplicita si potrà eseguire quell'apply 
 | Audit Preview | BLOCKED — nessun Preview Branch healthy |
 | Apply Preview | BLOCKED — nessun Preview Branch healthy |
 | Audit Production alternativo | USER-REPORTED PASS — 31/31 Municipality, zero scarti |
+| Apply Production fail-closed | PREPARATO E TESTATO LOCALMENTE / NON ESEGUITO |
 | Apply/backfill Production | NON ESEGUITO / NON AUTORIZZATO |
 | Production | SOLO AUDIT READ-ONLY USER-REPORTED; DATI NON MODIFICATI |
 | Web | C1–C6 preservati; regressione automatica PASS |
