@@ -8,16 +8,16 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **COMPLETATA — FASE 3C-B6 — Geographic interests** |
-| Current active phase | **NESSUNA — FASE 3C-B6 COMPLETATA** |
-| Next safe action | **Verifica manuale B6 non-Production; poi FASE 3C-B7 con autorizzazione separata** |
+| Last completed subphase | **COMPLETATA — FASE 3C-B7 — Compatibility and regression** |
+| Current active phase | **NESSUNA — FASE 3C-B COMPLETATA repository web/API** |
+| Next safe action | **Verifica manuale Preview B7 e merge review; nessun rollout implicito** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
 | Mobile international parity | **NOT STARTED** |
-| FASE 3C-B | **NOT COMPLETED — B1–B6 completate; B7 non iniziata** |
+| FASE 3C-B | **COMPLETATA — B1–B7 repository web/API** |
 
-**FASE 3C-B6 è COMPLETATA repository-only.** Il boundary API owner-only e la UI web `/settings` gestiscono country interests, geo-area interests e relocation esclusivamente per Player/Athlete e Staff. Club, Institution e Fan non vedono la UI e ricevono `403` dall'API: le organizzazioni restano legate alla propria sede pubblica separata. È richiesta verifica manuale non-Production prima di B7; B7 e mobile international parity non sono iniziate.
+**FASE 3C-B è COMPLETATA nel perimetro repository web/API.** B7 riconferma IT legacy, IT/FR/ES/CH/SI/PL canonicali, account type, canonical-first, fallback e separazione semantica. `/settings` è ora raggiungibile anche dagli Enti su desktop e mobile, senza esporre loro gli interessi mobility. Prima del merge resta richiesta la verifica manuale Preview; mobile international parity resta una fase futura separata.
 
 ## Roadmap maintenance rules
 
@@ -293,7 +293,7 @@ B4.3 ha creato nel repository la migration additiva `20261204120000_transactiona
 
 #### 3C-B7 — Compatibility and regression
 
-**Stato: NOT STARTED.** Verificare profili legacy Italia; nuovi profili Italia, FR, ES, CH, SI e PL; account type differenti; canonical-first; legacy fallback; assenza di regressioni mobile/API. Solo dopo B7 la FASE 3C-B potrà essere marcata **COMPLETATA**.
+**Stato: COMPLETATA — repository web/API, verifica manuale Preview richiesta.** Coperti profili legacy Italia; nuovi profili IT, FR, ES, CH, SI e PL; account type; canonical-first; legacy fallback; signup senza default e boundary B6. Il client mobile non è contenuto in questo repository e non è stato modificato; la parity mobile resta separata. Deliverable: `docs/european-expansion/phase-3c-b7-compatibility-regression.md`.
 
 ### FASE 3C-C — Opportunities canonical geography
 
@@ -706,14 +706,14 @@ Alla data di creazione iniziale della roadmap:
 
 | Voce | Stato |
 | --- | --- |
-| Last completed subphase | **FASE 3C-B6 — Geographic interests — COMPLETATA** |
-| Current active phase | **NESSUNA — FASE 3C-B6 COMPLETATA** |
-| Next safe action | **Verifica manuale B6 non-Production; poi FASE 3C-B7 con autorizzazione separata** |
+| Last completed subphase | **FASE 3C-B7 — Compatibility and regression — COMPLETATA** |
+| Current active phase | **NESSUNA — FASE 3C-B COMPLETATA repository web/API** |
+| Next safe action | **Verifica manuale Preview B7 e merge review; nessun rollout implicito** |
 | B4.3 local runtime harness | **PASSED — PostgreSQL 16, fixture sintetiche, nessuna connessione remota** |
 | B4.3 Supabase certification | **BLOCKED — PREVIEW BRANCH UNHEALTHY / MIGRATIONS FAILED / SUPPORT PENDING** |
 | B4.4 | **COMPLETATA — CANARY APPLICATIVO PLAYER IT / STAFF FR, READ-AFTER-WRITE, CLEANUP E RIPRISTINO FAIL-CLOSED PASS** |
-| FASE 3C-B | **NOT COMPLETED — B1–B6 completate; B7 non iniziata** |
+| FASE 3C-B | **COMPLETATA — B1–B7 repository web/API** |
 | Automatic residence backfill | **DELIBERATELY EXCLUDED** |
 | Mobile international parity | **NOT STARTED** |
 
-B6 è chiusa repository-only con boundary API owner-only e UI web `/settings` per country interests, geo-area interests e relocation. Non riabilitare grant o gate. Prima di B7 eseguire la verifica manuale B6 esclusivamente in ambiente non-Production.
+B7 è chiusa nel perimetro repository web/API. Non riabilitare grant o gate e non interpretare la chiusura come rollout. Prima del merge eseguire gli smoke manuali Preview documentati, inclusi accesso Settings Institution desktop/mobile e assenza mobility per Club/Institution/Fan.
