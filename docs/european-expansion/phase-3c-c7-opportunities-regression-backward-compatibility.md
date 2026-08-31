@@ -2,9 +2,9 @@
 
 ## Esito
 
-**CONDITIONAL PASS — repository e PostgreSQL locale PASS; audit Production read-only USER-REPORTED PASS; apply e smoke post-backfill NON AUTORIZZATI/PENDING.** C7 non è COMPLETATA.
+**PASS / COMPLETATA — repository e PostgreSQL locale PASS; audit, apply fail-closed, post-audit e smoke Production USER-REPORTED PASS.**
 
-**Aggiornamento gate:** il progetto non dispone di un Preview Branch Supabase funzionante collegato alla PR; `b4-rpc-validation` è UNHEALTHY e non è autorizzato. Il check Supabase resta QUEUED e il ticket Support è irrisolto. L'utente ha eseguito esclusivamente l'alternativa Production read-only; non sono stati autorizzati nuovi Preview Branch, apply/backfill, uso del branch unhealthy o altre query Production da parte dell'agente.
+**Aggiornamento gate:** il progetto non disponeva di un Preview Branch Supabase funzionante collegato alla PR; `b4-rpc-validation` era UNHEALTHY e non autorizzato, il check Supabase QUEUED e il ticket Support irrisolto. Il percorso sostitutivo Production è stato autorizzato ed eseguito manualmente dall'utente per il solo runbook fail-closed documentato; nessun altro apply, migration o write è stato autorizzato.
 
 ## Obiettivo e confine
 
@@ -52,7 +52,7 @@ Il runtime PostgreSQL 16.15 ha verificato:
 - risultato `C7_OPPORTUNITY_BACKFILL_RUNTIME_PASS`;
 - typecheck, lint e **207 unit test PASS, 0 FAIL**.
 
-## Verifica Preview richiesta prima del completamento
+## Verifica originariamente prevista su Preview
 
 1. Eseguire **solo** `audit_opportunity_legacy_geography_backfill.sql` sul target Preview e conservare i conteggi per resolution.
 2. Revisionare almeno tutti gli `ambiguous_country_only` e `unresolved_country_only`; non applicare se i conteggi sono inattesi.
@@ -61,7 +61,7 @@ Il runtime PostgreSQL 16.15 ha verificato:
 5. Verificare nuova Opportunity francese, lista senza filtri, detail, edit non geografico e una Application esistente.
 6. Rieseguire l'audit: il piano deve essere vuoto per le righe già trattate; gli eventuali casi non italiani restano legacy.
 
-Non applicare a Production finché audit, conteggi, rollback e smoke Preview non sono approvati. Non includere credenziali o UUID sensibili nel report.
+La Preview Supabase è rimasta indisponibile. Il percorso sostitutivo Production è stato separato in audit count-only, apply fail-closed esplicitamente autorizzato, post-audit e smoke; credenziali e UUID non sono registrati in questo documento.
 
 ## Audit Production read-only — esito comunicato
 
@@ -91,7 +91,15 @@ Preparato e testato localmente `apply_opportunity_legacy_geography_production_fa
 
 Il runtime PostgreSQL 16.15 ha applicato il candidato a 31 fixture Municipality, preservando testi legacy, ownership e Application; una seconda esecuzione con piano ormai diverso è stata rifiutata prima dell'UPDATE e i dati sono rimasti invariati. Risultato: `C7_PRODUCTION_FAIL_CLOSED_GATE_PASS`.
 
-Il prossimo passaggio controllato è ora **una nuova autorizzazione esplicita all'esecuzione Production** del solo candidato fail-closed. L'apply non è stato eseguito dall'agente. Dopo l'eventuale apply saranno obbligatori: audit count-only atteso a zero, smoke di “Juniores Regionale”, nuova Opportunity francese, detail/edit non geografico e Application esistente. Nessuna fase successiva è avviata.
+## Esecuzione Production e chiusura
+
+L'utente ha eseguito manualmente una sola volta, tramite `psql` dal commit remoto autorizzato `e8b4a6f2d23254ff8f1066007b9c575813b4b94e`, esclusivamente `apply_opportunity_legacy_geography_production_fail_closed_31.sql`. Preflight: connessione PostgreSQL 17.4 PASS, backup fisico del 31 Aug 2026 04:15:06 UTC con restore disponibile, audit immediato ancora 31/0/0/0/0. La password database esposta incidentalmente durante il setup è stata ruotata prima della connessione riuscita.
+
+Esito apply user-reported: **exit code 0**, `municipality=31`; allowlist conservata privatamente. Post-audit count-only: `municipality=0`, `province=0`, `region=0`, `ambiguous_country_only=0`, `unresolved_country_only=0`. Il runbook non deve essere rieseguito.
+
+Smoke read-only user-reported: “Juniores Regionale” PASS, “Opportunité Ain” PASS, lista senza filtri PASS, detail PASS, edit aperto senza salvataggio PASS, Applications esistenti PASS, console browser PASS. Ownership, applications, testi legacy e comportamento delle nuove Opportunity canoniche risultano preservati nelle verifiche applicabili.
+
+C7 è quindi **COMPLETATA / PASS**. Nessuna fase successiva, merge o ulteriore operazione Production è avviata o autorizzata da questa chiusura.
 
 ## Stato operativo
 
@@ -103,9 +111,9 @@ Il prossimo passaggio controllato è ora **una nuova autorizzazione esplicita al
 | Audit Preview | BLOCKED — nessun Preview Branch healthy |
 | Apply Preview | BLOCKED — nessun Preview Branch healthy |
 | Audit Production alternativo | USER-REPORTED PASS — 31/31 Municipality, zero scarti |
-| Apply Production fail-closed | PREPARATO E TESTATO LOCALMENTE / NON ESEGUITO |
-| Apply/backfill Production | NON ESEGUITO / NON AUTORIZZATO |
-| Production | SOLO AUDIT READ-ONLY USER-REPORTED; DATI NON MODIFICATI |
-| Web | C1–C6 preservati; regressione automatica PASS |
+| Apply Production fail-closed | USER-REPORTED PASS — exit 0, 31 Municipality |
+| Post-audit Production | PASS — tutti i conteggi a zero |
+| Production | BACKFILL LIMITATO COMPLETATO; NESSUN ALTRO WRITE |
+| Web | C1–C7 regressione automatica e smoke PASS |
 | Mobile | NOT STARTED / NON MODIFICATO |
-| Stato C7 | CONDITIONAL PASS |
+| Stato C7 | PASS / COMPLETATA |
