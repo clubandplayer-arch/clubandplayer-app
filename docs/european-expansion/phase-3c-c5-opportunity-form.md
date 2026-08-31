@@ -107,7 +107,7 @@ Comunicare PASS/FAIL per A–D, Paesi effettivamente provati, URL Preview e qual
 | Web | OpportunityForm collegato |
 | Mobile | NOT STARTED / NON MODIFICATO |
 | Test automatici | PASS |
-| Verifica manuale Preview | PENDING |
-| Stato C5 | CONDITIONAL PASS — NON ANCORA COMPLETATA |
+| Verifica manuale Preview | PASS — user-reported |
+| Stato C5 | PASS — COMPLETATA |
 
-**C6 non è ancora autorizzabile: attendere PASS manuale C5 e successiva autorizzazione esplicita.**
+**Checkpoint successivo:** smoke C5 confermato PASS dall’utente; C6 autorizzata separatamente.

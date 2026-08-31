@@ -190,6 +190,44 @@ export async function buildOpportunityGeographyWritePlan(
   return { country_id: country.id, geo_area_id: command.geoAreaId, ...projectOpportunityLegacyGeography(country, chain) };
 }
 
+/** Validates a canonical filter and returns the selected area plus every active descendant. */
+export async function getOpportunityGeoAreaFilterScope(
+  client: SupabaseClient,
+  countryId: string,
+  geoAreaId?: string | null,
+): Promise<string[] | null> {
+  const canonicalCountryId = nullableUuid(countryId, 'country_id');
+  const canonicalAreaId = nullableUuid(geoAreaId, 'geo_area_id');
+  if (!canonicalCountryId) {
+    throw new OpportunityGeographyError('INVALID_GEOGRAPHY', 'country_id is required for canonical filters');
+  }
+  await loadCountry(client, canonicalCountryId, true);
+  if (!canonicalAreaId) return null;
+  const selectedAreaId = canonicalAreaId;
+  await loadAreaChain(client, selectedAreaId, canonicalCountryId, true);
+
+  const scope = new Set<string>([selectedAreaId]);
+  let parents = [selectedAreaId];
+  for (let depth = 0; parents.length && depth < 16; depth += 1) {
+    const { data, error } = await client
+      .from('geo_areas')
+      .select('id')
+      .eq('country_id', canonicalCountryId)
+      .eq('is_active', true)
+      .in('parent_id', parents);
+    if (error) throw error;
+    const children = (data ?? []).flatMap((row) =>
+      typeof row.id === 'string' && !scope.has(row.id) ? [row.id] : [],
+    );
+    for (const id of children) scope.add(id);
+    parents = children;
+  }
+  if (parents.length) {
+    throw new OpportunityGeographyError('HIERARCHY_INVALID', 'canonical geography hierarchy is too deep');
+  }
+  return [...scope];
+}
+
 export function clearCanonicalOpportunityGeography() {
   return { country_id: null, geo_area_id: null } as const;
 }

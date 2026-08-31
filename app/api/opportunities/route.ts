@@ -11,6 +11,7 @@ import { dbError, invalidPayload, notAuthorized, rateLimited, successResponse } 
 import {
   attachOpportunityGeography,
   buildOpportunityGeographyWritePlan,
+  getOpportunityGeoAreaFilterScope,
   OpportunityGeographyError,
   parseOpportunityGeographyCommand,
   resolveOpportunityGeography,
@@ -94,6 +95,8 @@ export async function GET(req: NextRequest) {
   const region = (url.searchParams.get('region') || '').trim();
   const province = (url.searchParams.get('province') || '').trim();
   const city = (url.searchParams.get('city') || '').trim();
+  const countryId = (url.searchParams.get('countryId') || url.searchParams.get('country_id') || '').trim();
+  const geoAreaId = (url.searchParams.get('geoAreaId') || url.searchParams.get('geo_area_id') || '').trim();
   const club = (url.searchParams.get('club') || '').trim();
   const clubId = (url.searchParams.get('clubId') || url.searchParams.get('club_id') || '').trim();
   const sport = normalizeSport((url.searchParams.get('sport') || '').trim()) ?? '';
@@ -120,10 +123,21 @@ export async function GET(req: NextRequest) {
     query = query.or(
       `title.ilike.%${q}%,description.ilike.%${q}%,city.ilike.%${q}%,region.ilike.%${q}%,province.ilike.%${q}%,country.ilike.%${q}%,sport.ilike.%${q}%,role.ilike.%${q}%`,
     );
-  if (country && country !== '[object Object]') query = query.eq('country', country);
-  if (region && region !== '[object Object]') query = query.eq('region', region);
-  if (province && province !== '[object Object]') query = query.eq('province', province);
-  if (city && city !== '[object Object]') query = query.eq('city', city);
+  if (countryId || geoAreaId) {
+    try {
+      const areaScope = await getOpportunityGeoAreaFilterScope(supabase, countryId, geoAreaId);
+      query = query.eq('country_id', countryId);
+      if (areaScope) query = query.in('geo_area_id', areaScope);
+    } catch (error) {
+      if (error instanceof OpportunityGeographyError) return invalidPayload(error.message);
+      return dbError(error instanceof Error ? error.message : 'Unable to validate geography filters');
+    }
+  } else {
+    if (country && country !== '[object Object]') query = query.eq('country', country);
+    if (region && region !== '[object Object]') query = query.eq('region', region);
+    if (province && province !== '[object Object]') query = query.eq('province', province);
+    if (city && city !== '[object Object]') query = query.eq('city', city);
+  }
   if (clubId) query = query.or(`club_id.eq.${clubId},owner_id.eq.${clubId},created_by.eq.${clubId}`);
   if (club) query = query.ilike('club_name', `%${club}%`);
   if (sport) query = query.eq('sport', sport);

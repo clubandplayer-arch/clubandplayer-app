@@ -298,7 +298,7 @@ B4.3 ha creato nel repository la migration additiva `20261204120000_transactiona
 
 ### FASE 3C-C — Opportunities canonical geography
 
-**Stato: IN CORSO — C1–C4 COMPLETATE; C5 CONDITIONAL PASS / MANUAL PREVIEW PENDING; C6–C7 NOT STARTED.**
+**Stato: IN CORSO — C1–C5 COMPLETATE; C6 CONDITIONAL PASS / MANUAL PREVIEW PENDING; C7 NOT STARTED.**
 
 Sottofasi previste:
 
@@ -350,11 +350,20 @@ Migration: nessuna nuova migration C4. C3 applicata secondo comunicazione utente
 
 #### 3C-C5 — OpportunityForm
 
-**Stato: CONDITIONAL PASS — IMPLEMENTAZIONE E TEST AUTOMATICI PASS; VERIFICA MANUALE PREVIEW PENDING.** Deliverable: `docs/european-expansion/phase-3c-c5-opportunity-form.md`.
+**Stato: COMPLETATA — PASS AUTOMATICO E SMOKE TEST USER-REPORTED PASS.** Deliverable: `docs/european-expansion/phase-3c-c5-opportunity-form.md`.
 
 `OpportunityForm` usa ora il selector canonico riutilizzabile senza default Italia, query legacy dirette o testo libero estero. Supporta geography opzionale, country-only, profondità variabile, reset e payload field-aware. Edit canonical ricostruisce la selezione; edit legacy mostra il testo esistente e lo preserva se non si interagisce, consentendo sostituzione o reset espliciti.
 
-Migration: nessuna nuova. C3 applicata secondo comunicazione utente, target non verificato indipendentemente. Production: nessuna query/write eseguita dall'agente. RLS, grants, ownership, applications, filtri e mobile: **NON MODIFICATI**. Web: form collegato. Test: diff-check, lint, typecheck e **196 unit test PASS, 0 FAIL**; build bloccata dal download esterno Google Fonts. Verifica manuale/visiva: **PENDING — checklist create/edit/legacy/cleanup nel deliverable**. C5 non è COMPLETATA e C6 non è autorizzabile finché lo smoke non è PASS.
+Migration: nessuna nuova. C3 applicata secondo comunicazione utente, target non verificato indipendentemente. Production: nessuna query/write eseguita dall'agente. RLS, grants, ownership, applications, filtri e mobile: **NON MODIFICATI**. Web: form collegato. Test: diff-check, lint, typecheck e **196 unit test PASS, 0 FAIL**; build bloccata dal download esterno Google Fonts. Verifica manuale/visiva: **PASS — confermata dall’utente dopo smoke test**. C5 è COMPLETATA; C6 è stata successivamente autorizzata.
+
+
+#### 3C-C6 — Filtri
+
+**Stato: CONDITIONAL PASS — IMPLEMENTAZIONE E TEST AUTOMATICI PASS; VERIFICA MANUALE PREVIEW PENDING.** Deliverable: `docs/european-expansion/phase-3c-c6-opportunity-filters.md`.
+
+La pagina Opportunities usa il selector canonico con URL `countryId`/`geoAreaId`. La GET valida country/area e filtra per country oppure per area più discendenti attivi; i canonical filters hanno precedenza, mentre i vecchi URL testuali restano supportati quando gli ID non sono presenti. Nessun default Italia.
+
+Migration: nessuna nuova; C3 user-reported applied. Production: non interrogata/modificata. RLS, grants, trigger, ownership, applications e mobile: **NON MODIFICATI**. Web: filtri implementati. Test: diff-check, lint, typecheck e **199 unit test PASS, 0 FAIL**; build bloccata esclusivamente dal download esterno Google Fonts. Verifica manuale Preview: **PENDING**, checklist nel deliverable. C7 non è iniziata e richiede smoke PASS più autorizzazione esplicita.
 
 ### FASE 3C-D — Search / Discover / WhoToFollow
 
