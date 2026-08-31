@@ -1,5 +1,6 @@
 import { dbError, notAuthenticated, successResponse } from '@/lib/api/standardResponses';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { attachOpportunityGeography } from '@/lib/opportunities/geography';
 
 export async function GET() {
   const supabase = await getSupabaseServerClient();
@@ -10,7 +11,7 @@ export async function GET() {
   // 1) Annunci del proprietario
   const { data: opps, error } = await supabase
     .from('opportunities')
-    .select('id,title,city,province,region,country,created_at')
+    .select('id,title,city,province,region,country,country_id,geo_area_id,created_at')
     .eq('owner_id', uid)
     .order('created_at', { ascending: false });
 
@@ -44,7 +45,8 @@ export async function GET() {
     }
   }
 
-  const data = opps.map((o) => ({
+  const withGeography = await attachOpportunityGeography(supabase, opps as Array<Record<string, any>>);
+  const data = withGeography.map((o) => ({
     ...o,
     applications_count: counts.get(o.id) ?? { ...zero },
   }));

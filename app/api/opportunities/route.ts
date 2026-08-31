@@ -8,6 +8,13 @@ import { COUNTRIES } from '@/lib/geo/countries';
 import { normalizeOpportunityGender, toOpportunityDbValue } from '@/lib/opps/gender';
 import { normalizeSport } from '@/lib/opps/constants';
 import { dbError, invalidPayload, notAuthorized, rateLimited, successResponse } from '@/lib/api/standardResponses';
+import {
+  attachOpportunityGeography,
+  buildOpportunityGeographyWritePlan,
+  OpportunityGeographyError,
+  parseOpportunityGeographyCommand,
+  resolveOpportunityGeography,
+} from '@/lib/opportunities/geography';
 
 export const runtime = 'nodejs';
 
@@ -104,7 +111,7 @@ export async function GET(req: NextRequest) {
   let query = supabase
     .from('opportunities')
     .select(
-      'id,title,description,created_by,created_at,country,region,province,city,sport,role,role_group,category,required_category,age_min,age_max,club_name,gender,owner_id,club_id,status',
+      'id,title,description,created_by,created_at,country,region,province,city,country_id,geo_area_id,sport,role,role_group,category,required_category,age_min,age_max,club_name,gender,owner_id,club_id,status',
     )
     .order('created_at', { ascending: sort === 'oldest' })
     .range(from, to);
@@ -189,8 +196,9 @@ export async function GET(req: NextRequest) {
     };
   });
 
+  const withGeography = await attachOpportunityGeography(supabase, enriched);
   return successResponse({
-    data: enriched,
+    data: withGeography,
     q,
     page,
     pageSize,
@@ -236,6 +244,13 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   const clubId = clubProfile.id;
 
   const body = await req.json().catch(() => ({}));
+  let geographyCommand;
+  try {
+    geographyCommand = parseOpportunityGeographyCommand(body as Record<string, unknown>);
+  } catch (error) {
+    if (error instanceof OpportunityGeographyError) return invalidPayload(error.code);
+    throw error;
+  }
   const title = norm((body as any).title);
   if (!title) return invalidPayload('Title is required');
 
@@ -307,12 +322,21 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     gender: genderDb,
   };
 
+  if (geographyCommand.kind !== 'absent' && geographyCommand.kind !== 'legacy') {
+    try {
+      Object.assign(basePayload, await buildOpportunityGeographyWritePlan(supabase, geographyCommand));
+    } catch (error) {
+      if (error instanceof OpportunityGeographyError) return invalidPayload(error.code);
+      throw error;
+    }
+  }
+
   const runInsert = (payload: Record<string, unknown>) =>
     supabase
       .from('opportunities')
       .insert(payload)
       .select(
-        'id,title,description,created_by,created_at,country,region,province,city,sport,role,role_group,category,required_category,age_min,age_max,club_name,gender,club_id',
+        'id,title,description,created_by,created_at,country,region,province,city,country_id,geo_area_id,sport,role,role_group,category,required_category,age_min,age_max,club_name,gender,club_id',
       )
       .single();
 
@@ -326,6 +350,6 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   }
 
   if (error) return dbError(error.message);
-  const normalizedData = data ? { ...data, role_group: parseRoleGroup((data as any).role_group) ?? 'player', roleGroup: parseRoleGroup((data as any).role_group) ?? 'player' } : data;
+  const normalizedData = data ? { ...data, role_group: parseRoleGroup((data as any).role_group) ?? 'player', roleGroup: parseRoleGroup((data as any).role_group) ?? 'player', geography: await resolveOpportunityGeography(supabase, data as Record<string, unknown>) } : data;
   return successResponse({ data: normalizedData }, { status: 201 });
 });

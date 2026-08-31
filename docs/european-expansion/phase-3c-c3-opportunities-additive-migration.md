@@ -2,7 +2,7 @@
 
 ## Esito
 
-**PASS — migration additiva creata e testata localmente il 2026-08-31.** La migration è presente esclusivamente nel repository e non è stata applicata a Supabase Preview, Production o altri database remoti. Non sono state eseguite query remote, scritture Production, backfill, modifiche RLS, grant, trigger, funzioni, API, UI, feature gate o modifiche mobile.
+**PASS — migration additiva creata e testata localmente il 2026-08-31.** Al checkpoint C3 la migration era presente esclusivamente nel repository e non era stata applicata da questo task. Prima di C4, l'utente ne ha comunicato l'applicazione riuscita con risultato `Success. No rows returned`; il target non è stato verificato indipendentemente e nessuna query remota è stata eseguita dall'agente. Non sono stati eseguiti backfill, modifiche RLS, grant, trigger, funzioni, UI, feature gate o modifiche mobile.
 
 Migration: `supabase/migrations/20261205120000_opportunity_canonical_geography.sql`.
 
@@ -87,9 +87,8 @@ La build non è una verifica manuale C3 e il fallimento esterno non invalida il 
 | --- | --- |
 | Codice migration | IMPLEMENTATO NEL REPOSITORY |
 | Migration testata localmente | SÌ — PostgreSQL 16.15, PASS |
-| Migration applicata Preview | NO |
-| Migration applicata Production | NO |
-| Production | NON INTERROGATA / NON MODIFICATA |
+| Migration applicata | APPLICATA — USER-REPORTED SUCCESS; target non verificato indipendentemente |
+| Production | NON INTERROGATA DALL'AGENTE / TARGET NON CERTIFICATO |
 | GitHub Actions | Da verificare dopo pubblicazione piattaforma |
 | Vercel Preview | Non applicabile a una migration non applicata e senza UI/runtime integration |
 | Web | Schema repository-only; nessun read/write collegato |

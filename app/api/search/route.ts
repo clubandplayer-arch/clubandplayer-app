@@ -8,6 +8,7 @@ import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { applyPublicProfileVisibilityFilters } from '@/lib/profile/visibility';
 import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
 import { getProvinceAbbreviationsServer } from '@/lib/geo/provinceAbbreviations.server';
+import { attachOpportunityGeography, opportunityGeographyLabel } from '@/lib/opportunities/geography';
 
 export const runtime = 'nodejs';
 
@@ -505,7 +506,7 @@ async function fetchOpportunityResults(params: {
   const { data, count, error } = await buildOpportunityQuery(
     supabase,
     ilikeQuery,
-    'id, title, description, city, province, region, country, club_id, club_name, created_by, owner_id',
+    'id, title, description, city, province, region, country, country_id, geo_area_id, club_id, club_name, created_by, owner_id',
     filters,
     { count: 'exact' },
     status,
@@ -515,7 +516,8 @@ async function fetchOpportunityResults(params: {
 
   if (error) throw new Error(error.message);
 
-  const rows = Array.isArray(data) ? (data as any[]) : [];
+  const rawRows = Array.isArray(data) ? (data as any[]) : [];
+  const rows = await attachOpportunityGeography(supabase, rawRows);
   const clubIds = Array.from(
     new Set(
       rows
@@ -553,7 +555,7 @@ async function fetchOpportunityResults(params: {
     const clubId = row.club_id || row.created_by || row.owner_id || '';
     const clubProfile = clubProfileMap.get(String(clubId));
     const title = row.title?.trim() || 'Opportunità';
-    const location = buildLocation(row, provinceAbbreviations);
+    const location = opportunityGeographyLabel(row.geography) ?? buildLocation(row, provinceAbbreviations);
     const subtitle = [row.club_name || clubProfile?.name, location].filter(Boolean).join(' · ');
 
     return {

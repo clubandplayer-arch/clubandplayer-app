@@ -7,6 +7,7 @@ import FollowButton from '@/components/common/FollowButton';
 import type { Opportunity } from '@/types/opportunity';
 import { useProvinceAbbreviations } from '@/hooks/useProvinceAbbreviations';
 import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
+import { opportunityGeographyLabel } from '@/lib/opportunities/geography';
 import { useI18n } from '@/components/i18n/I18nProvider';
 import { formatDate } from '@/lib/i18n/format';
 import { localizeControlledStatus, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
@@ -67,7 +68,7 @@ export default function OpportunitiesTable({
         const ownerId = o.created_by ?? o.owner_id ?? null;
         const profileOwnerId = (o as any).club_id ?? ownerId;
         const canEdit = !!currentUserId && (ownerId === currentUserId || o.created_by === currentUserId || o.owner_id === currentUserId);
-        const place = [o.city, provinceDisplayValue(o.province, provinceAbbreviations), o.region, o.country].filter(Boolean).join(', ');
+        const place = opportunityGeographyLabel(o.geography) ?? [o.city, provinceDisplayValue(o.province, provinceAbbreviations), o.region, o.country].filter(Boolean).join(', ');
         const showApply = (userRole === 'athlete' || userRole === 'staff') && !canEdit;
         const showFollow = (userRole === 'athlete' || userRole === 'staff') && !!profileOwnerId;
         const isMyClub = !!myProfileId && !!profileOwnerId && myProfileId === profileOwnerId;

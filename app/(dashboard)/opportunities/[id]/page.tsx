@@ -9,6 +9,7 @@ import { getProvinceAbbreviationsServer } from '@/lib/geo/provinceAbbreviations.
 import { resolveRequestLocale } from '@/lib/i18n/server';
 import { loadMessages, type MessageKey } from '@/lib/i18n/messages';
 import { localizeAccountType, localizeControlledStatus, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
+import { opportunityGeographyLabel, resolveOpportunityGeography } from '@/lib/opportunities/geography';
 
 function formatDateHuman(date: string | null | undefined, locale: string) {
   if (!date) return '—';
@@ -53,7 +54,7 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
   const { data: opp, error } = await supabase
     .from('opportunities')
     .select(
-      'id,title,description,sport,role,role_group,category,country,region,province,city,created_at,status,owner_id,created_by,club_name,club_id,required_category,age_min,age_max,gender',
+      'id,title,description,sport,role,role_group,category,country,region,province,city,country_id,geo_area_id,created_at,status,owner_id,created_by,club_name,club_id,required_category,age_min,age_max,gender',
     )
     .eq('id', params.id)
     .maybeSingle();
@@ -84,7 +85,8 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
     : { data: null };
 
   const clubProfileId = clubProfile?.id ?? clubId;
-  const placeLabel = buildLocationLabel(opp.city, opp.province, opp.region, opp.country, provinceAbbreviations);
+  const geography = await resolveOpportunityGeography(supabase, opp as Record<string, unknown>);
+  const placeLabel = opportunityGeographyLabel(geography) ?? buildLocationLabel(opp.city, opp.province, opp.region, opp.country, provinceAbbreviations);
   const place = placeLabel || [opp.city, provinceDisplayValue(opp.province, provinceAbbreviations), opp.region, opp.country].filter(Boolean).join(', ');
   const categoryLabel = (opp as any).category ?? (opp as any).required_category ?? null;
   const groupLabel = localizeAccountType(roleGroupLabel((opp as any).role_group), t) ?? roleGroupLabel((opp as any).role_group);

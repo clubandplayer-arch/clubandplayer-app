@@ -8,15 +8,15 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **COMPLETATA — FASE 3C-C3 — Opportunities additive canonical geography migration** |
-| Current active phase | **NESSUNA — C3 repository-only conclusa; C4 non autorizzata** |
-| Next safe action | **FASE 3C-C4 — dual-read/dual-write, solo previa autorizzazione esplicita** |
+| Last completed subphase | **COMPLETATA — FASE 3C-C4 — Opportunities dual-read/dual-write** |
+| Current active phase | **NESSUNA — C4 conclusa; C5 non autorizzata** |
+| Next safe action | **FASE 3C-C5 — OpportunityForm, solo previa autorizzazione esplicita** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
 | Mobile international parity | **NOT STARTED** |
 | FASE 3C-B | **COMPLETATA — B1–B7 repository web/API** |
-| FASE 3C-C | **IN CORSO — C1–C3 COMPLETATE; C4–C7 NOT STARTED** |
+| FASE 3C-C | **IN CORSO — C1–C4 COMPLETATE; C5–C7 NOT STARTED** |
 
 **FASE 3C-B è COMPLETATA nel perimetro repository web/API.** B7 riconferma IT legacy, IT/FR/ES/CH/SI/PL canonicali, account type, canonical-first, fallback e separazione semantica. `/settings` è ora raggiungibile anche dagli Enti su desktop e mobile, senza esporre loro gli interessi mobility. Prima del merge resta richiesta la verifica manuale Preview; mobile international parity resta una fase futura separata.
 
@@ -298,7 +298,7 @@ B4.3 ha creato nel repository la migration additiva `20261204120000_transactiona
 
 ### FASE 3C-C — Opportunities canonical geography
 
-**Stato: IN CORSO — C1–C3 COMPLETATE; C4–C7 NOT STARTED.**
+**Stato: IN CORSO — C1–C4 COMPLETATE; C5–C7 NOT STARTED.**
 
 Sottofasi previste:
 
@@ -337,6 +337,16 @@ C2 contiene soltanto il DDL blueprint e i criteri verificabili per C3: **nessuna
 La migration aggiunge `country_id` e `geo_area_id` nullable, FK dirette, check area→country, FK composita country/area e indici separati. Non contiene DML, default, backfill, RLS, grant, trigger, function, ownership, applications o modifiche legacy. Country-only e area coerente sono validi; area senza country, mismatch e riferimenti inesistenti sono rifiutati.
 
 Migration testata localmente: **SÌ — PostgreSQL 16.15, PASS**. Il runtime harness con fixture Opportunity legacy/Application ha applicato la migration due volte, verificato idempotenza, integrità, preservazione dati/ownership/applications, rollback e cleanup, con risultato `C3_OPPORTUNITY_GEOGRAPHY_RUNTIME_PASS`. Migration applicata Preview/Production: **NO**. Production: **NON INTERROGATA E NON MODIFICATA**. Web: nessun read/write collegato. Mobile: **NOT STARTED / NON MODIFICATO**. Test: diff-check, lint, typecheck, 184 unit test e runtime locale PASS; build bloccata esclusivamente dal download esterno Google Fonts. Verifica manuale/visiva: **NESSUNA VERIFICA MANUALE APPLICABILE**. Blocker C3: nessuno. Prossimo passaggio autorizzabile: **C4**, senza avvio automatico.
+
+**Aggiornamento operativo successivo autorizzato dall'utente:** migration C3 applicata con risultato `Success. No rows returned`. Stato: **APPLICATA — USER-REPORTED SUCCESS**; target remoto e Production non verificati indipendentemente dall'agente, nessun backfill dichiarato.
+
+#### 3C-C4 — Dual-read / dual-write
+
+**Stato: COMPLETATA — PASS web/API; NESSUNA VERIFICA MANUALE APPLICABILE.** Deliverable: `docs/european-expansion/phase-3c-c4-opportunities-dual-read-write.md`.
+
+Implementato un contratto field-aware `absent`/`legacy`/`reset`/`country_only`/`full`, validazione server di country supported+active, area attiva, country/area e ancestors, proiezione legacy per gerarchie IT/FR/ES/CH/SI/PL e singola statement atomica su `opportunities`. I read espongono canonical, canonical-country, legacy-text o none e usano canonical-first; collection e gerarchie sono caricate in batch. Integrati API collection/item, detail, repository, Search, feed, owner/applications summaries e componenti di presentazione. `OpportunityForm` e filtri canonici restano esclusi rispettivamente fino a C5 e C6.
+
+Migration: nessuna nuova migration C4. C3 applicata secondo comunicazione utente, target non verificato indipendentemente. Production: nessuna query/write eseguita da C4. RLS, grant, trigger, funzioni, ownership, applications, backfill e mobile: **NON MODIFICATI**. Web: dual-read/dual-write implementato, selector non collegato. Test repository: diff-check, lint, typecheck e **191 unit test PASS, 0 FAIL**; build bloccata dal download esterno Google Fonts. Verifica manuale/visiva: **NESSUNA VERIFICA MANUALE APPLICABILE**. Blocker C4: nessuno. Prossimo passaggio autorizzabile: **C5**, senza avvio automatico.
 
 ### FASE 3C-D — Search / Discover / WhoToFollow
 
@@ -733,14 +743,14 @@ Alla data di creazione iniziale della roadmap:
 
 | Voce | Stato |
 | --- | --- |
-| Last completed subphase | **FASE 3C-C3 — Opportunities additive canonical geography migration — COMPLETATA** |
-| Current active phase | **NESSUNA — C3 conclusa; C4 non autorizzata** |
-| Next safe action | **FASE 3C-C4 solo previa autorizzazione esplicita; nessun rollout implicito** |
+| Last completed subphase | **FASE 3C-C4 — Opportunities dual-read/dual-write — COMPLETATA** |
+| Current active phase | **NESSUNA — C4 conclusa; C5 non autorizzata** |
+| Next safe action | **FASE 3C-C5 solo previa autorizzazione esplicita; nessun rollout implicito** |
 | B4.3 local runtime harness | **PASSED — PostgreSQL 16, fixture sintetiche, nessuna connessione remota** |
 | B4.3 Supabase certification | **BLOCKED — PREVIEW BRANCH UNHEALTHY / MIGRATIONS FAILED / SUPPORT PENDING** |
 | B4.4 | **COMPLETATA — CANARY APPLICATIVO PLAYER IT / STAFF FR, READ-AFTER-WRITE, CLEANUP E RIPRISTINO FAIL-CLOSED PASS** |
 | FASE 3C-B | **COMPLETATA — B1–B7 repository web/API** |
-| FASE 3C-C | **IN CORSO — C1–C3 COMPLETATE; C4–C7 NOT STARTED** |
+| FASE 3C-C | **IN CORSO — C1–C4 COMPLETATE; C5–C7 NOT STARTED** |
 | Automatic residence backfill | **DELIBERATELY EXCLUDED** |
 | Mobile international parity | **NOT STARTED** |
 
@@ -751,3 +761,7 @@ C1 Opportunities è chiusa come audit repository-only: nessuna migration, query 
 C2 Opportunities è chiusa come contratto schema repository-only: DDL blueprint additivo definito, ma nessuna migration o modifica runtime è stata creata o applicata. Production non è stata interrogata o modificata; web e mobile non hanno modifiche comportamentali. La verifica manuale/visiva C2 non è applicabile. Attendere autorizzazione esplicita prima di C3.
 
 C3 Opportunities è chiusa: migration additiva creata e testata due volte su PostgreSQL 16.15 locale con fixture sintetiche, rollback e cleanup PASS. La migration non è stata applicata a Preview o Production; nessuna query remota, UI, API, RLS, grant, backfill o modifica mobile. La verifica manuale/visiva C3 non è applicabile. Attendere autorizzazione esplicita prima di C4.
+
+Aggiornamento successivo: l'utente ha applicato la migration C3 con esito `Success. No rows returned`; target e Production non sono stati verificati indipendentemente.
+
+C4 Opportunities è chiusa nel repository web/API: dual-read canonical-first e dual-write atomico/field-aware implementati, senza selector form, filtri canonici, migration aggiuntive, RLS/grant/backfill o mobile. La verifica manuale/visiva C4 non è applicabile. Attendere autorizzazione esplicita prima di C5.
