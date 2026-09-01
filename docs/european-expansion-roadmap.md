@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **COMPLETATA — FASE 3C-E2 — coordinate, viewport e privacy contract** |
-| Current active phase | **FASE 3C-E3 — IMPLEMENTATA; SMOKE PREVIEW RICHIESTO** |
-| Next safe action | **Smoke E3; non avviare E4 prima del PASS e di autorizzazione separata** |
+| Last completed subphase | **COMPLETATA — FASE 3C-E3 — Maps server data boundary** |
+| Current active phase | **FASE 3C-E4 — IMPLEMENTATA; SMOKE VISIVO PREVIEW RICHIESTO** |
+| Next safe action | **Smoke E4; non avviare E5 prima del PASS e di autorizzazione separata** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -419,15 +419,17 @@ Chiusura D7 user-reported: entrambi gli endpoint suggerimenti hanno restituito H
 
 ### FASE 3C-E — Maps
 
-**Stato: IN CORSO — E1–E2 PASS; E3 IMPLEMENTATA / MANUAL PREVIEW PENDING.**
+**Stato: IN CORSO — E1–E3 PASS; E4 IMPLEMENTATA / MANUAL PREVIEW PENDING.**
 
 Obiettivi: `ClubMap`, `SearchMap`, supporto internazionale, viewport canonico, coordinate puntuali pubbliche, stadium coordinates, fallback legacy, privacy e performance. E1 ha confermato `club_stadium_lat/lng` come sorgente preferibile per Club/Institution e ha separato i centroid/bounds canonici, validi per viewport, dai pin pubblici. Ha inoltre rilevato SearchMap disattivata tramite redirect, precedenza coordinate divergente, stadium-only esclusi dai bounds, fallback fuori viewport, rischio privacy per coordinate personali, popup storico non sanitizzato e limiti di scalabilità/provider. Dettaglio in `phase-3c-e1-maps-audit.md`.
 
-Piano progressivo: **E1 audit** PASS; **E2 coordinate/viewport/privacy contract** PASS; **E3 server data boundary** IMPLEMENTATA / AUTOMATED PASS / MANUAL PENDING; **E4 ClubMap internazionale**; **E5 SearchMap decision e integrazione**; **E6 Opportunity map semantics**; **E7 regressione/performance/provider/backward compatibility**.
+Piano progressivo: **E1 audit** PASS; **E2 coordinate/viewport/privacy contract** PASS; **E3 server data boundary** PASS; **E4 ClubMap internazionale** IMPLEMENTATA / AUTOMATED PASS / MANUAL PENDING; **E5 SearchMap decision e integrazione**; **E6 Opportunity map semantics**; **E7 regressione/performance/provider/backward compatibility**.
 
 Decisioni E2: pin precisi pubblici organization-only, con precedenza atomica venue → legacy; nessun pin implicito per Player/Staff/Fan. Viewport e pin sono modelli separati; bounds espliciti o canonical country/area sono mutuamente esclusivi, fail-closed e antimeridian-aware. Centroid canonici non sono pin. Le Opportunity usano venue propria, poi venue owner, altrimenti nessun pin. Dettaglio in `phase-3c-e2-coordinate-viewport-privacy-contract.md`.
 
 Decisioni E3: i tre endpoint Maps condividono adapter viewport e resolver organization-only; query venue-first includono stadium-only, sono antimeridian-aware e non effettuano fallback globale fuori viewport. Player/Staff/Fan non espongono pin precisi; Opportunity ereditano soltanto il punto pubblico owner da un pool bounded. SearchMap resta disattivata. Dettaglio e smoke in `phase-3c-e3-maps-server-data-boundary.md`.
+
+Decisioni E4: ClubMap usa viewport europeo, selector canonicale URL-stable e fit dei bounds server; nessun default Italia. I pin vengono raggruppati client-side a zoom basso senza provider aggiuntivi. Copy e accessibility sono localizzati IT/EN/FR/ES; il boundary organization-only E3 resta invariato. Dettaglio e smoke in `phase-3c-e4-club-map-international.md`.
 
 ## FASE 4 — Internationalization / i18n
 
@@ -812,9 +814,9 @@ Alla data di creazione iniziale della roadmap:
 
 | Voce | Stato |
 | --- | --- |
-| Last completed subphase | **FASE 3C-E2 — coordinate, viewport e privacy contract — COMPLETATA / PASS** |
-| Current active phase | **FASE 3C-E3 — IMPLEMENTATA; SMOKE PREVIEW RICHIESTO** |
-| Next safe action | **Smoke E3; E4 non autorizzata implicitamente** |
+| Last completed subphase | **FASE 3C-E3 — Maps server data boundary — COMPLETATA / PASS** |
+| Current active phase | **FASE 3C-E4 — IMPLEMENTATA; SMOKE VISIVO PREVIEW RICHIESTO** |
+| Next safe action | **Smoke E4; E5 non autorizzata implicitamente** |
 | B4.3 local runtime harness | **PASSED — PostgreSQL 16, fixture sintetiche, nessuna connessione remota** |
 | B4.3 Supabase certification | **BLOCKED — PREVIEW BRANCH UNHEALTHY / MIGRATIONS FAILED / SUPPORT PENDING** |
 | B4.4 | **COMPLETATA — CANARY APPLICATIVO PLAYER IT / STAFF FR, READ-AFTER-WRITE, CLEANUP E RIPRISTINO FAIL-CLOSED PASS** |
@@ -860,4 +862,6 @@ E1 Maps audit è **COMPLETATA / PASS repository-only**: inventariati ClubMap, Se
 
 E2 coordinate, viewport e privacy contract è **COMPLETATA / PASS**: modulo puro con coppie atomiche e range, pin pubblici organization-only, precedenza venue → legacy, viewport canonical/bounds fail-closed, supporto antimeridiano e semantica Opportunity senza centroid-pin. Nove test automatici PASS. Nessun endpoint, query, migration, RLS, UI/provider Maps, mobile o file binario. E3 richiede autorizzazione separata.
 
-E3 Maps server data boundary è **IMPLEMENTATA / AUTOMATED PASS / MANUAL PREVIEW REQUIRED**: adapter catalogo/viewport read-only, query venue-first stadium-aware, bounds strict/antimeridiano, privacy organization-only, niente fallback globale e Opportunity owner pool limitato. SearchMap resta disattivata. Nessuna migration, RLS, write remoto, provider/UI client, mobile o file binario. E4 resta bloccata fino allo smoke.
+E3 Maps server data boundary è **COMPLETATA / PASS**: adapter catalogo/viewport read-only, query venue-first stadium-aware, bounds strict/antimeridiano, privacy organization-only, niente fallback globale e Opportunity owner pool limitato. Gli smoke endpoint e redirect sono user-reported PASS. Nessuna migration, RLS, write remoto, provider/UI client, mobile o file binario.
+
+E4 ClubMap internazionale è **IMPLEMENTATA / AUTOMATED PASS / MANUAL PREVIEW REQUIRED**: viewport europeo, selector canonicale URL-stable, fit bounds server, clustering client-side e copy/accessibility IT/EN/FR/ES. Nessuna migration, RLS, write remoto, nuovo provider, SearchMap, Opportunity map, mobile o file binario. E5 resta bloccata fino allo smoke.

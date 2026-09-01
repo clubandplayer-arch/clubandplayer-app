@@ -2,7 +2,7 @@
 
 ## Stato
 
-**IMPLEMENTATA — test automatici PASS; smoke Preview manuale richiesto.** E3 collega il contratto E2 esclusivamente ai server adapter e ai tre endpoint Maps. SearchMap resta disattivata tramite redirect e ClubMap non è stata ridisegnata.
+**COMPLETATA / PASS — test automatici e smoke Preview conclusi il 2026-09-01.** E3 collega il contratto E2 esclusivamente ai server adapter e ai tre endpoint Maps. SearchMap resta disattivata tramite redirect.
 
 ## Implementazione
 
@@ -34,19 +34,14 @@
 
 Quattordici test E2+E3 verificano contratto coordinate/privacy, viewport canonico, antimeridiano, query venue-first, inclusione stadium-only, assenza fallback globale, limite owner Opportunity, uso uniforme del resolver e mancata riattivazione di SearchMap.
 
-## Smoke Preview richiesto
+## Esito smoke Preview
 
-Usare un viewer autenticato e DevTools Network/Console:
-
-1. Aprire `/club-map`: la pagina deve caricare, mostrare solo Club pubblicati e mantenere card/logo/link funzionanti, senza errori Console.
-2. Chiamare `/api/clubs/geolocated`: atteso HTTP 200, `ok=true`, `viewport=null`; i punti devono avere coppie complete e `coordinate_source` uguale a `organization_venue` o `legacy_profile`.
-3. Chiamare `/api/search/clubs-in-bounds?north=47.3&south=35.2&east=19.2&west=6`: atteso HTTP 200 e viewport `explicit_bounds`; nessun punto fuori bounds.
-4. Ripetere con bounds parziali o invertiti: atteso HTTP 400 `INVALID_PAYLOAD`, mai `UNKNOWN`.
-5. Chiamare `/api/search/map?type=club&north=47.3&south=35.2&east=19.2&west=6&limit=20`: atteso HTTP 200, sole organizzazioni e nessun fallback globale.
-6. Chiamare `/api/search/map?type=player&north=47.3&south=35.2&east=19.2&west=6`: atteso HTTP 200, `data=[]` e `privacyBoundary=precise_personal_map_points_disabled`.
-7. Se si dispone di country/area con bounds ufficiali, ripetere con `countryId`/`geoAreaId`: atteso viewport canonicale same-country. Se il catalogo non possiede bounds, HTTP 400 `VIEWPORT_BOUNDS_UNAVAILABLE` è il comportamento fail-closed corretto.
-8. Verificare che `/search-map` continui a reindirizzare a `/search`.
+- `/api/clubs/geolocated`: HTTP 200, `viewport=null`, coppie complete e source organization venue.
+- `/api/search/clubs-in-bounds` con bounds Italia: HTTP 200, viewport explicit e punti interni; bounds invertiti: HTTP 400 `BOUNDS_INVALID`.
+- `/api/search/map?type=club`: HTTP 200, sole organizzazioni e viewport corretto.
+- `/api/search/map?type=player`: HTTP 200, lista vuota e privacy boundary esplicito.
+- `/search-map`: redirect a `/search` confermato visivamente.
 
 ## Next gate
 
-**Non avviare E4.** Dopo lo smoke Preview E3 potrà essere marcata COMPLETATA / PASS e si potrà richiedere autorizzazione separata per **FASE 3C-E4 — ClubMap internazionale**.
+**E3 completata.** E4 è stata autorizzata separatamente; nessuna fase ulteriore è autorizzata implicitamente.
