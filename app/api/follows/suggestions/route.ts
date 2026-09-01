@@ -7,7 +7,7 @@ import { FollowSuggestionsQuerySchema, type FollowSuggestionsQueryInput } from '
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
 import { applyPublicProfileVisibilityFilters } from '@/lib/profile/visibility';
 import { isProfileEligibleForFollowSuggestions } from '@/lib/profiles/completion';
-import { suggestionFiltersForScope } from '@/lib/search/suggestionGeography';
+import { rankSuggestionCandidates, suggestionFiltersForScope } from '@/lib/search/suggestionGeography';
 import {
   applySuggestionGeographyFilter,
   loadViewerSuggestionGeography,
@@ -139,6 +139,7 @@ export async function GET(req: NextRequest) {
     }
 
     const profileId = profile.id;
+    const viewerSport = profile.sport;
     debugInfo.meProfileId = profileId;
 
     step = 'viewerGeography';
@@ -220,7 +221,11 @@ export async function GET(req: NextRequest) {
 
       const { data, error } = await query;
       if (error) throw error;
-      return (data || []).filter((row) => isProfileEligibleForFollowSuggestions(row));
+      return rankSuggestionCandidates(
+        (data || []).filter((row) => isProfileEligibleForFollowSuggestions(row)),
+        geographyPlan,
+        viewerSport,
+      );
     }
 
     const buildLocation = (row: any) => [row.city, row.province, row.region, row.country].filter(Boolean).join(', ');
@@ -452,6 +457,7 @@ export async function GET(req: NextRequest) {
               geographyFilterCount: geographyPlan.filters.length,
               hasCanonicalGeographyInterests: geographyPlan.hasCanonicalInterests,
               openToRelocation: geographyPlan.openToRelocation,
+              rankingVersion: 'd5-v1',
             },
           }
         : {}),

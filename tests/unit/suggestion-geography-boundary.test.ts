@@ -4,6 +4,7 @@ import test from 'node:test';
 
 import {
   buildSuggestionGeographyPlan,
+  rankSuggestionCandidates,
   suggestionFiltersForScope,
   type SuggestionGeographyPlanInput,
 } from '../../lib/search/suggestionGeography';
@@ -68,6 +69,44 @@ test('scope selection preserves shared plan order', () => {
   assert.deepEqual(suggestionFiltersForScope(plan, 'city').map((item) => item.values), [['Roma']]);
 });
 
+test('D5 ranks canonical area, country, legacy and sport signals deterministically', () => {
+  const plan = buildSuggestionGeographyPlan(input({
+    areaInterests: [{ area: { officialName: 'Lazio', areaType: 'REGION', country: italy }, priority: 1 }],
+    countryInterests: [{ country: france, priority: 2 }],
+    legacyResidence: { country: 'IT' },
+  }));
+  const ranked = rankSuggestionCandidates([
+    { id: 'legacy', country: 'IT', region: 'Lombardia', sport: 'Calcio', updated_at: '2026-09-01' },
+    { id: 'country', country: 'FR', region: 'Bretagne', sport: 'Volley', updated_at: '2026-08-01' },
+    { id: 'area', country: 'IT', region: 'Lazio', sport: 'Calcio', updated_at: '2026-07-01' },
+  ], plan, 'Calcio');
+  assert.deepEqual(ranked.map((candidate) => candidate.id), ['area', 'legacy', 'country']);
+});
+
+test('relocation boosts only explicit foreign interests with a known residence country', () => {
+  const plan = buildSuggestionGeographyPlan(input({
+    openToRelocation: true,
+    countryInterests: [{ country: france, priority: 1 }],
+    residenceCountry: italy,
+  }));
+  const ranked = rankSuggestionCandidates([
+    { id: 'home', country: 'IT', updated_at: '2026-09-02' },
+    { id: 'foreign-interest', country: 'FR', updated_at: '2026-09-01' },
+    { id: 'unrelated', country: 'ES', updated_at: '2026-09-03' },
+  ], plan);
+  assert.deepEqual(ranked.map((candidate) => candidate.id), ['foreign-interest', 'home', 'unrelated']);
+});
+
+test('missing canonical geography is never penalized and stable ties use recency then ID', () => {
+  const plan = buildSuggestionGeographyPlan(input({}));
+  const ranked = rankSuggestionCandidates([
+    { id: 'b', updated_at: '2026-09-01' },
+    { id: 'c', updated_at: '2026-09-02' },
+    { id: 'a', updated_at: '2026-09-01' },
+  ], plan);
+  assert.deepEqual(ranked.map((candidate) => candidate.id), ['c', 'a', 'b']);
+});
+
 test('server boundary reads only viewer-owned preferences and both endpoints consume it', () => {
   const server = readFileSync('lib/search/suggestionGeography.server.ts', 'utf8');
   const follows = readFileSync('app/api/follows/suggestions/route.ts', 'utf8');
@@ -82,6 +121,8 @@ test('server boundary reads only viewer-owned preferences and both endpoints con
   assert.match(alternate, /if \(debugMode\)/);
   assert.match(alternate, /totalResult\.error \? null/);
   assert.match(alternate, /\.filter\(\(id\) => UUID_RE\.test\(id\)\)/);
+  assert.match(follows, /rankSuggestionCandidates/);
+  assert.match(alternate, /rankSuggestionCandidates/);
   assert.doesNotMatch(follows, /interest_city\.ilike/);
   assert.doesNotMatch(alternate, /profile\.interest_city \|\| profile\.city/);
 });

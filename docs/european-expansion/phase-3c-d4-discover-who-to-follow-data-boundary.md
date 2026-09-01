@@ -2,9 +2,9 @@
 
 ## Stato
 
-**IMPLEMENTATA — test automatici PASS; verifica manuale Preview richiesta.** D5 resta bloccata fino alla conferma dello smoke autenticato.
+**COMPLETATA / PASS — test automatici e smoke Preview autenticato conclusi il 2026-09-01.**
 
-Il primo smoke ha confermato `GET /api/follows/suggestions` e tutti i quattro `geoScope`, ma ha rilevato `UNKNOWN` nell'endpoint alternativo. Il fix rende i conteggi diagnostici best-effort e solo-debug, normalizza l'allowlist UUID delle esclusioni e non permette più che una query diagnostica interrompa i suggerimenti. È richiesto il recheck del solo endpoint alternativo prima del PASS D4.
+Il primo smoke ha confermato `GET /api/follows/suggestions` e tutti i quattro `geoScope`, ma ha rilevato `UNKNOWN` nell'endpoint alternativo. Il fix ha reso i conteggi diagnostici best-effort e solo-debug e ha normalizzato l'allowlist UUID delle esclusioni. Il recheck ha restituito HTTP 200, cinque suggerimenti, esclusioni self/already-followed coerenti e debug D4 senza dati geografici privati. Anche `/discover` è user-reported PASS.
 
 ## Implementazione
 
@@ -34,4 +34,4 @@ Usare un account autenticato attivo. Non modificare dati per eseguire lo smoke.
 
 ## Next gate
 
-**Non iniziare D5.** Dopo il deploy Preview, D4 può diventare COMPLETATA / PASS soltanto con conferma dell'intera checklist manuale autenticata.
+**D4 è COMPLETATA / PASS.** D5 è stata autorizzata separatamente dopo lo smoke.

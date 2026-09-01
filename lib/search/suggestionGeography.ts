@@ -1,4 +1,9 @@
 import { canonicalAreaLegacyField } from './canonicalGeographyContract';
+import {
+  compareSearchGeographyRank,
+  rankSearchGeography,
+  type SearchGeographyRankingSignals,
+} from './canonicalGeographyContract';
 
 export type SuggestionGeoField = 'country' | 'region' | 'province' | 'city';
 export type SuggestionGeoSource =
@@ -139,4 +144,72 @@ export function buildSuggestionGeographyPlan(input: SuggestionGeographyPlanInput
 
 export function suggestionFiltersForScope(plan: SuggestionGeographyPlan, scope: SuggestionGeoField) {
   return plan.filters.filter((filter) => filter.field === scope);
+}
+
+export type SuggestionRankableCandidate = {
+  id: string;
+  country?: string | null;
+  region?: string | null;
+  province?: string | null;
+  city?: string | null;
+  sport?: string | null;
+  updated_at?: string | null;
+};
+
+const normalized = (value?: string | null) => value?.trim().toLocaleLowerCase('en') ?? '';
+
+function filterMatchesCandidate(filter: SuggestionGeoFilter, candidate: SuggestionRankableCandidate) {
+  const candidateValue = normalized(candidate[filter.field]);
+  return Boolean(candidateValue) && filter.values.some((value) => normalized(value) === candidateValue);
+}
+
+/**
+ * D5 ranking boundary. It ranks an already-visible candidate pool and never
+ * changes eligibility. Relocation is compatible only for an explicit interest
+ * outside a known residence country; it is never inferred from missing data.
+ */
+export function rankSuggestionCandidates<T extends SuggestionRankableCandidate>(
+  candidates: T[],
+  plan: SuggestionGeographyPlan,
+  viewerSport?: string | null,
+): T[] {
+  const residenceCountryFilters = plan.filters.filter((filter) =>
+    filter.field === 'country' && (filter.source === 'canonical_residence' || filter.source === 'legacy_residence'));
+
+  return candidates
+    .map((candidate) => {
+      const matched = plan.filters.filter((filter) => filterMatchesCandidate(filter, candidate));
+      const canonicalArea = matched.some((filter) => filter.field !== 'country'
+        && (filter.source === 'canonical_area_interest' || filter.source === 'canonical_residence'));
+      const canonicalCountry = matched.some((filter) => filter.field === 'country'
+        && (filter.source === 'canonical_area_interest'
+          || filter.source === 'canonical_country_interest'
+          || filter.source === 'canonical_residence'));
+      const legacyArea = matched.some((filter) => filter.field !== 'country'
+        && (filter.source === 'legacy_interest' || filter.source === 'legacy_residence'));
+      const legacyCountry = matched.some((filter) => filter.field === 'country'
+        && (filter.source === 'legacy_interest' || filter.source === 'legacy_residence'));
+      const matchesInterest = matched.some((filter) => filter.source.endsWith('_interest'));
+      const hasResidenceCountry = residenceCountryFilters.length > 0;
+      const matchesResidenceCountry = residenceCountryFilters.some((filter) => filterMatchesCandidate(filter, candidate));
+      const signals: SearchGeographyRankingSignals = {
+        canonicalAreaMatch: canonicalArea,
+        canonicalCountryMatch: canonicalCountry,
+        legacyAreaMatch: legacyArea,
+        legacyCountryMatch: legacyCountry,
+        sportMatch: Boolean(normalized(viewerSport)) && normalized(viewerSport) === normalized(candidate.sport),
+        relocationCompatible: plan.openToRelocation && matchesInterest && hasResidenceCountry
+          && Boolean(normalized(candidate.country)) && !matchesResidenceCountry,
+      };
+      const rank = rankSearchGeography(signals);
+      const priority = matched
+        .filter((filter) => filter.source.endsWith('_interest') && filter.priority !== null)
+        .reduce<number | null>((best, filter) => best === null ? filter.priority : Math.min(best, filter.priority!), null);
+      return { candidate, ...rank, interestPriority: priority, updatedAt: candidate.updated_at ?? null };
+    })
+    .sort((a, b) => compareSearchGeographyRank(
+      { id: a.candidate.id, score: a.score, reasons: a.reasons, interestPriority: a.interestPriority, updatedAt: a.updatedAt },
+      { id: b.candidate.id, score: b.score, reasons: b.reasons, interestPriority: b.interestPriority, updatedAt: b.updatedAt },
+    ))
+    .map(({ candidate }) => candidate);
 }

@@ -6,6 +6,7 @@ import {
   applySuggestionGeographyFilter,
   loadViewerSuggestionGeography,
 } from '@/lib/search/suggestionGeography.server';
+import { rankSuggestionCandidates } from '@/lib/search/suggestionGeography';
 
 export const runtime = 'nodejs';
 const ENDPOINT_VERSION = 'who-to-follow@2026-09-01-d4';
@@ -207,7 +208,9 @@ export async function GET(req: NextRequest) {
       if (error) throw error;
 
       zoneCandidates += (rows ?? []).length;
-      addSuggestions(await mapSuggestions((rows ?? []) as SuggestionRow[]));
+      addSuggestions(await mapSuggestions(rankSuggestionCandidates(
+        (rows ?? []) as SuggestionRow[], geographyPlan, profile.sport,
+      )));
     }
 
     if (results.length < limit && profile.sport) {
@@ -218,7 +221,9 @@ export async function GET(req: NextRequest) {
       if (error) throw error;
 
       sportCandidates += (rows ?? []).length;
-      addSuggestions(await mapSuggestions((rows ?? []) as SuggestionRow[]));
+      addSuggestions(await mapSuggestions(rankSuggestionCandidates(
+        (rows ?? []) as SuggestionRow[], geographyPlan, profile.sport,
+      )));
     }
 
     if (results.length < limit) {
@@ -228,7 +233,9 @@ export async function GET(req: NextRequest) {
       if (error) throw error;
 
       recentFallbackCandidates += (rows ?? []).length;
-      addSuggestions(await mapSuggestions((rows ?? []) as SuggestionRow[]));
+      addSuggestions(await mapSuggestions(rankSuggestionCandidates(
+        (rows ?? []) as SuggestionRow[], geographyPlan, profile.sport,
+      )));
     }
 
     const suggestions = results.slice(0, limit);
@@ -270,6 +277,7 @@ export async function GET(req: NextRequest) {
               geographyFilterCount: geographyPlan.filters.length,
               hasCanonicalGeographyInterests: geographyPlan.hasCanonicalInterests,
               openToRelocation: geographyPlan.openToRelocation,
+              rankingVersion: 'd5-v1',
               sportCandidates,
               fallbackRecentCandidates: recentFallbackCandidates,
               returned: suggestions.length,
