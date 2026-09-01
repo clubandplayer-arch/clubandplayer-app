@@ -7,6 +7,15 @@ import { FollowSuggestionsQuerySchema, type FollowSuggestionsQueryInput } from '
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
 import { applyPublicProfileVisibilityFilters } from '@/lib/profile/visibility';
 import { isProfileEligibleForFollowSuggestions } from '@/lib/profiles/completion';
+import { getCountryName } from '@/lib/geo/countries';
+import { SupabaseSearchGeographyCatalog } from '@/lib/search/canonicalGeography.server';
+import {
+  canonicalAreaLegacyField,
+  parseSearchGeography,
+  resolveCanonicalSearchGeography,
+  SearchGeographyContractError,
+  type CanonicalSearchGeographyScope,
+} from '@/lib/search/canonicalGeographyContract';
 import { rankSuggestionCandidates, suggestionFiltersForScope } from '@/lib/search/suggestionGeography';
 import {
   applySuggestionGeographyFilter,
@@ -102,6 +111,7 @@ export async function GET(req: NextRequest) {
   try {
     step = 'auth';
     const supabase = await getSupabaseServerClient();
+    let explicitGeography: CanonicalSearchGeographyScope | null = null;
     const { data: userRes, error: authError } = await supabase.auth.getUser();
 
     if (authError) {
@@ -136,6 +146,23 @@ export async function GET(req: NextRequest) {
 
     if (!profile?.id || profile.status !== 'active') {
       return successResponse({ items: [], role });
+    }
+
+    step = 'scoutingGeography';
+    try {
+      const geographyRequest = parseSearchGeography(url.searchParams);
+      if (geographyRequest.mode === 'canonical_unvalidated') {
+        explicitGeography = await resolveCanonicalSearchGeography(
+          geographyRequest,
+          new SupabaseSearchGeographyCatalog(supabase),
+          { expandDescendants: false },
+        );
+      }
+    } catch (error) {
+      if (error instanceof SearchGeographyContractError) {
+        return validationError(error.message, { code: error.code });
+      }
+      throw error;
     }
 
     const profileId = profile.id;
@@ -302,6 +329,23 @@ export async function GET(req: NextRequest) {
         sportFilter.push((q) => q.ilike('sport', value));
       }
 
+      if (explicitGeography) {
+        const countryValues = Array.from(new Set([
+          explicitGeography.countryIso2,
+          explicitGeography.countryName,
+          getCountryName(explicitGeography.countryIso2),
+        ].filter((value): value is string => Boolean(value))));
+        const explicitFilters: Array<(q: any) => any> = [
+          (query) => query.or(countryValues.map((value) => `country.ilike.${escapeLike(value)}`).join(',')),
+        ];
+        if (explicitGeography.geoAreaName && explicitGeography.geoAreaType) {
+          const field = canonicalAreaLegacyField(explicitGeography.geoAreaType);
+          explicitFilters.push((query) => query.ilike(field, escapeLike(explicitGeography!.geoAreaName!)));
+        }
+        filters.push([...explicitFilters, ...sportFilter]);
+        return filters;
+      }
+
       const geographyFilters = suggestionFiltersForScope(geographyPlan, geoScope);
       for (const geographyFilter of geographyFilters) {
         filters.push([
@@ -458,6 +502,8 @@ export async function GET(req: NextRequest) {
               hasCanonicalGeographyInterests: geographyPlan.hasCanonicalInterests,
               openToRelocation: geographyPlan.openToRelocation,
               rankingVersion: 'd5-v1',
+              scoutingCountryId: explicitGeography?.countryId ?? null,
+              scoutingGeoAreaId: explicitGeography?.geoAreaId ?? null,
             },
           }
         : {}),
