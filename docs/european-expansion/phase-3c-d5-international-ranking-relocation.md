@@ -2,7 +2,9 @@
 
 ## Stato
 
-**IMPLEMENTATA — test automatici PASS; verifica manuale Preview richiesta.** D6 resta bloccata fino al PASS dello smoke D5.
+**COMPLETATA / PASS — test automatici e smoke Preview autenticato conclusi il 2026-09-01.** D6 non è avviata implicitamente e richiede autorizzazione separata.
+
+Il viewer legacy usato nello smoke ha restituito risultati stabili in due esecuzioni consecutive su entrambi gli endpoint, `rankingVersion=d5-v1`, nessun self/already-followed nei risultati e superfici `/discover`/feed senza regressioni. I casi canonical-interest e relocation, non disponibili per questo viewer, restano coperti dai test automatici deterministici e saranno riconfermati nella matrice D7 quando esisteranno fixture/account Preview adatti.
 
 ## Ranking attivato
 
@@ -39,4 +41,4 @@ Nessuna migration, write, backfill, modifica RLS/grant, service role, UI reason 
 
 ## Next gate
 
-**Non iniziare D6.** D5 diventa COMPLETATA / PASS soltanto dopo lo smoke Preview autenticato.
+**D5 è COMPLETATA / PASS.** D6 — UI e scouting internazionale è il prossimo passo pianificato, ma richiede autorizzazione esplicita.
