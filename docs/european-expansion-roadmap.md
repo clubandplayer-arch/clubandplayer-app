@@ -437,6 +437,8 @@ Decisioni E5: una sola UI Maps pubblica, `/club-map`. `/search-map` è conservat
 
 Decisioni E6: una Opportunity è mappabile soltanto tramite venue esplicita futura o punto pubblico validato dell'organizzazione owner; canonical country/area resta metadata/viewport e non diventa mai un pin. `/api/search/map?type=opportunity` allega geography, esclude placement null ed espone un contratto/versione espliciti. Dettaglio in `phase-3c-e6-opportunity-map-semantics.md`.
 
+Correzione smoke E6: il primo HTTP 200 ha confermato contratto e bounds, ma il risultato vuoto con `boundsApplied=true` ha evidenziato la compatibilità tra ID profilo e ID Auth nelle Opportunity legacy. Il pool owner indicizza ora il punto pubblico tramite `profiles.id` e `profiles.user_id` e risolve `club_id`/`owner_id`/`created_by`, restando bounded e organization-only. Recheck Preview richiesto prima di E7.
+
 ## FASE 4 — Internationalization / i18n
 
 **Stato prudenziale: IMPLEMENTAZIONE i18n SOSTANZIALE PRESENTE; CERTIFICAZIONE COMPLETA 4A–4I NON ESEGUITA; FASE NON COMPLETATA.**

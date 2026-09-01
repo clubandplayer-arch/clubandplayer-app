@@ -107,4 +107,8 @@ test('E6 opportunity map rows use explicit placement semantics and canonical geo
   assert.match(searchMap, /canonical_geography_is_viewport_only: true/);
   assert.match(searchMap, /placementContract: 'opportunity_owner_public_point_v1'/);
   assert.match(searchMap, /if \(!placement\) return \[\]/);
+  assert.match(searchMap, /select\('id, user_id, account_type/);
+  assert.match(searchMap, /clubOwnerIds/);
+  assert.match(searchMap, /created_by\.in/);
+  assert.match(searchMap, /\[o\.club_id, o\.owner_id, o\.created_by\]/);
 });

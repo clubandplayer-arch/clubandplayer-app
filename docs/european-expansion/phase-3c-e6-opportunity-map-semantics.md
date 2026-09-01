@@ -23,6 +23,17 @@ Una Opportunity può avere un pin soltanto secondo questa precedenza:
 - `map_semantics=owner_public_point` e `canonical_geography_is_viewport_only=true` rendono il contratto esplicito.
 - La risposta espone `placementContract=opportunity_owner_public_point_v1`; `total` conta soltanto righe realmente mappabili.
 
+## Correzione smoke Preview
+
+Il primo smoke ha restituito HTTP 200 e il contratto corretto, ma `data=[]` nonostante `boundsApplied=true`. Questo indica Club pubblici nel viewport ma nessuna associazione risolta. Le Opportunity legacy possono conservare `owner_id`/`created_by` nello spazio ID Auth, mentre `club_id` e `profiles.id` usano lo spazio ID profilo. Il pool owner ora:
+
+- legge insieme `profiles.id` e `profiles.user_id`;
+- indicizza lo stesso punto pubblico sotto entrambi gli identificativi;
+- filtra `club_id` sugli ID profilo e `owner_id`/`created_by` su entrambi gli spazi compatibili;
+- risolve il placement provando nell'ordine `club_id`, `owner_id`, `created_by`.
+
+Il boundary resta bounded e organization-only; non viene aggiunto alcun fallback globale.
+
 ## Boundary preservati
 
 - Nessuna migration, nuova colonna, write remoto, modifica RLS, service role, UI Opportunity map, provider, mobile o file binario.

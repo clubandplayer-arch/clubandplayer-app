@@ -221,7 +221,7 @@ export async function GET(req: NextRequest) {
         sampleOpp: { id: string; title?: string | null; club_id?: string | null; status?: string | null } | null;
       } | null = null;
       let clubQuery = applyPublicProfileVisibilityFilters(
-        supabase.from('profiles').select('id, account_type, type, latitude, longitude, club_stadium_lat, club_stadium_lng'),
+        supabase.from('profiles').select('id, user_id, account_type, type, latitude, longitude, club_stadium_lat, club_stadium_lng'),
       )
         .neq('is_admin', true)
         .or('account_type.eq.club,type.eq.club');
@@ -232,6 +232,7 @@ export async function GET(req: NextRequest) {
       if (clubsError) return dbError(clubsError.message);
 
       const clubIds = Array.from(new Set((clubsData ?? []).map((c: any) => c.id).filter(Boolean)));
+      const clubOwnerIds = Array.from(new Set((clubsData ?? []).flatMap((c: any) => [c.id, c.user_id]).filter(Boolean)));
       const clubPoints = new Map((clubsData ?? []).flatMap((club: any) => {
         try {
           const point = resolvePublicMapPoint({
@@ -239,7 +240,9 @@ export async function GET(req: NextRequest) {
             venue: { latitude: club.club_stadium_lat, longitude: club.club_stadium_lng },
             legacyProfile: { latitude: club.latitude, longitude: club.longitude },
           });
-          return point && club.id ? [[String(club.id), point] as const] : [];
+          return point && club.id
+            ? [club.id, club.user_id].filter(Boolean).map((id) => [String(id), point] as const)
+            : [];
         } catch {
           return [];
         }
@@ -258,6 +261,7 @@ export async function GET(req: NextRequest) {
         'club_name',
         'club_id',
         'owner_id',
+        'created_by',
         'created_at',
       ].join(',');
 
@@ -274,7 +278,11 @@ export async function GET(req: NextRequest) {
       if (hasBounds) {
         if (clubIds.length) {
           oppQuery = oppQuery.or(
-            [`club_id.in.(${clubIds.join(',')})`, `owner_id.in.(${clubIds.join(',')})`].join(','),
+            [
+              `club_id.in.(${clubIds.join(',')})`,
+              `owner_id.in.(${clubOwnerIds.join(',')})`,
+              `created_by.in.(${clubOwnerIds.join(',')})`,
+            ].join(','),
           );
         } else if (hasBounds) {
           if (debugMode) {
@@ -293,7 +301,11 @@ export async function GET(req: NextRequest) {
         }
       } else if (!hasTextQuery && clubIds.length) {
         oppQuery = oppQuery.or(
-          [`club_id.in.(${clubIds.join(',')})`, `owner_id.in.(${clubIds.join(',')})`].join(','),
+          [
+            `club_id.in.(${clubIds.join(',')})`,
+            `owner_id.in.(${clubOwnerIds.join(',')})`,
+            `created_by.in.(${clubOwnerIds.join(',')})`,
+          ].join(','),
         );
       }
 
@@ -316,7 +328,9 @@ export async function GET(req: NextRequest) {
 
       const opportunitiesWithGeography = await attachOpportunityGeography(supabase, (opps ?? []) as Array<Record<string, any>>);
       const rows = opportunitiesWithGeography.flatMap((o: any) => {
-        const ownerPoint = clubPoints.get(String(o.club_id ?? o.owner_id ?? ''));
+        const ownerPoint = [o.club_id, o.owner_id, o.created_by]
+          .flatMap((id) => id ? [clubPoints.get(String(id))] : [])
+          .find(Boolean);
         const placement = resolveOpportunityMapPlacement({
           explicitVenue: { latitude: null, longitude: null },
           organizationPoint: ownerPoint ?? null,
@@ -401,7 +415,11 @@ export async function GET(req: NextRequest) {
                 .select('id', { count: 'exact', head: true })
                 .eq('status', 'open')
                 .or(
-                  [`club_id.in.(${clubIds.join(',')})`, `owner_id.in.(${clubIds.join(',')})`].join(','),
+                  [
+                    `club_id.in.(${clubIds.join(',')})`,
+                    `owner_id.in.(${clubOwnerIds.join(',')})`,
+                    `created_by.in.(${clubOwnerIds.join(',')})`,
+                  ].join(','),
                 )
             : supabase.from('opportunities').select('id', { count: 'exact', head: true }).eq('status', 'open').limit(0),
           supabase
