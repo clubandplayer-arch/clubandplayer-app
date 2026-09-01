@@ -9,6 +9,15 @@ import { applyPublicProfileVisibilityFilters } from '@/lib/profile/visibility';
 import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
 import { getProvinceAbbreviationsServer } from '@/lib/geo/provinceAbbreviations.server';
 import { attachOpportunityGeography, opportunityGeographyLabel } from '@/lib/opportunities/geography';
+import {
+  canonicalAreaLegacyField,
+  parseSearchGeography,
+  resolveCanonicalSearchGeography,
+  SearchGeographyContractError,
+  type CanonicalSearchGeographyScope,
+  type ParsedSearchGeography,
+} from '@/lib/search/canonicalGeographyContract';
+import { SupabaseSearchGeographyCatalog } from '@/lib/search/canonicalGeography.server';
 
 export const runtime = 'nodejs';
 
@@ -50,6 +59,7 @@ type SearchFilters = {
   city: string | null;
   sport: string | null;
   role: string | null;
+  canonical: CanonicalSearchGeographyScope | null;
 };
 
 const EMPTY_RESULTS: SearchResultsByKind = {
@@ -75,6 +85,10 @@ function clamp(n: number, min: number, max: number) {
 function toIlikePattern(value: string) {
   const escaped = value.replace(/[%_]/g, (match) => `\\${match}`);
   return `%${escaped}%`;
+}
+
+function toIlikeExact(value: string) {
+  return value.replace(/[%_]/g, (match) => `\\${match}`);
 }
 
 function buildLocationFrom(parts: Array<string | null | undefined>) {
@@ -118,23 +132,46 @@ function normalizeTextFilter(raw?: string | null) {
   return value ? value : null;
 }
 
-function readFilters(url: URL): SearchFilters {
-  const countryRaw = normalizeTextFilter(url.searchParams.get('country'));
+function readFilters(url: URL, parsedGeography: ParsedSearchGeography): SearchFilters {
+  const countryRaw = parsedGeography.mode === 'canonical_unvalidated'
+    ? null
+    : parsedGeography.legacy.country;
   const countryCode = countryRaw?.toUpperCase() ?? null;
   return {
     country: countryCode,
-    region: normalizeTextFilter(url.searchParams.get('region')),
-    province: normalizeTextFilter(url.searchParams.get('province')),
-    city: normalizeTextFilter(url.searchParams.get('city')),
+    region: parsedGeography.mode === 'canonical_unvalidated' ? null : parsedGeography.legacy.region,
+    province: parsedGeography.mode === 'canonical_unvalidated' ? null : parsedGeography.legacy.province,
+    city: parsedGeography.mode === 'canonical_unvalidated' ? null : parsedGeography.legacy.city,
     sport: normalizeSport(url.searchParams.get('sport')),
     role: normalizeTextFilter(url.searchParams.get('role')),
+    canonical: null,
   };
 }
 
-function applyCommonFilters<T>(query: T, filters: SearchFilters, options?: { allowRegion?: boolean; allowProvince?: boolean; allowSport?: boolean; allowRole?: boolean }) {
+function applyCanonicalProfileFilters(query: any, scope: CanonicalSearchGeographyScope) {
+  const countryValues = Array.from(new Set([
+    scope.countryIso2,
+    scope.countryName,
+    getCountryName(scope.countryIso2),
+  ].filter((value): value is string => Boolean(value?.trim()))));
+  let nextQuery = query.or(
+    countryValues.map((value) => `country.ilike.${toIlikeExact(value)}`).join(','),
+  );
+  if (scope.geoAreaName && scope.geoAreaType) {
+    nextQuery = nextQuery.ilike(canonicalAreaLegacyField(scope.geoAreaType), scope.geoAreaName);
+  }
+  return nextQuery;
+}
+
+function applyCommonFilters<T>(query: T, filters: SearchFilters, options?: { allowRegion?: boolean; allowProvince?: boolean; allowSport?: boolean; allowRole?: boolean; canonicalLocation?: 'profile' | 'opportunity' }) {
   let nextQuery: any = query;
 
-  if (filters.country) {
+  if (filters.canonical && options?.canonicalLocation === 'opportunity') {
+    nextQuery = nextQuery.eq('country_id', filters.canonical.countryId);
+    if (filters.canonical.geoAreaId) nextQuery = nextQuery.in('geo_area_id', filters.canonical.areaIds);
+  } else if (filters.canonical) {
+    nextQuery = applyCanonicalProfileFilters(nextQuery, filters.canonical);
+  } else if (filters.country) {
     const countryLabel = getCountryName(filters.country);
     if (countryLabel) nextQuery = nextQuery.or(`country.eq.${filters.country},country.ilike.${toIlikePattern(countryLabel)}`);
     else nextQuery = nextQuery.eq('country', filters.country);
@@ -486,7 +523,7 @@ function buildOpportunityQuery(
   if (status) {
     query = query.eq('status', status);
   }
-  query = applyCommonFilters(query, filters, { allowRegion: true, allowProvince: true, allowSport: true, allowRole: true });
+  query = applyCommonFilters(query, filters, { allowRegion: true, allowProvince: true, allowSport: true, allowRole: true, canonicalLocation: 'opportunity' });
   return query;
 }
 
@@ -591,7 +628,7 @@ async function fetchOpportunityCount(params: {
 }
 
 function hasProfileFilters(filters: SearchFilters) {
-  return Boolean(filters.country || filters.region || filters.province || filters.city || filters.sport || filters.role);
+  return Boolean(filters.canonical || filters.country || filters.region || filters.province || filters.city || filters.sport || filters.role);
 }
 
 async function fetchFilteredAuthorIds(params: {
@@ -799,7 +836,14 @@ export async function GET(req: NextRequest) {
   const rawStatus = (url.searchParams.get('status') || '').trim().toLowerCase();
   const allowedStatuses = new Set(['open', 'closed', 'archived', 'draft']);
   const status = rawStatus && allowedStatuses.has(rawStatus) ? rawStatus : null;
-  const filters = readFilters(url);
+  let parsedGeography: ParsedSearchGeography;
+  try {
+    parsedGeography = parseSearchGeography(url.searchParams);
+  } catch (error) {
+    if (error instanceof SearchGeographyContractError) return invalidPayload(error.message);
+    return invalidPayload('Parametri geografici non validi.');
+  }
+  const filters = readFilters(url, parsedGeography);
 
   if (query.length < 2) {
     return invalidPayload('La query deve contenere almeno 2 caratteri.');
@@ -809,6 +853,12 @@ export async function GET(req: NextRequest) {
 
   try {
     const supabase = await getSupabaseServerClient();
+    if (parsedGeography.mode === 'canonical_unvalidated') {
+      filters.canonical = await resolveCanonicalSearchGeography(
+        parsedGeography,
+        new SupabaseSearchGeographyCatalog(supabase),
+      );
+    }
     const results: SearchResultsByKind = { ...EMPTY_RESULTS };
     let counts: CountsByKind = emptyCounts();
 
@@ -940,11 +990,21 @@ export async function GET(req: NextRequest) {
       type,
       page,
       limit,
-      filters,
+      filters: {
+        country: filters.country,
+        region: filters.region,
+        province: filters.province,
+        city: filters.city,
+        sport: filters.sport,
+        role: filters.role,
+        countryId: filters.canonical?.countryId ?? null,
+        geoAreaId: filters.canonical?.geoAreaId ?? null,
+      },
       counts,
       results,
     });
   } catch (error) {
+    if (error instanceof SearchGeographyContractError) return invalidPayload(error.message);
     if (error instanceof Error) {
       return dbError(error.message);
     }

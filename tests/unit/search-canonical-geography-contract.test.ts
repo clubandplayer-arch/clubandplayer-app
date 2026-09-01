@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   compareSearchGeographyRank,
+  canonicalAreaLegacyField,
   parseSearchGeography,
   rankSearchGeography,
   resolveCanonicalSearchGeography,
@@ -22,8 +23,8 @@ function params(values: Record<string, string>) {
 
 function catalog(overrides: Partial<SearchGeographyCatalog> = {}): SearchGeographyCatalog {
   return {
-    getCountry: async (id) => ({ id, isActive: true, isSupported: true }),
-    getArea: async (id) => ({ id, countryId: COUNTRY_ID, isActive: true }),
+    getCountry: async (id) => ({ id, iso2: 'IT', officialName: 'Italy', isActive: true, isSupported: true }),
+    getArea: async (id) => ({ id, countryId: COUNTRY_ID, officialName: 'Lazio', areaType: 'REGION', isActive: true }),
     getActiveDescendantIds: async () => [CHILD_ID, CHILD_ID],
     ...overrides,
   };
@@ -70,14 +71,14 @@ test('catalog validation accepts country-only and expands one area to unique act
   assert.equal(countryOnly.mode, 'canonical_unvalidated');
   if (countryOnly.mode !== 'canonical_unvalidated') return;
   assert.deepEqual(await resolveCanonicalSearchGeography(countryOnly, catalog()), {
-    mode: 'canonical', countryId: COUNTRY_ID, geoAreaId: null, areaIds: [],
+    mode: 'canonical', countryId: COUNTRY_ID, countryIso2: 'IT', countryName: 'Italy', geoAreaId: null, geoAreaName: null, geoAreaType: null, areaIds: [],
   });
 
   const full = parseSearchGeography(params({ countryId: COUNTRY_ID, geoAreaId: AREA_ID }));
   assert.equal(full.mode, 'canonical_unvalidated');
   if (full.mode !== 'canonical_unvalidated') return;
   assert.deepEqual(await resolveCanonicalSearchGeography(full, catalog()), {
-    mode: 'canonical', countryId: COUNTRY_ID, geoAreaId: AREA_ID, areaIds: [AREA_ID, CHILD_ID],
+    mode: 'canonical', countryId: COUNTRY_ID, countryIso2: 'IT', countryName: 'Italy', geoAreaId: AREA_ID, geoAreaName: 'Lazio', geoAreaType: 'REGION', areaIds: [AREA_ID, CHILD_ID],
   });
 });
 
@@ -86,12 +87,22 @@ test('catalog validation fails closed for unsupported countries and cross-countr
   assert.equal(parsed.mode, 'canonical_unvalidated');
   if (parsed.mode !== 'canonical_unvalidated') return;
   await assert.rejects(
-    resolveCanonicalSearchGeography(parsed, catalog({ getCountry: async (id) => ({ id, isActive: true, isSupported: false }) })),
+    resolveCanonicalSearchGeography(parsed, catalog({ getCountry: async (id) => ({ id, iso2: 'IT', officialName: 'Italy', isActive: true, isSupported: false }) })),
     (error) => error instanceof SearchGeographyContractError && error.code === 'COUNTRY_UNAVAILABLE',
   );
   await assert.rejects(
-    resolveCanonicalSearchGeography(parsed, catalog({ getArea: async (id) => ({ id, countryId: OTHER_COUNTRY_ID, isActive: true }) })),
+    resolveCanonicalSearchGeography(parsed, catalog({ getArea: async (id) => ({ id, countryId: OTHER_COUNTRY_ID, officialName: 'Ain', areaType: 'DEPARTMENT', isActive: true }) })),
     (error) => error instanceof SearchGeographyContractError && error.code === 'COUNTRY_AREA_MISMATCH',
+  );
+});
+
+test('canonical heterogeneous area types map to the existing public profile projection', () => {
+  assert.equal(canonicalAreaLegacyField('AUTONOMOUS_COMMUNITY'), 'region');
+  assert.equal(canonicalAreaLegacyField('department'), 'province');
+  assert.equal(canonicalAreaLegacyField('MUNICIPALITY'), 'city');
+  assert.throws(
+    () => canonicalAreaLegacyField('UNKNOWN'),
+    (error) => error instanceof SearchGeographyContractError && error.code === 'UNSUPPORTED_AREA_TYPE',
   );
 });
 

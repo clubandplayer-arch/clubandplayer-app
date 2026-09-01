@@ -29,12 +29,18 @@ export type ParsedSearchGeography =
 export type CanonicalSearchGeographyScope = {
   mode: 'canonical';
   countryId: string;
+  countryIso2: string;
+  countryName: string;
   geoAreaId: string | null;
+  geoAreaName: string | null;
+  geoAreaType: string | null;
   areaIds: string[];
 };
 
 export type CanonicalSearchCountry = {
   id: string;
+  iso2: string;
+  officialName: string;
   isActive: boolean;
   isSupported: boolean;
 };
@@ -42,6 +48,8 @@ export type CanonicalSearchCountry = {
 export type CanonicalSearchArea = {
   id: string;
   countryId: string;
+  officialName: string;
+  areaType: string;
   isActive: boolean;
 };
 
@@ -60,7 +68,8 @@ export class SearchGeographyContractError extends Error {
       | 'COUNTRY_REQUIRED'
       | 'COUNTRY_UNAVAILABLE'
       | 'GEO_AREA_UNAVAILABLE'
-      | 'COUNTRY_AREA_MISMATCH',
+      | 'COUNTRY_AREA_MISMATCH'
+      | 'UNSUPPORTED_AREA_TYPE',
     message: string,
   ) {
     super(message);
@@ -123,7 +132,16 @@ export async function resolveCanonicalSearchGeography(
     throw new SearchGeographyContractError('COUNTRY_UNAVAILABLE', 'countryId is not active and supported');
   }
   if (!parsed.geoAreaId) {
-    return { mode: 'canonical', countryId: country.id, geoAreaId: null, areaIds: [] };
+    return {
+      mode: 'canonical',
+      countryId: country.id,
+      countryIso2: country.iso2,
+      countryName: country.officialName,
+      geoAreaId: null,
+      geoAreaName: null,
+      geoAreaType: null,
+      areaIds: [],
+    };
   }
 
   const area = await catalog.getArea(parsed.geoAreaId);
@@ -137,9 +155,26 @@ export async function resolveCanonicalSearchGeography(
   return {
     mode: 'canonical',
     countryId: country.id,
+    countryIso2: country.iso2,
+    countryName: country.officialName,
     geoAreaId: area.id,
+    geoAreaName: area.officialName,
+    geoAreaType: area.areaType,
     areaIds: Array.from(new Set([area.id, ...descendants])),
   };
+}
+
+const REGION_AREA_TYPES = new Set(['REGION', 'AUTONOMOUS_COMMUNITY', 'CANTON', 'STATISTICAL_REGION', 'VOIVODESHIP']);
+const PROVINCE_AREA_TYPES = new Set(['DEPARTMENT', 'PROVINCE', 'DISTRICT', 'POWIAT']);
+const CITY_AREA_TYPES = new Set(['COMMUNE', 'MUNICIPALITY', 'GMINA']);
+
+/** Maps heterogeneous canonical levels to the existing public legacy projection. */
+export function canonicalAreaLegacyField(areaType: string): 'region' | 'province' | 'city' {
+  const normalized = areaType.trim().toUpperCase();
+  if (REGION_AREA_TYPES.has(normalized)) return 'region';
+  if (PROVINCE_AREA_TYPES.has(normalized)) return 'province';
+  if (CITY_AREA_TYPES.has(normalized)) return 'city';
+  throw new SearchGeographyContractError('UNSUPPORTED_AREA_TYPE', `unsupported canonical area type: ${areaType}`);
 }
 
 export type SearchGeographyRankingSignals = {

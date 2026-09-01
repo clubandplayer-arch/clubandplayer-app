@@ -9,15 +9,15 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | Voce | Stato verificato |
 | --- | --- |
 | Last completed subphase | **COMPLETATA — FASE 3C-D2 — canonical filtering/ranking contract** |
-| Current active phase | **FASE 3C-D — Search / Discover / WhoToFollow; D1–D2 COMPLETATE** |
-| Next safe action | **D3 — Search canonical filters, solo con autorizzazione esplicita** |
+| Current active phase | **FASE 3C-D3 — Search canonical filters; IMPLEMENTATA / AUTOMATED PASS** |
+| Next safe action | **Eseguire verifica manuale API Preview D3; D4 BLOCCATA fino a conferma** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
 | Mobile international parity | **NOT STARTED** |
 | FASE 3C-B | **COMPLETATA — B1–B7 repository web/API** |
 | FASE 3C-C | **COMPLETATA — C1–C7 PASS** |
-| FASE 3C-D | **IN CORSO — D1–D2 PASS; D3 NOT STARTED** |
+| FASE 3C-D | **IN CORSO — D1–D2 PASS; D3 IMPLEMENTATA, MANUAL PREVIEW PENDING** |
 
 **FASE 3C-B è COMPLETATA nel perimetro repository web/API.** B7 riconferma IT legacy, IT/FR/ES/CH/SI/PL canonicali, account type, canonical-first, fallback e separazione semantica. `/settings` è ora raggiungibile anche dagli Enti su desktop e mobile, senza esporre loro gli interessi mobility. Prima del merge resta richiesta la verifica manuale Preview; mobile international parity resta una fase futura separata.
 
@@ -387,7 +387,7 @@ Test locale PostgreSQL 16.15: **PASS**, inclusi Subiaco/RM/Lazio, ambigui, unres
 
 ### FASE 3C-D — Search / Discover / WhoToFollow
 
-**Stato: IN CORSO — D1–D2 COMPLETATE / PASS; D3–D7 NOT STARTED.**
+**Stato: IN CORSO — D1–D2 COMPLETATE / PASS; D3 IMPLEMENTATA / AUTOMATED PASS / MANUAL PREVIEW PENDING; D4–D7 NOT STARTED.**
 
 Obiettivi futuri: country-aware filtering, geo-area filtering, scouting internazionale, country interests, territorial interests, relocation e ranking compatibile con legacy. Il lavoro dovrà essere separato, secondo necessità, in sottofasi audit/read/filter/ranking.
 
@@ -395,7 +395,7 @@ Piano progressivo approvato per evitare modifiche monolitiche:
 
 1. **D1 — audit Search / Discover / WhoToFollow:** COMPLETATA / PASS; inventariati Search globale, due endpoint suggerimenti, superfici UI, fonti canonical/legacy, RLS/privacy, ranking e rischi performance. Nessuna modifica runtime, remota, mobile o binaria.
 2. **D2 — canonical filtering/ranking contract:** COMPLETATA / PASS; definiti parametri ID e alias, parsing fail-closed, validation adapter, descendants, reason weights, ranking/tie-break deterministico, privacy boundary e fallback legacy. Modulo puro non ancora collegato al runtime; verifica manuale/visiva non applicabile.
-3. **D3 — Search canonical filters:** NOT STARTED; integrare country/area canoniche mantenendo query/count e parametri legacy coerenti.
+3. **D3 — Search canonical filters:** IMPLEMENTATA / AUTOMATED PASS / MANUAL PREVIEW PENDING; API canonical-first con country/area validation, descendants Opportunity, proiezione pubblica profili, query/count coerenti e fallback legacy. D4 bloccata fino allo smoke utente.
 4. **D4 — Discover / WhoToFollow data boundary:** NOT STARTED; convergere la selezione candidati e leggere correttamente residence/interessi del viewer.
 5. **D5 — international ranking e relocation:** NOT STARTED; score deterministico con interessi country/area, sport, relocation e fallback legacy.
 6. **D6 — UI e scouting internazionale:** NOT STARTED; selector, copy country-aware, URL/accessibilità e reason label non sensibili.
@@ -404,6 +404,8 @@ Piano progressivo approvato per evitare modifiche monolitiche:
 Decisioni D1: gli interessi canonici descrivono le preferenze del viewer e non la location del target; la location target usa residence canonicale con fallback legacy. `open_to_relocation` è un segnale contestuale, non un filtro universale di pubblicazione. Le preference tables sono own-or-admin nel contratto repository e non devono essere rese pubbliche o aggirate con service role generalizzato. SearchMap/ClubMap restano fuori perimetro fino alla FASE 3C-E. Dettaglio e matrice di rischio sono nel deliverable `phase-3c-d1-search-discover-who-to-follow-audit.md`.
 
 Decisioni D2: filtri canonicali `countryId`/`geoAreaId` hanno precedenza sui testi legacy, area richiede country e include descendants same-country; assenza canonicale non penalizza i profili legacy. Il ranking usa una sola reason geografica più segnali sport/relocation espliciti e tie-break stabile. D2 non attiva ancora query o ranking. Dettaglio nel deliverable `phase-3c-d2-search-canonical-filtering-ranking-contract.md`.
+
+Decisioni D3: Opportunities filtrano direttamente gli ID canonici; profili e author usano la proiezione pubblica legacy della residence canonica senza leggere preference tables private o usare service role. Il runtime è implementato e testato automaticamente, ma richiede smoke API Preview prima della chiusura. Dettaglio e checklist in `phase-3c-d3-search-canonical-filters.md`.
 
 ### FASE 3C-E — Maps
 
@@ -795,14 +797,14 @@ Alla data di creazione iniziale della roadmap:
 | Voce | Stato |
 | --- | --- |
 | Last completed subphase | **FASE 3C-D2 — canonical filtering/ranking contract — COMPLETATA** |
-| Current active phase | **FASE 3C-D — D1–D2 COMPLETATE / PASS** |
-| Next safe action | **D3 — Search canonical filters, non ancora autorizzata** |
+| Current active phase | **FASE 3C-D3 — IMPLEMENTATA / AUTOMATED PASS / MANUAL PREVIEW PENDING** |
+| Next safe action | **Smoke API Preview D3; non iniziare D4 prima della conferma** |
 | B4.3 local runtime harness | **PASSED — PostgreSQL 16, fixture sintetiche, nessuna connessione remota** |
 | B4.3 Supabase certification | **BLOCKED — PREVIEW BRANCH UNHEALTHY / MIGRATIONS FAILED / SUPPORT PENDING** |
 | B4.4 | **COMPLETATA — CANARY APPLICATIVO PLAYER IT / STAFF FR, READ-AFTER-WRITE, CLEANUP E RIPRISTINO FAIL-CLOSED PASS** |
 | FASE 3C-B | **COMPLETATA — B1–B7 repository web/API** |
 | FASE 3C-C | **COMPLETATA — C1–C7 PASS** |
-| FASE 3C-D | **IN CORSO — D1–D2 PASS; D3–D7 NOT STARTED** |
+| FASE 3C-D | **IN CORSO — D1–D2 PASS; D3 MANUAL PREVIEW PENDING; D4–D7 NOT STARTED** |
 | Automatic residence backfill | **DELIBERATELY EXCLUDED** |
 | Mobile international parity | **NOT STARTED** |
 
@@ -827,3 +829,5 @@ C7 Opportunities è **COMPLETATA / PASS**: audit Production 31/0/0/0/0, apply fa
 D1 Search / Discover / WhoToFollow è **COMPLETATA / PASS** come audit repository-only. Sono stati separati Search globale, Discover, i due endpoint suggerimenti e Maps; documentati canonical residence, country/geo-area interests, relocation, fallback legacy, privacy/RLS, ranking e performance. Nessuna query remota, migration, modifica runtime/UI/mobile o creazione/uso di file binari. D2 è il prossimo passo e non è ancora iniziata.
 
 D2 Search canonical filtering/ranking contract è **COMPLETATA / PASS**: modulo TypeScript puro con parser canonical/legacy, alias compatibility, validazione catalog adapter, descendants same-country, reason weights e ordinamento deterministico. Nessun collegamento runtime/UI/DB e nessun file binario; verifica manuale/visiva non applicabile. D3 non è ancora iniziata.
+
+D3 Search canonical filters è **IMPLEMENTATA / AUTOMATED PASS / MANUAL PREVIEW PENDING**: Search accetta country/area canoniche, applica ID diretti alle Opportunities e proiezione pubblica ai profili/author, mantenendo query/count e fallback legacy. Nessuna migration, write, UI, Maps, mobile o file binario. D4 è bloccata fino alla conferma dello smoke API Preview documentato.
