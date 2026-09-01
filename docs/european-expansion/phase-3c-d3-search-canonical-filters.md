@@ -2,7 +2,7 @@
 
 ## Stato
 
-**IMPLEMENTATA — AUTOMATED PASS — VERIFICA MANUALE PREVIEW RICHIESTA.** D3 non può essere marcata COMPLETATA finché lo smoke API Preview indicato sotto non viene eseguito e confermato. D4 non deve iniziare prima di tale conferma.
+**COMPLETATA / PASS — test automatici e verifica manuale Preview conclusi il 2026-09-01.** D4 non è avviata implicitamente e richiede autorizzazione separata.
 
 ## Implementazione
 
@@ -19,11 +19,11 @@
 
 La ricerca profili non legge preference tables altrui e non usa service role. Usa la proiezione pubblica legacy prodotta dai write canonicali, preservando profili legacy e RLS esistenti. Questo evita di esporre `profile_preferences`, ma implica che un profilo con canonical residence non ancora proiettata nei campi pubblici resta dipendente dal fallback legacy: la futura D4 non deve aggirare questo limite senza un boundary revisionato.
 
-**Correzione dopo smoke Preview:** il primo tentativo materializzava tutti i descendants francesi in parametri PostgREST `.in(...)`. Una regione con migliaia di comuni superava la dimensione pratica della richiesta e produceva `UNKNOWN`. Search ora valida lo stesso nodo canonico ma usa la proiezione gerarchica bounded; nessun dato è stato scritto o modificato. I due smoke area devono essere ripetuti sul nuovo deploy.
+**Correzione dopo il primo smoke Preview:** il primo tentativo materializzava tutti i descendants francesi in parametri PostgREST `.in(...)`. Una regione con migliaia di comuni superava la dimensione pratica della richiesta e produceva `UNKNOWN`. Search ora valida lo stesso nodo canonico ma usa la proiezione gerarchica bounded; nessun dato è stato scritto o modificato. Il successivo recheck Preview è PASS.
 
 Nessuna migration, write, backfill, modifica RLS, UI selector, ranking attivo, Maps, mobile o file binario è inclusa in D3.
 
-## Verifica manuale Preview richiesta
+## Verifica manuale Preview — esito user-reported
 
 Dopo il deploy Preview, usare un account autenticato e recuperare ID validi dalle API catalogo già esistenti. Non usare Production SQL e non modificare dati.
 
@@ -37,8 +37,18 @@ Dopo il deploy Preview, usare un account autenticato e recuperare ID validi dall
 8. Verificare area senza country: `/api/search?q=club&type=all&geoAreaId=<ID_AREA_FR>` deve restituire errore 400.
 9. Ripetere una ricerca senza filtri geografici e una legacy già nota; risultati, conteggi e console devono restare senza errori.
 
-Riportare separatamente: legacy PASS/FAIL, canonical country PASS/FAIL, canonical area PASS/FAIL, Opportunities count PASS/FAIL, invalid UUID PASS/FAIL, area-without-country PASS/FAIL, no-filter regression PASS/FAIL e console PASS/FAIL.
+Esito finale osservato e comunicato dall'utente:
+
+- cataloghi country e aree FR: PASS;
+- Search legacy IT: PASS;
+- canonical country IT: PASS, con conteggi coerenti rispetto al legacy e nessuna esposizione di `areaIds`;
+- canonical area Auvergne-Rhône-Alpes: PASS dopo la correzione bounded;
+- `type=opportunities`: PASS, `counts.opportunities=1` e unico risultato `Opportunité Ain`;
+- country UUID non valido: PASS, HTTP 400 `INVALID_PAYLOAD`;
+- area senza country: PASS, HTTP 400 `INVALID_PAYLOAD`;
+- ricerca senza filtri: PASS, inclusi risultati IT/FR e nessun default geografico implicito;
+- Network/console: PASS; le sole righe rosse visibili sono i due HTTP 400 intenzionali dei test fail-closed, mentre la richiesta canonica valida è HTTP 200.
 
 ## Next gate
 
-**D3 resta in attesa di una nuova verifica manuale Preview dopo la correzione del fan-out descendants. Non iniziare D4 fino alla conferma dell'utente.**
+**D3 è COMPLETATA / PASS. D4 — Discover / WhoToFollow data boundary è il prossimo passo pianificato, ma non è avviato senza autorizzazione esplicita.**
