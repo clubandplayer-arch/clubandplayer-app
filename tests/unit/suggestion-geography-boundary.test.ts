@@ -79,6 +79,9 @@ test('server boundary reads only viewer-owned preferences and both endpoints con
   assert.doesNotMatch(server, /getSupabaseAdminClient|service_role/);
   assert.match(follows, /loadViewerSuggestionGeography/);
   assert.match(alternate, /loadViewerSuggestionGeography/);
+  assert.match(alternate, /if \(debugMode\)/);
+  assert.match(alternate, /totalResult\.error \? null/);
+  assert.match(alternate, /\.filter\(\(id\) => UUID_RE\.test\(id\)\)/);
   assert.doesNotMatch(follows, /interest_city\.ilike/);
   assert.doesNotMatch(alternate, /profile\.interest_city \|\| profile\.city/);
 });

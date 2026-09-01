@@ -4,6 +4,8 @@
 
 **IMPLEMENTATA — test automatici PASS; verifica manuale Preview richiesta.** D5 resta bloccata fino alla conferma dello smoke autenticato.
 
+Il primo smoke ha confermato `GET /api/follows/suggestions` e tutti i quattro `geoScope`, ma ha rilevato `UNKNOWN` nell'endpoint alternativo. Il fix rende i conteggi diagnostici best-effort e solo-debug, normalizza l'allowlist UUID delle esclusioni e non permette più che una query diagnostica interrompa i suggerimenti. È richiesto il recheck del solo endpoint alternativo prima del PASS D4.
+
 ## Implementazione
 
 - I due endpoint `GET /api/follows/suggestions` e `GET /api/suggestions/who-to-follow` costruiscono ora lo stesso piano geografico del viewer.

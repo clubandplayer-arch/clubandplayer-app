@@ -9,6 +9,7 @@ import {
 
 export const runtime = 'nodejs';
 const ENDPOINT_VERSION = 'who-to-follow@2026-09-01-d4';
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 type SuggestionRow = {
   id: string;
@@ -93,9 +94,11 @@ export async function GET(req: NextRequest) {
       (existing ?? [])
         .map((row) => (row as any)?.target_profile_id)
         .filter(Boolean)
-        .map((id) => id.toString()),
+        .map((id) => id.toString())
+        .filter((id) => UUID_RE.test(id)),
     );
     alreadyFollowing.add(profile.id);
+    const exclusionClause = `(${Array.from(alreadyFollowing).map((id) => `"${id}"`).join(',')})`;
     const followRowsTotal = (existing ?? []).length;
     const followRowsActive = followRowsTotal;
     const excludedIdsCount = alreadyFollowing.size;
@@ -109,10 +112,7 @@ export async function GET(req: NextRequest) {
         .select(baseSelect)
         .or('status.eq.active,status.eq.pending,status.is.null');
       if (alreadyFollowing.size) {
-        const values = Array.from(alreadyFollowing)
-          .map((id) => `'${id}'`)
-          .join(',');
-        query = query.not('id', 'in', `(${values})`);
+        query = query.not('id', 'in', exclusionClause);
       }
       return query;
     };
@@ -171,30 +171,21 @@ export async function GET(req: NextRequest) {
     let sportCandidates = 0;
     let recentFallbackCandidates = 0;
 
-    const { count: totalProfilesCount, error: totalProfilesError } = await profilesClient
-      .from('profiles')
-      .select('id', { count: 'exact', head: true });
-    if (totalProfilesError) {
-      throw totalProfilesError;
+    let profilesVisibleTotal: number | null = null;
+    let candidatesAfterSelfExclude: number | null = null;
+    let candidatesAfterAlreadyFollowedExclude: number | null = null;
+    let totalEligibleAfterExclude: number | null = null;
+    if (debugMode) {
+      const [totalResult, selfExcludedResult, followedExcludedResult] = await Promise.all([
+        profilesClient.from('profiles').select('id', { count: 'exact', head: true }),
+        buildCountQuery().neq('id', profile.id),
+        buildCountQuery().not('id', 'in', exclusionClause),
+      ]);
+      profilesVisibleTotal = totalResult.error ? null : totalResult.count;
+      candidatesAfterSelfExclude = selfExcludedResult.error ? null : selfExcludedResult.count;
+      candidatesAfterAlreadyFollowedExclude = followedExcludedResult.error ? null : followedExcludedResult.count;
+      totalEligibleAfterExclude = candidatesAfterAlreadyFollowedExclude;
     }
-
-    const profilesVisibleTotal = totalProfilesCount ?? 0;
-    const candidatesAfterSelfExclude = profile.id
-      ? ((await buildCountQuery().neq('id', profile.id)).count ?? 0)
-      : profilesVisibleTotal;
-    const candidatesAfterAlreadyFollowedExclude = alreadyFollowing.size
-      ? ((await buildCountQuery().not('id', 'in', `(${Array.from(alreadyFollowing).map((id) => `'${id}'`).join(',')})`))
-          .count ?? 0)
-      : candidatesAfterSelfExclude;
-    const { count: totalEligibleAfterExcludeCount, error: totalEligibleError } = await profilesClient
-      .from('profiles')
-      .select('id', { count: 'exact', head: true })
-      .or('status.eq.active,status.eq.pending,status.is.null')
-      .not('id', 'in', `(${Array.from(alreadyFollowing).map((id) => `'${id}'`).join(',')})`);
-    if (totalEligibleError) {
-      throw totalEligibleError;
-    }
-    const totalEligibleAfterExclude = totalEligibleAfterExcludeCount ?? 0;
 
     const addSuggestions = (items: Suggestion[]) => {
       let added = 0;
@@ -210,28 +201,31 @@ export async function GET(req: NextRequest) {
 
     for (const geographyFilter of geographyPlan.filters) {
       if (results.length >= limit) break;
-      const { data: rows } = await applySuggestionGeographyFilter(buildBaseQuery(), geographyFilter)
+      const { data: rows, error } = await applySuggestionGeographyFilter(buildBaseQuery(), geographyFilter)
         .order('updated_at', { ascending: false })
         .limit(limit * 3);
+      if (error) throw error;
 
       zoneCandidates += (rows ?? []).length;
       addSuggestions(await mapSuggestions((rows ?? []) as SuggestionRow[]));
     }
 
     if (results.length < limit && profile.sport) {
-      const { data: rows } = await buildBaseQuery()
+      const { data: rows, error } = await buildBaseQuery()
         .eq('sport', profile.sport)
         .order('updated_at', { ascending: false })
         .limit(limit * 3);
+      if (error) throw error;
 
       sportCandidates += (rows ?? []).length;
       addSuggestions(await mapSuggestions((rows ?? []) as SuggestionRow[]));
     }
 
     if (results.length < limit) {
-      const { data: rows } = await buildBaseQuery()
+      const { data: rows, error } = await buildBaseQuery()
         .order('updated_at', { ascending: false })
         .limit(limit * 3);
+      if (error) throw error;
 
       recentFallbackCandidates += (rows ?? []).length;
       addSuggestions(await mapSuggestions((rows ?? []) as SuggestionRow[]));
