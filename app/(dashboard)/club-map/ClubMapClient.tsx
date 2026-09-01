@@ -107,6 +107,7 @@ export default function ClubMapClient() {
   const [viewport, setViewport] = useState<ApiViewport>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [zoomVersion, setZoomVersion] = useState(0);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
@@ -129,10 +130,23 @@ export default function ClubMapClient() {
     if (geoAreaId) params.set('geoAreaId', geoAreaId);
     setLoading(true);
     setError(null);
-    fetch(`/api/clubs/geolocated${params.size ? `?${params}` : ''}`, { credentials: 'include', cache: 'no-store', signal: controller.signal })
-      .then(async (response) => {
-        const json = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(json?.message || t('map.loadError'));
+    setWarning(null);
+    const request = async (query: URLSearchParams) => {
+      const response = await fetch(`/api/clubs/geolocated${query.size ? `?${query}` : ''}`, { credentials: 'include', cache: 'no-store', signal: controller.signal });
+      const json = await response.json().catch(() => ({}));
+      return { response, json };
+    };
+    request(params)
+      .then(async ({ response, json }) => {
+        if (!response.ok && json?.details?.reason === 'VIEWPORT_BOUNDS_UNAVAILABLE' && params.size) {
+          const fallback = await request(new URLSearchParams());
+          if (!fallback.response.ok) throw new Error(fallback.json?.message || 'MAP_LOAD_FAILED');
+          setPins(Array.isArray(fallback.json?.data) ? fallback.json.data : []);
+          setViewport(null);
+          setWarning('VIEWPORT_BOUNDS_UNAVAILABLE');
+          return;
+        }
+        if (!response.ok) throw new Error(json?.message || 'MAP_LOAD_FAILED');
         setPins(Array.isArray(json?.data) ? json.data : []);
         setViewport(json?.viewport ?? null);
       })
@@ -140,12 +154,12 @@ export default function ClubMapClient() {
         if (reason?.name !== 'AbortError') {
           setPins([]);
           setViewport(null);
-          setError(reason instanceof Error ? reason.message : t('map.loadError'));
+          setError(reason instanceof Error ? reason.message : 'MAP_LOAD_FAILED');
         }
       })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [countryId, geoAreaId, t]);
+  }, [countryId, geoAreaId]);
 
   useEffect(() => {
     let disposed = false;
@@ -159,7 +173,7 @@ export default function ClubMapClient() {
       zoomHandler = () => setZoomVersion((value) => value + 1);
       map.on('zoomend', zoomHandler);
       setMapReady(true);
-    }).catch(() => { if (!disposed) setError(t('map.unavailable')); });
+    }).catch(() => { if (!disposed) setError('MAP_UNAVAILABLE'); });
     return () => {
       disposed = true;
       if (mapRef.current && zoomHandler) mapRef.current.off('zoomend', zoomHandler);
@@ -167,7 +181,7 @@ export default function ClubMapClient() {
       mapRef.current = null;
       markersRef.current = [];
     };
-  }, [t]);
+  }, []);
 
   useEffect(() => {
     if (!mapReady || !mapRef.current) return;
@@ -245,7 +259,8 @@ export default function ClubMapClient() {
       <div className="relative h-[70vh] min-h-[520px] bg-slate-100">
         <div ref={mapContainerRef} className="absolute inset-0" aria-label={t('map.ariaLabel')} />
         {loading ? <div className="absolute left-4 top-4 rounded-2xl bg-white/95 px-4 py-3 text-sm font-medium text-slate-700 shadow-lg">{t('map.loadingClubs')}</div> : null}
-        {error ? <div className="absolute left-4 right-4 top-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 shadow-lg md:right-auto" role="alert">{error}</div> : null}
+        {warning ? <div className="absolute left-14 right-4 top-4 z-[500] rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900 shadow-lg md:right-auto" role="status">{t('map.boundsUnavailable')}</div> : null}
+        {error ? <div className="absolute left-14 right-4 top-4 z-[500] rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 shadow-lg md:right-auto" role="alert">{error === 'MAP_UNAVAILABLE' ? t('map.unavailable') : t('map.loadError')}</div> : null}
         {!loading && !error && pins.length === 0 ? <div className="absolute left-4 right-4 top-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800 shadow-lg md:right-auto">{t('map.empty')}</div> : null}
       </div>
     </section>

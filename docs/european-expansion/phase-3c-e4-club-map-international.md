@@ -29,6 +29,15 @@ E3 è pertanto **COMPLETATA / PASS**.
 - Titolo, sottotitolo, filtro, empty/loading/error state, aria-label e label cluster sono localizzati in IT/EN/FR/ES.
 - La CTA per impostare la sede Club resta disponibile.
 
+## Correzione smoke Preview
+
+Lo smoke iniziale ha rilevato che una selezione canonicale priva di bounds ufficiali svuotava i pin e che il relativo errore poteva riapparire brevemente usando lo zoom. Il client ora:
+
+- conserva la selezione nell'URL ma ripiega sulla lista pubblica non filtrata quando il server risponde `VIEWPORT_BOUNDS_UNAVAILABLE`;
+- mantiene quindi visibili avatar e cluster, senza fabbricare bounds o coordinate;
+- mostra un avviso localizzato, persistente e non coperto dai controlli Leaflet che chiarisce che sono visibili tutti i Club pubblici;
+- non rilancia il fetch quando cambia soltanto lo zoom della mappa.
+
 ## Perimetro e limiti
 
 - Nessuna migration, indice, RPC, write remoto, modifica RLS, service role, SearchMap, Opportunity map, provider, mobile o file binario.
@@ -40,7 +49,7 @@ E3 è pertanto **COMPLETATA / PASS**.
 
 1. Aprire `/club-map` desktop e mobile: titolo europeo, selettore e mappa devono essere visibili senza errori Console.
 2. Senza filtro: URL pulito, pin italiani esistenti visibili, cluster numerici a zoom basso; click cluster aumenta lo zoom.
-3. Selezionare un Paese: URL contiene solo `countryId`; reload preserva la selezione. Se il catalogo ha bounds, mappa e pin restano nel viewport; senza bounds deve comparire un errore leggibile, mai `UNKNOWN`.
+3. Selezionare un Paese: URL contiene solo `countryId`; reload preserva la selezione. Se il catalogo ha bounds, mappa e pin restano nel viewport; senza bounds devono restare visibili i pin pubblici con l'avviso localizzato, mai `UNKNOWN`.
 4. Selezionare un'area: URL contiene `countryId` e `geoAreaId`; reload e reset devono funzionare.
 5. Aprire un pin singolo: nome/location/link Club corretti; logo fallback quando avatar assente.
 6. Cambiare lingua IT/EN/FR/ES: titolo, helper, selector, stati e cluster non devono mostrare copy Italy-only o stringhe mancanti.

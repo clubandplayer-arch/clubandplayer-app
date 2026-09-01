@@ -18,7 +18,7 @@ test('E4 canonical geography selection is URL-stable and sent to the bounded end
   assert.match(client, /params\.set\('countryId', countryId\)/);
   assert.match(client, /params\.set\('geoAreaId', geoAreaId\)/);
   assert.match(client, /router\.replace\(query \? `\/club-map\?\$\{query\}`/);
-  assert.match(client, /fetch\(`\/api\/clubs\/geolocated\$\{params\.size/);
+  assert.match(client, /fetch\(`\/api\/clubs\/geolocated\$\{query\.size/);
 });
 
 test('E4 clusters markers without another provider or exposing personal points', () => {
@@ -33,7 +33,7 @@ test('E4 popup values remain escaped and map states are localized', () => {
   assert.match(client, /escapeHtml\(pin\.name\)/);
   assert.match(client, /escapeHtml\(location\)/);
   assert.match(client, /escapeHtml\(pin\.id\)/);
-  for (const key of ['map.filterHelp', 'map.ariaLabel', 'map.clusterLabel', 'map.loadError', 'map.unavailable']) {
+  for (const key of ['map.filterHelp', 'map.ariaLabel', 'map.clusterLabel', 'map.loadError', 'map.unavailable', 'map.boundsUnavailable']) {
     assert.match(client, new RegExp(key.replace('.', '\\.')));
   }
   for (const locale of ['it', 'en', 'fr', 'es']) {
@@ -43,4 +43,11 @@ test('E4 popup values remain escaped and map states are localized', () => {
     assert.match(messages, /'map\.clusterLabel'/);
     assert.doesNotMatch(messages, /map\.title':'[^']*Itali/i);
   }
+});
+
+test('E4 keeps public pins visible when canonical catalog bounds are unavailable', () => {
+  assert.match(client, /VIEWPORT_BOUNDS_UNAVAILABLE/);
+  assert.match(client, /request\(new URLSearchParams\(\)\)/);
+  assert.match(client, /setWarning\('VIEWPORT_BOUNDS_UNAVAILABLE'\)/);
+  assert.doesNotMatch(client, /\[countryId, geoAreaId, t\]/);
 });
