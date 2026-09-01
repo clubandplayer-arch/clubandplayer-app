@@ -12,11 +12,13 @@ test('Search API parses canonical aliases and validates them before running resu
   assert.match(route, /SearchGeographyContractError/);
 });
 
-test('Opportunity result and count queries share direct canonical country and descendant filters', () => {
+test('Opportunity result and count queries share canonical country and bounded area projection filters', () => {
   assert.match(route, /canonicalLocation\?: 'profile' \| 'opportunity'/);
   assert.match(route, /nextQuery = nextQuery\.eq\('country_id', filters\.canonical\.countryId\)/);
-  assert.match(route, /nextQuery = nextQuery\.in\('geo_area_id', filters\.canonical\.areaIds\)/);
+  assert.match(route, /canonicalAreaLegacyField\(filters\.canonical\.geoAreaType\)/);
   assert.match(route, /canonicalLocation: 'opportunity'/);
+  assert.match(route, /\{ expandDescendants: false \}/);
+  assert.doesNotMatch(route, /\.in\('geo_area_id', filters\.canonical\.areaIds\)/);
 });
 
 test('profile and post-author queries use canonical labels projected onto legacy public location fields', () => {

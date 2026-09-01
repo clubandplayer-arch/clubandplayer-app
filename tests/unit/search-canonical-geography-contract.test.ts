@@ -82,6 +82,21 @@ test('catalog validation accepts country-only and expands one area to unique act
   });
 });
 
+test('runtime adapters can defer descendant materialization when using the validated legacy projection', async () => {
+  const parsed = parseSearchGeography(params({ countryId: COUNTRY_ID, geoAreaId: AREA_ID }));
+  assert.equal(parsed.mode, 'canonical_unvalidated');
+  if (parsed.mode !== 'canonical_unvalidated') return;
+  let descendantReads = 0;
+  const scope = await resolveCanonicalSearchGeography(parsed, catalog({
+    getActiveDescendantIds: async () => {
+      descendantReads += 1;
+      return [CHILD_ID];
+    },
+  }), { expandDescendants: false });
+  assert.equal(descendantReads, 0);
+  assert.deepEqual(scope.areaIds, [AREA_ID]);
+});
+
 test('catalog validation fails closed for unsupported countries and cross-country areas', async () => {
   const parsed = parseSearchGeography(params({ countryId: COUNTRY_ID, geoAreaId: AREA_ID }));
   assert.equal(parsed.mode, 'canonical_unvalidated');

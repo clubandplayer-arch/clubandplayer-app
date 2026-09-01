@@ -168,7 +168,12 @@ function applyCommonFilters<T>(query: T, filters: SearchFilters, options?: { all
 
   if (filters.canonical && options?.canonicalLocation === 'opportunity') {
     nextQuery = nextQuery.eq('country_id', filters.canonical.countryId);
-    if (filters.canonical.geoAreaId) nextQuery = nextQuery.in('geo_area_id', filters.canonical.areaIds);
+    if (filters.canonical.geoAreaName && filters.canonical.geoAreaType) {
+      nextQuery = nextQuery.ilike(
+        canonicalAreaLegacyField(filters.canonical.geoAreaType),
+        filters.canonical.geoAreaName,
+      );
+    }
   } else if (filters.canonical) {
     nextQuery = applyCanonicalProfileFilters(nextQuery, filters.canonical);
   } else if (filters.country) {
@@ -857,6 +862,7 @@ export async function GET(req: NextRequest) {
       filters.canonical = await resolveCanonicalSearchGeography(
         parsedGeography,
         new SupabaseSearchGeographyCatalog(supabase),
+        { expandDescendants: false },
       );
     }
     const results: SearchResultsByKind = { ...EMPTY_RESULTS };

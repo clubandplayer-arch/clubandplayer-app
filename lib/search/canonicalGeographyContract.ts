@@ -126,6 +126,7 @@ export function parseSearchGeography(params: URLSearchParams): ParsedSearchGeogr
 export async function resolveCanonicalSearchGeography(
   parsed: Extract<ParsedSearchGeography, { mode: 'canonical_unvalidated' }>,
   catalog: SearchGeographyCatalog,
+  options: { expandDescendants?: boolean } = {},
 ): Promise<CanonicalSearchGeographyScope> {
   const country = await catalog.getCountry(parsed.countryId);
   if (!country?.isActive || !country.isSupported) {
@@ -151,7 +152,9 @@ export async function resolveCanonicalSearchGeography(
   if (area.countryId !== country.id) {
     throw new SearchGeographyContractError('COUNTRY_AREA_MISMATCH', 'geoAreaId does not belong to countryId');
   }
-  const descendants = await catalog.getActiveDescendantIds(area.id, country.id);
+  const descendants = options.expandDescendants === false
+    ? []
+    : await catalog.getActiveDescendantIds(area.id, country.id);
   return {
     mode: 'canonical',
     countryId: country.id,

@@ -8,8 +8,8 @@
 
 - `GET /api/search` accetta `countryId`/`country_id` e `geoAreaId`/`geo_area_id` secondo il contratto D2.
 - Parsing e validazione avvengono prima delle query: alias conflittuali, UUID errati, area senza country, country non supportato, area inattiva o cross-country restituiscono payload non valido.
-- Il catalog adapter è read-only e risolve country, area e descendants attivi con limite di profondità.
-- Opportunities applica direttamente `country_id` e lo scope `geo_area_id` area+descendants, sia per risultati sia per conteggi.
+- Il catalog adapter è read-only e valida country e area. Il contratto può espandere descendants con limite di profondità, ma Search non materializza migliaia di UUID nella query HTTP.
+- Opportunities applica direttamente `country_id`; per lo scope area usa la proiezione legacy atomica (`region`, `province` o `city`) del nodo canonico selezionato. La label dell'ancestor è presente anche nelle righe figlie, ottenendo semantica descendants con una query bounded e identica per risultati e conteggi.
 - Profili Club/Institution/Player/Staff usano la proiezione pubblica legacy della residence canonica: country ISO2/nome canonico/label supportata e area mappata a `region`, `province` o `city` in base al tipo europeo.
 - Post ed Event riusano lo stesso filtro sugli author pubblici; non viene attribuita al contenuto una geografia propria inesistente.
 - Se gli ID canonici sono presenti, region/province/city/country testuali non restringono ulteriormente la query. Se gli ID sono assenti, il comportamento legacy resta invariato.
@@ -18,6 +18,8 @@
 ## Boundary e compatibilità
 
 La ricerca profili non legge preference tables altrui e non usa service role. Usa la proiezione pubblica legacy prodotta dai write canonicali, preservando profili legacy e RLS esistenti. Questo evita di esporre `profile_preferences`, ma implica che un profilo con canonical residence non ancora proiettata nei campi pubblici resta dipendente dal fallback legacy: la futura D4 non deve aggirare questo limite senza un boundary revisionato.
+
+**Correzione dopo smoke Preview:** il primo tentativo materializzava tutti i descendants francesi in parametri PostgREST `.in(...)`. Una regione con migliaia di comuni superava la dimensione pratica della richiesta e produceva `UNKNOWN`. Search ora valida lo stesso nodo canonico ma usa la proiezione gerarchica bounded; nessun dato è stato scritto o modificato. I due smoke area devono essere ripetuti sul nuovo deploy.
 
 Nessuna migration, write, backfill, modifica RLS, UI selector, ranking attivo, Maps, mobile o file binario è inclusa in D3.
 
@@ -39,4 +41,4 @@ Riportare separatamente: legacy PASS/FAIL, canonical country PASS/FAIL, canonica
 
 ## Next gate
 
-**D3 resta in attesa di verifica manuale Preview. Non iniziare D4 fino alla conferma dell'utente.**
+**D3 resta in attesa di una nuova verifica manuale Preview dopo la correzione del fan-out descendants. Non iniziare D4 fino alla conferma dell'utente.**

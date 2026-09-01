@@ -395,7 +395,7 @@ Piano progressivo approvato per evitare modifiche monolitiche:
 
 1. **D1 — audit Search / Discover / WhoToFollow:** COMPLETATA / PASS; inventariati Search globale, due endpoint suggerimenti, superfici UI, fonti canonical/legacy, RLS/privacy, ranking e rischi performance. Nessuna modifica runtime, remota, mobile o binaria.
 2. **D2 — canonical filtering/ranking contract:** COMPLETATA / PASS; definiti parametri ID e alias, parsing fail-closed, validation adapter, descendants, reason weights, ranking/tie-break deterministico, privacy boundary e fallback legacy. Modulo puro non ancora collegato al runtime; verifica manuale/visiva non applicabile.
-3. **D3 — Search canonical filters:** IMPLEMENTATA / AUTOMATED PASS / MANUAL PREVIEW PENDING; API canonical-first con country/area validation, descendants Opportunity, proiezione pubblica profili, query/count coerenti e fallback legacy. D4 bloccata fino allo smoke utente.
+3. **D3 — Search canonical filters:** IMPLEMENTATA / AUTOMATED PASS / MANUAL PREVIEW RECHECK PENDING; API canonical-first con country/area validation, semantica descendants bounded tramite proiezione gerarchica, query/count coerenti e fallback legacy. D4 bloccata fino al nuovo smoke utente.
 4. **D4 — Discover / WhoToFollow data boundary:** NOT STARTED; convergere la selezione candidati e leggere correttamente residence/interessi del viewer.
 5. **D5 — international ranking e relocation:** NOT STARTED; score deterministico con interessi country/area, sport, relocation e fallback legacy.
 6. **D6 — UI e scouting internazionale:** NOT STARTED; selector, copy country-aware, URL/accessibilità e reason label non sensibili.
@@ -405,7 +405,7 @@ Decisioni D1: gli interessi canonici descrivono le preferenze del viewer e non l
 
 Decisioni D2: filtri canonicali `countryId`/`geoAreaId` hanno precedenza sui testi legacy, area richiede country e include descendants same-country; assenza canonicale non penalizza i profili legacy. Il ranking usa una sola reason geografica più segnali sport/relocation espliciti e tie-break stabile. D2 non attiva ancora query o ranking. Dettaglio nel deliverable `phase-3c-d2-search-canonical-filtering-ranking-contract.md`.
 
-Decisioni D3: Opportunities filtrano direttamente gli ID canonici; profili e author usano la proiezione pubblica legacy della residence canonica senza leggere preference tables private o usare service role. Il runtime è implementato e testato automaticamente, ma richiede smoke API Preview prima della chiusura. Dettaglio e checklist in `phase-3c-d3-search-canonical-filters.md`.
+Decisioni D3: Opportunities filtrano direttamente il country ID canonico e usano la proiezione gerarchica bounded dell'area validata; profili e author usano la stessa proiezione pubblica senza leggere preference tables private o usare service role. Il primo smoke area ha rilevato `UNKNOWN` perché materializzare migliaia di descendant UUID in PostgREST superava la dimensione pratica della richiesta; la correzione evita il fan-out e richiede un nuovo smoke Preview. Dettaglio e checklist in `phase-3c-d3-search-canonical-filters.md`.
 
 ### FASE 3C-E — Maps
 
@@ -830,4 +830,4 @@ D1 Search / Discover / WhoToFollow è **COMPLETATA / PASS** come audit repositor
 
 D2 Search canonical filtering/ranking contract è **COMPLETATA / PASS**: modulo TypeScript puro con parser canonical/legacy, alias compatibility, validazione catalog adapter, descendants same-country, reason weights e ordinamento deterministico. Nessun collegamento runtime/UI/DB e nessun file binario; verifica manuale/visiva non applicabile. D3 non è ancora iniziata.
 
-D3 Search canonical filters è **IMPLEMENTATA / AUTOMATED PASS / MANUAL PREVIEW PENDING**: Search accetta country/area canoniche, applica ID diretti alle Opportunities e proiezione pubblica ai profili/author, mantenendo query/count e fallback legacy. Nessuna migration, write, UI, Maps, mobile o file binario. D4 è bloccata fino alla conferma dello smoke API Preview documentato.
+D3 Search canonical filters è **IMPLEMENTATA / AUTOMATED PASS / MANUAL PREVIEW RECHECK PENDING**: legacy, canonical country, invalid UUID, area senza country e no-filter sono user-reported PASS. Il primo canonical area/Opportunity smoke ha restituito `UNKNOWN`; individuato il fan-out di descendant UUID, sostituito con proiezione gerarchica bounded e mantenuti query/count e fallback legacy. Nessuna migration, write, UI, Maps, mobile o file binario. D4 è bloccata fino al recheck dei due URL area e della console.
