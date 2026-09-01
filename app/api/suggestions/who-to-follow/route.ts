@@ -2,9 +2,13 @@ import type { NextRequest } from 'next/server';
 import { successResponse, unknownError } from '@/lib/api/standardResponses';
 import { isProfileEligibleForFollowSuggestions } from '@/lib/profiles/completion';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
+import {
+  applySuggestionGeographyFilter,
+  loadViewerSuggestionGeography,
+} from '@/lib/search/suggestionGeography.server';
 
 export const runtime = 'nodejs';
-const ENDPOINT_VERSION = 'who-to-follow@2026-01-05a';
+const ENDPOINT_VERSION = 'who-to-follow@2026-09-01-d4';
 
 type SuggestionRow = {
   id: string;
@@ -76,6 +80,8 @@ export async function GET(req: NextRequest) {
     if (!profile?.id || profile.status !== 'active') {
       return successResponse({ suggestions: [] as Suggestion[] });
     }
+
+    const geographyPlan = await loadViewerSuggestionGeography(supabase, profile);
 
     const { data: existing } = await supabase
       .from('follows')
@@ -202,17 +208,9 @@ export async function GET(req: NextRequest) {
       return added;
     };
 
-    const locationFilters = [
-      { field: 'city', value: profile.interest_city || profile.city },
-      { field: 'province', value: profile.interest_province || profile.province },
-      { field: 'region', value: profile.interest_region || profile.region },
-      { field: 'country', value: profile.interest_country || profile.country },
-    ].filter((item) => typeof item.value === 'string' && item.value.trim().length > 0);
-
-    for (const loc of locationFilters) {
+    for (const geographyFilter of geographyPlan.filters) {
       if (results.length >= limit) break;
-      const { data: rows } = await buildBaseQuery()
-        .eq(loc.field, (loc.value as string).trim())
+      const { data: rows } = await applySuggestionGeographyFilter(buildBaseQuery(), geographyFilter)
         .order('updated_at', { ascending: false })
         .limit(limit * 3);
 
@@ -275,6 +273,9 @@ export async function GET(req: NextRequest) {
               candidatesAfterSelfExclude,
               candidatesAfterAlreadyFollowedExclude,
               zoneCandidates,
+              geographyFilterCount: geographyPlan.filters.length,
+              hasCanonicalGeographyInterests: geographyPlan.hasCanonicalInterests,
+              openToRelocation: geographyPlan.openToRelocation,
               sportCandidates,
               fallbackRecentCandidates: recentFallbackCandidates,
               returned: suggestions.length,

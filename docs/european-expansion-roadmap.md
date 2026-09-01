@@ -9,15 +9,15 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | Voce | Stato verificato |
 | --- | --- |
 | Last completed subphase | **COMPLETATA — FASE 3C-D3 — Search canonical filters** |
-| Current active phase | **NESSUNA — D3 COMPLETATA / PASS; FASE 3C-D ancora in corso** |
-| Next safe action | **D4 — Discover / WhoToFollow data boundary, solo con autorizzazione esplicita** |
+| Current active phase | **FASE 3C-D4 — IMPLEMENTATA; VERIFICA MANUALE PREVIEW RICHIESTA** |
+| Next safe action | **Smoke autenticato D4; D5 BLOCCATA fino al PASS** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
 | Mobile international parity | **NOT STARTED** |
 | FASE 3C-B | **COMPLETATA — B1–B7 repository web/API** |
 | FASE 3C-C | **COMPLETATA — C1–C7 PASS** |
-| FASE 3C-D | **IN CORSO — D1–D3 PASS; D4 NOT STARTED** |
+| FASE 3C-D | **IN CORSO — D1–D3 PASS; D4 IMPLEMENTATA / MANUAL PENDING** |
 
 **FASE 3C-B è COMPLETATA nel perimetro repository web/API.** B7 riconferma IT legacy, IT/FR/ES/CH/SI/PL canonicali, account type, canonical-first, fallback e separazione semantica. `/settings` è ora raggiungibile anche dagli Enti su desktop e mobile, senza esporre loro gli interessi mobility. Prima del merge resta richiesta la verifica manuale Preview; mobile international parity resta una fase futura separata.
 
@@ -387,7 +387,7 @@ Test locale PostgreSQL 16.15: **PASS**, inclusi Subiaco/RM/Lazio, ambigui, unres
 
 ### FASE 3C-D — Search / Discover / WhoToFollow
 
-**Stato: IN CORSO — D1–D3 COMPLETATE / PASS; D4–D7 NOT STARTED.**
+**Stato: IN CORSO — D1–D3 COMPLETATE / PASS; D4 IMPLEMENTATA / MANUAL PENDING; D5–D7 NOT STARTED.**
 
 Obiettivi futuri: country-aware filtering, geo-area filtering, scouting internazionale, country interests, territorial interests, relocation e ranking compatibile con legacy. Il lavoro dovrà essere separato, secondo necessità, in sottofasi audit/read/filter/ranking.
 
@@ -396,7 +396,7 @@ Piano progressivo approvato per evitare modifiche monolitiche:
 1. **D1 — audit Search / Discover / WhoToFollow:** COMPLETATA / PASS; inventariati Search globale, due endpoint suggerimenti, superfici UI, fonti canonical/legacy, RLS/privacy, ranking e rischi performance. Nessuna modifica runtime, remota, mobile o binaria.
 2. **D2 — canonical filtering/ranking contract:** COMPLETATA / PASS; definiti parametri ID e alias, parsing fail-closed, validation adapter, descendants, reason weights, ranking/tie-break deterministico, privacy boundary e fallback legacy. Modulo puro non ancora collegato al runtime; verifica manuale/visiva non applicabile.
 3. **D3 — Search canonical filters:** COMPLETATA / PASS; API canonical-first con country/area validation, semantica descendants bounded tramite proiezione gerarchica, query/count coerenti e fallback legacy. Recheck Preview PASS dopo la correzione del fan-out.
-4. **D4 — Discover / WhoToFollow data boundary:** NOT STARTED; convergere la selezione candidati e leggere correttamente residence/interessi del viewer.
+4. **D4 — Discover / WhoToFollow data boundary:** IMPLEMENTATA / AUTOMATED PASS / MANUAL PREVIEW REQUIRED; piano geografico condiviso, preference viewer-only via RLS e target location pubblica senza uso degli interessi del candidato.
 5. **D5 — international ranking e relocation:** NOT STARTED; score deterministico con interessi country/area, sport, relocation e fallback legacy.
 6. **D6 — UI e scouting internazionale:** NOT STARTED; selector, copy country-aware, URL/accessibilità e reason label non sensibili.
 7. **D7 — regressione e backward compatibility:** NOT STARTED; account type, Paesi canonici, profili legacy, RLS, visibility, follow exclusions, conteggi e performance.
@@ -406,6 +406,8 @@ Decisioni D1: gli interessi canonici descrivono le preferenze del viewer e non l
 Decisioni D2: filtri canonicali `countryId`/`geoAreaId` hanno precedenza sui testi legacy, area richiede country e include descendants same-country; assenza canonicale non penalizza i profili legacy. Il ranking usa una sola reason geografica più segnali sport/relocation espliciti e tie-break stabile. D2 non attiva ancora query o ranking. Dettaglio nel deliverable `phase-3c-d2-search-canonical-filtering-ranking-contract.md`.
 
 Decisioni D3: Opportunities filtrano direttamente il country ID canonico e usano la proiezione gerarchica bounded dell'area validata; profili e author usano la stessa proiezione pubblica senza leggere preference tables private o usare service role. Il primo smoke area ha rilevato `UNKNOWN` perché materializzare migliaia di descendant UUID in PostgREST superava la dimensione pratica della richiesta; la correzione evita il fan-out e il recheck Preview è PASS. Dettaglio e checklist in `phase-3c-d3-search-canonical-filters.md`.
+
+Decisioni D4: entrambi gli endpoint suggerimenti usano un unico boundary viewer-only con precedenza interessi area/country canonici, interessi legacy, residence canonica e residence legacy. I candidati sono filtrati soltanto sulla location pubblica; i loro interessi non vengono interpretati come posizione. Relocation resta metadato e non attiva ranking prima di D5. Dettaglio e checklist in `phase-3c-d4-discover-who-to-follow-data-boundary.md`.
 
 ### FASE 3C-E — Maps
 
@@ -797,14 +799,14 @@ Alla data di creazione iniziale della roadmap:
 | Voce | Stato |
 | --- | --- |
 | Last completed subphase | **FASE 3C-D3 — Search canonical filters — COMPLETATA / PASS** |
-| Current active phase | **NESSUNA — D3 COMPLETATA; FASE 3C-D ancora in corso** |
-| Next safe action | **D4 — Discover / WhoToFollow data boundary, non ancora autorizzata** |
+| Current active phase | **FASE 3C-D4 — IMPLEMENTATA; VERIFICA MANUALE PREVIEW RICHIESTA** |
+| Next safe action | **Smoke autenticato D4; D5 non autorizzabile prima del PASS** |
 | B4.3 local runtime harness | **PASSED — PostgreSQL 16, fixture sintetiche, nessuna connessione remota** |
 | B4.3 Supabase certification | **BLOCKED — PREVIEW BRANCH UNHEALTHY / MIGRATIONS FAILED / SUPPORT PENDING** |
 | B4.4 | **COMPLETATA — CANARY APPLICATIVO PLAYER IT / STAFF FR, READ-AFTER-WRITE, CLEANUP E RIPRISTINO FAIL-CLOSED PASS** |
 | FASE 3C-B | **COMPLETATA — B1–B7 repository web/API** |
 | FASE 3C-C | **COMPLETATA — C1–C7 PASS** |
-| FASE 3C-D | **IN CORSO — D1–D3 PASS; D4–D7 NOT STARTED** |
+| FASE 3C-D | **IN CORSO — D1–D3 PASS; D4 IMPLEMENTATA / MANUAL PENDING; D5–D7 NOT STARTED** |
 | Automatic residence backfill | **DELIBERATELY EXCLUDED** |
 | Mobile international parity | **NOT STARTED** |
 
@@ -830,4 +832,6 @@ D1 Search / Discover / WhoToFollow è **COMPLETATA / PASS** come audit repositor
 
 D2 Search canonical filtering/ranking contract è **COMPLETATA / PASS**: modulo TypeScript puro con parser canonical/legacy, alias compatibility, validazione catalog adapter, descendants same-country, reason weights e ordinamento deterministico. Nessun collegamento runtime/UI/DB e nessun file binario; verifica manuale/visiva non applicabile. D3 non è ancora iniziata.
 
-D3 Search canonical filters è **COMPLETATA / PASS**: legacy, canonical country, canonical area, Opportunity count, invalid UUID HTTP 400, area senza country HTTP 400, no-filter e Network/console sono user-reported PASS. Il primo canonical area/Opportunity smoke aveva restituito `UNKNOWN`; individuato il fan-out di descendant UUID, sostituito con proiezione gerarchica bounded e recheck HTTP 200 PASS con `Opportunité Ain` unico risultato e conteggio 1. Nessuna migration, write, UI, Maps, mobile o file binario. D4 non è ancora iniziata.
+D3 Search canonical filters è **COMPLETATA / PASS**: legacy, canonical country, canonical area, Opportunity count, invalid UUID HTTP 400, area senza country HTTP 400, no-filter e Network/console sono user-reported PASS. Il primo canonical area/Opportunity smoke aveva restituito `UNKNOWN`; individuato il fan-out di descendant UUID, sostituito con proiezione gerarchica bounded e recheck HTTP 200 PASS con `Opportunité Ain` unico risultato e conteggio 1. Nessuna migration, write, UI, Maps, mobile o file binario.
+
+D4 Discover / WhoToFollow data boundary è **IMPLEMENTATA / AUTOMATED PASS / MANUAL PREVIEW REQUIRED**: i due endpoint condividono il piano geografico viewer-only, leggono preference/interessi tramite owner RLS e filtrano esclusivamente la location pubblica dei candidati. Relocation non influenza ancora il ranking. Nessuna migration, write, modifica RLS, Maps, mobile o file binario. D5 resta bloccata fino allo smoke autenticato D4.
