@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **COMPLETATA — FASE 3C-D7 — regressione e backward compatibility** |
-| Current active phase | **Nessuna — FASE 3C-D COMPLETATA / PASS** |
-| Next safe action | **FASE 3C-E1 — audit repository-only Maps, previa autorizzazione separata** |
+| Last completed subphase | **COMPLETATA — FASE 3C-E1 — Maps audit repository-only** |
+| Current active phase | **Nessuna — FASE 3C-E avviata con E1 PASS** |
+| Next safe action | **FASE 3C-E2 — coordinate, viewport e privacy contract, previa autorizzazione separata** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -419,9 +419,11 @@ Chiusura D7 user-reported: entrambi gli endpoint suggerimenti hanno restituito H
 
 ### FASE 3C-E — Maps
 
-**Stato: NOT STARTED.**
+**Stato: IN CORSO — E1 COMPLETATA / PASS; E2 NON AVVIATA.**
 
-Obiettivi futuri: `ClubMap`, `SearchMap`, supporto internazionale, coordinate canoniche, stadium coordinates, fallback legacy e performance. Per i Club esistenti, `club_stadium_lat/lng` è attualmente la fonte preferibile, quando presente, rispetto a generic `latitude/longitude`, sulla base dell'audit precedente. Le mappe non vengono modificate in questo task.
+Obiettivi: `ClubMap`, `SearchMap`, supporto internazionale, viewport canonico, coordinate puntuali pubbliche, stadium coordinates, fallback legacy, privacy e performance. E1 ha confermato `club_stadium_lat/lng` come sorgente preferibile per Club/Institution e ha separato i centroid/bounds canonici, validi per viewport, dai pin pubblici. Ha inoltre rilevato SearchMap disattivata tramite redirect, precedenza coordinate divergente, stadium-only esclusi dai bounds, fallback fuori viewport, rischio privacy per coordinate personali, popup storico non sanitizzato e limiti di scalabilità/provider. Dettaglio in `phase-3c-e1-maps-audit.md`.
+
+Piano progressivo: **E1 audit** PASS; **E2 coordinate/viewport/privacy contract** prossimo gate; **E3 server data boundary**; **E4 ClubMap internazionale**; **E5 SearchMap decision e integrazione**; **E6 Opportunity map semantics**; **E7 regressione/performance/provider/backward compatibility**. Nessuna modifica runtime Maps è inclusa in E1.
 
 ## FASE 4 — Internationalization / i18n
 
@@ -806,9 +808,9 @@ Alla data di creazione iniziale della roadmap:
 
 | Voce | Stato |
 | --- | --- |
-| Last completed subphase | **FASE 3C-D7 — regressione e backward compatibility — COMPLETATA / PASS** |
-| Current active phase | **Nessuna — FASE 3C-D COMPLETATA / PASS** |
-| Next safe action | **FASE 3C-E1 — audit repository-only Maps, previa autorizzazione separata** |
+| Last completed subphase | **FASE 3C-E1 — Maps audit repository-only — COMPLETATA / PASS** |
+| Current active phase | **Nessuna — FASE 3C-E avviata con E1 PASS** |
+| Next safe action | **FASE 3C-E2 — coordinate, viewport e privacy contract, previa autorizzazione separata** |
 | B4.3 local runtime harness | **PASSED — PostgreSQL 16, fixture sintetiche, nessuna connessione remota** |
 | B4.3 Supabase certification | **BLOCKED — PREVIEW BRANCH UNHEALTHY / MIGRATIONS FAILED / SUPPORT PENDING** |
 | B4.4 | **COMPLETATA — CANARY APPLICATIVO PLAYER IT / STAFF FR, READ-AFTER-WRITE, CLEANUP E RIPRISTINO FAIL-CLOSED PASS** |
@@ -849,3 +851,5 @@ D5 international ranking e relocation è **COMPLETATA / PASS**: entrambi gli end
 D6 UI e scouting internazionale è **COMPLETATA / PASS**: selector country/area, URL/reload/reset, filtri strict, account type, sport, card, Follow, Network/Console e comportamento visivo sono user-reported PASS.
 
 D7 regressione e backward compatibility è **COMPLETATA / PASS**: matrice automatica per sei Paesi e legacy, account type, privacy, visibility pubblica, esclusioni, stabilità, localizzazione e limiti query; smoke Preview ripetuto HTTP 200 con ordine stabile per entrambi gli endpoint, `rankingVersion=d5-v1` e nessun `UNKNOWN`. Lo smoke UI D6 resta PASS. Nessuna migration, write, modifica RLS, Maps, mobile o file binario. FASE 3C-D è chiusa; la prossima fase autorizzabile è 3C-E1 Maps repository-only audit.
+
+E1 Maps audit è **COMPLETATA / PASS repository-only**: inventariati ClubMap, SearchMap disattivata tramite redirect, tre endpoint, picker sede/stadio, fonti generic/stadium e centroid/bounds canonici. Rilevati come gate E2 privacy delle coordinate personali, precedenza coordinate unica, query spatially strict, validazione bounds, semantica Opportunity, pagination/clustering, provider e sanitizzazione popup. Nessuna modifica runtime, query remota, migration, RLS, mobile o file binario. E2 richiede autorizzazione separata.
