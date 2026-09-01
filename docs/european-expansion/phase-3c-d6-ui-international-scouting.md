@@ -2,7 +2,7 @@
 
 ## Stato
 
-**IMPLEMENTATA — test automatici PASS; verifica manuale/visiva Preview richiesta.** D7 resta bloccata fino al PASS dello smoke D6.
+**COMPLETATA / PASS — test automatici e smoke manuale/visivo Preview conclusi il 2026-09-01.** D7 è stata autorizzata separatamente.
 
 ## Implementazione
 
@@ -31,4 +31,4 @@ Nessuna migration, write, backfill, modifica RLS/grant, service role, Maps, mobi
 
 ## Next gate
 
-**Non iniziare D7.** D6 diventa COMPLETATA / PASS soltanto dopo conferma dello smoke Preview.
+**D6 è COMPLETATA / PASS.** D7 è stata autorizzata separatamente dopo lo smoke.

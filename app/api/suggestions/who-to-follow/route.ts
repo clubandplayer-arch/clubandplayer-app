@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 import { successResponse, unknownError } from '@/lib/api/standardResponses';
 import { isProfileEligibleForFollowSuggestions } from '@/lib/profiles/completion';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { applyPublicProfileVisibilityFilters } from '@/lib/profile/visibility';
 import {
   applySuggestionGeographyFilter,
   loadViewerSuggestionGeography,
@@ -108,10 +109,9 @@ export async function GET(req: NextRequest) {
       'id, full_name, display_name, avatar_url, sport, role, city, country, region, province, account_type, type, status, birth_year, interest_region_id, interest_province_id, interest_municipality_id, updated_at';
 
     const buildBaseQuery = () => {
-      let query = profilesClient
-        .from('profiles')
-        .select(baseSelect)
-        .or('status.eq.active,status.eq.pending,status.is.null');
+      let query = applyPublicProfileVisibilityFilters(
+        profilesClient.from('profiles').select(baseSelect),
+      );
       if (alreadyFollowing.size) {
         query = query.not('id', 'in', exclusionClause);
       }
@@ -119,10 +119,9 @@ export async function GET(req: NextRequest) {
     };
 
     const buildCountQuery = () => {
-      return profilesClient
-        .from('profiles')
-        .select('id', { count: 'exact', head: true })
-        .or('status.eq.active,status.eq.pending,status.is.null');
+      return applyPublicProfileVisibilityFilters(
+        profilesClient.from('profiles').select('id', { count: 'exact', head: true }),
+      );
     };
 
     async function mapSuggestions(rows: SuggestionRow[]) {
@@ -178,7 +177,9 @@ export async function GET(req: NextRequest) {
     let totalEligibleAfterExclude: number | null = null;
     if (debugMode) {
       const [totalResult, selfExcludedResult, followedExcludedResult] = await Promise.all([
-        profilesClient.from('profiles').select('id', { count: 'exact', head: true }),
+        applyPublicProfileVisibilityFilters(
+          profilesClient.from('profiles').select('id', { count: 'exact', head: true }),
+        ),
         buildCountQuery().neq('id', profile.id),
         buildCountQuery().not('id', 'in', exclusionClause),
       ]);
