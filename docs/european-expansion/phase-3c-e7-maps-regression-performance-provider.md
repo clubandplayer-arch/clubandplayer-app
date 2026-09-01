@@ -2,7 +2,7 @@
 
 ## Stato
 
-**IMPLEMENTATA — test automatici PASS; smoke finale Preview richiesto.** Lo smoke E6 è PASS compatibile con l'ambiente: HTTP 200, contratto E6 presente, `boundsApplied=true`, 38 Club nel viewport e zero Opportunity `open` visibili (`totalOpenOpp=0`). La lista vuota è quindi corretta e non rappresenta più un errore di associazione.
+**COMPLETATA / PASS — test automatici e smoke finale Preview conclusi.** Lo smoke E6 è PASS compatibile con l'ambiente: HTTP 200, contratto E6 presente, `boundsApplied=true`, 38 Club nel viewport e zero Opportunity `open` visibili (`totalOpenOpp=0`). La lista vuota è quindi corretta e non rappresenta più un errore di associazione.
 
 ## Regressione e compatibilità
 
@@ -26,7 +26,7 @@
 - URL CSS, script, tile e attribution sono centralizzati in `PUBLIC_MAP_PROVIDER`.
 - Nessun secondo loader SearchMap, nuovo provider, token, quota o modifica CSP.
 
-## Smoke finale Preview richiesto
+## Matrice smoke finale Preview eseguita
 
 1. `/club-map` desktop/mobile: caricamento, attribution, cluster, popup, selector e reset senza errori Console.
 2. Selezione Italia → Lazio → Roma → Roma: soltanto Club di Roma e URL canonicale stabile.
@@ -39,4 +39,15 @@
 
 ## Chiusura fase
 
-Dopo lo smoke finale PASS, **FASE 3C-E — Maps** può essere dichiarata completata. Nessuna fase successiva è autorizzata implicitamente.
+Lo smoke finale user-reported ha confermato:
+
+- `/api/clubs/geolocated` HTTP 200 con 38 righe, `viewport=null`, `meta.limit=1000`, `meta.returned=38` e `meta.truncated=false`;
+- coppie coordinate complete e `coordinate_source=organization_venue` per tutti i pin restituiti;
+- `/api/search/map?type=player` HTTP 200 con lista vuota, `total=0`, privacy boundary esplicito e viewport corretto;
+- comportamento visivo ClubMap, filtro Roma, redirect SearchMap, cluster e Network già verificati negli smoke E4–E6.
+
+**FASE 3C-E — Maps è COMPLETATA / PASS lato WEB.** Nessuna fase successiva è autorizzata implicitamente.
+
+## Mobile parity
+
+Tutte le sottofasi 3C-A–E eseguite in questo repository riguardano esclusivamente il prodotto Web. La parità Mobile è deliberatamente rinviata a una fase successiva nella repository Mobile, dove i contratti e i comportamenti Web approvati dovranno essere replicati e verificati separatamente. La chiusura Web non certifica né modifica il client Mobile.

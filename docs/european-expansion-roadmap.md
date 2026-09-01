@@ -8,13 +8,13 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **COMPLETATA — FASE 3C-E6 — Opportunity map semantics** |
-| Current active phase | **FASE 3C-E7 — IMPLEMENTATA; SMOKE FINALE PREVIEW RICHIESTO** |
-| Next safe action | **Smoke finale E7; nessuna fase successiva autorizzata implicitamente** |
+| Last completed subphase | **COMPLETATA — FASE 3C-E7 — Maps regressione/performance/provider/backward compatibility** |
+| Current active phase | **FASE 3C-E — MAPS WEB COMPLETATA / PASS** |
+| Next safe action | **Nessuna fase successiva autorizzata implicitamente; Mobile parity rinviata alla repository Mobile** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
-| Mobile international parity | **NOT STARTED** |
+| Mobile international parity | **NOT STARTED — DEFERRED TO MOBILE REPOSITORY** |
 | FASE 3C-B | **COMPLETATA — B1–B7 repository web/API** |
 | FASE 3C-C | **COMPLETATA — C1–C7 PASS** |
 | FASE 3C-D | **COMPLETATA — D1–D7 PASS** |
@@ -419,11 +419,11 @@ Chiusura D7 user-reported: entrambi gli endpoint suggerimenti hanno restituito H
 
 ### FASE 3C-E — Maps
 
-**Stato: IN CORSO — E1–E6 PASS; E7 IMPLEMENTATA / FINAL PREVIEW PENDING.**
+**Stato: COMPLETATA / PASS LATO WEB — E1–E7 PASS.**
 
 Obiettivi: `ClubMap`, `SearchMap`, supporto internazionale, viewport canonico, coordinate puntuali pubbliche, stadium coordinates, fallback legacy, privacy e performance. E1 ha confermato `club_stadium_lat/lng` come sorgente preferibile per Club/Institution e ha separato i centroid/bounds canonici, validi per viewport, dai pin pubblici. Ha inoltre rilevato SearchMap disattivata tramite redirect, precedenza coordinate divergente, stadium-only esclusi dai bounds, fallback fuori viewport, rischio privacy per coordinate personali, popup storico non sanitizzato e limiti di scalabilità/provider. Dettaglio in `phase-3c-e1-maps-audit.md`.
 
-Piano progressivo: **E1 audit** PASS; **E2 coordinate/viewport/privacy contract** PASS; **E3 server data boundary** PASS; **E4 ClubMap internazionale** PASS; **E5 SearchMap decision e integrazione** PASS; **E6 Opportunity map semantics** PASS; **E7 regressione/performance/provider/backward compatibility** IMPLEMENTATA / AUTOMATED PASS / FINAL PREVIEW PENDING.
+Piano completato: **E1 audit** PASS; **E2 coordinate/viewport/privacy contract** PASS; **E3 server data boundary** PASS; **E4 ClubMap internazionale** PASS; **E5 SearchMap decision e integrazione** PASS; **E6 Opportunity map semantics** PASS; **E7 regressione/performance/provider/backward compatibility** PASS.
 
 Decisioni E2: pin precisi pubblici organization-only, con precedenza atomica venue → legacy; nessun pin implicito per Player/Staff/Fan. Viewport e pin sono modelli separati; bounds espliciti o canonical country/area sono mutuamente esclusivi, fail-closed e antimeridian-aware. Centroid canonici non sono pin. Le Opportunity usano venue propria, poi venue owner, altrimenti nessun pin. Dettaglio in `phase-3c-e2-coordinate-viewport-privacy-contract.md`.
 
@@ -431,7 +431,7 @@ Decisioni E3: i tre endpoint Maps condividono adapter viewport e resolver organi
 
 Decisioni E4: ClubMap usa viewport europeo, selector canonicale URL-stable e fit dei bounds server; nessun default Italia. I pin vengono raggruppati client-side a zoom basso senza provider aggiuntivi. Copy e accessibility sono localizzati IT/EN/FR/ES; il boundary organization-only E3 resta invariato. Dettaglio e smoke in `phase-3c-e4-club-map-international.md`.
 
-Correzione smoke E4: quando il catalogo non dispone dei bounds ufficiali, il server valida la gerarchia canonicale e filtra i campi pubblici legacy `country`/`region`/`province`/`city`; non esiste più il fallback globale che mostrava tutta Italia per Roma. Lo zoom non rilancia la richiesta dati e nessun bounds o punto personale viene fabbricato. Smoke Preview aggiornato ancora richiesto.
+Correzione smoke E4: quando il catalogo non dispone dei bounds ufficiali, il server valida la gerarchia canonicale e filtra i campi pubblici legacy `country`/`region`/`province`/`city`; non esiste più il fallback globale che mostrava tutta Italia per Roma. Lo zoom non rilancia la richiesta dati e nessun bounds o punto personale viene fabbricato. Il successivo smoke Preview è PASS.
 
 Decisioni E5: una sola UI Maps pubblica, `/club-map`. `/search-map` è conservata come redirect compatibile verso ClubMap; CTA runtime aggiornate e client SearchMap storico irraggiungibile rimosso insieme alla lista/service privati. Gli endpoint server Maps restano protetti per E6/E7; nessun pin personale o Opportunity UI viene attivato. Dettaglio in `phase-3c-e5-search-map-decision-integration.md`.
 
@@ -442,6 +442,10 @@ Correzione smoke E6: il primo HTTP 200 ha confermato contratto e bounds, ma il r
 Chiusura E6: il recheck debug ha restituito `totalOpenOpp=0`, `clubsInBoundsCount=38`, `oppAfterBounds=0`, contratto E6 presente e nessun errore. Non esistono Opportunity open visibili al caller da validare per-item; la lista vuota è corretta e il boundary è PASS.
 
 Decisioni E7: provider/versione/attribution e cap pubblici centralizzati; endpoint Club espone limite/returned/truncated senza count aggiuntiva. Matrice regressiva preserva canonical filtering, privacy, spatial strictness, E5 redirect ed E6 placement. Dettaglio in `phase-3c-e7-maps-regression-performance-provider.md`.
+
+Chiusura E7 user-reported: endpoint Club HTTP 200 con 38 pin organization venue e metadata `1000/38/false`; endpoint Player HTTP 200 con lista vuota, privacy boundary e viewport esplicito corretti. Gli smoke UI/redirect/filter/cluster/Network E4–E6 restano PASS. FASE 3C-E Maps è pertanto COMPLETATA lato Web.
+
+Perimetro Mobile: tutte le implementazioni e certificazioni 3C svolte finora appartengono esclusivamente a questa repository Web. La replica dei contratti e dei comportamenti in Mobile sarà eseguita successivamente nella repository Mobile come attività separata; nessuna chiusura Web equivale a Mobile parity.
 
 ## FASE 4 — Internationalization / i18n
 
@@ -826,9 +830,9 @@ Alla data di creazione iniziale della roadmap:
 
 | Voce | Stato |
 | --- | --- |
-| Last completed subphase | **FASE 3C-E6 — Opportunity map semantics — COMPLETATA / PASS** |
-| Current active phase | **FASE 3C-E7 — IMPLEMENTATA; SMOKE FINALE PREVIEW RICHIESTO** |
-| Next safe action | **Smoke finale E7; nessuna fase successiva autorizzata implicitamente** |
+| Last completed subphase | **FASE 3C-E7 — COMPLETATA / PASS** |
+| Current active phase | **FASE 3C-E — MAPS WEB COMPLETATA / PASS** |
+| Next safe action | **Nessuna; Mobile parity rinviata alla repository Mobile** |
 | B4.3 local runtime harness | **PASSED — PostgreSQL 16, fixture sintetiche, nessuna connessione remota** |
 | B4.3 Supabase certification | **BLOCKED — PREVIEW BRANCH UNHEALTHY / MIGRATIONS FAILED / SUPPORT PENDING** |
 | B4.4 | **COMPLETATA — CANARY APPLICATIVO PLAYER IT / STAFF FR, READ-AFTER-WRITE, CLEANUP E RIPRISTINO FAIL-CLOSED PASS** |
@@ -882,4 +886,4 @@ E5 SearchMap decision e integrazione è **COMPLETATA / PASS**: `/club-map` è l'
 
 E6 Opportunity map semantics è **COMPLETATA / PASS**: placement esplicito e versionato, owner public point come unico fallback, geography canonicale solo metadata/viewport e compatibilità ID profilo/Auth. Il recheck ha confermato zero Opportunity open visibili e 38 Club bounded, quindi empty corretto.
 
-E7 Maps regressione/performance/provider/backward compatibility è **IMPLEMENTATA / AUTOMATED PASS / FINAL PREVIEW REQUIRED**: policy provider e cap centralizzata, truncation metadata, matrice privacy/canonical/redirect/placement e nessuna migration o nuovo provider. La FASE 3C-E resta aperta fino allo smoke finale.
+E7 Maps regressione/performance/provider/backward compatibility è **COMPLETATA / PASS**: policy provider e cap centralizzata, truncation metadata, matrice privacy/canonical/redirect/placement e smoke finale user-reported PASS. **FASE 3C-E Maps è chiusa lato Web.** Mobile parity resta NOT STARTED ed è rinviata alla repository Mobile.
