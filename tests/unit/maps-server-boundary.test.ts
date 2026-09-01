@@ -96,3 +96,15 @@ test('E5 consolidates the legacy SearchMap route onto the safe ClubMap surface',
   const serverAdapter = readFileSync('lib/maps/geography.server.ts', 'utf8');
   assert.doesNotMatch(serverAdapter, /service_role|insert\(|update\(|delete\(|rpc\(/i);
 });
+
+test('E6 opportunity map rows use explicit placement semantics and canonical geography only as metadata', () => {
+  const searchMap = readFileSync('app/api/search/map/route.ts', 'utf8');
+  assert.match(searchMap, /resolveOpportunityMapPlacement/);
+  assert.match(searchMap, /attachOpportunityGeography/);
+  assert.match(searchMap, /country_id/);
+  assert.match(searchMap, /geo_area_id/);
+  assert.match(searchMap, /map_semantics: 'owner_public_point'/);
+  assert.match(searchMap, /canonical_geography_is_viewport_only: true/);
+  assert.match(searchMap, /placementContract: 'opportunity_owner_public_point_v1'/);
+  assert.match(searchMap, /if \(!placement\) return \[\]/);
+});

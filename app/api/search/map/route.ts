@@ -8,8 +8,9 @@ import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
 import { getProvinceAbbreviationsServer } from '@/lib/geo/provinceAbbreviations.server';
 import { isProfileComplete } from '@/lib/profiles/completion';
 import { applyPublicProfileVisibilityFilters } from '@/lib/profile/visibility';
-import { MapGeographyContractError, resolvePublicMapPoint } from '@/lib/maps/geographyContract';
+import { MapGeographyContractError, resolveOpportunityMapPlacement, resolvePublicMapPoint } from '@/lib/maps/geographyContract';
 import { applyOrganizationMapBounds, resolveMapViewportFromParams, SupabaseMapViewportCatalog } from '@/lib/maps/geography.server';
+import { attachOpportunityGeography } from '@/lib/opportunities/geography';
 
 export const runtime = 'nodejs';
 
@@ -252,6 +253,8 @@ export async function GET(req: NextRequest) {
         'province',
         'region',
         'country',
+        'country_id',
+        'geo_area_id',
         'club_name',
         'club_id',
         'owner_id',
@@ -308,13 +311,20 @@ export async function GET(req: NextRequest) {
         );
       }
 
-      const { data: opps, error: oppErr, count: oppCount } = await oppQuery;
+      const { data: opps, error: oppErr } = await oppQuery;
       if (oppErr) return dbError(oppErr.message);
 
-      const rows = (opps ?? []).map((o: any) => {
+      const opportunitiesWithGeography = await attachOpportunityGeography(supabase, (opps ?? []) as Array<Record<string, any>>);
+      const rows = opportunitiesWithGeography.flatMap((o: any) => {
         const ownerPoint = clubPoints.get(String(o.club_id ?? o.owner_id ?? ''));
+        const placement = resolveOpportunityMapPlacement({
+          explicitVenue: { latitude: null, longitude: null },
+          organizationPoint: ownerPoint ?? null,
+          canonicalGeoAreaId: o.geo_area_id,
+        });
+        if (!placement) return [];
         const locationLabel = [o.city, provinceDisplayValue(o.province, provinceAbbreviations), o.region, o.country].filter(Boolean).join(' · ');
-        return {
+        return [{
           id: o.id,
           profile_id: o.id,
           type: 'opportunity',
@@ -329,10 +339,14 @@ export async function GET(req: NextRequest) {
           country: o.country ?? null,
           location_label: locationLabel || null,
           created_at: o.created_at ?? null,
-          latitude: ownerPoint?.latitude ?? null,
-          longitude: ownerPoint?.longitude ?? null,
-          coordinate_source: ownerPoint?.source ?? null,
-        };
+          latitude: placement.latitude,
+          longitude: placement.longitude,
+          coordinate_source: placement.source,
+          organization_coordinate_source: ownerPoint?.source ?? null,
+          map_semantics: 'owner_public_point',
+          canonical_geography_is_viewport_only: true,
+          geography: o.geography,
+        }];
       });
 
       const rankedRows = hasTextQuery
@@ -418,8 +432,9 @@ export async function GET(req: NextRequest) {
 
       return successResponse({
         data: rankedRows,
-        total: oppCount ?? rankedRows.length,
+        total: rankedRows.length,
         boundsApplied,
+        placementContract: 'opportunity_owner_public_point_v1',
         ...(debug ? { debug } : {}),
       });
     }
