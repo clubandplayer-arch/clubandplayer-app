@@ -431,7 +431,7 @@ Decisioni E3: i tre endpoint Maps condividono adapter viewport e resolver organi
 
 Decisioni E4: ClubMap usa viewport europeo, selector canonicale URL-stable e fit dei bounds server; nessun default Italia. I pin vengono raggruppati client-side a zoom basso senza provider aggiuntivi. Copy e accessibility sono localizzati IT/EN/FR/ES; il boundary organization-only E3 resta invariato. Dettaglio e smoke in `phase-3c-e4-club-map-international.md`.
 
-Correzione smoke E4: quando il catalogo non dispone dei bounds ufficiali per la selezione, ClubMap conserva i pin pubblici tramite fallback non filtrato e mostra un avviso localizzato esplicito; lo zoom non rilancia più la richiesta dati. Nessun bounds o punto personale viene fabbricato. Smoke Preview aggiornato ancora richiesto.
+Correzione smoke E4: quando il catalogo non dispone dei bounds ufficiali, il server valida la gerarchia canonicale e filtra i campi pubblici legacy `country`/`region`/`province`/`city`; non esiste più il fallback globale che mostrava tutta Italia per Roma. Lo zoom non rilancia la richiesta dati e nessun bounds o punto personale viene fabbricato. Smoke Preview aggiornato ancora richiesto.
 
 ## FASE 4 — Internationalization / i18n
 

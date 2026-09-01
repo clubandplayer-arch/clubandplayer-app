@@ -31,11 +31,11 @@ E3 è pertanto **COMPLETATA / PASS**.
 
 ## Correzione smoke Preview
 
-Lo smoke iniziale ha rilevato che una selezione canonicale priva di bounds ufficiali svuotava i pin e che il relativo errore poteva riapparire brevemente usando lo zoom. Il client ora:
+Lo smoke iniziale ha rilevato che una selezione canonicale priva di bounds ufficiali svuotava i pin e che il relativo errore poteva riapparire brevemente usando lo zoom. La prima correzione mostrava tutti i Club pubblici, ma risultava semanticamente errata per una ricerca comunale. La soluzione definitiva ora:
 
-- conserva la selezione nell'URL ma ripiega sulla lista pubblica non filtrata quando il server risponde `VIEWPORT_BOUNDS_UNAVAILABLE`;
-- mantiene quindi visibili avatar e cluster, senza fabbricare bounds o coordinate;
-- mostra un avviso localizzato, persistente e non coperto dai controlli Leaflet che chiarisce che sono visibili tutti i Club pubblici;
+- valida country e gerarchia canonicale sul server quando i bounds non esistono;
+- traduce l'ascendenza canonicale nei campi pubblici legacy `country`/`region`/`province`/`city`, così Italia → Lazio → Roma → Roma restituisce soltanto i Club di Roma;
+- non fabbrica bounds o coordinate e non esegue più alcun fallback globale;
 - non rilancia il fetch quando cambia soltanto lo zoom della mappa.
 
 ## Perimetro e limiti
@@ -49,8 +49,8 @@ Lo smoke iniziale ha rilevato che una selezione canonicale priva di bounds uffic
 
 1. Aprire `/club-map` desktop e mobile: titolo europeo, selettore e mappa devono essere visibili senza errori Console.
 2. Senza filtro: URL pulito, pin italiani esistenti visibili, cluster numerici a zoom basso; click cluster aumenta lo zoom.
-3. Selezionare un Paese: URL contiene solo `countryId`; reload preserva la selezione. Se il catalogo ha bounds, mappa e pin restano nel viewport; senza bounds devono restare visibili i pin pubblici con l'avviso localizzato, mai `UNKNOWN`.
-4. Selezionare un'area: URL contiene `countryId` e `geoAreaId`; reload e reset devono funzionare.
+3. Selezionare un Paese: URL contiene solo `countryId`; reload preserva la selezione e mostra soltanto i Club del Paese anche senza bounds.
+4. Selezionare Italia → Lazio → Roma → Roma: URL contiene `countryId` e `geoAreaId`, tutti i pin devono appartenere a Roma; reload e reset devono funzionare.
 5. Aprire un pin singolo: nome/location/link Club corretti; logo fallback quando avatar assente.
 6. Cambiare lingua IT/EN/FR/ES: titolo, helper, selector, stati e cluster non devono mostrare copy Italy-only o stringhe mancanti.
 7. Verificare Network: `/api/clubs/geolocated` senza filtro oppure con soli ID canonicali; nessuna richiesta a SearchMap e nessun errore 500.

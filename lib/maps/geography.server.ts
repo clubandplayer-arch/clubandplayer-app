@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import {
+  MapGeographyContractError,
   type CanonicalMapViewport,
   type MapBounds,
   type MapViewportCatalog,
@@ -9,6 +10,16 @@ import {
   parseMapViewport,
   resolveCanonicalMapViewport,
 } from './geographyContract';
+
+export type CanonicalMapLocationScope = {
+  source: 'canonical_text_filter';
+  countryId: string;
+  geoAreaId: string | null;
+  countryIso2: string;
+  region: string | null;
+  province: string | null;
+  city: string | null;
+};
 
 type BoundsRow = {
   min_lat: number | string | null;
@@ -107,6 +118,82 @@ export async function resolveMapViewportFromParams(
     return { source: 'explicit_bounds', countryId: null, geoAreaId: null, bounds: parsed.bounds };
   }
   return resolveCanonicalMapViewport(parsed, catalog);
+}
+
+/**
+ * Spatial bounds are not present on the imported Italian hierarchy. In that
+ * case, validate the same canonical IDs and translate their ancestry to the
+ * existing public Club location columns instead of widening to every Club.
+ */
+export async function resolveCanonicalMapLocationScope(
+  params: URLSearchParams,
+  client: SupabaseClient,
+): Promise<CanonicalMapLocationScope> {
+  const parsed = parseMapViewport(params);
+  if (parsed.mode !== 'canonical_unvalidated') {
+    throw new MapGeographyContractError('CANONICAL_VIEWPORT_REQUIRED', 'canonical map geography is required');
+  }
+  const { data: country, error: countryError } = await client
+    .from('countries')
+    .select('id,iso2,is_active,is_supported')
+    .eq('id', parsed.countryId)
+    .maybeSingle();
+  if (countryError) throw countryError;
+  if (!country?.is_active || !country.is_supported) {
+    throw new MapGeographyContractError('COUNTRY_UNAVAILABLE', 'countryId is not active and supported');
+  }
+
+  const scope: CanonicalMapLocationScope = {
+    source: 'canonical_text_filter',
+    countryId: String(country.id),
+    geoAreaId: parsed.geoAreaId,
+    countryIso2: String(country.iso2).toUpperCase(),
+    region: null,
+    province: null,
+    city: null,
+  };
+  if (!parsed.geoAreaId) return scope;
+
+  let cursor: string | null = parsed.geoAreaId;
+  let depth = 0;
+  let recognized = false;
+  while (cursor && depth < 16) {
+    const { data: area, error }: { data: {
+      id: string;
+      country_id: string;
+      parent_id: string | null;
+      official_name: string;
+      area_type: string;
+      is_active: boolean;
+    } | null; error: unknown } = await client
+      .from('geo_areas')
+      .select('id,country_id,parent_id,official_name,area_type,is_active')
+      .eq('id', cursor)
+      .maybeSingle();
+    if (error) throw error;
+    if (!area?.is_active) throw new MapGeographyContractError('GEO_AREA_UNAVAILABLE', 'geoAreaId is not active');
+    if (String(area.country_id) !== scope.countryId) {
+      throw new MapGeographyContractError('COUNTRY_AREA_MISMATCH', 'geoAreaId does not belong to countryId');
+    }
+    const name = String(area.official_name);
+    if (area.area_type === 'REGION') { scope.region = name; recognized = true; }
+    if (area.area_type === 'PROVINCE') { scope.province = name; recognized = true; }
+    if (area.area_type === 'MUNICIPALITY' || area.area_type === 'COMMUNE') { scope.city = name; recognized = true; }
+    cursor = area.parent_id ? String(area.parent_id) : null;
+    depth += 1;
+  }
+  if (cursor || !recognized) {
+    throw new MapGeographyContractError('GEO_AREA_FILTER_UNAVAILABLE', 'geo area cannot be mapped to public Club location fields');
+  }
+  return scope;
+}
+
+export function applyOrganizationMapLocationScope<T>(query: T, scope: CanonicalMapLocationScope): T {
+  let filtered = (query as any).ilike('country', scope.countryIso2);
+  if (scope.region) filtered = filtered.ilike('region', scope.region);
+  if (scope.province) filtered = filtered.ilike('province', scope.province);
+  if (scope.city) filtered = filtered.ilike('city', scope.city);
+  return filtered as T;
 }
 
 function longitudeRanges(bounds: MapBounds) {

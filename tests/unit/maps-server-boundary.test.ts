@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-import { applyOrganizationMapBounds, resolveMapViewportFromParams } from '../../lib/maps/geography.server';
+import { applyOrganizationMapBounds, applyOrganizationMapLocationScope, resolveMapViewportFromParams } from '../../lib/maps/geography.server';
 import type { MapViewportCatalog } from '../../lib/maps/geographyContract';
 
 const COUNTRY_ID = '11111111-1111-4111-8111-111111111111';
@@ -34,6 +34,31 @@ test('database bounds split antimeridian longitude ranges without dropping venue
   assert.match(expression, /club_stadium_lng\.gte\.-180,club_stadium_lng\.lte\.-170/);
 });
 
+test('bounds-less canonical areas narrow legacy Club location columns instead of widening globally', () => {
+  const filters: Array<[string, string]> = [];
+  const query = {
+    ilike(column: string, value: string) {
+      filters.push([column, value]);
+      return this;
+    },
+  };
+  assert.equal(applyOrganizationMapLocationScope(query, {
+    source: 'canonical_text_filter',
+    countryId: COUNTRY_ID,
+    geoAreaId: AREA_ID,
+    countryIso2: 'IT',
+    region: 'Lazio',
+    province: 'Roma',
+    city: 'Roma',
+  }), query);
+  assert.deepEqual(filters, [
+    ['country', 'IT'],
+    ['region', 'Lazio'],
+    ['province', 'Roma'],
+    ['city', 'Roma'],
+  ]);
+});
+
 test('server viewport adapter supports explicit and canonical scopes without descendant fan-out', async () => {
   const catalog: MapViewportCatalog = {
     getCountry: async (id) => ({ id, isActive: true, isSupported: true, bounds: { north: 47, south: 35, east: 19, west: 6 } }),
@@ -61,6 +86,8 @@ test('all map endpoints share the E3 resolver, strict bounds and organization-on
   assert.match(searchMap, /precise_personal_map_points_disabled/);
   assert.doesNotMatch(searchMap, /fallbackQuery/);
   assert.match(searchMap, /clubQuery\.limit\(300\)/);
+  assert.match(geolocated, /resolveCanonicalMapLocationScope/);
+  assert.match(geolocated, /applyOrganizationMapLocationScope/);
 });
 
 test('E3 changes no SearchMap route activation, migration, RLS or client provider code', () => {

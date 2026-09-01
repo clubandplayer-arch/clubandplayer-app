@@ -33,7 +33,7 @@ test('E4 popup values remain escaped and map states are localized', () => {
   assert.match(client, /escapeHtml\(pin\.name\)/);
   assert.match(client, /escapeHtml\(location\)/);
   assert.match(client, /escapeHtml\(pin\.id\)/);
-  for (const key of ['map.filterHelp', 'map.ariaLabel', 'map.clusterLabel', 'map.loadError', 'map.unavailable', 'map.boundsUnavailable']) {
+  for (const key of ['map.filterHelp', 'map.ariaLabel', 'map.clusterLabel', 'map.loadError', 'map.unavailable']) {
     assert.match(client, new RegExp(key.replace('.', '\\.')));
   }
   for (const locale of ['it', 'en', 'fr', 'es']) {
@@ -45,9 +45,7 @@ test('E4 popup values remain escaped and map states are localized', () => {
   }
 });
 
-test('E4 keeps public pins visible when canonical catalog bounds are unavailable', () => {
-  assert.match(client, /VIEWPORT_BOUNDS_UNAVAILABLE/);
-  assert.match(client, /request\(new URLSearchParams\(\)\)/);
-  assert.match(client, /setWarning\('VIEWPORT_BOUNDS_UNAVAILABLE'\)/);
+test('E4 delegates bounds-less canonical filtering to the server without zoom refetches', () => {
+  assert.doesNotMatch(client, /VIEWPORT_BOUNDS_UNAVAILABLE|boundsUnavailable/);
   assert.doesNotMatch(client, /\[countryId, geoAreaId, t\]/);
 });

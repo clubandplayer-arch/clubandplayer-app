@@ -75,7 +75,9 @@ export class MapGeographyContractError extends Error {
       | 'COUNTRY_UNAVAILABLE'
       | 'GEO_AREA_UNAVAILABLE'
       | 'COUNTRY_AREA_MISMATCH'
-      | 'VIEWPORT_BOUNDS_UNAVAILABLE',
+      | 'VIEWPORT_BOUNDS_UNAVAILABLE'
+      | 'CANONICAL_VIEWPORT_REQUIRED'
+      | 'GEO_AREA_FILTER_UNAVAILABLE',
     message: string,
   ) {
     super(message);

@@ -4,7 +4,7 @@ import { rateLimit } from '@/lib/api/rateLimit';
 import { dbError, invalidPayload, rateLimited, successResponse, unknownError } from '@/lib/api/standardResponses';
 import { buildProfileDisplayName } from '@/lib/displayName';
 import { resolvePublicMapPoint, MapGeographyContractError } from '@/lib/maps/geographyContract';
-import { applyOrganizationMapBounds, resolveMapViewportFromParams, SupabaseMapViewportCatalog } from '@/lib/maps/geography.server';
+import { applyOrganizationMapBounds, applyOrganizationMapLocationScope, resolveCanonicalMapLocationScope, resolveMapViewportFromParams, SupabaseMapViewportCatalog } from '@/lib/maps/geography.server';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { applyPublicProfileVisibilityFilters } from '@/lib/profile/visibility';
 
@@ -25,9 +25,17 @@ export async function GET(req: NextRequest) {
       .neq('is_admin', true)
       .or('account_type.eq.club,type.eq.club');
 
-    const viewport = await resolveMapViewportFromParams(req.nextUrl.searchParams, new SupabaseMapViewportCatalog(supabase));
+    let viewport = null;
+    let locationScope = null;
+    try {
+      viewport = await resolveMapViewportFromParams(req.nextUrl.searchParams, new SupabaseMapViewportCatalog(supabase));
+    } catch (error) {
+      if (!(error instanceof MapGeographyContractError) || error.code !== 'VIEWPORT_BOUNDS_UNAVAILABLE') throw error;
+      locationScope = await resolveCanonicalMapLocationScope(req.nextUrl.searchParams, supabase);
+    }
     if (viewport) query = applyOrganizationMapBounds(query, viewport.bounds);
-    const { data, error } = await query.limit(viewport ? 500 : 1000);
+    if (locationScope) query = applyOrganizationMapLocationScope(query, locationScope);
+    const { data, error } = await query.limit(viewport || locationScope ? 500 : 1000);
 
     if (error) return dbError(error.message);
 
@@ -66,6 +74,11 @@ export async function GET(req: NextRequest) {
         countryId: viewport.countryId,
         geoAreaId: viewport.geoAreaId,
         bounds: viewport.bounds,
+      } : locationScope ? {
+        source: locationScope.source,
+        countryId: locationScope.countryId,
+        geoAreaId: locationScope.geoAreaId,
+        bounds: null,
       } : null,
     });
   } catch (err: any) {
