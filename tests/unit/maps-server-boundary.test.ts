@@ -90,9 +90,9 @@ test('all map endpoints share the E3 resolver, strict bounds and organization-on
   assert.match(geolocated, /applyOrganizationMapLocationScope/);
 });
 
-test('E3 changes no SearchMap route activation, migration, RLS or client provider code', () => {
+test('E5 consolidates the legacy SearchMap route onto the safe ClubMap surface', () => {
   const searchMapPage = readFileSync('app/(dashboard)/search-map/page.tsx', 'utf8');
-  assert.match(searchMapPage, /redirect\('\/search'\)/);
+  assert.match(searchMapPage, /redirect\('\/club-map'\)/);
   const serverAdapter = readFileSync('lib/maps/geography.server.ts', 'utf8');
   assert.doesNotMatch(serverAdapter, /service_role|insert\(|update\(|delete\(|rpc\(/i);
 });
