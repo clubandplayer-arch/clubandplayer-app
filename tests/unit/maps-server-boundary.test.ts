@@ -85,7 +85,7 @@ test('all map endpoints share the E3 resolver, strict bounds and organization-on
   }
   assert.match(searchMap, /precise_personal_map_points_disabled/);
   assert.doesNotMatch(searchMap, /fallbackQuery/);
-  assert.match(searchMap, /clubQuery\.limit\(300\)/);
+  assert.match(searchMap, /clubQuery\.limit\(PUBLIC_MAP_LIMITS\.searchOwnerPool\)/);
   assert.match(geolocated, /resolveCanonicalMapLocationScope/);
   assert.match(geolocated, /applyOrganizationMapLocationScope/);
 });

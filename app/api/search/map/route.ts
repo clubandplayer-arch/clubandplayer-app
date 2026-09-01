@@ -11,6 +11,7 @@ import { applyPublicProfileVisibilityFilters } from '@/lib/profile/visibility';
 import { MapGeographyContractError, resolveOpportunityMapPlacement, resolvePublicMapPoint } from '@/lib/maps/geographyContract';
 import { applyOrganizationMapBounds, resolveMapViewportFromParams, SupabaseMapViewportCatalog } from '@/lib/maps/geography.server';
 import { attachOpportunityGeography } from '@/lib/opportunities/geography';
+import { PUBLIC_MAP_LIMITS } from '@/lib/maps/publicMapPolicy';
 
 export const runtime = 'nodejs';
 
@@ -228,7 +229,7 @@ export async function GET(req: NextRequest) {
 
       if (viewport) clubQuery = applyOrganizationMapBounds(clubQuery, viewport.bounds);
 
-      const { data: clubsData, error: clubsError } = await clubQuery.limit(300);
+      const { data: clubsData, error: clubsError } = await clubQuery.limit(PUBLIC_MAP_LIMITS.searchOwnerPool);
       if (clubsError) return dbError(clubsError.message);
 
       const clubIds = Array.from(new Set((clubsData ?? []).map((c: any) => c.id).filter(Boolean)));
@@ -272,7 +273,7 @@ export async function GET(req: NextRequest) {
         .from('opportunities')
         .select(oppSelect)
         .order('created_at', { ascending: false })
-        .limit(hasTextQuery ? 100 : Math.min(limit, 100))
+        .limit(hasTextQuery ? PUBLIC_MAP_LIMITS.opportunities : Math.min(limit, PUBLIC_MAP_LIMITS.opportunities))
         .eq('status', 'open');
 
       if (hasBounds) {

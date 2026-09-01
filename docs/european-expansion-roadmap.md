@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **COMPLETATA — FASE 3C-E5 — SearchMap decision e integrazione** |
-| Current active phase | **FASE 3C-E6 — IMPLEMENTATA; SMOKE API PREVIEW RICHIESTO** |
-| Next safe action | **Smoke E6; non avviare E7 prima del PASS e di autorizzazione separata** |
+| Last completed subphase | **COMPLETATA — FASE 3C-E6 — Opportunity map semantics** |
+| Current active phase | **FASE 3C-E7 — IMPLEMENTATA; SMOKE FINALE PREVIEW RICHIESTO** |
+| Next safe action | **Smoke finale E7; nessuna fase successiva autorizzata implicitamente** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -419,11 +419,11 @@ Chiusura D7 user-reported: entrambi gli endpoint suggerimenti hanno restituito H
 
 ### FASE 3C-E — Maps
 
-**Stato: IN CORSO — E1–E5 PASS; E6 IMPLEMENTATA / API PREVIEW PENDING.**
+**Stato: IN CORSO — E1–E6 PASS; E7 IMPLEMENTATA / FINAL PREVIEW PENDING.**
 
 Obiettivi: `ClubMap`, `SearchMap`, supporto internazionale, viewport canonico, coordinate puntuali pubbliche, stadium coordinates, fallback legacy, privacy e performance. E1 ha confermato `club_stadium_lat/lng` come sorgente preferibile per Club/Institution e ha separato i centroid/bounds canonici, validi per viewport, dai pin pubblici. Ha inoltre rilevato SearchMap disattivata tramite redirect, precedenza coordinate divergente, stadium-only esclusi dai bounds, fallback fuori viewport, rischio privacy per coordinate personali, popup storico non sanitizzato e limiti di scalabilità/provider. Dettaglio in `phase-3c-e1-maps-audit.md`.
 
-Piano progressivo: **E1 audit** PASS; **E2 coordinate/viewport/privacy contract** PASS; **E3 server data boundary** PASS; **E4 ClubMap internazionale** PASS; **E5 SearchMap decision e integrazione** PASS; **E6 Opportunity map semantics** IMPLEMENTATA / AUTOMATED PASS / API PREVIEW PENDING; **E7 regressione/performance/provider/backward compatibility**.
+Piano progressivo: **E1 audit** PASS; **E2 coordinate/viewport/privacy contract** PASS; **E3 server data boundary** PASS; **E4 ClubMap internazionale** PASS; **E5 SearchMap decision e integrazione** PASS; **E6 Opportunity map semantics** PASS; **E7 regressione/performance/provider/backward compatibility** IMPLEMENTATA / AUTOMATED PASS / FINAL PREVIEW PENDING.
 
 Decisioni E2: pin precisi pubblici organization-only, con precedenza atomica venue → legacy; nessun pin implicito per Player/Staff/Fan. Viewport e pin sono modelli separati; bounds espliciti o canonical country/area sono mutuamente esclusivi, fail-closed e antimeridian-aware. Centroid canonici non sono pin. Le Opportunity usano venue propria, poi venue owner, altrimenti nessun pin. Dettaglio in `phase-3c-e2-coordinate-viewport-privacy-contract.md`.
 
@@ -438,6 +438,10 @@ Decisioni E5: una sola UI Maps pubblica, `/club-map`. `/search-map` è conservat
 Decisioni E6: una Opportunity è mappabile soltanto tramite venue esplicita futura o punto pubblico validato dell'organizzazione owner; canonical country/area resta metadata/viewport e non diventa mai un pin. `/api/search/map?type=opportunity` allega geography, esclude placement null ed espone un contratto/versione espliciti. Dettaglio in `phase-3c-e6-opportunity-map-semantics.md`.
 
 Correzione smoke E6: il primo HTTP 200 ha confermato contratto e bounds, ma il risultato vuoto con `boundsApplied=true` ha evidenziato la compatibilità tra ID profilo e ID Auth nelle Opportunity legacy. Il pool owner indicizza ora il punto pubblico tramite `profiles.id` e `profiles.user_id` e risolve `club_id`/`owner_id`/`created_by`, restando bounded e organization-only. Recheck Preview richiesto prima di E7.
+
+Chiusura E6: il recheck debug ha restituito `totalOpenOpp=0`, `clubsInBoundsCount=38`, `oppAfterBounds=0`, contratto E6 presente e nessun errore. Non esistono Opportunity open visibili al caller da validare per-item; la lista vuota è corretta e il boundary è PASS.
+
+Decisioni E7: provider/versione/attribution e cap pubblici centralizzati; endpoint Club espone limite/returned/truncated senza count aggiuntiva. Matrice regressiva preserva canonical filtering, privacy, spatial strictness, E5 redirect ed E6 placement. Dettaglio in `phase-3c-e7-maps-regression-performance-provider.md`.
 
 ## FASE 4 — Internationalization / i18n
 
@@ -822,9 +826,9 @@ Alla data di creazione iniziale della roadmap:
 
 | Voce | Stato |
 | --- | --- |
-| Last completed subphase | **FASE 3C-E5 — SearchMap decision e integrazione — COMPLETATA / PASS** |
-| Current active phase | **FASE 3C-E6 — IMPLEMENTATA; SMOKE API PREVIEW RICHIESTO** |
-| Next safe action | **Smoke E6; E7 non autorizzata implicitamente** |
+| Last completed subphase | **FASE 3C-E6 — Opportunity map semantics — COMPLETATA / PASS** |
+| Current active phase | **FASE 3C-E7 — IMPLEMENTATA; SMOKE FINALE PREVIEW RICHIESTO** |
+| Next safe action | **Smoke finale E7; nessuna fase successiva autorizzata implicitamente** |
 | B4.3 local runtime harness | **PASSED — PostgreSQL 16, fixture sintetiche, nessuna connessione remota** |
 | B4.3 Supabase certification | **BLOCKED — PREVIEW BRANCH UNHEALTHY / MIGRATIONS FAILED / SUPPORT PENDING** |
 | B4.4 | **COMPLETATA — CANARY APPLICATIVO PLAYER IT / STAFF FR, READ-AFTER-WRITE, CLEANUP E RIPRISTINO FAIL-CLOSED PASS** |
@@ -876,4 +880,6 @@ E4 ClubMap internazionale è **COMPLETATA / PASS**: viewport europeo, selector c
 
 E5 SearchMap decision e integrazione è **COMPLETATA / PASS**: `/club-map` è l'unica UI Maps pubblica; bookmark `/search-map` reindirizza a ClubMap, CTA runtime sono riconciliate e il client storico irraggiungibile è rimosso. Endpoint server conservati senza pin personali.
 
-E6 Opportunity map semantics è **IMPLEMENTATA / AUTOMATED PASS / API PREVIEW REQUIRED**: placement Opportunity esplicito e versionato, owner public point come unico fallback, geography canonicale solo metadata/viewport, righe senza pin escluse e total mappabile. Nessuna migration, RLS, write, UI Opportunity map, provider, mobile o file binario. E7 resta bloccata fino allo smoke.
+E6 Opportunity map semantics è **COMPLETATA / PASS**: placement esplicito e versionato, owner public point come unico fallback, geography canonicale solo metadata/viewport e compatibilità ID profilo/Auth. Il recheck ha confermato zero Opportunity open visibili e 38 Club bounded, quindi empty corretto.
+
+E7 Maps regressione/performance/provider/backward compatibility è **IMPLEMENTATA / AUTOMATED PASS / FINAL PREVIEW REQUIRED**: policy provider e cap centralizzata, truncation metadata, matrice privacy/canonical/redirect/placement e nessuna migration o nuovo provider. La FASE 3C-E resta aperta fino allo smoke finale.

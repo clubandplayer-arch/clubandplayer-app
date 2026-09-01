@@ -5,6 +5,7 @@ import { dbError, invalidPayload, rateLimited, successResponse, unknownError } f
 import { buildProfileDisplayName } from '@/lib/displayName';
 import { resolvePublicMapPoint, MapGeographyContractError } from '@/lib/maps/geographyContract';
 import { applyOrganizationMapBounds, applyOrganizationMapLocationScope, resolveCanonicalMapLocationScope, resolveMapViewportFromParams, SupabaseMapViewportCatalog } from '@/lib/maps/geography.server';
+import { mapResultWindow, PUBLIC_MAP_LIMITS } from '@/lib/maps/publicMapPolicy';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { applyPublicProfileVisibilityFilters } from '@/lib/profile/visibility';
 
@@ -35,11 +36,12 @@ export async function GET(req: NextRequest) {
     }
     if (viewport) query = applyOrganizationMapBounds(query, viewport.bounds);
     if (locationScope) query = applyOrganizationMapLocationScope(query, locationScope);
-    const { data, error } = await query.limit(viewport || locationScope ? 500 : 1000);
+    const resultLimit = viewport || locationScope ? PUBLIC_MAP_LIMITS.boundedClubs : PUBLIC_MAP_LIMITS.globalClubs;
+    const { data, error } = await query.limit(resultLimit + 1);
 
     if (error) return dbError(error.message);
 
-    const rows = (data ?? [])
+    const resolvedRows = (data ?? [])
       .map((row: any) => {
         let coordinates = null;
         try {
@@ -66,6 +68,7 @@ export async function GET(req: NextRequest) {
         };
       })
       .filter((row) => row.id && row.latitude != null && row.longitude != null);
+    const { rows, truncated } = mapResultWindow(resolvedRows, resultLimit);
 
     return successResponse({
       data: rows,
@@ -80,6 +83,7 @@ export async function GET(req: NextRequest) {
         geoAreaId: locationScope.geoAreaId,
         bounds: null,
       } : null,
+      meta: { limit: resultLimit, returned: rows.length, truncated },
     });
   } catch (err: any) {
     if (err instanceof MapGeographyContractError) return invalidPayload(err.message, { reason: err.code });

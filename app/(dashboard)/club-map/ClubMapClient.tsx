@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import CanonicalGeographySelector from '@/components/geo/CanonicalGeographySelector';
 import { useI18n } from '@/components/i18n/I18nProvider';
+import { PUBLIC_MAP_PROVIDER } from '@/lib/maps/publicMapPolicy';
 
 type LeafletLib = any;
 
@@ -46,11 +47,11 @@ function loadLeaflet(): Promise<LeafletLib> {
     }
     const link = document.createElement('link');
     link.rel = 'stylesheet';
-    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    link.href = PUBLIC_MAP_PROVIDER.leafletCss;
     document.head.appendChild(link);
     const script = document.createElement('script');
     script.dataset.leaflet = 'true';
-    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    script.src = PUBLIC_MAP_PROVIDER.leafletScript;
     script.onload = () => resolve((window as any).L as LeafletLib);
     script.onerror = () => reject(new Error('leaflet-load-failed'));
     document.body.appendChild(script);
@@ -157,7 +158,7 @@ export default function ClubMapClient() {
     loadLeaflet().then((L) => {
       if (disposed || !mapContainerRef.current || mapRef.current) return;
       const map = L.map(mapContainerRef.current, { center: EUROPE_CENTER, zoom: 4, minZoom: 2, maxZoom: 18, zoomControl: true });
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
+      L.tileLayer(PUBLIC_MAP_PROVIDER.tileUrl, { maxZoom: 19, attribution: PUBLIC_MAP_PROVIDER.attribution }).addTo(map);
       try { map.fitBounds(EUROPE_BOUNDS, { padding: [18, 18] }); } catch { map.setView(EUROPE_CENTER, 4); }
       mapRef.current = map;
       zoomHandler = () => setZoomVersion((value) => value + 1);
