@@ -8,15 +8,16 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **COMPLETATA — FASE 3C-C7 — Opportunities regression/backward compatibility** |
-| Current active phase | **NESSUNA — FASE 3C-C COMPLETATA** |
-| Next safe action | **Nessuna fase successiva senza nuova autorizzazione esplicita** |
+| Last completed subphase | **COMPLETATA — FASE 3C-D1 — Search / Discover / WhoToFollow audit** |
+| Current active phase | **FASE 3C-D — Search / Discover / WhoToFollow; D1 COMPLETATA** |
+| Next safe action | **D2 — canonical filtering/ranking contract, solo con autorizzazione esplicita** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
 | Mobile international parity | **NOT STARTED** |
 | FASE 3C-B | **COMPLETATA — B1–B7 repository web/API** |
 | FASE 3C-C | **COMPLETATA — C1–C7 PASS** |
+| FASE 3C-D | **IN CORSO — D1 audit repository-only PASS; D2 NOT STARTED** |
 
 **FASE 3C-B è COMPLETATA nel perimetro repository web/API.** B7 riconferma IT legacy, IT/FR/ES/CH/SI/PL canonicali, account type, canonical-first, fallback e separazione semantica. `/settings` è ora raggiungibile anche dagli Enti su desktop e mobile, senza esporre loro gli interessi mobility. Prima del merge resta richiesta la verifica manuale Preview; mobile international parity resta una fase futura separata.
 
@@ -386,9 +387,21 @@ Test locale PostgreSQL 16.15: **PASS**, inclusi Subiaco/RM/Lazio, ambigui, unres
 
 ### FASE 3C-D — Search / Discover / WhoToFollow
 
-**Stato: NOT STARTED.**
+**Stato: IN CORSO — D1 audit repository-only COMPLETATA / PASS; D2–D7 NOT STARTED.**
 
 Obiettivi futuri: country-aware filtering, geo-area filtering, scouting internazionale, country interests, territorial interests, relocation e ranking compatibile con legacy. Il lavoro dovrà essere separato, secondo necessità, in sottofasi audit/read/filter/ranking.
+
+Piano progressivo approvato per evitare modifiche monolitiche:
+
+1. **D1 — audit Search / Discover / WhoToFollow:** COMPLETATA / PASS; inventariati Search globale, due endpoint suggerimenti, superfici UI, fonti canonical/legacy, RLS/privacy, ranking e rischi performance. Nessuna modifica runtime, remota, mobile o binaria.
+2. **D2 — canonical filtering/ranking contract:** NOT STARTED; definire parametri ID, validation, descendants, resolver batch, privacy boundary, score/reason codes e compatibility matrix.
+3. **D3 — Search canonical filters:** NOT STARTED; integrare country/area canoniche mantenendo query/count e parametri legacy coerenti.
+4. **D4 — Discover / WhoToFollow data boundary:** NOT STARTED; convergere la selezione candidati e leggere correttamente residence/interessi del viewer.
+5. **D5 — international ranking e relocation:** NOT STARTED; score deterministico con interessi country/area, sport, relocation e fallback legacy.
+6. **D6 — UI e scouting internazionale:** NOT STARTED; selector, copy country-aware, URL/accessibilità e reason label non sensibili.
+7. **D7 — regressione e backward compatibility:** NOT STARTED; account type, Paesi canonici, profili legacy, RLS, visibility, follow exclusions, conteggi e performance.
+
+Decisioni D1: gli interessi canonici descrivono le preferenze del viewer e non la location del target; la location target usa residence canonicale con fallback legacy. `open_to_relocation` è un segnale contestuale, non un filtro universale di pubblicazione. Le preference tables sono own-or-admin nel contratto repository e non devono essere rese pubbliche o aggirate con service role generalizzato. SearchMap/ClubMap restano fuori perimetro fino alla FASE 3C-E. Dettaglio e matrice di rischio sono nel deliverable `phase-3c-d1-search-discover-who-to-follow-audit.md`.
 
 ### FASE 3C-E — Maps
 
@@ -779,14 +792,15 @@ Alla data di creazione iniziale della roadmap:
 
 | Voce | Stato |
 | --- | --- |
-| Last completed subphase | **FASE 3C-C7 — Opportunities regression/backward compatibility — COMPLETATA** |
-| Current active phase | **NESSUNA — FASE 3C-C COMPLETATA** |
-| Next safe action | **Attendere una nuova autorizzazione esplicita** |
+| Last completed subphase | **FASE 3C-D1 — Search / Discover / WhoToFollow audit — COMPLETATA** |
+| Current active phase | **FASE 3C-D — D1 audit COMPLETATA / PASS** |
+| Next safe action | **D2 — canonical filtering/ranking contract, non ancora autorizzata** |
 | B4.3 local runtime harness | **PASSED — PostgreSQL 16, fixture sintetiche, nessuna connessione remota** |
 | B4.3 Supabase certification | **BLOCKED — PREVIEW BRANCH UNHEALTHY / MIGRATIONS FAILED / SUPPORT PENDING** |
 | B4.4 | **COMPLETATA — CANARY APPLICATIVO PLAYER IT / STAFF FR, READ-AFTER-WRITE, CLEANUP E RIPRISTINO FAIL-CLOSED PASS** |
 | FASE 3C-B | **COMPLETATA — B1–B7 repository web/API** |
 | FASE 3C-C | **COMPLETATA — C1–C7 PASS** |
+| FASE 3C-D | **IN CORSO — D1 PASS; D2–D7 NOT STARTED** |
 | Automatic residence backfill | **DELIBERATELY EXCLUDED** |
 | Mobile international parity | **NOT STARTED** |
 
@@ -807,3 +821,5 @@ C5 Opportunities è **COMPLETATA**: test automatici e smoke Preview user-reporte
 C6 Opportunities è **COMPLETATA**: test automatici e smoke Preview user-reported PASS. Il filtro trova correttamente le nuove righe canoniche; lo smoke ha evidenziato che le righe storiche prive di ID non soddisfano filtri canonici.
 
 C7 Opportunities è **COMPLETATA / PASS**: audit Production 31/0/0/0/0, apply fail-closed exit 0 su 31 Municipality, post-audit tutto zero e smoke web completo user-reported PASS. Allowlist privata conservata; nessun altro write, merge o fase successiva autorizzato.
+
+D1 Search / Discover / WhoToFollow è **COMPLETATA / PASS** come audit repository-only. Sono stati separati Search globale, Discover, i due endpoint suggerimenti e Maps; documentati canonical residence, country/geo-area interests, relocation, fallback legacy, privacy/RLS, ranking e performance. Nessuna query remota, migration, modifica runtime/UI/mobile o creazione/uso di file binari. D2 è il prossimo passo e non è ancora iniziata.
