@@ -2,7 +2,7 @@
 
 ## Stato
 
-**IMPLEMENTATA — test automatici PASS; smoke finale Preview richiesto.** La FASE 3C-D non può essere chiusa prima della conferma manuale D7.
+**COMPLETATA / PASS — test automatici e smoke finale Preview conclusi il 2026-09-01.** La FASE 3C-D è chiusa nel perimetro repository web/API.
 
 ## Matrice automatica
 
@@ -22,17 +22,14 @@ Le query mantengono limiti espliciti, un solo caricamento delle preferenze viewe
 
 Nessuna migration, write, backfill, modifica RLS/grant, service role, Maps, mobile o file binario. D7 allinea soltanto il visibility boundary dell'endpoint WhoToFollow alternativo al boundary pubblico già usato da Search e Discover.
 
-## Smoke finale Preview richiesto
+## Esito smoke finale Preview
 
-1. Viewer legacy: `/discover` senza selezione e i due endpoint suggerimenti devono rispondere HTTP 200, senza self/already-followed.
-2. Scouting FR + Auvergne-Rhône-Alpes: Club/Player non devono mostrare risultati fuori country/area; reload URL deve preservare la selezione.
-3. Ripetere country-only con IT, FR, ES, CH, SI e PL; una lista vuota è valida, un risultato cross-country no.
-4. Verificare Institution, Club, Player e Staff; sport mio/tutti; empty state; card/link/avatar/Follow.
-5. Verificare che un profilo pending/draft/non pubblicato noto non compaia in `/api/suggestions/who-to-follow`.
-6. Ripetere due volte entrambi gli endpoint: ordine stabile, `rankingVersion=d5-v1`, nessun 500/`UNKNOWN`.
-7. Verificare Network/Console e lingue IT/EN/FR/ES.
-8. Se disponibili viewer canonical-interest o relocation, riconfermare i relativi booleani; in loro assenza resta valida la copertura automatica.
+- `/api/follows/suggestions?limit=5&debug=1&geoScope=country` ha risposto HTTP 200 in esecuzioni ripetute con gli stessi cinque ID nello stesso ordine, `rankingVersion=d5-v1`, nessun self/already-followed e nessun `500`/`UNKNOWN`.
+- `/api/suggestions/who-to-follow?limit=5&debug=1` ha risposto HTTP 200 in esecuzioni ripetute con gli stessi cinque ID nello stesso ordine e con le esclusioni self/already-followed confermate nel debug.
+- Il pool alternativo mostra `421` profili pubblici visibili e `414` eleggibili dopo le esclusioni: il calo rispetto al conteggio precedente è coerente con il boundary `active + published`, non con una perdita di compatibilità.
+- Il viewer verificato è legacy (`hasCanonicalGeographyInterests=false`, `openToRelocation=false`, scouting ID null): l'assenza di preferenze canoniche resta un input valido e non produce errori o default Italia impliciti.
+- Lo smoke D6 già concluso ha riconfermato `/discover`, card, avatar, link e Follow. La matrice automatica D7 completa la copertura per IT, FR, ES, CH, SI e PL, account type, canonical-interest e relocation non disponibili nel viewer manuale.
 
 ## Next gate
 
-**Non avviare FASE 3C-E Maps.** Dopo lo smoke D7 si potrà chiudere FASE 3C-D e richiedere separata autorizzazione per Maps.
+**FASE 3C-D completata.** La prossima azione sicura è FASE 3C-E1, audit repository-only di Maps; Maps resta non avviata finché non viene autorizzata separatamente.

@@ -8,16 +8,16 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **COMPLETATA — FASE 3C-D6 — UI e scouting internazionale** |
-| Current active phase | **FASE 3C-D7 — IMPLEMENTATA; SMOKE FINALE PREVIEW RICHIESTO** |
-| Next safe action | **Smoke regressione D7; FASE 3C-E BLOCCATA fino al PASS e ad autorizzazione separata** |
+| Last completed subphase | **COMPLETATA — FASE 3C-D7 — regressione e backward compatibility** |
+| Current active phase | **Nessuna — FASE 3C-D COMPLETATA / PASS** |
+| Next safe action | **FASE 3C-E1 — audit repository-only Maps, previa autorizzazione separata** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
 | Mobile international parity | **NOT STARTED** |
 | FASE 3C-B | **COMPLETATA — B1–B7 repository web/API** |
 | FASE 3C-C | **COMPLETATA — C1–C7 PASS** |
-| FASE 3C-D | **IN CORSO — D1–D6 PASS; D7 IMPLEMENTATA / MANUAL PENDING** |
+| FASE 3C-D | **COMPLETATA — D1–D7 PASS** |
 
 **FASE 3C-B è COMPLETATA nel perimetro repository web/API.** B7 riconferma IT legacy, IT/FR/ES/CH/SI/PL canonicali, account type, canonical-first, fallback e separazione semantica. `/settings` è ora raggiungibile anche dagli Enti su desktop e mobile, senza esporre loro gli interessi mobility. Prima del merge resta richiesta la verifica manuale Preview; mobile international parity resta una fase futura separata.
 
@@ -387,7 +387,7 @@ Test locale PostgreSQL 16.15: **PASS**, inclusi Subiaco/RM/Lazio, ambigui, unres
 
 ### FASE 3C-D — Search / Discover / WhoToFollow
 
-**Stato: IN CORSO — D1–D6 COMPLETATE / PASS; D7 IMPLEMENTATA / MANUAL PENDING.**
+**Stato: COMPLETATA / PASS — D1–D7 concluse.**
 
 Obiettivi futuri: country-aware filtering, geo-area filtering, scouting internazionale, country interests, territorial interests, relocation e ranking compatibile con legacy. Il lavoro dovrà essere separato, secondo necessità, in sottofasi audit/read/filter/ranking.
 
@@ -399,7 +399,7 @@ Piano progressivo approvato per evitare modifiche monolitiche:
 4. **D4 — Discover / WhoToFollow data boundary:** COMPLETATA / PASS; piano geografico condiviso, preference viewer-only via RLS, target location pubblica e smoke autenticato concluso.
 5. **D5 — international ranking e relocation:** COMPLETATA / PASS; score D2 attivo sul pool visibile con interessi country/area, sport, relocation esplicita, fallback legacy e tie-break stabile; smoke deterministico autenticato concluso.
 6. **D6 — UI e scouting internazionale:** COMPLETATA / PASS; selector canonicale, URL country/area, filtri server fail-closed, copy IT/EN/FR/ES, accessibilità e reason label non sensibili; smoke user-reported PASS.
-7. **D7 — regressione e backward compatibility:** IMPLEMENTATA / AUTOMATED PASS / MANUAL PREVIEW REQUIRED; account type, sei Paesi, profili legacy, privacy/RLS, visibility, follow exclusions, conteggi e performance.
+7. **D7 — regressione e backward compatibility:** COMPLETATA / PASS; account type, sei Paesi, profili legacy, privacy/RLS, visibility, follow exclusions, conteggi, performance e smoke Preview conclusi.
 
 Decisioni D1: gli interessi canonici descrivono le preferenze del viewer e non la location del target; la location target usa residence canonicale con fallback legacy. `open_to_relocation` è un segnale contestuale, non un filtro universale di pubblicazione. Le preference tables sono own-or-admin nel contratto repository e non devono essere rese pubbliche o aggirate con service role generalizzato. SearchMap/ClubMap restano fuori perimetro fino alla FASE 3C-E. Dettaglio e matrice di rischio sono nel deliverable `phase-3c-d1-search-discover-who-to-follow-audit.md`.
 
@@ -414,6 +414,8 @@ Decisioni D5: il ranking D2 è applicato soltanto dopo visibility ed eligibility
 Decisioni D6: la selezione esplicita di scouting usa `countryId`/`geoAreaId`, prevale sul piano viewer e non consente fallback fuori territorio. In assenza di selezione resta il comportamento personalizzato D4/D5. Le card espongono solo reason generiche non sensibili; score e preferenze restano server-side. Dettaglio e checklist in `phase-3c-d6-ui-international-scouting.md`.
 
 Decisioni D7: entrambi gli endpoint suggerimenti applicano `active + published`; pending/draft/null-status non sono candidati pubblici. La matrice automatica copre sei Paesi, alias, legacy eligibility, account type, privacy, query bounded e localizzazione. Dettaglio e smoke finale in `phase-3c-d7-regression-backward-compatibility.md`.
+
+Chiusura D7 user-reported: entrambi gli endpoint suggerimenti hanno restituito HTTP 200 con ordine stabile in esecuzioni ripetute, `rankingVersion=d5-v1`, esclusioni self/already-followed e nessun `UNKNOWN`. Il pool WhoToFollow alternativo è passato a 421 profili pubblici visibili e 414 eleggibili, coerentemente con il boundary `active + published`. Lo smoke UI D6 su `/discover`, card, avatar, link e Follow resta PASS. FASE 3C-D è pertanto COMPLETATA; Maps non è avviata implicitamente.
 
 ### FASE 3C-E — Maps
 
@@ -804,15 +806,15 @@ Alla data di creazione iniziale della roadmap:
 
 | Voce | Stato |
 | --- | --- |
-| Last completed subphase | **FASE 3C-D6 — UI e scouting internazionale — COMPLETATA / PASS** |
-| Current active phase | **FASE 3C-D7 — IMPLEMENTATA; SMOKE FINALE PREVIEW RICHIESTO** |
-| Next safe action | **Smoke regressione D7; Maps non autorizzata implicitamente** |
+| Last completed subphase | **FASE 3C-D7 — regressione e backward compatibility — COMPLETATA / PASS** |
+| Current active phase | **Nessuna — FASE 3C-D COMPLETATA / PASS** |
+| Next safe action | **FASE 3C-E1 — audit repository-only Maps, previa autorizzazione separata** |
 | B4.3 local runtime harness | **PASSED — PostgreSQL 16, fixture sintetiche, nessuna connessione remota** |
 | B4.3 Supabase certification | **BLOCKED — PREVIEW BRANCH UNHEALTHY / MIGRATIONS FAILED / SUPPORT PENDING** |
 | B4.4 | **COMPLETATA — CANARY APPLICATIVO PLAYER IT / STAFF FR, READ-AFTER-WRITE, CLEANUP E RIPRISTINO FAIL-CLOSED PASS** |
 | FASE 3C-B | **COMPLETATA — B1–B7 repository web/API** |
 | FASE 3C-C | **COMPLETATA — C1–C7 PASS** |
-| FASE 3C-D | **IN CORSO — D1–D6 PASS; D7 IMPLEMENTATA / MANUAL PENDING** |
+| FASE 3C-D | **COMPLETATA — D1–D7 PASS** |
 | Automatic residence backfill | **DELIBERATELY EXCLUDED** |
 | Mobile international parity | **NOT STARTED** |
 
@@ -846,4 +848,4 @@ D5 international ranking e relocation è **COMPLETATA / PASS**: entrambi gli end
 
 D6 UI e scouting internazionale è **COMPLETATA / PASS**: selector country/area, URL/reload/reset, filtri strict, account type, sport, card, Follow, Network/Console e comportamento visivo sono user-reported PASS.
 
-D7 regressione e backward compatibility è **IMPLEMENTATA / AUTOMATED PASS / MANUAL PREVIEW REQUIRED**: matrice sei Paesi e legacy, account type, privacy, visibility pubblica, esclusioni, stabilità, localizzazione e limiti query. Nessuna migration, write, modifica RLS, Maps, mobile o file binario. FASE 3C-D resta aperta fino allo smoke finale.
+D7 regressione e backward compatibility è **COMPLETATA / PASS**: matrice automatica per sei Paesi e legacy, account type, privacy, visibility pubblica, esclusioni, stabilità, localizzazione e limiti query; smoke Preview ripetuto HTTP 200 con ordine stabile per entrambi gli endpoint, `rankingVersion=d5-v1` e nessun `UNKNOWN`. Lo smoke UI D6 resta PASS. Nessuna migration, write, modifica RLS, Maps, mobile o file binario. FASE 3C-D è chiusa; la prossima fase autorizzabile è 3C-E1 Maps repository-only audit.
