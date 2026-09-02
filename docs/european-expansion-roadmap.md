@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **COMPLETATA — FASE 3C-E7 — Maps regressione/performance/provider/backward compatibility** |
-| Current active phase | **FASE 4 — INTERNATIONALIZATION / i18n; 4A AUDIT COMPLETATA** |
-| Next safe action | **FASE 4B — certificazione/consolidamento infrastruttura i18n; Mobile parity resta rinviata alla repository Mobile** |
+| Last completed subphase | **COMPLETATA — FASE 4B — certificazione/consolidamento infrastruttura i18n** |
+| Current active phase | **FASE 4 — INTERNATIONALIZATION / i18n; 4A–4B COMPLETATE** |
+| Next safe action | **FASE 4C — baseline italiana; Mobile parity resta rinviata alla repository Mobile** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -449,16 +449,18 @@ Perimetro Mobile: tutte le implementazioni e certificazioni 3C svolte finora app
 
 ## FASE 4 — Internationalization / i18n
 
-**Stato prudenziale: IN CORSO — 4A COMPLETATA; IMPLEMENTAZIONE i18n SOSTANZIALE PRESENTE; 4B–4I NON CERTIFICATE; FASE NON COMPLETATA.**
+**Stato prudenziale: IN CORSO — 4A–4B COMPLETATE; 4C–4I NON CERTIFICATE; FASE NON COMPLETATA.**
 
 Il repository contiene un'implementazione i18n sostanziale ed è quindi più avanzato rispetto alla precedente dicitura `NOT STARTED`: sono verificabili catalogo `languages`, preferred language in `profile_preferences`, infrastruttura locale/provider, messaggi per le lingue attive e test dedicati. Queste evidenze non equivalgono tuttavia alla certificazione completa della FASE 4.
 
-L'audit dedicato di riconciliazione 4A è stato completato repository-only senza modifiche runtime, database o Mobile. Ha confermato la foundation esistente e identificato gap in copertura globale delle stringhe, classificazione dei locale italiani residui, review linguistica, test end-to-end e metadata/SEO. Dettaglio in `phase-4a-i18n-audit.md`. La FASE 4 non è completata.
+L'audit dedicato di riconciliazione 4A è stato completato repository-only senza modifiche runtime, database o Mobile. Ha confermato la foundation esistente e identificato gap in copertura globale delle stringhe, classificazione dei locale italiani residui, review linguistica, test end-to-end e metadata/SEO. Dettaglio in `phase-4a-i18n-audit.md`.
+
+4B ha certificato la foundation server/client, la precedenza profile → cookie → browser → italiano, caricamento cataloghi, persistenza owner-scoped e parità delle chiavi. Le primitive pure di interpolazione/fallback sono state consolidate fuori dal provider React mantenendo gli export compatibili. Nessuna migration, API, route, lingua attiva o modifica Mobile. Dettaglio in `phase-4b-i18n-infrastructure.md`. La FASE 4 non è completata.
 
 Roadmap prevista:
 
 - 4A — audit strings/locales — **COMPLETATA**;
-- 4B — i18n infrastructure;
+- 4B — i18n infrastructure — **COMPLETATA**;
 - 4C — Italian baseline;
 - 4D — English;
 - 4E — French;

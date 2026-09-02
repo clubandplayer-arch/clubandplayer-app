@@ -2,10 +2,10 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import test from 'node:test';
 
-import { interpolateMessage, translateWithFallback } from '../../components/i18n/I18nProvider';
 import { ACTIVE_LOCALES, resolveLocale } from '../../lib/i18n/config';
 import { loadMessages } from '../../lib/i18n/messages';
 import italianMessages from '../../lib/i18n/messages/it';
+import { interpolateMessage, translateWithFallback } from '../../lib/i18n/translate';
 import {
   buildLanguagePreferenceInsert,
   buildLanguagePreferenceUpdate,
@@ -166,6 +166,11 @@ test('missing translation keys fall back safely', async () => {
   assert.equal(translateWithFallback('common.save', {}, italianMessages), 'Salva');
   assert.equal(translateWithFallback('unknown.key', english, italianMessages), 'unknown.key');
   assert.equal(interpolateMessage('Hello {name}', { name: 'Alex' }), 'Hello Alex');
+  assert.equal(interpolateMessage('Hello {name}, {missing}', { name: 'Alex' }), 'Hello Alex, {missing}');
+  assert.equal(
+    translateWithFallback('auth.loggedAs', {}, italianMessages, { email: 'utente@example.test' }),
+    'Sei loggato come utente@example.test.',
+  );
 });
 
 test('keeps the two applied Phase 1/2 migrations and admits only the Phase 3A foundation', () => {
