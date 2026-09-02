@@ -261,7 +261,7 @@ export default function ApplicationsTable({
                       href={r.opportunity_id ? `/opportunities/${r.opportunity_id}` : '#'}
                       className="inline-block rounded-md border px-2 py-1 hover:bg-gray-50"
                     >
-                      Apri annuncio
+                      {t('applications.openAd')}
                     </Link>
                   )}
                 </td>
@@ -286,7 +286,7 @@ export default function ApplicationsTable({
           <div key={r.id} className="rounded-lg border p-3 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-1 text-sm">
-                <div className="text-xs text-gray-500">Data</div>
+                <div className="text-xs text-gray-500">{t('applications.date')}</div>
                 <div className="font-medium text-gray-900">
                   {r.created_at
                     ? new Date(r.created_at).toLocaleString(locale)
@@ -315,13 +315,13 @@ export default function ApplicationsTable({
 
               {kind === 'received' && (
                 <div>
-                  <div className="text-xs text-gray-500">Player</div>
+                  <div className="text-xs text-gray-500">{t('roles.player')}</div>
                   {renderPlayer(r)}
                 </div>
               )}
 
               <div>
-                <div className="text-xs text-gray-500">Nota</div>
+                <div className="text-xs text-gray-500">{t('applications.note')}</div>
                 <div className="whitespace-pre-line text-gray-800">{r.note ?? '—'}</div>
               </div>
             </div>
@@ -349,7 +349,7 @@ export default function ApplicationsTable({
                   href={r.opportunity_id ? `/opportunities/${r.opportunity_id}` : '#'}
                   className="flex-1 rounded-md border px-3 py-1 text-center text-sm hover:bg-gray-50"
                 >
-                  Apri annuncio
+                  {t('applications.openAd')}
                 </Link>
               )}
             </div>

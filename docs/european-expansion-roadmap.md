@@ -9,8 +9,8 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | Voce | Stato verificato |
 | --- | --- |
 | Last completed subphase | **COMPLETATA — FASE 4B — certificazione/consolidamento infrastruttura i18n** |
-| Current active phase | **FASE 4 — INTERNATIONALIZATION / i18n; 4A–4B COMPLETATE** |
-| Next safe action | **FASE 4C — baseline italiana; Mobile parity resta rinviata alla repository Mobile** |
+| Current active phase | **FASE 4C — BASELINE ITALIANA IMPLEMENTATA / AWAITING MANUAL PREVIEW** |
+| Next safe action | **Smoke manuale 4C; non iniziare 4D prima del PASS. Mobile parity resta rinviata alla repository Mobile** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -449,7 +449,7 @@ Perimetro Mobile: tutte le implementazioni e certificazioni 3C svolte finora app
 
 ## FASE 4 — Internationalization / i18n
 
-**Stato prudenziale: IN CORSO — 4A–4B COMPLETATE; 4C–4I NON CERTIFICATE; FASE NON COMPLETATA.**
+**Stato prudenziale: IN CORSO — 4A–4B COMPLETATE; 4C IMPLEMENTATA E IN ATTESA DI SMOKE MANUALE; 4D–4I NON CERTIFICATE; FASE NON COMPLETATA.**
 
 Il repository contiene un'implementazione i18n sostanziale ed è quindi più avanzato rispetto alla precedente dicitura `NOT STARTED`: sono verificabili catalogo `languages`, preferred language in `profile_preferences`, infrastruttura locale/provider, messaggi per le lingue attive e test dedicati. Queste evidenze non equivalgono tuttavia alla certificazione completa della FASE 4.
 
@@ -457,11 +457,13 @@ L'audit dedicato di riconciliazione 4A è stato completato repository-only senza
 
 4B ha certificato la foundation server/client, la precedenza profile → cookie → browser → italiano, caricamento cataloghi, persistenza owner-scoped e parità delle chiavi. Le primitive pure di interpolazione/fallback sono state consolidate fuori dal provider React mantenendo gli export compatibili. Nessuna migration, API, route, lingua attiva o modifica Mobile. Dettaglio in `phase-4b-i18n-infrastructure.md`. La FASE 4 non è completata.
 
+4C ha consolidato la baseline italiana sulle superfici prioritarie Rete, Candidature, dettaglio Opportunity e pagina informativa località, aggiungendo chiavi catalogo, date legate al locale UI e un gate contro la reintroduzione del copy migrato. Implementazione e test repository sono PASS; resta obbligatorio lo smoke manuale Preview documentato in `phase-4c-italian-baseline.md`. 4C non è ancora chiusa e 4D non parte implicitamente.
+
 Roadmap prevista:
 
 - 4A — audit strings/locales — **COMPLETATA**;
 - 4B — i18n infrastructure — **COMPLETATA**;
-- 4C — Italian baseline;
+- 4C — Italian baseline — **IMPLEMENTATA / AWAITING MANUAL PREVIEW**;
 - 4D — English;
 - 4E — French;
 - 4F — Spanish;

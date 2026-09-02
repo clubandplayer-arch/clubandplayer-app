@@ -160,6 +160,25 @@ test('reported completion surfaces contain no hardcoded Italian UI copy', () => 
   ]) assert.ok(!source.includes(forbidden), forbidden);
 });
 
+test('phase 4C primary network, applications and location surfaces use the Italian catalog baseline', () => {
+  const targets = [
+    '../../components/network/NetworkPage.tsx',
+    '../../components/applications/MyApplications.tsx',
+    '../../components/applications/ApplicationsDashboard.tsx',
+    '../../components/applications/ApplicationsTable.tsx',
+    '../../components/opportunities/OpportunityDetailClient.tsx',
+    '../../components/opportunities/ApplyCell.tsx',
+    '../../app/profile/location-settings/page.tsx',
+  ];
+  const source = targets.map((target) => readFileSync(new URL(target, import.meta.url), 'utf8')).join('\n');
+  for (const hardcodedLabel of [
+    '>La tua rete<', '>Visita profilo<', '>Nessun risultato da mostrare.<',
+    '>Caricamento suggerimenti…<', '>Nessuna candidatura inviata<', '>Apri annuncio<',
+    '>Ritira candidatura<', '>Tutti gli stati<', '>Solo Player/Staff<',
+    '>Annuncio non trovato.<', '>Questa pagina è stata spostata.<',
+  ]) assert.ok(!source.includes(hardcodedLabel), hardcodedLabel);
+});
+
 
 test('missing translation keys fall back safely', async () => {
   const english = await loadMessages('en');

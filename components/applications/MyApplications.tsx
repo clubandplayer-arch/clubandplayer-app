@@ -41,6 +41,7 @@ function StatusChip({ status }: { status?: string }) {
 }
 
 export default function MyApplications() {
+  const { t, locale } = useI18n();
   const [items, setItems] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -55,25 +56,25 @@ export default function MyApplications() {
           credentials: 'include',
           cache: 'no-store',
         });
-        if (r.status === 401) throw new Error('Devi effettuare l’accesso come atleta.');
+        if (r.status === 401) throw new Error(t('applications.loginRequired'));
         const j: ApiShape = await r.json().catch(() => ({}));
         const arr = Array.isArray(j) ? j : (j as any).data || (j as any).applications || [];
         if (!cancelled) setItems((arr as Application[]) ?? []);
       } catch (e: any) {
-        if (!cancelled) setErr(e?.message || 'Errore di caricamento');
+        if (!cancelled) setErr(e?.message || t('opportunities.loadError'));
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [t]);
 
   const hasItems = useMemo(() => items && items.length > 0, [items]);
   const provinceAbbreviations = useProvinceAbbreviations();
 
   async function handleWithdraw(appl: Application) {
     if (!appl?.id) return;
-    const ok = confirm('Ritirare definitivamente questa candidatura?');
+    const ok = confirm(t('applications.withdrawConfirm'));
     if (!ok) return;
 
     // update ottimistico
@@ -89,11 +90,11 @@ export default function MyApplications() {
       if (!res.ok) {
         // ripristina
         setItems(prev);
-        const t = await res.text().catch(() => '');
-        throw new Error(t || `HTTP ${res.status}`);
+        const responseText = await res.text().catch(() => '');
+        throw new Error(responseText || `HTTP ${res.status}`);
       }
     } catch (e: any) {
-      alert(e?.message || 'Errore durante il ritiro della candidatura');
+      alert(e?.message || t('applications.withdrawError'));
     }
   }
 
@@ -114,10 +115,8 @@ export default function MyApplications() {
   if (!hasItems) {
     return (
       <div className="rounded-xl border p-6 bg-white">
-        <div className="text-lg font-semibold mb-1">Nessuna candidatura inviata</div>
-        <div className="text-sm text-gray-600">
-          Cerca nuove <Link href="/opportunities" className="underline">opportunità</Link> e candidati in un tap.
-        </div>
+        <div className="text-lg font-semibold mb-1">{t('applications.sentEmptyTitle')}</div>
+        <div className="text-sm text-gray-600">{t('applications.sentEmptyHelp')}</div>
       </div>
     );
   }
@@ -134,19 +133,19 @@ export default function MyApplications() {
           <div key={appl.id} className="rounded-xl border p-4 bg-white">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <div className="text-base font-semibold">{opp?.title ?? 'Annuncio'}</div>
+                <div className="text-base font-semibold">{opp?.title ?? t('applications.ad')}</div>
                 <div className="text-sm text-gray-700">
                   {opp?.club_name ?? 'Club'} {place ? `• ${place}` : ''}
                 </div>
                 <div className="mt-1 flex items-center gap-2 text-xs text-gray-500">
-                  Stato: <StatusChip status={appl.status} />
-                  {appl.created_at ? <>• inviata il {new Date(appl.created_at).toLocaleDateString(undefined)}</> : null}
+                  {t('applications.status')}: <StatusChip status={appl.status} />
+                  {appl.created_at ? <>• {t('applications.submittedOn', { date: new Date(appl.created_at).toLocaleDateString(locale) })}</> : null}
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 {oppId ? (
                   <Link href={`/opportunities/${oppId}`} className="px-3 py-1.5 rounded-lg border text-sm hover:bg-gray-50">
-                    Apri annuncio
+                    {t('applications.openAd')}
                   </Link>
                 ) : null}
                 {canWithdraw ? (
@@ -154,7 +153,7 @@ export default function MyApplications() {
                     onClick={() => handleWithdraw(appl)}
                     className="px-3 py-1.5 rounded-lg border text-sm hover:bg-gray-50"
                   >
-                    Ritira candidatura
+                    {t('applications.withdraw')}
                   </button>
                 ) : null}
               </div>
