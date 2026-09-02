@@ -2,7 +2,7 @@
 
 ## Stato
 
-**IMPLEMENTATA — test automatici PASS; VERIFICA MANUALE PREVIEW RICHIESTA prima della chiusura.**
+**COMPLETATA / PASS — smoke Preview confermato dall'utente; residui UI segnalati corretti nella candidate 4H.**
 
 La fase certifica l'integrazione tra selettore lingua, catalogo client, cookie e preferenza autenticata. Completa inoltre la correzione degli sport segnalata nello smoke 4F: tutte le option Web mostrano la traduzione ma continuano a inviare il valore legacy atteso dalle API.
 
@@ -50,4 +50,4 @@ Profilo Player/Club, esperienze pregresse, interessi, Opportunity e ricerca most
 
 ## Criterio di chiusura
 
-La FASE 4G può essere marcata **COMPLETATA / PASS** dopo lo smoke di persistenza e rollback. Fino ad allora 4H non è autorizzata implicitamente.
+La FASE 4G è **COMPLETATA / PASS** dopo la conferma dello smoke. La FASE 4H è stata autorizzata esplicitamente e include la correzione dei residui UI segnalati.

@@ -279,6 +279,28 @@ test('phase 4G language switch is serialized and rolls back failed profile persi
   assert.doesNotMatch(provider, /if \(nextLocale === locale\) return/);
 });
 
+test('preview-reported profile, feed and application copy is catalog driven', () => {
+  const targets = [
+    '../../components/opportunities/ApplyCTA.tsx', '../../components/profiles/ProfileMiniCard.tsx',
+    '../../components/profiles/ProfileEditForm.tsx', '../../components/feed/FeedComposer.tsx',
+    '../../app/(dashboard)/feed/page.tsx',
+  ];
+  const source = targets.map((target) => readFileSync(new URL(target, import.meta.url), 'utf8')).join('\n');
+  for (const residual of ['Candidatura accettata', '>Zona di interesse<', '>Rimuovi esperienza<', '>MyVideo<', '>MyPhoto<', 'caratteri disponibili · Puoi taggare']) assert.ok(!source.includes(residual), residual);
+});
+
+test('phase 4H emits localized metadata and Open Graph locale without false hreflang URLs', async () => {
+  const { buildLocalizedMetadata } = await import('../../lib/i18n/metadata');
+  const spanish = buildLocalizedMetadata('es', 'clubMap', '/club-map');
+  assert.equal(spanish.title, 'Mapa de Clubes | Club and Player');
+  assert.equal(spanish.openGraph?.locale, 'es_ES');
+  assert.deepEqual(spanish.alternates, { canonical: '/club-map' });
+  assert.equal('languages' in (spanish.alternates ?? {}), false);
+  const root = readFileSync(new URL('../../app/layout.tsx', import.meta.url), 'utf8');
+  assert.match(root, /buildLocalizedMetadata\(locale, 'home'/);
+  assert.doesNotMatch(root, /locale: 'it_IT'/);
+});
+
 
 test('missing translation keys fall back safely', async () => {
   const english = await loadMessages('en');

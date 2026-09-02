@@ -64,6 +64,12 @@ test('localizza sport, genere e categorie Opportunity senza mutare i valori lega
   assert.deepEqual(persisted, ['Calcio', 'Uomo', 'Terza Categoria']);
 });
 
+test('localizza i ruoli Staff legacy mostrati nei profili', () => {
+  const values = ['Presidente', 'Direttore Generale', 'Vice Allenatore', 'Preparatore Atletico', 'Medico Sociale', 'Addetto Stampa', 'Content Creator'];
+  assert.deepEqual(values.map((value) => localizeSportRole(value, translator(fr))), ['Président', 'Directeur général', 'Entraîneur adjoint', 'Préparateur physique', 'Médecin du Club', 'Attaché de presse', 'Créateur de contenu']);
+  assert.deepEqual(values.map((value) => localizeSportRole(value, translator(es))), ['Presidente', 'Director general', 'Segundo entrenador', 'Preparador físico', 'Médico del Club', 'Responsable de prensa', 'Creador de contenido']);
+});
+
 test('i quattro dizionari hanno parità per il vocabolario controllato', () => {
   const vocabularyKeys = Object.keys(it).filter((key) => key.startsWith('vocabulary.')).sort();
   assert.ok(vocabularyKeys.length > 0);

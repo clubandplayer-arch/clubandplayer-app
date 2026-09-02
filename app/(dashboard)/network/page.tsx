@@ -1,8 +1,10 @@
 import NetworkPage from '@/components/network/NetworkPage';
+import { buildLocalizedMetadata } from '@/lib/i18n/metadata';
+import { resolveRequestLocale } from '@/lib/i18n/server';
 
-export const metadata = {
-  title: 'La tua rete',
-};
+export async function generateMetadata() {
+  return buildLocalizedMetadata(await resolveRequestLocale(), 'network', '/network');
+}
 
 export default function NetworkRoute() {
   return (

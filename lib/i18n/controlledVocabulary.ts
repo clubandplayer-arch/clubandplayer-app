@@ -44,6 +44,12 @@ const roleKeys: Record<string, VocabularyMessageKey> = {
   fixo:'vocabulary.role.fixo', pivot:'vocabulary.role.pivot', universale:'vocabulary.role.universal', universal:'vocabulary.role.universal',
   palleggiatore:'vocabulary.role.setter', setter:'vocabulary.role.setter', opposto:'vocabulary.role.opposite','opposite hitter':'vocabulary.role.opposite', schiacciatore:'vocabulary.role.outsideHitter','outside hitter':'vocabulary.role.outsideHitter', centrale:'vocabulary.role.middleBlocker','middle blocker':'vocabulary.role.middleBlocker', libero:'vocabulary.role.libero',
   allenatore:'vocabulary.role.coach', coach:'vocabulary.role.coach', scout:'vocabulary.role.scout','direttore sportivo':'vocabulary.role.sportingDirector','sporting director':'vocabulary.role.sportingDirector',
+  presidente:'vocabulary.staff.president', vicepresidente:'vocabulary.staff.vicePresident', 'direttore generale':'vocabulary.staff.generalManager', segretario:'vocabulary.staff.secretary',
+  'team manager':'vocabulary.staff.teamManager', 'dirigente accompagnatore':'vocabulary.staff.teamOfficer', 'vice allenatore':'vocabulary.staff.assistantCoach', 'collaboratore tecnico':'vocabulary.staff.technicalAssistant',
+  'match analyst':'vocabulary.staff.matchAnalyst', 'video analyst':'vocabulary.staff.videoAnalyst', 'preparatore atletico':'vocabulary.staff.fitnessCoach', 'preparatore portieri':'vocabulary.staff.goalkeeperCoach',
+  'medico sociale':'vocabulary.staff.clubDoctor', fisioterapista:'vocabulary.staff.physiotherapist', osteopata:'vocabulary.staff.osteopath', massaggiatore:'vocabulary.staff.masseur',
+  'mental coach':'vocabulary.staff.mentalCoach', nutrizionista:'vocabulary.staff.nutritionist', 'talent scout':'vocabulary.staff.talentScout', 'addetto stampa':'vocabulary.staff.pressOfficer',
+  'social media manager':'vocabulary.staff.socialMediaManager', fotografo:'vocabulary.staff.photographer', 'content creator':'vocabulary.staff.contentCreator',
 };
 
 const statusKeys: Record<string, VocabularyMessageKey> = {

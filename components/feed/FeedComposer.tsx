@@ -837,7 +837,7 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
           {mentionSuggestions.length ? (
             <div className="absolute left-3 top-full z-[9999] mt-2 w-72 overflow-hidden rounded-xl border border-sky-100 bg-white shadow-xl">
               <div className="border-b border-slate-100 px-3 py-2 text-xs font-semibold text-slate-500">
-                Tagga un tuo follower
+                {t('feed.tagFollower')}
               </div>
               {mentionSuggestions.map((option) => (
                 <button
@@ -866,7 +866,7 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
           ) : null}
         </div>
         <p id={helperId} className="text-xs text-gray-500">
-          {text.trim().length}/{MAX_CHARS} caratteri disponibili · Puoi taggare solo i tuoi follower con @nome, oppure tutti i follower con @all
+          {t('feed.composerHelp', { count: text.trim().length, max: MAX_CHARS })}
         </p>
 
         {linkUrl ? (

@@ -1413,7 +1413,7 @@ export default function ProfileEditForm() {
                           className="text-sm font-medium text-red-600 hover:underline"
                           onClick={() => removePastExperience(index)}
                         >
-                          Rimuovi esperienza
+                          {t('profile.removeExperience')}
                         </button>
                       </div>
                     )}

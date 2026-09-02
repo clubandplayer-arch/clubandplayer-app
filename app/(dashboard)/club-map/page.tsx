@@ -1,8 +1,10 @@
 import ClubMapClient from './ClubMapClient';
+import { buildLocalizedMetadata } from '@/lib/i18n/metadata';
+import { resolveRequestLocale } from '@/lib/i18n/server';
 
-export const metadata = {
-  title: 'Mappa Club',
-};
+export async function generateMetadata() {
+  return buildLocalizedMetadata(await resolveRequestLocale(), 'clubMap', '/club-map');
+}
 
 export default function ClubMapPage() {
   return (
