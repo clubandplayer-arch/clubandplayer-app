@@ -2,7 +2,7 @@
 
 ## Stato
 
-**IMPLEMENTATA — test automatici PASS; SMOKE FINALE PREVIEW RICHIESTO prima di chiudere la FASE 4.**
+**COMPLETATA / PASS — test automatici PASS e smoke finale Preview dichiarato PASS dall'utente. La FASE 4 è chiusa.**
 
 ## Correzioni dell'ultimo smoke
 
@@ -42,4 +42,4 @@ Titoli e descrizioni degli annunci nella sidebar restano contenuti utente e non 
 
 ## Chiusura e branch
 
-Dopo il PASS manuale, la FASE 4 può essere chiusa. Prima di ulteriore sviluppo deve essere presa una decisione esplicita e separata tra merge controllato e nuovo branch derivato dall'attuale branch pesante; questa candidate non effettua nessuna delle due operazioni.
+Il PASS manuale è stato dichiarato e la FASE 4 è chiusa. Prima della FASE 5 deve essere presa una decisione esplicita e separata tra merge controllato e nuovo branch derivato dall'attuale branch pesante. La chiusura Web non certifica la parity Mobile: prima del merge è raccomandato un breve smoke dei contratti backend usati dalla versione Mobile attualmente pubblicata.
