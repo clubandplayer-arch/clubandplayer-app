@@ -2,7 +2,7 @@
 
 ## Stato
 
-**IMPLEMENTATA — test automatici PASS; VERIFICA VISIVA/MANUALE PREVIEW RICHIESTA prima della chiusura.**
+**COMPLETATA / PASS — smoke Preview confermato dall'utente; baseline inglese e recheck responsive francese approvati.**
 
 La baseline inglese usa la stessa infrastruttura e le stesse chiavi certificate nelle FASI 4B–4C. Questa sottofase verifica le superfici prioritarie Web e corregge la regressione responsive cross-locale segnalata sul CTA francese `Détails de l’annonce`. Non modifica database, API, RLS o Mobile.
 
@@ -90,4 +90,4 @@ Usare lingua **English** con un account Player; eseguire i punti 1–3 anche rid
 
 ## Criterio di chiusura
 
-La FASE 4D può essere marcata **COMPLETATA / PASS** dopo conferma dello smoke inglese e del recheck responsive francese. Fino ad allora 4E non è autorizzata implicitamente.
+La FASE 4D è **COMPLETATA / PASS** dopo la conferma dello smoke inglese e del recheck responsive francese. La FASE 4E è stata autorizzata esplicitamente.

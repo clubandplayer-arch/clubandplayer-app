@@ -211,6 +211,29 @@ test('application detail CTA remains one responsive unit for longer translations
   assert.doesNotMatch(source, />Azione</);
 });
 
+test('phase 4E French baseline is explicit and free of the reviewed Italian and English copy', async () => {
+  const french = await loadMessages('fr');
+  const approved = {
+    'network.title': 'Votre réseau',
+    'network.suggested': 'Suggestions',
+    'applications.mine': 'Mes candidatures',
+    'applications.playerStaffOnly': 'Joueurs et Staff uniquement',
+    'applications.date': 'Date',
+    'applications.actions': 'Actions',
+    'opportunities.details': 'Détails de l’annonce',
+    'opportunities.role': 'Rôle ou poste',
+    'opportunity.notFound': 'Opportunité introuvable.',
+    'profile.location': 'Localité',
+    'filters.searchPlaceholder': 'Rechercher (ex. Paris, Club, rôle…)',
+  } as const;
+  for (const [key, value] of Object.entries(approved)) {
+    assert.equal(french[key as keyof typeof french], value, key);
+  }
+  assert.equal(french['applications.subtitle'], 'Gérez les candidatures reçues pour les opportunités du Club.');
+  assert.equal(french['feed.manageOpportunities'], 'Gérer ou voir toutes les opportunités');
+  assert.equal(french['common.betaInfo'], 'Informations sur la version bêta');
+});
+
 
 test('missing translation keys fall back safely', async () => {
   const english = await loadMessages('en');

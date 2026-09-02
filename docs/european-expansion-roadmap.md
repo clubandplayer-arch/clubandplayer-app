@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **COMPLETATA — FASE 4C — baseline italiana** |
-| Current active phase | **FASE 4D — ENGLISH IMPLEMENTATA / AWAITING MANUAL PREVIEW** |
-| Next safe action | **Smoke manuale inglese + recheck responsive francese; non iniziare 4E prima del PASS** |
+| Last completed subphase | **COMPLETATA — FASE 4D — English** |
+| Current active phase | **FASE 4E — FRANÇAIS IMPLEMENTATA / AWAITING MANUAL PREVIEW** |
+| Next safe action | **Smoke manuale francese; non iniziare 4F prima del PASS** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -449,7 +449,7 @@ Perimetro Mobile: tutte le implementazioni e certificazioni 3C svolte finora app
 
 ## FASE 4 — Internationalization / i18n
 
-**Stato prudenziale: IN CORSO — 4A–4C COMPLETATE; 4D IMPLEMENTATA E IN ATTESA DI SMOKE MANUALE; 4E–4I NON CERTIFICATE; FASE NON COMPLETATA.**
+**Stato prudenziale: IN CORSO — 4A–4D COMPLETATE; 4E IMPLEMENTATA E IN ATTESA DI SMOKE MANUALE; 4F–4I NON CERTIFICATE; FASE NON COMPLETATA.**
 
 Il repository contiene un'implementazione i18n sostanziale ed è quindi più avanzato rispetto alla precedente dicitura `NOT STARTED`: sono verificabili catalogo `languages`, preferred language in `profile_preferences`, infrastruttura locale/provider, messaggi per le lingue attive e test dedicati. Queste evidenze non equivalgono tuttavia alla certificazione completa della FASE 4.
 
@@ -459,13 +459,15 @@ L'audit dedicato di riconciliazione 4A è stato completato repository-only senza
 
 4C ha consolidato la baseline italiana sulle superfici prioritarie Rete, Candidature, dettaglio Opportunity e pagina informativa località. Lo smoke user-reported ha chiuso la baseline italiana e rilevato un follow-up responsive sul CTA francese delle Candidature. La candidate 4D corregge il CTA come unità `inline-flex` non spezzabile, localizza le intestazioni residue della tabella e certifica le chiavi inglesi prioritarie; resta necessario lo smoke inglese e il recheck francese documentato in `phase-4d-english.md`.
 
+4D è stata chiusa dopo conferma dello smoke Preview. 4E consolida ora la baseline francese sulle stesse superfici, protegge il CTA lungo già verificato e applica una revisione editoriale mirata senza cambiare contratti o chiavi. Dettaglio e checklist manuale in `phase-4e-french.md`.
+
 Roadmap prevista:
 
 - 4A — audit strings/locales — **COMPLETATA**;
 - 4B — i18n infrastructure — **COMPLETATA**;
 - 4C — Italian baseline — **COMPLETATA**;
-- 4D — English — **IMPLEMENTATA / AWAITING MANUAL PREVIEW**;
-- 4E — French;
+- 4D — English — **COMPLETATA**;
+- 4E — French — **IMPLEMENTATA / AWAITING MANUAL PREVIEW**;
 - 4F — Spanish;
 - 4G — language preference integration;
 - 4H — metadata/SEO;
