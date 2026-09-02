@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **COMPLETATA — FASE 4I — fallback/regression** |
-| Current active phase | **FASE 4 — COMPLETATA / PASS** |
-| Next safe action | **Merge gate controllato; soltanto dopo, avvio separato della FASE 5** |
+| Last completed subphase | **FASE 5A — AUDIT COMPLETATO (repository-only)** |
+| Current active phase | **FASE 5 — 5A COMPLETATA; 5B NOT STARTED** |
+| Next safe action | **FASE 5B soltanto dopo autorizzazione esplicita** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -485,7 +485,7 @@ Lingue iniziali: **IT, EN, FR, ES**. Lingue future: **PT, DE**. Non risultano di
 
 ## FASE 5 — Sports / Disciplines / Competition Model
 
-**Stato: FOUNDATION PARTIAL / FUTURE WORK.**
+**Stato: FOUNDATION PARTIAL — 5A AUDIT COMPLETATO; 5B–5J NOT STARTED.**
 
 La foundation verificata copre sport, discipline e variant; la matrice europea completa non è dichiarata completata. Il modello europeo concordato deve comprendere:
 
@@ -502,6 +502,32 @@ La foundation verificata copre sport, discipline e variant; la matrice europea c
 - territorial scope.
 
 Le strutture devono essere country-aware e prevedere federazioni, enti, piramidi, livelli, gruppi territoriali, giovanili, M/F/mixed, stagioni, denominazioni e dipendenze federali.
+
+### FASE 5A — Sports / Disciplines / Competitions audit
+
+**Stato: COMPLETATA — AUDIT REPOSITORY-ONLY; NESSUNA MODIFICA COMPORTAMENTALE.**
+
+Deliverable: `docs/european-expansion/phase-5a-sports-disciplines-competition-audit.md`.
+
+L'audit conferma una foundation canonica parziale (`sports`, `sport_disciplines`, `sport_variants`, `legacy_sport_mappings`) con UUID, FK, indici, seed e policy, ma non collegata ai read/write path prodotto. Profili, esperienze, roster, Opportunities, Search, Discover, WhoToFollow, feed e Maps continuano a usare prevalentemente stringhe legacy e cataloghi hardcoded. Non esistono cataloghi canonici completi per sports organizations, ruoli/posizioni, categorie/age class, competition/level/group, gender, season, format o territorial scope.
+
+Nessuna migration è stata creata, testata o applicata; Production non è stata interrogata o modificata; nessun backfill è stato eseguito; schema, API, UI, Applications, ownership, RLS e grant non sono stati modificati. Web/API hanno solo impatto documentale. Mobile resta **NOT STARTED / NON MODIFICATO** e non è certificato. Smoke manuale/visivo non applicabile.
+
+Test automatici 5A: audit taxonomy/controlled vocabulary **17/17 PASS**; suite unit completa **288/288 PASS**; lint **PASS**; typecheck **PASS**; `git diff --check` **PASS**. Build eseguita ma **NON PASS** per limite ambientale: Turbopack non ha potuto scaricare i font Google `Inter` e `Righteous`; non è emerso un errore del codice 5A. Test PostgreSQL/migration e smoke API non applicabili perché 5A non crea migration né modifica runtime.
+
+Suddivisione prudenziale confermata, da autorizzare una sottofase alla volta:
+
+- 5B — contratto canonico e regole di compatibilità;
+- 5C — schema additivo e migration;
+- 5D — cataloghi e seed controllati;
+- 5E — dual-read / dual-write e adapter server;
+- 5F — profili ed esperienze;
+- 5G — Opportunities e Applications;
+- 5H — Search / Discover / WhoToFollow;
+- 5I — UI, filtri e controlled vocabulary;
+- 5J — regressione, backward compatibility e certificazione.
+
+Il prossimo passaggio autorizzabile è esclusivamente **5B repository-only**, senza migration. Decisioni aperte: identity/code wire contract, cardinalità multi-sport, ruoli Player vs Staff, graph organization/competition/season, separazione category/age class/level e freeze dei payload legacy consumabili dal Mobile pubblicato.
 
 ## FASE 6 — European Profile Model Completion
 
