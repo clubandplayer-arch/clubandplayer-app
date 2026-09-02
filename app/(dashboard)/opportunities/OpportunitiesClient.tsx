@@ -12,7 +12,7 @@ import type { OpportunitiesApiResponse, Opportunity } from '@/types/opportunity'
 import { AGE_BRACKETS, normalizeSport, SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
 import { CATEGORIES_BY_SPORT } from '@/lib/opps/categories';
 import { useI18n } from '@/components/i18n/I18nProvider';
-import { localizeSportRole } from '@/lib/i18n/controlledVocabulary';
+import { localizeOpportunityCategory, localizeSport, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 
 type Role = 'athlete' | 'club' | 'staff' | 'fan' | 'guest';
 
@@ -420,7 +420,7 @@ export default function OpportunitiesClient() {
             <option value="">{t('opportunities.sport')}</option>
             {SPORTS.map((s: string) => (
               <option key={s} value={s}>
-                {s}
+                {localizeSport(s, t)}
               </option>
             ))}
           </select>
@@ -461,7 +461,7 @@ export default function OpportunitiesClient() {
             <option value="">{selectedSport ? t('opportunities.category') : t('opportunities.selectSport')}</option>
             {categoryOptions.map((c) => (
               <option key={c} value={c}>
-                {c}
+                {localizeOpportunityCategory(c, t)}
               </option>
             ))}
           </select>

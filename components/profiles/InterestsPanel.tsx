@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { SPORTS } from '@/lib/opps/constants';
 import { COUNTRIES } from '@/lib/geo/countries';
 import { useGeo } from '@/hooks/useGeo';
+import { useI18n } from '@/components/i18n/I18nProvider';
+import { localizeSport } from '@/lib/i18n/controlledVocabulary';
 
 export type Interests = {
   sports: string[];
@@ -53,6 +55,7 @@ function writeInterests(next: Interests) {
 }
 
 export default function InterestsPanel({ onChange }: Props) {
+  const { t } = useI18n();
   const [state, setState] = useState<Interests>({ sports: [] });
   const { regions, getProvinces, getMunicipalities } = useGeo();
   const [regionId, setRegionId] = useState<number | null>(null);
@@ -179,7 +182,7 @@ export default function InterestsPanel({ onChange }: Props) {
           >
             <option value="">Tutti</option>
             {SPORTS.map((s) => (
-              <option key={s} value={s}>{s}</option>
+              <option key={s} value={s}>{localizeSport(s, t)}</option>
             ))}
           </select>
         </div>

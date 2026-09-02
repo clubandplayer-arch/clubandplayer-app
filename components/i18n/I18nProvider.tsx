@@ -28,12 +28,11 @@ export function I18nProvider({ initialLocale, initialMessages, children }: {
   const [messages, setMessages] = useState(initialMessages);
 
   const setLocale = useCallback(async (nextLocale: Locale) => {
-    if (nextLocale === locale) return;
     const nextMessages = await loadMessages(nextLocale);
     setMessages(nextMessages);
     setCurrentLocale(nextLocale);
     document.documentElement.lang = nextLocale;
-  }, [locale]);
+  }, []);
 
   const t = useCallback(
     (key: MessageKey, values?: MessageValues) =>

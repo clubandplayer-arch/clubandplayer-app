@@ -8,7 +8,7 @@ import SearchResultRow, { type SearchResult } from '@/components/search/SearchRe
 import { COUNTRIES, getCountryName } from '@/lib/geo/countries';
 import { SPORTS, SPORTS_ROLES, STAFF_ROLES, normalizeSport } from '@/lib/opps/constants';
 import { useI18n } from '@/components/i18n/I18nProvider';
-import { localizeAccountType, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
+import { localizeAccountType, localizeSport, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 
 type SearchType = 'all' | 'opportunities' | 'clubs' | 'institutions' | 'players' | 'staff' | 'posts' | 'events';
 type LocationOption = { id: number; name: string };
@@ -500,7 +500,7 @@ export default function SearchPage() {
                 <option value="">{t('search.allSports')}</option>
                 {SPORTS.map((sport) => (
                   <option key={sport} value={sport}>
-                    {sport}
+                    {localizeSport(sport, t)}
                   </option>
                 ))}
               </select>

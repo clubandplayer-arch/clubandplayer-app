@@ -22,7 +22,7 @@ import { CATEGORIES_BY_SPORT, CLUB_SPORT_OPTIONS, DEFAULT_CLUB_CATEGORIES } from
 import { iso2ToFlagEmoji } from '@/lib/utils/flags';
 import { useI18n } from '@/components/i18n/I18nProvider';
 import CanonicalGeographySelector from '@/components/geo/CanonicalGeographySelector';
-import { localizeSportRole } from '@/lib/i18n/controlledVocabulary';
+import { localizeOpportunityCategory, localizeSport, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 import { isCanonicalProfileResidenceUiEnabled } from '@/lib/env/features';
 import {
   ensurePastExperienceCategory,
@@ -1014,7 +1014,7 @@ export default function ProfileEditForm() {
                   >
                     {CLUB_SPORT_OPTIONS.map((s) => (
                       <option key={s} value={s}>
-                        {s}
+                        {localizeSport(s, t)}
                       </option>
                     ))}
                   </select>
@@ -1197,7 +1197,7 @@ export default function ProfileEditForm() {
                   >
                     {SPORTS.map((s) => (
                       <option key={s} value={s}>
-                        {s}
+                        {localizeSport(s, t)}
                       </option>
                     ))}
                   </select>
@@ -1365,7 +1365,7 @@ export default function ProfileEditForm() {
                           <option value="">— {t('profile.select')} —</option>
                           {CLUB_SPORT_OPTIONS.map((sportOption) => (
                             <option key={sportOption} value={sportOption}>
-                              {sportOption}
+                              {localizeSport(sportOption, t)}
                             </option>
                           ))}
                         </select>
@@ -1399,7 +1399,7 @@ export default function ProfileEditForm() {
                           <option value="">— {t('profile.select')} —</option>
                           {categoryOptions.map((category) => (
                             <option key={category} value={category}>
-                              {category}
+                              {localizeOpportunityCategory(category, t)}
                             </option>
                           ))}
                         </select>

@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **COMPLETATA — FASE 4E — Français** |
-| Current active phase | **FASE 4F — ESPAÑOL IMPLEMENTATA / AWAITING MANUAL PREVIEW** |
-| Next safe action | **Smoke spagnolo + recheck vocabolario controllato EN/FR; non iniziare 4G prima del PASS** |
+| Last completed subphase | **COMPLETATA — FASE 4F — Español** |
+| Current active phase | **FASE 4G — PREFERENZA LINGUA IMPLEMENTATA / AWAITING MANUAL PREVIEW** |
+| Next safe action | **Smoke persistenza/rollback lingua e selettori sport; non iniziare 4H prima del PASS** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -449,7 +449,7 @@ Perimetro Mobile: tutte le implementazioni e certificazioni 3C svolte finora app
 
 ## FASE 4 — Internationalization / i18n
 
-**Stato prudenziale: IN CORSO — 4A–4E COMPLETATE; 4F IMPLEMENTATA E IN ATTESA DI SMOKE MANUALE; 4G–4I NON CERTIFICATE; FASE NON COMPLETATA.**
+**Stato prudenziale: IN CORSO — 4A–4F COMPLETATE; 4G IMPLEMENTATA E IN ATTESA DI SMOKE MANUALE; 4H–4I NON CERTIFICATE; FASE NON COMPLETATA.**
 
 Il repository contiene un'implementazione i18n sostanziale ed è quindi più avanzato rispetto alla precedente dicitura `NOT STARTED`: sono verificabili catalogo `languages`, preferred language in `profile_preferences`, infrastruttura locale/provider, messaggi per le lingue attive e test dedicati. Queste evidenze non equivalgono tuttavia alla certificazione completa della FASE 4.
 
@@ -463,6 +463,8 @@ L'audit dedicato di riconciliazione 4A è stato completato repository-only senza
 
 4E è stata chiusa dopo lo smoke Preview, con un residuo cross-locale sui valori controllati provenienti dal database. 4F corregge quel residuo in presentazione per tutte le lingue attive e consolida la baseline spagnola. Dettaglio e checklist in `phase-4f-spanish.md`.
 
+4F è stata chiusa dopo lo smoke Preview. 4G estende la traduzione degli sport a tutti i selettori Web preservandone i valori e consolida la persistenza della lingua con serializzazione e rollback coerente. Dettaglio in `phase-4g-language-preference.md`.
+
 Roadmap prevista:
 
 - 4A — audit strings/locales — **COMPLETATA**;
@@ -470,8 +472,8 @@ Roadmap prevista:
 - 4C — Italian baseline — **COMPLETATA**;
 - 4D — English — **COMPLETATA**;
 - 4E — French — **COMPLETATA**;
-- 4F — Spanish — **IMPLEMENTATA / AWAITING MANUAL PREVIEW**;
-- 4G — language preference integration;
+- 4F — Spanish — **COMPLETATA**;
+- 4G — language preference integration — **IMPLEMENTATA / AWAITING MANUAL PREVIEW**;
 - 4H — metadata/SEO;
 - 4I — fallback/regression.
 

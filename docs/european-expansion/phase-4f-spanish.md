@@ -2,7 +2,7 @@
 
 ## Stato
 
-**IMPLEMENTATA — test automatici PASS; VERIFICA VISIVA/MANUALE PREVIEW RICHIESTA prima della chiusura.**
+**COMPLETATA / PASS — smoke Preview confermato dall'utente; localizzazione degli sport estesa a tutti i selettori nella candidate 4G.**
 
 La baseline spagnola consolida le superfici Web prioritarie e chiude il residuo cross-locale mostrato nello smoke 4E: sport, genere e categorie provenienti dal database restavano in italiano anche con UI inglese, francese o spagnola.
 
@@ -45,4 +45,4 @@ Usare **Español** con un account Player:
 
 ## Criterio di chiusura
 
-La FASE 4F può essere marcata **COMPLETATA / PASS** dopo lo smoke spagnolo e il recheck dei valori controllati in EN/FR. Fino ad allora 4G non è autorizzata implicitamente.
+La FASE 4F è **COMPLETATA / PASS** dopo la conferma dello smoke. La FASE 4G è stata autorizzata esplicitamente e completa la localizzazione delle option senza cambiare i valori salvati.

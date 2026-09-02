@@ -253,6 +253,32 @@ test('phase 4F Spanish baseline is explicit on primary product surfaces', async 
   assert.equal(spanish['common.betaInfo'], 'Información sobre la versión beta');
 });
 
+test('sport selectors localize labels while preserving canonical and legacy option values', () => {
+  const targets = [
+    '../../components/profiles/ProfileEditForm.tsx',
+    '../../components/profiles/InterestsPanel.tsx',
+    '../../components/opportunities/OpportunityForm.tsx',
+    '../../app/(dashboard)/opportunities/OpportunitiesClient.tsx',
+    '../../app/search/page.tsx',
+  ];
+  const source = targets.map((target) => readFileSync(new URL(target, import.meta.url), 'utf8')).join('\n');
+  assert.ok((source.match(/localizeSport\(/g) ?? []).length >= 6);
+  assert.match(source, /value=\{s\}/);
+  assert.match(source, /value=\{sportOption\}/);
+  assert.match(source, /value=\{sport\}/);
+});
+
+test('phase 4G language switch is serialized and rolls back failed profile persistence', () => {
+  const source = readFileSync(new URL('../../components/i18n/LanguageSwitcher.tsx', import.meta.url), 'utf8');
+  const provider = readFileSync(new URL('../../components/i18n/I18nProvider.tsx', import.meta.url), 'utf8');
+  assert.match(source, /if \(saving \|\| nextLocale === locale\)/);
+  assert.match(source, /persistLocaleCookie\(previousLocale\)/);
+  assert.match(source, /await setLocale\(previousLocale\)/);
+  assert.match(source, /aria-busy=\{saving\}/);
+  assert.match(source, /disabled=\{saving\}/);
+  assert.doesNotMatch(provider, /if \(nextLocale === locale\) return/);
+});
+
 
 test('missing translation keys fall back safely', async () => {
   const english = await loadMessages('en');

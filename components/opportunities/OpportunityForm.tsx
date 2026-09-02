@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useI18n } from '@/components/i18n/I18nProvider';
-import { localizeAccountType, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
+import { localizeAccountType, localizeOpportunityCategory, localizeSport, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 import CanonicalGeographySelector from '@/components/geo/CanonicalGeographySelector';
 
 import type { Opportunity } from '@/types/opportunity';
@@ -258,7 +258,7 @@ export default function OpportunityForm({
             >
               {SPORTS.map((s: string) => (
                 <option key={s} value={s}>
-                  {s}
+                  {localizeSport(s, t)}
                 </option>
               ))}
             </select>
@@ -274,7 +274,7 @@ export default function OpportunityForm({
               <option value="">—</option>
               {categoryOptions.map((c: string) => (
                 <option key={c} value={c}>
-                  {c}
+                  {localizeOpportunityCategory(c, t)}
                 </option>
               ))}
             </select>

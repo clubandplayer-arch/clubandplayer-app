@@ -15,6 +15,7 @@ export default function LanguageSwitcher() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [saveError, setSaveError] = useState(false);
+  const [saving, setSaving] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -27,18 +28,30 @@ export default function LanguageSwitcher() {
   }, [open]);
 
   async function choose(nextLocale: Locale) {
+    if (saving || nextLocale === locale) {
+      setOpen(false);
+      return;
+    }
     const previousLocale = locale;
     setOpen(false);
     setSaveError(false);
-    await setLocale(nextLocale);
-    persistLocaleCookie(nextLocale);
+    setSaving(true);
     try {
+      await setLocale(nextLocale);
+      persistLocaleCookie(nextLocale);
       await persistAuthenticatedLocale(supabaseBrowser(), nextLocale);
     } catch {
-      // Keep the immediate local choice; remote persistence can be retried.
+      // Profile preference has server precedence: roll back instead of displaying
+      // a locale that would silently change again on the next navigation.
       setSaveError(true);
-      if (!document.cookie.includes(`cp_locale=${nextLocale}`)) await setLocale(previousLocale);
+      persistLocaleCookie(previousLocale);
+      try {
+        await setLocale(previousLocale);
+      } catch {
+        // The existing catalog remains the safest available UI state.
+      }
     } finally {
+      setSaving(false);
       router.refresh();
     }
   }
@@ -51,6 +64,8 @@ export default function LanguageSwitcher() {
         aria-label={t('language.select')}
         aria-haspopup="menu"
         aria-expanded={open}
+        aria-busy={saving}
+        disabled={saving}
         className="inline-flex h-10 items-center gap-2 rounded-full border border-slate-200 bg-white/95 px-3 text-sm font-semibold text-slate-700 shadow-sm backdrop-blur focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
       >
         <span aria-hidden>🌐</span><span className="hidden sm:inline">{labels.get(locale)}</span><span aria-hidden>▾</span>
@@ -63,6 +78,7 @@ export default function LanguageSwitcher() {
               type="button"
               role="menuitemradio"
               aria-checked={code === locale}
+              disabled={saving}
               onClick={() => void choose(code)}
               className="block w-full rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
             >
