@@ -9,6 +9,7 @@ import NotificationsBell from './NotificationsBell'
 import BrandLogo from '@/components/brand/BrandLogo'
 import CertifiedClubMark from '@/components/ui/CertifiedClubMark'
 import { buildProfileDisplayName } from '@/lib/displayName'
+import { useI18n } from '@/components/i18n/I18nProvider'
 
 type ProfileRow = {
   id: string
@@ -20,6 +21,7 @@ type ProfileRow = {
 }
 
 export default function Navbar() {
+  const { t } = useI18n()
   const pathname = usePathname()
   const supabase = useMemo(() => supabaseBrowser(), [])
   const [sessionUserId, setSessionUserId] = useState<string | null>(null)
@@ -223,7 +225,7 @@ export default function Navbar() {
                       }}
                       className="block w-full rounded-lg px-3 py-2 text-left text-red-300 transition hover:bg-red-950/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400/60"
                     >
-                      Logout
+                      {t('common.logout')}
                     </button>
                   </div>
                 ) : null}

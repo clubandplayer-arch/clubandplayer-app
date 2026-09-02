@@ -5,9 +5,10 @@ import Link from 'next/link';
 import FollowButton from '@/components/clubs/FollowButton';
 import ApplyCell from '@/components/opportunities/ApplyCell';
 import type { Opportunity } from '@/types/opportunity';
-import { opportunityGenderLabel } from '@/lib/opps/gender';
 import { useProvinceAbbreviations } from '@/hooks/useProvinceAbbreviations';
 import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
+import { useI18n } from '@/components/i18n/I18nProvider';
+import { localizeOpportunityGender, localizeSport, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 
 type Role = 'athlete' | 'club' | 'staff' | 'fan' | 'guest';
 type ApiOne<T> = { data?: T; [k: string]: any };
@@ -47,6 +48,7 @@ function fmtAge(min?: number | null, max?: number | null) {
 }
 
 export default function OpportunityDetailClient({ id }: { id: string }) {
+  const { t, locale } = useI18n();
   const [opp, setOpp] = useState<OpportunityWithLegacy | null>(null);
   const [role, setRole] = useState<Role>('guest');
   const [meId, setMeId] = useState<string | null>(null);
@@ -84,21 +86,21 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
     (async () => {
       try {
         const r = await fetch(`/api/opportunities/${id}`, { credentials: 'include', cache: 'no-store' });
-        const t = await r.text();
+        const responseText = await r.text();
         if (!r.ok) {
           let msg = `HTTP ${r.status}`;
           try {
-            const j = JSON.parse(t);
+            const j = JSON.parse(responseText);
             msg = j.error || j.message || msg;
           } catch {}
           throw new Error(msg);
         }
-        const j: ApiOne<OpportunityWithLegacy> = t ? JSON.parse(t) : {};
+        const j: ApiOne<OpportunityWithLegacy> = responseText ? JSON.parse(responseText) : {};
         const o = (j.data ?? j) as any;
-        if (!o?.id) throw new Error('Annuncio non trovato');
+        if (!o?.id) throw new Error(t('opportunity.notFound'));
         if (!cancelled) setOpp(o as OpportunityWithLegacy);
       } catch (e: any) {
-        if (!cancelled) setErr(e.message || 'Errore caricamento annuncio');
+        if (!cancelled) setErr(e.message || t('opportunities.loadError'));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -106,7 +108,7 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, t]);
 
   const isOwner = useMemo(() => {
     if (!meId || !opp) return false;
@@ -117,9 +119,9 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
   const showApply = (role === 'athlete' || role === 'staff') && !isOwner;
   const provinceAbbreviations = useProvinceAbbreviations();
 
-  if (loading) return <div className="p-4">Caricamento…</div>;
+  if (loading) return <div className="p-4">{t('common.loading')}</div>;
   if (err) return <div className="p-4 text-red-700 bg-red-50 border rounded-xl">{err}</div>;
-  if (!opp) return <div className="p-4">Annuncio non trovato.</div>;
+  if (!opp) return <div className="p-4">{t('opportunity.notFound')}</div>;
 
   // Normalizzazioni lato UI (camelCase ➜ legacy fallback)
   const city = opp.city ?? null;
@@ -129,14 +131,15 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
   const place = [city, province, region, country].filter(Boolean).join(', ');
 
   const createdAtStr = (opp.createdAt ?? opp.created_at ?? null) || undefined;
-  const created = createdAtStr ? new Date(createdAtStr).toLocaleString() : '—';
+  const created = createdAtStr ? new Date(createdAtStr).toLocaleString(locale) : '—';
 
   const sport = opp.sport ?? null;
   const ageMin = (opp.ageMin ?? opp.age_min) ?? null;
   const ageMax = (opp.ageMax ?? opp.age_max) ?? null;
 
   const rawGender = opp.gender ?? null;
-  const gender = opportunityGenderLabel(rawGender) ?? undefined;
+  const sportLabel = localizeSport(sport, t);
+  const gender = localizeOpportunityGender(rawGender, t) ?? undefined;
 
   const createdBy = opp.createdBy ?? opp.created_by ?? null;
   const clubName = opp.clubName ?? opp.club_name ?? undefined;
@@ -146,7 +149,7 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
     <div className="p-4 md:p-6">
       <div className="mb-4">
         <Link href="/opportunities" className="text-sm text-gray-600 hover:underline">
-          ← Torna agli annunci
+          ← {t('opportunity.back')}
         </Link>
       </div>
 
@@ -155,11 +158,11 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
           <div className="min-w-0">
             <h1 className="text-xl font-semibold">{opp.title}</h1>
             <div className="mt-1 text-sm text-gray-600 flex flex-wrap items-center gap-2">
-              <span>{sport ?? '—'}</span>
+              <span>{sportLabel ?? '—'}</span>
               <span>•</span>
-              <span>{opp.role ?? '—'}</span>
+              <span>{localizeSportRole(opp.role, t) ?? '—'}</span>
               <span>•</span>
-              <span>Età: {fmtAge(ageMin, ageMax)}</span>
+              <span>{t('opportunities.age')}: {fmtAge(ageMin, ageMax)}</span>
               {gender && (
                 <>
                   <span>•</span>

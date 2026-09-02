@@ -1,4 +1,5 @@
 'use client';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 import { ReactNode, useEffect } from 'react';
 import { createPortal } from 'react-dom';
@@ -14,6 +15,7 @@ export default function Modal({
   children: ReactNode;
   onClose: () => void;
 }) {
+  const { t } = useI18n();
   useEffect(() => {
     const onEsc = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     if (open) document.addEventListener('keydown', onEsc);
@@ -28,7 +30,7 @@ export default function Modal({
       <div className="relative mx-auto mt-16 w-[95%] max-w-lg overflow-hidden rounded-2xl border bg-white shadow-2xl sm:mt-0">
         <div className="flex items-center justify-between border-b px-5 py-3">
           <h3 className="text-lg font-semibold">{title}</h3>
-          <button onClick={onClose} className="rounded-lg px-2 py-1 hover:bg-gray-100" aria-label="Chiudi modale">
+          <button onClick={onClose} className="rounded-lg px-2 py-1 hover:bg-gray-100" aria-label={t('common.close')}>
             ✕
           </button>
         </div>

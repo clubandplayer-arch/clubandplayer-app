@@ -1,4 +1,5 @@
 'use client';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
@@ -15,6 +16,7 @@ type Op = Partial<Opportunity> & {
 };
 
 export default function FeedLatest() {
+  const { t, locale } = useI18n();
   const [items, setItems] = useState<Op[] | null>(null); // null = loading
 
   useEffect(() => {
@@ -113,7 +115,7 @@ export default function FeedLatest() {
     return (
       <div className="rounded-xl border bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
         <div className="text-sm text-neutral-600 dark:text-neutral-300">
-          Nessuna opportunità recente.
+          {t('feed.noRecentOpportunities')}
         </div>
         <div className="mt-3">
           <Link
@@ -130,7 +132,7 @@ export default function FeedLatest() {
   return (
     <div className="rounded-xl border bg-white p-0 shadow-sm dark:border-neutral-800 dark:bg-neutral-900 overflow-hidden">
       <div className="border-b p-4 text-sm font-semibold dark:border-neutral-800">
-        Ultime opportunità
+        {t('feed.latestOpportunities')}
       </div>
 
       <ul className="divide-y dark:divide-neutral-800">
@@ -144,7 +146,7 @@ export default function FeedLatest() {
                 </div>
                 {row.when && (
                   <div className="truncate text-xs text-neutral-400 mt-1">
-                    {new Date(row.when).toLocaleDateString('it-IT')}
+                    {new Date(row.when).toLocaleDateString(locale)}
                   </div>
                 )}
               </div>
@@ -153,13 +155,13 @@ export default function FeedLatest() {
                   href={row.id ? `/opportunities/${row.id}` : '/opportunities'}
                   className="rounded-md border px-3 py-1.5 text-xs hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
                 >
-                  Apri
+                  {t('feed.open')}
                 </Link>
                 <Link
                   href={row.id ? `/opportunities/${row.id}` : '/opportunities'}
                   className="rounded-md border px-3 py-1.5 text-xs hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
                 >
-                  Dettagli
+                  {t('opportunities.details')}
                 </Link>
               </div>
             </div>
@@ -172,7 +174,7 @@ export default function FeedLatest() {
           href="/opportunities"
           className="text-blue-600 hover:underline dark:text-blue-400"
         >
-          Vedi tutte
+          {t('feed.viewAll')}
         </Link>
       </div>
     </div>

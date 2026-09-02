@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { MaterialIcon } from '@/components/icons/MaterialIcon';
 import useIsClub from '@/hooks/useIsClub';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 type ApiStaffMember = {
   staffProfileId?: string;
@@ -74,6 +75,7 @@ function normalizeRole(value: string | null | undefined) {
 }
 
 export default function ClubStaffPage() {
+  const { t } = useI18n();
   const { isClub, loading } = useIsClub();
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [loadingStaff, setLoadingStaff] = useState(true);
@@ -163,7 +165,7 @@ export default function ClubStaffPage() {
   if (!isClub) {
     return (
       <div className="page-shell max-w-2xl rounded-xl border bg-yellow-50 p-4 text-yellow-900">
-        Devi essere un <b>Club</b> per gestire lo staff.
+        {t('staff.clubOnly')}
       </div>
     );
   }
@@ -175,19 +177,19 @@ export default function ClubStaffPage() {
           <MaterialIcon name="network" fontSize={16} />
           <span>Staff</span>
         </div>
-        <h1 className="heading-h1">Staff</h1>
-        <p className="text-sm text-neutral-600">Qui trovi i profili staff che hai collegato al tuo club.</p>
+        <h1 className="heading-h1">{t('staff.title')}</h1>
+        <p className="text-sm text-neutral-600">{t('staff.help')}</p>
       </header>
 
       {error ? <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div> : null}
-      {loadingStaff ? <div className="glass-panel p-4 text-sm text-neutral-700">Caricamento staff…</div> : null}
+      {loadingStaff ? <div className="glass-panel p-4 text-sm text-neutral-700">{t('staff.loading')}</div> : null}
 
       {!loadingStaff && !error && staff.length === 0 ? (
         <div className="glass-panel space-y-2 p-5 text-sm text-neutral-700">
-          <p className="font-semibold">Nessun membro dello staff ancora aggiunto.</p>
+          <p className="font-semibold">{t('staff.empty')}</p>
           <p>
             Vai su un profilo <Link href="/search?type=staff" className="underline">Staff</Link> e usa il pulsante
-            <span className="mx-1 rounded-full bg-fuchsia-100 px-2 py-0.5 text-[11px] font-semibold text-fuchsia-700">Aggiungi allo Staff</span>
+            <span className="mx-1 rounded-full bg-fuchsia-100 px-2 py-0.5 text-[11px] font-semibold text-fuchsia-700">{t('staff.add')}</span>
             per collegarlo al tuo club.
           </p>
         </div>
@@ -234,6 +236,7 @@ export default function ClubStaffPage() {
 }
 
 function StaffCard({ member, onRemoved }: { member: StaffMember; onRemoved: () => void }) {
+  const { t } = useI18n();
   const initials = getInitials(member.name);
   const [removing, setRemoving] = useState(false);
 
@@ -269,7 +272,7 @@ function StaffCard({ member, onRemoved }: { member: StaffMember; onRemoved: () =
         </div>
       </Link>
       <button type="button" onClick={handleRemove} disabled={removing} className="rounded-md border border-fuchsia-200 px-2 py-1 text-xs font-semibold text-fuchsia-700 hover:bg-fuchsia-50 disabled:opacity-60">
-        {removing ? 'Rimozione…' : 'Rimuovi'}
+        {removing ? t('roster.removing') : t('roster.remove')}
       </button>
     </div>
   );

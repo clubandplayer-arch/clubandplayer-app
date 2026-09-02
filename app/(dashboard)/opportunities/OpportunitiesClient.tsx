@@ -1,21 +1,23 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 
 import OpportunitiesTable from '@/components/opportunities/OpportunitiesTable';
 import Modal from '@/components/ui/Modal';
 import OpportunityForm from '@/components/opportunities/OpportunityForm';
+import CanonicalGeographySelector from '@/components/geo/CanonicalGeographySelector';
 import type { OpportunitiesApiResponse, Opportunity } from '@/types/opportunity';
 
-import { COUNTRIES } from '@/lib/geo/countries';
 import { AGE_BRACKETS, normalizeSport, SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
 import { CATEGORIES_BY_SPORT } from '@/lib/opps/categories';
-import { useGeo } from '@/hooks/useGeo';
+import { useI18n } from '@/components/i18n/I18nProvider';
+import { localizeOpportunityCategory, localizeSport, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 
 type Role = 'athlete' | 'club' | 'staff' | 'fan' | 'guest';
 
 export default function OpportunitiesClient() {
+  const { t } = useI18n();
   const router = useRouter();
   const sp = useSearchParams();
 
@@ -33,94 +35,15 @@ export default function OpportunitiesClient() {
   const [openCreate, setOpenCreate] = useState(false);
   const [editItem, setEditItem] = useState<Opportunity | null>(null);
   const [deleteItem, setDeleteItem] = useState<Opportunity | null>(null);
-  const { regions, getProvinces, getMunicipalities } = useGeo();
-  const [regionId, setRegionId] = useState<number | null>(null);
-  const [provinceId, setProvinceId] = useState<number | null>(null);
-  const [municipalityId, setMunicipalityId] = useState<number | null>(null);
-  const [availableProvinces, setAvailableProvinces] = useState<Array<{ id: number; name: string }>>([]);
-  const [availableMunicipalities, setAvailableMunicipalities] = useState<Array<{ id: number; name: string }>>([]);
-  const [countryCode, setCountryCode] = useState(() => sp.get('country') ?? '');
-  const [region, setRegion] = useState(() => sp.get('region') ?? '');
-  const [province, setProvince] = useState(() => sp.get('province') ?? '');
-  const [city, setCity] = useState(() => sp.get('city') ?? '');
+  const filterCountryId = sp.get('countryId') ?? sp.get('country_id');
+  const filterGeoAreaId = sp.get('geoAreaId') ?? sp.get('geo_area_id');
+  const countryChangeResetsArea = useRef(false);
   const selectedCategory = sp.get('category') ?? sp.get('required_category') ?? '';
   const selectedSport = sp.get('sport') ?? '';
   const normalizedSelectedSport = normalizeSport(selectedSport) ?? selectedSport;
   const selectedRole = sp.get('role') ?? '';
   const selectedRoleGroup = sp.get('role_group') ?? sp.get('roleGroup') ?? '';
 
-  useEffect(() => {
-    setCountryCode(sp.get('country') ?? '');
-    setRegion(sp.get('region') ?? '');
-    setProvince(sp.get('province') ?? '');
-    setCity(sp.get('city') ?? '');
-    setRegionId(null);
-    setProvinceId(null);
-    setMunicipalityId(null);
-  }, [sp]);
-
-  const availableRegions = useMemo(() => (countryCode === 'IT' ? regions : []), [countryCode, regions]);
-
-  useEffect(() => {
-    if (countryCode !== 'IT' || !regionId) {
-      setAvailableProvinces([]);
-      return;
-    }
-    let active = true;
-    (async () => {
-      const rows = await getProvinces(regionId).catch(() => []);
-      if (!active) return;
-      setAvailableProvinces(rows.map((r) => ({ id: Number(r.id), name: r.name })));
-    })();
-    return () => {
-      active = false;
-    };
-  }, [countryCode, regionId, getProvinces]);
-
-  useEffect(() => {
-    if (countryCode !== 'IT' || !provinceId) {
-      setAvailableMunicipalities([]);
-      return;
-    }
-    let active = true;
-    (async () => {
-      const rows = await getMunicipalities(provinceId).catch(() => []);
-      if (!active) return;
-      setAvailableMunicipalities(rows.map((r) => ({ id: Number(r.id), name: r.name })));
-    })();
-    return () => {
-      active = false;
-    };
-  }, [countryCode, provinceId, getMunicipalities]);
-
-  useEffect(() => {
-    if (countryCode !== 'IT') {
-      setRegionId(null);
-      setProvinceId(null);
-      setMunicipalityId(null);
-      return;
-    }
-    if (region && !regionId && availableRegions.length) {
-      const matched = availableRegions.find((r) => r.name === region);
-      if (matched) setRegionId(matched.id);
-    }
-  }, [countryCode, region, regionId, availableRegions]);
-
-  useEffect(() => {
-    if (countryCode !== 'IT') return;
-    if (province && !provinceId && availableProvinces.length) {
-      const matched = availableProvinces.find((p) => p.name === province);
-      if (matched) setProvinceId(matched.id);
-    }
-  }, [countryCode, province, provinceId, availableProvinces]);
-
-  useEffect(() => {
-    if (countryCode !== 'IT') return;
-    if (city && !municipalityId && availableMunicipalities.length) {
-      const matched = availableMunicipalities.find((m) => m.name === city);
-      if (matched) setMunicipalityId(matched.id);
-    }
-  }, [countryCode, city, municipalityId, availableMunicipalities]);
 
   const updateParams = useCallback((mutator: (params: URLSearchParams) => void, options?: { resetPage?: boolean }) => {
     const base = new URLSearchParams(sp.toString());
@@ -192,6 +115,7 @@ export default function OpportunitiesClient() {
     for (const k of [
       'q', 'page', 'pageSize', 'sort',
       'country', 'region', 'province', 'city', 'club',
+      'countryId', 'country_id', 'geoAreaId', 'geo_area_id',
       'clubId', 'club_id',
       'sport', 'role', 'age',
       'role_group',
@@ -437,7 +361,7 @@ export default function OpportunitiesClient() {
   return (
     <div className="page-shell space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <h1 className="heading-h1">Opportunità</h1>
+        <h1 className="heading-h1">{t('opportunities.title')}</h1>
         {/* CTA spostata in topbar (link /opportunities?new=1) */}
       </div>
 
@@ -445,121 +369,46 @@ export default function OpportunitiesClient() {
       <div className="space-y-4 rounded-2xl border p-4 bg-white/70 shadow-sm">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-2">
           <input
-            placeholder="Cerca per titolo/descrizione…"
+            placeholder={t('opportunities.searchPlaceholder')}
             defaultValue={sp.get('q') ?? ''}
             onChange={(e) => setParam('q', e.currentTarget.value)}
             className="w-full rounded-xl border px-4 py-2"
           />
 
           <input
-            placeholder="Nome club/squadra"
+            placeholder={t('opportunities.clubPlaceholder')}
             defaultValue={sp.get('club') ?? ''}
             onBlur={(e) => setParam('club', e.currentTarget.value)}
             className="w-full rounded-xl border px-3 py-2"
           />
         </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <select
-            value={countryCode}
-            onChange={(e) => {
-              const nextCode = e.target.value;
-              setCountryCode(nextCode);
-              setRegion('');
-              setProvince('');
-              setCity('');
-              setRegionId(null);
-              setProvinceId(null);
-              setMunicipalityId(null);
+        <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+          <CanonicalGeographySelector
+            idPrefix="opportunity-filter-geography"
+            countryId={filterCountryId}
+            geoAreaId={filterGeoAreaId}
+            onCountryChange={(countryId) => {
+              countryChangeResetsArea.current = true;
               updateParams((p) => {
-                if (nextCode) p.set('country', nextCode);
-                else p.delete('country');
-                p.delete('region');
-                p.delete('province');
-                p.delete('city');
+                for (const key of ['country', 'region', 'province', 'city', 'country_id', 'geo_area_id', 'geoAreaId']) p.delete(key);
+                if (countryId) p.set('countryId', countryId);
+                else p.delete('countryId');
               });
             }}
-            className="w-full rounded-xl border px-3 py-2"
-          >
-            <option value="">Paese</option>
-            {COUNTRIES.map((c) => (
-              <option key={c.code} value={c.code}>
-                {c.label}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={regionId ? String(regionId) : ''}
-            onChange={(e) => {
-              const nextRegionId = e.target.value ? Number(e.target.value) : null;
-              const nextRegionName = nextRegionId ? (availableRegions.find((r) => r.id === nextRegionId)?.name ?? '') : '';
-              setRegionId(nextRegionId);
-              setRegion(nextRegionName);
-              setProvinceId(null);
-              setMunicipalityId(null);
-              setProvince('');
-              setCity('');
+            onGeoAreaChange={(geoAreaId) => {
+              if (countryChangeResetsArea.current && !geoAreaId) {
+                countryChangeResetsArea.current = false;
+                return;
+              }
+              countryChangeResetsArea.current = false;
               updateParams((p) => {
-                if (nextRegionName) p.set('region', nextRegionName);
-                else p.delete('region');
-                p.delete('province');
-                p.delete('city');
+                p.delete('geo_area_id');
+                if (geoAreaId) p.set('geoAreaId', geoAreaId);
+                else p.delete('geoAreaId');
               });
             }}
-            className="w-full rounded-xl border px-3 py-2"
-            disabled={!countryCode || countryCode !== 'IT'}
-          >
-            <option value="">Regione</option>
-            {availableRegions.map((r) => (
-              <option key={r.id} value={String(r.id)}>{r.name}</option>
-            ))}
-          </select>
-
-          <select
-            value={provinceId ? String(provinceId) : ''}
-            onChange={(e) => {
-              const nextProvinceId = e.target.value ? Number(e.target.value) : null;
-              const nextProvinceName = nextProvinceId ? (availableProvinces.find((p) => p.id === nextProvinceId)?.name ?? '') : '';
-              setProvinceId(nextProvinceId);
-              setProvince(nextProvinceName);
-              setMunicipalityId(null);
-              setCity('');
-              updateParams((p) => {
-                if (nextProvinceName) p.set('province', nextProvinceName);
-                else p.delete('province');
-                p.delete('city');
-              });
-            }}
-            className="w-full rounded-xl border px-3 py-2"
-            disabled={!regionId || countryCode !== 'IT'}
-          >
-            <option value="">Provincia</option>
-            {availableProvinces.map((p) => (
-              <option key={p.id} value={String(p.id)}>{p.name}</option>
-            ))}
-          </select>
-
-          <select
-            value={municipalityId ? String(municipalityId) : ''}
-            onChange={(e) => {
-              const nextMunicipalityId = e.target.value ? Number(e.target.value) : null;
-              const nextCityName = nextMunicipalityId ? (availableMunicipalities.find((c) => c.id === nextMunicipalityId)?.name ?? '') : '';
-              setMunicipalityId(nextMunicipalityId);
-              setCity(nextCityName);
-              updateParams((p) => {
-                if (nextCityName) p.set('city', nextCityName);
-                else p.delete('city');
-              });
-            }}
-            className="w-full rounded-xl border px-3 py-2"
-            disabled={!provinceId || countryCode !== 'IT'}
-          >
-            <option value="">Città</option>
-            {availableMunicipalities.map((c) => (
-              <option key={c.id} value={String(c.id)}>{c.name}</option>
-            ))}
-          </select>
+          />
         </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -568,10 +417,10 @@ export default function OpportunitiesClient() {
             onChange={(e) => handleSportChange(e.target.value)}
             className="w-full rounded-xl border px-3 py-2"
           >
-            <option value="">Sport</option>
+            <option value="">{t('opportunities.sport')}</option>
             {SPORTS.map((s: string) => (
               <option key={s} value={s}>
-                {s}
+                {localizeSport(s, t)}
               </option>
             ))}
           </select>
@@ -582,10 +431,10 @@ export default function OpportunitiesClient() {
             className="w-full rounded-xl border px-3 py-2"
             disabled={!selectedSport}
           >
-            <option value="">{selectedSport ? 'Ruolo/posizione' : 'Seleziona uno sport'}</option>
+            <option value="">{selectedSport ? t('opportunities.role') : t('opportunities.selectSport')}</option>
             {roleOptions.map((r) => (
               <option key={r} value={r}>
-                {r}
+                {localizeSportRole(r, t)}
               </option>
             ))}
           </select>
@@ -595,7 +444,7 @@ export default function OpportunitiesClient() {
             onChange={(e) => setParam('role_group', e.target.value)}
             className="w-full rounded-xl border px-3 py-2"
           >
-            <option value="">Gruppo ruolo: Tutte</option>
+            <option value="">{t('opportunities.allRoleGroups')}</option>
             <option value="player">Player</option>
             <option value="staff">Staff</option>
           </select>
@@ -609,10 +458,10 @@ export default function OpportunitiesClient() {
             className="w-full rounded-xl border px-3 py-2"
             disabled={!selectedSport}
           >
-            <option value="">{selectedSport ? 'Categoria/Livello' : 'Seleziona uno sport'}</option>
+            <option value="">{selectedSport ? t('opportunities.category') : t('opportunities.selectSport')}</option>
             {categoryOptions.map((c) => (
               <option key={c} value={c}>
-                {c}
+                {localizeOpportunityCategory(c, t)}
               </option>
             ))}
           </select>
@@ -622,7 +471,7 @@ export default function OpportunitiesClient() {
             onChange={(e) => setParam('age', e.target.value)}
             className="w-full rounded-xl border px-3 py-2"
           >
-            <option value="">Età</option>
+            <option value="">{t('opportunities.age')}</option>
             {AGE_BRACKETS.map((b: string) => (
               <option key={b} value={b}>
                 {b}
@@ -633,14 +482,14 @@ export default function OpportunitiesClient() {
 
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
           <div className="flex w-full items-center gap-2 sm:w-auto">
-            <label className="text-sm text-gray-600">Ordina</label>
+            <label className="text-sm text-gray-600">{t('opportunities.sort')}</label>
             <select
               value={sp.get('sort') ?? 'recent'}
               onChange={(e) => setParam('sort', e.target.value)}
               className="w-full rounded-xl border px-3 py-2 sm:w-44"
             >
-              <option value="recent">Più recenti</option>
-              <option value="oldest">Meno recenti</option>
+              <option value="recent">{t('opportunities.recent')}</option>
+              <option value="oldest">{t('opportunities.oldest')}</option>
             </select>
           </div>
           <button
@@ -651,7 +500,7 @@ export default function OpportunitiesClient() {
             Inverti ordine
           </button>
           <div className="flex w-full items-center gap-2 sm:w-auto">
-            <label className="text-sm text-gray-600">Per pagina</label>
+            <label className="text-sm text-gray-600">{t('opportunities.perPage')}</label>
             <select
               value={sp.get('pageSize') ?? '20'}
               onChange={(e) => setParam('pageSize', e.target.value)}
@@ -685,17 +534,17 @@ export default function OpportunitiesClient() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm text-gray-700">
           <div className="rounded-xl border bg-gray-50 p-3">
-            <p className="text-xs text-gray-500">Totale risultati</p>
+            <p className="text-xs text-gray-500">{t('opportunities.totalResults')}</p>
             <p className="text-2xl font-semibold">{items.length}</p>
             <p className="text-xs text-gray-500">{data?.total ? `${data.totalIsExact === false ? '≥ ' : ''}${data.total} risultati` : 'Vista corrente'}</p>
           </div>
           <div className="rounded-xl border bg-gray-50 p-3">
-            <p className="text-xs text-gray-500">Club unici</p>
+            <p className="text-xs text-gray-500">{t('opportunities.uniqueClubs')}</p>
             <p className="text-2xl font-semibold">{new Set(items.map((o) => o.created_by || o.owner_id || o.club_name)).size}</p>
-            <p className="text-xs text-gray-500">in questa vista</p>
+            <p className="text-xs text-gray-500">{t('opportunities.currentView')}</p>
           </div>
           <div className="rounded-xl border bg-gray-50 p-3">
-            <p className="text-xs text-gray-500">Area prevalente</p>
+            <p className="text-xs text-gray-500">{t('opportunities.mainArea')}</p>
             <p className="text-sm font-medium">
               {(() => {
                 const byRegion = items.reduce((acc, curr) => {
@@ -707,7 +556,7 @@ export default function OpportunitiesClient() {
                 return top ? `${top[0]} (${top[1]})` : 'Nessuna area';
               })()}
             </p>
-            <p className="text-xs text-gray-500">ordinata per occorrenze</p>
+            <p className="text-xs text-gray-500">{t('opportunities.byOccurrences')}</p>
           </div>
         </div>
 
@@ -715,7 +564,7 @@ export default function OpportunitiesClient() {
 
       {err && (
         <div className="border rounded-xl p-4 bg-red-50 text-red-700">
-          Errore nel caricamento: {err}{' '}
+          {t('opportunities.loadError')}: {err}{' '}
           <button onClick={() => setReloadKey((k) => k + 1)} className="ml-3 px-3 py-1 border rounded-lg bg-white hover:bg-gray-50">
             Riprova
           </button>
@@ -746,7 +595,7 @@ export default function OpportunitiesClient() {
             }}
           />
         ) : (
-          <div className="text-sm text-gray-600">Devi essere un club per creare un’opportunità.</div>
+          <div className="text-sm text-gray-600">{t('opportunities.clubOnly')}</div>
         )}
       </Modal>
 

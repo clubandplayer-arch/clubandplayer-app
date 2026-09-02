@@ -5,10 +5,12 @@ export const fetchCache = 'default-no-store';
 
 ;
 
+import { useI18n } from '@/components/i18n/I18nProvider';
 import { useEffect, useState } from 'react';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 export default function ResetPasswordPage() {
+  const { t } = useI18n();
   const supabase = supabaseBrowser();
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
@@ -34,9 +36,9 @@ export default function ResetPasswordPage() {
       const redirectTo = `${window.location.origin}/update-password`;
       const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
       if (error) throw error;
-      setOk('Email inviata. Controlla la tua casella e segui il link per impostare la nuova password.');
+      setOk(t('auth.resetSent'));
     } catch (e: any) {
-      setErr(e?.message ?? 'Errore durante l’invio dell’email di reset.');
+      setErr(e?.message ?? t('auth.resetError'));
     } finally {
       setBusy(false);
     }
@@ -45,10 +47,9 @@ export default function ResetPasswordPage() {
   return (
     <main className="min-h-[60vh] flex items-center justify-center p-6">
       <div className="w-full max-w-sm rounded-2xl border p-6 shadow-sm space-y-4">
-        <h1 className="text-xl font-semibold">Reimposta password</h1>
+        <h1 className="text-xl font-semibold">{t('auth.resetTitle')}</h1>
         <p className="text-sm leading-relaxed text-gray-600">
-          Usa questa procedura se ti sei registrato con email e password. Se accedi con Google o Apple, continua con il
-          relativo pulsante social nella pagina di login.
+          {t('auth.resetHelp')}
         </p>
 
         {err && <p className="rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700">{err}</p>}
@@ -72,12 +73,12 @@ export default function ResetPasswordPage() {
             disabled={busy}
             className="w-full rounded-md bg-black px-4 py-2 text-white disabled:opacity-50"
           >
-            {busy ? 'Invio…' : 'Invia email di reset'}
+            {busy ? t('auth.sending') : t('auth.sendReset')}
           </button>
         </form>
 
         <p className="text-xs text-gray-500">
-          Riceverai un link che ti porterà alla pagina <code>/update-password</code> per impostare la nuova password.
+          {t('auth.resetLinkHelp')}
         </p>
         <p className="text-center text-sm text-gray-600">
           <a href="/login" className="underline underline-offset-4">

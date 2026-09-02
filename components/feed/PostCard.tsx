@@ -16,6 +16,7 @@ import CertifiedCMarkSidebar from '@/components/badges/CertifiedCMarkSidebar';
 import { createPostShareLink } from '@/lib/share';
 import { buildClubDisplayName, buildProfileDisplayName } from '@/lib/displayName';
 import ShareModal from '@/components/feed/ShareModal';
+import { useI18n } from '@/components/i18n/I18nProvider';
 import {
   REACTION_EMOJI,
   REACTION_ORDER,
@@ -76,6 +77,7 @@ export function PostCard({
   onAuthorBlocked,
   onRepost,
 }: PostCardProps) {
+  const { t } = useI18n();
   const LONG_PRESS_MS = 500;
   const isEvent = (post.kind ?? 'normal') === 'event';
   const eventDetails = post.event_payload;
@@ -191,7 +193,7 @@ export function PostCard({
     (key) => `${REACTION_EMOJI[key]} ${reaction.counts[key]}`,
   );
   const totalReactions = REACTION_ORDER.reduce((acc, key) => acc + (reaction.counts[key] || 0), 0);
-  const reactionSummaryText = reactionSummaryParts.length ? reactionSummaryParts.join(' · ') : 'Nessuna reazione';
+  const reactionSummaryText = reactionSummaryParts.length ? reactionSummaryParts.join(' · ') : t('feed.noReactions');
 
   const actionIconClass = 'text-[18px] leading-none align-middle';
 
@@ -453,7 +455,7 @@ export function PostCard({
       {editing ? (
         <div className="mt-2 space-y-2">
           <label htmlFor={editAreaId} className="sr-only">
-            Modifica il contenuto del post
+            {t('feed.editPost')}
           </label>
           <textarea
             id={editAreaId}
@@ -472,7 +474,7 @@ export function PostCard({
               disabled={saving}
               className="rounded-lg bg-gray-900 px-3 py-1 text-sm font-semibold text-white disabled:opacity-50"
             >
-              {saving ? 'Salvataggio…' : 'Salva'}
+              {saving ? t('settings.saving') : t('common.save')}
             </button>
             <button
               type="button"
@@ -483,7 +485,7 @@ export function PostCard({
               disabled={saving}
               className="rounded-lg px-3 py-1 text-sm font-semibold text-gray-700 hover:bg-gray-100 disabled:opacity-50"
             >
-              Annulla
+              {t('common.cancel')}
             </button>
           </div>
           {error ? (
@@ -511,7 +513,7 @@ export function PostCard({
                   className="text-sm font-semibold text-[var(--brand)] transition hover:text-[var(--brand-dark)] hover:underline"
                   aria-expanded={descriptionExpanded}
                 >
-                  {descriptionExpanded ? 'Mostra meno' : 'Leggi tutto'}
+                  {descriptionExpanded ? t('feed.showLess') : t('feed.readAll')}
                 </button>
               )}
             </div>
@@ -522,7 +524,7 @@ export function PostCard({
               post={post.quoted_post}
               quotedPostId={post.quoted_post_id}
               onRepost={onRepost}
-              missingText="Questo post non è più disponibile"
+              missingText={t('feed.originalUnavailable')}
             />
           ) : null}
 
@@ -548,7 +550,7 @@ export function PostCard({
           ) : null}{' '}
           {reactionSummaryText}
         </div>
-        <div>{commentCount > 0 ? `${commentCount} commenti` : 'Nessun commento'}</div>
+        <div>{commentCount > 0 ? t('feed.commentsCount', { count: commentCount }) : t('feed.noComments')}</div>
       </div>
 
       <div
@@ -588,14 +590,14 @@ export function PostCard({
             aria-pressed={reaction.mine === 'like'}
           >
             <span aria-hidden className="text-xl">{REACTION_EMOJI[reaction.mine ?? 'like']}</span>
-            <span>Reagisci</span>
+            <span>{t('feed.react')}</span>
           </button>
 
           <button
             type="button"
             className="rounded-full bg-slate-50 px-2 py-1 text-[11px] text-neutral-600 shadow-inner transition hover:bg-slate-100"
             onClick={() => (pickerOpen ? onClosePicker() : onOpenPicker())}
-            aria-label="Scegli reazione"
+            aria-label={t('feed.chooseReaction')}
           >
             ⋯
           </button>
@@ -634,7 +636,7 @@ export function PostCard({
           onClick={() => setCommentSignal((v) => v + 1)}
         >
           <span aria-hidden>💬</span>
-          <span>Commenta</span>
+          <span>{t('feed.comment')}</span>
         </button>
       </div>
 

@@ -17,6 +17,7 @@ import BrandLogo from '@/components/brand/BrandLogo';
 import { buildProfileDisplayName } from '@/lib/displayName';
 import MobileSearchOverlay from '@/components/search/MobileSearchOverlay';
 import { startRealtimePresence, stopRealtimePresence } from '@/lib/presence/realtimePresence';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 type Role = 'athlete' | 'club' | 'staff' | 'fan' | 'admin' | 'institution' | 'guest';
 
@@ -37,6 +38,7 @@ function hasValidAccountType(profile: any): boolean {
 }
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
+  const { t } = useI18n();
   const pathname = usePathname();
   const router = useRouter();
   const [role, setRole] = useState<Role>('guest');
@@ -162,20 +164,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     () => {
       if (isInstitution) {
         return [
-          { label: 'Messaggi', href: '/messages', icon: 'mail' },
-          { label: 'Mappa Club', href: '/club-map', icon: 'map' },
-          { label: 'Notifiche', href: '/notifications', icon: 'notifications' },
+          { label: t('navigation.messages'), href: '/messages', icon: 'mail' },
+          { label: t('navigation.clubMap'), href: '/club-map', icon: 'map' },
+          { label: t('navigation.notifications'), href: '/notifications', icon: 'notifications' },
         ];
       }
       return [
-        ...(isFan ? [] : [{ label: 'Opportunità', href: '/opportunities', icon: 'opportunities' as const }]),
-        ...(isFan ? [] : [{ label: 'Candidature', href: applicationsHref, icon: 'applications' as const }]),
-        { label: 'Messaggi', href: '/messages', icon: 'mail' },
-        { label: 'Mappa Club', href: '/club-map', icon: 'map' },
-        { label: 'Notifiche', href: '/notifications', icon: 'notifications' },
+        ...(isFan ? [] : [{ label: t('navigation.opportunities'), href: '/opportunities', icon: 'opportunities' as const }]),
+        ...(isFan ? [] : [{ label: t('navigation.applications'), href: applicationsHref, icon: 'applications' as const }]),
+        { label: t('navigation.messages'), href: '/messages', icon: 'mail' },
+        { label: t('navigation.clubMap'), href: '/club-map', icon: 'map' },
+        { label: t('navigation.notifications'), href: '/notifications', icon: 'notifications' },
       ];
     },
-    [applicationsHref, isFan, isInstitution],
+    [applicationsHref, isFan, isInstitution, t],
   );
 
   const isActive = (href: string) => pathname === href || (!!pathname && pathname.startsWith(href + '/'));
@@ -255,20 +257,21 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       );
 
-      items.push({ key: 'profile', label: 'Profilo', href: profileHref, icon: profileIcon });
+      items.push({ key: 'profile', label: t('common.profile'), href: profileHref, icon: profileIcon });
+      items.push({ key: 'settings', label: t('common.settings'), href: '/settings' });
       if (isClub) {
-        items.push({ key: 'verification', label: 'Verifica profilo', href: '/club/verification' });
+        items.push({ key: 'verification', label: t('navigation.verifyProfile'), href: '/club/verification' });
       }
-      items.push({ key: 'logout', label: 'Logout', href: '/logout', icon: <LogOut size={16} aria-hidden />, tone: 'danger' });
+      items.push({ key: 'logout', label: t('common.logout'), href: '/logout', icon: <LogOut size={16} aria-hidden />, tone: 'danger' });
     }
 
     if (role !== 'guest') {
-      items.push({ key: 'following', label: 'Seguiti', href: '/following', icon: <Users size={16} aria-hidden /> });
-      items.push({ key: 'who-to-follow', label: 'Chi seguire', href: '/who-to-follow', icon: <UserPlus size={16} aria-hidden /> });
+      items.push({ key: 'following', label: t('navigation.following'), href: '/following', icon: <Users size={16} aria-hidden /> });
+      items.push({ key: 'who-to-follow', label: t('navigation.whoToFollow'), href: '/who-to-follow', icon: <UserPlus size={16} aria-hidden /> });
     }
     if (isClub) {
-      items.push({ key: 'roster', label: 'Rosa', href: '/club/roster', icon: <MaterialIcon name="following" fontSize={16} /> });
-      items.push({ key: 'staff', label: 'Staff', href: '/club/staff', icon: <MaterialIcon name="network" fontSize={16} /> });
+      items.push({ key: 'roster', label: t('navigation.roster'), href: '/club/roster', icon: <MaterialIcon name="following" fontSize={16} /> });
+      items.push({ key: 'staff', label: t('navigation.staff'), href: '/club/staff', icon: <MaterialIcon name="network" fontSize={16} /> });
     }
 
     items.push(
@@ -292,7 +295,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             mappedItem,
             {
               key: 'create-opportunity',
-              label: 'Crea opportunità',
+              label: t('navigation.createOpportunity'),
               href: '/opportunities/new',
               icon: <MaterialIcon name="opportunities" fontSize={16} />,
             },
@@ -304,14 +307,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
 
     return items;
-  }, [avatarUrl, isClub, navItems, profileHref, profileInitials, role, unreadDirectThreads, unreadNotifications]);
+  }, [avatarUrl, isClub, navItems, profileHref, profileInitials, role, t, unreadDirectThreads, unreadNotifications]);
 
   return (
     <ToastProvider>
       <FollowProvider>
         <div className="min-h-screen bg-clubplayer-gradient">
           <header className="fixed inset-x-0 top-0 z-[100000] border-b bg-white/90 backdrop-blur">
-            <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4" style={{ ['--nav-h' as any]: '64px' }}>
+            <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 pl-4 pr-16 sm:pr-36" style={{ ['--nav-h' as any]: '64px' }}>
               <div
                 className="min-w-0 flex h-8 flex-shrink-0 items-center overflow-hidden md:h-10"
               >
@@ -338,8 +341,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                       setIsSearchOverlayOpen(true);
                       searchInputRef.current?.blur();
                     }}
-                    placeholder="Cerca club, player, opportunità, post, eventi…"
-                    aria-label="Cerca"
+                    placeholder={t('navigation.searchPlaceholder')}
+                    aria-label={t('common.search')}
                     className="h-10 w-full min-w-0 rounded-full border border-slate-200 bg-white/90 pl-10 pr-4 text-sm text-slate-700 shadow-sm transition focus:border-[var(--brand)] focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/20"
                   />
                 </div>
@@ -350,30 +353,30 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   {role !== 'guest' && (
                     <Link
                       href="/following"
-                      aria-label="Seguiti"
+                      aria-label={t('navigation.following')}
                       aria-current={isActive('/following') ? 'page' : undefined}
-                      title="Seguiti"
+                      title={t('navigation.following')}
                       className={`relative flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
                         isActive('/following') ? 'bg-slate-100 text-slate-800 shadow-sm' : 'hover:bg-slate-50'
                       }`}
                     >
                       <Users size={18} aria-hidden />
-                      <span className="sr-only">Seguiti</span>
+                      <span className="sr-only">{t('navigation.following')}</span>
                     </Link>
                   )}
                   {isClub && (
                     <>
                       <Link
                         href="/club/roster"
-                        aria-label="Rosa"
+                        aria-label={t('navigation.roster')}
                         aria-current={isActive('/club/roster') ? 'page' : undefined}
-                        title="Rosa"
+                        title={t('navigation.roster')}
                         className={`relative flex h-10 w-10 items-center justify-center rounded-xl text-pink-600 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
                           isActive('/club/roster') ? 'bg-pink-100 text-pink-700 shadow-sm' : 'hover:bg-pink-50'
                         }`}
                       >
                         <MaterialIcon name="following" fontSize="small" />
-                        <span className="sr-only">Rosa</span>
+                        <span className="sr-only">{t('navigation.roster')}</span>
                       </Link>
                       <Link
                         href="/club/staff"
@@ -465,7 +468,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                           onClick={() => setIsProfileMenuOpen(false)}
                           className="block rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
                         >
-                          Modifica profilo
+                          {t('navigation.editProfile')}
                         </Link>
                         {isInstitution ? (
                           <Link
@@ -484,7 +487,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                             onClick={() => setIsProfileMenuOpen(false)}
                             className="block rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
                           >
-                            Crea opportunità
+                            {t('navigation.createOpportunity')}
                           </Link>
                         )}
                         {isClub && (
@@ -494,19 +497,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                             onClick={() => setIsProfileMenuOpen(false)}
                             className="block rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
                           >
-                            Verifica profilo
+                            {t('navigation.verifyProfile')}
                           </Link>
                         )}
-                        {!isInstitution ? (
-                          <Link
-                            href="/settings"
-                            role="menuitem"
-                            onClick={() => setIsProfileMenuOpen(false)}
-                            className="block rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
-                          >
-                            Impostazioni
-                          </Link>
-                        ) : null}
+                        <Link
+                          href="/settings"
+                          role="menuitem"
+                          onClick={() => setIsProfileMenuOpen(false)}
+                          className="block rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
+                        >
+                          {t('common.settings')}
+                        </Link>
                         <div className="my-1 h-px bg-slate-200" role="separator" />
                         <Link
                           href="/logout"
@@ -514,7 +515,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                           onClick={() => setIsProfileMenuOpen(false)}
                           className="block rounded-lg px-3 py-2 text-red-600 transition hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-200"
                         >
-                          Logout
+                          {t('common.logout')}
                         </Link>
                       </div>
                     ) : null}
@@ -526,7 +527,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 type="button"
                 className="inline-flex items-center justify-center rounded-md border px-3 py-2 text-sm text-neutral-700 transition hover:bg-neutral-100 md:hidden"
                 onClick={() => setIsMenuOpen((v) => !v)}
-                aria-label={isMenuOpen ? 'Chiudi menu di navigazione' : 'Apri menu di navigazione'}
+                aria-label={isMenuOpen ? t('navigation.closeMenu') : t('navigation.openMenu')}
                 aria-expanded={isMenuOpen}
               >
                 {isMenuOpen ? <NavCloseIcon fontSize="small" aria-hidden /> : <NavMenuIcon fontSize="small" aria-hidden />}

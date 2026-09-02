@@ -355,7 +355,7 @@ export default function FeedClient() {
                   <div className="mt-1 text-[9px] text-neutral-400">
                     {new Date(
                       post.createdAt
-                    ).toLocaleString('it-IT')}
+                    ).toLocaleString(undefined)}
                   </div>
 
                   {(() => {
@@ -457,7 +457,7 @@ export default function FeedClient() {
           <ul className="space-y-2 text-xs">
             <li>
               <Link
-                href="/search-map"
+                href="/club-map"
                 className="text-blue-600 hover:underline"
               >
                 Calciomercato dilettanti

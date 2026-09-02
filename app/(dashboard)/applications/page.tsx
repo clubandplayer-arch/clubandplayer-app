@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import EmptyState from '@/components/common/EmptyState';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 type Opportunity = {
   id?: string | null;
@@ -20,12 +21,12 @@ type ApplicationRow = {
   created_at?: string | null;
 };
 
-const statusLabel = (s: string | null | undefined) => {
+const statusLabel = (s: string | null | undefined, t: ReturnType<typeof useI18n>['t']) => {
   const key = (s || '').toLowerCase();
-  if (key === 'submitted' || key === 'in_review' || key === 'pending') return 'In valutazione';
-  if (key === 'accepted') return 'Accettata';
-  if (key === 'rejected') return 'Rifiutata';
-  return 'In valutazione';
+  if (key === 'submitted' || key === 'in_review' || key === 'pending') return t('applications.review');
+  if (key === 'accepted') return t('applications.accepted');
+  if (key === 'rejected') return t('applications.rejected');
+  return t('applications.review');
 };
 
 const statusBadgeClass = (s: string | null | undefined) => {
@@ -36,6 +37,7 @@ const statusBadgeClass = (s: string | null | undefined) => {
 };
 
 export default function MyApplicationsPage() {
+  const { t, locale } = useI18n();
   const router = useRouter();
   const [roleChecked, setRoleChecked] = useState(false);
   const [rows, setRows] = useState<ApplicationRow[]>([]);
@@ -81,12 +83,12 @@ export default function MyApplicationsPage() {
       const json = JSON.parse(text || '{}');
       setRows(Array.isArray(json?.data) ? json.data : []);
     } catch (err: any) {
-      setError(err?.message || 'Errore nel caricamento delle candidature');
+      setError(err?.message || t('applications.updateError'));
       setRows([]);
     } finally {
       setLoading(false);
     }
-  }, [statusFilter]);
+  }, [statusFilter, t]);
 
   useEffect(() => {
     if (!roleChecked) return;
@@ -101,24 +103,24 @@ export default function MyApplicationsPage() {
   return (
     <main className="page-shell space-y-4">
       <header className="space-y-2">
-        <h1 className="text-2xl font-semibold">Le mie candidature</h1>
+        <h1 className="text-2xl font-semibold">{t('applications.mine')}</h1>
         <p className="text-sm text-gray-600">
-          Controlla lo stato delle opportunità a cui hai inviato una candidatura.
+          {t('applications.mineSubtitle')}
         </p>
       </header>
 
       <div className="flex flex-col gap-3 rounded-2xl border bg-white/80 p-3 sm:flex-row sm:items-center">
         <label className="flex items-center gap-2 text-sm text-gray-700">
-          Stato
+          {t('applications.status')}
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as any)}
             className="rounded-lg border px-3 py-2 text-sm"
           >
-            <option value="all">Tutte</option>
-            <option value="pending">In valutazione</option>
-            <option value="accepted">Accettate</option>
-            <option value="rejected">Rifiutate</option>
+            <option value="all">{t('applications.all')}</option>
+            <option value="pending">{t('applications.review')}</option>
+            <option value="accepted">{t('applications.acceptedPlural')}</option>
+            <option value="rejected">{t('applications.rejectedPlural')}</option>
           </select>
         </label>
       </div>
@@ -130,25 +132,25 @@ export default function MyApplicationsPage() {
       )}
 
       {loading ? (
-        <div className="rounded-lg border bg-white/70 p-6 text-sm text-gray-600">Caricamento candidature…</div>
+        <div className="rounded-lg border bg-white/70 p-6 text-sm text-gray-600">{t('applications.loading')}</div>
       ) : rowsSorted.length === 0 ? (
         <EmptyState
-          title="Nessuna candidatura inviata"
-          description="Scopri nuove opportunità e invia la tua candidatura in pochi tap."
-          actions={[{ label: 'Scopri opportunità', href: '/opportunities', variant: 'primary' }]}
+          title={t('applications.sentEmptyTitle')}
+          description={t('applications.sentEmptyHelp')}
+          actions={[{ label: t('applications.discover'), href: '/opportunities', variant: 'primary' }]}
         />
       ) : (
         <>
           <div className="space-y-3 md:hidden">
             {rowsSorted.map((row) => {
-              const oppTitle = (row.opportunity?.title || '').trim() || 'Annuncio';
+              const oppTitle = (row.opportunity?.title || '').trim() || t('applications.ad');
               const clubName = row.opportunity?.club_name || 'Club';
-              const created = row.created_at ? new Date(row.created_at).toLocaleString('it-IT') : '—';
+              const created = row.created_at ? new Date(row.created_at).toLocaleString(locale) : '—';
 
               return (
                 <div key={row.id} className="rounded-xl border bg-white p-4 shadow-sm">
                   <div className="space-y-2">
-                    <div className="text-xs uppercase tracking-wide text-gray-500">Opportunità</div>
+                    <div className="text-xs uppercase tracking-wide text-gray-500">{t('applications.opportunity')}</div>
                     <div className="text-sm font-semibold text-gray-900">
                       {row.opportunity_id ? (
                         <Link href={`/opportunities/${row.opportunity_id}`} className="text-blue-700 hover:underline">
@@ -166,13 +168,13 @@ export default function MyApplicationsPage() {
                       <span className="font-medium text-gray-900">{clubName}</span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-gray-500">Stato</span>
+                      <span className="text-gray-500">{t('applications.status')}</span>
                       <span className={`rounded-full px-2 py-1 text-xs font-semibold ${statusBadgeClass(row.status)}`}>
-                        {statusLabel(row.status)}
+                        {statusLabel(row.status, t)}
                       </span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-gray-500">Data</span>
+                      <span className="text-gray-500">{t('applications.date')}</span>
                       <span className="font-medium text-gray-900">{created}</span>
                     </div>
                   </div>
@@ -181,9 +183,9 @@ export default function MyApplicationsPage() {
                     {row.opportunity_id ? (
                       <Link
                         href={`/opportunities/${row.opportunity_id}`}
-                        className="inline-flex w-full items-center justify-center rounded-md border px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50"
+                        className="inline-flex w-full items-center justify-center whitespace-nowrap rounded-md border px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50"
                       >
-                        Dettagli annuncio
+                        {t('opportunities.details')}
                       </Link>
                     ) : (
                       <span className="text-sm text-gray-500">—</span>
@@ -198,18 +200,18 @@ export default function MyApplicationsPage() {
             <table className="w-full min-w-[720px] text-sm">
               <thead className="bg-gray-50 text-left text-gray-600">
                 <tr>
-                  <th className="px-3 py-2">Opportunità</th>
+                  <th className="px-3 py-2">{t('applications.opportunity')}</th>
                   <th className="px-3 py-2">Club</th>
-                  <th className="px-3 py-2">Stato</th>
-                  <th className="px-3 py-2">Data</th>
-                  <th className="px-3 py-2">Azione</th>
+                  <th className="px-3 py-2">{t('applications.status')}</th>
+                  <th className="px-3 py-2">{t('applications.date')}</th>
+                  <th className="px-3 py-2">{t('applications.actions')}</th>
                 </tr>
               </thead>
               <tbody>
                 {rowsSorted.map((row) => {
-                  const oppTitle = (row.opportunity?.title || '').trim() || 'Annuncio';
+                  const oppTitle = (row.opportunity?.title || '').trim() || t('applications.ad');
                   const clubName = row.opportunity?.club_name || 'Club';
-                  const created = row.created_at ? new Date(row.created_at).toLocaleString('it-IT') : '—';
+                  const created = row.created_at ? new Date(row.created_at).toLocaleString(locale) : '—';
 
                   return (
                     <tr key={row.id} className="border-t">
@@ -223,19 +225,19 @@ export default function MyApplicationsPage() {
                         )}
                       </td>
                       <td className="px-3 py-3 align-top text-gray-800">{clubName}</td>
-                      <td className="px-3 py-3 align-top">
+                      <td className="whitespace-nowrap px-3 py-3 align-top">
                         <span className={`rounded-full px-2 py-1 text-xs font-semibold ${statusBadgeClass(row.status)}`}>
-                          {statusLabel(row.status)}
+                          {statusLabel(row.status, t)}
                         </span>
                       </td>
                       <td className="px-3 py-3 align-top text-gray-700">{created}</td>
-                      <td className="px-3 py-3 align-top">
+                      <td className="whitespace-nowrap px-3 py-3 align-top">
                         {row.opportunity_id ? (
                           <Link
                             href={`/opportunities/${row.opportunity_id}`}
-                            className="rounded-md border px-3 py-1 text-sm text-blue-700 hover:bg-blue-50"
+                            className="inline-flex min-w-max items-center justify-center whitespace-nowrap rounded-md border px-3 py-1 text-sm text-blue-700 hover:bg-blue-50"
                           >
-                            Dettagli annuncio
+                            {t('opportunities.details')}
                           </Link>
                         ) : (
                           <span className="text-sm text-gray-500">—</span>

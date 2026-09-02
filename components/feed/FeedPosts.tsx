@@ -1,4 +1,5 @@
 'use client';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 import { useEffect, useState } from 'react';
 
@@ -13,6 +14,7 @@ type ApiItem = {
 };
 
 export default function FeedPosts() {
+  const { t } = useI18n();
   const [items, setItems] = useState<ApiItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -44,9 +46,9 @@ export default function FeedPosts() {
     };
   }, []);
 
-  if (loading) return <div>Caricamento…</div>;
+  if (loading) return <div>{t('common.loading')}</div>;
   if (err) return <div>Errore: {err}</div>;
-  if (!items.length) return <div>Nessun post al momento.</div>;
+  if (!items.length) return <div>{t('feed.noPostsNow')}</div>;
 
   return (
     <ul className="space-y-4">

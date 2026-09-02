@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 /* eslint-disable @next/next/no-img-element */
 import { useEffect } from 'react';
@@ -21,6 +22,7 @@ type Props = {
 };
 
 export function Lightbox({ items, index, onClose, onPrev, onNext }: Props) {
+  const { t } = useI18n();
   const item = items[index];
   const { videoRef, handleEnded, handlePause, handlePlay } = useExclusiveVideoPlayback(
     item?.url ?? 'lightbox',
@@ -67,7 +69,7 @@ export function Lightbox({ items, index, onClose, onPrev, onNext }: Props) {
           type="button"
           onClick={onClose}
           className="absolute right-0 top-0 -translate-y-1/2 translate-x-1/2 rounded-full bg-white/10 px-3 py-1 text-sm font-semibold text-white shadow-lg ring-1 ring-white/30 transition hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-          aria-label="Chiudi l'anteprima"
+          aria-label={t('media.closePreview')}
         >
           Chiudi
         </button>

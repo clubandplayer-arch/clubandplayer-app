@@ -1,15 +1,19 @@
+'use client';
+
 import Link from 'next/link';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 type MediaEmptyStateProps = {
   kind: 'video' | 'photo';
 };
 
 export function MediaEmptyState({ kind }: MediaEmptyStateProps) {
+  const { t } = useI18n();
   const isVideo = kind === 'video';
-  const title = isVideo ? 'Nessun video nella tua libreria' : 'Nessuna foto nella tua libreria';
+  const title = isVideo ? t('media.noVideosTitle') : t('media.noPhotosTitle');
   const subtitle = isVideo
-    ? 'Ogni volta che pubblichi un video sulla bacheca, lo ritrovi qui. Puoi usare questa sezione come archivio personale dei tuoi contenuti.'
-    : 'Ogni volta che pubblichi una foto sulla bacheca, la ritrovi qui. Puoi usare questa sezione come archivio personale dei tuoi contenuti.';
+    ? t('media.noVideosHelp')
+    : t('media.noPhotosHelp');
 
   return (
     <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-cp-border-soft bg-muted/40 px-8 py-12 text-center shadow-inner">
@@ -20,7 +24,7 @@ export function MediaEmptyState({ kind }: MediaEmptyStateProps) {
         href="/feed"
         className="text-sm font-semibold text-cp-brand underline-offset-2 transition hover:underline"
       >
-        Vai al feed e pubblica dal tuo profilo
+        {t('media.publishFromFeed')}
       </Link>
     </div>
   );

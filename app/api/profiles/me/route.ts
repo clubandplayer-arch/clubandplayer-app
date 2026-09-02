@@ -185,7 +185,6 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   }
 
   if (updates.sport) updates.sport = normalizeSport(updates.sport) ?? updates.sport;
-  if (updates.interest_country === undefined) updates.interest_country = 'IT';
   if (updates.country) updates.country = updates.country.toString().trim().toUpperCase();
   if (updates.interest_country) updates.interest_country = updates.interest_country.toString().trim().toUpperCase();
   if (updates.birth_country) updates.birth_country = updates.birth_country.toString().trim().toUpperCase();

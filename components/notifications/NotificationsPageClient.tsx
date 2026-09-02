@@ -5,8 +5,10 @@ import NotificationItem from './NotificationItem';
 import { useToast } from '@/components/common/ToastProvider';
 import { useNotificationsList } from '@/hooks/useNotificationsList';
 import { markFanVoteSummaryRead, notificationToFanVoteSummary } from '@/lib/notifications/fanVoteSummaryClient';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 export default function NotificationsPageClient() {
+  const { t } = useI18n();
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const { toast } = useToast();
   const { items, loading, error, reload } = useNotificationsList({ limit: 50, filter, enabled: true });
@@ -38,7 +40,7 @@ export default function NotificationsPageClient() {
     <div className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-6">
       <div className="flex flex-wrap items-center gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Notifiche</h1>
+          <h1 className="text-2xl font-bold">{t('notifications.title')}</h1>
         </div>
         <div className="ml-auto flex items-center gap-2">
           <button
@@ -46,27 +48,27 @@ export default function NotificationsPageClient() {
             onClick={() => setFilter('all')}
             className={`rounded-full px-3 py-1.5 text-sm ${filter === 'all' ? 'bg-neutral-900 text-white' : 'border'}`}
           >
-            Tutte
+            {t('feed.all')}
           </button>
           <button
             type="button"
             onClick={() => setFilter('unread')}
             className={`rounded-full px-3 py-1.5 text-sm ${filter === 'unread' ? 'bg-neutral-900 text-white' : 'border'}`}
           >
-            Non lette
+            {t('notifications.unread')}
           </button>
           <button
             type="button"
             onClick={markAllRead}
             className="rounded-full border px-3 py-1.5 text-sm hover:bg-neutral-50"
           >
-            Segna tutte come lette
+            {t('notifications.markAllRead')}
           </button>
         </div>
       </div>
 
       {loading ? (
-        <div className="rounded-lg border p-6 text-sm text-neutral-500">Caricamento…</div>
+        <div className="rounded-lg border p-6 text-sm text-neutral-500">{t('notifications.loading')}</div>
       ) : error ? (
         <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-sm text-red-600">{error}</div>
       ) : items.length > 0 ? (
@@ -76,7 +78,7 @@ export default function NotificationsPageClient() {
           ))}
         </div>
       ) : (
-        <div className="rounded-lg border p-6 text-sm text-neutral-500">Nessuna notifica</div>
+        <div className="rounded-lg border p-6 text-sm text-neutral-500">{t('notifications.empty')}</div>
       )}
     </div>
   );

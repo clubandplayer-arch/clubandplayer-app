@@ -7,6 +7,8 @@ import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentPr
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
 import { CountryFlag } from '@/components/ui/CountryFlag';
 import CertifiedCMarkSidebar from '@/components/badges/CertifiedCMarkSidebar';
+import { useI18n } from '@/components/i18n/I18nProvider';
+import { localizeAccountType } from '@/lib/i18n/controlledVocabulary';
 
 type FollowedItem = {
   id: string;
@@ -66,6 +68,7 @@ function subtitle(item: FollowedItem, viewerRole: ProfileRole): ReactNode {
 }
 
 export default function FollowedClubs() {
+  const { t } = useI18n();
   const { role: contextRole, profile } = useCurrentProfileContext();
   const [role, setRole] = useState<ProfileRole>('guest');
   const [items, setItems] = useState<FollowedItem[]>([]);
@@ -124,8 +127,8 @@ export default function FollowedClubs() {
     })();
   }, [contextRole, profile?.id]);
 
-  const heading = 'Profili che segui';
-  const emptyCopy = 'Inizia a seguire profili per vederli qui.';
+  const heading = t('feed.followedProfiles');
+  const emptyCopy = t('feed.followedEmpty');
 
   if (loading) {
     return (
@@ -133,7 +136,7 @@ export default function FollowedClubs() {
         <div className="flex items-center justify-between">
           <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{heading}</div>
           <Link href="/following" className="text-xs font-semibold text-[var(--brand)] hover:underline">
-            Vedi tutti
+            {t('feed.viewAll')}
           </Link>
         </div>
         <ul className="space-y-2">
@@ -156,7 +159,7 @@ export default function FollowedClubs() {
       <div className="flex items-center justify-between">
         <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{heading}</div>
         <Link href="/following" className="text-xs font-semibold text-[var(--brand)] hover:underline">
-          Vedi tutti
+          {t('feed.viewAll')}
         </Link>
       </div>
       {error ? (
@@ -188,7 +191,7 @@ export default function FollowedClubs() {
                       {item.name}
                     </Link>
                     <span className="rounded-full border border-zinc-200 bg-zinc-100 px-2 py-[1px] text-[10px] font-semibold uppercase tracking-wide text-zinc-700">
-                      {item.accountType === 'club' ? 'Club' : item.accountType === 'staff' ? 'Staff' : 'Player'}
+                      {localizeAccountType(item.accountType ?? 'player', t)}
                     </span>
                   </div>
                   <div className="truncate text-xs text-zinc-500">{subtitle(item, role)}</div>

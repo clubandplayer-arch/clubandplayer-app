@@ -7,6 +7,10 @@ import FollowButton from '@/components/common/FollowButton';
 import type { Opportunity } from '@/types/opportunity';
 import { useProvinceAbbreviations } from '@/hooks/useProvinceAbbreviations';
 import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
+import { opportunityGeographyLabel } from '@/lib/opportunities/geography';
+import { useI18n } from '@/components/i18n/I18nProvider';
+import { formatDate } from '@/lib/i18n/format';
+import { localizeControlledStatus, localizeOpportunityCategory, localizeSport, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 
 type Role = 'athlete' | 'club' | 'staff' | 'fan' | 'guest';
 
@@ -18,11 +22,11 @@ function formatBracket(min: number | null | undefined, max: number | null | unde
   return '—';
 }
 
-function fmtDateHuman(s?: string | null) {
+function fmtDateHuman(s: string | null | undefined, locale: Parameters<typeof formatDate>[1]) {
   if (!s) return '—';
   const d = new Date(s);
   if (Number.isNaN(d.valueOf())) return '—';
-  return d.toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric' });
+  return formatDate(d, locale, { day: '2-digit', month: 'long', year: 'numeric' });
 }
 
 function roleGroupLabel(value: unknown): 'Player' | 'Staff' {
@@ -46,13 +50,14 @@ export default function OpportunitiesTable({
   onEdit?: (opp: Opportunity) => void;
   onDelete?: (opp: Opportunity) => void;
 }) {
+  const { locale, t } = useI18n();
   const ownerNameMap = useMemo(() => clubNames ?? {}, [clubNames]);
   const provinceAbbreviations = useProvinceAbbreviations();
 
   if (!items.length) {
     return (
       <div className="text-sm text-gray-500 py-8">
-        Nessuna opportunità trovata. Prova a rimuovere i filtri.
+        {t('empty.noResults')}
       </div>
     );
   }
@@ -63,7 +68,7 @@ export default function OpportunitiesTable({
         const ownerId = o.created_by ?? o.owner_id ?? null;
         const profileOwnerId = (o as any).club_id ?? ownerId;
         const canEdit = !!currentUserId && (ownerId === currentUserId || o.created_by === currentUserId || o.owner_id === currentUserId);
-        const place = [o.city, provinceDisplayValue(o.province, provinceAbbreviations), o.region, o.country].filter(Boolean).join(', ');
+        const place = opportunityGeographyLabel(o.geography) ?? [o.city, provinceDisplayValue(o.province, provinceAbbreviations), o.region, o.country].filter(Boolean).join(', ');
         const showApply = (userRole === 'athlete' || userRole === 'staff') && !canEdit;
         const showFollow = (userRole === 'athlete' || userRole === 'staff') && !!profileOwnerId;
         const isMyClub = !!myProfileId && !!profileOwnerId && myProfileId === profileOwnerId;
@@ -87,8 +92,8 @@ export default function OpportunitiesTable({
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div className="min-w-0 space-y-2">
                 <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-wide text-gray-500">
-                  {o.status && <span className="rounded-full border px-2 py-1">{o.status}</span>}
-                  <span>Pubblicata il {fmtDateHuman((o as any).created_at ?? (o as any).createdAt)}</span>
+                  {o.status && <span className="rounded-full border px-2 py-1">{localizeControlledStatus(o.status, t)}</span>}
+                  <span>{t('opportunities.publishedOn', { date: fmtDateHuman((o as any).created_at ?? (o as any).createdAt, locale) })}</span>
                 </div>
 
                 <Link href={`/opportunities/${o.id}`} className="group inline-flex items-start gap-2">
@@ -96,10 +101,10 @@ export default function OpportunitiesTable({
                 </Link>
 
                 <div className="flex flex-wrap items-center gap-2 text-sm text-gray-700">
-                  {o.sport && <span className="rounded-full bg-gray-100 px-2.5 py-1">{o.sport}</span>}
+                  {o.sport && <span className="rounded-full bg-gray-100 px-2.5 py-1">{localizeSport(o.sport, t)}</span>}
                   <span className="rounded-full bg-blue-50 text-blue-800 px-2.5 py-1">[{groupLabel.toUpperCase()}]</span>
-                  {o.role && <span className="rounded-full bg-gray-100 px-2.5 py-1">{o.role}</span>}
-                  {o.category && <span className="rounded-full bg-gray-100 px-2.5 py-1">{o.category}</span>}
+                  {o.role && <span className="rounded-full bg-gray-100 px-2.5 py-1">{localizeSportRole(o.role, t)}</span>}
+                  {o.category && <span className="rounded-full bg-gray-100 px-2.5 py-1">{localizeOpportunityCategory(o.category, t)}</span>}
                   <span className="rounded-full bg-gray-100 px-2.5 py-1">Età: {formatBracket(o.age_min as any, o.age_max as any)}</span>
                   {place && <span className="rounded-full bg-gray-100 px-2.5 py-1">📍 {place}</span>}
                 </div>
@@ -126,7 +131,7 @@ export default function OpportunitiesTable({
                 )}
                   <span className="text-gray-500">•</span>
                 <Link href={`/opportunities/${o.id}`} className="text-blue-700 hover:underline">
-                  Dettagli annuncio
+                  {t('opportunities.details')}
                 </Link>
                   {showVisitClub && (
                     <Link href={`/clubs/${profileOwnerId}`} className="text-blue-700 hover:underline">
@@ -146,14 +151,14 @@ export default function OpportunitiesTable({
                       className="rounded-xl border px-3 py-2 text-xs font-semibold hover:bg-gray-50"
                       type="button"
                     >
-                      Modifica
+                      {t('feed.edit')}
                     </button>
                     <button
                       onClick={() => onDelete?.(o)}
                       className="rounded-xl border px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50"
                       type="button"
                     >
-                      Elimina
+                      {t('feed.delete')}
                     </button>
                   </div>
                 )}

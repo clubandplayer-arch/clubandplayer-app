@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import ShareModal from '@/components/feed/ShareModal';
 import { ShareButton } from '@/components/media/ShareButton';
 import ApplyCTA from '@/components/opportunities/ApplyCTA';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 type Props = {
   opportunityId: string;
@@ -24,6 +25,7 @@ export default function OpportunityActions({
   showApply = true,
   hideClubLink = false,
 }: Props) {
+  const { t } = useI18n();
   const [shareOpen, setShareOpen] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
 
@@ -55,14 +57,14 @@ export default function OpportunityActions({
               href={`/clubs/${clubProfileId}`}
               className="rounded-xl border px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50"
             >
-              Visita club
+              {t('common.visitClub')}
             </Link>
           </div>
         )}
 
         <ShareButton
           onClick={handleShare}
-          ariaLabel="Condividi opportunità"
+          ariaLabel={t('opportunity.share')}
           className="h-10 w-10 shrink-0 rounded-full p-0 text-slate-700 hover:bg-slate-50"
         />
       </div>

@@ -76,7 +76,6 @@ export async function POST(req: NextRequest) {
     display_name: displayName,
     account_type: inferredType,
     type: inferredType,
-    interest_country: 'IT', // default coerente
   };
 
   const { data: created, error: upErr } = await supabase

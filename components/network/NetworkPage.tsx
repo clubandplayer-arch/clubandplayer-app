@@ -1,8 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import FollowButton from '@/components/common/FollowButton';
+import { useI18n } from '@/components/i18n/I18nProvider';
+import { localizeAccountType, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 
 type AccountType = 'club' | 'athlete';
 
@@ -23,18 +25,6 @@ type FilterType = 'all' | 'club' | 'athlete';
 
 type ApiResponse = { ok?: boolean; items?: any[]; role?: string; targetType?: string; message?: string };
 
-const tabs: { key: TabKey; label: string }[] = [
-  { key: 'suggested', label: 'Suggeriti' },
-  { key: 'following', label: 'Segui' },
-  { key: 'followers', label: 'Seguaci' },
-];
-
-const filters: { key: FilterType; label: string }[] = [
-  { key: 'all', label: 'Tutti' },
-  { key: 'club', label: 'Club' },
-  { key: 'athlete', label: 'Player' },
-];
-
 function avatarSrc(name: string, url?: string | null) {
   if (url) return url;
   const seed = encodeURIComponent(name || 'Profilo');
@@ -49,16 +39,17 @@ function mapAccountType(value: string | null | undefined): AccountType {
   return value === 'club' ? 'club' : 'athlete';
 }
 
-function subtitle(profile: NetworkProfile) {
-  const meta = [profile.role, profile.sport].filter(Boolean).join(' · ');
+function subtitle(profile: NetworkProfile, t: ReturnType<typeof useI18n>['t']) {
+  const meta = [localizeSportRole(profile.role, t), profile.sport].filter(Boolean).join(' · ');
   const place = [profile.city, profile.country].filter(Boolean).join(', ');
   return meta || place || '—';
 }
 
 function AccountBadge({ type }: { type: AccountType }) {
+  const { t } = useI18n();
   return (
     <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-neutral-700">
-      {type === 'club' ? 'Club' : 'Player'}
+      {localizeAccountType(type, t)}
     </span>
   );
 }
@@ -68,6 +59,7 @@ function ProfileCard({
 }: {
   profile: NetworkProfile;
 }) {
+  const { t } = useI18n();
   return (
     <div className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white/80 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900/60">
       <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full bg-neutral-100 ring-1 ring-neutral-200 dark:bg-neutral-800 dark:ring-neutral-700">
@@ -85,7 +77,7 @@ function ProfileCard({
           </Link>
           <AccountBadge type={profile.accountType} />
         </div>
-        <div className="truncate text-sm text-neutral-600 dark:text-neutral-300">{subtitle(profile)}</div>
+        <div className="truncate text-sm text-neutral-600 dark:text-neutral-300">{subtitle(profile, t)}</div>
         <div className="text-xs text-neutral-500 dark:text-neutral-400">{[profile.city, profile.country].filter(Boolean).join(', ') || '—'}</div>
       </div>
       <div className="flex flex-col items-end gap-2">
@@ -97,7 +89,7 @@ function ProfileCard({
           href={profileHref(profile.id, profile.accountType)}
           className="text-xs font-semibold text-blue-700 underline-offset-4 hover:underline dark:text-blue-300"
         >
-          Visita profilo
+          {t('network.visitProfile')}
         </Link>
       </div>
     </div>
@@ -105,6 +97,7 @@ function ProfileCard({
 }
 
 export default function NetworkPage() {
+  const { t } = useI18n();
   const [activeTab, setActiveTab] = useState<TabKey>('suggested');
   const [loaded, setLoaded] = useState<Record<TabKey, boolean>>({
     suggested: false,
@@ -125,13 +118,23 @@ export default function NetworkPage() {
   const [following, setFollowing] = useState<NetworkProfile[]>([]);
   const [followers, setFollowers] = useState<NetworkProfile[]>([]);
   const [followingFilter, setFollowingFilter] = useState<FilterType>('all');
+  const tabs: { key: TabKey; label: string }[] = [
+    { key: 'suggested', label: t('network.suggested') },
+    { key: 'following', label: t('network.following') },
+    { key: 'followers', label: t('network.followers') },
+  ];
+  const filters: { key: FilterType; label: string }[] = [
+    { key: 'all', label: t('common.all') },
+    { key: 'club', label: t('roles.club') },
+    { key: 'athlete', label: t('roles.player') },
+  ];
 
   const filteredFollowing = useMemo(() => {
     if (followingFilter === 'all') return following;
     return following.filter((p) => p.accountType === followingFilter);
   }, [following, followingFilter]);
 
-  async function loadSuggestions() {
+  const loadSuggestions = useCallback(async () => {
     setLoading((prev) => ({ ...prev, suggested: true }));
     setErrors((prev) => ({ ...prev, suggested: null }));
     try {
@@ -142,12 +145,12 @@ export default function NetworkPage() {
       });
       const data = (await res.json().catch(() => ({}))) as ApiResponse;
       if (!res.ok || data?.ok === false) {
-        throw new Error(data?.message || 'Errore nel caricare i suggerimenti');
+        throw new Error(data?.message || t('network.suggestionsError'));
       }
       const items: NetworkProfile[] = Array.isArray(data?.items)
         ? data.items.map((p: any) => ({
             id: p.id,
-            name: p.name ?? p.display_name ?? 'Profilo',
+            name: p.name ?? p.display_name ?? t('common.profile'),
             accountType: mapAccountType(p.account_type),
             city: p.city ?? null,
             country: p.country ?? null,
@@ -159,14 +162,14 @@ export default function NetworkPage() {
         : [];
       setSuggestions(items);
     } catch (err: any) {
-      setErrors((prev) => ({ ...prev, suggested: err?.message || 'Errore nel caricare i suggerimenti' }));
+      setErrors((prev) => ({ ...prev, suggested: err?.message || t('network.suggestionsError') }));
     } finally {
       setLoading((prev) => ({ ...prev, suggested: false }));
       setLoaded((prev) => ({ ...prev, suggested: true }));
     }
-  }
+  }, [t]);
 
-  async function loadFollowing() {
+  const loadFollowing = useCallback(async () => {
     setLoading((prev) => ({ ...prev, following: true }));
     setErrors((prev) => ({ ...prev, following: null }));
     try {
@@ -175,7 +178,7 @@ export default function NetworkPage() {
       const items: NetworkProfile[] = Array.isArray(data?.items)
         ? data.items.map((p: any) => ({
             id: p.id,
-            name: p.name ?? p.display_name ?? 'Profilo',
+            name: p.name ?? p.display_name ?? t('common.profile'),
             accountType: mapAccountType(p.account_type),
             city: p.city ?? null,
             country: p.country ?? null,
@@ -187,14 +190,14 @@ export default function NetworkPage() {
         : [];
       setFollowing(items);
     } catch (err: any) {
-      setErrors((prev) => ({ ...prev, following: err?.message || 'Errore nel caricare chi segui' }));
+      setErrors((prev) => ({ ...prev, following: err?.message || t('network.followingError') }));
     } finally {
       setLoading((prev) => ({ ...prev, following: false }));
       setLoaded((prev) => ({ ...prev, following: true }));
     }
-  }
+  }, [t]);
 
-  async function loadFollowers() {
+  const loadFollowers = useCallback(async () => {
     setLoading((prev) => ({ ...prev, followers: true }));
     setErrors((prev) => ({ ...prev, followers: null }));
     try {
@@ -203,7 +206,7 @@ export default function NetworkPage() {
       const items: NetworkProfile[] = Array.isArray(data?.items)
         ? data.items.map((p: any) => ({
             id: p.id,
-            name: p.name ?? p.display_name ?? 'Profilo',
+            name: p.name ?? p.display_name ?? t('common.profile'),
             accountType: mapAccountType(p.account_type),
             city: p.city ?? null,
             country: p.country ?? null,
@@ -215,16 +218,16 @@ export default function NetworkPage() {
         : [];
       setFollowers(items);
     } catch (err: any) {
-      setErrors((prev) => ({ ...prev, followers: err?.message || 'Errore nel caricare i tuoi seguaci' }));
+      setErrors((prev) => ({ ...prev, followers: err?.message || t('network.followersError') }));
     } finally {
       setLoading((prev) => ({ ...prev, followers: false }));
       setLoaded((prev) => ({ ...prev, followers: true }));
     }
-  }
+  }, [t]);
 
   useEffect(() => {
     void loadSuggestions();
-  }, []);
+  }, [loadSuggestions]);
 
   useEffect(() => {
     if (activeTab === 'following' && !loaded.following) {
@@ -233,20 +236,20 @@ export default function NetworkPage() {
     if (activeTab === 'followers' && !loaded.followers) {
       void loadFollowers();
     }
-  }, [activeTab, loaded.followers, loaded.following]);
+  }, [activeTab, loadFollowers, loadFollowing, loaded.followers, loaded.following]);
 
   const emptyState = (
     <div className="rounded-xl border border-dashed border-neutral-200 bg-white/70 p-4 text-center text-sm text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900/40 dark:text-neutral-300">
-      Nessun risultato da mostrare.
+      {t('network.empty')}
     </div>
   );
 
   return (
     <div className="space-y-6">
       <div className="space-y-1">
-        <h1 className="heading-h1 text-2xl font-semibold text-neutral-900 dark:text-white">La tua rete</h1>
+        <h1 className="heading-h1 text-2xl font-semibold text-neutral-900 dark:text-white">{t('network.title')}</h1>
         <p className="text-sm text-neutral-600 dark:text-neutral-300">
-          Gestisci i suggerimenti, i profili che segui e chi ti segue, in stile "La mia rete" di LinkedIn.
+          {t('network.subtitle')}
         </p>
       </div>
 
@@ -270,7 +273,7 @@ export default function NetworkPage() {
       {activeTab === 'suggested' && (
         <section className="space-y-4">
           {errors.suggested && <p className="text-sm text-red-600">{errors.suggested}</p>}
-          {loading.suggested && <p className="text-sm text-neutral-600">Caricamento suggerimenti…</p>}
+          {loading.suggested && <p className="text-sm text-neutral-600">{t('network.loadingSuggested')}</p>}
           {!loading.suggested && suggestions.length === 0 ? (
             emptyState
           ) : (
@@ -306,7 +309,7 @@ export default function NetworkPage() {
           </div>
 
           {errors.following && <p className="text-sm text-red-600">{errors.following}</p>}
-          {loading.following && <p className="text-sm text-neutral-600">Caricamento profili che segui…</p>}
+          {loading.following && <p className="text-sm text-neutral-600">{t('network.loadingFollowing')}</p>}
           {!loading.following && filteredFollowing.length === 0 ? (
             emptyState
           ) : (
@@ -325,7 +328,7 @@ export default function NetworkPage() {
       {activeTab === 'followers' && (
         <section className="space-y-4">
           {errors.followers && <p className="text-sm text-red-600">{errors.followers}</p>}
-          {loading.followers && <p className="text-sm text-neutral-600">Caricamento seguaci…</p>}
+          {loading.followers && <p className="text-sm text-neutral-600">{t('network.loadingFollowers')}</p>}
           {!loading.followers && followers.length === 0 ? (
             emptyState
           ) : (

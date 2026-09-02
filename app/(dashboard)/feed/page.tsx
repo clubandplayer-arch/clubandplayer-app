@@ -27,6 +27,7 @@ import useFeed, { type FeedScope } from '@/hooks/useFeed';
 import type { Opportunity } from '@/types/opportunity';
 import type { Profile } from '@/types/profile';
 import { REPOST_SESSION_KEY } from '@/lib/repost';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 // carico le sidebar in modo "sicuro" (se il componente esiste lo usa, altrimenti mostra un box vuoto)
 // N.B. ssr: false evita problemi coi Server Components in prod
@@ -48,6 +49,7 @@ type StarterProfile = {
 };
 
 export default function FeedPage() {
+  const { t } = useI18n();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -430,11 +432,11 @@ export default function FeedPage() {
               aria-label="Vai alla pagina sponsor"
               className="shrink-0 inline-flex items-center justify-center rounded-lg bg-white px-3 py-2 text-sm font-semibold text-[#036f9a] hover:bg-white/95 transition-colors"
             >
-              Richiedi info
+              {t('feed.requestInfo')}
             </Link>
           </div>
           <div className="glass-panel flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm font-semibold text-neutral-700">
-            <div className="text-xs font-medium uppercase tracking-wide text-neutral-500">Visibilità</div>
+            <div className="text-xs font-medium uppercase tracking-wide text-neutral-500">{t('feed.visibility')}</div>
             <div
               className="flex items-center gap-1 rounded-full border border-neutral-200 bg-white p-1 shadow-sm"
               role="group"
@@ -446,7 +448,7 @@ export default function FeedPage() {
                 onClick={() => handleScopeChange('all')}
                 aria-pressed={scope === 'all'}
               >
-                Tutti
+                {t('feed.all')}
               </button>
               <button
                 type="button"
@@ -454,7 +456,7 @@ export default function FeedPage() {
                 onClick={() => handleScopeChange('following')}
                 aria-pressed={scope === 'following'}
               >
-                Seguiti
+                {t('navigation.following')}
               </button>
               <button
                 type="button"
@@ -462,7 +464,7 @@ export default function FeedPage() {
                 onClick={() => handleScopeChange('personal')}
                 aria-pressed={scope === 'personal'}
               >
-                Personali
+                {t('feed.personal')}
               </button>
             </div>
           </div>
@@ -476,14 +478,14 @@ export default function FeedPage() {
             </div>
           ) : isFan ? (
             <div className="glass-panel p-4 text-sm text-neutral-600">
-              Con l’account Fan puoi interagire con i contenuti, ma non puoi creare post.
+              {t('feed.fanReadOnly')}
             </div>
           ) : null}
 
           <div className="space-y-4" aria-live="polite" aria-busy={isInitialLoading}>
             {isInitialLoading && (
               <div className="glass-panel p-4" role="status">
-                Caricamento…
+                {t('common.loading')}
               </div>
             )}
             {errorMessage && (
@@ -493,10 +495,10 @@ export default function FeedPage() {
             )}
             {shouldShowEmptyState && (
               <EmptyState
-                title="Il feed è ancora vuoto"
-                description="Inizia pubblicando un post o scopri club e player nella tua zona."
+                title={t('feed.emptyTitle')}
+                description={t('feed.emptyDescription')}
                 actions={[
-                  { label: 'Scopri profili', href: '/discover', variant: 'primary' },
+                  { label: t('feed.discoverProfiles'), href: '/discover', variant: 'primary' },
                 ]}
               />
             )}
@@ -545,10 +547,10 @@ export default function FeedPage() {
                     disabled={isLoadingMore}
                     className="rounded-full border border-neutral-200 bg-white px-4 py-2 text-sm font-semibold text-neutral-700 shadow-sm transition hover:border-neutral-300 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {isLoadingMore ? 'Caricamento…' : 'Carica altri'}
+                    {isLoadingMore ? t('common.loading') : t('feed.loadMore')}
                   </button>
                 ) : (
-                  <div className="text-center text-xs text-neutral-500">Hai visto tutti i post</div>
+                  <div className="text-center text-xs text-neutral-500">{t('feed.end')}</div>
                 )}
               </div>
             )}
@@ -627,6 +629,7 @@ async function fetchMyMediaPreview(authorId: string, signal?: AbortSignal): Prom
 }
 
 function MyMediaHub({ currentUserId }: { currentUserId: string | null }) {
+  const { t } = useI18n();
   const [tab, setTab] = useState<'video' | 'photo'>('video');
   const [previewItems, setPreviewItems] = useState<MediaPreviewItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -668,28 +671,28 @@ function MyMediaHub({ currentUserId }: { currentUserId: string | null }) {
             className={`rounded-full px-3 py-1 ${tab === 'video' ? 'bg-gray-900 text-white' : 'bg-white/60'}`}
             onClick={() => setTab('video')}
           >
-            MyVideo
+            {t('media.myVideos')}
           </button>
           <button
             type="button"
             className={`rounded-full px-3 py-1 ${tab === 'photo' ? 'bg-gray-900 text-white' : 'bg-white/60'}`}
             onClick={() => setTab('photo')}
           >
-            MyPhoto
+            {t('media.myPhotos')}
           </button>
         </div>
       </div>
       <div className="px-4 pb-4">
         {tab === 'video' ? (
           <MediaPreviewGrid
-            emptyLabel={loading ? 'Caricamento…' : 'Non hai ancora video'}
+            emptyLabel={loading ? t('common.loading') : t('feed.noVideos')}
             items={videos}
             linkHref={currentUserId ? `/mymedia?type=video&authorId=${currentUserId}` : '/mymedia?type=video'}
             sectionId="my-videos"
           />
         ) : (
           <MediaPreviewGrid
-            emptyLabel={loading ? 'Caricamento…' : 'Non hai ancora foto'}
+            emptyLabel={loading ? t('common.loading') : t('feed.noPhotos')}
             items={photos}
             linkHref={currentUserId ? `/mymedia?type=photo&authorId=${currentUserId}` : '/mymedia?type=photo'}
             sectionId="my-photos"
@@ -707,7 +710,7 @@ function MyMediaHub({ currentUserId }: { currentUserId: string | null }) {
           }
           className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-blue-700 hover:underline"
         >
-          <span>Vedi tutti →</span>
+          <span>{t('feed.viewAll')} →</span>
         </Link>
       </div>
     </div>
@@ -788,17 +791,18 @@ function StarterPackSection({
   currentUserId: string | null;
   showOpportunities: boolean;
 }) {
+  const { t } = useI18n();
   return (
     <div className="space-y-4">
       {showOpportunities ? (
         <div className="glass-panel p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <h2 className="text-sm font-semibold text-neutral-900">Opportunità consigliate</h2>
-              <p className="text-xs text-neutral-500">Una selezione veloce per riempire il feed.</p>
+              <h2 className="text-sm font-semibold text-neutral-900">{t('feed.recommendedOpportunities')}</h2>
+              <p className="text-xs text-neutral-500">{t('feed.quickSelection')}</p>
             </div>
             <Link href="/opportunities" className="text-xs font-semibold text-blue-700 hover:underline">
-              Vedi tutte →
+              {t('feed.viewAll')} →
             </Link>
           </div>
           {loading ? (
@@ -819,7 +823,7 @@ function StarterPackSection({
               ))}
             </div>
           ) : (
-            <div className="mt-4 text-sm text-neutral-600">Nessuna opportunità consigliata al momento.</div>
+            <div className="mt-4 text-sm text-neutral-600">{t('feed.noRecommendedOpportunities')}</div>
           )}
         </div>
       ) : null}
@@ -828,8 +832,8 @@ function StarterPackSection({
         <div className="glass-panel p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <h2 className="text-sm font-semibold text-neutral-900">Profili consigliati</h2>
-              <p className="text-xs text-neutral-500">Club e player in linea con il tuo profilo.</p>
+              <h2 className="text-sm font-semibold text-neutral-900">{t('feed.recommendedProfiles')}</h2>
+              <p className="text-xs text-neutral-500">{t('feed.alignedProfiles')}</p>
             </div>
           </div>
           <ul className="mt-4 space-y-3">

@@ -160,7 +160,7 @@ export function formatEventDate(raw: string): string {
   if (Number.isNaN(date.getTime())) return value;
   const opts: Intl.DateTimeFormatOptions = { dateStyle: 'long' };
   if (hasTime) opts.timeStyle = 'short';
-  return new Intl.DateTimeFormat('it-IT', opts).format(date);
+  return new Intl.DateTimeFormat(undefined, opts).format(date);
 }
 
 export function domainFromUrl(url: string) {

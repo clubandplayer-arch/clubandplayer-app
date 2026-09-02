@@ -9,6 +9,11 @@ import SessionSyncMount from '@/components/auth/SessionSyncMount';
 import CookieConsent from '@/components/misc/CookieConsent';
 import PrivacyAnalytics from '@/components/analytics/PrivacyAnalytics';
 import WebVitalsReporter from '@/components/analytics/WebVitalsReporter';
+import { I18nProvider } from '@/components/i18n/I18nProvider';
+import LanguageSwitcher from '@/components/i18n/LanguageSwitcher';
+import { loadMessages } from '@/lib/i18n/messages';
+import { resolveRequestLocale } from '@/lib/i18n/server';
+import { buildLocalizedMetadata } from '@/lib/i18n/metadata';
 import { DEFAULT_OG_IMAGE, getSiteUrl, SITE_NAME } from '@/lib/seo';
 
 const righteous = Righteous({
@@ -23,9 +28,6 @@ const inter = Inter({
 });
 
 const BASE_URL = getSiteUrl();
-const DEFAULT_TITLE = 'Club and Player: network sportivo per club, player, staff e fan';
-const DEFAULT_DESC =
-  'Club and Player connette club, player, staff e fan in una piattaforma sportiva con profili, opportunità, candidature e messaggi riservati agli utenti registrati.';
 const OG_IMAGE = DEFAULT_OG_IMAGE; // /public/og.jpg (1200x630)
 
 // Disabilita la prerenderizzazione statica per evitare errori quando le variabili
@@ -33,33 +35,10 @@ const OG_IMAGE = DEFAULT_OG_IMAGE; // /public/og.jpg (1200x630)
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'default-no-store';
 
-export const metadata: Metadata = {
-  metadataBase: new URL(BASE_URL),
-
-  title: {
-    default: DEFAULT_TITLE,
-    template: `%s | ${SITE_NAME}`,
-  },
-  description: DEFAULT_DESC,
-  applicationName: SITE_NAME,
-
-  openGraph: {
-    type: 'website',
-    url: BASE_URL,
-    siteName: SITE_NAME,
-    title: DEFAULT_TITLE,
-    description: DEFAULT_DESC,
-    images: [{ url: OG_IMAGE, width: 1200, height: 630, alt: SITE_NAME }],
-    locale: 'it_IT',
-  },
-
-  twitter: {
-    card: 'summary_large_image',
-    title: DEFAULT_TITLE,
-    description: DEFAULT_DESC,
-    images: [OG_IMAGE],
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await resolveRequestLocale();
+  return { ...buildLocalizedMetadata(locale, 'home', BASE_URL), metadataBase: new URL(BASE_URL), applicationName: SITE_NAME };
+}
 
 // ✅ Next 15: viewport deve essere un export separato (non dentro metadata)
 export const viewport: Viewport = {
@@ -70,14 +49,15 @@ export const viewport: Viewport = {
   // colorScheme: 'light dark',
 };
 
-const FOOTER_LINKS = [
-  { href: '/legal/privacy', label: 'Privacy' },
-  { href: '/legal/terms', label: 'Termini' },
-  { href: '/legal/beta', label: 'Informativa Beta' },
-  { href: '/legal/child-safety', label: 'Child Safety' },
-];
-
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const locale = await resolveRequestLocale();
+  const messages = await loadMessages(locale);
+  const footerLinks = [
+    { href: '/legal/privacy', label: messages['common.privacy'] },
+    { href: '/legal/terms', label: messages['common.terms'] },
+    { href: '/legal/beta', label: messages['common.betaInfo'] },
+    { href: '/legal/child-safety', label: 'Child Safety' },
+  ];
   // JSON-LD (Organization)
   const jsonLdOrg = {
     '@context': 'https://schema.org',
@@ -96,7 +76,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   };
 
   return (
-    <html lang="it">
+    <html lang={locale}>
       <head>
         {/* Structured Data */}
         <script
@@ -124,9 +104,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
 
       <body className={`${righteous.variable} ${inter.className} antialiased text-neutral-900`}>
+        <I18nProvider initialLocale={locale} initialMessages={messages}>
         <a href="#main-content" className="skip-link">
-          Salta al contenuto principale
+          {messages['common.skipContent']}
         </a>
+        <LanguageSwitcher />
         {/* Analytics privacy-first: si attiva solo con consenso e DNT disattivato */}
         <Suspense fallback={null}>
           <PrivacyAnalytics />
@@ -153,7 +135,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               © {new Date().getFullYear()} Club and Player
             </p>
             <nav className="flex flex-wrap gap-4">
-              {FOOTER_LINKS.map((link) => (
+              {footerLinks.map((link) => (
                 <a key={link.href} href={link.href} className="hover:text-neutral-900 underline-offset-2 hover:underline">
                   {link.label}
                 </a>
@@ -171,6 +153,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Suspense fallback={null}>
           <CookieConsent />
         </Suspense>
+        </I18nProvider>
       </body>
     </html>
   );

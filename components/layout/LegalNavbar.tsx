@@ -7,6 +7,7 @@ import { NavCloseIcon, NavMenuIcon } from '@/components/icons/NavToggleIcons';
 import { MaterialIcon, type MaterialIconName } from '@/components/icons/MaterialIcon';
 import BrandLogo from '@/components/brand/BrandLogo';
 import type { UserRole } from '@/lib/auth/role';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 type Role = UserRole;
 
@@ -17,6 +18,7 @@ type Props = {
 };
 
 export default function LegalNavbar({ role }: Props) {
+  const { t } = useI18n();
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -24,7 +26,7 @@ export default function LegalNavbar({ role }: Props) {
 
   const navItems = useMemo<NavItem[]>(
     () => [
-      { label: 'Cerca', href: '/search-map', icon: 'globe' },
+      { label: 'Cerca', href: '/club-map', icon: 'globe' },
       { label: 'Opportunità', href: '/opportunities', icon: 'opportunities' },
       { label: 'Messaggi', href: '/messages', icon: 'mail' },
       { label: 'Profilo', href: profileHref, icon: 'person' },
@@ -68,7 +70,7 @@ export default function LegalNavbar({ role }: Props) {
           ) : null}
 
           <Link href="/logout" className="rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50">
-            Logout
+            {t('common.logout')}
           </Link>
         </div>
 
@@ -119,7 +121,7 @@ export default function LegalNavbar({ role }: Props) {
                 onClick={() => setIsMenuOpen(false)}
                 className="rounded-md border px-3 py-2 text-sm hover:bg-neutral-50"
               >
-                Logout
+                {t('common.logout')}
               </Link>
             </div>
           </div>

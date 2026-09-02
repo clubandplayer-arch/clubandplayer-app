@@ -2,9 +2,16 @@ import type { NextRequest } from 'next/server';
 import { successResponse, unknownError } from '@/lib/api/standardResponses';
 import { isProfileEligibleForFollowSuggestions } from '@/lib/profiles/completion';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { applyPublicProfileVisibilityFilters } from '@/lib/profile/visibility';
+import {
+  applySuggestionGeographyFilter,
+  loadViewerSuggestionGeography,
+} from '@/lib/search/suggestionGeography.server';
+import { rankSuggestionCandidates } from '@/lib/search/suggestionGeography';
 
 export const runtime = 'nodejs';
-const ENDPOINT_VERSION = 'who-to-follow@2026-01-05a';
+const ENDPOINT_VERSION = 'who-to-follow@2026-09-01-d4';
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 type SuggestionRow = {
   id: string;
@@ -77,6 +84,8 @@ export async function GET(req: NextRequest) {
       return successResponse({ suggestions: [] as Suggestion[] });
     }
 
+    const geographyPlan = await loadViewerSuggestionGeography(supabase, profile);
+
     const { data: existing } = await supabase
       .from('follows')
       .select('target_profile_id')
@@ -87,9 +96,11 @@ export async function GET(req: NextRequest) {
       (existing ?? [])
         .map((row) => (row as any)?.target_profile_id)
         .filter(Boolean)
-        .map((id) => id.toString()),
+        .map((id) => id.toString())
+        .filter((id) => UUID_RE.test(id)),
     );
     alreadyFollowing.add(profile.id);
+    const exclusionClause = `(${Array.from(alreadyFollowing).map((id) => `"${id}"`).join(',')})`;
     const followRowsTotal = (existing ?? []).length;
     const followRowsActive = followRowsTotal;
     const excludedIdsCount = alreadyFollowing.size;
@@ -98,24 +109,19 @@ export async function GET(req: NextRequest) {
       'id, full_name, display_name, avatar_url, sport, role, city, country, region, province, account_type, type, status, birth_year, interest_region_id, interest_province_id, interest_municipality_id, updated_at';
 
     const buildBaseQuery = () => {
-      let query = profilesClient
-        .from('profiles')
-        .select(baseSelect)
-        .or('status.eq.active,status.eq.pending,status.is.null');
+      let query = applyPublicProfileVisibilityFilters(
+        profilesClient.from('profiles').select(baseSelect),
+      );
       if (alreadyFollowing.size) {
-        const values = Array.from(alreadyFollowing)
-          .map((id) => `'${id}'`)
-          .join(',');
-        query = query.not('id', 'in', `(${values})`);
+        query = query.not('id', 'in', exclusionClause);
       }
       return query;
     };
 
     const buildCountQuery = () => {
-      return profilesClient
-        .from('profiles')
-        .select('id', { count: 'exact', head: true })
-        .or('status.eq.active,status.eq.pending,status.is.null');
+      return applyPublicProfileVisibilityFilters(
+        profilesClient.from('profiles').select('id', { count: 'exact', head: true }),
+      );
     };
 
     async function mapSuggestions(rows: SuggestionRow[]) {
@@ -165,30 +171,23 @@ export async function GET(req: NextRequest) {
     let sportCandidates = 0;
     let recentFallbackCandidates = 0;
 
-    const { count: totalProfilesCount, error: totalProfilesError } = await profilesClient
-      .from('profiles')
-      .select('id', { count: 'exact', head: true });
-    if (totalProfilesError) {
-      throw totalProfilesError;
+    let profilesVisibleTotal: number | null = null;
+    let candidatesAfterSelfExclude: number | null = null;
+    let candidatesAfterAlreadyFollowedExclude: number | null = null;
+    let totalEligibleAfterExclude: number | null = null;
+    if (debugMode) {
+      const [totalResult, selfExcludedResult, followedExcludedResult] = await Promise.all([
+        applyPublicProfileVisibilityFilters(
+          profilesClient.from('profiles').select('id', { count: 'exact', head: true }),
+        ),
+        buildCountQuery().neq('id', profile.id),
+        buildCountQuery().not('id', 'in', exclusionClause),
+      ]);
+      profilesVisibleTotal = totalResult.error ? null : totalResult.count;
+      candidatesAfterSelfExclude = selfExcludedResult.error ? null : selfExcludedResult.count;
+      candidatesAfterAlreadyFollowedExclude = followedExcludedResult.error ? null : followedExcludedResult.count;
+      totalEligibleAfterExclude = candidatesAfterAlreadyFollowedExclude;
     }
-
-    const profilesVisibleTotal = totalProfilesCount ?? 0;
-    const candidatesAfterSelfExclude = profile.id
-      ? ((await buildCountQuery().neq('id', profile.id)).count ?? 0)
-      : profilesVisibleTotal;
-    const candidatesAfterAlreadyFollowedExclude = alreadyFollowing.size
-      ? ((await buildCountQuery().not('id', 'in', `(${Array.from(alreadyFollowing).map((id) => `'${id}'`).join(',')})`))
-          .count ?? 0)
-      : candidatesAfterSelfExclude;
-    const { count: totalEligibleAfterExcludeCount, error: totalEligibleError } = await profilesClient
-      .from('profiles')
-      .select('id', { count: 'exact', head: true })
-      .or('status.eq.active,status.eq.pending,status.is.null')
-      .not('id', 'in', `(${Array.from(alreadyFollowing).map((id) => `'${id}'`).join(',')})`);
-    if (totalEligibleError) {
-      throw totalEligibleError;
-    }
-    const totalEligibleAfterExclude = totalEligibleAfterExcludeCount ?? 0;
 
     const addSuggestions = (items: Suggestion[]) => {
       let added = 0;
@@ -202,41 +201,42 @@ export async function GET(req: NextRequest) {
       return added;
     };
 
-    const locationFilters = [
-      { field: 'city', value: profile.interest_city || profile.city },
-      { field: 'province', value: profile.interest_province || profile.province },
-      { field: 'region', value: profile.interest_region || profile.region },
-      { field: 'country', value: profile.interest_country || profile.country },
-    ].filter((item) => typeof item.value === 'string' && item.value.trim().length > 0);
-
-    for (const loc of locationFilters) {
+    for (const geographyFilter of geographyPlan.filters) {
       if (results.length >= limit) break;
-      const { data: rows } = await buildBaseQuery()
-        .eq(loc.field, (loc.value as string).trim())
+      const { data: rows, error } = await applySuggestionGeographyFilter(buildBaseQuery(), geographyFilter)
         .order('updated_at', { ascending: false })
         .limit(limit * 3);
+      if (error) throw error;
 
       zoneCandidates += (rows ?? []).length;
-      addSuggestions(await mapSuggestions((rows ?? []) as SuggestionRow[]));
+      addSuggestions(await mapSuggestions(rankSuggestionCandidates(
+        (rows ?? []) as SuggestionRow[], geographyPlan, profile.sport,
+      )));
     }
 
     if (results.length < limit && profile.sport) {
-      const { data: rows } = await buildBaseQuery()
+      const { data: rows, error } = await buildBaseQuery()
         .eq('sport', profile.sport)
         .order('updated_at', { ascending: false })
         .limit(limit * 3);
+      if (error) throw error;
 
       sportCandidates += (rows ?? []).length;
-      addSuggestions(await mapSuggestions((rows ?? []) as SuggestionRow[]));
+      addSuggestions(await mapSuggestions(rankSuggestionCandidates(
+        (rows ?? []) as SuggestionRow[], geographyPlan, profile.sport,
+      )));
     }
 
     if (results.length < limit) {
-      const { data: rows } = await buildBaseQuery()
+      const { data: rows, error } = await buildBaseQuery()
         .order('updated_at', { ascending: false })
         .limit(limit * 3);
+      if (error) throw error;
 
       recentFallbackCandidates += (rows ?? []).length;
-      addSuggestions(await mapSuggestions((rows ?? []) as SuggestionRow[]));
+      addSuggestions(await mapSuggestions(rankSuggestionCandidates(
+        (rows ?? []) as SuggestionRow[], geographyPlan, profile.sport,
+      )));
     }
 
     const suggestions = results.slice(0, limit);
@@ -275,6 +275,10 @@ export async function GET(req: NextRequest) {
               candidatesAfterSelfExclude,
               candidatesAfterAlreadyFollowedExclude,
               zoneCandidates,
+              geographyFilterCount: geographyPlan.filters.length,
+              hasCanonicalGeographyInterests: geographyPlan.hasCanonicalInterests,
+              openToRelocation: geographyPlan.openToRelocation,
+              rankingVersion: 'd5-v1',
               sportCandidates,
               fallbackRecentCandidates: recentFallbackCandidates,
               returned: suggestions.length,

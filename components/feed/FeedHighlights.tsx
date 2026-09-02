@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
 import type { Opportunity } from '@/types/opportunity';
+import { useI18n } from '@/components/i18n/I18nProvider';
+import { formatDate as formatLocalizedDate } from '@/lib/i18n/format';
 
 type Role = 'club' | 'athlete' | 'guest';
 
@@ -18,14 +20,15 @@ type HighlightsResponse = {
   viewAllHref?: string;
 };
 
-function formatDate(raw?: string | null) {
+function formatDate(raw: string | null | undefined, locale: Parameters<typeof formatLocalizedDate>[1]) {
   if (!raw) return '';
   const date = new Date(raw);
   if (Number.isNaN(date.getTime())) return '';
-  return new Intl.DateTimeFormat('it-IT', { dateStyle: 'medium' }).format(date);
+  return formatLocalizedDate(date, locale, { dateStyle: 'medium' });
 }
 
 export default function FeedHighlights() {
+  const { locale, t } = useI18n();
   const [role, setRole] = useState<Role>('guest');
   const [items, setItems] = useState<HighlightItem[]>([]);
   const [viewAllHref, setViewAllHref] = useState<string | null>(null);
@@ -57,9 +60,9 @@ export default function FeedHighlights() {
 
   const emptyCopy =
     role === 'club'
-      ? 'Non hai ancora creato opportunità.'
-      : 'Non ci sono opportunità in evidenza nella tua zona.';
-  const subtitle = role === 'club' ? 'Le tue ultime opportunità' : 'Opportunità vicino a te';
+      ? t('feed.noOwnOpportunities')
+      : t('feed.noNearbyOpportunities');
+  const subtitle = role === 'club' ? t('feed.yourLatestOpportunities') : t('feed.nearbyOpportunities');
 
   if (loading) {
     return (
@@ -77,13 +80,13 @@ export default function FeedHighlights() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">In evidenza</div>
+        <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{t('feed.highlights')}</div>
         {(items.length > 0 || viewAllHref) && (
           <Link
             href={viewAllHref || '/opportunities'}
             className="text-xs font-semibold text-blue-700 underline-offset-4 hover:underline"
           >
-            {role === 'club' ? 'Gestisci / vedi tutte le opportunità' : 'Vedi tutte le opportunità'}
+            {role === 'club' ? t('feed.manageOpportunities') : t('feed.viewOpportunities')}
           </Link>
         )}
       </div>
@@ -105,7 +108,7 @@ export default function FeedHighlights() {
                 {[opp.city, opp.country].filter(Boolean).join(', ')}
               </div>
               <div className="text-[11px] uppercase tracking-wide text-amber-600">
-                {formatDate(opp.created_at)}
+                {formatDate(opp.created_at, locale)}
               </div>
             </li>
           ))}

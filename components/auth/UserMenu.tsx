@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 type UserInfo = { id: string; email: string | null };
 
 export function UserMenu() {
+  const { t } = useI18n();
   const router = useRouter();
   const [user, setUser] = useState<UserInfo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -46,7 +48,7 @@ export function UserMenu() {
         onClick={() => router.push("/login")}
         className="rounded-xl border px-3 py-1.5 text-sm"
       >
-        Login
+        {t('common.login')}
       </button>
     );
   }
@@ -59,7 +61,7 @@ export function UserMenu() {
         onClick={handleLogout}
         className="rounded-xl border px-3 py-1.5 text-sm"
       >
-        Logout
+        {t('common.logout')}
       </button>
     </div>
   );

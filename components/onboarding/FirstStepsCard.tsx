@@ -21,7 +21,7 @@ const steps: Array<{
   {
     title: 'Cerca club/player da seguire',
     description: 'Trova realtà interessanti vicino a te e segui i loro aggiornamenti.',
-    href: '/search-map',
+    href: '/club-map',
     icon: 'network',
   },
   {

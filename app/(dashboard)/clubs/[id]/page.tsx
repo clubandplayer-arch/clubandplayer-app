@@ -19,6 +19,8 @@ import { getSupabaseAdminClientOrNull } from '@/lib/supabase/admin';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { isProfileComplete } from '@/lib/profiles/completion';
 import { applyPublicProfileVisibilityFilters } from '@/lib/profile/visibility';
+import { resolveRequestLocale } from '@/lib/i18n/server';
+import { loadMessages, type MessageKey } from '@/lib/i18n/messages';
 
 type ClubProfileRow = {
   id: string;
@@ -173,6 +175,9 @@ function locationLabel(row: ClubProfileRow, provinceAbbreviations: Record<string
 }
 
 export default async function ClubPublicProfilePage({ params }: { params: { id: string } }) {
+  const locale = await resolveRequestLocale();
+  const messages = await loadMessages(locale);
+  const t = (key: MessageKey) => messages[key] ?? key;
   const profile = await loadClubProfile(params.id);
   if (!profile) return notFound();
 
@@ -184,7 +189,7 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
   const registryClub = await loadRegistryClubClaim(profile.id);
   const profileWithVerification = { ...profile, is_verified: isVerified };
 
-  const aboutText = profile.bio || 'Nessuna descrizione disponibile.';
+  const aboutText = profile.bio || t('club.noDescription');
   const provinceAbbreviations = await getProvinceAbbreviationsServer();
   const clubProfileId = profile.id;
 
@@ -209,13 +214,13 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
   const location = locationLabel(profileWithVerification, provinceAbbreviations) || undefined;
   const headerLocationContent = (
     <div className="space-y-1">
-      {location ? <p>{location}</p> : <p className="text-neutral-400">Località —</p>}
+      {location ? <p>{location}</p> : <p className="text-neutral-400">{t('profile.locationMissing')}</p>}
       {profileWithVerification.club_motto ? (
         <p className="text-sm italic text-neutral-700">“{profileWithVerification.club_motto}”</p>
       ) : null}
       {profileWithVerification.club_foundation_year ? (
         <p className="text-xs font-medium text-neutral-600">
-          Anno di fondazione: {profileWithVerification.club_foundation_year}
+          {t('club.foundationYear')}: {profileWithVerification.club_foundation_year}
         </p>
       ) : null}
     </div>
@@ -265,22 +270,22 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
 
       <section className="grid grid-cols-1 gap-4">
         <div className="rounded-2xl border bg-white p-5 shadow-sm">
-          <h2 className="heading-h2 text-xl">Dati club</h2>
+          <h2 className="heading-h2 text-xl">{t('club.data')}</h2>
           <div className="mt-3 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             <div>
-              <div className="text-xs font-semibold tracking-wide text-muted-foreground">Sede</div>
+              <div className="text-xs font-semibold tracking-wide text-muted-foreground">{t('club.headquarters')}</div>
               <div className="mt-1 font-medium text-neutral-900">{locationLabel(profile, provinceAbbreviations) || '—'}</div>
             </div>
             <div>
-              <div className="text-xs font-semibold tracking-wide text-muted-foreground">Sport principale</div>
+              <div className="text-xs font-semibold tracking-wide text-muted-foreground">{t('club.mainSport')}</div>
               <div className="mt-1 font-medium text-neutral-900">{sportLabel || '—'}</div>
             </div>
             <div>
-              <div className="text-xs font-semibold tracking-wide text-muted-foreground">Tipologia / Categoria</div>
+              <div className="text-xs font-semibold tracking-wide text-muted-foreground">{t('club.typeCategory')}</div>
               <div className="mt-1 font-medium text-neutral-900">{profile.club_league_category || '—'}</div>
             </div>
             <div>
-              <div className="text-xs font-semibold tracking-wide text-muted-foreground">Impianto sportivo</div>
+              <div className="text-xs font-semibold tracking-wide text-muted-foreground">{t('club.facility')}</div>
               <div className="mt-1 font-medium text-neutral-900">{profile.club_stadium || '—'}</div>
               {profile.club_stadium_address && (
                 <div className="text-xs text-neutral-600">{profile.club_stadium_address}</div>
@@ -290,7 +295,7 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
         </div>
 
         <div className="rounded-2xl border bg-white p-5 shadow-sm">
-          <h2 className="heading-h2 text-xl">Biografia</h2>
+          <h2 className="heading-h2 text-xl">{t('club.biography')}</h2>
           <p className="mt-2 whitespace-pre-wrap text-sm text-neutral-800">{aboutText}</p>
         </div>
       </section>
@@ -305,8 +310,8 @@ export default async function ClubPublicProfilePage({ params }: { params: { id: 
 
       <section className="space-y-3 rounded-2xl border bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="heading-h2 text-xl">Bacheca</h2>
-          <span className="text-xs font-semibold text-blue-700">Aggiornamenti del club</span>
+          <h2 className="heading-h2 text-xl">{t('club.board')}</h2>
+          <span className="text-xs font-semibold text-blue-700">{t('club.updates')}</span>
         </div>
         <PublicAuthorFeed
           authorId={profile.id}

@@ -1,5 +1,6 @@
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import type { Opportunity } from '@/types/opportunity';
+import { attachOpportunityGeography } from '@/lib/opportunities/geography';
 
 export type OppFilters = {
   q?: string;
@@ -22,7 +23,7 @@ export type Page = { page: number; limit: number };
 export type OppResult = { items: Opportunity[]; total: number; hasMore: boolean };
 
 const SELECT_FIELDS =
-  'id,title,description,owner_id,created_by,created_at,country,region,province,city,sport,role,role_group,required_category,age_min,age_max,status,club_name';
+  'id,title,description,owner_id,created_by,created_at,country,region,province,city,country_id,geo_area_id,sport,role,role_group,required_category,age_min,age_max,status,club_name';
 
 function normalizeRoleGroup(value: unknown): 'player' | 'staff' {
   const normalized = String(value ?? '').trim().toLowerCase();
@@ -57,6 +58,9 @@ function normalizeRow(row: Record<string, any>): Opportunity {
     region: row.region ?? null,
     province: row.province ?? null,
     city: row.city ?? null,
+    country_id: row.country_id ?? null,
+    geo_area_id: row.geo_area_id ?? null,
+    geography: row.geography,
     sport: row.sport ?? null,
     role: row.role ?? null,
     role_group: normalizeRoleGroup(row.role_group),
@@ -199,7 +203,8 @@ export const OpportunitiesRepo = {
       }, {} as Record<string, string>);
     }
 
-    const items = rows.map((row) => {
+    const rowsWithGeography = await attachOpportunityGeography(supabase, rows);
+    const items = rowsWithGeography.map((row) => {
       const ownerId = (row.owner_id as string | null) ?? (row.created_by as string | null) ?? null;
       const clubName = row.club_name ?? (ownerId ? nameMap[ownerId] : null) ?? null;
       return normalizeRow({ ...row, owner_id: ownerId, created_by: ownerId, club_name: clubName, clubName });
@@ -223,7 +228,7 @@ export async function getLatestOpenOpportunitiesByClub(
     const { data, error } = await supabase
       .from('opportunities')
       .select(
-        'id,title,city,province,region,country,created_at,status,club_id,owner_id,created_by,club_name,role_group',
+        'id,title,city,province,region,country,country_id,geo_area_id,created_at,status,club_id,owner_id,created_by,club_name,role_group',
       )
       .or(`club_id.eq.${clubProfileId},owner_id.eq.${clubProfileId},created_by.eq.${clubProfileId}`)
       .order('created_at', { ascending: false })
@@ -252,7 +257,8 @@ export async function getLatestOpenOpportunitiesByClub(
       return !closedStates.includes(status);
     });
 
-    const normalized = filtered
+    const withGeography = await attachOpportunityGeography(supabase, filtered as Array<Record<string, any>>);
+    const normalized = withGeography
       .sort((a, b) => {
         const da = new Date((a as any).created_at ?? 0).getTime();
         const db = new Date((b as any).created_at ?? 0).getTime();

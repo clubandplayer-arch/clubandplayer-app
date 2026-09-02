@@ -5,6 +5,8 @@
 
 import { useEffect, useState } from 'react';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { useI18n } from '@/components/i18n/I18nProvider';
+import { localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 
 import FollowButton from '@/components/clubs/FollowButton';
 import { CountryFlag } from '@/components/ui/CountryFlag';
@@ -94,6 +96,7 @@ type InterestGeo = {
 /* ---------- helpers bandiera/nome paese ---------- */
 
 export default function ProfileMiniCard() {
+  const { t } = useI18n();
   const [p, setP] = useState<P | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [interest, setInterest] = useState<InterestGeo>({ city: '—', province: '', region: '', country: '' });
@@ -163,7 +166,7 @@ export default function ProfileMiniCard() {
   const age = !isClub && p?.birth_year ? Math.max(0, year - p.birth_year) : null;
   const rawName = p?.full_name || p?.display_name || '';
   const isEmailName = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawName.trim());
-  const name = isInstitution && isEmailName ? 'Ente in verifica' : rawName || (isClub ? 'Il tuo club' : isInstitution ? 'Ente in verifica' : 'Benvenuto!');
+  const name = isInstitution && isEmailName ? t('profile.institution') : rawName || (isClub ? 'Club' : isInstitution ? t('profile.institution') : t('profile.welcome'));
   const interestLabel = [interest.city, interest.province, interest.country].filter(Boolean).join(', ');
   const sportLabel = normalizeSport(p?.sport ?? null) ?? p?.sport ?? null;
   const clubGeoLabel = isClub ? interestLabel : '';
@@ -214,7 +217,7 @@ export default function ProfileMiniCard() {
 
   const CertifiedClubBadge = () => (
     <span
-      aria-label="Club certificato"
+      aria-label={t('profile.certifiedClub')}
       className="absolute right-10 top-4 inline-flex h-10 w-10 items-center justify-center bg-transparent shadow-none ring-0"
     >
       <svg
@@ -257,7 +260,7 @@ export default function ProfileMiniCard() {
           {/* righe info */}
           {!isClub && (
             <div className="flex items-center justify-center gap-2 text-xs text-gray-700">
-              <span className="text-gray-500">Nazionalità:</span>
+              <span className="text-gray-500">{t('profile.nationality')}:</span>
               <CountryFlag iso2={iso2} />
               <span className="font-medium text-gray-900">{countryLabel || '—'}</span>
             </div>
@@ -265,7 +268,7 @@ export default function ProfileMiniCard() {
 
           {!isClub && (
             <div className="text-xs text-gray-600">
-              <div className="text-[11px] uppercase tracking-wide text-gray-500">Zona di interesse</div>
+              <div className="text-[11px] uppercase tracking-wide text-gray-500">{t('profile.interestArea')}</div>
               <div className="text-sm font-semibold text-gray-800">{interestLabel || '—'}</div>
             </div>
           )}
@@ -279,7 +282,7 @@ export default function ProfileMiniCard() {
           ) : null}
 
           {isClub && p?.club_foundation_year ? (
-            <p className="text-xs text-gray-600">Anno di fondazione: {p.club_foundation_year}</p>
+            <p className="text-xs text-gray-600">{t('club.foundationYear')}: {p.club_foundation_year}</p>
           ) : null}
         </div>
       </div>
@@ -291,7 +294,7 @@ export default function ProfileMiniCard() {
             <div className="flex justify-center">
               <FollowButton
                 targetProfileId={targetId}
-                labelFollow="Segui"
+                labelFollow={t('profile.follow')}
                 labelFollowing="Seguo"
                 size="md"
                 className="w-full justify-center"
@@ -300,18 +303,18 @@ export default function ProfileMiniCard() {
           ) : null}
 
           <div className="space-y-1 text-center">
-            <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Dettagli club</div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t('club.details')}</div>
           </div>
           <dl className="space-y-2 rounded-xl bg-white/70 p-3 text-sm text-gray-800 shadow-sm ring-1 ring-gray-100">
             {p?.sport && (
               <div className="flex flex-col gap-0.5">
-                <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Sport</dt>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t('opportunities.sport')}</dt>
                 <dd className="font-medium text-gray-900">{sportLabel}</dd>
               </div>
             )}
             {p?.club_league_category && (
               <div className="flex flex-col gap-0.5">
-                <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Categoria</dt>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t('club.category')}</dt>
                 <dd className="font-medium text-gray-900">{p.club_league_category}</dd>
               </div>
             )}
@@ -331,18 +334,18 @@ export default function ProfileMiniCard() {
 
           {p?.bio ? (
             <div className="rounded-xl bg-white/70 p-3 text-sm text-gray-700 shadow-sm ring-1 ring-gray-100">
-              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Biografia</div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t('club.biography')}</div>
               <p className="mt-1 line-clamp-3 whitespace-pre-line break-words leading-snug">{p.bio}</p>
             </div>
           ) : null}
 
           {mapEmbedUrl ? (
             <div className="space-y-2">
-              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Mappa</div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t('profile.map')}</div>
               <div className="overflow-hidden rounded-xl border border-gray-200 shadow-sm">
                 <iframe
                   title={`Mappa stadio ${p?.club_stadium || 'club'}`}
-                  aria-label="Mappa stadio"
+                  aria-label={t('profile.stadiumMap')}
                   src={mapEmbedUrl}
                   className="h-32 w-full"
                   loading="lazy"
@@ -359,7 +362,7 @@ export default function ProfileMiniCard() {
             <div className="flex justify-center">
               <FollowButton
                 targetProfileId={targetId}
-                labelFollow="Segui"
+                labelFollow={t('profile.follow')}
                 labelFollowing="Seguo"
                 size="md"
                 className="w-full justify-center"
@@ -368,20 +371,20 @@ export default function ProfileMiniCard() {
           ) : null}
 
           <div className="space-y-1 text-center">
-            <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Dettagli player</div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t('profile.detailsPlayer')}</div>
           </div>
 
           <dl className="grid grid-cols-2 gap-3 rounded-xl bg-white/70 p-3 text-sm text-gray-800 shadow-sm ring-1 ring-gray-100">
             <div className="flex flex-col gap-0.5">
-              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Età</dt>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t('profile.age')}</dt>
               <dd className="font-medium text-gray-900">{age ?? '—'}</dd>
             </div>
             <div className="flex flex-col gap-0.5">
-              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Altezza</dt>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t('profile.height')}</dt>
               <dd className="font-medium text-gray-900">{p?.height_cm ? `${p.height_cm} cm` : '—'}</dd>
             </div>
             <div className="flex flex-col gap-0.5">
-              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Peso</dt>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t('profile.weight')}</dt>
               <dd className="font-medium text-gray-900">{p?.weight_kg ? `${p.weight_kg} kg` : '—'}</dd>
             </div>
             <div className="flex flex-col gap-0.5">
@@ -389,22 +392,22 @@ export default function ProfileMiniCard() {
               <dd className="font-medium text-gray-900">{p?.foot || '—'}</dd>
             </div>
             <div className="flex flex-col gap-0.5">
-              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Sport</dt>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t('opportunities.sport')}</dt>
               <dd className="font-medium text-gray-900">{p?.sport || '—'}</dd>
             </div>
             <div className="flex flex-col gap-0.5">
-              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Ruolo</dt>
-              <dd className="font-medium text-gray-900">{p?.role || '—'}</dd>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t('profile.role')}</dt>
+              <dd className="font-medium text-gray-900">{localizeSportRole(p?.role, t) || '—'}</dd>
             </div>
             <div className="flex flex-col gap-0.5 col-span-2">
-              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Città / Paese</dt>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t('profile.cityCountry')}</dt>
               <dd className="font-medium text-gray-900">{p?.city || interestLabel || '—'}</dd>
             </div>
           </dl>
 
           {p?.bio ? (
             <div className="rounded-xl bg-white/70 p-3 text-sm text-gray-700 shadow-sm ring-1 ring-gray-100">
-              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Biografia</div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t('club.biography')}</div>
               <p className="mt-1 line-clamp-3 whitespace-pre-line break-words leading-snug">{p.bio}</p>
             </div>
           ) : null}

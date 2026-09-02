@@ -1,5 +1,6 @@
 // components/applications/ApplicationsDashboard.tsx
 'use client';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 import { useEffect, useMemo, useState } from 'react';
 
@@ -71,6 +72,7 @@ async function detectRole(): Promise<Role> {
 }
 
 export default function ApplicationsDashboard() {
+  const { t } = useI18n();
   const [role, setRole] = useState<Role>('guest');
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -93,13 +95,13 @@ export default function ApplicationsDashboard() {
         if (role === 'club') {
           const res = await fetch('/api/applications/received', { credentials: 'include', cache: 'no-store' });
           const text = await res.text();
-          if (!res.ok) throw new Error(text || 'Errore');
+          if (!res.ok) throw new Error(text || t('errors.generic'));
           const json = JSON.parse(text || '{}');
           if (!cancelled) setRowsReceived(Array.isArray(json?.data) ? json.data : []);
         } else if (role === 'athlete') {
           const res = await fetch('/api/applications/mine', { credentials: 'include', cache: 'no-store' });
           const text = await res.text();
-          if (!res.ok) throw new Error(text || 'Errore');
+          if (!res.ok) throw new Error(text || t('errors.generic'));
           const json = JSON.parse(text || '{}');
           const rows = (Array.isArray(json?.data) ? json.data : Array.isArray(json) ? json : []) as ApplicationRow[];
 
@@ -112,7 +114,7 @@ export default function ApplicationsDashboard() {
           if (!cancelled) setRowsSent(enhanced);
         }
       } catch (e: any) {
-        if (!cancelled) setErr(e?.message || 'Errore nel caricamento delle candidature');
+        if (!cancelled) setErr(e?.message || t('opportunities.loadError'));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -122,7 +124,7 @@ export default function ApplicationsDashboard() {
     return () => {
       cancelled = true;
     };
-  }, [role]);
+  }, [role, t]);
 
   useEffect(() => {
     if (role !== 'club') return;
@@ -211,13 +213,13 @@ export default function ApplicationsDashboard() {
   return (
     <main className="mx-auto max-w-6xl p-4 space-y-4">
       <header className="space-y-1">
-        <h1 className="heading-h1">Candidature</h1>
+        <h1 className="heading-h1">{t('applications.title')}</h1>
         <p className="text-sm text-gray-600">
           {role === 'club'
-            ? 'Gestisci le candidature ricevute sulle opportunità pubblicate dal tuo club.'
+            ? t('applications.clubDashboardHelp')
             : role === 'athlete'
-            ? 'Rivedi le opportunità a cui ti sei candidato e lo stato di ogni domanda.'
-            : 'Accedi per vedere le candidature inviate o ricevute.'}
+            ? t('applications.playerDashboardHelp')
+            : t('applications.loginRequired')}
         </p>
       </header>
 
@@ -232,7 +234,7 @@ export default function ApplicationsDashboard() {
             onChange={(e) => setFilterOpp(e.target.value)}
             className="w-full rounded-lg border px-3 py-2 sm:w-64"
           >
-            <option value="">Tutte le opportunità</option>
+            <option value="">{t('applications.allOpportunities')}</option>
             {opportunityOptions.map(([id, title]) => (
               <option key={id} value={id}>
                 {title || id}
@@ -245,7 +247,7 @@ export default function ApplicationsDashboard() {
             onChange={(e) => setFilterStatus(e.target.value)}
             className="w-full rounded-lg border px-3 py-2 sm:w-56"
           >
-            <option value="">Tutti gli stati</option>
+            <option value="">{t('filters.allStatuses')}</option>
             {statusOptions.map((s) => (
               <option key={s} value={s}>
                 {s}
@@ -254,7 +256,7 @@ export default function ApplicationsDashboard() {
           </select>
 
           <div className="text-xs text-gray-600 sm:ml-auto sm:text-right">
-            {role === 'club' ? 'Vista Club · candidature ricevute' : 'Vista Player · candidature inviate'}
+            {role === 'club' ? t('applications.clubView') : t('applications.playerView')}
           </div>
         </div>
       )}

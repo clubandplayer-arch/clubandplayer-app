@@ -10,6 +10,7 @@ import { MaterialIcon } from '@/components/icons/MaterialIcon';
 import { QuotedPostCard } from '@/components/feed/QuotedPostCard';
 import { renderMentionText } from '@/components/feed/MentionText';
 import type { FeedPost } from '@/components/feed/postShared';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 type Props = {
   onPosted?: () => void;
@@ -105,6 +106,7 @@ function findMentionQuery(value: string, caret: number | null) {
 }
 
 export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Props) {
+  const { t } = useI18n();
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -804,7 +806,7 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
           </div>
         ) : null}
         <label htmlFor={textareaId} className="sr-only">
-          Scrivi un aggiornamento per la community
+          {t('feed.writeUpdate')}
         </label>
         <div className="relative">
           {text ? (
@@ -822,7 +824,7 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
               text ? 'text-transparent caret-slate-900' : ''
             }`}
             rows={3}
-            placeholder="Condividi un pensiero… usa @nome per un follower o @all per tutti"
+            placeholder={t('feed.postPlaceholder')}
             value={text}
             onChange={(e) => handleTextChange(e.target.value)}
             onClick={(e) => setCaretPosition(e.currentTarget.selectionStart)}
@@ -835,7 +837,7 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
           {mentionSuggestions.length ? (
             <div className="absolute left-3 top-full z-[9999] mt-2 w-72 overflow-hidden rounded-xl border border-sky-100 bg-white shadow-xl">
               <div className="border-b border-slate-100 px-3 py-2 text-xs font-semibold text-slate-500">
-                Tagga un tuo follower
+                {t('feed.tagFollower')}
               </div>
               {mentionSuggestions.map((option) => (
                 <button
@@ -864,7 +866,7 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
           ) : null}
         </div>
         <p id={helperId} className="text-xs text-gray-500">
-          {text.trim().length}/{MAX_CHARS} caratteri disponibili · Puoi taggare solo i tuoi follower con @nome, oppure tutti i follower con @all
+          {t('feed.composerHelp', { count: text.trim().length, max: MAX_CHARS })}
         </p>
 
         {linkUrl ? (
@@ -894,10 +896,10 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
               onClick={() => fileInputRef.current?.click()}
               disabled={sending || accountType === 'fan'}
             >
-              Allega foto/video
+              {t('feed.attachMedia')}
             </button>
             {mediaItems.length ? (
-              <span className="text-gray-700">Allegati: {mediaItems.length}/{MAX_MEDIA}</span>
+              <span className="text-gray-700">{t('feed.attachments', { count: mediaItems.length, max: MAX_MEDIA })}</span>
             ) : (
               <span>Immagini (max 8MB) o video (max 80MB)</span>
             )}
@@ -927,7 +929,7 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
             disabled={sending}
             className="rounded-lg border px-4 py-2 hover:bg-gray-50 disabled:opacity-50"
           >
-            Annulla
+            {t('common.cancel')}
           </button>
           <button
             type="button"
@@ -935,7 +937,7 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
             disabled={!canSend}
             className="rounded-lg bg-gray-900 px-4 py-2 font-semibold text-white disabled:opacity-50"
           >
-            {sending ? 'Invio…' : 'Pubblica'}
+            {sending ? t('feed.publishing') : t('feed.publish')}
           </button>
         </div>
         {mediaItems.length ? (
@@ -1104,7 +1106,7 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <div className="text-xs font-semibold uppercase text-gray-700">Locandina (opzionale)</div>
+                <div className="text-xs font-semibold uppercase text-gray-700">{t('feed.posterOptional')}</div>
                 <div className="text-[11px] text-gray-500">Immagine JPEG/PNG/WebP/GIF, max 8MB</div>
               </div>
               <button
@@ -1114,7 +1116,7 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
                 disabled={eventSending}
               >
                 <MaterialIcon name="calendar" fontSize={16} aria-hidden />
-                <span>Carica locandina</span>
+                <span>{t('feed.uploadPoster')}</span>
               </button>
             </div>
             {eventPosterPreview ? (
@@ -1148,7 +1150,7 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
               className="rounded-lg border px-4 py-2 hover:bg-gray-50"
               disabled={eventSending}
             >
-              Annulla
+              {t('common.cancel')}
             </button>
             <button
               type="button"
@@ -1157,7 +1159,7 @@ export default function FeedComposer({ onPosted, quotedPost, onClearQuote }: Pro
               disabled={!canPublishEvent}
               title={eventDescriptionTooLong ? `Descrizione oltre il limite di ${MAX_CHARS} caratteri` : undefined}
             >
-              {eventSending ? 'Creazione…' : 'Pubblica evento'}
+              {eventSending ? t('feed.creatingEvent') : t('feed.publishEvent')}
             </button>
           </div>
         </div>
@@ -1183,6 +1185,7 @@ function LinkPreviewCard({
   preview: LinkPreview | null;
   loading: boolean;
 }) {
+  const { t } = useI18n();
   const [imageFailed, setImageFailed] = useState(false);
   const href = preview?.url || url;
   const showImage = Boolean(preview?.image && !imageFailed);
@@ -1194,8 +1197,8 @@ function LinkPreviewCard({
   return (
     <div className="glass-panel border px-4 py-3 text-sm">
       <div className="flex items-center justify-between">
-        <span className="font-semibold text-gray-800">Anteprima link</span>
-        {loading ? <span className="text-xs text-gray-500">Caricamento…</span> : null}
+        <span className="font-semibold text-gray-800">{t('feed.linkPreview')}</span>
+        {loading ? <span className="text-xs text-gray-500">{t('common.loading')}</span> : null}
       </div>
       <a
         href={href}
