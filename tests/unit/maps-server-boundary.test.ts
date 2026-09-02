@@ -10,7 +10,7 @@ const AREA_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const ROOT_AREA_ID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const PROVINCE_AREA_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 
-function geographyClient(countryIso2: string, areas: Array<{ id: string; parentId: string | null; name: string; type: string }>) {
+function geographyClient(countryIso2: string, areas: Array<{ id: string; parentId: string | null; name: string; type: string }>, aliases: string[] = [countryIso2]) {
   const rows = new Map(areas.map((area) => [area.id, {
     id: area.id,
     country_id: COUNTRY_ID,
@@ -22,6 +22,9 @@ function geographyClient(countryIso2: string, areas: Array<{ id: string; parentI
   return {
     from(table: string) {
       let id = '';
+      const result = table === 'legacy_country_mappings'
+        ? { data: aliases.map((source_value) => ({ source_value })), error: null }
+        : null;
       const query = {
         select() { return query; },
         eq(column: string, value: string) {
@@ -33,6 +36,7 @@ function geographyClient(countryIso2: string, areas: Array<{ id: string; parentI
             ? { data: { id: COUNTRY_ID, iso2: countryIso2, is_active: true, is_supported: true }, error: null }
             : { data: rows.get(id) ?? null, error: null };
         },
+        then(resolve: (value: unknown) => unknown) { return Promise.resolve(result).then(resolve); },
       };
       return query;
     },
@@ -67,7 +71,12 @@ test('database bounds split antimeridian longitude ranges without dropping venue
 
 test('bounds-less canonical areas narrow legacy Club location columns instead of widening globally', () => {
   const filters: Array<[string, string]> = [];
+  let countryFilter = '';
   const query = {
+    or(value: string) {
+      countryFilter = value;
+      return this;
+    },
     ilike(column: string, value: string) {
       filters.push([column, value]);
       return this;
@@ -78,12 +87,13 @@ test('bounds-less canonical areas narrow legacy Club location columns instead of
     countryId: COUNTRY_ID,
     geoAreaId: AREA_ID,
     countryIso2: 'IT',
+    countryAliases: ['IT', 'Italia', 'Italy'],
     region: 'Lazio',
     province: 'Roma',
     city: 'Roma',
   }), query);
+  assert.equal(countryFilter, 'country.ilike.IT,country.ilike.Italia,country.ilike.Italy');
   assert.deepEqual(filters, [
-    ['country', 'IT'],
     ['region', 'Lazio'],
     ['province', 'Roma'],
     ['city', 'Roma'],
@@ -92,11 +102,11 @@ test('bounds-less canonical areas narrow legacy Club location columns instead of
 
 test('bounds-less European canonical area types map to their legacy location fields', async () => {
   const cases = [
-    { country: 'FR', areas: [[ROOT_AREA_ID, null, 'Île-de-France', 'REGION'], [AREA_ID, ROOT_AREA_ID, 'Paris', 'DEPARTMENT']], expected: ['Île-de-France', 'Paris', null] },
+    { country: 'FR', areas: [[ROOT_AREA_ID, null, 'Île-de-France', 'REGION'], [AREA_ID, ROOT_AREA_ID, 'Paris', 'DEPARTMENT']], expected: ['Île-de-France', null, null] },
     { country: 'ES', areas: [[AREA_ID, null, 'Madrid, Comunidad de', 'AUTONOMOUS_COMMUNITY']], expected: ['Madrid, Comunidad de', null, null] },
-    { country: 'CH', areas: [[ROOT_AREA_ID, null, 'Ticino', 'CANTON'], [AREA_ID, ROOT_AREA_ID, 'Lugano', 'DISTRICT']], expected: ['Ticino', 'Lugano', null] },
+    { country: 'CH', areas: [[ROOT_AREA_ID, null, 'Ticino', 'CANTON'], [AREA_ID, ROOT_AREA_ID, 'Lugano', 'DISTRICT']], expected: ['Ticino', null, null] },
     { country: 'SI', areas: [[AREA_ID, null, 'Osrednjeslovenska', 'STATISTICAL_REGION']], expected: ['Osrednjeslovenska', null, null] },
-    { country: 'PL', areas: [[ROOT_AREA_ID, null, 'Mazowieckie', 'VOIVODESHIP'], [PROVINCE_AREA_ID, ROOT_AREA_ID, 'Warszawa', 'POWIAT'], [AREA_ID, PROVINCE_AREA_ID, 'Warszawa', 'GMINA']], expected: ['Mazowieckie', 'Warszawa', 'Warszawa'] },
+    { country: 'PL', areas: [[ROOT_AREA_ID, null, 'Mazowieckie', 'VOIVODESHIP'], [PROVINCE_AREA_ID, ROOT_AREA_ID, 'Warszawa', 'POWIAT'], [AREA_ID, PROVINCE_AREA_ID, 'Warszawa', 'GMINA']], expected: ['Mazowieckie', null, 'Warszawa'] },
   ] as const;
 
   for (const item of cases) {
@@ -107,6 +117,34 @@ test('bounds-less European canonical area types map to their legacy location fie
       geographyClient(item.country, areas) as never,
     );
     assert.deepEqual([scope.region, scope.province, scope.city], item.expected, item.country);
+  }
+});
+
+test('bounds-less foreign Club scopes do not require null province fields and use canonical legacy country aliases', async () => {
+  const cases = [
+    { iso2: 'IT', aliases: ['IT', 'Italia', 'Italy'], expectedAliases: ['Italia', 'Italy'] },
+    { iso2: 'FR', aliases: ['FR', 'France', 'Francia'], expectedAliases: ['France', 'Francia'] },
+  ];
+  for (const item of cases) {
+    const areas = [
+      { id: ROOT_AREA_ID, parentId: null, name: item.iso2 === 'IT' ? 'Lazio' : 'Île-de-France', type: 'REGION' },
+      { id: AREA_ID, parentId: ROOT_AREA_ID, name: item.iso2 === 'IT' ? 'Roma' : 'Paris', type: item.iso2 === 'IT' ? 'PROVINCE' : 'DEPARTMENT' },
+    ];
+    const scope = await resolveCanonicalMapLocationScope(
+      new URLSearchParams({ countryId: COUNTRY_ID, geoAreaId: AREA_ID }),
+      geographyClient(item.iso2, areas, item.aliases) as never,
+    );
+    assert.deepEqual(scope.countryAliases, item.aliases);
+    assert.equal(scope.province, item.iso2 === 'IT' ? 'Roma' : null);
+
+    let countryFilter = '';
+    const locationFilters: Array<[string, string]> = [];
+    applyOrganizationMapLocationScope({
+      or(value: string) { countryFilter = value; return this; },
+      ilike(column: string, value: string) { locationFilters.push([column, value]); return this; },
+    }, scope);
+    for (const alias of item.expectedAliases) assert.match(countryFilter, new RegExp(`country\\.ilike\\.${alias}`));
+    if (item.iso2 === 'FR') assert.doesNotMatch(JSON.stringify(locationFilters), /province/i);
   }
 });
 

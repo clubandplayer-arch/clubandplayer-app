@@ -16,6 +16,7 @@ export type CanonicalMapLocationScope = {
   countryId: string;
   geoAreaId: string | null;
   countryIso2: string;
+  countryAliases: string[];
   region: string | null;
   province: string | null;
   city: string | null;
@@ -143,11 +144,24 @@ export async function resolveCanonicalMapLocationScope(
     throw new MapGeographyContractError('COUNTRY_UNAVAILABLE', 'countryId is not active and supported');
   }
 
+  const { data: legacyCountryMappings, error: legacyCountryMappingsError } = await client
+    .from('legacy_country_mappings')
+    .select('source_value')
+    .eq('country_id', country.id)
+    .eq('is_active', true);
+  if (legacyCountryMappingsError) throw legacyCountryMappingsError;
+  const countryIso2 = String(country.iso2).toUpperCase();
+  const countryAliases = Array.from(new Set([
+    countryIso2,
+    ...(legacyCountryMappings ?? []).map((mapping) => String(mapping.source_value).trim()).filter(Boolean),
+  ]));
+
   const scope: CanonicalMapLocationScope = {
     source: 'canonical_text_filter',
     countryId: String(country.id),
     geoAreaId: parsed.geoAreaId,
-    countryIso2: String(country.iso2).toUpperCase(),
+    countryIso2,
+    countryAliases,
     region: null,
     province: null,
     city: null,
@@ -180,8 +194,13 @@ export async function resolveCanonicalMapLocationScope(
     if (['REGION', 'AUTONOMOUS_COMMUNITY', 'CANTON', 'STATISTICAL_REGION', 'VOIVODESHIP'].includes(areaType)) {
       scope.region = name;
       recognized = true;
-    } else if (['PROVINCE', 'DEPARTMENT', 'DISTRICT', 'POWIAT'].includes(areaType)) {
+    } else if (scope.countryIso2 === 'IT' && areaType === 'PROVINCE') {
       scope.province = name;
+      recognized = true;
+    } else if (['PROVINCE', 'DEPARTMENT', 'DISTRICT', 'POWIAT'].includes(areaType)) {
+      // The active Club profile writer persists no province-like field outside
+      // Italy. Recognize these hierarchy nodes without adding an unsatisfiable
+      // predicate; persisted region/city ancestors still narrow the result.
       recognized = true;
     } else if (['MUNICIPALITY', 'COMMUNE', 'GMINA'].includes(areaType)) {
       scope.city = name;
@@ -197,7 +216,10 @@ export async function resolveCanonicalMapLocationScope(
 }
 
 export function applyOrganizationMapLocationScope<T>(query: T, scope: CanonicalMapLocationScope): T {
-  let filtered = (query as any).ilike('country', scope.countryIso2);
+  const exactIlike = (value: string) => value.replace(/[%_]/g, (match) => `\\${match}`);
+  let filtered = (query as any).or(
+    scope.countryAliases.map((alias) => `country.ilike.${exactIlike(alias)}`).join(','),
+  );
   if (scope.region) filtered = filtered.ilike('region', scope.region);
   if (scope.province) filtered = filtered.ilike('province', scope.province);
   if (scope.city) filtered = filtered.ilike('city', scope.city);
