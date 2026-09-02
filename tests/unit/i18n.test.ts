@@ -179,6 +179,38 @@ test('phase 4C primary network, applications and location surfaces use the Itali
   ]) assert.ok(!source.includes(hardcodedLabel), hardcodedLabel);
 });
 
+test('phase 4D English baseline is explicit on primary product surfaces', async () => {
+  const english = await loadMessages('en');
+  const approved = {
+    'network.title': 'Your network',
+    'network.suggested': 'Suggested',
+    'network.following': 'Following',
+    'network.followers': 'Followers',
+    'applications.mine': 'My applications',
+    'applications.status': 'Status',
+    'applications.date': 'Date',
+    'applications.actions': 'Actions',
+    'opportunities.details': 'Listing details',
+    'opportunity.notFound': 'Opportunity not found.',
+    'profile.location': 'Location',
+  } as const;
+  for (const [key, value] of Object.entries(approved)) {
+    assert.equal(english[key as keyof typeof english], value, key);
+    assert.notEqual(english[key as keyof typeof english], italianMessages[key as keyof typeof italianMessages], key);
+  }
+});
+
+test('application detail CTA remains one responsive unit for longer translations', () => {
+  const source = readFileSync(new URL('../../app/(dashboard)/applications/page.tsx', import.meta.url), 'utf8');
+  assert.match(source, /overflow-x-auto/);
+  assert.match(source, /min-w-max items-center justify-center whitespace-nowrap/);
+  assert.match(source, /w-full items-center justify-center whitespace-nowrap/);
+  assert.match(source, /t\('applications\.date'\)/);
+  assert.match(source, /t\('applications\.actions'\)/);
+  assert.doesNotMatch(source, />Data</);
+  assert.doesNotMatch(source, />Azione</);
+});
+
 
 test('missing translation keys fall back safely', async () => {
   const english = await loadMessages('en');

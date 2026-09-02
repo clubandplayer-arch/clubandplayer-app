@@ -2,9 +2,9 @@
 
 ## Stato
 
-**IMPLEMENTATA — test automatici PASS; VERIFICA VISIVA/MANUALE PREVIEW RICHIESTA prima della chiusura.**
+**COMPLETATA / PASS baseline italiana — smoke user-reported; follow-up responsive francese trasferito e corretto nella candidate 4D.**
 
-La baseline italiana è stata consolidata sulle superfici operative prioritarie emerse dall'audit 4A: rete, candidature, dettaglio Opportunity e pagina legacy delle impostazioni geografiche. La fase non viene marcata completata finché lo smoke italiano indicato sotto non viene confermato.
+La baseline italiana è stata consolidata sulle superfici operative prioritarie emerse dall'audit 4A: rete, candidature, dettaglio Opportunity e pagina legacy delle impostazioni geografiche. Lo smoke ha confermato il flusso italiano e ha individuato un difetto cross-locale nel CTA francese delle Candidature; la correzione responsive è inclusa nella candidate 4D e richiede un recheck dedicato.
 
 ## Obiettivi
 
@@ -92,4 +92,4 @@ Eseguire lo smoke con lingua **Italiano** e viewport desktop; ripetere almeno i 
 
 ## Criterio di chiusura
 
-La FASE 4C può essere marcata **COMPLETATA / PASS** dopo conferma dello smoke Preview italiano. Fino ad allora la FASE 4D non è autorizzata implicitamente.
+La FASE 4C è **COMPLETATA / PASS** per la baseline italiana. Il follow-up responsive francese non viene ignorato: è corretto e verificato automaticamente nella candidate 4D, che resta in attesa del recheck Preview prima della chiusura.

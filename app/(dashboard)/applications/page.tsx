@@ -174,7 +174,7 @@ export default function MyApplicationsPage() {
                       </span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-gray-500">Data</span>
+                      <span className="text-gray-500">{t('applications.date')}</span>
                       <span className="font-medium text-gray-900">{created}</span>
                     </div>
                   </div>
@@ -183,7 +183,7 @@ export default function MyApplicationsPage() {
                     {row.opportunity_id ? (
                       <Link
                         href={`/opportunities/${row.opportunity_id}`}
-                        className="inline-flex w-full items-center justify-center rounded-md border px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50"
+                        className="inline-flex w-full items-center justify-center whitespace-nowrap rounded-md border px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50"
                       >
                         {t('opportunities.details')}
                       </Link>
@@ -203,8 +203,8 @@ export default function MyApplicationsPage() {
                   <th className="px-3 py-2">{t('applications.opportunity')}</th>
                   <th className="px-3 py-2">Club</th>
                   <th className="px-3 py-2">{t('applications.status')}</th>
-                  <th className="px-3 py-2">Data</th>
-                  <th className="px-3 py-2">Azione</th>
+                  <th className="px-3 py-2">{t('applications.date')}</th>
+                  <th className="px-3 py-2">{t('applications.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -225,17 +225,17 @@ export default function MyApplicationsPage() {
                         )}
                       </td>
                       <td className="px-3 py-3 align-top text-gray-800">{clubName}</td>
-                      <td className="px-3 py-3 align-top">
+                      <td className="whitespace-nowrap px-3 py-3 align-top">
                         <span className={`rounded-full px-2 py-1 text-xs font-semibold ${statusBadgeClass(row.status)}`}>
                           {statusLabel(row.status, t)}
                         </span>
                       </td>
                       <td className="px-3 py-3 align-top text-gray-700">{created}</td>
-                      <td className="px-3 py-3 align-top">
+                      <td className="whitespace-nowrap px-3 py-3 align-top">
                         {row.opportunity_id ? (
                           <Link
                             href={`/opportunities/${row.opportunity_id}`}
-                            className="rounded-md border px-3 py-1 text-sm text-blue-700 hover:bg-blue-50"
+                            className="inline-flex min-w-max items-center justify-center whitespace-nowrap rounded-md border px-3 py-1 text-sm text-blue-700 hover:bg-blue-50"
                           >
                             {t('opportunities.details')}
                           </Link>
