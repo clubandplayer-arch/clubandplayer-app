@@ -5,11 +5,10 @@ import Link from 'next/link';
 import FollowButton from '@/components/clubs/FollowButton';
 import ApplyCell from '@/components/opportunities/ApplyCell';
 import type { Opportunity } from '@/types/opportunity';
-import { opportunityGenderLabel } from '@/lib/opps/gender';
 import { useProvinceAbbreviations } from '@/hooks/useProvinceAbbreviations';
 import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
 import { useI18n } from '@/components/i18n/I18nProvider';
-import { localizeSportRole } from '@/lib/i18n/controlledVocabulary';
+import { localizeOpportunityGender, localizeSport, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 
 type Role = 'athlete' | 'club' | 'staff' | 'fan' | 'guest';
 type ApiOne<T> = { data?: T; [k: string]: any };
@@ -139,7 +138,8 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
   const ageMax = (opp.ageMax ?? opp.age_max) ?? null;
 
   const rawGender = opp.gender ?? null;
-  const gender = opportunityGenderLabel(rawGender) ?? undefined;
+  const sportLabel = localizeSport(sport, t);
+  const gender = localizeOpportunityGender(rawGender, t) ?? undefined;
 
   const createdBy = opp.createdBy ?? opp.created_by ?? null;
   const clubName = opp.clubName ?? opp.club_name ?? undefined;
@@ -158,7 +158,7 @@ export default function OpportunityDetailClient({ id }: { id: string }) {
           <div className="min-w-0">
             <h1 className="text-xl font-semibold">{opp.title}</h1>
             <div className="mt-1 text-sm text-gray-600 flex flex-wrap items-center gap-2">
-              <span>{sport ?? '—'}</span>
+              <span>{sportLabel ?? '—'}</span>
               <span>•</span>
               <span>{localizeSportRole(opp.role, t) ?? '—'}</span>
               <span>•</span>

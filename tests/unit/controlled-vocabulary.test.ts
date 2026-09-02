@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { localizeAccountType, localizeControlledStatus, localizeSportRole } from '../../lib/i18n/controlledVocabulary';
+import { localizeAccountType, localizeControlledStatus, localizeOpportunityCategory, localizeOpportunityGender, localizeSport, localizeSportRole } from '../../lib/i18n/controlledVocabulary';
 import it from '../../lib/i18n/messages/it';
 import en from '../../lib/i18n/messages/en';
 import fr from '../../lib/i18n/messages/fr';
@@ -45,6 +45,23 @@ test('localizza gli status controllati e i relativi alias legacy', () => {
   assert.deepEqual(values.map((value) => localizeControlledStatus(value, translator(es))), ['Abierto', 'Cerrado', 'Pendiente', 'En evaluación', 'Aceptada', 'Rechazada', 'Seguir', 'Siguiendo']);
   assert.equal(localizeControlledStatus('accettata', translator(en)), 'Accepted');
   assert.equal(localizeControlledStatus('stato_personalizzato', translator(fr)), 'stato_personalizzato');
+});
+
+test('localizza sport, genere e categorie Opportunity senza mutare i valori legacy', () => {
+  const persisted = ['Calcio', 'Uomo', 'Terza Categoria'] as const;
+  assert.deepEqual(
+    [localizeSport(persisted[0], translator(en)), localizeOpportunityGender(persisted[1], translator(en)), localizeOpportunityCategory(persisted[2], translator(en))],
+    ['Football', 'Men', 'Third Division'],
+  );
+  assert.deepEqual(
+    [localizeSport(persisted[0], translator(fr)), localizeOpportunityGender(persisted[1], translator(fr)), localizeOpportunityCategory(persisted[2], translator(fr))],
+    ['Football', 'Hommes', 'Troisième division'],
+  );
+  assert.deepEqual(
+    [localizeSport(persisted[0], translator(es)), localizeOpportunityGender(persisted[1], translator(es)), localizeOpportunityCategory(persisted[2], translator(es))],
+    ['Fútbol', 'Hombres', 'Tercera Categoría'],
+  );
+  assert.deepEqual(persisted, ['Calcio', 'Uomo', 'Terza Categoria']);
 });
 
 test('i quattro dizionari hanno parità per il vocabolario controllato', () => {

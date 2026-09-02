@@ -234,6 +234,25 @@ test('phase 4E French baseline is explicit and free of the reviewed Italian and 
   assert.equal(french['common.betaInfo'], 'Informations sur la version bêta');
 });
 
+test('phase 4F Spanish baseline is explicit on primary product surfaces', async () => {
+  const spanish = await loadMessages('es');
+  const approved = {
+    'network.title': 'Tu red',
+    'applications.mine': 'Mis candidaturas',
+    'applications.playerStaffOnly': 'Solo Jugadores y Cuerpo técnico',
+    'applications.date': 'Fecha',
+    'applications.actions': 'Acciones',
+    'opportunities.details': 'Detalles del anuncio',
+    'opportunities.role': 'Rol o posición',
+    'opportunity.notFound': 'Oportunidad no encontrada.',
+    'profile.location': 'Ubicación',
+    'filters.searchPlaceholder': 'Buscar (p. ej., Madrid, Club, rol…)',
+  } as const;
+  for (const [key, value] of Object.entries(approved)) assert.equal(spanish[key as keyof typeof spanish], value, key);
+  assert.equal(spanish['feed.manageOpportunities'], 'Gestionar o ver todas las oportunidades');
+  assert.equal(spanish['common.betaInfo'], 'Información sobre la versión beta');
+});
+
 
 test('missing translation keys fall back safely', async () => {
   const english = await loadMessages('en');

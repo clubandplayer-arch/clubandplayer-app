@@ -10,6 +10,28 @@ const accountKeys: Record<string, VocabularyMessageKey> = {
   fan: 'vocabulary.account.fan', tifoso: 'vocabulary.account.fan', institution: 'vocabulary.account.institution', ente: 'vocabulary.account.institution',
 };
 
+const sportKeys: Record<string, VocabularyMessageKey> = {
+  calcio: 'vocabulary.sport.football', football: 'vocabulary.sport.football', soccer: 'vocabulary.sport.football', futbol: 'vocabulary.sport.football',
+  'calcio a 8': 'vocabulary.sport.eightAsideFootball', 'eight aside football': 'vocabulary.sport.eightAsideFootball',
+  futsal: 'vocabulary.sport.futsal', volley: 'vocabulary.sport.volleyball', volleyball: 'vocabulary.sport.volleyball', pallavolo: 'vocabulary.sport.volleyball',
+  basket: 'vocabulary.sport.basketball', basketball: 'vocabulary.sport.basketball', pallacanestro: 'vocabulary.sport.basketball',
+  pallanuoto: 'vocabulary.sport.waterPolo', 'water polo': 'vocabulary.sport.waterPolo', pallamano: 'vocabulary.sport.handball', handball: 'vocabulary.sport.handball',
+  rugby: 'vocabulary.sport.rugby', 'hockey su prato': 'vocabulary.sport.fieldHockey', 'field hockey': 'vocabulary.sport.fieldHockey',
+  'hockey su ghiaccio': 'vocabulary.sport.iceHockey', 'ice hockey': 'vocabulary.sport.iceHockey', baseball: 'vocabulary.sport.baseball', softball: 'vocabulary.sport.softball',
+  lacrosse: 'vocabulary.sport.lacrosse', 'football americano': 'vocabulary.sport.americanFootball', 'american football': 'vocabulary.sport.americanFootball',
+};
+
+const genderKeys: Record<string, VocabularyMessageKey> = {
+  uomo: 'vocabulary.gender.male', uomini: 'vocabulary.gender.male', male: 'vocabulary.gender.male', maschile: 'vocabulary.gender.male',
+  donna: 'vocabulary.gender.female', donne: 'vocabulary.gender.female', female: 'vocabulary.gender.female', femminile: 'vocabulary.gender.female',
+  mixed: 'vocabulary.gender.mixed', misto: 'vocabulary.gender.mixed', coed: 'vocabulary.gender.mixed',
+};
+
+const categoryKeys: Record<string, VocabularyMessageKey> = {
+  'prima categoria': 'vocabulary.category.first', 'seconda categoria': 'vocabulary.category.second', 'terza categoria': 'vocabulary.category.third',
+  amatoriale: 'vocabulary.category.amateur', giovanili: 'vocabulary.category.youth', altro: 'vocabulary.category.other',
+};
+
 const roleKeys: Record<string, VocabularyMessageKey> = {
   goalkeeper:'vocabulary.role.goalkeeper', portiere:'vocabulary.role.goalkeeper', defender:'vocabulary.role.defender', difensore:'vocabulary.role.defender',
   'centre back':'vocabulary.role.centreBack','center back':'vocabulary.role.centreBack','difensore centrale':'vocabulary.role.centreBack',
@@ -36,5 +58,8 @@ function display(value: string | null | undefined, keys: Record<string, Vocabula
 }
 
 export const localizeAccountType = (value: string | null | undefined, t: VocabularyTranslator) => display(value, accountKeys, t);
+export const localizeSport = (value: string | null | undefined, t: VocabularyTranslator) => display(value, sportKeys, t);
 export const localizeSportRole = (value: string | null | undefined, t: VocabularyTranslator) => display(value, roleKeys, t);
+export const localizeOpportunityGender = (value: string | null | undefined, t: VocabularyTranslator) => display(value, genderKeys, t);
+export const localizeOpportunityCategory = (value: string | null | undefined, t: VocabularyTranslator) => display(value, categoryKeys, t);
 export const localizeControlledStatus = (value: string | null | undefined, t: VocabularyTranslator) => display(value, statusKeys, t);

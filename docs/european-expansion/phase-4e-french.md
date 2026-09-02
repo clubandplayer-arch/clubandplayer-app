@@ -2,7 +2,7 @@
 
 ## Stato
 
-**IMPLEMENTATA — test automatici PASS; VERIFICA VISIVA/MANUALE PREVIEW RICHIESTA prima della chiusura.**
+**COMPLETATA / PASS — smoke Preview confermato dall'utente; residui di vocabolario controllato trasferiti e corretti nella candidate 4F.**
 
 La baseline francese consolida il catalogo Web già completo nelle chiavi e applica una revisione editoriale alle superfici prioritarie certificate nelle FASI 4C–4D. Non modifica database, API, route, valori persistiti o applicazione Mobile.
 
@@ -60,4 +60,4 @@ Usare lingua **Français** con un account Player e verificare:
 
 ## Criterio di chiusura
 
-La FASE 4E può essere marcata **COMPLETATA / PASS** dopo conferma dello smoke francese. Fino ad allora la FASE 4F non è autorizzata implicitamente.
+La FASE 4E è **COMPLETATA / PASS** dopo la conferma dello smoke francese. La FASE 4F è stata autorizzata esplicitamente; la relativa candidate corregge anche i valori controllati italiani evidenziati nello smoke.

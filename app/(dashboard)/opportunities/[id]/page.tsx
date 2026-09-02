@@ -2,13 +2,12 @@ import Link from 'next/link';
 
 import OpportunityActions from '@/components/opportunities/OpportunityActions';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
-import { opportunityGenderLabel } from '@/lib/opps/gender';
 import { getCountryName } from '@/lib/geo/countries';
 import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
 import { getProvinceAbbreviationsServer } from '@/lib/geo/provinceAbbreviations.server';
 import { resolveRequestLocale } from '@/lib/i18n/server';
 import { loadMessages, type MessageKey } from '@/lib/i18n/messages';
-import { localizeAccountType, localizeControlledStatus, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
+import { localizeAccountType, localizeControlledStatus, localizeOpportunityCategory, localizeOpportunityGender, localizeSport, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 import { opportunityGeographyLabel, resolveOpportunityGeography } from '@/lib/opportunities/geography';
 
 function formatDateHuman(date: string | null | undefined, locale: string) {
@@ -90,7 +89,9 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
   const place = placeLabel || [opp.city, provinceDisplayValue(opp.province, provinceAbbreviations), opp.region, opp.country].filter(Boolean).join(', ');
   const categoryLabel = (opp as any).category ?? (opp as any).required_category ?? null;
   const groupLabel = localizeAccountType(roleGroupLabel((opp as any).role_group), t) ?? roleGroupLabel((opp as any).role_group);
-  const genderLabel = opportunityGenderLabel((opp as any).gender) ?? undefined;
+  const sportLabel = localizeSport(opp.sport, t);
+  const genderLabel = localizeOpportunityGender((opp as any).gender, t) ?? undefined;
+  const localizedCategoryLabel = localizeOpportunityCategory(categoryLabel, t);
   const ageLabel = formatAge((opp as any).age_min, (opp as any).age_max);
   const published = formatDateHuman((opp as any).created_at, locale);
   const isOwner = !!authUser?.user && !!ownerId && authUser.user.id === ownerId;
@@ -115,7 +116,7 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
                 </div>
                 <h1 className="text-2xl md:text-3xl font-semibold leading-tight">{opp.title}</h1>
                 <div className="flex flex-wrap items-center gap-2 text-sm text-gray-700">
-                  {opp.sport && <span className="rounded-full bg-gray-100 px-3 py-1">{opp.sport}</span>}
+                  {sportLabel && <span className="rounded-full bg-gray-100 px-3 py-1">{sportLabel}</span>}
                   <span className="rounded-full bg-blue-50 px-3 py-1 text-blue-800">[{groupLabel.toUpperCase()}]</span>
                   {opp.role && <span className="rounded-full bg-gray-100 px-3 py-1">{localizeSportRole(opp.role, t)}</span>}
                   <span className="rounded-full bg-gray-100 px-3 py-1">{t('profile.age')}: {ageLabel}</span>
@@ -152,10 +153,10 @@ export default async function OpportunityDetailPage({ params }: { params: { id: 
           <section className="rounded-2xl border bg-white/80 p-4 shadow-sm space-y-3">
             <h3 className="text-lg font-semibold">{t('opportunity.requirements')}</h3>
             <ul className="list-disc space-y-1 pl-5 text-sm text-gray-800">
-              <li>{t('opportunity.sportRole')}: {opp.sport || '—'} • [{groupLabel.toUpperCase()}] {localizeSportRole(opp.role, t) || '—'}</li>
+              <li>{t('opportunity.sportRole')}: {sportLabel || '—'} • [{groupLabel.toUpperCase()}] {localizeSportRole(opp.role, t) || '—'}</li>
               <li>{t('opportunity.targetAge')}: {ageLabel}</li>
               <li>{place ? `${t('opportunity.location')}: ${place}` : t('opportunity.locationMissing')}</li>
-              <li>{t('opportunity.requiredCategory')}: {localizeSportRole(categoryLabel, t) ?? '—'}{genderLabel ? ` • ${genderLabel}` : ''}</li>
+              <li>{t('opportunity.requiredCategory')}: {localizedCategoryLabel ?? '—'}{genderLabel ? ` • ${genderLabel}` : ''}</li>
             </ul>
           </section>
         </section>

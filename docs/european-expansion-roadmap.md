@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **COMPLETATA — FASE 4D — English** |
-| Current active phase | **FASE 4E — FRANÇAIS IMPLEMENTATA / AWAITING MANUAL PREVIEW** |
-| Next safe action | **Smoke manuale francese; non iniziare 4F prima del PASS** |
+| Last completed subphase | **COMPLETATA — FASE 4E — Français** |
+| Current active phase | **FASE 4F — ESPAÑOL IMPLEMENTATA / AWAITING MANUAL PREVIEW** |
+| Next safe action | **Smoke spagnolo + recheck vocabolario controllato EN/FR; non iniziare 4G prima del PASS** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -449,7 +449,7 @@ Perimetro Mobile: tutte le implementazioni e certificazioni 3C svolte finora app
 
 ## FASE 4 — Internationalization / i18n
 
-**Stato prudenziale: IN CORSO — 4A–4D COMPLETATE; 4E IMPLEMENTATA E IN ATTESA DI SMOKE MANUALE; 4F–4I NON CERTIFICATE; FASE NON COMPLETATA.**
+**Stato prudenziale: IN CORSO — 4A–4E COMPLETATE; 4F IMPLEMENTATA E IN ATTESA DI SMOKE MANUALE; 4G–4I NON CERTIFICATE; FASE NON COMPLETATA.**
 
 Il repository contiene un'implementazione i18n sostanziale ed è quindi più avanzato rispetto alla precedente dicitura `NOT STARTED`: sono verificabili catalogo `languages`, preferred language in `profile_preferences`, infrastruttura locale/provider, messaggi per le lingue attive e test dedicati. Queste evidenze non equivalgono tuttavia alla certificazione completa della FASE 4.
 
@@ -461,14 +461,16 @@ L'audit dedicato di riconciliazione 4A è stato completato repository-only senza
 
 4D è stata chiusa dopo conferma dello smoke Preview. 4E consolida ora la baseline francese sulle stesse superfici, protegge il CTA lungo già verificato e applica una revisione editoriale mirata senza cambiare contratti o chiavi. Dettaglio e checklist manuale in `phase-4e-french.md`.
 
+4E è stata chiusa dopo lo smoke Preview, con un residuo cross-locale sui valori controllati provenienti dal database. 4F corregge quel residuo in presentazione per tutte le lingue attive e consolida la baseline spagnola. Dettaglio e checklist in `phase-4f-spanish.md`.
+
 Roadmap prevista:
 
 - 4A — audit strings/locales — **COMPLETATA**;
 - 4B — i18n infrastructure — **COMPLETATA**;
 - 4C — Italian baseline — **COMPLETATA**;
 - 4D — English — **COMPLETATA**;
-- 4E — French — **IMPLEMENTATA / AWAITING MANUAL PREVIEW**;
-- 4F — Spanish;
+- 4E — French — **COMPLETATA**;
+- 4F — Spanish — **IMPLEMENTATA / AWAITING MANUAL PREVIEW**;
 - 4G — language preference integration;
 - 4H — metadata/SEO;
 - 4I — fallback/regression.
