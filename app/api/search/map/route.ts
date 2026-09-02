@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server';
 
-import { dbError, rateLimited, successResponse, unknownError } from '@/lib/api/standardResponses';
+import { dbError, invalidPayload, rateLimited, successResponse, unknownError } from '@/lib/api/standardResponses';
 import { rateLimit } from '@/lib/api/rateLimit';
 import { buildProfileDisplayName } from '@/lib/displayName';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
@@ -8,6 +8,10 @@ import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
 import { getProvinceAbbreviationsServer } from '@/lib/geo/provinceAbbreviations.server';
 import { isProfileComplete } from '@/lib/profiles/completion';
 import { applyPublicProfileVisibilityFilters } from '@/lib/profile/visibility';
+import { MapGeographyContractError, resolveOpportunityMapPlacement, resolvePublicMapPoint } from '@/lib/maps/geographyContract';
+import { applyOrganizationMapBounds, resolveMapViewportFromParams, SupabaseMapViewportCatalog } from '@/lib/maps/geography.server';
+import { attachOpportunityGeography } from '@/lib/opportunities/geography';
+import { PUBLIC_MAP_LIMITS } from '@/lib/maps/publicMapPolicy';
 
 export const runtime = 'nodejs';
 
@@ -40,22 +44,6 @@ type Filters = {
 function toIlikePattern(value: string) {
   const escaped = value.replace(/[%_]/g, (match) => `\\${match}`);
   return `%${escaped}%`;
-}
-
-function parseBounds(url: URL): Bounds {
-  const toNum = (key: string) => {
-    const raw = url.searchParams.get(key);
-    if (raw == null) return undefined;
-    const n = Number(raw);
-    return Number.isFinite(n) ? n : undefined;
-  };
-
-  return {
-    north: toNum('north'),
-    south: toNum('south'),
-    east: toNum('east'),
-    west: toNum('west'),
-  };
 }
 
 function clampLimit(value: number | undefined) {
@@ -96,7 +84,6 @@ export async function GET(req: NextRequest) {
 
   const url = new URL(req.url);
   const type = (url.searchParams.get('type') || 'all').toLowerCase();
-  const bounds = parseBounds(url);
   const limit = clampLimit(Number(url.searchParams.get('limit') || '100'));
   const filters = parseFilters(url);
   const searchQuery = (url.searchParams.get('query') || url.searchParams.get('q') || '').trim();
@@ -107,10 +94,26 @@ export async function GET(req: NextRequest) {
 
   try {
     const supabase = await getSupabaseServerClient();
+    const viewport = await resolveMapViewportFromParams(url.searchParams, new SupabaseMapViewportCatalog(supabase));
+    const bounds: Bounds = viewport?.bounds ?? {};
     const provinceAbbreviations = await getProvinceAbbreviationsServer();
     const {
       data: { user },
     } = await supabase.auth.getUser();
+
+    if (type === 'player' || type === 'athlete') {
+      return successResponse({
+        data: [],
+        total: 0,
+        privacyBoundary: 'precise_personal_map_points_disabled',
+        viewport: viewport ? {
+          source: viewport.source,
+          countryId: viewport.countryId,
+          geoAreaId: viewport.geoAreaId,
+          bounds: viewport.bounds,
+        } : null,
+      });
+    }
 
     const select = [
       'id',
@@ -147,7 +150,8 @@ export async function GET(req: NextRequest) {
         supabase.from('profiles').select(select, { count: 'exact' }),
       )
         .limit(limit)
-        .neq('is_admin', true);
+        .neq('is_admin', true)
+        .or('account_type.in.(club,institution),type.in.(club,institution)');
 
     const applyFilters = (query: ReturnType<typeof baseQuery>) => {
       let filtered = query;
@@ -159,9 +163,7 @@ export async function GET(req: NextRequest) {
       if (type === 'club') {
         filtered = filtered.or('account_type.eq.club,type.eq.club');
       }
-      if (type === 'player' || type === 'athlete') {
-        filtered = filtered.or('account_type.eq.athlete,type.eq.athlete,type.eq.player');
-      }
+      // E2 privacy contract: precise personal coordinates are never implicit public pins.
 
       if (filters.sport) filtered = filtered.ilike('sport', filters.sport);
       if (filters.clubCategory) filtered = filtered.ilike('club_league_category', filters.clubCategory);
@@ -193,22 +195,14 @@ export async function GET(req: NextRequest) {
       return filtered;
     };
 
-    const { north, south, east, west } = bounds;
-    const hasBounds = north != null || south != null || east != null || west != null;
+    const hasBounds = viewport !== null;
 
     const applyBounds = (
       query: ReturnType<typeof baseQuery>,
       { withBounds }: { withBounds: boolean }
     ) => {
-      if (!withBounds) return query;
-      let bounded = query;
-      if (north != null && south != null) {
-        bounded = bounded.gte('latitude', south).lte('latitude', north);
-      }
-      if (east != null && west != null) {
-        bounded = bounded.gte('longitude', west).lte('longitude', east);
-      }
-      return bounded;
+      if (!withBounds || !viewport) return query;
+      return applyOrganizationMapBounds(query, viewport.bounds);
     };
 
     const runQuery = async ({ withBounds }: { withBounds: boolean }) => {
@@ -228,33 +222,32 @@ export async function GET(req: NextRequest) {
         sampleOpp: { id: string; title?: string | null; club_id?: string | null; status?: string | null } | null;
       } | null = null;
       let clubQuery = applyPublicProfileVisibilityFilters(
-        supabase.from('profiles').select('id, latitude, longitude, club_stadium_lat, club_stadium_lng'),
+        supabase.from('profiles').select('id, user_id, account_type, type, latitude, longitude, club_stadium_lat, club_stadium_lng'),
       )
         .neq('is_admin', true)
         .or('account_type.eq.club,type.eq.club');
 
-      if (hasBounds) {
-        if (south != null && north != null && west != null && east != null) {
-          clubQuery = clubQuery.or(
-            [
-              `and(latitude.gte.${south},latitude.lte.${north},longitude.gte.${west},longitude.lte.${east})`,
-              `and(club_stadium_lat.gte.${south},club_stadium_lat.lte.${north},club_stadium_lng.gte.${west},club_stadium_lng.lte.${east})`,
-            ].join(','),
-          );
-        } else {
-          if (south != null && north != null) {
-            clubQuery = clubQuery.gte('latitude', south).lte('latitude', north);
-          }
-          if (west != null && east != null) {
-            clubQuery = clubQuery.gte('longitude', west).lte('longitude', east);
-          }
-        }
-      }
+      if (viewport) clubQuery = applyOrganizationMapBounds(clubQuery, viewport.bounds);
 
-      const { data: clubsData, error: clubsError } = await clubQuery;
+      const { data: clubsData, error: clubsError } = await clubQuery.limit(PUBLIC_MAP_LIMITS.searchOwnerPool);
       if (clubsError) return dbError(clubsError.message);
 
       const clubIds = Array.from(new Set((clubsData ?? []).map((c: any) => c.id).filter(Boolean)));
+      const clubOwnerIds = Array.from(new Set((clubsData ?? []).flatMap((c: any) => [c.id, c.user_id]).filter(Boolean)));
+      const clubPoints = new Map((clubsData ?? []).flatMap((club: any) => {
+        try {
+          const point = resolvePublicMapPoint({
+            accountType: club.account_type ?? club.type,
+            venue: { latitude: club.club_stadium_lat, longitude: club.club_stadium_lng },
+            legacyProfile: { latitude: club.latitude, longitude: club.longitude },
+          });
+          return point && club.id
+            ? [club.id, club.user_id].filter(Boolean).map((id) => [String(id), point] as const)
+            : [];
+        } catch {
+          return [];
+        }
+      }));
 
       const oppSelect = [
         'id',
@@ -264,26 +257,33 @@ export async function GET(req: NextRequest) {
         'province',
         'region',
         'country',
+        'country_id',
+        'geo_area_id',
         'club_name',
         'club_id',
         'owner_id',
+        'created_by',
         'created_at',
       ].join(',');
 
       const hasTextQuery = Boolean(ilikeQuery);
-      const boundsApplied = !hasTextQuery && hasBounds && clubIds.length > 0;
+      const boundsApplied = hasBounds && clubIds.length > 0;
 
       let oppQuery = supabase
         .from('opportunities')
         .select(oppSelect)
         .order('created_at', { ascending: false })
-        .limit(hasTextQuery ? 100 : Math.min(limit, 100))
+        .limit(hasTextQuery ? PUBLIC_MAP_LIMITS.opportunities : Math.min(limit, PUBLIC_MAP_LIMITS.opportunities))
         .eq('status', 'open');
 
-      if (!hasTextQuery) {
+      if (hasBounds) {
         if (clubIds.length) {
           oppQuery = oppQuery.or(
-            [`club_id.in.(${clubIds.join(',')})`, `owner_id.in.(${clubIds.join(',')})`].join(','),
+            [
+              `club_id.in.(${clubIds.join(',')})`,
+              `owner_id.in.(${clubOwnerIds.join(',')})`,
+              `created_by.in.(${clubOwnerIds.join(',')})`,
+            ].join(','),
           );
         } else if (hasBounds) {
           if (debugMode) {
@@ -300,6 +300,14 @@ export async function GET(req: NextRequest) {
           }
           return successResponse({ data: [], total: 0, boundsApplied: false, ...(debug ? { debug } : {}) });
         }
+      } else if (!hasTextQuery && clubIds.length) {
+        oppQuery = oppQuery.or(
+          [
+            `club_id.in.(${clubIds.join(',')})`,
+            `owner_id.in.(${clubOwnerIds.join(',')})`,
+            `created_by.in.(${clubOwnerIds.join(',')})`,
+          ].join(','),
+        );
       }
 
       if (ilikeQuery) {
@@ -316,12 +324,22 @@ export async function GET(req: NextRequest) {
         );
       }
 
-      const { data: opps, error: oppErr, count: oppCount } = await oppQuery;
+      const { data: opps, error: oppErr } = await oppQuery;
       if (oppErr) return dbError(oppErr.message);
 
-      const rows = (opps ?? []).map((o: any) => {
+      const opportunitiesWithGeography = await attachOpportunityGeography(supabase, (opps ?? []) as Array<Record<string, any>>);
+      const rows = opportunitiesWithGeography.flatMap((o: any) => {
+        const ownerPoint = [o.club_id, o.owner_id, o.created_by]
+          .flatMap((id) => id ? [clubPoints.get(String(id))] : [])
+          .find(Boolean);
+        const placement = resolveOpportunityMapPlacement({
+          explicitVenue: { latitude: null, longitude: null },
+          organizationPoint: ownerPoint ?? null,
+          canonicalGeoAreaId: o.geo_area_id,
+        });
+        if (!placement) return [];
         const locationLabel = [o.city, provinceDisplayValue(o.province, provinceAbbreviations), o.region, o.country].filter(Boolean).join(' · ');
-        return {
+        return [{
           id: o.id,
           profile_id: o.id,
           type: 'opportunity',
@@ -336,7 +354,14 @@ export async function GET(req: NextRequest) {
           country: o.country ?? null,
           location_label: locationLabel || null,
           created_at: o.created_at ?? null,
-        };
+          latitude: placement.latitude,
+          longitude: placement.longitude,
+          coordinate_source: placement.source,
+          organization_coordinate_source: ownerPoint?.source ?? null,
+          map_semantics: 'owner_public_point',
+          canonical_geography_is_viewport_only: true,
+          geography: o.geography,
+        }];
       });
 
       const rankedRows = hasTextQuery
@@ -391,7 +416,11 @@ export async function GET(req: NextRequest) {
                 .select('id', { count: 'exact', head: true })
                 .eq('status', 'open')
                 .or(
-                  [`club_id.in.(${clubIds.join(',')})`, `owner_id.in.(${clubIds.join(',')})`].join(','),
+                  [
+                    `club_id.in.(${clubIds.join(',')})`,
+                    `owner_id.in.(${clubOwnerIds.join(',')})`,
+                    `created_by.in.(${clubOwnerIds.join(',')})`,
+                  ].join(','),
                 )
             : supabase.from('opportunities').select('id', { count: 'exact', head: true }).eq('status', 'open').limit(0),
           supabase
@@ -422,8 +451,9 @@ export async function GET(req: NextRequest) {
 
       return successResponse({
         data: rankedRows,
-        total: oppCount ?? rankedRows.length,
+        total: rankedRows.length,
         boundsApplied,
+        placementContract: 'opportunity_owner_public_point_v1',
         ...(debug ? { debug } : {}),
       });
     }
@@ -433,22 +463,10 @@ export async function GET(req: NextRequest) {
 
     if (error) return dbError(error.message);
 
-    let rawRows = (Array.isArray(data) ? data : []) as Array<
+    const rawRows = (Array.isArray(data) ? data : []) as Array<
       SearchMapRow | GenericStringError
     >;
     let total = count ?? rawRows.length;
-    let usedFallback = false;
-
-    if ((!rawRows || rawRows.length === 0) && (north != null || south != null || east != null || west != null)) {
-      const fallbackQuery = await runQuery({ withBounds: false });
-      const fallbackResult = await fallbackQuery;
-      if (!fallbackResult.error && Array.isArray(fallbackResult.data)) {
-        rawRows = fallbackResult.data as Array<SearchMapRow | GenericStringError>;
-        total = fallbackResult.count ?? rawRows.length;
-        usedFallback = true;
-      }
-    }
-
     const rows = rawRows
       .filter(
         (row): row is SearchMapRow =>
@@ -480,19 +498,16 @@ export async function GET(req: NextRequest) {
           return t;
         })();
 
-        const latitude =
-          typeof (row as any)?.latitude === 'number'
-            ? (row as any).latitude
-            : typeof (row as any)?.club_stadium_lat === 'number'
-              ? (row as any).club_stadium_lat
-              : null;
-
-        const longitude =
-          typeof (row as any)?.longitude === 'number'
-            ? (row as any).longitude
-            : typeof (row as any)?.club_stadium_lng === 'number'
-              ? (row as any).club_stadium_lng
-              : null;
+        let point = null;
+        try {
+          point = resolvePublicMapPoint({
+            accountType: typeof rawType === 'string' ? rawType : null,
+            venue: { latitude: (row as any)?.club_stadium_lat, longitude: (row as any)?.club_stadium_lng },
+            legacyProfile: { latitude: (row as any)?.latitude, longitude: (row as any)?.longitude },
+          });
+        } catch {
+          // Invalid public coordinate pairs fail closed per row.
+        }
 
         const friendlyName = buildProfileDisplayName(row.full_name, row.display_name, 'Profilo');
 
@@ -503,8 +518,9 @@ export async function GET(req: NextRequest) {
           user_id: userId,
           type: normalizedType,
           account_type: normalizedType ?? (row as any)?.account_type ?? null,
-          latitude,
-          longitude,
+          latitude: point?.latitude ?? null,
+          longitude: point?.longitude ?? null,
+          coordinate_source: point?.source ?? null,
           full_name: row.full_name ?? null,
           display_name: row.display_name ?? null,
           friendly_name: friendlyName,
@@ -515,12 +531,23 @@ export async function GET(req: NextRequest) {
         if (user?.id && (row.user_id === user.id || row.id === user.id)) return false;
         if (requestedUserId && (row.user_id === requestedUserId || row.id === requestedUserId)) return false;
         if (!isProfileComplete(row)) return false;
+        if (row.latitude == null || row.longitude == null) return false;
         return true;
       });
 
     total = rows.length;
-    return successResponse({ data: rows, total, fallback: usedFallback ? 'no_geocoded_results' : undefined });
+    return successResponse({
+      data: rows,
+      total,
+      viewport: viewport ? {
+        source: viewport.source,
+        countryId: viewport.countryId,
+        geoAreaId: viewport.geoAreaId,
+        bounds: viewport.bounds,
+      } : null,
+    });
   } catch (err: any) {
+    if (err instanceof MapGeographyContractError) return invalidPayload(err.message, { reason: err.code });
     return unknownError({ endpoint: 'search/map', error: err, message: 'Errore ricerca mappa' });
   }
 }

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { shareOrCopyLink } from '@/lib/share';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 type MediaTab = 'video' | 'photo';
 
@@ -10,6 +11,7 @@ type ShareSectionButtonProps = {
 };
 
 export function ShareSectionButton({ activeTab }: ShareSectionButtonProps) {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
 
   const shareUrl = useMemo(() => {
@@ -28,7 +30,7 @@ export function ShareSectionButton({ activeTab }: ShareSectionButtonProps) {
     try {
       const result = await shareOrCopyLink({
         url: shareUrl,
-        copiedMessage: 'Link della sezione copiato negli appunti',
+        copiedMessage: t('media.sectionLinkCopied'),
       });
 
       if (result === 'shared' || result === 'copied') {
@@ -47,10 +49,10 @@ export function ShareSectionButton({ activeTab }: ShareSectionButtonProps) {
       className="inline-flex items-center gap-2 rounded-full border border-cp-brand/50 px-3 py-1.5 text-xs font-semibold text-cp-brand transition hover:-translate-y-[1px] hover:bg-cp-brand hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cp-brand/70 focus-visible:ring-offset-2"
     >
       {copied
-        ? 'Link copiato!'
+        ? t('media.linkCopied')
         : activeTab === 'photo'
-          ? 'Condividi queste foto'
-          : 'Condividi questi video'}
+          ? t('media.sharePhotos')
+          : t('media.shareVideos')}
     </button>
   );
 }

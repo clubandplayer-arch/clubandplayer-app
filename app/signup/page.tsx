@@ -1,32 +1,15 @@
 import type { Metadata } from 'next';
 
 import SignupClient from './SignupClient';
+import { buildLocalizedMetadata } from '@/lib/i18n/metadata';
+import { resolveRequestLocale } from '@/lib/i18n/server';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'default-no-store';
 
-const title = 'Registrati a Club and Player: network sportivo per club, player, staff e fan';
-const description =
-  'Crea un account Club and Player per pubblicare opportunità sportive, candidarti, costruire un profilo sportivo e seguire club o player.';
-
-export const metadata: Metadata = {
-  title,
-  description,
-  alternates: {
-    canonical: '/signup',
-  },
-  openGraph: {
-    title,
-    description,
-    url: '/signup',
-    type: 'website',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title,
-    description,
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return buildLocalizedMetadata(await resolveRequestLocale(), 'signup', '/signup');
+}
 
 export default function SignupPage() {
   return <SignupClient />;

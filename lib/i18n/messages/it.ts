@@ -38,7 +38,7 @@ const messages = {
   'navigation.closeMenu': 'Chiudi menu di navigazione',
   'navigation.searchPlaceholder': 'Cerca club, player, opportunità, post, eventi…',
   'language.select': 'Scegli la lingua',
-  'language.saveError': 'La preferenza remota non è stata salvata. La scelta resta valida su questo dispositivo.',
+  'language.saveError': 'Non è stato possibile salvare la lingua. La selezione precedente è stata ripristinata: riprova.',
   'auth.loginTitle': 'Login',
   'auth.email': 'Email',
   'auth.password': 'Password',

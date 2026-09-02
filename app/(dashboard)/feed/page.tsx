@@ -671,14 +671,14 @@ function MyMediaHub({ currentUserId }: { currentUserId: string | null }) {
             className={`rounded-full px-3 py-1 ${tab === 'video' ? 'bg-gray-900 text-white' : 'bg-white/60'}`}
             onClick={() => setTab('video')}
           >
-            MyVideo
+            {t('media.myVideos')}
           </button>
           <button
             type="button"
             className={`rounded-full px-3 py-1 ${tab === 'photo' ? 'bg-gray-900 text-white' : 'bg-white/60'}`}
             onClick={() => setTab('photo')}
           >
-            MyPhoto
+            {t('media.myPhotos')}
           </button>
         </div>
       </div>
@@ -710,7 +710,7 @@ function MyMediaHub({ currentUserId }: { currentUserId: string | null }) {
           }
           className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-blue-700 hover:underline"
         >
-          <span>Vedi tutti →</span>
+          <span>{t('feed.viewAll')} →</span>
         </Link>
       </div>
     </div>

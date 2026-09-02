@@ -7,9 +7,23 @@ import { FollowSuggestionsQuerySchema, type FollowSuggestionsQueryInput } from '
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
 import { applyPublicProfileVisibilityFilters } from '@/lib/profile/visibility';
 import { isProfileEligibleForFollowSuggestions } from '@/lib/profiles/completion';
+import { getCountryName } from '@/lib/geo/countries';
+import { SupabaseSearchGeographyCatalog } from '@/lib/search/canonicalGeography.server';
+import {
+  canonicalAreaLegacyField,
+  parseSearchGeography,
+  resolveCanonicalSearchGeography,
+  SearchGeographyContractError,
+  type CanonicalSearchGeographyScope,
+} from '@/lib/search/canonicalGeographyContract';
+import { rankSuggestionCandidates, suggestionFiltersForScope } from '@/lib/search/suggestionGeography';
+import {
+  applySuggestionGeographyFilter,
+  loadViewerSuggestionGeography,
+} from '@/lib/search/suggestionGeography.server';
 
 export const runtime = 'nodejs';
-const ENDPOINT_VERSION = 'follows-suggestions@2026-01-10a';
+const ENDPOINT_VERSION = 'follows-suggestions@2026-09-01-d4';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 type Suggestion = {
@@ -97,6 +111,7 @@ export async function GET(req: NextRequest) {
   try {
     step = 'auth';
     const supabase = await getSupabaseServerClient();
+    let explicitGeography: CanonicalSearchGeographyScope | null = null;
     const { data: userRes, error: authError } = await supabase.auth.getUser();
 
     if (authError) {
@@ -133,13 +148,29 @@ export async function GET(req: NextRequest) {
       return successResponse({ items: [], role });
     }
 
+    step = 'scoutingGeography';
+    try {
+      const geographyRequest = parseSearchGeography(url.searchParams);
+      if (geographyRequest.mode === 'canonical_unvalidated') {
+        explicitGeography = await resolveCanonicalSearchGeography(
+          geographyRequest,
+          new SupabaseSearchGeographyCatalog(supabase),
+          { expandDescendants: false },
+        );
+      }
+    } catch (error) {
+      if (error instanceof SearchGeographyContractError) {
+        return validationError(error.message, { code: error.code });
+      }
+      throw error;
+    }
+
     const profileId = profile.id;
+    const viewerSport = profile.sport;
     debugInfo.meProfileId = profileId;
 
-    const viewerCountry = (profile?.interest_country || profile?.country || '').trim();
-    const viewerCity = (profile?.interest_city || profile?.city || '').trim();
-    const viewerProvince = (profile?.interest_province || profile?.province || '').trim();
-    const viewerRegion = (profile?.interest_region || profile?.region || '').trim();
+    step = 'viewerGeography';
+    const geographyPlan = await loadViewerSuggestionGeography(supabase, profile);
 
     step = 'follows';
     const { data: existing, error: followsError } = await supabase
@@ -217,7 +248,11 @@ export async function GET(req: NextRequest) {
 
       const { data, error } = await query;
       if (error) throw error;
-      return (data || []).filter((row) => isProfileEligibleForFollowSuggestions(row));
+      return rankSuggestionCandidates(
+        (data || []).filter((row) => isProfileEligibleForFollowSuggestions(row)),
+        geographyPlan,
+        viewerSport,
+      );
     }
 
     const buildLocation = (row: any) => [row.city, row.province, row.region, row.country].filter(Boolean).join(', ');
@@ -287,39 +322,43 @@ export async function GET(req: NextRequest) {
 
     const buildFilters = () => {
       const filters: Array<Array<(q: any) => any>> = [];
-      const geoFilter: Array<(q: any) => any> = [];
       const sportFilter: Array<(q: any) => any> = [];
-
-      if (geoScope === 'city' && viewerCity) {
-        const value = escapeLike(viewerCity);
-        geoFilter.push((q) => q.or(`interest_city.ilike.${value},city.ilike.${value}`));
-      }
-      if (geoScope === 'province' && viewerProvince) {
-        const value = escapeLike(viewerProvince);
-        geoFilter.push((q) => q.or(`interest_province.ilike.${value},province.ilike.${value}`));
-      }
-      if (geoScope === 'region' && viewerRegion) {
-        const value = escapeLike(viewerRegion);
-        geoFilter.push((q) => q.or(`interest_region.ilike.${value},region.ilike.${value}`));
-      }
-      if (geoScope === 'country' && viewerCountry) {
-        const value = escapeLike(viewerCountry);
-        geoFilter.push((q) => q.or(`interest_country.ilike.${value},country.ilike.${value}`));
-      }
 
       if (sportScope === 'mine' && profile.sport) {
         const value = `%${escapeLike(profile.sport.trim())}%`;
         sportFilter.push((q) => q.ilike('sport', value));
       }
 
-      const strictFilters = [...geoFilter, ...sportFilter];
-      if (strictFilters.length) {
-        filters.push(strictFilters);
+      if (explicitGeography) {
+        const countryValues = Array.from(new Set([
+          explicitGeography.countryIso2,
+          explicitGeography.countryName,
+          getCountryName(explicitGeography.countryIso2),
+        ].filter((value): value is string => Boolean(value))));
+        const explicitFilters: Array<(q: any) => any> = [
+          (query) => query.or(countryValues.map((value) => `country.ilike.${escapeLike(value)}`).join(',')),
+        ];
+        if (explicitGeography.geoAreaName && explicitGeography.geoAreaType) {
+          const field = canonicalAreaLegacyField(explicitGeography.geoAreaType);
+          explicitFilters.push((query) => query.ilike(field, escapeLike(explicitGeography!.geoAreaName!)));
+        }
+        filters.push([...explicitFilters, ...sportFilter]);
+        return filters;
       }
+
+      const geographyFilters = suggestionFiltersForScope(geographyPlan, geoScope);
+      for (const geographyFilter of geographyFilters) {
+        filters.push([
+          (query) => applySuggestionGeographyFilter(query, geographyFilter),
+          ...sportFilter,
+        ]);
+      }
+
+      if (!geographyFilters.length && sportFilter.length) filters.push([...sportFilter]);
 
       const shouldAllowFallbackAll =
         geoScope === 'country' && sportScope === 'all';
-      if (!strictFilters.length || shouldAllowFallbackAll) {
+      if (!filters.length || shouldAllowFallbackAll) {
         filters.push([]);
       }
       return filters;
@@ -459,6 +498,12 @@ export async function GET(req: NextRequest) {
             debug: {
               endpointVersion: ENDPOINT_VERSION,
               step,
+              geographyFilterCount: geographyPlan.filters.length,
+              hasCanonicalGeographyInterests: geographyPlan.hasCanonicalInterests,
+              openToRelocation: geographyPlan.openToRelocation,
+              rankingVersion: 'd5-v1',
+              scoutingCountryId: explicitGeography?.countryId ?? null,
+              scoutingGeoAreaId: explicitGeography?.geoAreaId ?? null,
             },
           }
         : {}),

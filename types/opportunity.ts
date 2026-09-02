@@ -16,6 +16,26 @@ export type OpportunityRole =
 export type OpportunitySport = 'football' | (string & {});
 export type OpportunityRoleGroup = 'player' | 'staff';
 
+export type OpportunityCanonicalArea = {
+  id: string;
+  countryId: string;
+  parentId: string | null;
+  officialName: string;
+  areaType: string;
+  level: number;
+};
+
+export type OpportunityGeography = {
+  source: 'canonical' | 'canonical_country' | 'legacy_text' | 'none';
+  countryId: string | null;
+  countryIso2: string | null;
+  countryName: string | null;
+  geoAreaId: string | null;
+  ancestors: OpportunityCanonicalArea[];
+  area: OpportunityCanonicalArea | null;
+  legacy: { country: string | null; region: string | null; province: string | null; city: string | null };
+};
+
 /** Genere target (opzionale) */
 export type OpportunityGender =
   | 'uomo'
@@ -58,6 +78,9 @@ export type Opportunity = {
   region?: string | null;
   province?: string | null;
   city?: string | null;
+  country_id?: string | null;
+  geo_area_id?: string | null;
+  geography?: OpportunityGeography;
 
   /** Dati sportivi */
   sport?: OpportunitySport | null;

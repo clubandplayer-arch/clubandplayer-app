@@ -2,10 +2,10 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import test from 'node:test';
 
-import { interpolateMessage, translateWithFallback } from '../../components/i18n/I18nProvider';
 import { ACTIVE_LOCALES, resolveLocale } from '../../lib/i18n/config';
 import { loadMessages } from '../../lib/i18n/messages';
 import italianMessages from '../../lib/i18n/messages/it';
+import { interpolateMessage, translateWithFallback } from '../../lib/i18n/translate';
 import {
   buildLanguagePreferenceInsert,
   buildLanguagePreferenceUpdate,
@@ -160,12 +160,179 @@ test('reported completion surfaces contain no hardcoded Italian UI copy', () => 
   ]) assert.ok(!source.includes(forbidden), forbidden);
 });
 
+test('phase 4C primary network, applications and location surfaces use the Italian catalog baseline', () => {
+  const targets = [
+    '../../components/network/NetworkPage.tsx',
+    '../../components/applications/MyApplications.tsx',
+    '../../components/applications/ApplicationsDashboard.tsx',
+    '../../components/applications/ApplicationsTable.tsx',
+    '../../components/opportunities/OpportunityDetailClient.tsx',
+    '../../components/opportunities/ApplyCell.tsx',
+    '../../app/profile/location-settings/page.tsx',
+  ];
+  const source = targets.map((target) => readFileSync(new URL(target, import.meta.url), 'utf8')).join('\n');
+  for (const hardcodedLabel of [
+    '>La tua rete<', '>Visita profilo<', '>Nessun risultato da mostrare.<',
+    '>Caricamento suggerimenti…<', '>Nessuna candidatura inviata<', '>Apri annuncio<',
+    '>Ritira candidatura<', '>Tutti gli stati<', '>Solo Player/Staff<',
+    '>Annuncio non trovato.<', '>Questa pagina è stata spostata.<',
+  ]) assert.ok(!source.includes(hardcodedLabel), hardcodedLabel);
+});
+
+test('phase 4D English baseline is explicit on primary product surfaces', async () => {
+  const english = await loadMessages('en');
+  const approved = {
+    'network.title': 'Your network',
+    'network.suggested': 'Suggested',
+    'network.following': 'Following',
+    'network.followers': 'Followers',
+    'applications.mine': 'My applications',
+    'applications.status': 'Status',
+    'applications.date': 'Date',
+    'applications.actions': 'Actions',
+    'opportunities.details': 'Listing details',
+    'opportunity.notFound': 'Opportunity not found.',
+    'profile.location': 'Location',
+  } as const;
+  for (const [key, value] of Object.entries(approved)) {
+    assert.equal(english[key as keyof typeof english], value, key);
+    assert.notEqual(english[key as keyof typeof english], italianMessages[key as keyof typeof italianMessages], key);
+  }
+});
+
+test('application detail CTA remains one responsive unit for longer translations', () => {
+  const source = readFileSync(new URL('../../app/(dashboard)/applications/page.tsx', import.meta.url), 'utf8');
+  assert.match(source, /overflow-x-auto/);
+  assert.match(source, /min-w-max items-center justify-center whitespace-nowrap/);
+  assert.match(source, /w-full items-center justify-center whitespace-nowrap/);
+  assert.match(source, /t\('applications\.date'\)/);
+  assert.match(source, /t\('applications\.actions'\)/);
+  assert.doesNotMatch(source, />Data</);
+  assert.doesNotMatch(source, />Azione</);
+});
+
+test('phase 4E French baseline is explicit and free of the reviewed Italian and English copy', async () => {
+  const french = await loadMessages('fr');
+  const approved = {
+    'network.title': 'Votre réseau',
+    'network.suggested': 'Suggestions',
+    'applications.mine': 'Mes candidatures',
+    'applications.playerStaffOnly': 'Joueurs et Staff uniquement',
+    'applications.date': 'Date',
+    'applications.actions': 'Actions',
+    'opportunities.details': 'Détails de l’annonce',
+    'opportunities.role': 'Rôle ou poste',
+    'opportunity.notFound': 'Opportunité introuvable.',
+    'profile.location': 'Localité',
+    'filters.searchPlaceholder': 'Rechercher (ex. Paris, Club, rôle…)',
+  } as const;
+  for (const [key, value] of Object.entries(approved)) {
+    assert.equal(french[key as keyof typeof french], value, key);
+  }
+  assert.equal(french['applications.subtitle'], 'Gérez les candidatures reçues pour les opportunités du Club.');
+  assert.equal(french['feed.manageOpportunities'], 'Gérer ou voir toutes les opportunités');
+  assert.equal(french['common.betaInfo'], 'Informations sur la version bêta');
+});
+
+test('phase 4F Spanish baseline is explicit on primary product surfaces', async () => {
+  const spanish = await loadMessages('es');
+  const approved = {
+    'network.title': 'Tu red',
+    'applications.mine': 'Mis candidaturas',
+    'applications.playerStaffOnly': 'Solo Jugadores y Cuerpo técnico',
+    'applications.date': 'Fecha',
+    'applications.actions': 'Acciones',
+    'opportunities.details': 'Detalles del anuncio',
+    'opportunities.role': 'Rol o posición',
+    'opportunity.notFound': 'Oportunidad no encontrada.',
+    'profile.location': 'Ubicación',
+    'filters.searchPlaceholder': 'Buscar (p. ej., Madrid, Club, rol…)',
+  } as const;
+  for (const [key, value] of Object.entries(approved)) assert.equal(spanish[key as keyof typeof spanish], value, key);
+  assert.equal(spanish['feed.manageOpportunities'], 'Gestionar o ver todas las oportunidades');
+  assert.equal(spanish['common.betaInfo'], 'Información sobre la versión beta');
+});
+
+test('sport selectors localize labels while preserving canonical and legacy option values', () => {
+  const targets = [
+    '../../components/profiles/ProfileEditForm.tsx',
+    '../../components/profiles/InterestsPanel.tsx',
+    '../../components/opportunities/OpportunityForm.tsx',
+    '../../app/(dashboard)/opportunities/OpportunitiesClient.tsx',
+    '../../app/search/page.tsx',
+  ];
+  const source = targets.map((target) => readFileSync(new URL(target, import.meta.url), 'utf8')).join('\n');
+  assert.ok((source.match(/localizeSport\(/g) ?? []).length >= 6);
+  assert.match(source, /value=\{s\}/);
+  assert.match(source, /value=\{sportOption\}/);
+  assert.match(source, /value=\{sport\}/);
+});
+
+test('phase 4G language switch is serialized and rolls back failed profile persistence', () => {
+  const source = readFileSync(new URL('../../components/i18n/LanguageSwitcher.tsx', import.meta.url), 'utf8');
+  const provider = readFileSync(new URL('../../components/i18n/I18nProvider.tsx', import.meta.url), 'utf8');
+  assert.match(source, /if \(saving \|\| nextLocale === locale\)/);
+  assert.match(source, /persistLocaleCookie\(previousLocale\)/);
+  assert.match(source, /await setLocale\(previousLocale\)/);
+  assert.match(source, /aria-busy=\{saving\}/);
+  assert.match(source, /disabled=\{saving\}/);
+  assert.doesNotMatch(provider, /if \(nextLocale === locale\) return/);
+});
+
+test('preview-reported profile, feed and application copy is catalog driven', () => {
+  const targets = [
+    '../../components/opportunities/ApplyCTA.tsx', '../../components/profiles/ProfileMiniCard.tsx',
+    '../../components/profiles/ProfileEditForm.tsx', '../../components/feed/FeedComposer.tsx',
+    '../../app/(dashboard)/feed/page.tsx',
+  ];
+  const source = targets.map((target) => readFileSync(new URL(target, import.meta.url), 'utf8')).join('\n');
+  for (const residual of ['Candidatura accettata', '>Zona di interesse<', '>Rimuovi esperienza<', '>MyVideo<', '>MyPhoto<', 'caratteri disponibili · Puoi taggare']) assert.ok(!source.includes(residual), residual);
+});
+
+test('phase 4H emits localized metadata and Open Graph locale without false hreflang URLs', async () => {
+  const { buildLocalizedMetadata } = await import('../../lib/i18n/metadata');
+  const spanish = buildLocalizedMetadata('es', 'clubMap', '/club-map');
+  assert.equal(spanish.title, 'Mapa de Clubes | Club and Player');
+  assert.equal(spanish.openGraph?.locale, 'es_ES');
+  assert.deepEqual(spanish.alternates, { canonical: '/club-map' });
+  assert.equal('languages' in (spanish.alternates ?? {}), false);
+  const root = readFileSync(new URL('../../app/layout.tsx', import.meta.url), 'utf8');
+  assert.match(root, /buildLocalizedMetadata\(locale, 'home'/);
+  assert.doesNotMatch(root, /locale: 'it_IT'/);
+});
+
+test('phase 4I keeps interpolation placeholders identical in every active catalog', async () => {
+  const catalogs = await Promise.all(ACTIVE_LOCALES.map(async (locale) => [locale, await loadMessages(locale)] as const));
+  const placeholders = (value: string) => [...value.matchAll(/\{([a-zA-Z0-9_]+)\}/g)].map((match) => match[1]).sort();
+  for (const key of Object.keys(italianMessages) as Array<keyof typeof italianMessages>) {
+    const expected = placeholders(italianMessages[key]);
+    for (const [locale, messages] of catalogs) assert.deepEqual(placeholders(messages[key]), expected, `${locale}:${key}`);
+  }
+});
+
+test('phase 4I removes the Preview-reported canonical selector and MyMedia Italian residuals', () => {
+  const targets = [
+    '../../components/geo/CanonicalGeographySelector.tsx', '../../components/media/MediaEmptyState.tsx',
+    '../../components/media/ShareSectionButton.tsx', '../../app/(dashboard)/mymedia/page.tsx',
+    '../../app/(dashboard)/feed/page.tsx',
+  ];
+  const source = targets.map((target) => readFileSync(new URL(target, import.meta.url), 'utf8')).join('\n');
+  for (const residual of ['>Torna al feed<', '>Vedi tutti', 'Nessuna foto nella tua libreria', 'Nessun video nella tua libreria', 'Vai al feed e pubblica', 'Condividi queste foto', 'Condividi questi video']) assert.ok(!source.includes(residual), residual);
+  assert.match(source, /Intl\.DisplayNames\(\[locale\]/);
+  assert.match(source, /t\('geo\.selectCountry'\)/);
+});
+
 
 test('missing translation keys fall back safely', async () => {
   const english = await loadMessages('en');
   assert.equal(translateWithFallback('common.save', {}, italianMessages), 'Salva');
   assert.equal(translateWithFallback('unknown.key', english, italianMessages), 'unknown.key');
   assert.equal(interpolateMessage('Hello {name}', { name: 'Alex' }), 'Hello Alex');
+  assert.equal(interpolateMessage('Hello {name}, {missing}', { name: 'Alex' }), 'Hello Alex, {missing}');
+  assert.equal(
+    translateWithFallback('auth.loggedAs', {}, italianMessages, { email: 'utente@example.test' }),
+    'Sei loggato come utente@example.test.',
+  );
 });
 
 test('keeps the two applied Phase 1/2 migrations and admits only the Phase 3A foundation', () => {

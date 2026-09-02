@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getLatestOpenOpportunitiesByClub } from '@/lib/data/opportunities';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { attachOpportunityGeography } from '@/lib/opportunities/geography';
 
 export const runtime = 'nodejs';
 
@@ -52,7 +53,7 @@ export async function GET() {
   const sport = (profile?.sport || '').trim();
 
   const baseSelect =
-    'id,title,description,created_at,country,region,province,city,sport,role,required_category,age_min,age_max,club_name,gender,club_id,owner_id,created_by,status';
+    'id,title,description,created_at,country,region,province,city,country_id,geo_area_id,sport,role,required_category,age_min,age_max,club_name,gender,club_id,owner_id,created_by,status';
 
   if (role === 'club') {
     const latest = await getLatestOpenOpportunitiesByClub(profileId, 3);
@@ -114,7 +115,8 @@ export async function GET() {
   const ids = results.flatMap((row) => [row.club_id, row.owner_id]).filter(Boolean) as string[];
   const map = await hydrateClubNames(Array.from(new Set(ids)), supabase);
 
-  const items = results.map((row) => ({
+  const withGeography = await attachOpportunityGeography(supabase, results);
+  const items = withGeography.map((row) => ({
     ...row,
     club_name: row.club_name || (row.club_id ? map[row.club_id] : null) || (row.owner_id ? map[row.owner_id] : null) || null,
   }));

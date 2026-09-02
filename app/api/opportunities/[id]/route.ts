@@ -5,6 +5,13 @@ import { rateLimit } from '@/lib/api/rateLimit';
 import { normalizeToEN, PLAYING_CATEGORY_EN } from '@/lib/enums';
 import { normalizeOpportunityGender, toOpportunityDbValue } from '@/lib/opps/gender';
 import { normalizeSport } from '@/lib/opps/constants';
+import {
+  buildOpportunityGeographyWritePlan,
+  clearCanonicalOpportunityGeography,
+  OpportunityGeographyError,
+  parseOpportunityGeographyCommand,
+  resolveOpportunityGeography,
+} from '@/lib/opportunities/geography';
 
 export const runtime = 'nodejs';
 
@@ -16,7 +23,7 @@ function getSupabase() {
 }
 
 const SELECT =
-  'id,title,description,owner_id,created_by,club_id,created_at,country,region,province,city,sport,role,role_group,category,required_category,age_min,age_max,club_name,gender';
+  'id,title,description,owner_id,created_by,club_id,created_at,country,region,province,city,country_id,geo_area_id,sport,role,role_group,category,required_category,age_min,age_max,club_name,gender';
 
 function parseRoleGroup(value: unknown): 'player' | 'staff' | null {
   if (value == null) return null;
@@ -149,7 +156,8 @@ export async function GET(
 
     const clubInfo = await resolveClubInfo(supabase, data as Record<string, unknown>);
     const roleGroup = parseRoleGroup((data as any).role_group) ?? 'player';
-    return NextResponse.json({ data: { ...data, role_group: roleGroup, roleGroup, ...clubInfo } });
+    const geography = await resolveOpportunityGeography(supabase, data as Record<string, unknown>);
+    return NextResponse.json({ data: { ...data, role_group: roleGroup, roleGroup, ...clubInfo, geography } });
   } catch (err: any) {
     return jsonError(err?.message || 'Unexpected error', 500);
   }
@@ -166,6 +174,13 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   if (!id) return jsonError('Missing id', 400);
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+  let geographyCommand;
+  try {
+    geographyCommand = parseOpportunityGeographyCommand(body);
+  } catch (error) {
+    if (error instanceof OpportunityGeographyError) return jsonError(error.code, 400);
+    throw error;
+  }
 
   const title = norm(body.title);
   if (Object.prototype.hasOwnProperty.call(body, 'title') && !title) {
@@ -255,6 +270,17 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
   if (hasAgeMin) update.age_min = ageMin ?? null;
   if (hasAgeMax) update.age_max = ageMax ?? null;
 
+  if (geographyCommand.kind === 'legacy') {
+    Object.assign(update, clearCanonicalOpportunityGeography());
+  } else if (geographyCommand.kind !== 'absent') {
+    try {
+      Object.assign(update, await buildOpportunityGeographyWritePlan(supabase, geographyCommand));
+    } catch (error) {
+      if (error instanceof OpportunityGeographyError) return jsonError(error.code, 400);
+      throw error;
+    }
+  }
+
   const nextSport =
     normalizeSport((update.sport as string | null | undefined) ?? null) ??
     normalizeSport((opp.sport as string | null | undefined) ?? null) ??
@@ -299,7 +325,7 @@ export const PATCH = withAuth(async (req: NextRequest, { supabase, user }) => {
     .maybeSingle();
 
   if (error) return jsonError(error.message, 400);
-  const normalizedData = data ? { ...data, role_group: parseRoleGroup((data as any).role_group) ?? 'player', roleGroup: parseRoleGroup((data as any).role_group) ?? 'player' } : data;
+  const normalizedData = data ? { ...data, role_group: parseRoleGroup((data as any).role_group) ?? 'player', roleGroup: parseRoleGroup((data as any).role_group) ?? 'player', geography: await resolveOpportunityGeography(supabase, data as Record<string, unknown>) } : data;
   return NextResponse.json({ data: normalizedData });
 });
 

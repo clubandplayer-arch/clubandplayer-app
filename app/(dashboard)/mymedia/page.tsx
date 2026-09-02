@@ -317,18 +317,18 @@ export default function MyMediaPage() {
             href="/feed"
             className="inline-flex items-center gap-2 rounded-full border border-cp-brand/30 px-4 py-2 text-sm font-semibold text-cp-brand transition hover:-translate-y-[1px] hover:bg-white hover:shadow-sm"
           >
-            Torna al feed
+            {t('media.backFeed')}
           </Link>
         </div>
 
         <div className="mt-2 flex items-center gap-4 overflow-x-auto pb-1 text-base font-medium">
           <TabLink
-            label="Video"
+            label={t('media.videos')}
             isActive={activeTab === 'video'}
             href={`/mymedia?type=video${authorQuery}#my-videos`}
           />
           <TabLink
-            label="Foto"
+            label={t('media.photos')}
             isActive={activeTab === 'photo'}
             href={`/mymedia?type=photo${authorQuery}#my-photos`}
           />
@@ -340,10 +340,10 @@ export default function MyMediaPage() {
         {!loading && !err && (
           <div className="space-y-8">
             {activeTab === 'video' ? (
-              <MediaSection id="my-videos" title="MyVideo" items={videos} tab="video" onVideoClick={handleVideoClick} playLabel={t('media.playVideo')} shareLabel={t('media.share')} />
+              <MediaSection id="my-videos" title={t('media.myVideos')} items={videos} tab="video" onVideoClick={handleVideoClick} playLabel={t('media.playVideo')} shareLabel={t('media.share')} />
             ) : null}
             {activeTab === 'photo' ? (
-              <MediaSection id="my-photos" title="MyPhoto" items={photos} tab="photo" onImageClick={handlePhotoClick} playLabel={t('media.playVideo')} shareLabel={t('media.share')} />
+              <MediaSection id="my-photos" title={t('media.myPhotos')} items={photos} tab="photo" onImageClick={handlePhotoClick} playLabel={t('media.playVideo')} shareLabel={t('media.share')} />
             ) : null}
           </div>
         )}

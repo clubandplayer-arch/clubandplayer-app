@@ -8,6 +8,14 @@ import { COUNTRIES } from '@/lib/geo/countries';
 import { normalizeOpportunityGender, toOpportunityDbValue } from '@/lib/opps/gender';
 import { normalizeSport } from '@/lib/opps/constants';
 import { dbError, invalidPayload, notAuthorized, rateLimited, successResponse } from '@/lib/api/standardResponses';
+import {
+  attachOpportunityGeography,
+  buildOpportunityGeographyWritePlan,
+  getOpportunityGeoAreaFilterScope,
+  OpportunityGeographyError,
+  parseOpportunityGeographyCommand,
+  resolveOpportunityGeography,
+} from '@/lib/opportunities/geography';
 
 export const runtime = 'nodejs';
 
@@ -87,6 +95,8 @@ export async function GET(req: NextRequest) {
   const region = (url.searchParams.get('region') || '').trim();
   const province = (url.searchParams.get('province') || '').trim();
   const city = (url.searchParams.get('city') || '').trim();
+  const countryId = (url.searchParams.get('countryId') || url.searchParams.get('country_id') || '').trim();
+  const geoAreaId = (url.searchParams.get('geoAreaId') || url.searchParams.get('geo_area_id') || '').trim();
   const club = (url.searchParams.get('club') || '').trim();
   const clubId = (url.searchParams.get('clubId') || url.searchParams.get('club_id') || '').trim();
   const sport = normalizeSport((url.searchParams.get('sport') || '').trim()) ?? '';
@@ -104,7 +114,7 @@ export async function GET(req: NextRequest) {
   let query = supabase
     .from('opportunities')
     .select(
-      'id,title,description,created_by,created_at,country,region,province,city,sport,role,role_group,category,required_category,age_min,age_max,club_name,gender,owner_id,club_id,status',
+      'id,title,description,created_by,created_at,country,region,province,city,country_id,geo_area_id,sport,role,role_group,category,required_category,age_min,age_max,club_name,gender,owner_id,club_id,status',
     )
     .order('created_at', { ascending: sort === 'oldest' })
     .range(from, to);
@@ -113,10 +123,21 @@ export async function GET(req: NextRequest) {
     query = query.or(
       `title.ilike.%${q}%,description.ilike.%${q}%,city.ilike.%${q}%,region.ilike.%${q}%,province.ilike.%${q}%,country.ilike.%${q}%,sport.ilike.%${q}%,role.ilike.%${q}%`,
     );
-  if (country && country !== '[object Object]') query = query.eq('country', country);
-  if (region && region !== '[object Object]') query = query.eq('region', region);
-  if (province && province !== '[object Object]') query = query.eq('province', province);
-  if (city && city !== '[object Object]') query = query.eq('city', city);
+  if (countryId || geoAreaId) {
+    try {
+      const areaScope = await getOpportunityGeoAreaFilterScope(supabase, countryId, geoAreaId);
+      query = query.eq('country_id', countryId);
+      if (areaScope) query = query.in('geo_area_id', areaScope);
+    } catch (error) {
+      if (error instanceof OpportunityGeographyError) return invalidPayload(error.message);
+      return dbError(error instanceof Error ? error.message : 'Unable to validate geography filters');
+    }
+  } else {
+    if (country && country !== '[object Object]') query = query.eq('country', country);
+    if (region && region !== '[object Object]') query = query.eq('region', region);
+    if (province && province !== '[object Object]') query = query.eq('province', province);
+    if (city && city !== '[object Object]') query = query.eq('city', city);
+  }
   if (clubId) query = query.or(`club_id.eq.${clubId},owner_id.eq.${clubId},created_by.eq.${clubId}`);
   if (club) query = query.ilike('club_name', `%${club}%`);
   if (sport) query = query.eq('sport', sport);
@@ -189,8 +210,9 @@ export async function GET(req: NextRequest) {
     };
   });
 
+  const withGeography = await attachOpportunityGeography(supabase, enriched);
   return successResponse({
-    data: enriched,
+    data: withGeography,
     q,
     page,
     pageSize,
@@ -236,6 +258,13 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   const clubId = clubProfile.id;
 
   const body = await req.json().catch(() => ({}));
+  let geographyCommand;
+  try {
+    geographyCommand = parseOpportunityGeographyCommand(body as Record<string, unknown>);
+  } catch (error) {
+    if (error instanceof OpportunityGeographyError) return invalidPayload(error.code);
+    throw error;
+  }
   const title = norm((body as any).title);
   if (!title) return invalidPayload('Title is required');
 
@@ -307,12 +336,21 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
     gender: genderDb,
   };
 
+  if (geographyCommand.kind !== 'absent' && geographyCommand.kind !== 'legacy') {
+    try {
+      Object.assign(basePayload, await buildOpportunityGeographyWritePlan(supabase, geographyCommand));
+    } catch (error) {
+      if (error instanceof OpportunityGeographyError) return invalidPayload(error.code);
+      throw error;
+    }
+  }
+
   const runInsert = (payload: Record<string, unknown>) =>
     supabase
       .from('opportunities')
       .insert(payload)
       .select(
-        'id,title,description,created_by,created_at,country,region,province,city,sport,role,role_group,category,required_category,age_min,age_max,club_name,gender,club_id',
+        'id,title,description,created_by,created_at,country,region,province,city,country_id,geo_area_id,sport,role,role_group,category,required_category,age_min,age_max,club_name,gender,club_id',
       )
       .single();
 
@@ -326,6 +364,6 @@ export const POST = withAuth(async (req: NextRequest, { supabase, user }) => {
   }
 
   if (error) return dbError(error.message);
-  const normalizedData = data ? { ...data, role_group: parseRoleGroup((data as any).role_group) ?? 'player', roleGroup: parseRoleGroup((data as any).role_group) ?? 'player' } : data;
+  const normalizedData = data ? { ...data, role_group: parseRoleGroup((data as any).role_group) ?? 'player', roleGroup: parseRoleGroup((data as any).role_group) ?? 'player', geography: await resolveOpportunityGeography(supabase, data as Record<string, unknown>) } : data;
   return successResponse({ data: normalizedData }, { status: 201 });
 });

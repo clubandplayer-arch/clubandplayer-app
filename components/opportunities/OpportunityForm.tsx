@@ -1,63 +1,20 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useI18n } from '@/components/i18n/I18nProvider';
-import { localizeAccountType, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { localizeAccountType, localizeOpportunityCategory, localizeSport, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
+import CanonicalGeographySelector from '@/components/geo/CanonicalGeographySelector';
 
 import type { Opportunity } from '@/types/opportunity';
 import { AGE_BRACKETS, type AgeBracket, normalizeSport, sportRequiresPlayerRole, SPORTS, SPORTS_ROLES } from '@/lib/opps/constants';
 import { CATEGORIES_BY_SPORT } from '@/lib/opps/categories';
-import { COUNTRIES } from '@/lib/geo/countries';
 import {
   OPPORTUNITY_GENDER_LABELS,
   normalizeOpportunityGender,
   type OpportunityGenderCode,
 } from '@/lib/opps/gender';
 
-type LocationLevel = 'region' | 'province' | 'municipality';
-type LocationRow = { id: number; name: string };
 type RoleGroup = 'player' | 'staff';
-
-const supabase = createSupabaseClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-);
-
-async function fetchLocationChildren(level: LocationLevel, parent: number | null): Promise<LocationRow[]> {
-  try {
-    const { data, error } = await supabase.rpc('location_children', { level, parent });
-    if (!error && Array.isArray(data)) {
-      return (data as LocationRow[]).map((row) => ({ id: Number(row.id), name: row.name }))
-        .sort((a, b) => a.name.localeCompare(b.name, 'it', { sensitivity: 'accent' }));
-    }
-  } catch (err) {
-    console.warn('location_children rpc failed', err);
-  }
-
-  if (level === 'region') {
-    const { data } = await supabase.from('regions').select('id,name').order('name', { ascending: true });
-    return (data ?? []).map((row: any) => ({ id: Number(row.id), name: row.name as string }));
-  }
-
-  if (level === 'province') {
-    if (parent == null) return [];
-    const { data } = await supabase
-      .from('provinces')
-      .select('id,name')
-      .eq('region_id', parent)
-      .order('name', { ascending: true });
-    return (data ?? []).map((row: any) => ({ id: Number(row.id), name: row.name as string }));
-  }
-
-  if (parent == null) return [];
-  const { data } = await supabase
-    .from('municipalities')
-    .select('id,name')
-    .eq('province_id', parent)
-    .order('name', { ascending: true });
-  return (data ?? []).map((row: any) => ({ id: Number(row.id), name: row.name as string }));
-}
 
 const GENDERS = (Object.entries(OPPORTUNITY_GENDER_LABELS) as Array<[
   OpportunityGenderCode,
@@ -141,26 +98,16 @@ export default function OpportunityForm({
   const [title, setTitle] = useState(initial?.title ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
 
-  const availableCountries = COUNTRIES;
-
-  // Località
-  const [countryCode, setCountryCode] = useState<string>(
-    availableCountries.find((c) => c.label === initial?.country)?.code ?? 'IT'
-  );
-  const [countryFree, setCountryFree] = useState<string>(
-    initial?.country && !availableCountries.find((c) => c.label === initial.country) ? initial.country : ''
-  );
-  const [region, setRegion] = useState<string>(initial?.region ?? '');
-  const [province, setProvince] = useState<string>(initial?.province ?? '');
-  const [city, setCity] = useState<string>(initial?.city ?? '');
-  const [regions, setRegions] = useState<LocationRow[]>([]);
-  const [regionId, setRegionId] = useState<number | null>(null);
-  const [provinces, setProvinces] = useState<LocationRow[]>([]);
-  const [provinceId, setProvinceId] = useState<number | null>(null);
-  const [cities, setCities] = useState<string[]>([]);
-  const regionsLoadedRef = useRef(false);
-  const provincesLoadedRef = useRef(false);
-  const citiesLoadedRef = useRef(false);
+  const initialCountryId = initial?.country_id ?? initial?.geography?.countryId ?? null;
+  const initialGeoAreaId = initial?.geo_area_id ?? initial?.geography?.geoAreaId ?? null;
+  const [countryId, setCountryId] = useState<string | null>(initialCountryId);
+  const [geoAreaId, setGeoAreaId] = useState<string | null>(initialGeoAreaId);
+  const [geographyTouched, setGeographyTouched] = useState(false);
+  const legacyLocation = [initial?.city, initial?.province, initial?.region, initial?.country]
+    .map((value) => value?.trim())
+    .filter(Boolean)
+    .join(', ');
+  const hasLegacyOnlyLocation = !initialCountryId && Boolean(legacyLocation);
 
   // Sport/ruolo/categoria
   const [sport, setSport] = useState<string>(normalizeSport(initial?.sport) || 'Calcio');
@@ -186,120 +133,6 @@ export default function OpportunityForm({
   const [err, setErr] = useState<string | null>(null);
   const isEdit = Boolean(initial?.id);
 
-  useEffect(() => {
-    regionsLoadedRef.current = false;
-    if (countryCode !== 'IT') {
-      setRegions([]);
-      setRegionId(null);
-      return;
-    }
-
-    let cancelled = false;
-    (async () => {
-      const rows = await fetchLocationChildren('region', null);
-      if (cancelled) return;
-      setRegions(rows);
-      regionsLoadedRef.current = true;
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [countryCode]);
-
-  useEffect(() => {
-    if (countryCode !== 'IT') {
-      setRegionId(null);
-      return;
-    }
-    if (!regionsLoadedRef.current) return;
-    const match = regions.find((r) => r.name === region);
-    if (!match && region) {
-      setRegion('');
-      setRegionId(null);
-      setProvince('');
-      setProvinceId(null);
-      setCity('');
-      setCities([]);
-      return;
-    }
-    setRegionId(match?.id ?? null);
-  }, [countryCode, region, regions]);
-
-  useEffect(() => {
-    provincesLoadedRef.current = false;
-    if (countryCode !== 'IT' || regionId == null) {
-      setProvinces([]);
-      setProvinceId(null);
-      setCities([]);
-      return;
-    }
-
-    let cancelled = false;
-    (async () => {
-      const rows = await fetchLocationChildren('province', regionId);
-      if (cancelled) return;
-      setProvinces(rows);
-      provincesLoadedRef.current = true;
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [countryCode, regionId]);
-
-  useEffect(() => {
-    if (countryCode !== 'IT') {
-      setProvinceId(null);
-      return;
-    }
-    if (!provincesLoadedRef.current) return;
-    const match = provinces.find((p) => p.name === province);
-    if (!match && province) {
-      setProvince('');
-      setProvinceId(null);
-      setCity('');
-      setCities([]);
-      return;
-    }
-    setProvinceId(match?.id ?? null);
-  }, [countryCode, province, provinces]);
-
-  useEffect(() => {
-    citiesLoadedRef.current = false;
-    if (countryCode !== 'IT' || provinceId == null) {
-      setCities([]);
-      return;
-    }
-
-    let cancelled = false;
-    (async () => {
-      const rows = await fetchLocationChildren('municipality', provinceId);
-      if (cancelled) return;
-      const names = rows.map((row) => row.name).sort((a, b) => a.localeCompare(b, 'it', { sensitivity: 'accent' }));
-      setCities(names);
-      citiesLoadedRef.current = true;
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [countryCode, provinceId]);
-
-  useEffect(() => {
-    if (countryCode !== 'IT') return;
-    if (!citiesLoadedRef.current) return;
-    if (city && !cities.includes(city)) {
-      setCity('');
-    }
-  }, [countryCode, city, cities]);
-
-  function effectiveCountry(): string | null {
-    if (countryCode === 'OTHER') return countryFree.trim() || null;
-    const found = availableCountries.find((c) => c.code === countryCode);
-    return found?.label ?? countryCode ?? null;
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
@@ -314,13 +147,9 @@ export default function OpportunityForm({
 
     setSaving(true);
     try {
-      const payload = {
+      const payload: Record<string, unknown> = {
         title: normalizedTitle,
         description: (description || '').trim() || null,
-        country: effectiveCountry(),
-        region: region || null,
-        province: countryCode === 'IT' ? province || null : null,
-        city: (city || '').trim() || null,
         sport,
         role: role || null,
         role_group: role ? roleGroup : 'player',
@@ -330,6 +159,10 @@ export default function OpportunityForm({
         age_min,
         age_max,
       };
+      if (geographyTouched) {
+        payload.country_id = countryId;
+        payload.geo_area_id = geoAreaId;
+      }
 
       const res = await fetch(isEdit ? `/api/opportunities/${initial!.id}` : '/api/opportunities', {
         method: isEdit ? 'PATCH' : 'POST',
@@ -347,35 +180,6 @@ export default function OpportunityForm({
     } finally {
       setSaving(false);
     }
-  }
-
-  // reset coerente dei campi a cascata
-  function onChangeCountry(code: string) {
-    setCountryCode(code);
-    setCountryFree('');
-    if (code !== 'IT') {
-      setRegion('');
-      setRegionId(null);
-      setProvince('');
-      setProvinceId(null);
-      setCity('');
-      setCities([]);
-    }
-  }
-  function onChangeRegion(r: string) {
-    setRegion(r);
-    const match = regions.find((row) => row.name === r);
-    setRegionId(match?.id ?? null);
-    setProvince('');
-    setProvinceId(null);
-    setCity('');
-    setCities([]);
-  }
-  function onChangeProvince(p: string) {
-    setProvince(p);
-    const match = provinces.find((row) => row.name === p);
-    setProvinceId(match?.id ?? null);
-    setCity('');
   }
 
   return (
@@ -398,111 +202,40 @@ export default function OpportunityForm({
         />
       </div>
 
-      <fieldset className="space-y-3">
-        <legend className="text-sm font-semibold">{t('opportunity.locationSection')}</legend>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-          <div>
-            <label className="block text-sm font-medium mb-1">Paese</label>
-            <select
-              className="w-full rounded-xl border px-3 py-2"
-              value={countryCode}
-              onChange={(e) => onChangeCountry(e.target.value)}
+      <section className="space-y-3 rounded-xl border border-slate-200 p-4">
+        <h2 className="text-sm font-semibold">{t('opportunity.locationSection')}</h2>
+        {hasLegacyOnlyLocation && !geographyTouched ? (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+            <p><span className="font-semibold">{t('opportunity.location')}:</span> {legacyLocation}</p>
+            <button
+              type="button"
+              className="mt-2 font-semibold text-amber-950 underline underline-offset-2"
+              onClick={() => {
+                setCountryId(null);
+                setGeoAreaId(null);
+                setGeographyTouched(true);
+              }}
             >
-              {availableCountries.map((c) => (
-                <option key={c.code} value={c.code}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-            {countryCode === 'OTHER' && (
-              <input
-                className="mt-2 w-full rounded-xl border px-3 py-2"
-                placeholder="Paese"
-                value={countryFree}
-                onChange={(e) => setCountryFree(e.target.value)}
-              />
-            )}
+              {t('common.remove')}
+            </button>
           </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">{t('opportunities.region')}</label>
-            {countryCode === 'IT' ? (
-              <select
-                className="w-full rounded-xl border px-3 py-2"
-                value={region}
-                onChange={(e) => onChangeRegion(e.target.value)}
-              >
-                <option value="">—</option>
-                {regions.map((r) => (
-                  <option key={r.id} value={r.name}>
-                    {r.name}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <input
-                className="w-full rounded-xl border px-3 py-2"
-                value={region ?? ''}
-                onChange={(e) => {
-                  setRegion(e.target.value);
-                  setRegionId(null);
-                }}
-              />
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">{t('opportunities.province')}</label>
-            {countryCode === 'IT' && provinces.length > 0 ? (
-              <select
-                className="w-full rounded-xl border px-3 py-2"
-                value={province}
-                onChange={(e) => onChangeProvince(e.target.value)}
-              >
-                <option value="">—</option>
-                {provinces.map((p) => (
-                  <option key={p.id} value={p.name}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <input
-                className="w-full rounded-xl border px-3 py-2"
-                value={province ?? ''}
-                onChange={(e) => {
-                  setProvince(e.target.value);
-                  setProvinceId(null);
-                }}
-              />
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">{t('opportunities.city')}</label>
-            {countryCode === 'IT' && cities.length > 0 ? (
-              <select
-                className="w-full rounded-xl border px-3 py-2"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-              >
-                <option value="">—</option>
-                {cities.map((c: string) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <input
-                className="w-full rounded-xl border px-3 py-2"
-                value={city ?? ''}
-                onChange={(e) => setCity(e.target.value)}
-              />
-            )}
-          </div>
-        </div>
-      </fieldset>
+        ) : null}
+        <CanonicalGeographySelector
+          idPrefix="opportunity-geography"
+          countryId={countryId}
+          geoAreaId={geoAreaId}
+          onCountryChange={(nextCountryId) => {
+            setCountryId(nextCountryId);
+            if (!nextCountryId) setGeoAreaId(null);
+            setGeographyTouched(true);
+          }}
+          onGeoAreaChange={(nextGeoAreaId) => {
+            setGeoAreaId(nextGeoAreaId);
+            setGeographyTouched(true);
+          }}
+          disabled={saving}
+        />
+      </section>
 
       <fieldset className="space-y-3">
         <legend className="text-sm font-semibold">{t('opportunity.sportProfile')}</legend>
@@ -525,7 +258,7 @@ export default function OpportunityForm({
             >
               {SPORTS.map((s: string) => (
                 <option key={s} value={s}>
-                  {s}
+                  {localizeSport(s, t)}
                 </option>
               ))}
             </select>
@@ -541,7 +274,7 @@ export default function OpportunityForm({
               <option value="">—</option>
               {categoryOptions.map((c: string) => (
                 <option key={c} value={c}>
-                  {c}
+                  {localizeOpportunityCategory(c, t)}
                 </option>
               ))}
             </select>

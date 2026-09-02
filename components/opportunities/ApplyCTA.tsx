@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { trackApplicationConversion } from '@/lib/analytics';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 type Props = {
   oppId: string;
@@ -15,6 +16,7 @@ type ApplicationRow = {
 };
 
 export default function ApplyCTA({ oppId, initialApplied, onApplied, size = 'md' }: Props) {
+  const { t } = useI18n();
   const [applied, setApplied] = useState<boolean>(!!initialApplied);
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -90,7 +92,7 @@ export default function ApplyCTA({ oppId, initialApplied, onApplied, size = 'md'
         throw new Error(t || `HTTP ${r.status}`);
       }
     } catch (e: any) {
-      alert(e?.message || 'Errore durante la candidatura');
+      alert(e?.message || t('applications.applyError'));
     } finally {
       setLoading(false);
     }
@@ -100,10 +102,10 @@ export default function ApplyCTA({ oppId, initialApplied, onApplied, size = 'md'
     const key = (status || '').toLowerCase();
     const label =
       key === 'accepted'
-        ? 'Candidatura accettata'
+        ? t('applications.acceptedToast')
         : key === 'rejected'
-        ? 'Candidatura rifiutata'
-        : 'Candidatura inviata';
+        ? t('applications.rejectedToast')
+        : t('applications.submitted');
     const cls =
       key === 'rejected'
         ? 'bg-red-100 text-red-800 border-red-200'
@@ -132,7 +134,7 @@ export default function ApplyCTA({ oppId, initialApplied, onApplied, size = 'md'
         'bg-gray-900 text-white hover:bg-black/90 disabled:opacity-60',
       ].join(' ')}
     >
-      {loading ? 'Invio…' : 'Candidati'}
+      {loading ? t('applications.applying') : t('applications.apply')}
     </button>
   );
 }

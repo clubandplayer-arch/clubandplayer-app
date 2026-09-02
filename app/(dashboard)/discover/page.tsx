@@ -2,8 +2,9 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import FollowButton from '@/components/common/FollowButton';
 import CertifiedCMarkFollowing from '@/components/badges/CertifiedCMarkFollowing';
 import { Lightbox } from '@/components/media/Lightbox';
@@ -12,6 +13,7 @@ import FanVoteBadge from '@/components/fan-votes/FanVoteBadge';
 import { useCurrentProfileContext, type ProfileRole } from '@/hooks/useCurrentProfileContext';
 import { buildClubDisplayName, buildPlayerDisplayName } from '@/lib/displayName';
 import { useI18n } from '@/components/i18n/I18nProvider';
+import CanonicalGeographySelector from '@/components/geo/CanonicalGeographySelector';
 
 type Suggestion = {
   id: string;
@@ -92,6 +94,8 @@ function secondaryMetaLine(suggestion: Suggestion): ReactNode {
 
 export default function DiscoverPage() {
   const { t } = useI18n();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const tabs: Array<{ key: TabKey; label: string }> = [
     { key: 'institution', label: t('profile.institution') }, { key: 'club', label: 'Club' },
     { key: 'player', label: t('profile.player') }, { key: 'staff', label: t('navigation.staff') },
@@ -104,6 +108,21 @@ export default function DiscoverPage() {
   const [avatarPreview, setAvatarPreview] = useState<{ url: string; alt: string } | null>(null);
   const [geoScope, setGeoScope] = useState<GeoScope>('province');
   const [sportScope, setSportScope] = useState<SportScope>('mine');
+  const [countryId, setCountryId] = useState<string | null>(() => searchParams.get('countryId'));
+  const [geoAreaId, setGeoAreaId] = useState<string | null>(() => searchParams.get('geoAreaId'));
+  const countryChangeResetsArea = useRef(false);
+
+  useEffect(() => {
+    setCountryId(searchParams.get('countryId'));
+    setGeoAreaId(searchParams.get('geoAreaId'));
+  }, [searchParams]);
+
+  const updateScoutingUrl = (nextCountryId: string | null, nextGeoAreaId: string | null) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (nextCountryId) params.set('countryId', nextCountryId); else params.delete('countryId');
+    if (nextGeoAreaId) params.set('geoAreaId', nextGeoAreaId); else params.delete('geoAreaId');
+    router.replace(params.size ? `/discover?${params.toString()}` : '/discover', { scroll: false });
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -111,6 +130,8 @@ export default function DiscoverPage() {
 
     const fetchSuggestions = async (kind: TabKey) => {
       const params = new URLSearchParams({ kind, limit: '50', geoScope, sportScope });
+      if (countryId) params.set('countryId', countryId);
+      if (geoAreaId) params.set('geoAreaId', geoAreaId);
       const res = await fetch(`/api/follows/suggestions?${params.toString()}`, {
         credentials: 'include',
         cache: 'no-store',
@@ -171,7 +192,7 @@ export default function DiscoverPage() {
       cancelled = true;
       controller.abort();
     };
-  }, [contextRole, geoScope, sportScope]);
+  }, [contextRole, countryId, geoAreaId, geoScope, sportScope]);
 
   const activeItems = useMemo(() => items[activeTab] || [], [items, activeTab]);
 
@@ -190,6 +211,7 @@ export default function DiscoverPage() {
             key={tab.key}
             type="button"
             onClick={() => setActiveTab(tab.key)}
+            aria-pressed={activeTab === tab.key}
             className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
               activeTab === tab.key
                 ? 'border-[var(--brand)] bg-[var(--brand)]/10 text-[var(--brand)]'
@@ -201,29 +223,54 @@ export default function DiscoverPage() {
         ))}
       </div>
       <section className="rounded-2xl border border-neutral-200 bg-white/70 p-4 shadow-sm">
+        <div className="mb-4 space-y-1">
+          <h2 className="text-sm font-semibold text-neutral-900">{t('discover.scoutingArea')}</h2>
+          <p className="text-xs text-neutral-600">{t('discover.scoutingHelp')}</p>
+        </div>
+        <CanonicalGeographySelector
+          idPrefix="discover-scouting-geography"
+          countryId={countryId}
+          geoAreaId={geoAreaId}
+          onCountryChange={(nextCountryId) => {
+            countryChangeResetsArea.current = true;
+            setCountryId(nextCountryId);
+            setGeoAreaId(null);
+            updateScoutingUrl(nextCountryId, null);
+          }}
+          onGeoAreaChange={(nextGeoAreaId) => {
+            if (countryChangeResetsArea.current && !nextGeoAreaId) {
+              countryChangeResetsArea.current = false;
+              return;
+            }
+            countryChangeResetsArea.current = false;
+            setGeoAreaId(nextGeoAreaId);
+            updateScoutingUrl(countryId, nextGeoAreaId);
+          }}
+        />
+        <div className="my-4 border-t border-neutral-200" />
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <label className="flex flex-col gap-2 text-sm font-medium text-neutral-700">
-            {t('discover.scope')}
+            {t('discover.personalizedScope')}
             <select
               value={geoScope}
               onChange={(event) => setGeoScope(event.target.value as GeoScope)}
               className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 outline-none ring-[var(--brand)] focus:ring-2"
             >
-              <option value="country">Tutta Italia</option>
+              <option value="country">{t('discover.countryInterest')}</option>
               <option value="region">{t('discover.regionInterest')}</option>
               <option value="province">{t('discover.interestProvince')}</option>
               <option value="city">{t('discover.cityInterest')}</option>
             </select>
           </label>
           <label className="flex flex-col gap-2 text-sm font-medium text-neutral-700">
-            Sport
+            {t('discover.sport')}
             <select
               value={sportScope}
               onChange={(event) => setSportScope(event.target.value as SportScope)}
               className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 outline-none ring-[var(--brand)] focus:ring-2"
             >
               <option value="mine">{t('discover.mySport')}</option>
-              <option value="all">Tutti gli sport</option>
+              <option value="all">{t('discover.allSports')}</option>
             </select>
           </label>
         </div>
@@ -235,7 +282,7 @@ export default function DiscoverPage() {
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>
       ) : activeItems.length === 0 ? (
         <div className="rounded-xl border border-dashed p-6 text-sm text-neutral-600">
-          Nessun suggerimento disponibile.
+          {t('discover.noSuggestions')}
         </div>
       ) : (
         <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -293,6 +340,9 @@ export default function DiscoverPage() {
                       ) : null}
                       {(activeTab === 'player' || activeTab === 'staff') ? playerCountryLine(item) : null}
                       {secondaryMetaLine(item)}
+                      <p className="mt-1 text-[11px] font-medium text-[var(--brand)]">
+                        {countryId ? t('discover.reasonScoutingArea') : t('discover.reasonPersonalized')}
+                      </p>
                     </div>
                   </Link>
                 </div>

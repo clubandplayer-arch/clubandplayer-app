@@ -5,6 +5,8 @@ import { useI18n } from '@/components/i18n/I18nProvider';
 
 import { useProvinceAbbreviations } from '@/hooks/useProvinceAbbreviations';
 import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
+import { opportunityGeographyLabel } from '@/lib/opportunities/geography';
+import type { OpportunityGeography } from '@/types/opportunity';
 
 type OpportunityItem = {
   id: string;
@@ -16,6 +18,7 @@ type OpportunityItem = {
   created_at: string | null;
   status?: string | null;
   club_id?: string | null;
+  geography?: OpportunityGeography;
 };
 
 type Props = {
@@ -25,6 +28,8 @@ type Props = {
 };
 
 function formatLocation(opp: OpportunityItem, provinceAbbreviations: Record<string, string>) {
+  const canonical = opportunityGeographyLabel(opp.geography);
+  if (canonical) return canonical;
   const parts = [opp.city, provinceDisplayValue(opp.province, provinceAbbreviations), opp.region, opp.country].filter(Boolean);
   return parts.join(' · ') || 'Località non indicata';
 }

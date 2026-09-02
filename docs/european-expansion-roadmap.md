@@ -8,14 +8,16 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **COMPLETATA — FASE 3C-B7 — Compatibility and regression** |
-| Current active phase | **NESSUNA — FASE 3C-B COMPLETATA repository web/API** |
-| Next safe action | **Verifica manuale Preview B7 e merge review; nessun rollout implicito** |
+| Last completed subphase | **COMPLETATA — FASE 4I — fallback/regression** |
+| Current active phase | **FASE 4 — COMPLETATA / PASS** |
+| Next safe action | **Merge gate controllato; soltanto dopo, avvio separato della FASE 5** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
-| Mobile international parity | **NOT STARTED** |
+| Mobile international parity | **NOT STARTED — DEFERRED TO MOBILE REPOSITORY** |
 | FASE 3C-B | **COMPLETATA — B1–B7 repository web/API** |
+| FASE 3C-C | **COMPLETATA — C1–C7 PASS** |
+| FASE 3C-D | **COMPLETATA — D1–D7 PASS** |
 
 **FASE 3C-B è COMPLETATA nel perimetro repository web/API.** B7 riconferma IT legacy, IT/FR/ES/CH/SI/PL canonicali, account type, canonical-first, fallback e separazione semantica. `/settings` è ora raggiungibile anche dagli Enti su desktop e mobile, senza esporre loro gli interessi mobility. Prima del merge resta richiesta la verifica manuale Preview; mobile international parity resta una fase futura separata.
 
@@ -297,7 +299,7 @@ B4.3 ha creato nel repository la migration additiva `20261204120000_transactiona
 
 ### FASE 3C-C — Opportunities canonical geography
 
-**Stato: NOT STARTED.**
+**Stato: COMPLETATA — C1–C7 PASS; BACKFILL PRODUCTION LIMITATO E SMOKE USER-REPORTED PASS.**
 
 Sottofasi previste:
 
@@ -311,37 +313,173 @@ Sottofasi previste:
 
 L'ownership attuale delle Opportunities deve restare invariata. Non alterare incidentalmente le semantics applicant/club.
 
+#### 3C-C1 — Audit schema/write/read
+
+**Stato: COMPLETATA — PASS repository-only; NESSUNA VERIFICA MANUALE APPLICABILE.** Deliverable: `docs/european-expansion/phase-3c-c1-opportunities-geography-audit.md`.
+
+L'audit ha ricostruito lo schema Opportunity osservabile, i campi testuali legacy `country`/`region`/`province`/`city`, indici, trigger ownership, history RLS, API e repository di lettura/scrittura, `OpportunityForm`, filtri, Search, feed, viste, applications e dipendenze dai profili/sedi pubbliche Club. Il repository non contiene la migration originaria di creazione di `opportunities`: tipi, nullability, grants, policy e trigger effettivamente installati dovranno essere riconciliati in una futura fase autorizzata; C1 non ha eseguito query remote.
+
+Decisioni raccomandate per C2: colonne canonicali nullable `country_id` e `geo_area_id`, coerenza country/area garantita dal database, country-only e geo area a profondità variabile, nessun default Italia, nessuna derivazione automatica da residence/interessi/sede Club e conservazione integrale dei campi testuali. La priorità read proposta è canonical → mapping legacy Italia univoco → testo legacy. Ownership `owner_id`/`created_by`/`club_id` e semantics applications (`athlete_id` legacy compatibile Player/Staff e `club_id` user owner) restano invarianti.
+
+Codice comportamentale: **NON MODIFICATO**. Migration: **NON CREATA, NON TESTATA, NON APPLICATA — non applicabile/vietata in C1**. Production: **NON INTERROGATA E NON MODIFICATA**. Web: audit completato, nessuna UI collegata. Mobile: **NOT STARTED / NON MODIFICATO**. Test repository: `git diff --check`, lint, typecheck e 180 unit test **PASS**; build applicativa bloccata esclusivamente dal mancato download di Inter/Righteous da Google Fonts nell'ambiente, senza errori di codice osservati prima del fetch. Verifica manuale C1: **NESSUNA VERIFICA MANUALE APPLICABILE**. Blocker critici C1: nessuno; decisioni residue e rischi C2–C7 sono enumerati nel deliverable. Prossimo passaggio autorizzabile: **C2**, senza avvio automatico.
+
+#### 3C-C2 — Canonical geography schema
+
+**Stato: COMPLETATA — PASS repository-only; NESSUNA VERIFICA MANUALE APPLICABILE.** Deliverable: `docs/european-expansion/phase-3c-c2-opportunities-canonical-geography-schema.md`.
+
+Il contratto C2 fissa `opportunities.country_id uuid null` e `opportunities.geo_area_id uuid null`, FK dirette verso `countries`/`geo_areas`, check area→country e FK composita country/area. Country-only e selezione di qualunque livello attivo sono ammesse; area senza country e mismatch sono vietati. Delete è `RESTRICT`; non esistono default, backfill o derivazioni da profilo, residence, interessi o sede Club. `country`/`region`/`province`/`city`, ownership, RLS e applications restano invariati.
+
+C2 contiene soltanto il DDL blueprint e i criteri verificabili per C3: **nessuna migration creata, testata o applicata; nessuno schema runtime modificato**. Production: **NON INTERROGATA E NON MODIFICATA**. Web: contratto documentato, nessuna UI o API collegata. Mobile: **NOT STARTED / NON MODIFICATO**. Test repository: `git diff --check`, lint, typecheck e 180 unit test **PASS**. Verifica manuale/visiva: **NESSUNA VERIFICA MANUALE APPLICABILE**. Blocker C2: nessuno. Prossimo passaggio autorizzabile: **C3 — migration additive**, senza avvio automatico.
+
+#### 3C-C3 — Migration additive
+
+**Stato: COMPLETATA — PASS repository-only e PostgreSQL locale; NESSUNA VERIFICA MANUALE APPLICABILE.** Migration: `supabase/migrations/20261205120000_opportunity_canonical_geography.sql`. Deliverable: `docs/european-expansion/phase-3c-c3-opportunities-additive-migration.md`.
+
+La migration aggiunge `country_id` e `geo_area_id` nullable, FK dirette, check area→country, FK composita country/area e indici separati. Non contiene DML, default, backfill, RLS, grant, trigger, function, ownership, applications o modifiche legacy. Country-only e area coerente sono validi; area senza country, mismatch e riferimenti inesistenti sono rifiutati.
+
+Migration testata localmente: **SÌ — PostgreSQL 16.15, PASS**. Il runtime harness con fixture Opportunity legacy/Application ha applicato la migration due volte, verificato idempotenza, integrità, preservazione dati/ownership/applications, rollback e cleanup, con risultato `C3_OPPORTUNITY_GEOGRAPHY_RUNTIME_PASS`. Migration applicata Preview/Production: **NO**. Production: **NON INTERROGATA E NON MODIFICATA**. Web: nessun read/write collegato. Mobile: **NOT STARTED / NON MODIFICATO**. Test: diff-check, lint, typecheck, 184 unit test e runtime locale PASS; build bloccata esclusivamente dal download esterno Google Fonts. Verifica manuale/visiva: **NESSUNA VERIFICA MANUALE APPLICABILE**. Blocker C3: nessuno. Prossimo passaggio autorizzabile: **C4**, senza avvio automatico.
+
+**Aggiornamento operativo successivo autorizzato dall'utente:** migration C3 applicata con risultato `Success. No rows returned`. Stato: **APPLICATA — USER-REPORTED SUCCESS**; target remoto e Production non verificati indipendentemente dall'agente, nessun backfill dichiarato.
+
+#### 3C-C4 — Dual-read / dual-write
+
+**Stato: COMPLETATA — PASS web/API; NESSUNA VERIFICA MANUALE APPLICABILE.** Deliverable: `docs/european-expansion/phase-3c-c4-opportunities-dual-read-write.md`.
+
+Implementato un contratto field-aware `absent`/`legacy`/`reset`/`country_only`/`full`, validazione server di country supported+active, area attiva, country/area e ancestors, proiezione legacy per gerarchie IT/FR/ES/CH/SI/PL e singola statement atomica su `opportunities`. I read espongono canonical, canonical-country, legacy-text o none e usano canonical-first; collection e gerarchie sono caricate in batch. Integrati API collection/item, detail, repository, Search, feed, owner/applications summaries e componenti di presentazione. `OpportunityForm` e filtri canonici restano esclusi rispettivamente fino a C5 e C6.
+
+Migration: nessuna nuova migration C4. C3 applicata secondo comunicazione utente, target non verificato indipendentemente. Production: nessuna query/write eseguita da C4. RLS, grant, trigger, funzioni, ownership, applications, backfill e mobile: **NON MODIFICATI**. Web: dual-read/dual-write implementato, selector non collegato. Test repository: diff-check, lint, typecheck e **191 unit test PASS, 0 FAIL**; build bloccata dal download esterno Google Fonts. Verifica manuale/visiva: **NESSUNA VERIFICA MANUALE APPLICABILE**. Blocker C4: nessuno. Prossimo passaggio autorizzabile: **C5**, senza avvio automatico.
+
+#### 3C-C5 — OpportunityForm
+
+**Stato: COMPLETATA — PASS AUTOMATICO E SMOKE TEST USER-REPORTED PASS.** Deliverable: `docs/european-expansion/phase-3c-c5-opportunity-form.md`.
+
+`OpportunityForm` usa ora il selector canonico riutilizzabile senza default Italia, query legacy dirette o testo libero estero. Supporta geography opzionale, country-only, profondità variabile, reset e payload field-aware. Edit canonical ricostruisce la selezione; edit legacy mostra il testo esistente e lo preserva se non si interagisce, consentendo sostituzione o reset espliciti.
+
+Migration: nessuna nuova. C3 applicata secondo comunicazione utente, target non verificato indipendentemente. Production: nessuna query/write eseguita dall'agente. RLS, grants, ownership, applications, filtri e mobile: **NON MODIFICATI**. Web: form collegato. Test: diff-check, lint, typecheck e **196 unit test PASS, 0 FAIL**; build bloccata dal download esterno Google Fonts. Verifica manuale/visiva: **PASS — confermata dall’utente dopo smoke test**. C5 è COMPLETATA; C6 è stata successivamente autorizzata.
+
+
+#### 3C-C6 — Filtri
+
+**Stato: COMPLETATA — PASS AUTOMATICO E SMOKE TEST PREVIEW USER-REPORTED PASS.** Deliverable: `docs/european-expansion/phase-3c-c6-opportunity-filters.md`.
+
+La pagina Opportunities usa il selector canonico con URL `countryId`/`geoAreaId`. La GET valida country/area e filtra per country oppure per area più discendenti attivi; i canonical filters hanno precedenza, mentre i vecchi URL testuali restano supportati quando gli ID non sono presenti. Nessun default Italia.
+
+Migration: nessuna nuova; C3 user-reported applied. Production: non interrogata/modificata. RLS, grants, trigger, ownership, applications e mobile: **NON MODIFICATI**. Web: filtri implementati e smoke Preview **PASS** su conferma utente; una nuova Opportunity canonica estera è filtrabile correttamente. Test: diff-check, lint, typecheck e **199 unit test PASS, 0 FAIL**; build bloccata esclusivamente dal download esterno Google Fonts.
+
+Lo smoke ha anche confermato che le Opportunities storiche con soli campi testuali restano visibili senza filtro ma non entrano in un filtro canonico ID-based. È un rischio dati atteso, non risolvibile con mapping fuzzy: prima del rollout definitivo C7 (o un checkpoint dati esplicitamente autorizzato) deve produrre report read-only, resolver deterministico/univoco, backfill idempotente, dry-run, rollback e gestione manuale degli ambigui. Il piano va preparato e provato prima del merge; l'applicazione non va concentrata in una migration completa last-minute e non è autorizzata da questo aggiornamento. Prossimo passaggio autorizzabile: **C7**, senza avvio automatico.
+
+
+#### 3C-C7 — Regressione e backward compatibility
+
+**Stato: COMPLETATA — PASS REPOSITORY, POSTGRESQL LOCALE, APPLY/POST-AUDIT E SMOKE PRODUCTION USER-REPORTED.** Deliverable: `docs/european-expansion/phase-3c-c7-opportunities-regression-backward-compatibility.md`.
+
+Creati audit read-only, piano deterministico, apply transazionale manuale e rollback explicit-ID per le Opportunities legacy italiane. Il resolver usa soltanto country alias espliciti e gerarchia esatta Municipality/Province/Region; match univoci ricevono country+area, ambigui e unresolved soltanto country IT. Nessuna label legacy, ownership o Application viene modificata. Il runbook resta fuori dalle migration automatiche.
+
+Test locale PostgreSQL 16.15: **PASS**, inclusi Subiaco/RM/Lazio, ambigui, unresolved, preservazione estero/ownership/applications e idempotenza; risultato `C7_OPPORTUNITY_BACKFILL_RUNTIME_PASS`. Test statici e suite repository: typecheck, lint e **207 unit test PASS, 0 FAIL**. Migration automatica: nessuna. Production non interrogata/modificata dall’agente; audit, apply e smoke successivi sono user-reported e documentati sotto. Web: regressione repository e smoke PASS. Mobile: NOT STARTED / NON MODIFICATO.
+
+**Aggiornamento blocker C7:** non esiste un Preview Branch Supabase healthy collegato alla PR; `b4-rpc-validation` è UNHEALTHY e non autorizzato, il check resta QUEUED e Support non ha ancora risolto. Preparato senza eseguirlo `audit_opportunity_legacy_geography_production_read_only.sql`: singolo statement CTE/SELECT, nessuna temp table/DML/DDL/lock, output limitato ai cinque conteggi e privo di UUID/dati personali. In quel checkpoint nessuna query Production, apply o backfill era stata eseguita; il successivo audit read-only user-reported è documentato sotto. C7 resta CONDITIONAL PASS e le fasi successive restano ferme.
+
+**Esito audit Production read-only comunicato dall'utente:** `municipality=31`, `province=0`, `region=0`, `ambiguous_country_only=0`, `unresolved_country_only=0`; totale 31. Tutte le Opportunity legacy italiane osservate hanno quindi un match Municipality deterministico e non esiste una coda ambigua/unresolved nel momento dell'audit. È stato eseguito esclusivamente lo statement read-only; nessun apply, backfill o write. Il prossimo passaggio raccomandato, ancora non autorizzato, è preparare/revisionare un apply transazionale che ricalcoli e richieda esattamente i conteggi approvati prima di qualsiasi UPDATE, con allowlist rollback; poi serviranno nuova autorizzazione, post-audit e smoke. C7 resta CONDITIONAL PASS.
+
+**Apply fail-closed preparato, non eseguito:** `apply_opportunity_legacy_geography_production_fail_closed_31.sql` ricalcola il piano sotto advisory transaction lock e abortisce salvo esattamente 31/0/0/0/0; richiede target Municipality attivi/coerenti, emette allowlist rollback, modifica soltanto `country_id`/`geo_area_id` e verifica il post-update. Runtime PostgreSQL 16.15 su 31 fixture: PASS; preservati testi legacy, ownership e Application, rerun con piano diverso rifiutato fail-closed, risultato `C7_PRODUCTION_FAIL_CLOSED_GATE_PASS`. Nessuna esecuzione Production è stata effettuata. Prossimo passaggio autorizzabile: esecuzione Production separata del solo candidato, poi post-audit e smoke; C7 resta CONDITIONAL PASS.
+
+**Chiusura Production user-reported:** eseguito una sola volta dal commit remoto autorizzato `e8b4a6f2d23254ff8f1066007b9c575813b4b94e` il solo apply fail-closed, con backup fisico restore-ready verificato, exit code 0 e 31 Municipality aggiornate. Allowlist conservata privatamente. Post-audit: tutte le cinque categorie a zero. Smoke: “Juniores Regionale”, “Opportunité Ain”, lista, detail, edit senza salvataggio, Applications e console tutti PASS. C7 e FASE 3C-C sono COMPLETATE; nessuna fase successiva o merge è autorizzato implicitamente.
+
 ### FASE 3C-D — Search / Discover / WhoToFollow
 
-**Stato: NOT STARTED.**
+**Stato: COMPLETATA / PASS — D1–D7 concluse.**
 
 Obiettivi futuri: country-aware filtering, geo-area filtering, scouting internazionale, country interests, territorial interests, relocation e ranking compatibile con legacy. Il lavoro dovrà essere separato, secondo necessità, in sottofasi audit/read/filter/ranking.
 
+Piano progressivo approvato per evitare modifiche monolitiche:
+
+1. **D1 — audit Search / Discover / WhoToFollow:** COMPLETATA / PASS; inventariati Search globale, due endpoint suggerimenti, superfici UI, fonti canonical/legacy, RLS/privacy, ranking e rischi performance. Nessuna modifica runtime, remota, mobile o binaria.
+2. **D2 — canonical filtering/ranking contract:** COMPLETATA / PASS; definiti parametri ID e alias, parsing fail-closed, validation adapter, descendants, reason weights, ranking/tie-break deterministico, privacy boundary e fallback legacy. Modulo puro non ancora collegato al runtime; verifica manuale/visiva non applicabile.
+3. **D3 — Search canonical filters:** COMPLETATA / PASS; API canonical-first con country/area validation, semantica descendants bounded tramite proiezione gerarchica, query/count coerenti e fallback legacy. Recheck Preview PASS dopo la correzione del fan-out.
+4. **D4 — Discover / WhoToFollow data boundary:** COMPLETATA / PASS; piano geografico condiviso, preference viewer-only via RLS, target location pubblica e smoke autenticato concluso.
+5. **D5 — international ranking e relocation:** COMPLETATA / PASS; score D2 attivo sul pool visibile con interessi country/area, sport, relocation esplicita, fallback legacy e tie-break stabile; smoke deterministico autenticato concluso.
+6. **D6 — UI e scouting internazionale:** COMPLETATA / PASS; selector canonicale, URL country/area, filtri server fail-closed, copy IT/EN/FR/ES, accessibilità e reason label non sensibili; smoke user-reported PASS.
+7. **D7 — regressione e backward compatibility:** COMPLETATA / PASS; account type, sei Paesi, profili legacy, privacy/RLS, visibility, follow exclusions, conteggi, performance e smoke Preview conclusi.
+
+Decisioni D1: gli interessi canonici descrivono le preferenze del viewer e non la location del target; la location target usa residence canonicale con fallback legacy. `open_to_relocation` è un segnale contestuale, non un filtro universale di pubblicazione. Le preference tables sono own-or-admin nel contratto repository e non devono essere rese pubbliche o aggirate con service role generalizzato. SearchMap/ClubMap restano fuori perimetro fino alla FASE 3C-E. Dettaglio e matrice di rischio sono nel deliverable `phase-3c-d1-search-discover-who-to-follow-audit.md`.
+
+Decisioni D2: filtri canonicali `countryId`/`geoAreaId` hanno precedenza sui testi legacy, area richiede country e include descendants same-country; assenza canonicale non penalizza i profili legacy. Il ranking usa una sola reason geografica più segnali sport/relocation espliciti e tie-break stabile. D2 non attiva ancora query o ranking. Dettaglio nel deliverable `phase-3c-d2-search-canonical-filtering-ranking-contract.md`.
+
+Decisioni D3: Opportunities filtrano direttamente il country ID canonico e usano la proiezione gerarchica bounded dell'area validata; profili e author usano la stessa proiezione pubblica senza leggere preference tables private o usare service role. Il primo smoke area ha rilevato `UNKNOWN` perché materializzare migliaia di descendant UUID in PostgREST superava la dimensione pratica della richiesta; la correzione evita il fan-out e il recheck Preview è PASS. Dettaglio e checklist in `phase-3c-d3-search-canonical-filters.md`.
+
+Decisioni D4: entrambi gli endpoint suggerimenti usano un unico boundary viewer-only con precedenza interessi area/country canonici, interessi legacy, residence canonica e residence legacy. I candidati sono filtrati soltanto sulla location pubblica; i loro interessi non vengono interpretati come posizione. Relocation resta metadato e non attiva ranking prima di D5. Dettaglio e checklist in `phase-3c-d4-discover-who-to-follow-data-boundary.md`.
+
+Decisioni D5: il ranking D2 è applicato soltanto dopo visibility ed eligibility, senza modificare il pool autorizzato. Una sola reason geografica contribuisce; sport e relocation sono additivi. Relocation richiede opt-in del viewer, interesse esplicito, residence country nota e target in country differente. Nessun dato mancante produce penalità. Dettaglio e checklist in `phase-3c-d5-international-ranking-relocation.md`.
+
+Decisioni D6: la selezione esplicita di scouting usa `countryId`/`geoAreaId`, prevale sul piano viewer e non consente fallback fuori territorio. In assenza di selezione resta il comportamento personalizzato D4/D5. Le card espongono solo reason generiche non sensibili; score e preferenze restano server-side. Dettaglio e checklist in `phase-3c-d6-ui-international-scouting.md`.
+
+Decisioni D7: entrambi gli endpoint suggerimenti applicano `active + published`; pending/draft/null-status non sono candidati pubblici. La matrice automatica copre sei Paesi, alias, legacy eligibility, account type, privacy, query bounded e localizzazione. Dettaglio e smoke finale in `phase-3c-d7-regression-backward-compatibility.md`.
+
+Chiusura D7 user-reported: entrambi gli endpoint suggerimenti hanno restituito HTTP 200 con ordine stabile in esecuzioni ripetute, `rankingVersion=d5-v1`, esclusioni self/already-followed e nessun `UNKNOWN`. Il pool WhoToFollow alternativo è passato a 421 profili pubblici visibili e 414 eleggibili, coerentemente con il boundary `active + published`. Lo smoke UI D6 su `/discover`, card, avatar, link e Follow resta PASS. FASE 3C-D è pertanto COMPLETATA; Maps non è avviata implicitamente.
+
 ### FASE 3C-E — Maps
 
-**Stato: NOT STARTED.**
+**Stato: COMPLETATA / PASS LATO WEB — E1–E7 PASS.**
 
-Obiettivi futuri: `ClubMap`, `SearchMap`, supporto internazionale, coordinate canoniche, stadium coordinates, fallback legacy e performance. Per i Club esistenti, `club_stadium_lat/lng` è attualmente la fonte preferibile, quando presente, rispetto a generic `latitude/longitude`, sulla base dell'audit precedente. Le mappe non vengono modificate in questo task.
+Obiettivi: `ClubMap`, `SearchMap`, supporto internazionale, viewport canonico, coordinate puntuali pubbliche, stadium coordinates, fallback legacy, privacy e performance. E1 ha confermato `club_stadium_lat/lng` come sorgente preferibile per Club/Institution e ha separato i centroid/bounds canonici, validi per viewport, dai pin pubblici. Ha inoltre rilevato SearchMap disattivata tramite redirect, precedenza coordinate divergente, stadium-only esclusi dai bounds, fallback fuori viewport, rischio privacy per coordinate personali, popup storico non sanitizzato e limiti di scalabilità/provider. Dettaglio in `phase-3c-e1-maps-audit.md`.
+
+Piano completato: **E1 audit** PASS; **E2 coordinate/viewport/privacy contract** PASS; **E3 server data boundary** PASS; **E4 ClubMap internazionale** PASS; **E5 SearchMap decision e integrazione** PASS; **E6 Opportunity map semantics** PASS; **E7 regressione/performance/provider/backward compatibility** PASS.
+
+Decisioni E2: pin precisi pubblici organization-only, con precedenza atomica venue → legacy; nessun pin implicito per Player/Staff/Fan. Viewport e pin sono modelli separati; bounds espliciti o canonical country/area sono mutuamente esclusivi, fail-closed e antimeridian-aware. Centroid canonici non sono pin. Le Opportunity usano venue propria, poi venue owner, altrimenti nessun pin. Dettaglio in `phase-3c-e2-coordinate-viewport-privacy-contract.md`.
+
+Decisioni E3: i tre endpoint Maps condividono adapter viewport e resolver organization-only; query venue-first includono stadium-only, sono antimeridian-aware e non effettuano fallback globale fuori viewport. Player/Staff/Fan non espongono pin precisi; Opportunity ereditano soltanto il punto pubblico owner da un pool bounded. SearchMap resta disattivata. Dettaglio e smoke in `phase-3c-e3-maps-server-data-boundary.md`.
+
+Decisioni E4: ClubMap usa viewport europeo, selector canonicale URL-stable e fit dei bounds server; nessun default Italia. I pin vengono raggruppati client-side a zoom basso senza provider aggiuntivi. Copy e accessibility sono localizzati IT/EN/FR/ES; il boundary organization-only E3 resta invariato. Dettaglio e smoke in `phase-3c-e4-club-map-international.md`.
+
+Correzione smoke E4: quando il catalogo non dispone dei bounds ufficiali, il server valida la gerarchia canonicale e filtra i campi pubblici legacy `country`/`region`/`province`/`city`; non esiste più il fallback globale che mostrava tutta Italia per Roma. Lo zoom non rilancia la richiesta dati e nessun bounds o punto personale viene fabbricato. Il successivo smoke Preview è PASS.
+
+Decisioni E5: una sola UI Maps pubblica, `/club-map`. `/search-map` è conservata come redirect compatibile verso ClubMap; CTA runtime aggiornate e client SearchMap storico irraggiungibile rimosso insieme alla lista/service privati. Gli endpoint server Maps restano protetti per E6/E7; nessun pin personale o Opportunity UI viene attivato. Dettaglio in `phase-3c-e5-search-map-decision-integration.md`.
+
+Decisioni E6: una Opportunity è mappabile soltanto tramite venue esplicita futura o punto pubblico validato dell'organizzazione owner; canonical country/area resta metadata/viewport e non diventa mai un pin. `/api/search/map?type=opportunity` allega geography, esclude placement null ed espone un contratto/versione espliciti. Dettaglio in `phase-3c-e6-opportunity-map-semantics.md`.
+
+Correzione smoke E6: il primo HTTP 200 ha confermato contratto e bounds, ma il risultato vuoto con `boundsApplied=true` ha evidenziato la compatibilità tra ID profilo e ID Auth nelle Opportunity legacy. Il pool owner indicizza ora il punto pubblico tramite `profiles.id` e `profiles.user_id` e risolve `club_id`/`owner_id`/`created_by`, restando bounded e organization-only. Recheck Preview richiesto prima di E7.
+
+Chiusura E6: il recheck debug ha restituito `totalOpenOpp=0`, `clubsInBoundsCount=38`, `oppAfterBounds=0`, contratto E6 presente e nessun errore. Non esistono Opportunity open visibili al caller da validare per-item; la lista vuota è corretta e il boundary è PASS.
+
+Decisioni E7: provider/versione/attribution e cap pubblici centralizzati; endpoint Club espone limite/returned/truncated senza count aggiuntiva. Matrice regressiva preserva canonical filtering, privacy, spatial strictness, E5 redirect ed E6 placement. Dettaglio in `phase-3c-e7-maps-regression-performance-provider.md`.
+
+Chiusura E7 user-reported: endpoint Club HTTP 200 con 38 pin organization venue e metadata `1000/38/false`; endpoint Player HTTP 200 con lista vuota, privacy boundary e viewport esplicito corretti. Gli smoke UI/redirect/filter/cluster/Network E4–E6 restano PASS. FASE 3C-E Maps è pertanto COMPLETATA lato Web.
+
+Perimetro Mobile: tutte le implementazioni e certificazioni 3C svolte finora appartengono esclusivamente a questa repository Web. La replica dei contratti e dei comportamenti in Mobile sarà eseguita successivamente nella repository Mobile come attività separata; nessuna chiusura Web equivale a Mobile parity.
 
 ## FASE 4 — Internationalization / i18n
 
-**Stato prudenziale: IMPLEMENTAZIONE i18n SOSTANZIALE PRESENTE; CERTIFICAZIONE COMPLETA 4A–4I NON ESEGUITA; FASE NON COMPLETATA.**
+**Stato: COMPLETATA / PASS — 4A–4I concluse, incluso smoke finale Preview dichiarato PASS dall'utente.**
 
 Il repository contiene un'implementazione i18n sostanziale ed è quindi più avanzato rispetto alla precedente dicitura `NOT STARTED`: sono verificabili catalogo `languages`, preferred language in `profile_preferences`, infrastruttura locale/provider, messaggi per le lingue attive e test dedicati. Queste evidenze non equivalgono tuttavia alla certificazione completa della FASE 4.
 
-Prima di pianificare nuovo lavoro i18n è richiesto un audit dedicato di riconciliazione rispetto alle sottofasi 4A–4I. Questo aggiornamento documentale non avvia tale audit e non marca la FASE 4 come COMPLETATA.
+L'audit dedicato di riconciliazione 4A è stato completato repository-only senza modifiche runtime, database o Mobile. Ha confermato la foundation esistente e identificato gap in copertura globale delle stringhe, classificazione dei locale italiani residui, review linguistica, test end-to-end e metadata/SEO. Dettaglio in `phase-4a-i18n-audit.md`.
+
+4B ha certificato la foundation server/client, la precedenza profile → cookie → browser → italiano, caricamento cataloghi, persistenza owner-scoped e parità delle chiavi. Le primitive pure di interpolazione/fallback sono state consolidate fuori dal provider React mantenendo gli export compatibili. Nessuna migration, API, route, lingua attiva o modifica Mobile. Dettaglio in `phase-4b-i18n-infrastructure.md`. La FASE 4 non è completata.
+
+4C ha consolidato la baseline italiana sulle superfici prioritarie Rete, Candidature, dettaglio Opportunity e pagina informativa località. Lo smoke user-reported ha chiuso la baseline italiana e rilevato un follow-up responsive sul CTA francese delle Candidature. La candidate 4D corregge il CTA come unità `inline-flex` non spezzabile, localizza le intestazioni residue della tabella e certifica le chiavi inglesi prioritarie; resta necessario lo smoke inglese e il recheck francese documentato in `phase-4d-english.md`.
+
+4D è stata chiusa dopo conferma dello smoke Preview. 4E consolida ora la baseline francese sulle stesse superfici, protegge il CTA lungo già verificato e applica una revisione editoriale mirata senza cambiare contratti o chiavi. Dettaglio e checklist manuale in `phase-4e-french.md`.
+
+4E è stata chiusa dopo lo smoke Preview, con un residuo cross-locale sui valori controllati provenienti dal database. 4F corregge quel residuo in presentazione per tutte le lingue attive e consolida la baseline spagnola. Dettaglio e checklist in `phase-4f-spanish.md`.
+
+4F è stata chiusa dopo lo smoke Preview. 4G estende la traduzione degli sport a tutti i selettori Web preservandone i valori e consolida la persistenza della lingua con serializzazione e rollback coerente. Dettaglio in `phase-4g-language-preference.md`.
+
+4G è stata chiusa dopo lo smoke Preview. 4H corregge i residui UI segnalati, localizza tutti i ruoli Staff legacy e introduce metadata server-side coerenti con la lingua senza dichiarare URL `hreflang` inesistenti. Dettaglio in `phase-4h-metadata-seo.md`.
+
+4H è stata chiusa dopo lo smoke Preview. 4I corregge selector geografico e MyMedia, certifica fallback e placeholder ed è stata chiusa dopo la dichiarazione di PASS dello smoke finale. La FASE 4 è pertanto conclusa. Prima della FASE 5 resta un gate operativo separato per decidere ed eseguire il merge controllato, senza confondere la validazione Web con la futura parity Mobile. Dettaglio in `phase-4i-fallback-regression.md`.
 
 Roadmap prevista:
 
-- 4A — audit strings/locales;
-- 4B — i18n infrastructure;
-- 4C — Italian baseline;
-- 4D — English;
-- 4E — French;
-- 4F — Spanish;
-- 4G — language preference integration;
-- 4H — metadata/SEO;
-- 4I — fallback/regression.
+- 4A — audit strings/locales — **COMPLETATA**;
+- 4B — i18n infrastructure — **COMPLETATA**;
+- 4C — Italian baseline — **COMPLETATA**;
+- 4D — English — **COMPLETATA**;
+- 4E — French — **COMPLETATA**;
+- 4F — Spanish — **COMPLETATA**;
+- 4G — language preference integration — **COMPLETATA**;
+- 4H — metadata/SEO — **COMPLETATA**;
+- 4I — fallback/regression — **COMPLETATA / PASS**.
 
 Lingue iniziali: **IT, EN, FR, ES**. Lingue future: **PT, DE**. Non risultano dichiarate traduzioni complete.
 
@@ -706,14 +844,60 @@ Alla data di creazione iniziale della roadmap:
 
 | Voce | Stato |
 | --- | --- |
-| Last completed subphase | **FASE 3C-B7 — Compatibility and regression — COMPLETATA** |
-| Current active phase | **NESSUNA — FASE 3C-B COMPLETATA repository web/API** |
-| Next safe action | **Verifica manuale Preview B7 e merge review; nessun rollout implicito** |
+| Last completed subphase | **FASE 3C-E7 — COMPLETATA / PASS** |
+| Current active phase | **FASE 3C-E — MAPS WEB COMPLETATA / PASS** |
+| Next safe action | **Nessuna; Mobile parity rinviata alla repository Mobile** |
 | B4.3 local runtime harness | **PASSED — PostgreSQL 16, fixture sintetiche, nessuna connessione remota** |
 | B4.3 Supabase certification | **BLOCKED — PREVIEW BRANCH UNHEALTHY / MIGRATIONS FAILED / SUPPORT PENDING** |
 | B4.4 | **COMPLETATA — CANARY APPLICATIVO PLAYER IT / STAFF FR, READ-AFTER-WRITE, CLEANUP E RIPRISTINO FAIL-CLOSED PASS** |
 | FASE 3C-B | **COMPLETATA — B1–B7 repository web/API** |
+| FASE 3C-C | **COMPLETATA — C1–C7 PASS** |
+| FASE 3C-D | **COMPLETATA — D1–D7 PASS** |
 | Automatic residence backfill | **DELIBERATELY EXCLUDED** |
 | Mobile international parity | **NOT STARTED** |
 
 B7 è chiusa nel perimetro repository web/API. Non riabilitare grant o gate e non interpretare la chiusura come rollout. Prima del merge eseguire gli smoke manuali Preview documentati, inclusi accesso Settings Institution desktop/mobile e assenza mobility per Club/Institution/Fan.
+
+C1 Opportunities è chiusa come audit repository-only: nessuna migration, query remota, write, UI o modifica mobile. La verifica manuale C1 non è applicabile. Attendere autorizzazione esplicita prima di C2.
+
+C2 Opportunities è chiusa come contratto schema repository-only: DDL blueprint additivo definito, ma nessuna migration o modifica runtime è stata creata o applicata. Production non è stata interrogata o modificata; web e mobile non hanno modifiche comportamentali. La verifica manuale/visiva C2 non è applicabile. Attendere autorizzazione esplicita prima di C3.
+
+C3 Opportunities è chiusa: migration additiva creata e testata due volte su PostgreSQL 16.15 locale con fixture sintetiche, rollback e cleanup PASS. La migration non è stata applicata a Preview o Production; nessuna query remota, UI, API, RLS, grant, backfill o modifica mobile. La verifica manuale/visiva C3 non è applicabile. Attendere autorizzazione esplicita prima di C4.
+
+Aggiornamento successivo: l'utente ha applicato la migration C3 con esito `Success. No rows returned`; target e Production non sono stati verificati indipendentemente.
+
+C4 Opportunities è chiusa nel repository web/API: dual-read canonical-first e dual-write atomico/field-aware implementati, senza selector form, filtri canonici, migration aggiuntive, RLS/grant/backfill o mobile. La verifica manuale/visiva C4 non è applicabile. Attendere autorizzazione esplicita prima di C5.
+
+C5 Opportunities è **COMPLETATA**: test automatici e smoke Preview user-reported PASS.
+
+C6 Opportunities è **COMPLETATA**: test automatici e smoke Preview user-reported PASS. Il filtro trova correttamente le nuove righe canoniche; lo smoke ha evidenziato che le righe storiche prive di ID non soddisfano filtri canonici.
+
+C7 Opportunities è **COMPLETATA / PASS**: audit Production 31/0/0/0/0, apply fail-closed exit 0 su 31 Municipality, post-audit tutto zero e smoke web completo user-reported PASS. Allowlist privata conservata; nessun altro write, merge o fase successiva autorizzato.
+
+D1 Search / Discover / WhoToFollow è **COMPLETATA / PASS** come audit repository-only. Sono stati separati Search globale, Discover, i due endpoint suggerimenti e Maps; documentati canonical residence, country/geo-area interests, relocation, fallback legacy, privacy/RLS, ranking e performance. Nessuna query remota, migration, modifica runtime/UI/mobile o creazione/uso di file binari. D2 è il prossimo passo e non è ancora iniziata.
+
+D2 Search canonical filtering/ranking contract è **COMPLETATA / PASS**: modulo TypeScript puro con parser canonical/legacy, alias compatibility, validazione catalog adapter, descendants same-country, reason weights e ordinamento deterministico. Nessun collegamento runtime/UI/DB e nessun file binario; verifica manuale/visiva non applicabile. D3 non è ancora iniziata.
+
+D3 Search canonical filters è **COMPLETATA / PASS**: legacy, canonical country, canonical area, Opportunity count, invalid UUID HTTP 400, area senza country HTTP 400, no-filter e Network/console sono user-reported PASS. Il primo canonical area/Opportunity smoke aveva restituito `UNKNOWN`; individuato il fan-out di descendant UUID, sostituito con proiezione gerarchica bounded e recheck HTTP 200 PASS con `Opportunité Ain` unico risultato e conteggio 1. Nessuna migration, write, UI, Maps, mobile o file binario.
+
+D4 Discover / WhoToFollow data boundary è **COMPLETATA / PASS**: endpoint principale e alternativo, quattro geoScope, esclusioni, debug, `/discover` e assenza di errori sono user-reported PASS dopo il fix dei conteggi diagnostici. Nessuna migration, write, modifica RLS, Maps, mobile o file binario.
+
+D5 international ranking e relocation è **COMPLETATA / PASS**: entrambi gli endpoint hanno restituito HTTP 200, `rankingVersion=d5-v1` e gli stessi ID nello stesso ordine in esecuzioni consecutive; self/already-followed esclusi e superfici `/discover`/feed user-reported PASS. Il viewer era legacy (`hasCanonicalGeographyInterests=false`, `openToRelocation=false`); canonical-interest e relocation sono coperti automaticamente e restano nella matrice D7.
+
+D6 UI e scouting internazionale è **COMPLETATA / PASS**: selector country/area, URL/reload/reset, filtri strict, account type, sport, card, Follow, Network/Console e comportamento visivo sono user-reported PASS.
+
+D7 regressione e backward compatibility è **COMPLETATA / PASS**: matrice automatica per sei Paesi e legacy, account type, privacy, visibility pubblica, esclusioni, stabilità, localizzazione e limiti query; smoke Preview ripetuto HTTP 200 con ordine stabile per entrambi gli endpoint, `rankingVersion=d5-v1` e nessun `UNKNOWN`. Lo smoke UI D6 resta PASS. Nessuna migration, write, modifica RLS, Maps, mobile o file binario. FASE 3C-D è chiusa; la prossima fase autorizzabile è 3C-E1 Maps repository-only audit.
+
+E1 Maps audit è **COMPLETATA / PASS repository-only**: inventariati ClubMap, SearchMap disattivata tramite redirect, tre endpoint, picker sede/stadio, fonti generic/stadium e centroid/bounds canonici. Rilevati come gate E2 privacy delle coordinate personali, precedenza coordinate unica, query spatially strict, validazione bounds, semantica Opportunity, pagination/clustering, provider e sanitizzazione popup. Nessuna modifica runtime, query remota, migration, RLS, mobile o file binario. E2 richiede autorizzazione separata.
+
+E2 coordinate, viewport e privacy contract è **COMPLETATA / PASS**: modulo puro con coppie atomiche e range, pin pubblici organization-only, precedenza venue → legacy, viewport canonical/bounds fail-closed, supporto antimeridiano e semantica Opportunity senza centroid-pin. Nove test automatici PASS. Nessun endpoint, query, migration, RLS, UI/provider Maps, mobile o file binario. E3 richiede autorizzazione separata.
+
+E3 Maps server data boundary è **COMPLETATA / PASS**: adapter catalogo/viewport read-only, query venue-first stadium-aware, bounds strict/antimeridiano, privacy organization-only, niente fallback globale e Opportunity owner pool limitato. Gli smoke endpoint e redirect sono user-reported PASS. Nessuna migration, RLS, write remoto, provider/UI client, mobile o file binario.
+
+E4 ClubMap internazionale è **COMPLETATA / PASS**: viewport europeo, selector canonicale URL-stable, filtro server canonical-to-legacy per gerarchie prive di bounds, clustering, popup, reload/reset e assenza di refetch allo zoom sono user-reported PASS. Nessuna migration, RLS, write remoto, nuovo provider, Opportunity map, mobile o file binario.
+
+E5 SearchMap decision e integrazione è **COMPLETATA / PASS**: `/club-map` è l'unica UI Maps pubblica; bookmark `/search-map` reindirizza a ClubMap, CTA runtime sono riconciliate e il client storico irraggiungibile è rimosso. Endpoint server conservati senza pin personali.
+
+E6 Opportunity map semantics è **COMPLETATA / PASS**: placement esplicito e versionato, owner public point come unico fallback, geography canonicale solo metadata/viewport e compatibilità ID profilo/Auth. Il recheck ha confermato zero Opportunity open visibili e 38 Club bounded, quindi empty corretto.
+
+E7 Maps regressione/performance/provider/backward compatibility è **COMPLETATA / PASS**: policy provider e cap centralizzata, truncation metadata, matrice privacy/canonical/redirect/placement e smoke finale user-reported PASS. **FASE 3C-E Maps è chiusa lato Web.** Mobile parity resta NOT STARTED ed è rinviata alla repository Mobile.

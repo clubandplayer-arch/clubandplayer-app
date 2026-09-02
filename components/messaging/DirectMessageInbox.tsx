@@ -141,7 +141,7 @@ export function DirectMessageInbox({ onSelectThread, hideHeader, className }: Pr
           <EmptyState
             title={t('messages.empty')}
             description={t('messages.emptyDescription')}
-            actions={[{ label: t('messages.searchMap'), href: '/search-map', variant: 'primary' }]}
+            actions={[{ label: t('messages.searchMap'), href: '/club-map', variant: 'primary' }]}
           />
         )}
         {!loading && !error &&

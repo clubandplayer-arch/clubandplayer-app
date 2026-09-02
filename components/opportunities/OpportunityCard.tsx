@@ -4,10 +4,10 @@ import Link from 'next/link';
 import ApplyCTA from '@/components/opportunities/ApplyCTA';
 import { useProvinceAbbreviations } from '@/hooks/useProvinceAbbreviations';
 import { provinceDisplayValue } from '@/lib/geo/provinceAbbreviations';
-import { opportunityGenderLabel } from '@/lib/opps/gender';
+import { opportunityGeographyLabel } from '@/lib/opportunities/geography';
 import type { Opportunity } from '@/types/opportunity';
 import { useI18n } from '@/components/i18n/I18nProvider';
-import { localizeSportRole } from '@/lib/i18n/controlledVocabulary';
+import { localizeOpportunityGender, localizeSport, localizeSportRole } from '@/lib/i18n/controlledVocabulary';
 
 type Role = 'athlete' | 'staff' | 'club' | 'institution' | 'guest';
 
@@ -28,9 +28,9 @@ export default function OpportunityCard({
 }: Props) {
   const { t } = useI18n();
   const provinceAbbreviations = useProvinceAbbreviations();
-  const place = [opp.city, provinceDisplayValue(opp.province, provinceAbbreviations), opp.region, opp.country].filter(Boolean).join(', ');
+  const place = opportunityGeographyLabel(opp.geography) ?? [opp.city, provinceDisplayValue(opp.province, provinceAbbreviations), opp.region, opp.country].filter(Boolean).join(', ');
 
-  const genderLabel = opportunityGenderLabel((opp as any).gender) ?? undefined;
+  const genderLabel = localizeOpportunityGender((opp as any).gender, t) ?? undefined;
 
   const ageLabel =
     opp.age_min != null && opp.age_max != null
@@ -51,7 +51,7 @@ export default function OpportunityCard({
             <h3 className="text-base md:text-lg font-semibold truncate">{opp.title}</h3>
           </Link>
           <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm text-gray-600">
-            {opp.sport && <span>{opp.sport}</span>}
+            {opp.sport && <span>{localizeSport(opp.sport, t)}</span>}
             {opp.role && <span>{localizeSportRole(opp.role, t)}</span>}
             {genderLabel && <span>{genderLabel}</span>}
             {ageLabel && <span>Età: {ageLabel}</span>}

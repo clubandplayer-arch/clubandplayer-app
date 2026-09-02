@@ -268,7 +268,7 @@ export default function ProfileMiniCard() {
 
           {!isClub && (
             <div className="text-xs text-gray-600">
-              <div className="text-[11px] uppercase tracking-wide text-gray-500">Zona di interesse</div>
+              <div className="text-[11px] uppercase tracking-wide text-gray-500">{t('profile.interestArea')}</div>
               <div className="text-sm font-semibold text-gray-800">{interestLabel || '—'}</div>
             </div>
           )}
