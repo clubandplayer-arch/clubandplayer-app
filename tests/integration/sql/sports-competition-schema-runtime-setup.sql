@@ -40,6 +40,9 @@ grant select on all tables in schema public to anon;
 
 insert into public.countries(id, iso2) values ('10000000-0000-0000-0000-000000000001', 'IT');
 insert into public.sports(id, code) values ('20000000-0000-0000-0000-000000000001', 'football');
+insert into public.sports(code) values
+  ('volleyball'), ('basketball'), ('water_polo'), ('handball'), ('rugby'),
+  ('field_hockey'), ('ice_hockey'), ('baseball'), ('softball'), ('lacrosse'), ('american_football');
 insert into public.sport_disciplines(id, sport_id, code) values (
   '30000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', 'association_football'
 );

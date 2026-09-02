@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **FASE 5C — IMPLEMENTATA E TESTATA LOCALMENTE** |
-| Current active phase | **FASE 5 — 5A–5C COMPLETATE; 5D NOT STARTED** |
-| Next safe action | **FASE 5D soltanto dopo autorizzazione esplicita** |
+| Last completed subphase | **FASE 5D — IMPLEMENTATA E TESTATA LOCALMENTE** |
+| Current active phase | **FASE 5 — 5A–5D COMPLETATE; 5E NOT STARTED** |
+| Next safe action | **FASE 5E soltanto dopo autorizzazione esplicita; NON applicare ancora 5C/5D remotamente** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -485,7 +485,7 @@ Lingue iniziali: **IT, EN, FR, ES**. Lingue future: **PT, DE**. Non risultano di
 
 ## FASE 5 — Sports / Disciplines / Competition Model
 
-**Stato: FOUNDATION PARTIAL — 5A–5C COMPLETATE; 5D–5J NOT STARTED.**
+**Stato: FOUNDATION PARTIAL — 5A–5D COMPLETATE; 5E–5J NOT STARTED.**
 
 La foundation verificata copre sport, discipline e variant; la matrice europea completa non è dichiarata completata. Il modello europeo concordato deve comprendere:
 
@@ -558,6 +558,24 @@ La migration è stata applicata due volte con esito PASS in PostgreSQL 16.15 loc
 Test 5C: schema/contract/taxonomy mirati **27/27 PASS**; suite unit completa **298/298 PASS**; runtime PostgreSQL locale **PASS**; lint, typecheck e `git diff --check` **PASS**. Build eseguita ma **NON PASS** per impossibilità ambientale di scaricare i font Google `Inter` e `Righteous`, senza errori del codice 5C.
 
 Il prossimo passaggio autorizzabile è **5D — cataloghi e seed controllati**, esclusivamente previa autorizzazione esplicita. Non applicare la migration automaticamente.
+
+### FASE 5D — Cataloghi e seed controllati
+
+**Stato: COMPLETATA — SEED CONTROLLATO CREATO E TESTATO LOCALMENTE; NON APPLICATO REMOTAMENTE.**
+
+Deliverable: `docs/european-expansion/phase-5d-controlled-sports-competition-catalogs.md`. Migration: `supabase/migrations/20261206130000_sports_competition_controlled_seed.sql`.
+
+Seedati soltanto controlled vocabulary già contrattualizzati: 3 gender class, 5 competition format generici, 26 Staff role, 95 Player role sport-specific e mapping delle label legacy. Code canonici non localizzati e label persistite restano separati. Organization, competition, level, season, group e age class country-specific restano intenzionalmente vuoti finché non esiste un pacchetto provenance/licensing approvato.
+
+Nessun profilo, esperienza, Opportunity o Application viene letto, modificato o backfillato. RLS/grant sono aggiunti soltanto alle nuove mapping table: authenticated-read/admin-write, anon negato. Ownership e tabelle preesistenti invariate. Web/API non collegati; Mobile **NOT STARTED / NON MODIFICATO**.
+
+La migration 5D è stata applicata due volte dopo 5C in PostgreSQL 16.15 locale temporaneo con conteggi, idempotenza, assenza di competition seed, preservazione legacy e ACL PASS; database eliminato. Production non interrogata o modificata.
+
+Test 5D: mirati 5D/5C/contract/taxonomy **32/32 PASS**; suite unit completa **303/303 PASS**; PostgreSQL runtime **PASS**; lint, typecheck e `git diff --check` **PASS**. Build eseguita ma **NON PASS** per il limite ambientale sul download dei font Google `Inter` e `Righteous`, senza errori del codice 5D.
+
+**PROMEMORIA OPERATIVO:** non applicare ancora `20261206120000_sports_competition_canonical_schema.sql` né `20261206130000_sports_competition_controlled_seed.sql` a Preview/Production. Prima del primo smoke remoto che ne dipende verrà indicato esplicitamente quando applicarle, in quale ordine e con quali verifiche.
+
+Il prossimo passaggio autorizzabile è **5E — dual-read / dual-write e adapter server**, soltanto previa autorizzazione esplicita.
 
 ## FASE 6 — European Profile Model Completion
 
