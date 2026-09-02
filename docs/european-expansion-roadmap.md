@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **FASE 5B — IMPLEMENTATA E TESTATA (repository-only)** |
-| Current active phase | **FASE 5 — 5A–5B COMPLETATE; 5C NOT STARTED** |
-| Next safe action | **FASE 5C soltanto dopo autorizzazione esplicita** |
+| Last completed subphase | **FASE 5C — IMPLEMENTATA E TESTATA LOCALMENTE** |
+| Current active phase | **FASE 5 — 5A–5C COMPLETATE; 5D NOT STARTED** |
+| Next safe action | **FASE 5D soltanto dopo autorizzazione esplicita** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -485,7 +485,7 @@ Lingue iniziali: **IT, EN, FR, ES**. Lingue future: **PT, DE**. Non risultano di
 
 ## FASE 5 — Sports / Disciplines / Competition Model
 
-**Stato: FOUNDATION PARTIAL — 5A–5B COMPLETATE; 5C–5J NOT STARTED.**
+**Stato: FOUNDATION PARTIAL — 5A–5C COMPLETATE; 5D–5J NOT STARTED.**
 
 La foundation verificata copre sport, discipline e variant; la matrice europea completa non è dichiarata completata. Il modello europeo concordato deve comprendere:
 
@@ -542,6 +542,22 @@ Codice modificato soltanto per contratto puro e test, senza import da route/comp
 Test 5B: contratto + taxonomy + controlled vocabulary **22/22 PASS**; suite unit completa **293/293 PASS**; lint, typecheck e `git diff --check` **PASS**. Build eseguita ma **NON PASS** esclusivamente perché l'ambiente non ha potuto scaricare i font Google `Inter` e `Righteous`; nessun errore del codice 5B rilevato.
 
 Il prossimo passaggio autorizzabile è **5C — schema additivo e migration**, soltanto previa autorizzazione esplicita; non applicare migration automaticamente.
+
+### FASE 5C — Schema additivo e migration
+
+**Stato: COMPLETATA — MIGRATION CREATA E TESTATA IN POSTGRESQL LOCALE; NON APPLICATA REMOTAMENTE.**
+
+Deliverable: `docs/european-expansion/phase-5c-additive-sports-competition-schema.md`. Migration: `supabase/migrations/20261206120000_sports_competition_canonical_schema.sql`.
+
+Creati cataloghi vuoti e relazioni per organization, ruoli Player/Staff, age/gender class, format, competition/level/season/group e multi-sport profilo; aggiunte reference nullable a esperienze e Opportunities. Tuple sport/discipline/variant/role, organization/sport, season/competition e group sono protette da FK/constraint. Campi e righe legacy restano invariati, senza seed, default o backfill.
+
+RLS/grant sono modificati soltanto sulle nuove tabelle: cataloghi public-read/admin-write e `profile_sports` owner/admin fail-closed per l'accesso pubblico. Nessuna policy/grant/ownership preesistente, Applications o semantica Opportunity è modificata. Web/API non sono collegati; Mobile **NOT STARTED / NON MODIFICATO**.
+
+La migration è stata applicata due volte con esito PASS in PostgreSQL 16.15 locale temporaneo, verificando dati legacy, FK cross-sport, season, primary sport, RLS e grant; il database è stato eliminato. Migration **NON applicata** a Preview/Production; Production non interrogata o modificata. Smoke manuale/API/UI non applicabile.
+
+Test 5C: schema/contract/taxonomy mirati **27/27 PASS**; suite unit completa **298/298 PASS**; runtime PostgreSQL locale **PASS**; lint, typecheck e `git diff --check` **PASS**. Build eseguita ma **NON PASS** per impossibilità ambientale di scaricare i font Google `Inter` e `Righteous`, senza errori del codice 5C.
+
+Il prossimo passaggio autorizzabile è **5D — cataloghi e seed controllati**, esclusivamente previa autorizzazione esplicita. Non applicare la migration automaticamente.
 
 ## FASE 6 — European Profile Model Completion
 
