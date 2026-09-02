@@ -10,33 +10,44 @@ const AREA_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const ROOT_AREA_ID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const PROVINCE_AREA_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 
-function geographyClient(countryIso2: string, areas: Array<{ id: string; parentId: string | null; name: string; type: string }>, aliases: string[] = [countryIso2]) {
+function geographyClient(countryIso2: string, areas: Array<{ id: string; parentId: string | null; name: string; type: string; localizedNames?: string[]; legacyNames?: Array<string | null> }>, aliases: string[] = [countryIso2]) {
   const rows = new Map(areas.map((area) => [area.id, {
     id: area.id,
     country_id: COUNTRY_ID,
     parent_id: area.parentId,
     official_name: area.name,
+    short_name: null,
     area_type: area.type,
     is_active: true,
   }]));
   return {
     from(table: string) {
       let id = '';
-      const result = table === 'legacy_country_mappings'
-        ? { data: aliases.map((source_value) => ({ source_value })), error: null }
-        : null;
+      let geoAreaId = '';
       const query = {
         select() { return query; },
         eq(column: string, value: string) {
           if (column === 'id') id = value;
+          if (column === 'geo_area_id') geoAreaId = value;
           return query;
         },
+        not() { return query; },
         async maybeSingle() {
           return table === 'countries'
             ? { data: { id: COUNTRY_ID, iso2: countryIso2, is_active: true, is_supported: true }, error: null }
             : { data: rows.get(id) ?? null, error: null };
         },
-        then(resolve: (value: unknown) => unknown) { return Promise.resolve(result).then(resolve); },
+        then(resolve: (value: unknown) => unknown) {
+          const area = areas.find((candidate) => candidate.id === geoAreaId);
+          const result = table === 'legacy_country_mappings'
+            ? { data: aliases.map((source_value) => ({ source_value })), error: null }
+            : table === 'geo_area_names'
+              ? { data: (area?.localizedNames ?? []).map((name) => ({ name })), error: null }
+              : table === 'legacy_geo_area_mappings'
+                ? { data: (area?.legacyNames ?? []).map((legacy_value) => ({ legacy_value })), error: null }
+                : null;
+          return Promise.resolve(result).then(resolve);
+        },
       };
       return query;
     },
@@ -71,10 +82,10 @@ test('database bounds split antimeridian longitude ranges without dropping venue
 
 test('bounds-less canonical areas narrow legacy Club location columns instead of widening globally', () => {
   const filters: Array<[string, string]> = [];
-  let countryFilter = '';
+  const orFilters: string[] = [];
   const query = {
     or(value: string) {
-      countryFilter = value;
+      orFilters.push(value);
       return this;
     },
     ilike(column: string, value: string) {
@@ -89,15 +100,18 @@ test('bounds-less canonical areas narrow legacy Club location columns instead of
     countryIso2: 'IT',
     countryAliases: ['IT', 'Italia', 'Italy'],
     region: 'Lazio',
+    regionAliases: ['Lazio'],
     province: 'Roma',
+    provinceAliases: ['Roma'],
     city: 'Roma',
+    cityAliases: ['Roma'],
   }), query);
-  assert.equal(countryFilter, 'country.ilike.IT,country.ilike.Italia,country.ilike.Italy');
-  assert.deepEqual(filters, [
-    ['region', 'Lazio'],
-    ['province', 'Roma'],
-    ['city', 'Roma'],
-  ]);
+  assert.equal(orFilters[0], 'country.ilike."IT",country.ilike."Italia",country.ilike."Italy"');
+  assert.match(orFilters[1], /region\.ilike\."Lazio"/);
+  assert.match(orFilters[2], /province\.ilike\."Roma"/);
+  assert.match(orFilters[3], /city\.ilike\."Roma"/);
+  assert.match(orFilters[4], /club_stadium_lat\.gte\.-90/);
+  assert.deepEqual(filters, []);
 });
 
 test('bounds-less European canonical area types map to their legacy location fields', async () => {
@@ -137,15 +151,46 @@ test('bounds-less foreign Club scopes do not require null province fields and us
     assert.deepEqual(scope.countryAliases, item.aliases);
     assert.equal(scope.province, item.iso2 === 'IT' ? 'Roma' : null);
 
-    let countryFilter = '';
+    const orFilters: string[] = [];
     const locationFilters: Array<[string, string]> = [];
     applyOrganizationMapLocationScope({
-      or(value: string) { countryFilter = value; return this; },
+      or(value: string) { orFilters.push(value); return this; },
       ilike(column: string, value: string) { locationFilters.push([column, value]); return this; },
     }, scope);
-    for (const alias of item.expectedAliases) assert.match(countryFilter, new RegExp(`country\\.ilike\\.${alias}`));
+    for (const alias of item.expectedAliases) assert.match(orFilters[0], new RegExp(`country\\.ilike\\."${alias}"`));
     if (item.iso2 === 'FR') assert.doesNotMatch(JSON.stringify(locationFilters), /province/i);
   }
+});
+
+test('localized and legacy area aliases filter free-text cities without requiring the canonical spelling', async () => {
+  const areas = [
+    { id: ROOT_AREA_ID, parentId: null, name: 'Île-de-France', type: 'REGION', localizedNames: ['Ile-de-France'], legacyNames: [null] },
+    { id: AREA_ID, parentId: ROOT_AREA_ID, name: 'Paris', type: 'COMMUNE', localizedNames: ['Parigi'], legacyNames: ['PARIS'] },
+  ];
+  const scope = await resolveCanonicalMapLocationScope(
+    new URLSearchParams({ countryId: COUNTRY_ID, geoAreaId: AREA_ID }),
+    geographyClient('FR', areas, ['FR', 'France', 'Francia']) as never,
+  );
+  assert.deepEqual(scope.cityAliases, ['Paris', 'Parigi', 'PARIS']);
+  const expressions: string[] = [];
+  applyOrganizationMapLocationScope({ or(value: string) { expressions.push(value); return this; } }, scope);
+  assert.match(expressions.find((value) => value.includes('city.ilike')) ?? '', /city\.ilike\."Paris",city\.ilike\."Parigi",city\.ilike\."PARIS"/);
+});
+
+test('coordinate eligibility is applied in SQL before the caller limit', () => {
+  const calls: string[] = [];
+  const query = {
+    or(value: string) { calls.push(`or:${value}`); return this; },
+    limit(value: number) { calls.push(`limit:${value}`); return this; },
+  };
+  const filtered = applyOrganizationMapLocationScope(query, {
+    source: 'canonical_text_filter', countryId: COUNTRY_ID, geoAreaId: null,
+    countryIso2: 'FR', countryAliases: ['FR', 'France'],
+    region: null, regionAliases: [], province: null, provinceAliases: [], city: null, cityAliases: [],
+  });
+  filtered.limit(51);
+  assert.match(calls.at(-2) ?? '', /club_stadium_lat\.gte\.-90.*latitude\.gte\.-90/);
+  assert.equal(calls.at(-1), 'limit:51');
 });
 
 test('server viewport adapter supports explicit and canonical scopes without descendant fan-out', async () => {

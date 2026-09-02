@@ -18,8 +18,11 @@ export type CanonicalMapLocationScope = {
   countryIso2: string;
   countryAliases: string[];
   region: string | null;
+  regionAliases: string[];
   province: string | null;
+  provinceAliases: string[];
   city: string | null;
+  cityAliases: string[];
 };
 
 type BoundsRow = {
@@ -163,8 +166,11 @@ export async function resolveCanonicalMapLocationScope(
     countryIso2,
     countryAliases,
     region: null,
+    regionAliases: [],
     province: null,
+    provinceAliases: [],
     city: null,
+    cityAliases: [],
   };
   if (!parsed.geoAreaId) return scope;
 
@@ -177,11 +183,12 @@ export async function resolveCanonicalMapLocationScope(
       country_id: string;
       parent_id: string | null;
       official_name: string;
+      short_name: string | null;
       area_type: string;
       is_active: boolean;
     } | null; error: unknown } = await client
       .from('geo_areas')
-      .select('id,country_id,parent_id,official_name,area_type,is_active')
+      .select('id,country_id,parent_id,official_name,short_name,area_type,is_active')
       .eq('id', cursor)
       .maybeSingle();
     if (error) throw error;
@@ -190,12 +197,26 @@ export async function resolveCanonicalMapLocationScope(
       throw new MapGeographyContractError('COUNTRY_AREA_MISMATCH', 'geoAreaId does not belong to countryId');
     }
     const name = String(area.official_name);
+    const [{ data: localizedNames, error: localizedNamesError }, { data: legacyNames, error: legacyNamesError }] = await Promise.all([
+      client.from('geo_area_names').select('name').eq('geo_area_id', area.id),
+      client.from('legacy_geo_area_mappings').select('legacy_value').eq('geo_area_id', area.id).not('legacy_value', 'is', null),
+    ]);
+    if (localizedNamesError) throw localizedNamesError;
+    if (legacyNamesError) throw legacyNamesError;
+    const aliases = Array.from(new Set([
+      name,
+      area.short_name,
+      ...(localizedNames ?? []).map((row) => row.name),
+      ...(legacyNames ?? []).map((row) => row.legacy_value),
+    ].map((value) => typeof value === 'string' ? value.trim() : '').filter(Boolean)));
     const areaType = String(area.area_type).trim().toUpperCase();
     if (['REGION', 'AUTONOMOUS_COMMUNITY', 'CANTON', 'STATISTICAL_REGION', 'VOIVODESHIP'].includes(areaType)) {
       scope.region = name;
+      scope.regionAliases = aliases;
       recognized = true;
     } else if (scope.countryIso2 === 'IT' && areaType === 'PROVINCE') {
       scope.province = name;
+      scope.provinceAliases = aliases;
       recognized = true;
     } else if (['PROVINCE', 'DEPARTMENT', 'DISTRICT', 'POWIAT'].includes(areaType)) {
       // The active Club profile writer persists no province-like field outside
@@ -204,6 +225,7 @@ export async function resolveCanonicalMapLocationScope(
       recognized = true;
     } else if (['MUNICIPALITY', 'COMMUNE', 'GMINA'].includes(areaType)) {
       scope.city = name;
+      scope.cityAliases = aliases;
       recognized = true;
     }
     cursor = area.parent_id ? String(area.parent_id) : null;
@@ -216,13 +238,25 @@ export async function resolveCanonicalMapLocationScope(
 }
 
 export function applyOrganizationMapLocationScope<T>(query: T, scope: CanonicalMapLocationScope): T {
-  const exactIlike = (value: string) => value.replace(/[%_]/g, (match) => `\\${match}`);
+  const exactIlike = (value: string) => value.replace(/[\\"%_]/g, (match) => `\\${match}`);
+  const ilikeBranch = (column: string, value: string) => `${column}.ilike."${exactIlike(value)}"`;
   let filtered = (query as any).or(
-    scope.countryAliases.map((alias) => `country.ilike.${exactIlike(alias)}`).join(','),
+    scope.countryAliases.map((alias) => ilikeBranch('country', alias)).join(','),
   );
-  if (scope.region) filtered = filtered.ilike('region', scope.region);
-  if (scope.province) filtered = filtered.ilike('province', scope.province);
-  if (scope.city) filtered = filtered.ilike('city', scope.city);
+  const applyAliases = (current: any, column: string, canonical: string | null, aliases: string[]) => {
+    if (!canonical) return current;
+    const values = aliases.length ? aliases : [canonical];
+    return current.or(values.map((alias) => ilikeBranch(column, alias)).join(','));
+  };
+  filtered = applyAliases(filtered, 'region', scope.region, scope.regionAliases);
+  filtered = applyAliases(filtered, 'province', scope.province, scope.provinceAliases);
+  filtered = applyAliases(filtered, 'city', scope.city, scope.cityAliases);
+  // Match resolvePublicMapPoint before callers apply their result limit: a valid
+  // venue wins, and legacy coordinates are considered only if the venue is absent.
+  filtered = filtered.or([
+    'and(club_stadium_lat.gte.-90,club_stadium_lat.lte.90,club_stadium_lng.gte.-180,club_stadium_lng.lte.180)',
+    'and(club_stadium_lat.is.null,club_stadium_lng.is.null,latitude.gte.-90,latitude.lte.90,longitude.gte.-180,longitude.lte.180)',
+  ].join(','));
   return filtered as T;
 }
 
