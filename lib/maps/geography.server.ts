@@ -32,6 +32,13 @@ type BoundsRow = {
   max_lng: number | string | null;
 };
 
+// LocationFields historically suggested these Italian labels while persisting
+// foreign Club locations as free text. Keep those production values queryable
+// even when the canonical importer has no geo_area_names rows.
+const PERSISTED_FOREIGN_CITY_ALIASES: Readonly<Record<string, readonly string[]>> = {
+  'FR:Paris': ['Parigi'],
+};
+
 function number(value: number | string | null) {
   if (typeof value === 'number') return Number.isFinite(value) ? value : null;
   if (typeof value === 'string' && value.trim()) {
@@ -208,6 +215,7 @@ export async function resolveCanonicalMapLocationScope(
       area.short_name,
       ...(localizedNames ?? []).map((row) => row.name),
       ...(legacyNames ?? []).map((row) => row.legacy_value),
+      ...(PERSISTED_FOREIGN_CITY_ALIASES[`${scope.countryIso2}:${name}`] ?? []),
     ].map((value) => typeof value === 'string' ? value.trim() : '').filter(Boolean)));
     const areaType = String(area.area_type).trim().toUpperCase();
     if (['REGION', 'AUTONOMOUS_COMMUNITY', 'CANTON', 'STATISTICAL_REGION', 'VOIVODESHIP'].includes(areaType)) {

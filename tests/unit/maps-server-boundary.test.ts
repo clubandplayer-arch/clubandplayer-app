@@ -162,19 +162,19 @@ test('bounds-less foreign Club scopes do not require null province fields and us
   }
 });
 
-test('localized and legacy area aliases filter free-text cities without requiring the canonical spelling', async () => {
+test('production fallback aliases filter the foreign city spelling previously prompted by LocationFields', async () => {
   const areas = [
-    { id: ROOT_AREA_ID, parentId: null, name: 'Île-de-France', type: 'REGION', localizedNames: ['Ile-de-France'], legacyNames: [null] },
-    { id: AREA_ID, parentId: ROOT_AREA_ID, name: 'Paris', type: 'COMMUNE', localizedNames: ['Parigi'], legacyNames: ['PARIS'] },
+    { id: ROOT_AREA_ID, parentId: null, name: 'Île-de-France', type: 'REGION' },
+    { id: AREA_ID, parentId: ROOT_AREA_ID, name: 'Paris', type: 'COMMUNE' },
   ];
   const scope = await resolveCanonicalMapLocationScope(
     new URLSearchParams({ countryId: COUNTRY_ID, geoAreaId: AREA_ID }),
     geographyClient('FR', areas, ['FR', 'France', 'Francia']) as never,
   );
-  assert.deepEqual(scope.cityAliases, ['Paris', 'Parigi', 'PARIS']);
+  assert.deepEqual(scope.cityAliases, ['Paris', 'Parigi']);
   const expressions: string[] = [];
   applyOrganizationMapLocationScope({ or(value: string) { expressions.push(value); return this; } }, scope);
-  assert.match(expressions.find((value) => value.includes('city.ilike')) ?? '', /city\.ilike\."Paris",city\.ilike\."Parigi",city\.ilike\."PARIS"/);
+  assert.match(expressions.find((value) => value.includes('city.ilike')) ?? '', /city\.ilike\."Paris",city\.ilike\."Parigi"/);
 });
 
 test('coordinate eligibility is applied in SQL before the caller limit', () => {

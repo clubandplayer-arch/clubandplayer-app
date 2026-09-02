@@ -41,6 +41,15 @@ type Props = {
   required?: boolean;
 };
 
+export function normalizeForeignCity(country: string, city: string): string {
+  const normalizedCountry = country.trim().toUpperCase();
+  const normalizedCity = city.trim();
+  if (normalizedCountry === 'FR' && normalizedCity.localeCompare('Parigi', 'it', { sensitivity: 'base' }) === 0) {
+    return 'Paris';
+  }
+  return normalizedCity;
+}
+
 function RequiredMark({ show }: { show?: boolean }) {
   if (!show) return null;
   return <span className="ml-1 font-semibold text-red-600" aria-hidden="true">*</span>;
@@ -291,9 +300,13 @@ export function LocationFields({
                 provinceName: null,
               })
             }
+            onBlur={(e) => {
+              const canonicalCity = normalizeForeignCity(country, e.target.value);
+              if (canonicalCity !== e.target.value) onChange({ ...value, cityName: canonicalCity });
+            }}
             disabled={disabled}
             required={country.trim().toUpperCase() !== 'IT'}
-            placeholder="Es. Parigi"
+            placeholder="Es. Paris"
           />
         </div>
 
