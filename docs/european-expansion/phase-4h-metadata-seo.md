@@ -2,7 +2,7 @@
 
 ## Stato
 
-**IMPLEMENTATA — test automatici PASS; VERIFICA MANUALE PREVIEW RICHIESTA prima della chiusura.**
+**COMPLETATA / PASS — verifica Preview confermata dall'utente; residui evidenziati trasferiti e corretti nella candidate 4I.**
 
 ## Correzioni UI incluse
 
@@ -36,4 +36,4 @@ Non vengono emessi `hreflang` falsi: l'app non dispone di URL distinti per lingu
 
 ## Criterio di chiusura
 
-La FASE 4H può essere marcata **COMPLETATA / PASS** dopo lo smoke UI e metadata. Fino ad allora 4I non è autorizzata implicitamente.
+La FASE 4H è **COMPLETATA / PASS**. La FASE 4I è stata autorizzata esplicitamente e include le correzioni emerse dall'ultimo smoke.

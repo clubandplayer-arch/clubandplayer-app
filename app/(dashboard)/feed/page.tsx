@@ -710,7 +710,7 @@ function MyMediaHub({ currentUserId }: { currentUserId: string | null }) {
           }
           className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-blue-700 hover:underline"
         >
-          <span>Vedi tutti →</span>
+          <span>{t('feed.viewAll')} →</span>
         </Link>
       </div>
     </div>

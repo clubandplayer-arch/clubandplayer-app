@@ -301,6 +301,27 @@ test('phase 4H emits localized metadata and Open Graph locale without false href
   assert.doesNotMatch(root, /locale: 'it_IT'/);
 });
 
+test('phase 4I keeps interpolation placeholders identical in every active catalog', async () => {
+  const catalogs = await Promise.all(ACTIVE_LOCALES.map(async (locale) => [locale, await loadMessages(locale)] as const));
+  const placeholders = (value: string) => [...value.matchAll(/\{([a-zA-Z0-9_]+)\}/g)].map((match) => match[1]).sort();
+  for (const key of Object.keys(italianMessages) as Array<keyof typeof italianMessages>) {
+    const expected = placeholders(italianMessages[key]);
+    for (const [locale, messages] of catalogs) assert.deepEqual(placeholders(messages[key]), expected, `${locale}:${key}`);
+  }
+});
+
+test('phase 4I removes the Preview-reported canonical selector and MyMedia Italian residuals', () => {
+  const targets = [
+    '../../components/geo/CanonicalGeographySelector.tsx', '../../components/media/MediaEmptyState.tsx',
+    '../../components/media/ShareSectionButton.tsx', '../../app/(dashboard)/mymedia/page.tsx',
+    '../../app/(dashboard)/feed/page.tsx',
+  ];
+  const source = targets.map((target) => readFileSync(new URL(target, import.meta.url), 'utf8')).join('\n');
+  for (const residual of ['>Torna al feed<', '>Vedi tutti', 'Nessuna foto nella tua libreria', 'Nessun video nella tua libreria', 'Vai al feed e pubblica', 'Condividi queste foto', 'Condividi questi video']) assert.ok(!source.includes(residual), residual);
+  assert.match(source, /Intl\.DisplayNames\(\[locale\]/);
+  assert.match(source, /t\('geo\.selectCountry'\)/);
+});
+
 
 test('missing translation keys fall back safely', async () => {
   const english = await loadMessages('en');

@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **COMPLETATA — FASE 4G — preferenza lingua** |
-| Current active phase | **FASE 4H — METADATA/SEO IMPLEMENTATA / AWAITING MANUAL PREVIEW** |
-| Next safe action | **Smoke UI residui + metadata localizzati; non iniziare 4I prima del PASS** |
+| Last completed subphase | **COMPLETATA — FASE 4H — metadata/SEO** |
+| Current active phase | **FASE 4I — FALLBACK/REGRESSION IMPLEMENTATA / AWAITING FINAL MANUAL PREVIEW** |
+| Next safe action | **Smoke finale FASE 4; poi decisione esplicita merge vs nuovo branch derivato** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -449,7 +449,7 @@ Perimetro Mobile: tutte le implementazioni e certificazioni 3C svolte finora app
 
 ## FASE 4 — Internationalization / i18n
 
-**Stato prudenziale: IN CORSO — 4A–4G COMPLETATE; 4H IMPLEMENTATA E IN ATTESA DI SMOKE MANUALE; 4I NON CERTIFICATA; FASE NON COMPLETATA.**
+**Stato prudenziale: IN CORSO — 4A–4H COMPLETATE; 4I IMPLEMENTATA E IN ATTESA DI SMOKE FINALE; FASE NON COMPLETATA.**
 
 Il repository contiene un'implementazione i18n sostanziale ed è quindi più avanzato rispetto alla precedente dicitura `NOT STARTED`: sono verificabili catalogo `languages`, preferred language in `profile_preferences`, infrastruttura locale/provider, messaggi per le lingue attive e test dedicati. Queste evidenze non equivalgono tuttavia alla certificazione completa della FASE 4.
 
@@ -467,6 +467,8 @@ L'audit dedicato di riconciliazione 4A è stato completato repository-only senza
 
 4G è stata chiusa dopo lo smoke Preview. 4H corregge i residui UI segnalati, localizza tutti i ruoli Staff legacy e introduce metadata server-side coerenti con la lingua senza dichiarare URL `hreflang` inesistenti. Dettaglio in `phase-4h-metadata-seo.md`.
 
+4H è stata chiusa dopo lo smoke Preview. 4I corregge selector geografico e MyMedia, certifica fallback e placeholder e prepara il gate finale prima della decisione branch/merge. Dettaglio in `phase-4i-fallback-regression.md`.
+
 Roadmap prevista:
 
 - 4A — audit strings/locales — **COMPLETATA**;
@@ -476,8 +478,8 @@ Roadmap prevista:
 - 4E — French — **COMPLETATA**;
 - 4F — Spanish — **COMPLETATA**;
 - 4G — language preference integration — **COMPLETATA**;
-- 4H — metadata/SEO — **IMPLEMENTATA / AWAITING MANUAL PREVIEW**;
-- 4I — fallback/regression.
+- 4H — metadata/SEO — **COMPLETATA**;
+- 4I — fallback/regression — **IMPLEMENTATA / AWAITING FINAL MANUAL PREVIEW**.
 
 Lingue iniziali: **IT, EN, FR, ES**. Lingue future: **PT, DE**. Non risultano dichiarate traduzioni complete.
 

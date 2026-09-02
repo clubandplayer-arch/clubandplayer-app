@@ -4,6 +4,7 @@ import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import type { CanonicalCountryRead } from '@/lib/geo/countryCatalog';
 import { canonicalGeographyHttpLoader, type CanonicalGeographyLoader } from './canonicalGeographyContracts';
 import { applyCanonicalLevelSelection, loadCanonicalHierarchy, type CanonicalGeographyLevel } from './canonicalGeographySelectorModel';
+import { useI18n } from '@/components/i18n/I18nProvider';
 
 export type CanonicalGeographyLabels = {
   country: string;
@@ -44,9 +45,17 @@ export default function CanonicalGeographySelector({
   countryId, geoAreaId, onCountryChange, onGeoAreaChange, disabled = false, required = false,
   error: externalError, labels: labelOverrides, loader = canonicalGeographyHttpLoader, idPrefix,
 }: CanonicalGeographySelectorProps) {
+  const { locale, t } = useI18n();
   const reactId = useId();
   const baseId = idPrefix ?? `canonical-geo-${reactId.replace(/:/g, '')}`;
-  const labels = useMemo(() => ({ ...DEFAULT_LABELS, ...labelOverrides, areaType: { ...DEFAULT_LABELS.areaType, ...labelOverrides?.areaType } }), [labelOverrides]);
+  const labels = useMemo(() => ({
+    ...DEFAULT_LABELS,
+    country: t('map.country'), area: t('map.area'), selectCountry: t('geo.selectCountry'), selectArea: t('map.selectArea'),
+    loading: t('common.loading'), empty: t('map.noAreas'), retry: t('common.retry'), reset: t('map.reset'),
+    ...labelOverrides,
+    areaType: { ...DEFAULT_LABELS.areaType, ...labelOverrides?.areaType },
+  }), [labelOverrides, t]);
+  const countryNames = useMemo(() => new Intl.DisplayNames([locale], { type: 'region' }), [locale]);
   const [countries, setCountries] = useState<CanonicalCountryRead[]>([]);
   const [levels, setLevels] = useState<CanonicalGeographyLevel[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,7 +115,7 @@ export default function CanonicalGeographySelector({
           <span className="text-sm font-medium text-slate-700">{labels.country}{required ? <span className="ml-1 text-red-600" aria-hidden="true">*</span> : null}</span>
           <select id={`${baseId}-country`} className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-900 focus:border-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-200 disabled:bg-slate-100" value={countryId ?? ''} onChange={(event) => changeCountry(event.target.value)} required={required} aria-invalid={Boolean(error)}>
             <option value="">{labels.selectCountry}</option>
-            {countries.map((country) => <option key={country.id} value={country.id}>{country.officialName}</option>)}
+            {countries.map((country) => <option key={country.id} value={country.id}>{countryNames.of(country.iso2) ?? country.officialName}</option>)}
           </select>
         </label>
         {levels.map((level, index) => {
