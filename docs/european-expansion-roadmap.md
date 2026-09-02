@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **FASE 5A — AUDIT COMPLETATO (repository-only)** |
-| Current active phase | **FASE 5 — 5A COMPLETATA; 5B NOT STARTED** |
-| Next safe action | **FASE 5B soltanto dopo autorizzazione esplicita** |
+| Last completed subphase | **FASE 5B — IMPLEMENTATA E TESTATA (repository-only)** |
+| Current active phase | **FASE 5 — 5A–5B COMPLETATE; 5C NOT STARTED** |
+| Next safe action | **FASE 5C soltanto dopo autorizzazione esplicita** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -485,7 +485,7 @@ Lingue iniziali: **IT, EN, FR, ES**. Lingue future: **PT, DE**. Non risultano di
 
 ## FASE 5 — Sports / Disciplines / Competition Model
 
-**Stato: FOUNDATION PARTIAL — 5A AUDIT COMPLETATO; 5B–5J NOT STARTED.**
+**Stato: FOUNDATION PARTIAL — 5A–5B COMPLETATE; 5C–5J NOT STARTED.**
 
 La foundation verificata copre sport, discipline e variant; la matrice europea completa non è dichiarata completata. Il modello europeo concordato deve comprendere:
 
@@ -528,6 +528,20 @@ Suddivisione prudenziale confermata, da autorizzare una sottofase alla volta:
 - 5J — regressione, backward compatibility e certificazione.
 
 Il prossimo passaggio autorizzabile è esclusivamente **5B repository-only**, senza migration. Decisioni aperte: identity/code wire contract, cardinalità multi-sport, ruoli Player vs Staff, graph organization/competition/season, separazione category/age class/level e freeze dei payload legacy consumabili dal Mobile pubblicato.
+
+### FASE 5B — Contratto canonico e regole di compatibilità
+
+**Stato: COMPLETATA — IMPLEMENTATA E TESTATA; NESSUN COLLEGAMENTO RUNTIME.**
+
+Deliverable: `docs/european-expansion/phase-5b-canonical-sports-competition-contract.md`; contratto eseguibile puro: `lib/taxonomy/canonicalContract.ts`.
+
+Decisioni: UUID come reference database, code stabile/non localizzato come wire key e label esclusivamente presentation; profili/Club multi-sport ordinati con primary opzionale; Player role sport-specific e Staff role cross-sport di default; organization/competition/season/group country- e source-aware; age class, competition level, gender class, format e territorial scope sono dimensioni separate. Read precedence: canonical → mapped legacy → raw legacy → empty. I payload legacy di profili, esperienze e Opportunities restano accettati/restituiti per backward compatibility Web/API/Mobile.
+
+Codice modificato soltanto per contratto puro e test, senza import da route/componenti. Nessuna migration creata, testata o applicata; nessuna query o modifica Production; nessun backfill; RLS, grant, ownership, Applications, API e UI non modificati. Mobile **NOT STARTED / NON MODIFICATO**. Smoke manuale/visivo e PostgreSQL non applicabili. La 5B non certifica Mobile.
+
+Test 5B: contratto + taxonomy + controlled vocabulary **22/22 PASS**; suite unit completa **293/293 PASS**; lint, typecheck e `git diff --check` **PASS**. Build eseguita ma **NON PASS** esclusivamente perché l'ambiente non ha potuto scaricare i font Google `Inter` e `Righteous`; nessun errore del codice 5B rilevato.
+
+Il prossimo passaggio autorizzabile è **5C — schema additivo e migration**, soltanto previa autorizzazione esplicita; non applicare migration automaticamente.
 
 ## FASE 6 — European Profile Model Completion
 
