@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **FASE 5D — IMPLEMENTATA E TESTATA LOCALMENTE** |
-| Current active phase | **FASE 5 — 5A–5D COMPLETATE; 5E NOT STARTED** |
-| Next safe action | **FASE 5E soltanto dopo autorizzazione esplicita; NON applicare ancora 5C/5D remotamente** |
+| Last completed subphase | **FASE 5E — IMPLEMENTATA E TESTATA, ADAPTER NON COLLEGATI** |
+| Current active phase | **FASE 5 — 5A–5E COMPLETATE; 5F NOT STARTED** |
+| Next safe action | **FASE 5F soltanto dopo autorizzazione esplicita; NON applicare ancora 5C/5D remotamente** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -485,7 +485,7 @@ Lingue iniziali: **IT, EN, FR, ES**. Lingue future: **PT, DE**. Non risultano di
 
 ## FASE 5 — Sports / Disciplines / Competition Model
 
-**Stato: FOUNDATION PARTIAL — 5A–5D COMPLETATE; 5E–5J NOT STARTED.**
+**Stato: FOUNDATION PARTIAL — 5A–5E COMPLETATE; 5F–5J NOT STARTED.**
 
 La foundation verificata copre sport, discipline e variant; la matrice europea completa non è dichiarata completata. Il modello europeo concordato deve comprendere:
 
@@ -576,6 +576,22 @@ Test 5D: mirati 5D/5C/contract/taxonomy **32/32 PASS**; suite unit completa **30
 **PROMEMORIA OPERATIVO:** non applicare ancora `20261206120000_sports_competition_canonical_schema.sql` né `20261206130000_sports_competition_controlled_seed.sql` a Preview/Production. Prima del primo smoke remoto che ne dipende verrà indicato esplicitamente quando applicarle, in quale ordine e con quali verifiche.
 
 Il prossimo passaggio autorizzabile è **5E — dual-read / dual-write e adapter server**, soltanto previa autorizzazione esplicita.
+
+### FASE 5E — Dual-read / dual-write e adapter server
+
+**Stato: COMPLETATA — ADAPTER IMPLEMENTATI E TESTATI; NON COLLEGATI AL RUNTIME.**
+
+Deliverable: `docs/european-expansion/phase-5e-taxonomy-dual-read-write-adapter.md`. Codice: `lib/taxonomy/compatibilityAdapter.ts` e `lib/taxonomy/compatibilityCatalog.server.ts`.
+
+Implementati canonical-first read, mapping legacy, raw fallback, invalid-canonical fail-closed e write plan field-aware per absent/null/canonical/legacy. Tuple sport/discipline/variant/role e separazione Player/Staff sono validate prima di produrre patch. Il catalog adapter è read-only, usa il client del caller e non usa service role.
+
+Nessuna route, form o query prodotto importa ancora gli adapter; nessun write reale, payload API, migration, RLS/grant, ownership o Application è modificato. Production non interrogata o modificata. Web/API senza cambiamento comportamentale; Mobile **NOT STARTED / NON MODIFICATO**. Smoke manuale non applicabile.
+
+Test 5E: adapter/contract/seed mirati **19/19 PASS**; suite unit completa **312/312 PASS**; lint, typecheck e `git diff --check` **PASS**. Build eseguita ma **NON PASS** per il limite ambientale sul download dei font Google `Inter` e `Righteous`, senza errori del codice 5E. PostgreSQL/API smoke non applicabili perché 5E non crea migration né collega caller.
+
+**PROMEMORIA OPERATIVO:** non applicare ancora le migration 5C e 5D a Preview/Production. Prima del primo smoke remoto dipendente dallo schema verranno forniti esplicitamente ordine `5C → 5D`, preflight, verifica e rollback.
+
+Il prossimo passaggio autorizzabile è **5F — profili ed esperienze**, soltanto previa autorizzazione esplicita.
 
 ## FASE 6 — European Profile Model Completion
 
