@@ -10,7 +10,7 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | --- | --- |
 | Last completed subphase | **FASE 5E — IMPLEMENTATA E TESTATA, ADAPTER NON COLLEGATI** |
 | Current active phase | **FASE 5 — 5A–5E COMPLETATE; 5F NOT STARTED** |
-| Next safe action | **FASE 5F soltanto dopo autorizzazione esplicita; NON applicare ancora 5C/5D remotamente** |
+| Next safe action | **FASE 5F autorizzata — applicare 5C → 5D solo su Preview isolata e comunicare l'esito** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -592,6 +592,16 @@ Test 5E: adapter/contract/seed mirati **19/19 PASS**; suite unit completa **312/
 **PROMEMORIA OPERATIVO:** non applicare ancora le migration 5C e 5D a Preview/Production. Prima del primo smoke remoto dipendente dallo schema verranno forniti esplicitamente ordine `5C → 5D`, preflight, verifica e rollback.
 
 Il prossimo passaggio autorizzabile è **5F — profili ed esperienze**, soltanto previa autorizzazione esplicita.
+
+### FASE 5F — Profili ed esperienze
+
+**Stato: AUDIT / BLOCCATA AL DEPLOYMENT GATE; RUNTIME NON ANCORA MODIFICATO.**
+
+L'autorizzazione 5F è ricevuta. L'audit dei caller conferma che `/api/profiles/me` legge/scrive ancora `profiles.sport` e `profiles.role`, mentre `/api/profiles/me/experiences` sostituisce righe legacy con soli campi testuali. Prima di selezionare o scrivere le nuove reference, Preview deve contenere schema 5C e seed 5D.
+
+**AZIONE UTENTE RICHIESTA ORA:** applicare, soltanto su Preview dimostrabilmente isolata, prima `20261206120000_sports_competition_canonical_schema.sql` e poi `20261206130000_sports_competition_controlled_seed.sql`; non eseguire backfill o SQL aggiuntivo. Se Preview può coincidere con Production, non applicare e segnalarlo. Runbook: `docs/european-expansion/phase-5f-profile-experience-deployment-gate.md`.
+
+In questo checkpoint nessun codice runtime, migration, dato, RLS/grant, ownership o Application è stato modificato; Production non interrogata; Web/API/Mobile non modificati. Dopo la conferma dell'apply verranno eseguite verifiche read-only prima dell'integrazione.
 
 ## FASE 6 — European Profile Model Completion
 
