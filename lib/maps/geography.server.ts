@@ -121,7 +121,7 @@ export async function resolveMapViewportFromParams(
 }
 
 /**
- * Spatial bounds are not present on the imported Italian hierarchy. In that
+ * Spatial bounds are not present on every imported European hierarchy. In that
  * case, validate the same canonical IDs and translate their ancestry to the
  * existing public Club location columns instead of widening to every Club.
  */
@@ -176,9 +176,17 @@ export async function resolveCanonicalMapLocationScope(
       throw new MapGeographyContractError('COUNTRY_AREA_MISMATCH', 'geoAreaId does not belong to countryId');
     }
     const name = String(area.official_name);
-    if (area.area_type === 'REGION') { scope.region = name; recognized = true; }
-    if (area.area_type === 'PROVINCE') { scope.province = name; recognized = true; }
-    if (area.area_type === 'MUNICIPALITY' || area.area_type === 'COMMUNE') { scope.city = name; recognized = true; }
+    const areaType = String(area.area_type).trim().toUpperCase();
+    if (['REGION', 'AUTONOMOUS_COMMUNITY', 'CANTON', 'STATISTICAL_REGION', 'VOIVODESHIP'].includes(areaType)) {
+      scope.region = name;
+      recognized = true;
+    } else if (['PROVINCE', 'DEPARTMENT', 'DISTRICT', 'POWIAT'].includes(areaType)) {
+      scope.province = name;
+      recognized = true;
+    } else if (['MUNICIPALITY', 'COMMUNE', 'GMINA'].includes(areaType)) {
+      scope.city = name;
+      recognized = true;
+    }
     cursor = area.parent_id ? String(area.parent_id) : null;
     depth += 1;
   }

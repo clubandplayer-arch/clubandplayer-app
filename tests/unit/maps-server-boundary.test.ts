@@ -2,11 +2,42 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-import { applyOrganizationMapBounds, applyOrganizationMapLocationScope, resolveMapViewportFromParams } from '../../lib/maps/geography.server';
+import { applyOrganizationMapBounds, applyOrganizationMapLocationScope, resolveCanonicalMapLocationScope, resolveMapViewportFromParams } from '../../lib/maps/geography.server';
 import type { MapViewportCatalog } from '../../lib/maps/geographyContract';
 
 const COUNTRY_ID = '11111111-1111-4111-8111-111111111111';
 const AREA_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const ROOT_AREA_ID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+const PROVINCE_AREA_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+
+function geographyClient(countryIso2: string, areas: Array<{ id: string; parentId: string | null; name: string; type: string }>) {
+  const rows = new Map(areas.map((area) => [area.id, {
+    id: area.id,
+    country_id: COUNTRY_ID,
+    parent_id: area.parentId,
+    official_name: area.name,
+    area_type: area.type,
+    is_active: true,
+  }]));
+  return {
+    from(table: string) {
+      let id = '';
+      const query = {
+        select() { return query; },
+        eq(column: string, value: string) {
+          if (column === 'id') id = value;
+          return query;
+        },
+        async maybeSingle() {
+          return table === 'countries'
+            ? { data: { id: COUNTRY_ID, iso2: countryIso2, is_active: true, is_supported: true }, error: null }
+            : { data: rows.get(id) ?? null, error: null };
+        },
+      };
+      return query;
+    },
+  };
+}
 
 test('database bounds preserve venue precedence and include stadium-only organizations', () => {
   let expression = '';
@@ -57,6 +88,26 @@ test('bounds-less canonical areas narrow legacy Club location columns instead of
     ['province', 'Roma'],
     ['city', 'Roma'],
   ]);
+});
+
+test('bounds-less European canonical area types map to their legacy location fields', async () => {
+  const cases = [
+    { country: 'FR', areas: [[ROOT_AREA_ID, null, 'Île-de-France', 'REGION'], [AREA_ID, ROOT_AREA_ID, 'Paris', 'DEPARTMENT']], expected: ['Île-de-France', 'Paris', null] },
+    { country: 'ES', areas: [[AREA_ID, null, 'Madrid, Comunidad de', 'AUTONOMOUS_COMMUNITY']], expected: ['Madrid, Comunidad de', null, null] },
+    { country: 'CH', areas: [[ROOT_AREA_ID, null, 'Ticino', 'CANTON'], [AREA_ID, ROOT_AREA_ID, 'Lugano', 'DISTRICT']], expected: ['Ticino', 'Lugano', null] },
+    { country: 'SI', areas: [[AREA_ID, null, 'Osrednjeslovenska', 'STATISTICAL_REGION']], expected: ['Osrednjeslovenska', null, null] },
+    { country: 'PL', areas: [[ROOT_AREA_ID, null, 'Mazowieckie', 'VOIVODESHIP'], [PROVINCE_AREA_ID, ROOT_AREA_ID, 'Warszawa', 'POWIAT'], [AREA_ID, PROVINCE_AREA_ID, 'Warszawa', 'GMINA']], expected: ['Mazowieckie', 'Warszawa', 'Warszawa'] },
+  ] as const;
+
+  for (const item of cases) {
+    const areas = item.areas.map(([id, parentId, name, type]) => ({ id, parentId, name, type }));
+    const selected = areas.at(-1)!;
+    const scope = await resolveCanonicalMapLocationScope(
+      new URLSearchParams({ countryId: COUNTRY_ID, geoAreaId: selected.id }),
+      geographyClient(item.country, areas) as never,
+    );
+    assert.deepEqual([scope.region, scope.province, scope.city], item.expected, item.country);
+  }
 });
 
 test('server viewport adapter supports explicit and canonical scopes without descendant fan-out', async () => {
