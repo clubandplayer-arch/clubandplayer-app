@@ -5,6 +5,9 @@ import test from 'node:test';
 const migrationPath =
   'supabase/migrations/20261205120000_opportunity_canonical_geography.sql';
 const migrationSql = readFileSync(migrationPath, 'utf8');
+const nullableCityMigrationPath =
+  'supabase/migrations/20261205121000_make_opportunity_city_nullable.sql';
+const nullableCityMigrationSql = readFileSync(nullableCityMigrationPath, 'utf8');
 
 test('C3 migration adds nullable canonical Opportunity geography without defaults', () => {
   assert.match(
@@ -60,4 +63,21 @@ test('C3 migration contains no data, RLS, ownership, application or legacy mutat
   assert.doesNotMatch(executableSql, /\b(create|alter|drop)\s+(trigger|function)\b/i);
   assert.doesNotMatch(executableSql, /\b(owner_id|created_by|club_id|applications)\b/i);
   assert.doesNotMatch(executableSql, /\b(regions|provinces|municipalities|legacy_geo_area_mappings)\b/i);
+});
+
+test('compatibility migration makes only the legacy city projection nullable', () => {
+  const executableSql = nullableCityMigrationSql
+    .replace(/--.*$/gm, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  assert.match(executableSql, /^begin;/i);
+  assert.match(
+    executableSql,
+    /alter table public\.opportunities alter column city drop not null;/i,
+  );
+  assert.match(executableSql, /commit;$/i);
+  assert.equal((executableSql.match(/drop not null/gi) ?? []).length, 1);
+  assert.doesNotMatch(executableSql, /alter column (country|region|province)/i);
+  assert.doesNotMatch(executableSql, /\b(insert into|update|delete from|truncate)\b/i);
 });
