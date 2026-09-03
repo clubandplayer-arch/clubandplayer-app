@@ -284,6 +284,43 @@ function buildInstitutionQuery(
   return query;
 }
 
+function buildStaffQuery(
+  supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>,
+  ilikeQuery: string,
+  select: string,
+  filters: SearchFilters,
+  options?: { count?: 'exact'; head?: boolean },
+) {
+  let query = applyPublicProfileVisibilityFilters(
+    supabase.from('profiles').select(select, options),
+  )
+    .or('account_type.eq.staff,type.eq.staff')
+    .or(
+      [
+        `display_name.ilike.${ilikeQuery}`,
+        `full_name.ilike.${ilikeQuery}`,
+        `city.ilike.${ilikeQuery}`,
+        `province.ilike.${ilikeQuery}`,
+        `region.ilike.${ilikeQuery}`,
+        `country.ilike.${ilikeQuery}`,
+        `sport.ilike.${ilikeQuery}`,
+        `role.ilike.${ilikeQuery}`,
+      ].join(','),
+    );
+
+  // Publication already represents the canonical profile-completeness check.
+  // Requiring optional fields here (notably display_name and bio) used to hide
+  // otherwise published staff profiles from name searches.
+  query = applyCommonFilters(query, filters, {
+    allowRegion: true,
+    allowProvince: true,
+    allowSport: true,
+    allowRole: true,
+  });
+
+  return query;
+}
+
 async function fetchProfileResults(params: {
   supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>;
   kind: 'clubs' | 'institutions' | 'players' | 'staff';
@@ -362,35 +399,13 @@ async function fetchProfileResults(params: {
   }
 
   if (kind === 'staff') {
-    const { data, count, error } = await applyPublicProfileVisibilityFilters(
-      supabase.from('profiles').select('id, full_name, display_name, avatar_url, city, province, region, country, sport, role, account_type, type', { count: 'exact' }),
+    const { data, count, error } = await buildStaffQuery(
+      supabase,
+      ilikeQuery,
+      'id, full_name, display_name, avatar_url, city, province, region, country, sport, role, account_type, type',
+      filters,
+      { count: 'exact' },
     )
-      .or('account_type.eq.staff,type.eq.staff')
-      .or(
-        [
-          `display_name.ilike.${ilikeQuery}`,
-          `full_name.ilike.${ilikeQuery}`,
-          `city.ilike.${ilikeQuery}`,
-          `province.ilike.${ilikeQuery}`,
-          `region.ilike.${ilikeQuery}`,
-          `country.ilike.${ilikeQuery}`,
-          `sport.ilike.${ilikeQuery}`,
-          `role.ilike.${ilikeQuery}`,
-        ].join(','),
-      )
-      .not('display_name', 'is', null)
-      .neq('display_name', '')
-      .not('bio', 'is', null)
-      .neq('bio', '')
-      .not('full_name', 'is', null)
-      .neq('full_name', '')
-      .not('birth_year', 'is', null)
-      .not('country', 'is', null)
-      .neq('country', '')
-      .not('sport', 'is', null)
-      .neq('sport', '')
-      .not('role', 'is', null)
-      .neq('role', '')
       .order('created_at', { ascending: false })
       .range(from, to);
     if (error) throw new Error(error.message);
@@ -462,35 +477,13 @@ async function fetchProfileCount(params: {
     return count ?? 0;
   }
   if (kind === 'staff') {
-    const { count, error } = await applyPublicProfileVisibilityFilters(
-      supabase.from('profiles').select('id', { count: 'exact', head: true }),
-    )
-      .or('account_type.eq.staff,type.eq.staff')
-      .or(
-        [
-          `display_name.ilike.${ilikeQuery}`,
-          `full_name.ilike.${ilikeQuery}`,
-          `city.ilike.${ilikeQuery}`,
-          `province.ilike.${ilikeQuery}`,
-          `region.ilike.${ilikeQuery}`,
-          `country.ilike.${ilikeQuery}`,
-          `sport.ilike.${ilikeQuery}`,
-          `role.ilike.${ilikeQuery}`,
-        ].join(','),
-      )
-      .not('display_name', 'is', null)
-      .neq('display_name', '')
-      .not('bio', 'is', null)
-      .neq('bio', '')
-      .not('full_name', 'is', null)
-      .neq('full_name', '')
-      .not('birth_year', 'is', null)
-      .not('country', 'is', null)
-      .neq('country', '')
-      .not('sport', 'is', null)
-      .neq('sport', '')
-      .not('role', 'is', null)
-      .neq('role', '');
+    const { count, error } = await buildStaffQuery(
+      supabase,
+      ilikeQuery,
+      'id',
+      filters,
+      { count: 'exact', head: true },
+    );
     if (error) throw new Error(error.message);
     return count ?? 0;
   }
