@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **COMPLETATA — FASE 4I — fallback/regression** |
-| Current active phase | **FASE 4 — COMPLETATA / PASS** |
-| Next safe action | **Merge gate controllato; soltanto dopo, avvio separato della FASE 5** |
+| Last completed subphase | **FASE 5E — IMPLEMENTATA E TESTATA, ADAPTER NON COLLEGATI** |
+| Current active phase | **FASE 5 — 5A–5E COMPLETATE; 5F NOT STARTED** |
+| Next safe action | **FASE 5F autorizzata — applicare 5C → 5D solo su Preview isolata e comunicare l'esito** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -485,7 +485,7 @@ Lingue iniziali: **IT, EN, FR, ES**. Lingue future: **PT, DE**. Non risultano di
 
 ## FASE 5 — Sports / Disciplines / Competition Model
 
-**Stato: FOUNDATION PARTIAL / FUTURE WORK.**
+**Stato: FOUNDATION PARTIAL — 5A–5E COMPLETATE; 5F–5J NOT STARTED.**
 
 La foundation verificata copre sport, discipline e variant; la matrice europea completa non è dichiarata completata. Il modello europeo concordato deve comprendere:
 
@@ -502,6 +502,106 @@ La foundation verificata copre sport, discipline e variant; la matrice europea c
 - territorial scope.
 
 Le strutture devono essere country-aware e prevedere federazioni, enti, piramidi, livelli, gruppi territoriali, giovanili, M/F/mixed, stagioni, denominazioni e dipendenze federali.
+
+### FASE 5A — Sports / Disciplines / Competitions audit
+
+**Stato: COMPLETATA — AUDIT REPOSITORY-ONLY; NESSUNA MODIFICA COMPORTAMENTALE.**
+
+Deliverable: `docs/european-expansion/phase-5a-sports-disciplines-competition-audit.md`.
+
+L'audit conferma una foundation canonica parziale (`sports`, `sport_disciplines`, `sport_variants`, `legacy_sport_mappings`) con UUID, FK, indici, seed e policy, ma non collegata ai read/write path prodotto. Profili, esperienze, roster, Opportunities, Search, Discover, WhoToFollow, feed e Maps continuano a usare prevalentemente stringhe legacy e cataloghi hardcoded. Non esistono cataloghi canonici completi per sports organizations, ruoli/posizioni, categorie/age class, competition/level/group, gender, season, format o territorial scope.
+
+Nessuna migration è stata creata, testata o applicata; Production non è stata interrogata o modificata; nessun backfill è stato eseguito; schema, API, UI, Applications, ownership, RLS e grant non sono stati modificati. Web/API hanno solo impatto documentale. Mobile resta **NOT STARTED / NON MODIFICATO** e non è certificato. Smoke manuale/visivo non applicabile.
+
+Test automatici 5A: audit taxonomy/controlled vocabulary **17/17 PASS**; suite unit completa **288/288 PASS**; lint **PASS**; typecheck **PASS**; `git diff --check` **PASS**. Build eseguita ma **NON PASS** per limite ambientale: Turbopack non ha potuto scaricare i font Google `Inter` e `Righteous`; non è emerso un errore del codice 5A. Test PostgreSQL/migration e smoke API non applicabili perché 5A non crea migration né modifica runtime.
+
+Suddivisione prudenziale confermata, da autorizzare una sottofase alla volta:
+
+- 5B — contratto canonico e regole di compatibilità;
+- 5C — schema additivo e migration;
+- 5D — cataloghi e seed controllati;
+- 5E — dual-read / dual-write e adapter server;
+- 5F — profili ed esperienze;
+- 5G — Opportunities e Applications;
+- 5H — Search / Discover / WhoToFollow;
+- 5I — UI, filtri e controlled vocabulary;
+- 5J — regressione, backward compatibility e certificazione.
+
+Il prossimo passaggio autorizzabile è esclusivamente **5B repository-only**, senza migration. Decisioni aperte: identity/code wire contract, cardinalità multi-sport, ruoli Player vs Staff, graph organization/competition/season, separazione category/age class/level e freeze dei payload legacy consumabili dal Mobile pubblicato.
+
+### FASE 5B — Contratto canonico e regole di compatibilità
+
+**Stato: COMPLETATA — IMPLEMENTATA E TESTATA; NESSUN COLLEGAMENTO RUNTIME.**
+
+Deliverable: `docs/european-expansion/phase-5b-canonical-sports-competition-contract.md`; contratto eseguibile puro: `lib/taxonomy/canonicalContract.ts`.
+
+Decisioni: UUID come reference database, code stabile/non localizzato come wire key e label esclusivamente presentation; profili/Club multi-sport ordinati con primary opzionale; Player role sport-specific e Staff role cross-sport di default; organization/competition/season/group country- e source-aware; age class, competition level, gender class, format e territorial scope sono dimensioni separate. Read precedence: canonical → mapped legacy → raw legacy → empty. I payload legacy di profili, esperienze e Opportunities restano accettati/restituiti per backward compatibility Web/API/Mobile.
+
+Codice modificato soltanto per contratto puro e test, senza import da route/componenti. Nessuna migration creata, testata o applicata; nessuna query o modifica Production; nessun backfill; RLS, grant, ownership, Applications, API e UI non modificati. Mobile **NOT STARTED / NON MODIFICATO**. Smoke manuale/visivo e PostgreSQL non applicabili. La 5B non certifica Mobile.
+
+Test 5B: contratto + taxonomy + controlled vocabulary **22/22 PASS**; suite unit completa **293/293 PASS**; lint, typecheck e `git diff --check` **PASS**. Build eseguita ma **NON PASS** esclusivamente perché l'ambiente non ha potuto scaricare i font Google `Inter` e `Righteous`; nessun errore del codice 5B rilevato.
+
+Il prossimo passaggio autorizzabile è **5C — schema additivo e migration**, soltanto previa autorizzazione esplicita; non applicare migration automaticamente.
+
+### FASE 5C — Schema additivo e migration
+
+**Stato: COMPLETATA — MIGRATION CREATA E TESTATA IN POSTGRESQL LOCALE; NON APPLICATA REMOTAMENTE.**
+
+Deliverable: `docs/european-expansion/phase-5c-additive-sports-competition-schema.md`. Migration: `supabase/migrations/20261206120000_sports_competition_canonical_schema.sql`.
+
+Creati cataloghi vuoti e relazioni per organization, ruoli Player/Staff, age/gender class, format, competition/level/season/group e multi-sport profilo; aggiunte reference nullable a esperienze e Opportunities. Tuple sport/discipline/variant/role, organization/sport, season/competition e group sono protette da FK/constraint. Campi e righe legacy restano invariati, senza seed, default o backfill.
+
+RLS/grant sono modificati soltanto sulle nuove tabelle: cataloghi public-read/admin-write e `profile_sports` owner/admin fail-closed per l'accesso pubblico. Nessuna policy/grant/ownership preesistente, Applications o semantica Opportunity è modificata. Web/API non sono collegati; Mobile **NOT STARTED / NON MODIFICATO**.
+
+La migration è stata applicata due volte con esito PASS in PostgreSQL 16.15 locale temporaneo, verificando dati legacy, FK cross-sport, season, primary sport, RLS e grant; il database è stato eliminato. Migration **NON applicata** a Preview/Production; Production non interrogata o modificata. Smoke manuale/API/UI non applicabile.
+
+Test 5C: schema/contract/taxonomy mirati **27/27 PASS**; suite unit completa **298/298 PASS**; runtime PostgreSQL locale **PASS**; lint, typecheck e `git diff --check` **PASS**. Build eseguita ma **NON PASS** per impossibilità ambientale di scaricare i font Google `Inter` e `Righteous`, senza errori del codice 5C.
+
+Il prossimo passaggio autorizzabile è **5D — cataloghi e seed controllati**, esclusivamente previa autorizzazione esplicita. Non applicare la migration automaticamente.
+
+### FASE 5D — Cataloghi e seed controllati
+
+**Stato: COMPLETATA — SEED CONTROLLATO CREATO E TESTATO LOCALMENTE; NON APPLICATO REMOTAMENTE.**
+
+Deliverable: `docs/european-expansion/phase-5d-controlled-sports-competition-catalogs.md`. Migration: `supabase/migrations/20261206130000_sports_competition_controlled_seed.sql`.
+
+Seedati soltanto controlled vocabulary già contrattualizzati: 3 gender class, 5 competition format generici, 26 Staff role, 95 Player role sport-specific e mapping delle label legacy. Code canonici non localizzati e label persistite restano separati. Organization, competition, level, season, group e age class country-specific restano intenzionalmente vuoti finché non esiste un pacchetto provenance/licensing approvato.
+
+Nessun profilo, esperienza, Opportunity o Application viene letto, modificato o backfillato. RLS/grant sono aggiunti soltanto alle nuove mapping table: authenticated-read/admin-write, anon negato. Ownership e tabelle preesistenti invariate. Web/API non collegati; Mobile **NOT STARTED / NON MODIFICATO**.
+
+La migration 5D è stata applicata due volte dopo 5C in PostgreSQL 16.15 locale temporaneo con conteggi, idempotenza, assenza di competition seed, preservazione legacy e ACL PASS; database eliminato. Production non interrogata o modificata.
+
+Test 5D: mirati 5D/5C/contract/taxonomy **32/32 PASS**; suite unit completa **303/303 PASS**; PostgreSQL runtime **PASS**; lint, typecheck e `git diff --check` **PASS**. Build eseguita ma **NON PASS** per il limite ambientale sul download dei font Google `Inter` e `Righteous`, senza errori del codice 5D.
+
+**PROMEMORIA OPERATIVO:** non applicare ancora `20261206120000_sports_competition_canonical_schema.sql` né `20261206130000_sports_competition_controlled_seed.sql` a Preview/Production. Prima del primo smoke remoto che ne dipende verrà indicato esplicitamente quando applicarle, in quale ordine e con quali verifiche.
+
+Il prossimo passaggio autorizzabile è **5E — dual-read / dual-write e adapter server**, soltanto previa autorizzazione esplicita.
+
+### FASE 5E — Dual-read / dual-write e adapter server
+
+**Stato: COMPLETATA — ADAPTER IMPLEMENTATI E TESTATI; NON COLLEGATI AL RUNTIME.**
+
+Deliverable: `docs/european-expansion/phase-5e-taxonomy-dual-read-write-adapter.md`. Codice: `lib/taxonomy/compatibilityAdapter.ts` e `lib/taxonomy/compatibilityCatalog.server.ts`.
+
+Implementati canonical-first read, mapping legacy, raw fallback, invalid-canonical fail-closed e write plan field-aware per absent/null/canonical/legacy. Tuple sport/discipline/variant/role e separazione Player/Staff sono validate prima di produrre patch. Il catalog adapter è read-only, usa il client del caller e non usa service role.
+
+Nessuna route, form o query prodotto importa ancora gli adapter; nessun write reale, payload API, migration, RLS/grant, ownership o Application è modificato. Production non interrogata o modificata. Web/API senza cambiamento comportamentale; Mobile **NOT STARTED / NON MODIFICATO**. Smoke manuale non applicabile.
+
+Test 5E: adapter/contract/seed mirati **19/19 PASS**; suite unit completa **312/312 PASS**; lint, typecheck e `git diff --check` **PASS**. Build eseguita ma **NON PASS** per il limite ambientale sul download dei font Google `Inter` e `Righteous`, senza errori del codice 5E. PostgreSQL/API smoke non applicabili perché 5E non crea migration né collega caller.
+
+**PROMEMORIA OPERATIVO:** non applicare ancora le migration 5C e 5D a Preview/Production. Prima del primo smoke remoto dipendente dallo schema verranno forniti esplicitamente ordine `5C → 5D`, preflight, verifica e rollback.
+
+Il prossimo passaggio autorizzabile è **5F — profili ed esperienze**, soltanto previa autorizzazione esplicita.
+
+### FASE 5F — Profili ed esperienze
+
+**Stato: AUDIT / BLOCCATA AL DEPLOYMENT GATE; RUNTIME NON ANCORA MODIFICATO.**
+
+L'autorizzazione 5F è ricevuta. L'audit dei caller conferma che `/api/profiles/me` legge/scrive ancora `profiles.sport` e `profiles.role`, mentre `/api/profiles/me/experiences` sostituisce righe legacy con soli campi testuali. Prima di selezionare o scrivere le nuove reference, Preview deve contenere schema 5C e seed 5D.
+
+**AZIONE UTENTE RICHIESTA ORA:** applicare, soltanto su Preview dimostrabilmente isolata, prima `20261206120000_sports_competition_canonical_schema.sql` e poi `20261206130000_sports_competition_controlled_seed.sql`; non eseguire backfill o SQL aggiuntivo. Se Preview può coincidere con Production, non applicare e segnalarlo. Runbook: `docs/european-expansion/phase-5f-profile-experience-deployment-gate.md`.
+
+In questo checkpoint nessun codice runtime, migration, dato, RLS/grant, ownership o Application è stato modificato; Production non interrogata; Web/API/Mobile non modificati. Dopo la conferma dell'apply verranno eseguite verifiche read-only prima dell'integrazione.
 
 ## FASE 6 — European Profile Model Completion
 
