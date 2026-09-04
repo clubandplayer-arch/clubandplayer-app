@@ -9,8 +9,8 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | Voce | Stato verificato |
 | --- | --- |
 | Last completed subphase | **COMPLETATA — FASE 5C — schema additivo e migration locale** |
-| Current active phase | **FASE 5C — IMPLEMENTATA E TESTATA LOCALMENTE / NON APPLICATA REMOTAMENTE** |
-| Next safe action | **Attendere autorizzazione esplicita per apply controllato 5C o FASE 5D** |
+| Current active phase | **FASE 5C — MIGRATION LOCALE PASS / PREVIEW BLOCKED DA BASELINE HISTORY MANCANTE** |
+| Next safe action | **Preflight Production 5C read-only e/o baseline-history repair; FASE 5D non autorizzata** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -517,6 +517,12 @@ Lo schema additivo crea 19 oggetti per posizioni/ruoli e applicability, organizz
 Migration creata: **SÌ**. Testata: **SÌ — due apply reali e fixture su PostgreSQL 16.15 locale, PASS**. Applicata Preview/Production: **NO/NO**. Production: **NON INTERROGATA E NON MODIFICATA**. Seed/backfill: **NO/NO**. RLS/grant: **MODIFICATI soltanto sui nuovi oggetti 5C**, con read anon/authenticated, write admin-scoped e service role; policy/grant esistenti invariati. Ownership e Applications: **NON MODIFICATI**. Web/API/UI: nessun comportamento modificato. Mobile FASE 5: **NOT STARTED / NON MODIFICATO**. Test: runtime PostgreSQL locale PASS, `git diff --check` PASS, 296 unit test PASS, lint e typecheck PASS; build bloccata esclusivamente dal fetch esterno Google Fonts. Verifica manuale/visiva: **NON APPLICABILE**.
 
 Prossimo passaggio autorizzabile: apply remoto 5C controllato oppure **5D — cataloghi e seed controllati**; entrambi richiedono autorizzazione esplicita e l'apply non è implicito.
+
+**FOLLOW-UP PREVIEW MIGRATION HISTORY — AUDIT COMPLETATO / BLOCKED.** Il Preview branch `phase-5c-validation` fallisce user-reported con PostgreSQL `42P01` nella prima migration repository `20250221090000_add_club_id_to_opportunities.sql`: esegue `ALTER TABLE public.opportunities` ma nessuna migration versionata crea prima o dopo la tabella base. L'audit completo rileva inoltre altre baseline entity assenti o create dopo il primo utilizzo (`profiles`, `clubs`, `saved_views`, `posts`, geografia legacy; `notifications`, `follows` e `applications` fuori ordine). Il sorter Preview è corretto; è la history a dipendere da uno schema pre-repository.
+
+Correzione raccomandata: baseline pre-`20250221090000` ricostruita da evidenza storica e audit Production read-only, poi full replay locale, schema/security diff e nuovo Preview. Non aggiungere `IF EXISTS`, non creare una Opportunity parziale nella migration incriminata e non riscrivere migration applicate. Deliverable: `docs/european-expansion/phase-5c-preview-migration-history-diagnosis.md`.
+
+Test audit: `git diff --check`, 296 unit test, lint e typecheck PASS; build bloccata esclusivamente dal fetch esterno Google Fonts. Production: **NON INTERROGATA E NON MODIFICATA**. La 5C resta condizionatamente applicabile a Production indipendentemente dal repair Preview perché non usa `opportunities`, ma soltanto dopo preflight read-only su foundation, collisioni, ACL/history e con autorizzazione mutativa separata; post-apply obbligatori 19 tabelle, conteggi zero, RLS 19/19, 76 policy, tre trigger e smoke senza HTTP 500. 5D resta **NOT STARTED / NON AUTORIZZATA**.
 
 Suddivisione confermata dopo l'audit:
 
