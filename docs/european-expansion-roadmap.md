@@ -9,8 +9,8 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | Voce | Stato verificato |
 | --- | --- |
 | Last completed subphase | **COMPLETATA — FASE 5C — schema additivo e migration locale** |
-| Current active phase | **FASE 5C — P+B v1 ESEGUITO USER-REPORTED / OUTPUT PARZIALE; REPORT JSON v2 PRONTO** |
-| Next safe action | **Rieseguire P+B v2 read-only e fornire l’unico JSON; nessun apply / nessuna 5D** |
+| Current active phase | **FASE 5C — P+B v2 PASS USER-REPORTED; APPLY ESCLUSIVO PIANIFICATO MA NON AUTORIZZATO** |
+| Next safe action | **Attendere autorizzazione mutativa separata per la sola 5C; vietato db push / nessuna 5D** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -527,6 +527,10 @@ Test audit: `git diff --check`, 296 unit test, lint e typecheck PASS; build bloc
 **P+B READ-ONLY AUTORIZZATO — ESECUZIONE BLOCCATA DALL'AMBIENTE.** È stato predisposto `scripts/sports/reports/phase-5c-production-preflight-and-baseline-audit-read-only.sql`, protetto da transazione read-only e rollback, con test fail-closed. L'ambiente non dispone di Supabase CLI/`psql`, variabili di connessione o password utilizzabile: Production e migration history **NON SONO STATE INTERROGATE**, quindi preflight/collisioni/dipendenze restano **NOT EXECUTED**, non PASS/FAIL. Test aggiornati: 299 unit test PASS. È richiesta l'esecuzione umana del report nel SQL Editor Production o una connessione autenticata fornita fuori banda; nessun output va confuso con autorizzazione all'apply.
 
 **P+B v1 ESEGUITO IN PRODUCTION — USER-REPORTED READ-ONLY / OUTPUT PARZIALE.** L'esecuzione è terminata senza errori, ma SQL Editor ha restituito per la copia soltanto il result set finale con cinque view; ciò non consente ancora PASS/FAIL. Il report è ora `phase-5c-pb-v2` e restituisce un unico JSON consolidato con classification, blocking reasons, history, prerequisiti, collisioni e baseline evidence. Validazione PostgreSQL 16.15 sintetica e 300 unit test PASS. Production modificata: **NO**. Verifica umana richiesta: rerun integrale v2 e copia dell'unica cella JSON.
+
+**P+B v2 PRODUCTION — PASS USER-REPORTED / APPLY NON ESEGUITO.** Il JSON consolidato riporta zero blocker, tutte le dipendenze/tipi/key/ruoli compatibili e zero collisioni sui 19 oggetti, funzioni, trigger e indici 5C. La history remota è disponibile ma contiene soltanto `20250221090000`; il confronto con 122 file locali lascia 121 file (120 versioni distinte) non registrati e rileva la versione locale duplicata `20260720103000`. Un normale `supabase db push` non è selettivo e potrebbe validare/tentare l'intero insieme storico: è quindi **VIETATO**, anche dopo la 5C, finché history e baseline non saranno riconciliate.
+
+È definito un solo percorso di apply esclusivo: esecuzione diretta del file 5C verificato tramite SHA-256 e `psql`, controlli read-only 19/19, quindi registrazione della sola versione con `supabase migration repair 20261206120000 --status applied --linked`. Comandi e failure handling sono nel deliverable `docs/european-expansion/phase-5c-production-exclusive-apply-plan.md`; **non sono stati eseguiti**. Migration applicata: **NO**. Production interrogata/modificata: **SÌ user-reported read-only / NO**. RLS/grant/ownership/Applications/backfill modificati: **NO**. Web/API/UI: nessun impatto. Mobile FASE 5: **NOT STARTED / NON MODIFICATO**. Verifica umana attuale: approvazione separata del runbook; dopo l'eventuale apply saranno obbligatori history, 19 tabelle/RLS, 76 policy, tre trigger, conteggi zero e smoke Web/API Console/Network. Baseline repair e FASE 5D restano **NOT STARTED / NON AUTORIZZATI**.
 
 Suddivisione confermata dopo l'audit:
 

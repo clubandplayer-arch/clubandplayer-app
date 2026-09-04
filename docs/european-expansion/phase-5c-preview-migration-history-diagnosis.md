@@ -238,3 +238,9 @@ Le collisioni sono fail-closed e richiedono confronto prima dell'apply. Il repor
 | Migration 5C applicata | **NO** |
 | Baseline migration | **NON CREATA** |
 | Verifica umana richiesta | rieseguire v2 e copiare l'unico JSON |
+
+## 13. P+B v2 PASS e gate di deployment
+
+Il rerun v2 è stato completato dall'utente in Production in modalità read-only: classification **PASS**, zero blocker, prerequisiti compatibili e zero collisioni 5C. La history contiene però soltanto `20250221090000`, a fronte di 122 file locali: 121 file successivi non sono registrati (120 versioni distinte, per la duplicazione locale `20260720103000`). Questo risultato conferma la sicurezza strutturale della 5C ma rende **non sicuro e vietato `supabase db push`**, che non selezionerebbe la sola 5C.
+
+Il confronto completo, l'unico runbook proposto (`psql` sul file con hash verificato seguito dal repair ufficiale della sola versione), i failure gate e le verifiche umane post-apply sono registrati in `docs/european-expansion/phase-5c-production-exclusive-apply-plan.md`. Nessun comando mutativo è stato eseguito; apply, baseline repair e FASE 5D restano non autorizzati.
