@@ -9,8 +9,8 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | Voce | Stato verificato |
 | --- | --- |
 | Last completed subphase | **COMPLETATA — FASE 5C — schema additivo e migration locale** |
-| Current active phase | **FASE 5C — P+B v2 PASS USER-REPORTED; APPLY ESCLUSIVO PIANIFICATO MA NON AUTORIZZATO** |
-| Next safe action | **Attendere autorizzazione mutativa separata per la sola 5C; vietato db push / nessuna 5D** |
+| Current active phase | **FASE 5C — APPLICATA IN PRODUCTION E HISTORY VERIFICATA; SMOKE WEB/API PENDING** |
+| Next safe action | **Smoke umano Web/API 5C; vietato db push / nessuna 5D senza nuova autorizzazione** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -532,11 +532,15 @@ Test audit: `git diff --check`, 296 unit test, lint e typecheck PASS; build bloc
 
 È definito un solo percorso di apply esclusivo: esecuzione diretta del file 5C verificato tramite SHA-256 e `psql`, controlli read-only 19/19, quindi registrazione della sola versione con `supabase migration repair 20261206120000 --status applied --linked`. Comandi e failure handling sono nel deliverable `docs/european-expansion/phase-5c-production-exclusive-apply-plan.md`; **non sono stati eseguiti**. Migration applicata: **NO**. Production interrogata/modificata: **SÌ user-reported read-only / NO**. RLS/grant/ownership/Applications/backfill modificati: **NO**. Web/API/UI: nessun impatto. Mobile FASE 5: **NOT STARTED / NON MODIFICATO**. Verifica umana attuale: approvazione separata del runbook; dopo l'eventuale apply saranno obbligatori history, 19 tabelle/RLS, 76 policy, tre trigger, conteggi zero e smoke Web/API Console/Network. Baseline repair e FASE 5D restano **NOT STARTED / NON AUTORIZZATI**.
 
+**5C PRODUCTION APPLICATA — DATABASE PASS / SMOKE WEB/API PENDING.** L'utente ha applicato esclusivamente il file con SHA-256 `28a396be4616ea6dba57482946af5c15ec8df579ebb4ad4ca6947309e8d60bf7` tramite `psql`; esecuzione conclusa con `COMMIT`. Il controllo read-only post-apply ha restituito 19 tabelle, RLS 19/19, 76 policy, tre funzioni, tre trigger abilitati, grant attesi e zero righe catalogo. È stato quindi eseguito esclusivamente `migration repair 20261206120000 --status applied --db-url ...`; il controllo finale read-only ha restituito `PASS_PHASE_5C_HISTORY_REGISTERED`, due righe history totali e una sola occorrenza per `20250221090000` e `20261206120000`, seguito da `ROLLBACK` e rimozione delle variabili di connessione.
+
+Migration creata/testata/applicata: **SÌ / SÌ / SÌ PRODUCTION, user-executed**. Production interrogata/modificata: **SÌ / SÌ, limitatamente ai 19 nuovi oggetti 5C e alla singola riga history autorizzata**. RLS/grant: **APPLICATI soltanto ai nuovi oggetti 5C**. Ownership, Applications, tabelle runtime e backfill: **NON MODIFICATI**. Web/API/UI: nessuna modifica repository o comportamento intenzionale; smoke umano ancora **PENDING**. Mobile FASE 5: **NOT STARTED / NON MODIFICATO**. `db push` resta vietato e le 120 versioni intermedie non sono state riparate. Baseline repair e FASE 5D: **NOT STARTED / NON AUTORIZZATI**. È sicuro chiudere la sessione e riprendere dallo smoke in una giornata successiva.
+
 Suddivisione confermata dopo l'audit:
 
 - 5A — audit Sports / Disciplines / Competitions — **COMPLETATA**;
 - 5B — contratto canonico e regole di compatibilità — **COMPLETATA**;
-- 5C — schema additivo e migration — **COMPLETATA REPOSITORY/LOCAL TEST; NON APPLICATA REMOTAMENTE**;
+- 5C — schema additivo e migration — **APPLICATA IN PRODUCTION / DATABASE PASS; SMOKE WEB/API PENDING**;
 - 5D — cataloghi e seed controllati — **NOT STARTED**;
 - 5E — dual-read / dual-write e adapter server — **NOT STARTED**;
 - 5F — profili ed esperienze — **NOT STARTED**;

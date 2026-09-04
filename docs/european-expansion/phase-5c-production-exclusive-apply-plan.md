@@ -118,20 +118,33 @@ Lo smoke umano è **richiesto dopo l'apply**, non applicabile ora perché non è
 | Voce | Stato |
 | --- | --- |
 | Fase/sottofase | FASE 5C — Production preflight e piano apply esclusivo |
-| Stato | **TESTATA/PREFLIGHT PASS USER-REPORTED; APPLY IN ATTESA DI AUTORIZZAZIONE** |
+| Stato | **APPLICATA IN PRODUCTION / DATABASE PASS / SMOKE WEB/API PENDING** |
 | Codice/API/UI modificati | no |
 | Documento modificato | sì |
 | Migration creata | già creata: `20261206120000` |
 | Migration testata | sì, locale; Production preflight PASS user-reported |
-| Migration applicata | **no** |
+| Migration applicata | **sì, Production; esecuzione user-reported conclusa con COMMIT** |
 | Production interrogata | **sì, read-only dall'utente** |
-| Production modificata | **no** |
-| RLS/grant/ownership modificati | no in questo task |
+| Production modificata | **sì, esclusivamente oggetti 5C e singola riga history autorizzata** |
+| RLS/grant/ownership modificati | RLS/grant applicati ai soli oggetti 5C; ownership esistente invariata |
 | Applications/backfill modificati | no / no |
 | Impatto Web/API | nessuno in questo task |
 | Mobile FASE 5 | NOT STARTED / NON MODIFICATO |
-| Verifiche umane ora | nessuna UI; revisione/autorizzazione separata del runbook |
+| Verifiche umane ora | smoke Web/API rinviabile; database già verificato PASS |
 | Rischio residuo | history incompleta, 120 versioni intermedie mancanti e una versione locale duplicata |
 | Baseline repair | non iniziato e non autorizzato |
 | FASE 5D | **NOT STARTED / NON AUTORIZZATA** |
-| Prossimo passaggio autorizzabile | apply esclusivo 5C con il runbook sopra; autorizzazione mutativa separata obbligatoria |
+| Prossimo passaggio autorizzabile | smoke umano Web/API 5C; nessuna 5D senza nuova autorizzazione |
+
+## 7. Esito Production confermato
+
+L'utente ha eseguito il runbook autorizzato sul database Production:
+
+- hash del file coincidente;
+- apply diretto via `psql`, terminato con `COMMIT`;
+- verifica post-apply: 19 tabelle, RLS 19/19, 76 policy, tre funzioni, tre trigger abilitati, grant attesi e zero righe;
+- repair limitato alla sola versione `20261206120000`, terminato con successo;
+- verifica finale read-only `PASS_PHASE_5C_HISTORY_REGISTERED` con due versioni totali, ciascuna presente una sola volta: `20250221090000` e `20261206120000`;
+- transazione di verifica conclusa con `ROLLBACK` e variabili di connessione rimosse.
+
+Non sono stati usati `db push` o `--include-all`; le versioni storiche intermedie non sono state riparate. Lo stato database della 5C è **PASS**. Resta soltanto lo smoke umano Web/API, che può essere svolto in una sessione successiva; fino ad allora la certificazione complessiva rimane **PENDING SMOKE**. FASE 5D non è avviata né autorizzata.
