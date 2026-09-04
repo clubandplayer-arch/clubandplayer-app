@@ -9,8 +9,8 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 | Voce | Stato verificato |
 | --- | --- |
 | Last completed subphase | **COMPLETATA — FASE 5C — schema additivo e migration locale** |
-| Current active phase | **FASE 5C — MIGRATION LOCALE PASS / PREVIEW BLOCKED DA BASELINE HISTORY MANCANTE** |
-| Next safe action | **Preflight Production 5C read-only e/o baseline-history repair; FASE 5D non autorizzata** |
+| Current active phase | **FASE 5C — P+B READ-ONLY AUTORIZZATO / ESECUZIONE BLOCCATA SENZA CREDENZIALI** |
+| Next safe action | **Eseguire il report P+B read-only su Production e fornire gli output; nessun apply / nessuna 5D** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -523,6 +523,8 @@ Prossimo passaggio autorizzabile: apply remoto 5C controllato oppure **5D — ca
 Correzione raccomandata: baseline pre-`20250221090000` ricostruita da evidenza storica e audit Production read-only, poi full replay locale, schema/security diff e nuovo Preview. Non aggiungere `IF EXISTS`, non creare una Opportunity parziale nella migration incriminata e non riscrivere migration applicate. Deliverable: `docs/european-expansion/phase-5c-preview-migration-history-diagnosis.md`.
 
 Test audit: `git diff --check`, 296 unit test, lint e typecheck PASS; build bloccata esclusivamente dal fetch esterno Google Fonts. Production: **NON INTERROGATA E NON MODIFICATA**. La 5C resta condizionatamente applicabile a Production indipendentemente dal repair Preview perché non usa `opportunities`, ma soltanto dopo preflight read-only su foundation, collisioni, ACL/history e con autorizzazione mutativa separata; post-apply obbligatori 19 tabelle, conteggi zero, RLS 19/19, 76 policy, tre trigger e smoke senza HTTP 500. 5D resta **NOT STARTED / NON AUTORIZZATA**.
+
+**P+B READ-ONLY AUTORIZZATO — ESECUZIONE BLOCCATA DALL'AMBIENTE.** È stato predisposto `scripts/sports/reports/phase-5c-production-preflight-and-baseline-audit-read-only.sql`, protetto da transazione read-only e rollback, con test fail-closed. L'ambiente non dispone di Supabase CLI/`psql`, variabili di connessione o password utilizzabile: Production e migration history **NON SONO STATE INTERROGATE**, quindi preflight/collisioni/dipendenze restano **NOT EXECUTED**, non PASS/FAIL. Test aggiornati: 299 unit test PASS. È richiesta l'esecuzione umana del report nel SQL Editor Production o una connessione autenticata fornita fuori banda; nessun output va confuso con autorizzazione all'apply.
 
 Suddivisione confermata dopo l'audit:
 

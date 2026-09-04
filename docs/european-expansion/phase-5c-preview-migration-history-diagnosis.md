@@ -160,3 +160,55 @@ Se 5C verrà applicata, sono obbligatori i controlli umani già documentati: esi
 | Blocker | full migration history non ricostruibile da zero |
 | 5C Production | applicabile solo dopo preflight read-only PASS e autorizzazione mutativa |
 | Prossimo passaggio autorizzabile | preflight P+B oppure baseline repair repository-only dopo evidenza |
+
+## 11. Percorso P+B autorizzato — stato esecuzione
+
+L'utente ha autorizzato P+B esclusivamente read-only. Nell'ambiente agente sono stati verificati il collegamento locale metadata Supabase e la disponibilità dei client senza esporre valori sensibili. Il repository contiene `supabase/.temp/linked-project.json` e un pooler URL template, ma:
+
+- non è installata/disponibile la Supabase CLI;
+- non è disponibile `psql`;
+- non sono presenti variabili ambiente Supabase/Postgres o una password database;
+- il pooler URL locale non costituisce una credenziale utilizzabile.
+
+Di conseguenza **Production non è stata interrogata** e non è possibile dichiarare PASS o FAIL del preflight. Lo stato corretto è **BLOCCATA — NOT EXECUTED per assenza di client/credenziali**, non un fallimento della migration.
+
+È stato aggiunto il report SQL read-only:
+
+`scripts/sports/reports/phase-5c-production-preflight-and-baseline-audit-read-only.sql`
+
+Il report apre `BEGIN TRANSACTION READ ONLY`, esegue esclusivamente query catalogo e termina con `ROLLBACK`. Copre:
+
+- identità target e stato/versioni `supabase_migrations.schema_migrations`;
+- prerequisiti, colonne, tipi, PK/UNIQUE e ruoli richiesti da 5C;
+- collisioni sui 19 oggetti, funzioni, trigger e indici 5C;
+- esistenza, RLS e owner delle entità baseline;
+- colonne/default/nullability, constraint/FK, indici, policy, grant, trigger, firme/config delle trigger function e view dipendenti;
+- nessun body funzione, dato utente o write.
+
+Un test unitario fail-closed verifica che il report resti transazionalmente read-only e contenga la matrice P+B richiesta. Suite: **299/299 PASS**.
+
+### Esito richiesto, separato
+
+| Output richiesto | Stato attuale |
+| --- | --- |
+| Preflight 5C Production | **BLOCCATO / NOT EXECUTED — nessuna connessione autenticata** |
+| Collisioni Production | **NON VERIFICATE** |
+| Dipendenze Production | **NON VERIFICATE** |
+| Migration history Production | **NON INTERROGATA** |
+| Evidenza futura baseline | inventario repository completato; report remoto pronto, output mancante |
+| Apply 5C | **NON ESEGUITO / NON AUTORIZZATO** |
+| Baseline migration | **NON CREATA, come richiesto** |
+| FASE 5D | **NOT STARTED** |
+
+### Workflow umano necessario per sbloccare
+
+Eseguire il file completo nel Supabase SQL Editor Production autenticato come amministratore database, senza modificarlo, quindi esportare tutti i result set evitando credenziali/segreti. Il comando alternativo, se viene fornita fuori banda una connection string database autenticata, è:
+
+```bash
+psql "$PRODUCTION_DATABASE_URL" \
+  -X -v ON_ERROR_STOP=1 \
+  -f scripts/sports/reports/phase-5c-production-preflight-and-baseline-audit-read-only.sql \
+  > phase-5c-production-read-only-audit.txt
+```
+
+Il file di output può contenere metadata di schema e non deve essere committato automaticamente. Dopo aver ricevuto gli output, classificare preflight PASS/FAIL e collisioni; l'eventuale apply resta un'autorizzazione separata.
