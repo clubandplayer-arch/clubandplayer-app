@@ -8,13 +8,14 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **COMPLETATA — FASE 4I — fallback/regression** |
-| Current active phase | **FASE 4 — COMPLETATA / PASS** |
-| Next safe action | **Merge gate controllato; soltanto dopo, avvio separato della FASE 5** |
+| Last completed subphase | **COMPLETATA — FASE 5A — audit Sports / Disciplines / Competitions** |
+| Current active phase | **FASE 5A — COMPLETATA / AUDIT repository-only** |
+| Next safe action | **Attendere autorizzazione esplicita per FASE 5B — contratto canonico e compatibilità** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
-| Mobile international parity | **NOT STARTED — DEFERRED TO MOBILE REPOSITORY** |
+| Mobile through FASE 4 | **USER-REPORTED REPLICATED — non verificato in questa repository** |
+| Mobile FASE 5 parity | **NOT STARTED / NON MODIFICATO — deferred to Mobile repository** |
 | FASE 3C-B | **COMPLETATA — B1–B7 repository web/API** |
 | FASE 3C-C | **COMPLETATA — C1–C7 PASS** |
 | FASE 3C-D | **COMPLETATA — D1–D7 PASS** |
@@ -485,7 +486,30 @@ Lingue iniziali: **IT, EN, FR, ES**. Lingue future: **PT, DE**. Non risultano di
 
 ## FASE 5 — Sports / Disciplines / Competition Model
 
-**Stato: FOUNDATION PARTIAL / FUTURE WORK.**
+**Stato: IN CORSO — 5A COMPLETATA / AUDIT repository-only; 5B–5J NOT STARTED.**
+
+### FASE 5A — Audit Sports / Disciplines / Competitions
+
+**Stato: COMPLETATA — AUDIT repository-only; NESSUNA MODIFICA COMPORTAMENTALE.** Deliverable: `docs/european-expansion/phase-5a-sports-disciplines-competition-audit.md`.
+
+L'audit conferma che la foundation è soltanto parziale: `sports`, `sport_disciplines`, `sport_variants` e `legacy_sport_mappings` esistono, ma i read/write path di profili, esperienze, Club, roster, Staff, Opportunities, Search, Discover, WhoToFollow, feed e Maps continuano a usare stringhe legacy. Discipline e variant sono popolati soltanto per football/futsal; non esistono cataloghi canonici per sports organization, competition, level/group, age class, season, format o territorial scope. Ruoli e categorie sono array applicativi, prevalentemente italiani; la controlled vocabulary traduce soltanto la presentazione e non costituisce identity canonica.
+
+Codice/schema/API/UI: **NON MODIFICATI**. Migration 5A: **NON CREATA, NON TESTATA, NON APPLICATA**. Production: **NON INTERROGATA E NON MODIFICATA**. RLS, grant, ownership e Applications: **NON MODIFICATI**. Web/API: nessun impatto comportamentale. Mobile FASE 5: **NOT STARTED / NON MODIFICATO**; la replica Mobile fino alla FASE 4 è registrata come **USER-REPORTED**, non verificata da questa repository. Verifica manuale/visiva: **NON APPLICABILE**. Test automatici: `git diff --check` PASS, 293 unit test PASS, lint PASS e typecheck PASS; build bloccata esclusivamente dal mancato fetch esterno di Inter/Righteous da Google Fonts, senza errore applicativo osservato. Rischi principali: mismatch sport/ruolo, categorie italiane non generalizzabili, label localizzata scambiata per valore persistito, legacy unknown, Staff trasversale, catene discipline incoerenti, competizioni omonime, season format diversi, filtri testuali e compatibilità Mobile/Italia.
+
+Prossimo passaggio autorizzabile: **5B — contratto canonico e regole di compatibilità**, esclusivamente documentale e senza DDL/DML/runtime; attendere autorizzazione esplicita.
+
+Suddivisione confermata dopo l'audit:
+
+- 5A — audit Sports / Disciplines / Competitions — **COMPLETATA**;
+- 5B — contratto canonico e regole di compatibilità — **NOT STARTED**;
+- 5C — schema additivo e migration — **NOT STARTED**;
+- 5D — cataloghi e seed controllati — **NOT STARTED**;
+- 5E — dual-read / dual-write e adapter server — **NOT STARTED**;
+- 5F — profili ed esperienze — **NOT STARTED**;
+- 5G — Opportunities e Applications — **NOT STARTED**;
+- 5H — Search / Discover / WhoToFollow — **NOT STARTED**;
+- 5I — UI, filtri e controlled vocabulary — **NOT STARTED**;
+- 5J — regressione, backward compatibility e certificazione — **NOT STARTED**.
 
 La foundation verificata copre sport, discipline e variant; la matrice europea completa non è dichiarata completata. Il modello europeo concordato deve comprendere:
 
