@@ -8,9 +8,9 @@ Ogni task futuro deve aggiornare questo documento al termine della fase assegnat
 
 | Voce | Stato verificato |
 | --- | --- |
-| Last completed subphase | **COMPLETATA — FASE 5B — contratto canonico e compatibilità** |
-| Current active phase | **FASE 5B — IMPLEMENTATA E TESTATA / documentale repository-only** |
-| Next safe action | **Attendere autorizzazione esplicita per FASE 5C — schema additivo e migration** |
+| Last completed subphase | **COMPLETATA — FASE 5C — schema additivo e migration locale** |
+| Current active phase | **FASE 5C — IMPLEMENTATA E TESTATA LOCALMENTE / NON APPLICATA REMOTAMENTE** |
+| Next safe action | **Attendere autorizzazione esplicita per apply controllato 5C o FASE 5D** |
 | Production canonical geo areas | **56,304 — VERIFIED PRODUCTION** |
 | Countries populated in canonical geography | **IT, FR, ES, CH, SI, PL — VERIFIED PRODUCTION** |
 | Automatic profile residence backfill | **FORBIDDEN / DELIBERATELY EXCLUDED** |
@@ -486,7 +486,7 @@ Lingue iniziali: **IT, EN, FR, ES**. Lingue future: **PT, DE**. Non risultano di
 
 ## FASE 5 — Sports / Disciplines / Competition Model
 
-**Stato: IN CORSO — 5A–5B COMPLETATE; 5C–5J NOT STARTED.**
+**Stato: IN CORSO — 5A–5C COMPLETATE nel repository; 5C NON APPLICATA remotamente; 5D–5J NOT STARTED.**
 
 ### FASE 5A — Audit Sports / Disciplines / Competitions
 
@@ -506,13 +506,23 @@ Prossimo passaggio autorizzabile: **5B — contratto canonico e regole di compat
 
 Compatibility: read `canonical → legacy mapping univoco → raw legacy`; riferimenti canonicali invalidi restano osservabili. Write field-aware `absent/legacy/canonical/reset`, senza reset impliciti, default Italia/Calcio, traduzioni persistite o mapping euristici. Payload futuri esclusivamente additivi; campi legacy, ownership/visibility Opportunity, Applications, RLS e privacy Maps restano invariati.
 
-Codice/schema/API/UI: **NON MODIFICATI**. Migration 5B: **NON CREATA, NON TESTATA, NON APPLICATA**. Production: **NON INTERROGATA E NON MODIFICATA**. RLS, grant, ownership e Applications: **NON MODIFICATI**. Web/API: nessun impatto comportamentale. Mobile FASE 5: **NOT STARTED / NON MODIFICATO**; replica fino a FASE 4 soltanto user-reported. Verifica manuale/visiva: **NON APPLICABILE**. Test: `git diff --check`, 293 unit test, lint e typecheck PASS; build bloccata esclusivamente dal fetch esterno Google Fonts. Prossimo passaggio autorizzabile: **5C**, con schema minimo additivo, zero seed/backfill e harness PostgreSQL locale; non avviare senza autorizzazione esplicita.
+Codice/schema/API/UI: **NON MODIFICATI**. Migration 5B: **NON CREATA, NON TESTATA, NON APPLICATA**. Production: **NON INTERROGATA E NON MODIFICATA**. RLS, grant, ownership e Applications: **NON MODIFICATI**. Web/API: nessun impatto comportamentale. Mobile FASE 5: **NOT STARTED / NON MODIFICATO**; replica fino a FASE 4 soltanto user-reported. Verifica manuale/visiva: **NON APPLICABILE**. Test: `git diff --check`, 293 unit test, lint e typecheck PASS; build bloccata esclusivamente dal fetch esterno Google Fonts. Prossimo passaggio autorizzabile: **5C**, successivamente autorizzata e completata nel repository come riportato sotto.
+
+### FASE 5C — Schema additivo e migration
+
+**Stato: COMPLETATA NEL REPOSITORY — IMPLEMENTATA E TESTATA SU POSTGRESQL 16.15 LOCALE; NON APPLICATA A PREVIEW/PRODUCTION.** Migration: `supabase/migrations/20261206120000_canonical_sports_competition_schema.sql`. Deliverable: `docs/european-expansion/phase-5c-additive-sports-competition-migration.md`.
+
+Lo schema additivo crea 19 oggetti per posizioni/ruoli e applicability, organizzazioni/membership country, gender/format/territorial scope, level, age class, season, competition, edition, group, scope geografici e mapping legacy. FK composite preservano Sport→Discipline→Variant e organization/sport/season; tre trigger `SECURITY INVOKER` bloccano cicli. Non sono aggiunte colonne a profili, esperienze, Opportunities o Applications.
+
+Migration creata: **SÌ**. Testata: **SÌ — due apply reali e fixture su PostgreSQL 16.15 locale, PASS**. Applicata Preview/Production: **NO/NO**. Production: **NON INTERROGATA E NON MODIFICATA**. Seed/backfill: **NO/NO**. RLS/grant: **MODIFICATI soltanto sui nuovi oggetti 5C**, con read anon/authenticated, write admin-scoped e service role; policy/grant esistenti invariati. Ownership e Applications: **NON MODIFICATI**. Web/API/UI: nessun comportamento modificato. Mobile FASE 5: **NOT STARTED / NON MODIFICATO**. Test: runtime PostgreSQL locale PASS, `git diff --check` PASS, 296 unit test PASS, lint e typecheck PASS; build bloccata esclusivamente dal fetch esterno Google Fonts. Verifica manuale/visiva: **NON APPLICABILE**.
+
+Prossimo passaggio autorizzabile: apply remoto 5C controllato oppure **5D — cataloghi e seed controllati**; entrambi richiedono autorizzazione esplicita e l'apply non è implicito.
 
 Suddivisione confermata dopo l'audit:
 
 - 5A — audit Sports / Disciplines / Competitions — **COMPLETATA**;
 - 5B — contratto canonico e regole di compatibilità — **COMPLETATA**;
-- 5C — schema additivo e migration — **NOT STARTED**;
+- 5C — schema additivo e migration — **COMPLETATA REPOSITORY/LOCAL TEST; NON APPLICATA REMOTAMENTE**;
 - 5D — cataloghi e seed controllati — **NOT STARTED**;
 - 5E — dual-read / dual-write e adapter server — **NOT STARTED**;
 - 5F — profili ed esperienze — **NOT STARTED**;
